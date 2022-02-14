@@ -88,13 +88,14 @@
 
     <field>
       <name>Drag</name>
-      <comment>This object-based field is used to control the dragging of viewports around the display.</comment>
+      <comment>Enables click-dragging of viewports around the display.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>OBJECTPTR</type>
       <description>
-<p>Click-dragging of viewports is enabled by utilising the Drag field.</p>
-<p>To use, set this field with reference to a Viewport that is to be dragged when the user starts a click-drag operation. For instance, if you create a window with a title-bar at the top, you would set the Drag field of the title-bar to point to the window's viewport.  If necessary, the Drag field can point back to your viewport object (this can be useful for creating icons and other small widgets).</p>
+<p>Click-dragging of viewports is enabled by utilising the Drag field.  To use, set this field with reference to a VectorViewport that is to be dragged when the user starts a click-drag operation.</p>
+<p>For example, a window with a titlebar would have the titlebar's Drag field set to the window's viewport.  If necessary, a viewport's Drag field can point back to itself (useful for creating icons and similar draggable widgets).</p>
 <p>Set the field to zero to turn off dragging.</p>
+<p>It is required that the parent <class name="VectorScene">VectorScene</class> is associated with a <class name="Surface">Surface</class> for this feature to work.</p>
       </description>
     </field>
 

@@ -1,10 +1,9 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Vector: An abstract class for supporting vector graphics objects and functionality.
@@ -25,13 +24,13 @@ unless otherwise documented.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR vector_input_events(objVector *, const InputEvent *);
 
 static ERROR VECTOR_Push(objVector *, struct vecPush *);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void debug_tree(objVector *Vector, LONG &Level)
 {
@@ -61,7 +60,7 @@ static void debug_tree(objVector *Vector, LONG &Level)
    Level--;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Determine the parent object, based on the owner.
 
 void set_parent(objVector *Self, OBJECTID OwnerID)
@@ -106,7 +105,7 @@ void set_parent(objVector *Self, OBJECTID OwnerID)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTOR_ActionNotify(objVector *Self, struct acActionNotify *Args)
 {
@@ -123,7 +122,7 @@ static ERROR VECTOR_ActionNotify(objVector *Self, struct acActionNotify *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Debug: Internal functionality for debugging.
@@ -133,7 +132,7 @@ This internal method prints comprehensive debugging information to the log.
 -ERRORS-
 Okay:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_Debug(objVector *Self, APTR Void)
 {
@@ -142,11 +141,11 @@ static ERROR VECTOR_Debug(objVector *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Disable: Disabling a vector can be used to trigger style changes and prevent user input.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_Disable(objVector *Self, APTR Void)
 {
@@ -155,7 +154,7 @@ static ERROR VECTOR_Disable(objVector *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Draw: Draws the surface associated with the vector.
 
@@ -166,7 +165,7 @@ Internally, drawing is scheduled for the next frame and is not immediate.
 Okay
 FieldNotSet: The vector's scene graph is not associated with a Surface.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
 {
@@ -210,11 +209,11 @@ static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Enable: Reverses the effects of disabling the vector.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_Enable(objVector *Self, APTR Void)
 {
@@ -223,7 +222,7 @@ static ERROR VECTOR_Enable(objVector *Self, APTR Void)
   return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTOR_Free(objVector *Self, APTR Args)
 {
@@ -270,7 +269,7 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FreeMatrix: Remove an allocated VectorMatrix structure.
@@ -285,7 +284,7 @@ struct(*VectorMatrix) Matrix: Reference to the structure that requires removal.
 Okay:
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_FreeMatrix(objVector *Self, struct vecFreeMatrix *Args)
 {
@@ -311,7 +310,7 @@ static ERROR VECTOR_FreeMatrix(objVector *Self, struct vecFreeMatrix *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetBoundary: Returns the graphical boundary of a vector.
@@ -342,7 +341,7 @@ NoData: The vector does not have a computable path.
 NotPossible: The vector does not support path generation.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
 {
@@ -386,11 +385,11 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
    else return ERR_NotPossible;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Hide: Changes the vector's visibility setting to hidden.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_Hide(objVector *Self, APTR Void)
 {
@@ -398,7 +397,7 @@ static ERROR VECTOR_Hide(objVector *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTOR_Init(objVector *Self, APTR Void)
 {
@@ -466,7 +465,7 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 InputSubscription: Create a subscription for input events that relate to the vector.
@@ -500,7 +499,7 @@ FieldNotSet: The VectorScene has no reference to a Surface.
 AllocMemory:
 Function: A call to gfxSubscribeInput() failed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_InputSubscription(objVector *Self, struct vecInputSubscription *Args)
 {
@@ -538,7 +537,7 @@ static ERROR VECTOR_InputSubscription(objVector *Self, struct vecInputSubscripti
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 KeyboardSubscription: Create a subscription for input events that relate to the vector.
@@ -565,7 +564,7 @@ FieldNotSet: The VectorScene has no reference to a Surface.
 AllocMemory:
 Function: A call to gfxSubscribeInput() failed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_KeyboardSubscription(objVector *Self, struct vecKeyboardSubscription *Args)
 {
@@ -585,11 +584,11 @@ static ERROR VECTOR_KeyboardSubscription(objVector *Self, struct vecKeyboardSubs
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToBack: Move a vector to the back of its stack.
--END-
-*****************************************************************************/
+
+*********************************************************************************************************************/
 
 static ERROR VECTOR_MoveToBack(objVector *Self, APTR Void)
 {
@@ -597,11 +596,11 @@ static ERROR VECTOR_MoveToBack(objVector *Self, APTR Void)
    return VECTOR_Push(Self, &push);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToFront: Move a vector to the front of its stack.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_MoveToFront(objVector *Self, APTR Void)
 {
@@ -609,7 +608,7 @@ static ERROR VECTOR_MoveToFront(objVector *Self, APTR Void)
    return VECTOR_Push(Self, &push);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
 {
@@ -630,7 +629,7 @@ static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTOR_NewOwner(objVector *Self, struct acNewOwner *Args)
 {
@@ -648,7 +647,7 @@ static ERROR VECTOR_NewOwner(objVector *Self, struct acNewOwner *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 NewMatrix: Returns a VectorMatrix structure that allows transformations to be applied to the vector.
@@ -670,7 +669,7 @@ transform is no longer required before then, it can be manually removed with ~Ve
 Okay:
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_NewMatrix(objVector *Self, struct vecNewMatrix *Args)
 {
@@ -698,7 +697,7 @@ static ERROR VECTOR_NewMatrix(objVector *Self, struct vecNewMatrix *Args)
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 PointInPath: Checks if point at (X,Y) is within a vector's path.
@@ -718,7 +717,7 @@ NullArgs:
 NoData: The vector is unable to generate a path based on its current values.
 NoSupport: The vector type does not support path generation.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
 {
@@ -749,7 +748,7 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
    else return ERR_NoSupport;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Push: Push a vector to a new position within its area of the vector stack.
@@ -769,7 +768,7 @@ int Position: Specify a relative position index here (-ve to move backwards, +ve
 Okay:
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
 {
@@ -819,11 +818,11 @@ static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Show: Changes the vector's visibility setting to visible.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_Show(objVector *Self, APTR Void)
 {
@@ -831,7 +830,7 @@ static ERROR VECTOR_Show(objVector *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 TracePath: Returns the coordinates for a vector path, using callbacks.
@@ -908,7 +907,7 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Child: The first child vector, or NULL.
@@ -924,7 +923,7 @@ Lookup: VFR
 The ClipRule attribute only applies to vector shapes when they are contained within a @VectorClip object.  In
 terms of outcome, the ClipRule works similarly to #FillRule.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_ClipRule(objVector *Self, LONG *Value)
 {
@@ -938,7 +937,7 @@ static ERROR VECTOR_SET_ClipRule(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DashArray: Controls the pattern of dashes and gaps used to stroke paths.
@@ -947,7 +946,7 @@ The DashArray is a list of lengths that alternate between dashes and gaps.  If a
 then the list of values is repeated to yield an even number of values.  Thus `5,3,2` is equivalent to
 `5,3,2,5,3,2`.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_DashArray(objVector *Self, DOUBLE **Value, LONG *Elements)
 {
@@ -974,7 +973,7 @@ static ERROR VECTOR_SET_DashArray(objVector *Self, DOUBLE *Value, LONG Elements)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DashOffset: The distance into the dash pattern to start the dash.  Can be a negative number.
@@ -992,7 +991,7 @@ will not produce the expected behaviour.
 The EnableBkgd option can be enabled on Vector sub-classes @VectorGroup, @VectorPattern and @VectorViewport.  All other
 sub-classes will ignore the option if used.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_EnableBkgd(objVector *Self, LONG *Value)
 {
@@ -1007,7 +1006,7 @@ static ERROR VECTOR_SET_EnableBkgd(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Feedback: Receiver for events originating from the vector.
@@ -1016,7 +1015,7 @@ Set the Feedback field with a callback function to receive events from the vecto
 with the #FeedbackMask field value. The function prototype is `routine(*Vector, LONG Event)` where Event matches a
 FeedbackMask value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Feedback(objVector *Self, FUNCTION **Value)
 {
@@ -1038,7 +1037,7 @@ static ERROR VECTOR_SET_Feedback(objVector *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Fill: Defines the fill painter using SVG's IRI format.
@@ -1046,7 +1045,7 @@ Fill: Defines the fill painter using SVG's IRI format.
 The painter used for filling a vector path can be defined through this field.  The string is parsed through the
 ~ReadPainter() function in the Vector module.  Please refer to it for further details on valid formatting.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Fill(objVector *Self, CSTRING *Value)
 {
@@ -1062,7 +1061,7 @@ static ERROR VECTOR_SET_Fill(objVector *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FillColour: Defines a solid colour for filling the vector path.
@@ -1073,7 +1072,7 @@ values in that order.
 
 If the Alpha component is set to zero then the FillColour will be ignored by the renderer.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_FillColour(objVector *Self, FLOAT **Value, LONG *Elements)
 {
@@ -1098,7 +1097,7 @@ static ERROR VECTOR_SET_FillColour(objVector *Self, FLOAT *Value, LONG Elements)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FillOpacity: The opacity to use when filling the vector.
@@ -1106,7 +1105,7 @@ FillOpacity: The opacity to use when filling the vector.
 The FillOpacity value is used by the painting algorithm when it is rendering a filled vector.  It is multiplied with
 the #Opacity to determine a final opacity value for the render.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_FillOpacity(objVector *Self, DOUBLE *Value)
 {
@@ -1125,7 +1124,7 @@ static ERROR VECTOR_SET_FillOpacity(objVector *Self, DOUBLE Value)
    else return log.warning(ERR_OutOfRange);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Filter: Assign a post-effects filter to a vector.
@@ -1137,7 +1136,7 @@ for further details on filter configuration.
 
 The Filter value can be in the format `ID` or `url(#ID)` according to client preference.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Filter(objVector *Self, CSTRING *Value)
 {
@@ -1183,7 +1182,7 @@ static ERROR VECTOR_SET_Filter(objVector *Self, CSTRING Value)
    else return log.warning(ERR_InvalidValue);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 FillRule: Determines the algorithm to use when filling the shape.
 
@@ -1192,7 +1191,7 @@ when filling the shape. For a simple, non-intersecting path, it is intuitively c
 however, for a more complex path, such as a path that intersects itself or where one sub-path encloses another, the
 interpretation of "inside" is not so obvious.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_FillRule(objVector *Self, LONG *Value)
 {
@@ -1206,14 +1205,14 @@ static ERROR VECTOR_SET_FillRule(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 ID: String identifier for a vector.
 
 The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the
 existing object name and automatically assigned ID's for identifiers.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_ID(objVector *Self, STRING *Value)
 {
@@ -1236,7 +1235,7 @@ static ERROR VECTOR_SET_ID(objVector *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 InnerJoin: Adjusts the handling of thickly stroked paths that cross back at the join.
 Lookup: VIJ
@@ -1249,7 +1248,7 @@ The available settings are MITER, ROUND, BEVEL, JAG and INHERIT.  The default of
 fastest, but ROUND produces the best results in ensuring that the stroked path is filled correctly.  The most optimal
 approach is to use the default setting and switch to ROUND if issues are noted near the corners of the path.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 // See the AGG bezier_div demo to get a better understanding of what is affected by this field value.
 
@@ -1277,7 +1276,7 @@ static ERROR VECTOR_SET_InnerJoin(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 InnerMiterLimit: Private. No internal documentation exists for this feature.
@@ -1289,7 +1288,7 @@ Lookup: VLC
 LineCap is the equivalent of SVG's stroke-linecap attribute.  It defines the shape to be used at the start and end
 of a stroked path.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_LineCap(objVector *Self, LONG *Value)
 {
@@ -1313,7 +1312,7 @@ static ERROR VECTOR_SET_LineCap(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 LineJoin: The shape to be used at path corners that are stroked.
 Lookup: VLJ
@@ -1321,7 +1320,7 @@ Lookup: VLJ
 LineJoin is the equivalent of SVG's stroke-linejoin attribute.  It defines the shape to be used at path corners
 that are being stroked.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_LineJoin(objVector *Self, LONG *Value)
 {
@@ -1350,14 +1349,14 @@ static ERROR VECTOR_SET_LineJoin(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Mask: Reference a VectorClip object here to apply a clipping mask to the rendered vector.
 
 A mask can be applied to a vector by setting the Mask field with a reference to a @VectorClip object.  Please
 refer to the @VectorClip class for further information.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Mask(objVector *Self, objVectorClip **Value)
 {
@@ -1388,7 +1387,7 @@ static ERROR VECTOR_SET_Mask(objVector *Self, objVectorClip *Value)
    else return log.warning(ERR_InvalidObject);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MiterLimit: Imposes a limit on the ratio of the miter length to the StrokeWidth.
@@ -1406,7 +1405,7 @@ For example, a miter limit of 1.414 converts miters to bevels for theta less tha
 them for theta less than approximately 29 degrees, and a limit of 10.0 converts them for theta less than approximately
 11.5 degrees.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SET_MiterLimit(objVector *Self, DOUBLE Value)
 {
@@ -1419,7 +1418,7 @@ static ERROR VECTOR_SET_MiterLimit(objVector *Self, DOUBLE Value)
    else return log.warning(ERR_InvalidValue);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Morph: Enables morphing of the vector to a target path.
 
@@ -1430,7 +1429,7 @@ than it is tall.
 Squat shapes will fare poorly if morphed, so experimentation may be necessary to understand how the morph feature is
 best utilised.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Morph(objVector *Self, objVector **Value)
 {
@@ -1461,12 +1460,12 @@ static ERROR VECTOR_SET_Morph(objVector *Self, objVector *Value)
    else return log.warning(ERR_InvalidObject);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MorphFlags: Optional flags that affect morphing.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_MorphFlags(objVector *Self, LONG *Value)
 {
@@ -1480,7 +1479,7 @@ static ERROR VECTOR_SET_MorphFlags(objVector *Self, LONG Value)
     return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Next: The next vector in the branch, or NULL.
@@ -1497,7 +1496,7 @@ InvalidObject: The value is not a member of the Vector class.
 InvalidValue: The provided value is either NULL or refers to itself.
 UnsupportedOwner: The referenced vector does not share the same owner.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SET_Next(objVector *Self, objVector *Value)
 {
@@ -1524,7 +1523,7 @@ static ERROR VECTOR_SET_Next(objVector *Self, objVector *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 NumericID: A unique identifier for the vector.
@@ -1534,7 +1533,7 @@ This field assigns a numeric ID to a vector.  Alternatively it can also reflect 
 
 If NumericID is set by the client, then any value in #ID will be immediately cleared.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_NumericID(objVector *Self, LONG *Value)
 {
@@ -1549,7 +1548,7 @@ static ERROR VECTOR_SET_NumericID(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Opacity: Defines an overall opacity for the vector's graphics.
@@ -1558,7 +1557,7 @@ The overall opacity of a vector can be defined here using a value between 0 and 
 with other opacity settings as required during rendering.  For instance, when filling a vector the opacity will be
 calculated as #FillOpacity * Opacity.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SET_Opacity(objVector *Self, DOUBLE Value)
 {
@@ -1569,7 +1568,7 @@ static ERROR VECTOR_SET_Opacity(objVector *Self, DOUBLE Value)
    else return ERR_OutOfRange;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Parent: The parent of the vector, or NULL if this is the top-most vector.
@@ -1592,7 +1591,7 @@ InvalidObject: The value is not a member of the Vector class.
 InvalidValue: The provided value is either NULL or refers to itself.
 UnsupportedOwner: The referenced vector does not share the same owner.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
 {
@@ -1626,7 +1625,7 @@ static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Scene: Short-cut to the top-level @VectorScene.
@@ -1659,7 +1658,7 @@ Z: Close Path
 The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate
 of the previous command).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
 {
@@ -1751,7 +1750,7 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
    else return ERR_NoData;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Stroke: Defines the stroke of a path using SVG's IRI format.
@@ -1759,7 +1758,7 @@ Stroke: Defines the stroke of a path using SVG's IRI format.
 The stroker used for rendering a vector path can be defined through this field.  The string is parsed through
 the ~ReadPainter() function in the Vector module.  Please refer to it for further details on valid formatting.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Stroke(objVector *Self, CSTRING *Value)
 {
@@ -1775,7 +1774,7 @@ static ERROR VECTOR_SET_Stroke(objVector *Self, STRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 StrokeColour: Defines the colour of the path stroke in RGB float format.
@@ -1787,7 +1786,7 @@ the vector.
 
 This field is complemented by the #StrokeOpacity and #Stroke fields.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_StrokeColour(objVector *Self, FLOAT **Value, LONG *Elements)
 {
@@ -1809,7 +1808,7 @@ static ERROR VECTOR_SET_StrokeColour(objVector *Self, FLOAT *Value, LONG Element
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 StrokeOpacity: Defines the opacity of the path stroke.
 
@@ -1819,7 +1818,7 @@ render the stroke invisible and the maximum value of one would render it opaque.
 Please note that thinly stroked paths may not be able to appear as fully opaque in some cases due to anti-aliased
 rendering.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_StrokeOpacity(objVector *Self, DOUBLE *Value)
 {
@@ -1836,7 +1835,7 @@ static ERROR VECTOR_SET_StrokeOpacity(objVector *Self, DOUBLE Value)
    else return ERR_OutOfRange;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 StrokeWidth: The width to use when stroking the path.
 
@@ -1845,7 +1844,7 @@ be stroked.
 
 The StrokeWidth is affected by scaling factors imposed by transforms and viewports.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SET_StrokeWidth(objVector *Self, DOUBLE Value)
 {
@@ -1856,7 +1855,7 @@ static ERROR VECTOR_SET_StrokeWidth(objVector *Self, DOUBLE Value)
    else return ERR_OutOfRange;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Matrices: A linked list of transform matrices that have been applied to the vector.
@@ -1875,7 +1874,7 @@ refer to the @VectorTransition class for further information.
 Not all vector types are well-suited or adapted to the use of transitions.  At the time of writing, only @VectorText
 and @VectorWave are able to take full advantage of this feature.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Transition(objVector *Self, rkVectorTransition **Value)
 {
@@ -1906,15 +1905,15 @@ static ERROR VECTOR_SET_Transition(objVector *Self, rkVectorTransition *Value)
    else return log.warning(ERR_InvalidObject);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Visibility: Controls the visibility of a vector and its children.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-//****************************************************************************
+//********************************************************************************************************************
 // For sending events to the client
 
 static void send_feedback(objVector *Vector, LONG Event)
@@ -1945,7 +1944,7 @@ static void send_feedback(objVector *Vector, LONG Event)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Receiver for input events.  Managed by VectorScene.  The client makes subscriptions through the
 // InputSubscription() method.
 //
@@ -1986,14 +1985,17 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
       }
    }
 
-   // Filter for events that occur within the vector's bounds
+   // Filter for events that occur within the vector's bounds.  Note that if the user holds the
+   // mouse button over the vector, a 'button lock' will be held.  This causes all events to be passed
+   // until the button is released.
 
    LONG e = 0;
    for (auto input=Events; input; input=input->Next) {
       if ((input->Type IS JET_LEFT_SURFACE) or (input->Type IS JET_ENTERED_SURFACE)) continue;
 
-      if ((input->X >= bounds[0]) and (input->Y >= bounds[1]) and
-          (input->X < bounds[2]) and (input->Y < bounds[3])) {
+      if ((Self->ButtonLock) or
+          ((input->X >= bounds[0]) and (input->Y >= bounds[1]) and
+           (input->X < bounds[2]) and (input->Y < bounds[3]))) {
 
          // Inject JET_ENTERED_SURFACE if this is the first activity
 
@@ -2039,9 +2041,17 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
          };
          Self->UserHovering = FALSE;
       }
+
+      if (input->Type IS JET_LMB) {
+         if (input->Value IS 1) Self->ButtonLock = true;
+         else Self->ButtonLock = false;
+      }
    }
 
-   if (!e) return ERR_Okay;
+   if (!e) {
+      log.msg("All received events were filtered out.");
+      return ERR_Okay;
+   }
 
    for (auto it=Self->InputSubscriptions->begin(); it != Self->InputSubscriptions->end(); ) {
       // Patch the Next fields to construct a custom chain of events based on this subscripton's mask filter.
@@ -2059,6 +2069,8 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
       if (first) {
          last->Next = NULL;
 
+         log.msg("Sending event $%.8x", first->Mask);
+
          ERROR result;
          if (sub.Callback.Type IS CALL_STDC) {
             parasol::SwitchContext ctx(sub.Callback.StdC.Context);
@@ -2074,7 +2086,10 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
             scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
          }
 
-         if (result IS ERR_Terminate) it = Self->InputSubscriptions->erase(it);
+         if (result IS ERR_Terminate) {
+            log.debug("Terminating input subscription of %d total.", (LONG)Self->InputSubscriptions->size());
+            it = Self->InputSubscriptions->erase(it);
+         }
          else it++;
       }
       else it++;
@@ -2083,7 +2098,7 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Receiver for keyboard events
 
 static ERROR vector_keyboard_events(objVector *Self, const evKey *Event)
@@ -2114,7 +2129,7 @@ static ERROR vector_keyboard_events(objVector *Self, const evKey *Event)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clMorphFlags[] = {
    { "Stretch",     VMF_STRETCH },
@@ -2182,6 +2197,7 @@ static const FieldArray clVectorFields[] = {
    { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorVisibility, NULL, NULL },
    { "Flags",            FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clVectorFlags, NULL, NULL },
    { "FeedbackMask",     FDF_LONGFLAGS|FDF_RW,         (MAXINT)&clVectorFeedbackMask, NULL, NULL },
+   { "Cursor",           FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorCursor, NULL, (APTR)VECTOR_SET_Cursor },
    // Virtual fields
    { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },

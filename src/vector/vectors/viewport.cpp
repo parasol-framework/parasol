@@ -1,4 +1,9 @@
-/*****************************************************************************
+/*********************************************************************************************************************
+
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
+
+**********************************************************************************************************************
 
 -CLASS-
 VectorViewport: Provides support for viewport definitions within a vector tree.
@@ -16,13 +21,13 @@ To configure the scaling and alignment method that is applied to the viewport co
 
 NOTE: Refer to gen_vector_path() for the code that manages viewport dimensions in a live state.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 /*****************************************************************************
 -ACTION-
 Clear: Free all child objects contained by the viewport.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_Clear(objVectorViewport *Self, APTR Void)
 {
@@ -37,7 +42,7 @@ static ERROR VIEW_Clear(objVectorViewport *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VIEW_Free(objVectorViewport *Self, APTR Void)
 {
@@ -45,7 +50,7 @@ static ERROR VIEW_Free(objVectorViewport *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VIEW_Init(objVectorViewport *Self, APTR Void)
 {
@@ -55,11 +60,11 @@ static ERROR VIEW_Init(objVectorViewport *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Move: Move the position of the viewport to a relative position.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_Move(objVectorViewport *Self, struct acMove *Args)
 {
@@ -79,11 +84,11 @@ static ERROR VIEW_Move(objVectorViewport *Self, struct acMove *Args)
    else return ERR_GetField;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToPoint: Move the position of the viewport to a fixed point.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_MoveToPoint(objVectorViewport *Self, struct acMoveToPoint *Args)
 {
@@ -103,7 +108,7 @@ static ERROR VIEW_MoveToPoint(objVectorViewport *Self, struct acMoveToPoint *Arg
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VIEW_NewObject(objVectorViewport *Self, APTR Void)
 {
@@ -117,11 +122,11 @@ static ERROR VIEW_NewObject(objVectorViewport *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Resize: Resize a viewport to a fixed size.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_Resize(objVectorViewport *Self, struct acResize *Args)
 {
@@ -139,7 +144,7 @@ static ERROR VIEW_Resize(objVectorViewport *Self, struct acResize *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 AbsX: The horizontal position of the viewport, relative to (0,0).
@@ -147,7 +152,7 @@ AbsX: The horizontal position of the viewport, relative to (0,0).
 This field will return the left-most boundary of the viewport, relative to point (0,0) of the scene
 graph.  Transforms are taken into consideration when calculating this value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_AbsX(objVectorViewport *Self, LONG *Value)
 {
@@ -157,7 +162,7 @@ static ERROR VIEW_GET_AbsX(objVectorViewport *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 AbsY: The vertical position of the viewport, relative to (0,0).
@@ -165,7 +170,7 @@ AbsY: The vertical position of the viewport, relative to (0,0).
 This field will return the top-most boundary of the viewport, relative to point (0,0) of the scene
 graph.  Transforms are taken into consideration when calculating this value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_AbsY(objVectorViewport *Self, LONG *Value)
 {
@@ -175,7 +180,7 @@ static ERROR VIEW_GET_AbsY(objVectorViewport *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 AspectRatio: Flags that affect the aspect ratio of vectors within the viewport.
 Lookup: ARF
@@ -185,7 +190,7 @@ area.
 
 <types lookup="ARF"/>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_AspectRatio(objVectorViewport *Self, LONG *Value)
 {
@@ -199,14 +204,14 @@ static ERROR VIEW_SET_AspectRatio(objVectorViewport *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
 Lookup: DMF
 
 <types lookup="DMF"/>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_Dimensions(objVectorViewport *Self, LONG *Value)
 {
@@ -221,14 +226,14 @@ static ERROR VIEW_SET_Dimensions(objVectorViewport *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Height: The height of the viewport's target area.
 
 The height of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for
 full coverage.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_Height(objVectorViewport *Self, Variable *Value)
 {
@@ -302,7 +307,7 @@ static ERROR VIEW_SET_Height(objVectorViewport *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Overflow: Clipping options for the viewport's boundary.
@@ -313,7 +318,7 @@ Altering the overflow state affects both the X and Y axis.  To set either axis i
 
 If the viewport's #AspectRatio is set to `SLICE` then it will have priority over the overflow setting.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_Overflow(objVectorViewport *Self, LONG *Value)
 {
@@ -328,7 +333,7 @@ static ERROR VIEW_SET_Overflow(objVectorViewport *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 OverflowX: Clipping options for the viewport's boundary on the x axis.
@@ -338,7 +343,7 @@ If the viewport's #AspectRatio is set to `SLICE` then it will have priority over
 
 This option controls the x axis only.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_OverflowX(objVectorViewport *Self, LONG *Value)
 {
@@ -352,7 +357,7 @@ static ERROR VIEW_SET_OverflowX(objVectorViewport *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 OverflowY: Clipping options for the viewport's boundary on the y axis.
@@ -362,7 +367,7 @@ If the viewport's #AspectRatio is set to `SLICE` then it will have priority over
 
 This option controls the y axis only.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_OverflowY(objVectorViewport *Self, LONG *Value)
 {
@@ -376,14 +381,14 @@ static ERROR VIEW_SET_OverflowY(objVectorViewport *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 ViewHeight: The height of the viewport's source area.
 
 The area defined by (#ViewX,#ViewY) and (#ViewWidth,#ViewHeight) declare the source area covered by the viewport.  The
 rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_ViewHeight(objVectorViewport *Self, DOUBLE *Value)
 {
@@ -401,14 +406,15 @@ static ERROR VIEW_SET_ViewHeight(objVectorViewport *Self, DOUBLE Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 ViewX: The horizontal position of the viewport's source area.
 
 The area defined by (#ViewX,#ViewY) and (#ViewWidth,#ViewHeight) declare the source area covered by the viewport.  The
-rendered graphics in the source area will be repositioned and scaled to the area defined by (#X,#Y) and (#Width,#Height).
+rendered graphics in the source area will be repositioned and scaled to the area defined by (#X,#Y) and
+(#Width,#Height).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_ViewX(objVectorViewport *Self, DOUBLE *Value)
 {
@@ -423,14 +429,15 @@ static ERROR VIEW_SET_ViewX(objVectorViewport *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 ViewWidth: The width of the viewport's source area.
 
 The area defined by (#ViewX,#ViewY) and (#ViewWidth,#ViewHeight) declare the source area covered by the viewport.  The
-rendered graphics in the source area will be repositioned and scaled to the area defined by (#X,#Y) and (#Width,#Height).
+rendered graphics in the source area will be repositioned and scaled to the area defined by (#X,#Y) and
+(#Width,#Height).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_ViewWidth(objVectorViewport *Self, DOUBLE *Value)
 {
@@ -448,14 +455,15 @@ static ERROR VIEW_SET_ViewWidth(objVectorViewport *Self, DOUBLE Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 ViewY: The vertical position of the viewport's source area.
 
 The area defined by (#ViewX,#ViewY) and (#ViewWidth,#ViewHeight) declare the source area covered by the viewport.  The
-rendered graphics in the source area will be repositioned and scaled to the area defined by (#X,#Y) and (#Width,#Height).
+rendered graphics in the source area will be repositioned and scaled to the area defined by (#X,#Y) and
+(#Width,#Height).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_ViewY(objVectorViewport *Self, DOUBLE *Value)
 {
@@ -470,14 +478,14 @@ static ERROR VIEW_SET_ViewY(objVectorViewport *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Width: The width of the viewport's target area.
 
 The width of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for
 full coverage.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_Width(objVectorViewport *Self, Variable *Value)
 {
@@ -550,17 +558,18 @@ static ERROR VIEW_SET_Width(objVectorViewport *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 X: Positions the viewport on the x-axis.
 
 The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
 fixed or relative pixel units.
 
-If an offset from the edge of the parent is desired, the #XOffset field must be defined.  If a X and XOffset value are defined
-together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.
+If an offset from the edge of the parent is desired, the #XOffset field must be defined.  If a X and XOffset value
+are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's
+width.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_X(objVectorViewport *Self, Variable *Value)
 {
@@ -611,17 +620,18 @@ static ERROR VIEW_SET_X(objVectorViewport *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 XOffset: Positions the viewport on the x-axis.
 
 The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
 fixed or relative pixel units.
 
-If an offset from the edge of the parent is desired, the #XOffset field must be defined.  If a X and XOffset value are defined
-together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.
+If an offset from the edge of the parent is desired, the #XOffset field must be defined.  If a X and XOffset value
+are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's
+width.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_XOffset(objVectorViewport *Self, Variable *Value)
 {
@@ -675,18 +685,18 @@ static ERROR VIEW_SET_XOffset(objVectorViewport *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Y: Positions the viewport on the y-axis.
 
 The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
 fixed or relative pixel units.
 
-If an offset from the edge of the parent is desired, the #YOffset must be defined.  If a Y and YOffset value are defined
-together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.
+If an offset from the edge of the parent is desired, the #YOffset must be defined.  If a Y and YOffset value are
+defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's
+height.
 
--END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_Y(objVectorViewport *Self, Variable *Value)
 {
@@ -737,17 +747,18 @@ static ERROR VIEW_SET_Y(objVectorViewport *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 YOffset: Positions the viewport on the y-axis.
 
 The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as
 fixed or relative pixel units.
 
-If an offset from the edge of the parent is desired, the #YOffset must be defined.  If a Y and YOffset value are defined
-together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.
+If an offset from the edge of the parent is desired, the #YOffset must be defined.  If a Y and YOffset value are
+defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's
+height.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VIEW_GET_YOffset(objVectorViewport *Self, Variable *Value)
 {
@@ -800,7 +811,7 @@ static ERROR VIEW_SET_YOffset(objVectorViewport *Self, Variable *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clViewDimensions[] = {
    { "RelativeX",      DMF_RELATIVE_X },

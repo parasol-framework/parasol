@@ -1,10 +1,9 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 VectorScene: Manages the scene graph for a collection of vectors.
@@ -23,7 +22,7 @@ at all times.
 Vector definitions can be saved and loaded from permanent storage by using the @SVG class.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORSCENE_Reset(objVectorScene *, APTR);
 
@@ -32,7 +31,7 @@ static void process_resize_msgs(objVectorScene *);
 
 static std::vector<OBJECTID> glFocusList; // The first reference is the most foreground object with the focus
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORSCENE_ActionNotify(objVectorScene *Self, struct acActionNotify *Args)
 {
@@ -71,7 +70,7 @@ static ERROR VECTORSCENE_ActionNotify(objVectorScene *Self, struct acActionNotif
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddDef: Adds a new definition to a vector tree.
@@ -94,7 +93,7 @@ ResourceExists: The given name is already in use as a definition.
 InvalidObject: The definition is not an accepted object class.
 UnsupportedOwner: The definition is not owned by the scene.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
 {
@@ -145,7 +144,7 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Draw: Renders the scene to a bitmap.
@@ -159,7 +158,7 @@ In addition, the #RenderTime field will be updated if the RENDER_TIME flag is de
 Okay
 FieldNotSet: The Bitmap field is NULL.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORSCENE_Draw(objVectorScene *Self, struct acDraw *Args)
 {
@@ -206,7 +205,7 @@ static ERROR VECTORSCENE_Draw(objVectorScene *Self, struct acDraw *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FindDef: Search for a vector definition by name.
@@ -226,7 +225,7 @@ NullArgs
 Search: A definition with the given Name was not found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
 {
@@ -260,7 +259,7 @@ static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
    else return ERR_Search;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORSCENE_Free(objVectorScene *Self, APTR Args)
 {
@@ -283,7 +282,7 @@ static ERROR VECTORSCENE_Free(objVectorScene *Self, APTR Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
 {
@@ -325,7 +324,7 @@ static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORSCENE_NewObject(objVectorScene *Self, APTR Void)
 {
@@ -344,11 +343,11 @@ static ERROR VECTORSCENE_NewObject(objVectorScene *Self, APTR Void)
    return VECTORSCENE_Reset(Self, NULL);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Redimension: Redefines the size of the page.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORSCENE_Redimension(objVectorScene *Self, struct acRedimension *Args)
 {
@@ -360,11 +359,11 @@ static ERROR VECTORSCENE_Redimension(objVectorScene *Self, struct acRedimension 
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Reset: Clears all registered definitions and resets field values.  Child vectors are untouched.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORSCENE_Reset(objVectorScene *Self, APTR Void)
 {
@@ -379,11 +378,11 @@ static ERROR VECTORSCENE_Reset(objVectorScene *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Resize: Redefines the size of the page.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORSCENE_Resize(objVectorScene *Self, struct acResize *Args)
 {
@@ -393,7 +392,7 @@ static ERROR VECTORSCENE_Resize(objVectorScene *Self, struct acResize *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SearchByID: Search for a vector by numeric ID.
@@ -415,7 +414,7 @@ NullArgs
 Search: A vector with a matching ID was not found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORSCENE_SearchByID(objVectorScene *Self, struct scSearchByID *Args)
 {
@@ -448,13 +447,13 @@ cont:
    return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Bitmap: Target bitmap for drawing vectors.
 
 The target bitmap to use when drawing the vectors must be specified here.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Bitmap(objVectorScene *Self, objBitmap *Value)
 {
@@ -478,7 +477,7 @@ static ERROR SET_Bitmap(objVectorScene *Self, objBitmap *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Optional flags.
@@ -563,7 +562,7 @@ Surface: May refer to a Surface object for enabling automatic rendering.
 Setting the Surface field will enable automatic rendering to a display surface.  The use of features such as input event handling
 and user focus management will also require an associated surface as a pre-requisite.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Surface(objVectorScene *Self, OBJECTID Value)
 {
@@ -584,7 +583,7 @@ the VectorScene prior to initialisation.  The Viewport field value will then be 
 VectorViewport object is initialised.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
 {
@@ -597,7 +596,7 @@ static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitm
    acDraw(Self);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Apply focus to a vector and all other vectors within that tree branch (not necessarily just the viewports).
 // Also sends LostFocus notifications to vectors that previously had the focus.
 
@@ -652,7 +651,7 @@ void apply_focus(objVectorScene *Scene, objVector *Vector)
    glFocusList = focus_gained;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Build a list of all child viewports that have a bounding box intersecting with (X,Y).  Transforms
 // are taken into account through use of BX1,BY1,BX2,BY2.  The list is sorted starting from the background to the
 // foreground.
@@ -679,7 +678,7 @@ void get_viewport_at_xy_scan(objVector *Vector, std::vector<std::vector<objVecto
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 objVectorViewport * get_viewport_at_xy(objVectorScene *Scene, LONG X, LONG Y)
 {
@@ -707,7 +706,7 @@ objVectorViewport * get_viewport_at_xy(objVectorScene *Scene, LONG X, LONG Y)
    return (objVectorViewport *)Scene->Viewport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void process_resize_msgs(objVectorScene *Self)
 {
@@ -724,7 +723,7 @@ static void process_resize_msgs(objVectorScene *Self)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Distribute input events to any vectors that have subscribed and have the focus
 
 static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
@@ -739,7 +738,7 @@ static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Input events within the scene are distributed within the scene graph.
 
 static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
