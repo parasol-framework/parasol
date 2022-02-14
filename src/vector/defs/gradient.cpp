@@ -40,7 +40,7 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
       return &cols->table;
    }
    else {
-      if (Opacity IS Vector.FillGradientAlpha) return Vector.FillGradientTable;
+      if ((Vector.FillGradientTable) and (Opacity IS Vector.FillGradientAlpha)) return Vector.FillGradientTable;
 
       delete Vector.FillGradientTable;
       Vector.FillGradientTable = new (std::nothrow) GRADIENT_TABLE();
@@ -72,13 +72,13 @@ GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
       }
    }
 
-   if ((Vector.StrokeOpacity IS 1.0) AND (Vector.Opacity IS 1.0)) {
+   if ((Vector.StrokeOpacity IS 1.0) and (Vector.Opacity IS 1.0)) {
       Vector.StrokeGradientAlpha = 1.0;
       return &cols->table;
    }
    else {
       DOUBLE opacity = Vector.StrokeOpacity * Vector.Opacity;
-      if (opacity IS Vector.StrokeGradientAlpha) return Vector.StrokeGradientTable;
+      if ((Vector.StrokeGradientTable) and (opacity IS Vector.StrokeGradientAlpha)) return Vector.StrokeGradientTable;
 
       delete Vector.StrokeGradientTable;
       Vector.StrokeGradientTable = new (std::nothrow) GRADIENT_TABLE();

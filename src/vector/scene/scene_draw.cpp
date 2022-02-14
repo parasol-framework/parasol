@@ -1054,7 +1054,6 @@ private:
                         draw_gradient(shape, shape->BasePath, shape->FinalX, shape->FinalY, view_width, view_height,
                            *shape->FillGradient, table, mRenderBase, *shape->FillRaster, 0);
                      }
-                     else log.warning("Failed to generate filled gradient for vector #%d", shape->Head.UniqueID);
                   }
 
                   if (shape->FillPattern) {
@@ -1076,7 +1075,6 @@ private:
                         draw_gradient(shape, shape->BasePath, shape->FinalX, shape->FinalY, view_width, view_height,
                            *shape->StrokeGradient, table, mRenderBase, *shape->StrokeRaster, shape->StrokeWidth);
                      }
-                     else log.warning("Failed to generate stroked gradient for vector #%d", shape->Head.UniqueID);
                   }
                   else if (shape->StrokePattern) {
                      draw_pattern(shape, shape->BasePath, shape->Scene->SampleMethod, shape->FinalX, shape->FinalY,
