@@ -23,6 +23,50 @@ NOTE: Refer to gen_vector_path() for the code that manages viewport dimensions i
 
 *********************************************************************************************************************/
 
+static void observe_limits(objVectorViewport *Viewport)
+{
+   objVectorViewport *target;
+
+   if (!Viewport->vpLimits) return;
+
+   auto &limits = *Viewport->vpLimits;
+   if (Viewport->DragViewport) target = Viewport->DragViewport;
+   else target = Viewport;
+
+   auto parent = (objVectorViewport *)target->Parent;
+   if ((parent) and (parent->Head.SubID IS ID_VECTORVIEWPORT)) {
+      if (Viewport->vpRelativeLimits) {
+         auto left   = limits.Left * parent->vpFixedWidth;
+         auto top    = limits.Top * parent->vpFixedHeight;
+         auto right  = limits.Right * parent->vpFixedWidth;
+         auto bottom = limits.Bottom * parent->vpFixedHeight;
+
+         if (target->vpTargetX + target->vpFixedWidth > parent->vpFixedWidth - right) {
+            target->vpTargetX = parent->vpFixedWidth - right - target->vpFixedWidth;
+         }
+
+         if (target->vpTargetY + target->vpFixedHeight > parent->vpFixedHeight - bottom) {
+            target->vpTargetY = parent->vpFixedHeight - bottom - target->vpFixedHeight;
+         }
+
+         if (target->vpTargetX < left) target->vpTargetX = left;
+         if (target->vpTargetY < top)  target->vpTargetY = top;
+      }
+      else {
+         if (target->vpTargetX + target->vpFixedWidth > parent->vpFixedWidth - limits.Right) {
+            target->vpTargetX = parent->vpFixedWidth - limits.Right - target->vpFixedWidth;
+         }
+
+         if (target->vpTargetY + target->vpFixedHeight > parent->vpFixedHeight - limits.Bottom) {
+            target->vpTargetY = parent->vpFixedHeight - limits.Bottom - target->vpFixedHeight;
+         }
+
+         if (target->vpTargetX < limits.Left) target->vpTargetX = limits.Left;
+         if (target->vpTargetY < limits.Top)  target->vpTargetY = limits.Top;
+      }
+   }
+}
+
 //********************************************************************************************************************
 // Input event handler for the dragging of viewports by the user.  Requires the client to set the Drag field to be
 // active.
@@ -42,13 +86,16 @@ static ERROR drag_input_events(objVectorViewport *Viewport, const InputEvent *Ev
       // Process events that support consolidation first.
 
       if (event->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
-         if (Viewport->Dragging) {
+         if (Viewport->vpDragging) {
             while ((event->Next) and (event->Next->Flags & JTYPE_MOVEMENT)) { // Consolidate movement
                event = event->Next;
             }
 
-            target->vpTargetX = (glDragOriginX + (event->AbsX - glAnchorX));
-            target->vpTargetY = (glDragOriginY + (event->AbsY - glAnchorY));
+            target->vpTargetX = glDragOriginX + (event->AbsX - glAnchorX);
+            target->vpTargetY = glDragOriginY + (event->AbsY - glAnchorY);
+
+            observe_limits(Viewport);
+
             mark_dirty((objVector *)target, RC_FINAL_PATH|RC_TRANSFORM);
 
             acDraw(target);
@@ -57,7 +104,7 @@ static ERROR drag_input_events(objVectorViewport *Viewport, const InputEvent *Ev
       else if ((event->Type IS JET_LMB) and (!(event->Flags & JTYPE_REPEATED))) {
          if (event->Value > 0) {
             if (Viewport->Visibility != VIS_VISIBLE) continue;
-            Viewport->Dragging = 1;
+            Viewport->vpDragging = 1;
             glAnchorX  = event->AbsX;
             glAnchorY  = event->AbsY;
 
@@ -72,7 +119,7 @@ static ERROR drag_input_events(objVectorViewport *Viewport, const InputEvent *Ev
                (~(DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_X_OFFSET|DMF_RELATIVE_Y_OFFSET));
 
          }
-         else Viewport->Dragging = 0; // Released
+         else Viewport->vpDragging = 0; // Released
       }
    }
 
@@ -85,7 +132,7 @@ Clear: Free all child objects contained by the viewport.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VIEW_Clear(objVectorViewport *Self, APTR Void)
+static ERROR VECTORVIEWPORT_Clear(objVectorViewport *Self, APTR Void)
 {
    ChildEntry list[512];
    LONG count = ARRAYSIZE(list);
@@ -100,9 +147,10 @@ static ERROR VIEW_Clear(objVectorViewport *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VIEW_Free(objVectorViewport *Self, APTR Void)
+static ERROR VECTORVIEWPORT_Free(objVectorViewport *Self, APTR Void)
 {
    if (Self->vpClipMask) { acFree(Self->vpClipMask); Self->vpClipMask = NULL; }
+   if (Self->vpLimits)   { delete Self->vpLimits; Self->vpLimits = NULL; }
 
    if (Self->DragViewport) {
       auto callback = make_function_stdc(drag_input_events);
@@ -114,7 +162,7 @@ static ERROR VIEW_Free(objVectorViewport *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VIEW_Init(objVectorViewport *Self, APTR Void)
+static ERROR VECTORVIEWPORT_Init(objVectorViewport *Self, APTR Void)
 {
    // Please refer to gen_vector_path() for the initialisation of vpFixedX/Y/Width/Height, which has
    // its own section for dealing with viewports.
@@ -128,13 +176,15 @@ Move: Move the position of the viewport by delta X, Y.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_Move(objVectorViewport *Self, struct acMove *Args)
+static ERROR VECTORVIEWPORT_Move(objVectorViewport *Self, struct acMove *Args)
 {
    if (!Args) return ERR_NullArgs;
 
    Self->vpDimensions = (Self->vpDimensions|DMF_FIXED_X|DMF_FIXED_Y) & (~(DMF_RELATIVE_X|DMF_RELATIVE_Y));
    Self->vpTargetX += Args->XChange;
    Self->vpTargetY += Args->YChange;
+
+   observe_limits(Self);
 
    mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
    return ERR_Okay;
@@ -146,7 +196,7 @@ MoveToPoint: Move the position of the viewport to a fixed point.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VIEW_MoveToPoint(objVectorViewport *Self, struct acMoveToPoint *Args)
+static ERROR VECTORVIEWPORT_MoveToPoint(objVectorViewport *Self, struct acMoveToPoint *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -160,13 +210,15 @@ static ERROR VIEW_MoveToPoint(objVectorViewport *Self, struct acMoveToPoint *Arg
       Self->vpTargetY = Args->Y;
    }
 
+   observe_limits(Self);
+
    mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
    return ERR_Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VIEW_NewObject(objVectorViewport *Self, APTR Void)
+static ERROR VECTORVIEWPORT_NewObject(objVectorViewport *Self, APTR Void)
 {
    Self->vpAspectRatio = ARF_MEET|ARF_X_MID|ARF_Y_MID;
    Self->vpOverflowX = VOF_VISIBLE;
@@ -184,7 +236,7 @@ Resize: Resize a viewport to a fixed size.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VIEW_Resize(objVectorViewport *Self, struct acResize *Args)
+static ERROR VECTORVIEWPORT_Resize(objVectorViewport *Self, struct acResize *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -197,6 +249,42 @@ static ERROR VIEW_Resize(objVectorViewport *Self, struct acResize *Args)
    if (Self->vpTargetWidth < 1) Self->vpTargetWidth = 1;
    if (Self->vpTargetHeight < 1) Self->vpTargetHeight = 1;
    mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+SetLimits: Prevents a viewport from moving into the boundary of its parent.
+
+A viewport can be prevented from moving into areas at the edge of its parent by setting limits.  Values are expressed
+in fixed pixel units by default, or a relative ratio of 0 - 1.0 if Relative is TRUE.
+
+Note that limits are imposed when moving the viewport only.  It is possible for a client to ignore limits by setting
+coordinate fields directly.
+
+-INPUT-
+double Left:   Total whitespace at the left edge.
+double Top:    Total whitespace at the top edge.
+double Right:  Total whitespace at the right edge.
+double Bottom: Total whitespace at the bottom edge.
+int Relative:  Set to TRUE if the values are relative to the available width or height of their axis.
+
+-RESULT-
+Okay:
+NullArgs:
+AllocMemory:
+
+*********************************************************************************************************************/
+
+static ERROR VECTORVIEWPORT_SetLimits(objVectorViewport *Self, struct viewSetLimits *Args)
+{
+   if (!Args) return ERR_NullArgs;
+
+   Self->vpLimits = new (std::nothrow) Edges(Args->Left, Args->Top, Args->Right, Args->Bottom);
+   if (!Self->vpLimits) return ERR_AllocMemory;
+
+   Self->vpRelativeLimits = Args->Relative;
    return ERR_Okay;
 }
 
@@ -911,6 +999,8 @@ static ERROR VIEW_SET_YOffset(objVectorViewport *Self, Variable *Value)
 
 //********************************************************************************************************************
 
+#include "viewport_def.cpp"
+
 static const FieldDef clViewDimensions[] = {
    { "RelativeX",      DMF_RELATIVE_X },
    { "RelativeY",      DMF_RELATIVE_Y },
@@ -932,37 +1022,25 @@ static const FieldDef clViewOverflow[] = {
 };
 
 static const FieldArray clViewFields[] = {
-   { "AbsX",        FDF_VIRTUAL|FDF_LONG|FDF_R, 0, (APTR)VIEW_GET_AbsX, NULL },
-   { "AbsY",        FDF_VIRTUAL|FDF_LONG|FDF_R, 0, (APTR)VIEW_GET_AbsY, NULL },
-   { "X",           FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_X,       (APTR)VIEW_SET_X },
-   { "Y",           FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Y,       (APTR)VIEW_SET_Y },
-   { "XOffset",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_XOffset, (APTR)VIEW_SET_XOffset },
-   { "YOffset",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_YOffset, (APTR)VIEW_SET_YOffset },
-   { "Width",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Width,   (APTR)VIEW_SET_Width },
-   { "Height",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Height,  (APTR)VIEW_SET_Height },
-   { "ViewX",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)VIEW_GET_ViewX,      (APTR)VIEW_SET_ViewX },
-   { "ViewY",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)VIEW_GET_ViewY,      (APTR)VIEW_SET_ViewY },
-   { "ViewWidth",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)VIEW_GET_ViewWidth,  (APTR)VIEW_SET_ViewWidth },
-   { "ViewHeight",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)VIEW_GET_ViewHeight, (APTR)VIEW_SET_ViewHeight },
-   { "Dimensions",  FDF_VIRTUAL|FDF_LONGFLAGS|FDF_R,  (MAXINT)&clViewDimensions, (APTR)VIEW_GET_Dimensions, (APTR)VIEW_SET_Dimensions },
-   { "AspectRatio", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clAspectRatio,    (APTR)VIEW_GET_AspectRatio, (APTR)VIEW_SET_AspectRatio },
+   { "AbsX",         FDF_VIRTUAL|FDF_LONG|FDF_R,        0, (APTR)VIEW_GET_AbsX, NULL },
+   { "AbsY",         FDF_VIRTUAL|FDF_LONG|FDF_R,        0, (APTR)VIEW_GET_AbsY, NULL },
+   { "AspectRatio",  FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,  (MAXINT)&clAspectRatio,    (APTR)VIEW_GET_AspectRatio, (APTR)VIEW_SET_AspectRatio },
+   { "Dimensions",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_R,   (MAXINT)&clViewDimensions, (APTR)VIEW_GET_Dimensions, (APTR)VIEW_SET_Dimensions },
    { "Drag",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,     ID_VECTORVIEWPORT, (APTR)VIEW_GET_Drag, (APTR)VIEW_SET_Drag },
    { "Overflow",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_Overflow, (APTR)VIEW_SET_Overflow },
    { "OverflowX",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_OverflowX, (APTR)VIEW_SET_OverflowX },
    { "OverflowY",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_OverflowY, (APTR)VIEW_SET_OverflowY },
+   { "X",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_X,       (APTR)VIEW_SET_X },
+   { "Y",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Y,       (APTR)VIEW_SET_Y },
+   { "XOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_XOffset, (APTR)VIEW_SET_XOffset },
+   { "YOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_YOffset, (APTR)VIEW_SET_YOffset },
+   { "Width",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Width,   (APTR)VIEW_SET_Width },
+   { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VIEW_GET_Height,  (APTR)VIEW_SET_Height },
+   { "ViewX",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,  0, (APTR)VIEW_GET_ViewX,      (APTR)VIEW_SET_ViewX },
+   { "ViewY",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,  0, (APTR)VIEW_GET_ViewY,      (APTR)VIEW_SET_ViewY },
+   { "ViewWidth",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,  0, (APTR)VIEW_GET_ViewWidth,  (APTR)VIEW_SET_ViewWidth },
+   { "ViewHeight",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,  0, (APTR)VIEW_GET_ViewHeight, (APTR)VIEW_SET_ViewHeight },
    END_FIELD
-};
-
-static const ActionArray clViewActions[] = {
-   { AC_Clear,       (APTR)VIEW_Clear },
-   { AC_Free,        (APTR)VIEW_Free },
-   { AC_Init,        (APTR)VIEW_Init },
-   { AC_NewObject,   (APTR)VIEW_NewObject },
-   { AC_Move,        (APTR)VIEW_Move },
-   { AC_MoveToPoint, (APTR)VIEW_MoveToPoint },
-   //{ AC_Redimension, (APTR)VIEW_Redimension },
-   { AC_Resize,      (APTR)VIEW_Resize },
-   { 0, NULL }
 };
 
 static ERROR init_viewport(void)
@@ -972,7 +1050,8 @@ static ERROR init_viewport(void)
       FID_SubClassID|TLONG,  ID_VECTORVIEWPORT,
       FID_Name|TSTRING,      "VectorViewport",
       FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clViewActions,
+      FID_Actions|TPTR,      clVectorViewportActions,
+      FID_Methods|TARRAY,    clVectorViewportMethods,
       FID_Fields|TARRAY,     clViewFields,
       FID_Size|TLONG,        sizeof(objVectorViewport),
       FID_Path|TSTR,         MOD_PATH,

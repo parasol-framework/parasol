@@ -642,6 +642,13 @@ struct ClipRectangle {
    LONG Top;     // Top coordinate
 };
 
+struct Edges {
+   LONG Left;    // Left-most coordinate
+   LONG Right;   // Right-most coordinate
+   LONG Bottom;  // Bottom coordinate
+   LONG Top;     // Top coordinate
+};
+
 // Script flags
 
 #define SCF_EXIT_ON_ERROR 0x00000001

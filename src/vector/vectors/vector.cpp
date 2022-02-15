@@ -507,9 +507,9 @@ static ERROR VECTOR_InputSubscription(objVector *Self, struct vecInputSubscripti
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (!Self->Scene->SurfaceID) return log.warning(ERR_FieldNotSet);
-
    if (Args->Mask) {
+      if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return log.warning(ERR_FieldNotSet);
+
       if (!Self->InputSubscriptions) {
          Self->InputSubscriptions = new (std::nothrow) std::vector<InputSubscription>;
          if (!Self->InputSubscriptions) return log.warning(ERR_AllocMemory);
@@ -521,20 +521,21 @@ static ERROR VECTOR_InputSubscription(objVector *Self, struct vecInputSubscripti
       Self->InputMask |= mask;
       Self->Scene->InputSubscriptions[0][Self] = Self->InputMask;
       Self->InputSubscriptions->emplace_back(*Args->Callback, mask);
-      return ERR_Okay;
    }
-   else { // Remove existing subscriptions for this callback
+   else if (Self->InputSubscriptions) { // Remove existing subscriptions for this callback
       for (auto it=Self->InputSubscriptions->begin(); it != Self->InputSubscriptions->end(); ) {
          if (*Args->Callback IS it->Callback) it = Self->InputSubscriptions->erase(it);
          else it++;
       }
 
       if (Self->InputSubscriptions->empty()) {
-         Self->Scene->InputSubscriptions->erase(Self);
+         if ((Self->Scene) and (Self->Scene->InputSubscriptions)) {
+            Self->Scene->InputSubscriptions->erase(Self);
+         }
       }
-
-      return ERR_Okay;
    }
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************

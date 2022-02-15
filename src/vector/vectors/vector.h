@@ -28,10 +28,12 @@ typedef struct rkVectorViewport {
    DOUBLE vpFixedRelX, vpFixedRelY, vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
    DOUBLE vpBX1, vpBY1, vpBX2, vpBY2; // Bounding box coordinates relative to (0,0), used for clipping
    DOUBLE vpAlignX, vpAlignY;
+   struct Edges *vpLimits;
    struct rkVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.
    LONG vpDimensions;
    LONG vpAspectRatio;
-   UBYTE Dragging:1;
+   UBYTE vpDragging:1;
+   UBYTE vpRelativeLimits:1;
    UBYTE vpOverflowX, vpOverflowY;
 } objVectorViewport;
 
