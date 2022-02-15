@@ -20,11 +20,11 @@ static ERROR netSetSSL(struct rkNetSocket * NetSocket, ...);
 #endif
 
 FDEF argsAddressToStr[] = { { "Result", FD_STR|FD_ALLOC }, { "IPAddress:IPAddress", FD_PTR|FD_STRUCT }, { 0, 0 } };
-FDEF argsHostToLong[] = { { "Result", FD_LONG }, { "Value", FD_LONG }, { 0, 0 } };
-FDEF argsHostToShort[] = { { "Result", FD_LONG }, { "Value", FD_LONG }, { 0, 0 } };
-FDEF argsLongToHost[] = { { "Result", FD_LONG }, { "Value", FD_LONG }, { 0, 0 } };
+FDEF argsHostToLong[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "Value", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
+FDEF argsHostToShort[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "Value", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
+FDEF argsLongToHost[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "Value", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsSetSSL[] = { { "Error", FD_LONG|FD_ERROR }, { "NetSocket", FD_OBJECTPTR }, { "Tags", FD_TAGS }, { 0, 0 } };
-FDEF argsShortToHost[] = { { "Result", FD_LONG }, { "Value", FD_LONG }, { 0, 0 } };
+FDEF argsShortToHost[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "Value", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsStrToAddress[] = { { "Error", FD_LONG|FD_ERROR }, { "String", FD_STR }, { "IPAddress:Address", FD_PTR|FD_STRUCT }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
