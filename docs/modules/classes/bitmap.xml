@@ -12,11 +12,11 @@
     <idstring>ID_BITMAP</idstring>
     <category>Graphics</category>
     <include>modules/bitmap.h</include>
-    <copyright>Paul Manias 2003-2020</copyright>
+    <copyright>Paul Manias 2003-2022</copyright>
     <description>
 <p>The Bitmap class provides a way of describing an area of memory that an application can draw to, and/or display if the data is held in video memory.  Bitmaps are used in the handling of <class name="Display">Display</class> and <class name="Picture">Picture</class> objects, and form the backbone of Parasol's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and alpha blending features.</p>
 <p>To create a new bitmap object, you need to specify its <field>Width</field> and <field>Height</field> at a minimum.  Preferably, you should also know how many colours you want to use and whether the bitmap data should be held in standard memory (for CPU based reading and writing) or video memory (for hardware based drawing).  After creating a bitmap you can use a number of available drawing methods for the purpose of image management.  Please note that these methods are designed to be called under exclusive conditions, and it is not recommended that you call methods on a bitmap using the message system.</p>
-<p>By default, the CPU can only be used to read and write data directly to or from a bitmap when it is held in standard memory (this is the default type).  If the BLIT or VIDEO flags are specified in the <field>DataFlags</field> field then the CPU cannot access this memory, unless you specifically request it.  To do this, use the <action>Lock</action> and <action>Unlock</action> actions to temporarily gain read/write access to a bitmap.</p>
+<p>By default, the CPU can only be used to read and write data directly to or from a bitmap when it is held in standard memory (this is the default type).  If the <code>BLIT</code> or <code>VIDEO</code> flags are specified in the <field>DataFlags</field> field then the CPU cannot access this memory, unless you specifically request it.  To do this, use the <action>Lock</action> and <action>Unlock</action> actions to temporarily gain read/write access to a bitmap.</p>
 <p>If you require complex drawing functionality that is not available in the Bitmap class, please use the functionality provided by the Vector module.</p>
 <p>To save the image of a bitmap, you can either copy its image to a <class name="Picture">Picture</class> object, or you can use the SaveImage action to save the data in PNG format.  Raw data can also be processed through a bitmap by using the Read and Write actions.</p></description>
     <source>
@@ -133,7 +133,7 @@
       <description>
 <p>A bitmap can be compressed with the CompressBitmap method to save memory when the bitmap is not in use.  This is useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.</p>
 <p>Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap's image data will likely result in a memory access fault.  The image data will remain invalid until the <method>Decompress</method> method is called to restore the bitmap to its original state.</p>
-<p>The BMF_COMPRESSED bit will be set in the <field>Flags</field> field after a successful call to this function to indicate that the bitmap is compressed.</p>
+<p>The <code>BMF_COMPRESSED</code> bit will be set in the <field>Flags</field> field after a successful call to this function to indicate that the bitmap is compressed.</p>
       </description>
       <result>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
@@ -863,26 +863,28 @@ UnpackAlpha(Bitmap, Colour)
 
   </types>
   <structs>
+    <struct name="BitmapSurface" typeName="BITMAPSURFACE">
+      <field name="Data" type="APTR">Pointer to the bitmap graphics data.</field>
+      <field name="Width" type="WORD">Pixel width of the bitmap.</field>
+      <field name="Height" type="WORD">Pixel height of the bitmap.</field>
+      <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
+      <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
+      <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
+      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
+      <field name="Version" type="UBYTE">Version of this structure.</field>
+      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
+      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
+      <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
+      <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
+      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
+      <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
+    </struct>
+
     <struct name="CursorInfo">
       <field name="Width" type="LONG">Maximum cursor width for custom cursors</field>
       <field name="Height" type="LONG">Maximum cursor height for custom cursors</field>
       <field name="Flags" type="LONG">Currently unused</field>
       <field name="BitsPerPixel" type="WORD">Preferred bits-per-pixel setting for custom cursors</field>
-    </struct>
-
-    <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
-      <field name="RedShift" type="UBYTE">Right shift value</field>
-      <field name="GreenShift" type="UBYTE"></field>
-      <field name="BlueShift" type="UBYTE"></field>
-      <field name="AlphaShift" type="UBYTE"></field>
-      <field name="RedMask" type="UBYTE">The unshifted mask value (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE"></field>
-      <field name="BlueMask" type="UBYTE"></field>
-      <field name="AlphaMask" type="UBYTE"></field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value</field>
-      <field name="GreenPos" type="UBYTE"></field>
-      <field name="BluePos" type="UBYTE"></field>
-      <field name="AlphaPos" type="UBYTE"></field>
     </struct>
 
     <struct name="DisplayInfo" typeName="DISPLAYINFO">
@@ -903,21 +905,19 @@ UnpackAlpha(Bitmap, Colour)
       <field name="VDensity" type="LONG">Vertical pixel density per inch.</field>
     </struct>
 
-    <struct name="BitmapSurface" typeName="BITMAPSURFACE">
-      <field name="Data" type="APTR">Pointer to the bitmap graphics data.</field>
-      <field name="Width" type="WORD">Pixel width of the bitmap.</field>
-      <field name="Height" type="WORD">Pixel height of the bitmap.</field>
-      <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
-      <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
-      <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
-      <field name="Version" type="UBYTE">Version of this structure.</field>
-      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
-      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
-      <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
-      <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
-      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
-      <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
+    <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
+      <field name="RedShift" type="UBYTE">Right shift value</field>
+      <field name="GreenShift" type="UBYTE"></field>
+      <field name="BlueShift" type="UBYTE"></field>
+      <field name="AlphaShift" type="UBYTE"></field>
+      <field name="RedMask" type="UBYTE">The unshifted mask value (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UBYTE"></field>
+      <field name="BlueMask" type="UBYTE"></field>
+      <field name="AlphaMask" type="UBYTE"></field>
+      <field name="RedPos" type="UBYTE">Left shift/positional value</field>
+      <field name="GreenPos" type="UBYTE"></field>
+      <field name="BluePos" type="UBYTE"></field>
+      <field name="AlphaPos" type="UBYTE"></field>
     </struct>
 
   </structs>

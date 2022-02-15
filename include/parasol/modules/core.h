@@ -2,7 +2,7 @@
 #define MODULES_CORE 1
 
 // Name:      core.h
-// Copyright: Paul Manias 1996-2020
+// Copyright: Paul Manias 1996-2022
 // Generator: idl-c
 
 #ifndef MAIN_H

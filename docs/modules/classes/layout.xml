@@ -767,6 +767,14 @@
 
   </types>
   <structs>
+    <struct name="SurfaceControl" comment="Internal structure returned by AccessList()">
+      <field name="ListIndex" type="LONG">Byte offset of the ordered list</field>
+      <field name="ArrayIndex" type="LONG">Byte offset of the list array</field>
+      <field name="EntrySize" type="LONG">Byte size of each entry in the array</field>
+      <field name="Total" type="LONG">Total number of entries currently in the list array</field>
+      <field name="ArraySize" type="LONG">Max limit of entries in the list array</field>
+    </struct>
+
     <struct name="SurfaceCoords">
       <field name="X" type="LONG">Horizontal coordinate</field>
       <field name="Y" type="LONG">Vertical coordinate</field>
@@ -774,14 +782,6 @@
       <field name="Height" type="LONG">Height</field>
       <field name="AbsX" type="LONG">Absolute X</field>
       <field name="AbsY" type="LONG">Absolute Y</field>
-    </struct>
-
-    <struct name="SurfaceControl" comment="Internal structure returned by AccessList()">
-      <field name="ListIndex" type="LONG">Byte offset of the ordered list</field>
-      <field name="ArrayIndex" type="LONG">Byte offset of the list array</field>
-      <field name="EntrySize" type="LONG">Byte size of each entry in the array</field>
-      <field name="Total" type="LONG">Total number of entries currently in the list array</field>
-      <field name="ArraySize" type="LONG">Max limit of entries in the list array</field>
     </struct>
 
     <struct name="SurfaceInfo" typeName="SURFACEINFO">

@@ -12,7 +12,7 @@
     <idstring>ID_FILE</idstring>
     <category>System</category>
     <include>modules/file.h</include>
-    <copyright>Paul Manias 1996-2020</copyright>
+    <copyright>Paul Manias 1996-2022</copyright>
     <description>
 <p>The File class provides extensive support for file management and I/O.  The class supports the notion of individual file compression and file finding capabilities.  Since all File objects are tracked, there is no chance of the system leaving locked files behind after a program exits.  Folder management is also integrated into this class to ease the management of both file types.</p>
 <p>To read or write to a file, set the <field>Path</field> of the file as well as the correct I/O file flags before initialisation. See the <field>Flags</field> field for information on the available I/O flags.  Functionality for read and write operations is provided through the <action>Read</action> and <action>Write</action> actions.  The <action>Seek</action> action can be used to change the read/write position in a file.</p></description>

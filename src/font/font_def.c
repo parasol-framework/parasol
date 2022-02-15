@@ -22,7 +22,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
 #define FDEF static const struct FunctionField
 #endif
 
-FDEF argsCharWidth[] = { { "Result", FD_LONG }, { "Font", FD_OBJECTPTR }, { "Char", FD_LONG }, { "KChar", FD_LONG }, { "Kerning", FD_LONG|FD_RESULT }, { 0, 0 } };
+FDEF argsCharWidth[] = { { "Result", FD_LONG }, { "Font", FD_OBJECTPTR }, { "Char", FD_LONG|FD_UNSIGNED }, { "KChar", FD_LONG|FD_UNSIGNED }, { "Kerning", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsConvertCoords[] = { { "Error", FD_LONG|FD_ERROR }, { "Font", FD_OBJECTPTR }, { "String", FD_STR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Column", FD_LONG|FD_RESULT }, { "Row", FD_LONG|FD_RESULT }, { "ByteColumn", FD_LONG|FD_RESULT }, { "BytePos", FD_LONG|FD_RESULT }, { "CharX", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsFreetypeHandle[] = { { "Result", FD_PTR }, { 0, 0 } };
 FDEF argsGetList[] = { { "Error", FD_LONG|FD_ERROR }, { "FontList:Result", FD_PTR|FD_STRUCT|FD_ALLOC|FD_RESULT }, { 0, 0 } };

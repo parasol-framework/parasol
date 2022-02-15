@@ -14,7 +14,7 @@
     <idstring>ID_PICTURE</idstring>
     <category>Graphics</category>
     <include>modules/picture.h</include>
-    <copyright>Paul Manias © 2001-2020</copyright>
+    <copyright>Paul Manias © 2001-2022</copyright>
     <description>
 <p>The purpose of the Picture class is to provide a standard interface that any program can use to load picture files. The main advantage in using this class is that the source picture can be in any file format recognised by the user's system, so effectively your program will be able to support file formats that it does not understand.</p>
 <p>The default file format for loading and saving pictures is PNG.  Other formats such as JPEG are supported via sub-classes, which can be loaded into the system at boot time or on demand.  Some rare formats such as TIFF are also supported, but these can be removed from the system library folders if they are not required by the host system or application, in order to save space.</p>

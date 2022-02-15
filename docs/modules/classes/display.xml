@@ -12,7 +12,7 @@
     <idstring>ID_DISPLAY</idstring>
     <category>Graphics</category>
     <include>modules/display.h</include>
-    <copyright>Paul Manias 2003-2020</copyright>
+    <copyright>Paul Manias 2003-2022</copyright>
     <description>
 <p>A Display object represents an area of displayable video memory.  Although it is a very complex structure, it is fairly simple to initialise.  In fact it is possible to initialise a display using an empty structure and accept all the user defaults (which we recommended if possible).  For more demanding applications however you may often need to specify a few fields.  Before doing so, make sure that you understand how each field operates and what implications setting them may bring.  Where possible try to avoid setting field values, as the user default should always be considered as acceptable.</p>
 <p>It is perfectly acceptable to initialise multiple display objects and add them to the viewport, but due to memory restrictions, chances of failure could be high when doing this in certain environments.  When programming for Parasol, it is recommended that the utilisation of display objects is avoided in favour of using the <class name="Surface">Surface</class> class. which is much lighter on memory usage.</p>
@@ -823,26 +823,28 @@
 
   </types>
   <structs>
+    <struct name="BitmapSurface" typeName="BITMAPSURFACE">
+      <field name="Data" type="APTR">Pointer to the bitmap graphics data.</field>
+      <field name="Width" type="WORD">Pixel width of the bitmap.</field>
+      <field name="Height" type="WORD">Pixel height of the bitmap.</field>
+      <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
+      <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
+      <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
+      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
+      <field name="Version" type="UBYTE">Version of this structure.</field>
+      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
+      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
+      <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
+      <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
+      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
+      <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
+    </struct>
+
     <struct name="CursorInfo">
       <field name="Width" type="LONG">Maximum cursor width for custom cursors</field>
       <field name="Height" type="LONG">Maximum cursor height for custom cursors</field>
       <field name="Flags" type="LONG">Currently unused</field>
       <field name="BitsPerPixel" type="WORD">Preferred bits-per-pixel setting for custom cursors</field>
-    </struct>
-
-    <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
-      <field name="RedShift" type="UBYTE">Right shift value</field>
-      <field name="GreenShift" type="UBYTE"></field>
-      <field name="BlueShift" type="UBYTE"></field>
-      <field name="AlphaShift" type="UBYTE"></field>
-      <field name="RedMask" type="UBYTE">The unshifted mask value (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE"></field>
-      <field name="BlueMask" type="UBYTE"></field>
-      <field name="AlphaMask" type="UBYTE"></field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value</field>
-      <field name="GreenPos" type="UBYTE"></field>
-      <field name="BluePos" type="UBYTE"></field>
-      <field name="AlphaPos" type="UBYTE"></field>
     </struct>
 
     <struct name="DisplayInfo" typeName="DISPLAYINFO">
@@ -863,21 +865,19 @@
       <field name="VDensity" type="LONG">Vertical pixel density per inch.</field>
     </struct>
 
-    <struct name="BitmapSurface" typeName="BITMAPSURFACE">
-      <field name="Data" type="APTR">Pointer to the bitmap graphics data.</field>
-      <field name="Width" type="WORD">Pixel width of the bitmap.</field>
-      <field name="Height" type="WORD">Pixel height of the bitmap.</field>
-      <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
-      <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
-      <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
-      <field name="Version" type="UBYTE">Version of this structure.</field>
-      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
-      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
-      <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
-      <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
-      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
-      <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
+    <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
+      <field name="RedShift" type="UBYTE">Right shift value</field>
+      <field name="GreenShift" type="UBYTE"></field>
+      <field name="BlueShift" type="UBYTE"></field>
+      <field name="AlphaShift" type="UBYTE"></field>
+      <field name="RedMask" type="UBYTE">The unshifted mask value (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UBYTE"></field>
+      <field name="BlueMask" type="UBYTE"></field>
+      <field name="AlphaMask" type="UBYTE"></field>
+      <field name="RedPos" type="UBYTE">Left shift/positional value</field>
+      <field name="GreenPos" type="UBYTE"></field>
+      <field name="BluePos" type="UBYTE"></field>
+      <field name="AlphaPos" type="UBYTE"></field>
     </struct>
 
   </structs>

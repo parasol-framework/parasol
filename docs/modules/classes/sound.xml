@@ -444,13 +444,6 @@ snd.acActivate()
 
   </types>
   <structs>
-    <struct name="VolumeCtl">
-      <field name="Size" type="WORD">The size of the Channels array.</field>
-      <field name="Name" type="char" size="32">Name of the mixer</field>
-      <field name="Flags" type="LONG" lookup="VCF">Special flags identifying the mixer's attributes.</field>
-      <field name="Channels" type="FLOAT" size="1">A variable length array of channel volumes.</field>
-    </struct>
-
     <struct name="AudioChannel" comment="Audio channel structure">
       <field name="Sample" type="struct AudioSample">Sample structure</field>
       <field name="SoundID" type="OBJECTID">ID of the sound object set on this channel</field>
@@ -470,6 +463,12 @@ snd.acActivate()
       <field name="Pan" type="BYTE">Pan value (-100 to +100)</field>
     </struct>
 
+    <struct name="AudioCommand" comment="Audio command structure.">
+      <field name="CommandID" type="LONG">Command ID</field>
+      <field name="Handle" type="LONG">Channel handle</field>
+      <field name="Data" type="LONG">Special data related to the command ID</field>
+    </struct>
+
     <struct name="AudioLoop" comment="Loop settings for the AddSample() method.">
       <field name="LoopMode" type="WORD" lookup="LOOP">Loop mode (single, double)</field>
       <field name="Loop1Type" type="BYTE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
@@ -478,12 +477,6 @@ snd.acActivate()
       <field name="Loop1End" type="LONG">End of the first loop</field>
       <field name="Loop2Start" type="LONG">Start of the second loop</field>
       <field name="Loop2End" type="LONG">End of the second loop</field>
-    </struct>
-
-    <struct name="AudioCommand" comment="Audio command structure.">
-      <field name="CommandID" type="LONG">Command ID</field>
-      <field name="Handle" type="LONG">Channel handle</field>
-      <field name="Data" type="LONG">Special data related to the command ID</field>
     </struct>
 
     <struct name="AudioSample" comment="Audio sample structure">
@@ -504,6 +497,13 @@ snd.acActivate()
       <field name="Loop2Type" type="BYTE">Second loop type (unidirectional, bidirectional)</field>
       <field name="Used" type="BYTE"></field>
       <field name="Free" type="BYTE"></field>
+    </struct>
+
+    <struct name="VolumeCtl">
+      <field name="Size" type="WORD">The size of the Channels array.</field>
+      <field name="Name" type="char" size="32">Name of the mixer</field>
+      <field name="Flags" type="LONG" lookup="VCF">Special flags identifying the mixer's attributes.</field>
+      <field name="Channels" type="FLOAT" size="1">A variable length array of channel volumes.</field>
     </struct>
 
   </structs>

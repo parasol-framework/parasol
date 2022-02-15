@@ -203,6 +203,12 @@
       <field name="Pan" type="BYTE">Pan value (-100 to +100)</field>
     </struct>
 
+    <struct name="AudioCommand" comment="Audio command structure.">
+      <field name="CommandID" type="LONG">Command ID</field>
+      <field name="Handle" type="LONG">Channel handle</field>
+      <field name="Data" type="LONG">Special data related to the command ID</field>
+    </struct>
+
     <struct name="AudioLoop" comment="Loop settings for the AddSample() method.">
       <field name="LoopMode" type="WORD" lookup="LOOP">Loop mode (single, double)</field>
       <field name="Loop1Type" type="BYTE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
@@ -211,12 +217,6 @@
       <field name="Loop1End" type="LONG">End of the first loop</field>
       <field name="Loop2Start" type="LONG">Start of the second loop</field>
       <field name="Loop2End" type="LONG">End of the second loop</field>
-    </struct>
-
-    <struct name="AudioCommand" comment="Audio command structure.">
-      <field name="CommandID" type="LONG">Command ID</field>
-      <field name="Handle" type="LONG">Channel handle</field>
-      <field name="Data" type="LONG">Special data related to the command ID</field>
     </struct>
 
     <struct name="AudioSample" comment="Audio sample structure">
