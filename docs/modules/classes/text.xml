@@ -322,12 +322,6 @@
     </field>
 
     <field>
-      <name>HScroll</name>
-      <access read="R" write="S">Read/Set</access>
-      <type>OBJECTID</type>
-    </field>
-
-    <field>
       <name>Highlight</name>
       <comment>Defines the colour used to highlight text.</comment>
       <access read="R" write="W">Read/Write</access>
@@ -458,12 +452,6 @@
       <comment>The vertical position of the first text string.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
-    </field>
-
-    <field>
-      <name>VScroll</name>
-      <access read="R" write="S">Read/Set</access>
-      <type>OBJECTID</type>
     </field>
 
     <field>

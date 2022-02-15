@@ -493,7 +493,7 @@ function struct(Name, Options, Def, Append)
 
       glStructures[Name] = {
          version=Options.version, type=Options.type, comment=Options.comment, fields=fields,
-         restrict=nz(glRestrict, Options.restrict)
+         restrict=nz(glRestrict, Options.restrict), name = Name
       }
    end,
    function(Exception)

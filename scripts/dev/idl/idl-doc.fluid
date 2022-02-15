@@ -765,7 +765,15 @@ end
 
 function docStructures()
    local out = '  <structs>\n'
-   for name, struct in pairs(glStructures) do
+
+   local sortedStructs = { }
+   for _, f in pairs(glStructures) do
+      table.insert(sortedStructs, f)
+   end
+
+   table.sort(sortedStructs, function(a,b) return a.name < b.name end)
+
+   for _, struct in ipairs(sortedStructs) do
       if nz(struct.restrict) then
          -- Don't output restricted structures.
       elseif nz(struct.refCount, 0) == 0 then
@@ -776,7 +784,7 @@ function docStructures()
          if (struct.comment) then comment = " comment=\"" .. struct.comment:escXML() .. '"' end
          if (struct.type) then typeName = " typeName=\"" .. struct.type .. '"' end
 
-         out = out .. "    <struct name=\"" .. name .. '"' .. comment .. typeName .. '>\n'
+         out = out .. "    <struct name=\"" .. struct.name .. '"' .. comment .. typeName .. '>\n'
          for i, f in ipairs(struct.fields) do
             local ref = ''
             if (f.lookup) then ref = " lookup=\"" .. f.lookup .. '"' end

@@ -569,87 +569,16 @@
 
   </types>
   <structs>
-    <struct name="rkBase64Decode" comment="Private structure for the StrBase64Decode() function." typeName="BASE64DECODE">
-      <field name="Step" type="UBYTE">Internal</field>
-      <field name="PlainChar" type="UBYTE">Internal</field>
-      <field name="Initialised" type="UBYTE">Internal</field>
-    </struct>
-
-    <struct name="FileInfo" comment="Returned by GetFileInfo()">
-      <field name="Size" type="LARGE">The size of the file's content.</field>
-      <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
-      <field name="Next" type="struct FileInfo *">Next structure in the list, or NULL.</field>
-      <field name="Name" type="STRING">The name of the file.  This string remains valid until the next call to GetFileInfo().</field>
-      <field name="Tags" type="struct KeyStore *">A store of special tag strings that are file-specific.</field>
-      <field name="Flags" type="LONG" lookup="FL">Additional flags to describe the file.</field>
-      <field name="Permissions" type="LONG" lookup="PERMIT">Standard permission flags.</field>
-      <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
-      <field name="GroupID" type="LONG">Group ID (Unix systems only).</field>
-      <field name="Created" type="struct DateTime">The date/time of the file's creation.</field>
-      <field name="Modified" type="struct DateTime">The date/time of the last file modification.</field>
+    <struct name="ActionTable" comment="Structure for ActionList">
+      <field name="Hash" type="ULONG">Hash of the action name.</field>
+      <field name="Size" type="LONG">Byte-size of the structure for this action.</field>
+      <field name="Name" type="CSTRING">Name of the action.</field>
+      <field name="Args" type="const struct FunctionField *">List of fields that are passed to this action.</field>
     </struct>
 
     <struct name="ChildEntry" comment="Structure for ListChildren() function">
       <field name="ObjectID" type="OBJECTID">Object ID</field>
       <field name="ClassID" type="CLASSID">The class ID of the referenced object.</field>
-    </struct>
-
-    <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
-      <field name="Object" type="OBJECTPTR"></field>
-    </struct>
-
-    <struct name="Function" comment="Function list array structure">
-      <field name="Address" type="APTR">Pointer to the function entry point</field>
-      <field name="Name" type="CSTRING">Name of the function</field>
-      <field name="Args" type="const struct FunctionField *">A list of parameters accepted by the function</field>
-    </struct>
-
-    <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
-      <field name="MemoryID" type="MEMORYID">Reference to a memory ID.</field>
-      <field name="Locks" type="WORD">The total number of locks on the memory block.</field>
-    </struct>
-
-    <struct name="MemInfo" typeName="MEMINFO">
-      <field name="Start" type="APTR">The starting address of the memory block (does not apply to shared blocks).</field>
-      <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
-      <field name="Size" type="LONG">The size of the memory block.</field>
-      <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
-      <field name="Flags" type="WORD">The type of memory.</field>
-      <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
-      <field name="LockID" type="OBJECTID">Reference to the task that currently has a lock on the block.</field>
-      <field name="TaskID" type="OBJECTID">The Task that owns the memory block</field>
-      <field name="Handle" type="LONG">Native system handle (e.g. the shmid in Linux)</field>
-    </struct>
-
-    <struct name="ListTasks" comment="Structure for ListTasks()">
-      <field name="ProcessID" type="LONG">Core process ID</field>
-      <field name="TaskID" type="OBJECTID">Task ID for this array entry</field>
-      <field name="WaitingProcessID" type="LONG">If the task is waiting, this field reflects the other task's ID</field>
-      <field name="WaitingMemoryID" type="MEMORYID">If the task is waiting, this field reflects the memory ID</field>
-      <field name="WaitingTime" type="LONG">If the task is waiting, the time at which the sleep started (msec)</field>
-      <field name="MessageID" type="MEMORYID">Message queue ID</field>
-      <field name="OutputID" type="OBJECTID">The object that the task should output information to</field>
-      <field name="Semaphore" type="HOSTHANDLE">Semaphore for IPC</field>
-      <field name="InstanceID" type="LONG">Instance that the task belongs to</field>
-      <field name="TotalMemoryLocks" type="LONG">Total number of held memory locks</field>
-      <field name="ModalID" type="OBJECTID">Refers to any surface that currently holds a modal lock.</field>
-      <field name="MemoryLocks" type="struct MemoryLocks *">An array of memory locks currently held by the process.</field>
-    </struct>
-
-    <struct name="Field" comment="Used to describe the public fields of a class.">
-      <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
-      <field name="GetValue" type="FUNCTION *" prototype="ERROR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
-      <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
-      <field name="WriteValue" type="FUNCTION *" prototype="ERROR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
-      <field name="Name" type="CSTRING">The English name for the field, e.g. "Width"</field>
-      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
-      <field name="Offset" type="UWORD">Field offset within the object</field>
-      <field name="Index" type="UWORD">Field array index</field>
-      <field name="Flags" type="ULONG">Special flags that describe the field</field>
-    </struct>
-
-    <struct name="DirInfo" comment="Used by OpenDir() only">
-      <field name="Info" type="struct FileInfo *">Pointer to a FileInfo structure</field>
     </struct>
 
     <struct name="CompressedItem">
@@ -665,20 +594,6 @@
       <field name="Flags" type="LONG" lookup="FL">FL flags</field>
       <field name="Created" type="struct DateTime">Date and time of the file's creation.</field>
       <field name="Modified" type="struct DateTime">Date and time last modified.</field>
-    </struct>
-
-    <struct name="SystemState" comment="Returned by the GetSystemState() function.">
-      <field name="ErrorMessages" type="CSTRING *">A sorted array of all error codes, translated into human readable strings.</field>
-      <field name="RootPath" type="CSTRING">The current root path, which defaults to the location of the installation folder.</field>
-      <field name="SystemPath" type="CSTRING">The current path of the 'system:' volume.</field>
-      <field name="ModulePath" type="CSTRING">The current path to the system modules, normally 'system:modules/'</field>
-      <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.</field>
-      <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
-      <field name="CoreVersion" type="LONG">Reflects the Core version number.</field>
-      <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>
-      <field name="InstanceID" type="LONG">This is the ID of the instance that the calling process resides in.</field>
-      <field name="TotalErrorMessages" type="LONG">The total number of error codes listed in the ErrorMessages array.</field>
-      <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
     </struct>
 
     <struct name="CompressionFeedback">
@@ -697,11 +612,38 @@
       <field name="Second" type="WORD">Second of the original file's datestamp.</field>
     </struct>
 
-    <struct name="RGB8" comment="8-bit RGB colour value." typeName="RGB8">
-      <field name="Red" type="UBYTE">Red component value</field>
-      <field name="Green" type="UBYTE">Green component value</field>
-      <field name="Blue" type="UBYTE">Blue component value</field>
-      <field name="Alpha" type="UBYTE">Alpha component value</field>
+    <struct name="DateTime" comment="Generic structure for date-time management.">
+      <field name="Year" type="LONG">Year</field>
+      <field name="Month" type="LONG">Month 1 to 12</field>
+      <field name="Day" type="LONG">Day 1 to 31</field>
+      <field name="Hour" type="LONG">Hour 0 to 23</field>
+      <field name="Minute" type="LONG">Minute 0 to 59</field>
+      <field name="Second" type="LONG">Second 0 to 59</field>
+      <field name="TimeZone" type="LONG">TimeZone -13 to +13</field>
+    </struct>
+
+    <struct name="DirInfo" comment="Used by OpenDir() only">
+      <field name="Info" type="struct FileInfo *">Pointer to a FileInfo structure</field>
+    </struct>
+
+    <struct name="Field" comment="Used to describe the public fields of a class.">
+      <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
+      <field name="GetValue" type="FUNCTION *" prototype="ERROR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
+      <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
+      <field name="WriteValue" type="FUNCTION *" prototype="ERROR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
+      <field name="Name" type="CSTRING">The English name for the field, e.g. "Width"</field>
+      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
+      <field name="Offset" type="UWORD">Field offset within the object</field>
+      <field name="Index" type="UWORD">Field array index</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
+    </struct>
+
+    <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
+      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
+      <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
+      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
+      <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
     </struct>
 
     <struct name="FileFeedback">
@@ -711,6 +653,26 @@
       <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
       <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB integers</field>
       <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>
+    </struct>
+
+    <struct name="FileInfo" comment="Returned by GetFileInfo()">
+      <field name="Size" type="LARGE">The size of the file's content.</field>
+      <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
+      <field name="Next" type="struct FileInfo *">Next structure in the list, or NULL.</field>
+      <field name="Name" type="STRING">The name of the file.  This string remains valid until the next call to GetFileInfo().</field>
+      <field name="Tags" type="struct KeyStore *">A store of special tag strings that are file-specific.</field>
+      <field name="Flags" type="LONG" lookup="FL">Additional flags to describe the file.</field>
+      <field name="Permissions" type="LONG" lookup="PERMIT">Standard permission flags.</field>
+      <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
+      <field name="GroupID" type="LONG">Group ID (Unix systems only).</field>
+      <field name="Created" type="struct DateTime">The date/time of the file's creation.</field>
+      <field name="Modified" type="struct DateTime">The date/time of the last file modification.</field>
+    </struct>
+
+    <struct name="Function" comment="Function list array structure">
+      <field name="Address" type="APTR">Pointer to the function entry point</field>
+      <field name="Name" type="CSTRING">Name of the function</field>
+      <field name="Args" type="const struct FunctionField *">A list of parameters accepted by the function</field>
     </struct>
 
     <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
@@ -726,6 +688,38 @@
       <field name="Flags" type="LONG" lookup="KSF">Optional flags used for VarNew()</field>
     </struct>
 
+    <struct name="ListTasks" comment="Structure for ListTasks()">
+      <field name="ProcessID" type="LONG">Core process ID</field>
+      <field name="TaskID" type="OBJECTID">Task ID for this array entry</field>
+      <field name="WaitingProcessID" type="LONG">If the task is waiting, this field reflects the other task's ID</field>
+      <field name="WaitingMemoryID" type="MEMORYID">If the task is waiting, this field reflects the memory ID</field>
+      <field name="WaitingTime" type="LONG">If the task is waiting, the time at which the sleep started (msec)</field>
+      <field name="MessageID" type="MEMORYID">Message queue ID</field>
+      <field name="OutputID" type="OBJECTID">The object that the task should output information to</field>
+      <field name="Semaphore" type="HOSTHANDLE">Semaphore for IPC</field>
+      <field name="InstanceID" type="LONG">Instance that the task belongs to</field>
+      <field name="TotalMemoryLocks" type="LONG">Total number of held memory locks</field>
+      <field name="ModalID" type="OBJECTID">Refers to any surface that currently holds a modal lock.</field>
+      <field name="MemoryLocks" type="struct MemoryLocks *">An array of memory locks currently held by the process.</field>
+    </struct>
+
+    <struct name="MemInfo" typeName="MEMINFO">
+      <field name="Start" type="APTR">The starting address of the memory block (does not apply to shared blocks).</field>
+      <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
+      <field name="Size" type="LONG">The size of the memory block.</field>
+      <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
+      <field name="Flags" type="WORD">The type of memory.</field>
+      <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
+      <field name="LockID" type="OBJECTID">Reference to the task that currently has a lock on the block.</field>
+      <field name="TaskID" type="OBJECTID">The Task that owns the memory block</field>
+      <field name="Handle" type="LONG">Native system handle (e.g. the shmid in Linux)</field>
+    </struct>
+
+    <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
+      <field name="MemoryID" type="MEMORYID">Reference to a memory ID.</field>
+      <field name="Locks" type="WORD">The total number of locks on the memory block.</field>
+    </struct>
+
     <struct name="Message" comment="Messaging structures.  Note: This structure is utilised by NextMsg">
       <field name="Time" type="LARGE">A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().</field>
       <field name="UniqueID" type="LONG">A unique identifier automatically created by SendMessage().</field>
@@ -733,29 +727,35 @@
       <field name="Size" type="LONG">The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.&lt;/&gt;</field>
     </struct>
 
-    <struct name="DateTime" comment="Generic structure for date-time management.">
-      <field name="Year" type="LONG">Year</field>
-      <field name="Month" type="LONG">Month 1 to 12</field>
-      <field name="Day" type="LONG">Day 1 to 31</field>
-      <field name="Hour" type="LONG">Hour 0 to 23</field>
-      <field name="Minute" type="LONG">Minute 0 to 59</field>
-      <field name="Second" type="LONG">Second 0 to 59</field>
-      <field name="TimeZone" type="LONG">TimeZone -13 to +13</field>
+    <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
+      <field name="Object" type="OBJECTPTR"></field>
     </struct>
 
-    <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
-      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="Flags" type="ULONG">Special flags that describe the field</field>
-      <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
-      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
-      <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
+    <struct name="RGB8" comment="8-bit RGB colour value." typeName="RGB8">
+      <field name="Red" type="UBYTE">Red component value</field>
+      <field name="Green" type="UBYTE">Green component value</field>
+      <field name="Blue" type="UBYTE">Blue component value</field>
+      <field name="Alpha" type="UBYTE">Alpha component value</field>
     </struct>
 
-    <struct name="ActionTable" comment="Structure for ActionList">
-      <field name="Hash" type="ULONG">Hash of the action name.</field>
-      <field name="Size" type="LONG">Byte-size of the structure for this action.</field>
-      <field name="Name" type="CSTRING">Name of the action.</field>
-      <field name="Args" type="const struct FunctionField *">List of fields that are passed to this action.</field>
+    <struct name="SystemState" comment="Returned by the GetSystemState() function.">
+      <field name="ErrorMessages" type="CSTRING *">A sorted array of all error codes, translated into human readable strings.</field>
+      <field name="RootPath" type="CSTRING">The current root path, which defaults to the location of the installation folder.</field>
+      <field name="SystemPath" type="CSTRING">The current path of the 'system:' volume.</field>
+      <field name="ModulePath" type="CSTRING">The current path to the system modules, normally 'system:modules/'</field>
+      <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.</field>
+      <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
+      <field name="CoreVersion" type="LONG">Reflects the Core version number.</field>
+      <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>
+      <field name="InstanceID" type="LONG">This is the ID of the instance that the calling process resides in.</field>
+      <field name="TotalErrorMessages" type="LONG">The total number of error codes listed in the ErrorMessages array.</field>
+      <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
+    </struct>
+
+    <struct name="rkBase64Decode" comment="Private structure for the StrBase64Decode() function." typeName="BASE64DECODE">
+      <field name="Step" type="UBYTE">Internal</field>
+      <field name="PlainChar" type="UBYTE">Internal</field>
+      <field name="Initialised" type="UBYTE">Internal</field>
     </struct>
 
   </structs>

@@ -22,6 +22,49 @@
     </source>
   </info>
 
+  <actions>
+    <action>
+      <name>Clear</name>
+      <comment>Free all child objects contained by the viewport.</comment>
+    </action>
+
+    <action>
+      <name>Move</name>
+      <comment>Move the position of the viewport by delta X, Y.</comment>
+    </action>
+
+    <action>
+      <name>MoveToPoint</name>
+      <comment>Move the position of the viewport to a fixed point.</comment>
+    </action>
+
+    <action>
+      <name>Resize</name>
+      <comment>Resize a viewport to a fixed size.</comment>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>SetLimits</name>
+      <comment>Prevents a viewport from moving into the boundary of its parent.</comment>
+      <prototype>ERROR viewSetLimits(OBJECTPTR Object, DOUBLE Left, DOUBLE Top, DOUBLE Right, DOUBLE Bottom, LONG Relative)</prototype>
+      <input>
+        <param type="DOUBLE" name="Left">Total whitespace at the left edge.</param>
+        <param type="DOUBLE" name="Top">Total whitespace at the top edge.</param>
+        <param type="DOUBLE" name="Right">Total whitespace at the right edge.</param>
+        <param type="DOUBLE" name="Bottom">Total whitespace at the bottom edge.</param>
+        <param type="LONG" name="Relative">Set to TRUE if the values are relative to the available width or height of their axis.</param>
+      </input>
+      <description>
+<p>A viewport can be prevented from moving into areas at the edge of its parent by setting limits.  Values are expressed in fixed pixel units by default, or a relative ratio of 0 - 1.0 if Relative is TRUE.</p>
+<p>Note that limits are imposed when moving the viewport only.  It is possible for a client to ignore limits by setting coordinate fields directly.</p>
+      </description>
+    </method>
+
+  </methods>
+
   <fields>
     <field>
       <name>AbsX</name>
@@ -51,28 +94,6 @@
       <description>
 <p>Defining an aspect ratio allows finer control over the position and scale of the viewport's content within its target area.</p>
 <types lookup="ARF"/>
-      </description>
-    </field>
-
-    <field>
-      <name>BottomLimit</name>
-      <comment>Prevents a viewport from moving into an area at the bottom side of its parent.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>A viewport can be prevented from moving into the bottom area of its parent by setting a bottom limit.  The value is expressed in fixed pixel units.</p>
-<p>Limits only apply to movement from a call to the Move() action.  The limit is ignored if a coordinate field is set directly.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>BottomMargin</name>
-      <comment>Defines the top margin of a viewport.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>Viewport margins hint at the desired amount of whitespace at the edges of the viewport.  Margin values do not have an internal use, but become useful when honoured by code that computes the layout of a user interface.</p>
-<p>By default, all margins are set to zero when a new viewport object is created.</p>
       </description>
     </field>
 
@@ -110,28 +131,6 @@
     </field>
 
     <field>
-      <name>LeftLimit</name>
-      <comment>Prevents a viewport from moving into an area at the left side of its parent.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>A viewport can be prevented from moving into the left area of its parent by setting a left limit.  The value is expressed in fixed pixel units.</p>
-<p>Limits only apply to movement from a call to the Move() action.  The limit is ignored if a coordinate field is set directly.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>LeftMargin</name>
-      <comment>Defines the top margin of a viewport.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>Viewport margins hint at the desired amount of whitespace at the edges of the viewport.  Margin values do not have an internal use, but become useful when honoured by code that computes the layout of a user interface.</p>
-<p>By default, all margins are set to zero when a new viewport object is created.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Overflow</name>
       <comment>Clipping options for the viewport's boundary.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -161,50 +160,6 @@
       <description>
 <p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. If the viewport's <field>AspectRatio</field> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
 <p>This option controls the y axis only.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>RightLimit</name>
-      <comment>Prevents a viewport from moving into an area at the right side of its parent.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>A viewport can be prevented from moving into the right area of its parent by setting a right limit.  The value is expressed in fixed pixel units.</p>
-<p>Limits only apply to movement from a call to the Move() action.  The limit is ignored if a coordinate field is set directly.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>RightMargin</name>
-      <comment>Defines the right margin of a viewport.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>Viewport margins hint at the desired amount of whitespace at the edges of the viewport.  Margin values do not have an internal use, but become useful when honoured by code that computes the layout of a user interface.</p>
-<p>By default, all margins are set to zero when a new viewport object is created.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>TopLimit</name>
-      <comment>Prevents a viewport from moving into an area at the top side of its parent.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>A viewport can be prevented from moving into the top area of its parent by setting a top limit.  The value is expressed in fixed pixel units.</p>
-<p>Limits only apply to movement from a call to the Move() action.  The limit is ignored if a coordinate field is set directly.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>TopMargin</name>
-      <comment>Defines the top margin of a viewport.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>Viewport margins hint at the desired amount of whitespace at the edges of the viewport.  Margin values do not have an internal use, but become useful when honoured by code that computes the layout of a user interface.</p>
-<p>By default, all margins are set to zero when a new viewport object is created.</p>
       </description>
     </field>
 
