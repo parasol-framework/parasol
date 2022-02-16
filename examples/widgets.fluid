@@ -8,6 +8,10 @@ A demonstration of standard widgets
    require 'gui/fontdialog'
    require 'gui/dialog'
    require 'gui/filedialog'
+   require 'gui/icon'
+   require 'vfx'
+
+   mVector = mod.load('vector')
 
    local win  = obj.new('window', { title='Widget Examples', insideWidth=600, insideHeight=400 })
    local scene = win.surface.new('VectorScene', { flags=VPF_RESIZE, surface=win.surface })
@@ -224,6 +228,39 @@ end
       label='Input Box', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here'
    })
    y = y + input.height + 8
+
+   gui.icon({
+      target = viewport,
+      x      = 20,
+      y      = y,
+      image  = 'programs/tool',
+      text   = 'Toolbox',
+      size   = 80,
+      vfx    = vfx.fadeIn(1.0, 0.1),
+      feedback = function(Icon, Event)
+         print('Icon feedback received, event: ' .. Event.name)
+      end
+   })
+
+   gui.icon({
+      target = viewport,
+      x      = 120,
+      y      = y,
+      image  = 'programs/filemanager',
+      text   = 'Home Sweet Home',
+      vfx    = vfx.chain(vfx.rotate(0.8, 0.3), vfx.zoomIn(0.4, 0.3)),
+      feedback = function(Icon, Event)
+         if (Icon.effect) then return end
+         Icon.effect = vfx.chain(vfx.rotate(0.8), vfx.zoomOut(0.8))
+         Icon.effect.init(Icon.viewport, function(Effect)
+            Icon.effect = nil
+            if (Icon.viewport) then
+               Icon.viewport.acFree()
+               Icon.viewport = nil
+            end
+         end)
+      end
+   })
 
    win.acShow()
 
