@@ -139,7 +139,6 @@ static CSTRING read_numseq(CSTRING Value, ...);
 static ERROR read_path(std::vector<PathCommand> &, CSTRING);
 static void render_to_surface(objVectorScene *, objSurface *, objBitmap *);
 static ERROR scene_input_events(const InputEvent *, LONG);
-static ERROR vector_input_events(objVector *, const InputEvent *);
 static ERROR vector_keyboard_events(objVector *, const evKey *);
 static void send_feedback(objVector *, LONG);
 
