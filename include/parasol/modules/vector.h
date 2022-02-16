@@ -595,7 +595,8 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
    LONG   DashTotal; \
    LONG   Visibility; \
    LONG   Flags; \
-   LONG   FeedbackMask;
+   LONG   FeedbackMask; \
+   LONG   Cursor;
   
 // Vector class definition
 

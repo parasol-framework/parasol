@@ -27,6 +27,7 @@ unless otherwise documented.
 *********************************************************************************************************************/
 
 static ERROR vector_input_events(objVector *, const InputEvent *);
+static ERROR cursor_callback(objVector *, const InputEvent *);
 
 static ERROR VECTOR_Push(objVector *, struct vecPush *);
 
@@ -935,6 +936,36 @@ static ERROR VECTOR_GET_ClipRule(objVector *Self, LONG *Value)
 static ERROR VECTOR_SET_ClipRule(objVector *Self, LONG Value)
 {
    Self->ClipRule = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Cursor: The mouse cursor to display when the pointer is within the vector's boundary.
+
+The Cursor field provides a convenient way of defining the pointer's cursor image within a vector boundary.  The cursor
+will automatically switch to the specified image when it enters the boundary defined by the vector's path.  This effect
+lasts until the cursor vacates the area.
+
+It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
+-END-
+****************************************************************************/
+
+static ERROR VECTOR_SET_Cursor(objVector *Self, LONG Value)
+{
+   Self->Cursor = Value;
+
+   auto callback = make_function_stdc(cursor_callback);
+   vecInputSubscription(Self, JTYPE_FEEDBACK, &callback);
+
+   if (Self->Head.Flags & NF_INITIALISED) {
+      OBJECTID pointer_id;
+      LONG count = 1;
+      if (!FindObject("SystemPointer", ID_POINTER, FOF_INCLUDE_SHARED, &pointer_id, &count)) {
+         acRefreshID(pointer_id);
+      }
+   }
    return ERR_Okay;
 }
 
@@ -2096,6 +2127,30 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
          else it++;
       }
       else it++;
+   }
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+// Input event handler for updating the mouse cursor.
+
+static ERROR cursor_callback(objVector *Vector, const InputEvent *Events)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!Vector->Scene) return ERR_Okay;
+   else if (!Vector->Scene->SurfaceID) return ERR_Okay;
+
+   for (auto event=Events; event; event=event->Next) {
+      if (event->Type IS JET_ENTERED_SURFACE) {
+         parasol::ScopedObjectLock<objSurface> surface(Vector->Scene->SurfaceID);
+         SetLong(surface.obj, FID_Cursor, Vector->Cursor);
+      }
+      else if (event->Type IS JET_LEFT_SURFACE) {
+         parasol::ScopedObjectLock<objSurface> surface(Vector->Scene->SurfaceID);
+         SetLong(surface.obj, FID_Cursor, PTR_DEFAULT);
+      }
    }
 
    return ERR_Okay;

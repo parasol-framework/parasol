@@ -19,6 +19,35 @@ static const struct FieldDef clVectorFeedbackMask[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clVectorCursor[] = {
+   { "NoChange", 0x00000000 },
+   { "Default", 0x00000001 },
+   { "SizeBottomLeft", 0x00000002 },
+   { "SizeBottomRight", 0x00000003 },
+   { "SizeTopLeft", 0x00000004 },
+   { "SizeTopRight", 0x00000005 },
+   { "SizeLeft", 0x00000006 },
+   { "SizeRight", 0x00000007 },
+   { "SizeTop", 0x00000008 },
+   { "SizeBottom", 0x00000009 },
+   { "Crosshair", 0x0000000a },
+   { "Sleep", 0x0000000b },
+   { "Sizing", 0x0000000c },
+   { "SplitVertical", 0x0000000d },
+   { "SplitHorizontal", 0x0000000e },
+   { "Magnifier", 0x0000000f },
+   { "Hand", 0x00000010 },
+   { "HandLeft", 0x00000011 },
+   { "HandRight", 0x00000012 },
+   { "Text", 0x00000013 },
+   { "Paintbrush", 0x00000014 },
+   { "Stop", 0x00000015 },
+   { "Invisible", 0x00000016 },
+   { "Custom", 0x00000017 },
+   { "Draggable", 0x00000018 },
+   { NULL, 0 }
+};
+
 FDEF maPush[] = { { "Position", FD_LONG }, { 0, 0 } };
 FDEF maTracePath[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maGetBoundary[] = { { "Flags", FD_LONG }, { "X", FD_DOUBLE|FD_RESULT }, { "Y", FD_DOUBLE|FD_RESULT }, { "Width", FD_DOUBLE|FD_RESULT }, { "Height", FD_DOUBLE|FD_RESULT }, { 0, 0 } };

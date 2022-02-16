@@ -264,6 +264,18 @@
     </field>
 
     <field>
+      <name>Cursor</name>
+      <comment>The mouse cursor to display when the pointer is within the vector's boundary.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type lookup="PTR">INT</type>
+      <description>
+<p>The Cursor field provides a convenient way of defining the pointer's cursor image within a vector boundary.  The cursor will automatically switch to the specified image when it enters the boundary defined by the vector's path.  This effect lasts until the cursor vacates the area.</p>
+<p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
+<types lookup="PTR"/>
+      </description>
+    </field>
+
+    <field>
       <name>DashArray</name>
       <comment>Controls the pattern of dashes and gaps used to stroke paths.</comment>
       <access read="G" write="S">Get/Set</access>

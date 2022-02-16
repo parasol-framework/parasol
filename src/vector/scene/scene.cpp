@@ -768,6 +768,8 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
    return ERR_Okay;
 }
 
+//********************************************************************************************************************
+
 #include "scene_def.c"
 
 static const FieldArray clSceneFields[] = {

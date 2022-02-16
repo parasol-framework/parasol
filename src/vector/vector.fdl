@@ -435,7 +435,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
    LONG   DashTotal; \
    LONG   Visibility; \
    LONG   Flags; \
-   LONG   FeedbackMask;
+   LONG   FeedbackMask; \
+   LONG   Cursor;
   ]])
 
   methods("vector", "Vec", {
@@ -468,6 +469,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     int(VIS) Visibility     # Controls the visibility of a vector and its children.
     int(VF) Flags           # Optional flags.
     int(FM) FeedbackMask    # Mask for choosing feedback events
+    int(PTR) Cursor         # The mouse cursor to display when the pointer is within the vector's boundary.
   ]],
   [[ SHAPE_PRIVATE ]])
 
