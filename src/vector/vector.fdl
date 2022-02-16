@@ -415,10 +415,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
 
   class('VectorClip', { src='vectors/clip.cpp' })
 
-  methods("VectorViewport", "View", {
-    { id=30, name="SetLimits" }
-  })
-
   class('VectorViewport', { src='vectors/viewport.cpp', output="vectors/viewport_def.cpp" })
 
   c_insert([[

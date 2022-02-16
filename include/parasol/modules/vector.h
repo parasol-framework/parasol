@@ -578,18 +578,6 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
 
 #define VER_VECTORVIEWPORT (1.000000)
 
-// VectorViewport methods
-
-#define MT_ViewSetLimits -30
-
-struct viewSetLimits { DOUBLE Left; DOUBLE Top; DOUBLE Right; DOUBLE Bottom; LONG Relative;  };
-
-INLINE ERROR viewSetLimits(APTR Ob, DOUBLE Left, DOUBLE Top, DOUBLE Right, DOUBLE Bottom, LONG Relative) {
-   struct viewSetLimits args = { Left, Top, Right, Bottom, Relative };
-   return(Action(MT_ViewSetLimits, (OBJECTPTR)Ob, &args));
-}
-
-
 #define SHAPE_PUBLIC \
    struct rkVector *Child; \
    struct rkVectorScene *Scene; \

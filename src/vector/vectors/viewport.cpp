@@ -23,64 +23,16 @@ NOTE: Refer to gen_vector_path() for the code that manages viewport dimensions i
 
 *********************************************************************************************************************/
 
-static void observe_limits(objVectorViewport *Viewport)
-{
-   objVectorViewport *target;
-
-   if (!Viewport->vpLimits) return;
-
-   auto &limits = *Viewport->vpLimits;
-   if (Viewport->DragViewport) target = Viewport->DragViewport;
-   else target = Viewport;
-
-   auto parent = (objVectorViewport *)target->Parent;
-   if ((parent) and (parent->Head.SubID IS ID_VECTORVIEWPORT)) {
-      if (Viewport->vpRelativeLimits) {
-         auto left   = limits.Left * parent->vpFixedWidth;
-         auto top    = limits.Top * parent->vpFixedHeight;
-         auto right  = limits.Right * parent->vpFixedWidth;
-         auto bottom = limits.Bottom * parent->vpFixedHeight;
-
-         if (target->vpTargetX + target->vpFixedWidth > parent->vpFixedWidth - right) {
-            target->vpTargetX = parent->vpFixedWidth - right - target->vpFixedWidth;
-         }
-
-         if (target->vpTargetY + target->vpFixedHeight > parent->vpFixedHeight - bottom) {
-            target->vpTargetY = parent->vpFixedHeight - bottom - target->vpFixedHeight;
-         }
-
-         if (target->vpTargetX < left) target->vpTargetX = left;
-         if (target->vpTargetY < top)  target->vpTargetY = top;
-      }
-      else {
-         if (target->vpTargetX + target->vpFixedWidth > parent->vpFixedWidth - limits.Right) {
-            target->vpTargetX = parent->vpFixedWidth - limits.Right - target->vpFixedWidth;
-         }
-
-         if (target->vpTargetY + target->vpFixedHeight > parent->vpFixedHeight - limits.Bottom) {
-            target->vpTargetY = parent->vpFixedHeight - limits.Bottom - target->vpFixedHeight;
-         }
-
-         if (target->vpTargetX < limits.Left) target->vpTargetX = limits.Left;
-         if (target->vpTargetY < limits.Top)  target->vpTargetY = limits.Top;
-      }
-   }
-}
-
 //********************************************************************************************************************
-// Input event handler for the dragging of viewports by the user.  Requires the client to set the Drag field to be
-// active.
+// Input event handler for the dragging of viewports by the user.  Requires the client to set the DragCallback field
+// to be active.
 
-static ERROR drag_input_events(objVectorViewport *Viewport, const InputEvent *Events)
+static ERROR drag_callback(objVectorViewport *Viewport, const InputEvent *Events)
 {
    static DOUBLE glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
    static DOUBLE glDragOriginX = 0, glDragOriginY = 0;
 
-   objVectorViewport *target;
-   if (Viewport->DragViewport) target = Viewport->DragViewport;
-   else target = Viewport;
-
-   if (target->Dirty) gen_vector_tree((objVector *)target);
+   if (Viewport->Dirty) gen_vector_tree((objVector *)Viewport);
 
    for (auto event=Events; event; event=event->Next) {
       // Process events that support consolidation first.
@@ -91,31 +43,44 @@ static ERROR drag_input_events(objVectorViewport *Viewport, const InputEvent *Ev
                event = event->Next;
             }
 
-            target->vpTargetX = glDragOriginX + (event->AbsX - glAnchorX);
-            target->vpTargetY = glDragOriginY + (event->AbsY - glAnchorY);
+            DOUBLE x = glDragOriginX + (event->AbsX - glAnchorX);
+            DOUBLE y = glDragOriginY + (event->AbsY - glAnchorY);
 
-            observe_limits(Viewport);
-
-            mark_dirty((objVector *)target, RC_FINAL_PATH|RC_TRANSFORM);
-
-            acDraw(target);
+            if (Viewport->vpDragCallback.Type IS CALL_STDC) {
+               parasol::SwitchContext context(Viewport->vpDragCallback.StdC.Context);
+               auto routine = (void (*)(objVectorViewport *, DOUBLE, DOUBLE, DOUBLE, DOUBLE))Viewport->vpDragCallback.StdC.Routine;
+               routine(Viewport, x, y, glDragOriginX, glDragOriginY);
+            }
+            else if (Viewport->vpDragCallback.Type IS CALL_SCRIPT) {
+               OBJECTPTR script;
+               if ((script = Viewport->vpDragCallback.Script.Script)) {
+                  const ScriptArg args[] = {
+                     { "Viewport", FD_OBJECTPTR, { .Address = Viewport } },
+                     { "X", FD_DOUBLE, { .Double = x } },
+                     { "Y", FD_DOUBLE, { .Double = y } },
+                     { "OriginX", FD_DOUBLE, { .Double = glDragOriginX } },
+                     { "OriginY", FD_DOUBLE, { .Double = glDragOriginY } }
+                  };
+                  scCallback(script, Viewport->vpDragCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+               }
+            }
          }
       }
       else if ((event->Type IS JET_LMB) and (!(event->Flags & JTYPE_REPEATED))) {
          if (event->Value > 0) {
             if (Viewport->Visibility != VIS_VISIBLE) continue;
             Viewport->vpDragging = 1;
-            glAnchorX  = event->AbsX;
-            glAnchorY  = event->AbsY;
+            glAnchorX = event->AbsX;
+            glAnchorY = event->AbsY;
 
-            GetFields(target,
+            GetFields(Viewport,
                FID_X|TDOUBLE, &glDragOriginX,
                FID_Y|TDOUBLE, &glDragOriginY,
                TAGEND);
 
             // Ensure that the X,Y coordinates are fixed.
 
-            target->vpDimensions = (target->vpDimensions | DMF_FIXED_X | DMF_FIXED_Y) &
+            Viewport->vpDimensions = (Viewport->vpDimensions | DMF_FIXED_X | DMF_FIXED_Y) &
                (~(DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_X_OFFSET|DMF_RELATIVE_Y_OFFSET));
 
          }
@@ -150,10 +115,9 @@ static ERROR VECTORVIEWPORT_Clear(objVectorViewport *Self, APTR Void)
 static ERROR VECTORVIEWPORT_Free(objVectorViewport *Self, APTR Void)
 {
    if (Self->vpClipMask) { acFree(Self->vpClipMask); Self->vpClipMask = NULL; }
-   if (Self->vpLimits)   { delete Self->vpLimits; Self->vpLimits = NULL; }
 
-   if (Self->DragViewport) {
-      auto callback = make_function_stdc(drag_input_events);
+   if (Self->vpDragCallback.Type) {
+      auto callback = make_function_stdc(drag_callback);
       vecInputSubscription(Self, 0, &callback);
    }
 
@@ -184,8 +148,6 @@ static ERROR VECTORVIEWPORT_Move(objVectorViewport *Self, struct acMove *Args)
    Self->vpTargetX += Args->XChange;
    Self->vpTargetY += Args->YChange;
 
-   observe_limits(Self);
-
    mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
    return ERR_Okay;
 }
@@ -209,8 +171,6 @@ static ERROR VECTORVIEWPORT_MoveToPoint(objVectorViewport *Self, struct acMoveTo
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
       Self->vpTargetY = Args->Y;
    }
-
-   observe_limits(Self);
 
    mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
    return ERR_Okay;
@@ -249,42 +209,6 @@ static ERROR VECTORVIEWPORT_Resize(objVectorViewport *Self, struct acResize *Arg
    if (Self->vpTargetWidth < 1) Self->vpTargetWidth = 1;
    if (Self->vpTargetHeight < 1) Self->vpTargetHeight = 1;
    mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-SetLimits: Prevents a viewport from moving into the boundary of its parent.
-
-A viewport can be prevented from moving into areas at the edge of its parent by setting limits.  Values are expressed
-in fixed pixel units by default, or a relative ratio of 0 - 1.0 if Relative is TRUE.
-
-Note that limits are imposed when moving the viewport only.  It is possible for a client to ignore limits by setting
-coordinate fields directly.
-
--INPUT-
-double Left:   Total whitespace at the left edge.
-double Top:    Total whitespace at the top edge.
-double Right:  Total whitespace at the right edge.
-double Bottom: Total whitespace at the bottom edge.
-int Relative:  Set to TRUE if the values are relative to the available width or height of their axis.
-
--RESULT-
-Okay:
-NullArgs:
-AllocMemory:
-
-*********************************************************************************************************************/
-
-static ERROR VECTORVIEWPORT_SetLimits(objVectorViewport *Self, struct viewSetLimits *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   Self->vpLimits = new (std::nothrow) Edges(Args->Left, Args->Top, Args->Right, Args->Bottom);
-   if (!Self->vpLimits) return ERR_AllocMemory;
-
-   Self->vpRelativeLimits = Args->Relative;
    return ERR_Okay;
 }
 
@@ -371,44 +295,51 @@ static ERROR VIEW_SET_Dimensions(objVectorViewport *Self, LONG Value)
 }
 
 /*********************************************************************************************************************
+
 -FIELD-
-Drag: Enables click-dragging of viewports around the display.
+DragCallback: Receiver for drag requests originating from the viewport.
 
-Click-dragging of viewports is enabled by utilising the Drag field.  To use, set this field with reference to a
-VectorViewport that is to be dragged when the user starts a click-drag operation.
+Set the DragCallback field with a callback function to receive drag requests from the viewport's user input.  When the
+user drags the viewport, the callback will receive the user's desired (X, Y) target coordinates.  For unimpeded
+dragging, have the callback set the viewport's X and Y values to match the incoming coordinates, then redraw the scene.
 
-For example, a window with a titlebar would have the titlebar's Drag field set to the window's viewport.  If
-necessary, a viewport's Drag field can point back to itself (useful for creating icons and similar draggable widgets).
-
-Set the field to zero to turn off dragging.
+Set the field to NULL to turn off dragging.
 
 It is required that the parent @VectorScene is associated with a @Surface for this feature to work.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_Drag(objVectorViewport *Self, objVectorViewport **Value)
+static ERROR VIEW_GET_DragCallback(objVectorViewport *Self, FUNCTION **Value)
 {
-   *Value = Self->DragViewport;
-   return ERR_Okay;
+   if (Self->vpDragCallback.Type != CALL_NONE) {
+      *Value = &Self->vpDragCallback;
+      return ERR_Okay;
+   }
+   else return ERR_FieldNotSet;
 }
 
-static ERROR VIEW_SET_Drag(objVectorViewport *Self, objVectorViewport *Value)
+static ERROR VIEW_SET_DragCallback(objVectorViewport *Self, FUNCTION *Value)
 {
-   auto callback = make_function_stdc(drag_input_events);
+   auto callback = make_function_stdc(drag_callback);
 
    if (Value) {
-      parasol::Log log;
-
-      if (Value->Head.SubID != ID_VECTORVIEWPORT) return log.warning(ERR_WrongClass);
-      if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return log.warning(ERR_FieldNotSet);
+      if ((!Self->Scene) or (!Self->Scene->SurfaceID)) {
+         parasol::Log log;
+         return log.warning(ERR_FieldNotSet);
+      }
 
       if (vecInputSubscription(Self, JTYPE_MOVEMENT|JTYPE_BUTTON, &callback)) {
          return ERR_Failed;
       }
-   }
-   else vecInputSubscription(Self, 0, &callback);
 
-   Self->DragViewport = Value;
+      if (Self->vpDragCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->vpDragCallback.Script.Script, AC_Free);
+      Self->vpDragCallback = *Value;
+      if (Self->vpDragCallback.Type IS CALL_SCRIPT) SubscribeAction(Self->vpDragCallback.Script.Script, AC_Free);
+   }
+   else {
+      Self->vpDragCallback.Type = CALL_NONE;
+      vecInputSubscription(Self, 0, &callback);
+   }
    return ERR_Okay;
 }
 
@@ -1026,7 +957,7 @@ static const FieldArray clViewFields[] = {
    { "AbsY",         FDF_VIRTUAL|FDF_LONG|FDF_R,        0, (APTR)VIEW_GET_AbsY, NULL },
    { "AspectRatio",  FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,  (MAXINT)&clAspectRatio,    (APTR)VIEW_GET_AspectRatio, (APTR)VIEW_SET_AspectRatio },
    { "Dimensions",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_R,   (MAXINT)&clViewDimensions, (APTR)VIEW_GET_Dimensions, (APTR)VIEW_SET_Dimensions },
-   { "Drag",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,     ID_VECTORVIEWPORT, (APTR)VIEW_GET_Drag, (APTR)VIEW_SET_Drag },
+   { "DragCallback", FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)VIEW_GET_DragCallback, (APTR)VIEW_SET_DragCallback },
    { "Overflow",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_Overflow, (APTR)VIEW_SET_Overflow },
    { "OverflowX",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_OverflowX, (APTR)VIEW_SET_OverflowX },
    { "OverflowY",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clViewOverflow, (APTR)VIEW_GET_OverflowY, (APTR)VIEW_SET_OverflowY },
@@ -1051,7 +982,6 @@ static ERROR init_viewport(void)
       FID_Name|TSTRING,      "VectorViewport",
       FID_Category|TLONG,    CCF_GRAPHICS,
       FID_Actions|TPTR,      clVectorViewportActions,
-      FID_Methods|TARRAY,    clVectorViewportMethods,
       FID_Fields|TARRAY,     clViewFields,
       FID_Size|TLONG,        sizeof(objVectorViewport),
       FID_Path|TSTR,         MOD_PATH,
