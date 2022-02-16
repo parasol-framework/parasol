@@ -303,7 +303,12 @@ Set the DragCallback field with a callback function to receive drag requests fro
 user drags the viewport, the callback will receive the user's desired (X, Y) target coordinates.  For unimpeded
 dragging, have the callback set the viewport's X and Y values to match the incoming coordinates, then redraw the scene.
 
-Set the field to NULL to turn off dragging.
+The prototype for the callback function is as follows, where OriginX and OriginY refer to the (X,Y) position of the
+vector at initiation of the drag.
+
+`void function(*VectorViewport, DOUBLE X, DOUBLE Y, DOUBLE OriginX, DOUBLE OriginY)`
+
+Setting this field to NULL will turn off the callback.
 
 It is required that the parent @VectorScene is associated with a @Surface for this feature to work.
 

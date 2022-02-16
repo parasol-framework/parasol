@@ -35,7 +35,7 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing shared mem
 
 //****************************************************************************
 
-template <class T>
+template <class T = struct Head>
 class ScopedObject { // C++ wrapper for automatically freeing an object
    public:
       T *obj;
@@ -47,8 +47,8 @@ class ScopedObject { // C++ wrapper for automatically freeing an object
 
 //****************************************************************************
 
-template <class T>
-class ScopedObjectLock { // C++ wrapper for automatically freeing an object
+template <class T = struct Head>
+class ScopedObjectLock { // C++ wrapper for automatically releasing an object
    public:
       ERROR error;
       T *obj;

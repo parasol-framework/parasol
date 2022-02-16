@@ -1510,7 +1510,7 @@ AccessObject: Failed to access the pointer object.
 
 static ERROR gfxLockCursor(OBJECTID SurfaceID)
 {
-#ifdef __snap__
+#ifdef __native__
    parasol::Log log(__FUNCTION__);
    objPointer *pointer;
 

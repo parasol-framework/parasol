@@ -2104,20 +2104,20 @@ static ERROR vector_input_events(objVector *Self, const InputEvent *Events)
 //********************************************************************************************************************
 // Receiver for keyboard events
 
-static ERROR vector_keyboard_events(objVector *Self, const evKey *Event)
+static ERROR vector_keyboard_events(objVector *Vector, const evKey *Event)
 {
-   for (auto it=Self->KeyboardSubscriptions->begin(); it != Self->KeyboardSubscriptions->end(); ) {
+   for (auto it=Vector->KeyboardSubscriptions->begin(); it != Vector->KeyboardSubscriptions->end(); ) {
       ERROR result;
       auto &sub = *it;
       if (sub.Callback.Type IS CALL_STDC) {
          parasol::SwitchContext ctx(sub.Callback.StdC.Context);
          auto callback = (ERROR (*)(objVector *, LONG, LONG, LONG))sub.Callback.StdC.Routine;
-         result = callback(Self, Event->Qualifiers, Event->Code, Event->Unicode);
+         result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode);
       }
       else if (sub.Callback.Type IS CALL_SCRIPT) {
          // In this implementation the script function will receive all the events chained via the Next field
          ScriptArg args[] = {
-            { "Vector",     FDF_OBJECT, { .Address = Self } },
+            { "Vector",     FDF_OBJECT, { .Address = Vector } },
             { "Qualifiers", FDF_LONG,   { .Long = Event->Qualifiers } },
             { "Code",       FDF_LONG,   { .Long = Event->Code } },
             { "Unicode",    FDF_LONG,   { .Long = Event->Unicode } }
@@ -2125,7 +2125,7 @@ static ERROR vector_keyboard_events(objVector *Self, const evKey *Event)
          scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
       }
 
-      if (result IS ERR_Terminate) Self->KeyboardSubscriptions->erase(it);
+      if (result IS ERR_Terminate) Vector->KeyboardSubscriptions->erase(it);
       else it++;
    }
 

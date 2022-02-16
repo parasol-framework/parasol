@@ -1,22 +1,14 @@
 /*****************************************************************************
 
 -CLASS-
-Pointer: Used to support mouse pointers.
+Pointer: Interface for mouse cursor support.
 
-The Pointer class provides the computer user with a means of interacting with the graphical interface.  Traditionally
-the pointer is controlled by an attached mouse device, but the use of a keyboard, joystick or touch-screen is a
-possibility.  The Pointer class operates in 3 dimensions (X, Y, Z) and the Z axis is typically controlled by a mouse
-wheel.
+The Pointer class provides the user with a means of interacting with the graphical interface.  On a host system such
+as Windows, the pointer functionality will hook into the host's capabilities.  If the display is native then the
+pointer service will manage its own cursor exclusively.
 
-A pointer object should usually be created at boot-up unless you don't want a pointer in your system (e.g. for
-keyboard-only input).  Not creating a pointer will also mean that the system will not support user-click and
-user-movement management, unless you have some other means of achieving this. It is recommended that when creating a
-pointer at boot-up you give it a name of "SystemPointer".  This is a system-wide standard that makes it easier for
-other objects to find the pointing device.  If you give it a different name then the pointer will effectively be hidden
-from other objects.
-
-The Pointer class manages action-events such as UserMovement, UserClick and UserClickRelease.  These actions are called
-and passed to other objects on the desktop as appropriate.
+Internally, a system-wide pointer object is automatically created with a name of `SystemPointer`.  This should be
+used for all interactions with this service.
 
 -END-
 
@@ -177,7 +169,7 @@ static ERROR PTR_UngrabX11Pointer(objPointer *Self, APTR Void)
 -ACTION-
 DataFeed: This action can be used to send fake input to a pointer object.
 
-Fake input can be sent to a pointer object with the DATA_DEVICE_INPUT data type, as if the user was using the mouse.
+Fake input can be sent to a pointer object with the `DATA_DEVICE_INPUT` data type, as if the user was using the mouse.
 The data will be interpreted no differently to genuine user input from hardware.
 
 Note that if a button click is used in a device input message, the client must follow up with the equivalent release
@@ -266,7 +258,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
          if (!GetSurfaceAbs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
             uiflags |= Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
 
-            if ((ABS(Self->X - Self->LastReleaseX) > Self->ClickSlop) OR
+            if ((ABS(Self->X - Self->LastReleaseX) > Self->ClickSlop) or
                 (ABS(Self->Y - Self->LastReleaseY) > Self->ClickSlop)) {
                uiflags |= JTYPE_DRAGGED;
             }
@@ -475,7 +467,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
          }
       }
 
-      #ifdef __snap__
+      #ifdef __native__
 
          LONG xchange = current_x - Self->X;
          LONG ychange = current_y - Self->Y;
@@ -609,9 +601,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
    }
 }
 
-/*****************************************************************************
-** Event: ptr_user_login()
-*/
+//****************************************************************************
 
 static void ptr_user_login(objPointer *Self, APTR Info, LONG Size)
 {
@@ -734,7 +724,7 @@ static ERROR PTR_Init(objPointer *Self, APTR Void)
    if (Self->MaxSpeed < 1) Self->MaxSpeed = 10;
    if (Self->Speed < 1)    Self->Speed    = 150;
 
-#ifdef __snap__
+#ifdef __native__
    init_mouse_driver();
 #endif
 
@@ -760,12 +750,11 @@ static ERROR PTR_Init(objPointer *Self, APTR Void)
 /*****************************************************************************
 
 -ACTION-
-Move: Moves the position of a pointer to a new location.
+Move: Moves the cursor to a new location.
 
-Calling the Move action allows you to move the position of the pointer to a new location instantly.  This has the effect
-of bypassing the normal set of routines for pointer movement (i.e. no UserMovement signals will be sent to applications
-to indicate the change).
--END-
+The Move action will move the cursor to a new location instantly.  This has the effect of bypassing the normal set
+of routines for pointer movement (i.e. no UserMovement signals will be sent to applications to indicate the
+change).
 
 *****************************************************************************/
 
@@ -776,71 +765,18 @@ static ERROR PTR_Move(objPointer *Self, struct acMove *Args)
    if (!Args) return log.warning(ERR_Args);
    if ((!Args->XChange) and (!Args->YChange)) return ERR_Okay;
    return acMoveToPoint(Self, Self->X + Args->XChange, Self->Y + Args->YChange, 0, MTF_X|MTF_Y);
-
-/*
-#ifdef __xwindows__
-   OBJECTPTR surface;
-
-   if (AccessObject(Self->SurfaceID, 3000, &surface) IS ERR_Okay) {
-      APTR xwin;
-
-      Self->X += Args->XChange;
-      Self->Y += Args->YChange;
-      if (Self->X < 0) Self->X = 0;
-      if (Self->Y < 0) Self->Y = 0;
-
-      GetPointer(surface, FID_WindowHandle, &xwin);
-      XWarpPointer(XDisplay, None, (Window)xwin, 0, 0, 0, 0, Self->X, Self->Y);
-      Self->HostX = Self->X;
-      Self->HostY = Self->Y;
-      ReleaseObject(surface);
-   }
-#elif __snap__
-   if (Self->Flags & PF_SOFTWARE) {
-      struct acMoveToPoint moveto;
-
-      Self->X += Args->XChange;
-      Self->Y += Args->YChange;
-      if (Self->X < 0) Self->X = 0;
-      if (Self->Y < 0) Self->Y = 0;
-      if (Self->X > glNucleus->VideoMode.XResolution - 1) Self->X = glNucleus->VideoMode.XResolution - 1;
-      if (Self->Y > glNucleus->VideoMode.YResolution - 1) Self->Y = glNucleus->VideoMode.YResolution - 1;
-
-      moveto.X = Self->X - Self->Cursors[Self->CursorID].HotX;
-      moveto.Y = Self->Y - Self->Cursors[Self->CursorID].HotY;
-      moveto.Z = 0;
-      moveto.Flags  = MTF_X|MTF_Y;
-      ActionMsg(AC_MoveToPoint, Self->CursorSurfaceID, &moveto);
-   }
-#elif _WIN32
-   OBJECTPTR surface;
-
-   if (AccessObject(Self->SurfaceID, 3000, &surface) IS ERR_Okay) {
-      Self->X += Args->XChange;
-      Self->Y += Args->YChange;
-      if (Self->X < 0) Self->X = 0;
-      if (Self->Y < 0) Self->Y = 0;
-
-      winSetCursorPos(Self->X, Self->Y);
-      Self->HostX = Self->X;
-      Self->HostY = Self->Y;
-      ReleaseObject(surface);
-   }
-#endif
-*/
-   return ERR_Okay;
 }
 
 /*****************************************************************************
 
 -ACTION-
-MoveToPoint: Moves the position of a pointer to a new location.
+MoveToPoint: Moves the cursor to a new location..
 
-Calling the MoveToPoint action allows you to move the position of the pointer to a new location instantly.  This has the
-effect of bypassing the normal set of routines for pointer movement (i.e. no UserMovement signals will be sent to
-applications to indicate the change).
+The MoveToPoint action will move the cursor to a new location instantly.  This has the effect of bypassing the
+normal set of routines for pointer movement (i.e. no UserMovement signals will be sent to applications to
+indicate the change).
 
-You may subscribe to this action if you would like to listen for changes to the pointer's screen position.
+The client can subscribe to this action to listen for changes to the cursor's position.
 -END-
 
 *****************************************************************************/
@@ -875,7 +811,7 @@ static ERROR PTR_MoveToPoint(objPointer *Self, struct acMoveToPoint *Args)
       }
       ReleaseObject(surface);
    }
-#elif __snap__
+#elif __native__
    if (Self->Flags & PF_SOFTWARE) {
       struct acMoveToPoint moveto;
       OBJECTPTR surface;
@@ -929,7 +865,7 @@ static ERROR PTR_MoveToPoint(objPointer *Self, struct acMoveToPoint *Args)
 
 static ERROR PTR_NewObject(objPointer *Self, APTR Void)
 {
-#ifdef __snap__
+#ifdef __native__
    StrCopy("AutoDetect", Self->Device, sizeof(Self->Device));
 #endif
 
@@ -1032,7 +968,7 @@ static ERROR PTR_Show(objPointer *Self, APTR Void)
       APTR xwin;
       OBJECTPTR surface;
 
-      if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR_Okay) {
+      if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
          GetPointer(surface, FID_WindowHandle, &xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
@@ -1517,7 +1453,7 @@ static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
 
 //****************************************************************************
 
-#ifdef __snap__
+#ifdef __native__
 // Mouse driver initialisation
 
 static ERROR init_mouse_driver(void)
@@ -1715,7 +1651,7 @@ static const FieldArray clPointerFields[] = {
 
 static ERROR create_pointer_class(void)
 {
-#ifdef __snap__
+#ifdef __native__
    struct utsname syslinux;
    WORD version, release;
    STRING str;
