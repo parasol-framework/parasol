@@ -897,13 +897,13 @@ void register_module_class(lua_State *Lua)
 {
    parasol::Log log;
 
-   static const struct luaL_reg modlib_functions[] = {
+   static const struct luaL_Reg modlib_functions[] = {
       { "new",  module_load },
       { "load", module_load },
       { NULL, NULL}
    };
 
-   static const struct luaL_reg modlib_methods[] = {
+   static const struct luaL_Reg modlib_methods[] = {
       { "__index",    module_index },
       { "__tostring", module_tostring },
       { "__gc",       module_destruct },

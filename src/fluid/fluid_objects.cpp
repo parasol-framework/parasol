@@ -1103,14 +1103,14 @@ static int object_ipairs(lua_State *Lua)
 //****************************************************************************
 // Register the object interface.
 
-static const struct luaL_reg objectlib_functions[] = {
+static const struct luaL_Reg objectlib_functions[] = {
    { "new",  object_new },
    { "find", object_find },
    { "class", object_class },
    { NULL, NULL}
 };
 
-static const struct luaL_reg objectlib_methods[] = {
+static const struct luaL_Reg objectlib_methods[] = {
    { "__index",    object_index },
    { "__newindex", object_newindex },
    { "__tostring", object_tostring },

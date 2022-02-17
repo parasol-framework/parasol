@@ -523,14 +523,14 @@ static int input_tostring(lua_State *Lua)
 
 void register_input_class(lua_State *Lua)
 {
-   static const struct luaL_reg inputlib_functions[] = {
+   static const struct luaL_Reg inputlib_functions[] = {
       { "subscribe",   input_subscribe },
       { "keyboard",    input_keyboard },
       { "requestItem", input_request_item },
       { NULL, NULL }
    };
 
-   static const struct luaL_reg inputlib_methods[] = {
+   static const struct luaL_Reg inputlib_methods[] = {
       { "__gc",       input_destruct },
       { "__tostring", input_tostring },
       { "__index",    input_index },

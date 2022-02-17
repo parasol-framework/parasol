@@ -583,12 +583,12 @@ void register_array_class(lua_State *Lua)
 {
    parasol::Log log;
 
-   static const struct luaL_reg functions[] = {
+   static const struct luaL_Reg functions[] = {
       { "new",  array_new },
       { NULL, NULL }
    };
 
-   static const struct luaL_reg methods[] = {
+   static const struct luaL_Reg methods[] = {
       { "__index",    array_get },
       { "__newindex", array_set },
       { "__len",      array_len },

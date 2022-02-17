@@ -342,14 +342,14 @@ static int thread_method(lua_State *Lua)
 //****************************************************************************
 // Register the thread interface.
 
-static const luaL_reg threadlib_functions[] = {
+static const luaL_Reg threadlib_functions[] = {
    { "action", thread_action },
    { "method", thread_method },
    { "script", thread_script },
    { NULL, NULL }
 };
 
-static const luaL_reg threadlib_methods[] = {
+static const luaL_Reg threadlib_methods[] = {
    //{ "__index",    thread_get },
    //{ "__newindex", thread_set },
    { NULL, NULL }

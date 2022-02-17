@@ -824,13 +824,13 @@ static int struct_destruct(lua_State *Lua)
 //****************************************************************************
 // Register the fstruct interface.
 
-static const luaL_reg structlib_functions[] = {
+static const luaL_Reg structlib_functions[] = {
    { "new",   struct_new },
    { "size",  struct_size },
    { NULL, NULL }
 };
 
-static const luaL_reg structlib_methods[] = {
+static const luaL_Reg structlib_methods[] = {
    { "__index",    struct_get },
    { "__newindex", struct_set },
    { "__len",      struct_len },
