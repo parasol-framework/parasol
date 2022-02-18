@@ -20,14 +20,14 @@ If the path can be resolved to more than one file, the ResolvePath() method will
 checking the validity of each possible location.  For instance, if resolving a path of `user:document.txt`
 and the `user:` volume refers to both `system:users/joebloggs/` and `system:users/default/`, the routine will check
 both directories for the existence of the `document.txt` file to determine the correct location.  While helpful, this
-can cause problems if the intent is to create a new file.  To circumvent this feature, use the RSF_NO_FILE_CHECK
+can cause problems if the intent is to create a new file.  To circumvent this feature, use the `RSF_NO_FILE_CHECK`
 setting in the Flags parameter.
 
 When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be
-treated as an approximation (i.e. file extensions can be ignored) then use the RSF_APPROXIMATE flag to tell the
+treated as an approximation (i.e. file extensions can be ignored) then use the `RSF_APPROXIMATE` flag to tell the
 function to ignore extensions for the purpose of file name matching.
 
-To resolve the location of executable programs on Unix systems, use the RSF_PATH flag.  This uses the PATH environment
+To resolve the location of executable programs on Unix systems, use the `RSF_PATH` flag.  This uses the PATH environment
 variable to resolve the file name specified in the Path parameter.
 
 The resolved path will be returned in the Result parameter as an allocated memory block.  It must be removed once it is

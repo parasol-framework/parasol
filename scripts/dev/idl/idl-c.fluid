@@ -1,7 +1,7 @@
 -- This program produces C/C++ headers and documentation from Parasol FDL files.
 --
--- Usage: fluid sdk:scripts/idl-c.fluid src=source.fdl
--- Example: fluid sdk:scripts/idl-c.fluid src=sdk:core/modules/core/core.fdl
+-- Usage: fluid sdk:scripts/dev/idl/idl-c.fluid src=source.fdl
+-- Example: fluid sdk:scripts/dev/idl/idl-c.fluid src=sdk:core/modules/core/core.fdl
 
    include 'core'
    include 'xml'

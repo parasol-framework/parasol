@@ -152,7 +152,7 @@ Draw: Renders the scene to a bitmap.
 The Draw action will render the scene to the target #Bitmap.  If #Bitmap is NULL, an error will be
 returned.
 
-In addition, the #RenderTime field will be updated if the RENDER_TIME flag is defined.
+In addition, the #RenderTime field will be updated if the `RENDER_TIME` flag is defined.
 
 -ERRORS-
 Okay
@@ -488,7 +488,7 @@ Gamma: Private. Not currently implemented.
 -FIELD-
 PageHeight: The height of the page that contains the vector.
 
-This value defines the pixel height of the page that contains the vector scene graph.  If the RESIZE #Flags
+This value defines the pixel height of the page that contains the vector scene graph.  If the `RESIZE` #Flags
 option is used then the viewport will be scaled to fit within the page.
 
 ****************************************************************************/
@@ -509,7 +509,7 @@ static ERROR SET_PageHeight(objVectorScene *Self, LONG Value)
 -FIELD-
 PageWidth: The width of the page that contains the vector.
 
-This value defines the pixel width of the page that contains the vector scene graph.  If the RESIZE #Flags
+This value defines the pixel width of the page that contains the vector scene graph.  If the `RESIZE` #Flags
 option is used then the viewport will be scaled to fit within the page.
 
 ****************************************************************************/
@@ -552,8 +552,8 @@ SampleMethod: The sampling method to use when interpolating images and patterns.
 
 The SampleMethod controls the sampling algorithm that is used when images and patterns in the vector definition are affected
 by rotate, skew and scale transforms.  The choice of method will have a significant impact on the speed and quality of
-the images that are displayed in the rendered scene.  The recommended default is BILINEAR, which provides a
-comparatively average result and execution speed.  The most advanced method is BLACKMAN8, which produces an excellent
+the images that are displayed in the rendered scene.  The recommended default is `BILINEAR`, which provides a
+comparatively average result and execution speed.  The most advanced method is `BLACKMAN8`, which produces an excellent
 level of quality at the cost of very poor execution speed.
 
 -FIELD-

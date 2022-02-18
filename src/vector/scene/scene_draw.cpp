@@ -842,8 +842,7 @@ public:
 
    VMAdaptor() : mSolidRender(mRenderBase) { }
 
-   void draw(struct rkBitmap *Bitmap)
-   {
+   void draw(struct rkBitmap *Bitmap) {
       parasol::Log log;
 
       log.traceBranch("Bitmap: %dx%d,%dx%d, Viewport: %p", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Scene->Viewport);
@@ -864,8 +863,7 @@ public:
 private:
    // This is the main routine for parsing the vector tree for drawing.
 
-   void draw_vectors(objVector *CurrentVector, VectorState &ParentState)
-   {
+   void draw_vectors(objVector *CurrentVector, VectorState &ParentState) {
       for (auto shape=CurrentVector; shape; shape=(objVector *)shape->Next) {
          parasol::Log log(__FUNCTION__);
          VectorState state = VectorState(ParentState);
