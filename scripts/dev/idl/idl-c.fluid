@@ -571,10 +571,10 @@ function class(Name, Options, Blueprint, Private)
       for _, path in pairs(class.src) do
          if (glFeedback == 'verbose') then
             print()
-            print('Class file: ' .. path)
+            print('Class file: ' .. glFDLFolder .. path)
          end
 
-         local content = file.readAll(path)
+         local content = file.readAll(glFDLFolder .. path)
          content = content:gsub('\r\n', '\n')
 
          -- Look for C/C++ action declarations, in the format: ERROR CLASS_Action(...).  This will create a series
@@ -1803,11 +1803,13 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function processFDLFile(Source)
-   local err, type = mSys.AnalysePath(Source)
+   local err, full_path = mSys.ResolvePath(Source)
 
-   if (type == LOC_FILE) then
-      if (glFeedback == "verbose") then print("Process FDL file " .. Source) end
-      loadFile(Source)
+   glFDLFolder = file.splitPath(full_path)
+
+   if (err == ERR_Okay) then
+      if (glFeedback == "verbose") then print("Process FDL file " .. full_path) end
+      loadFile(full_path)
       return ERR_Okay
    else
       error("The specified source '" .. Source .. "' could not be located.")
@@ -2258,12 +2260,14 @@ end
 function resolveSDKPath(Path)
    local sdk_path
    local err = ERR_Failed
+   local search_list = { }
    if not Path then
       local search_path = 'CMakeLists.txt'
       local limit = 5
       while (err != ERR_Okay) and (limit > 0) do
-         search_path = '../' .. search_path
+         table.insert(search_list, search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
+         search_path = '../' .. search_path
          limit = limit - 1
       end
    else
@@ -2273,7 +2277,12 @@ function resolveSDKPath(Path)
    if (err == ERR_Okay) then
       sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
    else
-      error('Failed to resolve a path to the Parasol SDK.')
+      local msg = ''
+      for _, path in ipairs(search_list) do
+         msg = msg .. path .. '\n'
+      end
+      print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
+      error('A path to the Parasol SDK could not be determined.')
    end
 
    mSys.SetVolume(AST_NAME, 'sdk', AST_PATH, sdk_path, AST_COMMENT, 'Parasol Software Development Kit')
