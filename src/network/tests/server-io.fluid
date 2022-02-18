@@ -30,7 +30,7 @@ function testHTTP()
       end,
       incoming = function(Socket, Script)
          print('Incoming data...')
-         local buffer = string.rep(nil, 1024)
+         local buffer = string.rep(' ', 1024)
          local err, read_len = netsocket.acRead(buffer)
          if (err == ERR_Okay) then
             print(buffer:sub(1,read_len))

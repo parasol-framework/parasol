@@ -84,7 +84,7 @@ LJLIB_ASM(string_sub)		LJLIB_REC(string_range 1)
   return FFH_RETRY;
 }
 
-LJLIB_CF(string_rep)		LJLIB_REC(.) // PARASOL PATCHED IN: string_rep() has been modified to accept nil strings in order to create empty string buffers of any size.
+LJLIB_CF(string_rep)		LJLIB_REC(.)
 {
   GCstr *s = lj_lib_optstr(L, 1);
   if (!s) s = &G(L)->strempty;
