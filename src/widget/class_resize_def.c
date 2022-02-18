@@ -58,15 +58,15 @@ static const struct FieldDef clResizeDirection[] = {
 };
 
 static const struct FieldDef clResizeBorder[] = {
-   { "Left", 0x00000002 },
+   { "Top", 0x00000001 },
+   { "Bottom", 0x00000008 },
+   { "TopLeft", 0x00000010 },
    { "TopRight", 0x00000020 },
    { "BottomLeft", 0x00000040 },
-   { "Right", 0x00000004 },
-   { "BottomRight", 0x00000080 },
-   { "Bottom", 0x00000008 },
-   { "Top", 0x00000001 },
-   { "TopLeft", 0x00000010 },
+   { "Left", 0x00000002 },
    { "All", 0x000000ff },
+   { "BottomRight", 0x00000080 },
+   { "Right", 0x00000004 },
    { NULL, 0 }
 };
 

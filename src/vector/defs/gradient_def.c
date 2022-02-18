@@ -28,24 +28,24 @@ static const struct FieldDef clVectorGradientType[] = {
 };
 
 static const struct FieldDef clVectorGradientFlags[] = {
-   { "FixedFY", 0x00010000 },
-   { "RelativeX2", 0x00000004 },
-   { "RelativeX1", 0x00000001 },
    { "FixedX1", 0x00000200 },
-   { "FixedY2", 0x00001000 },
-   { "RelativeCX", 0x00000010 },
-   { "FixedRadius", 0x00020000 },
-   { "RelativeRadius", 0x00000100 },
-   { "RelativeFX", 0x00000040 },
-   { "FixedCX", 0x00002000 },
-   { "RelativeY2", 0x00000008 },
-   { "RelativeCY", 0x00000020 },
-   { "FixedFX", 0x00008000 },
-   { "RelativeFY", 0x00000080 },
    { "FixedY1", 0x00000400 },
+   { "RelativeX1", 0x00000001 },
+   { "FixedY2", 0x00001000 },
+   { "RelativeX2", 0x00000004 },
+   { "FixedRadius", 0x00020000 },
    { "FixedCY", 0x00004000 },
+   { "FixedFY", 0x00010000 },
+   { "FixedFX", 0x00008000 },
+   { "RelativeY2", 0x00000008 },
+   { "RelativeRadius", 0x00000100 },
+   { "RelativeCY", 0x00000020 },
    { "RelativeY1", 0x00000002 },
    { "FixedX2", 0x00000800 },
+   { "RelativeFX", 0x00000040 },
+   { "RelativeCX", 0x00000010 },
+   { "FixedCX", 0x00002000 },
+   { "RelativeFY", 0x00000080 },
    { NULL, 0 }
 };
 

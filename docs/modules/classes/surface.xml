@@ -155,9 +155,9 @@ the surface area first).</li>
 <p>The subscriber can draw to the bitmap surface as it would with any freshly allocated bitmap object (refer to the <class name="Bitmap">Bitmap</class> class).  To get the width and height of the available drawing space, please read the Width and Height fields from the Surface object.  If writing to the bitmap directly, please observe the bitmap's clipping region and the XOffset and YOffset values.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="ExecViolation">The call was not made from the process that owns the object.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
       </result>
     </method>
@@ -247,8 +247,8 @@ the surface area first).</li>
 <p>It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension settings.  For instance if X and Width are set, XOffset is ignored and the Dimensions value must include DMF_FIXED_X and DMF_FIXED_WIDTH (or the relative equivalents).  Please refer to the <field>Dimensions</field> field for a full list of dimension flags that can be specified.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="AccessMemory">Unable to access internal surface list.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
       </result>
     </method>
@@ -288,9 +288,9 @@ the surface area first).</li>
 <p>This method does not work on anything other than top-level surface objects.  The current top-level surface object is usually named "SystemSurface" by default and can be searched for by that name.</p>
       </description>
       <result>
+        <error code="Args">Invalid arguments passed to function.</error>
         <error code="Failed">General failure.</error>
         <error code="Okay">Operation successful.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
       </result>
     </method>
 
@@ -890,78 +890,78 @@ the surface area first).</li>
 
   </fields>
   <types>
+    <constants lookup="ARF" comment="AccessSurfaceList() flags">
+      <const name="NO_DELAY">Do not delay when waiting for access</const>
+      <const name="READ">Read only access required</const>
+      <const name="UPDATE">Update a single entry (limited write access)</const>
+      <const name="WRITE">Full write access required</const>
+    </constants>
+
     <constants lookup="BDF" comment="CopySurface() flags">
-      <const name="SYNC">Force synchronsiation so that changes to the source image do not occur mid-copy.</const>
       <const name="DITHER">Allow the use of dithering to improve image quality at a cost of speed.</const>
       <const name="REDRAW">Redraw the surface before performing the copy operation.</const>
+      <const name="SYNC">Force synchronsiation so that changes to the source image do not occur mid-copy.</const>
     </constants>
 
-    <constants lookup="SWIN" comment="Options for the Surface WindowType field.">
-      <const name="HOST">Default to the standard hosted window mode with full titlebar, borders and taskbar representation.</const>
-      <const name="TASKBAR">Create a borderless (custom) window with taskbar representation.</const>
-      <const name="ICON_TRAY">Create a borderless (custom) window with icon tray representation.</const>
-      <const name="NONE">Create a borderless (custom) window with no UI representation.</const>
-    </constants>
-
-    <constants lookup="RNF">
-      <const name="FULL_SCREEN">Allow the surface to open as a new screen display</const>
-      <const name="POST_COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
-      <const name="INIT_ONLY">Synonym for HOST | TRANSPARENT | FAST_RESIZE | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</const>
-      <const name="FAST_RESIZE">Do not redraw when a surface is shrunk on either dimension.  If a dimension is expanded, only redraw the exposed portion.</const>
-      <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.</const>
-      <const name="NO_PRECOMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
-      <const name="READ_ONLY">Synonym for HAS_FOCUS | REGION | CURSOR | AFTER_COPY</const>
-      <const name="GRAB_FOCUS">Helps application windows manage the user's focus within the window</const>
-      <const name="VIDEO">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
-      <const name="PERVASIVE_COPY">This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.</const>
-      <const name="STICKY">Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.</const>
-      <const name="PRECOPY">Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.</const>
-      <const name="HOST">Define host on initialisation to create a container that can host surfaces from other processes.</const>
-      <const name="NO_VERTICAL">Turns off all vertical movement (applies to the Move action only).</const>
-      <const name="NO_HORIZONTAL">Turns off all horizontal movement (applies to the Move action only).</const>
-      <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
-      <const name="TRANSPARENT">Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.</const>
-      <const name="FIXED_BUFFER">Passes the NEVER_SHRINK option to the surface bitmap</const>
-      <const name="IGNORE_FOCUS">Focus is diverted directly to the parent</const>
-      <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
-      <const name="VISIBLE">If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.</const>
-      <const name="NO_FOCUS">Prevents any kind of focussing on this object; no circumvention is possible</const>
-      <const name="FIXED_DEPTH">The target buffer always remains at the same depth</const>
-      <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
-      <const name="HAS_FOCUS">Read-only.  If set, this flag indicates that the surface object currently has the focus.</const>
-      <const name="STICK_TO_BACK">Enable if the surface object must stick to the back of its container.</const>
-      <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
-      <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
-      <const name="SCROLL_CONTENT">If set, the surface object will send Move and MoveToPoint messages if the Scroll and ScrollToPoint actions are ever called on the object.</const>
-      <const name="VOLATILE">Synonym for PRECOPY | AFTER_COPY | CURSOR</const>
-      <const name="TOTAL_REDRAW">Perform a total redraw of the entire surface when drawing - no partial draws</const>
-      <const name="REGION">Read/Init only.  This flag is set if the Region option has been used.</const>
-      <const name="STICK_TO_FRONT">Enable if the surface object must stick to the front of its container.</const>
-    </constants>
-
-    <constants lookup="ARF" comment="AccessSurfaceList() flags">
-      <const name="READ">Read only access required</const>
-      <const name="NO_DELAY">Do not delay when waiting for access</const>
-      <const name="WRITE">Full write access required</const>
-      <const name="UPDATE">Update a single entry (limited write access)</const>
+    <constants lookup="DRAG">
+      <const name="ANCHOR">The surface is being dragged and the mouse pointer is anchored to the surface.</const>
+      <const name="NONE">The surface is not being dragged.</const>
+      <const name="NORMAL">The surface is being dragged.</const>
     </constants>
 
     <constants lookup="EXF" comment="Optional flags for the ExposeSurface() function.">
+      <const name="ABSOLUTE">The supplied coordinates for exposure are absolute (relative to the display).</const>
+      <const name="ABSOLUTE_COORDS">The supplied coordinates for exposure are absolute (relative to the display).</const>
+      <const name="CHILDREN">If set, all child surfaces that intersect with exposed region will be included in the expose operation.</const>
       <const name="REDRAW_VOLATILE">Redraw every volatile object that intersects with the expose region, including internal volatile children.</const>
       <const name="REDRAW_VOLATILE_OVERLAP">Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.</const>
-      <const name="ABSOLUTE">The supplied coordinates for exposure are absolute (relative to the display).</const>
-      <const name="CHILDREN">If set, all child surfaces that intersect with exposed region will be included in the expose operation.</const>
-      <const name="ABSOLUTE_COORDS">The supplied coordinates for exposure are absolute (relative to the display).</const>
     </constants>
 
     <constants lookup="LVF" comment="drwLockBitmap() result flags">
       <const name="EXPOSE_CHANGES"/>
     </constants>
 
-    <constants lookup="DRAG">
-      <const name="NONE">The surface is not being dragged.</const>
-      <const name="ANCHOR">The surface is being dragged and the mouse pointer is anchored to the surface.</const>
-      <const name="NORMAL">The surface is being dragged.</const>
+    <constants lookup="RNF">
+      <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
+      <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.</const>
+      <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
+      <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
+      <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
+      <const name="FAST_RESIZE">Do not redraw when a surface is shrunk on either dimension.  If a dimension is expanded, only redraw the exposed portion.</const>
+      <const name="FIXED_BUFFER">Passes the NEVER_SHRINK option to the surface bitmap</const>
+      <const name="FIXED_DEPTH">The target buffer always remains at the same depth</const>
+      <const name="FULL_SCREEN">Allow the surface to open as a new screen display</const>
+      <const name="GRAB_FOCUS">Helps application windows manage the user's focus within the window</const>
+      <const name="HAS_FOCUS">Read-only.  If set, this flag indicates that the surface object currently has the focus.</const>
+      <const name="HOST">Define host on initialisation to create a container that can host surfaces from other processes.</const>
+      <const name="IGNORE_FOCUS">Focus is diverted directly to the parent</const>
+      <const name="INIT_ONLY">Synonym for HOST | TRANSPARENT | FAST_RESIZE | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</const>
+      <const name="NO_FOCUS">Prevents any kind of focussing on this object; no circumvention is possible</const>
+      <const name="NO_HORIZONTAL">Turns off all horizontal movement (applies to the Move action only).</const>
+      <const name="NO_PRECOMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
+      <const name="NO_VERTICAL">Turns off all vertical movement (applies to the Move action only).</const>
+      <const name="PERVASIVE_COPY">This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.</const>
+      <const name="POST_COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
+      <const name="PRECOPY">Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.</const>
+      <const name="READ_ONLY">Synonym for HAS_FOCUS | REGION | CURSOR | AFTER_COPY</const>
+      <const name="REGION">Read/Init only.  This flag is set if the Region option has been used.</const>
+      <const name="SCROLL_CONTENT">If set, the surface object will send Move and MoveToPoint messages if the Scroll and ScrollToPoint actions are ever called on the object.</const>
+      <const name="STICKY">Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.</const>
+      <const name="STICK_TO_BACK">Enable if the surface object must stick to the back of its container.</const>
+      <const name="STICK_TO_FRONT">Enable if the surface object must stick to the front of its container.</const>
+      <const name="TOTAL_REDRAW">Perform a total redraw of the entire surface when drawing - no partial draws</const>
+      <const name="TRANSPARENT">Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.</const>
+      <const name="VIDEO">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
+      <const name="VISIBLE">If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.</const>
+      <const name="VOLATILE">Synonym for PRECOPY | AFTER_COPY | CURSOR</const>
+      <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
+    </constants>
+
+    <constants lookup="SWIN" comment="Options for the Surface WindowType field.">
+      <const name="HOST">Default to the standard hosted window mode with full titlebar, borders and taskbar representation.</const>
+      <const name="ICON_TRAY">Create a borderless (custom) window with icon tray representation.</const>
+      <const name="NONE">Create a borderless (custom) window with no UI representation.</const>
+      <const name="TASKBAR">Create a borderless (custom) window with taskbar representation.</const>
     </constants>
 
   </types>

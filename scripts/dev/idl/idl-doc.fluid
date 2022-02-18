@@ -432,8 +432,8 @@ function docClass(Class)
 
             if nz(a.results) then
                local results = ''
-               for code, comment in pairs(a.results) do
-                  results = results .. "        <error code=\"" .. code .. "\">" .. substituteReferences(comment:escXML(), Class) .. "</error>\n"
+               for _, result in ipairs(a.results) do
+                  results = results .. "        <error code=\"" .. result.codeName .. "\">" .. substituteReferences(result.msg:escXML(), Class) .. "</error>\n"
                end
 
                if nz(results) then
@@ -484,8 +484,8 @@ function docClass(Class)
 
             if nz(method.results) then
                local results = ''
-               for code, comment in pairs(method.results) do
-                  results = results .. "        <error code=\"" .. code .. "\">" .. substituteReferences(comment:escXML(), Class) .. "</error>\n"
+               for _, result in ipairs(method.results) do
+                  results = results .. "        <error code=\"" .. result.codeName .. "\">" .. substituteReferences(result.msg:escXML(), Class) .. "</error>\n"
                end
 
                if nz(results) then
@@ -688,24 +688,15 @@ function docFunction(Function)
    if nz(Function.result) then
       if nz(Function.result.values) then
          local errors = ''
-         if nz(Function.result.values) then
-            for ecode, comment in pairs(Function.result.values) do
-               if nz(ecode) then
-                  local code = _G['ERR_' .. ecode]
-                  if (code == nil) then
-                     print('Error code "' .. ecode .. '" referenced in function ' .. Function.name .. '() is invalid.')
-                  end
-
-                  comment = nz(comment, mSys.GetErrorMsg(code))
-                  errors = errors .. "      <error code=\"" .. ecode .. "\">" .. substituteReferences(comment:escXML()) .. "</error>\n"
-               end
-            end
+         for _, result in ipairs(Function.result.values) do
+            local comment = nz(result.msg, mSys.GetErrorMsg(code))
+            errors = errors .. "      <error code=\"" .. result.codeName .. "\">" .. substituteReferences(comment:escXML()) .. "</error>\n"
          end
 
          if nz(errors) then
             out = out .. "    <result type=\"ERROR\">\n" .. errors .. "    </result>\n"
          end
-      else
+      elseif nz(Function.result.comment) then
          local ref = ''
          if (Function.result.ref != nil) then
             ref = " lookup=\"" .. Function.result.lookup .. '"'
@@ -722,7 +713,14 @@ end
 
 function docTypes()
    local out = ''
+   local sortedTypes = { }
    for prefix, ct in pairs(glCustomTypes) do
+      table.insert(sortedTypes, ct)
+   end
+
+   table.sort(sortedTypes, function(a,b) return a.prefix < b.prefix end)
+
+   for _, ct in ipairs(sortedTypes) do
       local comment = ''
       if (ct.comment) then comment = " comment=\"" .. ct.comment:escXML() .. '"' end
 
@@ -736,8 +734,15 @@ function docTypes()
       end
 
       if not nz(ct.restrict) and nz(ct.refCount) then
-         out = out .. "    <constants lookup=\"" .. prefix .. '"' .. comment:escXML() .. '>\n'
-         for index, v in pairs(ct.list) do
+         out = out .. "    <constants lookup=\"" .. ct.prefix .. '"' .. comment:escXML() .. '>\n'
+
+         local sortedValues = { }
+         for _, v in pairs(ct.list) do
+            table.insert(sortedValues, v)
+         end
+         table.sort(sortedValues, function(a,b) return a.name < b.name end)
+
+         for _, v in pairs(sortedValues) do
             if (v.synonym) then
                -- Don't publish synonyms
             elseif nz(v.comment) then

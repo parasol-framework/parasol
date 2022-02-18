@@ -211,7 +211,7 @@
 
 // Special error flags
 
-#define ERF_Notified 1073741824
 #define ERF_Delay 536870912
+#define ERF_Notified 1073741824
 
 #endif

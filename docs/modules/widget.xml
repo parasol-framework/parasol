@@ -43,42 +43,25 @@
 <p>The resulting Bitmap must be freed once it is no longer required.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="CreateObject">A call to CreateObject() failed.</error>
-      <error code="Activate">Error while Activate()ing an object.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="Activate">Error while Activate()ing an object.</error>
+      <error code="CreateObject">A call to CreateObject() failed.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
   <types>
-    <constants lookup="MIF" comment="Flags for MenuItems.">
-      <const name="SELECTED">The menu item has been selected (checked).</const>
-      <const name="EXTENSION">Menu item is an extension.</const>
-      <const name="NO_KEY_RESPONSE">Display the key, but do not respond to its equivalent key press.</const>
-      <const name="SORT">Sort all content under the menuitem (applies only to extensions).</const>
-      <const name="TOGGLE">Enables toggled menu items (checking state of on and off).</const>
-      <const name="OPTION">Item is a clickable option (clicking the item's icon will turn the option on/off).</const>
-      <const name="DISABLED">Set if the menu item is disabled (ghosted).</const>
-      <const name="CATEGORISE">Categorise the attached config file.</const>
-      <const name="BREAK">Menu item is acting as a break.</const>
-      <const name="KEY_REPEAT">Respond to repeated key presses.</const>
-    </constants>
-
-    <constants lookup="INF" comment="Flags for the Input class.">
-      <const name="SECRET">Used for secret user entry (passwords).</const>
-      <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
-      <const name="SELECT_TEXT">Select all text when the input box is shown for the first time.</const>
-      <const name="DISABLED">Disable on creation.</const>
-      <const name="FIXED_INPUT_WIDTH">Indicates that the InputWidth field was defined by the client.</const>
-      <const name="FIXED_LABEL_WIDTH">Indicates that the LabelWidth field was defined by the client.</const>
-      <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
+    <constants lookup="BHS">
+      <const name="ENTERED">The cursor has just entered the button's area</const>
+      <const name="INSIDE">The cursor is inside the button's area</const>
+      <const name="OUTSIDE">The cursor is outside of the button's area</const>
     </constants>
 
     <constants lookup="BTF" comment="Button flags.">
       <const name="DISABLED">Disable on creation, or button is currently disabled.  Read-only.</const>
       <const name="HIDE">Hide on creation, or button is currently hidden.</const>
-      <const name="PULSE">Send repeated clicks when the mouse button is held down.</const>
       <const name="NO_GFX">Turns off the button's foreground graphics (text and images).</const>
+      <const name="PULSE">Send repeated clicks when the mouse button is held down.</const>
     </constants>
 
     <constants lookup="CBF" comment="CheckBox flags.">
@@ -86,63 +69,9 @@
       <const name="HIDE">Hide on creation, or object is currently hidden.</const>
     </constants>
 
-    <constants lookup="CMF" comment="ComboBox flags.">
-      <const name="AUTO_COMPLETE">When in edit mode, this option helps the user by auto-completing text.</const>
-      <const name="EDIT">Enable edit mode, which allows the user to write free-text in the combobox.</const>
-      <const name="SHOW_ICONS">Show icons in the dropdown list.</const>
-      <const name="DISABLED">Disable on creation; or combobox is currently disabled.</const>
-      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
-      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
-      <const name="NO_TRANSLATION">Do not translate combobox strings or the drop-down menu to the user's native language.</const>
-    </constants>
-
-    <constants lookup="CLIPTYPE" comment="Clipboard types">
-      <const name="DATA">Raw information that is uncategorised can be defined as a data clip.</const>
-      <const name="FILE">Pure file references are stored as file clips.  This type is typically used by file managers for moving and copying files.</const>
-      <const name="TEXT">Plain text files such as ASCII and UTF-8 must be identified through this clip type.</const>
-      <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
-      <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
-      <const name="OBJECT">An object that has been deserialised into binary form.</const>
-    </constants>
-
-    <constants lookup="TXF" comment="Flags for the Text class.">
-      <const name="SECRET">Hide the string characters for secret text entry (e.g. passwords).</const>
-      <const name="PRESERVE_BKGD">Preserve-background disables fast scrolling for background preservation.</const>
-      <const name="AREA_SELECTED">This read-only flag is set automatically when the user has selected an area of text.</const>
-      <const name="GLOBAL_EDITING">Keeps the text object in edit mode regardless of user focus.</const>
-      <const name="SINGLE_SELECT">Enables text selection (with or without edit mode).  If in line mode, a single click will allow the user to highlight any line.</const>
-      <const name="DISABLED">This read-only flag is set if the object has been disabled through the Disable action.</const>
-      <const name="OVERWRITE">Turns on overwrite mode (if off, insert mode is enabled).</const>
-      <const name="SELECT">Synonym for MULTI_SELECT | SINGLE_SELECT</const>
-      <const name="ENTER_TAB">Convert enter-key presses to the tab-key.</const>
-      <const name="FORCE_CAPS">This flag forces the capitalisation of all text that is entered into the object.</const>
-      <const name="AUTO_CLEAR">Clears the text string when the enter key is pressed.</const>
-      <const name="EDIT">This flag must be enabled if the user is permitted to change the text string with the keyboard.</const>
-      <const name="STRETCH">If the font is scalable, the text string will be resized to fit inside the surface that contains it (i.e. no characters will be clipped).  This is acheived by recalculating the font's point size.</const>
-      <const name="WORDWRAP">Enables word wrapping.</const>
-      <const name="AUTO_SELECT">Automatically select all text if the text object receives the focus.</const>
-      <const name="TAB_KEY">If the tab key is pressed, print the tab character.</const>
-      <const name="PASSWORD">Hide the string characters for secret text entry (e.g. passwords).</const>
-      <const name="MULTI_SELECT">Allow the user to select/highlight multiple lines by holding the Ctrl key.</const>
-      <const name="VARIABLE">This flag forces a text object to recalculate any variable references in its string data whenever a redraw occurs.  Such references are indicated through square brackets, e.g. [desktop.width].  Refer to the StrEvaluate() function in the Strings module for more information.</const>
-      <const name="STR_TRANSLATE">Translate strings to the user's native language.</const>
-      <const name="HISTORY">Enables historical browsing when the up/down cursor keys are used.  The number of historical lines stored can be set in the HistorySize field.</const>
-      <const name="NO_SYS_KEYS">Disables system-keys that provide support for common key combinations such as Ctrl-C, Ctrl-X etc.</const>
-      <const name="BACKGROUND">Enables a colour background behind the text.</const>
-      <const name="TAB_ENTRY">Pressing the tab key is treated the same as pressing enter.</const>
-      <const name="COMMANDLINE">Synonym for AUTO_CLEAR | EDIT | HISTORY</const>
-    </constants>
-
-    <constants lookup="TF" comment="Flags for the TabFocus class.">
-      <const name="LOCAL_FOCUS">In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.</const>
-      <const name="CHILD_FOCUS">In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.</const>
-      <const name="LIMIT_TO_LIST">In limit-to-list mode, the tabfocus only functions if the user's point of focus is on the monitored Surface or one of objects in the tab list.</const>
-    </constants>
-
-    <constants lookup="BHS">
-      <const name="OUTSIDE">The cursor is outside of the button's area</const>
-      <const name="ENTERED">The cursor has just entered the button's area</const>
-      <const name="INSIDE">The cursor is inside the button's area</const>
+    <constants lookup="CEF">
+      <const name="DELETE">Requests that the original file source is deleted if a successful paste operation takes place.</const>
+      <const name="EXTEND">Instead of replacing existing clipboard data, add the new data to the group.</const>
     </constants>
 
     <constants lookup="CLF" comment="Clipboard flags">
@@ -150,27 +79,98 @@
       <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
     </constants>
 
-    <constants lookup="CEF">
-      <const name="DELETE">Requests that the original file source is deleted if a successful paste operation takes place.</const>
-      <const name="EXTEND">Instead of replacing existing clipboard data, add the new data to the group.</const>
+    <constants lookup="CLIPTYPE" comment="Clipboard types">
+      <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
+      <const name="DATA">Raw information that is uncategorised can be defined as a data clip.</const>
+      <const name="FILE">Pure file references are stored as file clips.  This type is typically used by file managers for moving and copying files.</const>
+      <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
+      <const name="OBJECT">An object that has been deserialised into binary form.</const>
+      <const name="TEXT">Plain text files such as ASCII and UTF-8 must be identified through this clip type.</const>
+    </constants>
+
+    <constants lookup="CMF" comment="ComboBox flags.">
+      <const name="AUTO_COMPLETE">When in edit mode, this option helps the user by auto-completing text.</const>
+      <const name="DISABLED">Disable on creation; or combobox is currently disabled.</const>
+      <const name="EDIT">Enable edit mode, which allows the user to write free-text in the combobox.</const>
+      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
+      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
+      <const name="NO_TRANSLATION">Do not translate combobox strings or the drop-down menu to the user's native language.</const>
+      <const name="SHOW_ICONS">Show icons in the dropdown list.</const>
+    </constants>
+
+    <constants lookup="INF" comment="Flags for the Input class.">
+      <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
+      <const name="DISABLED">Disable on creation.</const>
+      <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
+      <const name="FIXED_INPUT_WIDTH">Indicates that the InputWidth field was defined by the client.</const>
+      <const name="FIXED_LABEL_WIDTH">Indicates that the LabelWidth field was defined by the client.</const>
+      <const name="SECRET">Used for secret user entry (passwords).</const>
+      <const name="SELECT_TEXT">Select all text when the input box is shown for the first time.</const>
+    </constants>
+
+    <constants lookup="MIF" comment="Flags for MenuItems.">
+      <const name="BREAK">Menu item is acting as a break.</const>
+      <const name="CATEGORISE">Categorise the attached config file.</const>
+      <const name="DISABLED">Set if the menu item is disabled (ghosted).</const>
+      <const name="EXTENSION">Menu item is an extension.</const>
+      <const name="KEY_REPEAT">Respond to repeated key presses.</const>
+      <const name="NO_KEY_RESPONSE">Display the key, but do not respond to its equivalent key press.</const>
+      <const name="OPTION">Item is a clickable option (clicking the item's icon will turn the option on/off).</const>
+      <const name="SELECTED">The menu item has been selected (checked).</const>
+      <const name="SORT">Sort all content under the menuitem (applies only to extensions).</const>
+      <const name="TOGGLE">Enables toggled menu items (checking state of on and off).</const>
     </constants>
 
     <constants lookup="MNF" comment="Flags for the Menu class.">
-      <const name="SHOW_KEYS">Print key controls on the right.</const>
-      <const name="POINTER_XY">Synonym for POINTER_PLACEMENT</const>
-      <const name="SHOW_ICONS">Synonym for SHOW_IMAGES</const>
-      <const name="SHOW_IMAGES">Allow for an image column on the left.</const>
-      <const name="POINTER_PLACEMENT">Menu is placed at the position of the mouse pointer when shown.</const>
-      <const name="REVERSE_Y">Menu's open in reverse vertical order.</const>
       <const name="CACHE">Cache menu surface once created.</const>
-      <const name="IGNORE_FOCUS">Do not hide the menu if it loses the focus.</const>
-      <const name="SORT">Sort all items by name.</const>
       <const name="EXT_COLUMN">Allow for an extension indicator column on the right.</const>
+      <const name="IGNORE_FOCUS">Do not hide the menu if it loses the focus.</const>
+      <const name="NO_HIDE">Activate() is prevented from hiding the menu.</const>
+      <const name="NO_TRANSLATION">Do not translate menu text to the user's native language.</const>
+      <const name="POINTER_PLACEMENT">Menu is placed at the position of the mouse pointer when shown.</const>
+      <const name="POINTER_XY">Synonym for POINTER_PLACEMENT</const>
+      <const name="POPUP">Locks the position of the menu to the mouse pointer.</const>
       <const name="PRESERVE_BKGD">Preserve background when scrolling.</const>
       <const name="REVERSE_X">Menu's open in reverse horizontal order.</const>
-      <const name="NO_HIDE">Activate() is prevented from hiding the menu.</const>
-      <const name="POPUP">Locks the position of the menu to the mouse pointer.</const>
-      <const name="NO_TRANSLATION">Do not translate menu text to the user's native language.</const>
+      <const name="REVERSE_Y">Menu's open in reverse vertical order.</const>
+      <const name="SHOW_ICONS">Synonym for SHOW_IMAGES</const>
+      <const name="SHOW_IMAGES">Allow for an image column on the left.</const>
+      <const name="SHOW_KEYS">Print key controls on the right.</const>
+      <const name="SORT">Sort all items by name.</const>
+    </constants>
+
+    <constants lookup="TF" comment="Flags for the TabFocus class.">
+      <const name="CHILD_FOCUS">In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.</const>
+      <const name="LIMIT_TO_LIST">In limit-to-list mode, the tabfocus only functions if the user's point of focus is on the monitored Surface or one of objects in the tab list.</const>
+      <const name="LOCAL_FOCUS">In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.</const>
+    </constants>
+
+    <constants lookup="TXF" comment="Flags for the Text class.">
+      <const name="AREA_SELECTED">This read-only flag is set automatically when the user has selected an area of text.</const>
+      <const name="AUTO_CLEAR">Clears the text string when the enter key is pressed.</const>
+      <const name="AUTO_SELECT">Automatically select all text if the text object receives the focus.</const>
+      <const name="BACKGROUND">Enables a colour background behind the text.</const>
+      <const name="COMMANDLINE">Synonym for AUTO_CLEAR | EDIT | HISTORY</const>
+      <const name="DISABLED">This read-only flag is set if the object has been disabled through the Disable action.</const>
+      <const name="EDIT">This flag must be enabled if the user is permitted to change the text string with the keyboard.</const>
+      <const name="ENTER_TAB">Convert enter-key presses to the tab-key.</const>
+      <const name="FORCE_CAPS">This flag forces the capitalisation of all text that is entered into the object.</const>
+      <const name="GLOBAL_EDITING">Keeps the text object in edit mode regardless of user focus.</const>
+      <const name="HISTORY">Enables historical browsing when the up/down cursor keys are used.  The number of historical lines stored can be set in the HistorySize field.</const>
+      <const name="MULTI_SELECT">Allow the user to select/highlight multiple lines by holding the Ctrl key.</const>
+      <const name="NO_SYS_KEYS">Disables system-keys that provide support for common key combinations such as Ctrl-C, Ctrl-X etc.</const>
+      <const name="OVERWRITE">Turns on overwrite mode (if off, insert mode is enabled).</const>
+      <const name="PASSWORD">Hide the string characters for secret text entry (e.g. passwords).</const>
+      <const name="PRESERVE_BKGD">Preserve-background disables fast scrolling for background preservation.</const>
+      <const name="SECRET">Hide the string characters for secret text entry (e.g. passwords).</const>
+      <const name="SELECT">Synonym for MULTI_SELECT | SINGLE_SELECT</const>
+      <const name="SINGLE_SELECT">Enables text selection (with or without edit mode).  If in line mode, a single click will allow the user to highlight any line.</const>
+      <const name="STRETCH">If the font is scalable, the text string will be resized to fit inside the surface that contains it (i.e. no characters will be clipped).  This is acheived by recalculating the font's point size.</const>
+      <const name="STR_TRANSLATE">Translate strings to the user's native language.</const>
+      <const name="TAB_ENTRY">Pressing the tab key is treated the same as pressing enter.</const>
+      <const name="TAB_KEY">If the tab key is pressed, print the tab character.</const>
+      <const name="VARIABLE">This flag forces a text object to recalculate any variable references in its string data whenever a redraw occurs.  Such references are indicated through square brackets, e.g. [desktop.width].  Refer to the StrEvaluate() function in the Strings module for more information.</const>
+      <const name="WORDWRAP">Enables word wrapping.</const>
     </constants>
 
   </types>

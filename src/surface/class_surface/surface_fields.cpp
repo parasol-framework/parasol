@@ -386,7 +386,7 @@ static ERROR SET_PopOver(objSurface *Self, OBJECTID Value)
 -FIELD-
 PrecopyRegion: Defines the regions to be copied when precopy is enabled.
 
-This field allows the client to define the regions that are precopied when the PRECOPY flag is enabled.  When
+This field allows the client to define the regions that are precopied when the `PRECOPY` flag is enabled.  When
 precopying is enabled without a region specification, the entire background behind the surface will be copied, which
 can be sub-optimal in many circumstances.  By providing exact information to the precopy process, you can achieve a
 faster redrawing process.
@@ -552,17 +552,17 @@ static ERROR SET_PrecopyRegion(objSurface *Self, STRING Value)
 
 /*****************************************************************************
 -FIELD-
-Region: Specifies whether or not a surface object is acting as a simple region.
+Region: Specifies whether or not a surface object is acting as a primitive region.
 
-Setting the Region field to a value of TRUE allows you to create surface objects that act as basic surface regions.
-Region based surface objects are identical to normal surface objects in most respects, except they do not participate
+Setting the Region field to a value of TRUE allows the client to create surface objects that act as primitive surface
+regions.  Primitive surfaces are identical to normal surface objects in most respects, except they do not participate
 in the layered drawing process.  This means that they are susceptible to the influence of other graphics within their
-parent object, because they are treated no differently to @Image, @Text or other graphical class types.
+parent object and do not have protected boundaries.
 
-Region based surface areas are most useful when you can sacrifice functionality for speed.  Buttons, menu content and
-title bars are often implemented as regions because they are small and consist of only a small group of graphical objects.
+Primitive surfaces are useful when functionality can be sacrificed for speed.  Buttons, menu content and title bars
+are often implemented as regions because they are small and consist of a small group of graphical objects.
 
-Depending on the arrangement of the region and parent object's graphics, drawing around regions can cause flickering.
+Depending on the arrangement of the region and parent object, drawing around regions can cause flickering.
 Use of the #Buffer option can avoid this problem if it becomes an issue.
 
 *****************************************************************************/

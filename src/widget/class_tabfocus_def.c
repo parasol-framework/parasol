@@ -2,8 +2,8 @@
 
 static const struct FieldDef clTabFocusFlags[] = {
    { "LocalFocus", 0x00000001 },
-   { "ChildFocus", 0x00000002 },
    { "LimitToList", 0x00000004 },
+   { "ChildFocus", 0x00000002 },
    { NULL, 0 }
 };
 
