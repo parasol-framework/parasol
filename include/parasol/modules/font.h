@@ -28,10 +28,10 @@
 #define FTF_CHAR_CLIP 0x00000080
 #define FTF_BASE_LINE 0x00000100
 #define FTF_ALLOW_SCALE 0x00000200
-#define FTF_KERNING 0x80000000
-#define FTF_ITALIC 0x40000000
-#define FTF_BOLD 0x20000000
 #define FTF_SCALABLE 0x10000000
+#define FTF_BOLD 0x20000000
+#define FTF_ITALIC 0x40000000
+#define FTF_KERNING 0x80000000
 
 struct FontList {
    struct FontList * Next;    // Pointer to the next entry in the list.
@@ -45,8 +45,8 @@ struct FontList {
 
 // Options for the StringSize() function.
 
-#define FSS_LINE -2
 #define FSS_ALL -1
+#define FSS_LINE -2
 
 // Font class definition
 

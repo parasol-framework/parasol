@@ -115,8 +115,8 @@
 <p>An optional Toggle argument allows restoration of the window to its original position if the method routine discovers that the window is already maximised.</p>
       </description>
       <result>
-        <error code="AccessObject">Failed to access the window's parent surface.</error>
         <error code="Okay">The window was maximised successfully.</error>
+        <error code="AccessObject">Failed to access the window's parent surface.</error>
       </result>
     </method>
 
@@ -586,19 +586,19 @@
   </fields>
   <types>
     <constants lookup="WNF" comment="Window flags.">
-      <const name="SMART_LIMITS">Use automated limits to prevent the window from leaving the display.  This mode will ensure that enough of the title bar is visible so as to allow the user to drag the window back into the display area.</const>
+      <const name="BACKGROUND">This option will guarantee that the background of the window will always be cleared to a neutral colour (probably grey).  Background clearing occurs automatically for desktop windows, but not for windows that are in full-screen mode.  The client must set this flag if there is no intention to draw a customised background or fill the canvas.</const>
+      <const name="BORDERLESS">Create the window without the titlebar, border and background.</const>
+      <const name="DISABLED">Disable on creation.</const>
       <const name="FORCE_POS">Force window coordinates, don't try to be smart about it.</const>
       <const name="NO_MARGINS">Do not apply margins within the window (graphics will be aligned to the window borders).</const>
-      <const name="DISABLED">Disable on creation.</const>
-      <const name="BACKGROUND">This option will guarantee that the background of the window will always be cleared to a neutral colour (probably grey).  Background clearing occurs automatically for desktop windows, but not for windows that are in full-screen mode.  The client must set this flag if there is no intention to draw a customised background or fill the canvas.</const>
+      <const name="SMART_LIMITS">Use automated limits to prevent the window from leaving the display.  This mode will ensure that enough of the title bar is visible so as to allow the user to drag the window back into the display area.</const>
       <const name="VIDEO">Request that the window be buffered in video RAM instead of software RAM.</const>
-      <const name="BORDERLESS">Create the window without the titlebar, border and background.</const>
     </constants>
 
     <constants lookup="WOR" comment="The orientation to use for the display when the window is maximised.">
       <const name="ANY">The default.  Any orientation is acceptable to the application.</const>
-      <const name="PORTRAIT">Portrait mode is preferred.</const>
       <const name="LANDSCAPE">Landscape mode is preferred.</const>
+      <const name="PORTRAIT">Portrait mode is preferred.</const>
     </constants>
 
   </types>

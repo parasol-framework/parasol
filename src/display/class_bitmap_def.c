@@ -7,22 +7,22 @@ static const struct FieldDef clBitmapType[] = {
 };
 
 static const struct FieldDef clBitmapFlags[] = {
-   { "NoBlend", 0x00008000 },
-   { "FixedDepth", 0x00004000 },
-   { "X11DGA", 0x00002000 },
-   { "Queried", 0x00000040 },
-   { "Accelerated3D", 0x00000400 },
-   { "AlphaChannel", 0x00000800 },
-   { "Transparent", 0x00000008 },
-   { "NoData", 0x00000004 },
-   { "Accelerated2D", 0x00000200 },
-   { "Clear", 0x00000080 },
-   { "Compressed", 0x00000002 },
-   { "User", 0x00000100 },
-   { "NeverShrink", 0x00001000 },
    { "BlankPalette", 0x00000001 },
-   { "InverseAlpha", 0x00000020 },
+   { "Queried", 0x00000040 },
+   { "NeverShrink", 0x00001000 },
+   { "Compressed", 0x00000002 },
+   { "Clear", 0x00000080 },
+   { "X11DGA", 0x00002000 },
+   { "NoData", 0x00000004 },
+   { "Transparent", 0x00000008 },
+   { "FixedDepth", 0x00004000 },
+   { "Accelerated2D", 0x00000200 },
+   { "NoBlend", 0x00008000 },
    { "Mask", 0x00000010 },
+   { "Accelerated3D", 0x00000400 },
+   { "User", 0x00000100 },
+   { "InverseAlpha", 0x00000020 },
+   { "AlphaChannel", 0x00000800 },
    { NULL, 0 }
 };
 

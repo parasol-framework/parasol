@@ -155,10 +155,10 @@ the surface area first).</li>
 <p>The subscriber can draw to the bitmap surface as it would with any freshly allocated bitmap object (refer to the <class name="Bitmap">Bitmap</class> class).  To get the width and height of the available drawing space, please read the Width and Height fields from the Surface object.  If writing to the bitmap directly, please observe the bitmap's clipping region and the XOffset and YOffset values.</p>
       </description>
       <result>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="ExecViolation">The call was not made from the process that owns the object.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="ExecViolation">The call was not made from the process that owns the object.</error>
       </result>
     </method>
 
@@ -197,8 +197,8 @@ the surface area first).</li>
 <p>If you want to refresh a surface area to the display then you should use the <method>Expose</method> method instead.  Exposing will use the graphics buffer to refresh the graphics, thus avoiding the speed loss of a complete redraw.</p>
       </description>
       <result>
-        <error code="AccessMemory">Failed to access the internal surface list.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="AccessMemory">Failed to access the internal surface list.</error>
       </result>
     </method>
 
@@ -224,8 +224,8 @@ the surface area first).</li>
 <p>This method is scope restricted, meaning that callbacks added by other objects will not be affected irrespective of the parameters that are passed to it.</p>
       </description>
       <result>
-        <error code="Search">A search routine in this function failed.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Search">A search routine in this function failed.</error>
       </result>
     </method>
 
@@ -247,9 +247,9 @@ the surface area first).</li>
 <p>It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension settings.  For instance if X and Width are set, XOffset is ignored and the Dimensions value must include DMF_FIXED_X and DMF_FIXED_WIDTH (or the relative equivalents).  Please refer to the <field>Dimensions</field> field for a full list of dimension flags that can be specified.</p>
       </description>
       <result>
+        <error code="Okay">Operation successful.</error>
         <error code="AccessMemory">Unable to access internal surface list.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Okay">Operation successful.</error>
       </result>
     </method>
 
@@ -288,9 +288,9 @@ the surface area first).</li>
 <p>This method does not work on anything other than top-level surface objects.  The current top-level surface object is usually named "SystemSurface" by default and can be searched for by that name.</p>
       </description>
       <result>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="Failed">General failure.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Failed">General failure.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
       </result>
     </method>
 
@@ -306,8 +306,8 @@ the surface area first).</li>
 <p>This method will change the opacity of the surface and execute a redraw to make the changes to the display.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">The opacity of the surface object was changed.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -650,7 +650,7 @@ the surface area first).</li>
       <access write="S">Set</access>
       <type>STRING</type>
       <description>
-<p>This field allows the client to define the regions that are precopied when the PRECOPY flag is enabled.  When precopying is enabled without a region specification, the entire background behind the surface will be copied, which can be sub-optimal in many circumstances.  By providing exact information to the precopy process, you can achieve a faster redrawing process.</p>
+<p>This field allows the client to define the regions that are precopied when the <code>PRECOPY</code> flag is enabled.  When precopying is enabled without a region specification, the entire background behind the surface will be copied, which can be sub-optimal in many circumstances.  By providing exact information to the precopy process, you can achieve a faster redrawing process.</p>
 <p>PrecopyRegion requires that you specify the coordinates and dimensions for each region in sets of four numbers - that is, the X and Y coordinate followed by either the Width and Height or XOffset and YOffset.  To aid you in your visualisation of these numbers, you may insert brackets and commas to organise each region definition into a group. The following example illustrates the basic creation of two regions: <code>(0,0,20,20) (5,5,10,10)</code>.</p>
 <p>This would result in a region that is 20x20 pixels wide at position (0,0), and a region that is 10x10 pixels wide at position (5,5).  If you need to set an offset or percentage based value, then you will need to use the exclamation and/or percentage symbols.  This next example will create a region that surrounds its contained area with two region definitions: <code>(0,0,!0,!0) (1,1,!1,!1)</code>.</p>
 <p>This example uses percentages to create two regions: <code>(0%,0%,20%,20%) (5%,5%,10%,10%)</code>.</p>
@@ -659,13 +659,13 @@ the surface area first).</li>
 
     <field>
       <name>Region</name>
-      <comment>Specifies whether or not a surface object is acting as a simple region.</comment>
+      <comment>Specifies whether or not a surface object is acting as a primitive region.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Setting the Region field to a value of TRUE allows you to create surface objects that act as basic surface regions. Region based surface objects are identical to normal surface objects in most respects, except they do not participate in the layered drawing process.  This means that they are susceptible to the influence of other graphics within their parent object, because they are treated no differently to @Image, <class name="Text">Text</class> or other graphical class types.</p>
-<p>Region based surface areas are most useful when you can sacrifice functionality for speed.  Buttons, menu content and title bars are often implemented as regions because they are small and consist of only a small group of graphical objects.</p>
-<p>Depending on the arrangement of the region and parent object's graphics, drawing around regions can cause flickering. Use of the <field>Buffer</field> option can avoid this problem if it becomes an issue.</p>
+<p>Setting the Region field to a value of TRUE allows the client to create surface objects that act as primitive surface regions.  Primitive surfaces are identical to normal surface objects in most respects, except they do not participate in the layered drawing process.  This means that they are susceptible to the influence of other graphics within their parent object and do not have protected boundaries.</p>
+<p>Primitive surfaces are useful when functionality can be sacrificed for speed.  Buttons, menu content and title bars are often implemented as regions because they are small and consist of a small group of graphical objects.</p>
+<p>Depending on the arrangement of the region and parent object, drawing around regions can cause flickering. Use of the <field>Buffer</field> option can avoid this problem if it becomes an issue.</p>
       </description>
     </field>
 

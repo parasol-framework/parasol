@@ -27,9 +27,9 @@
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="FieldTypeMismatch">Field type mismatch while getting or setting a field.</error>
-      <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
       <error code="Args">Invalid arguments passed to function.</error>
+      <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
+      <error code="FieldTypeMismatch">Field type mismatch while getting or setting a field.</error>
     </result>
   </function>
 

@@ -7,13 +7,13 @@ static const struct FieldDef clCheckBoxFlags[] = {
 };
 
 static const struct FieldDef clCheckBoxAlign[] = {
-   { "Left", 0x00000001 },
-   { "Center", 0x0000000c },
    { "Middle", 0x0000000c },
-   { "Top", 0x00000010 },
+   { "Center", 0x0000000c },
    { "Horizontal", 0x00000004 },
    { "Vertical", 0x00000008 },
    { "Bottom", 0x00000020 },
+   { "Top", 0x00000010 },
+   { "Left", 0x00000001 },
    { "Right", 0x00000002 },
    { NULL, 0 }
 };

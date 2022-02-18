@@ -27,10 +27,10 @@
 <p>This is an internal function created for use by classes in the GUI category.  It finds the style definition for the target Object and executes the procedure with the Surface as the graphics target.</p>
     </description>
     <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
       <error code="NothingDone">There is nothing to process.</error>
       <error code="BadState">Object was in an incorrect state for the operation.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="Okay">Operation successful.</error>
     </result>
   </function>
 
@@ -67,8 +67,8 @@
     <result type="ERROR">
       <error code="True">Operation successful.</error>
       <error code="False">The result is false.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="Args">Invalid arguments passed to function.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -92,10 +92,10 @@
 <p>In the event that the owner of the surface is drawing to the graphics buffer at the time that you call this function, the results could be out of sync.  If this could be a problem, set the BDF_SYNC option in the Flags parameter.  Keep in mind that syncing has the negative side effect of having to wait for the other task to complete its draw process, which can potentially result in time lags.</p>
     </description>
     <result type="ERROR">
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="Okay">Operation successful.</error>
+      <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -115,10 +115,10 @@
 <p>This expose routine will expose all content within a defined surface area, copying it to the display.  This will include all child surfaces that intersect with the region being exposed if you set the EXF_CHILDREN flag.</p>
     </description>
     <result type="ERROR">
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="Okay">Operation successful.</error>
+      <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -176,9 +176,9 @@
 <p>GetSurfaceCoords() retrieves the dimensions that describe a surface object's area as X, Y, Width and Height.  This is the fastest way to retrieve surface dimensions when access to the object structure is not already available.</p>
     </description>
     <result type="ERROR">
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="Search">A search routine in this function failed.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -195,9 +195,9 @@
 <p>For information on the available flags, please refer to the Flags field of the <class name="Surface">Surface</class> class.</p>
     </description>
     <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="Okay">Operation successful.</error>
     </result>
   </function>
 
@@ -213,10 +213,10 @@
 <p>GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the AccessObject() function.  The resulting structure values are good only up until the next call to this function, at which point those values will be overwritten.</p>
     </description>
     <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Search">A search routine in this function failed.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="Okay">Operation successful.</error>
     </result>
   </function>
 
@@ -247,9 +247,9 @@
 <p>The GetVisibleArea() function returns the visible area of a surface, which is based on its position within its parent surfaces. The resulting coordinates are relative to point 0,0 of the queried surface. If the surface is not obscured, then the resulting coordinates will be (0,0),(Width,Height).</p>
     </description>
     <result type="ERROR">
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="Search">A search routine in this function failed.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -267,8 +267,8 @@
 <p>Repeated calls to this function will nest.  To release a surface bitmap, call the <function module="Surface">UnlockBitmap</function> function.</p>
     </description>
     <result type="ERROR">
-      <error code="Args">Invalid arguments passed to function.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
     </result>
   </function>
 
@@ -303,10 +303,10 @@
 <p>The style definition does not affect default style values (i.e. fonts, colours and interface).  Style values can be set by accessing the glStyle XML object directly and updating the values (do this as early as possible in the startup process).</p>
     </description>
     <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
       <error code="CreateObject">A call to CreateObject() failed.</error>
       <error code="EmptyString">A required string value contains no characters.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="Okay">Operation successful.</error>
     </result>
   </function>
 
@@ -337,8 +337,8 @@
 <p>Call the UnlockBitmap() function to release a surface object from earlier calls to <function module="Surface">LockBitmap</function>.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 

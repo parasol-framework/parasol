@@ -28,10 +28,10 @@
 <p>The Read action will read incoming data from the socket and write it to the provided buffer.  If the socket connection is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all other return codes indicate permanent failure, and the socket connection will be closed when the action returns.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">Read successful (if no data was on the socket, success is still indicated).</error>
         <error code="Failed">A permanent failure has occurred and socket has been closed.</error>
         <error code="Disconnected">The socket connection is closed.</error>
-        <error code="Okay">Read successful (if no data was on the socket, success is still indicated).</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </action>
 
@@ -61,13 +61,13 @@
 <p>This method never returns a successful error code unless an entire message has been received from the sender.</p>
       </description>
       <result>
-        <error code="LimitedSuccess">Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the Length parameter.</error>
-        <error code="NoData">No new data was found for the socket.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="AllocMemory">A message buffer could not be allocated.</error>
-        <error code="BadData">The message header or tail was invalid, or the message length exceeded internally imposed limits.</error>
         <error code="Okay">A complete message has been read and indicated in the result parameters.</error>
+        <error code="BadData">The message header or tail was invalid, or the message length exceeded internally imposed limits.</error>
+        <error code="LimitedSuccess">Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the Length parameter.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NoData">No new data was found for the socket.</error>
+        <error code="AllocMemory">A message buffer could not be allocated.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -84,8 +84,8 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="OutOfRange">A specified number is outside of the valid range.</error>
         <error code="Args">Invalid arguments passed to function.</error>
+        <error code="OutOfRange">A specified number is outside of the valid range.</error>
       </result>
     </method>
 
@@ -162,23 +162,23 @@
       <const name="V6"/>
     </constants>
 
-    <constants lookup="NSF">
-      <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
-      <const name="SSL">Use Secure Sockets Layer for all communication.</const>
-      <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
-      <const name="DEBUG">Print extra log messages.</const>
-      <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
-    </constants>
-
     <constants lookup="NLF" comment="Options for NetLookup">
       <const name="NO_CACHE">Contact the name service and do not use the local DNS cache.</const>
     </constants>
 
+    <constants lookup="NSF">
+      <const name="DEBUG">Print extra log messages.</const>
+      <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
+      <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
+      <const name="SSL">Use Secure Sockets Layer for all communication.</const>
+      <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
+    </constants>
+
     <constants lookup="NTC" comment="NetSocket states">
-      <const name="DISCONNECTED">There is no connection.</const>
+      <const name="CONNECTED">There is an active connection at present.</const>
       <const name="CONNECTING">A connection is being established.</const>
       <const name="CONNECTING_SSL">An SSL connection is being established.</const>
-      <const name="CONNECTED">There is an active connection at present.</const>
+      <const name="DISCONNECTED">There is no connection.</const>
     </constants>
 
   </types>

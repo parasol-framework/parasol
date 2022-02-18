@@ -49,8 +49,8 @@
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="FieldNotSet">A vital field has not been set in this object.</error>
       <error code="Args">Invalid arguments passed to function.</error>
+      <error code="FieldNotSet">A vital field has not been set in this object.</error>
     </result>
   </function>
 
@@ -75,9 +75,9 @@
 <p>This function returns a linked list of all available system fonts.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -94,9 +94,9 @@
 <p>Once this function is called, the data files will be copied into the correct sub-directory and the font registration files will be updated to reflect the presence of the new font.  The font will be available immediately thereafter, so there is no need to reset the system to acknowledge the presence of the font.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="NoSupport">This request is not supported.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="NoSupport">This request is not supported.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -112,9 +112,9 @@
 <p>This function may fail if attempting to remove a font that is currently in use.</p>
     </description>
     <result type="ERROR">
-      <error code="DeleteFile">Deletion of a folder or file failed (e.g. permissions, read-only media).</error>
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
+      <error code="DeleteFile">Deletion of a folder or file failed (e.g. permissions, read-only media).</error>
     </result>
   </function>
 
@@ -135,10 +135,10 @@
 <p>Flags that alter the search behaviour are FTF_PREFER_SCALED, FTF_PREFER_FIXED and FTF_ALLOW_SCALE.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
-      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -191,27 +191,27 @@
   </function>
 
   <types>
-    <constants lookup="FTF" comment="Font flags">
-      <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
-      <const name="BOLD">Font is described as having a bold weight (read only).</const>
-      <const name="ANTIALIAS">Smooth the edges of scalable fonts.</const>
-      <const name="ITALIC">Font is described as using italics (read only).</const>
-      <const name="ALLOW_SCALE">Allows switching to a suitable scalable font if a fixed point size is unavailable.  Equivalent to ending a font face with the '*' wildcard.</const>
-      <const name="KERNING">The loaded font is embedded with kerning information (read only).</const>
-      <const name="BASE_LINE">The Font's Y coordinate is the base line.</const>
-      <const name="CHAR_CLIP">Clip words by adding dots to the end of the string.</const>
-      <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in UnderlineRGB.</const>
-      <const name="QUICK_ALIAS">Quick anti-aliasing is useful for games and can be enabled if the background is black.</const>
-      <const name="SMOOTH">Smooth the edges of scalable fonts.</const>
-      <const name="REQUIRE_FIXED">A fixed size font is required and not a scalable font.</const>
-      <const name="PREFER_FIXED">A fixed size font (monochrome, no transforms) is preferred to the equivalent scalable font.</const>
-      <const name="PREFER_SCALED">A scaled font is preferred over the equivalent fixed size font.</const>
-      <const name="REQUIRE_SCALED">A scaled font is required and not a fixed size font.</const>
+    <constants lookup="FSS" comment="Options for the StringSize() function.">
+      <const name="ALL">Process all characters.</const>
+      <const name="LINE">Terminate operation at the first line feed or word-wrap.</const>
     </constants>
 
-    <constants lookup="FSS" comment="Options for the StringSize() function.">
-      <const name="LINE">Terminate operation at the first line feed or word-wrap.</const>
-      <const name="ALL">Process all characters.</const>
+    <constants lookup="FTF" comment="Font flags">
+      <const name="ALLOW_SCALE">Allows switching to a suitable scalable font if a fixed point size is unavailable.  Equivalent to ending a font face with the '*' wildcard.</const>
+      <const name="ANTIALIAS">Smooth the edges of scalable fonts.</const>
+      <const name="BASE_LINE">The Font's Y coordinate is the base line.</const>
+      <const name="BOLD">Font is described as having a bold weight (read only).</const>
+      <const name="CHAR_CLIP">Clip words by adding dots to the end of the string.</const>
+      <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in UnderlineRGB.</const>
+      <const name="ITALIC">Font is described as using italics (read only).</const>
+      <const name="KERNING">The loaded font is embedded with kerning information (read only).</const>
+      <const name="PREFER_FIXED">A fixed size font (monochrome, no transforms) is preferred to the equivalent scalable font.</const>
+      <const name="PREFER_SCALED">A scaled font is preferred over the equivalent fixed size font.</const>
+      <const name="QUICK_ALIAS">Quick anti-aliasing is useful for games and can be enabled if the background is black.</const>
+      <const name="REQUIRE_FIXED">A fixed size font is required and not a scalable font.</const>
+      <const name="REQUIRE_SCALED">A scaled font is required and not a fixed size font.</const>
+      <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
+      <const name="SMOOTH">Smooth the edges of scalable fonts.</const>
     </constants>
 
   </types>

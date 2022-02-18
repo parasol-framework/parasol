@@ -29,28 +29,28 @@
 
 // Scintilla Lexers.  These codes originate from the Scintilla library.
 
-#define SCLEX_PERL 6
-#define SCLEX_ASSEMBLER 34
+#define SCLEX_BATCH 12
+#define SCLEX_FLUID 15
+#define SCLEX_DIFF 16
+#define SCLEX_PASCAL 18
+#define SCLEX_RUBY 22
+#define SCLEX_VBSCRIPT 28
 #define SCLEX_ASP 29
 #define SCLEX_PYTHON 2
+#define SCLEX_ASSEMBLER 34
 #define SCLEX_CPP 3
-#define SCLEX_FLUID 15
-#define SCLEX_VBSCRIPT 28
-#define SCLEX_RUBY 22
-#define SCLEX_SQL 7
-#define SCLEX_PROPERTIES 9
-#define SCLEX_BATCH 12
-#define SCLEX_MAKEFILE 11
-#define SCLEX_REBOL 71
-#define SCLEX_PASCAL 18
-#define SCLEX_HTML 4
-#define SCLEX_PHPSCRIPT 69
-#define SCLEX_BASH 62
 #define SCLEX_CSS 38
 #define SCLEX_XML 5
-#define SCLEX_ERRORLIST 10
+#define SCLEX_PERL 6
+#define SCLEX_SQL 7
+#define SCLEX_HTML 4
 #define SCLEX_VB 8
-#define SCLEX_DIFF 16
+#define SCLEX_REBOL 71
+#define SCLEX_PROPERTIES 9
+#define SCLEX_PHPSCRIPT 69
+#define SCLEX_ERRORLIST 10
+#define SCLEX_BASH 62
+#define SCLEX_MAKEFILE 11
 
 // Optional flags.
 

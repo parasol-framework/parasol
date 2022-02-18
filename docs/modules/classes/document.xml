@@ -52,10 +52,10 @@
 <p>The surface that is associated with the Document object will be redrawn as a result of calling this action.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">Operation successful.</error>
         <error code="AllocMemory">The Document's memory buffer could not be expanded.</error>
         <error code="Mismatch">The data type that was passed to the action is not supported by the Document class.</error>
-        <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </action>
 
@@ -133,8 +133,8 @@
 <p>Please note that a trigger can have multiple listeners attached to it, so a new subscription will not replace any prior subscriptions, nor is their any detection for multiple copies of a subscription against a trigger.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -150,8 +150,8 @@
 <p>This method applies font information from DocStyle structures to new <class name="Font">Font</class> objects.  The Font object should be uninitialised as it is not possible to apply changes to the font face, style or size after initialisation.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -169,8 +169,8 @@
 <p>Arguments can be passed to the function by setting the Args and TotalArgs parameters.  These need to be specially formatted - please refer to the <class name="Script">Script</class> class' Exec method for more information on how to configure these parameters.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -187,9 +187,9 @@
 <p>If the editable section is associated with an OnEnter trigger, the trigger will be called when the Edit method is invoked.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Search">The cell was not found.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Search">The cell was not found.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -207,9 +207,9 @@
 <p>If the named index exists, then the start and end points (as determined by the opening and closing of the index tag) will be returned as byte indexes in the document stream.  The starting byte will refer to an ESC_INDEX_START code and the end byte will refer to an ESC_INDEX_END code.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Search">The index was not found.</error>
         <error code="Okay">The index was found and the Start and End parameters reflect its position.</error>
+        <error code="Search">The index was not found.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -225,9 +225,9 @@
 <p>The document layout is automatically updated and pushed to the display when this method is called.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Search">A search routine in this function failed.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Search">A search routine in this function failed.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -246,8 +246,8 @@
 <p>The document view will not be automatically redrawn by this method.  This must be done manually once all modifications to the document are complete.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -265,8 +265,8 @@
 <p>The document view will not be automatically redrawn by this method.  This must be done manually once all modifications to the document are complete.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -285,11 +285,11 @@
 <p>If data is extracted in its original format, no post-processing is performed to fix validity errors that may arise from an invalid data range.  For instance, if an opening paragraph code is not closed with a matching paragraph end point, this will remain the case in the resulting data.</p>
       </description>
       <result>
-        <error code="OutOfRange">The Start and/or End indexes are not within the stream.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="NoData">Operation successful, but no data was present for extraction.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NoData">Operation successful, but no data was present for extraction.</error>
+        <error code="OutOfRange">The Start and/or End indexes are not within the stream.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -305,10 +305,10 @@
 <p>This method will remove all document content between the Start and End indexes provided as parameters.  The document layout will also be marked for an update for the next redraw.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">Operation successful.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="OutOfRange">The area to be removed is outside the bounds of the document's data stream.</error>
-        <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -324,8 +324,8 @@
 <p>This method removes a previously configured listener from the document.  The original parameters that were passed to <method>AddListener</method> must be provided.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -343,9 +343,9 @@
 <p>Links are referenced either by their Index in the links array, or by name for links that have named references.  It should be noted that objects that can receive the focus - such as input boxes and buttons - are also treated as selectable links due to the nature of their functionality.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="OutOfRange">A specified number is outside of the valid range.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="OutOfRange">A specified number is outside of the valid range.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -361,9 +361,9 @@
 <p>The document layout is automatically updated and pushed to the display when this method is called.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Search">The index could not be found.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Search">The index could not be found.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -747,32 +747,32 @@
     </constants>
 
     <constants lookup="DCF" comment="Document flags">
-      <const name="UNRESTRICTED">Turn off all security measures - may only be set prior to initialisation.</const>
-      <const name="EDIT">Allow direct keyboard input and document editing.</const>
-      <const name="NO_SCROLLBARS">Do not display scrollbars if the page exceeds the size of the view.</const>
       <const name="DISABLED">This read-only flag is set if the object has been disabled through the Disable action.</const>
-      <const name="OVERWRITE">This flag forces overwrite mode when the user enters information through the keyboard.  If the flag is not set, then insert mode is used.</const>
+      <const name="EDIT">Allow direct keyboard input and document editing.</const>
       <const name="NO_LAYOUT_MSG">Turn off debug output produced during document layout and processing - useful on refresh for example.</const>
+      <const name="NO_SCROLLBARS">Do not display scrollbars if the page exceeds the size of the view.</const>
       <const name="NO_SYS_KEYS">System-keys provide standard key support for Ctrl-C, Ctrl-X etc.  Set this flag to turn them off.</const>
-    </constants>
-
-    <constants lookup="DRT" comment="Internal trigger codes">
-      <const name="BEFORE_LAYOUT"/>
-      <const name="AFTER_LAYOUT"/>
-      <const name="USER_CLICK"/>
-      <const name="USER_CLICK_RELEASE"/>
-      <const name="USER_MOVEMENT"/>
-      <const name="REFRESH"/>
-      <const name="GOT_FOCUS"/>
-      <const name="LOST_FOCUS"/>
-      <const name="LEAVING_PAGE"/>
-      <const name="PAGE_PROCESSED"/>
-      <const name="MAX"/>
+      <const name="OVERWRITE">This flag forces overwrite mode when the user enters information through the keyboard.  If the flag is not set, then insert mode is used.</const>
+      <const name="UNRESTRICTED">Turn off all security measures - may only be set prior to initialisation.</const>
     </constants>
 
     <constants lookup="DEF" comment="Event flags for selectively receiving events from the Document object.">
-      <const name="PATH">The source file path has changed.  Useful for detecting when the user has left the page.</const>
       <const name="LINK_ACTIVATED">The user has interacted with a hyperlink.  This event can be cancelled by returning ERR_Skip.</const>
+      <const name="PATH">The source file path has changed.  Useful for detecting when the user has left the page.</const>
+    </constants>
+
+    <constants lookup="DRT" comment="Internal trigger codes">
+      <const name="AFTER_LAYOUT"/>
+      <const name="BEFORE_LAYOUT"/>
+      <const name="GOT_FOCUS"/>
+      <const name="LEAVING_PAGE"/>
+      <const name="LOST_FOCUS"/>
+      <const name="MAX"/>
+      <const name="PAGE_PROCESSED"/>
+      <const name="REFRESH"/>
+      <const name="USER_CLICK"/>
+      <const name="USER_CLICK_RELEASE"/>
+      <const name="USER_MOVEMENT"/>
     </constants>
 
   </types>
