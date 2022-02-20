@@ -144,6 +144,14 @@ vfx.moveOut = function(Seconds, Delay, FromX, FromY)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- 'Shake' a vector by applying an alternating rotation around its center.
+
+vfx.shake = function(Seconds, Delay, Intensity)
+   if not Intensity then Intensity = 1.0 end
+
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Rotate the viewport 360 degrees within the allotted time.  This feature is typically chained for use with other
 -- effects.
 

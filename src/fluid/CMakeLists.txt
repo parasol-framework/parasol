@@ -28,12 +28,13 @@ ExternalProject_Add(
    COMMENT "Compiling FFI library")
 
 # LuaJIT library custom build
+# Activate BUILD_ALWAYS if you're working on the library code.
 
 ExternalProject_Add(
    luajit
    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src"
    CONFIGURE_COMMAND ""
-   BUILD_ALWAYS TRUE
+#   BUILD_ALWAYS TRUE
    BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1"
    INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1" "PREFIX="
    BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"

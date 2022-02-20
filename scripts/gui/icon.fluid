@@ -39,7 +39,7 @@ gui.icon = function(Options)
    local self = { -- Public variables
       feedback       = Options.feedback,
       parentViewport = Options.target,
-      effect         = Options.vfx, -- The active visual effect, if any
+      vfx            = Options.vfx, -- The active visual effect, if any
       viewport       = nil -- The icon's primary viewport
    }
 
@@ -243,9 +243,9 @@ gui.icon = function(Options)
 
       initText()
 
-      if self.effect then
-         self.effect.init(self.viewport, function()
-            self.effect = nil
+      if self.vfx then
+         self.vfx.init(self.viewport, function()
+            self.vfx = nil
          end)
       end
 
