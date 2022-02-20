@@ -303,8 +303,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
    std::unordered_map<OBJECTID, struct acRedimension> *PendingResizeMsgs;
    std::unordered_map<struct rkVector *, LONG> *InputSubscriptions;
    std::unordered_set<struct rkVector *> *KeyboardSubscriptions;
-   UBYTE  AdaptorType;
+   std::vector<struct InputBoundary> InputBoundaries;
+   OBJECTID ButtonLock; // The vector currently holding a button lock
+   OBJECTID LastMovementVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
+   UBYTE  AdaptorType;
   ]])
 
   class("VectorImage", { src="defs/image.cpp" }, [[

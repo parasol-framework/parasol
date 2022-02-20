@@ -1,4 +1,11 @@
 
+class InputBoundary {
+public:
+   OBJECTID VectorID;
+   DOUBLE BX1, BY1, BX2, BY2; // Collision boundary
+   DOUBLE X, Y; // Absolute X,Y without collision
+};
+
 class InputSubscription {
 public:
    FUNCTION Callback;
@@ -12,10 +19,11 @@ public:
    KeyboardSubscription(FUNCTION pCallback) : Callback(pCallback) { }
 };
 
+//   DOUBLE BX1, BY1, BX2, BY2;  TODO: Cache path boundaries on path generation
+
 #define SHAPE_PRIVATE \
    DOUBLE FinalX, FinalY; \
    DOUBLE FillGradientAlpha, StrokeGradientAlpha; \
-   DOUBLE BX1, BY1, BX2, BY2; \
    FUNCTION Feedback; \
    objVectorFilter *Filter; \
    struct rkVectorViewport *ParentView; \
@@ -45,7 +53,6 @@ public:
    UBYTE  ClipRule; \
    UBYTE  Dirty; \
    UBYTE  EnableBkgd:1; \
-   UBYTE  UserHovering:1; \
    UBYTE  DisableFillColour:1; \
    UBYTE  ButtonLock:1; \
    agg::line_join_e  LineJoin; \

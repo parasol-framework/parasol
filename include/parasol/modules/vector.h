@@ -135,8 +135,8 @@
 #define VTXF_OVERLINE 0x00000002
 #define VTXF_LINE_THROUGH 0x00000004
 #define VTXF_BLINK 0x00000008
-#define VTXF_EDITABLE 0x00000010
 #define VTXF_EDIT 0x00000010
+#define VTXF_EDITABLE 0x00000010
 #define VTXF_AREA_SELECTED 0x00000020
 #define VTXF_NO_SYS_KEYS 0x00000040
 #define VTXF_OVERWRITE 0x00000080
@@ -382,8 +382,11 @@ typedef struct rkVectorScene {
    std::unordered_map<OBJECTID, struct acRedimension> *PendingResizeMsgs;
    std::unordered_map<struct rkVector *, LONG> *InputSubscriptions;
    std::unordered_set<struct rkVector *> *KeyboardSubscriptions;
-   UBYTE  AdaptorType;
+   std::vector<struct InputBoundary> InputBoundaries;
+   OBJECTID ButtonLock; // The vector currently holding a button lock
+   OBJECTID LastMovementVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
+   UBYTE  AdaptorType;
   
 #endif
 } objVectorScene;

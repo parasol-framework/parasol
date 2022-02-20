@@ -263,6 +263,8 @@ static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
 
 static ERROR VECTORSCENE_Free(objVectorScene *Self, APTR Args)
 {
+   Self->InputBoundaries.~vector();
+
    if (Self->Viewport) Self->Viewport->Parent = NULL;
    if (Self->Adaptor)  { delete Self->Adaptor; Self->Adaptor = NULL; }
    if (Self->Buffer)   { delete Self->Buffer; Self->Buffer = NULL; }
@@ -338,6 +340,8 @@ static ERROR VECTORSCENE_NewObject(objVectorScene *Self, APTR Void)
 
    Self->KeyboardSubscriptions = new (std::nothrow) std::unordered_set<objVector *>;
    if (!Self->KeyboardSubscriptions) return ERR_Memory;
+
+   new (&Self->InputBoundaries) std::vector<struct InputBoundary>;
 
    // Please refer to the Reset action for setting variable defaults
    return VECTORSCENE_Reset(Self, NULL);
@@ -739,6 +743,83 @@ static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
 }
 
 //********************************************************************************************************************
+
+static void send_input_event(objVector *Vector, InputEvent *Event)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!Vector->InputSubscriptions) return;
+
+   for (auto it=Vector->InputSubscriptions->begin(); it != Vector->InputSubscriptions->end(); ) {
+      auto &sub = *it;
+
+      if (sub.Mask & Event->Mask) {
+         ERROR result;
+         if (sub.Callback.Type IS CALL_STDC) {
+            parasol::SwitchContext ctx(sub.Callback.StdC.Context);
+            auto callback = (ERROR (*)(objVector *, InputEvent *))sub.Callback.StdC.Routine;
+            result = callback(Vector, Event);
+         }
+         else if (sub.Callback.Type IS CALL_SCRIPT) {
+            ScriptArg args[] = {
+               { "Vector",            FDF_OBJECT, { .Address = Vector } },
+               { "InputEvent:Events", FDF_STRUCT, { .Address = Event } }
+            };
+            scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+         }
+
+         if (result IS ERR_Terminate) it = Vector->InputSubscriptions->erase(it);
+         else it++;
+      }
+      else it++;
+   }
+}
+
+//********************************************************************************************************************
+
+static void send_enter_event(objVector *Vector, const InputEvent *Event, DOUBLE X = 0, DOUBLE Y = 0)
+{
+   InputEvent event = {
+      .Next        = NULL,
+      .Value       = Event->OverID,
+      .Timestamp   = Event->Timestamp,
+      .RecipientID = Vector->Head.UniqueID,
+      .OverID      = Event->OverID,
+      .AbsX        = Event->AbsX,
+      .AbsY        = Event->AbsY,
+      .X           = Event->X - X,
+      .Y           = Event->Y - Y,
+      .DeviceID    = Event->DeviceID,
+      .Type        = JET_ENTERED_SURFACE,
+      .Flags       = JTYPE_FEEDBACK,
+      .Mask        = JTYPE_FEEDBACK
+   };
+   send_input_event(Vector, &event);
+}
+
+//********************************************************************************************************************
+
+static void send_left_event(objVector *Vector, const InputEvent *Event)
+{
+   InputEvent event = {
+      .Next        = NULL,
+      .Value       = Event->OverID,
+      .Timestamp   = Event->Timestamp,
+      .RecipientID = Vector->Head.UniqueID,
+      .OverID      = Event->OverID,
+      .AbsX        = Event->AbsX,
+      .AbsY        = Event->AbsY,
+      .X           = Event->X, // TODO Should be relative to the vector
+      .Y           = Event->Y,
+      .DeviceID    = Event->DeviceID,
+      .Type        = JET_LEFT_SURFACE,
+      .Flags       = JTYPE_FEEDBACK,
+      .Mask        = JTYPE_FEEDBACK
+   };
+   send_input_event(Vector, &event);
+}
+
+//********************************************************************************************************************
 // Input events within the scene are distributed within the scene graph.
 
 static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
@@ -761,11 +842,6 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
    }
 
    LONG cursor = PTR_DEFAULT;
-   LARGE cursor_timestamp = 0;
-
-   LONG total_events = 0;
-   for (auto ev=Events; ev; ev=ev->Next) total_events++;
-   InputEvent filtered_events[total_events+2]; // +2 in case of JET_ENTERED/JET_LEFT
 
    // Distribute input events to any vectors that have subscribed.  Bear in mind that a consequence of calling client
    // code is that the scene's surface could be removed at any time.
@@ -775,150 +851,89 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
    // or not.  The fast way to do hit testing would be to generate a 1-bit mask of the shape in gen_vector_path() as this
    // would be cached and take advantage of the dirty marker.
 
-   for (auto const [ vector, mask ] : Self->InputSubscriptions[0]) {
-      if (!(mask & received_events)) continue;
-
-      std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, DBL_MIN, DBL_MIN };
-
-      if (vector->Dirty) gen_vector_tree((objVector *)vector);
-
-      if (vector->Head.SubID IS ID_VECTORVIEWPORT) { // For Viewports, the bounds are pre-computed and transformed for us.
-         auto view = (objVectorViewport *)vector;
-         bounds = { view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2 };
-
-         if (view->vpClipMask) { // Viewports pre-generate clip masks and we can take advantage of this for hit testing
-
-         }
-      }
-      else {
-         if (vector->ClipMask) {
-            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*vector->ClipMask->ClipPath, vector->Transform);
-            bounding_rect_single(path, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
-         }
-         else if (vector->BasePath) {
-            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*vector->BasePath, vector->Transform);
-            bounding_rect_single(path, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
+   for (auto input=Events; input; input=input->Next) {
+      if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+         while ((input->Next) and (input->Next->Flags & JTYPE_MOVEMENT)) { // Consolidate movement
+            input = input->Next;
          }
       }
 
-      // Filter for events that occur within the vector's bounds.  When the user holds a mouse button over a
-      // vector, a 'button lock' will be held.  This causes all events to be captured until the button is released.
+      bool processed = false;
 
-      bool in_bounds = false;
-      LONG e = 0;
-      for (auto input=Events; input; input=input->Next) {
-         if (input->Type IS JET_LEFT_SURFACE) { in_bounds = false; continue; }
-         if (input->Type IS JET_ENTERED_SURFACE) continue;
+      if (input->Type IS JET_LEFT_SURFACE) {
+         parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
+         if (!lock.error) send_left_event(lock.obj, input);
+      }
+      else if (input->Type IS JET_ENTERED_SURFACE);
+      else for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {
+         auto &bounds = *it;
 
-         // A vector cannot receive repeated click events unless it holds a button lock.
-         if ((input->Type IS JET_LMB) and (input->Flags & JTYPE_REPEATED) and (!vector->ButtonLock)) continue;
+         // When the user holds a mouse button over a vector, a 'button lock' will be held.  This causes all events to
+         // be captured by that vector until the button is released.
 
-         in_bounds = (input->X >= bounds[0]) and (input->Y >= bounds[1]) and
-                     (input->X < bounds[2]) and (input->Y < bounds[3]);
-
-         if (vector->ButtonLock or in_bounds) {
-            // Inject JET_ENTERED_SURFACE if this is the first activity
-
-            if (!vector->UserHovering) {
-               filtered_events[e++] = {
-                  .Next        = NULL,
-                  .Value       = input->OverID,
-                  .Timestamp   = input->Timestamp,
-                  .RecipientID = input->RecipientID,
-                  .OverID      = input->OverID,
-                  .AbsX        = input->AbsX,
-                  .AbsY        = input->AbsY,
-                  .X           = input->X - bounds[0],
-                  .Y           = input->Y - bounds[1],
-                  .DeviceID    = input->DeviceID,
-                  .Type        = JET_ENTERED_SURFACE,
-                  .Flags       = JTYPE_FEEDBACK,
-                  .Mask        = JTYPE_FEEDBACK
-               };
-               vector->UserHovering = TRUE;
-            }
-
-            filtered_events[e] = *input;
-            filtered_events[e].X = input->X - bounds[0]; // Coords to be relative to the vector, not the surface
-            filtered_events[e].Y = input->Y - bounds[1];
-            e++;
+         if ((Self->ButtonLock) and (Self->ButtonLock IS bounds.VectorID));
+         else if ((Self->ButtonLock) and (Self->ButtonLock != bounds.VectorID)) continue;
+         else { // No button lock, perform a simple bounds check
+            bool in_bounds = (input->X >= bounds.BX1) and (input->Y >= bounds.BY1) and
+                             (input->X < bounds.BX2) and (input->Y < bounds.BY2);
+            if (!in_bounds) continue;
          }
-         else if (vector->UserHovering) {
-            filtered_events[e++] = { // Inject JET_LEFT_SURFACE if this is the last activity
-               .Next        = NULL,
-               .Value       = input->OverID,
-               .Timestamp   = input->Timestamp,
-               .RecipientID = input->RecipientID,
-               .OverID      = input->OverID,
-               .AbsX        = input->AbsX,
-               .AbsY        = input->AbsY,
-               .X           = input->X - bounds[0],
-               .Y           = input->Y - bounds[1],
-               .DeviceID    = input->DeviceID,
-               .Type        = JET_LEFT_SURFACE,
-               .Flags       = JTYPE_FEEDBACK,
-               .Mask        = JTYPE_FEEDBACK
-            };
-            vector->UserHovering = FALSE;
+
+         parasol::ScopedObjectLock<objVector> lock(bounds.VectorID);
+         if (lock.error) continue;
+         auto vector = lock.obj;
+
+         // TODO Additional bounds check against the clip mask, if present.
+
+         if ((vector->ClipMask) and (Self->ButtonLock != vector->Head.UniqueID)) {
+
          }
+
+         if (Self->LastMovementVector != vector->Head.UniqueID) {
+            send_enter_event(vector, input, bounds.X, bounds.Y);
+         }
+
+         // Determine status of the button lock.
 
          if ((input->Type IS JET_LMB) and (!(input->Flags & JTYPE_REPEATED))) {
-            vector->ButtonLock = (input->Value IS 1) and (in_bounds);
+            Self->ButtonLock = input->Value ? vector->Head.UniqueID : 0;
          }
 
-         if ((in_bounds) and (vector->Cursor) and (input->Timestamp > cursor_timestamp)) {
-            cursor = vector->Cursor;
-            cursor_timestamp = input->Timestamp;
+         if (vector->Cursor) cursor = vector->Cursor;
+
+         InputEvent event = *input;
+         event.Next = NULL;
+         event.X = input->X - bounds.X; // Coords to be relative to the vector, not the surface
+         event.Y = input->Y - bounds.Y;
+         send_input_event(vector, &event);
+
+         if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+            if ((Self->LastMovementVector) and (Self->LastMovementVector != vector->Head.UniqueID)) {
+               parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
+               if (!lock.error) send_left_event(lock.obj, input);
+            }
+
+            Self->LastMovementVector = vector->Head.UniqueID;
          }
+
+         processed = true;
+         break; // Input consumed
       }
 
-      if (!e) continue;
+      // If no vectors received a hit for a movement message, we may need to inform the last active vector that the
+      // cursor left its area.
 
-      for (auto it=vector->InputSubscriptions->begin(); it != vector->InputSubscriptions->end(); ) {
-         // Patch the Next fields to construct a custom chain of events based on this subscripton's mask filter.
-
-         auto &sub = *it;
-         InputEvent *first = NULL, *last = NULL;
-         for (LONG i=0; i < e; i++) {
-            if (filtered_events[i].Mask & sub.Mask) {
-               if (!first) first = &filtered_events[i];
-               if (last) last->Next = &filtered_events[i];
-               last = &filtered_events[i];
-            }
-         }
-
-         if (first) {
-            last->Next = NULL;
-
-            ERROR result;
-            if (sub.Callback.Type IS CALL_STDC) {
-               parasol::SwitchContext ctx(sub.Callback.StdC.Context);
-               auto callback = (ERROR (*)(objVector *, InputEvent *))sub.Callback.StdC.Routine;
-               result = callback(vector, first);
-            }
-            else if (sub.Callback.Type IS CALL_SCRIPT) {
-               // In this implementation the script function will receive all the events chained via the Next field
-               ScriptArg args[] = {
-                  { "Vector",            FDF_OBJECT, { .Address = vector } },
-                  { "InputEvent:Events", FDF_STRUCT, { .Address = first } }
-               };
-               scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
-            }
-
-            if (result IS ERR_Terminate) {
-               log.debug("Terminating input subscription of %d total.", (LONG)vector->InputSubscriptions->size());
-               it = vector->InputSubscriptions->erase(it);
-            }
-            else it++;
-         }
-         else it++;
+      if ((Self->LastMovementVector) and (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) and (!processed)) {
+         parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
+         Self->LastMovementVector = 0;
+         if (!lock.error) send_left_event(lock.obj, input);
       }
    }
 
    if (Self->SurfaceID) {
-      parasol::ScopedObjectLock<objSurface> surface(Self->SurfaceID);
-      if (surface.obj->Cursor != cursor) {
-         SetLong(surface.obj, FID_Cursor, cursor);
+      parasol::ScopedObjectLock<objSurface> lock(Self->SurfaceID);
+      if ((!lock.error) and (lock.obj->Cursor != cursor)) {
+         SetLong(lock.obj, FID_Cursor, cursor);
       }
    }
 

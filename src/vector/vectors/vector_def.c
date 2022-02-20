@@ -9,8 +9,8 @@ static const struct FieldDef clVectorVisibility[] = {
 };
 
 static const struct FieldDef clVectorFlags[] = {
-   { "HasFocus", 0x00000002 },
    { "Disabled", 0x00000001 },
+   { "HasFocus", 0x00000002 },
    { NULL, 0 }
 };
 

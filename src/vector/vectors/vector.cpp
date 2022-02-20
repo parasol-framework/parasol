@@ -1289,9 +1289,10 @@ The InnerJoin value is used to make very technical adjustments to the way that p
 corners.  Visually, the impact of this setting is only noticeable when a path forms an awkward corner that crosses
 over itself - usually due to the placement of bezier control points.
 
-The available settings are MITER, ROUND, BEVEL, JAG and INHERIT.  The default of MITER is recommended as it is the
-fastest, but ROUND produces the best results in ensuring that the stroked path is filled correctly.  The most optimal
-approach is to use the default setting and switch to ROUND if issues are noted near the corners of the path.
+The available settings are `MITER`, `ROUND`, `BEVEL`, `JAG` and `INHERIT`.  The default of `MITER` is recommended as
+it is the fastest, but `ROUND` produces the best results in ensuring that the stroked path is filled correctly.  The
+most optimal approach is to use the default setting and switch to `ROUND` if issues are noted near the corners of the
+path.
 
 *********************************************************************************************************************/
 
@@ -1600,7 +1601,7 @@ Opacity: Defines an overall opacity for the vector's graphics.
 
 The overall opacity of a vector can be defined here using a value between 0 and 1.0.  The value will be multiplied
 with other opacity settings as required during rendering.  For instance, when filling a vector the opacity will be
-calculated as #FillOpacity * Opacity.
+calculated as `#FillOpacity * Opacity`.
 
 *********************************************************************************************************************/
 

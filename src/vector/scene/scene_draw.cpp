@@ -38,8 +38,7 @@ public:
 
    void prepare() { }
 
-   void generate(agg::rgba8 * span, int x, int y, unsigned len) const
-   {
+   void generate(agg::rgba8 * span, int x, int y, unsigned len) const {
       do {
          span->a = span->a * alpha;
          ++span;
@@ -855,8 +854,15 @@ public:
          mView = NULL; // Current view
          mRenderBase.clip_box(Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right-1, Bitmap->Clip.Bottom-1);
 
+         Scene->InputBoundaries.clear();
+
          VectorState state;
          draw_vectors(Scene->Viewport, state);
+
+         // Visually debug input boundaries
+         //for (auto const &bounds : Scene->InputBoundaries) {
+         //   gfxDrawRectangle(Bitmap, bounds.BX1, bounds.BY1, bounds.BX2-bounds.BX1, bounds.BY2-bounds.BY1, 0xff00ff, FALSE);
+         //}
       }
    }
 
@@ -950,13 +956,13 @@ private:
                DOUBLE x1 = xmin, y1 = ymin, x2 = xmax, y2 = ymax;
 
                if ((state.mOverflowX IS VOF_HIDDEN) or (state.mOverflowX IS VOF_SCROLL) or (view->vpAspectRatio & ARF_SLICE)) {
-                  if (view->vpBX1 > xmin) x1 = view->vpBX1;
-                  if (view->vpBX2 < xmax) x2 = view->vpBX2;
+                  if (view->vpBX1 > x1) x1 = view->vpBX1;
+                  if (view->vpBX2 < x2) x2 = view->vpBX2;
                }
 
                if ((state.mOverflowY IS VOF_HIDDEN) or (state.mOverflowY IS VOF_SCROLL) or (view->vpAspectRatio & ARF_SLICE)) {
-                  if (view->vpBY1 > ymin) y1 = view->vpBY1;
-                  if (view->vpBY2 < ymax) y2 = view->vpBY2;
+                  if (view->vpBY1 > y1) y1 = view->vpBY1;
+                  if (view->vpBY2 < y2) y2 = view->vpBY2;
                }
 
                mRenderBase.clip_box(x1, y1, x2, y2);
@@ -965,7 +971,7 @@ private:
                   log.traceBranch("Viewport #%d clip region (%d %d %d %d) bounded by (%d %d %d %d)", shape->Head.UniqueID, x1, y1, x2, y2, xmin, ymin, xmax, ymax);
                #endif
 
-               if ((x2 > x1) and (y2 > y1)) { // Continue only if the clipping region is good.
+               if ((x2 > x1) and (y2 > y1)) [[likely]] { // Continue only if the clipping region is good.
                   auto saved_mask = state.mClipMask;
                   if (view->vpClipMask) state.mClipMask = view->vpClipMask;
 
@@ -976,6 +982,15 @@ private:
 
                   auto saved_viewport = mView;  // Save current viewport state and switch to the new viewport state
                   mView = view;
+
+                  if (shape->InputSubscriptions) {
+                     // If the vector reads user input then we record the collision box for the cursor.
+                     if (view->vpBX1 > x1) x1 = view->vpBX1;
+                     if (view->vpBX2 < x2) x2 = view->vpBX2;
+                     if (view->vpBY1 > y1) y1 = view->vpBY1;
+                     if (view->vpBY2 < y2) y2 = view->vpBY2;
+                     Scene->InputBoundaries.emplace_back(shape->Head.UniqueID, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
+                  }
 
                   draw_vectors((objVector *)view->Child, state);
 
@@ -1005,9 +1020,8 @@ private:
                #endif
 
                if (!mView) {
-                  // Vectors outside of a view cannot be drawn, however this is permitted because they may be allocated
-                  // as definitions to be referenced by other objects (e.g. vectors being used as morph paths).
-
+                  // Vectors not inside a viewport cannot be drawn (they may exist as definitions for other objects,
+                  // e.g. as morph paths).
                   return;
                }
 
@@ -1096,6 +1110,38 @@ private:
                      }
                      else agg::render_scanlines(*shape->StrokeRaster, mScanLine, mSolidRender);
                   }
+               }
+
+               if (shape->InputSubscriptions) {
+                  // If the vector reads user input then we record the collision box for the cursor.
+                  DOUBLE xmin = mRenderBase.xmin(), xmax = mRenderBase.xmax();
+                  DOUBLE ymin = mRenderBase.ymin(), ymax = mRenderBase.ymax();
+                  DOUBLE bx1, by1, bx2, by2;
+
+                  if (shape->ClipMask) {
+                     agg::conv_transform<agg::path_storage, agg::trans_affine> path(*shape->ClipMask->ClipPath, shape->Transform);
+                     bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+                  }
+                  else if (shape->BasePath) {
+                     agg::conv_transform<agg::path_storage, agg::trans_affine> path(*shape->BasePath, shape->Transform);
+                     bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+                  }
+                  else {
+                     bx1 = -1;
+                     by1 = -1;
+                     bx2 = -1;
+                     by2 = -1;
+                  }
+
+                  DOUBLE absx = bx1;
+                  DOUBLE absy = by1;
+
+                  if (xmin > bx1) bx1 = xmin;
+                  if (ymin > by1) by1 = ymin;
+                  if (xmax < bx2) bx2 = xmax;
+                  if (ymax < by2) by2 = ymax;
+
+                  Scene->InputBoundaries.emplace_back(shape->Head.UniqueID, bx1, by1, bx2, by2, absx, absy);
                }
 
                state.mClipMask = saved_mask;
