@@ -701,9 +701,8 @@ static ERROR VECTOR_NewMatrix(objVector *Self, struct vecNewMatrix *Args)
 -METHOD-
 PointInPath: Checks if point at (X,Y) is within a vector's path.
 
-This method provides an accurate means of determining if a specific coordinate is inside the path of a vector.  It is
-important to note that in some cases this operation may be computationally expensive, as each pixel normally drawn in
-the path may need to be calculated until the (X,Y) point is hit.
+This method provides an accurate means of determining if a specific coordinate is inside the path of a vector.
+Transforms are taken into account, as are clip masks.
 
 -INPUT-
 double X: The X coordinate of the point.

@@ -111,9 +111,9 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="NotPossible">The vector does not support path generation.</error>
         <error code="NoData">The vector does not have a computable path.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="NotPossible">The vector does not support path generation.</error>
       </result>
     </method>
 
@@ -136,10 +136,10 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
+        <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Function">A call to gfxSubscribeInput() failed.</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
       </result>
     </method>
 
@@ -159,10 +159,10 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
+        <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Function">A call to gfxSubscribeInput() failed.</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
       </result>
     </method>
 
@@ -197,10 +197,10 @@
       </description>
       <result>
         <error code="Okay">The point is in the path.</error>
-        <error code="NoData">The vector is unable to generate a path based on its current values.</error>
         <error code="False">The point is not in the path.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="NoData">The vector is unable to generate a path based on its current values.</error>
         <error code="NoSupport">The vector type does not support path generation.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -409,7 +409,7 @@
       <type lookup="VIJ">INT</type>
       <description>
 <p>The InnerJoin value is used to make very technical adjustments to the way that paths are stroked when they form corners.  Visually, the impact of this setting is only noticeable when a path forms an awkward corner that crosses over itself - usually due to the placement of bezier control points.</p>
-<p>The available settings are MITER, ROUND, BEVEL, JAG and INHERIT.  The default of MITER is recommended as it is the fastest, but ROUND produces the best results in ensuring that the stroked path is filled correctly.  The most optimal approach is to use the default setting and switch to ROUND if issues are noted near the corners of the path.</p>
+<p>The available settings are <code>MITER</code>, <code>ROUND</code>, <code>BEVEL</code>, <code>JAG</code> and <code>INHERIT</code>.  The default of <code>MITER</code> is recommended as it is the fastest, but <code>ROUND</code> produces the best results in ensuring that the stroked path is filled correctly.  The most optimal approach is to use the default setting and switch to <code>ROUND</code> if issues are noted near the corners of the path.</p>
 <types lookup="VIJ"/>
       </description>
     </field>
@@ -515,7 +515,8 @@
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The overall opacity of a vector can be defined here using a value between 0 and 1.0.  The value will be multiplied with other opacity settings as required during rendering.  For instance, when filling a vector the opacity will be calculated as <field>FillOpacity</field> * Opacity.</p>
+<p>The overall opacity of a vector can be defined here using a value between 0 and 1.0.  The value will be multiplied with other opacity settings as required during rendering.  For instance, when filling a vector the opacity will be calculated as <code>
+<field>FillOpacity</field> * Opacity</code>.</p>
       </description>
     </field>
 

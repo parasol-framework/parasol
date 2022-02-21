@@ -406,7 +406,7 @@ fields).  If multiple vectors are using the same ID, repeated calls can be made 
 This is achieved by calling this method on the vector that was last returned as a result.
 
 Please note that searching for string-based ID's is achieved by converting the string to a case-sensitive hash
-with StrHash() and using that as the ID.
+with ~Core.StrHash() and using that as the ID.
 
 -INPUT-
 int ID: The ID to search for.
@@ -862,7 +862,7 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
       if (input->Type IS JET_LEFT_SURFACE) {
          parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
-         if (!lock.error) send_left_event(lock.obj, input);
+         if (lock.granted()) send_left_event(lock.obj, input);
       }
       else if (input->Type IS JET_ENTERED_SURFACE);
       else for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {
@@ -880,7 +880,7 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
          }
 
          parasol::ScopedObjectLock<objVector> lock(bounds.VectorID);
-         if (lock.error) continue;
+         if (!lock.granted()) continue;
          auto vector = lock.obj;
 
          // TODO Additional bounds check against the clip mask, if present.
@@ -910,7 +910,7 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
          if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
             if ((Self->LastMovementVector) and (Self->LastMovementVector != vector->Head.UniqueID)) {
                parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
-               if (!lock.error) send_left_event(lock.obj, input);
+               if (lock.granted()) send_left_event(lock.obj, input);
             }
 
             Self->LastMovementVector = vector->Head.UniqueID;
@@ -926,13 +926,13 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
       if ((Self->LastMovementVector) and (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) and (!processed)) {
          parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
          Self->LastMovementVector = 0;
-         if (!lock.error) send_left_event(lock.obj, input);
+         if (lock.granted()) send_left_event(lock.obj, input);
       }
    }
 
    if (Self->SurfaceID) {
       parasol::ScopedObjectLock<objSurface> lock(Self->SurfaceID);
-      if ((!lock.error) and (lock.obj->Cursor != cursor)) {
+      if (lock.granted() and (lock.obj->Cursor != cursor)) {
          SetLong(lock.obj, FID_Cursor, cursor);
       }
    }

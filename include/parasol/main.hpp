@@ -46,6 +46,7 @@ class ScopedObject { // C++ wrapper for automatically freeing an object
 };
 
 //****************************************************************************
+// Scoped object locker.  Use granted() to confirm that the lock has been granted.
 
 template <class T = struct Head>
 class ScopedObjectLock { // C++ wrapper for automatically releasing an object

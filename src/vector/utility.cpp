@@ -255,8 +255,8 @@ static void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
 
 //********************************************************************************************************************
 // Calculate the boundaries for a branch of the tree and return the combined maximum bound values.
-// NOTE: This function performs a full traversal, so it's specifically calculating the page size and this
-// may extend beyond the viewport boundary.
+// NOTE: This function performs a full traversal (siblings and children) and this may extend beyond the
+// viewport's visible boundary.
 
 static void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds)
 {

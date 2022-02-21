@@ -326,7 +326,7 @@ static void gen_vector_path(objVector *Vector)
       // VectorText transform support is handled after base-path generation.  This is because vector text can be
       // aligned, for which the width and height of the base-path must be known.
 
-      if ((Vector->Dirty & RC_TRANSFORM) AND (Vector->Head.SubID IS ID_VECTORTEXT)) {
+      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->Head.SubID IS ID_VECTORTEXT)) {
          get_text_xy((rkVectorText *)Vector); // Sets FinalX/Y
 
          Vector->Transform.reset();
