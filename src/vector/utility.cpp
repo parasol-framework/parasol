@@ -326,12 +326,13 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 //********************************************************************************************************************
 // Find the first parent of the targeted vector.  Returns NULL if no valid parent is found.
 
-inline static OBJECTPTR get_parent(objVector *Vector)
+inline static objVector * get_parent(objVector *Vector)
 {
+   if (Vector->Head.ClassID != ID_VECTOR) return NULL;
    while (Vector) {
-      if (Vector->Head.ClassID != ID_VECTOR) break;
-      if (!Vector->Parent) Vector = Vector->Prev;
-      else return Vector->Parent;
+      if (!Vector->Parent) Vector = Vector->Prev; // Scan back to the first sibling to find the parent
+      else if (Vector->Parent->ClassID IS ID_VECTOR) return (objVector *)(Vector->Parent);
+      else return NULL;
    }
 
    return NULL;

@@ -9,12 +9,12 @@ static objVectorViewport * get_parent_view(objVector *Vector)
    else {
       auto scan = get_parent(Vector);
       while (scan) {
-         if (scan->SubID IS ID_VECTORVIEWPORT) {
+         if (scan->Head.SubID IS ID_VECTORVIEWPORT) {
             Vector->ParentView = (objVectorViewport *)scan;
             return Vector->ParentView;
          }
-         if (scan->ClassID IS ID_VECTORSCENE) break;
-         else if (scan->ClassID IS ID_VECTOR) scan = ((objVector *)scan)->Parent;
+         else if (scan->Parent->ClassID IS ID_VECTOR) scan = (objVector *)(scan->Parent);
+         else return NULL;
       }
    }
    return NULL;
@@ -196,7 +196,8 @@ static void gen_vector_path(objVector *Vector)
 
       agg::trans_affine transform;
 
-      apply_parent_transforms(Vector, Vector, transform);
+      // TODO Need an answer as to why we skip the viewport's own transforms with the get_parent() call?
+      apply_parent_transforms(Vector, get_parent(Vector), transform);
 
       if (!Vector->BasePath) {
          Vector->BasePath = new (std::nothrow) agg::path_storage;
@@ -429,31 +430,26 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
 
          DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->Head.UniqueID, view->vpFixedRelX, view->vpFixedRelY);
 
-         if (Self IS scan) {
-            // Do not apply align values.  Alignment applies to content of the viewport, not the viewport itself.
+         if ((view->vpViewX) or (view->vpViewY)) {
+            AGGTransform.translate(-view->vpViewX, -view->vpViewY);
          }
-         else {
-            if ((view->vpViewX) or (view->vpViewY)) {
-               AGGTransform.translate(-view->vpViewX, -view->vpViewY);
-            }
 
-            if ((view->vpXScale != 1.0) or (view->vpYScale != 1.0)) {
-               if (std::isnan(view->vpXScale) or std::isnan(view->vpYScale)) {
-                  log.warning("[%d] Invalid viewport scale values: %f, %f", view->Head.UniqueID, view->vpXScale, view->vpYScale);
-               }
-               else {
-                  DBG_TRANSFORM("Viewport scales this vector to %.2f %.2f", view->vpXScale, view->vpYScale);
-                  AGGTransform.scale(view->vpXScale, view->vpYScale);
-               }
+         if ((view->vpXScale != 1.0) or (view->vpYScale != 1.0)) {
+            if (std::isnan(view->vpXScale) or std::isnan(view->vpYScale)) {
+               log.warning("[%d] Invalid viewport scale values: %f, %f", view->Head.UniqueID, view->vpXScale, view->vpYScale);
             }
-
-            for (auto t=scan->Matrices; t; t=t->Next) {
-               AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
+            else {
+               DBG_TRANSFORM("Viewport scales this vector to %.2f %.2f", view->vpXScale, view->vpYScale);
+               AGGTransform.scale(view->vpXScale, view->vpYScale);
             }
-
-            // Children of viewports are affected by the VP's alignment values.
-            AGGTransform.translate(view->vpFixedRelX + view->vpAlignX, view->vpFixedRelY + view->vpAlignY);
          }
+
+         for (auto t=scan->Matrices; t; t=t->Next) {
+            AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
+         }
+
+         // Children of viewports are affected by the VP's alignment values.
+         AGGTransform.translate(view->vpFixedRelX + view->vpAlignX, view->vpFixedRelY + view->vpAlignY);
       }
       else {
          log.trace("Parent vector #%d x/y: %.2f %.2f", scan->Head.UniqueID, scan->FinalX, scan->FinalY);

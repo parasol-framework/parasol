@@ -445,15 +445,7 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
 
    // Find the nearest parent viewport.
 
-   OBJECTPTR scan = get_parent(Self);
-   while (scan) {
-      if (scan->SubID IS ID_VECTORVIEWPORT) {
-         Self->ParentView = (objVectorViewport *)scan;
-         break;
-      }
-      if (scan->ClassID IS ID_VECTOR) scan = ((objVector *)scan)->Parent;
-      else break;
-   }
+   Self->ParentView = get_parent_view(Self);
 
    // Reapply the filter if it couldn't be set prior to initialisation.
    if ((!Self->Filter) and (Self->FilterString)) {
