@@ -1,2 +1,2 @@
 #undef MOD_IDL
-#define MOD_IDL "c.SVF:ALPHA=0x2,AUTOSCALE=0x1\n"
+#define MOD_IDL "c.SVF:AUTOSCALE=0x1,ALPHA=0x2\n"
