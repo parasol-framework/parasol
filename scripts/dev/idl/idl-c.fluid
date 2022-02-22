@@ -18,6 +18,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 
 glOutput = { }
+glActiveRefs = { } -- For cType()
 
 function output(String)
    table.insert(glOutput, nz(String, ''))
@@ -513,8 +514,8 @@ function struct(Name, Options, Def, Append)
       end
 
       glStructures[Name] = {
-         version=Options.version, type=Options.type, comment=Options.comment, fields=fields,
-         restrict=nz(glRestrict, Options.restrict), name = Name
+         version = Options.version, type = Options.type, comment = Options.comment, fields = fields,
+         restrict = nz(glRestrict, Options.restrict), name = Name
       }
    end,
    function(Exception)
@@ -567,6 +568,10 @@ function class(Name, Options, Blueprint, Private)
    local class = registerClass(Name)
    class.name = Name -- The name defined by class() has priority over any name defined by method()
    class.src = Options.src
+   class.references = { }
+
+   glActiveRefs = class.references
+
    if (type(class.src) == 'string') then class.src = { class.src } end -- Convert string to an array of strings
 
    -- Attempt to load the class into memory.  This introduces a circular reference when the module is not yet
@@ -897,7 +902,7 @@ function processField(class, extract)
       if nz(lookup) then
          if (glCustomTypes[lookup]) then
             f.lookup = lookup
-            glCustomTypes[lookup].refCount = nz(glCustomTypes[lookup].refCount, 0) + 1
+            class.references['TYPE:' .. lookup] = 1
          else
             print('Requested lookup "' .. lookup .. '" is not known.')
          end
@@ -1006,7 +1011,7 @@ end
 -- Process the formal field definitions in a class blueprint.
 
 function processClassFields(class, Blueprint, Private)
-   local cdef = ""
+   local cdef = ''
 
    -- Process fields defined in the FDL
 
@@ -1444,7 +1449,7 @@ function cType(Field, Origin)
          Field.type = 'struct ' .. struct
 
          if (glStructures[struct] != nil) then
-            glStructures[struct].refCount = nz(glStructures[struct].refCount, 0) + 1
+            glActiveRefs['STRUCT:' .. struct] = 1
 
             if (glStructures[struct].version != nil) then
                Field.type = Field.type .. 'V' .. glStructures[struct].version
@@ -1487,7 +1492,7 @@ function cType(Field, Origin)
          Field.type = "struct " .. struct
 
          if (glStructures[struct] != nil) then
-            glStructures[struct].refCount = nz(glStructures[struct].refCount, 0) + 1
+            glActiveRefs['STRUCT:' .. struct] = 1
 
             if (glStructures[struct].version != nil) then
                Field.type = Field.type .. "V" .. glStructures[struct].version
@@ -1551,7 +1556,7 @@ function cType(Field, Origin)
          Field.ref      = glCustomTypes[prefix]
          Field.lookup   = prefix
 
-         glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+         glActiveRefs['TYPE:' .. prefix] = 1
          goto finalise
       end
    end
@@ -1565,7 +1570,7 @@ function cType(Field, Origin)
          Field.lookup   = prefix
 
          if (glCustomTypes[prefix]) then
-            glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+            glActiveRefs['TYPE:' .. prefix] = 1
          else
             print('Unknown custom type "' .. prefix .. '"')
          end
@@ -1582,7 +1587,7 @@ function cType(Field, Origin)
          Field.lookup   = prefix
 
          if (glCustomTypes[prefix] != nil) then
-            glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+            glActiveRefs['TYPE:' .. prefix] = 1
          else
             print('Unknown custom type "' .. prefix .. '"')
          end
@@ -1598,7 +1603,7 @@ function cType(Field, Origin)
          Field.ref      = glCustomTypes[prefix]
          Field.lookup   = prefix
 
-         glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+         glActiveRefs['TYPE:' .. prefix] = 1
          goto finalise
       end
    end

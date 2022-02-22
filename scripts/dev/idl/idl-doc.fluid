@@ -113,8 +113,8 @@ function saveDocuments()
          if (cl.meta) then
             local status, err = pcall(function()
                local out = docClass(cl)
-               out = out .. docTypes()
-               out = out .. docStructures()
+               out = out .. docTypes(cl.references)
+               out = out .. docStructures(cl.references)
                out = out .. '</book>\n'
                if nz(out) then
                   local file = obj.new('file', { flags='WRITE|NEW', path=outPath .. 'classes/' .. className:lower() .. '.xml' } )
@@ -139,7 +139,7 @@ end
 -- Used for extracting descriptions, notes etc.  NB: <pre> should be used for multi-line preformatting, while <code>
 -- should be used for in-place code formatting.
 
-function extractParagraph(Input, Caller)
+function extractParagraph(Input, Caller, References)
    Input = Input:trim()
 
    -- Convert dangling XML characters: < > &
@@ -176,10 +176,14 @@ function extractParagraph(Input, Caller)
             action = 'insert'
             line = line:gsub('&(%w*)', function(Lookup)
                if (glStructures[Lookup]) then
-                  glStructures[Lookup].refCount = nz(glStructures[Lookup].refCount, 0) + 1
+                  if References then
+                     References['STRUCT:' .. Lookup] = 1
+                  end
                   return '<struct lookup="' .. Lookup .. '"/>'
                elseif (glCustomTypes[Lookup]) then
-                  glCustomTypes[Lookup].refCount = nz(glCustomTypes[Lookup].refCount, 0) + 1
+                  if References then
+                     References['TYPE:' .. Lookup] = 1
+                  end
                   return '<types lookup="' .. Lookup .. '"/>'
                else
                   print('Unrecognised struct or constant "' .. Lookup .. '"')
@@ -260,10 +264,10 @@ function substituteReferences(String, Class)
 
    String = String:gsub('&([A-Z]%w*)', function(Lookup)
       if (glStructures[Lookup]) then
-         glStructures[Lookup].refCount = nz(glStructures[Lookup].refCount, 0) + 1
+         Class.references['STRUCT:' .. Lookup] = 1
          return '<struct>' .. Lookup .. '</struct>'
       elseif (glCustomTypes[Lookup]) then
-         glCustomTypes[Lookup].refCount = nz(glCustomTypes[Lookup].refCount, 0) + 1
+         Class.references['TYPE:' .. Lookup] = 1
          return '<type>' .. Lookup .. '</type>'
       else
          print('Unrecognised struct or constant "' .. Lookup .. '"')
@@ -397,7 +401,7 @@ function docClass(Class)
    out = out .. '    <include>modules/' .. Class.name:lower() .. '.h</include>\n'
    if nz(Class.date)         then out = out .. '    <date>' .. Class.date .. '</date>\n' end
    if nz(glModule.copyright) then out = out .. '    <copyright>' .. glModule.copyright:escXML() .. '</copyright>\n' end
-   if nz(Class.description)  then out = out .. '    <description>\n' .. extractParagraph(Class.description, Class) .. '</description>\n' end
+   if nz(Class.description)  then out = out .. '    <description>\n' .. extractParagraph(Class.description, Class, Class.references) .. '</description>\n' end
 
    if nz(Class.src) then
       out = out .. '    <source>\n'
@@ -426,7 +430,7 @@ function docClass(Class)
 
             if nz(a.description) then
                out = out .. "      <description>\n"
-               out = out .. extractParagraph(a.description, Class)
+               out = out .. extractParagraph(a.description, Class, Class.references)
                out = out .. "\n      </description>\n"
             end
 
@@ -478,7 +482,7 @@ function docClass(Class)
 
             if nz(method.description) then
                out = out .. '      <description>\n'
-               out = out .. extractParagraph(method.description, Class)
+               out = out .. extractParagraph(method.description, Class, Class.references)
                out = out .. '\n      </description>\n'
             end
 
@@ -548,7 +552,7 @@ function docClass(Class)
 
                local description = f.description
                if (description) then
-                  description = extractParagraph(description, Class)
+                  description = extractParagraph(description, Class, Class.references)
                end
 
                if (f.lookup != nil) then
@@ -711,7 +715,7 @@ end
 
 -- Output custom types - flags, enumerators etc
 
-function docTypes()
+function docTypes(References)
    local out = ''
    local sortedTypes = { }
    for prefix, ct in pairs(glCustomTypes) do
@@ -733,7 +737,11 @@ function docTypes()
          error("Unknowning grouping for custom type, '" .. ct.grouping .. "'")
       end
 
-      if not nz(ct.restrict) and nz(ct.refCount) then
+      if nz(ct.restrict) then
+         -- Ignore private types
+      elseif References and (References['TYPE:' .. ct.prefix] == nil) then
+         -- Type is not referenced
+      else
          out = out .. "    <constants lookup=\"" .. ct.prefix .. '"' .. comment:escXML() .. '>\n'
 
          local sortedValues = { }
@@ -766,9 +774,9 @@ function docTypes()
    return out
 end
 
--- Output structures
+-- Output structures.  Modules need to output all the structures; Classes output structures that are referenced.
 
-function docStructures()
+function docStructures(References)
    local out = '  <structs>\n'
 
    local sortedStructs = { }
@@ -781,8 +789,10 @@ function docStructures()
    for _, struct in ipairs(sortedStructs) do
       if nz(struct.restrict) then
          -- Don't output restricted structures.
-      elseif nz(struct.refCount, 0) == 0 then
+         if (glFeedback == 'verbose') then print(struct.name .. ' is restricted.') end
+      elseif References and (References['STRUCT:' .. struct.name] == nil) then
          -- Don't output unreferenced structures.
+         if (glFeedback == 'verbose') then print(struct.name .. ' is unreferenced.') end
       else
          local comment = ''
          local typeName = ''
