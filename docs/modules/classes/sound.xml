@@ -499,5 +499,12 @@ snd.acActivate()
       <field name="Free" type="BYTE"></field>
     </struct>
 
+    <struct name="VolumeCtl">
+      <field name="Size" type="WORD">The size of the Channels array.</field>
+      <field name="Name" type="char" size="32">Name of the mixer</field>
+      <field name="Flags" type="LONG" lookup="VCF">Special flags identifying the mixer's attributes.</field>
+      <field name="Channels" type="FLOAT" size="1">A variable length array of channel volumes.</field>
+    </struct>
+
   </structs>
 </book>

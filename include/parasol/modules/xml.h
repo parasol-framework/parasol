@@ -13,8 +13,8 @@
 
 // For SetAttrib()
 
-#define XMS_UPDATE_ONLY -2
 #define XMS_NEW -1
+#define XMS_UPDATE_ONLY -2
 #define XMS_UPDATE -3
 
 // Options for the Sort method.

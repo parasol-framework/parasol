@@ -3,10 +3,10 @@
 static const struct FieldDef clResizeButton[] = {
    { "DigitalX", 0x00000001 },
    { "DigitalY", 0x00000002 },
-   { "Button1", 0x00000003 },
    { "Lmb", 0x00000003 },
-   { "Button2", 0x00000004 },
+   { "Button1", 0x00000003 },
    { "Rmb", 0x00000004 },
+   { "Button2", 0x00000004 },
    { "Button3", 0x00000005 },
    { "Mmb", 0x00000005 },
    { "Button4", 0x00000006 },
@@ -49,24 +49,24 @@ static const struct FieldDef clResizeButton[] = {
 };
 
 static const struct FieldDef clResizeDirection[] = {
-   { "All", 0x0000000f },
-   { "Left", 0x00000004 },
    { "Down", 0x00000001 },
    { "Up", 0x00000002 },
+   { "Left", 0x00000004 },
    { "Right", 0x00000008 },
+   { "All", 0x0000000f },
    { NULL, 0 }
 };
 
 static const struct FieldDef clResizeBorder[] = {
    { "Top", 0x00000001 },
+   { "Left", 0x00000002 },
+   { "Right", 0x00000004 },
    { "Bottom", 0x00000008 },
    { "TopLeft", 0x00000010 },
    { "TopRight", 0x00000020 },
    { "BottomLeft", 0x00000040 },
    { "BottomRight", 0x00000080 },
    { "All", 0x000000ff },
-   { "Left", 0x00000002 },
-   { "Right", 0x00000004 },
    { NULL, 0 }
 };
 

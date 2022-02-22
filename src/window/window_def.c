@@ -2,24 +2,24 @@
 
 static const struct FieldDef clWindowFlags[] = {
    { "Disabled", 0x00000001 },
-   { "ForcePos", 0x00000040 },
-   { "Background", 0x00000004 },
    { "SmartLimits", 0x00000002 },
+   { "Background", 0x00000004 },
    { "Video", 0x00000008 },
    { "NoMargins", 0x00000010 },
    { "Borderless", 0x00000020 },
+   { "ForcePos", 0x00000040 },
    { NULL, 0 }
 };
 
 static const struct FieldDef clWindowResizeFlags[] = {
    { "Top", 0x00000001 },
+   { "Left", 0x00000002 },
+   { "Right", 0x00000004 },
    { "Bottom", 0x00000008 },
    { "TopLeft", 0x00000010 },
    { "TopRight", 0x00000020 },
    { "BottomLeft", 0x00000040 },
    { "BottomRight", 0x00000080 },
-   { "Left", 0x00000002 },
-   { "Right", 0x00000004 },
    { "All", 0x000000ff },
    { NULL, 0 }
 };
@@ -66,4 +66,4 @@ static const struct ActionArray clWindowActions[] = {
 };
 
 #undef MOD_IDL
-#define MOD_IDL "c.WNF:NO_MARGINS=0x10,SMART_LIMITS=0x2,BORDERLESS=0x20,BACKGROUND=0x4,FORCE_POS=0x40,VIDEO=0x8,DISABLED=0x1\nc.WOR:PORTRAIT=0x1,LANDSCAPE=0x2,ANY=0x0\n"
+#define MOD_IDL "c.WNF:BACKGROUND=0x4,VIDEO=0x8,DISABLED=0x1,NO_MARGINS=0x10,FORCE_POS=0x40,SMART_LIMITS=0x2,BORDERLESS=0x20\nc.WOR:LANDSCAPE=0x2,ANY=0x0,PORTRAIT=0x1\n"

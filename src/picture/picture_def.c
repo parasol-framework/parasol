@@ -2,17 +2,17 @@
 
 static const struct FieldDef clPictureFlags[] = {
    { "ResizeX", 0x00000001 },
+   { "NoPalette", 0x00000002 },
+   { "Scalable", 0x00000004 },
+   { "ResizeY", 0x00000008 },
+   { "Resize", 0x00000009 },
    { "New", 0x00000010 },
    { "Mask", 0x00000020 },
-   { "Scalable", 0x00000004 },
-   { "ForceAlpha32", 0x00000100 },
    { "Alpha", 0x00000040 },
-   { "ResizeY", 0x00000008 },
-   { "NoPalette", 0x00000002 },
-   { "Resize", 0x00000009 },
    { "Lazy", 0x00000080 },
+   { "ForceAlpha32", 0x00000100 },
    { NULL, 0 }
 };
 
 #undef MOD_IDL
-#define MOD_IDL "c.PCF:RESIZE_Y=0x8,NEW=0x10,MASK=0x20,ALPHA=0x40,LAZY=0x80,RESIZE_X=0x1,FORCE_ALPHA_32=0x100,NO_PALETTE=0x2,RESIZE=0x9,SCALABLE=0x4\n"
+#define MOD_IDL "c.PCF:NEW=0x10,MASK=0x20,ALPHA=0x40,LAZY=0x80,RESIZE_X=0x1,FORCE_ALPHA_32=0x100,NO_PALETTE=0x2,SCALABLE=0x4,RESIZE=0x9,RESIZE_Y=0x8\n"

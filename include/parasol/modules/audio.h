@@ -59,12 +59,12 @@
 
 // These audio bit formats are supported by AddSample and AddStream.
 
-#define SFM_S16_BIT_STEREO 4
+#define SFM_BIG_ENDIAN 0x80000000
 #define SFM_U8_BIT_MONO 1
-#define SFM_END 5
 #define SFM_S16_BIT_MONO 2
 #define SFM_U8_BIT_STEREO 3
-#define SFM_BIG_ENDIAN 0x80000000
+#define SFM_S16_BIT_STEREO 4
+#define SFM_END 5
 
 // Loop modes for the AudioLoop structure.
 

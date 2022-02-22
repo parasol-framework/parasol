@@ -1109,15 +1109,15 @@ struct Edges {
 
 // Reserved Public Memory identifiers.
 
+#define RPM_SharedObjects -1000
+#define RPM_Audio -1001
+#define RPM_Clipboard -1002
+#define RPM_X11 -1003
+#define RPM_AlphaBlend -1004
 #define RPM_XWindowLookup -1005
 #define RPM_FocusList -1006
 #define RPM_InputEvents -1007
 #define RPM_DisplayInfo -1008
-#define RPM_SharedObjects -1000
-#define RPM_Audio -1001
-#define RPM_X11 -1003
-#define RPM_AlphaBlend -1004
-#define RPM_Clipboard -1002
 
 #define MAX_FILENAME 256
 
@@ -1136,21 +1136,21 @@ struct Edges {
 
 // Reserved message ID's that are handled internally.
 
-#define MSGID_THREAD_ACTION 91
 #define MSGID_WAIT_FOR_OBJECTS 90
-#define MSGID_DEBUG 95
-#define MSGID_QUIT 1000
-#define MSGID_BREAK 102
-#define MSGID_COMMAND 101
-#define MSGID_EXPOSE 100
-#define MSGID_CORE_END 100
-#define MSGID_ACTION 99
-#define MSGID_SET_FIELD 98
-#define MSGID_GET_FIELD 97
-#define MSGID_ACTION_RESULT 96
-#define MSGID_EVENT 94
-#define MSGID_VALIDATE_PROCESS 93
+#define MSGID_THREAD_ACTION 91
 #define MSGID_THREAD_CALLBACK 92
+#define MSGID_VALIDATE_PROCESS 93
+#define MSGID_EVENT 94
+#define MSGID_DEBUG 95
+#define MSGID_ACTION_RESULT 96
+#define MSGID_GET_FIELD 97
+#define MSGID_SET_FIELD 98
+#define MSGID_ACTION 99
+#define MSGID_CORE_END 100
+#define MSGID_EXPOSE 100
+#define MSGID_COMMAND 101
+#define MSGID_BREAK 102
+#define MSGID_QUIT 1000
 
 // Flags for ListTasks()
 
@@ -1250,43 +1250,6 @@ struct Edges {
 
 // Raw key codes
 
-#define K_BREAK 123
-#define K_HOME 111
-#define K_PAGE_UP 112
-#define K_PAGE_DOWN 113
-#define K_SELECT 115
-#define K_EXECUTE 116
-#define K_INSERT 117
-#define K_MENU 120
-#define K_FIND 121
-#define K_CANCEL 122
-#define K_NUM_LOCK 124
-#define K_PRT_SCR 125
-#define K_NP_ENTER 126
-#define K_SYSRQ 127
-#define K_F18 128
-#define K_F19 129
-#define K_F20 130
-#define K_WIN_CONTROL 131
-#define K_VOLUME_UP 132
-#define K_VOLUME_DOWN 133
-#define K_BACK 134
-#define K_END 114
-#define K_END_CALL 136
-#define K_CAMERA 137
-#define K_AT 138
-#define K_PLUS 139
-#define K_LENS_FOCUS 140
-#define K_STOP 141
-#define K_PREVIOUS 143
-#define K_FORWARD 144
-#define K_REWIND 145
-#define K_REDO 119
-#define K_STAR 147
-#define K_POUND 148
-#define K_PLAY 149
-#define K_LIST_END 150
-#define K_K 11
 #define K_A 1
 #define K_B 2
 #define K_C 3
@@ -1297,6 +1260,7 @@ struct Edges {
 #define K_H 8
 #define K_I 9
 #define K_J 10
+#define K_K 11
 #define K_L 12
 #define K_M 13
 #define K_N 14
@@ -1307,7 +1271,11 @@ struct Edges {
 #define K_S 19
 #define K_T 20
 #define K_U 21
+#define K_V 22
 #define K_W 23
+#define K_X 24
+#define K_Y 25
+#define K_Z 26
 #define K_ONE 27
 #define K_TWO 28
 #define K_THREE 29
@@ -1318,7 +1286,7 @@ struct Edges {
 #define K_EIGHT 34
 #define K_NINE 35
 #define K_ZERO 36
-#define K_V 22
+#define K_REVERSE_QUOTE 37
 #define K_MINUS 38
 #define K_EQUALS 39
 #define K_L_SQUARE 40
@@ -1326,8 +1294,8 @@ struct Edges {
 #define K_SEMI_COLON 42
 #define K_APOSTROPHE 43
 #define K_COMMA 44
-#define K_PERIOD 45
 #define K_DOT 45
+#define K_PERIOD 45
 #define K_SLASH 46
 #define K_BACK_SLASH 47
 #define K_SPACE 48
@@ -1343,11 +1311,11 @@ struct Edges {
 #define K_NP_9 58
 #define K_NP_MULTIPLY 59
 #define K_NP_PLUS 60
-#define K_NP_SEPARATOR 61
 #define K_NP_BAR 61
+#define K_NP_SEPARATOR 61
 #define K_NP_MINUS 62
 #define K_NP_DECIMAL 63
-#define K_X 24
+#define K_NP_DOT 63
 #define K_NP_DIVIDE 64
 #define K_L_CONTROL 65
 #define K_R_CONTROL 66
@@ -1380,13 +1348,6 @@ struct Edges {
 #define K_MACRO 93
 #define K_NP_PLUS_MINUS 94
 #define K_LESS_GREATER 95
-#define K_Y 25
-#define K_Z 26
-#define K_MUTE 146
-#define K_NEXT 142
-#define K_CALL 135
-#define K_REVERSE_QUOTE 37
-#define K_NP_DOT 63
 #define K_UP 96
 #define K_DOWN 97
 #define K_RIGHT 98
@@ -1402,7 +1363,46 @@ struct Edges {
 #define K_ESCAPE 108
 #define K_DELETE 109
 #define K_CLEAR 110
+#define K_HOME 111
+#define K_PAGE_UP 112
+#define K_PAGE_DOWN 113
+#define K_END 114
+#define K_SELECT 115
+#define K_EXECUTE 116
+#define K_INSERT 117
 #define K_UNDO 118
+#define K_REDO 119
+#define K_MENU 120
+#define K_FIND 121
+#define K_CANCEL 122
+#define K_BREAK 123
+#define K_NUM_LOCK 124
+#define K_PRT_SCR 125
+#define K_NP_ENTER 126
+#define K_SYSRQ 127
+#define K_F18 128
+#define K_F19 129
+#define K_F20 130
+#define K_WIN_CONTROL 131
+#define K_VOLUME_UP 132
+#define K_VOLUME_DOWN 133
+#define K_BACK 134
+#define K_CALL 135
+#define K_END_CALL 136
+#define K_CAMERA 137
+#define K_AT 138
+#define K_PLUS 139
+#define K_LENS_FOCUS 140
+#define K_STOP 141
+#define K_NEXT 142
+#define K_PREVIOUS 143
+#define K_FORWARD 144
+#define K_REWIND 145
+#define K_MUTE 146
+#define K_STAR 147
+#define K_POUND 148
+#define K_PLAY 149
+#define K_LIST_END 150
 
 struct ObjectSignal {
    OBJECTPTR Object;

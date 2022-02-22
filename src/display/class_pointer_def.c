@@ -30,9 +30,9 @@ static const struct FieldDef clPointerCursorID[] = {
 };
 
 static const struct FieldDef clPointerFlags[] = {
-   { "Anchor", 0x00000004 },
-   { "Visible", 0x00000002 },
    { "Unused", 0x00000001 },
+   { "Visible", 0x00000002 },
+   { "Anchor", 0x00000004 },
    { NULL, 0 }
 };
 
