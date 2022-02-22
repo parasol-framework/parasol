@@ -51,6 +51,20 @@
   </function>
 
   <types>
+    <constants lookup="ACF" comment="Activation flags">
+      <const name="DOUBLE_CLICK">Double clicking on any line will create an Activate action.</const>
+      <const name="MOVEMENT">Moving to a new line cause activation.</const>
+      <const name="RELEASE">Releasing a mouse button will create an Activate action.</const>
+      <const name="SENSITIVE">Synonym for SINGLE_CLICK | MOVEMENT</const>
+      <const name="SINGLE_CLICK">Single clicking on any line will create an Activate action.</const>
+    </constants>
+
+    <constants lookup="AXIS" comment="Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)">
+      <const name="X"/>
+      <const name="Y"/>
+      <const name="Z"/>
+    </constants>
+
     <constants lookup="BHS">
       <const name="ENTERED">The cursor has just entered the button's area</const>
       <const name="INSIDE">The cursor is inside the button's area</const>
@@ -98,6 +112,16 @@
       <const name="SHOW_ICONS">Show icons in the dropdown list.</const>
     </constants>
 
+    <constants lookup="CT">
+      <const name="AUDIO"/>
+      <const name="DATA"/>
+      <const name="END"/>
+      <const name="FILE"/>
+      <const name="IMAGE"/>
+      <const name="OBJECT"/>
+      <const name="TEXT"/>
+    </constants>
+
     <constants lookup="INF" comment="Flags for the Input class.">
       <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
       <const name="DISABLED">Disable on creation.</const>
@@ -106,6 +130,11 @@
       <const name="FIXED_LABEL_WIDTH">Indicates that the LabelWidth field was defined by the client.</const>
       <const name="SECRET">Used for secret user entry (passwords).</const>
       <const name="SELECT_TEXT">Select all text when the input box is shown for the first time.</const>
+    </constants>
+
+    <constants lookup="MENUFADE">
+      <const name="FADE_IN">The menu will fade in to the foreground.</const>
+      <const name="FADE_OUT">The menu will fade out of the foreground.</const>
     </constants>
 
     <constants lookup="MIF" comment="Flags for MenuItems.">
@@ -137,6 +166,27 @@
       <const name="SHOW_IMAGES">Allow for an image column on the left.</const>
       <const name="SHOW_KEYS">Print key controls on the right.</const>
       <const name="SORT">Sort all items by name.</const>
+    </constants>
+
+    <constants lookup="SD" comment="Scroll directions.">
+      <const name="NEGATIVE"/>
+      <const name="POSITIVE"/>
+    </constants>
+
+    <constants lookup="SLF" comment="Flags for SelectCallback">
+      <const name="ACTIVE">The most recently active tag has changed.</const>
+      <const name="CLICK">Item was clicked - see ClickX and ClickY for coordinates.</const>
+      <const name="INVERTED">Change is due to an inverted selection.</const>
+      <const name="KEYPRESS">Item was selected by a keypress.</const>
+      <const name="MANUAL">Item was manually selected (by the program, not the user).</const>
+      <const name="MOVED">Change is due to the item being moved.</const>
+      <const name="MULTIPLE">Multiple items were selected.</const>
+      <const name="SELECTED">A tag has been selected and is now highlighted.</const>
+    </constants>
+
+    <constants lookup="SO" comment="Direction options">
+      <const name="HORIZONTAL"/>
+      <const name="VERTICAL"/>
     </constants>
 
     <constants lookup="TF" comment="Flags for the TabFocus class.">
@@ -171,6 +221,43 @@
       <const name="TAB_KEY">If the tab key is pressed, print the tab character.</const>
       <const name="VARIABLE">This flag forces a text object to recalculate any variable references in its string data whenever a redraw occurs.  Such references are indicated through square brackets, e.g. [desktop.width].  Refer to the StrEvaluate() function in the Strings module for more information.</const>
       <const name="WORDWRAP">Enables word wrapping.</const>
+    </constants>
+
+    <constants lookup="VGF" comment="Graphics options (normally defined by the template)">
+      <const name="ALT_GROUP">Alternate the group header graphics.</const>
+      <const name="BRANCHES">Draw grey tree branches.</const>
+      <const name="DRAW_TABLE">Draw the view as a table (the basic format is the same, graphics are different).</const>
+      <const name="GROUP_SHADOW">Draw a shadow underneath the group graphics headers.</const>
+      <const name="HAIRLINES">Draw a hairline between each column.</const>
+      <const name="LINE_BREAKS">Draw a line break between each view item.</const>
+      <const name="NO_BORDER">Do not draw a border around column headers when in table mode.</const>
+      <const name="OUTLINE_TITLE">Draw black outline around title text.</const>
+      <const name="STRIPES">Draw stripes in group titles.</const>
+    </constants>
+
+    <constants lookup="VIEW" comment="List options">
+      <const name="COLUMN">Long list with detail columns.</const>
+      <const name="COLUMN_TREE">This mode combines the column and tree modes.  The view displays the layout and style of normal column mode, but the first column is used to display and manage a tree hierarchy.  The tree can be expanded and collapsed just as in the standard tree mode.</const>
+      <const name="DOCUMENT">Document mode allows view data to be passed to a document object for display.  You are required to provide a document object that is pre-loaded with a template capable of processing input from the view object.  Refer to the Document field for more information.</const>
+      <const name="GROUP_TREE">Similar to tree view, but root level nodes are drawn as a headline.</const>
+      <const name="ICON">Similar to list-view but with large icons, arranged from left to right.</const>
+      <const name="LIST">Standard list view with small icons, arranged from top to bottom.</const>
+      <const name="LONG_LIST">This type is the same as the LIST view but the items will not wrap back to the top of the view when the bottom edge of the surface is encountered.</const>
+      <const name="TREE">Tree mode can be used if the items are arranged in a hierarchy, where items can be embedded within items.  The tree view provides small buttons that the user can click to expand the tree and view hidden items.</const>
+    </constants>
+
+    <constants lookup="VWF" comment="View flags.">
+      <const name="AUTO_DESELECT">Deselects a highlighted item when it is activated by mouse click or enter key.</const>
+      <const name="DRAG_DROP">Enables drag and drop for items in the view. In this mode, multi-select is only possible if the shift or ctrl keys are held while using the mouse.</const>
+      <const name="MULTI_SELECT">Allow multiple item selections without having to hold the shift key.</const>
+      <const name="NOTIFY_ON_CLEAR">If the view should activate itself when cleared, set this flag. By default, activation normally only occurs when an item is double-clicked or when sensitive mode is enabled.</const>
+      <const name="NO_ICONS">Do not load or show any icons.</const>
+      <const name="NO_SELECT">Stop the user from selecting items.</const>
+      <const name="NO_SELECT_JMP">When a new item is selected, the view will jump to that item if it is not completely visible to the user. Setting this flag will turn off this behaviour.</const>
+      <const name="NO_SORTING">No user sorting, e.g. in column mode.</const>
+      <const name="SENSITIVE">Sensitive mode will activate child objects when the user single-clicks with the mouse (by default, child activation only occurs with double-clicks).</const>
+      <const name="USER_DRAG">Enable drag and drop only if the user prefers it.</const>
+      <const name="WIDTH_RESET">Always reset column widths when the Columns field is set.</const>
     </constants>
 
   </types>

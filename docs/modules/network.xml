@@ -141,6 +141,10 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
       <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
     </constants>
 
+    <constants lookup="NSL" comment="Tags for SetSSL().">
+      <const name="CONNECT">Initiate an SSL connection on this socket.</const>
+    </constants>
+
     <constants lookup="NTC" comment="NetSocket states">
       <const name="CONNECTED">There is an active connection at present.</const>
       <const name="CONNECTING">A connection is being established.</const>
@@ -148,8 +152,50 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
       <const name="DISCONNECTED">There is no connection.</const>
     </constants>
 
+    <constants lookup="SCV" comment="These error codes for certificate validation match the OpenSSL error codes (X509 definitions)">
+      <const name="AKID_ISSUER_SERIAL_MISMATCH"/>
+      <const name="AKID_SKID_MISMATCH"/>
+      <const name="APPLICATION_VERIFICATION"/>
+      <const name="CERT_CHAIN_TOO_LONG"/>
+      <const name="CERT_HAS_EXPIRED"/>
+      <const name="CERT_NOT_YET_VALID"/>
+      <const name="CERT_REJECTED"/>
+      <const name="CERT_REVOKED"/>
+      <const name="CERT_SIGNATURE_FAILURE"/>
+      <const name="CERT_UNTRUSTED"/>
+      <const name="CRL_HAS_EXPIRED"/>
+      <const name="CRL_NOT_YET_VALID"/>
+      <const name="CRL_SIGNATURE_FAILURE"/>
+      <const name="DEPTH_ZERO_SELF_SIGNED_CERT"/>
+      <const name="ERROR_IN_CERT_NOT_AFTER_FIELD"/>
+      <const name="ERROR_IN_CERT_NOT_BEFORE_FIELD"/>
+      <const name="ERROR_IN_CRL_LAST_UPDATE_FIELD"/>
+      <const name="ERROR_IN_CRL_NEXT_UPDATE_FIELD"/>
+      <const name="INVALID_CA"/>
+      <const name="INVALID_PURPOSE"/>
+      <const name="KEYUSAGE_NO_CERTSIGN"/>
+      <const name="OK"/>
+      <const name="OUT_OF_MEM"/>
+      <const name="PATH_LENGTH_EXCEEDED"/>
+      <const name="SELF_SIGNED_CERT_IN_CHAIN"/>
+      <const name="SUBJECT_ISSUER_MISMATCH"/>
+      <const name="UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY"/>
+      <const name="UNABLE_TO_DECRYPT_CERT_SIGNATURE"/>
+      <const name="UNABLE_TO_DECRYPT_CRL_SIGNATURE"/>
+      <const name="UNABLE_TO_GET_CRL"/>
+      <const name="UNABLE_TO_GET_ISSUER_CERT"/>
+      <const name="UNABLE_TO_GET_ISSUER_CERT_LOCALLY"/>
+      <const name="UNABLE_TO_VERIFY_LEAF_SIGNATURE"/>
+    </constants>
+
   </types>
   <structs>
+    <struct name="DNSEntry">
+      <field name="HostName" type="CSTRING"></field>
+      <field name="Addresses" type="struct IPAddress *">IP address list</field>
+      <field name="TotalAddresses" type="LONG">Total number of IP addresses</field>
+    </struct>
+
     <struct name="IPAddress">
       <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
       <field name="Type" type="LONG" lookup="IPADDR"></field>

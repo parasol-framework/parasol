@@ -145,74 +145,10 @@
       <const name="SHARED">The lock will be shared between foreign processes.</const>
     </constants>
 
-    <constants lookup="CCF" comment="Class categories">
-      <const name="AUDIO">Audio classes interface with audio hardware and drivers for audio playback and recording purposes.</const>
-      <const name="COMMAND">Command classes perform specific procedures, like copying or moving a file, managing volumes or executing a program.</const>
-      <const name="DATA">Data classes parse, query and manipulate data.</const>
-      <const name="DRAWABLE">Drawable classes provide graphical areas that are designed to be drawn to.</const>
-      <const name="EFFECT">Effect classes draw graphics and/or play audio for non-productive demonstration purposes.</const>
-      <const name="FILESYSTEM">FileSystem classes are based on file management and interaction with file based data.</const>
-      <const name="GRAPHICS">Graphics classes provide graphical manipulation and drawing services to developers.</const>
-      <const name="GUI">GUI classes are used in the development of graphical user interfaces.</const>
-      <const name="IO">IO classes manage hardware and software based input and output.</const>
-      <const name="MISC">Miscellaneous classes do not fit into any of the other available categories.</const>
-      <const name="MULTIMEDIA"/>
-      <const name="NETWORK">Network classes interface with network drivers to simplify network communications for the developer.</const>
-      <const name="SYSTEM">System classes are designed to provide low-level services related to system management.</const>
-      <const name="TOOL">Tool classes are focussed on providing interactive services to the user.</const>
-    </constants>
-
     <constants lookup="CF" comment="Compression stream formats">
       <const name="DEFLATE">The 'deflate' format</const>
       <const name="GZIP">The 'gzip' format</const>
       <const name="ZLIB">The 'zlib' format</const>
-    </constants>
-
-    <constants lookup="CLF" comment="Flags for the MetaClass.">
-      <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).</const>
-      <const name="PRIVATE_ONLY">Do not allow shared-memory instances of the class (private-shared objects will still be possible).</const>
-      <const name="PROMOTE_INTEGRAL">Promote class support for any integral object defined in the class definition structure.</const>
-      <const name="PUBLIC_OBJECTS">Forces all class objects to be allocated in shared memory.</const>
-      <const name="SHARED_OBJECTS">Forces all objects of this class to be shared.</const>
-      <const name="SHARED_ONLY">Forces all objects of this class to be shared.</const>
-      <const name="XML_CONTENT">Script processing should treat any object content as XML.</const>
-    </constants>
-
-    <constants lookup="CMF" comment="Compression flags">
-      <const name="APPLY_SECURITY">When decompressing, apply individual file permissions if they are available in the compression file.</const>
-      <const name="CREATE_FILE">Create a new archive only if the source file does not already exist.</const>
-      <const name="NEW">Force the creation of a new file archive.  Any existing file data at the target location will be destroyed.</const>
-      <const name="NO_LINKS">Treat symbolic links as normal files/folders.</const>
-      <const name="PASSWORD">A password has been set on the object.</const>
-      <const name="READ_ONLY">Forces read-only access, which is strongly recommended if an existing archive is being opened with no modifications intended.  If this flag is not set, initialisation can fail if the user does not have write access to the source file.</const>
-    </constants>
-
-    <constants lookup="CNF" comment="Flags for the Config class.">
-      <const name="AUTO_SAVE">When the configuration object is freed, automatically save the configuration data back to the original file source.</const>
-      <const name="NEW">On initialisation, do not load any data from the referenced configuration file.</const>
-      <const name="OPTIONAL_FILES">Files are optional (do not fail if a requested file does not exist).</const>
-      <const name="STRIP_QUOTES">Removes quotes from key values that are quote-encapsulated.</const>
-    </constants>
-
-    <constants lookup="DEVICE">
-      <const name="COMPACT_DISC">Compact disc style device</const>
-      <const name="FLOPPY_DISK">Floppy disk style device</const>
-      <const name="HARD_DISK">Hard disk style device</const>
-      <const name="MEMORY">Device is RAM, ROM, WORM, NVRAM, flashdisk or other form of memory.  Does not guarantee a fast connection as it could be over a slow USB 1.1 connection for example</const>
-      <const name="MODEM">Device is a modem.</const>
-      <const name="NETWORK">Device represents a network link</const>
-      <const name="PRINTER">Device is a paper-based printer.</const>
-      <const name="PRINTER_3D">Device is a three dimensional printer.</const>
-      <const name="READ">Device is readable</const>
-      <const name="REMOVABLE">Device media is removable from the hardware</const>
-      <const name="REMOVEABLE">Device media is removable from the hardware</const>
-      <const name="SCANNER">Device is a two dimensional scanner.</const>
-      <const name="SCANNER_3D">Device is a three dimensional scanner.</const>
-      <const name="SOFTWARE">Device is virtual/software defined</const>
-      <const name="TAPE">Tape/Stream style device</const>
-      <const name="TEMPORARY">All storage is temporary</const>
-      <const name="USB">Removable USB storage device.  May be further qualified by DEVICE_HARDDISK, DEVICE_FLOPPYDISK etc</const>
-      <const name="WRITE">Device is writeable</const>
     </constants>
 
     <constants lookup="EVG" comment="Event categories.">
@@ -229,38 +165,6 @@
       <const name="POWER">Power Management - can also include app-specific events relating to resource management.</const>
       <const name="SYSTEM">System-wide events</const>
       <const name="USER">User activity events (such as user login).</const>
-    </constants>
-
-    <constants lookup="FDB" comment="Feedback event indicators.">
-      <const name="COMPRESS_FILE"/>
-      <const name="DECOMPRESS_FILE"/>
-      <const name="DECOMPRESS_OBJECT"/>
-      <const name="REMOVE_FILE"/>
-    </constants>
-
-    <constants lookup="FDT" comment="Flags for the SetDate() file method.">
-      <const name="ACCESSED">The date on which the file was last accessed by a user or application.</const>
-      <const name="ARCHIVED">The date on which the file was most recently archived.  Not supported by most filesystems.</const>
-      <const name="CREATED">The date on which the file was created.  On some host platforms this datestamp may be read-only.</const>
-      <const name="MODIFIED">The date on which the file was last modified.</const>
-    </constants>
-
-    <constants lookup="FL" comment="File flags">
-      <const name="APPROXIMATE">Allows fuzzy matching of the file path when opening an existing file.  This means that the file extension will be ignored; for instance attempting to open a file of 'screenshot.png' when only a file name of 'screenshot.jpg' exists in the same folder, the 'screenshot.jpg' file will be opened instead.  If multiple files could potentially match to the file name, the file object will select the first match that is encountered.</const>
-      <const name="BUFFER">Activates a special mode in which the file data is stored in a memory buffer rather than a disk file.  Set the Size field to a value of at least 1 so that the initial buffer size is configured.  In this mode many of the available file operations are meaningless except for the Read, Write and Seek actions.</const>
-      <const name="DEVICE">The file is a system device (must set if opening a device for read/write operations)</const>
-      <const name="DIRECTORY">The file object represents a folder.</const>
-      <const name="EXCLUDE_FILES">Exclude files when scanning this folder.</const>
-      <const name="EXCLUDE_FOLDERS">Exclude folders when scanning this folder.</const>
-      <const name="FILE">Explicitly declares the file object as an entity that stores content (as opposed to a device or folder for example).</const>
-      <const name="FOLDER">The file object represents a folder.</const>
-      <const name="LINK">Read-Only.  Indicates that the file is a symbolic link or shortcut to another file.</const>
-      <const name="LOOP">In loop mode, the file object's position marker for read/write operations is allowed to extend past the actual file size.  Any read/write operation beyond the file size will loop back to the file at a corrected offset - for example, reading position 330 of a 100 byte file will start the operation from the 30th byte.  Loop mode does not affect any other area besides the read, write and seek operations.  The loop feature is typically used to create multimedia data streams with minimal effort.</const>
-      <const name="NEW">Required when creating a new file.  If a file with the same name exists, its contents will be destroyed. If however the existing file is locked, the initalisation process will fail.</const>
-      <const name="READ">Required if the file needs to be opened for read access.</const>
-      <const name="RESET_DATE">For internal use only</const>
-      <const name="STREAM">File data is streamed (e.g. PIPE, FIFO, socket) and may be accessed locally or via a network.</const>
-      <const name="WRITE">Prepares a file for writing data, starting at byte position 0.  To start writing from the end of a file, use the Seek action after the file has been initialised.</const>
     </constants>
 
     <constants lookup="FOF" comment="Flags that can be passed to FindObject()">
@@ -326,30 +230,6 @@
       <const name="UNTRACKED">Allocating an untracked memory block will prevent the memory block from being tracked back to the object holding the current context.</const>
       <const name="VIDEO">The memory space is reserved by a video device such as a graphics card for display purposes, e.g. framebuffer.</const>
       <const name="WRITE">The memory is explicitly marked as writeable.</const>
-    </constants>
-
-    <constants lookup="MFF" comment="Flags for the File Watch() method.">
-      <const name="ATTRIB">File permissions or datestamp changed.</const>
-      <const name="CLOSED">An opened file has been closed.</const>
-      <const name="CREATE">New file/link created or renamed in folder.</const>
-      <const name="DEEP">Receive notifications from sub-folders (Windows only).</const>
-      <const name="DELETE">Existing file deleted</const>
-      <const name="FILE">File identifier; if passed to Watch() then indicates a preference for file events only.</const>
-      <const name="FOLDER">Folder identifier; if passed to Watch() then indicates a preference for folder events only.</const>
-      <const name="MODIFY">File modified via write or truncation.</const>
-      <const name="MOVED">Existing file moved or renamed.</const>
-      <const name="OPENED">Existing file was opened.</const>
-      <const name="READ">File was accessed (read).</const>
-      <const name="RENAME">Existing file moved or renamed.</const>
-      <const name="SELF">Event applies to the monitored folder and not a contained item</const>
-      <const name="UNMOUNT">Host filesystem was unmounted.</const>
-      <const name="WRITE">File modified via write or truncation.</const>
-    </constants>
-
-    <constants lookup="MOF" comment="Module flags">
-      <const name="LINK_LIBRARY">Module refers to a symbolic link library (e.g. libz DLL or SO)</const>
-      <const name="STATIC">This flag prevents the loaded module code from being unloaded when the module object is freed.  This may be needed in cases where a module is designed with the presumption that it will remain in memory after being loaded by the developer.</const>
-      <const name="SYSTEM_PROBE">Indicates that the module is being probed.  Do not use outside of the core library.</const>
     </constants>
 
     <constants lookup="MSF" comment="Message flags.">
@@ -510,11 +390,6 @@
       <const name="SORT">Sort the resulting list.</const>
     </constants>
 
-    <constants lookup="SCF" comment="Script flags">
-      <const name="DEBUG">Enables execution debugging.  More information will be printed to the console in this mode.</const>
-      <const name="EXIT_ON_ERROR">The script will automatically terminate its execution process if an error is detected.</const>
-    </constants>
-
     <constants lookup="SEF" comment="Optional flags for StrEvaluate()">
       <const name="IGNORE_QUOTES">Areas marked with double-quotes will not be translated.  The quote characters will also not be removed.</const>
       <const name="KEEP_ESCAPE">Escaped string symbols will not be altered if this flag is used.</const>
@@ -534,24 +409,6 @@
       <const name="HEX">The string represents a hexadecimal number.</const>
       <const name="NUMBER">The string represents a whole number.</const>
       <const name="STRING">The string represents plain-text.</const>
-    </constants>
-
-    <constants lookup="THF" comment="Thread flags">
-      <const name="AUTO_FREE">Automatically destroy the Thread object when the user routine has completed.</const>
-      <const name="MSG_HANDLER">Allow the thread to handle messages that target objects that it has created.</const>
-    </constants>
-
-    <constants lookup="TSF" comment="Task flags">
-      <const name="ATTACHED">Forces new task to be attached to the parent (child will close when parent closes).</const>
-      <const name="DEBUG">Additional debug messages will be printed during normal usage of the task class when this flag is set.</const>
-      <const name="DETACHED">Forces new task to be detached from the parent.</const>
-      <const name="FOREIGN">Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.</const>
-      <const name="PIPE">Enable the output pipe to the launched process so that it can read data.</const>
-      <const name="PRIVILEGED">During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.</const>
-      <const name="QUIET">Setting this flag will divert all process output to /dev/null or the nearest equivalent for non-Unix systems.</const>
-      <const name="RESET_PATH">If set, the executed process will start in its own folder rather than the folder of the parent process.</const>
-      <const name="SHELL">Enables shell mode.  On Unix systems, this means that a shell (usually BASH) will be used to launch the process.</const>
-      <const name="WAIT">This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.</const>
     </constants>
 
     <constants lookup="VLF" comment="VlogF flags">
@@ -581,37 +438,6 @@
       <field name="ClassID" type="CLASSID">The class ID of the referenced object.</field>
     </struct>
 
-    <struct name="CompressedItem">
-      <field name="OriginalSize" type="LARGE">Original size of the file</field>
-      <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
-      <field name="Next" type="struct CompressedItem *">Used only if this is a linked-list.</field>
-      <field name="Path" type="CSTRING">Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</field>
-      <field name="Tags" type="struct KeyStore *">Any archive specific information is expressed here as key value pairs.</field>
-      <field name="Permissions" type="LONG" lookup="PERMIT">Original permissions - see PERMIT flags.</field>
-      <field name="UserID" type="LONG">Original user ID</field>
-      <field name="GroupID" type="LONG">Original group ID</field>
-      <field name="OthersID" type="LONG">Original others ID</field>
-      <field name="Flags" type="LONG" lookup="FL">FL flags</field>
-      <field name="Created" type="struct DateTime">Date and time of the file's creation.</field>
-      <field name="Modified" type="struct DateTime">Date and time last modified.</field>
-    </struct>
-
-    <struct name="CompressionFeedback">
-      <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB event indicators</field>
-      <field name="Index" type="LONG">Index of the current file</field>
-      <field name="Path" type="CSTRING">Name of the current file/path in the archive</field>
-      <field name="Dest" type="CSTRING">Destination file/path during decompression</field>
-      <field name="Progress" type="LARGE">Progress indicator (byte position for the file being de/compressed).</field>
-      <field name="OriginalSize" type="LARGE">Original size of the file</field>
-      <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
-      <field name="Year" type="WORD">Year of the original file's datestamp.</field>
-      <field name="Month" type="WORD">Month of the original file's datestamp.</field>
-      <field name="Day" type="WORD">Day of the original file's datestamp.</field>
-      <field name="Hour" type="WORD">Hour of the original file's datestamp.</field>
-      <field name="Minute" type="WORD">Minute of the original file's datestamp.</field>
-      <field name="Second" type="WORD">Second of the original file's datestamp.</field>
-    </struct>
-
     <struct name="DateTime" comment="Generic structure for date-time management.">
       <field name="Year" type="LONG">Year</field>
       <field name="Month" type="LONG">Month 1 to 12</field>
@@ -638,23 +464,6 @@
       <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
-    <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
-      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="Flags" type="ULONG">Special flags that describe the field</field>
-      <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
-      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
-      <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
-    </struct>
-
-    <struct name="FileFeedback">
-      <field name="Size" type="LARGE">Size of the file</field>
-      <field name="Position" type="LARGE">Current seek position within the file if moving or copying</field>
-      <field name="Path" type="STRING">Path to the file</field>
-      <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
-      <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB integers</field>
-      <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>
-    </struct>
-
     <struct name="FileInfo" comment="Returned by GetFileInfo()">
       <field name="Size" type="LARGE">The size of the file's content.</field>
       <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
@@ -667,17 +476,6 @@
       <field name="GroupID" type="LONG">Group ID (Unix systems only).</field>
       <field name="Created" type="struct DateTime">The date/time of the file's creation.</field>
       <field name="Modified" type="struct DateTime">The date/time of the last file modification.</field>
-    </struct>
-
-    <struct name="Function" comment="Function list array structure">
-      <field name="Address" type="APTR">Pointer to the function entry point</field>
-      <field name="Name" type="CSTRING">Name of the function</field>
-      <field name="Args" type="const struct FunctionField *">A list of parameters accepted by the function</field>
-    </struct>
-
-    <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
-      <field name="Name" type="CSTRING">Name of the field</field>
-      <field name="Type" type="ULONG">Type of the field</field>
     </struct>
 
     <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
@@ -713,11 +511,6 @@
       <field name="LockID" type="OBJECTID">Reference to the task that currently has a lock on the block.</field>
       <field name="TaskID" type="OBJECTID">The Task that owns the memory block</field>
       <field name="Handle" type="LONG">Native system handle (e.g. the shmid in Linux)</field>
-    </struct>
-
-    <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
-      <field name="MemoryID" type="MEMORYID">Reference to a memory ID.</field>
-      <field name="Locks" type="WORD">The total number of locks on the memory block.</field>
     </struct>
 
     <struct name="Message" comment="Messaging structures.  Note: This structure is utilised by NextMsg">

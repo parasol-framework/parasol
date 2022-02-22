@@ -890,19 +890,6 @@ the surface area first).</li>
 
   </fields>
   <types>
-    <constants lookup="ARF" comment="AccessSurfaceList() flags">
-      <const name="NO_DELAY">Do not delay when waiting for access</const>
-      <const name="READ">Read only access required</const>
-      <const name="UPDATE">Update a single entry (limited write access)</const>
-      <const name="WRITE">Full write access required</const>
-    </constants>
-
-    <constants lookup="BDF" comment="CopySurface() flags">
-      <const name="DITHER">Allow the use of dithering to improve image quality at a cost of speed.</const>
-      <const name="REDRAW">Redraw the surface before performing the copy operation.</const>
-      <const name="SYNC">Force synchronsiation so that changes to the source image do not occur mid-copy.</const>
-    </constants>
-
     <constants lookup="DRAG">
       <const name="ANCHOR">The surface is being dragged and the mouse pointer is anchored to the surface.</const>
       <const name="NONE">The surface is not being dragged.</const>
@@ -915,10 +902,6 @@ the surface area first).</li>
       <const name="CHILDREN">If set, all child surfaces that intersect with exposed region will be included in the expose operation.</const>
       <const name="REDRAW_VOLATILE">Redraw every volatile object that intersects with the expose region, including internal volatile children.</const>
       <const name="REDRAW_VOLATILE_OVERLAP">Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.</const>
-    </constants>
-
-    <constants lookup="LVF" comment="drwLockBitmap() result flags">
-      <const name="EXPOSE_CHANGES"/>
     </constants>
 
     <constants lookup="RNF">
@@ -966,40 +949,5 @@ the surface area first).</li>
 
   </types>
   <structs>
-    <struct name="SurfaceControl" comment="Internal structure returned by AccessList()">
-      <field name="ListIndex" type="LONG">Byte offset of the ordered list</field>
-      <field name="ArrayIndex" type="LONG">Byte offset of the list array</field>
-      <field name="EntrySize" type="LONG">Byte size of each entry in the array</field>
-      <field name="Total" type="LONG">Total number of entries currently in the list array</field>
-      <field name="ArraySize" type="LONG">Max limit of entries in the list array</field>
-    </struct>
-
-    <struct name="SurfaceCoords">
-      <field name="X" type="LONG">Horizontal coordinate</field>
-      <field name="Y" type="LONG">Vertical coordinate</field>
-      <field name="Width" type="LONG">Width</field>
-      <field name="Height" type="LONG">Height</field>
-      <field name="AbsX" type="LONG">Absolute X</field>
-      <field name="AbsY" type="LONG">Absolute Y</field>
-    </struct>
-
-    <struct name="SurfaceInfo" typeName="SURFACEINFO">
-      <field name="ParentID" type="OBJECTID">Object that contains the surface area</field>
-      <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
-      <field name="DataMID" type="OBJECTID">Bitmap data memory ID</field>
-      <field name="DisplayID" type="OBJECTID">If the surface object is root, its display is reflected here</field>
-      <field name="Flags" type="LONG">Surface flags (RNF_VISIBLE etc)</field>
-      <field name="X" type="LONG">Horizontal coordinate</field>
-      <field name="Y" type="LONG">Vertical coordinate</field>
-      <field name="Width" type="LONG">Width of the surface area</field>
-      <field name="Height" type="LONG">Height of the surface area</field>
-      <field name="AbsX" type="LONG">Absolute X coordinate</field>
-      <field name="AbsY" type="LONG">Absolute Y coordinate</field>
-      <field name="Level" type="WORD">Branch level within the tree</field>
-      <field name="BitsPerPixel" type="BYTE">Bits per pixel of the bitmap</field>
-      <field name="BytesPerPixel" type="BYTE">Bytes per pixel of the bitmap</field>
-      <field name="LineWidth" type="LONG">Line width of the bitmap, in bytes</field>
-    </struct>
-
   </structs>
 </book>

@@ -4030,6 +4030,29 @@ end
       <const name="SHARED">The lock will be shared between foreign processes.</const>
     </constants>
 
+    <constants lookup="ALIGN" comment="Universal values for alignment of graphics and text">
+      <const name="BOTTOM">Align to bottom</const>
+      <const name="CENTER">Synonym for HORIZONTAL | VERTICAL</const>
+      <const name="HORIZONTAL">Align to horizontal center</const>
+      <const name="LEFT">Align to left</const>
+      <const name="MIDDLE">Synonym for HORIZONTAL | VERTICAL</const>
+      <const name="RIGHT">Align to right</const>
+      <const name="TOP">Align to top</const>
+      <const name="VERTICAL">Align to vertical center</const>
+    </constants>
+
+    <constants lookup="AST" comment="Tags for SetVolume()">
+      <const name="Comment">A user comment string may be set against the volume with this tag.</const>
+      <const name="Device">If the volume references the root of a device, it's code name should be specified here, e.g. 'disk', 'cd', 'hd', 'network'.</const>
+      <const name="DevicePath">For Unix systems, set this to the device path under '/dev/' if this is a root volume and a device path is applicable.</const>
+      <const name="Flags">Optional VOLUME flags.</const>
+      <const name="ID">A unique ID string can be specified against the volume.  This is useful for programs that want to identify volumes that they have created.</const>
+      <const name="Icon">An icon can be associated with the volume so that it has graphical representation when viewed in the UI.  The required icon string format is 'category/name'.</const>
+      <const name="Label">An optional label or short comment may be applied to the volume.  This may be useful if the volume name has little meaning to the user (e.g. drive1, drive2 ...).</const>
+      <const name="Name">Required.  Follow this tag with the string name of the volume.</const>
+      <const name="Path">Required.  Follow this tag with the path to be set against the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a folder.</const>
+    </constants>
+
     <constants lookup="CCF" comment="Class categories">
       <const name="AUDIO">Audio classes interface with audio hardware and drivers for audio playback and recording purposes.</const>
       <const name="COMMAND">Command classes perform specific procedures, like copying or moving a file, managing volumes or executing a program.</const>
@@ -4063,6 +4086,12 @@ end
       <const name="XML_CONTENT">Script processing should treat any object content as XML.</const>
     </constants>
 
+    <constants lookup="CLIPMODE" comment="Clipboard modes">
+      <const name="COPY">Copy from the clipboard.</const>
+      <const name="CUT">Cut from the clipboard.</const>
+      <const name="PASTE">Paste from the clipboard.</const>
+    </constants>
+
     <constants lookup="CMF" comment="Compression flags">
       <const name="APPLY_SECURITY">When decompressing, apply individual file permissions if they are available in the compression file.</const>
       <const name="CREATE_FILE">Create a new archive only if the source file does not already exist.</const>
@@ -4077,6 +4106,25 @@ end
       <const name="NEW">On initialisation, do not load any data from the referenced configuration file.</const>
       <const name="OPTIONAL_FILES">Files are optional (do not fail if a requested file does not exist).</const>
       <const name="STRIP_QUOTES">Removes quotes from key values that are quote-encapsulated.</const>
+    </constants>
+
+    <constants lookup="COPY" comment="Flags for StrCopy()">
+      <const name="ALL">Copy all characters from the source string.</const>
+    </constants>
+
+    <constants lookup="DATA" comment="Data codes">
+      <const name="AUDIO">Audio file data, recognised by the Sound class</const>
+      <const name="CONTENT">Document content (between XML tags) - sent by document objects only</const>
+      <const name="DEVICE_INPUT">Device activity</const>
+      <const name="FILE">File location (the data will reflect the complete file path)</const>
+      <const name="IMAGE">Image file data, recognised by the Image class</const>
+      <const name="INPUT_READY">Device input that has been transformed into user input</const>
+      <const name="RAW">Raw unprocessed data</const>
+      <const name="RECEIPT">Receipt for item data, in response to an earlier request</const>
+      <const name="RECORD">Database record</const>
+      <const name="REQUEST">Make a request for item data</const>
+      <const name="TEXT">Standard ASCII text</const>
+      <const name="XML">Markup based text data.  NOTE - For clipboard data, the top-level encapsulating tag must declare the type of XML, e.g. 'html', 'ripple'.  For plain XML, use 'xml'</const>
     </constants>
 
     <constants lookup="DEVICE">
@@ -4100,6 +4148,71 @@ end
       <const name="WRITE">Device is writeable</const>
     </constants>
 
+    <constants lookup="DMF">
+      <const name="FIXED_CENTER_X">The CenterX field is a fixed size.</const>
+      <const name="FIXED_CENTER_Y">The CenterY field is a fixed size.</const>
+      <const name="FIXED_DEPTH">The Depth field is a fixed size.</const>
+      <const name="FIXED_HEIGHT">The Height field is a fixed size.</const>
+      <const name="FIXED_RADIUS">Synonym for FIXED_RADIUS_X | FIXED_RADIUS_Y</const>
+      <const name="FIXED_RADIUS_X">The RadiusX field is a fixed size.</const>
+      <const name="FIXED_RADIUS_Y">The RadiusY field is a fixed size.</const>
+      <const name="FIXED_WIDTH">The Width field is a fixed suze.</const>
+      <const name="FIXED_X">The X field is a fixed coordinate.</const>
+      <const name="FIXED_X_OFFSET">The XOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Y">The Y field is a fixed coordinate.</const>
+      <const name="FIXED_Y_OFFSET">The YOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Z">The Z field is a fixed coordinate.</const>
+      <const name="HEIGHT">Synonym for FIXED_HEIGHT | RELATIVE_HEIGHT</const>
+      <const name="HEIGHT_FLAGS">Synonym for FIXED_HEIGHT | RELATIVE_HEIGHT | FIXED_Y_OFFSET | RELATIVE_Y_OFFSET</const>
+      <const name="HORIZONTAL_FLAGS">Synonym for FIXED_WIDTH | RELATIVE_WIDTH | FIXED_X_OFFSET | RELATIVE_X_OFFSET | FIXED_X | RELATIVE_X</const>
+      <const name="RELATIVE_CENTER_X">The CenterX field is a relative size to this object's parent.</const>
+      <const name="RELATIVE_CENTER_Y">The CenterY field is a relative size to this object's parent.</const>
+      <const name="RELATIVE_DEPTH">The Depth field is a relative size to this object's parent.</const>
+      <const name="RELATIVE_HEIGHT">The Height field is relative to this object's parent.</const>
+      <const name="RELATIVE_RADIUS">Synonym for RELATIVE_RADIUS_X | RELATIVE_RADIUS_Y</const>
+      <const name="RELATIVE_RADIUS_X">The RadiusX field is a relative size to this object's parent.</const>
+      <const name="RELATIVE_RADIUS_Y">The RadiusY field is a relative size to this object's parent.</const>
+      <const name="RELATIVE_WIDTH">The Width field is relative to this object's parent.</const>
+      <const name="RELATIVE_X">The X field is relative to this object's parent.</const>
+      <const name="RELATIVE_X_OFFSET">The XOffset field is relative to this object's parent.</const>
+      <const name="RELATIVE_Y">The Y field is relative to this object's parent.</const>
+      <const name="RELATIVE_Y_OFFSET">The YOffset field is relative to this object's parent.</const>
+      <const name="RELATIVE_Z">The Z field is a relative coordinate to this object's parent.</const>
+      <const name="STATUS_CHANGE">Synonym for STATUS_CHANGE_H | STATUS_CHANGE_V</const>
+      <const name="STATUS_CHANGE_H"/>
+      <const name="STATUS_CHANGE_V"/>
+      <const name="VERTICAL_FLAGS">Synonym for FIXED_HEIGHT | RELATIVE_HEIGHT | FIXED_Y_OFFSET | RELATIVE_Y_OFFSET | FIXED_Y | RELATIVE_Y</const>
+      <const name="WIDTH">Synonym for FIXED_WIDTH | RELATIVE_WIDTH</const>
+      <const name="WIDTH_FLAGS">Synonym for FIXED_WIDTH | RELATIVE_WIDTH | FIXED_X_OFFSET | RELATIVE_X_OFFSET</const>
+      <const name="X">Synonym for FIXED_X | RELATIVE_X</const>
+      <const name="X_OFFSET">Synonym for FIXED_X_OFFSET | RELATIVE_X_OFFSET</const>
+      <const name="Y">Synonym for FIXED_Y | RELATIVE_Y</const>
+      <const name="Y_OFFSET">Synonym for FIXED_Y_OFFSET | RELATIVE_Y_OFFSET</const>
+    </constants>
+
+    <constants lookup="DRL" comment="Compass directions.">
+      <const name="EAST"/>
+      <const name="NORTH"/>
+      <const name="NORTH_EAST"/>
+      <const name="NORTH_WEST"/>
+      <const name="SOUTH"/>
+      <const name="SOUTH_EAST"/>
+      <const name="SOUTH_WEST"/>
+      <const name="WEST"/>
+    </constants>
+
+    <constants lookup="EDGE" comment="Edge flags">
+      <const name="ALL"/>
+      <const name="BOTTOM"/>
+      <const name="BOTTOM_LEFT"/>
+      <const name="BOTTOM_RIGHT"/>
+      <const name="LEFT"/>
+      <const name="RIGHT"/>
+      <const name="TOP"/>
+      <const name="TOP_LEFT"/>
+      <const name="TOP_RIGHT"/>
+    </constants>
+
     <constants lookup="EVG" comment="Event categories.">
       <const name="ANDROID">Android specific events that do not already fit existing categories.</const>
       <const name="APP">Custom event dispatched from an application</const>
@@ -4116,6 +4229,74 @@ end
       <const name="USER">User activity events (such as user login).</const>
     </constants>
 
+    <constants lookup="FBK" comment="Flags for file feedback.">
+      <const name="COPY_FILE">A file is to be, or has been copied.</const>
+      <const name="DELETE_FILE">A file is to be, or has been deleted.</const>
+      <const name="MOVE_FILE">A file is to be, or has been moved.</const>
+    </constants>
+
+    <constants lookup="FD" comment="Field descriptors.">
+      <const name="ALLOC">CLASSDEF Indicates the returned value is a dynamic allocation that needs to be manually freed (by default is a memory pointer, can be an object if combined with FD_OBJECT)</const>
+      <const name="ARRAY">Indicates an array of values.  Follow with ARRAYSIZE if used in a function.</const>
+      <const name="ARRAYSIZE">FUNCDEF Overrides FD_LOOKUP.  Pair with ARRAY to indicate total elements in the array.  It is preferred that any null terminator is not counted.  If ARRAYSIZE not specified, ARRAY must be null-terminated.</const>
+      <const name="BUFFER">FUNCDEF Overrides FD_WRITE.  Indicates a buffer that can be filled with data by the function if paired with RESULT; must be paired with BUFSIZE in second argument.</const>
+      <const name="BUFSIZE">FUNCDEF Overrides FD_LOOKUP.  Pair with BUFFER to indicate the byte size of the buffer memory.</const>
+      <const name="BYTE">8 bit integer.</const>
+      <const name="CUSTOM"/>
+      <const name="DOUBLE">64 bit float.</const>
+      <const name="DOUBLERESULT">For actions and methods</const>
+      <const name="ERROR">FUNCDEF</const>
+      <const name="FLAGS">CLASSDEF</const>
+      <const name="FLOAT">32 bit float.  Not valid for use in class definitions.</const>
+      <const name="FUNCTION">Intended for callbacks, uses the rkFunction structure.</const>
+      <const name="FUNCTIONPTR">Synonym for PTR | FUNCTION</const>
+      <const name="I">Synonym for INIT</const>
+      <const name="INIT">CLASSDEF</const>
+      <const name="INTEGRAL">CLASSDEF Pointer to an object that is integral to the class</const>
+      <const name="LARGE">64 bit integer.</const>
+      <const name="LARGERESULT">For actions and methods</const>
+      <const name="LONG">32 bit integer.</const>
+      <const name="LONGRESULT">For actions and methods</const>
+      <const name="LOOKUP">CLASSDEF</const>
+      <const name="OBJECT">Supplementary, can be used with longs (for IDs) or pointers</const>
+      <const name="OBJECTID">Synonym for LONG | OBJECT</const>
+      <const name="OBJECTPTR">Synonym for PTR | OBJECT</const>
+      <const name="PERCENTAGE">Supplementary, indicates integer or float value is a percentage.</const>
+      <const name="POINTER">Pointer (32 or 64 bit).</const>
+      <const name="PRIVATE">Synonym for SYSTEM</const>
+      <const name="PTR">Synonym for POINTER</const>
+      <const name="PTRBUFFER">The next argument should be LONG|BUFSIZE</const>
+      <const name="PTRRESULT">Use for pointer-based value results only</const>
+      <const name="PTRSIZE">Synonym for BUFSIZE</const>
+      <const name="PTR_DOUBLERESULT">Use for pointer-based value results only.</const>
+      <const name="PTR_LARGERESULT">Use for pointer-based value results only.</const>
+      <const name="PTR_LONGRESULT">Use for pointer-based value results only.</const>
+      <const name="R">Synonym for READ</const>
+      <const name="READ">CLASSDEF</const>
+      <const name="REQUIRED">CLASSDEF The field must be defined by the client prior to object initialisation.</const>
+      <const name="RESOURCE">The referenced struct or pointer is a special resource.  Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Fluid.</const>
+      <const name="RESULT">FUNCDEF Overrides FD_READ</const>
+      <const name="RGB">Supplementary, if a long type then format is 0xAARRGGBB, if pointer then refers to an RGB structure.</const>
+      <const name="RI">Synonym for READ | INIT</const>
+      <const name="RW">Synonym for READ | WRITE</const>
+      <const name="STR">Synonym for STRING</const>
+      <const name="STRING">Pointer to a string.</const>
+      <const name="STRRESULT">Synonym for STR | RESULT</const>
+      <const name="STRUCT">Supplementary, defines the field as a structure reference.  MUST be combined with FD_POINTER.  If used in a class, it is possible to name the structure definition in field-&gt;Arg</const>
+      <const name="SYNONYM">CLASSDEF Use to declare fields that duplicate the functionality of another field.</const>
+      <const name="SYSTEM">CLASSDEF System, internal and private fields.</const>
+      <const name="TAGS">FUNCDEF Overrides FD_INIT</const>
+      <const name="UNSIGNED">Supplementary, integer value is unsigned.</const>
+      <const name="VARIABLE">Supports multiple primitive types (long, double, large or pointer).</const>
+      <const name="VARTAGS">FUNCDEF Overrides FD_FLAGS.  Use for 64-bit taglists that require value definitions, e.g. TDOUBLE, TLONG etc.</const>
+      <const name="VIRTUAL">CLASSDEF Ensures that the field has no physical representation in the structure.</const>
+      <const name="VOID"/>
+      <const name="VOLATILE">[Not yet allocated a bit]  Used on result pointers, usually strings, to indicate that the consecutive reads will overwrite the content of previous return values.  This indicates to scripting languages to make a copy of the data before the next interaction with the object.</const>
+      <const name="W">Synonym for WRITE</const>
+      <const name="WORD">16 bit integer.</const>
+      <const name="WRITE">CLASSDEF</const>
+    </constants>
+
     <constants lookup="FDB" comment="Feedback event indicators.">
       <const name="COMPRESS_FILE"/>
       <const name="DECOMPRESS_FILE"/>
@@ -4123,11 +4304,21 @@ end
       <const name="REMOVE_FILE"/>
     </constants>
 
+    <constants lookup="FDL" comment="Options for the File Delete() method.">
+      <const name="FEEDBACK">Automatically manage user feedback for deleting files by presenting dialog boxes.</const>
+    </constants>
+
     <constants lookup="FDT" comment="Flags for the SetDate() file method.">
       <const name="ACCESSED">The date on which the file was last accessed by a user or application.</const>
       <const name="ARCHIVED">The date on which the file was most recently archived.  Not supported by most filesystems.</const>
       <const name="CREATED">The date on which the file was created.  On some host platforms this datestamp may be read-only.</const>
       <const name="MODIFIED">The date on which the file was last modified.</const>
+    </constants>
+
+    <constants lookup="FFR" comment="Return codes available to the feedback routine">
+      <const name="ABORT">Abort the entire operation.</const>
+      <const name="OKAY">Continue processing uninterrupted.</const>
+      <const name="SKIP">Skip processing of this entity.</const>
     </constants>
 
     <constants lookup="FL" comment="File flags">
@@ -4165,11 +4356,269 @@ end
       <const name="MESSAGE">Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.</const>
     </constants>
 
+    <constants lookup="JET" comment="JET constants are documented in GetInputEvent()">
+      <const name="ABS_X">Value is an absolute horizontal coordinate that corresponds to a page area (usually the display or touchpad).</const>
+      <const name="ABS_Y">Value is an absolute vertical coordinate that corresponds to a page area (usually the display or touchpad).</const>
+      <const name="ANALOG2_X">As for ANALOG_X, this type covers a second analog stick if present.</const>
+      <const name="ANALOG2_Y">As for ANALOG_Y, this type covers a second analog stick if present.</const>
+      <const name="ANALOG2_Z">As for ANALOG_Z, this type covers a second analog stick if present.</const>
+      <const name="ANALOG_X">Horizontal position for the default analog control (on gamepads this is the left analog control).  Analog values range between -1.0 and 1.0.  A value of zero indicates that the control is at rest.</const>
+      <const name="ANALOG_Y">Vertical position for the default analog control.</const>
+      <const name="ANALOG_Z">3D or yoke position for the default analog control.  A negative value indicates that the control has been pulled out and a positive value indicates that it has been pushed in.</const>
+      <const name="BUTTON_1">Left mouse button, XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
+      <const name="BUTTON_10">Non-specific button assignment.</const>
+      <const name="BUTTON_2">Right mouse button, XBox X button, PS cross button.</const>
+      <const name="BUTTON_3">Middle mouse button, XBox Y button, PS triangle.</const>
+      <const name="BUTTON_4">XBox B button, PS circle.</const>
+      <const name="BUTTON_5">Left analog stick depressed.</const>
+      <const name="BUTTON_6">Right analog stick depressed.</const>
+      <const name="BUTTON_7">Non-specific button assignment.</const>
+      <const name="BUTTON_8">Non-specific button assignment.</const>
+      <const name="BUTTON_9">Non-specific button assignment.</const>
+      <const name="BUTTON_SELECT">Gamepad select button - value is 0 or 1.</const>
+      <const name="BUTTON_START">Gamepad start button - value is 0 or 1.</const>
+      <const name="DEVICE_TILT_X">Controller tilted on the X axis (left/right).  Value indicates angle, -ve = left, +ve = right</const>
+      <const name="DEVICE_TILT_Y">Controller tilted on the Y axis (up/down).  Value indicates angle -ve = pull/up, +ve = push/down</const>
+      <const name="DEVICE_TILT_Z">Controller is rising or falling.  Value expressed as 'speed',</const>
+      <const name="DIGITAL_X">Horizontal digital movement from a relative location.  Value is +/- n, where n is the number of units moved horizontally.  Mouse movement will normally exceed a value of 1, whereas gamepad movement is limited to a value of +/- 1 except in the case of successive presses.</const>
+      <const name="DIGITAL_Y">Vertical digital movement from a relative location.</const>
+      <const name="DISPLAY_EDGE">Recently supplied input occurred at the edge of the display.</const>
+      <const name="ENTERED_SURFACE">This message is sent by the input system when the mouse pointer enters a surface for the first time.  The message value refers to the surface ID, which will be the same as the recipient.</const>
+      <const name="LEFT_BUMPER_1">Gamepad left-hand bumper 1 (top) - pressure sensitive value from 0 - 1.0.</const>
+      <const name="LEFT_BUMPER_2">Gamepad left-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.</const>
+      <const name="LEFT_SURFACE">This message is sent by the input system when the mouse pointer leaves a surface.  The message value refers to the ID of the surface that has been left, which will be the same as the recipient.</const>
+      <const name="PEN_TILT_HORIZONTAL">For pen-based input, this type indicates the horizontal tilt of the pen device.</const>
+      <const name="PEN_TILT_VERTICAL">For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.</const>
+      <const name="PRESSURE">Amount of pressure applied, ranges from 0 (none) to 1.0 (normal) and possibly higher if user presses hard enough</const>
+      <const name="RIGHT_BUMPER_1">Gamepad right-hand bumper 1 (top) - pressure sensitive value from 0 - 1.0.</const>
+      <const name="RIGHT_BUMPER_2">Gamepad right-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.</const>
+      <const name="TRIGGER_LEFT">Gamepad left-hand trigger - value is between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
+      <const name="TRIGGER_RIGHT">Gamepad right-hand trigger.</const>
+      <const name="WHEEL">Mouse wheel rotation - the value generally reflects the number of 'clicks' rotated on the wheel.</const>
+      <const name="WHEEL_TILT">Some mouse wheels can be tilted to the left or right.  Ranges from -1.0 to +1.0</const>
+    </constants>
+
+    <constants lookup="JTYPE" comment="JTYPE flags are used to categorise input types.">
+      <const name="ANALOG">Analog movement (ranging from -1.0 to 1.0)</const>
+      <const name="ANCHORED">Cursor has been anchored with LockCursor()</const>
+      <const name="BUTTON">Input is a physical button or switch</const>
+      <const name="DBL_CLICK">Set by the input system if the Type is a button and the button has been clicked in quick succession so as to be classed as a double-click.</const>
+      <const name="DIGITAL">D-Pad or digital joystick source (restricted to +/- 1)</const>
+      <const name="DRAGGED">Set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).</const>
+      <const name="DRAG_ITEM">This special flag is set by the input system if the pointer is click-dragging an object at the time of the event.</const>
+      <const name="EXT_MOVEMENT">Extended movement information.  This covers all types of movement that are unconnected to coordinate positioning -  mouse wheel movement and pen tilt are two such examples.</const>
+      <const name="FEEDBACK">Device feedback - e.g. vibration, tilt</const>
+      <const name="MOVEMENT">X/Y coordinate movement only. Movement such as the wheel mouse spinning is not covered by this type as it does not influence the coordinate system.</const>
+      <const name="REPEATED">Input is a repeated entry (i.e. user is holding down a button and a repetition timer is being triggered)</const>
+      <const name="SECONDARY">Indicates to the receiver of this message that it is not the primary/original recipient</const>
+    </constants>
+
+    <constants lookup="K" comment="Raw key codes">
+      <const name="A"/>
+      <const name="APOSTROPHE"/>
+      <const name="AT"/>
+      <const name="B"/>
+      <const name="BACK"/>
+      <const name="BACKSPACE"/>
+      <const name="BACK_SLASH"/>
+      <const name="BREAK"/>
+      <const name="C"/>
+      <const name="CALL"/>
+      <const name="CAMERA"/>
+      <const name="CANCEL"/>
+      <const name="CAPS_LOCK"/>
+      <const name="CLEAR"/>
+      <const name="COMMA"/>
+      <const name="D"/>
+      <const name="DELETE"/>
+      <const name="DOT"/>
+      <const name="DOWN"/>
+      <const name="E"/>
+      <const name="EIGHT"/>
+      <const name="END"/>
+      <const name="END_CALL"/>
+      <const name="ENTER"/>
+      <const name="EQUALS"/>
+      <const name="ESCAPE"/>
+      <const name="EXECUTE"/>
+      <const name="F"/>
+      <const name="F1"/>
+      <const name="F10"/>
+      <const name="F11"/>
+      <const name="F12"/>
+      <const name="F13"/>
+      <const name="F14"/>
+      <const name="F15"/>
+      <const name="F16"/>
+      <const name="F17"/>
+      <const name="F18"/>
+      <const name="F19"/>
+      <const name="F2"/>
+      <const name="F20"/>
+      <const name="F3"/>
+      <const name="F4"/>
+      <const name="F5"/>
+      <const name="F6"/>
+      <const name="F7"/>
+      <const name="F8"/>
+      <const name="F9"/>
+      <const name="FIND"/>
+      <const name="FIVE"/>
+      <const name="FORWARD"/>
+      <const name="FOUR"/>
+      <const name="G"/>
+      <const name="H"/>
+      <const name="HELP"/>
+      <const name="HOME"/>
+      <const name="I"/>
+      <const name="INSERT"/>
+      <const name="J"/>
+      <const name="K"/>
+      <const name="L"/>
+      <const name="LEFT"/>
+      <const name="LENS_FOCUS"/>
+      <const name="LESS_GREATER"/>
+      <const name="LIST_END"/>
+      <const name="L_ALT"/>
+      <const name="L_COMMAND"/>
+      <const name="L_CONTROL"/>
+      <const name="L_SHIFT"/>
+      <const name="L_SQUARE"/>
+      <const name="M"/>
+      <const name="MACRO"/>
+      <const name="MENU"/>
+      <const name="MINUS"/>
+      <const name="MUTE"/>
+      <const name="N"/>
+      <const name="NEXT"/>
+      <const name="NINE"/>
+      <const name="NP_0"/>
+      <const name="NP_1"/>
+      <const name="NP_2"/>
+      <const name="NP_3"/>
+      <const name="NP_4"/>
+      <const name="NP_5"/>
+      <const name="NP_6"/>
+      <const name="NP_7"/>
+      <const name="NP_8"/>
+      <const name="NP_9"/>
+      <const name="NP_BAR"/>
+      <const name="NP_DECIMAL"/>
+      <const name="NP_DIVIDE"/>
+      <const name="NP_DOT"/>
+      <const name="NP_ENTER"/>
+      <const name="NP_MINUS"/>
+      <const name="NP_MULTIPLY"/>
+      <const name="NP_PLUS"/>
+      <const name="NP_PLUS_MINUS"/>
+      <const name="NP_SEPARATOR"/>
+      <const name="NUM_LOCK"/>
+      <const name="O"/>
+      <const name="ONE"/>
+      <const name="P"/>
+      <const name="PAGE_DOWN"/>
+      <const name="PAGE_UP"/>
+      <const name="PAUSE"/>
+      <const name="PERIOD"/>
+      <const name="PLAY"/>
+      <const name="PLUS"/>
+      <const name="POUND"/>
+      <const name="POWER"/>
+      <const name="PREVIOUS"/>
+      <const name="PRINT"/>
+      <const name="PRT_SCR"/>
+      <const name="Q"/>
+      <const name="R"/>
+      <const name="REDO"/>
+      <const name="REVERSE_QUOTE"/>
+      <const name="REWIND"/>
+      <const name="RIGHT"/>
+      <const name="R_ALT"/>
+      <const name="R_COMMAND"/>
+      <const name="R_CONTROL"/>
+      <const name="R_SHIFT"/>
+      <const name="R_SQUARE"/>
+      <const name="S"/>
+      <const name="SCR_LOCK"/>
+      <const name="SELECT"/>
+      <const name="SEMI_COLON"/>
+      <const name="SEVEN"/>
+      <const name="SIX"/>
+      <const name="SLASH"/>
+      <const name="SLEEP"/>
+      <const name="SPACE"/>
+      <const name="STAR"/>
+      <const name="STOP"/>
+      <const name="SYSRQ"/>
+      <const name="T"/>
+      <const name="TAB"/>
+      <const name="THREE"/>
+      <const name="TWO"/>
+      <const name="U"/>
+      <const name="UNDO"/>
+      <const name="UP"/>
+      <const name="V"/>
+      <const name="VOLUME_DOWN"/>
+      <const name="VOLUME_UP"/>
+      <const name="W"/>
+      <const name="WAKE"/>
+      <const name="WIN_CONTROL"/>
+      <const name="X"/>
+      <const name="Y"/>
+      <const name="Z"/>
+      <const name="ZERO"/>
+    </constants>
+
+    <constants lookup="KQ" comment="Special qualifier flags">
+      <const name="ALT">Synonym for L_ALT | R_ALT</const>
+      <const name="ALTGR">Synonym for R_ALT</const>
+      <const name="CAPS_LOCK">Caps-Lock is on</const>
+      <const name="COMMAND">Synonym for L_COMMAND | R_COMMAND</const>
+      <const name="CONTROL">Synonym for L_CONTROL | R_CONTROL</const>
+      <const name="CTRL">Synonym for L_CONTROL | R_CONTROL</const>
+      <const name="DEAD_KEY">This key will be affected by a previously pressed dead-key</const>
+      <const name="INFO">Synonym for REPEAT | RELEASED | PRESSED | NOT_PRINTABLE | CAPS_LOCK</const>
+      <const name="INSTRUCTION_KEYS">Synonym for ALT | CONTROL</const>
+      <const name="L_ALT">Left Alt is held</const>
+      <const name="L_COMMAND">Left Logo/Special</const>
+      <const name="L_CONTROL">Control Key is held</const>
+      <const name="L_CTRL">Control Key is held</const>
+      <const name="L_SHIFT">Left Shift is held</const>
+      <const name="NOT_PRINTABLE">The represented key value is not printable</const>
+      <const name="NUM_LOCK">NumLock is on</const>
+      <const name="NUM_PAD">Identifies numeric keypad keys</const>
+      <const name="PRESSED">Key is being held or tapped</const>
+      <const name="QUALIFIERS">Synonym for SHIFT | COMMAND | ALT | CONTROL</const>
+      <const name="RELEASED">The key is being released</const>
+      <const name="REPEAT">This is a repeated key</const>
+      <const name="R_ALT">Right Alt is held</const>
+      <const name="R_COMMAND">Right Logo/Special</const>
+      <const name="R_CONTROL">Control Key is held</const>
+      <const name="R_CTRL">Control Key is held</const>
+      <const name="R_SHIFT">Right Shift is held</const>
+      <const name="SCR_LOCK">Scroll Lock is on</const>
+      <const name="SHIFT">Synonym for L_SHIFT | R_SHIFT</const>
+    </constants>
+
     <constants lookup="KSF" comment="Flags for VarNew()">
       <const name="AUTO_REMOVE">Automatically call FreeResource() on remaining key values when FreeResource() is called for the key-store.</const>
       <const name="CASE">Enable case-sensitive keys.</const>
       <const name="THREAD_SAFE">Enable thread safety for a small performance penalty.</const>
       <const name="UNTRACKED">Do not track the key-store to the object with the current context.</const>
+    </constants>
+
+    <constants lookup="LAYOUT" comment="Universal values for alignment of graphic layouts in documents.">
+      <const name="BACKGROUND">Graphic is placed behind text.  The text will not be wrapped around the object</const>
+      <const name="EMBEDDED">Graphic is embedded in the text stream (treated as a character).  The height of the line can be extended to match the height of the graphic in this mode.</const>
+      <const name="FOREGROUND">Graphic is placed in front of the text.  The text will not be wrapped around the object</const>
+      <const name="IGNORE_CURSOR">The object has a fixed X/Y position, unrelated to the cursor</const>
+      <const name="LEFT">The text boundary is extended to the left edge of the page.</const>
+      <const name="LOCK">Lock the position of the graphic to the top left of the view and not the scrolling position of the page.</const>
+      <const name="RIGHT">The text boundary is extended to the right edge of the page.</const>
+      <const name="SQUARE">The default.  Text will clip around the image's border</const>
+      <const name="TIGHT">Text wraps to the shape of the image (alpha blended/masked images only)</const>
+      <const name="TILE">The graphic will be tiled.  Tiled graphics also meet the LAYOUT_BACKGROUND criteria (no wrapping).</const>
+      <const name="WIDE">The text boundary is extended to the left and right edges of the page.</const>
     </constants>
 
     <constants lookup="LDF" comment="Flags for LoadFile()">
@@ -4184,6 +4633,10 @@ end
 
     <constants lookup="LTF" comment="Flags for ListTasks()">
       <const name="CURRENT_PROCESS"/>
+    </constants>
+
+    <constants lookup="MAX">
+      <const name="NAME_LEN"/>
     </constants>
 
     <constants lookup="MEM" comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.">
@@ -4231,10 +4684,25 @@ end
       <const name="WRITE">File modified via write or truncation.</const>
     </constants>
 
+    <constants lookup="MHF" comment="Internal options for requesting function tables from modules.">
+      <const name="DEFAULT">Use structures to group exported functions (Linux, C/C++ standard)</const>
+      <const name="NULL"/>
+      <const name="STATIC">Keep the module code in memory</const>
+      <const name="STRUCTURE">Use structures to group exported functions (Linux, C/C++ standard)</const>
+    </constants>
+
     <constants lookup="MOF" comment="Module flags">
       <const name="LINK_LIBRARY">Module refers to a symbolic link library (e.g. libz DLL or SO)</const>
       <const name="STATIC">This flag prevents the loaded module code from being unloaded when the module object is freed.  This may be needed in cases where a module is designed with the presumption that it will remain in memory after being loaded by the developer.</const>
       <const name="SYSTEM_PROBE">Indicates that the module is being probed.  Do not use outside of the core library.</const>
+    </constants>
+
+    <constants lookup="MOVE" comment="Generic flags for controlling movement.">
+      <const name="ALL">Synonym for DOWN | UP | LEFT | RIGHT</const>
+      <const name="DOWN"/>
+      <const name="LEFT"/>
+      <const name="RIGHT"/>
+      <const name="UP"/>
     </constants>
 
     <constants lookup="MSF" comment="Message flags.">
@@ -4243,6 +4711,37 @@ end
       <const name="NO_DUPLICATE">If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR_Okay.</const>
       <const name="UPDATE">If the Type parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.</const>
       <const name="WAIT">Wait before inserting the message if the queue is at maximum capacity.</const>
+    </constants>
+
+    <constants lookup="MSGID" comment="Reserved message ID's that are handled internally.">
+      <const name="ACTION"/>
+      <const name="ACTION_RESULT"/>
+      <const name="BREAK"/>
+      <const name="COMMAND"/>
+      <const name="CORE_END"/>
+      <const name="DEBUG"/>
+      <const name="EVENT"/>
+      <const name="EXPOSE"/>
+      <const name="GET_FIELD"/>
+      <const name="QUIT"/>
+      <const name="SET_FIELD"/>
+      <const name="THREAD_ACTION"/>
+      <const name="THREAD_CALLBACK"/>
+      <const name="VALIDATE_PROCESS"/>
+      <const name="WAIT_FOR_OBJECTS"/>
+    </constants>
+
+    <constants lookup="MTF" comment="MoveToPoint flags">
+      <const name="ANIM"/>
+      <const name="RELATIVE"/>
+      <const name="X"/>
+      <const name="Y"/>
+      <const name="Z"/>
+    </constants>
+
+    <constants lookup="NETMSG">
+      <const name="END"/>
+      <const name="START"/>
     </constants>
 
     <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
@@ -4271,6 +4770,31 @@ end
       <const name="LOCAL">Only send messages to objects that are owned by the current process.</const>
       <const name="LOCAL_TASK">Only send messages to objects that are owned by the current process.</const>
       <const name="OTHER_TASKS">Only send messages to objects that are owned by other processes.</const>
+    </constants>
+
+    <constants lookup="OPF">
+      <const name="ARGS"/>
+      <const name="AUTHOR"/>
+      <const name="COMPILED_AGAINST"/>
+      <const name="COPYRIGHT"/>
+      <const name="CORE_VERSION"/>
+      <const name="DATE"/>
+      <const name="DETAIL"/>
+      <const name="ERROR"/>
+      <const name="GLOBAL_INSTANCE"/>
+      <const name="JUMPTABLE"/>
+      <const name="MAX_DEPTH"/>
+      <const name="MODULE_PATH"/>
+      <const name="NAME"/>
+      <const name="OPTIONS"/>
+      <const name="PRIVILEGED"/>
+      <const name="ROOT_PATH"/>
+      <const name="SCAN_MODULES"/>
+      <const name="SHOW_ERRORS"/>
+      <const name="SHOW_IO"/>
+      <const name="SHOW_MEMORY"/>
+      <const name="SHOW_PUBLIC_MEM"/>
+      <const name="SYSTEM_PATH"/>
     </constants>
 
     <constants lookup="PERMIT" comment="Permission flags">
@@ -4313,6 +4837,35 @@ end
     </constants>
 
     <constants lookup="PMF" comment="Flags for ProcessMessages">
+    </constants>
+
+    <constants lookup="PTR" comment="Predefined cursor styles">
+      <const name="CROSSHAIR">The cross hair is used for targeting specific pixel points (common in paint programs).</const>
+      <const name="CUSTOM">Works in conjunction with the SetCustomCursor() function to represent a program defined bitmap.</const>
+      <const name="DEFAULT">The default cursor (usually an arrow pointing to the upper left).</const>
+      <const name="DRAGGABLE">Used to indicate that a surface or object can be dragged by the user.</const>
+      <const name="END"/>
+      <const name="HAND">The hand cursor is often used for indicating click-able content (hyper-links, icons etc).</const>
+      <const name="HAND_LEFT">Similar to the standard hand cursor, but points to the left.</const>
+      <const name="HAND_RIGHT">Similar to the standard hand cursor, but points to the right.</const>
+      <const name="INVISIBLE">The cursor graphic is invisible (but will continue to operate as normal in all other respects).</const>
+      <const name="MAGNIFIER">Represents a magnifying glass.</const>
+      <const name="NO_CHANGE"/>
+      <const name="PAINTBRUSH">The paintbrush cursor is typically employed by paint programs.</const>
+      <const name="SIZE_BOTTOM">Sizing cursor - for resizing the bottom edge of any rectangular area.</const>
+      <const name="SIZE_BOTTOM_LEFT">Sizing cursor - for resizing the bottom left corner of any rectangular area.</const>
+      <const name="SIZE_BOTTOM_RIGHT">Sizing cursor - for resizing the bottom right corner of any rectangular area.</const>
+      <const name="SIZE_LEFT">Sizing cursor - for resizing the left edge of any rectangular area.</const>
+      <const name="SIZE_RIGHT">Sizing cursor - for resizing the right edge of any rectangular area.</const>
+      <const name="SIZE_TOP">Sizing cursor - for resizing the top edge of any rectangular area.</const>
+      <const name="SIZE_TOP_LEFT">Sizing cursor - for resizing the top left corner of any rectangular area.</const>
+      <const name="SIZE_TOP_RIGHT">Sizing cursor - for resizing the top right corner of any rectangular area.</const>
+      <const name="SIZING">Multi-directional sizing cursor - for resizing in any direction.</const>
+      <const name="SLEEP">The sleep cursor is used to inform the user that the computer is busy.</const>
+      <const name="SPLIT_HORIZONTAL">The horizontal split cursor is typically used for splitting rectangles in half, or dragging a horizontal split within a large rectangular space.</const>
+      <const name="SPLIT_VERTICAL">The vertical split cursor is typically used for splitting rectangles in half, or dragging a vertical split within a large rectangular space.</const>
+      <const name="STOP">The stop cursor is used to inform the user that an operation is not possible (e.g. drag and drop to an unsupported object area).</const>
+      <const name="TEXT">The text cursor is popular for the precise positioning of text cursors.</const>
     </constants>
 
     <constants lookup="RDF" comment="Flags for the OpenDir() function.">
@@ -4400,11 +4953,52 @@ end
       <const name="EXIT_ON_ERROR">The script will automatically terminate its execution process if an error is detected.</const>
     </constants>
 
+    <constants lookup="SEEK" comment="Seek positions">
+      <const name="CURRENT">Use an index at the end of the last read/write operation.</const>
+      <const name="END">Use an index at the end of the data buffer.</const>
+      <const name="START">Use an index at position zero.</const>
+    </constants>
+
     <constants lookup="SEF" comment="Optional flags for StrEvaluate()">
       <const name="IGNORE_QUOTES">Areas marked with double-quotes will not be translated.  The quote characters will also not be removed.</const>
       <const name="KEEP_ESCAPE">Escaped string symbols will not be altered if this flag is used.</const>
       <const name="NO_SCRIPT">Turns off the embedded script feature.  An error code is returned if an attempt to embed a script is made.</const>
       <const name="STRICT">Enforces strict processing.  An error code will always be returned if at least one of the translation attempts failed.  Failed translations will be unprocessed (normally they are removed from the resulting string).</const>
+    </constants>
+
+    <constants lookup="SEM">
+      <const name="GET_COUNTER">Get the current counter value (affected by AccessSemaphore and ReleaseSemaphore).  Associated tag must be a pointer to a 32-bit integer.</const>
+      <const name="GET_DATA_DOUBLE">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit float point number.</const>
+      <const name="GET_DATA_LARGE">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit integer.</const>
+      <const name="GET_DATA_LONG">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 32-bit integer.</const>
+      <const name="GET_DATA_PTR">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to an address pointer.</const>
+      <const name="GET_VAL">Get the maximum value for the counter, as originally set in AllocSemaphore.  Associated tag must be a pointer to a 32-bit integer.</const>
+      <const name="SET_DATA_DOUBLE">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit floating point number.</const>
+      <const name="SET_DATA_LARGE">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit integer.</const>
+      <const name="SET_DATA_LONG">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 32-bit integer.</const>
+      <const name="SET_DATA_PTR">Set the user customisable data value associated with the semaphore.  The subsequent tag must be an address pointer.</const>
+    </constants>
+
+    <constants lookup="SMF" comment="Flags for semaphores">
+      <const name="EXISTS">When allocating a semaphore, declares that the named semaphore already exists and should not be recreated.</const>
+      <const name="NON_BLOCKING">Do not block when locking the semaphore unless its counter has reached zero.</const>
+      <const name="NO_BLOCKING">Do not block when locking the semaphore unless its counter has reached zero.</const>
+    </constants>
+
+    <constants lookup="STF" comment="Universal flag values used for searching text">
+      <const name="BACKWARDS">Search backwards</const>
+      <const name="CASE">Case sensitive search</const>
+      <const name="EXPRESSION">Search text is a regular expression</const>
+      <const name="MOVE_CURSOR">The cursor is moved to the text.  If not set, the text is auto-selected</const>
+      <const name="SCAN_SELECTION">Limit search to within the user's current selection</const>
+      <const name="WRAP">Wrap search at the end of the document</const>
+    </constants>
+
+    <constants lookup="STP" comment="ScrollToPoint flags">
+      <const name="ANIM"/>
+      <const name="X"/>
+      <const name="Y"/>
+      <const name="Z"/>
     </constants>
 
     <constants lookup="STR">
@@ -4421,9 +5015,31 @@ end
       <const name="STRING">The string represents plain-text.</const>
     </constants>
 
+    <constants lookup="STYLE" comment="Internal style notifications">
+      <const name="CONTENT"/>
+      <const name="DISABLED"/>
+      <const name="ENABLED"/>
+      <const name="FOCUS"/>
+      <const name="LOST_FOCUS"/>
+      <const name="RESIZE"/>
+    </constants>
+
+    <constants lookup="SUB" comment="Special tags for SubscribeActionTags()">
+      <const name="FAIL_EXISTS">As for WARN_EXISTS, but aborts immediately when a conflict is discovered.</const>
+      <const name="WARN_EXISTS">An error of ERR_Exists will be returned if there was an existing match for the subscriber and at least one of the following actions.</const>
+    </constants>
+
     <constants lookup="THF" comment="Thread flags">
       <const name="AUTO_FREE">Automatically destroy the Thread object when the user routine has completed.</const>
       <const name="MSG_HANDLER">Allow the thread to handle messages that target objects that it has created.</const>
+    </constants>
+
+    <constants lookup="TOI">
+      <const name="ANDROID_ASSETMGR"/>
+      <const name="ANDROID_CLASS"/>
+      <const name="ANDROID_ENV"/>
+      <const name="LOCAL_CACHE"/>
+      <const name="LOCAL_STORAGE"/>
     </constants>
 
     <constants lookup="TSF" comment="Task flags">
@@ -4439,6 +5055,33 @@ end
       <const name="WAIT">This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.</const>
     </constants>
 
+    <constants lookup="TSTATE" comment="Indicates the state of a process.">
+      <const name="PAUSED">The process is asleep.</const>
+      <const name="RUNNING">The process is currently executing code.</const>
+      <const name="STOPPING">The process is in its termination phase.</const>
+      <const name="TERMINATED">The process has closed.</const>
+    </constants>
+
+    <constants lookup="VAS" comment="For use by VirtualVolume()">
+      <const name="CASE_SENSITIVE">Set to true if the volume's paths are case-sensitive.</const>
+      <const name="CLOSE_DIR"/>
+      <const name="CREATE_LINK"/>
+      <const name="DELETE"/>
+      <const name="DEREGISTER">Remove the virtual volume from the system.</const>
+      <const name="GET_DEVICE_INFO"/>
+      <const name="GET_INFO"/>
+      <const name="IDENTIFY_FILE"/>
+      <const name="IGNORE_FILE"/>
+      <const name="MAKE_DIR"/>
+      <const name="OPEN_DIR"/>
+      <const name="READ_LINK"/>
+      <const name="RENAME"/>
+      <const name="SAME_FILE"/>
+      <const name="SCAN_DIR"/>
+      <const name="TEST_PATH"/>
+      <const name="WATCH_PATH"/>
+    </constants>
+
     <constants lookup="VLF" comment="VlogF flags">
       <const name="API"/>
       <const name="BRANCH"/>
@@ -4452,8 +5095,21 @@ end
       <const name="WARNING"/>
     </constants>
 
+    <constants lookup="VOLUME">
+      <const name="HIDDEN">Hides the volume so that it will not show up when reading the root folder.</const>
+      <const name="PRIORITY">If the volume already exists, the path will be inserted at the beginning of the path list so that it has priority over the others.</const>
+      <const name="REPLACE">If the volume already exists, all paths that are attached to it will be replaced with the new path setting.</const>
+      <const name="SAVE">The volume will be saved to user:config/volumes.cfg if this flag is set.  This allows the volume to be automatically restored on the next reboot.  See also VOLUME_SYSTEM.</const>
+      <const name="SYSTEM">If the VOLUME_SAVE option is used in conjunction with VOLUME_SYSTEM, the volume is saved to config:volumes.cfg as opposed to the user's home folder.  This means that the change is global to all users.  On secure platforms the current process may need administrative rights to write to the file.</const>
+    </constants>
+
   </types>
   <structs>
+    <struct name="ActionArray">
+      <field name="ActionCode" type="LONG">Action identifier</field>
+      <field name="Routine" type="APTR">Pointer to the function entry point</field>
+    </struct>
+
     <struct name="ActionTable" comment="Structure for ActionList">
       <field name="Hash" type="ULONG">Hash of the action name.</field>
       <field name="Size" type="LONG">Byte-size of the structure for this action.</field>
@@ -4464,6 +5120,29 @@ end
     <struct name="ChildEntry" comment="Structure for ListChildren() function">
       <field name="ObjectID" type="OBJECTID">Object ID</field>
       <field name="ClassID" type="CLASSID">The class ID of the referenced object.</field>
+    </struct>
+
+    <struct name="ClipRectangle" comment="Generic structure for rectangular clipping.">
+      <field name="Left" type="LONG">Left-most coordinate</field>
+      <field name="Right" type="LONG">Right-most coordinate</field>
+      <field name="Bottom" type="LONG">Bottom coordinate</field>
+      <field name="Top" type="LONG">Top coordinate</field>
+    </struct>
+
+    <struct name="ColourFormat" typeName="COLOURFORMAT">
+      <field name="RedShift" type="UBYTE">Right shift value for red (15/16 bit formats only)</field>
+      <field name="GreenShift" type="UBYTE">Right shift value for green</field>
+      <field name="BlueShift" type="UBYTE">Right shift value for blue</field>
+      <field name="AlphaShift" type="UBYTE">Right shift value for alpha</field>
+      <field name="RedMask" type="UBYTE">Unshifted mask value for red (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UBYTE">Unshifted mask value for green</field>
+      <field name="BlueMask" type="UBYTE">Unshifted mask value for blue</field>
+      <field name="AlphaMask" type="UBYTE">Unshifted mask value for alpha</field>
+      <field name="RedPos" type="UBYTE">Left shift/positional value for red</field>
+      <field name="GreenPos" type="UBYTE">Left shift/positional value for green</field>
+      <field name="BluePos" type="UBYTE">Left shift/positional value for blue</field>
+      <field name="AlphaPos" type="UBYTE">Left shift/positional value for alpha</field>
+      <field name="BitsPerPixel" type="UBYTE">Number of bits per pixel for this format.</field>
     </struct>
 
     <struct name="CompressedItem">
@@ -4481,6 +5160,29 @@ end
       <field name="Modified" type="struct DateTime">Date and time last modified.</field>
     </struct>
 
+    <struct name="CompressionFeedback">
+      <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB event indicators</field>
+      <field name="Index" type="LONG">Index of the current file</field>
+      <field name="Path" type="CSTRING">Name of the current file/path in the archive</field>
+      <field name="Dest" type="CSTRING">Destination file/path during decompression</field>
+      <field name="Progress" type="LARGE">Progress indicator (byte position for the file being de/compressed).</field>
+      <field name="OriginalSize" type="LARGE">Original size of the file</field>
+      <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
+      <field name="Year" type="WORD">Year of the original file's datestamp.</field>
+      <field name="Month" type="WORD">Month of the original file's datestamp.</field>
+      <field name="Day" type="WORD">Day of the original file's datestamp.</field>
+      <field name="Hour" type="WORD">Hour of the original file's datestamp.</field>
+      <field name="Minute" type="WORD">Minute of the original file's datestamp.</field>
+      <field name="Second" type="WORD">Second of the original file's datestamp.</field>
+    </struct>
+
+    <struct name="DRGB" comment="64-bit floating point RGB colour value." typeName="DRGB">
+      <field name="Red" type="DOUBLE">Red component value</field>
+      <field name="Green" type="DOUBLE">Green component value</field>
+      <field name="Blue" type="DOUBLE">Blue component value</field>
+      <field name="Alpha" type="DOUBLE">Alpha component value</field>
+    </struct>
+
     <struct name="DateTime" comment="Generic structure for date-time management.">
       <field name="Year" type="LONG">Year</field>
       <field name="Month" type="LONG">Month 1 to 12</field>
@@ -4493,6 +5195,33 @@ end
 
     <struct name="DirInfo" comment="Used by OpenDir() only">
       <field name="Info" type="struct FileInfo *">Pointer to a FileInfo structure</field>
+    </struct>
+
+    <struct name="Edges" comment="Generic structure for declaring edge coordinates.">
+      <field name="Left" type="LONG">Left-most coordinate</field>
+      <field name="Right" type="LONG">Right-most coordinate</field>
+      <field name="Bottom" type="LONG">Bottom coordinate</field>
+      <field name="Top" type="LONG">Top coordinate</field>
+    </struct>
+
+    <struct name="FDTable" comment="Internal record for processing FD activity.">
+      <field name="FD" type="HOSTHANDLE">The file descriptor that is managed by this record.</field>
+      <field name="Routine" type="FUNCTION *" prototype="void (*Routine)(HOSTHANDLE, APTR)">The routine that will process read/write messages for the FD.</field>
+      <field name="Data" type="APTR">A user specific data pointer.</field>
+      <field name="Flags" type="LONG">Set to RFD_READ, RFD_WRITE or RFD_EXCEPT.</field>
+    </struct>
+
+    <struct name="FRGB" comment="64-bit floating point RGB colour value.">
+      <field name="Red" type="FLOAT">Red component value</field>
+      <field name="Green" type="FLOAT">Green component value</field>
+      <field name="Blue" type="FLOAT">Blue component value</field>
+      <field name="Alpha" type="FLOAT">Alpha component value</field>
+    </struct>
+
+    <struct name="FeedSubscription">
+      <field name="SubscriberID" type="OBJECTID">Subscriber ID</field>
+      <field name="MessagePortMID" type="MEMORYID">Message port for the subscriber</field>
+      <field name="ClassID" type="CLASSID">Class of the subscriber</field>
     </struct>
 
     <struct name="Field" comment="Used to describe the public fields of a class.">
@@ -4513,6 +5242,11 @@ end
       <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
       <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
       <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
+    </struct>
+
+    <struct name="FieldDef" comment="Used to define constants for field references.">
+      <field name="Name" type="CSTRING">The name of the constant.</field>
+      <field name="Value" type="LONG">The value of the constant.</field>
     </struct>
 
     <struct name="FileFeedback">
@@ -4547,6 +5281,28 @@ end
     <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
       <field name="Name" type="CSTRING">Name of the field</field>
       <field name="Type" type="ULONG">Type of the field</field>
+    </struct>
+
+    <struct name="HSV" comment="Colour structure for Hue, Saturation and Value components.">
+      <field name="Hue" type="DOUBLE">Between 0 and 359.999</field>
+      <field name="Saturation" type="DOUBLE">Between 0 and 1.0</field>
+      <field name="Value" type="DOUBLE">Between 0 and 1.0.  Corresponds to Value, Lightness or Brightness</field>
+    </struct>
+
+    <struct name="InputEvent">
+      <field name="Next" type="const struct InputEvent *">Next event in the chain</field>
+      <field name="Value" type="DOUBLE">The value associated with the Type</field>
+      <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
+      <field name="RecipientID" type="OBJECTID">Surface that the input message is being conveyed to</field>
+      <field name="OverID" type="OBJECTID">Surface that is directly under the mouse pointer at the time of the event</field>
+      <field name="AbsX" type="LONG">Absolute horizontal position of mouse cursor</field>
+      <field name="AbsY" type="LONG">Absolute vertical position of mouse cursor</field>
+      <field name="X" type="LONG">Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
+      <field name="Y" type="LONG">Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
+      <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from</field>
+      <field name="Type" type="UWORD">JET constant</field>
+      <field name="Flags" type="UWORD">Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object</field>
+      <field name="Mask" type="UWORD">Mask to use for checking against subscribers</field>
     </struct>
 
     <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
@@ -4600,11 +5356,30 @@ end
       <field name="Object" type="OBJECTPTR"></field>
     </struct>
 
+    <struct name="RGB16" comment="16-bit RGB colour value.">
+      <field name="Red" type="UWORD">Red component value</field>
+      <field name="Green" type="UWORD">Green component value</field>
+      <field name="Blue" type="UWORD">Blue component value</field>
+      <field name="Alpha" type="UWORD">Alpha component value</field>
+    </struct>
+
+    <struct name="RGB32" comment="32-bit RGB colour value.">
+      <field name="Red" type="ULONG">Red component value</field>
+      <field name="Green" type="ULONG">Green component value</field>
+      <field name="Blue" type="ULONG">Blue component value</field>
+      <field name="Alpha" type="ULONG">Alpha component value</field>
+    </struct>
+
     <struct name="RGB8" comment="8-bit RGB colour value." typeName="RGB8">
       <field name="Red" type="UBYTE">Red component value</field>
       <field name="Green" type="UBYTE">Green component value</field>
       <field name="Blue" type="UBYTE">Blue component value</field>
       <field name="Alpha" type="UBYTE">Alpha component value</field>
+    </struct>
+
+    <struct name="RGBPalette">
+      <field name="AmtColours" type="LONG">Amount of Colours</field>
+      <field name="Col" type="struct RGB8" size="256">RGB Palette</field>
     </struct>
 
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
@@ -4621,10 +5396,50 @@ end
       <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
     </struct>
 
+    <struct name="Variable">
+      <field name="Type" type="ULONG">Field definition flags</field>
+      <field name="Unused" type="LONG">Unused 32-bit value for 64-bit alignment</field>
+      <field name="Large" type="LARGE">The value as a 64-bit integer.</field>
+      <field name="Double" type="DOUBLE">The value as a 64-bit float-point number.</field>
+      <field name="Pointer" type="APTR">The value as an address pointer.</field>
+    </struct>
+
+    <struct name="dcAudio" comment="Data feed structure for Audio">
+      <field name="Size" type="LONG">Byte size of this structure</field>
+      <field name="Format" type="LONG">Format of the audio data</field>
+    </struct>
+
+    <struct name="dcDeviceInput">
+      <field name="Value" type="DOUBLE">The value associated with the Type</field>
+      <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
+      <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)</field>
+      <field name="Flags" type="LONG">Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object</field>
+      <field name="Type" type="UWORD">JET constant</field>
+      <field name="Unused" type="UWORD"></field>
+    </struct>
+
+    <struct name="dcKeyEntry" comment="Data feed structure for Keypress">
+      <field name="Flags" type="LONG">Shift/Control/CapsLock...</field>
+      <field name="Value" type="LONG">ASCII value of the key A/B/C/D...</field>
+      <field name="Timestamp" type="LARGE">PreciseTime() at which the keypress was recorded</field>
+      <field name="Unicode" type="LONG">Unicode value for pre-calculated key translations</field>
+    </struct>
+
+    <struct name="dcRequest" comment="Data feed item request">
+      <field name="Item" type="LONG">Identifier for retrieval from the source</field>
+      <field name="Preference" type="char" size="4">Data preferences for the returned item(s)</field>
+    </struct>
+
     <struct name="rkBase64Decode" comment="Private structure for the StrBase64Decode() function." typeName="BASE64DECODE">
       <field name="Step" type="UBYTE">Internal</field>
       <field name="PlainChar" type="UBYTE">Internal</field>
       <field name="Initialised" type="UBYTE">Internal</field>
+    </struct>
+
+    <struct name="rkBase64Encode" comment="Private structure for the StrBase64Encode() function." typeName="BASE64ENCODE">
+      <field name="Step" type="UBYTE">Internal</field>
+      <field name="Result" type="UBYTE">Internal</field>
+      <field name="StepCount" type="LONG">Internal</field>
     </struct>
 
   </structs>

@@ -611,11 +611,6 @@ name = xml.get("content:/action/name")
 
   </types>
   <structs>
-    <struct name="XMLAttrib" typeName="XMLATT">
-      <field name="Name" type="STRING">The name of the attribute.</field>
-      <field name="Value" type="STRING">The value assigned to the attribute.</field>
-    </struct>
-
     <struct name="XMLTag" typeName="XMLTAG">
       <field name="Index" type="LONG">Position within the XML array</field>
       <field name="ID" type="LONG">Unique ID assigned to the tag on creation</field>

@@ -458,21 +458,6 @@
       <const name="VOL_RAMPING">Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).</const>
     </constants>
 
-    <constants lookup="CHF" comment="Optional flags for the AudioChannel structure.">
-      <const name="BACKWARD">Play channel backwards.</const>
-      <const name="CHANGED">Sample change</const>
-      <const name="MUTE">Channel is muted.</const>
-      <const name="VOL_RAMP">Volume ramping is enabled.</const>
-    </constants>
-
-    <constants lookup="CHS" comment="Channel status types for the AudioChannel structure.">
-      <const name="FADE_OUT">Playback is fading out.</const>
-      <const name="FINISHED">Playing has ended (not force stopped).</const>
-      <const name="PLAYING">Sample playing and not released.</const>
-      <const name="RELEASED">Sample playing and note has been released.</const>
-      <const name="STOPPED">Playing is stopped.</const>
-    </constants>
-
     <constants lookup="CMD" comment="Audio channel commands">
       <const name="CONTINUE">Continue a sound sample that has been stopped.</const>
       <const name="END_SEQUENCE">Terminates the current command sequence.</const>
@@ -505,44 +490,12 @@
       <const name="UNIDIRECTIONAL">The sample playback position returns to the byte position specified in the Loop1Start field.</const>
     </constants>
 
-    <constants lookup="NOTE" comment="Definitions for the Note field.  An 'S' indicates a sharp note.">
-      <const name="A"/>
-      <const name="AS"/>
-      <const name="B"/>
-      <const name="C"/>
-      <const name="CS"/>
-      <const name="D"/>
-      <const name="DS"/>
-      <const name="E"/>
-      <const name="F"/>
-      <const name="FS"/>
-      <const name="G"/>
-      <const name="GS"/>
-      <const name="OCTAVE"/>
-    </constants>
-
-    <constants lookup="SDF" comment="Sound flags">
-      <const name="LOOP">Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.</const>
-      <const name="NEW">Create the sample from scratch (e.g. for audio recording purposes).</const>
-      <const name="QUERY">Query the meta data of the sample source; do not load sample data.</const>
-      <const name="RESTRICT_PLAY">Restricts playback so that the sound can never play on more than one channel at any given time.</const>
-      <const name="STEREO">Indicates that the sound has multiple audio channels.</const>
-      <const name="STREAM">Read-Only. Indicates that streaming is enabled.</const>
-      <const name="TERMINATE">Self-terminate when the sound sample has finished playback.</const>
-    </constants>
-
     <constants lookup="SFM" comment="These audio bit formats are supported by AddSample and AddStream.">
       <const name="BIG_ENDIAN">Combine this flag with any audio format to declare it as big endian.</const>
       <const name="S16_BIT_MONO">16-bit mono signed sample.</const>
       <const name="S16_BIT_STEREO">16-bit stereo signed sample.</const>
       <const name="U8_BIT_MONO">8-bit mono unsigned sample.</const>
       <const name="U8_BIT_STEREO">8-bit stereo unsigned sample.</const>
-    </constants>
-
-    <constants lookup="STREAM" comment="Streaming options">
-      <const name="ALWAYS">Stream if the sample length exceeds 64k.</const>
-      <const name="NEVER">No streaming - load all data into memory.</const>
-      <const name="SMART">Smart streaming is the default.  If the sample appears to be relatively small with respect to available system RAM, it will be loaded into memory.  Otherwise it will be streamed.</const>
     </constants>
 
     <constants lookup="SVF" comment="Flags for the SetVolume() method.">
@@ -564,31 +517,6 @@
 
   </types>
   <structs>
-    <struct name="AudioChannel" comment="Audio channel structure">
-      <field name="Sample" type="struct AudioSample">Sample structure</field>
-      <field name="SoundID" type="OBJECTID">ID of the sound object set on this channel</field>
-      <field name="SampleHandle" type="LONG">Internal handle reference</field>
-      <field name="Flags" type="LONG" lookup="CHF">Special flags</field>
-      <field name="Position" type="ULONG">Current playing/mixing position</field>
-      <field name="Frequency" type="ULONG">Playback frequency</field>
-      <field name="PositionLow" type="UWORD">Playing position, lower bits</field>
-      <field name="LVolume" type="WORD">Current left speaker volume (0 - 100)</field>
-      <field name="RVolume" type="WORD">Current right speaker volume (0 - 100)</field>
-      <field name="LVolumeTarget" type="WORD">Volume target when fading or ramping</field>
-      <field name="RVolumeTarget" type="WORD">Volume target when fading or ramping</field>
-      <field name="Volume" type="WORD">Playing volume (0-100)</field>
-      <field name="Priority" type="BYTE">Priority of the sound that has been assigned to this channel</field>
-      <field name="State" type="BYTE" lookup="CHS">Channel state</field>
-      <field name="LoopIndex" type="BYTE">The current active loop (either 0, 1 or 2)</field>
-      <field name="Pan" type="BYTE">Pan value (-100 to +100)</field>
-    </struct>
-
-    <struct name="AudioCommand" comment="Audio command structure.">
-      <field name="CommandID" type="LONG">Command ID</field>
-      <field name="Handle" type="LONG">Channel handle</field>
-      <field name="Data" type="LONG">Special data related to the command ID</field>
-    </struct>
-
     <struct name="AudioLoop" comment="Loop settings for the AddSample() method.">
       <field name="LoopMode" type="WORD" lookup="LOOP">Loop mode (single, double)</field>
       <field name="Loop1Type" type="BYTE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
@@ -597,26 +525,6 @@
       <field name="Loop1End" type="LONG">End of the first loop</field>
       <field name="Loop2Start" type="LONG">Start of the second loop</field>
       <field name="Loop2End" type="LONG">End of the second loop</field>
-    </struct>
-
-    <struct name="AudioSample" comment="Audio sample structure">
-      <field name="Data" type="UBYTE *">Private.  Pointer to the sample data.</field>
-      <field name="StreamID" type="OBJECTID">Reference to an object to use for streaming</field>
-      <field name="SampleLength" type="LONG">Length of the sample data, in bytes</field>
-      <field name="Loop1Start" type="LONG">Start of the first loop</field>
-      <field name="Loop1End" type="LONG">End of the first loop</field>
-      <field name="Loop2Start" type="LONG">Start of the second loop</field>
-      <field name="Loop2End" type="LONG">End of the second loop</field>
-      <field name="SeekStart" type="LONG"></field>
-      <field name="StreamLength" type="LONG"></field>
-      <field name="BufferLength" type="LONG"></field>
-      <field name="StreamPos" type="LONG">Current read position within the audio stream</field>
-      <field name="SampleType" type="UBYTE">Type of sample (bit format)</field>
-      <field name="LoopMode" type="BYTE">Loop mode (single, double)</field>
-      <field name="Loop1Type" type="BYTE">First loop type (unidirectional, bidirectional)</field>
-      <field name="Loop2Type" type="BYTE">Second loop type (unidirectional, bidirectional)</field>
-      <field name="Used" type="BYTE"></field>
-      <field name="Free" type="BYTE"></field>
     </struct>
 
     <struct name="VolumeCtl">

@@ -263,39 +263,11 @@
 
   </fields>
   <types>
-    <constants lookup="ACF" comment="Acceleration flags for GetDisplayInfo().">
-      <const name="SOFTWARE_BLIT">Software blitting is used (or forced) for this display.</const>
-      <const name="VIDEO_BLIT">Video blitting is supported for this display.</const>
-    </constants>
-
     <constants lookup="BAF" comment="Instructions for basic graphics operations.">
       <const name="BLEND">Enable alpha blending to the destination if the source supports an alpha channel.</const>
       <const name="COPY">Special CopyArea() option that avoids blending when the destination pixel is empty.</const>
       <const name="DITHER">Perform dithering if the colour formats differ between the source and destination.</const>
       <const name="FILL">For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture.</const>
-    </constants>
-
-    <constants lookup="BMF" comment="Bitmap flags">
-      <const name="ACCELERATED_2D">2D video acceleration is available.</const>
-      <const name="ACCELERATED_3D">3D video acceleration is available.</const>
-      <const name="ALPHA_CHANNEL">For 32-bit images, indicates that an alpha channel is present.</const>
-      <const name="BLANK_PALETTE">Forces a blank/black palette on initialisation.</const>
-      <const name="CLEAR">Clear graphics on initialisation and when resizing.</const>
-      <const name="COMPRESSED">The bitmap data is compressed.</const>
-      <const name="FIXED_DEPTH">Prevent changing of bitmap depth after initialisation (e.g. via acResize()).</const>
-      <const name="INVERSE_ALPHA">Indicates reverse alpha blending, higher values are transparent.</const>
-      <const name="MASK">Declare the Bitmap as a 1 or 8 bit mask.  Must be set in conjunction with the BitsPerPixel field on initialisation.</const>
-      <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
-      <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
-      <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
-      <const name="QUERIED">Automatically set after a Query on the bitmap.</const>
-      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the ColourRGB field is set and support exists in functions such as CopyArea().</const>
-      <const name="USER">This user flag can be used to tag bitmaps with special meaning.  Not used internally.</const>
-    </constants>
-
-    <constants lookup="BMP" comment="Bitmap types">
-      <const name="CHUNKY">Chunky pixel mode (default).</const>
-      <const name="PLANAR">Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.</const>
     </constants>
 
     <constants lookup="CRF" comment="Flags for the SetCursor() function.">
@@ -327,13 +299,6 @@
       <const name="NEIGHBOUR">Nearest neighbour scaling</const>
     </constants>
 
-    <constants lookup="DPMS" comment="Possible modes for the Display class' DPMS field.">
-      <const name="DEFAULT">Use the default DPMS mode as defined by the display driver.</const>
-      <const name="OFF">Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).</const>
-      <const name="STANDBY">Puts the display into standby (reduced power) mode.</const>
-      <const name="SUSPEND">Puts the display into suspend mode (blanks the display output while maintaining normal power levels).</const>
-    </constants>
-
     <constants lookup="DT" comment="Flags for GetDisplayType().">
       <const name="GLES">The display is driven by OpenGLES.</const>
       <const name="NATIVE">The display is native (supported by internal drivers).</const>
@@ -344,10 +309,6 @@
     <constants lookup="FLIP" comment="Flags for the bitmap Flip method.">
       <const name="HORIZONTAL">Flip the bitmap from top to bottom.</const>
       <const name="VERTICAL">Flip the bitmap from left to right.</const>
-    </constants>
-
-    <constants lookup="GMF" comment="Flags for gamma operations.">
-      <const name="SAVE">Save the provided settings permanently.</const>
     </constants>
 
     <constants lookup="HOST">
@@ -362,32 +323,6 @@
       <const name="ANCHOR">Allow the pointer to be anchored.</const>
       <const name="UNUSED"/>
       <const name="VISIBLE">Indicates that the pointer is currently visible.  Read-only.</const>
-    </constants>
-
-    <constants lookup="SCR" comment="Display flags.">
-      <const name="ALPHA_BLEND">Enables alpha channel blending (if display is hosted and 32-bit).</const>
-      <const name="AUTO_SAVE">Saves settings to the global display state when the object is freed.</const>
-      <const name="BIT_6">Display is limited to 6-bit output per colour gun.</const>
-      <const name="BORDERLESS">If display is hosted, create it as a popup / borderless window.</const>
-      <const name="BUFFER">Set if you would like a complementing buffer in video RAM.</const>
-      <const name="COMPOSITE">Enables alpha channel blending (if display is hosted and 32-bit).</const>
-      <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
-      <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
-      <const name="FLIPPABLE">If SCR_BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
-      <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
-      <const name="HOSTED">The display is a desktop hosted window.</const>
-      <const name="MAXIMISE">Special win32 flag.</const>
-      <const name="MAXSIZE">For GetDisplayInfo() only, indicates that the width and height values indicate the display's maximum size.</const>
-      <const name="NO_ACCELERATION">2D graphics card acceleration is not available.</const>
-      <const name="POWERSAVE">Power saving is active (read-only).</const>
-      <const name="READ_ONLY">Synonym for MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</const>
-      <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
-      <const name="VISIBLE">Set if the screen is on display.</const>
-    </constants>
-
-    <constants lookup="SMF" comment="Flags for the Display class SetMonitor() method.">
-      <const name="AUTO_DETECT">Monitor settings to be auto-detected on startup.</const>
-      <const name="BIT_6">The device is limited to 6-bit colour production in real terms.</const>
     </constants>
 
   </types>
@@ -432,21 +367,6 @@
       <field name="Index" type="LONG">Display mode ID (internal)</field>
       <field name="HDensity" type="LONG">Horizontal pixel density per inch.</field>
       <field name="VDensity" type="LONG">Vertical pixel density per inch.</field>
-    </struct>
-
-    <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
-      <field name="RedShift" type="UBYTE">Right shift value</field>
-      <field name="GreenShift" type="UBYTE"></field>
-      <field name="BlueShift" type="UBYTE"></field>
-      <field name="AlphaShift" type="UBYTE"></field>
-      <field name="RedMask" type="UBYTE">The unshifted mask value (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE"></field>
-      <field name="BlueMask" type="UBYTE"></field>
-      <field name="AlphaMask" type="UBYTE"></field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value</field>
-      <field name="GreenPos" type="UBYTE"></field>
-      <field name="BluePos" type="UBYTE"></field>
-      <field name="AlphaPos" type="UBYTE"></field>
     </struct>
 
   </structs>

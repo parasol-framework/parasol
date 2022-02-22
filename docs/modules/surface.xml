@@ -362,12 +362,25 @@
       <const name="NORMAL">The surface is being dragged.</const>
     </constants>
 
+    <constants lookup="DSF">
+      <const name="NO_DRAW">Drawing and exposures are disabled</const>
+      <const name="NO_EXPOSE">Drawing is enabled, exposures are disabled</const>
+    </constants>
+
     <constants lookup="EXF" comment="Optional flags for the ExposeSurface() function.">
       <const name="ABSOLUTE">The supplied coordinates for exposure are absolute (relative to the display).</const>
       <const name="ABSOLUTE_COORDS">The supplied coordinates for exposure are absolute (relative to the display).</const>
       <const name="CHILDREN">If set, all child surfaces that intersect with exposed region will be included in the expose operation.</const>
       <const name="REDRAW_VOLATILE">Redraw every volatile object that intersects with the expose region, including internal volatile children.</const>
       <const name="REDRAW_VOLATILE_OVERLAP">Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.</const>
+    </constants>
+
+    <constants lookup="IRF" comment="Flags for RedrawSurface().">
+      <const name="FORCE_DRAW">Forces redrawing to the surface buffer (overrides visibility checks).</const>
+      <const name="IGNORE_CHILDREN">Do not draw child surfaces (this includes volatile children).</const>
+      <const name="IGNORE_NV_CHILDREN">Do not draw child surfaces unless they are volatile.</const>
+      <const name="RELATIVE">Coordinate arguments are expressed in relative format.  Right and Bottom reflect Width and Height respectively.</const>
+      <const name="SINGLE_BITMAP">Only draw children and/or siblings when they share our bitmap space.</const>
     </constants>
 
     <constants lookup="LVF" comment="drwLockBitmap() result flags">
@@ -408,6 +421,10 @@
       <const name="VISIBLE">If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.</const>
       <const name="VOLATILE">Synonym for PRECOPY | AFTER_COPY | CURSOR</const>
       <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
+    </constants>
+
+    <constants lookup="RT">
+      <const name="ROOT"/>
     </constants>
 
     <constants lookup="SWIN" comment="Options for the Surface WindowType field.">
@@ -452,6 +469,32 @@
       <field name="BitsPerPixel" type="BYTE">Bits per pixel of the bitmap</field>
       <field name="BytesPerPixel" type="BYTE">Bytes per pixel of the bitmap</field>
       <field name="LineWidth" type="LONG">Line width of the bitmap, in bytes</field>
+    </struct>
+
+    <struct name="SurfaceList">
+      <field name="ParentID" type="OBJECTID">Object that owns the surface area</field>
+      <field name="SurfaceID" type="OBJECTID">ID of the surface area</field>
+      <field name="BitmapID" type="OBJECTID">Shared bitmap buffer, if available</field>
+      <field name="DisplayID" type="OBJECTID">Display</field>
+      <field name="DataMID" type="OBJECTID">For drwCopySurface()</field>
+      <field name="TaskID" type="OBJECTID">Task that owns the surface</field>
+      <field name="RootID" type="OBJECTID">RootLayer</field>
+      <field name="PopOverID" type="OBJECTID"></field>
+      <field name="Flags" type="LONG">Surface flags (RNF_VISIBLE etc)</field>
+      <field name="X" type="LONG">Horizontal coordinate</field>
+      <field name="Y" type="LONG">Vertical coordinate</field>
+      <field name="Width" type="LONG">Width</field>
+      <field name="Height" type="LONG">Height</field>
+      <field name="Left" type="LONG">Absolute X</field>
+      <field name="Right" type="LONG">Absolute right coordinate</field>
+      <field name="Bottom" type="LONG">Absolute bottom coordinate</field>
+      <field name="Top" type="LONG">Absolute Y</field>
+      <field name="Level" type="WORD">Level number within the hierarchy</field>
+      <field name="LineWidth" type="WORD">[applies to the bitmap owner]</field>
+      <field name="BytesPerPixel" type="BYTE">[applies to the bitmap owner]</field>
+      <field name="BitsPerPixel" type="BYTE">[applies to the bitmap owner]</field>
+      <field name="Cursor" type="BYTE">Preferred cursor image ID</field>
+      <field name="Opacity" type="UBYTE">Current opacity setting 0 - 255</field>
     </struct>
 
   </structs>

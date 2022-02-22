@@ -786,11 +786,5 @@
       <field name="StyleFlags" type="LONG">Font style flags (FSO)</field>
     </struct>
 
-    <struct name="escFont">
-      <field name="Index" type="WORD">Font lookup</field>
-      <field name="Options" type="WORD">FSO flags</field>
-      <field name="Colour" type="struct RGB8">Font colour</field>
-    </struct>
-
   </structs>
 </book>

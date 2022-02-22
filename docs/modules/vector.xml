@@ -520,6 +520,35 @@ Z: Close Path
       <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
     </constants>
 
+    <constants lookup="PE">
+      <const name="Arc"/>
+      <const name="ArcRel"/>
+      <const name="ClosePath"/>
+      <const name="Curve"/>
+      <const name="CurveRel"/>
+      <const name="HLine"/>
+      <const name="HLineRel"/>
+      <const name="Line"/>
+      <const name="LineRel"/>
+      <const name="Move"/>
+      <const name="MoveRel"/>
+      <const name="QuadCurve"/>
+      <const name="QuadCurveRel"/>
+      <const name="QuadSmooth"/>
+      <const name="QuadSmoothRel"/>
+      <const name="Smooth"/>
+      <const name="SmoothRel"/>
+      <const name="VLine"/>
+      <const name="VLineRel"/>
+    </constants>
+
+    <constants lookup="RC">
+      <const name="ALL">Synonym for FINAL_PATH | BASE_PATH | TRANSFORM</const>
+      <const name="BASE_PATH">The base path (shape of the vector) must be recalculated.</const>
+      <const name="FINAL_PATH">The final path will need to be recalculated, so as to take transforms and/or relative coordinates into account.</const>
+      <const name="TRANSFORM">The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.</const>
+    </constants>
+
     <constants lookup="VBF" comment="Options for vecGetBoundary().">
       <const name="INCLUSIVE">The result will be inclusive of all paths that belong to children of the queried vector.</const>
       <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
@@ -596,6 +625,24 @@ Z: Close Path
       <const name="ROUND">The join is rounded.</const>
     </constants>
 
+    <constants lookup="VMF" comment="Morph flags">
+      <const name="AUTO_SPACING">Applicable when used on VectorText, auto-spacing allows the spacing between glyphs to be shrunk or expanded along the target path so that they can produce a better fit.  The default is for the glyphs to conform to their original spacing requirements.</const>
+      <const name="STRETCH">Applicable when used on VectorText, the stretch option converts glyph outlines into paths, and then all end points and control points will be adjusted to be along the perpendicular vectors from the path, thereby stretching and possibly warping the glyphs.  With this approach, connected glyphs, such as in cursive scripts, will maintain their connections.</const>
+      <const name="X_MAX">Align the source so that it is morphed along the right of the target path.</const>
+      <const name="X_MID">Align the source so that it is morphed along the middle of the target path.</const>
+      <const name="X_MIN">Align the source so that it is morphed along the left of the target path.</const>
+      <const name="Y_MAX">Align the source so that it is morphed along the bottom of the target path.</const>
+      <const name="Y_MID">Align the source so that it is morphed along the middle of the target path.</const>
+      <const name="Y_MIN">Align the source so that it is morphed along the top of the target path.</const>
+    </constants>
+
+    <constants lookup="VOF" comment="Viewport overflow options.">
+      <const name="HIDDEN">All content is clipped to within the viewport's boundary.</const>
+      <const name="INHERIT">The overflow state is inherited from the parent.</const>
+      <const name="SCROLL">All content is clipped to within the viewport's boundary.  A mechanism to scroll the viewport's content may be provided to the user (SVG capability not currently implemented).</const>
+      <const name="VISIBLE">The content is not clipped to the viewport's boundary.  This is the default.</const>
+    </constants>
+
     <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
       <const name="BITMAP_SIZED">Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.</const>
       <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
@@ -631,14 +678,58 @@ Z: Close Path
       <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
     </constants>
 
+    <constants lookup="VTS" comment="Options for stretching text in VectorText.">
+      <const name="CONDENSED"/>
+      <const name="EXPANDED"/>
+      <const name="EXTRA_CONDENSED"/>
+      <const name="EXTRA_EXPANDED"/>
+      <const name="INHERIT"/>
+      <const name="NARROWER"/>
+      <const name="NORMAL"/>
+      <const name="SEMI_CONDENSED"/>
+      <const name="SEMI_EXPANDED"/>
+      <const name="ULTRA_CONDENSED"/>
+      <const name="ULTRA_EXPANDED"/>
+      <const name="WIDER"/>
+    </constants>
+
+    <constants lookup="VTXF" comment="VectorText flags.">
+      <const name="AREA_SELECTED">Automatically set if a region of text has been selected.</const>
+      <const name="BLINK">Enable animated blinking (not supported - exists as SVG dummy option).</const>
+      <const name="EDIT">Allow user editing of the text if the nearest viewport has the focus.</const>
+      <const name="EDITABLE">Allow user editing of the text if the nearest viewport has the focus.</const>
+      <const name="LINE_THROUGH">Enable a strike-through line in the text.</const>
+      <const name="NO_SYS_KEYS">Disables support for system-keys that enable common key combinations such as Ctrl-C, Ctrl-X etc.</const>
+      <const name="OVERLINE">Enable overlining of the text.</const>
+      <const name="OVERWRITE">Turns on overwrite mode (if off, insert mode is enabled).</const>
+      <const name="UNDERLINE">Enable underlining of the text.</const>
+    </constants>
+
     <constants lookup="VUNIT">
       <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
       <const name="UNDEFINED"/>
       <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
     </constants>
 
+    <constants lookup="WVC" comment="Wave options.">
+      <const name="BOTTOM">Close the path across the bottom of its area.</const>
+      <const name="NONE">Do not close the path.</const>
+      <const name="TOP">Close the path across the top of its area.</const>
+    </constants>
+
+    <constants lookup="WVS" comment="Wave style options.">
+      <const name="ANGLED">Chevron style angles at 45 degrees either side of the peak and bottom edge.</const>
+      <const name="CURVED">Standard sine-wave curvature, this is the default.</const>
+      <const name="SAWTOOTH">Sawtooth patterns rise at 45 degrees to the peak, then direct 90 degrees to the bottom.</const>
+    </constants>
+
   </types>
   <structs>
+    <struct name="GradientStop" comment="Describes a colour stop for the VectorGradient Stops field.">
+      <field name="Offset" type="DOUBLE">An offset in the range of 0 - 1.0</field>
+      <field name="RGB" type="struct DRGB">A floating point RGB value.</field>
+    </struct>
+
     <struct name="PathCommand" comment="Base structure for path commands.">
       <field name="Type" type="UBYTE">The command type (PE value)</field>
       <field name="Curved" type="UBYTE">Private</field>
@@ -656,6 +747,11 @@ Z: Close Path
       <field name="Angle" type="DOUBLE">Arc angle</field>
     </struct>
 
+    <struct name="Transition" comment="For VectorTransition definitions">
+      <field name="Offset" type="DOUBLE">An offset from 0.0 to 1.0 at which to apply the transform.</field>
+      <field name="Transform" type="CSTRING">A transform string, as per SVG guidelines.</field>
+    </struct>
+
     <struct name="VectorMatrix" comment="Vector transformation matrix.">
       <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
       <field name="Vector" type="struct rkVector *">The vector associated with the transform.</field>
@@ -665,6 +761,13 @@ Z: Close Path
       <field name="ScaleY" type="DOUBLE">Matrix value D</field>
       <field name="TranslateX" type="DOUBLE">Matrix value E</field>
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+    </struct>
+
+    <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
+      <field name="X" type="DOUBLE">The X coordinate of this point.</field>
+      <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
+      <field name="XRelative" type="UBYTE">TRUE if the X value is relative to its viewport (between 0 and 1.0).</field>
+      <field name="YRelative" type="UBYTE">TRUE if the Y value is relative to its viewport (between 0 and 1.0).</field>
     </struct>
 
   </structs>
