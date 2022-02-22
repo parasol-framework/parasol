@@ -360,5 +360,12 @@
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
     </struct>
 
+    <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
+      <field name="X" type="DOUBLE">The X coordinate of this point.</field>
+      <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
+      <field name="XRelative" type="UBYTE">TRUE if the X value is relative to its viewport (between 0 and 1.0).</field>
+      <field name="YRelative" type="UBYTE">TRUE if the Y value is relative to its viewport (between 0 and 1.0).</field>
+    </struct>
+
   </structs>
 </book>

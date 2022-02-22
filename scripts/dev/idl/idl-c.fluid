@@ -1040,7 +1040,7 @@ function processClassFields(class, Blueprint, Private)
       end
    end
 
-   -- NB: This code does not output anything, because as yet fields (including virtual fields) cannot be accurately
+   -- NB: FieldArray is not output because as yet fields (including virtual fields) cannot be accurately
    -- described without the developer writing a custom field configuration in C.
 
    local fdef = "static const struct FieldArray cl" .. class.name .. "Fields[] = {\n"
@@ -1065,7 +1065,14 @@ function processClassFields(class, Blueprint, Private)
 
          if (f.ref != nil) then
             cdef = cdef .. "static const struct FieldDef cl" .. class.name .. f.name .. "[] = {\n"
+
+            local sorted = { }
             for _, v in pairs(f.ref.list) do
+               table.insert(sorted, v)
+            end
+            table.sort(sorted, function(a,b) return a.value < b.value end)
+
+            for _, v in ipairs(sorted) do
                if (v.name:upper() != "PRIVATE") and (v.name:upper() != "END") then
                   -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
                   local hash_id = '0x' .. string.format("%08x", v.value):sub(-8)
@@ -2205,7 +2212,7 @@ function buildDefs()
    if not nz(glFunctions) then return "" end
 
    local flist = "\nconst struct Function glFunctions[] = {\n"
-   for k, func in ipairs(glFunctions) do
+   for _, func in ipairs(glFunctions) do
       flist = flist .. "   { (APTR)" .. nz(glFunctionPrefix,"") .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
    end
    flist = flist .. "   { NULL, NULL, NULL }\n"

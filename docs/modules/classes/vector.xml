@@ -193,7 +193,7 @@
         <param type="DOUBLE" name="Y">The Y coordinate of the point.</param>
       </input>
       <description>
-<p>This method provides an accurate means of determining if a specific coordinate is inside the path of a vector.  It is important to note that in some cases this operation may be computationally expensive, as each pixel normally drawn in the path may need to be calculated until the (X,Y) point is hit.</p>
+<p>This method provides an accurate means of determining if a specific coordinate is inside the path of a vector. Transforms are taken into account, as are clip masks.</p>
       </description>
       <result>
         <error code="Okay">The point is in the path.</error>
