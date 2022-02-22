@@ -281,7 +281,7 @@ end
 -- FDL function
 
 function hash(Prefix, Format, ...)
-   for k,v in ipairs({...}) do
+   for _, v in ipairs({...}) do
       local hash_name = v:gsub('[^%w]', '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
       local hash_id = string.format('%08x', mSys.StrHash(v)):sub(-8)
@@ -314,15 +314,29 @@ function const(Prefix, Options, ...)
             table.insert(out, '#define ' .. Prefix .. '_' .. v)
          end
       elseif (type(va) == 'table') then
-         for k, v in pairs(va) do
-            local val, comment
-            if (type(v) == 'string') then
-               val, comment = v:match('^(.-):%s+(.+)$')
+         local sorted = { }
+         for name, value in pairs(va) do
+            table.insert(sorted, { name = name, value = value })
+         end
+         table.sort(sorted, function(a,b)
+            if (a.value == b.value) then
+               return a.name < b.name
+            elseif type(a.value) == 'number' and type(b.value) == 'number' then
+               return a.value < b.value
+            else
+               return tostring(a.value) < tostring(b.value)
             end
-            if (val == nil) then val = v end
+         end)
 
-            table.insert(out, '#define ' .. Prefix .. '_' .. k .. ' ' .. val)
-            table.insert(list, { name=k, value=val, comment=comment })
+         for _, v in ipairs(sorted) do
+            local val, comment
+            if (type(v.value) == 'string') then
+               val, comment = v.value:match('^(.-):%s+(.+)$')
+            end
+            if (val == nil) then val = v.value end
+
+            table.insert(out, '#define ' .. Prefix .. '_' .. v.name .. ' ' .. val)
+            table.insert(list, { name=v.name, value=val, comment=comment })
          end
       else
          error('Invalid const type for "' .. Prefix .. '", expected string, got "' .. type(va) .. '"')
@@ -1070,7 +1084,13 @@ function processClassFields(class, Blueprint, Private)
             for _, v in pairs(f.ref.list) do
                table.insert(sorted, v)
             end
-            table.sort(sorted, function(a,b) return a.value < b.value end)
+            table.sort(sorted, function(a,b)
+               if (a.value == b.value) then
+                  return a.name < b.name
+               else
+                  return a.value < b.value
+               end
+            end)
 
             for _, v in ipairs(sorted) do
                if (v.name:upper() != "PRIVATE") and (v.name:upper() != "END") then
