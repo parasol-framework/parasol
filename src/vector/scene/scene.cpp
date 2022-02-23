@@ -668,10 +668,7 @@ void get_viewport_at_xy_scan(objVector *Vector, std::vector<std::vector<objVecto
       if (scan->Head.SubID IS ID_VECTORVIEWPORT) {
          auto vp = (objVectorViewport *)scan;
 
-         if (vp->Dirty) {
-            gen_vector_path((objVector *)vp);
-            vp->Dirty = 0;
-         }
+         if (vp->Dirty) gen_vector_path((objVector *)vp);
 
          if ((X >= vp->vpBX1) and (Y >= vp->vpBY1) and (X < vp->vpBX2) and (Y < vp->vpBY2)) {
             Collection[Branch].emplace_back(vp);
