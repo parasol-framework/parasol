@@ -992,6 +992,15 @@ private:
                      Scene->InputBoundaries.emplace_back(shape->Head.UniqueID, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
                   }
 
+                  if (Scene->Flags & VPF_OUTLINE_VIEWPORTS) { // Debug option: Draw the viewport's path with a green outline
+                     mSolidRender.color(agg::rgba(0, 1, 0));
+                     agg::rasterizer_scanline_aa<> stroke_raster;
+                     agg::conv_stroke<agg::path_storage> stroked_path(*view->BasePath);
+                     stroked_path.width(2);
+                     stroke_raster.add_path(stroked_path);
+                     agg::render_scanlines(stroke_raster, mScanLine, mSolidRender);
+                  }
+
                   draw_vectors((objVector *)view->Child, state);
 
                   state.mClipMask = saved_mask;
