@@ -428,6 +428,19 @@ static CSTRING read_numseq(CSTRING Value, ...)
 }
 
 //********************************************************************************************************************
+// Test if a point is within a rectangle (four points, must be convex)
+
+static DOUBLE is_left(agg::vertex_d A, agg::vertex_d B, agg::vertex_d C)
+{
+    return ((B.x - A.x) * (C.y - A.y) - (C.x - A.x) * (B.y - A.y));
+}
+
+static bool point_in_rectangle(agg::vertex_d X, agg::vertex_d Y, agg::vertex_d Z, agg::vertex_d W, agg::vertex_d P)
+{
+    return (is_left(X, Y, P) > 0) and (is_left(Y, Z, P) > 0) and (is_left(Z, W, P) > 0) and (is_left(W, X, P) > 0);
+}
+
+//********************************************************************************************************************
 
 template <class T>
 void configure_stroke(objVector &Vector, T &stroke)
@@ -438,7 +451,7 @@ void configure_stroke(objVector &Vector, T &stroke)
    if (Vector.LineCap)   stroke.line_cap(Vector.LineCap); // butt, square, round
    if (Vector.InnerJoin) stroke.inner_join(Vector.InnerJoin); // miter, round, bevel, jag
 
-   // AGG seems to have issues with using the correct cap at the end of closed polygons.  For the moment
+   // TODO: AGG seems to have issues with using the correct cap at the end of closed polygons.  For the moment
    // this hack is being used, but it can result in dashed lines being switched to the wrong line cap.  For illustration, use:
    //
    //   <polygon points="100,50 140,50 120,15.36" stroke="darkslategray" stroke-width="5" stroke-dasharray="20 20"
