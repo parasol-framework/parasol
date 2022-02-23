@@ -188,11 +188,17 @@ static void gen_vector_path(objVector *Vector)
 
       log.trace("AlignXY: %.2f %.2f, ScaleXY: %.2f %.2f", view->vpAlignX, view->vpAlignY, view->vpXScale, view->vpYScale);
 
-      // Compute the clipping boundary of the viewport and store it in the BX/Y fields.
+      // Build the path for the vector and transform it.
 
       agg::trans_affine transform;
 
-      // TODO Need an answer as to why we skip the viewport's own transforms with the get_parent() call?
+      for (auto t=Vector->Matrices; t; t=t->Next) {
+         transform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
+      }
+
+      transform.tx += Vector->FinalX;
+      transform.ty += Vector->FinalY;
+
       apply_parent_transforms(Vector, get_parent(Vector), transform);
 
       if (!Vector->BasePath) {
@@ -201,15 +207,15 @@ static void gen_vector_path(objVector *Vector)
       }
       else Vector->BasePath->free_all();
 
-      DOUBLE x = view->FinalX;
-      DOUBLE y = view->FinalY;
-      Vector->BasePath->move_to(x, y); // Top left
-      Vector->BasePath->line_to(x+view->vpFixedWidth, y); // Top right
-      Vector->BasePath->line_to(x+view->vpFixedWidth, y+view->vpFixedHeight); // Bottom right
-      Vector->BasePath->line_to(x, y+view->vpFixedHeight); // Bottom left
+      Vector->BasePath->move_to(0, 0); // Top left
+      Vector->BasePath->line_to(view->vpFixedWidth, 0); // Top right
+      Vector->BasePath->line_to(view->vpFixedWidth, view->vpFixedHeight); // Bottom right
+      Vector->BasePath->line_to(0, view->vpFixedHeight); // Bottom left
       Vector->BasePath->close_polygon();
 
       Vector->BasePath->transform(transform);
+
+      // Compute the clipping boundary of the viewport and store it in the BX/Y fields.
 
       bounding_rect_single(*Vector->BasePath, 0, &view->vpBX1, &view->vpBY1, &view->vpBX2, &view->vpBY2);
 
