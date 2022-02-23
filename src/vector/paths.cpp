@@ -175,7 +175,8 @@ static void gen_vector_path(objVector *Vector)
          view->vpFixedHeight = parent_height;
       }
 
-      log.trace("Vector: #%d, Dimensions: $%.8x, Parent: #%d %.2fw %.2fh, Target: %.2fw %.2fh, Viewbox: %.2f %.2f %.2f %.2f", Vector->Head.UniqueID, view->vpDimensions, parent_id, parent_width, parent_height, target_width, target_height, view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight);
+      log.trace("Vector: #%d, Dimensions: $%.8x, Parent: #%d %.2fw %.2fh, Target: %.2fw %.2fh, Viewbox: %.2f %.2f %.2f %.2f",
+         Vector->Head.UniqueID, view->vpDimensions, parent_id, parent_width, parent_height, target_width, target_height, view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight);
 
       // This part computes the alignment of the viewbox (source) within the viewport's target area.
       // AspectRatio choices affect this, e.g. "xMinYMin slice".  Note that alignment specifically impacts
@@ -222,7 +223,7 @@ static void gen_vector_path(objVector *Vector)
 
       if (((transform.shx) or (transform.shy)) and
           ((view->vpOverflowX != VIS_VISIBLE) or (view->vpOverflowY != VIS_VISIBLE))) {
-         log.trace("A clip path will be assigned to viewport #%d.", Vector->Head.UniqueID);
+         log.trace("A clip path will be created for viewport #%d.", Vector->Head.UniqueID);
          if (!view->vpClipMask) {
             CreateObject(ID_VECTORCLIP, NF_INTEGRAL, &view->vpClipMask,
                FID_Owner|TLONG, Vector->Head.UniqueID,
@@ -236,7 +237,8 @@ static void gen_vector_path(objVector *Vector)
       }
       else if (view->vpClipMask) { acFree(view->vpClipMask); view->vpClipMask = NULL; }
 
-      log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f", Vector->Head.UniqueID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
+      log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f",
+         Vector->Head.UniqueID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
 
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
 

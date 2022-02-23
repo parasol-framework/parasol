@@ -968,7 +968,7 @@ private:
                mRenderBase.clip_box(x1, y1, x2, y2);
 
                #ifdef DBG_DRAW
-                  log.traceBranch("Viewport #%d clip region (%d %d %d %d) bounded by (%d %d %d %d)", shape->Head.UniqueID, x1, y1, x2, y2, xmin, ymin, xmax, ymax);
+                  log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f) bounded by (%.2f %.2f %.2f %.2f)", shape->Head.UniqueID, x1, y1, x2, y2, xmin, ymin, xmax, ymax);
                #endif
 
                if ((x2 > x1) and (y2 > y1)) [[likely]] { // Continue only if the clipping region is good.
