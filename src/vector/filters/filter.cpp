@@ -495,8 +495,8 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
       else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->BoundHeight = Self->Height * (bounds[3] - bounds[1]);
       else Self->BoundHeight = bounds[3] = bounds[1];
 
-      Self->ViewX = Self->Viewport->vpFixedRelX;
-      Self->ViewY = Self->Viewport->vpFixedRelY;
+      Self->ViewX = Self->Viewport->FinalX;
+      Self->ViewY = Self->Viewport->FinalY;
       Self->ViewWidth  = Self->Viewport->vpFixedWidth;
       Self->ViewHeight = Self->Viewport->vpFixedHeight;
       bound = TRUE;

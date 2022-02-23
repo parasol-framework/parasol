@@ -111,19 +111,19 @@ static void gen_vector_path(objVector *Vector)
 
          // The user's values for destination (x,y) need to be taken into account. <svg x="" y=""/>
 
-         if (view->vpDimensions & DMF_RELATIVE_X) view->vpFixedRelX = (parent_width * view->vpTargetX);
-         else view->vpFixedRelX = view->vpTargetX;
+         if (view->vpDimensions & DMF_RELATIVE_X) view->FinalX = (parent_width * view->vpTargetX);
+         else view->FinalX = view->vpTargetX;
 
-         if (view->vpDimensions & DMF_RELATIVE_Y) view->vpFixedRelY = (parent_height * view->vpTargetY);
-         else view->vpFixedRelY = view->vpTargetY;
+         if (view->vpDimensions & DMF_RELATIVE_Y) view->FinalY = (parent_height * view->vpTargetY);
+         else view->FinalY = view->vpTargetY;
       }
       else {
          parent_width  = Vector->Scene->PageWidth;
          parent_height = Vector->Scene->PageHeight;
          parent_id     = Vector->Scene->Head.UniqueID;
          // SVG requirement: top level viewport always located at (0,0)
-         view->vpFixedRelX = 0;
-         view->vpFixedRelY = 0;
+         view->FinalX = 0;
+         view->FinalY = 0;
       }
 
       if (view->vpDimensions & DMF_RELATIVE_WIDTH) view->vpFixedWidth = parent_width * view->vpTargetWidth;
@@ -136,28 +136,28 @@ static void gen_vector_path(objVector *Vector)
 
       if (view->vpDimensions & DMF_RELATIVE_X_OFFSET) {
          if (view->vpDimensions & DMF_X) {
-            view->vpFixedWidth = parent_width - (parent_width * view->vpTargetXO) - view->vpFixedRelX;
+            view->vpFixedWidth = parent_width - (parent_width * view->vpTargetXO) - view->FinalX;
          }
-         else view->vpFixedRelX = parent_width - view->vpFixedWidth - (parent_width * view->vpTargetXO);
+         else view->FinalX = parent_width - view->vpFixedWidth - (parent_width * view->vpTargetXO);
       }
       else if (view->vpDimensions & DMF_FIXED_X_OFFSET) {
          if (view->vpDimensions & DMF_X) {
-            view->vpFixedWidth = parent_width - view->vpTargetXO - view->vpFixedRelX;
+            view->vpFixedWidth = parent_width - view->vpTargetXO - view->FinalX;
          }
-         else view->vpFixedRelX = parent_width - view->vpFixedWidth - view->vpTargetXO;
+         else view->FinalX = parent_width - view->vpFixedWidth - view->vpTargetXO;
       }
 
       if (view->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
          if (view->vpDimensions & DMF_Y) {
-            view->vpFixedHeight = parent_height - (parent_height * view->vpTargetYO) - view->vpFixedRelY;
+            view->vpFixedHeight = parent_height - (parent_height * view->vpTargetYO) - view->FinalY;
          }
-         else view->vpFixedRelY = parent_height - view->vpFixedHeight - (parent_height * view->vpTargetYO);
+         else view->FinalY = parent_height - view->vpFixedHeight - (parent_height * view->vpTargetYO);
       }
       else if (view->vpDimensions & DMF_FIXED_Y_OFFSET) {
          if (view->vpDimensions & DMF_Y) {
-            view->vpFixedHeight = parent_height - view->vpTargetYO - view->vpFixedRelY;
+            view->vpFixedHeight = parent_height - view->vpTargetYO - view->FinalY;
          }
-         else view->vpFixedRelY = parent_height - view->vpFixedHeight - view->vpTargetYO;
+         else view->FinalY = parent_height - view->vpFixedHeight - view->vpTargetYO;
       }
 
       // Contained vectors are normally scaled to the area defined by the viewport.
@@ -186,11 +186,6 @@ static void gen_vector_path(objVector *Vector)
          view->vpViewWidth, view->vpViewHeight, &view->vpAlignX, &view->vpAlignY,
          &view->vpXScale, &view->vpYScale);
 
-      // FinalX/Y values have no current use with respect to viewports.
-
-      Vector->FinalX = 0;
-      Vector->FinalY = 0;
-
       log.trace("AlignXY: %.2f %.2f, ScaleXY: %.2f %.2f", view->vpAlignX, view->vpAlignY, view->vpXScale, view->vpYScale);
 
       // Compute the clipping boundary of the viewport and store it in the BX/Y fields.
@@ -206,8 +201,8 @@ static void gen_vector_path(objVector *Vector)
       }
       else Vector->BasePath->free_all();
 
-      DOUBLE x = view->vpFixedRelX;
-      DOUBLE y = view->vpFixedRelY;
+      DOUBLE x = view->FinalX;
+      DOUBLE y = view->FinalY;
       Vector->BasePath->move_to(x, y); // Top left
       Vector->BasePath->line_to(x+view->vpFixedWidth, y); // Top right
       Vector->BasePath->line_to(x+view->vpFixedWidth, y+view->vpFixedHeight); // Bottom right
@@ -243,7 +238,7 @@ static void gen_vector_path(objVector *Vector)
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
 
       Vector->Scene->PendingResizeMsgs->insert({ Vector->Head.UniqueID, {
-          view->vpFixedRelX, view->vpFixedRelY, 0,
+          view->FinalX, view->FinalY, 0,
           view->vpFixedWidth, view->vpFixedHeight, 0 }
       });
    }
@@ -428,12 +423,16 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
       if (scan->Head.ClassID != ID_VECTOR) continue;
 
       if (scan->Head.SubID IS ID_VECTORVIEWPORT) {
+         // When a viewport is encountered we need to make special considerations as to its viewbox, which affects both
+         // position and scaling of all children.  Alignment is another factor that is taken care of here.
+
          auto view = (objVectorViewport *)scan;
 
-         DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->Head.UniqueID, view->vpFixedRelX, view->vpFixedRelY);
+         DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->Head.UniqueID, view->FinalX, view->FinalY);
 
          if ((view->vpViewX) or (view->vpViewY)) {
-            AGGTransform.translate(-view->vpViewX, -view->vpViewY);
+            AGGTransform.tx -= view->vpViewX;
+            AGGTransform.ty -= view->vpViewY;
          }
 
          if ((view->vpXScale != 1.0) or (view->vpYScale != 1.0)) {
@@ -451,7 +450,8 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
          }
 
          // Children of viewports are affected by the VP's alignment values.
-         AGGTransform.translate(view->vpFixedRelX + view->vpAlignX, view->vpFixedRelY + view->vpAlignY);
+         AGGTransform.tx += view->FinalX + view->vpAlignX;
+         AGGTransform.ty += view->FinalY + view->vpAlignY;
       }
       else {
          log.trace("Parent vector #%d x/y: %.2f %.2f", scan->Head.UniqueID, scan->FinalX, scan->FinalY);

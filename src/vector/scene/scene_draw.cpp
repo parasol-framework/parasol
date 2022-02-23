@@ -978,7 +978,7 @@ private:
                   log.trace("ViewBox (%.2f %.2f %.2f %.2f) Scale (%.2f %.2f) Fix (%.2f %.2f %.2f %.2f)",
                     view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight,
                     view->vpXScale, view->vpYScale,
-                    view->vpFixedRelX, view->vpFixedRelY, view->vpFixedWidth, view->vpFixedHeight);
+                    view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight);
 
                   auto saved_viewport = mView;  // Save current viewport state and switch to the new viewport state
                   mView = view;
