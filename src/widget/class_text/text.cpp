@@ -1517,7 +1517,6 @@ static const FieldArray clFields[] = {
    { "TextX",           FDF_LONG|FDF_RW,    0, (APTR)GET_TextX,      (APTR)SET_TextX },
    { "TextY",           FDF_LONG|FDF_RW,    0, (APTR)GET_TextY,      (APTR)SET_TextY },
    { "ValidateInput",   FDF_FUNCTIONPTR|FDF_RW,  0, (APTR)GET_ValidateInput, (APTR)SET_ValidateInput },
-   { "ParentViewport",  FDF_OBJECT|FDF_RI,  ID_VECTORVIEWPORT, (APTR)GET_ParentViewport, (APTR)SET_ParentViewport },
    { "Height",          FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height, (APTR)SET_Height },
    { "Point",           FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Point,  (APTR)SET_Point },
    { "Width",           FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Width,  (APTR)SET_Width },

@@ -371,13 +371,6 @@
     </field>
 
     <field>
-      <name>ParentViewport</name>
-      <comment>WIP (see Button class)</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>OBJECTPTR</type>
-    </field>
-
-    <field>
       <name>SelectColumn</name>
       <comment>Indicates the column position of a selection's beginning.</comment>
       <access read="R">Read</access>
