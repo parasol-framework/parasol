@@ -188,7 +188,10 @@ static void gen_vector_path(objVector *Vector)
 
       log.trace("AlignXY: %.2f %.2f, ScaleXY: %.2f %.2f", view->vpAlignX, view->vpAlignY, view->vpXScale, view->vpYScale);
 
-      // Build the path for the vector and transform it.
+      // Build the path for the vector and transform it.  Note: In SVG a viewport cannot have any transform directly
+      // associated with it (but it can inherit transforms).  In our implementation a viewport CAN be transformed
+      // directly.  This is done before the (X,Y) position is applied because this gives reliable & consistent
+      // results in cases where the (X,Y) position is manually modified by the client in a UI for instance.
 
       agg::trans_affine transform;
 

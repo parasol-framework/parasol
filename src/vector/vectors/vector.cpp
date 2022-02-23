@@ -715,27 +715,58 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Self->GeneratePath) {
-      if ((!Self->BasePath) or (Self->Dirty)) gen_vector_tree((objVector *)Self);
-      if (!Self->BasePath) return ERR_NoData;
+   if ((!Self->BasePath) or (Self->Dirty)) gen_vector_tree((objVector *)Self);
+   if (!Self->BasePath) return ERR_NoData;
 
-      // Quick check to see if (X,Y) is within the path's boundary.
+   if (Self->Head.SubID IS ID_VECTORVIEWPORT) {
+      agg::vertex_d w, x, y, z;
 
+      auto &vertices = Self->BasePath->vertices(); // Note: Viewport BasePath is fully transformed.
+      vertices.vertex(0, &x.x, &x.y);
+      vertices.vertex(1, &y.x, &y.y);
+      vertices.vertex(2, &z.x, &z.y);
+      vertices.vertex(3, &w.x, &w.y);
+
+      agg::vertex_d pt = agg::vertex_d(Args->X, Args->Y, 0);
+
+      // Test assumes clockwise points; for counter-clockwise you'd use < 0.
+      bool inside = (is_left(x, y, pt) > 0) and (is_left(y, z, pt) > 0) and
+                    (is_left(z, w, pt) > 0) and (is_left(w, x, pt) > 0);
+
+      if (inside) return ERR_Okay;
+   }
+   else if (Self->Head.SubID IS ID_VECTORRECTANGLE) {
+      agg::vertex_d w, x, y, z;
       agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(*Self->BasePath, Self->Transform);
 
+      base_path.rewind(0);
+      base_path.vertex(&x.x, &x.y);
+      base_path.vertex(&y.x, &y.y);
+      base_path.vertex(&z.x, &z.y);
+      base_path.vertex(&w.x, &w.y);
+
+      agg::vertex_d pt = agg::vertex_d(Args->X, Args->Y, 0);
+
+      bool inside = (is_left(x, y, pt) > 0) and (is_left(y, z, pt) > 0) and
+                    (is_left(z, w, pt) > 0) and (is_left(w, x, pt) > 0);
+
+      if (inside) return ERR_Okay;
+   }
+   else {
+      // Quick check to see if (X,Y) is within the path's boundary, then follow-up with a hit test.
+
+      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(*Self->BasePath, Self->Transform);
       DOUBLE bx1, by1, bx2, by2;
       bounding_rect_single(base_path, 0, &bx1, &by1, &bx2, &by2);
       if ((Args->X >= bx1) and (Args->Y >= by1) and (Args->X < bx2) and (Args->Y < by2)) {
-         // Do the hit testing.
-
+         // Do the hit testing.  TODO: There is potential for more sophisticated & optimal hit testing methods.
          agg::rasterizer_scanline_aa<> raster;
          raster.add_path(base_path);
          if (raster.hit_test(Args->X, Args->Y)) return ERR_Okay;
       }
-
-      return ERR_False;
    }
-   else return ERR_NoSupport;
+
+   return ERR_False;
 }
 
 /*********************************************************************************************************************

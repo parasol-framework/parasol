@@ -880,10 +880,10 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
          if (!lock.granted()) continue;
          auto vector = lock.obj;
 
-         // TODO Additional bounds check against the clip mask, if present.
+         // Additional bounds check to cater for transforms, clip masks etc.
 
-         if ((vector->ClipMask) and (Self->ButtonLock != vector->Head.UniqueID)) {
-
+         if (Self->ButtonLock != vector->Head.UniqueID) {
+            if (vecPointInPath(vector, input->X, input->Y) != ERR_Okay) continue;
          }
 
          if (Self->LastMovementVector != vector->Head.UniqueID) {
