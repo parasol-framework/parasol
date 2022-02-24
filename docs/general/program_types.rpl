@@ -2,9 +2,9 @@
 
 <info>
  <title>Program Types</title>
- <author>Rocklyte Systems</author>
- <keywords>rocklyte, sdk, program, types, script, object, exe, executable</keywords>
- <description>Information on the deployment of programs developed with the Rocklyte SDK.</description>
+ <author>Paul Manias</author>
+ <keywords>sdk, program, types, script, object, exe, executable</keywords>
+ <description>Information on the deployment of programs developed with the Parasol Framework.</description>
 </info>
 
 <include src="inc_style.rpl"/>
@@ -12,7 +12,7 @@
 <page name="Index">
 <startpage title="Program Types"/>
 
-<p>Before you begin developing your first program using the SDK, some consideration should be made towards the way in which you will do this.  On most competing platforms your choices will often boil down to choosing a language that suits your requirements and compiling the program down to an executable. However Rocklyte's scripting provisions and object methodologies give you many ways to tackle the development process. In this section we look at these options in detail.</p>
+<p>Before you begin developing your first program using the SDK, some consideration should be made towards the way in which you will do this.  On most competing platforms your choices will often boil down to choosing a language that suits your requirements and compiling the program down to an executable. However Parasol's scripting provisions and object methodologies give you many ways to tackle the development process. In this section we look at these options in detail.</p>
 
 <h2>Executable Programs</h2>
 
@@ -22,9 +22,9 @@
 
 <p>To see how executable programs are built, refer to the example programs provided with the SDK and the <a href="hello_world.rpl">Hello World</a> chapter of the manual.</p>
 
-<h2>Scripted Programs</h2>
+<h2>Fluid Scripts</h2>
 
-<p>If you've used Athene previously then you may have an idea of what a scripted program is - anything written in DML is a valid example.  The addition of the Fluid language in 2007 also allows you to develop complex programs that have close to the same level of system access as C programs enjoy.  Here are a few major advantages of scripted programming:</p>
+<p>Fluid allows you to develop complex programs that have close to the same level of system access as C programs enjoy.  Here are a few major advantages of scripted programming:</p>
 
 <indent>
 <list type="bullet">

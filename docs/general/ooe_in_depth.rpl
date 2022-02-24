@@ -2,9 +2,9 @@
 
 <info>
  <title>Object Management In Depth</title>
- <author>Rocklyte Systems</author>
+ <author>Paul Manias</author>
  <keywords>object, oriented, modular, moo, component, class, development, detail, manual</keywords>
- <description>A detailed summary of object management in the Rocklyte SDK.</description>
+ <description>A detailed summary of object management in the Parasol Framework.</description>
 </info>
 
 <include src="inc_style.rpl"/>
@@ -12,7 +12,7 @@
 <page>
 <startpage title="Object Management In Depth"/>
 
-<p>As the Rocklyte SDK has an object oriented foundation, it is not only important to understand the basics behind the concept, but also to learn the way in which we support OO.  In this section we look at object management in more detail so that you may gain a thorough understanding as to how it works.</p>
+<p>As the Parasol Framework has an object oriented foundation, it is not only important to understand the basics behind the concept, but also to learn the way in which we support OO.  In this section we look at object management in more detail so that you may gain a thorough understanding as to how it works.</p>
 
 <h2>Creating New Objects</h2>
 
@@ -102,8 +102,8 @@ if (!NewObject(ID_PICTURE, NF_PUBLIC, NULL, &pic_id)) {
   <row><cell><b><u>Type</u></b></cell><cell><b><u>Name</u></b></cell><cell><b><u>Description</u></b></cell></row>
   <row><cell>CLASSID</cell><cell>ClassID</cell><cell>The ClassID refers to the unique ID of the class that the object belongs to. E.g. If the object belongs to the Screen class, then its ID will be ID_SCREEN, as defined in the system/registry.h include file. When you need to identify an object as quickly as possible, check this field.</cell></row>
   <row><cell>CLASSID</cell><cell>SubID</cell><cell>If the object is being managed by a sub-class, this field will reflect that class ID.  You can read more about base-classes and sub-classes in the <class>Class</> Manual.</cell></row>
-  <row><cell>OBJECTID</cell><cell>UniqueID</cell><cell>This field will tell you the unique identifier that has been assigned to the object by the system. If you don't know the ID of an object but have its address, this field provides a quick way of obtaining the unique ID.</cell></row>
-  <row><cell>OBJECTID</cell><cell>OwnerID</cell><cell>This field refers to the unique ID of the object's owner.  In almost all cases, an object will have an owner unless it has been marked as an untracked object. Knowing the owner of an object can be exceptionally useful, as it designates its position within the object hierarchy. This also has an impact on resource tracking - if the owner of an object is destroyed, then the object will also be eliminated as it will be treated as a resource of the owner. The owner of an object can be changed through the <function mod="kernel">SetOwner</> function - do not attempt to change the owner by writing to the OwnerID field directly.</cell></row>
+  <row><cell>OBJECTID</cell><cell>UID</cell><cell>the unique identifier that has been assigned to the object by the system. If you don't know the ID of an object but have its address, this field provides a quick way of obtaining the unique ID.</cell></row>
+  <row><cell>OBJECTID</cell><cell>OwnerID</cell><cell>refers to the unique ID of the object's owner.  In almost all cases, an object will have an owner unless it has been marked as an untracked object. Knowing the owner of an object can be exceptionally useful, as it designates its position within the object hierarchy. This also has an impact on resource tracking - if the owner of an object is destroyed, then the object will also be eliminated as it will be treated as a resource of the owner. The owner of an object can be changed through the <function mod="kernel">SetOwner</> function - do not attempt to change the owner by writing to the OwnerID field directly.</cell></row>
   <row><cell>WORD</cell><cell>ObjectFlags</cell><cell>
     <p>This field can provide you with interesting information on an object's status. All flags are read-only and most are private to the system. Here are the flags that you are allowed to check:</p>
     <indent><table width="100%" columns="120,0">
@@ -138,7 +138,7 @@ if (!NewObject(ID_PICTURE, NF_PUBLIC, NULL, &pic_id)) {
 </>
 </indent>
 
-<p>On the other hand, an indirect field access involves reading or writing a field through an abstract mechanism, which will normally involve some type of function call. Object oriented languages will typically offer indirect field access through method calls only. For instance, C++ does little to distinguish the difference between method-based fields and embedded functions. The MOO design structure requires that a clear line is drawn between the two, requiring developers to make an exact distinction between fields and methods. So while a call such as Bitmap-&gt;SetWidth(100) may be commonplace in some OO languages, it is an illegal design construct in our system. Instead, special functions are provided for field access. They are:</p>
+<p>On the other hand, an indirect field access involves reading or writing a field through an abstract mechanism, which will normally involve some type of function call. Object oriented languages will typically offer indirect field access through method calls only. For instance, C++ does little to distinguish the difference between method-based fields and embedded functions. The OOE design structure requires that a clear line is drawn between the two, requiring developers to make an exact distinction between fields and methods. So while a call such as Bitmap-&gt;SetWidth(100) may be commonplace in some OO languages, it is an illegal design construct in our system. Instead, special functions are provided for field access. They are:</p>
 
 <indent>
 <table align="center" width="50%" spacing="0" padding="0">

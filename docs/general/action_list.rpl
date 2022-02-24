@@ -2,7 +2,7 @@
 
 <info>
  <title>Action User Guide</title>
- <author>Rocklyte Systems</author>
+ <author>Paul Manias</author>
  <description>List of all officially documented actions.</description>
  <keywords>action, kernel, list, object</keywords>
 </info>
@@ -97,7 +97,7 @@
 
   <startpage title="Action User Guide"/>
 
-  <p>This document lists and describes all of the actions that are available in the Rocklyte Core Platform.  For information on how to execute actions, refer to the <function mod="kernel">Action</>, <function mod="kernel">ActionMsg</> and <function mod="kernel">ActionTags</> functions in the Object Kernel Manual.  Please note that each class will only support the actions that are deemed to be useful to it.  To know outright whether an object supports a particular action, you will need to check its <a href="../classes/index.rpl">class manual</>.</p>
+  <p>This document lists and describes all of the actions that are available in the Parasol Framework.  For information on how to execute actions, refer to the <function mod="kernel">Action</>, <function mod="kernel">ActionMsg</> and <function mod="kernel">ActionTags</> functions in the Object Kernel Manual.  Please note that each class will only support the actions that are deemed to be useful to it.  To know outright whether an object supports a particular action, you will need to check its <a href="../classes/index.rpl">class manual</>.</p>
 
   <advance y="20"/>
 

@@ -80,7 +80,7 @@
   </args>
   <description>
     <p>The Clipboard action is used on objects for the purpose of shifting data between them and the standard clipboard system.  Generally, you should only use this action when the user has done something that requires it to be called, for instance, holding the CTRL+C keys to make a copy operation.</p>
-    <p>You will need to supply a reference to a valid clipboard object and indicate the operation mode when using this action.  The easiest way to find a valid clipboard object is to search the system for the 'SystemClipboard' object, which is automatically created when Athene is loaded.  If this object does not exist, you have the option of creating a new clipboard object from scratch.  Please refer to the clipboard documentation for information on how the clipboard class works.</p>
+    <p>You will need to supply a reference to a valid clipboard object and indicate the operation mode when using this action.  The easiest way to find a valid clipboard object is to search the system for the 'SystemClipboard' object, which is automatically created when a UI object is created.  If this object does not exist, you have the option of creating a new clipboard object from scratch.  Please refer to the clipboard documentation for information on how the clipboard class works.</p>
     <p>Three modes are currently available for performing clip operations, as illustrated in the following table:</p>
     <types type="Mode">
       <type name="CLIP_CUT">Cut (copy and delete) the currently selected data from the target object and copy it into the clipboard.</>
@@ -355,7 +355,7 @@
   <description>
     <p>This action will draw an object's graphic, either to the video display or to a virtual drawing space, according to the object type and your specifications.  If the object is not linked to a drawable area, or if the object belongs to a non-graphical class,   calling this action will usually have no effect and an error code will be returned.</p>
     <p>The dimension arguments specify the size of the region that you want to draw.  If you wish, you may choose not to supply these arguments if the entire region of the object should be drawn.</p>
-    <p>To draw graphics in Athene, the Draw action is usually called on <class>Surface</> objects to update the video display.  Refer to the <class>Surface</> class for more information on interface-based drawing.  For information on drawing primitive graphics to drawable areas, refer to the <bitmap>Bitmap</> class.</p>
+    <p>To draw graphics, the Draw action is usually called on <class>Surface</> objects to update the video display.  Refer to the <class>Surface</> class for more information on interface-based drawing.  For information on drawing primitive graphics to drawable areas, refer to the <bitmap>Bitmap</> class.</p>
   </description>
   <support>
     <p>The Draw action is provided for classes that need graphical support.  A programmer will typically set up an object so that it can be drawn according to your specifications, then call the Draw action with the expectation that the object will be drawn to a graphical object (such as a Bitmap).  The exact technical details of the process are for you to define.</p>
@@ -432,7 +432,7 @@
   <synopsis>ERROR acFocus(*Object)</>
   <short>The Focus action is used to focus on objects within the user interface.</>
   <description>
-    <p>The Focus action is primarily used within  Athene for focussing on areas of the graphical user interface.  Objects supporting the Focus action are typically members of the Drawable category,  of which only the <class>Surface</> class currently qualifies.</p>
+    <p>The Focus action is primarily used within the UI for focussing on areas of the graphical user interface.  Objects supporting the Focus action are typically members of the Drawable category,  of which only the <class>Surface</> class currently qualifies.</p>
     <p>When a drawable object receives the focus it will usually do very little, but external objects that are listening for focus activity will respond to the change accordingly.  For instance, input based objects within surface areas often listen to Focus activity so that they know when to start responding to  keyboard input.</p>
   </description>
   <support>
@@ -879,7 +879,7 @@
     <arg type="DOUBLE" name="Depth">The new depth for the object.</>
   </args>
   <description>
-    <p>The Resize action is used to alter the width, height and depth of an object with a single action call.  Resizing is commonly used in the Athene interface for manipulating  drawable areas that represent gadgets like windows, buttons and scrollbars.  This means that it is typically applied to <class>Surface</> objects, but it can also be useful for quickly adjusting the dimensions of graphical objects  like boxes and ellipses.</p>
+    <p>The Resize action is used to alter the width, height and depth of an object with a single action call.  Resizing is commonly used in the UI for manipulating  drawable areas that represent gadgets like windows, buttons and scrollbars.  This means that it is typically applied to <class>Surface</> objects, but it can also be useful for quickly adjusting the dimensions of graphical objects  like boxes and ellipses.</p>
     <p>If a resized object contains other drawable objects, they will often respond to the resize by adjusting their dimensions to the new size.  The exact result will depend on what children are contained by the target object  and how you have programmed them.</p>
     <p>If you only want to resize a particular dimension (for example if you want to resize the Width and leave the Depth and Height "as is"),  set the other arguments to zero.  The Depth argument is only used for 3-Dimensional objects - set it to zero if you know that the object is represented in 2D only.</p>
   </description>

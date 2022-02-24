@@ -2,7 +2,7 @@
 
 <info>
  <title>Field Reference Guide</title>
- <author>Rocklyte Systems</author>
+ <author>Paul Manias</author>
  <keywords>field, fields, reference, object, structure, guide, document, manual</keywords>
  <description>A complete overview of the standards employed when developing class structures.</description>
 </info>
@@ -33,7 +33,7 @@
 <page>
   <startpage title="Field Reference Guide"/>
 
-  <p>This guide will assist you in assigning field names for the design of any new class definition.  All classes developed at Rocklyte follow a standard naming convention for field names wherever possible, so as to provide consistent and predictable naming between different types of classes.  The following table summarises the most common field names, recommended types and the expected use-case for each name.</p>
+  <p>This guide will assist you in assigning field names for the design of any new class definition.  All existing classes in the framework follow a standard naming convention for field names wherever possible, so as to provide consistent and predictable naming between different types of classes.  The following table summarises the most common field names, recommended types and the expected use-case for each name.</p>
 
 <fieldgroup name="General">
  <fieldref name="Delay"    type="FLOAT">The amount of delay before an event occurs.  Measured in seconds.</>
@@ -54,9 +54,10 @@
 </fieldgroup>
 
 <fieldgroup name="Files">
- <fieldref name="Location" type="STRING">Refers to a file location, usually one that contains data that is relevant to the class type.</>
+ <fieldref name="Dest"     type="STRING">The use of Dest is preferred for file paths that will be written.  In the case of dual read/write, use Src instead.</>
+ <fieldref name="Location" type="STRING">Refers to a file location, usually one that contains data that is relevant to the class type.  Prefer the use the Src if the file is to be read, or Dest for a target.</>
  <fieldref name="Position" type="INTEGER">Must be supported in conjunction with the <a href="action_list.rpl#Seek">Seek</a> action. The Position field reflects the current byte position for reading and writing to an object's data.</>
- <fieldref name="Src"      type="STRING">This field is sometimes supported in conjunction with the Location field, as a synonym. We recommend that you only use it in classes that are designed for use in DML.</>
+ <fieldref name="Src"      type="STRING">The use of Src is preferred for file paths that will be read.  In the case of dual read/write, the use of Src should take precedence.</>
 </fieldgroup>
 
 <fieldgroup name="Graphics">

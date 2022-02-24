@@ -2,9 +2,9 @@
 
 <info>
  <title>Distribution and Installation</title>
- <author>Rocklyte Systems</author>
+ <author>Paul Manias</author>
  <keywords>package, management, distribution, installation, install, file, program, executable, generate, compile, deploy, setup</keywords>
- <description>Complete information on how to distribute programs written with the Rocklyte SDK.</description>
+ <description>Complete information on how to distribute programs written with the Parasol Framework.</description>
 </info>
 
 <include src="inc_style.rpl"/>
@@ -13,23 +13,21 @@
 
 <startpage title="Distribution and Installation"/>
 
-<p>If you've developed a new program or want to package an existing product for Athene, you can use our native installation program, QikInstall, to handle the entire installation process.  All that is required is that you write an installation file describing the package and the instructions to install it to the user's PC.  QikInstall works cross-platform and provides support for user friendly features, such as selecting optional components and defining the directories to which the software should be installed.  Packages designed for QikInstall are stored in ZIP format to ease the compilation process and simplify accessibility.</p>
+<p><i>This document is outdated.</i></p>
+
+<h2>PARC</h2>
+
+<p>TBA</p>
 
 <h2>Native Platform Deployment</h2>
 
-<p>QikInstall is only available with Athene, so it may not be a practical choice if you intend to distribute your program with an embedded version of the Rocklyte Core Platform.  If you can't use QikInstall, you will have to choose an installation method that is specific to the platform that you are targetting.  For instance, if you are targetting Windows then you will likely need to use a commercial installation package, while on Linux you might deliver your program in a compressed tar file, RPM or similar.</p>
+<p>PARC is not an option if binaries are to be distributed to users that do not have the Parasol Framework installed.  You will have to choose an installation method that is specific to the platform that you are targetting in this case.  For instance on Linux you might deliver your program in a compressed tar file, RPM or similar.</p>
 
-<p>You will need to consider how you want the user to install the Rocklyte binaries if they do not have them on their system already.  There are two ways that you can do this:  Either refer them to an Internet address where they can download the latest binaries (such as the Rocklyte <a href="http://www.rocklyte.com/downloads.html">downloads</a> page) or you can install the binaries with your program.  For non-commercial projects we have taken the liberty of waiving distribution rights on the core platform binaries so that you can include them with your program without prior licensing permission.  You will only need to ensure that the system folder is placed at the root of your installation, effectively alongside your executable program file.  Commercial projects need to contact us first for licensing information.  In some cases we are happy to provide free licensing, so check first.</p>
-
-<h2>QikInstall Deployment</h2>
-
-<image src="images/qikinstall.gif" align="right" westgap="10" southgap="10"/>
-
-<p>The most important and useful feature of QikInstall is that it provides an official standard for the installation of Athene and DML based software.  This standard, which is based on XML, ensures that there is consistency in the deployment and removal of software on a user's system.  In this section we will discuss the XML-Install standard so that you can create your own installation packages.  Before continuing, make sure that you try out the QikInstall software if you have not already.  It is important to familiarise yourself with the way that the installation process works before diving in to create your own packages.</p>
+<p>There are two ways to install Parasol binaries with your program.  Either include the standard Parasol distribution in a local folder of your program, or compile Parasol as a monolith that is integrated with your binary (this would however be a violation of the LGPL and requires a written exemption).</p>
 
 <h3>Background</h2>
 
-<p>Install packages are distributed as compressed files and use a '.install' extension to formally identify them.  The compression format can theoretically be of any type supported by the Compression class.  Currently ZIP is the only format that we recommend as they are fast to access and easy to update and restore on individual files.  If you want to see the contents of any install package, try decompressing it using a pkzip decompressor so that you can examine the content.  You will find that it contains the data files as well as a special 'install.xml' file.  This file contains the XML-Install code with commands that will tell QikInstall how to install the package.  Here is an example install.xml file taken from Key Maker, a keymap customisation program for Athene:</p>
+<p>Install packages are distributed as compressed files and use a '.install' extension to formally identify them.  The compression format can theoretically be of any type supported by the Compression class.  Currently ZIP is the only format that we recommend as they are fast to access and easy to update and restore on individual files.  If you want to see the contents of any install package, try decompressing it using a pkzip decompressor so that you can examine the content.  You will find that it contains the data files as well as a special 'install.xml' file.  This file contains the XML-Install code with commands that will tell PARC how to install the package.  Here is an example install.xml file taken from Key Maker, a keymap customisation program for Parasol:</p>
 
 <indent><code>&lt;?xml version="1.0"?&gt;
 
@@ -37,11 +35,11 @@
   &lt;info&gt;
     &lt;name&gt;Key Maker&lt;/name&gt;
     &lt;version&gt;1.0&lt;/version&gt;
-    &lt;author&gt;Rocklyte Systems&lt;/author&gt;
+    &lt;author&gt;Paul Manias&lt;/author&gt;
     &lt;date&gt;February 2002&lt;/date&gt;
     &lt;license&gt;ODL&lt;/license&gt;
     &lt;description&gt;
-Key Maker is a program that allows you to create customised keymaps for Athene.  It is particularly useful for international users that need to create keymaps for their native keyboards, as well as people that wish to assign special unicode symbols to specific key combinations.
+Key Maker is a program that allows you to create customised keymaps for Parasol.  It is particularly useful for international users that need to create keymaps for their native keyboards, as well as people that wish to assign special unicode symbols to specific key combinations.
     &lt;/description&gt;
   &lt;/info&gt;
 
@@ -82,7 +80,7 @@ Key Maker is a program that allows you to create customised keymaps for Athene. 
       &lt;icon&gt;icons:programs/tool&lt;/icon&gt;
       &lt;smallicon&gt;icons:tiny/font&lt;/smallicon&gt;
       &lt;command&gt;bin:parasol-gui&lt;/command&gt;
-      &lt;args&gt;[@programdir]main.dml&lt;/args&gt;
+      &lt;args&gt;[@programdir]main.fluid&lt;/args&gt;
       &lt;category&gt;Development&lt;/category&gt;
     &lt;/register&gt;
 
@@ -104,25 +102,24 @@ Key Maker is a program that allows you to create customised keymaps for Athene. 
 
 <image src="images/qikfiles.gif" align="right"/>
 
-<p>At 78 lines, this install file is reasonably small.  Even so, it provides the user with a full description of what the software is, options as to what components should be installed, and a choice of directories for it to be installed to.  The software correctly registers itself in Athene's program database on installation and even detects what platform is being used and copies the appropriate binaries across.  You should find that all the necessary features are available to you and are easy to utilise when writing your install file.</p>
+<p>At 78 lines, this install file is reasonably small.  Even so, it provides the user with a full description of what the software is, options as to what components should be installed, and a choice of directories for it to be installed to.  The software correctly registers itself in Parasol's program database on installation and even detects what platform is being used and copies the appropriate binaries across.  You should find that all the necessary features are available to you and are easy to utilise when writing your install file.</p>
 
 <h3>Creating an Install Package</h3>
 
 <p>There are two parts to building an installation package.  Your first objective is to determine what files you'll be including in the installation.  We recommend that you create a special directory to hold the install files.  If you have a lot of files to install, think about grouping them under sub-directories so that you can manage them easily.  The second objective is to write the install.xml file, which you can create by opening <a href="install.xml">this file</a> and saving it as 'install.xml' in the directory that you have created for file containment.</p>
 
-<p>Please note that it is vital that the install.xml file lies at the root directory of the compressed package - don't place it in a sub-directory or the QikInstall program won't be able to find it.  After developing your install file, you can test it by compressing the package into a zip file (make sure you give it a '.install' extension) and then load it into QikInstall.  Once you are satisfied with the package configuration, you can distribute it through whatever channels are appropriate.  We may also be able to help in distributing the package if you want to make it freely available to the public.</p>
+<p>Please note that it is vital that the install.xml file lies at the root directory of the compressed package - don't place it in a sub-directory or the PARC program won't be able to find it.  After developing your install file, you can test it by compressing the package into a zip file (make sure you give it a '.install' extension) and then load it into PARC.  Once you are satisfied with the package configuration, you can distribute it through whatever channels are appropriate.  We may also be able to help in distributing the package if you want to make it freely available to the public.</p>
 
-<p>Note: In Linux, we recommend using Athene's native compressor if you need to store the permissions of each file (important for security measures and applying executable bit settings).  You can use the compression object in DML scripts to create ZIP files, as in the following example:</p>
+<p>Note: In Linux, we recommend using Parasol's native compressor if you need to store the permissions of each file (important for security measures and applying executable bit settings).  You can use the compression object in Fluid scripts to create ZIP files, as in the following example:</p>
 
-<code>&lt;dml type="batch"&gt;
-  &lt;compression location="Key Maker.install" flags="NEW"&gt;
-    &lt;action object="[owner]" method="CompressFile" @location="keymaker/" @path=""/&gt;
-  &lt;/compression&gt;
-&lt;/dml&gt;</code>
+<code>
+   local cmp = obj.new('compression', { src="Key Maker.install", flags="NEW" })
+   cmp.mtCompressFile("keymaker/", path="")
+</code>
 
 <h2>Developing the install.xml File</h2>
 
-<p>The installation process starts from the first &lt;install&gt; tag (anything prior to that will be ignored) and ends when the tag is closed.  Within the install area you can specify any number of a series of special installation commands and data structures.  In this section we will discuss these tags in detail so that you can get a complete insight on the extent of support provided by the XML-Install standard.  There is no predetermined order that you must follow in using these tags, but you must keep in mind that QikInstall will execute the script from top to bottom, following the order that you have specified.  If you are unsure as to what order you should use in placing these tags, we recommend the following: info, components, directories then installation.</p>
+<p>The installation process starts from the first &lt;install&gt; tag (anything prior to that will be ignored) and ends when the tag is closed.  Within the install area you can specify any number of a series of special installation commands and data structures.  In this section we will discuss these tags in detail so that you can get a complete insight on the extent of support provided by the XML-Install standard.  There is no predetermined order that you must follow in using these tags, but you must keep in mind that PARC will execute the script from top to bottom, following the order that you have specified.  If you are unsure as to what order you should use in placing these tags, we recommend the following: info, components, directories then installation.</p>
 
 <indent>
 
@@ -230,10 +227,6 @@ Key Maker is a program that allows you to create customised keymaps for Athene. 
 
 <p>As you might imagine, the delete tag is more commonly used in the uninstall tag rather than during the installation process.</p>
 
-<h3>DML</h3>
-
-<p>Use the DML tag to execute DML statements during the installation process.  There are no limits to what you can do with your DML script - running programs and other scripts is legitimate, as is the creation of standard DML objects.  The DML statement must be embodied within the DML opening and closing tags.</p>
-
 <h3>Link</h3>
 
 <p>Use the link tag to create symbolic links from one file to another.  This tag only works on file systems and operating systems that support symbolic links.  Attributes used by the link tag include <i>from</i>, <i>to</i> and <i>permanent</i>.  The <i>to</i> tag refers to the file or folder that you are linking to (i.e. the file should exist).  The <i>from</i> tag refers to the location of the new symbolic link.  The <i>permanent</i> tag may be specified if the link should remain after the package has been removed.</p>
@@ -257,7 +250,7 @@ Key Maker is a program that allows you to create customised keymaps for Athene. 
   &lt;item name="Icon"&gt;icons:programs/tool&lt;/item&gt;
   &lt;item name="SmallIcon"&gt;icons:tiny/font&lt;/item&gt;
   &lt;item name="Command"&gt;bin:parasol-gui&lt;/item&gt;
-  &lt;item name="Args"&gt;[@programdir]/main.dml&lt;/item&gt;
+  &lt;item name="Args"&gt;[@programdir]/main.fluid&lt;/item&gt;
   &lt;item name="Category"&gt;Development&lt;/item&gt;
 &lt;/merge&gt;</code>
 
@@ -289,7 +282,7 @@ Key Maker is a program that allows you to create customised keymaps for Athene. 
   &lt;description&gt;Generates keymap files for international keyboards.&lt;/description&gt;
   &lt;icon&gt;icons:programs/tool&lt;/icon&gt;
   &lt;command&gt;bin:parasol-gui&lt;/command&gt;
-  &lt;args&gt;[@programdir]main.dml&lt;/args&gt;
+  &lt;args&gt;[@programdir]main.fluid&lt;/args&gt;
   &lt;category&gt;Development&lt;/category&gt;
 &lt;/register&gt;</code>
 
@@ -317,9 +310,9 @@ Key Maker is a program that allows you to create customised keymaps for Athene. 
 
 <h3>Providing Support for Software Removal</h3>
 
-<p>By default, the installation process will not provide support for the removal of your software for the user.  To add support for its removal you need to use the &lt;uninstall&gt; tag in your XML-Install file.  When you use this tag the QikInstall program will record its actions during the installation process and will create a file which can reverse the process.  This file is stored at a user accessible location so that your software can be uninstalled at any time.</p>
+<p>By default, the installation process will not provide support for the removal of your software for the user.  To add support for its removal you need to use the &lt;uninstall&gt; tag in your XML-Install file.  When you use this tag the PARC program will record its actions during the installation process and will create a file which can reverse the process.  This file is stored at a user accessible location so that your software can be uninstalled at any time.</p>
 
-<p>In some cases you may need to customise the removal of the software if certain files need to be altered that were not originally covered in the installation process.  You can do this by using the same commands that are available for installation, i.e. copy, delete, run, rename, dml and move.  Simply add the commands to the &lt;uninstall&gt; section of your XML-Install file and they will be processed at priority when the software is removed by the user.</p>
+<p>In some cases you may need to customise the removal of the software if certain files need to be altered that were not originally covered in the installation process.  You can do this by using the same commands that are available for installation, i.e. copy, delete, run, rename and move.  Simply add the commands to the &lt;uninstall&gt; section of your XML-Install file and they will be processed at priority when the software is removed by the user.</p>
 
 <h2>Preset Variables</h2>
 

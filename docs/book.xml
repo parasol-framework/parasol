@@ -15,11 +15,11 @@
     <chapter title="Getting Started" src="general/index.rpl">
       <chapter title="Introduction" src="general/introduction.rpl"/>
       <chapter title="Installation Procedure" src="general/installation_procedure.rpl"/>
-      <chapter title="Modular Object Orientation" src="general/moo_explained.rpl"/>
+      <chapter title="Parasol OOE Explained" src="general/ooe_explained.rpl"/>
 
       <chapter title="Programming" src="general/program_types.rpl">
         <chapter title="Your First Program" src="general/hello_world.rpl"/>
-        <chapter title="Object Management in Depth" src="general/moo_in_depth.rpl"/>
+        <chapter title="Object Management in Depth" src="general/ooe_in_depth.rpl"/>
         <chapter title="Module Interfaces" src="general/module_interfaces.rpl"/>
         <chapter title="Distribution and Installation" src="general/distribution.rpl"/>
       </chapter>
@@ -46,15 +46,6 @@
         <chapter title="Array Interface" src="fluid/index.rpl#Array"/>
         <chapter title="Frequently Asked Questions" src="fluid/index.rpl#FAQ"/>
         <chapter title="Credits" src="fluid/index.rpl#Credits"/>
-      </chapter>
-
-      <chapter title="Dynamic Markup Language" src="dml/index.rpl">
-        <chapter title="Introduction" src="dml/index.rpl#Intro"/>
-        <chapter title="Technical Details" src="dml/index.rpl#Technical"/>
-        <chapter title="Graphics and the User Interface" src="dml/index.rpl#GUI"/>
-        <chapter title="Decision Statements" src="dml/index.rpl#Decision"/>
-        <chapter title="Advanced Development Options" src="dml/index.rpl#Advanced"/>
-        <chapter title="Further Information" src="dml/index.rpl#Final"/>
       </chapter>
 
       <chapter title="RIPPLE Reference Manual" src="ripple/index.rpl">
@@ -187,7 +178,6 @@
         <chapter title="Audio Module" src="modules/viewmodule.rpl?xml=audio.xml"/>
         <chapter title="Crypt Module" src="modules/viewmodule.rpl?xml=crypt.xml"/>
         <chapter title="Display Module" src="modules/viewmodule.rpl?xml=display.xml"/>
-        <chapter title="File System Module" src="modules/viewmodule.rpl?xml=filesystem.xml"/>
         <chapter title="Fluid Module" src="modules/viewmodule.rpl?xml=fluid.xml"/>
         <chapter title="Font Module" src="modules/viewmodule.rpl?xml=font.xml"/>
         <chapter title="Keyboard Module" src="modules/viewmodule.rpl?xml=keyboard.xml"/>
@@ -195,7 +185,6 @@
         <chapter title="Object Kernel" src="modules/viewmodule.rpl?xml=kernel.xml"/>
         <!--<chapter title="Serial Module" src="modules/viewmodule.rpl?xml=serial.xml"/>-->
         <!--<chapter title="Smartcard Module" src="modules/viewmodule.rpl?xml=smartcard.xml"/>-->
-        <chapter title="Strings Module" src="modules/viewmodule.rpl?xml=strings.xml"/>
         <chapter title="Surface Module" src="modules/viewmodule.rpl?xml=surface.xml"/>
         <!--<chapter title="USB Module" src="modules/viewmodule.rpl?xml=usb.xml"/>-->
         <chapter title="Vector Module" src="modules/viewmodule.rpl?xml=vector.xml"/>

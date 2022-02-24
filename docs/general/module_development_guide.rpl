@@ -3,7 +3,7 @@
 <page>
   <info>
     <title>Module Development Guide</title>
-    <author>Rocklyte Systems</author>
+    <author>Paul Manias</author>
     <description>A detailed description on how to develop modules for Parasol.</description>
     <keywords>module, tutorial, development, guide, manual</keywords>
   </info>
@@ -11,11 +11,11 @@
   <include src="inc_style.rpl"/>
   <startpage title="Module Development Guide"/>
 
-  <p>Modules, also known as libraries and APIs, provide shared functionality for applications.  A Parasol module can do two things: It can export classes (e.g. the FileSystem module contains the File class); and it can export functions that perform routines. The majority of Parasol's existing modules are focussed around classes, but this document section will cover modules that export functions only. If you want to learn how to create class-based modules, we recommend that you read this tutorial first to grasp the basic concepts of module development, then move onto the <a href="class_development_guide.rpl">Class Development Tutorial</a>. </p>
+  <p>Modules, also known as libraries and APIs, provide shared functionality for applications.  A Parasol module can do two things: It can export classes (e.g. the XML module contains the XML class); and it can export functions that perform routines. The majority of Parasol's existing modules are focussed around classes, but this document section will cover modules that export functions only. If you want to learn how to create class-based modules, we recommend that you read this tutorial first to grasp the basic concepts of module development, then move onto the <a href="class_development_guide.rpl">Class Development Tutorial</a>. </p>
 
 <h2>Writing the Module</h2>
 
-<p>The fastest way to get started is to use the module template included with the Rocklyte SDK, which you can find in the "templates/module" directory. By using the template you will be able to create a compiled module in about 10 minutes.  From there, it will be a matter of writing the functions that are going to be exported.  In this section we will explain some of the finer points of module construction.</p>
+<p>The fastest way to get started is to use the module template included with the Parasol SDK, which you can find in the "templates/module" directory. By using the template you will be able to create a compiled module in about 10 minutes.  From there, it will be a matter of writing the functions that are going to be exported.  In this section we will explain some of the finer points of module construction.</p>
 
 <h3>The Module Header</h3>
 
@@ -25,9 +25,9 @@
    MODULE_HEADER_V1,
    CMDInit, NULL, CMDOpen, NULL,
    JMP_DEFAULT, JumpTableV1, CPU_PC, VER_ModuleVersion, VER_KERNEL,
-   "Rocklyte Systems",
-   "Copyright Rocklyte Ltd © 2001-2014",
-   "November 2014",
+   "Paul Manias",
+   "Copyright Paul Manias © 2001-2022",
+   "February 2022",
    "Strings"
 };</code></indent>
 
@@ -99,7 +99,7 @@
 
 
 #ifndef  MAIN_H
-#include &lt;rocklyte/main.h&gt;
+#include &lt;parasol/main.h&gt;
 #endif
 
 #ifndef LOCAL_STRINGS
@@ -158,6 +158,6 @@ struct FunctionField argsStrShrink[] = { { "NewLength", ARG_LONG }, { "String", 
 
 <h2>Writing the Documentation</h2>
 
-<p>During the development of your module you should give some consideration to its documentation.  Assuming that your module will be available for other developers to use, the module should be self-documented using Rocklyte's existing standards.  For more information, please refer to the <a href="documentation_guide.rpl">Documentation Guide</a> in this manual.</p>
+<p>During the development of your module you should give some consideration to its documentation.  Assuming that your module will be available for other developers to use, the module should be self-documented using Parasol's existing standards.  For more information, please refer to the <a href="documentation_guide.rpl">Documentation Guide</a> in this manual.</p>
 
 </page>

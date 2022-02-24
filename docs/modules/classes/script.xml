@@ -98,7 +98,7 @@
 <p>If parameters will be passed to the procedure in C/C++ or similar compiled language, they must be specified as an array of ScriptArg structures.  The following example illustrates such a list:</p>
 <pre>
 struct ScriptArg args[] = {
-   { "Object",       FD_OBJECTID, { .Long = Self-&gt;Head.UniqueID } },
+   { "Object",       FD_OBJECTID, { .Long = Self-&gt;Head.UID } },
    { "Output",       FD_PTR,      { .Address = output } },
    { "OutputLength", FD_LONG,     { .Long = len } }
 };
@@ -240,7 +240,6 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <description>
 <p>Sometimes scripts are split into several procedures or functions that can be executed independently from the 'main' area of the script.  If a script that you have loaded contains procedures, you can set the Procedure field to execute a specific routine whenever the script is activated with the Activate action.</p>
 <p>If this field is not set, the first procedure in the script, or the 'main' procedure (as defined by the script type) is executed by default.</p>
-<p>A special feature in DML allows the use of XPaths for running code at a specific point in the source.  Ensure that the xpath string starts with a forward slash and this special run-case will be enabled.  The target does not necessarily need to start with a 'dml' tag, although this is recommended.</p>
       </description>
     </field>
 

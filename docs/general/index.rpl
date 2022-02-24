@@ -3,10 +3,10 @@
 <page name="Index">
 
   <info>
-   <title>Introduction to the Parasol framework</title>
-   <author>Rocklyte Systems</author>
-   <keywords>rocklyte, sdk, api, library, component, engine, programming, introduction, core</keywords>
-   <description>Introduction to the Parasol framework</description>
+   <title>Introduction to the Parasol Framework</title>
+   <author>Paul Manias</author>
+   <keywords>sdk, api, library, component, engine, programming, introduction, core</keywords>
+   <description>Introduction to the Parasol Framework</description>
   </info>
 
   <body face="veranda" fontsize="10" link="60,60,130" topmargin="20" leftmargin="20" rightmargin="20" bottommargin="8"/>
@@ -26,7 +26,7 @@
 
   <br/>
 
-  <p>This manual provides technical information for developers wishing to develop programs for the Parasol framework.  This manual accompanies the Rocklyte SDK, which provides most of the files required for a functional development system.  Please refer to the Introduction for more details on installation and usage.</p>
+  <p>This manual provides technical information for developers wishing to develop programs using the Parasol Framework.  Please refer to the Introduction for more details on installation and usage of the framework.</p>
 
   <p>&nbsp;</p>
 
@@ -65,6 +65,6 @@
   </indent>
 
   <advance y="20"/>
-  <p align="center"><font face="opti small" size="6" colour="100,100,100">Copyright Rocklyte Ltd © 2000-2014</font></p>
+  <p align="center"><font face="opti small" size="6" colour="100,100,100">Copyright Paul Manias © 2000-2022</font></p>
 
 </page>

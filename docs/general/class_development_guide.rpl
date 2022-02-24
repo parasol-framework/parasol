@@ -2,9 +2,9 @@
 
 <info>
  <title>Class Development Guide</title>
- <author>Rocklyte Systems</author>
+ <author>Paul Manias</author>
  <keywords>class, kernel, development</keywords>
- <description>A detailed description on how to develop classes for the Rocklyte SDK.</description>
+ <description>A detailed description on how to develop classes for the Parasol Framework.</description>
 </info>
 
 <include src="inc_style.rpl"/>
