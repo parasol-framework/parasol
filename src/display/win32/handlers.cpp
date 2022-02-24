@@ -44,11 +44,9 @@ void MsgKeyRelease(LONG Flags, LONG Value)
 
 void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY)
 {
-   ERROR error;
-   objPointer *pointer;
-   if ((pointer = gfxAccessPointer())) {
+   if (auto pointer = gfxAccessPointer(); pointer) {
       SetLong(pointer, FID_Surface, SurfaceID);  // Alter the surface of the pointer so that it refers to the correct root window
-      ReleaseObject(pointer);
+      gfxReleasePointer(pointer);
 
       struct dcDeviceInput joy[2];
       joy[0].Type  = JET_ABS_X;
@@ -68,9 +66,6 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
          .Size     = sizeof(struct dcDeviceInput) * 2
       };
       ActionMsg(AC_DataFeed, glPointerID, &feed);
-   }
-   else if (error IS ERR_NoMatchingObject) {
-      glPointerID = 0;
    }
 }
 
