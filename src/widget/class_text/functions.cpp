@@ -788,46 +788,46 @@ static void key_event(objText *Self, evKey *Event, LONG Size)
          case K_PAGE_DOWN:
             if (Self->LineLimit IS 1) break;
 
-            scroll.XChange = 0;
-            scroll.YChange = Self->Layout->BoundHeight;
-            scroll.ZChange = 0;
+            scroll.DeltaX = 0;
+            scroll.DeltaY = Self->Layout->BoundHeight;
+            scroll.DeltaZ = 0;
             DelayMsg(AC_Scroll, Self->Layout->SurfaceID, &scroll);
             break;
 
          case K_PAGE_UP:
             if (Self->LineLimit IS 1) break;
 
-            scroll.XChange = 0;
-            scroll.YChange = -Self->Layout->BoundHeight;
-            scroll.ZChange = 0;
+            scroll.DeltaX = 0;
+            scroll.DeltaY = -Self->Layout->BoundHeight;
+            scroll.DeltaZ = 0;
             DelayMsg(AC_Scroll, Self->Layout->SurfaceID, &scroll);
             break;
 
          case K_LEFT:
-            scroll.XChange = -Self->Font->MaxHeight;
-            scroll.YChange = 0;
-            scroll.ZChange = 0;
+            scroll.DeltaX = -Self->Font->MaxHeight;
+            scroll.DeltaY = 0;
+            scroll.DeltaZ = 0;
             DelayMsg(AC_Scroll, Self->Layout->SurfaceID, &scroll);
             break;
 
          case K_RIGHT:
-            scroll.XChange = Self->Font->MaxHeight;
-            scroll.YChange = 0;
-            scroll.ZChange = 0;
+            scroll.DeltaX = Self->Font->MaxHeight;
+            scroll.DeltaY = 0;
+            scroll.DeltaZ = 0;
             DelayMsg(AC_Scroll, Self->Layout->SurfaceID, &scroll);
             break;
 
          case K_DOWN:
-            scroll.XChange = 0;
-            scroll.YChange = Self->Font->MaxHeight;
-            scroll.ZChange = 0;
+            scroll.DeltaX = 0;
+            scroll.DeltaY = Self->Font->MaxHeight;
+            scroll.DeltaZ = 0;
             DelayMsg(AC_Scroll, Self->Layout->SurfaceID, &scroll);
             break;
 
          case K_UP:
-            scroll.XChange = 0;
-            scroll.YChange = -Self->Font->MaxHeight;
-            scroll.ZChange = 0;
+            scroll.DeltaX = 0;
+            scroll.DeltaY = -Self->Font->MaxHeight;
+            scroll.DeltaZ = 0;
             DelayMsg(AC_Scroll, Self->Layout->SurfaceID, &scroll);
             break;
       }

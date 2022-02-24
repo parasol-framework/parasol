@@ -136,15 +136,15 @@ static ERROR POLYGON_Move(objVectorPoly *Self, struct acMove *Args)
    }
 
    for (LONG i=0; i < Self->TotalPoints; i++) {
-      Self->Points[i].X += Args->XChange;
-      Self->Points[i].Y += Args->YChange;
+      Self->Points[i].X += Args->DeltaX;
+      Self->Points[i].Y += Args->DeltaY;
    }
 
    // Alter the boundary.
-   Self->X1 += Args->XChange;
-   Self->Y1 += Args->YChange;
-   Self->X2 += Args->XChange;
-   Self->Y2 += Args->YChange;
+   Self->X1 += Args->DeltaX;
+   Self->Y1 += Args->DeltaY;
+   Self->X2 += Args->DeltaX;
+   Self->Y2 += Args->DeltaY;
    mark_dirty(Self, RC_TRANSFORM);
    return ERR_Okay;
 }

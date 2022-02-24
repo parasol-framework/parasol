@@ -83,8 +83,8 @@ static ERROR ELLIPSE_Move(objVectorEllipse *Self, struct acMove *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   Self->eCX += Args->XChange;
-   Self->eCY += Args->YChange;
+   Self->eCX += Args->DeltaX;
+   Self->eCY += Args->DeltaY;
    mark_dirty(Self, RC_TRANSFORM);
    return ERR_Okay;
 }

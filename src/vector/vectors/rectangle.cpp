@@ -63,8 +63,8 @@ static ERROR RECTANGLE_Move(objVectorRectangle *Self, struct acMove *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   Self->rX += Args->XChange;
-   Self->rY += Args->YChange;
+   Self->rX += Args->DeltaX;
+   Self->rY += Args->DeltaY;
    mark_dirty(Self, RC_TRANSFORM);
    return ERR_Okay;
 }

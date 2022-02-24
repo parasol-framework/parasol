@@ -2963,7 +2963,7 @@ struct acDataFeed      { union { OBJECTID ObjectID; OBJECTID Object; }; union { 
 struct acDragDrop      { union { OBJECTID SourceID; OBJECTID Source; }; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
 struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
-struct acMove          { DOUBLE XChange; DOUBLE YChange; DOUBLE ZChange; };
+struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
 struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
 struct acNewChild      { union { OBJECTID NewChildID; OBJECTID NewChild; }; };
 struct acNewOwner      { union { OBJECTID NewOwnerID; OBJECTID NewOwner; }; CLASSID ClassID; };
@@ -2974,7 +2974,7 @@ struct acRename        { CSTRING Name; };
 struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
 struct acSaveImage     { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
 struct acSaveToObject  { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
-struct acScroll        { DOUBLE XChange; DOUBLE YChange; DOUBLE ZChange; };
+struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
 struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
 struct acSeek          { DOUBLE Offset; LONG Position; };
 struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };

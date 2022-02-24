@@ -169,8 +169,8 @@ static ERROR WAVE_Move(objVectorWave *Self, struct acMove *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   Self->wX += Args->XChange;
-   Self->wY += Args->YChange;
+   Self->wX += Args->DeltaX;
+   Self->wY += Args->DeltaY;
    reset_final_path(Self);
    return ERR_Okay;
 }

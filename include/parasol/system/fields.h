@@ -791,9 +791,9 @@
 #define FID_ErrorHeader 0xe709ad18LL
 #define FID_Class 0x0f3b5edbLL
 #define FID_ClassNo 0xcb8e9038LL
-#define FID_XChange 0x078bd4e3LL
-#define FID_YChange 0x548611a4LL
-#define FID_ZChange 0xa1804e65LL
+#define FID_DeltaX 0xf883c1e7LL
+#define FID_DeltaY 0xf883c1e8LL
+#define FID_DeltaZ 0xf883c1e9LL
 #define FID_LimitEast 0xc1823831LL
 #define FID_LimitWest 0xc18c2807LL
 #define FID_LimitNorth 0xf273c44fLL

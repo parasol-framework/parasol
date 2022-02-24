@@ -406,9 +406,9 @@ static void process_ptr_wheel(objPointer *Self, struct dcDeviceInput *Input)
    }
 
    struct acScroll scroll = {
-      .XChange = 0,
-      .YChange = scrollrate / 100, //(wheel * Self->WheelSpeed) / 100
-      .ZChange = 0
+      .DeltaX = 0,
+      .DeltaY = scrollrate / 100, //(wheel * Self->WheelSpeed) / 100
+      .DeltaZ = 0
    };
    ActionMsg(AC_Scroll, Self->OverObjectID, &scroll);
 }
@@ -763,8 +763,8 @@ static ERROR PTR_Move(objPointer *Self, struct acMove *Args)
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_Args);
-   if ((!Args->XChange) and (!Args->YChange)) return ERR_Okay;
-   return acMoveToPoint(Self, Self->X + Args->XChange, Self->Y + Args->YChange, 0, MTF_X|MTF_Y);
+   if ((!Args->DeltaX) and (!Args->DeltaY)) return ERR_Okay;
+   return acMoveToPoint(Self, Self->X + Args->DeltaX, Self->Y + Args->DeltaY, 0, MTF_X|MTF_Y);
 }
 
 /*****************************************************************************

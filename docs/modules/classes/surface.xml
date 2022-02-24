@@ -123,7 +123,7 @@ the surface area first).</li>
       <name>Scroll</name>
       <comment>Scrolls surface content to a new position.</comment>
       <description>
-<p>Calling the Scroll action on a surface object with the <code>SCROLL_CONTENT</code> flag set will cause it to move its contents in the requested direction.  The Surface class uses the Move action to achieve scrolling, so any objects that do not support Move will remain at their given position.  Everything else will be shifted by the same amount of units as specified in the XChange, YChange and ZChange arguments.</p>
+<p>Calling the Scroll action on a surface object with the <code>SCROLL_CONTENT</code> flag set will cause it to move its contents in the requested direction.  The Surface class uses the Move action to achieve scrolling, so any objects that do not support Move will remain at their given position.  Everything else will be shifted by the same amount of units as specified in the DeltaX, DeltaY and DeltaZ arguments.</p>
 <p>Some objects may support a 'sticky' field that can be set to TRUE to prevent them from being moved.  This feature is present in the Surface class, amongst others.</p>
 <p>If the surface object does not have the <code>SCROLL_CONTENT</code> flag set, the call will flow through to any objects that may be listening for the Scroll action on the surface.</p>
       </description>

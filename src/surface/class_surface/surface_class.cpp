@@ -1489,9 +1489,9 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
          else if ((action->ActionID IS AC_Move) and (action->SendArgs IS TRUE) and
                   (action->ObjectID IS Self->Head.UID)) {
             auto msgmove = (struct acMove *)(action + 1);
-            msgmove->XChange += Args->XChange;
-            msgmove->YChange += Args->YChange;
-            msgmove->ZChange += Args->ZChange;
+            msgmove->DeltaX += Args->DeltaX;
+            msgmove->DeltaY += Args->DeltaY;
+            msgmove->DeltaZ += Args->DeltaZ;
 
             UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, NULL, action, sizeof(ActionMessage) + sizeof(struct acMove));
 
@@ -1504,20 +1504,20 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
 
    if (Self->Flags & RNF_STICKY) return ERR_Failed|ERF_Notified;
 
-   LONG xchange = Args->XChange;
-   LONG ychange = Args->YChange;
+   LONG xchange = Args->DeltaX;
+   LONG ychange = Args->DeltaY;
 
-   if (Self->Flags & RNF_NO_HORIZONTAL) move.XChange = 0;
-   else move.XChange = xchange;
+   if (Self->Flags & RNF_NO_HORIZONTAL) move.DeltaX = 0;
+   else move.DeltaX = xchange;
 
-   if (Self->Flags & RNF_NO_VERTICAL) move.YChange = 0;
-   else move.YChange = ychange;
+   if (Self->Flags & RNF_NO_VERTICAL) move.DeltaY = 0;
+   else move.DeltaY = ychange;
 
-   move.ZChange = 0;
+   move.DeltaZ = 0;
 
    // If there isn't any movement, return immediately
 
-   if ((move.XChange < 1) and (move.XChange > -1) and (move.YChange < 1) and (move.YChange > -1)) {
+   if ((move.DeltaX < 1) and (move.DeltaX > -1) and (move.DeltaY < 1) and (move.DeltaY > -1)) {
       return ERR_Failed|ERF_Notified;
    }
 
@@ -1528,7 +1528,7 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
    // Margin/Limit handling
 
    if (!Self->ParentID) {
-      move_layer(Self, Self->X + move.XChange, Self->Y + move.YChange);
+      move_layer(Self, Self->X + move.DeltaX, Self->Y + move.DeltaY);
    }
    else if ((ctl = drwAccessList(ARF_READ))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
@@ -1537,14 +1537,14 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
 
          if (xchange < 0) {
             if ((Self->X + xchange) < Self->LeftLimit) {
-               if (Self->X < Self->LeftLimit) move.XChange = 0;
-               else move.XChange = -(Self->X - Self->LeftLimit);
+               if (Self->X < Self->LeftLimit) move.DeltaX = 0;
+               else move.DeltaX = -(Self->X - Self->LeftLimit);
             }
          }
          else if (xchange > 0) {
-            if ((Self->X + Self->Width) > (list[i].Width - Self->RightLimit)) move.XChange = 0;
+            if ((Self->X + Self->Width) > (list[i].Width - Self->RightLimit)) move.DeltaX = 0;
             else if ((Self->X + Self->Width + xchange) > (list[i].Width - Self->RightLimit)) {
-               move.XChange = (list[i].Width - Self->RightLimit - Self->Width) - Self->X;
+               move.DeltaX = (list[i].Width - Self->RightLimit - Self->Width) - Self->X;
             }
          }
 
@@ -1552,20 +1552,20 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
 
          if (ychange < 0) {
             if ((Self->Y + ychange) < Self->TopLimit) {
-               if ((Self->Y + Self->Height) < Self->TopLimit) move.YChange = 0;
-               else move.YChange = -(Self->Y - Self->TopLimit);
+               if ((Self->Y + Self->Height) < Self->TopLimit) move.DeltaY = 0;
+               else move.DeltaY = -(Self->Y - Self->TopLimit);
             }
          }
          else if (ychange > 0) {
-            if ((Self->Y + Self->Height) > (list[i].Height - Self->BottomLimit)) move.YChange = 0;
+            if ((Self->Y + Self->Height) > (list[i].Height - Self->BottomLimit)) move.DeltaY = 0;
             else if ((Self->Y + Self->Height + ychange) > (list[i].Height - Self->BottomLimit)) {
-               move.YChange = (list[i].Height - Self->BottomLimit - Self->Height) - Self->Y;
+               move.DeltaY = (list[i].Height - Self->BottomLimit - Self->Height) - Self->Y;
             }
          }
 
          // Second check: If there isn't any movement, return immediately
 
-         if ((!move.XChange) and (!move.YChange)) {
+         if ((!move.DeltaX) and (!move.DeltaY)) {
             drwReleaseList(ARF_READ);
             return ERR_Failed|ERF_Notified;
          }
@@ -1575,13 +1575,13 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
 
       // Move the graphics layer
 
-      move_layer(Self, Self->X + move.XChange, Self->Y + move.YChange);
+      move_layer(Self, Self->X + move.DeltaX, Self->Y + move.DeltaY);
    }
    else return log.warning(ERR_LockFailed)|ERF_Notified;
 
 /* These lines cause problems for the resizing of offset surface objects.
-   if (Self->Dimensions & DMF_X_OFFSET) Self->XOffset += move.XChange;
-   if (Self->Dimensions & DMF_Y_OFFSET) Self->YOffset += move.YChange;
+   if (Self->Dimensions & DMF_X_OFFSET) Self->XOffset += move.DeltaX;
+   if (Self->Dimensions & DMF_Y_OFFSET) Self->YOffset += move.DeltaY;
 */
 
    log.traceBranch("Sending redimension notifications");
@@ -1836,13 +1836,13 @@ static ERROR SURFACE_MoveToPoint(objSurface *Self, struct acMoveToPoint *Args)
    else {
       struct acMove move;
 
-      if (Args->Flags & MTF_X) move.XChange = Args->X - Self->X;
-      else move.XChange = 0;
+      if (Args->Flags & MTF_X) move.DeltaX = Args->X - Self->X;
+      else move.DeltaX = 0;
 
-      if (Args->Flags & MTF_Y) move.YChange = Args->Y - Self->Y;
-      else move.YChange = 0;
+      if (Args->Flags & MTF_Y) move.DeltaY = Args->Y - Self->Y;
+      else move.DeltaY = 0;
 
-      move.ZChange = 0;
+      move.DeltaZ = 0;
 
       return Action(AC_Move, Self, &move)|ERF_Notified;
    }
@@ -2219,7 +2219,7 @@ Scroll: Scrolls surface content to a new position.
 Calling the Scroll action on a surface object with the `SCROLL_CONTENT` flag set will cause it to move its contents in the
 requested direction.  The Surface class uses the Move action to achieve scrolling, so any objects that do not support
 Move will remain at their given position.  Everything else will be shifted by the same amount of units as specified in
-the XChange, YChange and ZChange arguments.
+the DeltaX, DeltaY and DeltaZ arguments.
 
 Some objects may support a 'sticky' field that can be set to TRUE to prevent them from being moved.  This feature is
 present in the Surface class, amongst others.
@@ -2235,7 +2235,7 @@ static ERROR SURFACE_Scroll(objSurface *Self, struct acScroll *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Self->Flags & RNF_SCROLL_CONTENT) {
-      if ((Args->XChange >= 1) or (Args->XChange <= -1) or (Args->YChange >= 1) or (Args->YChange <= -1)) {
+      if ((Args->DeltaX >= 1) or (Args->DeltaX <= -1) or (Args->DeltaY >= 1) or (Args->DeltaY <= -1)) {
          SurfaceControl *ctl;
          if ((ctl = drwAccessList(ARF_READ))) {
             OBJECTID surfaces[128];
@@ -2252,7 +2252,7 @@ static ERROR SURFACE_Scroll(objSurface *Self, struct acScroll *Args)
 
             drwReleaseList(ARF_READ);
 
-            struct acMove move = { -Args->XChange, -Args->YChange, -Args->ZChange };
+            struct acMove move = { -Args->DeltaX, -Args->DeltaY, -Args->DeltaZ };
             for (LONG i=0; i < t; i++) DelayMsg(AC_Move, surfaces[i], &move);
          }
       }

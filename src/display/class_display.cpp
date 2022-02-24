@@ -1022,13 +1022,13 @@ static ERROR DISPLAY_Move(objDisplay *Self, struct acMove *Args)
 
    if (!Args) return ERR_NullArgs;
 
-   //log.branch("Moving display by %dx%d", (LONG)Args->XChange, (LONG)Args->YChange);
+   //log.branch("Moving display by %dx%d", (LONG)Args->DeltaX, (LONG)Args->DeltaY);
 
 #ifdef _WIN32
 
    if (!winMoveWindow(Self->WindowHandle,
-      Self->X + Self->LeftMargin + Args->XChange,
-      Self->Y + Self->TopMargin + Args->YChange)) return ERR_Failed;
+      Self->X + Self->LeftMargin + Args->DeltaX,
+      Self->Y + Self->TopMargin + Args->DeltaY)) return ERR_Failed;
 
    return ERR_Okay;
 
@@ -1038,13 +1038,13 @@ static ERROR DISPLAY_Move(objDisplay *Self, struct acMove *Args)
 
    if (!XDisplay) return ERR_Failed;
 
-   XMoveWindow(XDisplay, Self->XWindowHandle, Self->X + Args->XChange, Self->Y + Args->YChange);
+   XMoveWindow(XDisplay, Self->XWindowHandle, Self->X + Args->DeltaX, Self->Y + Args->DeltaY);
    return ERR_Okay;
 
 #elif __snap__
 
-   Self->X += Args->XChange;
-   Self->Y += Args->YChange;
+   Self->X += Args->DeltaX;
+   Self->Y += Args->DeltaY;
    return ERR_Okay;
 
 #else

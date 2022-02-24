@@ -4296,44 +4296,44 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
       }
 
       case K_PAGE_DOWN:
-         scroll.XChange = 0;
-         scroll.YChange = Self->AreaHeight;
-         scroll.ZChange = 0;
+         scroll.DeltaX = 0;
+         scroll.DeltaY = Self->AreaHeight;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_PAGE_UP:
-         scroll.XChange = 0;
-         scroll.YChange = -Self->AreaHeight;
-         scroll.ZChange = 0;
+         scroll.DeltaX = 0;
+         scroll.DeltaY = -Self->AreaHeight;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_LEFT:
-         scroll.XChange = -10;
-         scroll.YChange = 0;
-         scroll.ZChange = 0;
+         scroll.DeltaX = -10;
+         scroll.DeltaY = 0;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_RIGHT:
-         scroll.XChange = 10;
-         scroll.YChange = 0;
-         scroll.ZChange = 0;
+         scroll.DeltaX = 10;
+         scroll.DeltaY = 0;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_DOWN:
-         scroll.XChange = 0;
-         scroll.YChange = 10;
-         scroll.ZChange = 0;
+         scroll.DeltaX = 0;
+         scroll.DeltaY = 10;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_UP:
-         scroll.XChange = 0;
-         scroll.YChange = -10;
-         scroll.ZChange = 0;
+         scroll.DeltaX = 0;
+         scroll.DeltaY = -10;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
    }

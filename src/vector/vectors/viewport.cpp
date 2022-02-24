@@ -145,8 +145,8 @@ static ERROR VECTORVIEWPORT_Move(objVectorViewport *Self, struct acMove *Args)
    if (!Args) return ERR_NullArgs;
 
    Self->vpDimensions = (Self->vpDimensions|DMF_FIXED_X|DMF_FIXED_Y) & (~(DMF_RELATIVE_X|DMF_RELATIVE_Y));
-   Self->vpTargetX += Args->XChange;
-   Self->vpTargetY += Args->YChange;
+   Self->vpTargetX += Args->DeltaX;
+   Self->vpTargetY += Args->DeltaY;
 
    mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
    return ERR_Okay;

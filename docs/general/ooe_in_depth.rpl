@@ -191,9 +191,9 @@ if (!NewObject(ID_PICTURE, NF_PUBLIC, NULL, &pic_id)) {
 <li><fixed>Action(AC_Init, pic, NULL);</></li>
 <li><fixed>ActionMsg(AC_Free, pic, NULL);</></li>
 <li><fixed>struct acMove move;
-move.XChange = 30;
-move.YChange = 15;
-move.ZChange = 0;
+move.DeltaX = 30;
+move.DeltaY = 15;
+move.DeltaZ = 0;
 Action(AC_Move, Window, &move);</></li>
 </list>
 </indent>
