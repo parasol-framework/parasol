@@ -242,12 +242,9 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    }
    if (Self->Child) Self->Child->Parent = NULL;
 
-   if ((Self->Scene) and (Self->Scene->InputSubscriptions)) {
-      Self->Scene->InputSubscriptions->erase(Self);
-   }
-
-   if ((Self->Scene) and (Self->Scene->KeyboardSubscriptions)) {
-      Self->Scene->KeyboardSubscriptions->erase(Self);
+   if (Self->Scene) {
+      Self->Scene->InputSubscriptions.erase(Self);
+      Self->Scene->KeyboardSubscriptions.erase(Self);
    }
 
    if (Self->Matrices) {
@@ -509,7 +506,7 @@ static ERROR VECTOR_InputSubscription(objVector *Self, struct vecInputSubscripti
       if (mask & JTYPE_FEEDBACK) mask |= JTYPE_MOVEMENT;
 
       Self->InputMask |= mask;
-      Self->Scene->InputSubscriptions[0][Self] = Self->InputMask;
+      Self->Scene->InputSubscriptions[Self] = Self->InputMask;
       Self->InputSubscriptions->emplace_back(*Args->Callback, mask);
    }
    else if (Self->InputSubscriptions) { // Remove existing subscriptions for this callback
@@ -519,9 +516,7 @@ static ERROR VECTOR_InputSubscription(objVector *Self, struct vecInputSubscripti
       }
 
       if (Self->InputSubscriptions->empty()) {
-         if ((Self->Scene) and (Self->Scene->InputSubscriptions)) {
-            Self->Scene->InputSubscriptions->erase(Self);
-         }
+         if (Self->Scene) Self->Scene->InputSubscriptions.erase(Self);
       }
    }
 
@@ -570,7 +565,7 @@ static ERROR VECTOR_KeyboardSubscription(objVector *Self, struct vecKeyboardSubs
       if (!Self->KeyboardSubscriptions) return log.warning(ERR_AllocMemory);
    }
 
-   Self->Scene->KeyboardSubscriptions[0].emplace(Self);
+   Self->Scene->KeyboardSubscriptions.emplace(Self);
    Self->KeyboardSubscriptions->emplace_back(*Args->Callback);
    return ERR_Okay;
 }

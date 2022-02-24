@@ -246,7 +246,7 @@ static void gen_vector_path(objVector *Vector)
 
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
 
-      Vector->Scene->PendingResizeMsgs->insert({ Vector->Head.UniqueID, {
+      Vector->Scene->PendingResizeMsgs.insert({ Vector->Head.UniqueID, {
           view->FinalX, view->FinalY, 0,
           view->vpFixedWidth, view->vpFixedHeight, 0 }
       });

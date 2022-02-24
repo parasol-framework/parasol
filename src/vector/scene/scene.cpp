@@ -263,16 +263,13 @@ static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
 
 static ERROR VECTORSCENE_Free(objVectorScene *Self, APTR Args)
 {
-   Self->InputBoundaries.~vector();
+   Self->~objVectorScene();
 
    if (Self->Viewport) Self->Viewport->Parent = NULL;
    if (Self->Adaptor)  { delete Self->Adaptor; Self->Adaptor = NULL; }
    if (Self->Buffer)   { delete Self->Buffer; Self->Buffer = NULL; }
    if (Self->Defs)     { FreeResource(Self->Defs); Self->Defs = NULL; }
-   if (Self->PendingResizeMsgs)     { delete Self->PendingResizeMsgs; Self->PendingResizeMsgs = NULL; }
-   if (Self->InputSubscriptions)    { delete Self->InputSubscriptions; Self->InputSubscriptions = NULL; }
-   if (Self->KeyboardSubscriptions) { delete Self->KeyboardSubscriptions; Self->KeyboardSubscriptions = NULL; }
-   if (Self->InputHandle)           { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
 
    if (Self->SurfaceID) {
       OBJECTPTR surface;
@@ -332,16 +329,7 @@ static ERROR VECTORSCENE_NewObject(objVectorScene *Self, APTR Void)
 {
    Self->SampleMethod = VSM_BILINEAR;
 
-   Self->PendingResizeMsgs = new (std::nothrow) std::unordered_map<OBJECTID, struct acRedimension>;
-   if (!Self->PendingResizeMsgs) return ERR_Memory;
-
-   Self->InputSubscriptions = new (std::nothrow) std::unordered_map<objVector *, LONG>;
-   if (!Self->InputSubscriptions) return ERR_Memory;
-
-   Self->KeyboardSubscriptions = new (std::nothrow) std::unordered_set<objVector *>;
-   if (!Self->KeyboardSubscriptions) return ERR_Memory;
-
-   new (&Self->InputBoundaries) std::vector<struct InputBoundary>;
+   new (Self) objVectorScene;
 
    // Please refer to the Reset action for setting variable defaults
    return VECTORSCENE_Reset(Self, NULL);
@@ -711,8 +699,8 @@ objVectorViewport * get_viewport_at_xy(objVectorScene *Scene, LONG X, LONG Y)
 
 static void process_resize_msgs(objVectorScene *Self)
 {
-   if (Self->PendingResizeMsgs->size() > 0) {
-      for (auto it=Self->PendingResizeMsgs->begin(); it != Self->PendingResizeMsgs->end(); it++) {
+   if (Self->PendingResizeMsgs.size() > 0) {
+      for (auto it=Self->PendingResizeMsgs.begin(); it != Self->PendingResizeMsgs.end(); it++) {
          objVectorViewport *viewport;
          if (!AccessObject(it->first, 1000, &viewport)) {
             NotifySubscribers(viewport, AC_Redimension, &it->second, 0, ERR_Okay);
@@ -720,7 +708,7 @@ static void process_resize_msgs(objVectorScene *Self)
          }
       }
 
-      Self->PendingResizeMsgs->clear();
+      Self->PendingResizeMsgs.clear();
    }
 }
 
@@ -729,7 +717,7 @@ static void process_resize_msgs(objVectorScene *Self)
 
 static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
 {
-   for (auto const vector : Self->KeyboardSubscriptions[0]) {
+   for (auto const vector : Self->KeyboardSubscriptions) {
       for (auto it=glFocusList.begin(); it != glFocusList.end(); it++) {
          if (*it IS vector->Head.UniqueID) {
             vector_keyboard_events(vector, Event);

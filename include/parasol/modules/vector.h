@@ -380,9 +380,9 @@ typedef struct rkVectorScene {
    class VMAdaptor *Adaptor;
    agg::rendering_buffer *Buffer;
    APTR KeyHandle;
-   std::unordered_map<OBJECTID, struct acRedimension> *PendingResizeMsgs;
-   std::unordered_map<struct rkVector *, LONG> *InputSubscriptions;
-   std::unordered_set<struct rkVector *> *KeyboardSubscriptions;
+   std::unordered_map<OBJECTID, struct acRedimension> PendingResizeMsgs;
+   std::unordered_map<struct rkVector *, LONG> InputSubscriptions;
+   std::unordered_set<struct rkVector *> KeyboardSubscriptions;
    std::vector<struct InputBoundary> InputBoundaries;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID LastMovementVector; // The most recent vector to have received an input movement event.
