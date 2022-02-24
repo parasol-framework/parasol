@@ -55,7 +55,7 @@ static void style_trigger(objButton *Self, LONG Style)
 static ERROR BUTTON_ActionNotify(objButton *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) {
-      if ((Self->prvFeedback.Type IS CALL_SCRIPT) and (Self->prvFeedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->prvFeedback.Type IS CALL_SCRIPT) and (Self->prvFeedback.Script.Script->UID IS Args->ObjectID)) {
          Self->prvFeedback.Type = CALL_NONE;
       }
    }
@@ -176,7 +176,7 @@ static ERROR BUTTON_Init(objButton *Self, APTR Void)
 
    if (Self->Flags & BTF_HIDE) Self->Viewport->Visibility = VIS_HIDDEN;
 
-   if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UniqueID, NULL, NULL)) {
+   if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UID, NULL, NULL)) {
       return ERR_Failed; // Graphics styling is required.
    }
 /*
@@ -493,7 +493,7 @@ representing the application's window.
 static ERROR SET_TabFocus(objButton *Self, OBJECTPTR Value)
 {
    if ((Value) and (Value->ClassID IS ID_TABFOCUS)) {
-      tabAddObject(Value, Self->Viewport->Head.UniqueID);
+      tabAddObject(Value, Self->Viewport->Head.UID);
    }
 
    return ERR_Okay;

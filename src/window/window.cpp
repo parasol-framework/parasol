@@ -120,15 +120,15 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
          acFree(Self);
       }
       else if ((Self->MaximiseCallback.Type IS CALL_SCRIPT) and
-               (Self->MaximiseCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+               (Self->MaximiseCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->MaximiseCallback.Type = CALL_NONE;
       }
       else if ((Self->MinimiseCallback.Type IS CALL_SCRIPT) and
-               (Self->MinimiseCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+               (Self->MinimiseCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->MinimiseCallback.Type = CALL_NONE;
       }
    }
-   else if ((Args->ActionID IS AC_Focus) and (Args->ObjectID IS Self->Surface->Head.UniqueID)) {
+   else if ((Args->ActionID IS AC_Focus) and (Args->ObjectID IS Self->Surface->Head.UID)) {
       if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_Okay;
 
       parasol::Log log;
@@ -179,7 +179,7 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
 
       NotifySubscribers(Self, AC_Focus, NULL, NULL, ERR_Okay);
    }
-   else if ((Args->ActionID IS MT_DrwInheritedFocus) and (Args->ObjectID IS Self->Surface->Head.UniqueID)) {
+   else if ((Args->ActionID IS MT_DrwInheritedFocus) and (Args->ObjectID IS Self->Surface->Head.UID)) {
       // InheritedFocus is reported if one of the children in the window has received the focus.
 
       // If Inheritance->Flags has RNF_GRAB_FOCUS, the window updates its UserFocus field.  If it doesn't have
@@ -416,7 +416,7 @@ static ERROR WINDOW_Hide(objWindow *Self, APTR Void)
             auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex + ((ctl->Total-1) * ctl->EntrySize));
             if (list->ParentID) {
                for (auto i=ctl->Total-1; i >= 0; i--, list=(SurfaceList *)((BYTE *)list - ctl->EntrySize)) {
-                  if ((list->ParentID IS parent_id) and (list->SurfaceID != Self->Surface->Head.UniqueID)) {
+                  if ((list->ParentID IS parent_id) and (list->SurfaceID != Self->Surface->Head.UID)) {
                      if (list->Flags & RNF_VISIBLE) {
                         if ((window_id = GetOwnerID(list->SurfaceID))) {
                            if (GetClassID(window_id) IS ID_WINDOW) {
@@ -954,7 +954,7 @@ static ERROR WINDOW_NewObject(objWindow *Self, APTR Void)
       error = NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->Head.Flags, &Self->Surface, &Self->SurfaceID);
    }
    else if (!(error = NewObject(ID_SURFACE, NF_INTEGRAL|Self->Head.Flags, &Self->Surface))) {
-      Self->SurfaceID = GetUniqueID(Self->Surface);
+      Self->SurfaceID = GetUID(Self->Surface);
    }
 
    if (error) return ERR_NewObject;
@@ -1136,14 +1136,14 @@ static ERROR GET_Canvas(objWindow *Self, OBJECTID *Value)
    }
    else {
       error = NewObject(ID_SURFACE, 0, &surface);
-      Self->CanvasID = GetUniqueID(surface);
+      Self->CanvasID = GetUID(surface);
    }
 
    if (error) return ERR_NewObject;
 
    SetFields(surface,
       FID_Name|TSTR,     "winCanvas",
-      FID_Parent|TLONG,  Self->Surface->Head.UniqueID,
+      FID_Parent|TLONG,  Self->Surface->Head.UID,
       FID_X|TLONG,       Self->Surface->LeftMargin,
       FID_Y|TLONG,       Self->Surface->TopMargin,
       FID_XOffset|TLONG, Self->Surface->RightMargin,

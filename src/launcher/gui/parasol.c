@@ -27,7 +27,7 @@ extern struct CoreBase *CoreBase;
 struct FileSystemBase *FileSystemBase;
 
 #define STR_UNPACK "temp:scripts/"
-#define STR_MAIN   "main.dml"
+#define STR_MAIN   "main.fluid"
 
 static OBJECTID TargetID = 0;
 static OBJECTID glSystemPointerID;
@@ -44,7 +44,7 @@ static ERROR PROGRAM_ActionNotify(OBJECTPTR, struct acActionNotify *);
 
 static const char Help[] = {
 "This command-line program will execute scripts written for the Parasol framework.  The core distribution\n\
-supports both DML (.dml) and Fluid (.fluid) scripts.  Quick start:\n\
+supports Fluid (.fluid) scripts.  Quick start:\n\
 \n\
    parasol [args] [script.ext] arg1 arg2 ...\n\
 \n\
@@ -248,7 +248,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
             if (!acInit(pointer)) {
                OBJECTPTR script;
                if (!PrivateObject(ID_SCRIPT, 0, &script,
-                     FID_Path|TSTR, "templates:defaultvariables.dml",
+                     FID_Path|TSTR, "templates:defaultvariables.fluid",
                      FID_Target|TLONG,  TargetID,
                      TAGEND)) {
 
@@ -289,7 +289,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
    CLASSID class_id, subclass;
    if (!(error = IdentifyFile(ScriptFile, "Open", 0, &class_id, &subclass, NULL))) {
       if (class_id IS ID_COMPRESSION) {
-         // The DML source may be a compressed file that contains multiple script files.  This part of the routine will decompress the contents to "temp:scripts/".
+         // The Fluid source may be a compressed file that contains multiple script files.  This part of the routine will decompress the contents to "temp:scripts/".
 
          if (decompress_archive(ScriptFile) != ERR_Okay) {
             print("Failed to decompress the script archive.");

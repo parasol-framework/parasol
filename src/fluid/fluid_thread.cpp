@@ -56,7 +56,7 @@ static int thread_script(lua_State *Lua)
 
       objScript *script;
       if (!CreateObject(ID_SCRIPT, 0, &script,
-            FID_Owner|TLONG,    thread->Head.UniqueID,
+            FID_Owner|TLONG,    thread->Head.UID,
             FID_Statement|TSTR, statement,
             TAGEND)) {
 
@@ -65,7 +65,7 @@ static int thread_script(lua_State *Lua)
             thread_callback cb = {
                .callbackID   = luaL_ref(Lua, LUA_REGISTRYINDEX),
                .threadScript = script,
-               .mainScriptID = Lua->Script->Head.UniqueID
+               .mainScriptID = Lua->Script->Head.UID
             };
             thSetData(thread, &cb, sizeof(cb));
 

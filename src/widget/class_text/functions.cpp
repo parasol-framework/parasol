@@ -1291,7 +1291,7 @@ static ERROR load_file(objText *Self, CSTRING Location)
       if (file->Flags & FL_STREAM) {
          log.msg("File is streamed.");
 
-         if (!flStartStream(file, Self->Head.UniqueID, FL_READ, 0)) {
+         if (!flStartStream(file, Self->Head.UID, FL_READ, 0)) {
             acClear(Self);
             SubscribeAction(file, AC_Write);
             Self->FileStream = file;
@@ -1536,7 +1536,7 @@ static LONG view_cursor(objText *Self)
    LONG ycoord, height, xcoord, width, scrolly, scrollx, xpos, ypos;
    BYTE scroll;
 
-   //log.function("[%d] Row: %d, Column: %d", Self->Head.UniqueID, Self->CursorRow, Self->CursorColumn);
+   //log.function("[%d] Row: %d, Column: %d", Self->Head.UID, Self->CursorRow, Self->CursorColumn);
 
    if (!(Self->Flags & (TXF_EDIT|TXF_SINGLE_SELECT|TXF_MULTI_SELECT|TXF_AREA_SELECTED))) return FALSE;
 

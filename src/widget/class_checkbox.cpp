@@ -47,7 +47,7 @@ static void style_trigger(objCheckBox *Self, LONG Style)
 static ERROR CHECKBOX_ActionNotify(objCheckBox *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) {
-      if ((Self->prvFeedback.Type IS CALL_SCRIPT) and (Self->prvFeedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->prvFeedback.Type IS CALL_SCRIPT) and (Self->prvFeedback.Script.Script->UID IS Args->ObjectID)) {
          Self->prvFeedback.Type = CALL_NONE;
       }
    }
@@ -136,7 +136,7 @@ static ERROR CHECKBOX_Init(objCheckBox *Self, APTR Void)
    if (Self->Flags & CBF_HIDE) Self->Viewport->Visibility = VIS_HIDDEN;
 
    if (!acInit(Self->Viewport)) {
-      if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UniqueID, NULL, NULL)) {
+      if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UID, NULL, NULL)) {
          return ERR_Failed; // Graphics styling is required.
       }
 
@@ -406,7 +406,7 @@ static ERROR SET_TabFocus(objCheckBox *Self, OBJECTID Value)
    OBJECTPTR tabfocus;
    if (!AccessObject(Value, 5000, &tabfocus)) {
       if (tabfocus->ClassID IS ID_TABFOCUS) {
-         tabAddObject(tabfocus, Self->Viewport->Head.UniqueID);
+         tabAddObject(tabfocus, Self->Viewport->Head.UID);
       }
       ReleaseObject(tabfocus);
    }

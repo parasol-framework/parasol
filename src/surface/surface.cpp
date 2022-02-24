@@ -127,7 +127,7 @@ static ERROR UpdateSurfaceCopy(objSurface *Self, SurfaceList *Copy);
    if ((ctl = drwAccessList(ARF_UPDATE))) { \
       list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
       for (i=0; i < ctl->Total; i++) { \
-         if (list[i].SurfaceID IS (a)->Head.UniqueID) { \
+         if (list[i].SurfaceID IS (a)->Head.UID) { \
             list[i].b = (a)->b; \
             break; \
          } \
@@ -143,7 +143,7 @@ static ERROR UpdateSurfaceCopy(objSurface *Self, SurfaceList *Copy);
       if ((ctl = drwAccessList(ARF_UPDATE))) { \
          list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
          for (i=0; i < ctl->Total; i++) { \
-            if (list[i].SurfaceID IS (a)->Head.UniqueID) { \
+            if (list[i].SurfaceID IS (a)->Head.UID) { \
                list[i].b = (a)->c; \
                break; \
             } \
@@ -194,7 +194,7 @@ static void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
 static THREADVAR LONG glRecentSurfaceIndex = 0;
 
 #define find_surface_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
-#define find_own_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->Head.UniqueID)
+#define find_own_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->Head.UID)
 
 static LONG find_surface_list(SurfaceList *list, LONG Total, OBJECTID SurfaceID)
 {
@@ -222,7 +222,7 @@ static LONG find_parent_list(SurfaceList *list, WORD Total, objSurface *Self)
       if (list[glRecentSurfaceIndex].SurfaceID IS Self->ParentID) return glRecentSurfaceIndex;
    }
 
-   if ((Self->ListIndex < Total) and (list[Self->ListIndex].SurfaceID IS Self->Head.UniqueID)) {
+   if ((Self->ListIndex < Total) and (list[Self->ListIndex].SurfaceID IS Self->Head.UID)) {
       for (LONG i=Self->ListIndex-1; i >= 0; i--) {
          if (list[i].SurfaceID IS Self->ParentID) {
             glRecentSurfaceIndex = i;
@@ -1919,13 +1919,13 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
    // our Index field will not match with the surface that is referenced in Self.  We need to ensure
    // correctness before going any further.
 
-   if (list[Index].SurfaceID != Self->Head.UniqueID) {
-      Index = find_surface_list(list, Total, Self->Head.UniqueID);
+   if (list[Index].SurfaceID != Self->Head.UID) {
+      Index = find_surface_list(list, Total, Self->Head.UID);
    }
 
    // Prepare the buffer so that it matches the exposed area
 
-   if (Self->BitmapOwnerID != Self->Head.UniqueID) {
+   if (Self->BitmapOwnerID != Self->Head.UID) {
       for (i=Index; (i > 0) and (list[i].SurfaceID != Self->BitmapOwnerID); i--);
       DestBitmap->XOffset = list[Index].Left - list[i].Left; // Offset is relative to the bitmap owner
       DestBitmap->YOffset = list[Index].Top - list[i].Top;
@@ -2043,7 +2043,7 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
 
    // Draw graphics to the buffer
 
-   tlFreeExpose = DestBitmap->Head.UniqueID;
+   tlFreeExpose = DestBitmap->Head.UID;
 
       process_surface_callbacks(Self, DestBitmap);
 
@@ -2343,7 +2343,7 @@ static ERROR drwApplyStyleValues(OBJECTPTR Object, CSTRING StyleName)
 
    if (!Object) return log.warning(ERR_NullArgs);
 
-   log.branch("#%d, Style: %s", Object->UniqueID, StyleName);
+   log.branch("#%d, Style: %s", Object->UID, StyleName);
 
    ERROR error;
    if ((error = load_styles())) return error;
@@ -2387,7 +2387,7 @@ static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID TargetID, CSTRING 
 
    if ((!Object) or (!TargetID)) return log.warning(ERR_NullArgs);
 
-   log.branch("Object: %d, Target: %d, Style: %s, StyleType: %s", Object->UniqueID, TargetID, StyleName, StyleType);
+   log.branch("Object: %d, Target: %d, Style: %s, StyleType: %s", Object->UID, TargetID, StyleName, StyleType);
 
    ERROR error;
    if ((error = load_styles())) return error;
@@ -2707,10 +2707,10 @@ static ERROR track_layer(objSurface *Self)
          if (i < ctl->Total) CopyMemory(list+i, list+i+1, sizeof(SurfaceList) * (ctl->Total-i));
       }
 
-      log.trace("Surface: %d, Index: %d, Level: %d, Parent: %d", Self->Head.UniqueID, i, level, Self->ParentID);
+      log.trace("Surface: %d, Index: %d, Level: %d, Parent: %d", Self->Head.UID, i, level, Self->ParentID);
 
       list[i].ParentID  = Self->ParentID;
-      list[i].SurfaceID = Self->Head.UniqueID;
+      list[i].SurfaceID = Self->Head.UID;
       list[i].BitmapID  = Self->BufferID;
       list[i].DisplayID = Self->DisplayID;
       list[i].TaskID    = Self->Head.TaskID;
@@ -2830,7 +2830,7 @@ static ERROR UpdateSurfaceCopy(objSurface *Self, SurfaceList *Copy)
 
       if (i != -1) {
          list[i].ParentID      = Self->ParentID;
-         //list[i].SurfaceID    = Self->Head.UniqueID; Never changes
+         //list[i].SurfaceID    = Self->Head.UID; Never changes
          list[i].BitmapID      = Self->BufferID;
          list[i].DisplayID     = Self->DisplayID;
          //list[i].TaskID      = Self->Head.TaskID; Never changes
@@ -3028,7 +3028,7 @@ static void check_bmp_buffer_depth(objSurface *Self, objBitmap *Bitmap)
    DISPLAYINFO *info;
    if (!gfxGetDisplayInfo(Self->DisplayID, &info)) {
       if (info->BitsPerPixel != Bitmap->BitsPerPixel) {
-         log.msg("[%d] Updating buffer Bitmap %dx%dx%d to match new display depth of %dbpp.", Bitmap->Head.UniqueID, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel, info->BitsPerPixel);
+         log.msg("[%d] Updating buffer Bitmap %dx%dx%d to match new display depth of %dbpp.", Bitmap->Head.UID, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel, info->BitsPerPixel);
          acResize(Bitmap, Bitmap->Width, Bitmap->Height, info->BitsPerPixel);
          Self->LineWidth     = Bitmap->LineWidth;
          Self->BytesPerPixel = Bitmap->BytesPerPixel;
@@ -3115,7 +3115,7 @@ static void process_surface_callbacks(objSurface *Self, objBitmap *Bitmap)
    parasol::Log log(__FUNCTION__);
 
    #ifdef DBG_DRAW_ROUTINES
-      log.traceBranch("Bitmap: %d, Count: %d", Bitmap->Head.UniqueID, Self->CallbackCount);
+      log.traceBranch("Bitmap: %d, Count: %d", Bitmap->Head.UID, Self->CallbackCount);
    #endif
 
    for (LONG i=0; i < Self->CallbackCount; i++) {

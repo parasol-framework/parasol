@@ -62,7 +62,7 @@ static ERROR COMBOBOX_ActionNotify(objComboBox *Self, struct acActionNotify *Arg
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
    if (Args->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UID IS Args->ObjectID)) {
          Self->Feedback.Type = CALL_NONE;
       }
    }
@@ -161,7 +161,7 @@ static ERROR COMBOBOX_Init(objComboBox *Self, APTR Void)
    if (Self->Flags & CMF_HIDE) Self->Viewport->Visibility = VIS_HIDDEN;
 
    if (!acInit(Self->Viewport)) {
-      if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UniqueID, NULL, NULL)) {
+      if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UID, NULL, NULL)) {
          return ERR_Failed; // Graphics styling is required.
       }
 
@@ -535,7 +535,7 @@ tab-list for the application window.
 static ERROR SET_TabFocus(objComboBox *Self, OBJECTPTR Value)
 {
    if ((Value) and (Value->ClassID IS ID_TABFOCUS)) {
-      tabAddObject(Value, Self->Viewport->Head.UniqueID);
+      tabAddObject(Value, Self->Viewport->Head.UID);
    }
 
    return ERR_Okay;

@@ -97,7 +97,7 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, XMLTag *Tag)
    OBJECTPTR trans;
    if (!NewObject(ID_VECTORTRANSITION, 0, &trans)) {
       SetFields(trans,
-         FID_Owner|TLONG, Self->Scene->Head.UniqueID, // All clips belong to the root page to prevent hierarchy issues.
+         FID_Owner|TLONG, Self->Scene->Head.UID, // All clips belong to the root page to prevent hierarchy issues.
          FID_Name|TSTR,   "SVGTransition",
          TAGEND);
 
@@ -144,7 +144,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, XMLTag *Tag)
 
    if (!NewObject(ID_VECTORCLIP, 0, &clip)) {
       SetFields(clip,
-         FID_Owner|TLONG, Self->Scene->Head.UniqueID, // All clips belong to the root page to prevent hierarchy issues.
+         FID_Owner|TLONG, Self->Scene->Head.UID, // All clips belong to the root page to prevent hierarchy issues.
          FID_Name|TSTR,   "SVGClip",
          FID_Units|TLONG, VUNIT_BOUNDING_BOX,
          TAGEND);
@@ -191,7 +191,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, XMLTag *Tag)
 
    if (!NewObject(ID_VECTORFILTER, 0, &filter)) {
       SetFields(filter,
-         FID_Owner|TLONG,       Self->Scene->Head.UniqueID,
+         FID_Owner|TLONG,       Self->Scene->Head.UID,
          FID_Name|TSTR,         "SVGFilter",
          FID_Units|TLONG,       VUNIT_BOUNDING_BOX,
          FID_ColourSpace|TLONG, CS_LINEAR_RGB,
@@ -549,7 +549,7 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
 
    if (!error) {
       error = CreateObject(ID_PICTURE, 0, Picture,
-            FID_Owner|TLONG,        Self->Scene->Head.UniqueID,
+            FID_Owner|TLONG,        Self->Scene->Head.UID,
             FID_Path|TSTR,          Path,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
@@ -577,7 +577,7 @@ static void def_image(objSVG *Self, XMLTag *Tag)
 
    if (!NewObject(ID_VECTORIMAGE, 0, &image)) {
       SetFields(image,
-         FID_Owner|TLONG,        Self->Scene->Head.UniqueID,
+         FID_Owner|TLONG,        Self->Scene->Head.UID,
          FID_Name|TSTR,          "SVGImage",
          FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
          FID_SpreadMethod|TLONG, VSPREAD_PAD,
@@ -669,7 +669,7 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag,
             TAGEND)) {
 
          char id[32] = "img";
-         IntToStr(image->Head.UniqueID, id+3, sizeof(id)-3);
+         IntToStr(image->Head.UID, id+3, sizeof(id)-3);
          SetOwner(pic, image); // It's best if the pic belongs to the image.
          scAddDef(Self->Scene, id, (OBJECTPTR)image);
 
@@ -1199,7 +1199,7 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, XMLTag *Tag, OBJEC
 
    ClearMemory(&anim, sizeof(anim));
    anim.Replace = FALSE;
-   anim.TargetVector = Parent->UniqueID;
+   anim.TargetVector = Parent->UID;
 
    CSTRING value;
    for (LONG a=1; a < Tag->TotalAttrib; a++) {

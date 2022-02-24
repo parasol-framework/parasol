@@ -306,7 +306,7 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
 //      BitmapClipper clipper(bitmap, cliprect);
 
       DBGDRAW("panCopy:","From: %dx%d To: %dx%d,%dx%d, Clip: %dx%d,%dx%d", from.x, from.y, rc.left, rc.top, rc.Width(), rc.Height(), bitmap->Clip.Left, bitmap->Clip.Top, bitmap->Clip.Right, bitmap->Clip.Bottom);
-      DBGDRAW("panCopy:","Bitmap: %d, Offset: %dx%d", bitmap->Head.UniqueID, bitmap->XOffset, bitmap->YOffset);
+      DBGDRAW("panCopy:","Bitmap: %d, Offset: %dx%d", bitmap->Head.UID, bitmap->XOffset, bitmap->YOffset);
       gfxCopyArea(src_surface.bitmap, bitmap, 0,
          from.x, from.y, rc.Width(), rc.Height(), /* source */
          rc.left, rc.top); /* dest */

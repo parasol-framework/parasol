@@ -59,7 +59,7 @@ static void gen_vector_path(objVector *Vector)
 
    parasol::SwitchContext context(Vector);
 
-   log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Head.Class->ClassName, Vector->Head.UniqueID, Vector->Dirty, Vector->ParentView ? Vector->ParentView->Head.UniqueID : 0);
+   log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Head.Class->ClassName, Vector->Head.UID, Vector->Dirty, Vector->ParentView ? Vector->ParentView->Head.UID : 0);
 
    auto parent_view = get_parent_view(Vector);
 
@@ -99,15 +99,15 @@ static void gen_vector_path(objVector *Vector)
          if (parent_view->vpViewWidth) parent_width = parent_view->vpViewWidth;
          else if (!(parent_width = parent_view->vpFixedWidth)) {
             // NB: It is perfectly legal, even if unlikely, that a viewport has a width/height of zero.
-            log.msg("Unable to determine width of the parent viewport #%d", parent_view->Head.UniqueID);
+            log.msg("Unable to determine width of the parent viewport #%d", parent_view->Head.UID);
          }
 
          if (parent_view->vpViewHeight) parent_height = parent_view->vpViewHeight;
          else if (!(parent_height = parent_view->vpFixedHeight)) {
-            log.msg("Unable to determine height of the parent viewport #%d", parent_view->Head.UniqueID);
+            log.msg("Unable to determine height of the parent viewport #%d", parent_view->Head.UID);
          }
 
-         parent_id = parent_view->Head.UniqueID;
+         parent_id = parent_view->Head.UID;
 
          // The user's values for destination (x,y) need to be taken into account. <svg x="" y=""/>
 
@@ -120,7 +120,7 @@ static void gen_vector_path(objVector *Vector)
       else {
          parent_width  = Vector->Scene->PageWidth;
          parent_height = Vector->Scene->PageHeight;
-         parent_id     = Vector->Scene->Head.UniqueID;
+         parent_id     = Vector->Scene->Head.UID;
          // SVG requirement: top level viewport always located at (0,0)
          view->FinalX = 0;
          view->FinalY = 0;
@@ -176,7 +176,7 @@ static void gen_vector_path(objVector *Vector)
       }
 
       log.trace("Vector: #%d, Dimensions: $%.8x, Parent: #%d %.2fw %.2fh, Target: %.2fw %.2fh, Viewbox: %.2f %.2f %.2f %.2f",
-         Vector->Head.UniqueID, view->vpDimensions, parent_id, parent_width, parent_height, target_width, target_height, view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight);
+         Vector->Head.UID, view->vpDimensions, parent_id, parent_width, parent_height, target_width, target_height, view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight);
 
       // This part computes the alignment of the viewbox (source) within the viewport's target area.
       // AspectRatio choices affect this, e.g. "xMinYMin slice".  Note that alignment specifically impacts
@@ -227,10 +227,10 @@ static void gen_vector_path(objVector *Vector)
 
       if (((transform.shx) or (transform.shy)) and
           ((view->vpOverflowX != VIS_VISIBLE) or (view->vpOverflowY != VIS_VISIBLE))) {
-         log.trace("A clip path will be created for viewport #%d.", Vector->Head.UniqueID);
+         log.trace("A clip path will be created for viewport #%d.", Vector->Head.UID);
          if (!view->vpClipMask) {
             CreateObject(ID_VECTORCLIP, NF_INTEGRAL, &view->vpClipMask,
-               FID_Owner|TLONG, Vector->Head.UniqueID,
+               FID_Owner|TLONG, Vector->Head.UID,
                TAGEND);
          }
          if (view->vpClipMask) {
@@ -242,11 +242,11 @@ static void gen_vector_path(objVector *Vector)
       else if (view->vpClipMask) { acFree(view->vpClipMask); view->vpClipMask = NULL; }
 
       log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f",
-         Vector->Head.UniqueID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
+         Vector->Head.UID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
 
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
 
-      Vector->Scene->PendingResizeMsgs.insert({ Vector->Head.UniqueID, {
+      Vector->Scene->PendingResizeMsgs.insert({ Vector->Head.UID, {
           view->FinalX, view->FinalY, 0,
           view->vpFixedWidth, view->vpFixedHeight, 0 }
       });
@@ -437,7 +437,7 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
 
          auto view = (objVectorViewport *)scan;
 
-         DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->Head.UniqueID, view->FinalX, view->FinalY);
+         DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->Head.UID, view->FinalX, view->FinalY);
 
          if ((view->vpViewX) or (view->vpViewY)) {
             AGGTransform.tx -= view->vpViewX;
@@ -446,7 +446,7 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
 
          if ((view->vpXScale != 1.0) or (view->vpYScale != 1.0)) {
             if (std::isnan(view->vpXScale) or std::isnan(view->vpYScale)) {
-               log.warning("[%d] Invalid viewport scale values: %f, %f", view->Head.UniqueID, view->vpXScale, view->vpYScale);
+               log.warning("[%d] Invalid viewport scale values: %f, %f", view->Head.UID, view->vpXScale, view->vpYScale);
             }
             else {
                DBG_TRANSFORM("Viewport scales this vector to %.2f %.2f", view->vpXScale, view->vpYScale);
@@ -463,7 +463,7 @@ static void apply_parent_transforms(objVector *Self, objVector *Start, agg::tran
          AGGTransform.ty += view->FinalY + view->vpAlignY;
       }
       else {
-         log.trace("Parent vector #%d x/y: %.2f %.2f", scan->Head.UniqueID, scan->FinalX, scan->FinalY);
+         log.trace("Parent vector #%d x/y: %.2f %.2f", scan->Head.UID, scan->FinalX, scan->FinalY);
 
          AGGTransform.tx += scan->FinalX;
          AGGTransform.ty += scan->FinalY;

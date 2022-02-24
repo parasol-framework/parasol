@@ -5,7 +5,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
 {
    parasol::Log log("http_feedback");
 
-   log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, State, CurrentContext()->UniqueID);
+   log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, State, CurrentContext()->UID);
 
    auto Self = (objHTTP *)Socket->UserData; //(objHTTP *)CurrentContext();
    if (Self->Head.ClassID != ID_HTTP) { log.warning(ERR_SystemCorrupt); return; }
@@ -164,7 +164,7 @@ static ERROR socket_outgoing(objNetSocket *Socket)
    auto Self = (objHTTP *)Socket->UserData;
    if (Self->Head.ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
 
-   log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UniqueID, Self->CurrentState);
+   log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, Self->CurrentState);
 
    LONG total_out = 0;
 
@@ -380,7 +380,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
    LONG len;
    auto Self = (objHTTP *)Socket->UserData;
 
-   log.msg("Context: %d", CurrentContext()->UniqueID);
+   log.msg("Context: %d", CurrentContext()->UID);
 
    if (Self->Head.ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
 
@@ -471,7 +471,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   log.msg("Authentication successful, reactivating...");
                   Self->SecurePath = FALSE;
                   SetLong(Self, FID_CurrentState, HGS_AUTHENTICATED);
-                  DelayMsg(AC_Activate, Self->Head.UniqueID, NULL);
+                  DelayMsg(AC_Activate, Self->Head.UID, NULL);
                   return ERR_Okay;
                }
 
@@ -620,7 +620,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                      }
                      else error = ERR_AllocMemory;
                   }
-                  else ActionMsg(AC_Activate, Self->Head.UniqueID, NULL);
+                  else ActionMsg(AC_Activate, Self->Head.UID, NULL);
 
                   return ERR_Okay;
                }
@@ -1061,7 +1061,7 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
    if (Self->OutputObjectID) {
       if (Self->ObjectMode IS HOM_DATA_FEED) {
          struct acDataFeed data = {
-            .ObjectID = Self->Head.UniqueID,
+            .ObjectID = Self->Head.UID,
             .DataType = Self->Datatype,
             .Buffer   = Buffer,
             .Size     = Length

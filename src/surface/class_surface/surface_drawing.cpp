@@ -123,13 +123,13 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UniqueID)) {
+         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UID)) {
             if (action->SendArgs IS FALSE) {
                ReleaseMemoryID(msgqueue);
                return ERR_Okay|ERF_Notified;
             }
          }
-         else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->Head.UniqueID)) {
+         else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->Head.UID)) {
             if (action->SendArgs IS TRUE) {
                auto msgdraw = (struct acDraw *)(action + 1);
 
@@ -163,8 +163,8 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
    }
 
    log.traceBranch("%dx%d,%dx%d", x, y, width, height);
-   drwRedrawSurface(Self->Head.UniqueID, x, y, width, height, IRF_RELATIVE|IRF_IGNORE_CHILDREN);
-   drwExposeSurface(Self->Head.UniqueID, x, y, width, height, EXF_REDRAW_VOLATILE);
+   drwRedrawSurface(Self->Head.UID, x, y, width, height, IRF_RELATIVE|IRF_IGNORE_CHILDREN);
+   drwExposeSurface(Self->Head.UID, x, y, width, height, EXF_REDRAW_VOLATILE);
    return ERR_Okay|ERF_Notified;
 }
 
@@ -203,7 +203,7 @@ static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->Head.UniqueID)) {
+         if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->Head.UID)) {
             if (action->SendArgs) {
                auto msgexpose = (struct drwExpose *)(action + 1);
 
@@ -248,8 +248,8 @@ static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
    }
 
    ERROR error;
-   if (Args) error = drwExposeSurface(Self->Head.UniqueID, Args->X, Args->Y, Args->Width, Args->Height, Args->Flags);
-   else error = drwExposeSurface(Self->Head.UniqueID, 0, 0, Self->Width, Self->Height, 0);
+   if (Args) error = drwExposeSurface(Self->Head.UID, Args->X, Args->Y, Args->Width, Args->Height, Args->Flags);
+   else error = drwExposeSurface(Self->Head.UID, 0, 0, Self->Width, Self->Height, 0);
 
    return error;
 }
@@ -302,7 +302,7 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion)];
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
-         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UniqueID)) {
+         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UID)) {
             if (action->SendArgs IS TRUE) {
                auto msginvalid = (struct drwInvalidateRegion *)(action + 1);
 
@@ -334,12 +334,12 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
    }
 
    if (Args) {
-      drwRedrawSurface(Self->Head.UniqueID, Args->X, Args->Y, Args->Width, Args->Height, IRF_RELATIVE);
-      drwExposeSurface(Self->Head.UniqueID, Args->X, Args->Y, Args->Width, Args->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      drwRedrawSurface(Self->Head.UID, Args->X, Args->Y, Args->Width, Args->Height, IRF_RELATIVE);
+      drwExposeSurface(Self->Head.UID, Args->X, Args->Y, Args->Width, Args->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
    else {
-      drwRedrawSurface(Self->Head.UniqueID, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
-      drwExposeSurface(Self->Head.UniqueID, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      drwRedrawSurface(Self->Head.UID, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
+      drwExposeSurface(Self->Head.UID, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
 
    return ERR_Okay|ERF_Notified;
@@ -477,8 +477,8 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
       else if (list[index].BitmapID IS list[parent_index].BitmapID) redraw = TRUE;
       else redraw = FALSE;
 
-      if (redraw) _redraw_surface(Self->Head.UniqueID, list, index, total, destx, desty, destx+Self->Width, desty+Self->Height, NULL);
-      _expose_surface(Self->Head.UniqueID, list, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      if (redraw) _redraw_surface(Self->Head.UID, list, index, total, destx, desty, destx+Self->Width, desty+Self->Height, NULL);
+      _expose_surface(Self->Head.UID, list, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
 
       // Expose underlying graphics resulting from the movement
 

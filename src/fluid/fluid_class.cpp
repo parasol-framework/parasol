@@ -462,7 +462,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
                FID_Permissions|TLONG, prv->CachePermissions,
                TAGEND)) {
 
-            save_binary(Self, cachefile->Head.UniqueID);
+            save_binary(Self, cachefile->Head.UID);
 
             SetPointer(cachefile, FID_Date, &prv->CacheDate);
             acFree(cachefile);

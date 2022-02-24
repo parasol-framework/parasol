@@ -118,7 +118,7 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
 static ERROR LAYOUT_ActionNotify(objLayout *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) {
-      if ((Self->ResizeCallback.Type IS CALL_SCRIPT) and (Self->ResizeCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->ResizeCallback.Type IS CALL_SCRIPT) and (Self->ResizeCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->ResizeCallback.Type = CALL_NONE;
       }
    }
@@ -154,7 +154,7 @@ static ERROR LAYOUT_ActionNotify(objLayout *Self, struct acActionNotify *Args)
             OBJECTPTR script;
             if ((script = Self->ResizeCallback.Script.Script)) {
                const ScriptArg args[] = {
-                  { "Owner", FD_OBJECTID, { .Long = Self->Owner ? Self->Owner->UniqueID : 0 } },
+                  { "Owner", FD_OBJECTID, { .Long = Self->Owner ? Self->Owner->UID : 0 } },
                };
                scCallback(script, Self->ResizeCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }

@@ -176,7 +176,7 @@ of ScriptArg structures.  The following example illustrates such a list:
 
 <pre>
 struct ScriptArg args[] = {
-   { "Object",       FD_OBJECTID, { .Long = Self->Head.UniqueID } },
+   { "Object",       FD_OBJECTID, { .Long = Self->Head.UID } },
    { "Output",       FD_PTR,      { .Address = output } },
    { "OutputLength", FD_LONG,     { .Long = len } }
 };

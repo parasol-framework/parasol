@@ -159,7 +159,7 @@ static ERROR COMPRESSION_ActionNotify(objCompression *Self, struct acActionNotif
    if (!Args) return ERR_NullArgs;
 
    if (Args->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UID IS Args->ObjectID)) {
          Self->Feedback.Type = CALL_NONE;
       }
    }

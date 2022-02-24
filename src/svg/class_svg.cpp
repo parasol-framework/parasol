@@ -75,7 +75,7 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
       Self->AnimationTimer = 0;
    }
 
-   if ((Self->Target) AND (Self->Target IS &Self->Scene->Head) AND (Self->Scene->Head.OwnerID IS Self->Head.UniqueID)) {
+   if ((Self->Target) AND (Self->Target IS &Self->Scene->Head) AND (Self->Scene->Head.OwnerID IS Self->Head.UID)) {
       acFree(Self->Target);
       Self->Target = NULL;
    }

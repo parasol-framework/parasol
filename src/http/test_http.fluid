@@ -227,7 +227,7 @@ function testUpload()
 
    // Test uploading
    local http = obj.new('http', {
-      src       = 'http://www.parasol.ws/dav/boing.dml',
+      src       = 'http://www.parasol.ws/dav/test-upload',
       method    = 'put',
       inputfile = glinFile,
       flags     = '!debug'

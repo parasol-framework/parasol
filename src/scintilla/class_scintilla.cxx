@@ -144,7 +144,6 @@ static const struct {
    { "*.errorlist",   SCLEX_ERRORLIST },
    { "*.lua|*.fluid", SCLEX_FLUID },
    { "*.dmd",         SCLEX_HTML },
-   { "*.dml",         SCLEX_XML },
    { "*.html",        SCLEX_HTML },
    { "*.latex",       SCLEX_LATEX },
    { "makefile|*.make", SCLEX_MAKEFILE },
@@ -290,7 +289,7 @@ static ERROR SCINTILLA_ActionNotify(objScintilla *Self, struct acActionNotify *A
       request.Preference[2] = 0;
 
       struct acDataFeed dc;
-      dc.ObjectID = Self->Head.UniqueID;
+      dc.ObjectID = Self->Head.UID;
       dc.Datatype = DATA_REQUEST;
       dc.Buffer   = &request;
       dc.Size     = sizeof(request);
@@ -310,7 +309,7 @@ static ERROR SCINTILLA_ActionNotify(objScintilla *Self, struct acActionNotify *A
       else log.msg("(Focus) Cannot receive focus, surface not visible or disabled.");
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->EventCallback.Type = CALL_NONE;
       }
    }
@@ -357,7 +356,7 @@ static ERROR SCINTILLA_ActionNotify(objScintilla *Self, struct acActionNotify *A
       SCICALL(SCI_SETUNDOCOLLECTION, 0UL); // Turn off undo
 
       if (write->Buffer) {
-         acDataFeed(Self, Self->Head.UniqueID, DATA_TEXT, write->Buffer, write->Result);
+         acDataFeed(Self, Self->Head.UID, DATA_TEXT, write->Buffer, write->Result);
       }
       else { // We have to read the data from the file stream
       }
@@ -635,7 +634,7 @@ static ERROR SCINTILLA_Free(objScintilla *Self, APTR)
    }
 
    /*if (Self->PointerLocked) {
-      RestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+      RestoreCursor(PTR_DEFAULT, Self->Head.UID);
       Self->PointerLocked = FALSE;
    }*/
 
@@ -2138,7 +2137,7 @@ static void draw_scintilla(objScintilla *Self, objSurface *Surface, struct rkBit
    if (!Self->Visible) return;
    if (!(Self->Head.Flags & NF_INITIALISED)) return;
 
-   log.traceBranch("Surface: %d, Bitmap: %d. Clip: %dx%d,%dx%d, Offset: %dx%d", Surface->Head.UniqueID, Bitmap->Head.UniqueID, Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left, Bitmap->Clip.Bottom - Bitmap->Clip.Top, Bitmap->XOffset, Bitmap->YOffset);
+   log.traceBranch("Surface: %d, Bitmap: %d. Clip: %dx%d,%dx%d, Offset: %dx%d", Surface->Head.UID, Bitmap->Head.UID, Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left, Bitmap->Clip.Bottom - Bitmap->Clip.Top, Bitmap->XOffset, Bitmap->YOffset);
 
    glBitmap = Bitmap;
 
@@ -2219,7 +2218,7 @@ static ERROR load_file(objScintilla *Self, CSTRING Path)
 
    if (!CreateObject(ID_FILE, NF_INTEGRAL, &file, FID_Flags|TLONG, FL_READ, FID_Path|TSTR, Path, TAGEND)) {
       if (file->Flags & FL_STREAM) {
-         if (!flStartStream(file, Self->Head.UniqueID, FL_READ, 0)) {
+         if (!flStartStream(file, Self->Head.UID, FL_READ, 0)) {
             acClear(Self);
 
             SubscribeActionTags(file, AC_Write, TAGEND);

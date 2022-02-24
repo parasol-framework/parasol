@@ -1280,7 +1280,7 @@ static ERROR fntRefreshFonts(void)
 
    OBJECTPTR file;
    if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, "fonts:fonts.cfg", FID_Flags|TLONG, FL_NEW|FL_WRITE, TAGEND)) {
-      acSaveToObject(glConfig, file->UniqueID, 0);
+      acSaveToObject(glConfig, file->UID, 0);
       acFree(file);
    }
 

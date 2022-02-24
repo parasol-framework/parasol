@@ -184,10 +184,10 @@ static ERROR TEXT_ActionNotify(objText *Self, struct acActionNotify *Args)
       }
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->ValidateInput.Type IS CALL_SCRIPT) and (Self->ValidateInput.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->ValidateInput.Type IS CALL_SCRIPT) and (Self->ValidateInput.Script.Script->UID IS Args->ObjectID)) {
          Self->ValidateInput.Type = CALL_NONE;
       }
-      else if ((Self->Activated.Type IS CALL_SCRIPT) and (Self->Activated.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->Activated.Type IS CALL_SCRIPT) and (Self->Activated.Script.Script->UID IS Args->ObjectID)) {
          Self->Activated.Type = CALL_NONE;
       }
    }
@@ -216,7 +216,7 @@ static ERROR TEXT_ActionNotify(objText *Self, struct acActionNotify *Args)
       log.msg("%d bytes incoming from file stream.", write->Result);
 
       if (write->Buffer) {
-         acDataFeed(Self, Self->Head.UniqueID, DATA_TEXT, write->Buffer, write->Result);
+         acDataFeed(Self, Self->Head.UID, DATA_TEXT, write->Buffer, write->Result);
       }
    }
 
@@ -804,7 +804,7 @@ static ERROR TEXT_Free(objText *Self, APTR Void)
    if (Self->Layout) { acFree(Self->Layout); Self->Layout = NULL; }
 
    if (Self->PointerLocked) {
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
       Self->PointerLocked = FALSE;
    }
 
@@ -1423,14 +1423,14 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
                else if (Self->State != STATE_INSIDE) {
                   Self->State = STATE_ENTERED;
 
-                  gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UniqueID);
+                  gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UID);
                   Self->PointerLocked = TRUE;
                }
             }
             else {
                if (Self->State != STATE_EXITED) {
                   Self->State = STATE_EXITED;
-                  gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+                  gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
                   Self->PointerLocked = FALSE;
                }
             }

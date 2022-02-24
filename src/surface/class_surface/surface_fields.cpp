@@ -12,7 +12,7 @@ the display and as such is not recommended.
 static ERROR GET_BitsPerPixel(objSurface *Self, LONG *Value)
 {
    SURFACEINFO *info;
-   if (!drwGetSurfaceInfo(Self->Head.UniqueID, &info)) {
+   if (!drwGetSurfaceInfo(Self->Head.UID, &info)) {
       *Value = info->BitsPerPixel;
    }
    else *Value = 0;
@@ -103,7 +103,7 @@ static ERROR SET_Drag(objSurface *Self, OBJECTID Value)
 {
    if (Value) {
       auto callback = make_function_stdc(consume_input_events);
-      if (!gfxSubscribeInput(&callback, Self->Head.UniqueID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle)) {
+      if (!gfxSubscribeInput(&callback, Self->Head.UID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle)) {
          Self->DragID = Value;
          return ERR_Okay;
       }
@@ -172,7 +172,7 @@ LayoutSurface: Private. Simply return the surface as itself as the 'layout surfa
 
 static ERROR GET_LayoutSurface(objSurface *Self, OBJECTID *Value)
 {
-   *Value = Self->Head.UniqueID;
+   *Value = Self->Head.UID;
    return ERR_Okay;
 }
 
@@ -207,7 +207,7 @@ static ERROR SET_Modal(objSurface *Self, LONG Modal)
          Self->PrevModalID = 0;
       }
       else if ((task = (TaskList *)GetResourcePtr(RES_TASK_CONTROL))) {
-         if (task->ModalID IS Self->Head.UniqueID) task->ModalID = 0;
+         if (task->ModalID IS Self->Head.UID) task->ModalID = 0;
       }
    }
 
@@ -360,7 +360,7 @@ static ERROR SET_PopOver(objSurface *Self, OBJECTID Value)
 {
    parasol::Log log;
 
-   if (Value IS Self->Head.UniqueID) return ERR_Okay;
+   if (Value IS Self->Head.UID) return ERR_Okay;
 
    if (Self->Head.Flags & NF_INITIALISED) return log.warning(ERR_Immutable);
 

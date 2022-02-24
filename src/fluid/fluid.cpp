@@ -374,7 +374,7 @@ static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 
    if ((!Script) or (Script->Head.ClassID != ID_FLUID) or (!Name) or (!*Name)) return log.warning(ERR_Args);
 
-   log.branch("Script: %d, Name: %s, Type: $%.8x", Script->Head.UniqueID, Name, Type);
+   log.branch("Script: %d, Name: %s, Type: $%.8x", Script->Head.UID, Name, Type);
 
    if (!(prv = (prvFluid *)Script->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 

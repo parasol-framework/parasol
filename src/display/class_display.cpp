@@ -160,7 +160,7 @@ static ERROR DISPLAY_ActionNotify(objDisplay *Self, struct acActionNotify *Args)
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
    if (Args->ActionID IS AC_Free) {
-      if ((Self->ResizeFeedback.Type IS CALL_SCRIPT) and (Self->ResizeFeedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->ResizeFeedback.Type IS CALL_SCRIPT) and (Self->ResizeFeedback.Script.Script->UID IS Args->ObjectID)) {
          Self->ResizeFeedback.Type = CALL_NONE;
          return ERR_Okay;
       }
@@ -205,7 +205,7 @@ static ERROR DISPLAY_CheckXWindow(objDisplay *Self, APTR Void)
       Self->X = absx;
       Self->Y = absy;
 
-      resize_feedback(&Self->ResizeFeedback, Self->Head.UniqueID, absx, absy, Self->Width, Self->Height);
+      resize_feedback(&Self->ResizeFeedback, Self->Head.UID, absx, absy, Self->Width, Self->Height);
    }
 
 #endif
@@ -280,7 +280,7 @@ static ERROR DISPLAY_DataFeed(objDisplay *Self, struct acDataFeed *Args)
             pos += StrCopy("</receipt>", xml+pos, xmlsize-pos);
 
             struct acDataFeed dc;
-            dc.ObjectID = Self->Head.UniqueID;
+            dc.ObjectID = Self->Head.UID;
             dc.Datatype = DATA_RECEIPT;
             dc.Buffer   = xml;
             dc.Size     = pos+1;
@@ -604,7 +604,7 @@ static ERROR DISPLAY_Hide(objDisplay *Self, APTR Void)
 
 #elif _GLES_
    if (Self->Flags & SCR_VISIBLE) {
-      adHideDisplay(Self->Head.UniqueID);
+      adHideDisplay(Self->Head.UID);
    }
 #endif
 
@@ -848,7 +848,7 @@ static ERROR DISPLAY_Init(objDisplay *Self, APTR Void)
 
       glDisplayWindow = Self->XWindowHandle;
 
-      XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->Head.UniqueID, 1);
+      XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->Head.UID, 1);
 
    #elif _WIN32
 
@@ -1159,7 +1159,7 @@ static ERROR DISPLAY_NewObject(objDisplay *Self, APTR Void)
    }
    else {
       error = NewObject(ID_BITMAP, Self->Head.Flags|NF_INTEGRAL, &Self->Bitmap);
-      Self->BitmapID = GetUniqueID(Self->Bitmap);
+      Self->BitmapID = GetUID(Self->Bitmap);
    }
 
    if (!error) {
@@ -1594,7 +1594,7 @@ static ERROR DISPLAY_SetDisplay(objDisplay *Self, struct gfxSetDisplay *Args)
       Self->Bitmap = NULL;
 
       if (!NewObject(ID_BITMAP, NF_INTEGRAL|Self->Head.Flags, &Self->Bitmap, (Self->Head.Flags & NF_PUBLIC) ? &Self->BitmapID : NULL)) {
-         Self->BitmapID = Self->Bitmap->Head.UniqueID;
+         Self->BitmapID = Self->Bitmap->Head.UID;
          Self->Bitmap->BitsPerPixel = bpp;
          Self->Bitmap->Width        = Self->Width;
          Self->Bitmap->Height       = Self->Height;
@@ -1939,7 +1939,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
 
       // Post a delayed CheckXWindow() message so that we can respond to changes by the window manager.
 
-      DelayMsg(MT_GfxCheckXWindow, Self->Head.UniqueID, NULL);
+      DelayMsg(MT_GfxCheckXWindow, Self->Head.UID, NULL);
 
       // This really shouldn't be here, but until the management of menu focussing is fixed, we need it.
 
@@ -1965,7 +1965,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
    #elif _GLES_
 
       #warning TODO: Bring back the native window if it is hidden.
-      glActiveDisplayID = Self->Head.UniqueID;
+      glActiveDisplayID = Self->Head.UID;
       Self->Flags &= ~SCR_NOACCELERATION;
 
    #else
@@ -2519,11 +2519,11 @@ static ERROR SET_Flags(objDisplay *Self, LONG Value)
             Self->Width  = winwidth;
             Self->Height = winheight;
 
-            resize_feedback(&Self->ResizeFeedback, Self->Head.UniqueID, cx, cy, cwidth, cheight);
+            resize_feedback(&Self->ResizeFeedback, Self->Head.UID, cx, cy, cwidth, cheight);
 
             if (Self->Flags & SCR_VISIBLE) {
                winShowWindow(Self->WindowHandle, TRUE);
-               DelayMsg(AC_Focus, Self->Head.UniqueID, NULL);
+               DelayMsg(AC_Focus, Self->Head.UID, NULL);
             }
          }
 
@@ -2591,7 +2591,7 @@ static ERROR SET_Flags(objDisplay *Self, LONG Value)
             XSetTransientForHint(XDisplay, Self->XWindowHandle, DefaultRootWindow(XDisplay));
          }
 
-         XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->Head.UniqueID, 1);
+         XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->Head.UID, 1);
 
          // Indicate that the window position is not to be meddled with by the window manager.
 
@@ -2609,10 +2609,10 @@ static ERROR SET_Flags(objDisplay *Self, LONG Value)
          if (Self->Flags & SCR_VISIBLE) {
             acShow(Self);
             XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
-            DelayMsg(AC_Focus, Self->Head.UniqueID, NULL);
+            DelayMsg(AC_Focus, Self->Head.UID, NULL);
          }
 
-         resize_feedback(&Self->ResizeFeedback, Self->Head.UniqueID, Self->X, Self->Y, Self->Width, Self->Height);
+         resize_feedback(&Self->ResizeFeedback, Self->Head.UID, Self->X, Self->Y, Self->Width, Self->Height);
       #endif
       }
 

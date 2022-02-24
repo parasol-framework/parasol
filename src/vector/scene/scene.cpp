@@ -118,14 +118,14 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
 
    // If the resource does not belong to the Scene object, this can lead to invalid pointer references
 
-   if (def->OwnerID != Self->Head.UniqueID) {
-      log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->Head.UniqueID, def->OwnerID);
+   if (def->OwnerID != Self->Head.UID) {
+      log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->Head.UID, def->OwnerID);
       return ERR_UnsupportedOwner;
    }
 
    // TO DO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
 
-   log.trace("Adding definition '%s' for object #%d", Args->Name, def->UniqueID);
+   log.trace("Adding definition '%s' for object #%d", Args->Name, def->UID);
 
    APTR data;
    if (!Self->Defs) {
@@ -415,7 +415,7 @@ static ERROR VECTORSCENE_SearchByID(objVectorScene *Self, struct scSearchByID *A
 
    objVector *vector = Self->Viewport;
    while (vector) {
-      //log.msg("Search","%.3d: %p <- #%d -> %p Child %p", vector->Index, vector->Prev, vector->Head.UniqueID, vector->Next, vector->Child);
+      //log.msg("Search","%.3d: %p <- #%d -> %p Child %p", vector->Index, vector->Prev, vector->Head.UID, vector->Next, vector->Child);
 cont:
       if (vector->NumericID IS Args->ID) {
          Args->Result = (OBJECTPTR)vector;
@@ -594,13 +594,13 @@ static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitm
 
 void apply_focus(objVectorScene *Scene, objVector *Vector)
 {
-   if ((!glFocusList.empty()) and (Vector->Head.UniqueID IS glFocusList.front())) return;
+   if ((!glFocusList.empty()) and (Vector->Head.UID IS glFocusList.front())) return;
 
    std::vector<OBJECTID> focus_gained; // The first reference is the most foreground object
 
    for (auto scan=Vector; scan; scan=(objVector *)scan->Parent) {
       if (scan->Head.ClassID IS ID_VECTOR) {
-         focus_gained.emplace_back(scan->Head.UniqueID);
+         focus_gained.emplace_back(scan->Head.UID);
       }
       else break;
    }
@@ -719,7 +719,7 @@ static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
 {
    for (auto const vector : Self->KeyboardSubscriptions) {
       for (auto it=glFocusList.begin(); it != glFocusList.end(); it++) {
-         if (*it IS vector->Head.UniqueID) {
+         if (*it IS vector->Head.UID) {
             vector_keyboard_events(vector, Event);
             break;
          }
@@ -768,7 +768,7 @@ static void send_enter_event(objVector *Vector, const InputEvent *Event, DOUBLE 
       .Next        = NULL,
       .Value       = Event->OverID,
       .Timestamp   = Event->Timestamp,
-      .RecipientID = Vector->Head.UniqueID,
+      .RecipientID = Vector->Head.UID,
       .OverID      = Event->OverID,
       .AbsX        = Event->AbsX,
       .AbsY        = Event->AbsY,
@@ -790,7 +790,7 @@ static void send_left_event(objVector *Vector, const InputEvent *Event)
       .Next        = NULL,
       .Value       = Event->OverID,
       .Timestamp   = Event->Timestamp,
-      .RecipientID = Vector->Head.UniqueID,
+      .RecipientID = Vector->Head.UID,
       .OverID      = Event->OverID,
       .AbsX        = Event->AbsX,
       .AbsY        = Event->AbsY,
@@ -870,18 +870,18 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
          // Additional bounds check to cater for transforms, clip masks etc.
 
-         if (Self->ButtonLock != vector->Head.UniqueID) {
+         if (Self->ButtonLock != vector->Head.UID) {
             if (vecPointInPath(vector, input->X, input->Y) != ERR_Okay) continue;
          }
 
-         if (Self->LastMovementVector != vector->Head.UniqueID) {
+         if (Self->LastMovementVector != vector->Head.UID) {
             send_enter_event(vector, input, bounds.X, bounds.Y);
          }
 
          // Determine status of the button lock.
 
          if ((input->Type IS JET_LMB) and (!(input->Flags & JTYPE_REPEATED))) {
-            Self->ButtonLock = input->Value ? vector->Head.UniqueID : 0;
+            Self->ButtonLock = input->Value ? vector->Head.UID : 0;
          }
 
          if (vector->Cursor) cursor = vector->Cursor;
@@ -893,12 +893,12 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
          send_input_event(vector, &event);
 
          if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
-            if ((Self->LastMovementVector) and (Self->LastMovementVector != vector->Head.UniqueID)) {
+            if ((Self->LastMovementVector) and (Self->LastMovementVector != vector->Head.UID)) {
                parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
                if (lock.granted()) send_left_event(lock.obj, input);
             }
 
-            Self->LastMovementVector = vector->Head.UniqueID;
+            Self->LastMovementVector = vector->Head.UID;
          }
 
          processed = true;

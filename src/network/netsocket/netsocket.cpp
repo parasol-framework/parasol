@@ -81,13 +81,13 @@ static ERROR NETSOCKET_ActionNotify(objNetSocket *Self, struct acActionNotify *A
    if (!Args) return ERR_NullArgs;
 
    if (Args->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UID IS Args->ObjectID)) {
          Self->Feedback.Type = CALL_NONE;
       }
-      else if ((Self->Incoming.Type IS CALL_SCRIPT) and (Self->Incoming.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->Incoming.Type IS CALL_SCRIPT) and (Self->Incoming.Script.Script->UID IS Args->ObjectID)) {
          Self->Incoming.Type = CALL_NONE;
       }
-      else if ((Self->Outgoing.Type IS CALL_SCRIPT) and (Self->Outgoing.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->Outgoing.Type IS CALL_SCRIPT) and (Self->Outgoing.Script.Script->UID IS Args->ObjectID)) {
          Self->Outgoing.Type = CALL_NONE;
       }
    }
@@ -375,7 +375,7 @@ static ERROR NETSOCKET_FreeWarning(objNetSocket *Self, APTR Void)
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
          log.msg("NetSocket in use, cannot free yet (request delayed).");
          Self->Terminating = TRUE;
-         DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
+         DelayMsg(AC_Free, Self->Head.UID, NULL);
       }
       return ERR_InUse;
    }
@@ -1353,7 +1353,7 @@ void win32_netresponse(Head *SocketObject, SOCKET_HANDLE SocketHandle, LONG Mess
 
    #ifdef DEBUG
    static const CSTRING msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
-   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->Head.UniqueID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
+   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->Head.UID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
    #endif
 
    parasol::SwitchContext context(Socket);

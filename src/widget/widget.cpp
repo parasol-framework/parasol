@@ -300,7 +300,7 @@ static void apply_filter(objBitmap *Icon, CSTRING FilterName, std::string &Categ
 {
    parasol::Log log(__FUNCTION__);
 
-   log.traceBranch("Icon: #%d", Icon->Head.UniqueID);
+   log.traceBranch("Icon: #%d", Icon->Head.UID);
 
    parasol::SwitchContext context(modIconServer);
 

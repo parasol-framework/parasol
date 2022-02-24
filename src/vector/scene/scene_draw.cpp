@@ -884,7 +884,7 @@ private:
             gen_vector_path(shape);
             shape->Dirty = 0;
          }
-         else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Head.Class->ClassName, shape->Head.UniqueID, shape->ParentView ? shape->ParentView->Head.UniqueID : 0);
+         else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Head.Class->ClassName, shape->Head.UID, shape->ParentView ? shape->ParentView->Head.UID : 0);
 
          // Visibility management.
 
@@ -896,7 +896,7 @@ private:
             else if (shape->Visibility != VIS_VISIBLE) visible = false;
 
             if (!visible) {
-               log.trace("%s: #%d, Not Visible", get_name(shape), shape->Head.UniqueID);
+               log.trace("%s: #%d, Not Visible", get_name(shape), shape->Head.UID);
                continue;
             }
          }
@@ -917,7 +917,7 @@ private:
          }
 
          #ifdef DBG_DRAW
-            log.traceBranch("%s: #%d, Matrices: %p", get_name(shape), shape->Head.UniqueID, shape->Matrices);
+            log.traceBranch("%s: #%d, Matrices: %p", get_name(shape), shape->Head.UID, shape->Matrices);
          #endif
 
          if (shape->LineJoin != agg::inherit_join)   state.mLineJoin  = shape->LineJoin;
@@ -968,7 +968,7 @@ private:
                mRenderBase.clip_box(x1, y1, x2, y2);
 
                #ifdef DBG_DRAW
-                  log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f) bounded by (%.2f %.2f %.2f %.2f)", shape->Head.UniqueID, x1, y1, x2, y2, xmin, ymin, xmax, ymax);
+                  log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f) bounded by (%.2f %.2f %.2f %.2f)", shape->Head.UID, x1, y1, x2, y2, xmin, ymin, xmax, ymax);
                #endif
 
                if ((x2 > x1) and (y2 > y1)) [[likely]] { // Continue only if the clipping region is good.
@@ -989,7 +989,7 @@ private:
                      if (view->vpBX2 < x2) x2 = view->vpBX2;
                      if (view->vpBY1 > y1) y1 = view->vpBY1;
                      if (view->vpBY2 < y2) y2 = view->vpBY2;
-                     Scene->InputBoundaries.emplace_back(shape->Head.UniqueID, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
+                     Scene->InputBoundaries.emplace_back(shape->Head.UID, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
                   }
 
                   if (Scene->Flags & VPF_OUTLINE_VIEWPORTS) { // Debug option: Draw the viewport's path with a green outline
@@ -1025,7 +1025,7 @@ private:
 
             if (shape->GeneratePath) { // A vector that generates a path can be drawn
                #ifdef DBG_DRAW
-                  log.traceBranch("%s: #%d, Mask: %p", get_name(shape), shape->Head.UniqueID, shape->ClipMask);
+                  log.traceBranch("%s: #%d, Mask: %p", get_name(shape), shape->Head.UID, shape->ClipMask);
                #endif
 
                if (!mView) {
@@ -1150,7 +1150,7 @@ private:
                   if (xmax < bx2) bx2 = xmax;
                   if (ymax < by2) by2 = ymax;
 
-                  Scene->InputBoundaries.emplace_back(shape->Head.UniqueID, bx1, by1, bx2, by2, absx, absy);
+                  Scene->InputBoundaries.emplace_back(shape->Head.UID, bx1, by1, bx2, by2, absx, absy);
                }
 
                state.mClipMask = saved_mask;

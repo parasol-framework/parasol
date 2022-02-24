@@ -89,7 +89,7 @@ void ListBoxImp::Create(Scintilla::Window &Window, int, Scintilla::Point, int, b
    //    APTR Buffer; LONG Size; LONG TotalEntries; };
    struct acDataFeed dc_args;
 
-   dc_args.ObjectID = menu->UniqueID;
+   dc_args.ObjectID = menu->UID;
    dc_args.DataType = DATA_XML;
    dc_args.Buffer = (STRING)"<menu name=\"Edit\">\
       <item text=\"Cut\" icon=\"icons:tools/cut\" qualifier=\"CTRL\" key=\"X\">\

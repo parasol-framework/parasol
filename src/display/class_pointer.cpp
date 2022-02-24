@@ -1333,7 +1333,7 @@ static BYTE get_over_object(objPointer *Self)
                .AbsY        = Self->Y,
                .X           = Self->X - li_left,
                .Y           = Self->Y - li_top,
-               .DeviceID    = Self->Head.UniqueID,
+               .DeviceID    = Self->Head.UID,
                .Type        = JET_LEFT_SURFACE,
                .Flags       = JTYPE_FEEDBACK,
                .Mask        = JTYPE_FEEDBACK
@@ -1533,7 +1533,7 @@ static ERROR init_mouse_driver(void)
          log.msg("Setting open port %s, device %s to non-blocking.", glPorts[port].Name, glPorts[port].Device);
          fcntl(glPorts[port].FD, F_SETFL, fcntl(glPorts[port].FD, F_GETFL)|O_NONBLOCK);
          flush_mouse(port);
-         RegisterFD(glPorts[port].FD, RFD_READ, &read_mouseport, (APTR)Self->Head.UniqueID);
+         RegisterFD(glPorts[port].FD, RFD_READ, &read_mouseport, (APTR)Self->Head.UID);
       }
    }
 
@@ -1559,7 +1559,7 @@ static ERROR init_mouse_driver(void)
       SetFields(surface,
          FID_Name|TSTR,    "Pointer",
          FID_Parent|TLONG, Self->SurfaceID,
-         FID_Owner|TLONG,  Self->Head.UniqueID,
+         FID_Owner|TLONG,  Self->Head.UID,
          FID_X|TLONG,      -64,
          FID_Y|TLONG,      -64,
          FID_Width|TLONG,  MAX_CURSOR_WIDTH,

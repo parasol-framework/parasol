@@ -1216,10 +1216,11 @@ struct ScriptArg { // For use with scExec
 
 extern struct CoreBase *CoreBase;
 
-INLINE OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UniqueID; }
+INLINE OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 INLINE APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
 INLINE OBJECTID GetOwner(APTR Object) { return ((OBJECTPTR)Object)->OwnerID; }
-INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UniqueID; }
+INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UID; }
+INLINE OBJECTID GetUID(APTR Object) { return ((OBJECTPTR)Object)->UID; }
 
 #ifdef __cplusplus
 typedef std::map<std::string, std::string> ConfigKeys;

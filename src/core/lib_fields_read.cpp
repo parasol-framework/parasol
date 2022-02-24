@@ -557,7 +557,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
             }
             else {
                Buffer[0] = '#';
-               IntToStr(obj->UniqueID, Buffer+1, BufferSize-1);
+               IntToStr(obj->UID, Buffer+1, BufferSize-1);
             }
          }
          else StrCopy("0", Buffer, BufferSize);
@@ -594,7 +594,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
 {
    parasol::Log log("GetField");
 
-   //log.msg("[%s:%d] Name: %s, Flags: $%x", ((rkMetaClass *)Object->Class)->Name, Object->UniqueID, Field->Name, DestFlags);
+   //log.msg("[%s:%d] Name: %s, Flags: $%x", ((rkMetaClass *)Object->Class)->Name, Object->UID, Field->Name, DestFlags);
 
    BYTE value[16]; // 128 bits of space
    APTR data;
@@ -773,8 +773,8 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
       else if (srcflags & (FD_INTEGRAL|FD_OBJECT)) {
          OBJECTPTR object = *((OBJECTPTR *)data);
          if (object) {
-            if (DestFlags & FD_LONG)       *((LONG *)Result)  = object->UniqueID;
-            else if (DestFlags & FD_LARGE) *((LARGE *)Result) = object->UniqueID;
+            if (DestFlags & FD_LONG)       *((LONG *)Result)  = object->UID;
+            else if (DestFlags & FD_LARGE) *((LARGE *)Result) = object->UID;
             else goto mismatch;
          }
          else goto mismatch;

@@ -910,7 +910,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
 
    if (glLogLevel >= 9) log.function("MessageMID: %d, Type: %d, Data: %p, Size: %d", MessageMID, Type, Data, Size);
 
-   if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d, context #%d.", MessageMID, tlContext->Object->UniqueID);
+   if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d, context #%d.", MessageMID, tlContext->Object->UID);
 
    if ((!Type) or (Size < 0)) return log.warning(ERR_Args);
 
@@ -1138,9 +1138,9 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
          ObjectSignals[i].Object->Flags &= ~NF_SIGNALLED;
       }
       else if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
-         log.debug("Monitoring object #%d", ObjectSignals[i].Object->UniqueID);
+         log.debug("Monitoring object #%d", ObjectSignals[i].Object->UID);
          if (SubscribeAction(ObjectSignals[i].Object, AC_Signal)) error = ERR_Failed;
-         glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UniqueID, ObjectSignals[i]));
+         glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
       }
       else error = ERR_Failed;
    }

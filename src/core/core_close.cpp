@@ -164,7 +164,7 @@ EXPORT void CloseCore(void)
                   if (glSharedBlocks[i].Flags & MEM_OBJECT) {
                      OBJECTPTR header;
                      if ((header = (OBJECTPTR)resolve_public_address(glSharedBlocks + i))) {
-                        log.warning("Removing %d exclusive locks on object #%d (memory %d).", glSharedBlocks[i].AccessCount, header->UniqueID, glSharedBlocks[i].MemoryID);
+                        log.warning("Removing %d exclusive locks on object #%d (memory %d).", glSharedBlocks[i].AccessCount, header->UID, glSharedBlocks[i].MemoryID);
                         for (count=glSharedBlocks[i].AccessCount; count > 0; count--) {
                            ReleaseObject(header);
                         }
@@ -183,14 +183,14 @@ EXPORT void CloseCore(void)
       // cleaner exit.
 
       if (glCurrentTask) {
-         const auto children = glObjectChildren[glCurrentTask->Head.UniqueID]; // Take an immutable copy of the resource list
+         const auto children = glObjectChildren[glCurrentTask->Head.UID]; // Take an immutable copy of the resource list
 
          if (children.size() > 0) {
-            log.branch("Freeing %d objects allocated to task #%d.", (LONG)children.size(), glCurrentTask->Head.UniqueID);
+            log.branch("Freeing %d objects allocated to task #%d.", (LONG)children.size(), glCurrentTask->Head.UID);
 
             for (const auto id : children) ActionMsg(AC_Free, id, NULL, 0, 0);
          }
-         else log.msg("There are no child objects belonging to task #%d.", glCurrentTask->Head.UniqueID);
+         else log.msg("There are no child objects belonging to task #%d.", glCurrentTask->Head.UID);
       }
 
       // Make our first attempt at expunging all modules.  Notice that we terminate all public objects that are owned
@@ -252,7 +252,7 @@ EXPORT void CloseCore(void)
          if ((mem.Flags & MEM_OBJECT) and (mem.AccessCount > 0)) {
             auto obj = mem.Object;
             if (obj) {
-               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UniqueID, obj->OwnerID, mem.AccessCount);
+               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->OwnerID, mem.AccessCount);
                for (count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
             }
          }
@@ -525,7 +525,7 @@ EXPORT void Expunge(WORD Force)
             // if the module code is in use.
 
             bool class_in_use = false;
-            for (const auto & id : glObjectChildren[mod_master->Head.UniqueID]) {
+            for (const auto & id : glObjectChildren[mod_master->Head.UID]) {
                auto mem = glPrivateMemory.find(id);
                if (mem IS glPrivateMemory.end()) continue;
 
@@ -539,7 +539,7 @@ EXPORT void Expunge(WORD Force)
             if (!class_in_use) {
                if (mod_master->Expunge) {
                   parasol::Log log(__FUNCTION__);
-                  log.branch("Sending expunge request to the %s module, routine %p, master #%d.", mod_master->Name, mod_master->Expunge, mod_master->Head.UniqueID);
+                  log.branch("Sending expunge request to the %s module, routine %p, master #%d.", mod_master->Name, mod_master->Expunge, mod_master->Head.UID);
                   if (!mod_master->Expunge()) {
                      ccount++;
                      if (acFree(&mod_master->Head)) {
@@ -586,7 +586,7 @@ EXPORT void Expunge(WORD Force)
                // Search for classes that have been created by this module and check their open count values to figure
                // out if the module code is in use.
 
-               for (const auto & id : glObjectChildren[mod_master->Head.UniqueID]) {
+               for (const auto & id : glObjectChildren[mod_master->Head.UID]) {
                   auto mem = glPrivateMemory.find(id);
                   if (mem IS glPrivateMemory.end()) continue;
 
@@ -644,7 +644,7 @@ static void free_shared_objects(void)
             if (page_memory(glSharedBlocks + i, (APTR *)&hdr) IS ERR_Okay) {
                if (hdr->OwnerID) {
                   // The object has an owner, so scan towards the topmost object within our process space
-                  OBJECTID id = hdr->UniqueID;
+                  OBJECTID id = hdr->UID;
                   OBJECTID owner = hdr->OwnerID;
                   unpage_memory(hdr);
                   if (free_shared_object(id, owner) != ERR_Okay) break;

@@ -1574,7 +1574,7 @@ static ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
 /*
       OBJECTPTR caller;
       caller = CurrentContext();
-      log.function("Cursor: %d, Owner: %d, Current-Owner: %d (Caller: %d / Class %d)", Cursor, OwnerID, pointer->CursorOwnerID, caller->UniqueID, caller->ClassID);
+      log.function("Cursor: %d, Owner: %d, Current-Owner: %d (Caller: %d / Class %d)", Cursor, OwnerID, pointer->CursorOwnerID, caller->UID, caller->ClassID);
 */
       if ((!OwnerID) or (OwnerID IS pointer->CursorOwnerID)) {
          // Restore the pointer to the given cursor image
@@ -1905,14 +1905,14 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
 
          #elif _WIN32
 
-            if (pointer->Head.TaskID IS CurrentTask()->UniqueID) {
+            if (pointer->Head.TaskID IS CurrentTask()->UID) {
                winSetCursor(GetWinCursor(CursorID));
                pointer->CursorID = CursorID;
             }
             else {
                struct ptrSetWinCursor set;
                set.Cursor = CursorID;
-               DelayMsg(MT_PtrSetWinCursor, pointer->Head.UniqueID, &set);
+               DelayMsg(MT_PtrSetWinCursor, pointer->Head.UID, &set);
             }
 
          #endif
@@ -1954,7 +1954,7 @@ static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING 
             // is that only the desktop (which does the X11 input handling) is allowed
             // to grab the pointer.
 
-            //DelayMsg(MT_GrabX11Pointer, pointer->Head.UniqueID, NULL);
+            //DelayMsg(MT_GrabX11Pointer, pointer->Head.UID, NULL);
          #endif
       }
       else log.warning("The pointer may only be restricted to public surfaces.");
@@ -2276,7 +2276,7 @@ static void update_displayinfo(objDisplay *Self)
    if (StrMatch("SystemDisplay", GetName(Self)) != ERR_Okay) return;
 
    glDisplayInfo->DisplayID = 0;
-   get_display_info(Self->Head.UniqueID, glDisplayInfo, sizeof(DISPLAYINFO));
+   get_display_info(Self->Head.UID, glDisplayInfo, sizeof(DISPLAYINFO));
 }
 
 /*****************************************************************************
@@ -2295,7 +2295,7 @@ static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
 {
    if (!Bitmap->Data) {
       parasol::Log log(__FUNCTION__);
-      log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->Head.UniqueID);
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->Head.UID);
       return ERR_FieldNotSet;
    }
 
@@ -2378,7 +2378,7 @@ static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
       //
       // Practically the only reason why we allow this is for unusual measures like taking screenshots, grabbing the display for debugging, development testing etc.
 
-      log.warning("Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->Head.UniqueID, Bitmap->DataFlags);
+      log.warning("Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->Head.UID, Bitmap->DataFlags);
 
       if (!Bitmap->Data) {
          if (AllocMemory(Bitmap->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Bitmap->Head.MemFlags|Bitmap->DataFlags, &Bitmap->Data, &Bitmap->DataMID) != ERR_Okay) {
@@ -2409,7 +2409,7 @@ static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
    }
 
    if (!Bitmap->Data) {
-      log.warning("[Bitmap:%d] Bitmap is missing the Data field.  Memory flags: $%.8x", Bitmap->Head.UniqueID, Bitmap->DataFlags);
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.  Memory flags: $%.8x", Bitmap->Head.UID, Bitmap->DataFlags);
       return ERR_FieldNotSet;
    }
 
@@ -2545,34 +2545,34 @@ static UBYTE validate_clip(CSTRING Header, CSTRING Name, objBitmap *Bitmap)
    }
 #else
    if ((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) {
-      log.warning("#%d %s: Invalid right-clip of %d (offset %d), limited to width of %d.", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Right, Bitmap->XOffset, Bitmap->Width);
+      log.warning("#%d %s: Invalid right-clip of %d (offset %d), limited to width of %d.", Bitmap->Head.UID, Name, Bitmap->Clip.Right, Bitmap->XOffset, Bitmap->Width);
       Bitmap->Clip.Right = Bitmap->Width - Bitmap->XOffset;
    }
 
    if ((Bitmap->YOffset + Bitmap->Clip.Bottom) > Bitmap->Height) {
-      log.warning("#%d %s: Invalid bottom-clip of %d (offset %d), limited to height of %d.", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Bottom, Bitmap->YOffset, Bitmap->Height);
+      log.warning("#%d %s: Invalid bottom-clip of %d (offset %d), limited to height of %d.", Bitmap->Head.UID, Name, Bitmap->Clip.Bottom, Bitmap->YOffset, Bitmap->Height);
       Bitmap->Clip.Bottom = Bitmap->Height - Bitmap->YOffset;
    }
 
    if ((Bitmap->XOffset + Bitmap->Clip.Left) < 0) {
-      log.warning("#%d %s: Invalid left-clip of %d (offset %d).", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Left, Bitmap->XOffset);
+      log.warning("#%d %s: Invalid left-clip of %d (offset %d).", Bitmap->Head.UID, Name, Bitmap->Clip.Left, Bitmap->XOffset);
       Bitmap->XOffset = 0;
       Bitmap->Clip.Left = 0;
    }
 
    if ((Bitmap->YOffset + Bitmap->Clip.Top) < 0) {
-      log.warning("#%d %s: Invalid top-clip of %d (offset %d).", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Top, Bitmap->YOffset);
+      log.warning("#%d %s: Invalid top-clip of %d (offset %d).", Bitmap->Head.UID, Name, Bitmap->Clip.Top, Bitmap->YOffset);
       Bitmap->YOffset = 0;
       Bitmap->Clip.Top = 0;
    }
 
    if (Bitmap->Clip.Left >= Bitmap->Clip.Right) {
-      log.warning("#%d %s: Left clip >= Right clip (%d >= %d)", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Left, Bitmap->Clip.Right);
+      log.warning("#%d %s: Left clip >= Right clip (%d >= %d)", Bitmap->Head.UID, Name, Bitmap->Clip.Left, Bitmap->Clip.Right);
       return 1;
    }
 
    if (Bitmap->Clip.Top >= Bitmap->Clip.Bottom) {
-      log.warning("#%d %s: Top clip >= Bottom clip (%d >= %d)", Bitmap->Head.UniqueID, Name, Bitmap->Clip.Top, Bitmap->Clip.Bottom);
+      log.warning("#%d %s: Top clip >= Bottom clip (%d >= %d)", Bitmap->Head.UID, Name, Bitmap->Clip.Top, Bitmap->Clip.Bottom);
       return 1;
    }
 #endif
@@ -2591,7 +2591,7 @@ static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X,
 
    if (!dest) return ERR_NullArgs;
    if (dest->Head.ClassID != ID_BITMAP) {
-      log.warning("Destination #%d is not a Bitmap.", dest->Head.UniqueID);
+      log.warning("Destination #%d is not a Bitmap.", dest->Head.UID);
       return ERR_InvalidObject;
    }
 
@@ -3406,7 +3406,7 @@ static ERROR gfxCopyStretch(objBitmap *Bitmap, objBitmap *Dest, LONG Flags, LONG
       Flags |= CSTF_BRESENHAM;
    }
 
-   log.traceBranch("#%d (%dx%d,%dx%d) TO #%d (%dx%d)", Bitmap->Head.UniqueID,  X, Y, Width, Height, Dest->Head.UniqueID, DestWidth, DestHeight);
+   log.traceBranch("#%d (%dx%d,%dx%d) TO #%d (%dx%d)", Bitmap->Head.UID,  X, Y, Width, Height, Dest->Head.UID, DestWidth, DestHeight);
 
    if (!LockSurface(Bitmap, SURFACE_READ)) {
       if (!LockSurface(Dest, SURFACE_WRITE)) {

@@ -49,10 +49,10 @@ static void debug_tree(objVector *Vector, LONG &Level)
 
       if (v->Child) {
          parasol::Log blog(__FUNCTION__);
-         blog.branch("Vector #%d%s %s %s %s", v->Head.UniqueID, indent, v->Head.Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
+         blog.branch("Vector #%d%s %s %s %s", v->Head.UID, indent, v->Head.Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
          debug_tree(v->Child, Level);
       }
-      else log.msg("Vector #%d%s %s %s %s", v->Head.UniqueID, indent, v->Head.Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
+      else log.msg("Vector #%d%s %s %s %s", v->Head.UID, indent, v->Head.Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
    }
 
    Level--;
@@ -108,10 +108,10 @@ void set_parent(objVector *Self, OBJECTID OwnerID)
 static ERROR VECTOR_ActionNotify(objVector *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) {
-      if ((Self->ClipMask) and (Args->ObjectID IS Self->ClipMask->Head.UniqueID)) Self->ClipMask = NULL;
-      else if ((Self->Morph) and (Args->ObjectID IS Self->Morph->Head.UniqueID)) Self->Morph = NULL;
-      else if ((Self->Transition) and (Args->ObjectID IS Self->Transition->Head.UniqueID)) Self->Transition = NULL;
-      else if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->ClipMask) and (Args->ObjectID IS Self->ClipMask->Head.UID)) Self->ClipMask = NULL;
+      else if ((Self->Morph) and (Args->ObjectID IS Self->Morph->Head.UID)) Self->Morph = NULL;
+      else if ((Self->Transition) and (Args->ObjectID IS Self->Transition->Head.UID)) Self->Transition = NULL;
+      else if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UID IS Args->ObjectID)) {
          Self->Feedback.Type = CALL_NONE;
       }
    }
@@ -405,8 +405,8 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
 
    if (!Self->Parent) set_parent(Self, Self->Head.OwnerID);
 
-   log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UniqueID : 0,
-      Self->Prev ? Self->Prev->Head.UniqueID : 0, Self->Next ? Self->Next->Head.UniqueID : 0, Self);
+   log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UID : 0,
+      Self->Prev ? Self->Prev->Head.UID : 0, Self->Next ? Self->Next->Head.UID : 0, Self);
 
    OBJECTPTR parent;
    if ((parent = Self->Parent)) {
@@ -902,7 +902,7 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
          { "X",       FD_DOUBLE },
          { "Y",       FD_DOUBLE }
       };
-      args[0].Long = Self->Head.UniqueID;
+      args[0].Long = Self->Head.UID;
 
       OBJECTPTR script;
       if ((script = Args->Callback->Script.Script)) {

@@ -96,11 +96,11 @@ static ERROR INPUT_ActionNotify(objInput *Self, struct acActionNotify *Args)
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
    if (Args->ActionID IS AC_Free) {
-      if ((Self->prvFeedback.Type IS CALL_SCRIPT) and (Self->prvFeedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->prvFeedback.Type IS CALL_SCRIPT) and (Self->prvFeedback.Script.Script->UID IS Args->ObjectID)) {
          Self->prvFeedback.Type = CALL_NONE;
       }
 
-      if ((Self->prvStyleTrigger.Type IS CALL_SCRIPT) and (Self->prvStyleTrigger.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->prvStyleTrigger.Type IS CALL_SCRIPT) and (Self->prvStyleTrigger.Script.Script->UID IS Args->ObjectID)) {
          Self->prvStyleTrigger.Type = CALL_NONE;
       }
    }
@@ -190,7 +190,7 @@ static ERROR INPUT_Init(objInput *Self, APTR Void)
    Self->Viewport->Parent = &Self->ParentViewport->Head;
 
    if (!acInit(Self->Viewport)) {
-      if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UniqueID, NULL, NULL)) {
+      if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UID, NULL, NULL)) {
          return ERR_Failed; // Graphics styling is required.
       }
 
@@ -582,7 +582,7 @@ static ERROR SET_TabFocus(objInput *Self, OBJECTID Value)
 {
    OBJECTPTR tabfocus;
    if (!AccessObject(Value, 5000, &tabfocus)) {
-      if (tabfocus->ClassID IS ID_TABFOCUS) tabAddObject(tabfocus, Self->Head.UniqueID);
+      if (tabfocus->ClassID IS ID_TABFOCUS) tabAddObject(tabfocus, Self->Head.UID);
       ReleaseObject(tabfocus);
       return ERR_Okay;
    }

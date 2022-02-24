@@ -337,7 +337,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
          }
 
          if ((error) and (error != ERR_NoSupport)) {
-            log.warning("(%s:%d) Failed to set field %s (error #%d).", ((rkMetaClass *)source->Class)->ClassName, source->UniqueID, GET_FIELD_NAME(field_id), error);
+            log.warning("(%s:%d) Failed to set field %s (error #%d).", ((rkMetaClass *)source->Class)->ClassName, source->UID, GET_FIELD_NAME(field_id), error);
             prv_release(Object);
             return error;
          }
@@ -491,7 +491,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
          struct acSetVar var = { .Field = FieldName, .Value = Value };
          return Action(AC_SetVar, Object, &var);
       }
-      else log.warning("Object %d (%s) does not support field '%s' or variable fields.", Object->UniqueID, ((rkMetaClass *)Object->Class)->ClassName, FieldName);
+      else log.warning("Object %d (%s) does not support field '%s' or variable fields.", Object->UID, ((rkMetaClass *)Object->Class)->ClassName, FieldName);
 
       return ERR_Search;
    }
@@ -548,7 +548,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
          // If the string is enclosed in square brackets [], then they will be ignored.
 
          if (*Value IS '#')                      object_id = (LONG)StrToInt(Value+1);
-         else if (!StrMatch("self", Value))      object_id = Object->UniqueID;
+         else if (!StrMatch("self", Value))      object_id = Object->UID;
          else if (!StrMatch("owner", Value))     object_id = Object->OwnerID;
          else if ((!*Value) or ((Value[0] IS '0') and (!Value[1]))) object_id = 0;
          else {
@@ -685,7 +685,7 @@ ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LO
 {
    parasol::Log log("WriteField");
 
-   //log.trace("[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", ((rkMetaClass *)Object->Class)->ClassName, Object->UniqueID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
+   //log.trace("[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", ((rkMetaClass *)Object->Class)->ClassName, Object->UID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
 
    if (!flags) flags = Field->Flags;
 

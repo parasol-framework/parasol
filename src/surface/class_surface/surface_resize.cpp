@@ -34,7 +34,7 @@ static ERROR SURFACE_Redimension(objSurface *Self, struct acRedimension *Args)
          LONG index = 0;
          while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
             auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
-            if ((action->ActionID IS AC_Redimension) and (action->ObjectID IS Self->Head.UniqueID)) {
+            if ((action->ActionID IS AC_Redimension) and (action->ObjectID IS Self->Head.UID)) {
                ReleaseMemory(queue);
                return ERR_Okay|ERF_Notified;
             }
@@ -208,7 +208,7 @@ static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Hei
 
    log.traceBranch("resize_layer() %dx%d,%dx%d TO %dx%d,%dx%dx%d", Self->X, Self->Y, Self->Width, Self->Height, X, Y, Width, Height, BPP);
 
-   if (Self->BitmapOwnerID IS Self->Head.UniqueID) {
+   if (Self->BitmapOwnerID IS Self->Head.UID) {
       objBitmap *bitmap;
       if (!AccessObject(Self->BufferID, 5000, &bitmap)) {
          if (!acResize(bitmap, Width, Height, BPP)) {
@@ -286,15 +286,15 @@ static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Hei
       drwReleaseList(ARF_READ);
 
       WORD index;
-      if ((index = find_surface_list(cplist, total, Self->Head.UniqueID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
+      if ((index = find_surface_list(cplist, total, Self->Head.UID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
          return ERR_Search;
       }
 
       parasol::Log log;
       log.traceBranch("Redrawing the resized surface.");
 
-      _redraw_surface(Self->Head.UniqueID, cplist, index, total, cplist[index].Left, cplist[index].Top, cplist[index].Right, cplist[index].Bottom, 0);
-      _expose_surface(Self->Head.UniqueID, cplist, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      _redraw_surface(Self->Head.UID, cplist, index, total, cplist[index].Left, cplist[index].Top, cplist[index].Right, cplist[index].Bottom, 0);
+      _expose_surface(Self->Head.UID, cplist, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
 
       if (Self->ParentID) {
          // Update external regions on all four sides that have been exposed by the resize, for example due to a decrease in area or a coordinate shift.
@@ -325,7 +325,7 @@ static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Hei
             .Top    = cplist[index].Top
          };
 
-         if (Self->BitmapOwnerID IS Self->Head.UniqueID) {
+         if (Self->BitmapOwnerID IS Self->Head.UID) {
             redraw_nonintersect(Self->ParentID, cplist, parent_index, total, &region_a, &region_b, -1, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
          }
          else redraw_nonintersect(Self->ParentID, cplist, parent_index, total, &region_a, &region_b, 0, EXF_CHILDREN|EXF_REDRAW_VOLATILE);

@@ -377,9 +377,9 @@ typedef struct rkVectorScene {
    LONG     SampleMethod;         // VSM: Method to use for resampling images and patterns.
 
 #ifdef PRV_VECTORSCENE
-   class VMAdaptor *Adaptor;
-   agg::rendering_buffer *Buffer;
-   APTR KeyHandle;
+   class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
+   agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
+   APTR KeyHandle; // Keyboard subscription
    std::unordered_map<OBJECTID, struct acRedimension> PendingResizeMsgs;
    std::unordered_map<struct rkVector *, LONG> InputSubscriptions;
    std::unordered_set<struct rkVector *> KeyboardSubscriptions;

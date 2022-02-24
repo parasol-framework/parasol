@@ -1760,7 +1760,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
                      if (!OwnerID) OwnerID = GetOwner(CurrentContext());
                      objectid = OwnerID;
                   }
-                  else if (!StrMatch(name, "task")) objectid = glCurrentTask->Head.UniqueID;
+                  else if (!StrMatch(name, "task")) objectid = glCurrentTask->Head.UID;
                   else {
                      LONG count = 1;
                      FindObject(name, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &objectid, &count);

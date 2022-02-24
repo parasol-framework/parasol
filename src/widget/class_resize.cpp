@@ -167,7 +167,7 @@ static ERROR RESIZE_Free(objResize *Self, APTR Void)
    }
 
    if (Self->CursorSet) {
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
       Self->CursorSet = 0;
    }
 
@@ -449,7 +449,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
                redim.Depth  = 0;
 
                Action(AC_Redimension, object, &redim);
-               //DelayMsg(AC_Redimension, object->UniqueID, &redim); //<- Only works if anchoring is disabled.
+               //DelayMsg(AC_Redimension, object->UID, &redim); //<- Only works if anchoring is disabled.
 
                // If we have anchored the pointer, we need to tell the pointer to move or else it will stay locked
                // at its current position.
@@ -504,18 +504,18 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
             if (within_area(Self, x, y)) {
                cursor = get_cursor_type(Self);  // Determine what cursor we should be using
                if (cursor != Self->CursorSet) { // If the cursor is to change, use gfxSetCursor() to do it
-                  if (!gfxSetCursor(0, CRF_BUFFER|CRF_NO_BUTTONS, cursor, 0, Self->Head.UniqueID)) {
+                  if (!gfxSetCursor(0, CRF_BUFFER|CRF_NO_BUTTONS, cursor, 0, Self->Head.UID)) {
                      Self->CursorSet = cursor;
                   }
                }
             }
             else if (Self->CursorSet) {
-               gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+               gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
                Self->CursorSet = 0;
             }
          }
          else if (Self->CursorSet) {
-            gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+            gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
             Self->CursorSet = 0;
          }
       }
@@ -552,7 +552,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
             }
             else { // Release the pointer image
                if (Self->CursorSet) {
-                  gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+                  gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
                   Self->CursorSet = 0;
                }
             }

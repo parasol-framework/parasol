@@ -1407,7 +1407,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
             classname = ResolveClassID(tlContext->Object->ClassID);
          }
          else classname = "None";
-         LOGE("  Object Context: #%d / %p [Class: %s / $%.8x]", tlContext->Object->UniqueID, tlContext->Object, classname, tlContext->Object->ClassID);
+         LOGE("  Object Context: #%d / %p [Class: %s / $%.8x]", tlContext->Object->UID, tlContext->Object, classname, tlContext->Object->ClassID);
       }
 
       glPageFault = 0;
@@ -1543,7 +1543,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
             classname = "None";
             class_id = 0;
          }
-         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", tlContext->Object->UniqueID, tlContext->Object, classname, tlContext->Object->ClassID);
+         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", tlContext->Object->UID, tlContext->Object, classname, tlContext->Object->ClassID);
       }
 
       glPageFault = 0;

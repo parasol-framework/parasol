@@ -50,7 +50,7 @@ static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Arg
       if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "FocusNotify");
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->EventCallback.Type = CALL_NONE;
       }
    }
@@ -139,7 +139,7 @@ static ERROR DOCUMENT_Activate(objDocument *Self, APTR Void)
 
    ChildEntry list[16];
    LONG count = ARRAYSIZE(list);
-   if (!ListChildren(Self->Head.UniqueID, TRUE, list, &count)) {
+   if (!ListChildren(Self->Head.UID, TRUE, list, &count)) {
       for (LONG i=0; i < count; i++) acActivateID(list[i].ObjectID);
    }
 
@@ -455,7 +455,7 @@ static ERROR DOCUMENT_DataFeed(objDocument *Self, struct acDataFeed *Args)
          }
       }
 
-      log.trace("Appending data to XML #%d at tag index %d.", Self->XML->Head.UniqueID, Self->XML->TagCount);
+      log.trace("Appending data to XML #%d at tag index %d.", Self->XML->Head.UID, Self->XML->TagCount);
 
       if (acDataXML(Self->XML, Args->Buffer) != ERR_Okay) {
          return log.warning(ERR_SetField);
@@ -496,7 +496,7 @@ static ERROR DOCUMENT_Disable(objDocument *Self, APTR Void)
 static ERROR DOCUMENT_Draw(objDocument *Self, APTR Void)
 {
    if (Self->SurfaceID) {
-      if (Self->Processing) DelayMsg(AC_Draw, Self->Head.UniqueID, NULL);
+      if (Self->Processing) DelayMsg(AC_Draw, Self->Head.UID, NULL);
       else redraw(Self, FALSE);
       return ERR_Okay;
    }
@@ -703,7 +703,7 @@ static ERROR DOCUMENT_Free(objDocument *Self, APTR Void)
    }
 
    if (Self->PointerLocked) {
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
       Self->PointerLocked = FALSE;
    }
 
@@ -1279,7 +1279,7 @@ static ERROR DOCUMENT_Refresh(objDocument *Self, APTR Void)
 
    if (Self->Processing) {
       log.msg("Recursion detected - refresh will be delayed.");
-      DelayMsg(AC_Refresh, Self->Head.UniqueID, NULL);
+      DelayMsg(AC_Refresh, Self->Head.UID, NULL);
       return ERR_Okay;
    }
 

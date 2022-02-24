@@ -199,7 +199,7 @@ static ERROR MENU_Clear(objMenu *Self, APTR Void)
 
       ChildEntry list[16];
       LONG count = ARRAYSIZE(list);
-      if (!ListChildren(Self->Head.UniqueID, FALSE, list, &count)) {
+      if (!ListChildren(Self->Head.UID, FALSE, list, &count)) {
          for (LONG i=0; i < count; i++) {
             if (list[i].ClassID IS ID_MENU) acFreeID(list[i].ObjectID);
          }

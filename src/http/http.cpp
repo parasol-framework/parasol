@@ -260,19 +260,19 @@ static ERROR HTTP_ActionNotify(objHTTP *Self, struct acActionNotify *Args)
          }
          return ERR_Okay;
       }
-      else if ((Self->Outgoing.Type IS CALL_SCRIPT) and (Self->Outgoing.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->Outgoing.Type IS CALL_SCRIPT) and (Self->Outgoing.Script.Script->UID IS Args->ObjectID)) {
          Self->Outgoing.Type = CALL_NONE;
          return ERR_Okay;
       }
-      else if ((Self->StateChanged.Type IS CALL_SCRIPT) and (Self->StateChanged.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->StateChanged.Type IS CALL_SCRIPT) and (Self->StateChanged.Script.Script->UID IS Args->ObjectID)) {
          Self->StateChanged.Type = CALL_NONE;
          return ERR_Okay;
       }
-      else if ((Self->Incoming.Type IS CALL_SCRIPT) and (Self->Incoming.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->Incoming.Type IS CALL_SCRIPT) and (Self->Incoming.Script.Script->UID IS Args->ObjectID)) {
          Self->Incoming.Type = CALL_NONE;
          return ERR_Okay;
       }
-      else if ((Self->AuthCallback.Type IS CALL_SCRIPT) and (Self->AuthCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->AuthCallback.Type IS CALL_SCRIPT) and (Self->AuthCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->AuthCallback.Type = CALL_NONE;
          return ERR_Okay;
       }
@@ -1477,7 +1477,7 @@ static ERROR SET_CurrentState(objHTTP *Self, LONG Value)
 
    if ((Value >= HGS_COMPLETED) and (Self->CurrentState < HGS_COMPLETED)) {
       Self->CurrentState = Value;
-      if (Self->Socket) DelayMsg(AC_Deactivate, Self->Head.UniqueID, NULL);
+      if (Self->Socket) DelayMsg(AC_Deactivate, Self->Head.UID, NULL);
    }
    else Self->CurrentState = Value;
 
@@ -1491,7 +1491,7 @@ static ERROR SET_CurrentState(objHTTP *Self, LONG Value)
          OBJECTPTR script;
          if ((script = Self->StateChanged.Script.Script)) {
             const ScriptArg args[] = {
-               { "HTTP", FD_OBJECTID, { .Long = Self->Head.UniqueID } },
+               { "HTTP", FD_OBJECTID, { .Long = Self->Head.UID } },
                { "State", FD_LONG, { .Long = Self->CurrentState } }
             };
 

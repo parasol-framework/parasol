@@ -1539,7 +1539,7 @@ ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Perm
    OBJECTPTR file;
    ERROR error;
 
-   log.branch("Object: %d, Dest: %s", Object->UniqueID, Path);
+   log.branch("Object: %d, Dest: %s", Object->UID, Path);
 
    if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
          FID_Path|TSTR,         Path,
@@ -1547,7 +1547,7 @@ ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Perm
          FID_Permissions|TLONG, Permissions,
          TAGEND))) {
 
-      error = acSaveImage(Object, file->UniqueID, ClassID);
+      error = acSaveImage(Object, file->UID, ClassID);
 
       acFree(file);
       return error;
@@ -1584,7 +1584,7 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
 
    if ((!Object) or (!Path)) return log.warning(ERR_NullArgs);
 
-   log.branch("#%d to %s", Object->UniqueID, Path);
+   log.branch("#%d to %s", Object->UID, Path);
 
    OBJECTPTR file;
    ERROR error;
@@ -1594,7 +1594,7 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
          FID_Permissions|TLONG, Permissions,
          TAGEND))) {
 
-      error = acSaveToObject(Object, file->UniqueID, 0);
+      error = acSaveToObject(Object, file->UID, 0);
 
       acFree(file);
       return error;

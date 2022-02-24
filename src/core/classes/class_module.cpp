@@ -595,7 +595,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
          if (table->HeaderVersion >= MODULE_HEADER_V2) {
             if (table->Master) {
-               log.debug("Module already loaded as #%d, reverting to original ModuleMaster object.", table->Master->Head.UniqueID);
+               log.debug("Module already loaded as #%d, reverting to original ModuleMaster object.", table->Master->Head.UID);
 
                SetContext(context);
                context = NULL;

@@ -97,7 +97,7 @@ static ERROR VECTORTEXT_ActionNotify(objVectorText *Self, struct acActionNotify 
 
          Self->txCursor.resetFlash();
          SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
-         DelayMsg(AC_Draw, Self->ParentView->Head.UniqueID, NULL);
+         DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
       }
    }
    else if (Args->ActionID IS AC_LostFocus) {
@@ -111,7 +111,7 @@ static ERROR VECTORTEXT_ActionNotify(objVectorText *Self, struct acActionNotify 
          if (Self->txFlags & VTXF_AREA_SELECTED) Self->txFlags &= ~VTXF_AREA_SELECTED;
       }
 
-      DelayMsg(AC_Draw, Self->ParentView->Head.UniqueID, NULL);
+      DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
    }
    else return ERR_NoSupport;
 
@@ -193,7 +193,7 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
       if (!Self->txFocusID) {
          for (auto parent=Self->Parent; parent; parent=((objVector *)parent)->Parent) {
             if (parent->SubID IS ID_VECTORVIEWPORT) {
-               Self->txFocusID = parent->UniqueID;
+               Self->txFocusID = parent->UID;
                break;
             }
          }
@@ -1658,7 +1658,7 @@ static ERROR cursor_timer(objVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
       parasol::Log log(__FUNCTION__);
       Self->txCursor.flash ^= 1;
       SetLong(Self->txCursor.vector, FID_Visibility, Self->txCursor.flash ? VIS_VISIBLE : VIS_HIDDEN);
-      DelayMsg(AC_Draw, Self->ParentView->Head.UniqueID, NULL);
+      DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
       return ERR_Okay;
    }
    else {
@@ -1691,7 +1691,7 @@ static void add_line(objVectorText *Self, std::string String, LONG Offset, LONG 
       Self->txLines.insert(Self->txLines.begin() + Line, 1, tl);
    }
 
-   ActionMsg(AC_Draw, Self->ParentView->Head.UniqueID, NULL);
+   ActionMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
 }
 
 //****************************************************************************
@@ -1778,7 +1778,7 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
       else; // Do nothing, cursor at (0,0)
 
       mark_dirty(Self, RC_BASE_PATH);
-      DelayMsg(AC_Draw, Self->ParentView->Head.UniqueID, NULL);
+      DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
       break;
 
    case K_CLEAR:
@@ -1800,7 +1800,7 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
          Self->txLines.erase(Self->txLines.begin() + Self->txCursor.row() + 1);
       }
       mark_dirty(Self, RC_BASE_PATH);
-      ActionMsg(AC_Draw, Self->ParentView->Head.UniqueID, NULL);
+      ActionMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
       break;
 
    case K_END:
@@ -1898,7 +1898,7 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
          if (new_column > Self->txCursor.endColumn) Self->txCursor.endColumn = new_column;
          Self->txCursor.savePos = ((LONG)new_row << 16) | new_column;
          Self->txCursor.move(Self, new_row, new_column);
-         DelayMsg(AC_Draw, Self->ParentView->Head.UniqueID, NULL);
+         DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
       }
       break;
    }
@@ -1953,7 +1953,7 @@ void TextCursor::move(objVectorText *Vector, LONG Row, LONG Column, bool Validat
 
    resetVector(Vector);
 
-   DelayMsg(AC_Draw, Vector->ParentView->Head.UniqueID, NULL);
+   DelayMsg(AC_Draw, Vector->ParentView->Head.UID, NULL);
 }
 
 //****************************************************************************
