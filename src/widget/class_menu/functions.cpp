@@ -579,10 +579,32 @@ static ERROR create_menu(objMenu *Self)
             if (!AccessObject(Self->RelativeID, 5000, &relative)) {
                SubscribeAction(relative, AC_LostFocus);
 
-               LONG x, y;
-               if (!GetFields(relative, FID_AbsX|TLONG, &x, FID_AbsY|TLONG, &y, TAGEND)) {
-                  acMoveToPoint(surface, Self->X + x, Self->Y + y, 0, MTF_X|MTF_Y);
+               if (relative->ClassID IS ID_SURFACE) {
+                  LONG x, y;
+                  if (!GetFields(relative, FID_AbsX|TLONG, &x, FID_AbsY|TLONG, &y, TAGEND)) {
+                     acMoveToPoint(surface, Self->X + x, Self->Y + y, 0, MTF_X|MTF_Y);
+                  }
                }
+               else if (relative->ClassID IS ID_VECTOR) {
+                  LONG x, y;
+                  if (!GetFields(relative, FID_AbsX|TLONG, &x, FID_AbsY|TLONG, &y, TAGEND)) {
+                     auto scene = ((objVector *)relative)->Scene;
+                     objSurface *scene_surface;
+                     LONG scene_x, scene_y;
+                     if ((scene->SurfaceID) and (!AccessObject(scene->SurfaceID, 4000, &scene_surface))) {
+                        if (!GetFields(scene_surface, FID_AbsX|TLONG, &scene_x, FID_AbsY|TLONG, &scene_y, TAGEND)) {
+                           x += scene_x;
+                           y += scene_y;
+                        }
+                        ReleaseObject(scene_surface);
+                     }
+
+                     acMoveToPoint(surface, Self->X + x, Self->Y + y, 0, MTF_X|MTF_Y);
+                  }
+                  else log.warning(ERR_GetField);
+               }
+               else log.warning(ERR_WrongClass);
+
                ReleaseObject(relative);
             }
          }

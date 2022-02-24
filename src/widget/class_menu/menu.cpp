@@ -868,6 +868,8 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
       else if (Self->RelativeID) {
          // Correct the position of the menu according to the relative object that it is offset from.
 
+         OBJECTPTR relative;
+
          SURFACEINFO *target;
          if (!drwGetSurfaceInfo(Self->RelativeID, &target)) {
             LONG rel_absx = target->AbsX;
@@ -900,6 +902,12 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
             }
 
             acMoveToPoint(surface, x, y, 0, MTF_X|MTF_Y);
+         }
+         else if (!AccessObject(Self->RelativeID, 3000, &relative)) {
+            if (relative->SubID IS ID_VECTORVIEWPORT) {
+
+            }
+            ReleaseObject(relative);
          }
          else log.warning(ERR_Failed);
       }
