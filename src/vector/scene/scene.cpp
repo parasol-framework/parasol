@@ -594,6 +594,8 @@ static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitm
 
 void apply_focus(objVectorScene *Scene, objVector *Vector)
 {
+   if (!Vector) return;
+
    if ((!glFocusList.empty()) and (Vector->Head.UID IS glFocusList.front())) return;
 
    std::vector<OBJECTID> focus_gained; // The first reference is the most foreground object
@@ -648,7 +650,7 @@ void apply_focus(objVectorScene *Scene, objVector *Vector)
 // are taken into account through use of BX1,BY1,BX2,BY2.  The list is sorted starting from the background to the
 // foreground.
 
-void get_viewport_at_xy_scan(objVector *Vector, std::vector<std::vector<objVectorViewport *>> &Collection, LONG X, LONG Y, LONG Branch)
+void get_viewport_at_xy_scan(objVector *Vector, std::vector<std::vector<objVectorViewport *>> &Collection, DOUBLE X, DOUBLE Y, LONG Branch)
 {
    if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
 
@@ -669,7 +671,7 @@ void get_viewport_at_xy_scan(objVector *Vector, std::vector<std::vector<objVecto
 
 //********************************************************************************************************************
 
-objVectorViewport * get_viewport_at_xy(objVectorScene *Scene, LONG X, LONG Y)
+objVectorViewport * get_viewport_at_xy(objVectorScene *Scene, DOUBLE X, DOUBLE Y)
 {
    std::vector<std::vector<objVectorViewport *>> viewports;
    get_viewport_at_xy_scan((objVector *)Scene->Viewport, viewports, X, Y, 0);
@@ -814,33 +816,22 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
    auto Self = (objVectorScene *)CurrentContext();
    if (!Self->SurfaceID) return ERR_Okay;
 
-   LONG received_events = 0;
-   for (auto e=Events; e; e=e->Next) {
-      received_events |= e->Mask;
-
-      // Focus management - clicking with the LMB can result in a change of focus.
-
-      if ((e->Mask & JTYPE_BUTTON) and (e->Type IS JET_LMB) and (e->Value IS 1)) {
-         auto vp = get_viewport_at_xy(Self, e->X, e->Y);
-         apply_focus(Self, (objVector *)vp);
-      }
-   }
-
    LONG cursor = PTR_DEFAULT;
 
    // Distribute input events to any vectors that have subscribed.  Bear in mind that a consequence of calling client
-   // code is that the scene's surface could be removed at any time.
-
-   // NOTE: For the time being this routine does not perform advanced hit tests to confirm if the (x,y) position of the
-   // cursor is within paths.  Ideally we want the client to choose if the additional cost of hit testing is worth it
-   // or not.  The fast way to do hit testing would be to generate a 1-bit mask of the shape in gen_vector_path() as this
-   // would be cached and take advantage of the dirty marker.
+   // code is that the scene's surface could be destroyed at any time.
 
    for (auto input=Events; input; input=input->Next) {
       if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
          while ((input->Next) and (input->Next->Flags & JTYPE_MOVEMENT)) { // Consolidate movement
             input = input->Next;
          }
+      }
+
+      // Focus management - clicking with the LMB can result in a change of focus.
+
+      if ((input->Mask & JTYPE_BUTTON) and (input->Type IS JET_LMB) and (input->Value IS 1)) {
+         apply_focus(Self, (objVector *)get_viewport_at_xy(Self, input->X, input->Y));
       }
 
       bool processed = false;

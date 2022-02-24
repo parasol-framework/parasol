@@ -398,10 +398,10 @@ struct InputEvent {
    LARGE    Timestamp;                // PreciseTime() of the recorded input
    OBJECTID RecipientID;              // Surface that the input message is being conveyed to
    OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
-   LONG     AbsX;                     // Absolute horizontal position of mouse cursor
-   LONG     AbsY;                     // Absolute vertical position of mouse cursor
-   LONG     X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   LONG     Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor
+   DOUBLE   AbsY;                     // Absolute vertical position of mouse cursor
+   DOUBLE   X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   DOUBLE   Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
    OBJECTID DeviceID;                 // The hardware device that this event originated from
    UWORD    Type;                     // JET constant
    UWORD    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object

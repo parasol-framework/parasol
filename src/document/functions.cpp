@@ -4619,7 +4619,7 @@ restart:
 
 static ERROR process_page(objDocument *Self, objXML *xml)
 {
-   LONG x, y;
+   DOUBLE x, y;
 
    if (!xml) return ERR_NoData;
 
@@ -6546,7 +6546,7 @@ static void pointer_enter(objDocument *Self, LONG Index, CSTRING Function, LONG 
 
 //****************************************************************************
 
-static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
+static void check_mouse_click(objDocument *Self, DOUBLE X, DOUBLE Y)
 {
    parasol::Log log(__FUNCTION__);
    LONG segment, bytepos;
@@ -6639,7 +6639,7 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
          Self->SelectIndex = -1; //Self->Segments[segment].Index + bytepos; // SelectIndex is for text selections where the user holds the LMB and drags the mouse
          Self->SelectCharX = Self->CursorCharX;
 
-         log.msg("User clicked on point %dx%d in segment %d, cursor index: %d, char x: %d", X, Y, segment, Self->CursorIndex, Self->CursorCharX);
+         log.msg("User clicked on point %.2fx%.2f in segment %d, cursor index: %d, char x: %d", X, Y, segment, Self->CursorIndex, Self->CursorCharX);
 
          if (Self->Segments[segment].Edit) {
             // If the segment is editable, we'll have to turn on edit mode so
@@ -6669,7 +6669,7 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
 
 //****************************************************************************
 
-static void check_mouse_release(objDocument *Self, LONG X, LONG Y)
+static void check_mouse_release(objDocument *Self, DOUBLE X, DOUBLE Y)
 {
    if ((ABS(X - Self->ClickX) > 3) or (ABS(Y - Self->ClickY) > 3)) {
       parasol::Log log(__FUNCTION__);
@@ -6682,7 +6682,7 @@ static void check_mouse_release(objDocument *Self, LONG X, LONG Y)
 
 //****************************************************************************
 
-static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
+static void check_mouse_pos(objDocument *Self, DOUBLE X, DOUBLE Y)
 {
    DocEdit *edit;
    UBYTE found;

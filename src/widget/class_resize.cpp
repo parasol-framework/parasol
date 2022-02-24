@@ -88,57 +88,57 @@ static LONG within_area(objResize *Self, LONG AreaX, LONG AreaY)
       LONG height = info->Height;
 
       if (Self->Border & EDGE_TOP_LEFT) {
-         if ((AreaX >= 0) AND (AreaY >= 0) AND (AreaX < Self->BorderSize * 2) AND (AreaY < Self->BorderSize * 2)) {
+         if ((AreaX >= 0) and (AreaY >= 0) and (AreaX < Self->BorderSize * 2) and (AreaY < Self->BorderSize * 2)) {
             Self->Direction = MOVE_UP|MOVE_LEFT;
             return EDGE_TOP_LEFT;
          }
       }
 
       if (Self->Border & EDGE_TOP_RIGHT) {
-         if ((AreaX >= width - (Self->BorderSize * 2)) AND (AreaY >= 0) AND (AreaX < width) AND (AreaY < Self->BorderSize * 2)) {
+         if ((AreaX >= width - (Self->BorderSize * 2)) and (AreaY >= 0) and (AreaX < width) and (AreaY < Self->BorderSize * 2)) {
             Self->Direction = MOVE_UP|MOVE_RIGHT;
             return EDGE_TOP_RIGHT;
          }
       }
 
       if (Self->Border & EDGE_BOTTOM_LEFT) {
-         if ((AreaX >= 0) AND (AreaY >= height - (Self->BorderSize*2)) AND (AreaX < Self->BorderSize*2) AND (AreaY < height)) {
+         if ((AreaX >= 0) and (AreaY >= height - (Self->BorderSize*2)) and (AreaX < Self->BorderSize*2) and (AreaY < height)) {
             Self->Direction = MOVE_DOWN|MOVE_LEFT;
             return EDGE_BOTTOM_LEFT;
          }
       }
 
       if (Self->Border & EDGE_BOTTOM_RIGHT) {
-         if ((AreaX >= width - (Self->BorderSize*2)) AND (AreaY >= height - (Self->BorderSize*2)) AND
-             (AreaX < width) AND (AreaY < height)) {
+         if ((AreaX >= width - (Self->BorderSize*2)) and (AreaY >= height - (Self->BorderSize*2)) AND
+             (AreaX < width) and (AreaY < height)) {
             Self->Direction = MOVE_DOWN|MOVE_RIGHT;
             return EDGE_BOTTOM_RIGHT;
          }
       }
 
       if (Self->Border & EDGE_TOP) {
-         if ((AreaX >= 0) AND (AreaY >= 0) AND (AreaX < width) AND (AreaY < Self->BorderSize)) {
+         if ((AreaX >= 0) and (AreaY >= 0) and (AreaX < width) and (AreaY < Self->BorderSize)) {
             Self->Direction = MOVE_UP;
             return EDGE_TOP;
          }
       }
 
       if (Self->Border & EDGE_BOTTOM) {
-         if ((AreaX >= 0) AND (AreaY >= height - Self->BorderSize) AND (AreaX < width) AND (AreaY < height)) {
+         if ((AreaX >= 0) and (AreaY >= height - Self->BorderSize) and (AreaX < width) and (AreaY < height)) {
             Self->Direction = MOVE_DOWN;
             return EDGE_BOTTOM;
          }
       }
 
       if (Self->Border & EDGE_LEFT) {
-         if ((AreaX >= 0) AND (AreaY >= 0) AND (AreaX < Self->BorderSize) AND (AreaY < height)) {
+         if ((AreaX >= 0) and (AreaY >= 0) and (AreaX < Self->BorderSize) and (AreaY < height)) {
             Self->Direction = MOVE_LEFT;
             return EDGE_LEFT;
          }
       }
 
       if (Self->Border & EDGE_RIGHT) {
-         if ((AreaX >= width - Self->BorderSize) AND (AreaY >= 0) AND (AreaX < width) AND (AreaY < height)) {
+         if ((AreaX >= width - Self->BorderSize) and (AreaY >= 0) and (AreaX < width) and (AreaY < height)) {
             Self->Direction = MOVE_RIGHT;
             return EDGE_RIGHT;
          }
@@ -195,7 +195,7 @@ static ERROR RESIZE_Init(objResize *Self, APTR Void)
                               FID_MaxWidth|TLONG,  &maxwidth,
                               FID_MaxHeight|TLONG, &maxheight,
                               TAGEND)) {
-         if ((minwidth IS maxwidth) AND (minheight IS maxheight)) {
+         if ((minwidth IS maxwidth) and (minheight IS maxheight)) {
             ReleaseObject(surface);
             return ERR_LimitedSuccess;
          }
@@ -263,7 +263,7 @@ of the the monitored area.  If not set, a default value will be applied.
 
 static ERROR SET_BorderSize(objResize *Self, LONG Value)
 {
-   if ((Value > 0) AND (Value < 100)) {
+   if ((Value > 0) and (Value < 100)) {
       Self->BorderSize = Value;
       return ERR_Okay;
    }
@@ -497,8 +497,8 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
          if (input->OverID IS Self->Layout->SurfaceID) {
             LONG cursor;
 
-            LONG x = input->X;
-            LONG y = input->Y;
+            DOUBLE x = input->X;
+            DOUBLE y = input->Y;
             gfxGetRelativeCursorPos(Self->Layout->SurfaceID, &x, &y);
 
             if (within_area(Self, x, y)) {
@@ -547,8 +547,8 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
                gfxUnlockCursor(Self->Layout->SurfaceID);
             }
 
-            LONG x, y;
-            if ((!gfxGetRelativeCursorPos(Self->Layout->SurfaceID, &x, &y)) AND (within_area(Self, x, y))) {
+            DOUBLE x, y;
+            if ((!gfxGetRelativeCursorPos(Self->Layout->SurfaceID, &x, &y)) and (within_area(Self, x, y))) {
             }
             else { // Release the pointer image
                if (Self->CursorSet) {

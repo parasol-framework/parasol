@@ -309,10 +309,10 @@ flags("FD", { comment="Field descriptors." },
     large Timestamp   # PreciseTime() of the recorded input
     oid RecipientID   # Surface that the input message is being conveyed to
     oid OverID        # Surface that is directly under the mouse pointer at the time of the event
-    int AbsX          # Absolute horizontal position of mouse cursor
-    int AbsY          # Absolute vertical position of mouse cursor
-    int X             # Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-    int Y             # Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+    double AbsX       # Absolute horizontal position of mouse cursor
+    double AbsY       # Absolute vertical position of mouse cursor
+    double X          # Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+    double Y          # Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
     oid DeviceID      # The hardware device that this event originated from
     ushort Type       # JET constant
     ushort Flags      # Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object

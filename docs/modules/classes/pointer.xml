@@ -181,7 +181,7 @@
       <name>OverX</name>
       <comment>The horizontal position of the Pointer with respect to the object underneath the hot-spot.</comment>
       <access read="R">Read</access>
-      <type>INT</type>
+      <type>DOUBLE</type>
       <description>
 <p>The OverX field provides other classes with a means of finding out exactly where the pointer is positioned over their display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where affected, the OverX and OverY fields can be polled to determine the exact position of the user click.</p>
       </description>
@@ -191,7 +191,7 @@
       <name>OverY</name>
       <comment>The vertical position of the Pointer with respect to the object underneath the hot-spot.</comment>
       <access read="R">Read</access>
-      <type>INT</type>
+      <type>DOUBLE</type>
       <description>
 <p>The OverY field provides other classes with a means of finding out exactly where the pointer is positioned over their display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where affected, the OverX and OverY fields can be polled to determine the exact position of the user click.</p>
       </description>
@@ -201,7 +201,7 @@
       <name>OverZ</name>
       <comment>The position of the Pointer within an object.</comment>
       <access read="R">Read</access>
-      <type>INT</type>
+      <type>DOUBLE</type>
       <description>
 <p>This special field applies to 3D interfaces only.  It reflects the position of the pointer within 3-Dimensional displays, by returning its coordinate along the Z axis.</p>
       </description>
@@ -251,14 +251,14 @@
       <name>X</name>
       <comment>The horizontal position of the pointer within its parent display.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
+      <type>DOUBLE</type>
     </field>
 
     <field>
       <name>Y</name>
       <comment>The vertical position of the pointer within its parent display.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
+      <type>DOUBLE</type>
     </field>
 
   </fields>

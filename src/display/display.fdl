@@ -419,12 +419,12 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
     double Acceleration    # Acceleration level - keep between 0.0 and 3.0
     double DoubleClick     # Double click speed
     double WheelSpeed      # Mouse-wheel speed
-    int    X               # Current x coordinate
-    int    Y               # Current y coordinate
+    double X               # Current x coordinate
+    double Y               # Current y coordinate
+    double OverX           # The X coord relative to the closest object
+    double OverY           # The Y coord relative to the closest object
+    double OverZ           # The Z distance relative to the closest object
     int    MaxSpeed        # Maximum speed
-    int    OverX           # The X coord relative to the closest object
-    int    OverY           # The Y coord relative to the closest object
-    int    OverZ           # The Z distance relative to the closest object
     oid    Input           # Indicates where pointer input comes from (usually SystemMouse)
     oid    Surface         # Top-most surface that contains the pointer
     oid    Anchor          # Surface object that the pointer is anchored to
@@ -448,6 +448,8 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
    } Buttons[10];
    LARGE    ClickTime;
    LARGE    AnchorTime;
+   DOUBLE   LastClickX, LastClickY;
+   DOUBLE   LastReleaseX, LastReleaseY;
    APTR     UserLoginHandle;
    OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
    OBJECTID CursorReleaseID;
@@ -455,8 +457,6 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
    OBJECTID DragParent;         // Parent of the draggable surface
    MEMORYID MessageQueue;       // Message port of the task that holds the cursor
    MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
-   LONG     LastClickX, LastClickY;
-   LONG     LastReleaseX, LastReleaseY;
    LONG     CursorRelease;
    LONG     BufferCursor;
    LONG     BufferFlags;

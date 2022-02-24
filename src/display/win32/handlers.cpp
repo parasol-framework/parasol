@@ -42,16 +42,11 @@ void MsgKeyRelease(LONG Flags, LONG Value)
 
 //****************************************************************************
 
-void MsgMovement(OBJECTID SurfaceID, LONG AbsX, LONG AbsY, LONG WinX, LONG WinY)
+void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY)
 {
-   if (!glPointerID) {
-      LONG count = 1;
-      if (FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count) != ERR_Okay) return;
-   }
-
    ERROR error;
    objPointer *pointer;
-   if (!(error = AccessObject(glPointerID, 2000, &pointer))) {
+   if ((pointer = gfxAccessPointer())) {
       SetLong(pointer, FID_Surface, SurfaceID);  // Alter the surface of the pointer so that it refers to the correct root window
       ReleaseObject(pointer);
 

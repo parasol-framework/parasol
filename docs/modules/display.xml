@@ -329,10 +329,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>GetCursorPos</name>
     <comment>Returns the coordinates of the UI pointer.</comment>
-    <prototype>ERROR gfxGetCursorPos(LONG * X, LONG * Y)</prototype>
+    <prototype>ERROR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y)</prototype>
     <input>
-      <param type="LONG *" name="X">32-bit variable that will store the pointer's horizontal coordinate.</param>
-      <param type="LONG *" name="Y">32-bit variable that will store the pointer's vertical coordinate.</param>
+      <param type="DOUBLE *" name="X">32-bit variable that will store the pointer's horizontal coordinate.</param>
+      <param type="DOUBLE *" name="Y">32-bit variable that will store the pointer's vertical coordinate.</param>
     </input>
     <description>
 <p>This function is used to retrieve the current coordinates of the user interface pointer.  If the device is touch-screen based then the coordinates will reflect the last position that a touch event occurred.</p>
@@ -389,11 +389,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>GetRelativeCursorPos</name>
     <comment>Returns the coordinates of the pointer cursor, relative to a surface object.</comment>
-    <prototype>ERROR gfxGetRelativeCursorPos(OBJECTID Surface, LONG * X, LONG * Y)</prototype>
+    <prototype>ERROR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Unique ID of the surface that the coordinates need to be relative to.</param>
-      <param type="LONG *" name="X">32-bit variable that will store the pointer's horizontal coordinate.</param>
-      <param type="LONG *" name="Y">32-bit variable that will store the pointer's vertical coordinate.</param>
+      <param type="DOUBLE *" name="X">32-bit variable that will store the pointer's horizontal coordinate.</param>
+      <param type="DOUBLE *" name="Y">32-bit variable that will store the pointer's vertical coordinate.</param>
     </input>
     <description>
 <p>This function is used to retrieve the current coordinates of the pointer cursor. The coordinates are relative to the surface object that is specified in the Surface argument.</p>
@@ -555,10 +555,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>SetCursorPos</name>
     <comment>Changes the position of the pointer cursor.</comment>
-    <prototype>ERROR gfxSetCursorPos(LONG X, LONG Y)</prototype>
+    <prototype>ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)</prototype>
     <input>
-      <param type="LONG" name="X">The new horizontal coordinate for the pointer.</param>
-      <param type="LONG" name="Y">The new vertical coordinate for the pointer.</param>
+      <param type="DOUBLE" name="X">The new horizontal coordinate for the pointer.</param>
+      <param type="DOUBLE" name="Y">The new vertical coordinate for the pointer.</param>
     </input>
     <description>
 <p>Changes the position of the pointer cursor using coordinates relative to the entire display.</p>
@@ -691,10 +691,10 @@ if ((pointer = gfxAccessPointer())) {
 <fld type="DOUBLE" name="Value">The value associated with the Type</fld>
 <fld type="OBJECTID" name="RecipientID">The surface that the input message is being conveyed to.</fld>
 <fld type="OBJECTID" name="OverID">The surface that was directly under the mouse pointer at the time of the event.</fld>
-<fld type="LONG" name="AbsX">Absolute horizontal coordinate of the mouse pointer (relative to the top left of the display).</fld>
-<fld type="LONG" name="AbsY">Absolute vertical coordinate of the mouse pointer (relative to the top left of the display).</fld>
-<fld type="LONG" name="OverX">Horizontal pointer coordinate, usually relative to the surface that the pointer is positioned over.  If a mouse button is held or the pointer is anchored, the coordinates are relative to the Recipient surface.</fld>
-<fld type="LONG" name="OverY">Vertical pointer coordinate.</fld>
+<fld type="DOUBLE" name="AbsX">Absolute horizontal coordinate of the mouse pointer (relative to the top left of the display).</fld>
+<fld type="DOUBLE" name="AbsY">Absolute vertical coordinate of the mouse pointer (relative to the top left of the display).</fld>
+<fld type="DOUBLE" name="OverX">Horizontal pointer coordinate, usually relative to the surface that the pointer is positioned over.  If a mouse button is held or the pointer is anchored, the coordinates are relative to the Recipient surface.</fld>
+<fld type="DOUBLE" name="OverY">Vertical pointer coordinate.</fld>
 <fld type="LARGE" name="Timestamp">Millisecond counter at which the input was recorded, or as close to it as possible.</fld>
 <fld type="OBJECTID" name="DeviceID">Reference to the hardware device that this event originated from.  There is no guarantee that the DeviceID is a reference to a publicly accessible object.</fld>
 </fields>

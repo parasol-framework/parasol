@@ -2504,14 +2504,15 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
    auto Self = (objSurface *)CurrentContext();
 
-   static LONG glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
+   static DOUBLE glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
 
    for (auto event=Events; event; event=event->Next) {
       // Process events that support consolidation first.
 
       if (event->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
          SurfaceControl *ctl;
-         LONG xchange, ychange, dragindex;
+         DOUBLE xchange, ychange;
+         LONG dragindex;
 
          // Dragging support
 
@@ -2530,8 +2531,8 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
                   event = event->Next;
                }
 
-               LONG absx = event->AbsX - glAnchorX;
-               LONG absy = event->AbsY - glAnchorY;
+               DOUBLE absx = event->AbsX - glAnchorX;
+               DOUBLE absy = event->AbsY - glAnchorY;
 
                xchange = 0;
                ychange = 0;
@@ -2568,8 +2569,8 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
                if ((ctl = drwAccessList(ARF_READ))) {
                   auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
                   if ((dragindex = find_surface_index(ctl, Self->Head.UID)) != -1) {
-                     LONG absx = list[dragindex].Left + glAnchorX;
-                     LONG absy = list[dragindex].Top + glAnchorY;
+                     DOUBLE absx = list[dragindex].Left + glAnchorX;
+                     DOUBLE absy = list[dragindex].Top + glAnchorY;
                      drwReleaseList(ARF_READ);
 
                      gfxSetCursorPos(absx, absy);

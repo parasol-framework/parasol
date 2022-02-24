@@ -5295,10 +5295,10 @@ end
       <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
       <field name="RecipientID" type="OBJECTID">Surface that the input message is being conveyed to</field>
       <field name="OverID" type="OBJECTID">Surface that is directly under the mouse pointer at the time of the event</field>
-      <field name="AbsX" type="LONG">Absolute horizontal position of mouse cursor</field>
-      <field name="AbsY" type="LONG">Absolute vertical position of mouse cursor</field>
-      <field name="X" type="LONG">Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
-      <field name="Y" type="LONG">Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
+      <field name="AbsX" type="DOUBLE">Absolute horizontal position of mouse cursor</field>
+      <field name="AbsY" type="DOUBLE">Absolute vertical position of mouse cursor</field>
+      <field name="X" type="DOUBLE">Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
+      <field name="Y" type="DOUBLE">Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
       <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from</field>
       <field name="Type" type="UWORD">JET constant</field>
       <field name="Flags" type="UWORD">Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object</field>

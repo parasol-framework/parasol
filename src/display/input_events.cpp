@@ -61,10 +61,10 @@ follows:
 <fld type="DOUBLE" name="Value">The value associated with the Type</>
 <fld type="OBJECTID" name="RecipientID">The surface that the input message is being conveyed to.</>
 <fld type="OBJECTID" name="OverID">The surface that was directly under the mouse pointer at the time of the event.</>
-<fld type="LONG" name="AbsX">Absolute horizontal coordinate of the mouse pointer (relative to the top left of the display).</>
-<fld type="LONG" name="AbsY">Absolute vertical coordinate of the mouse pointer (relative to the top left of the display).</>
-<fld type="LONG" name="OverX">Horizontal pointer coordinate, usually relative to the surface that the pointer is positioned over.  If a mouse button is held or the pointer is anchored, the coordinates are relative to the Recipient surface.</>
-<fld type="LONG" name="OverY">Vertical pointer coordinate.</>
+<fld type="DOUBLE" name="AbsX">Absolute horizontal coordinate of the mouse pointer (relative to the top left of the display).</>
+<fld type="DOUBLE" name="AbsY">Absolute vertical coordinate of the mouse pointer (relative to the top left of the display).</>
+<fld type="DOUBLE" name="OverX">Horizontal pointer coordinate, usually relative to the surface that the pointer is positioned over.  If a mouse button is held or the pointer is anchored, the coordinates are relative to the Recipient surface.</>
+<fld type="DOUBLE" name="OverY">Vertical pointer coordinate.</>
 <fld type="LARGE" name="Timestamp">Millisecond counter at which the input was recorded, or as close to it as possible.</>
 <fld type="OBJECTID" name="DeviceID">Reference to the hardware device that this event originated from.  There is no guarantee that the DeviceID is a reference to a publicly accessible object.</>
 </>

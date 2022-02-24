@@ -19,8 +19,8 @@ static ERROR GET_ButtonState(objPointer *, LONG *);
 
 static ERROR SET_ButtonOrder(objPointer *, CSTRING);
 static ERROR SET_MaxSpeed(objPointer *, LONG);
-static ERROR PTR_SET_X(objPointer *, LONG);
-static ERROR PTR_SET_Y(objPointer *, LONG);
+static ERROR PTR_SET_X(objPointer *, DOUBLE);
+static ERROR PTR_SET_Y(objPointer *, DOUBLE);
 
 #ifdef _WIN32
 static ERROR PTR_SetWinCursor(objPointer *, struct ptrSetWinCursor *);
@@ -50,12 +50,14 @@ static void send_inputmsg(InputEvent *input, InputSubscription *List);
 //****************************************************************************
 
 INLINE void call_userinput(CSTRING Debug, InputEvent *input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
-   LONG AbsX, LONG AbsY, LONG OverX, LONG OverY)
+   DOUBLE AbsX, DOUBLE AbsY, DOUBLE OverX, DOUBLE OverY)
 {
    InputSubscription *list;
 
    if ((glSharedControl->InputMID) and (!AccessMemory(glSharedControl->InputMID, MEM_READ, 1000, &list))) {
-      //log.trace("Type: %s, Value: %.2f, Recipient: %d, Over: %d, %dx%d %s", (input->Type < JET_END) ? glInputNames[input->Type] : (STRING)"", input->Value, RecipientID, OverID, AbsX, AbsY, Debug);
+      //parasol::Log log(__FUNCTION__);
+      //log.trace("Type: %s, Value: %.2f, Recipient: %d, Over: %d %.2fx%.2f, Abs: %.2fx%.2f %s",
+      //   (input->Type < JET_END) ? glInputNames[input->Type] : (CSTRING)"", input->Value, RecipientID, OverID, OverX, OverY, AbsX, AbsY, Debug);
 
       input->Mask        = glInputType[input->Type].Mask;
       input->Flags       = glInputType[input->Type].Flags | Flags;
@@ -217,7 +219,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
    parasol::Log log(__FUNCTION__);
    InputEvent userinput;
    OBJECTID modal_id, target;
-   LONG absx, absy, buttonflag, bi;
+   LONG buttonflag, bi;
 
    ClearMemory(&userinput, sizeof(userinput));
    userinput.Value     = Input->Value;
@@ -255,6 +257,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
       }
 
       if (Self->Buttons[bi].LastClicked) {
+         LONG absx, absy;
          if (!GetSurfaceAbs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
             uiflags |= Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
 
@@ -302,7 +305,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
    // Button Press Handler
 
    if (userinput.Value > 0) {
-      log.trace("Button %d depressed @ " PF64() " Coords: %dx%d", bi, userinput.Timestamp, Self->X, Self->Y);
+      log.trace("Button %d depressed @ " PF64() " Coords: %.2fx%.2f", bi, userinput.Timestamp, Self->X, Self->Y);
 
       //if ((modal_id) and (modal_id != Self->OverObjectID)) {
       //   log.branch("Surface %d is modal, button click on %d cancelled.", modal_id, Self->OverObjectID);
@@ -419,7 +422,6 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
 {
    parasol::Log log(__FUNCTION__);
    InputEvent userinput;
-   LONG absx, absy;
 
    ClearMemory(&userinput, sizeof(userinput));
    userinput.Value     = Input->Value;
@@ -441,18 +443,18 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
       userinput.Value += Self->Y;
    }
 
-   BYTE moved = FALSE;
-   LONG current_x = Self->X;
-   LONG current_y = Self->Y;
+   bool moved = false;
+   DOUBLE current_x = Self->X;
+   DOUBLE current_y = Self->Y;
    switch (userinput.Type) {
-      case JET_ABS_X: current_x = F2T(userinput.Value); if (current_x != Self->X) moved = TRUE; break;
-      case JET_ABS_Y: current_y = F2T(userinput.Value); if (current_y != Self->Y) moved = TRUE; break;
+      case JET_ABS_X: current_x = userinput.Value; if (current_x != Self->X) moved = true; break;
+      case JET_ABS_Y: current_y = userinput.Value; if (current_y != Self->Y) moved = true; break;
    }
 
-   if (moved IS FALSE) {
+   if (!moved) {
       // Check if the surface that we're over has changed due to hide, show or movement of surfaces in the display.
 
-      if (get_over_object(Self)) moved = TRUE;
+      if (get_over_object(Self)) moved = true;
    }
 
    if (moved) {
@@ -505,8 +507,8 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
          }
 
       #else
-         LONG xchange = current_x - Self->X;
-         LONG ychange = current_y - Self->Y;
+         DOUBLE xchange = current_x - Self->X;
+         DOUBLE ychange = current_y - Self->Y;
 
          Self->X = current_x;
          Self->Y = current_y;
@@ -519,7 +521,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
             call_userinput("Movement-Anchored", &userinput, 0, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
          }
          else {
-            struct acMoveToPoint moveto = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, MTF_X|MTF_Y };
+            struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF_X|MTF_Y };
             NotifySubscribers(Self, AC_MoveToPoint, &moveto, NULL, ERR_Okay);
 
             // Recalculate the OverObject due to cursor movement
@@ -537,8 +539,8 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
          // coordinates are worked out in relation to the clicked object by climbing the Surface object hierarchy.
 
          if (Self->DragSurface) {
-            LONG sx = Self->X + DRAG_XOFFSET;
-            LONG sy = Self->Y + DRAG_YOFFSET;
+            DOUBLE sx = Self->X + DRAG_XOFFSET;
+            DOUBLE sy = Self->Y + DRAG_YOFFSET;
             if (Self->DragParent) {
                LONG absx, absy;
                if (!drwGetSurfaceCoords(Self->DragParent, NULL, NULL, &absx, &absy, NULL, NULL)) {
@@ -550,6 +552,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
             acMoveToPointID(Self->DragSurface, sx, sy, 0, MTF_X|MTF_Y);
          }
 
+         LONG absx, absy;
          if (!GetSurfaceAbs(Self->Buttons[0].LastClicked, &absx, &absy, 0, 0)) {
             LONG uiflags = Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
 
@@ -855,7 +858,7 @@ static ERROR PTR_MoveToPoint(objPointer *Self, struct acMoveToPoint *Args)
 
    // Customised notification (ensures that both X and Y coordinates are reported).
 
-   struct acMoveToPoint moveto = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, MTF_X|MTF_Y };
+   struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF_X|MTF_Y };
    NotifySubscribers(Self, AC_MoveToPoint, &moveto, NULL, ERR_Okay);
 
    return ERR_Okay|ERF_Notified;
@@ -1221,7 +1224,7 @@ X: The horizontal position of the pointer within its parent display.
 
 *****************************************************************************/
 
-static ERROR PTR_SET_X(objPointer *Self, LONG Value)
+static ERROR PTR_SET_X(objPointer *Self, DOUBLE Value)
 {
    if (Self->Head.Flags & NF_INITIALISED) acMoveToPoint(Self, Value, 0, 0, MTF_X);
    else Self->X = Value;
@@ -1236,7 +1239,7 @@ Y: The vertical position of the pointer within its parent display.
 
 *****************************************************************************/
 
-static ERROR PTR_SET_Y(objPointer *Self, LONG Value)
+static ERROR PTR_SET_Y(objPointer *Self, DOUBLE Value)
 {
    if (Self->Head.Flags & NF_INITIALISED) acMoveToPoint(Self, 0, Value, 0, MTF_Y);
    else Self->Y = Value;
@@ -1308,8 +1311,8 @@ static BYTE get_over_object(objPointer *Self)
       LONG i = examine_chain(Self, index, ctl, listend);
 
       OBJECTID li_objectid = list[i].SurfaceID;
-      LONG li_left = list[i].Left;
-      LONG li_top  = list[i].Top;
+      DOUBLE li_left = list[i].Left;
+      DOUBLE li_top  = list[i].Top;
       LONG cursor_image = list[i].Cursor; // Preferred cursor ID
       glOverTaskID = list[i].TaskID;   // Task that owns the surface
       ReleaseMemory(ctl);
@@ -1376,8 +1379,8 @@ static WORD examine_chain(objPointer *Self, WORD Index, SurfaceControl *Ctl, WOR
 
    auto list = (SurfaceList *)((BYTE *)Ctl + Ctl->ArrayIndex);
    OBJECTID objectid = list[Index].SurfaceID;
-   LONG x = Self->X;
-   LONG y = Self->Y;
+   DOUBLE x = Self->X;
+   DOUBLE y = Self->Y;
    for (auto i=ListEnd-1; i >= 0; i--) {
       if ((list[i].ParentID IS objectid) and (list[i].Flags & RNF_VISIBLE)) {
          if ((x >= list[i].Left) and (x < list[i].Right) and (y >= list[i].Top) and (y < list[i].Bottom)) {
@@ -1412,14 +1415,14 @@ static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
                InputEvent input;
                ClearMemory(&input, sizeof(input));
 
-               LONG absx, absy;
+               LONG surface_x, surface_y;
                if (Self->Buttons[i].LastClicked IS Self->OverObjectID) {
                   input.X = Self->OverX;
                   input.Y = Self->OverY;
                }
-               else if (!GetSurfaceAbs(Self->Buttons[i].LastClicked, &absx, &absy, 0, 0)) {
-                  input.X = Self->X - absx;
-                  input.Y = Self->Y - absy;
+               else if (!GetSurfaceAbs(Self->Buttons[i].LastClicked, &surface_x, &surface_y, 0, 0)) {
+                  input.X = Self->X - surface_x;
+                  input.Y = Self->Y - surface_y;
                }
                else {
                   input.X = Self->OverX;
@@ -1621,12 +1624,12 @@ static const FieldArray clPointerFields[] = {
    { "Acceleration", FDF_DOUBLE|FDF_RW,   0, NULL, NULL },
    { "DoubleClick",  FDF_DOUBLE|FDF_RW,   0, NULL, NULL },
    { "WheelSpeed",   FDF_DOUBLE|FDF_RW,   0, NULL, NULL },
-   { "X",            FDF_LONG|FDF_RW,     0, NULL, (APTR)PTR_SET_X },
-   { "Y",            FDF_LONG|FDF_RW,     0, NULL, (APTR)PTR_SET_Y },
+   { "X",            FDF_DOUBLE|FDF_RW,   0, NULL, (APTR)PTR_SET_X },
+   { "Y",            FDF_DOUBLE|FDF_RW,   0, NULL, (APTR)PTR_SET_Y },
+   { "OverX",        FDF_DOUBLE|FDF_R,    0, NULL, NULL },
+   { "OverY",        FDF_DOUBLE|FDF_R,    0, NULL, NULL },
+   { "OverZ",        FDF_DOUBLE|FDF_R,    0, NULL, NULL },
    { "MaxSpeed",     FDF_LONG|FDF_RW,     0, NULL, (APTR)SET_MaxSpeed },
-   { "OverX",        FDF_LONG|FDF_R,      0, NULL, NULL },
-   { "OverY",        FDF_LONG|FDF_R,      0, NULL, NULL },
-   { "OverZ",        FDF_LONG|FDF_R,      0, NULL, NULL },
    { "Input",        FDF_OBJECTID|FDF_RW, 0, NULL, NULL },
    { "Surface",      FDF_OBJECTID|FDF_RW, ID_SURFACE, NULL, NULL },
    { "Anchor",       FDF_OBJECTID|FDF_R,  ID_SURFACE, NULL, NULL },

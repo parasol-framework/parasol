@@ -432,7 +432,7 @@ void winInitCursors(struct WinCursor *Cursor, int Total)
 
 //****************************************************************************
 
-void winSetCursorPos(int X, int Y)
+void winSetCursorPos(double X, double Y)
 {
    POINT point;
    if (glMainScreen) {

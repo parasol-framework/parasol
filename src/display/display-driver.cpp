@@ -1413,8 +1413,8 @@ This function is used to retrieve the current coordinates of the user interface 
 based then the coordinates will reflect the last position that a touch event occurred.
 
 -INPUT-
-&int X: 32-bit variable that will store the pointer's horizontal coordinate.
-&int Y: 32-bit variable that will store the pointer's vertical coordinate.
+&double X: 32-bit variable that will store the pointer's horizontal coordinate.
+&double Y: 32-bit variable that will store the pointer's vertical coordinate.
 
 -ERRORS-
 Okay
@@ -1422,7 +1422,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 ******************************************************************************/
 
-ERROR gfxGetCursorPos(LONG *X, LONG *Y)
+ERROR gfxGetCursorPos(DOUBLE *X, DOUBLE *Y)
 {
    objPointer *pointer;
 
@@ -1451,8 +1451,8 @@ The X and Y parameters will not be set if a failure occurs.
 
 -INPUT-
 oid Surface: Unique ID of the surface that the coordinates need to be relative to.
-&int X: 32-bit variable that will store the pointer's horizontal coordinate.
-&int Y: 32-bit variable that will store the pointer's vertical coordinate.
+&double X: 32-bit variable that will store the pointer's horizontal coordinate.
+&double Y: 32-bit variable that will store the pointer's vertical coordinate.
 
 -ERRORS-
 Okay:
@@ -1460,7 +1460,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 ******************************************************************************/
 
-static ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, LONG *X, LONG *Y)
+static ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
 {
    parasol::Log log(__FUNCTION__);
    objPointer *pointer;
@@ -2094,8 +2094,8 @@ SetCursorPos: Changes the position of the pointer cursor.
 Changes the position of the pointer cursor using coordinates relative to the entire display.
 
 -INPUT-
-int X: The new horizontal coordinate for the pointer.
-int Y: The new vertical coordinate for the pointer.
+double X: The new horizontal coordinate for the pointer.
+double Y: The new vertical coordinate for the pointer.
 
 -ERRORS-
 Okay:
@@ -2103,11 +2103,11 @@ AccessObject: Failed to access the SystemPointer object.
 
 ******************************************************************************/
 
-static ERROR gfxSetCursorPos(LONG X, LONG Y)
+static ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
 {
    objPointer *pointer;
 
-   struct acMoveToPoint move = { (DOUBLE)X, (DOUBLE)Y, 0, MTF_X|MTF_Y };
+   struct acMoveToPoint move = { X, Y, 0, MTF_X|MTF_Y };
    if ((pointer = gfxAccessPointer())) {
       Action(AC_MoveToPoint, pointer, &move);
       ReleaseObject(pointer);

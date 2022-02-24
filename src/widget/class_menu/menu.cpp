@@ -819,7 +819,7 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
          else log.warning(ERR_AccessObject);
       }
       else if (Self->Flags & MNF_POINTER_PLACEMENT) {
-         LONG cursor_x, cursor_y;
+         DOUBLE cursor_x, cursor_y;
          if (!gfxGetCursorPos(&cursor_x, &cursor_y)) {
             LONG x, p_width, p_height, p_absx, p_absy;
             SURFACEINFO *parentinfo;

@@ -559,12 +559,12 @@ typedef struct rkPointer {
    DOUBLE   Acceleration;  // Acceleration level - keep between 0.0 and 3.0
    DOUBLE   DoubleClick;   // Double click speed
    DOUBLE   WheelSpeed;    // Mouse-wheel speed
-   LONG     X;             // Current x coordinate
-   LONG     Y;             // Current y coordinate
+   DOUBLE   X;             // Current x coordinate
+   DOUBLE   Y;             // Current y coordinate
+   DOUBLE   OverX;         // The X coord relative to the closest object
+   DOUBLE   OverY;         // The Y coord relative to the closest object
+   DOUBLE   OverZ;         // The Z distance relative to the closest object
    LONG     MaxSpeed;      // Maximum speed
-   LONG     OverX;         // The X coord relative to the closest object
-   LONG     OverY;         // The Y coord relative to the closest object
-   LONG     OverZ;         // The Z distance relative to the closest object
    OBJECTID InputID;       // Indicates where pointer input comes from (usually SystemMouse)
    OBJECTID SurfaceID;     // Top-most surface that contains the pointer
    OBJECTID AnchorID;      // Surface object that the pointer is anchored to
@@ -588,6 +588,8 @@ typedef struct rkPointer {
    } Buttons[10];
    LARGE    ClickTime;
    LARGE    AnchorTime;
+   DOUBLE   LastClickX, LastClickY;
+   DOUBLE   LastReleaseX, LastReleaseY;
    APTR     UserLoginHandle;
    OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
    OBJECTID CursorReleaseID;
@@ -595,8 +597,6 @@ typedef struct rkPointer {
    OBJECTID DragParent;         // Parent of the draggable surface
    MEMORYID MessageQueue;       // Message port of the task that holds the cursor
    MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
-   LONG     LastClickX, LastClickY;
-   LONG     LastReleaseX, LastReleaseY;
    LONG     CursorRelease;
    LONG     BufferCursor;
    LONG     BufferFlags;
@@ -622,9 +622,9 @@ struct DisplayBase {
    LONG (*_GetDisplayType)(void);
    ERROR (*_SetCursor)(OBJECTID, LONG, LONG, CSTRING, OBJECTID);
    ERROR (*_RestoreCursor)(LONG, OBJECTID);
-   ERROR (*_GetCursorPos)(LONG *, LONG *);
-   ERROR (*_SetCursorPos)(LONG, LONG);
-   ERROR (*_GetRelativeCursorPos)(OBJECTID, LONG *, LONG *);
+   ERROR (*_GetCursorPos)(DOUBLE *, DOUBLE *);
+   ERROR (*_SetCursorPos)(DOUBLE, DOUBLE);
+   ERROR (*_GetRelativeCursorPos)(OBJECTID, DOUBLE *, DOUBLE *);
    ERROR (*_GetCursorInfo)(struct CursorInfo *, LONG);
    ERROR (*_SetCustomCursor)(OBJECTID, LONG, struct rkBitmap *, LONG, LONG, OBJECTID);
    struct rkPointer * (*_AccessPointer)(void);

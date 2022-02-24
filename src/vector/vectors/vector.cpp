@@ -973,7 +973,7 @@ static ERROR VECTOR_SET_Cursor(objVector *Self, LONG Value)
    if (Self->Head.Flags & NF_INITIALISED) {
       // Send a dummy input event to refresh the cursor
 
-      LONG x, y, absx, absy;
+      DOUBLE x, y, absx, absy;
 
       gfxGetRelativeCursorPos(Self->Scene->SurfaceID, &x, &y);
       gfxGetCursorPos(&absx, &absy);
