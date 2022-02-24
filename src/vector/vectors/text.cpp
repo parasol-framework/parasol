@@ -1372,7 +1372,7 @@ static void generate_text_bitmap(objVectorText *Vector)
             FID_Bitmap|TPTR,        Vector->txAlphaBitmap,
             FID_SpreadMethod|TLONG, VSPREAD_CLIP,
             FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
-            FID_AspectRatio|TLONG,  ARF_NONE,
+            FID_AspectRatio|TLONG,  ARF_X_MIN|ARF_Y_MIN,
             TAGEND) != ERR_Okay) return;
    }
    else acResize(Vector->txAlphaBitmap, longest_line_width, dy, 0);
