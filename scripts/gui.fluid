@@ -332,12 +332,14 @@ end
 ------------------------------------------------------------------------------
 -- Generate a simple gradient fill for vectors.
 
-gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units)
+gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, IgnoreClashes)
+   if not Name then error('A name for the gradient is required.') end
+
    local stops = { }
    local i = 0
    for _, col in pairs(Colours) do
       local vc = struct.new('GradientStop')
-      vc.offset    = nz(col.offset, i / #Colours)
+      vc.offset    = nz(col.offset, i / (#Colours-1))
       vc.rgb.red   = col.r / 255
       vc.rgb.green = col.g / 255
       vc.rgb.blue  = col.b / 255
@@ -351,9 +353,26 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units)
    end
 
    local gradient = Scene.new('VectorGradient', {
-      type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
+      name=Name, type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
    })
-   Scene.mtAddDef(Name, gradient)
+
+   if IgnoreClashes then -- Do not fail if a resource with the same name already exists (nb: will return nil).
+      local ex = catch(function()
+         Scene.mtAddDef(Name, gradient)
+      end)
+
+      if (ex) then
+         if (ex.code == ERR_ResourceExists) then
+            gradient.acFree()
+            return nil
+         else
+            error(ex)
+         end
+      end
+   else
+      Scene.mtAddDef(Name, gradient)
+   end
+
    return gradient
 end
 
