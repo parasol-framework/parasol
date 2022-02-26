@@ -71,7 +71,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
    local WIDGET_GAP = 6
 
    local function exampleMargin()
-      return self.examplePage.width * 0.05
+      return math.round(self.examplePage.width * 0.05)
    end
 
    local function sendFeedback(Accepted)
