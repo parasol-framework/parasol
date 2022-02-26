@@ -315,7 +315,7 @@ static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
       }
 
       auto callback = make_function_stdc(scene_input_events);
-      if (gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE_MOVEMENT|JTYPE_FEEDBACK|JTYPE_BUTTON|JTYPE_REPEATED, 0, &Self->InputHandle)) {
+      if (gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE_MOVEMENT|JTYPE_FEEDBACK|JTYPE_BUTTON|JTYPE_REPEATED|JTYPE_EXT_MOVEMENT, 0, &Self->InputHandle)) {
          return ERR_Function;
       }
    }
@@ -770,10 +770,10 @@ static void send_enter_event(objVector *Vector, const InputEvent *Event, DOUBLE 
 {
    InputEvent event = {
       .Next        = NULL,
-      .Value       = Event->OverID,
+      .Value       = Vector->Head.UID,
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->Head.UID,
-      .OverID      = Event->OverID,
+      .OverID      = Vector->Head.UID,
       .AbsX        = Event->AbsX,
       .AbsY        = Event->AbsY,
       .X           = Event->X - X,
@@ -792,10 +792,10 @@ static void send_left_event(objVector *Vector, const InputEvent *Event)
 {
    InputEvent event = {
       .Next        = NULL,
-      .Value       = Event->OverID,
+      .Value       = Vector->Head.UID,
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->Head.UID,
-      .OverID      = Event->OverID,
+      .OverID      = Vector->Head.UID,
       .AbsX        = Event->AbsX,
       .AbsY        = Event->AbsY,
       .X           = Event->X, // TODO Should be relative to the vector
@@ -804,6 +804,28 @@ static void send_left_event(objVector *Vector, const InputEvent *Event)
       .Type        = JET_LEFT_SURFACE,
       .Flags       = JTYPE_FEEDBACK,
       .Mask        = JTYPE_FEEDBACK
+   };
+   send_input_event(Vector, &event);
+}
+
+//********************************************************************************************************************
+
+static void send_wheel_event(objVector *Vector, const InputEvent *Event)
+{
+   InputEvent event = {
+      .Next        = NULL,
+      .Value       = Event->Value,
+      .Timestamp   = Event->Timestamp,
+      .RecipientID = Vector->Head.UID,
+      .OverID      = Event->OverID,
+      .AbsX        = Event->AbsX,
+      .AbsY        = Event->AbsY,
+      .X           = Event->X, // TODO Should be relative to the vector
+      .Y           = Event->Y,
+      .DeviceID    = Event->DeviceID,
+      .Type        = JET_WHEEL,
+      .Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT,
+      .Mask        = JTYPE_EXT_MOVEMENT
    };
    send_input_event(Vector, &event);
 }
@@ -838,9 +860,17 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
       bool processed = false;
 
-      if (input->Type IS JET_LEFT_SURFACE) {
-         parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
-         if (lock.granted()) send_left_event(lock.obj, input);
+      if (input->Type IS JET_WHEEL) {
+         if (Self->LastMovementVector) {
+            parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
+            if (lock.granted()) send_wheel_event(lock.obj, input);
+         }
+      }
+      else if (input->Type IS JET_LEFT_SURFACE) {
+         if (Self->LastMovementVector) {
+            parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
+            if (lock.granted()) send_left_event(lock.obj, input);
+         }
       }
       else if (input->Type IS JET_ENTERED_SURFACE);
       else for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {

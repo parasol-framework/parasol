@@ -56,10 +56,10 @@ static ERROR drag_callback(objVectorViewport *Viewport, const InputEvent *Events
                if ((script = Viewport->vpDragCallback.Script.Script)) {
                   const ScriptArg args[] = {
                      { "Viewport", FD_OBJECTPTR, { .Address = Viewport } },
-                     { "X", FD_DOUBLE, { .Double = x } },
-                     { "Y", FD_DOUBLE, { .Double = y } },
-                     { "OriginX", FD_DOUBLE, { .Double = glDragOriginX } },
-                     { "OriginY", FD_DOUBLE, { .Double = glDragOriginY } }
+                     { "X",        FD_DOUBLE, { .Double = x } },
+                     { "Y",        FD_DOUBLE, { .Double = y } },
+                     { "OriginX",  FD_DOUBLE, { .Double = glDragOriginX } },
+                     { "OriginY",  FD_DOUBLE, { .Double = glDragOriginY } }
                   };
                   scCallback(script, Viewport->vpDragCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                }

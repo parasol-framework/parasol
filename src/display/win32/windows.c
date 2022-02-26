@@ -617,8 +617,7 @@ static void HandleWheel(HWND window, WPARAM wparam, LPARAM lparam)
 
    int surface_id;
    if ((surface_id = winLookupSurfaceID(window))) {
-      double delta;
-      delta = -((FLOAT)GET_WHEEL_DELTA_WPARAM(wparam) / (FLOAT)WHEEL_DELTA) * 3;
+      double delta = -((DOUBLE)GET_WHEEL_DELTA_WPARAM(wparam) / (DOUBLE)WHEEL_DELTA) * 3.0;
       MsgWheelMovement(surface_id, delta);
    }
 }
