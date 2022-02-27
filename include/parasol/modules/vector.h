@@ -377,6 +377,7 @@ typedef struct rkVectorScene {
    LONG     SampleMethod;         // VSM: Method to use for resampling images and patterns.
 
 #ifdef PRV_VECTORSCENE
+   DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
    class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
    APTR KeyHandle; // Keyboard subscription
@@ -385,7 +386,7 @@ typedef struct rkVectorScene {
    std::unordered_set<struct rkVector *> KeyboardSubscriptions;
    std::vector<struct InputBoundary> InputBoundaries;
    OBJECTID ButtonLock; // The vector currently holding a button lock
-   OBJECTID LastMovementVector; // The most recent vector to have received an input movement event.
+   OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
    UBYTE  AdaptorType;
   

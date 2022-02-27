@@ -788,7 +788,7 @@ static void send_enter_event(objVector *Vector, const InputEvent *Event, DOUBLE 
 
 //********************************************************************************************************************
 
-static void send_left_event(objVector *Vector, const InputEvent *Event)
+static void send_left_event(objVector *Vector, const InputEvent *Event, DOUBLE X = 0, DOUBLE Y = 0)
 {
    InputEvent event = {
       .Next        = NULL,
@@ -798,8 +798,8 @@ static void send_left_event(objVector *Vector, const InputEvent *Event)
       .OverID      = Vector->Head.UID,
       .AbsX        = Event->AbsX,
       .AbsY        = Event->AbsY,
-      .X           = Event->X, // TODO Should be relative to the vector
-      .Y           = Event->Y,
+      .X           = Event->X - X,
+      .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
       .Type        = JET_LEFT_SURFACE,
       .Flags       = JTYPE_FEEDBACK,
@@ -810,7 +810,7 @@ static void send_left_event(objVector *Vector, const InputEvent *Event)
 
 //********************************************************************************************************************
 
-static void send_wheel_event(objVector *Vector, const InputEvent *Event)
+static void send_wheel_event(objVectorScene *Scene, objVector *Vector, const InputEvent *Event)
 {
    InputEvent event = {
       .Next        = NULL,
@@ -820,8 +820,8 @@ static void send_wheel_event(objVector *Vector, const InputEvent *Event)
       .OverID      = Event->OverID,
       .AbsX        = Event->AbsX,
       .AbsY        = Event->AbsY,
-      .X           = Event->X, // TODO Should be relative to the vector
-      .Y           = Event->Y,
+      .X           = Event->X - Scene->ActiveVectorX,
+      .Y           = Event->Y - Scene->ActiveVectorY,
       .DeviceID    = Event->DeviceID,
       .Type        = JET_WHEEL,
       .Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT,
@@ -854,91 +854,112 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
       // Focus management - clicking with the LMB can result in a change of focus.
 
-      if ((input->Mask & JTYPE_BUTTON) and (input->Type IS JET_LMB) and (input->Value IS 1)) {
+      if ((input->Flags & JTYPE_BUTTON) and (input->Type IS JET_LMB) and (input->Value IS 1)) {
          apply_focus(Self, (objVector *)get_viewport_at_xy(Self, input->X, input->Y));
       }
 
-      bool processed = false;
-
       if (input->Type IS JET_WHEEL) {
-         if (Self->LastMovementVector) {
-            parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
-            if (lock.granted()) send_wheel_event(lock.obj, input);
+         if (Self->ActiveVector) {
+            parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
+            if (lock.granted()) send_wheel_event(Self, lock.obj, input);
          }
       }
       else if (input->Type IS JET_LEFT_SURFACE) {
-         if (Self->LastMovementVector) {
-            parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
-            if (lock.granted()) send_left_event(lock.obj, input);
+         if (Self->ActiveVector) {
+            parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
+            if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
       }
       else if (input->Type IS JET_ENTERED_SURFACE);
-      else for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {
-         auto &bounds = *it;
+      else if (input->Flags & JTYPE_BUTTON) {
+         OBJECTID target;
+         if (Self->ButtonLock) target = Self->ButtonLock;
+         else target = Self->ActiveVector;
 
-         // When the user holds a mouse button over a vector, a 'button lock' will be held.  This causes all events to
-         // be captured by that vector until the button is released.
+         if (target) {
+            parasol::ScopedObjectLock<objVector> lock(target);
+            if (lock.granted()) {
+               InputEvent event = *input;
+               event.Next = NULL;
+               event.X = input->X - Self->ActiveVectorX; // Coords to be relative to the vector, not the surface
+               event.Y = input->Y - Self->ActiveVectorY;
+               send_input_event(lock.obj, &event);
 
-         if ((Self->ButtonLock) and (Self->ButtonLock IS bounds.VectorID));
-         else if ((Self->ButtonLock) and (Self->ButtonLock != bounds.VectorID)) continue;
-         else { // No button lock, perform a simple bounds check
-            bool in_bounds = (input->X >= bounds.BX1) and (input->Y >= bounds.BY1) and
-                             (input->X < bounds.BX2) and (input->Y < bounds.BY2);
-            if (!in_bounds) continue;
+               if ((input->Type IS JET_LMB) and (!(input->Flags & JTYPE_REPEATED))) {
+                  Self->ButtonLock = input->Value ? target : 0;
+               }
+
+               if (lock.obj->Cursor) cursor = lock.obj->Cursor;
+            }
          }
+      }
+      else if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+         bool processed = false;
+         for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {
+            auto &bounds = *it;
 
-         parasol::ScopedObjectLock<objVector> lock(bounds.VectorID);
-         if (!lock.granted()) continue;
-         auto vector = lock.obj;
+            // When the user holds a mouse button over a vector, a 'button lock' will be held.  This causes all events to
+            // be captured by that vector until the button is released.
 
-         // Additional bounds check to cater for transforms, clip masks etc.
-
-         if (Self->ButtonLock != vector->Head.UID) {
-            if (vecPointInPath(vector, input->X, input->Y) != ERR_Okay) continue;
-         }
-
-         if (Self->LastMovementVector != vector->Head.UID) {
-            send_enter_event(vector, input, bounds.X, bounds.Y);
-         }
-
-         // Determine status of the button lock.
-
-         if ((input->Type IS JET_LMB) and (!(input->Flags & JTYPE_REPEATED))) {
-            Self->ButtonLock = input->Value ? vector->Head.UID : 0;
-         }
-
-         if (vector->Cursor) cursor = vector->Cursor;
-
-         InputEvent event = *input;
-         event.Next = NULL;
-         event.X = input->X - bounds.X; // Coords to be relative to the vector, not the surface
-         event.Y = input->Y - bounds.Y;
-         send_input_event(vector, &event);
-
-         if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
-            if ((Self->LastMovementVector) and (Self->LastMovementVector != vector->Head.UID)) {
-               parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
-               if (lock.granted()) send_left_event(lock.obj, input);
+            bool in_bounds = false;
+            if ((Self->ButtonLock) and (Self->ButtonLock IS bounds.VectorID));
+            else if ((Self->ButtonLock) and (Self->ButtonLock != bounds.VectorID)) continue;
+            else { // No button lock, perform a simple bounds check
+               in_bounds = (input->X >= bounds.BX1) and (input->Y >= bounds.BY1) and
+                           (input->X < bounds.BX2) and (input->Y < bounds.BY2);
+               if (!in_bounds) continue;
             }
 
-            Self->LastMovementVector = vector->Head.UID;
+            parasol::ScopedObjectLock<objVector> lock(bounds.VectorID);
+            if (!lock.granted()) continue;
+            auto vector = lock.obj;
+
+            // Additional bounds check to cater for transforms, clip masks etc.
+
+            if (in_bounds) {
+               if (vecPointInPath(vector, input->X, input->Y) != ERR_Okay) continue;
+            }
+
+            if (Self->ActiveVector != bounds.VectorID) {
+               send_enter_event(vector, input, bounds.X, bounds.Y);
+            }
+
+            if ((!Self->ButtonLock) and (vector->Cursor)) cursor = vector->Cursor;
+
+            InputEvent event = *input;
+            event.Next = NULL;
+            event.X = input->X - bounds.X; // Coords to be relative to the vector, not the surface
+            event.Y = input->Y - bounds.Y;
+            send_input_event(vector, &event);
+
+            if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+               if ((Self->ActiveVector) and (Self->ActiveVector != vector->Head.UID)) {
+                  parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
+                  if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
+               }
+
+               Self->ActiveVector  = vector->Head.UID;
+               Self->ActiveVectorX = bounds.X;
+               Self->ActiveVectorY = bounds.Y;
+            }
+
+            processed = true;
+            break; // Input consumed
          }
 
-         processed = true;
-         break; // Input consumed
-      }
+         // If no vectors received a hit for a movement message, we may need to inform the last active vector that the
+         // cursor left its area.
 
-      // If no vectors received a hit for a movement message, we may need to inform the last active vector that the
-      // cursor left its area.
-
-      if ((Self->LastMovementVector) and (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) and (!processed)) {
-         parasol::ScopedObjectLock<objVector> lock(Self->LastMovementVector);
-         Self->LastMovementVector = 0;
-         if (lock.granted()) send_left_event(lock.obj, input);
+         if ((Self->ActiveVector) and (!processed)) {
+            parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
+            Self->ActiveVector = 0;
+            if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
+         }
       }
+      else log.warning("Unrecognised movement type %d", input->Type);
    }
 
-   if (Self->SurfaceID) {
+   if ((!Self->ButtonLock) and (Self->SurfaceID)) {
       parasol::ScopedObjectLock<objSurface> lock(Self->SurfaceID);
       if (lock.granted() and (lock.obj->Cursor != cursor)) {
          SetLong(lock.obj, FID_Cursor, cursor);
