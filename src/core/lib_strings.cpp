@@ -583,7 +583,7 @@ StrCompare: Compares strings to see if they are identical.
 
 This function compares two strings against each other.  If the strings match then it returns ERR_Okay, otherwise it
 returns ERR_False.  By default the function is not case sensitive, but you can turn on case sensitivity by
-specifying the STR_CASE flag.
+specifying the `STR_CASE` flag.
 
 If you set the Length to 0, the function will compare both strings for differences until a string terminates.  If all
 characters matched up until the termination, ERR_Okay will be returned regardless of whether or not one of the strings
@@ -592,13 +592,13 @@ happened to be longer than the other.
 If the Length is not 0, then the comparison will stop once the specified number of characters to match has been
 reached.  If one of the strings terminates before the specified Length is matched, ERR_False will be returned.
 
-If the STR_MATCH_LEN flag is specified, you can force the function into returning an ERR_Okay code only on the
+If the `STR_MATCH_LEN` flag is specified, you can force the function into returning an ERR_Okay code only on the
 condition that both strings are of matching lengths.  This flag is typically specified if the Length argument has
 been set to 0.
 
-If the STR_WILDCARD flag is set, the first string that is passed may contain wild card characters, which gives special
+If the `STR_WILDCARD` flag is set, the first string that is passed may contain wild card characters, which gives special
 meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance
-"ABC*" would match to "ABCDEF" and "1?3" would match to "1x3".
+`ABC*` would match to `ABCDEF` and `1?3` would match to `1x3`.
 
 -INPUT-
 cstr String1: Pointer to the first string.
