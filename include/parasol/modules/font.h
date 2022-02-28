@@ -35,12 +35,12 @@
 
 struct FontList {
    struct FontList * Next;    // Pointer to the next entry in the list.
-   STRING  Name;              // The name of the font face.
-   UBYTE * Points;            // Pointer to an array of fixed point sizes supported by the font.
-   STRING  Styles;            // Supported styles are listed here in CSV format.
-   BYTE    Scalable;          // TRUE if the font is scalable.
-   BYTE    Reserved1;         // Do not use.
-   WORD    Reserved2;         // Do not use.
+   STRING Name;               // The name of the font face.
+   LONG * Points;             // Pointer to an array of fixed point sizes supported by the font.
+   STRING Styles;             // Supported styles are listed here in CSV format.
+   BYTE   Scalable;           // TRUE if the font is scalable.
+   BYTE   Reserved1;          // Do not use.
+   WORD   Reserved2;          // Do not use.
 };
 
 // Options for the StringSize() function.

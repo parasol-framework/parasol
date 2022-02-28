@@ -383,7 +383,7 @@ static ERROR fntGetList(FontList **Result)
    ConfigGroups *groups;
    if (!GetPointer(glConfig, FID_Data, &groups)) {
       for (auto & [group, keys] : groups[0]) {
-         size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + keys["Points"].size() + 1;
+         size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + (keys["Points"].size()*4) + 1;
       }
 
       FontList *list, *last_list = NULL;
@@ -409,15 +409,20 @@ static ERROR fntGetList(FontList **Result)
                if (!StrCompare("Yes", keys["Scalable"].c_str(), 0, STR_MATCH_LEN)) list->Scalable = TRUE;
             }
 
-            if (!keys.contains("Points")) {
-               list->Points = (UBYTE *)buffer;
+            list->Points = NULL;
+            if (keys.contains("Points")) {
                CSTRING fontpoints = keys["Points"].c_str();
-               for (WORD j=0; *fontpoints; j++) {
-                  *buffer++ = StrToInt(fontpoints);
-                  while ((*fontpoints) and (*fontpoints != ',')) fontpoints++;
-                  if (*fontpoints IS ',') fontpoints++;
+               if (*fontpoints) {
+                  list->Points = (LONG *)buffer;
+                  for (WORD j=0; *fontpoints; j++) {
+                     ((LONG *)buffer)[0] = StrToInt(fontpoints);
+                     buffer += sizeof(LONG);
+                     while ((*fontpoints) and (*fontpoints != ',')) fontpoints++;
+                     if (*fontpoints IS ',') fontpoints++;
+                  }
+                  ((LONG *)buffer)[0] = 0;
+                  buffer += sizeof(LONG);
                }
-               *buffer++ = 0;
             }
 
             list++;

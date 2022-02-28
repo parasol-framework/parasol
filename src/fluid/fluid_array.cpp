@@ -74,6 +74,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    struct structentry *sdef = NULL;
    if (FieldType & FD_STRUCT) {
       if (!StructName) { lua_pushnil(Lua); return; }
+
       {
          char struct_name[60];
          LONG i;

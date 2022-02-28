@@ -152,10 +152,10 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       local err, list = mFont.GetList()
       if (list == nil) then error('Failed to retrieve list of fonts, error: ' .. mSys.GetErrorMsg(err)) end
 
-      lFonts = { }
+      lFonts       = { }
       lFontsSorted = { }
-      local font = list
-      local index = 0
+      local font   = list
+      local index  = 0
       while (font) do
          lFonts[font.name] = { }
          lFonts[font.name].order  = index
@@ -173,7 +173,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
    local function showFontSizes(List)
       local sizes = { }
-      for k, v in ipairs(List) do
+      for _, v in ipairs(List) do
          table.insert(sizes, { id=v, name=v })
       end
       vwSize.loadItems(sizes)
@@ -184,10 +184,26 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
    local function showStyles(Face)
       local styles = { }
       local font_styles = nz(lFonts[Face].styles, { 'Regular' })
-      for k, v in ipairs(font_styles) do
+      for _, v in ipairs(font_styles) do
          table.insert(styles, { id=v, name=v })
       end
       vwStyle.loadItems(styles)
+   end
+
+   local function highlightSize(Size)
+      if not Size then return end
+      local selectSize = Size
+      for _,v in ipairs(lSizes) do
+         if v <= Size then
+            selectSize = v
+         else
+            break
+         end
+      end
+
+      vwSize.selectItems(function(Item)
+         if Item.id == selectSize then return true end
+      end)
    end
 
    catch(function()
@@ -354,16 +370,12 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
             -- Highlight the correct style, trying to keep the current setting if possible.
 
-            catch(function()
-               vwStyle.selection = self.style
-            end,
-            function(Exception)
-               catch(function()
-                  vwStyle.selection = 'Regular'
-               end,
-               function(Exception)
-                  vwStyle.selectionIndex = 0
-               end)
+            if not self.style then
+               self.style = 'Regular'
+            end
+
+            vwStyle.selectItems(function(Item)
+               if (Item.id == self.style) then return true end
             end)
 
             local sizes = lFonts[Item.name].sizes
@@ -373,17 +385,8 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
             showFontSizes(sizes)
 
-            local closestSize = self.size
-            if (sizes[1] > closestSize) then closestSize = sizes[1] end
-            for _, size in ipairs(sizes) do
-               if (size <= self.size) then
-                  closestSize = size
-               else
-                  break
-               end
-            end
-
-            vwSize.selection = closestSize
+            if (sizes[1] > self.size) then self.size = sizes[1] end
+            highlightSize(self.size)
 
             refreshExample()
          end
@@ -413,23 +416,15 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       -- Preselect list items based on the preferences supplied by the client.
 
-      vwFace.selectItem(function(Item)
+      vwFace.selectItems(function(Item)
          if Item.id == nz(lOptions.face, 'Open Sans') then return true end
       end)
 
-      vwStyle.selection = nz(lOptions.style, 'Regular')
+      vwStyle.selectItems(function(Item)
+         if Item.id == nz(lOptions.style, 'Regular') then return true end
+      end)
 
-      if lOptions.size then
-         local selectSize = lOptions.size
-         for k,v in ipairs(lSizes) do
-            if v < lOptions.size then
-               selectSize = v
-            else
-               break
-            end
-         end
-         vwSize.selection = selectSize
-      end
+      highlightSize(self.size)
 
       lWindow.acMoveToFront()
       lWindow.acShow()
