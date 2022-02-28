@@ -180,6 +180,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
 
    OBJECTPTR file;
    if (cache); // The font exists in the cache
+   else if (!StrCompare("*.ttf", Self->Path, 0, STR_WILDCARD)); // The font is truetype
    else if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
          FID_Path|TSTR,   Self->Path,
          FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
