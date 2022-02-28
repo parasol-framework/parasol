@@ -27,8 +27,6 @@ Functionality:
    require 'common'
    require 'gui'
 
-   if (mSurface == nil) then mSurface = mod.load('surface') end
-
    local lStyle
    if (mSys.AnalysePath('style:scrollbar.fluid') == ERR_Okay) then
       lStyle = loadFile('style:scrollbar.fluid')
@@ -115,10 +113,10 @@ gui.scrollbar = function(Options)
 
             if (slider_size <= 12) then
                lHBar.viewport.visibility = VIS_HIDDEN
-               lView.xOffset = 0
+               lView.yOffset = 0
             else
                lHBar.viewport.visibility = VIS_VISIBLE
-               lView.xOffset = lHBar.sliderVP.height
+               lView.yOffset = lHBar.sliderVP.height
             end
 
             lStyle.rebuild(lHBar, lTarget, lView, lPage)
