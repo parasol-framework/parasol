@@ -144,11 +144,61 @@ vfx.moveOut = function(Seconds, Delay, FromX, FromY)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- 'Shake' a vector by applying an alternating rotation around its center.
+-- 'Shake' a vector by applying an alternating rotation around its center.  Intensity is between 0.1 and 2.0 and
+-- affects the number of shakes and maximum angle of rotation.
 
 vfx.shake = function(Seconds, Delay, Intensity)
-   if not Intensity then Intensity = 1.0 end
+   local state = { name = 'shake', intensity = nz(Intensity, 1.0), seconds = nz(Seconds, 1.0), delay = nz(Delay, 0) }
 
+   if (state.intensity < 0.1) then
+      state.intensity = 0.1
+   elseif (state.intensity > 2) then
+      state.intensity = 2
+   end
+
+   state.init = function(Viewport, CallbackOnCompletion)
+      local MAX_ANGLE = 90 * Intensity
+      local QRT_ANGLE = MAX_ANGLE * 0.25
+      local SHAKES    = math.round(6 * Intensity)
+      if (SHAKES < 1) then SHAKES = 1 end
+
+      local err
+      err, state.matrix = Viewport.mtNewMatrix()
+      err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+         if (state.time == nil) then state.time = CurrentTime end
+         if (state.delay > 0) then
+            if ((CurrentTime - state.time) >= state.delay * 1000000) then
+               state.delay = 0
+               mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
+               state.time = nil
+            end
+         else
+            mVector.ResetMatrix(state.matrix)
+
+            if (CurrentTime > state.time + (state.seconds * 1000000)) then
+               Viewport.acDraw()
+               if CallbackOnCompletion then CallbackOnCompletion(state) end
+               check(ERR_Terminate)
+            end
+
+            local cycle = (state.seconds / SHAKES) * 1000000
+            local angle = (math.fmod(CurrentTime - state.time, cycle) / cycle) * MAX_ANGLE
+
+            if (angle < QRT_ANGLE) then -- (45)
+               angle = angle
+            elseif (angle < (MAX_ANGLE - QRT_ANGLE)) then
+               angle = QRT_ANGLE - (angle - QRT_ANGLE)
+            else
+               angle = -QRT_ANGLE + (angle - (MAX_ANGLE - QRT_ANGLE))
+            end
+
+            mVector.Rotate(state.matrix, angle, Viewport.width*0.5, Viewport.height*0.5)
+            Viewport.acDraw()
+         end
+      end)
+   end
+
+   return state
 end
 
 ----------------------------------------------------------------------------------------------------------------------
