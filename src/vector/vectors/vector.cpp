@@ -242,7 +242,7 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    }
    if (Self->Child) Self->Child->Parent = NULL;
 
-   if (Self->Scene) {
+   if ((Self->Scene) and (!(Self->Scene->Head.Flags & (NF_FREE|NF_FREE_MARK)))) {
       Self->Scene->InputSubscriptions.erase(Self);
       Self->Scene->KeyboardSubscriptions.erase(Self);
    }
