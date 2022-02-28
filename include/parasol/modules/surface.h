@@ -257,6 +257,7 @@ typedef struct rkSurface {
    UWORD    FixedY:1;
    UWORD    Document:1;
    UWORD    RedrawScheduled:1;
+   UWORD    RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
    BYTE     BitsPerPixel;         // Bitmap bits per pixel
    BYTE     BytesPerPixel;        // Bitmap bytes per pixel
    UBYTE    CallbackCount;

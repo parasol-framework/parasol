@@ -279,7 +279,7 @@ gui.scrollbar = function(Options)
       if (x != current_x) or (y != current_y) then
          lPage.x = x
          lPage.y = y
-         lView.acDraw()
+         lTarget.acDraw()
       end
    end
 

@@ -2107,12 +2107,20 @@ Okay
 
 static ERROR SURFACE_ScheduleRedraw(objSurface *Self, APTR Void)
 {
-   if ((Self->RedrawScheduled) or (Self->RedrawTimer)) return ERR_Okay;
+   // TODO Currently defaults to 60FPS, we should get the correct FPS from the Display object.
+   #define FPS 60.0
+
+   if (Self->RedrawScheduled) return ERR_Okay;
+
+   if (Self->RedrawTimer) {
+      Self->RedrawScheduled = TRUE;
+      return ERR_Okay;
+   }
 
    FUNCTION callback;
    SET_FUNCTION_STDC(callback, (APTR)&redraw_timer);
-   // TODO Currently defaults to 60FPS, we should get the correct FPS from the Display object.
-   if (!SubscribeTimer(1.0/60.0, &callback, &Self->RedrawTimer)) {
+   if (!SubscribeTimer(1.0/FPS, &callback, &Self->RedrawTimer)) {
+      Self->RedrawCountdown = FPS * 30;
       Self->RedrawScheduled = TRUE;
       return ERR_Okay;
    }
@@ -2392,14 +2400,22 @@ static ERROR SURFACE_Show(objSurface *Self, APTR Void)
 
 static ERROR redraw_timer(objSurface *Self, LARGE Elapsed, LARGE CurrentTime)
 {
-   Self->RedrawScheduled = FALSE; // Done before Draw() because it tests this field.
+   if (Self->RedrawScheduled) {
+      Self->RedrawScheduled = FALSE; // Done before Draw() because it tests this field.
+      Action(AC_Draw, Self, NULL);
+   }
+   else {
+      // Rather than unsubscribe from the timer immediately, we hold onto it until the countdown reaches zero.  This
+      // is because there is a noticeable performance penalty if you frequently subscribe and unsubscribe from the timer
+      // system.
+      if (Self->RedrawCountdown > 0) Self->RedrawCountdown--;
+      if (!Self->RedrawCountdown) {
+         Self->RedrawTimer = NULL;
+         return ERR_Terminate;
+      }
+   }
 
-   Action(AC_Draw, Self, NULL);
-
-   if (Self->RedrawScheduled) return ERR_Okay; // Sanity check in case redrawing was scheduled for the next frame
-
-   Self->RedrawTimer = NULL;
-   return ERR_Terminate;
+   return ERR_Okay;
 }
 
 //****************************************************************************
