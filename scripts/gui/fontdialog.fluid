@@ -290,8 +290,8 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       })
 
       self.exampleView = self.exampleVP.new('VectorViewport', {
-         x = '1%', y='1%',
-         width='98%', height='98%', overflow=VOF_HIDDEN
+         x = 4, y = 4,
+         xOffset = 4, yOffset = 4, overflow=VOF_HIDDEN
       })
 
       self.examplePage = self.exampleView.new('VectorViewport', {
