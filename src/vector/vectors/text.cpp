@@ -1626,7 +1626,9 @@ static void reset_font(objVectorText *Vector)
                if (style IS "Regular") style = "Italic";
                else style.append(" Italic");
             }
+            SetString(font, FID_Style, style.c_str());
          }
+         else SetString(font, FID_Style, Vector->txFontStyle);
 
          CSTRING location;
          if (!fntSelectFont(family.c_str(), style.c_str(), Vector->txFontSize, FTF_PREFER_SCALED, &location)) {
