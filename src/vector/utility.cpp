@@ -435,6 +435,8 @@ static DOUBLE is_left(agg::vertex_d A, agg::vertex_d B, agg::vertex_d C)
     return ((B.x - A.x) * (C.y - A.y) - (C.x - A.x) * (B.y - A.y));
 }
 
+static bool point_in_rectangle(agg::vertex_d X, agg::vertex_d Y, agg::vertex_d Z, agg::vertex_d W, agg::vertex_d P) __attribute__ ((unused));
+
 static bool point_in_rectangle(agg::vertex_d X, agg::vertex_d Y, agg::vertex_d Z, agg::vertex_d W, agg::vertex_d P)
 {
     return (is_left(X, Y, P) > 0) and (is_left(Y, Z, P) > 0) and (is_left(Z, W, P) > 0) and (is_left(W, X, P) > 0);

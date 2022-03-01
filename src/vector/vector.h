@@ -4,6 +4,9 @@ public:
    OBJECTID VectorID;
    DOUBLE BX1, BY1, BX2, BY2; // Collision boundary
    DOUBLE X, Y; // Absolute X,Y without collision
+
+   InputBoundary(OBJECTID pV, DOUBLE p1, DOUBLE p2, DOUBLE p3, DOUBLE p4, DOUBLE p5, DOUBLE p6) :
+      VectorID(pV), BX1(p1), BY1(p2), BX2(p3), BY2(p4), X(p5), Y(p6) {};
 };
 
 class InputSubscription {
