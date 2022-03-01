@@ -971,7 +971,7 @@ private:
                   log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f) bounded by (%.2f %.2f %.2f %.2f)", shape->Head.UID, x1, y1, x2, y2, xmin, ymin, xmax, ymax);
                #endif
 
-               if ((x2 > x1) and (y2 > y1)) [[likely]] { // Continue only if the clipping region is good.
+               if ((x2 > x1) and (y2 > y1)) { // Continue only if the clipping region is good.
                   auto saved_mask = state.mClipMask;
                   if (view->vpClipMask) state.mClipMask = view->vpClipMask;
 
