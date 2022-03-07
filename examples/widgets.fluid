@@ -233,12 +233,16 @@ end
       target = viewport,
       x      = 20,
       y      = y,
-      image  = 'programs/tool',
-      text   = 'Toolbox',
+      image  = 'time/alarm',
+      text   = 'Alarm',
       size   = 80,
       vfx    = vfx.fadeIn(1.0, 0.1),
       feedback = function(Icon, Event)
-         print('Icon feedback received, event: ' .. Event.name)
+         if Icon.effect then return end
+         Icon.effect = vfx.shake(1.0, 0, 1.0)
+         Icon.effect.init(Icon.viewport, function(Effect)
+            Icon.effect = nil
+         end)
       end
    })
 
@@ -247,7 +251,7 @@ end
       x      = 120,
       y      = y,
       image  = 'programs/filemanager',
-      text   = 'Home Sweet Home',
+      text   = 'Wilhelm\'s House',
       vfx    = vfx.chain(vfx.rotate(0.8, 0.3), vfx.zoomIn(0.4, 0.3)),
       feedback = function(Icon, Event)
          if (Icon.effect) then return end
