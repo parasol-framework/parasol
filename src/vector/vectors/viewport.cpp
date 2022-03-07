@@ -337,9 +337,7 @@ static ERROR VIEW_SET_DragCallback(objVectorViewport *Self, FUNCTION *Value)
          return ERR_Failed;
       }
 
-      if (Self->vpDragCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->vpDragCallback.Script.Script, AC_Free);
       Self->vpDragCallback = *Value;
-      if (Self->vpDragCallback.Type IS CALL_SCRIPT) SubscribeAction(Self->vpDragCallback.Script.Script, AC_Free);
    }
    else {
       Self->vpDragCallback.Type = CALL_NONE;

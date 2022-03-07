@@ -849,7 +849,9 @@ static ERROR VECTOR_SubscribeInput(objVector *Self, struct vecSubscribeInput *Ar
       }
 
       if (Self->InputSubscriptions->empty()) {
-         if (Self->Scene) Self->Scene->InputSubscriptions.erase(Self);
+         if ((Self->Scene) and (!(Self->Scene->Head.Flags & (NF_FREE|NF_FREE_MARK)))) {
+            Self->Scene->InputSubscriptions.erase(Self);
+         }
       }
    }
 
