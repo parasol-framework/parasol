@@ -945,7 +945,7 @@ private:
          }
 
          if (shape->Head.SubID IS ID_VECTORVIEWPORT) {
-            if (shape->Child) {
+            if ((shape->Child) or (shape->InputSubscriptions)) {
                auto view = (objVectorViewport *)shape;
 
                if (view->vpOverflowX != VOF_INHERIT) state.mOverflowX = view->vpOverflowX;
@@ -1001,7 +1001,7 @@ private:
                      agg::render_scanlines(stroke_raster, mScanLine, mSolidRender);
                   }
 
-                  draw_vectors((objVector *)view->Child, state);
+                  if (view->Child) draw_vectors((objVector *)view->Child, state);
 
                   state.mClipMask = saved_mask;
 

@@ -440,7 +440,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
    LONG   DashTotal; \
    LONG   Visibility; \
    LONG   Flags; \
-   LONG   FeedbackMask; \
    LONG   Cursor;
   ]])
 
@@ -449,11 +448,12 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     { id=2, name="TracePath" },
     { id=3, name="GetBoundary" },
     { id=4, name="PointInPath" },
-    { id=5, name="InputSubscription" },
-    { id=6, name="KeyboardSubscription" },
-    { id=7, name="Debug" },
-    { id=8, name="NewMatrix" },
-    { id=9, name="FreeMatrix" }
+    { id=5, name="SubscribeInput" },
+    { id=6, name="SubscribeKeyboard" },
+    { id=7, name="SubscribeFeedback" },
+    { id=8, name="Debug" },
+    { id=9, name="NewMatrix" },
+    { id=10, name="FreeMatrix" }
   })
 
   class("Vector", { src="vectors/vector.cpp", output="vectors/vector_def.c", version=1 }, [[
@@ -473,7 +473,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     int DashTotal           # The total number of values in the DashArray.
     int(VIS) Visibility     # Controls the visibility of a vector and its children.
     int(VF) Flags           # Optional flags.
-    int(FM) FeedbackMask    # Mask for choosing feedback events
     int(PTR) Cursor         # The mouse cursor to display when the pointer is within the vector's boundary.
   ]],
   [[ SHAPE_PRIVATE ]])

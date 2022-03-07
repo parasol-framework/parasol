@@ -3,7 +3,7 @@
    local glCounter = 0
 
 return {
-   rebuild = function(State, Target, View, Page)
+   arrange = function(State)
       State.slider.border.width  = State.sliderVP.width - 2
       State.slider.border.height = State.sliderVP.height - 2
    end,

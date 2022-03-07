@@ -14,14 +14,25 @@ Valid options to use when creating the scrollbar are as follows:
   target:    Required.  Refers to a viewport that will contain the scrollbar.
   view:      Required.  A viewport that is within the target and contains the page content.  Note that the dimensions of the view will be controlled by the scrollbar.
   page:      Required.  A viewport within the view.  The page will contain the content for display and must use fixed width and height values.
-  breadth:   Overrides the breadth of the scrollbar.
+  breadth:   Overrides the breadth of the scrollbar in pixel units.
   direction: Limits scrolling to 'vertical' or 'horizontal' if desired.  Both axis are enabled by default.
 
 Functionality:
 
-  scrollPage()
-  setDynamicPageSize()
-  setFixedPageSize()
+  scrollPage(DeltaX, DeltaY)
+
+    Move the page by (DeltaX, DeltaY) pixel units.  Movement conforms to view restrictions.
+
+  setDynamicPageSize(NominalWidth, MinWidth, Height)
+
+    In dynamic page mode, a nominal width declares the length of the longest item.  The page width is
+    automatically expanded to the view's width in this mode, while height behaves normally.  Setting a
+    minimum width is optional.  It should be noted that this feature is not compatible with horizontal
+    scrolling.
+
+  setFixedPageSize(Width, Height)
+
+    Defines a fixed page size.
 --]]
 
    require 'common'
@@ -84,6 +95,8 @@ gui.scrollbar = function(Options)
 
    local function recalcSlidersFromView()
       if lVBar then
+         lVBar.viewport.acMoveToFront()
+
          local offset, slider_size = calcSlider(lView.height, lPage.height, lVBar.sliderHostVP.height, -lPage.y)
          if (offset != lVBar.slider.offset) or (slider_size != lVBar.slider.size) then
             lVBar.slider.offset   = offset
@@ -93,17 +106,21 @@ gui.scrollbar = function(Options)
 
             if (slider_size <= 12) then
                lVBar.viewport.visibility = VIS_HIDDEN
-               lView.width = lTarget.width
+               lView.xOffset = 0
+               if lHBar then lHBar.viewport.xOffset = 0 end
             else
                lVBar.viewport.visibility = VIS_VISIBLE
-               lView.width = lTarget.width - lVBar.sliderVP.width
+               lView.xOffset = lVBar.sliderVP.width
+               if lHBar then lHBar.viewport.xOffset = lBreadth end
             end
 
-            lStyle.rebuild(lVBar, lTarget, lView, lPage)
+            lStyle.arrange(lVBar)
          end
       end
 
       if lHBar then
+         lHBar.viewport.acMoveToFront()
+
          local offset, slider_size = calcSlider(lView.width, lPage.width, lHBar.sliderHostVP.width, -lPage.x)
          if (offset != lHBar.slider.offset) or (slider_size != lHBar.slider.size) then
             lHBar.slider.offset   = offset
@@ -119,7 +136,7 @@ gui.scrollbar = function(Options)
                lView.yOffset = lHBar.sliderVP.height
             end
 
-            lStyle.rebuild(lHBar, lTarget, lView, lPage)
+            lStyle.arrange(lHBar)
          end
       end
 
@@ -161,7 +178,7 @@ gui.scrollbar = function(Options)
          end
       else
          local vp = lTarget.new('VectorViewport', { x = 0, xOffset = 0, yOffset = 0, height = lBreadth })
-         if lVBar then vp.xOffset = lBreadth end
+         if lVBar and (lVBar.viewport.visibility == VIS_VISIBLE) then vp.xOffset = lBreadth end
 
          bar = vp.state()
          bar.viewport  = vp
@@ -195,7 +212,7 @@ gui.scrollbar = function(Options)
 
       -- Capture user interactivity within the bar area.
 
-      bar.sliderHostVP.mtInputSubscription(JTYPE_BUTTON,
+      bar.sliderHostVP.mtSubscribeInput(JTYPE_BUTTON,
          function(Viewport, Msg)
             repeat
                if (Msg.type == JET_LMB) and (Msg.value > 0) then
@@ -217,7 +234,7 @@ gui.scrollbar = function(Options)
             until Msg == nil
          end)
 
-      bar.negVP.mtInputSubscription(JTYPE_BUTTON,
+      bar.negVP.mtSubscribeInput(JTYPE_BUTTON,
          function(Viewport, Msg)
             repeat
                if (Msg.type == JET_LMB) then
@@ -235,7 +252,7 @@ gui.scrollbar = function(Options)
             until Msg == nil
          end)
 
-      bar.posVP.mtInputSubscription(JTYPE_BUTTON,
+      bar.posVP.mtSubscribeInput(JTYPE_BUTTON,
          function(Viewport, Msg)
             repeat
                if (Msg.type == JET_LMB) then
@@ -255,8 +272,6 @@ gui.scrollbar = function(Options)
 
       return bar
    end
-
-   -- Move the position of the page by (x,y).  Movement conforms to view restrictions.
 
    self.scrollPage = function(DeltaX, DeltaY)
       local current_x = lPage.x
@@ -283,8 +298,6 @@ gui.scrollbar = function(Options)
       end
    end
 
-   -- The client can set a fixed width page mode, ideal for things like documents and column views
-
    self.setFixedPageSize = function(Width, Height)
       lPageMode = 'fixed'
       if (Width != lPage.width) or (Height != lPage.height) then
@@ -293,16 +306,18 @@ gui.scrollbar = function(Options)
       end
    end
 
-   -- In dynamic page mode, a nominal width declares the length of the longest item.  The page width is
-   -- automatically sized to the view's width in this mode, while height behaves normally.  Setting a
-   -- minimum width is optional.  It should be noted that this feature is not compatible with horizontal
-   -- scrolling.
-
    self.setDynamicPageSize = function(NominalWidth, MinWidth, Height)
       lPageMode = 'dynamic'
       lMinWidth = nz(MinWidth, 0)
-      if (NominalWidth < MinWidth) then NominalWidth = MinWidth end
-      if (NominalWidth != lView.width) or (Height != lPage.height) then
+
+      if (NominalWidth < MinWidth) then
+         NominalWidth = MinWidth
+      end
+
+      if (NominalWidth >= lView.width) then
+         lPage.width  = NominalWidth
+         lPage.height = Height
+      else
          lPage.width  = '100%'
          lPage.height = Height
       end
@@ -330,48 +345,44 @@ gui.scrollbar = function(Options)
 
       -- The slider and possibly the page need to be repositioned whenever the view is resized.
 
-      lView.feedbackMask = FM_PATH_CHANGED
-      lView.feedback = function(Viewport, Event)
-         if (Event == FM_PATH_CHANGED) then
-            local px = lPage.x
-            local py = lPage.y
-            local pw = lPage.width
+      lView.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+         local px = lPage.x
+         local py = lPage.y
+         local pw = lPage.width
 
-            if (lPageMode == 'dynamic') then
-               local nw = lMinWidth
-               if (nw < lView.width) then -- Maximise page width in dynamic mode
-                  if (px != 0) then
-                     px = 0
-                     lPage.x = 0
-                  end
-                  nw = lView.width
+         if (lPageMode == 'dynamic') then
+            local nw = lMinWidth
+            if (nw < lView.width) then -- Maximise page width in dynamic mode
+               if (px != 0) then
+                  px = 0
+                  lPage.x = 0
                end
-               if (pw != nw) then
-                  lPage.width = nw
-                  pw = nw
-               end
+               nw = lView.width
             end
-
-            if (px + pw < lView.width) then
-               local x = lView.width - pw
-               if (x > 0) then x = 0 end
-               if (px != x) then lPage.x = x end
+            if (pw != nw) then
+               lPage.width = nw
+               pw = nw
             end
-
-            if (py + lPage.height < lView.height) then
-               local y = lView.height - lPage.height
-               if (y > 0) then y = 0 end
-               if (py != y) then lPage.y = y end
-            end
-
-            recalcSlidersFromView()
          end
-      end
 
-      lPage.feedbackMask = FM_PATH_CHANGED
-      lPage.feedback = function(Viewport, Event)
+         if (px + pw < lView.width) then
+            local x = lView.width - pw
+            if (x > 0) then x = 0 end
+            if (px != x) then lPage.x = x end
+         end
+
+         if (py + lPage.height < lView.height) then
+            local y = lView.height - lPage.height
+            if (y > 0) then y = 0 end
+            if (py != y) then lPage.y = y end
+         end
+
          recalcSlidersFromView()
-      end
+      end)
+
+      lPage.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+         recalcSlidersFromView()
+      end)
    end,
    function(Exception)
       error('Failed to initialise Scrollbar: ' .. Exception.message)

@@ -600,7 +600,6 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
    LONG   DashTotal; \
    LONG   Visibility; \
    LONG   Flags; \
-   LONG   FeedbackMask; \
    LONG   Cursor;
   
 // Vector class definition
@@ -625,7 +624,6 @@ typedef struct rkVector {
    LONG      DashTotal;             // The total number of values in the DashArray.
    LONG      Visibility;            // Controls the visibility of a vector and its children.
    LONG      Flags;                 // Optional flags.
-   LONG      FeedbackMask;          // Mask for choosing feedback events
    LONG      Cursor;                // The mouse cursor to display when the pointer is within the vector's boundary.
 
 #ifdef PRV_VECTOR
@@ -639,18 +637,20 @@ typedef struct rkVector {
 #define MT_VecTracePath -2
 #define MT_VecGetBoundary -3
 #define MT_VecPointInPath -4
-#define MT_VecInputSubscription -5
-#define MT_VecKeyboardSubscription -6
-#define MT_VecDebug -7
-#define MT_VecNewMatrix -8
-#define MT_VecFreeMatrix -9
+#define MT_VecSubscribeInput -5
+#define MT_VecSubscribeKeyboard -6
+#define MT_VecSubscribeFeedback -7
+#define MT_VecDebug -8
+#define MT_VecNewMatrix -9
+#define MT_VecFreeMatrix -10
 
 struct vecPush { LONG Position;  };
 struct vecTracePath { FUNCTION * Callback;  };
 struct vecGetBoundary { LONG Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
 struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
-struct vecInputSubscription { LONG Mask; FUNCTION * Callback;  };
-struct vecKeyboardSubscription { FUNCTION * Callback;  };
+struct vecSubscribeInput { LONG Mask; FUNCTION * Callback;  };
+struct vecSubscribeKeyboard { FUNCTION * Callback;  };
+struct vecSubscribeFeedback { LONG Mask; FUNCTION * Callback;  };
 struct vecNewMatrix { struct VectorMatrix * Transform;  };
 struct vecFreeMatrix { struct VectorMatrix * Matrix;  };
 
@@ -679,14 +679,19 @@ INLINE ERROR vecPointInPath(APTR Ob, DOUBLE X, DOUBLE Y) {
    return(Action(MT_VecPointInPath, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR vecInputSubscription(APTR Ob, LONG Mask, FUNCTION * Callback) {
-   struct vecInputSubscription args = { Mask, Callback };
-   return(Action(MT_VecInputSubscription, (OBJECTPTR)Ob, &args));
+INLINE ERROR vecSubscribeInput(APTR Ob, LONG Mask, FUNCTION * Callback) {
+   struct vecSubscribeInput args = { Mask, Callback };
+   return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR vecKeyboardSubscription(APTR Ob, FUNCTION * Callback) {
-   struct vecKeyboardSubscription args = { Callback };
-   return(Action(MT_VecKeyboardSubscription, (OBJECTPTR)Ob, &args));
+INLINE ERROR vecSubscribeKeyboard(APTR Ob, FUNCTION * Callback) {
+   struct vecSubscribeKeyboard args = { Callback };
+   return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR vecSubscribeFeedback(APTR Ob, LONG Mask, FUNCTION * Callback) {
+   struct vecSubscribeFeedback args = { Mask, Callback };
+   return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
 }
 
 #define vecDebug(obj) Action(MT_VecDebug,(obj),0)

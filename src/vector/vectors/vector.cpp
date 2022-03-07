@@ -111,8 +111,14 @@ static ERROR VECTOR_ActionNotify(objVector *Self, struct acActionNotify *Args)
       if ((Self->ClipMask) and (Args->ObjectID IS Self->ClipMask->Head.UID)) Self->ClipMask = NULL;
       else if ((Self->Morph) and (Args->ObjectID IS Self->Morph->Head.UID)) Self->Morph = NULL;
       else if ((Self->Transition) and (Args->ObjectID IS Self->Transition->Head.UID)) Self->Transition = NULL;
-      else if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UID IS Args->ObjectID)) {
-         Self->Feedback.Type = CALL_NONE;
+      else if (Self->FeedbackSubscriptions) {
+         for (auto it=Self->FeedbackSubscriptions->begin(); it != Self->FeedbackSubscriptions->end(); ) {
+            auto &sub = *it;
+            if ((sub.Callback.Type IS CALL_SCRIPT) and (sub.Callback.Script.Script->UID IS Args->ObjectID)) {
+               it = Self->FeedbackSubscriptions->erase(it);
+            }
+            else it++;
+         }
       }
    }
    else return ERR_NoSupport;
@@ -255,11 +261,12 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
       }
    }
 
-   delete Self->BasePath;     Self->BasePath = NULL;
+   delete Self->BasePath;     Self->BasePath     = NULL;
    delete Self->StrokeRaster; Self->StrokeRaster = NULL;
-   delete Self->FillRaster;   Self->FillRaster = NULL;
-   delete Self->InputSubscriptions; Self->InputSubscriptions = NULL;
+   delete Self->FillRaster;   Self->FillRaster   = NULL;
+   delete Self->InputSubscriptions;    Self->InputSubscriptions    = NULL;
    delete Self->KeyboardSubscriptions; Self->KeyboardSubscriptions = NULL;
+   delete Self->FeedbackSubscriptions; Self->FeedbackSubscriptions = NULL;
 
    return ERR_Okay;
 }
@@ -449,124 +456,6 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
       SetString(Self, FID_Filter, Self->FilterString);
    }
 
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-InputSubscription: Create a subscription for input events that relate to the vector.
-
-The InputSubscription method is provided as an extension to gfxSubscribeInput(), whereby the user's input events
-will be filtered down to those that occur within the vector's graphics area only.  The original events are
-transferred as-is, although the `ENTERED_SURFACE` and `LEFT_SURFACE` events are modified so that they trigger during
-passage through the vector boundaries.
-
-It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
-
-To remove an existing subscription, call this method again with the same Callback and an empty Mask.
-Alternatively have the function return `ERR_Terminate`.
-
-Please refer to gfxSubscribeInput() for further information on event management and message handling.
-
-The synopsis for the Callback is:
-
-```
-ERROR callback(*Vector, *InputEvent)
-```
-
--INPUT-
-int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.
-ptr(func) Callback: Reference to a callback function that will receive input messages.
-
--ERRORS-
-Okay:
-NullArgs:
-FieldNotSet: The VectorScene has no reference to a Surface.
-AllocMemory:
-Function: A call to gfxSubscribeInput() failed.
-
-*********************************************************************************************************************/
-
-static ERROR VECTOR_InputSubscription(objVector *Self, struct vecInputSubscription *Args)
-{
-   parasol::Log log;
-
-   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
-
-   if (Args->Mask) {
-      if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return log.warning(ERR_FieldNotSet);
-
-      if (!Self->InputSubscriptions) {
-         Self->InputSubscriptions = new (std::nothrow) std::vector<InputSubscription>;
-         if (!Self->InputSubscriptions) return log.warning(ERR_AllocMemory);
-      }
-
-      LONG mask = Args->Mask;
-      if (mask & JTYPE_FEEDBACK) mask |= JTYPE_MOVEMENT;
-
-      Self->InputMask |= mask;
-      Self->Scene->InputSubscriptions[Self] = Self->InputMask;
-      Self->InputSubscriptions->emplace_back(*Args->Callback, mask);
-   }
-   else if (Self->InputSubscriptions) { // Remove existing subscriptions for this callback
-      for (auto it=Self->InputSubscriptions->begin(); it != Self->InputSubscriptions->end(); ) {
-         if (*Args->Callback IS it->Callback) it = Self->InputSubscriptions->erase(it);
-         else it++;
-      }
-
-      if (Self->InputSubscriptions->empty()) {
-         if (Self->Scene) Self->Scene->InputSubscriptions.erase(Self);
-      }
-   }
-
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-KeyboardSubscription: Create a subscription for input events that relate to the vector.
-
-The KeyboardSubscription method is provided to simplify the handling of keyboard messages for the client.  It is a
-pre-requisite that the associated @VectorScene has been linked to a @Surface.
-
-A callback is required and this will receive input messages as they arrive from the user.  The prototype for the
-callback is as follows, whereby Flags are keyboard qualifiers `KQ` and the Value will be a `K` constant.
-
-```
-ERROR callback(*Viewport, LONG Flags, LONG Value);
-```
-
-To remove the subscription, the function can return `ERR_Terminate`.
-
--INPUT-
-ptr(func) Callback: Reference to a callback function that will receive input messages.
-
--ERRORS-
-Okay:
-NullArgs:
-FieldNotSet: The VectorScene has no reference to a Surface.
-AllocMemory:
-Function: A call to gfxSubscribeInput() failed.
-
-*********************************************************************************************************************/
-
-static ERROR VECTOR_KeyboardSubscription(objVector *Self, struct vecKeyboardSubscription *Args)
-{
-   parasol::Log log;
-
-   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
-
-   if (!Self->Scene->SurfaceID) return log.warning(ERR_FieldNotSet);
-
-   if (!Self->KeyboardSubscriptions) {
-      Self->KeyboardSubscriptions = new (std::nothrow) std::vector<KeyboardSubscription>;
-      if (!Self->KeyboardSubscriptions) return log.warning(ERR_AllocMemory);
-   }
-
-   Self->Scene->KeyboardSubscriptions.emplace(Self);
-   Self->KeyboardSubscriptions->emplace_back(*Args->Callback);
    return ERR_Okay;
 }
 
@@ -849,6 +738,174 @@ static ERROR VECTOR_Show(objVector *Self, APTR Void)
 /*********************************************************************************************************************
 
 -METHOD-
+SubscribeFeedback: Create a subscription for internal events that have modified the vector.
+
+To receive feedback for events that have modified a vector's attributes, use this method to create a subscription.
+
+To remove an existing subscription, call this method again with the same Callback and an empty Mask.
+Alternatively have the callback function return `ERR_Terminate`.
+
+The synopsis for the Callback is:
+
+```
+ERROR callback(*Vector, LONG Event)
+```
+
+-INPUT-
+int(FM) Mask: Combine FM flags to define the feedback events required by the client.  Set to 0xffffffff if all messages are desirable.
+ptr(func) Callback: The function that will receive feedback events.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+****************************************************************************/
+
+static ERROR VECTOR_SubscribeFeedback(objVector *Self, struct vecSubscribeFeedback *Args)
+{
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+
+   if (Args->Mask) {
+      if (!Self->FeedbackSubscriptions) {
+         Self->FeedbackSubscriptions = new (std::nothrow) std::vector<FeedbackSubscription>;
+         if (!Self->FeedbackSubscriptions) return log.warning(ERR_AllocMemory);
+      }
+
+      Self->FeedbackSubscriptions->emplace_back(*Args->Callback, Args->Mask);
+   }
+   else if (Self->FeedbackSubscriptions) { // Remove existing subscriptions for this callback
+      for (auto it=Self->FeedbackSubscriptions->begin(); it != Self->FeedbackSubscriptions->end(); ) {
+         if (*Args->Callback IS it->Callback) it = Self->FeedbackSubscriptions->erase(it);
+         else it++;
+      }
+   }
+
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+SubscribeInput: Create a subscription for input events that relate to the vector.
+
+The SubscribeInput method is provided as an extension to gfxSubscribeInput(), whereby the user's input events
+will be restricted to those within the vector's scene graph.  The original events are transferred as-is, although the
+`ENTERED_SURFACE` and `LEFT_SURFACE` events are modified so that they trigger during passage through the scene's
+boundaries.
+
+It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
+
+To remove an existing subscription, call this method again with the same Callback and an empty Mask.
+Alternatively have the function return `ERR_Terminate`.
+
+Please refer to gfxSubscribeInput() for further information on event management and message handling.
+
+The synopsis for the Callback is:
+
+```
+ERROR callback(*Vector, *InputEvent)
+```
+
+-INPUT-
+int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.
+ptr(func) Callback: Reference to a callback function that will receive input messages.
+
+-ERRORS-
+Okay:
+NullArgs:
+FieldNotSet: The VectorScene has no reference to a Surface.
+AllocMemory:
+Function: A call to gfxSubscribeInput() failed.
+
+*********************************************************************************************************************/
+
+static ERROR VECTOR_SubscribeInput(objVector *Self, struct vecSubscribeInput *Args)
+{
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+
+   if (Args->Mask) {
+      if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return log.warning(ERR_FieldNotSet);
+
+      if (!Self->InputSubscriptions) {
+         Self->InputSubscriptions = new (std::nothrow) std::vector<InputSubscription>;
+         if (!Self->InputSubscriptions) return log.warning(ERR_AllocMemory);
+      }
+
+      LONG mask = Args->Mask;
+      if (mask & JTYPE_FEEDBACK) mask |= JTYPE_MOVEMENT;
+
+      Self->InputMask |= mask;
+      Self->Scene->InputSubscriptions[Self] = Self->InputMask;
+      Self->InputSubscriptions->emplace_back(*Args->Callback, mask);
+   }
+   else if (Self->InputSubscriptions) { // Remove existing subscriptions for this callback
+      for (auto it=Self->InputSubscriptions->begin(); it != Self->InputSubscriptions->end(); ) {
+         if (*Args->Callback IS it->Callback) it = Self->InputSubscriptions->erase(it);
+         else it++;
+      }
+
+      if (Self->InputSubscriptions->empty()) {
+         if (Self->Scene) Self->Scene->InputSubscriptions.erase(Self);
+      }
+   }
+
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+SubscribeKeyboard: Create a subscription for input events that relate to the vector.
+
+The SubscribeKeyboard method is provided to simplify the handling of keyboard messages for the client.  It is a
+pre-requisite that the associated @VectorScene has been linked to a @Surface.
+
+A callback is required and this will receive input messages as they arrive from the user.  The prototype for the
+callback is as follows, whereby Flags are keyboard qualifiers `KQ` and the Value will be a `K` constant.
+
+```
+ERROR callback(*Viewport, LONG Flags, LONG Value);
+```
+
+To remove the subscription, the function can return `ERR_Terminate`.
+
+-INPUT-
+ptr(func) Callback: Reference to a callback function that will receive input messages.
+
+-ERRORS-
+Okay:
+NullArgs:
+FieldNotSet: The VectorScene has no reference to a Surface.
+AllocMemory:
+Function: A call to gfxSubscribeInput() failed.
+
+*********************************************************************************************************************/
+
+static ERROR VECTOR_SubscribeKeyboard(objVector *Self, struct vecSubscribeKeyboard *Args)
+{
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+
+   if (!Self->Scene->SurfaceID) return log.warning(ERR_FieldNotSet);
+
+   if (!Self->KeyboardSubscriptions) {
+      Self->KeyboardSubscriptions = new (std::nothrow) std::vector<KeyboardSubscription>;
+      if (!Self->KeyboardSubscriptions) return log.warning(ERR_AllocMemory);
+   }
+
+   Self->Scene->KeyboardSubscriptions.emplace(Self);
+   Self->KeyboardSubscriptions->emplace_back(*Args->Callback);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
 TracePath: Returns the coordinates for a vector path, using callbacks.
 
 Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path for
@@ -1065,37 +1122,6 @@ static ERROR VECTOR_SET_EnableBkgd(objVector *Self, LONG Value)
 {
    if (Value) Self->EnableBkgd = TRUE;
    else Self->EnableBkgd = FALSE;
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-Feedback: Receiver for events originating from the vector.
-
-Set the Feedback field with a callback function to receive events from the vector.  Events are chosen in conjunction
-with the #FeedbackMask field value. The function prototype is `routine(*Vector, LONG Event)` where Event matches a
-FeedbackMask value.
-
-*********************************************************************************************************************/
-
-static ERROR VECTOR_GET_Feedback(objVector *Self, FUNCTION **Value)
-{
-   if (Self->Feedback.Type != CALL_NONE) {
-      *Value = &Self->Feedback;
-      return ERR_Okay;
-   }
-   else return ERR_FieldNotSet;
-}
-
-static ERROR VECTOR_SET_Feedback(objVector *Self, FUNCTION *Value)
-{
-   if (Value) {
-      if (Self->Feedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
-      Self->Feedback = *Value;
-      if (Self->Feedback.Type IS CALL_SCRIPT) SubscribeAction(Self->Feedback.Script.Script, AC_Free);
-   }
-   else Self->Feedback.Type = CALL_NONE;
    return ERR_Okay;
 }
 
@@ -1982,28 +2008,34 @@ Visibility: Controls the visibility of a vector and its children.
 static void send_feedback(objVector *Vector, LONG Event)
 {
    if (!(Vector->Head.Flags & NF_INITIALISED)) return;
-   if (!Vector->Feedback.Type) return;
+   if (!Vector->FeedbackSubscriptions) return;
 
-   if (Event & Vector->FeedbackMask) {
-      Vector->FeedbackMask &= ~Event; // Turned off to prevent recursion
+   for (auto it=Vector->FeedbackSubscriptions->begin(); it != Vector->FeedbackSubscriptions->end(); ) {
+      ERROR result;
+      auto &sub = *it;
+      if (sub.Mask & Event) {
+         sub.Mask &= ~Event; // Turned off to prevent recursion
 
-      if (Vector->Feedback.Type IS CALL_STDC) {
-         parasol::SwitchContext context(Vector->Feedback.StdC.Context);
-         auto routine = (void (*)(objVector *, LONG))Vector->Feedback.StdC.Routine;
-         routine(Vector, Event);
-      }
-      else if (Vector->Feedback.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = Vector->Feedback.Script.Script)) {
-            const ScriptArg args[] = {
-               { "Vector", FD_OBJECTPTR, { .Address = Vector } },
-               { "Event", FD_LONG, { .Long = Event } }
-            };
-            scCallback(script, Vector->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         if (sub.Callback.Type IS CALL_STDC) {
+            parasol::SwitchContext ctx(sub.Callback.StdC.Context);
+            auto callback = (ERROR (*)(objVector *, LONG))sub.Callback.StdC.Routine;
+            result = callback(Vector, Event);
          }
-      }
+         else if (sub.Callback.Type IS CALL_SCRIPT) {
+            // In this implementation the script function will receive all the events chained via the Next field
+            ScriptArg args[] = {
+               { "Vector", FDF_OBJECT, { .Address = Vector } },
+               { "Event",  FDF_LONG,   { .Long = Event } }
+            };
+            scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+         }
 
-      Vector->FeedbackMask |= Event;
+         sub.Mask |= Event;
+
+         if (result IS ERR_Terminate) Vector->FeedbackSubscriptions->erase(it);
+         else it++;
+      }
+      else it++;
    }
 }
 
@@ -2105,12 +2137,10 @@ static const FieldArray clVectorFields[] = {
    { "DashTotal",        FDF_LONG|FDF_R,               0, NULL, NULL },
    { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorVisibility, NULL, NULL },
    { "Flags",            FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clVectorFlags, NULL, NULL },
-   { "FeedbackMask",     FDF_LONGFLAGS|FDF_RW,         (MAXINT)&clVectorFeedbackMask, NULL, NULL },
    { "Cursor",           FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorCursor, NULL, (APTR)VECTOR_SET_Cursor },
    // Virtual fields
    { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },
-   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,     0, (APTR)VECTOR_GET_Feedback, (APTR)VECTOR_SET_Feedback },
    { "Mask",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Mask, (APTR)VECTOR_SET_Mask },
    { "Morph",        FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Morph, (APTR)VECTOR_SET_Morph },
    { "MorphFlags",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clMorphFlags, (APTR)VECTOR_GET_MorphFlags, (APTR)VECTOR_SET_MorphFlags },

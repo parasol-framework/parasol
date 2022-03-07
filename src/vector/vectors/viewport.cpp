@@ -118,7 +118,7 @@ static ERROR VECTORVIEWPORT_Free(objVectorViewport *Self, APTR Void)
 
    if (Self->vpDragCallback.Type) {
       auto callback = make_function_stdc(drag_callback);
-      vecInputSubscription(Self, 0, &callback);
+      vecSubscribeInput(Self, 0, &callback);
    }
 
    return ERR_Okay;
@@ -333,7 +333,7 @@ static ERROR VIEW_SET_DragCallback(objVectorViewport *Self, FUNCTION *Value)
          return log.warning(ERR_FieldNotSet);
       }
 
-      if (vecInputSubscription(Self, JTYPE_MOVEMENT|JTYPE_BUTTON, &callback)) {
+      if (vecSubscribeInput(Self, JTYPE_MOVEMENT|JTYPE_BUTTON, &callback)) {
          return ERR_Failed;
       }
 
@@ -343,7 +343,7 @@ static ERROR VIEW_SET_DragCallback(objVectorViewport *Self, FUNCTION *Value)
    }
    else {
       Self->vpDragCallback.Type = CALL_NONE;
-      vecInputSubscription(Self, 0, &callback);
+      vecSubscribeInput(Self, 0, &callback);
    }
    return ERR_Okay;
 }
@@ -365,8 +365,8 @@ static ERROR VIEW_GET_Height(objVectorViewport *Self, Variable *Value)
 
    if (Self->vpDimensions & DMF_FIXED_HEIGHT) { // Working with a fixed dimension
       if (Value->Type & FD_PERCENTAGE) {
-         if (Self->ParentView) val = Self->vpFixedHeight * Self->ParentView->vpFixedHeight * 0.01;
-         else val = Self->vpFixedHeight * Self->Scene->PageHeight * 0.01;
+         if (Self->ParentView) val = Self->vpFixedHeight * Self->ParentView->vpFixedHeight;
+         else val = Self->vpFixedHeight * Self->Scene->PageHeight;
       }
       else val = Self->vpTargetHeight;
    }
@@ -375,29 +375,18 @@ static ERROR VIEW_GET_Height(objVectorViewport *Self, Variable *Value)
       else if (Self->ParentView) val = Self->vpTargetHeight * Self->ParentView->vpFixedHeight;
       else val = Self->vpTargetHeight * Self->Scene->PageHeight;
    }
-   else if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) {
+   else if (Self->vpDimensions & (DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET)) {
       DOUBLE y, parent_height;
       if (Self->vpDimensions & DMF_RELATIVE_Y) {
-         y = (DOUBLE)Self->vpTargetY * (DOUBLE)Self->ParentView->vpFixedHeight * 0.01;
+         y = Self->vpTargetY * Self->ParentView->vpFixedHeight;
       }
       else y = Self->vpTargetY;
 
       if (Self->ParentView) GetDouble(Self->ParentView, FID_Height, &parent_height);
       else parent_height = Self->Scene->PageHeight;
 
-      val = parent_height - Self->vpTargetYO - y;
-   }
-   else if (Self->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
-      DOUBLE y, parent_height;
-      if (Self->vpDimensions & DMF_RELATIVE_Y) {
-         y = (DOUBLE)Self->vpTargetY * (DOUBLE)Self->ParentView->vpFixedHeight * 0.01;
-      }
-      else y = Self->vpTargetY;
-
-      if (Self->ParentView) GetDouble(Self->ParentView, FID_Height, &parent_height);
-      else parent_height = Self->Scene->PageHeight;
-
-      val = parent_height - (Self->vpTargetYO * parent_height * 0.01) - y;
+      if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) val = parent_height - Self->vpTargetYO - y;
+      else val = parent_height - (Self->vpTargetYO * parent_height) - y;
    }
    else { // If no height set by the client, the full height is inherited from the parent
       if (Self->ParentView) return GetVariable(Self->ParentView, FID_Height, Value);
@@ -617,8 +606,8 @@ static ERROR VIEW_GET_Width(objVectorViewport *Self, Variable *Value)
 
    if (Self->vpDimensions & DMF_FIXED_WIDTH) { // Working with a fixed dimension
       if (Value->Type & FD_PERCENTAGE) {
-         if (Self->ParentView) val = Self->vpFixedWidth * Self->ParentView->vpFixedWidth * 0.01;
-         else val = Self->vpFixedWidth * Self->Scene->PageWidth * 0.01;
+         if (Self->ParentView) val = Self->vpFixedWidth * Self->ParentView->vpFixedWidth;
+         else val = Self->vpFixedWidth * Self->Scene->PageWidth;
       }
       else val = Self->vpTargetWidth;
    }
@@ -627,29 +616,18 @@ static ERROR VIEW_GET_Width(objVectorViewport *Self, Variable *Value)
       else if (Self->ParentView) val = Self->vpTargetWidth * Self->ParentView->vpFixedWidth;
       else val = Self->vpTargetWidth * Self->Scene->PageWidth;
    }
-   else if (Self->vpDimensions & DMF_FIXED_X_OFFSET) {
+   else if (Self->vpDimensions & (DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET)) {
       DOUBLE x, parent_width;
       if (Self->vpDimensions & DMF_RELATIVE_X) {
-         x = (DOUBLE)Self->vpTargetX * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01;
+         x = Self->vpTargetX * Self->ParentView->vpFixedWidth;
       }
       else x = Self->vpTargetX;
 
       if (Self->ParentView) GetDouble(Self->ParentView, FID_Width, &parent_width);
       else parent_width = Self->Scene->PageWidth;
 
-      val = parent_width - Self->vpTargetXO - x;
-   }
-   else if (Self->vpDimensions & DMF_RELATIVE_X_OFFSET) {
-      DOUBLE x, parent_width;
-      if (Self->vpDimensions & DMF_RELATIVE_X) {
-         x = (DOUBLE)Self->vpTargetX * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01;
-      }
-      else x = Self->vpTargetX;
-
-      if (Self->ParentView) GetDouble(Self->ParentView, FID_Width, &parent_width);
-      else parent_width = Self->Scene->PageWidth;
-
-      val = parent_width - (Self->vpTargetXO * parent_width * 0.01) - x;
+      if (Self->vpDimensions & DMF_FIXED_X_OFFSET) val = parent_width - Self->vpTargetXO - x;
+      else val = parent_width - (Self->vpTargetXO * parent_width) - x;
    }
    else { // If no width set by the client, the full width is inherited from the parent
       if (Self->ParentView) return GetVariable(Self->ParentView, FID_Width, Value);
@@ -701,17 +679,17 @@ static ERROR VIEW_GET_X(objVectorViewport *Self, Variable *Value)
 
    if (Self->vpDimensions & DMF_FIXED_X) value = Self->vpTargetX;
    else if (Self->vpDimensions & DMF_RELATIVE_X) {
-      value = (DOUBLE)Self->vpTargetX * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01;
+      value = Self->vpTargetX * Self->ParentView->vpFixedWidth;
    }
    else if ((Self->vpDimensions & DMF_WIDTH) and (Self->vpDimensions & DMF_X_OFFSET)) {
       if (Self->vpDimensions & DMF_FIXED_WIDTH) width = Self->vpTargetWidth;
-      else width = (DOUBLE)Self->ParentView->vpFixedWidth * (DOUBLE)Self->vpTargetWidth * 0.01;
+      else width = Self->ParentView->vpFixedWidth * Self->vpTargetWidth;
       if (Self->vpDimensions & DMF_FIXED_X_OFFSET) value = Self->ParentView->vpFixedWidth - width - Self->vpTargetXO;
-      else value = (DOUBLE)Self->ParentView->vpFixedWidth - (DOUBLE)width - ((DOUBLE)Self->ParentView->vpFixedWidth * (DOUBLE)Self->vpTargetXO * 0.01);
+      else value = Self->ParentView->vpFixedWidth - width - (Self->ParentView->vpFixedWidth * Self->vpTargetXO);
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentView->vpFixedWidth;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / Self->ParentView->vpFixedWidth;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -764,18 +742,18 @@ static ERROR VIEW_GET_XOffset(objVectorViewport *Self, Variable *Value)
 
    if (Self->vpDimensions & DMF_FIXED_X_OFFSET) value = Self->vpTargetXO;
    else if (Self->vpDimensions & DMF_RELATIVE_X_OFFSET) {
-      value = (DOUBLE)Self->vpTargetXO * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01;
+      value = Self->vpTargetXO * Self->ParentView->vpFixedWidth;
    }
    else if ((Self->vpDimensions & DMF_X) and (Self->vpDimensions & DMF_WIDTH)) {
       if (Self->vpDimensions & DMF_FIXED_WIDTH) width = Self->vpTargetWidth;
-      else width = (DOUBLE)Self->ParentView->vpFixedWidth * (DOUBLE)Self->vpTargetWidth * 0.01;
+      else width = Self->ParentView->vpFixedWidth * Self->vpTargetWidth;
 
       if (Self->vpDimensions & DMF_FIXED_X) value = Self->ParentView->vpFixedWidth - (Self->vpTargetX + width);
-      else value = (DOUBLE)Self->ParentView->vpFixedWidth - (((DOUBLE)Self->vpTargetX * (DOUBLE)Self->ParentView->vpFixedWidth * 0.01) + (DOUBLE)width);
+      else value = Self->ParentView->vpFixedWidth - ((Self->vpTargetX * Self->ParentView->vpFixedWidth) + width);
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentView->vpFixedWidth;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / Self->ParentView->vpFixedWidth;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -828,18 +806,18 @@ static ERROR VIEW_GET_Y(objVectorViewport *Self, Variable *Value)
 
    if (Self->vpDimensions & DMF_FIXED_Y) value = Self->vpTargetY;
    else if (Self->vpDimensions & DMF_RELATIVE_Y) {
-      value = (DOUBLE)Self->vpTargetY * (DOUBLE)Self->ParentView->vpFixedHeight * 0.01;
+      value = Self->vpTargetY * Self->ParentView->vpFixedHeight;
    }
    else if ((Self->vpDimensions & DMF_HEIGHT) and (Self->vpDimensions & DMF_Y_OFFSET)) {
       if (Self->vpDimensions & DMF_FIXED_HEIGHT) height = Self->vpTargetHeight;
-      else height = (DOUBLE)Self->ParentView->vpFixedHeight * (DOUBLE)Self->vpTargetHeight * 0.01;
+      else height = Self->ParentView->vpFixedHeight * Self->vpTargetHeight;
 
       if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) value = Self->ParentView->vpFixedHeight - height - Self->vpTargetYO;
-      else value = (DOUBLE)Self->ParentView->vpFixedHeight - height - ((DOUBLE)Self->ParentView->vpFixedHeight * (DOUBLE)Self->vpTargetYO * 0.01);
+      else value = Self->ParentView->vpFixedHeight - height - (Self->ParentView->vpFixedHeight * Self->vpTargetYO);
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / (DOUBLE)Self->ParentView->vpFixedHeight;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / Self->ParentView->vpFixedHeight;
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
    else {
@@ -891,18 +869,18 @@ static ERROR VIEW_GET_YOffset(objVectorViewport *Self, Variable *Value)
 
    if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) value = Self->vpTargetYO;
    else if (Self->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
-      value = (DOUBLE)Self->vpTargetYO * (DOUBLE)Self->ParentView->vpFixedHeight * 0.01;
+      value = Self->vpTargetYO * Self->ParentView->vpFixedHeight;
    }
    else if ((Self->vpDimensions & DMF_Y) and (Self->vpDimensions & DMF_HEIGHT)) {
       if (Self->vpDimensions & DMF_FIXED_HEIGHT) height = Self->vpTargetHeight;
-      else height = (DOUBLE)Self->ParentView->vpFixedHeight * (DOUBLE)Self->vpTargetHeight * 0.01;
+      else height = Self->ParentView->vpFixedHeight * Self->vpTargetHeight;
 
       if (Self->vpDimensions & DMF_FIXED_Y) value = Self->ParentView->vpFixedHeight - (Self->vpTargetY + height);
-      else value = (DOUBLE)Self->ParentView->vpFixedHeight - (((DOUBLE)Self->vpTargetY * (DOUBLE)Self->ParentView->vpFixedHeight * 0.01) + (DOUBLE)height);
+      else value = Self->ParentView->vpFixedHeight - ((Self->vpTargetY * Self->ParentView->vpFixedHeight) + height);
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentView->vpFixedHeight;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / Self->ParentView->vpFixedHeight;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);

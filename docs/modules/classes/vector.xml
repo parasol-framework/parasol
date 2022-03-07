@@ -118,55 +118,6 @@
     </method>
 
     <method>
-      <name>InputSubscription</name>
-      <comment>Create a subscription for input events that relate to the vector.</comment>
-      <prototype>ERROR vecInputSubscription(OBJECTPTR Object, LONG Mask, FUNCTION * Callback)</prototype>
-      <input>
-        <param type="LONG" name="Mask">Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.</param>
-        <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
-      </input>
-      <description>
-<p>The InputSubscription method is provided as an extension to gfxSubscribeInput(), whereby the user's input events will be filtered down to those that occur within the vector's graphics area only.  The original events are transferred as-is, although the <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> events are modified so that they trigger during passage through the vector boundaries.</p>
-<p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
-<p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the function return <code>ERR_Terminate</code>.</p>
-<p>Please refer to gfxSubscribeInput() for further information on event management and message handling.</p>
-<p>The synopsis for the Callback is:</p>
-<p>
-<code/><code> ERROR callback(*Vector, *InputEvent) </code><code/></p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Function">A call to gfxSubscribeInput() failed.</error>
-      </result>
-    </method>
-
-    <method>
-      <name>KeyboardSubscription</name>
-      <comment>Create a subscription for input events that relate to the vector.</comment>
-      <prototype>ERROR vecKeyboardSubscription(OBJECTPTR Object, FUNCTION * Callback)</prototype>
-      <input>
-        <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
-      </input>
-      <description>
-<p>The KeyboardSubscription method is provided to simplify the handling of keyboard messages for the client.  It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
-<p>A callback is required and this will receive input messages as they arrive from the user.  The prototype for the callback is as follows, whereby Flags are keyboard qualifiers <code>KQ</code> and the Value will be a <code>K</code> constant.</p>
-<p>
-<code/><code> ERROR callback(*Viewport, LONG Flags, LONG Value); </code><code/></p>
-<p>To remove the subscription, the function can return <code>ERR_Terminate</code>.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Function">A call to gfxSubscribeInput() failed.</error>
-      </result>
-    </method>
-
-    <method>
       <name>NewMatrix</name>
       <comment>Returns a VectorMatrix structure that allows transformations to be applied to the vector.</comment>
       <prototype>ERROR vecNewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform)</prototype>
@@ -218,6 +169,76 @@
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>SubscribeFeedback</name>
+      <comment>Create a subscription for internal events that have modified the vector.</comment>
+      <prototype>ERROR vecSubscribeFeedback(OBJECTPTR Object, LONG Mask, FUNCTION * Callback)</prototype>
+      <input>
+        <param type="LONG" name="Mask" lookup="FM">Combine FM flags to define the feedback events required by the client.  Set to 0xffffffff if all messages are desirable.</param>
+        <param type="FUNCTION *" name="Callback">The function that will receive feedback events.</param>
+      </input>
+      <description>
+<p>To receive feedback for events that have modified a vector's attributes, use this method to create a subscription.</p>
+<p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the callback function return <code>ERR_Terminate</code>.</p>
+<p>The synopsis for the Callback is:</p>
+<p>
+<code/><code> ERROR callback(*Vector, LONG Event) </code><code/></p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>SubscribeInput</name>
+      <comment>Create a subscription for input events that relate to the vector.</comment>
+      <prototype>ERROR vecSubscribeInput(OBJECTPTR Object, LONG Mask, FUNCTION * Callback)</prototype>
+      <input>
+        <param type="LONG" name="Mask">Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.</param>
+        <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
+      </input>
+      <description>
+<p>The SubscribeInput method is provided as an extension to gfxSubscribeInput(), whereby the user's input events will be restricted to those within the vector's scene graph.  The original events are transferred as-is, although the <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> events are modified so that they trigger during passage through the scene's boundaries.</p>
+<p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
+<p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the function return <code>ERR_Terminate</code>.</p>
+<p>Please refer to gfxSubscribeInput() for further information on event management and message handling.</p>
+<p>The synopsis for the Callback is:</p>
+<p>
+<code/><code> ERROR callback(*Vector, *InputEvent) </code><code/></p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Function">A call to gfxSubscribeInput() failed.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>SubscribeKeyboard</name>
+      <comment>Create a subscription for input events that relate to the vector.</comment>
+      <prototype>ERROR vecSubscribeKeyboard(OBJECTPTR Object, FUNCTION * Callback)</prototype>
+      <input>
+        <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
+      </input>
+      <description>
+<p>The SubscribeKeyboard method is provided to simplify the handling of keyboard messages for the client.  It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
+<p>A callback is required and this will receive input messages as they arrive from the user.  The prototype for the callback is as follows, whereby Flags are keyboard qualifiers <code>KQ</code> and the Value will be a <code>K</code> constant.</p>
+<p>
+<code/><code> ERROR callback(*Viewport, LONG Flags, LONG Value); </code><code/></p>
+<p>To remove the subscription, the function can return <code>ERR_Terminate</code>.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Function">A call to gfxSubscribeInput() failed.</error>
       </result>
     </method>
 
@@ -307,26 +328,6 @@
       <description>
 <p>The EnableBkgd option must be set to true if a section of the vector tree uses filters that have 'BackgroundImage' or 'BackgroundAlpha' as a source.  If it is not set, then filters using BackgroundImage and BackgroundAlpha references will not produce the expected behaviour.</p>
 <p>The EnableBkgd option can be enabled on Vector sub-classes <class name="VectorGroup">VectorGroup</class>, <class name="VectorPattern">VectorPattern</class> and <class name="VectorViewport">VectorViewport</class>.  All other sub-classes will ignore the option if used.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Feedback</name>
-      <comment>Receiver for events originating from the vector.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>FUNCTION</type>
-      <description>
-<p>Set the Feedback field with a callback function to receive events from the vector.  Events are chosen in conjunction with the <field>FeedbackMask</field> field value. The function prototype is <code>routine(*Vector, LONG Event)</code> where Event matches a FeedbackMask value.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>FeedbackMask</name>
-      <comment>Mask for choosing feedback events</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="FM">INT</type>
-      <description>
-<types lookup="FM"/>
       </description>
     </field>
 

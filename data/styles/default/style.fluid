@@ -371,7 +371,7 @@ glStyles = {
             end
          end
 
-         Viewport.mtKeyboardSubscription(function(Viewport, Qualifiers, Value, Unicode)
+         Viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
             if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
 
             if (Value == K_ENTER) or (Value == K_NP_ENTER) or (Value == K_SPACE) then
@@ -379,7 +379,7 @@ glStyles = {
             end
          end)
 
-         Viewport.mtInputSubscription(bit.bor(JTYPE_FEEDBACK, JTYPE_BUTTON, JTYPE_REPEATED),
+         Viewport.mtSubscribeInput(bit.bor(JTYPE_FEEDBACK, JTYPE_BUTTON, JTYPE_REPEATED),
             function(Viewport, Msg)
                local state = Viewport.state()
                repeat
@@ -571,7 +571,7 @@ glStyles = {
             end
          end
 
-         Viewport.mtKeyboardSubscription(function(Viewport, Qualifiers, Value, Unicode)
+         Viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
             if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
 
             if (Value == K_ENTER) or (Value == K_NP_ENTER) or (Value == K_SPACE) then
@@ -579,7 +579,7 @@ glStyles = {
             end
          end)
 
-         Viewport.mtInputSubscription(bit.bor(JTYPE_FEEDBACK, JTYPE_BUTTON),
+         Viewport.mtSubscribeInput(bit.bor(JTYPE_FEEDBACK, JTYPE_BUTTON),
             function(Viewport, Msg)
                local state = Viewport.state()
                repeat
@@ -819,7 +819,7 @@ glStyles = {
             end
          end, Combo)
 
-         Viewport.mtInputSubscription(JTYPE_BUTTON,
+         Viewport.mtSubscribeInput(JTYPE_BUTTON,
             function(Viewport, Msg)
                local state = Viewport.state()
                repeat
@@ -1049,7 +1049,7 @@ glStyles = {
             resizeTriggered(Input)
          end, Input)
 
-         Viewport.mtKeyboardSubscription(function(Viewport, Qualifiers, Value, Unicode)
+         Viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
             if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
 
             if (Value == K_ENTER) or (Value == K_TAB) or (Value == K_NP_ENTER) then
@@ -1057,7 +1057,7 @@ glStyles = {
             end
          end)
 
-         Viewport.mtInputSubscription(JTYPE_FEEDBACK,
+         Viewport.mtSubscribeInput(JTYPE_FEEDBACK,
             function(Viewport, Msg)
                local state = Viewport.state()
                repeat

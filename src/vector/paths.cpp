@@ -97,14 +97,14 @@ static void gen_vector_path(objVector *Vector)
 
       if (parent_view) {
          if (parent_view->vpViewWidth) parent_width = parent_view->vpViewWidth;
-         else if (!(parent_width = parent_view->vpFixedWidth)) {
-            // NB: It is perfectly legal, even if unlikely, that a viewport has a width/height of zero.
-            log.msg("Unable to determine width of the parent viewport #%d", parent_view->Head.UID);
-         }
+         else parent_width = parent_view->vpFixedWidth;
 
          if (parent_view->vpViewHeight) parent_height = parent_view->vpViewHeight;
-         else if (!(parent_height = parent_view->vpFixedHeight)) {
-            log.msg("Unable to determine height of the parent viewport #%d", parent_view->Head.UID);
+         else parent_height = parent_view->vpFixedHeight;
+
+         if ((!parent_width) or (!parent_height)) {
+            // NB: It is perfectly legal, even if unlikely, that a viewport has a width/height of zero.
+            log.msg("Size of parent viewport #%d is %.2fx%.2f, dimensions $%.8x", parent_view->Head.UID, parent_view->vpFixedWidth, parent_view->vpFixedHeight, parent_view->vpDimensions);
          }
 
          parent_id = parent_view->Head.UID;

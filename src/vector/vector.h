@@ -16,6 +16,13 @@ public:
    InputSubscription(FUNCTION pCallback, LONG pMask) : Callback(pCallback), Mask(pMask) { }
 };
 
+class FeedbackSubscription {
+public:
+   FUNCTION Callback;
+   LONG Mask;
+   FeedbackSubscription(FUNCTION pCallback, LONG pMask) : Callback(pCallback), Mask(pMask) { }
+};
+
 class KeyboardSubscription {
 public:
    FUNCTION Callback;
@@ -27,7 +34,6 @@ public:
 #define SHAPE_PRIVATE \
    DOUBLE FinalX, FinalY; \
    DOUBLE FillGradientAlpha, StrokeGradientAlpha; \
-   FUNCTION Feedback; \
    objVectorFilter *Filter; \
    struct rkVectorViewport *ParentView; \
    STRING ID; \
@@ -46,6 +52,7 @@ public:
    CSTRING FilterString, StrokeString, FillString; \
    struct DRGB StrokeColour, FillColour; \
    DOUBLE *DashArray; \
+   std::vector<FeedbackSubscription> *FeedbackSubscriptions; \
    std::vector<InputSubscription> *InputSubscriptions; \
    std::vector<KeyboardSubscription> *KeyboardSubscriptions; \
    LONG   InputMask; \
