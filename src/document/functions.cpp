@@ -3790,9 +3790,10 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                      }
                      else if (esclist->Type IS LT_BULLET) {
                         #define SIZE_BULLET 5
-                        gfxDrawEllipse(Bitmap,
-                           fx - escpara->ItemIndent, segment->Y + ((segment->BaseLine - SIZE_BULLET)/2),
-                           SIZE_BULLET, SIZE_BULLET, PackPixelRGB(Bitmap, &esclist->Colour), TRUE);
+                        // TODO: Requires conversion to vector
+                        //gfxDrawEllipse(Bitmap,
+                        //   fx - escpara->ItemIndent, segment->Y + ((segment->BaseLine - SIZE_BULLET)/2),
+                        //   SIZE_BULLET, SIZE_BULLET, PackPixelRGB(Bitmap, &esclist->Colour), TRUE);
                      }
                   }
                   break;

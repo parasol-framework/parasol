@@ -288,17 +288,6 @@
       <const name="TRANSPARENT">Enable transparent copying, whereby colours matching the source's Colour field will be ignored.</const>
     </constants>
 
-    <constants lookup="CSTF" comment="Flags for CopyStretch().">
-      <const name="BICUBIC">Cubic scaling.</const>
-      <const name="BILINEAR">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
-      <const name="BRESENHAM">Smooth bresenham.</const>
-      <const name="CLAMP">Pixels that are past the edge of the source material will have a default alpha value of 0 unless the CLAMP flag is used, in which case the value is approximated with a bias of 255 if not otherwise calculable.</const>
-      <const name="CUBIC">Cubic scaling.</const>
-      <const name="FILTER_SOURCE">If the source bitmap is temporary and will not be required after the stretch operation, you have the option of setting this flag.  By doing so, the stretch routine will pass the source image through a simple filter so that it can improve the resulting image.  This option is available at a speed cost and is best used in conjunction with bilinear resizing.</const>
-      <const name="GOOD_QUALITY">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
-      <const name="NEIGHBOUR">Nearest neighbour scaling</const>
-    </constants>
-
     <constants lookup="DT" comment="Flags for GetDisplayType().">
       <const name="GLES">The display is driven by OpenGLES.</const>
       <const name="NATIVE">The display is native (supported by internal drivers).</const>

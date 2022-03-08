@@ -63,17 +63,6 @@
 #define CSRF_CLIP 0x00000010
 #define CSRF_OFFSET 0x00000020
 
-// Flags for CopyStretch().
-
-#define CSTF_BILINEAR 0x00000001
-#define CSTF_GOOD_QUALITY 0x00000001
-#define CSTF_FILTER_SOURCE 0x00000002
-#define CSTF_BRESENHAM 0x00000004
-#define CSTF_NEIGHBOUR 0x00000008
-#define CSTF_BICUBIC 0x00000010
-#define CSTF_CUBIC 0x00000010
-#define CSTF_CLAMP 0x00000020
-
 // Bitmap types
 
 #define BMP_PLANAR 2
@@ -331,23 +320,19 @@ typedef struct rkBitmap {
 #define MT_BmpCompress -2
 #define MT_BmpDecompress -3
 #define MT_BmpFlip -4
-#define MT_BmpFlood -5
 #define MT_BmpDrawRectangle -6
 #define MT_BmpSetClipRegion -7
 #define MT_BmpGetColour -8
 #define MT_BmpDrawLine -9
-#define MT_BmpCopyStretch -10
 
 struct bmpCopyArea { struct rkBitmap * DestBitmap; LONG Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
 struct bmpCompress { LONG Level;  };
 struct bmpDecompress { LONG RetainData;  };
 struct bmpFlip { LONG Orientation;  };
-struct bmpFlood { LONG X; LONG Y; ULONG Colour;  };
 struct bmpDrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; LONG Flags;  };
 struct bmpSetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate;  };
 struct bmpGetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
 struct bmpDrawLine { LONG X; LONG Y; LONG XEnd; LONG YEnd; ULONG Colour;  };
-struct bmpCopyStretch { struct rkBitmap * DestBitmap; LONG Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest; LONG DestWidth; LONG DestHeight;  };
 
 INLINE ERROR bmpCopyArea(APTR Ob, struct rkBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
    struct bmpCopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
@@ -369,11 +354,6 @@ INLINE ERROR bmpFlip(APTR Ob, LONG Orientation) {
    return(Action(MT_BmpFlip, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR bmpFlood(APTR Ob, LONG X, LONG Y, ULONG Colour) {
-   struct bmpFlood args = { X, Y, Colour };
-   return(Action(MT_BmpFlood, (OBJECTPTR)Ob, &args));
-}
-
 INLINE ERROR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags) {
    struct bmpDrawRectangle args = { X, Y, Width, Height, Colour, Flags };
    return(Action(MT_BmpDrawRectangle, (OBJECTPTR)Ob, &args));
@@ -387,11 +367,6 @@ INLINE ERROR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Ri
 INLINE ERROR bmpDrawLine(APTR Ob, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Colour) {
    struct bmpDrawLine args = { X, Y, XEnd, YEnd, Colour };
    return(Action(MT_BmpDrawLine, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR bmpCopyStretch(APTR Ob, struct rkBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest, LONG DestWidth, LONG DestHeight) {
-   struct bmpCopyStretch args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest, DestWidth, DestHeight };
-   return(Action(MT_BmpCopyStretch, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -638,7 +613,6 @@ struct DisplayBase {
    ERROR (*_Resample)(struct rkBitmap *, struct ColourFormat *);
    void (*_GetColourFormat)(struct ColourFormat *, LONG, LONG, LONG, LONG, LONG);
    ERROR (*_CopyArea)(struct rkBitmap *, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
-   ERROR (*_CopyStretch)(struct rkBitmap *, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
    void (*_ReadRGBPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 **);
    ULONG (*_ReadPixel)(struct rkBitmap *, LONG, LONG);
    void (*_DrawRGBPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *);
@@ -649,8 +623,6 @@ struct DisplayBase {
    void (*_SetClipRegion)(struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG);
    ERROR (*_Compress)(struct rkBitmap *, LONG);
    ERROR (*_Decompress)(struct rkBitmap *, LONG);
-   ERROR (*_Flood)(struct rkBitmap *, LONG, LONG, ULONG);
-   void (*_DrawEllipse)(struct rkBitmap *, LONG, LONG, LONG, LONG, ULONG, LONG);
    ERROR (*_SubscribeInput)(FUNCTION *, OBJECTID, LONG, OBJECTID, LONG *);
    ERROR (*_UnsubscribeInput)(LONG);
    CSTRING (*_GetInputTypeName)(LONG);
@@ -678,7 +650,6 @@ struct DisplayBase {
 #define gfxResample(...) (DisplayBase->_Resample)(__VA_ARGS__)
 #define gfxGetColourFormat(...) (DisplayBase->_GetColourFormat)(__VA_ARGS__)
 #define gfxCopyArea(...) (DisplayBase->_CopyArea)(__VA_ARGS__)
-#define gfxCopyStretch(...) (DisplayBase->_CopyStretch)(__VA_ARGS__)
 #define gfxReadRGBPixel(...) (DisplayBase->_ReadRGBPixel)(__VA_ARGS__)
 #define gfxReadPixel(...) (DisplayBase->_ReadPixel)(__VA_ARGS__)
 #define gfxDrawRGBPixel(...) (DisplayBase->_DrawRGBPixel)(__VA_ARGS__)
@@ -689,8 +660,6 @@ struct DisplayBase {
 #define gfxSetClipRegion(...) (DisplayBase->_SetClipRegion)(__VA_ARGS__)
 #define gfxCompress(...) (DisplayBase->_Compress)(__VA_ARGS__)
 #define gfxDecompress(...) (DisplayBase->_Decompress)(__VA_ARGS__)
-#define gfxFlood(...) (DisplayBase->_Flood)(__VA_ARGS__)
-#define gfxDrawEllipse(...) (DisplayBase->_DrawEllipse)(__VA_ARGS__)
 #define gfxSubscribeInput(...) (DisplayBase->_SubscribeInput)(__VA_ARGS__)
 #define gfxUnsubscribeInput(...) (DisplayBase->_UnsubscribeInput)(__VA_ARGS__)
 #define gfxGetInputTypeName(...) (DisplayBase->_GetInputTypeName)(__VA_ARGS__)

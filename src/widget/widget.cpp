@@ -157,32 +157,11 @@ ERROR widgetCreateIcon(CSTRING Path, CSTRING Class, CSTRING Filter, LONG Size, o
          }
          else error = ERR_Activate;
       }
-      else if (!acActivate(picture)) {
-         // Initialise the destination picture that we are going to use for resizing
-
-         DOUBLE sizeratio;
-         if (picture->Bitmap->Width > picture->Bitmap->Height) sizeratio = (DOUBLE)Size / (DOUBLE)picture->Bitmap->Width;
-         else sizeratio = (DOUBLE)Size / (DOUBLE)picture->Bitmap->Height;
-
-         if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &bmp,
-               FID_Name|TSTR,          icon.c_str(),
-               FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
-               FID_BitsPerPixel|TLONG, picture->Bitmap->BitsPerPixel,
-               FID_Width|TLONG,        F2T(((DOUBLE)picture->Bitmap->Width)  * sizeratio),
-               FID_Height|TLONG,       F2T(((DOUBLE)picture->Bitmap->Height) * sizeratio),
-               TAGEND)) {
-
-            // Stretch the source into the destination
-            gfxCopyStretch(picture->Bitmap, bmp, CSTF_BILINEAR|CSTF_FILTER_SOURCE, 0, 0,
-               picture->Bitmap->Width, picture->Bitmap->Height, 0, 0, bmp->Width, bmp->Height);
-         }
-         else error = ERR_CreateObject;
-      }
       else error = ERR_Activate;
 
       if (!error) {
          apply_filter(bmp, Filter, category, icon, Class);
-
+/*
          if ((!ovcategory.empty()) and (!ovicon.empty())) { // Load an overlay on top of the icon if requested.  Errors here are not fatal.
             auto overlay = "archive:icons/" + ovcategory + "/" + ovicon;
             log.trace("Loading overlay %s", overlay.c_str());
@@ -206,6 +185,7 @@ ERROR widgetCreateIcon(CSTRING Path, CSTRING Class, CSTRING Filter, LONG Size, o
                }
             }
          }
+*/
       }
 
       acFree(picture);

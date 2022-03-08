@@ -398,37 +398,6 @@ static ERROR BITMAP_CopyArea(objBitmap *Self, struct bmpCopyArea *Args)
 /*****************************************************************************
 
 -METHOD-
-CopyStretch: Copies a rectangular area from one bitmap to another with stretching.
-
-This method is a proxy for ~Display.CopyStretch().
-
--INPUT-
-obj(Bitmap) DestBitmap: Pointer to the destination bitmap.
-int Flags:  Special flags.
-int X: The horizontal position of the area to be copied.
-int Y: The vertical position of the area to be copied.
-int Width:  The width of the source area.
-int Height: The height of the source area.
-int XDest:  The horizontal position to copy the area to.
-int YDest:  The vertical position to copy the area to.
-int DestWidth:  The width to use for the destination area.
-int DestHeight: The height to use for the destination area.
-
--ERRORS-
-Okay:
-Args:     The DestBitmap argument was not specified.
-Mismatch: The destination bitmap is not a close enough match to the source bitmap in order to perform the copy.
-
-*****************************************************************************/
-
-static ERROR BITMAP_CopyStretch(objBitmap *Self, struct bmpCopyStretch *Args)
-{
-   return gfxCopyStretch(Self, Args->DestBitmap, Args->Flags, Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest, Args->DestWidth, Args->DestHeight);
-}
-
-/*****************************************************************************
-
--METHOD-
 Decompress: Decompresses a compressed bitmap.
 
 The Decompress method is used to restore a compressed bitmap to its original state.  If the bitmap is not
@@ -674,67 +643,6 @@ static ERROR BITMAP_Flip(objBitmap *Self, struct bmpFlip *Args)
    else return log.warning(ERR_Args);
 
    return ERR_Okay;
-}
-
-/*****************************************************************************
-
--METHOD-
-Flood: Fills a bitmap area with a specific colour.
-
-This method performs a flood-fill operation on a bitmap.  It requires an X and Y value that will target a pixel to
-initiate the flood-fill operation.  The colour value indicated in RGB will be used to change the targeted pixel and all
-adjacent pixels that share the targeted pixel's colour.
-
-The speed of the algorithm is wholly dependent on the amount of pixels that need to be filled, although hardware
-support may be used for filling if it is available.
-
--INPUT-
-int X: The horizontal point to start the flood fill.
-int Y: The vertical point to start the flood fill.
-uint Colour: The colour index to use for the fill.
-
--ERRORS-
-Okay
-NullArgs
-
-*****************************************************************************/
-
-static void flood_fill(objBitmap *, LONG, LONG, ULONG, ULONG);
-
-static ERROR BITMAP_Flood(objBitmap *Self, struct bmpFlood *Args)
-{
-   parasol::Log log;
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   if ((Args->X >= Self->Clip.Left) and (Args->X < Self->Clip.Right) AND
-       (Args->Y >= Self->Clip.Top) and (Args->Y < Self->Clip.Bottom)) {
-
-      ULONG background = Self->ReadUCPixel(Self, Args->X, Args->Y);;
-
-      if (background != Args->Colour) {
-         flood_fill(Self, Args->X, Args->Y, Args->Colour, background);
-      }
-   }
-
-   return ERR_Okay;
-}
-
-static void flood_fill(objBitmap *Self, LONG X, LONG Y, ULONG FillColour, ULONG Background)
-{
-   if ((X >= Self->Clip.Left) and (X < Self->Clip.Right) AND
-       (Y >= Self->Clip.Top) and (Y < Self->Clip.Bottom)) {
-
-      ULONG background = Self->ReadUCPixel(Self, X, Y);
-
-      if (background IS Background) {
-         Self->DrawUCPixel(Self, X, Y, FillColour);
-         flood_fill(Self, X + 1, Y, FillColour, Background);
-         flood_fill(Self, X - 1, Y, FillColour, Background);
-         flood_fill(Self, X, Y + 1, FillColour, Background);
-         flood_fill(Self, X, Y - 1, FillColour, Background);
-      }
-   }
 }
 
 /******************************************************************************

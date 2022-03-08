@@ -272,7 +272,7 @@ static void draw_menu(objMenu *Self, objSurface *Surface, objBitmap *Bitmap)
 
       if (item->Flags & MIF_SELECTED) {
          if (!Self->Checkmark) {
-            gfxDrawEllipse(Bitmap, x+(Self->ImageSize>>1), y+(Self->ImageSize>>1), Self->ImageSize>>1, Self->ImageSize>>1, 0, TRUE);
+            //gfxDrawEllipse(Bitmap, x+(Self->ImageSize>>1), y+(Self->ImageSize>>1), Self->ImageSize>>1, Self->ImageSize>>1, 0, TRUE);
          }
          else {
             objPicture *picture = Self->Checkmark;

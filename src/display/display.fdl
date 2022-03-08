@@ -56,15 +56,6 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     "CLIP: Enable clipping of the source coordinates.",
     "OFFSET: Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.")
 
-  flags("CSTF", { comment="Flags for CopyStretch()." },
-    "BILINEAR|GOOD_QUALITY: Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.",
-    "FILTER_SOURCE: If the source bitmap is temporary and will not be required after the stretch operation, you have the option of setting this flag.  By doing so, the stretch routine will pass the source image through a simple filter so that it can improve the resulting image.  This option is available at a speed cost and is best used in conjunction with bilinear resizing.",
-    "BRESENHAM: Smooth bresenham.",
-    "NEIGHBOUR: Nearest neighbour scaling",
-    "CUBIC|BICUBIC: Cubic scaling.",
-    "CLAMP: Pixels that are past the edge of the source material will have a default alpha value of 0 unless the CLAMP flag is used, in which case the value is approximated with a bias of 255 if not otherwise calculable."
-  )
-
   enum("BMP", { start=2, comment="Bitmap types" },
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
      "CHUNKY: Chunky pixel mode (default).")
@@ -248,12 +239,10 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     { id=2, name="Compress" },
     { id=3, name="Decompress" },
     { id=4, name="Flip" },
-    { id=5, name="Flood" },
     { id=6, name="DrawRectangle" },
     { id=7, name="SetClipRegion" },
     { id=8, name="GetColour", inline=false },
-    { id=9, name="DrawLine" },
-    { id=10, name="CopyStretch" }
+    { id=9, name="DrawLine" }
   })
 
   class("Bitmap", { version=2.0, src="class_bitmap.cpp", output="class_bitmap_def.c" }, [[
@@ -496,7 +485,6 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
     "Resample",
     "GetColourFormat",
     "CopyArea",
-    "CopyStretch",
     "ReadRGBPixel",
     "ReadPixel",
     "DrawRGBPixel",
@@ -507,8 +495,6 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
     "SetClipRegion",
     "Compress",
     "Decompress",
-    "Flood",
-    "DrawEllipse",
     "SubscribeInput",
     "UnsubscribeInput",
     "GetInputTypeName",

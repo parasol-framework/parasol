@@ -1601,28 +1601,6 @@ void winGetError(LONG Error, char *Buffer, LONG BufferSize)
 
 //****************************************************************************
 
-void winDrawEllipse(HDC hdc, LONG left, LONG top, LONG bottom, LONG right, LONG fill, UBYTE *rgb)
-{
-   HPEN pen, oldpen;
-   HBRUSH brush, oldbrush;
-
-   if ((pen = CreatePen(PS_SOLID, 1, RGB(rgb[0], rgb[1], rgb[2])))) {
-      if ((oldpen = SelectObject(hdc, pen))) {
-         if ((brush = CreateSolidBrush(RGB(rgb[0],rgb[1],rgb[2])))) {
-            if ((oldbrush = SelectObject(hdc, brush))) {
-               Ellipse(hdc, left, top, bottom, right);
-               SelectObject(hdc, oldbrush);
-            }
-            DeleteObject(brush);
-         }
-         SelectObject(hdc, oldpen);
-      }
-      DeleteObject(pen);
-   }
-}
-
-//****************************************************************************
-
 void winDrawLine(HDC hdc, LONG x1, LONG y1, LONG x2, LONG y2, UBYTE *rgb)
 {
    HPEN pen, oldpen;

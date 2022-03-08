@@ -77,36 +77,6 @@
   </function>
 
   <function>
-    <name>CopyStretch</name>
-    <comment>Copies a rectangular area from one bitmap to another, with stretching.</comment>
-    <prototype>ERROR gfxCopyStretch(struct rkBitmap * Bitmap, struct rkBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest, LONG DestWidth, LONG DestHeight)</prototype>
-    <input>
-      <param type="struct rkBitmap *" name="Bitmap">The source bitmap.</param>
-      <param type="struct rkBitmap *" name="Dest">Pointer to the destination bitmap.</param>
-      <param type="LONG" name="Flags" lookup="CSTF">Special flags.</param>
-      <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
-      <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
-      <param type="LONG" name="Width">The width of the source area.</param>
-      <param type="LONG" name="Height">The height of the source area.</param>
-      <param type="LONG" name="XDest">The horizontal position to copy the area to.</param>
-      <param type="LONG" name="YDest">The vertical position to copy the area to.</param>
-      <param type="LONG" name="DestWidth">The width to use for the destination area.</param>
-      <param type="LONG" name="DestHeight">The height to use for the destination area.</param>
-    </input>
-    <description>
-<p>This function copies rectangular images between bitmaps.  It performs a straight region-copy with the added capability of stretching the source to match the destination area.  The source and destination bitmaps may be of a different type, however this will result in a much slower copy operation.  The copy will honour the clip region set in both the source and destination bitmap objects.</p>
-<p>Special flags affecting the stretch operation are accepted by this routine.  The following table illustrates the available options.</p>
-<types lookup="CSTF"/>
-<p>Special operations like transparency and alpha blending are not currently supported by this routine.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Mismatch">A mis-match has been detected that prevents further processing.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>CopySurface</name>
     <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
     <prototype>ERROR gfxCopySurface(struct BitmapSurfaceV2 * Surface, struct rkBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
@@ -148,24 +118,6 @@
       <error code="Okay">Operation successful.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
     </result>
-  </function>
-
-  <function>
-    <name>DrawEllipse</name>
-    <comment>Draws an ellipse within a bounding box.</comment>
-    <prototype>void gfxDrawEllipse(struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Fill)</prototype>
-    <input>
-      <param type="struct rkBitmap *" name="Bitmap">Pointer to the target <class name="Bitmap">Bitmap</class>.</param>
-      <param type="LONG" name="X">The left-side of the bounding box.</param>
-      <param type="LONG" name="Y">The top-side of the bounding box.</param>
-      <param type="LONG" name="Width">The width of the bounding box.</param>
-      <param type="LONG" name="Height">The height of the bounding box.</param>
-      <param type="ULONG" name="Colour">The colour of the ellipse, expressed in packed RGB format.</param>
-      <param type="LONG" name="Fill">Set to TRUE to fill the ellipse.</param>
-    </input>
-    <description>
-<p>This function will draw an ellipse within the bounding box defined by (X, Y, Width, Height).  If Fill is TRUE then the ellipse will be filled with Colour.  If FALSE then the border of the ellipse will be drawn at a size of 1 pixel.</p>
-    </description>
   </function>
 
   <function>
@@ -245,24 +197,6 @@
     <description>
 <p>The FlipBitmap() function is used to flip bitmap images on their horizontal or vertical axis.  The amount of time required to flip a bitmap is dependent on the area of the bitmap you are trying to flip over and its total number of colours.</p>
     </description>
-  </function>
-
-  <function>
-    <name>Flood</name>
-    <comment>Perform a flood-fill operation on a pixel specified at (X, Y).</comment>
-    <prototype>ERROR gfxFlood(struct rkBitmap * Bitmap, LONG X, LONG Y, ULONG Colour)</prototype>
-    <input>
-      <param type="struct rkBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
-      <param type="LONG" name="X">The horizontal coordinate of the pixel to target for the flood operation.</param>
-      <param type="LONG" name="Y">The vertical coordinate of the pixel to target for the flood operation.</param>
-      <param type="ULONG" name="Colour">The colour value of the fill in packed-pixel format.</param>
-    </input>
-    <description>
-<p>This function performs a flood-fill operation on a bitmap.  It requires an X and Y value that will target a pixel to initiate the flood-fill operation.  The colour value indicated in RGB will be used to change the targeted pixel and all adjacent pixels that share the targeted pixel's colour.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-    </result>
   </function>
 
   <function>
@@ -808,17 +742,6 @@ if ((pointer = gfxAccessPointer())) {
       <const name="OFFSET">Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.</const>
       <const name="TRANSLUCENT">Perform a translucent copy operation, using the strength value specified in the Surface Opacity field.</const>
       <const name="TRANSPARENT">Enable transparent copying, whereby colours matching the source's Colour field will be ignored.</const>
-    </constants>
-
-    <constants lookup="CSTF" comment="Flags for CopyStretch().">
-      <const name="BICUBIC">Cubic scaling.</const>
-      <const name="BILINEAR">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
-      <const name="BRESENHAM">Smooth bresenham.</const>
-      <const name="CLAMP">Pixels that are past the edge of the source material will have a default alpha value of 0 unless the CLAMP flag is used, in which case the value is approximated with a bias of 255 if not otherwise calculable.</const>
-      <const name="CUBIC">Cubic scaling.</const>
-      <const name="FILTER_SOURCE">If the source bitmap is temporary and will not be required after the stretch operation, you have the option of setting this flag.  By doing so, the stretch routine will pass the source image through a simple filter so that it can improve the resulting image.  This option is available at a speed cost and is best used in conjunction with bilinear resizing.</const>
-      <const name="GOOD_QUALITY">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
-      <const name="NEIGHBOUR">Nearest neighbour scaling</const>
     </constants>
 
     <constants lookup="DPMS" comment="Possible modes for the Display class' DPMS field.">

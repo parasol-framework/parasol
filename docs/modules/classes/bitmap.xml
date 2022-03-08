@@ -169,32 +169,6 @@
     </method>
 
     <method>
-      <name>CopyStretch</name>
-      <comment>Copies a rectangular area from one bitmap to another with stretching.</comment>
-      <prototype>ERROR bmpCopyStretch(OBJECTPTR Object, struct rkBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest, LONG DestWidth, LONG DestHeight)</prototype>
-      <input>
-        <param type="struct rkBitmap *" name="DestBitmap">Pointer to the destination bitmap.</param>
-        <param type="LONG" name="Flags">Special flags.</param>
-        <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
-        <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
-        <param type="LONG" name="Width">The width of the source area.</param>
-        <param type="LONG" name="Height">The height of the source area.</param>
-        <param type="LONG" name="XDest">The horizontal position to copy the area to.</param>
-        <param type="LONG" name="YDest">The vertical position to copy the area to.</param>
-        <param type="LONG" name="DestWidth">The width to use for the destination area.</param>
-        <param type="LONG" name="DestHeight">The height to use for the destination area.</param>
-      </input>
-      <description>
-<p>This method is a proxy for <function module="Display">CopyStretch</function>.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Args">The DestBitmap argument was not specified.</error>
-        <error code="Mismatch">The destination bitmap is not a close enough match to the source bitmap in order to perform the copy.</error>
-      </result>
-    </method>
-
-    <method>
       <name>Decompress</name>
       <comment>Decompresses a compressed bitmap.</comment>
       <prototype>ERROR bmpDecompress(OBJECTPTR Object, LONG RetainData)</prototype>
@@ -265,25 +239,6 @@
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="Args">Invalid arguments passed to function.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </method>
-
-    <method>
-      <name>Flood</name>
-      <comment>Fills a bitmap area with a specific colour.</comment>
-      <prototype>ERROR bmpFlood(OBJECTPTR Object, LONG X, LONG Y, ULONG Colour)</prototype>
-      <input>
-        <param type="LONG" name="X">The horizontal point to start the flood fill.</param>
-        <param type="LONG" name="Y">The vertical point to start the flood fill.</param>
-        <param type="ULONG" name="Colour">The colour index to use for the fill.</param>
-      </input>
-      <description>
-<p>This method performs a flood-fill operation on a bitmap.  It requires an X and Y value that will target a pixel to initiate the flood-fill operation.  The colour value indicated in RGB will be used to change the targeted pixel and all adjacent pixels that share the targeted pixel's colour.</p>
-<p>The speed of the algorithm is wholly dependent on the amount of pixels that need to be filled, although hardware support may be used for filling if it is available.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>

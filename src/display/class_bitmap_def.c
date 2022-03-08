@@ -30,24 +30,20 @@ FDEF maCopyArea[] = { { "DestBitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X
 FDEF maCompress[] = { { "Level", FD_LONG }, { 0, 0 } };
 FDEF maDecompress[] = { { "RetainData", FD_LONG }, { 0, 0 } };
 FDEF maFlip[] = { { "Orientation", FD_LONG }, { 0, 0 } };
-FDEF maFlood[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF maDrawRectangle[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maSetClipRegion[] = { { "Number", FD_LONG }, { "Left", FD_LONG }, { "Top", FD_LONG }, { "Right", FD_LONG }, { "Bottom", FD_LONG }, { "Terminate", FD_LONG }, { 0, 0 } };
 FDEF maGetColour[] = { { "Red", FD_LONG }, { "Green", FD_LONG }, { "Blue", FD_LONG }, { "Alpha", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED|FD_RESULT }, { 0, 0 } };
 FDEF maDrawLine[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "XEnd", FD_LONG }, { "YEnd", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
-FDEF maCopyStretch[] = { { "DestBitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { "DestWidth", FD_LONG }, { "DestHeight", FD_LONG }, { 0, 0 } };
 
 static const struct MethodArray clBitmapMethods[] = {
    { -1, (APTR)BITMAP_CopyArea, "CopyArea", maCopyArea, sizeof(struct bmpCopyArea) },
    { -2, (APTR)BITMAP_Compress, "Compress", maCompress, sizeof(struct bmpCompress) },
    { -3, (APTR)BITMAP_Decompress, "Decompress", maDecompress, sizeof(struct bmpDecompress) },
    { -4, (APTR)BITMAP_Flip, "Flip", maFlip, sizeof(struct bmpFlip) },
-   { -5, (APTR)BITMAP_Flood, "Flood", maFlood, sizeof(struct bmpFlood) },
    { -6, (APTR)BITMAP_DrawRectangle, "DrawRectangle", maDrawRectangle, sizeof(struct bmpDrawRectangle) },
    { -7, (APTR)BITMAP_SetClipRegion, "SetClipRegion", maSetClipRegion, sizeof(struct bmpSetClipRegion) },
    { -8, (APTR)BITMAP_GetColour, "GetColour", maGetColour, sizeof(struct bmpGetColour) },
    { -9, (APTR)BITMAP_DrawLine, "DrawLine", maDrawLine, sizeof(struct bmpDrawLine) },
-   { -10, (APTR)BITMAP_CopyStretch, "CopyStretch", maCopyStretch, sizeof(struct bmpCopyStretch) },
    { 0, 0, 0, 0, 0 }
 };
 
