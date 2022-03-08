@@ -115,40 +115,6 @@ gui.bitmapColour = function(Bitmap, ColourName)
 end
 
 ------------------------------------------------------------------------------
--- Create a border inside a surface, suitable for a basic rectangular widget.  Options include:
---
---   fill:  Fill the box with the default solid colour or pattern.
---   style: Set to 'input', 'output' or 'text'.
---   updateMargins: Update the surface margins to accomodate the border thickness.
-
-gui.insideBorder = function(Surface, Options)
-   local thickness = 0
-   if (Options.style == 'input') then thickness = gui.pixel(gui.interface.inputBorder) end
-   if (Options.style == 'output') then thickness = gui.pixel(gui.interface.outputBorder) end
-   if (Options.style == 'text') then thickness = gui.pixel(gui.interface.inputBorder) end
-
-   if (thickness > 0) then
-      if (Options.updateMargins) then
-         box.leftMargin   = thickness
-         box.rightMargin  = thickness
-         box.topMargin    = thickness
-         box.bottomMargin = thickness
-      end
-   end
-
-   Surface.mtAddCallback(function(Surface, Bitmap)
-      for i=0,thickness-1 do
-         Bitmap.mtDrawRectangle(i, i, Surface.width-(i*2), Surface.height-(i*2), gui.bitmapColour(Bitmap, 'border'), 0)
-      end
-
-      if Options.fill then
-         Bitmap.mtDrawRectangle(thickness, thickness, Surface.width-(thickness*2), Surface.height-(thickness*2),
-            gui.bitmapColour(Bitmap, 'background'), BAF_FILL)
-      end
-   end)
-end
-
-------------------------------------------------------------------------------
 -- Read a style value and return it in pixel units.
 
 gui.pixel = function(val)
