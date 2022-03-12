@@ -35,14 +35,6 @@
 #include <parasol/modules/document.h>
 #endif
 
-struct WidgetBase {
-   ERROR (*_CreateIcon)(CSTRING, CSTRING, CSTRING, LONG, struct rkBitmap **);
-};
-
-#ifndef PRV_WIDGET_MODULE
-#define widgetCreateIcon(...) (WidgetBase->_CreateIcon)(__VA_ARGS__)
-#endif
-
 // ComboBox flags.
 
 #define CMF_HIDE 0x00000001

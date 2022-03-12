@@ -30,6 +30,8 @@ project (Parasol LANGUAGES C CXX)
 set (VERSION "2022.2")
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
 
+# To switch on a custom option use -D, e.g. -DPARASOL_VLOG=ON
+
 option (PARASOL_STATIC   "Build as a static library" OFF)
 option (PARASOL_SHARED   "Build as a shared library" ON)
 option (PARASOL_INSTALL  "Create installation targets (chain builders may want to disable this)" ON)

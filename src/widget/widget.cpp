@@ -28,7 +28,6 @@ struct FontBase *FontBase;
 struct VectorBase *VectorBase;
 struct DisplayBase *DisplayBase;
 struct SurfaceBase *SurfaceBase;
-struct IconServerBase *IconServerBase;
 
 OBJECTPTR modFont = NULL, modWidget = NULL, modDisplay = NULL, modSurface = NULL;
 OBJECTPTR modIconServer = NULL, modVector = NULL;
@@ -55,152 +54,6 @@ static ERROR extract_icon(LONG, std::string &, std::string &, std::string &, std
 static void apply_filter(objBitmap *, CSTRING, std::string &, std::string &, CSTRING);
 
 #include "widget_def.c"
-#include "module_def.c"
-
-/*****************************************************************************
-
--FUNCTION-
-CreateIcon: Generate an icon bitmap from a given path.
-
-Use CreateIcon() to generate an icon image that is scaled to fit a new bitmap.
-
-The referenced icon Path must refer to an icon that exists in the icon dictionary, and be in a recognised format
-such as:
-
-```
-category/icon
-category/icon(size)
-```
-
-If the call is made from an internal class then specify the name in the Class parameter (this may be used by the
-logic filter).  The Filter parameter should not be set unless an alternative filter style is needed.
-
-If a size is specified in the icon Path then that value will take precedence over the Size parameter.
-
-The resulting Bitmap must be freed once it is no longer required.
-
--INPUT-
-cstr Path:   The path to the icon, e.g. 'tools/magnifier'
-cstr Class:  The name of the class requesting the filter (optional).
-cstr Filter: The graphics filter to apply to the icon.  Usually set to NULL for the default.
-int Size:    The pixel size (width and height) of the resulting bitmap.  If zero, the size will be automatically calculated from the display DPI values.
-&!obj(Bitmap) Bitmap: The resulting bitmap will be returned in this parameter.  It is the responsibility of the client to terminate the bitmap.
-
--ERRORS-
-Okay
-NullArgs
-CreateObject
-Activate
--END-
-
-*****************************************************************************/
-
-ERROR widgetCreateIcon(CSTRING Path, CSTRING Class, CSTRING Filter, LONG Size, objBitmap **BitmapResult)
-{
-   parasol::Log log("CreateIcon");
-
-   if ((!Path) or (!BitmapResult)) return log.warning(ERR_NullArgs);
-
-   if (!StrCompare("icons:", Path, 6, 0)) Path += 6;
-   *BitmapResult = NULL;
-
-   if (Size <= 0) {
-      SURFACEINFO *info;
-      drwGetSurfaceInfo(0, &info);
-      if (info->Width < info->Height) Size = ((DOUBLE)info->Width) * DEFAULT_RATIO / 100.0;
-      else Size = ((DOUBLE)info->Height) * DEFAULT_RATIO / 100.0;
-   }
-
-   log.traceBranch("Path: %s, Class: %s, Filter: %s, Size: %d", Path, Class, Filter, Size);
-
-   ERROR error;
-   objBitmap *bmp = NULL;
-   error = ERR_Okay;
-
-   std::string tpath(Path);
-   std::string category, icon, ovcategory, ovicon;
-
-   category.reserve(30);
-   icon.reserve(30);
-   ovcategory.reserve(20);
-   ovicon.reserve(20);
-
-   if ((error = extract_icon(Size, tpath, category, icon, ovcategory, ovicon, &Size)) != ERR_Okay) return error;
-
-   auto filepath = "archive:icons/" + category + "/" + icon;
-
-   AdjustLogLevel(1);
-
-   log.trace("Resolved '%s' to '%s', overlay '%s/%s', size %d", Path, filepath.c_str(), ovcategory.empty() ? "-" : ovcategory.c_str(), ovicon.empty() ? "-" : ovicon.c_str(), Size);
-
-   objPicture *picture;
-   if (!CreateObject(ID_PICTURE, NF_INTEGRAL, &picture,
-         FID_Path|TSTR,   filepath.c_str(),
-         FID_Flags|TLONG, PCF_FORCE_ALPHA_32|PCF_LAZY, // Lazy option avoids activation on initialisation.
-         TAGEND)) {
-
-      if (picture->Flags & PCF_SCALABLE) {
-         picture->DisplayWidth = Size;
-         picture->DisplayHeight = Size;
-         if (!acActivate(picture)) {
-            if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &bmp,
-                  FID_Name|TSTR,          icon.c_str(),
-                  FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
-                  FID_BitsPerPixel|TLONG, 32,
-                  FID_Width|TLONG,        picture->Bitmap->Width,
-                  FID_Height|TLONG,       picture->Bitmap->Height,
-                  TAGEND)) {
-
-               gfxCopyArea(picture->Bitmap, bmp, 0, 0, 0, picture->Bitmap->Width, picture->Bitmap->Height, 0, 0);
-            }
-            else error = ERR_CreateObject;
-         }
-         else error = ERR_Activate;
-      }
-      else error = ERR_Activate;
-
-      if (!error) {
-         apply_filter(bmp, Filter, category, icon, Class);
-/*
-         if ((!ovcategory.empty()) and (!ovicon.empty())) { // Load an overlay on top of the icon if requested.  Errors here are not fatal.
-            auto overlay = "archive:icons/" + ovcategory + "/" + ovicon;
-            log.trace("Loading overlay %s", overlay.c_str());
-
-            objPicture *ovpic;
-            if (!CreateObject(ID_PICTURE, NF_INTEGRAL, &ovpic,
-                  FID_Path|TSTR,   overlay.c_str(),
-                  FID_Flags|TLONG, PCF_FORCE_ALPHA_32,
-                  TAGEND)) {
-               objBitmap *temp;
-               if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &temp,
-                     FID_Width|TLONG,        bmp->Width,
-                     FID_Height|TLONG,       bmp->Height,
-                     FID_BitsPerPixel|TLONG, 32,
-                     FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
-                     TAGEND)) {
-                  gfxCopyStretch(ovpic->Bitmap, temp, CSTF_BILINEAR|CSTF_FILTER_SOURCE, 0, 0,
-                     ovpic->Bitmap->Width, ovpic->Bitmap->Height, 0, 0, temp->Width, temp->Height);
-                  gfxCopyArea(temp, bmp, BAF_BLEND, 0, 0, temp->Width, temp->Height, 0, 0);
-                  acFree(temp);
-               }
-            }
-         }
-*/
-      }
-
-      acFree(picture);
-   }
-   else {
-      log.error("Failed to open icon image at \"%s\".", filepath.c_str());
-      error = ERR_CreateObject;
-   }
-
-   if (!error) *BitmapResult = bmp;
-   else if (bmp) acFree(bmp);
-
-   AdjustLogLevel(-1);
-   return error;
-}
 
 /*****************************************************************************
 ** Extracts icon name, category and size from a path string.
@@ -445,15 +298,12 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (init_tabfocus() != ERR_Okay) return ERR_AddClass;
    if (init_input() != ERR_Okay) return ERR_AddClass;
    if (init_text() != ERR_Okay) return ERR_AddClass;
-   if (init_menu() != ERR_Okay) return ERR_AddClass;
-   if (init_menuitem() != ERR_Okay) return ERR_AddClass;
 
    return ERR_Okay;
 }
 
 static ERROR CMDOpen(OBJECTPTR Module)
 {
-   SetPointer(Module, FID_FunctionList, glFunctions);
    return ERR_Okay;
 }
 
@@ -466,8 +316,6 @@ static ERROR CMDExpunge(void)
    free_tabfocus();
    free_input();
    free_text();
-   free_menu();
-   free_menuitem();
    free_clipboard();
 
    if (glIconArchive) { acFree(glIconArchive);    glIconArchive = NULL; }

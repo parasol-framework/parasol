@@ -231,13 +231,13 @@ static ERROR VECTOR_Enable(objVector *Self, APTR Void)
 static ERROR VECTOR_Free(objVector *Self, APTR Args)
 {
    if (Self->ID)           { FreeResource(Self->ID); Self->ID = NULL; }
-   if (Self->DashArray)    { FreeResource(Self->DashArray); Self->DashArray = NULL; }
    if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = NULL; }
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
 
-   if (Self->FillGradientTable) { delete Self->FillGradientTable; Self->FillGradientTable = NULL; }
+   if (Self->FillGradientTable)   { delete Self->FillGradientTable; Self->FillGradientTable = NULL; }
    if (Self->StrokeGradientTable) { delete Self->StrokeGradientTable; Self->StrokeGradientTable = NULL; }
+   if (Self->DashArray)           { delete Self->DashArray; Self->DashArray = NULL; }
 
    // Patch the nearest vectors that are linked to this one.
    if (Self->Next) Self->Next->Prev = Self->Prev;
@@ -1071,22 +1071,41 @@ then the list of values is repeated to yield an even number of values.  Thus `5,
 
 static ERROR VECTOR_GET_DashArray(objVector *Self, DOUBLE **Value, LONG *Elements)
 {
-   *Value = Self->DashArray;
-   *Elements = Self->DashTotal;
+   if (Self->DashArray) {
+      *Value    = Self->DashArray->values.data();
+      *Elements = Self->DashArray->values.size();
+   }
+   else {
+      *Value    = NULL;
+      *Elements = 0;
+   }
    return ERR_Okay;
 }
 
 static ERROR VECTOR_SET_DashArray(objVector *Self, DOUBLE *Value, LONG Elements)
 {
-   if (Self->DashArray) { FreeResource(Self->DashArray); Self->DashArray = NULL; Self->DashTotal = 0; }
+   if (Self->DashArray) { delete Self->DashArray; Self->DashArray = NULL; }
 
    if ((Value) and (Elements >= 2)) {
       LONG total = Elements;
       if (total & 1) total++; // There must be an even count of dashes and gaps.
-      if (!AllocMemory(sizeof(DOUBLE) * total, MEM_DATA|MEM_NO_CLEAR, &Self->DashArray, NULL)) {
-         CopyMemory(Value, Self->DashArray, sizeof(DOUBLE) * Elements);
-         if (total > Elements) Self->DashArray[Elements] = 0;
-         Self->DashTotal = total;
+
+      Self->DashArray = new (std::nothrow) DashedStroke(*Self->BasePath, total);
+      if (Self->DashArray) {
+         Self->DashArray->values.assign(*Value, Elements);
+         if (total > Elements) Self->DashArray->values[Elements] = 0;
+
+         DOUBLE total_length = 0;
+         for (LONG i=0; i < total-1; i+=2) {
+            Self->DashArray->path.add_dash(Value[i], Value[i+1]);
+            total_length += Value[i] + Value[i+1];
+         }
+
+         // The stroke-dashoffset is used to set how far into dash pattern to start the pattern.  E.g. a
+         // value of 5 means that the entire pattern is shifted 5 pixels to the left.
+
+         if (Self->DashOffset > 0) Self->DashArray->path.dash_start(Self->DashOffset);
+         else if (Self->DashOffset < 0) Self->DashArray->path.dash_start(total_length + Self->DashOffset);
       }
       else return ERR_AllocMemory;
    }
@@ -1098,9 +1117,6 @@ static ERROR VECTOR_SET_DashArray(objVector *Self, DOUBLE *Value, LONG Elements)
 
 -FIELD-
 DashOffset: The distance into the dash pattern to start the dash.  Can be a negative number.
-
--FIELD-
-DashTotal: The total number of values in the #DashArray.
 
 -FIELD-
 EnableBkgd: If true, allows filters to use BackgroundImage and BackgroundAlpha source types.
@@ -2136,7 +2152,6 @@ static const FieldArray clVectorFields[] = {
    { "MiterLimit",       FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_MiterLimit },
    { "InnerMiterLimit",  FDF_DOUBLE|FD_RW,             0, NULL, NULL },
    { "DashOffset",       FDF_DOUBLE|FD_RW,             0, NULL, NULL },
-   { "DashTotal",        FDF_LONG|FDF_R,               0, NULL, NULL },
    { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorVisibility, NULL, NULL },
    { "Flags",            FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clVectorFlags, NULL, NULL },
    { "Cursor",           FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorCursor, NULL, (APTR)VECTOR_SET_Cursor },

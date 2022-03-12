@@ -193,16 +193,16 @@ static void gen_vector_path(objVector *Vector)
       // directly.  This is done before the (X,Y) position is applied because this gives reliable & consistent
       // results in cases where the (X,Y) position is manually modified by the client in a UI for instance.
 
-      agg::trans_affine transform;
+      Vector->Transform.reset();
 
       for (auto t=Vector->Matrices; t; t=t->Next) {
-         transform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
+         Vector->Transform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
       }
 
-      transform.tx += Vector->FinalX;
-      transform.ty += Vector->FinalY;
+      Vector->Transform.tx += Vector->FinalX;
+      Vector->Transform.ty += Vector->FinalY;
 
-      apply_parent_transforms(Vector, get_parent(Vector), transform);
+      apply_parent_transforms(Vector, get_parent(Vector), Vector->Transform);
 
       if (!Vector->BasePath) {
          Vector->BasePath = new (std::nothrow) agg::path_storage;
@@ -216,7 +216,7 @@ static void gen_vector_path(objVector *Vector)
       Vector->BasePath->line_to(0, view->vpFixedHeight); // Bottom left
       Vector->BasePath->close_polygon();
 
-      Vector->BasePath->transform(transform);
+      Vector->BasePath->transform(Vector->Transform);
 
       // Compute the clipping boundary of the viewport and store it in the BX/Y fields.
 
@@ -225,7 +225,7 @@ static void gen_vector_path(objVector *Vector)
       // If the viewport uses a non-rectangular transform, a clipping mask will need to be generated based on its path.  The path is
       // pre-transformed and drawn in order to speed things up.
 
-      if (((transform.shx) or (transform.shy)) and
+      if (((Vector->Transform.shx) or (Vector->Transform.shy)) and
           ((view->vpOverflowX != VIS_VISIBLE) or (view->vpOverflowY != VIS_VISIBLE))) {
          log.trace("A clip path will be created for viewport #%d.", Vector->Head.UID);
          if (!view->vpClipMask) {
@@ -380,25 +380,11 @@ static void gen_vector_path(objVector *Vector)
          else Vector->StrokeRaster->reset();
 
          if (Vector->DashArray) {
-            agg::conv_dash<agg::path_storage> dashed_path(*Vector->BasePath);
-            agg::conv_stroke<agg::conv_dash<agg::path_storage>> dashed_stroke(dashed_path);
+            Vector->DashArray->path.attach(*Vector->BasePath);
 
-            dashed_path.remove_all_dashes();
-            DOUBLE total_length = 0;
-            for (LONG i=0; i < Vector->DashTotal-1; i+=2) {
-              dashed_path.add_dash(Vector->DashArray[i], Vector->DashArray[i+1]);
-               total_length += Vector->DashArray[i] + Vector->DashArray[i+1];
-            }
+            configure_stroke((objVector &)*Vector, Vector->DashArray->stroke);
 
-            // The stroke-dashoffset is used to set how far into dash pattern to start the pattern.  E.g. a
-            // value of 5 means that the entire pattern is shifted 5 pixels to the left.
-
-            if (Vector->DashOffset > 0) dashed_path.dash_start(Vector->DashOffset);
-            else if (Vector->DashOffset < 0) dashed_path.dash_start(total_length + Vector->DashOffset);
-
-            configure_stroke((objVector &)*Vector, dashed_stroke);
-
-            agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> stroke_path(dashed_stroke, Vector->Transform);
+            agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> stroke_path(Vector->DashArray->stroke, Vector->Transform);
             Vector->StrokeRaster->add_path(stroke_path);
          }
          else {

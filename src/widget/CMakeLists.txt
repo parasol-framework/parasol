@@ -11,7 +11,6 @@ set (WIDGET_SOURCES # Full paths are required for add_custom_command() dependenc
    "${CMAKE_CURRENT_SOURCE_DIR}/class_tabfocus.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_input.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_text/text.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_menu/menu.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_clipboard.cpp")
 
 set (WIDGET_DEFS # Full paths are required for add_custom_command() dependencies to work correctly
@@ -22,7 +21,6 @@ set (WIDGET_DEFS # Full paths are required for add_custom_command() dependencies
    "${CMAKE_CURRENT_SOURCE_DIR}/class_input_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_resize_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_tabfocus_def.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_menu/menu_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_text/def.c")
 
 if (BUILD_DEFS)
@@ -32,20 +30,17 @@ if (BUILD_DEFS)
 
    add_custom_command (OUTPUT
       ${WIDGET_DEFS}
-      "${CMAKE_CURRENT_SOURCE_DIR}/module_def.c"
       "${DOCS}/modules/classes/input.xml"
       "${DOCS}/modules/classes/clipboard.xml"
       "${DOCS}/modules/classes/button.xml"
-      "${DOCS}/modules/classes/menuitem.xml"
       "${DOCS}/modules/classes/combobox.xml"
-      "${DOCS}/modules/classes/menu.xml"
       "${DOCS}/modules/classes/resize.xml"
       "${DOCS}/modules/classes/checkbox.xml"
       "${DOCS}/modules/classes/text.xml"
       "${DOCS}/modules/classes/tabfocus.xml"
       PRE_BUILD
       COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--sdk=${PROJECT_SOURCE_DIR}"
-         "--output-defs=module_def.c" "--output-proto=module_def.c" "--files={" "${MOD}.cpp" "}"
+         "--files={" "${MOD}.cpp" "}"
       DEPENDS "${MOD}.fdl" ${WIDGET_SOURCES}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Producing C definition files for the ${MOD} module"

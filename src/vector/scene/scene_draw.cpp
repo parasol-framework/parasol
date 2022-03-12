@@ -9,19 +9,22 @@ public:
    agg::line_join_e  mLineJoin;
    agg::line_cap_e   mLineCap;
    agg::inner_join_e mInnerJoin;
-   bool mDirty;
    double mOpacity;
+   bool mDirty;
+   bool mApplyTransform;
    UBYTE mVisible;
    UBYTE mOverflowX;
    UBYTE mOverflowY;
    objVectorClip *mClipMask;
+   agg::trans_affine mTransform;
 
    VectorState() :
       mLineJoin(agg::miter_join),
       mLineCap(agg::butt_cap),
       mInnerJoin(agg::inner_miter),
-      mDirty(false),
       mOpacity(1.0),
+      mDirty(false),
+      mApplyTransform(false),
       mVisible(VIS_VISIBLE),
       mOverflowX(VOF_VISIBLE),
       mOverflowY(VOF_VISIBLE),
@@ -135,7 +138,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
 
    if ((Transform) and // Interpolate only if the transform specifies a scale, shear or rotate operation.
        ((Transform->sx != 1.0) or (Transform->sy != 1.0) or (Transform->shx != 0.0) or (Transform->shy != 0.0))) {
-      agg::span_interpolator_linear<> interpolator(*Transform);
+      agg::span_interpolator_linear interpolator(*Transform);
       agg::image_filter_lut filter;
       set_filter(filter, SampleMethod);  // Set the interpolation filter to use.
 
@@ -187,7 +190,10 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
+// Patterns are rendered internally as an independent bitmap.  That bitmap is then copied to the target bitmap with
+// the necessary transforms applied.  One of the primary advantages of patterns is that once rendered, they remain
+// cached until changed.
 
 static void draw_pattern(objVector *Vector, agg::path_storage *Path,
    LONG SampleMethod, DOUBLE X, DOUBLE Y, DOUBLE ViewWidth, DOUBLE ViewHeight,
@@ -195,7 +201,7 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
    agg::rasterizer_scanline_aa<> &Raster)
 {
    if (Pattern.Scene) {  // Redraw the pattern source if any part of the definition is marked as dirty.
-      if (check_dirty(Pattern.Scene->Viewport)) {
+      if ((check_dirty(Pattern.Scene->Viewport)) or (!Pattern.Bitmap)) {
          acDraw(&Pattern);
       }
    }
@@ -457,7 +463,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
    //typedef agg::renderer_scanline_aa_solid< agg::renderer_base<agg::pixfmt_rkl>> RENDERER_SOLID;
    typedef agg::renderer_base<agg::pixfmt_rkl>  RENDERER_BASE_TYPE;
 
-   agg::scanline_u8 scanline;
+   agg::scanline_u8    scanline;
    agg::trans_affine   transform;
    interpolator_type   span_interpolator(transform);
    span_allocator_type span_allocator;
@@ -824,7 +830,9 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
    }
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
+
+//********************************************************************************************************************
 
 class VMAdaptor
 {
@@ -867,6 +875,92 @@ public:
    }
 
 private:
+
+   constexpr DOUBLE view_width() {
+      if (mView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) return mView->vpFixedWidth;
+      else if (mView->vpViewWidth > 0) return mView->vpViewWidth;
+      else return mView->Scene->PageWidth;
+   }
+
+   constexpr DOUBLE view_height() {
+      if (mView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) return mView->vpFixedHeight;
+      else if (mView->vpViewHeight > 0) return mView->vpViewHeight;
+      else return mView->Scene->PageHeight;
+   }
+
+   void render_fill(VectorState &State, objVector &Vector, agg::rasterizer_scanline_aa<> &Raster) {
+      // Think of the vector's path as representing a mask for the fill algorithm.  Any transforms applied to
+      // an image/gradient fill are independent of the path.
+
+      if (Vector.FillRule IS VFR_NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
+      else if (Vector.FillRule IS VFR_EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
+
+      if ((Vector.FillColour.Alpha > 0) and (!Vector.DisableFillColour)) { // Solid colour
+         mSolidRender.color(agg::rgba(Vector.FillColour.Red, Vector.FillColour.Green, Vector.FillColour.Blue, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity));
+
+         if (State.mClipMask) {
+            agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+            agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+            agg::render_scanlines(Raster, mScanLineMasked, mSolidRender);
+         }
+         else agg::render_scanlines(Raster, mScanLine, mSolidRender);
+      }
+
+      if (Vector.FillImage) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
+         draw_image(&Vector, *Vector.BasePath, Vector.Scene->SampleMethod, Vector.FinalX, Vector.FinalY,
+            view_width(), view_height(), *Vector.FillImage, mRenderBase, Raster, 0, Vector.FillOpacity * State.mOpacity);
+      }
+
+      if (Vector.FillGradient) {
+         if (auto table = get_fill_gradient_table(Vector, State.mOpacity * Vector.FillOpacity)) {
+            draw_gradient(&Vector, Vector.BasePath, Vector.FinalX, Vector.FinalY, view_width(), view_height(),
+               *Vector.FillGradient, table, mRenderBase, Raster, 0);
+         }
+      }
+
+      if (Vector.FillPattern) {
+         draw_pattern(&Vector, Vector.BasePath, Vector.Scene->SampleMethod, Vector.FinalX, Vector.FinalY,
+            view_width(), view_height(), *Vector.FillPattern, mRenderBase, Raster);
+      }
+   }
+
+   void render_stroke(VectorState &State, objVector &Vector, agg::rasterizer_scanline_aa<> &Raster) {
+      if (Vector.Scene->Gamma != 1.0) Raster.gamma(agg::gamma_power(Vector.Scene->Gamma));
+
+      if (Vector.FillRule IS VFR_NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
+      else if (Vector.FillRule IS VFR_EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
+
+      if (Vector.StrokeGradient) {
+         if (auto table = get_stroke_gradient_table(Vector)) {
+            draw_gradient(&Vector, Vector.BasePath, Vector.FinalX, Vector.FinalY, view_width(), view_height(),
+               *Vector.StrokeGradient, table, mRenderBase, Raster, Vector.StrokeWidth);
+         }
+      }
+      else if (Vector.StrokePattern) {
+         draw_pattern(&Vector, Vector.BasePath, Vector.Scene->SampleMethod, Vector.FinalX, Vector.FinalY,
+            view_width(), view_height(), *Vector.StrokePattern, mRenderBase, Raster);
+      }
+      else if (Vector.StrokeImage) {
+         DOUBLE stroke_width = Vector.StrokeWidth * Vector.Transform.scale();
+         if (stroke_width < 1) stroke_width = 1;
+
+         auto transform = Vector.Transform * State.mTransform;
+         agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(*Vector.BasePath, transform);
+
+         draw_brush(*Vector.StrokeImage, mRenderBase, stroke_path, stroke_width);
+      }
+      else {
+         mSolidRender.color(agg::rgba(Vector.StrokeColour.Red, Vector.StrokeColour.Green, Vector.StrokeColour.Blue, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
+
+         if (State.mClipMask) {
+            agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+            agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+            agg::render_scanlines(Raster, mScanLineMasked, mSolidRender);
+         }
+         else agg::render_scanlines(Raster, mScanLine, mSolidRender);
+      }
+   }
+
    // This is the main routine for parsing the vector tree for drawing.
 
    void draw_vectors(objVector *CurrentVector, VectorState &ParentState) {
@@ -945,7 +1039,7 @@ private:
          }
 
          if (shape->Head.SubID IS ID_VECTORVIEWPORT) {
-            if ((shape->Child) or (shape->InputSubscriptions)) {
+            if ((shape->Child) or (shape->InputSubscriptions) or (shape->FillPattern)) {
                auto view = (objVectorViewport *)shape;
 
                if (view->vpOverflowX != VOF_INHERIT) state.mOverflowX = view->vpOverflowX;
@@ -994,11 +1088,26 @@ private:
 
                   if (Scene->Flags & VPF_OUTLINE_VIEWPORTS) { // Debug option: Draw the viewport's path with a green outline
                      mSolidRender.color(agg::rgba(0, 1, 0));
-                     agg::rasterizer_scanline_aa<> stroke_raster;
+                     agg::rasterizer_scanline_aa stroke_raster;
                      agg::conv_stroke<agg::path_storage> stroked_path(*view->BasePath);
                      stroked_path.width(2);
                      stroke_raster.add_path(stroked_path);
                      agg::render_scanlines(stroke_raster, mScanLine, mSolidRender);
+                  }
+
+                  if (view->FillPattern) {
+                     // Viewports can use FillPattern objects to render a different scene graph internally.
+                     // This is useful for creating common graphics that can be re-used multiple times without
+                     // them being pre-rasterised as they normally would be for primitive vectors.
+                     auto s_transform = state.mTransform;
+                     auto s_apply     = state.mApplyTransform;
+                     state.mTransform      = view->Transform;
+                     state.mApplyTransform = true;
+
+                     draw_vectors((objVector *)view->FillPattern->Viewport, state);
+
+                     state.mTransform      = s_transform;
+                     state.mApplyTransform = s_apply;
                   }
 
                   if (view->Child) draw_vectors((objVector *)view->Child, state);
@@ -1037,88 +1146,43 @@ private:
                auto saved_mask = state.mClipMask;
                if (shape->ClipMask) state.mClipMask = shape->ClipMask;
 
-               DOUBLE view_width, view_height;
-
-               if (mView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) view_width = mView->vpFixedWidth;
-               else if (mView->vpViewWidth > 0) view_width = mView->vpViewWidth;
-               else view_width = mView->Scene->PageWidth;
-
-               if (mView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) view_height = mView->vpFixedHeight;
-               else if (mView->vpViewHeight > 0) view_height = mView->vpViewHeight;
-               else view_height = mView->Scene->PageHeight;
-
                if (shape->FillRaster) {
-                  // Think of the vector's path as representing a mask for the fill algorithm.  Any transforms applied to
-                  // an image/gradient fill are independent of the path.
-
-                  if (shape->FillRule IS VFR_NON_ZERO) shape->FillRaster->filling_rule(agg::fill_non_zero);
-                  else if (shape->FillRule IS VFR_EVEN_ODD) shape->FillRaster->filling_rule(agg::fill_even_odd);
-
-                  if ((shape->FillColour.Alpha > 0) and (!shape->DisableFillColour)) { // Solid colour
-                     mSolidRender.color(agg::rgba(shape->FillColour.Red, shape->FillColour.Green, shape->FillColour.Blue, shape->FillColour.Alpha * shape->FillOpacity * state.mOpacity));
-
-                     if (state.mClipMask) {
-                        agg::alpha_mask_gray8 alpha_mask(state.mClipMask->ClipRenderer);
-                        agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
-                        agg::render_scanlines(*shape->FillRaster, mScanLineMasked, mSolidRender);
-                     }
-                     else agg::render_scanlines(*shape->FillRaster, mScanLine, mSolidRender);
+                  if (state.mApplyTransform) {
+                     // Run-time transforms in the draw process aren't ideal as they require the path to be processed
+                     // every time.  It's necessary if the client wants to re-use vectors though (saving resources and gaining
+                     // some conveniences).
+                     auto transform = shape->Transform * state.mTransform;
+                     agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(*shape->BasePath, transform);
+                     agg::rasterizer_scanline_aa raster;
+                     raster.add_path(final_path);
+                     render_fill(state, *shape, raster);
                   }
-
-                  if (shape->FillImage) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
-                     draw_image(shape, *shape->BasePath, shape->Scene->SampleMethod, shape->FinalX, shape->FinalY,
-                        view_width, view_height, *shape->FillImage, mRenderBase, *shape->FillRaster, 0, shape->FillOpacity * state.mOpacity);
-                  }
-
-                  if (shape->FillGradient) {
-                     if (auto table = get_fill_gradient_table(*shape, state.mOpacity * shape->FillOpacity)) {
-                        draw_gradient(shape, shape->BasePath, shape->FinalX, shape->FinalY, view_width, view_height,
-                           *shape->FillGradient, table, mRenderBase, *shape->FillRaster, 0);
-                     }
-                  }
-
-                  if (shape->FillPattern) {
-                     draw_pattern(shape, shape->BasePath, shape->Scene->SampleMethod, shape->FinalX, shape->FinalY,
-                        view_width, view_height, *shape->FillPattern, mRenderBase, *shape->FillRaster);
-                  }
+                  else render_fill(state, *shape, *shape->FillRaster);
                }
 
-               // STROKE
-
                if (shape->StrokeRaster) {
-                  if (shape->Scene->Gamma != 1.0) shape->StrokeRaster->gamma(agg::gamma_power(shape->Scene->Gamma));
+                  if (state.mApplyTransform) {
+                     auto transform = shape->Transform * state.mTransform;
 
-                  if (shape->FillRule IS VFR_NON_ZERO) shape->StrokeRaster->filling_rule(agg::fill_non_zero);
-                  else if (shape->FillRule IS VFR_EVEN_ODD) shape->StrokeRaster->filling_rule(agg::fill_even_odd);
+                     if (shape->DashArray) {
+                        configure_stroke((objVector &)*shape, shape->DashArray->stroke);
+                        agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> final_path(shape->DashArray->stroke, transform);
 
-                  if (shape->StrokeGradient) {
-                     if (auto table = get_stroke_gradient_table(*shape)) {
-                        draw_gradient(shape, shape->BasePath, shape->FinalX, shape->FinalY, view_width, view_height,
-                           *shape->StrokeGradient, table, mRenderBase, *shape->StrokeRaster, shape->StrokeWidth);
+                        agg::rasterizer_scanline_aa raster;
+                        raster.add_path(final_path);
+                        render_stroke(state, *shape, raster);
+                     }
+                     else {
+                        agg::conv_stroke<agg::path_storage> stroked_path(*shape->BasePath);
+                        configure_stroke((objVector &)*shape, stroked_path);
+                        agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> final_path(stroked_path, transform);
+
+                        agg::rasterizer_scanline_aa raster;
+                        raster.add_path(final_path);
+                        render_stroke(state, *shape, raster);
                      }
                   }
-                  else if (shape->StrokePattern) {
-                     draw_pattern(shape, shape->BasePath, shape->Scene->SampleMethod, shape->FinalX, shape->FinalY,
-                        view_width, view_height, *shape->StrokePattern, mRenderBase, *shape->StrokeRaster);
-                  }
-                  else if (shape->StrokeImage) {
-                     DOUBLE strokewidth = shape->StrokeWidth * shape->Transform.scale();
-                     if (strokewidth < 1) strokewidth = 1;
-
-                     agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(*shape->BasePath, shape->Transform);
-
-                     draw_brush(*shape->StrokeImage, mRenderBase, stroke_path, strokewidth);
-                  }
-                  else {
-                     mSolidRender.color(agg::rgba(shape->StrokeColour.Red, shape->StrokeColour.Green, shape->StrokeColour.Blue, shape->StrokeColour.Alpha * shape->StrokeOpacity * state.mOpacity));
-
-                     if (state.mClipMask) {
-                        agg::alpha_mask_gray8 alpha_mask(state.mClipMask->ClipRenderer);
-                        agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
-                        agg::render_scanlines(*shape->StrokeRaster, mScanLineMasked, mSolidRender);
-                     }
-                     else agg::render_scanlines(*shape->StrokeRaster, mScanLine, mSolidRender);
-                  }
+                  else render_stroke(state, *shape, *shape->StrokeRaster);
                }
 
                if (shape->InputSubscriptions) {
@@ -1167,7 +1231,7 @@ private:
          }
 
          if (bmpBkgd) {
-            agg::rasterizer_scanline_aa<> raster;
+            agg::rasterizer_scanline_aa raster;
             setRasterClip(raster, 0, 0, bmpBkgd->Width, bmpBkgd->Height);
 
             mBitmap = bmpSave;

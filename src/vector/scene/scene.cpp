@@ -11,8 +11,8 @@ VectorScene: Manages the scene graph for a collection of vectors.
 The VectorScene class acts as a container and control point for the management of vector definitions.  Its main
 purpose is to draw the scene to a target @Bitmap or @Surface provided by the client.
 
-Vector scenes are created by initialising multiple Vector objects such as @VectorPath and
-@VectorViewport and positioning them within a vector tree.  The VectorScene must lie at the root.
+Vector scenes are created by initialising multiple Vector objects such as @VectorPath and @VectorViewport and
+positioning them within a vector tree.  The VectorScene must lie at the root.
 
 The default mode of operation is for scenes to be manually drawn, for which the client must set the target #Bitmap
 and call the #Draw() action as required.  Automated drawing can be enabled by setting the target #Surface prior
@@ -75,12 +75,12 @@ static ERROR VECTORSCENE_ActionNotify(objVectorScene *Self, struct acActionNotif
 -METHOD-
 AddDef: Adds a new definition to a vector tree.
 
-This method will add a new definition to the root of a vector tree.  This feature is provided with the intention of
-supporting SVG style references to definitions such as gradients, images and other vectors.  By providing a name with
-the definition object, the object can then be referenced in strings that support definition referencing.
+This method will add a new definition object to the root of a vector tree.  This feature is provided to support SVG
+style referencing for features such as gradients, images and patterns.  By providing a name with the definition object,
+the object can then be referenced in URL strings.
 
-For instance, creating a gradient and associating it with the definition "redGradient" it would be possible to
-reference it with the string "url(#redGradient)" from common graphics attributes such as "fill".
+For instance, if creating a gradient with a name of "redGradient" it would be possible to reference it with
+`url(#redGradient)` in common graphics attributes such as `fill` and `stroke`.
 
 -INPUT-
 cstr Name: The unique name to associate with the definition.
@@ -125,7 +125,7 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
 
    // TO DO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
 
-   log.trace("Adding definition '%s' for object #%d", Args->Name, def->UID);
+   log.debug("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
 
    APTR data;
    if (!Self->Defs) {

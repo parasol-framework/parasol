@@ -6,7 +6,7 @@
 
    glSelf = obj.find('self')
    glFrameRate = 120
-   local mVector = mod.load('vector')
+   local mVec = mod.load('vector')
 
 -----------------------------------------------------------------------------------------------------------------------
 
@@ -61,8 +61,8 @@ end
       function(ID, Elapsed, CurrentTime)
          glAngle = glAngle + 1
          -- Incremental rotation
-         mVector.rotate(mxEdge, 1, glEllipse.cx, glEllipse.cy)
-         mVector.rotate(mxRectangle, 1, glEllipse.cx, glEllipse.cy)
+         mVec.rotate(mxEdge, 1, glEllipse.cx, glEllipse.cy)
+         mVec.rotate(mxRectangle, 1, glEllipse.cx, glEllipse.cy)
 
          -- Manual single-point rotation
          local x, y = rotate(50, 50, glEllipse.cx, glEllipse.cy, glAngle)

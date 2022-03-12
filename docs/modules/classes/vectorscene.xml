@@ -64,8 +64,8 @@
         <param type="OBJECTPTR" name="Def">Reference to the definition object.</param>
       </input>
       <description>
-<p>This method will add a new definition to the root of a vector tree.  This feature is provided with the intention of supporting SVG style references to definitions such as gradients, images and other vectors.  By providing a name with the definition object, the object can then be referenced in strings that support definition referencing.</p>
-<p>For instance, creating a gradient and associating it with the definition "redGradient" it would be possible to reference it with the string "url(#redGradient)" from common graphics attributes such as "fill".</p>
+<p>This method will add a new definition object to the root of a vector tree.  This feature is provided to support SVG style referencing for features such as gradients, images and patterns.  By providing a name with the definition object, the object can then be referenced in URL strings.</p>
+<p>For instance, if creating a gradient with a name of "redGradient" it would be possible to reference it with <code>url(#redGradient)</code> in common graphics attributes such as <code>fill</code> and <code>stroke</code>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

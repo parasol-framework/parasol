@@ -14,11 +14,7 @@
     <include>modules/combobox.h</include>
     <copyright>Paul Manias 2003-2020</copyright>
     <description>
-<p>The ComboBox class is used to create combo boxes, also known as 'drop-down menus' in application interfaces.  A combobox typically looks like a text entry area, but features a button positioned to the right-hand side of the gadget. Clicking on the button will pop-up a menu that the user can use to select a pre-defined menu item.  Clicking on one of those items will paste the item text into the combobox.</p>
-<p>A crucial feature of the combobox is the drop-down menu.  The combobox uses the <class name="Menu">Menu</class> class to support its menu construction. To add items to the drop-down menu, you need to pass instructions to it using XML.  You can learn more about the XML specification in the <class name="Menu">Menu</class> class manual.</p>
-<p>When the user selects a combobox item, you may need to respond with an action.  You can do this by initialising child objects to the combobox. These will be executed when the combobox is activated.  When programming, you can also subscribe to the combobox's Activate action and write a customised response routine.</p>
-<p>The id of the most recently selected menu item can be retrieved from the <field>SelectedID</field> field.</p>
-<p>To make modifications to the menu after initialisation, read the <field>Menu</field> field and manipulate it directly.</p></description>
+<p>The ComboBox class is used to create combo boxes, also known as 'drop-down menus' in application interfaces.  A combobox typically looks like a text entry area, but features a button positioned to the right-hand side of the gadget. Clicking on the button will pop-up a menu that the user can use to select a pre-defined menu item.  Clicking on one of those items will paste the item text into the combobox.</p></description>
     <source>
       <file>class_combobox.cpp</file>
     </source>
@@ -163,12 +159,9 @@
 
     <field>
       <name>Menu</name>
-      <comment>Provides direct access to the drop-down menu.</comment>
+      <comment>Menu control object</comment>
       <access read="R">Read</access>
       <type class="Menu">*Menu</type>
-      <description>
-<p>The drop-down menu that is used for the combobox can be accessed directly through this field.  You may find this useful for manipulating the content of the drop-down menu following initialisation of the combobox.</p>
-      </description>
     </field>
 
     <field>

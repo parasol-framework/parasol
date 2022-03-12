@@ -683,7 +683,7 @@ glStyles = {
                textInput = translate
             end
          end
-
+--[[
          local menu = Combo.menu
          menu.relative = Viewport
          menu.x        = Combo.labelWidth
@@ -695,9 +695,9 @@ glStyles = {
          if bit.band(Combo.flags, CMF_SHOW_ICONS) != 0 then flags = bit.bor(flags, MNF_SHOW_IMAGES) end
          menu.flags = flags
          menu.lineLimit = 8
-
+--]]
          -- Compute the width of the combobox relative to the width of the drop-down menu.
-
+--[[
          if bit.band(Viewport.dimensions, DMF_WIDTH) == 0 then
             if bit.band(Viewport.dimensions, DMF_X) == 0 or bit.band(Viewport.dimensions, DMF_X_OFFSET) == 0 then
                local menuWidth = menu.width
@@ -709,7 +709,7 @@ glStyles = {
                end
             end
          end
-
+--]]
          local function resizeTriggered(Combo)
             local state = Combo.viewport.state()
             local viewport = Combo.viewport
@@ -728,8 +728,8 @@ glStyles = {
             state.icon.viewport.x = x
             state.textMask.width = x - state.textMask.x - (STROKE_WIDTH * 2)
 
-            Combo.menu.y = viewport.height - 1
-            Combo.menu.width = viewport.width - Combo.labelWidth
+            --Combo.menu.y = viewport.height - 1
+            --Combo.menu.width = viewport.width - Combo.labelWidth
          end
 
          Combo.styleTrigger = function(Combo, StyleChange)
@@ -756,7 +756,6 @@ glStyles = {
          textInput.mask = state.textClip
 
          if textInput.acInit() != ERR_Okay then return ERR_Init end
-         if menu.acInit() != ERR_Okay then return ERR_Init end
 
          -- Place an icon for invoking the drop-down menu
 
@@ -799,14 +798,14 @@ glStyles = {
          Viewport.subscribe('lostfocus', function(Viewport, Args, Combo)
             local state = Combo.viewport.state()
             state.bkgd.stroke = COL_STROKE_NO_FOCUS
-            Combo.menu.acHide()
+            --Combo.menu.acHide()
             Viewport.acDraw()
          end, Combo)
 
          Viewport.subscribe('redimension', function(Viewport, Args, Combo)
             resizeTriggered(Combo)
          end, Combo)
-
+--[[
          Combo.menu.subscribe('activate', function(Menu, Args, Combo)
             local item = Combo.menu.selection
             if item then
@@ -818,7 +817,7 @@ glStyles = {
                error('No item selected.')
             end
          end, Combo)
-
+--]]
          Viewport.mtSubscribeInput(JTYPE_BUTTON,
             function(Viewport, Msg)
                local state = Viewport.state()
@@ -841,10 +840,10 @@ glStyles = {
                         if (Msg.x > Viewport.width - Viewport.height) then
                            -- The button on the combobox has been pressed, so switch the menu visibility.
                            -- About 300ms must pass before a switch can occur.
-                           Combo.menu.mtSwitch(200)
+                           --Combo.menu.mtSwitch(200)
                         elseif (Msg.x >= Combo.labelWidth) then
                            if bit.band(textInput.flags, TXF_EDIT) == 0 then
-                              Combo.menu.mtSwitch(5)
+                              --Combo.menu.mtSwitch(5)
                            end
                         end
                      end

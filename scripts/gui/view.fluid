@@ -287,15 +287,10 @@ gui.view = function(Options)
    end
 
    local function loadIcon(Name)
-      local icon = { }
       if not self.icons[Name] then
-         local err
-         err, icon.bmp = mWidget.createIcon(Name, nil, nil, nil, lIconSize)
-         icon.img = lScene.new('VectorImage', { bitmap = icon.bmp })
-         lScene.mtAddDef(Name, icon.img)
-         self.icons[Name] = icon
+         self.icons[Name] = gui.createIcon(lScene, Name, lIconSize)
+         lScene.mtAddDef(Name, self.icons[Name].pattern)
       end
-      return self.icons[Name]
    end
 
    local function initListStyle()
@@ -774,15 +769,7 @@ gui.view = function(Options)
 
             if col.showIcons and item.icon then
                catch(function()
-                  local icon = { }
-
-                  if not self.icons[item.icon] then
-                     local err
-                     err, icon.bmp = mWidget.createIcon(item.icon, nil, nil, nil, lIconSize)
-                     icon.img = lScene.new('VectorImage', { bitmap = icon.bmp })
-                     lScene.mtAddDef(item.icon, icon.img)
-                     self.icons[item.icon] = icon
-                  end
+                  loadIcon(item.icon)
 
                   if not item._vectors.iconImage then
                      item._vectors.iconImage = col.vecViewport.new('VectorRectangle', {
@@ -1018,15 +1005,7 @@ gui.view = function(Options)
 
          if item.icon then
             catch(function()
-               local icon = { }
-
-               if not self.icons[item.icon] then
-                  local err
-                  err, icon.bmp = mWidget.createIcon(item.icon, nil, nil, nil, lIconSize)
-                  icon.img = lScene.new('VectorImage', { bitmap = icon.bmp })
-                  lScene.mtAddDef(item.icon, icon.img)
-                  self.icons[item.icon] = icon
-               end
+               loadIcon(item.icon)
 
                if not item._vectors.iconImage then
                   item._vectors.iconImage = vp.new('VectorRectangle', {

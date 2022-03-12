@@ -6,11 +6,16 @@ Please note that this is not an extension of the Vector class.  It is used for t
 VectorPattern: Provides support for the filling and stroking of vectors with patterns.
 
 The VectorPattern class is used by Vector painting algorithms to fill and stroke vectors with pre-rendered patterns.
-This is achieved by initialising a VectorPattern object with the desired settings and then registering it with
-a @VectorScene via the <method class="VectorScene">AddDef</> method.
+It is the most efficient way of rendering a common set of graphics multiple times.
 
+The VectorPattern must be registered with a @VectorScene via the <method class="VectorScene">AddDef</> method.
 Any vector within the target scene will be able to utilise the pattern for filling or stroking by referencing its
 name through the @Vector.Fill and @Vector.Stroke fields.  For instance 'url(#dots)'.
+
+A special use case is made for patterns that are applied as a fill operation in @VectorViewport objects.  In this
+case the renderer will dynamically render the pattern as a background within the viewport.  This ensures that the
+pattern is rendered at maximum fidelity whenever it is used, and not affected by bitmap clipping restrictions.  It
+should be noted that this means the image caching feature will be disabled.
 
 It is strongly recommended that the VectorPattern is owned by the @VectorScene that is handling the
 definition.  This will ensure that the VectorPattern is deallocated when the scene is destroyed.

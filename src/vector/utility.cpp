@@ -445,13 +445,13 @@ static bool point_in_rectangle(agg::vertex_d X, agg::vertex_d Y, agg::vertex_d Z
 //********************************************************************************************************************
 
 template <class T>
-void configure_stroke(objVector &Vector, T &stroke)
+void configure_stroke(objVector &Vector, T &Stroke)
 {
-   stroke.width(Vector.StrokeWidth);
+   Stroke.width(Vector.StrokeWidth);
 
-   if (Vector.LineJoin)  stroke.line_join(Vector.LineJoin); //miter, round, bevel
-   if (Vector.LineCap)   stroke.line_cap(Vector.LineCap); // butt, square, round
-   if (Vector.InnerJoin) stroke.inner_join(Vector.InnerJoin); // miter, round, bevel, jag
+   if (Vector.LineJoin)  Stroke.line_join(Vector.LineJoin); //miter, round, bevel
+   if (Vector.LineCap)   Stroke.line_cap(Vector.LineCap); // butt, square, round
+   if (Vector.InnerJoin) Stroke.inner_join(Vector.InnerJoin); // miter, round, bevel, jag
 
    // TODO: AGG seems to have issues with using the correct cap at the end of closed polygons.  For the moment
    // this hack is being used, but it can result in dashed lines being switched to the wrong line cap.  For illustration, use:
@@ -463,17 +463,17 @@ void configure_stroke(objVector &Vector, T &stroke)
       if (Vector.Head.SubID IS ID_VECTORPOLYGON) {
          if (((objVectorPoly &)Vector).Closed) {
             switch(Vector.LineJoin) {
-               case VLJ_MITER:        stroke.line_cap(agg::square_cap); break;
-               case VLJ_BEVEL:        stroke.line_cap(agg::square_cap); break;
-               case VLJ_MITER_REVERT: stroke.line_cap(agg::square_cap); break;
-               case VLJ_ROUND:        stroke.line_cap(agg::round_cap); break;
-               case VLJ_MITER_ROUND:  stroke.line_cap(agg::round_cap); break;
+               case VLJ_MITER:        Stroke.line_cap(agg::square_cap); break;
+               case VLJ_BEVEL:        Stroke.line_cap(agg::square_cap); break;
+               case VLJ_MITER_REVERT: Stroke.line_cap(agg::square_cap); break;
+               case VLJ_ROUND:        Stroke.line_cap(agg::round_cap); break;
+               case VLJ_MITER_ROUND:  Stroke.line_cap(agg::round_cap); break;
                case VLJ_INHERIT: break;
             }
          }
       }
    }
 
-   if (Vector.MiterLimit > 0) stroke.miter_limit(Vector.MiterLimit);
-   if (Vector.InnerMiterLimit > 0) stroke.inner_miter_limit(Vector.InnerMiterLimit);
+   if (Vector.MiterLimit > 0) Stroke.miter_limit(Vector.MiterLimit);
+   if (Vector.InnerMiterLimit > 0) Stroke.inner_miter_limit(Vector.InnerMiterLimit);
 }

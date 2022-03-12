@@ -269,23 +269,21 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
       }
    }
 
-   if ((!error) and (Vector->DashTotal > 0)) {
+   DOUBLE *dash_array;
+   LONG dash_total;
+   if ((!error) and (!GetFieldArray(Vector, FID_DashArray, &dash_array, &dash_total)) and (dash_array)) {
       DOUBLE dash_offset;
       if ((!GetDouble(Vector, FID_DashOffset, &dash_offset)) and (dash_offset != 0)) {
          error = xmlSetAttribDouble(XML, Tag, XMS_NEW, "stroke-dashoffset", Vector->DashOffset);
       }
 
-      DOUBLE *dash_array;
-      LONG dash_total;
-      if (!GetFieldArray(Vector, FID_DashArray, &dash_array, &dash_total)) {
-         LONG pos = 0;
-         for (LONG i=0; i < dash_total; i++) {
-            if (pos != 0) buffer[pos++] = ',';
-            pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", dash_array[i]);
-            if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
-         }
-         error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke-dasharray", buffer);
+      LONG pos = 0;
+      for (LONG i=0; i < dash_total; i++) {
+         if (pos != 0) buffer[pos++] = ',';
+         pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", dash_array[i]);
+         if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
       }
+      error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke-dasharray", buffer);
    }
 
    LONG linecap;

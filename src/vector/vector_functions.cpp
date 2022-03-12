@@ -760,21 +760,27 @@ static void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, DRGB *RGB, objVectorGr
 
    if (RGB)      RGB->Alpha = 0; // Nullify the colour
    if (Gradient) *Gradient = NULL;
-   if (Image)    *Image = NULL;
-   if (Pattern)  *Pattern = NULL;
+   if (Image)    *Image    = NULL;
+   if (Pattern)  *Pattern  = NULL;
 
-   //FMSG("vecReadPainter()","%s", IRI);
+   log.trace("IRI: %s", IRI);
 
 next:
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
    if (!StrCompare("url(", IRI, 4, 0)) {
-      if (!Vector) return;
+      if (!Vector) {
+         log.trace("No Vector specified to enable URL() reference.");
+         return;
+      }
       objVectorScene *scene;
 
       if (Vector->ClassID IS ID_VECTOR) scene = ((objVector *)Vector)->Scene;
       else if (Vector->ClassID IS ID_VECTORSCENE) scene = (objVectorScene *)Vector;
-      else return;
+      else {
+         log.warning("The referenced Vector is invalid.");
+         return;
+      }
 
       IRI += 4;
       if (*IRI IS '#') {
@@ -810,7 +816,7 @@ next:
             return;
          }
 
-         log.warning("Failed to lookup IRI: %s", IRI);
+         log.warning("Failed to lookup IRI '%s' in scene #%d", name, scene->Head.UID);
       }
       else log.warning("Invalid IRI: %s", IRI);
    }

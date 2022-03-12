@@ -128,6 +128,8 @@ static ERROR VECTORVIEWPORT_Free(objVectorViewport *Self, APTR Void)
 
 static ERROR VECTORVIEWPORT_Init(objVectorViewport *Self, APTR Void)
 {
+   // Initialisation is performed by VECTOR_Init()
+
    // Please refer to gen_vector_path() for the initialisation of vpFixedX/Y/Width/Height, which has
    // its own section for dealing with viewports.
 

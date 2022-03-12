@@ -6,7 +6,8 @@ if (gui == nil) then
       fonts = { },
       colours = { },
       interface = { },
-      rgb = { }
+      rgb = { },
+      counter = 0
    }
 
    do
@@ -342,3 +343,41 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, Ignor
    return gradient
 end
 
+------------------------------------------------------------------------------
+-- Return an icon styled with the current theme.  The icon is used as a fill, i.e. "url(#Path)".  Apply it to a
+-- VectorRectangle if you want to use the icon as a cached bitmap (fast), or to a VectorViewport for live
+-- rendering (typically needed for scaling and transforms).
+
+gui.createIcon = function(Scene, Path, Size)
+   if not Size then Size = 16 end
+   local lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
+   local icon = { }
+   gui.counter = gui.counter + 1
+   local gname   = 'icongrd' .. gui.counter
+   icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size })
+   icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lThemeColour.first, lThemeColour.last }, 0, 0, 0, 1)
+   icon.svg      = obj.new('svg', { target=icon.pattern.viewport, path='icons:' .. Path .. '.svg' })
+   gui.applyFill(icon.pattern.viewport, 'url(#' .. gname .. ')')
+
+   -- Adjust gradient size to match the viewport height.
+
+   local viewport = icon.pattern.viewport.child
+   if (viewport != nil) then
+      while (child != nil) do
+         if (child.class.id == ID_VECTORVIEWPORT) then
+            viewport = child
+            break
+         end
+      end
+
+      if (viewport.viewHeight < viewport.viewWidth) then
+         icon.gradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
+         icon.gradient.y2 = icon.gradient.y1 + viewport.viewWidth
+      else
+         icon.gradient.y1 = viewport.viewY
+         icon.gradient.y2 = viewport.viewY + viewport.viewHeight
+      end
+   end
+
+   return icon
+end

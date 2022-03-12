@@ -29,6 +29,15 @@ public:
    KeyboardSubscription(FUNCTION pCallback) : Callback(pCallback) { }
 };
 
+class DashedStroke {
+public:
+   agg::conv_dash<agg::path_storage> path;
+   agg::conv_stroke<agg::conv_dash<agg::path_storage>> stroke;
+   std::vector<DOUBLE> values;
+
+   DashedStroke(agg::path_storage &pPath, LONG Elements=2) : path(pPath), stroke(path), values(Elements) { }
+};
+
 //   DOUBLE BX1, BY1, BX2, BY2;  TODO: Cache path boundaries on path generation
 
 #define SHAPE_PRIVATE \
@@ -51,7 +60,7 @@ public:
    struct rkVector *Morph; \
    CSTRING FilterString, StrokeString, FillString; \
    struct DRGB StrokeColour, FillColour; \
-   DOUBLE *DashArray; \
+   DashedStroke *DashArray; \
    std::vector<FeedbackSubscription> *FeedbackSubscriptions; \
    std::vector<InputSubscription> *InputSubscriptions; \
    std::vector<KeyboardSubscription> *KeyboardSubscriptions; \

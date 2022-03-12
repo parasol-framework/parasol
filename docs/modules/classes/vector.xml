@@ -314,13 +314,6 @@
     </field>
 
     <field>
-      <name>DashTotal</name>
-      <comment>The total number of values in the <field>DashArray</field>.</comment>
-      <access read="R">Read</access>
-      <type>INT</type>
-    </field>
-
-    <field>
       <name>EnableBkgd</name>
       <comment>If true, allows filters to use BackgroundImage and BackgroundAlpha source types.</comment>
       <access read="G" write="S">Get/Set</access>

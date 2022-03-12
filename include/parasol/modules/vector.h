@@ -597,7 +597,6 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
    DOUBLE MiterLimit; \
    DOUBLE InnerMiterLimit; \
    DOUBLE DashOffset; \
-   LONG   DashTotal; \
    LONG   Visibility; \
    LONG   Flags; \
    LONG   Cursor;
@@ -621,7 +620,6 @@ typedef struct rkVector {
    DOUBLE    MiterLimit;            // Imposes a limit on the ratio of the miter length to the StrokeWidth.
    DOUBLE    InnerMiterLimit;       // A special limit to apply when the MITER_ROUND line-join effect is in use.
    DOUBLE    DashOffset;            // For the DashArray, applies an initial dash offset.
-   LONG      DashTotal;             // The total number of values in the DashArray.
    LONG      Visibility;            // Controls the visibility of a vector and its children.
    LONG      Flags;                 // Optional flags.
    LONG      Cursor;                // The mouse cursor to display when the pointer is within the vector's boundary.

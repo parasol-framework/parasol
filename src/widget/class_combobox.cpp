@@ -14,18 +14,6 @@ combobox typically looks like a text entry area, but features a button positione
 Clicking on the button will pop-up a menu that the user can use to select a pre-defined menu item.  Clicking on one of
 those items will paste the item text into the combobox.
 
-A crucial feature of the combobox is the drop-down menu.  The combobox uses the @Menu class to support its menu
-construction. To add items to the drop-down menu, you need to pass instructions to it using XML.  You can learn more
-about the XML specification in the @Menu class manual.
-
-When the user selects a combobox item, you may need to respond with an action.  You can do this by initialising child
-objects to the combobox. These will be executed when the combobox is activated.  When programming, you can also
-subscribe to the combobox's Activate action and write a customised response routine.
-
-The id of the most recently selected menu item can be retrieved from the #SelectedID field.
-
-To make modifications to the menu after initialisation, read the #Menu field and manipulate it directly.
-
 -END-
 
 *****************************************************************************/
@@ -201,12 +189,9 @@ static ERROR COMBOBOX_NewObject(objComboBox *Self, APTR Void)
    if (!NewObject(ID_VECTORVIEWPORT, NF_INTEGRAL, &Self->Viewport)) {
       if (!NewObject(ID_VECTORTEXT, NF_INTEGRAL, &Self->TextInput)) {
          SetOwner(Self->TextInput, Self->Viewport);
-         if (!NewObject(ID_MENU, NF_INTEGRAL, &Self->Menu)) {
-            SetString(Self->TextInput, FID_Face, glWidgetFace);
-            drwApplyStyleValues(Self, NULL);
-            return ERR_Okay;
-         }
-         else return ERR_NewObject;
+         SetString(Self->TextInput, FID_Face, glWidgetFace);
+         drwApplyStyleValues(Self, NULL);
+         return ERR_Okay;
       }
       else return ERR_NewObject;
    }
@@ -400,12 +385,6 @@ LabelWidth: A set-width for the label area of the combobox may be defined here.
 
 If you set a label for the combobox, the width of the label area is automatically calculated according to the width of
 the label string.  You may override this behaviour by setting a value in the LabelWidth field.
-
--FIELD-
-Menu: Provides direct access to the drop-down menu.
-
-The drop-down menu that is used for the combobox can be accessed directly through this field.  You may find this useful
-for manipulating the content of the drop-down menu following initialisation of the combobox.
 
 -FIELD-
 Right: The right-most coordinate of the combobox (X + Width).
