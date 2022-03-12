@@ -272,8 +272,8 @@ static void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds)
             agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->ClipMask->ClipPath, Vector->Transform);
             bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
          }
-         else if (Vector->BasePath) {
-            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->BasePath, Vector->Transform);
+         else if (Vector->BasePath.total_vertices()) {
+            agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->BasePath, Vector->Transform);
             bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
          }
 

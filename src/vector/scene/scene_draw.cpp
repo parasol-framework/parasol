@@ -907,19 +907,19 @@ private:
       }
 
       if (Vector.FillImage) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
-         draw_image(&Vector, *Vector.BasePath, Vector.Scene->SampleMethod, Vector.FinalX, Vector.FinalY,
+         draw_image(&Vector, Vector.BasePath, Vector.Scene->SampleMethod, Vector.FinalX, Vector.FinalY,
             view_width(), view_height(), *Vector.FillImage, mRenderBase, Raster, 0, Vector.FillOpacity * State.mOpacity);
       }
 
       if (Vector.FillGradient) {
          if (auto table = get_fill_gradient_table(Vector, State.mOpacity * Vector.FillOpacity)) {
-            draw_gradient(&Vector, Vector.BasePath, Vector.FinalX, Vector.FinalY, view_width(), view_height(),
+            draw_gradient(&Vector, &Vector.BasePath, Vector.FinalX, Vector.FinalY, view_width(), view_height(),
                *Vector.FillGradient, table, mRenderBase, Raster, 0);
          }
       }
 
       if (Vector.FillPattern) {
-         draw_pattern(&Vector, Vector.BasePath, Vector.Scene->SampleMethod, Vector.FinalX, Vector.FinalY,
+         draw_pattern(&Vector, &Vector.BasePath, Vector.Scene->SampleMethod, Vector.FinalX, Vector.FinalY,
             view_width(), view_height(), *Vector.FillPattern, mRenderBase, Raster);
       }
    }
@@ -932,12 +932,12 @@ private:
 
       if (Vector.StrokeGradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
-            draw_gradient(&Vector, Vector.BasePath, Vector.FinalX, Vector.FinalY, view_width(), view_height(),
+            draw_gradient(&Vector, &Vector.BasePath, Vector.FinalX, Vector.FinalY, view_width(), view_height(),
                *Vector.StrokeGradient, table, mRenderBase, Raster, Vector.StrokeWidth);
          }
       }
       else if (Vector.StrokePattern) {
-         draw_pattern(&Vector, Vector.BasePath, Vector.Scene->SampleMethod, Vector.FinalX, Vector.FinalY,
+         draw_pattern(&Vector, &Vector.BasePath, Vector.Scene->SampleMethod, Vector.FinalX, Vector.FinalY,
             view_width(), view_height(), *Vector.StrokePattern, mRenderBase, Raster);
       }
       else if (Vector.StrokeImage) {
@@ -945,7 +945,7 @@ private:
          if (stroke_width < 1) stroke_width = 1;
 
          auto transform = Vector.Transform * State.mTransform;
-         agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(*Vector.BasePath, transform);
+         agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(Vector.BasePath, transform);
 
          draw_brush(*Vector.StrokeImage, mRenderBase, stroke_path, stroke_width);
       }
@@ -1089,7 +1089,7 @@ private:
                   if (Scene->Flags & VPF_OUTLINE_VIEWPORTS) { // Debug option: Draw the viewport's path with a green outline
                      mSolidRender.color(agg::rgba(0, 1, 0));
                      agg::rasterizer_scanline_aa stroke_raster;
-                     agg::conv_stroke<agg::path_storage> stroked_path(*view->BasePath);
+                     agg::conv_stroke<agg::path_storage> stroked_path(view->BasePath);
                      stroked_path.width(2);
                      stroke_raster.add_path(stroked_path);
                      agg::render_scanlines(stroke_raster, mScanLine, mSolidRender);
@@ -1152,7 +1152,7 @@ private:
                      // every time.  It's necessary if the client wants to re-use vectors though (saving resources and gaining
                      // some conveniences).
                      auto transform = shape->Transform * state.mTransform;
-                     agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(*shape->BasePath, transform);
+                     agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(shape->BasePath, transform);
                      agg::rasterizer_scanline_aa raster;
                      raster.add_path(final_path);
                      render_fill(state, *shape, raster);
@@ -1173,7 +1173,7 @@ private:
                         render_stroke(state, *shape, raster);
                      }
                      else {
-                        agg::conv_stroke<agg::path_storage> stroked_path(*shape->BasePath);
+                        agg::conv_stroke<agg::path_storage> stroked_path(shape->BasePath);
                         configure_stroke((objVector &)*shape, stroked_path);
                         agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> final_path(stroked_path, transform);
 
@@ -1195,8 +1195,8 @@ private:
                      agg::conv_transform<agg::path_storage, agg::trans_affine> path(*shape->ClipMask->ClipPath, shape->Transform);
                      bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
                   }
-                  else if (shape->BasePath) {
-                     agg::conv_transform<agg::path_storage, agg::trans_affine> path(*shape->BasePath, shape->Transform);
+                  else if (shape->BasePath.total_vertices()) {
+                     agg::conv_transform<agg::path_storage, agg::trans_affine> path(shape->BasePath, shape->Transform);
                      bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
                   }
                   else {

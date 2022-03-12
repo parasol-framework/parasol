@@ -43,24 +43,25 @@ public:
 #define SHAPE_PRIVATE \
    DOUBLE FinalX, FinalY; \
    DOUBLE FillGradientAlpha, StrokeGradientAlpha; \
+   agg::path_storage BasePath; \
+   agg::trans_affine Transform; \
+   struct RGB8 rgbStroke, rgbFill; \
    objVectorFilter *Filter; \
    struct rkVectorViewport *ParentView; \
+   CSTRING FilterString, StrokeString, FillString; \
    STRING ID; \
    void   (*GeneratePath)(struct rkVector *); \
-   agg::path_storage *BasePath; \
    agg::rasterizer_scanline_aa<> *StrokeRaster; \
    agg::rasterizer_scanline_aa<> *FillRaster; \
-   agg::trans_affine Transform; \
    struct rkVectorClip     *ClipMask; \
    struct rkVectorGradient *StrokeGradient, *FillGradient; \
    struct rkVectorImage    *FillImage, *StrokeImage; \
    struct rkVectorPattern  *FillPattern, *StrokePattern; \
-   GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable; \
    struct rkVectorTransition *Transition; \
    struct rkVector *Morph; \
-   CSTRING FilterString, StrokeString, FillString; \
-   struct DRGB StrokeColour, FillColour; \
    DashedStroke *DashArray; \
+   GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable; \
+   struct DRGB StrokeColour, FillColour; \
    std::vector<FeedbackSubscription> *FeedbackSubscriptions; \
    std::vector<InputSubscription> *InputSubscriptions; \
    std::vector<KeyboardSubscription> *KeyboardSubscriptions; \
@@ -76,8 +77,7 @@ public:
    UBYTE  ButtonLock:1; \
    agg::line_join_e  LineJoin; \
    agg::line_cap_e   LineCap; \
-   agg::inner_join_e InnerJoin; \
-   struct RGB8 rgbStroke, rgbFill;
+   agg::inner_join_e InnerJoin;
 
 class VectorEffect {
 public:

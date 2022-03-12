@@ -34,8 +34,8 @@ static void generate_spiral(objVectorSpiral *Vector)
       DOUBLE y = (Vector->Offset + Vector->Scale * angle) * sin(angle);
       if ((ABS(x) > Vector->Radius) or (ABS(y) > Vector->Radius)) break;
 
-      if (!i) Vector->BasePath->move_to(Vector->Radius + x, Vector->Radius + y);
-      else Vector->BasePath->line_to(Vector->Radius + x, Vector->Radius + y);
+      if (!i) Vector->BasePath.move_to(Vector->Radius + x, Vector->Radius + y);
+      else Vector->BasePath.line_to(Vector->Radius + x, Vector->Radius + y);
 
       angle += Vector->Step;
    }

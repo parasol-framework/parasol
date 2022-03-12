@@ -1072,7 +1072,7 @@ namespace agg
             return m_vertices.size() ? m_vertices[m_vertices.size() - 1].y : 0.0;
         }
 
-        unsigned total_vertices() const {
+        constexpr unsigned total_vertices() const {
             return m_vertices.size();
         }
 

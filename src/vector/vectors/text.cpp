@@ -979,15 +979,15 @@ static void generate_text(objVectorText *Vector)
             morph->Dirty = 0;
          }
 
-         if (!morph->BasePath) morph = NULL;
+         if (!morph->BasePath.total_vertices()) morph = NULL;
          else {
-            morph->BasePath->rewind(0);
-            morph->BasePath->vertex(0, &start_x, &start_y);
+            morph->BasePath.rewind(0);
+            morph->BasePath.vertex(0, &start_x, &start_y);
             end_vx = start_x;
             end_vy = start_y;
             if (morph->PathLength > 0) {
-               path_scale = morph->PathLength / agg::path_length(*morph->BasePath);
-               morph->BasePath->rewind(0);
+               path_scale = morph->PathLength / agg::path_length(morph->BasePath);
+               morph->BasePath.rewind(0);
             }
          }
       }
@@ -1086,7 +1086,7 @@ static void generate_text(objVectorText *Vector)
                   if (char_width > dist) {
                      while (cmd != agg::path_cmd_stop) {
                         DOUBLE current_x, current_y;
-                        cmd = morph->BasePath->vertex(&current_x, &current_y);
+                        cmd = morph->BasePath.vertex(&current_x, &current_y);
                         if (agg::is_vertex(cmd)) {
                            const DOUBLE x = (current_x - end_vx), y = (current_y - end_vy);
                            const DOUBLE vertex_dist = sqrt((x * x) + (y * y));
@@ -1128,7 +1128,7 @@ static void generate_text(objVectorText *Vector)
                      transform.rotate(angle); // Rotate the character in accordance with its position on the path angle.
                      transform.translate(tx, ty); // Move the character to its correct position on the path.
                      agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(char_path, transform);
-                     Vector->BasePath->concat_path(trans_char);
+                     Vector->BasePath.concat_path(trans_char);
                   }
 
                   //dx += char_width;
@@ -1203,7 +1203,7 @@ static void generate_text(objVectorText *Vector)
 
                   transform.translate(dx, dy);
                   agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(char_path, transform);
-                  Vector->BasePath->concat_path(trans_char);
+                  Vector->BasePath.concat_path(trans_char);
 
                   if (Vector->txCursor.vector) {
                      // Calculate the cursor line that would be displayed at this character position and save it to the
@@ -1348,11 +1348,11 @@ static void generate_text_bitmap(objVectorText *Vector)
 
    // Standard rectangle to host the text image.
 
-   Vector->BasePath->move_to(0, 0);
-   Vector->BasePath->line_to(longest_line_width, 0);
-   Vector->BasePath->line_to(longest_line_width, dy);
-   Vector->BasePath->line_to(0, dy);
-   Vector->BasePath->close_polygon();
+   Vector->BasePath.move_to(0, 0);
+   Vector->BasePath.line_to(longest_line_width, 0);
+   Vector->BasePath.line_to(longest_line_width, dy);
+   Vector->BasePath.line_to(0, dy);
+   Vector->BasePath.close_polygon();
 
    Vector->txWidth = longest_line_width;
 

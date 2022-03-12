@@ -174,14 +174,14 @@ FieldNotSet: The vector's scene graph is not associated with a Surface.
 static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
-      if ((!Self->BasePath) or (Self->Dirty)) gen_vector_tree((objVector *)Self);
-      if (!Self->BasePath) return ERR_NoData;
+      if (Self->Dirty) gen_vector_tree((objVector *)Self);
+      if (!Self->BasePath.total_vertices()) return ERR_NoData;
 #if 0
       // Retrieve bounding box, post-transformations.
       // TODO: Would need to account for client defined brush stroke widths and stroke scaling.
 
       DOUBLE bx1, by1, bx2, by2;
-      bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
+      bounding_rect_single(Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
 
       if (Self->Head.SubID IS ID_VECTORTEXT) {
          bx1 += Self->FinalX;
@@ -230,6 +230,8 @@ static ERROR VECTOR_Enable(objVector *Self, APTR Void)
 
 static ERROR VECTOR_Free(objVector *Self, APTR Args)
 {
+   Self->~objVector();
+
    if (Self->ID)           { FreeResource(Self->ID); Self->ID = NULL; }
    if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = NULL; }
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
@@ -261,7 +263,6 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
       }
    }
 
-   delete Self->BasePath;     Self->BasePath     = NULL;
    delete Self->StrokeRaster; Self->StrokeRaster = NULL;
    delete Self->FillRaster;   Self->FillRaster   = NULL;
    delete Self->InputSubscriptions;    Self->InputSubscriptions    = NULL;
@@ -354,21 +355,21 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
    if (!Self->Scene) return log.warning(ERR_NotInitialised);
 
    if (Self->GeneratePath) { // Path generation must be supported by the vector.
-      if ((!Self->BasePath) or (Self->Dirty)) gen_vector_tree((objVector *)Self);
-      if (!Self->BasePath) return ERR_NoData;
+      if (Self->Dirty) gen_vector_tree((objVector *)Self);
+      if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
       std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, -1000000, -1000000 };
       DOUBLE bx1, by1, bx2, by2;
 
       if (Args->Flags & VBF_NO_TRANSFORM) {
-         bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
+         bounding_rect_single(Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
          bounds[0] = bx1 + Self->FinalX;
          bounds[1] = by1 + Self->FinalY;
          bounds[2] = bx2 + Self->FinalX;
          bounds[3] = by2 + Self->FinalY;
       }
       else {
-         agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, Self->Transform);
+         agg::conv_transform<agg::path_storage, agg::trans_affine> path(Self->BasePath, Self->Transform);
          bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
          bounds[0] = bx1;
          bounds[1] = by1;
@@ -500,7 +501,7 @@ static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
    Self->FillRule      = VFR_NON_ZERO;
    Self->ClipRule      = VFR_NON_ZERO;
    Self->Dirty         = RC_ALL;
-   new (&Self->Transform) agg::trans_affine;
+   new (Self) objVector;
    return ERR_Okay;
 }
 
@@ -599,13 +600,13 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if ((!Self->BasePath) or (Self->Dirty)) gen_vector_tree((objVector *)Self);
-   if (!Self->BasePath) return ERR_NoData;
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
    if (Self->Head.SubID IS ID_VECTORVIEWPORT) {
       agg::vertex_d w, x, y, z;
 
-      auto &vertices = Self->BasePath->vertices(); // Note: Viewport BasePath is fully transformed.
+      auto &vertices = Self->BasePath.vertices(); // Note: Viewport BasePath is fully transformed.
       vertices.vertex(0, &x.x, &x.y);
       vertices.vertex(1, &y.x, &y.y);
       vertices.vertex(2, &z.x, &z.y);
@@ -621,7 +622,7 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
    }
    else if (Self->Head.SubID IS ID_VECTORRECTANGLE) {
       agg::vertex_d w, x, y, z;
-      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(*Self->BasePath, Self->Transform);
+      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(Self->BasePath, Self->Transform);
 
       base_path.rewind(0);
       base_path.vertex(&x.x, &x.y);
@@ -639,7 +640,7 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
    else {
       // Quick check to see if (X,Y) is within the path's boundary, then follow-up with a hit test.
 
-      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(*Self->BasePath, Self->Transform);
+      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(Self->BasePath, Self->Transform);
       DOUBLE bx1, by1, bx2, by2;
       bounding_rect_single(base_path, 0, &bx1, &by1, &bx2, &by2);
       if ((Args->X >= bx1) and (Args->Y >= by1) and (Args->X < bx2) and (Args->Y < by2)) {
@@ -935,9 +936,9 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
    if ((!Args) or (Args->Callback)) return log.warning(ERR_NullArgs);
 
    if (Self->Dirty) gen_vector_tree((objVector *)Self);
-   if (!Self->BasePath) return ERR_NoData;
+   if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
-   Self->BasePath->rewind(0);
+   Self->BasePath.rewind(0);
 
    DOUBLE x, y;
    LONG cmd = -1;
@@ -949,7 +950,7 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
 
       LONG index = 0;
       do {
-        cmd = Self->BasePath->vertex(&x, &y);
+        cmd = Self->BasePath.vertex(&x, &y);
         if (agg::is_vertex(cmd)) routine(Self, index++, cmd, x, y);
       } while (cmd != agg::path_cmd_stop);
    }
@@ -967,7 +968,7 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
       if ((script = Args->Callback->Script.Script)) {
          LONG index = 0;
          do {
-           cmd = Self->BasePath->vertex(&x, &y);
+           cmd = Self->BasePath.vertex(&x, &y);
            if (agg::is_vertex(cmd)) {
               args[1].Long = index++;
               args[2].Long = cmd;
@@ -1090,7 +1091,7 @@ static ERROR VECTOR_SET_DashArray(objVector *Self, DOUBLE *Value, LONG Elements)
       LONG total = Elements;
       if (total & 1) total++; // There must be an even count of dashes and gaps.
 
-      Self->DashArray = new (std::nothrow) DashedStroke(*Self->BasePath, total);
+      Self->DashArray = new (std::nothrow) DashedStroke(Self->BasePath, total);
       if (Self->DashArray) {
          Self->DashArray->values.assign(*Value, Elements);
          if (total > Elements) Self->DashArray->values[Elements] = 0;
@@ -1773,19 +1774,19 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
 
    if (!Self->GeneratePath) return log.warning(ERR_Mismatch); // Path generation must be supported by the vector.
 
-   if ((!Self->BasePath) or (Self->Dirty)) gen_vector_tree((objVector *)Self);
-   if (!Self->BasePath) return ERR_NoData;
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
    char seq[4096] = "";
 
    // See agg_path_storage.h for vertex traversal
    // All vertex coordinates are stored in absolute format.
 
-   agg::path_storage *base = Self->BasePath;
+   agg::path_storage &base = Self->BasePath;
 
    // TODO: Decide what to do with bounding box information, if anything.
    DOUBLE bx1, by1, bx2, by2;
-   bounding_rect_single(*base, 0, &bx1, &by1, &bx2, &by2);
+   bounding_rect_single(base, 0, &bx1, &by1, &bx2, &by2);
    bx1 += Self->FinalX;
    bx2 += Self->FinalX;
    by1 += Self->FinalY;
@@ -1793,8 +1794,8 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
 
    DOUBLE x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
    LONG p = 0;
-   for (ULONG i=0; i < base->total_vertices(); i++) {
-      LONG cmd = base->command(i);
+   for (ULONG i=0; i < base.total_vertices(); i++) {
+      LONG cmd = base.command(i);
       //LONG cmd_flags = cmd & (~agg::path_cmd_mask);
       cmd &= agg::path_cmd_mask;
 
@@ -1807,22 +1808,22 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
             break;
 
          case agg::path_cmd_move_to: // PE_Move
-            base->vertex(i, &x, &y);
+            base.vertex(i, &x, &y);
             p += StrFormat(seq+p, sizeof(seq)-p, "M%g,%g", x, y);
             last_x = x;
             last_y = y;
             break;
 
          case agg::path_cmd_line_to: // PE_Line
-            base->vertex(i, &x, &y);
+            base.vertex(i, &x, &y);
             p += StrFormat(seq+p, sizeof(seq)-p, "L%g,%g", x, y);
             last_x = x;
             last_y = y;
             break;
 
          case agg::path_cmd_curve3: // PE_QuadCurve
-            base->vertex(i, &x, &y);
-            base->vertex(i+1, &x2, &y2); // End of line
+            base.vertex(i, &x, &y);
+            base.vertex(i+1, &x2, &y2); // End of line
             p += StrFormat(seq+p, sizeof(seq)-p, "q%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y);
             last_x = x;
             last_y = y;
@@ -1830,9 +1831,9 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
             break;
 
          case agg::path_cmd_curve4: // PE_Curve
-            base->vertex(i, &x, &y);
-            base->vertex(i+1, &x2, &y2);
-            base->vertex(i+2, &x3, &y3); // End of line
+            base.vertex(i, &x, &y);
+            base.vertex(i+1, &x2, &y2);
+            base.vertex(i+2, &x3, &y3); // End of line
             p += StrFormat(seq+p, sizeof(seq)-p, "c%g,%g,%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y, x3 - last_x, y3 - last_y);
             last_x = x3;
             last_y = y3;

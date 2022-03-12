@@ -204,23 +204,18 @@ static void gen_vector_path(objVector *Vector)
 
       apply_parent_transforms(Vector, get_parent(Vector), Vector->Transform);
 
-      if (!Vector->BasePath) {
-         Vector->BasePath = new (std::nothrow) agg::path_storage;
-         if (!Vector->BasePath) return;
-      }
-      else Vector->BasePath->free_all();
+      Vector->BasePath.free_all();
+      Vector->BasePath.move_to(0, 0); // Top left
+      Vector->BasePath.line_to(view->vpFixedWidth, 0); // Top right
+      Vector->BasePath.line_to(view->vpFixedWidth, view->vpFixedHeight); // Bottom right
+      Vector->BasePath.line_to(0, view->vpFixedHeight); // Bottom left
+      Vector->BasePath.close_polygon();
 
-      Vector->BasePath->move_to(0, 0); // Top left
-      Vector->BasePath->line_to(view->vpFixedWidth, 0); // Top right
-      Vector->BasePath->line_to(view->vpFixedWidth, view->vpFixedHeight); // Bottom right
-      Vector->BasePath->line_to(0, view->vpFixedHeight); // Bottom left
-      Vector->BasePath->close_polygon();
-
-      Vector->BasePath->transform(Vector->Transform);
+      Vector->BasePath.transform(Vector->Transform);
 
       // Compute the clipping boundary of the viewport and store it in the BX/Y fields.
 
-      bounding_rect_single(*Vector->BasePath, 0, &view->vpBX1, &view->vpBY1, &view->vpBX2, &view->vpBY2);
+      bounding_rect_single(Vector->BasePath, 0, &view->vpBX1, &view->vpBY1, &view->vpBX2, &view->vpBY2);
 
       // If the viewport uses a non-rectangular transform, a clipping mask will need to be generated based on its path.  The path is
       // pre-transformed and drawn in order to speed things up.
@@ -235,7 +230,7 @@ static void gen_vector_path(objVector *Vector)
          }
          if (view->vpClipMask) {
             delete view->vpClipMask->ClipPath;
-            view->vpClipMask->ClipPath = new (std::nothrow) agg::path_storage(*Vector->BasePath);
+            view->vpClipMask->ClipPath = new (std::nothrow) agg::path_storage(Vector->BasePath);
             acDraw(view->vpClipMask);
          }
       }
@@ -275,14 +270,8 @@ static void gen_vector_path(objVector *Vector)
       // NB: The base path is computed after the transform because it can be helpful to know the
       // final scale of the vector, particularly for calculating curved paths.
 
-      if (!Vector->BasePath) {
-         Vector->BasePath = new (std::nothrow) agg::path_storage;
-         if (!Vector->BasePath) return;
-         Vector->Dirty |= RC_BASE_PATH; // Since BasePath is brand new, ensure that the path is generated.
-      }
-
       if (Vector->Dirty & RC_BASE_PATH) {
-         Vector->BasePath->free_all();
+         Vector->BasePath.free_all();
 
          Vector->GeneratePath((objVector *)Vector);
 
@@ -295,34 +284,34 @@ static void gen_vector_path(objVector *Vector)
 
                if (morph->Dirty) gen_vector_path((objVector *)morph);
 
-               if (morph->BasePath) {
+               if (morph->BasePath.total_vertices()) {
                   DOUBLE bx1, bx2, by1, by2;
 
                   if (Vector->MorphFlags & VMF_Y_MID) {
-                     bounding_rect_single(*Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
-                     Vector->BasePath->translate(0, -by1 - ((by2 - by1) * 0.5));
+                     bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
+                     Vector->BasePath.translate(0, -by1 - ((by2 - by1) * 0.5));
                   }
                   else if (Vector->MorphFlags & VMF_Y_MIN) {
                      if (Vector->Head.SubID != ID_VECTORTEXT) {
-                        bounding_rect_single(*Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
-                        Vector->BasePath->translate(0, -by1 -(by2 - by1));
+                        bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
+                        Vector->BasePath.translate(0, -by1 -(by2 - by1));
                      }
                   }
                   else { // VMF_Y_MAX
                      if (Vector->Head.SubID IS ID_VECTORTEXT) { // Only VectorText needs to be reset for yMax
-                        bounding_rect_single(*Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
-                        Vector->BasePath->translate(0, -by1);
+                        bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
+                        Vector->BasePath.translate(0, -by1);
                      }
                   }
 
                   agg::trans_single_path trans_path;
-                  trans_path.add_path(*morph->BasePath);
+                  trans_path.add_path(morph->BasePath);
                   trans_path.preserve_x_scale(true); // The default is true.  Switching to false produces a lot of scrunching and extending
                   if (morph->Head.SubID IS ID_VECTORPATH) { // Enforcing a fixed length along the path effectively causes a resize.
                      if (((objVectorPath *)morph)->PathLength > 0) trans_path.base_length(((objVectorPath *)morph)->PathLength);
                   }
 
-                  Vector->BasePath->transform(trans_path); // Apply manipulation to the base path.
+                  Vector->BasePath.transform(trans_path); // Apply manipulation to the base path.
                }
             }
          }
@@ -344,12 +333,12 @@ static void gen_vector_path(objVector *Vector)
 
       if (Vector->Matrices) {
          DOUBLE scale = Vector->Transform.scale();
-         Vector->BasePath->approximation_scale(scale);
-         if (scale > 1.0) Vector->BasePath->angle_tolerance(0.2); // Set in radians.  The less this value is, the more accurate it will be at sharp turns.
-         else Vector->BasePath->angle_tolerance(0);
+         Vector->BasePath.approximation_scale(scale);
+         if (scale > 1.0) Vector->BasePath.angle_tolerance(0.2); // Set in radians.  The less this value is, the more accurate it will be at sharp turns.
+         else Vector->BasePath.angle_tolerance(0);
       }
 
-      //Vector->BasePath->cusp_limit(x); // Set in radians.  If more than 0, it restricts sharpness at the cusp (presumably for awkward angles).  Do not exceed 10-15 degrees
+      //Vector->BasePath.cusp_limit(x); // Set in radians.  If more than 0, it restricts sharpness at the cusp (presumably for awkward angles).  Do not exceed 10-15 degrees
 
       if ((Vector->FillColour.Alpha > 0) or (Vector->FillGradient) or (Vector->FillImage) or (Vector->FillPattern)) {
          if (!Vector->FillRaster) {
@@ -358,7 +347,7 @@ static void gen_vector_path(objVector *Vector)
          }
          else Vector->FillRaster->reset();
 
-         agg::conv_transform<agg::path_storage, agg::trans_affine> fill_path(*Vector->BasePath, Vector->Transform);
+         agg::conv_transform<agg::path_storage, agg::trans_affine> fill_path(Vector->BasePath, Vector->Transform);
          Vector->FillRaster->add_path(fill_path);
       }
       else if (Vector->FillRaster) {
@@ -380,7 +369,7 @@ static void gen_vector_path(objVector *Vector)
          else Vector->StrokeRaster->reset();
 
          if (Vector->DashArray) {
-            Vector->DashArray->path.attach(*Vector->BasePath);
+            Vector->DashArray->path.attach(Vector->BasePath);
 
             configure_stroke((objVector &)*Vector, Vector->DashArray->stroke);
 
@@ -388,7 +377,7 @@ static void gen_vector_path(objVector *Vector)
             Vector->StrokeRaster->add_path(stroke_path);
          }
          else {
-            agg::conv_stroke<agg::path_storage> stroked_path(*Vector->BasePath);
+            agg::conv_stroke<agg::path_storage> stroked_path(Vector->BasePath);
             configure_stroke((objVector &)*Vector, stroked_path);
             agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> stroke_path(stroked_path, Vector->Transform);
             Vector->StrokeRaster->add_path(stroke_path);

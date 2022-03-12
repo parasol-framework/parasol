@@ -33,7 +33,7 @@ static void generate_polygon(objVectorPoly *Vector)
       DOUBLE y = Vector->Points[0].Y;
       if (Vector->Points[0].XRelative) x *= view_width;
       if (Vector->Points[0].YRelative) y *= view_height;
-      Vector->BasePath->move_to(x, y);
+      Vector->BasePath.move_to(x, y);
 
       for (LONG i=1; i < Vector->TotalPoints; i++) {
          x = Vector->Points[i].X;
@@ -45,10 +45,10 @@ static void generate_polygon(objVectorPoly *Vector)
          if (Vector->Points[i].Y < top)    top    = y;
          if (Vector->Points[i].X > right)  right  = x;
          if (Vector->Points[i].Y > bottom) bottom = y;
-         Vector->BasePath->line_to(x, y);
+         Vector->BasePath.line_to(x, y);
       }
 
-      if ((Vector->TotalPoints > 2) and (Vector->Closed)) Vector->BasePath->close_polygon();
+      if ((Vector->TotalPoints > 2) and (Vector->Closed)) Vector->BasePath.close_polygon();
 
       // Cache the polygon boundary values.
       Vector->X1 = left;

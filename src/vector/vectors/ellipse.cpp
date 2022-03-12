@@ -46,10 +46,10 @@ static void generate_ellipse(objVectorEllipse *Vector)
       //if (m_cw) angle = 2.0 * agg::pi - angle;
       DOUBLE x = rx + cos(angle) * rx;
       DOUBLE y = ry + sin(angle) * ry;
-      if (step == 0) Vector->BasePath->move_to(x, y);
-      else Vector->BasePath->line_to(x, y);
+      if (step == 0) Vector->BasePath.move_to(x, y);
+      else Vector->BasePath.line_to(x, y);
    }
-   Vector->BasePath->close_polygon();
+   Vector->BasePath.close_polygon();
 }
 
 //****************************************************************************

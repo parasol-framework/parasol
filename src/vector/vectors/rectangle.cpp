@@ -25,14 +25,14 @@ static void generate_rectangle(objVectorRectangle *Vector)
       if (Vector->rRoundX != Vector->rRoundY) aggrect.radius(Vector->rRoundX, Vector->rRoundY);
       aggrect.normalize_radius(); // Required because???
 
-      Vector->BasePath->concat_path(aggrect);
+      Vector->BasePath.concat_path(aggrect);
    }
    else {
-      Vector->BasePath->move_to(0, 0);
-      Vector->BasePath->line_to(width, 0);
-      Vector->BasePath->line_to(width, height);
-      Vector->BasePath->line_to(0, height);
-      Vector->BasePath->close_polygon();
+      Vector->BasePath.move_to(0, 0);
+      Vector->BasePath.line_to(width, 0);
+      Vector->BasePath.line_to(width, height);
+      Vector->BasePath.line_to(0, height);
+      Vector->BasePath.close_polygon();
    }
 }
 

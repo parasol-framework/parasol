@@ -56,17 +56,17 @@ static void generate_wave(objVectorWave *Vector)
    if (Vector->Transition) apply_transition_xy(Vector->Transition, 0, &x, &y);
 
    if ((!Vector->wClose) or (Vector->wThickness > 0)) {
-      Vector->BasePath->move_to(x, y);
+      Vector->BasePath.move_to(x, y);
    }
    else if (Vector->wClose IS WVC_TOP) {
-      Vector->BasePath->move_to(width, 0); // Top right
-      Vector->BasePath->line_to(0, 0); // Top left
-      Vector->BasePath->line_to(x, y);
+      Vector->BasePath.move_to(width, 0); // Top right
+      Vector->BasePath.line_to(0, 0); // Top left
+      Vector->BasePath.line_to(x, y);
    }
    else if (Vector->wClose IS WVC_BOTTOM) {
-      Vector->BasePath->move_to(width, height); // Bottom right
-      Vector->BasePath->line_to(0, height); // Bottom left
-      Vector->BasePath->line_to(x, y);
+      Vector->BasePath.move_to(width, height); // Bottom right
+      Vector->BasePath.line_to(0, height); // Bottom left
+      Vector->BasePath.line_to(x, y);
    }
    else return;
 
@@ -83,7 +83,7 @@ static void generate_wave(objVectorWave *Vector)
          DOUBLE y = (sin(DEG2RAD * degree) * amp) + (height * 0.5);
          if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
          if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
-            Vector->BasePath->line_to(x, y);
+            Vector->BasePath.line_to(x, y);
             last_x = x;
             last_y = y;
          }
@@ -93,14 +93,14 @@ static void generate_wave(objVectorWave *Vector)
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) + (height * 0.5);
       if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
-      Vector->BasePath->line_to(x, y);
+      Vector->BasePath.line_to(x, y);
    }
    else if (Vector->wDecay > 0) {
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
          DOUBLE x = angle * xscale;
          DOUBLE y = (sin(DEG2RAD * degree) * amp) / exp((DOUBLE)angle / decay) + (height * 0.5);
          if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
-            Vector->BasePath->line_to(x, y);
+            Vector->BasePath.line_to(x, y);
             last_x = x;
             last_y = y;
          }
@@ -110,7 +110,7 @@ static void generate_wave(objVectorWave *Vector)
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) / exp(360.0 / decay) + (height * 0.5);
       if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
-      Vector->BasePath->line_to(x, y);
+      Vector->BasePath.line_to(x, y);
    }
    else if (Vector->wDecay < 0) {
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
@@ -118,7 +118,7 @@ static void generate_wave(objVectorWave *Vector)
          DOUBLE y = (sin(DEG2RAD * degree) * amp) / log((DOUBLE)angle / decay) + (height * 0.5);
          if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
          if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
-            Vector->BasePath->line_to(x, y);
+            Vector->BasePath.line_to(x, y);
             last_x = x;
             last_y = y;
          }
@@ -128,22 +128,22 @@ static void generate_wave(objVectorWave *Vector)
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) / log(360.0 / decay) + (height * 0.5);
       if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
-      Vector->BasePath->line_to(x, y);
+      Vector->BasePath.line_to(x, y);
    }
 
    if (Vector->wThickness > 0) {
       DOUBLE x, y;
-      LONG total = Vector->BasePath->total_vertices();
-      Vector->BasePath->last_vertex(&x, &y);
-      Vector->BasePath->line_to(x, y + Vector->wThickness);
+      LONG total = Vector->BasePath.total_vertices();
+      Vector->BasePath.last_vertex(&x, &y);
+      Vector->BasePath.line_to(x, y + Vector->wThickness);
       for (LONG i=total-1; i >= 0; i--) {
-         Vector->BasePath->vertex(i, &x, &y);
-         Vector->BasePath->line_to(x, y + Vector->wThickness);
+         Vector->BasePath.vertex(i, &x, &y);
+         Vector->BasePath.line_to(x, y + Vector->wThickness);
       }
-      Vector->BasePath->translate(0, -Vector->wThickness * 0.5); // Ensure that the wave is centered vertically.
+      Vector->BasePath.translate(0, -Vector->wThickness * 0.5); // Ensure that the wave is centered vertically.
    }
 
-   if ((Vector->wClose) or (Vector->wThickness > 0)) Vector->BasePath->close_polygon();
+   if ((Vector->wClose) or (Vector->wThickness > 0)) Vector->BasePath.close_polygon();
 }
 
 //****************************************************************************
