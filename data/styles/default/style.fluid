@@ -2,8 +2,8 @@
 
    require 'gui'
 
-   if (mVec == nil) then mVec = mod.load('vector') end
-   if (mFont == nil) then mFont = mod.load('font') end
+   if (not mVec) then mVec = mod.load('vector') end
+   if (not mFont) then mFont = mod.load('font') end
 
    glSelf = obj.find('self')
    glCounter = 1

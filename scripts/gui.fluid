@@ -23,8 +23,8 @@ if (gui == nil) then
                if nz(name) then
                   err, font.face = xml.mtGetAttrib(TagIndex, 'face')
                   if nz(font.face) then
-                     err, font.size = xml.mtGetAttrib(TagIndex, 'size')
-                     err, font.colour = xml.mtGetAttrib(TagIndex, 'colour')
+                     err, font.size      = xml.mtGetAttrib(TagIndex, 'size')
+                     err, font.colour    = xml.mtGetAttrib(TagIndex, 'colour')
                      err, font.highlight = xml.mtGetAttrib(TagIndex, 'highlight')
                      gui.fonts[name] = font
                      total = total + 1
@@ -94,9 +94,10 @@ end
 gui.getFontHeight = function(Font)
    if not Font.height then
       local fnt = obj.new('font', { face=Font.face })
-      Font.height = fnt.maxHeight
+      Font.height = fnt.height
+      Font.maxHeight = fnt.maxHeight
    end
-   return Font.height
+   return Font.maxHeight, Font.height
 end
 
 ------------------------------------------------------------------------------

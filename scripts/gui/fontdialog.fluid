@@ -34,7 +34,7 @@ Valid options to use when creating the dialog are as follows:
 --]]
 
    require 'common'
-   require 'gui/view'
+   require 'gui/listview'
    include 'display'
 
    if (gui == nil) then gui = { } end
@@ -290,8 +290,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       })
 
       self.exampleView = self.exampleVP.new('VectorViewport', {
-         x = 4, y = 4,
-         xOffset = 4, yOffset = 4, overflow=VOF_HIDDEN
+         x = 4, y = 4, xOffset = 4, yOffset = 4, overflow = VOF_HIDDEN
       })
 
       self.examplePage = self.exampleView.new('VectorViewport', {
@@ -302,7 +301,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       -- Font size selection
 
-      vwSize = gui.view({
+      vwSize = gui.listView({
          x          = self.exampleVP.x - WIDGET_GAP - 60,
          yOffset    = footer,
          height     = 140,
@@ -329,13 +328,12 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       -- Font style selection
 
-      vwStyle = gui.view({
+      vwStyle = gui.listView({
          x            = lWindow.leftMargin,
          yOffset      = footer,
          height       = 140,
          width        = vwSize.viewport.x - WIDGET_GAP - lWindow.leftMargin,
          target       = self.viewport,
-         style        = 'LongList',
          sensitive    = true,
          noIcons      = true,
          textAttrib   = 'name',
@@ -350,13 +348,12 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       -- Available font faces
 
-      vwFace = gui.view({
+      vwFace = gui.listView({
          x            = lWindow.leftMargin,
          y            = lWindow.topMargin,
          width        = self.exampleVP.x - WIDGET_GAP - lWindow.leftMargin,
          yOffset      = footer,
          target       = self.viewport,
-         style        = 'LongList',
          sensitive    = true,
          textAttrib   = 'name',
          itemSelected = function(View, Reason, Item)

@@ -1,5 +1,7 @@
 -- Styling for the 'gui/scrollbar' script.
 
+   if (mVec == nil) then mVec = mod.load('vector') end
+
    local glCounter = 0
 
 return {
@@ -128,7 +130,7 @@ return {
 
       if (State.direction == 'H') then -- Point left
          local err, matrix = State.negButton.arrow.mtNewMatrix()
-         mVector.rotate(matrix, 270, Viewport.viewX + (Viewport.viewWidth*0.5), Viewport.viewY + (Viewport.viewHeight*0.5))
+         mVec.rotate(matrix, 270, Viewport.viewX + (Viewport.viewWidth*0.5), Viewport.viewY + (Viewport.viewHeight*0.5))
       end
    end,
    posButton = function(State, Viewport)
@@ -161,9 +163,9 @@ return {
 
       local err, matrix = State.posButton.arrow.mtNewMatrix()
       if (State.direction == 'V') then -- Point down
-         mVector.rotate(matrix, 180, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
+         mVec.rotate(matrix, 180, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
       else -- Point right
-         mVector.rotate(matrix, 90, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
+         mVec.rotate(matrix, 90, Viewport.viewX + (Viewport.viewWidth * 0.5), Viewport.viewY + (Viewport.viewHeight * 0.5))
       end
    end,
    negButtonPress = function(State, Value)

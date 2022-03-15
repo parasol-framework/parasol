@@ -6,7 +6,7 @@ VectorClip: Clips are used to define complex clipping regions for vectors.
 The VectorClip defines a clipping path that can be used by other vectors as a mask.  The clipping path is defined by
 creating Vector shapes that are initialised to the VectorClip as child objects.
 
-Any Vector that defines a shape can utilise a VectorClip by referencing it through the Vector's Mask field.
+Any Vector that defines a path can utilise a VectorClip by referencing it through the Vector's Mask field.
 
 VectorClip objects must always be owned by their relevant @VectorScene or @VectorViewport.  It is valid for a VectorClip
 to be shared by multiple vector objects within the same scene.
