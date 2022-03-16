@@ -6,7 +6,7 @@
 class VectorState
 {
 public:
-   struct {
+   struct vsclip {
       double x1, y1, x2, y2;
       vsclip(double a1, double a2, double a3, double a4) : x1(a1), y1(a2), x2(a3), y2(a4) { };
    } mClip; // Current clip region as defined by the viewports
