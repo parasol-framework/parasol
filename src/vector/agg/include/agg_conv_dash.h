@@ -25,20 +25,24 @@ namespace agg
       conv_dash(VertexSource& vs) :
          conv_adaptor_vcgen<VertexSource, vcgen_dash, Markers>(vs) { }
 
-      void remove_all_dashes() {
+      constexpr void remove_all_dashes() {
          base_type::generator().remove_all_dashes();
       }
 
-      void add_dash(double dash_len, double gap_len) {
+      constexpr void add_dash(double dash_len, double gap_len) {
          base_type::generator().add_dash(dash_len, gap_len);
       }
 
-      void dash_start(double ds) {
+      constexpr void dash_start(double ds) {
          base_type::generator().dash_start(ds);
       }
 
-      void shorten(double s) { base_type::generator().shorten(s); }
-      double shorten() const { return base_type::generator().shorten(); }
+      constexpr double dash_length() {
+         return base_type::generator().dash_length();
+      }
+
+      constexpr void shorten(double s) { base_type::generator().shorten(s); }
+      constexpr double shorten() const { return base_type::generator().shorten(); }
 
    private:
       conv_dash(const conv_dash<VertexSource, Markers>&);

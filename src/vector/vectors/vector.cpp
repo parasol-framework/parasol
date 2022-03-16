@@ -1119,6 +1119,23 @@ static ERROR VECTOR_SET_DashArray(objVector *Self, DOUBLE *Value, LONG Elements)
 -FIELD-
 DashOffset: The distance into the dash pattern to start the dash.  Can be a negative number.
 
+The DashOffset can be set in conjunction with the #DashArray to shift the dash pattern to the left.  If the offset is
+negative then the shift will be to the right.
+
+*********************************************************************************************************************/
+
+static ERROR VECTOR_SET_DashOffset(objVector *Self, DOUBLE Value)
+{
+   Self->DashOffset = Value;
+   if (Self->DashArray) {
+      if (Self->DashOffset > 0) Self->DashArray->path.dash_start(Self->DashOffset);
+      else Self->DashArray->path.dash_start(Self->DashArray->path.dash_length() + Self->DashOffset);
+   }
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 EnableBkgd: If true, allows filters to use BackgroundImage and BackgroundAlpha source types.
 
@@ -2152,7 +2169,7 @@ static const FieldArray clVectorFields[] = {
    { "Opacity",          FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_Opacity },
    { "MiterLimit",       FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_MiterLimit },
    { "InnerMiterLimit",  FDF_DOUBLE|FD_RW,             0, NULL, NULL },
-   { "DashOffset",       FDF_DOUBLE|FD_RW,             0, NULL, NULL },
+   { "DashOffset",       FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_DashOffset },
    { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorVisibility, NULL, NULL },
    { "Flags",            FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clVectorFlags, NULL, NULL },
    { "Cursor",           FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorCursor, NULL, (APTR)VECTOR_SET_Cursor },

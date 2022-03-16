@@ -29,8 +29,8 @@ typedef struct rkVectorViewport {
    DOUBLE vpBX1, vpBY1, vpBX2, vpBY2; // Bounding box coordinates relative to (0,0), used for clipping
    DOUBLE vpAlignX, vpAlignY;
    struct rkVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.  This is in addition to the Vector ClipMask, which can be user-defined.
-   LONG vpDimensions;
-   LONG vpAspectRatio;
+   LONG  vpDimensions;
+   LONG  vpAspectRatio;
    UBYTE vpDragging:1;
    UBYTE vpOverflowX, vpOverflowY;
 } objVectorViewport;
