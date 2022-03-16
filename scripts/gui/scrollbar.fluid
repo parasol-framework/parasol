@@ -212,7 +212,7 @@ gui.scrollbar = function(Options)
 
       -- Capture user interactivity within the bar area.
 
-      bar.sliderHostVP.mtSubscribeInput(JTYPE_BUTTON,
+      bar.sliderHostVP.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_REPEATED),
          function(Viewport, Msg)
             repeat
                if (Msg.type == JET_LMB) and (Msg.value > 0) then
@@ -234,7 +234,7 @@ gui.scrollbar = function(Options)
             until Msg == nil
          end)
 
-      bar.negVP.mtSubscribeInput(JTYPE_BUTTON,
+      bar.negVP.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_REPEATED),
          function(Viewport, Msg)
             repeat
                if (Msg.type == JET_LMB) then
@@ -252,7 +252,7 @@ gui.scrollbar = function(Options)
             until Msg == nil
          end)
 
-      bar.posVP.mtSubscribeInput(JTYPE_BUTTON,
+      bar.posVP.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_REPEATED),
          function(Viewport, Msg)
             repeat
                if (Msg.type == JET_LMB) then

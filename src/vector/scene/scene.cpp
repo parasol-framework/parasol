@@ -742,7 +742,8 @@ static void send_input_event(objVector *Vector, InputEvent *Event)
    for (auto it=Vector->InputSubscriptions->begin(); it != Vector->InputSubscriptions->end(); ) {
       auto &sub = *it;
 
-      if (sub.Mask & Event->Mask) {
+      if ((Event->Mask & JTYPE_REPEATED) and (!(sub.Mask & JTYPE_REPEATED))) it++;
+      else if (sub.Mask & Event->Mask) {
          ERROR result;
          if (sub.Callback.Type IS CALL_STDC) {
             parasol::SwitchContext ctx(sub.Callback.StdC.Context);
