@@ -44,10 +44,10 @@ The resulting object consists of the following accessible fields:
 local lColours = {
    hover       = 'rgb(0,0,0,32)',
    selected    = 'rgb(255,255,255,128)',
-   groupBorder = 'rgb(255,255,255,128)'
+   groupBorder = 'rgb(255,255,255,128)',
+   iconGradient = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
 }
 
-local lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
 local lCounter = 0
 local lTipDelay = 0.75
 
@@ -288,7 +288,7 @@ gui.toolbar = function(HostVP, Options)
                end
             elseif nz(item.displayName) then
                local gname = 'tbar_grd' .. counter()
-               item.svgGradient = gui.simpleGradient(self.vp.scene, gname, { lThemeColour.first, lThemeColour.last }, 0, item.y, 0, item.height, 'userspace')
+               item.svgGradient = gui.simpleGradient(self.vp.scene, gname, { lColours.iconGradient.first, lColours.iconGradient.last }, 0, item.y, 0, item.height, 'userspace')
 
                item.vectorText = self.vg.new('VectorText', {
                   x        = x + self._cellMargin,
@@ -370,7 +370,7 @@ gui.toolbar = function(HostVP, Options)
          catch(function()
             local gname = 'tbar_grd' .. counter()
             item.svgGroup = self.vp.new('VectorViewport', { x=0, y=0, width=self._iconSize, height=self._iconSize })
-            item.svgGradient = gui.simpleGradient(self.vp.scene, gname, { lThemeColour.first, lThemeColour.last }, 0, 0, 0, 1)
+            item.svgGradient = gui.simpleGradient(self.vp.scene, gname, { lColours.iconGradient.first, lColours.iconGradient.last }, 0, 0, 0, 1)
             item.svg = obj.new('svg', { target=item.svgGroup, path='icons:' .. Icon .. '.svg' })
             gui.applyFill(item.svgGroup, 'url(#' .. gname .. ')')
 

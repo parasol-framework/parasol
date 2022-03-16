@@ -37,7 +37,7 @@ function popupClicked(Menu, Item)
    print(Item.item)
 end
 
-   local menubar = gui.menubar(win.surface, {
+   local menubar = gui.menubar(viewport, {
       createItems = function(Bar)
          Bar.addItem(1, 'File', 'devices/harddisk', menuCallback, {
             { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=itemClicked },
@@ -64,7 +64,7 @@ end
       end
    })
 
-   local y = menubar.surface.height
+   local y = menubar.vp.height
 
    lToolbar = gui.toolbar(viewport, {
       xOffset     = 0,
