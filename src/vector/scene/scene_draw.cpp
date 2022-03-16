@@ -6,6 +6,7 @@
 class VectorState
 {
 public:
+   struct { double x1, y1, x2, y2; } mClip; // Current clip region as defined by the viewports
    agg::line_join_e  mLineJoin;
    agg::line_cap_e   mLineCap;
    agg::inner_join_e mInnerJoin;
@@ -19,6 +20,7 @@ public:
    agg::trans_affine mTransform;
 
    VectorState() :
+      mClip(0, 0, DBL_MAX, DBL_MAX),
       mLineJoin(agg::miter_join),
       mLineCap(agg::butt_cap),
       mInnerJoin(agg::inner_miter),
@@ -1045,29 +1047,32 @@ private:
                if (view->vpOverflowX != VOF_INHERIT) state.mOverflowX = view->vpOverflowX;
                if (view->vpOverflowY != VOF_INHERIT) state.mOverflowY = view->vpOverflowY;
 
-               DOUBLE xmin = mRenderBase.xmin(), xmax = mRenderBase.xmax();
-               DOUBLE ymin = mRenderBase.ymin(), ymax = mRenderBase.ymax();
-               DOUBLE x1 = xmin, y1 = ymin, x2 = xmax, y2 = ymax;
+               auto save_clip = state.mClip;
+               DOUBLE x1 = state.mClip.x1, y1 = state.mClip.y1, x2 = state.mClip.x2, y2 = state.mClip.y2;
 
                if ((state.mOverflowX IS VOF_HIDDEN) or (state.mOverflowX IS VOF_SCROLL) or (view->vpAspectRatio & ARF_SLICE)) {
-                  if (view->vpBX1 > x1) x1 = view->vpBX1;
-                  if (view->vpBX2 < x2) x2 = view->vpBX2;
+                  if (view->vpBX1 > state.mClip.x1) state.mClip.x1 = view->vpBX1;
+                  if (view->vpBX2 < state.mClip.x2) state.mClip.x2 = view->vpBX2;
                }
 
                if ((state.mOverflowY IS VOF_HIDDEN) or (state.mOverflowY IS VOF_SCROLL) or (view->vpAspectRatio & ARF_SLICE)) {
-                  if (view->vpBY1 > y1) y1 = view->vpBY1;
-                  if (view->vpBY2 < y2) y2 = view->vpBY2;
+                  if (view->vpBY1 > state.mClip.y1) state.mClip.y1 = view->vpBY1;
+                  if (view->vpBY2 < state.mClip.y2) state.mClip.y2 = view->vpBY2;
                }
 
-               mRenderBase.clip_box(x1, y1, x2, y2);
-
                #ifdef DBG_DRAW
-                  log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f) bounded by (%.2f %.2f %.2f %.2f)", shape->Head.UID, x1, y1, x2, y2, xmin, ymin, xmax, ymax);
+                  log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f)", shape->Head.UID, state.mClip.x1, state.mClip.y1, state.mClip.x2, state.mClip.y2);
                #endif
 
-               if ((x2 > x1) and (y2 > y1)) { // Continue only if the clipping region is good.
+               if ((state.mClip.x2 > state.mClip.x1) and (state.mClip.y2 > state.mClip.y1)) { // Continue only if the clipping region is visible
                   auto saved_mask = state.mClipMask;
                   if (view->vpClipMask) state.mClipMask = view->vpClipMask;
+
+                  auto save_rb_clip = mRenderBase.clip_box();
+                  if (state.mClip.x1 > save_rb_clip.x1) mRenderBase.m_clip_box.x1 = state.mClip.x1;
+                  if (state.mClip.y1 > save_rb_clip.y1) mRenderBase.m_clip_box.y1 = state.mClip.y1;
+                  if (state.mClip.x2 < save_rb_clip.x2) mRenderBase.m_clip_box.x2 = state.mClip.x2;
+                  if (state.mClip.y2 < save_rb_clip.y2) mRenderBase.m_clip_box.y2 = state.mClip.y2;
 
                   log.trace("ViewBox (%.2f %.2f %.2f %.2f) Scale (%.2f %.2f) Fix (%.2f %.2f %.2f %.2f)",
                     view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight,
@@ -1077,8 +1082,9 @@ private:
                   auto saved_viewport = mView;  // Save current viewport state and switch to the new viewport state
                   mView = view;
 
+                  // For vectors that read user input, we record the collision box for the cursor.
+
                   if (shape->InputSubscriptions) {
-                     // If the vector reads user input then we record the collision box for the cursor.
                      if (view->vpBX1 > x1) x1 = view->vpBX1;
                      if (view->vpBX2 < x2) x2 = view->vpBX2;
                      if (view->vpBY1 > y1) y1 = view->vpBY1;
@@ -1115,10 +1121,12 @@ private:
                   state.mClipMask = saved_mask;
 
                   mView = saved_viewport;
+
+                  mRenderBase.clip_box_naked(save_rb_clip);
                }
                else log.trace("Clipping boundary results in invisible viewport.");
 
-               mRenderBase.clip_box(xmin, ymin, xmax, ymax);  // Put things back to the way they were
+               state.mClip = save_clip;
             }
          }
          else {
