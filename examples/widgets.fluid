@@ -66,10 +66,9 @@ end
 
    local y = menubar.surface.height
 
-   lToolbar = gui.toolbar(win.surface, {
+   lToolbar = gui.toolbar(viewport, {
       xOffset     = 0,
       y           = y,
-      hoverColour = '#00000030',
       iconSize    = 22,
       createItems = function(Bar)
          Bar.addGroup(1, 'Navigation', 2)
@@ -90,7 +89,7 @@ end
       end
    })
 
-   y = y + lToolbar.surface.height + 8
+   y = y + lToolbar.vp.height + 8
 
    local popupMenu = gui.menu({
       x     = 30,
@@ -122,10 +121,6 @@ end
    })
    text.y = y + text.font.height
    y = y + text.font.height + 8
-
-   local err, matrix = text.mtNewMatrix()
-   mVector.translate(matrix, 50, 0)
-   mVector.rotate(matrix, 25, 0, 0)
 
    local msgButton = viewport.new('button', { text='Message Box', x=win.leftMargin, y=y, icon='items/question',
       feedback = function()
