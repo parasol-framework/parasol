@@ -253,7 +253,7 @@ gui.toolbar = function(HostVP, Options)
                end
             end
 
-            lCurrentGroup = item
+            currentGroup = item
             spanCount = 0
 
             item.x = x
@@ -287,7 +287,7 @@ gui.toolbar = function(HostVP, Options)
                   item.vectorIcon.opacity = 0.5
                end
             elseif nz(item.displayName) then
-               local gname = 'bkgd' .. counter()
+               local gname = 'tbar_grd' .. counter()
                item.svgGradient = gui.simpleGradient(self.vp.scene, gname, { lThemeColour.first, lThemeColour.last }, 0, item.y, 0, item.height, 'userspace')
 
                item.vectorText = self.vg.new('VectorText', {
@@ -315,25 +315,25 @@ gui.toolbar = function(HostVP, Options)
 
             spanCount = spanCount + 1
 
-            if lCurrentGroup then
+            if currentGroup then
                if self._horizontal then
-                  lCurrentGroup.width  = x - lCurrentGroup.x
-                  lCurrentGroup.height = self.vp.height - (groupOffset * 2)
+                  currentGroup.width  = x - currentGroup.x
+                  currentGroup.height = self.vp.height - (groupOffset * 2)
                else
-                  lCurrentGroup.width  = self.vp.width - (groupOffset * 2)
-                  lCurrentGroup.height = y - lCurrentGroup.y
+                  currentGroup.width  = self.vp.width - (groupOffset * 2)
+                  currentGroup.height = y - currentGroup.y
                end
-               lCurrentGroup.border.width  = lCurrentGroup.width
-               lCurrentGroup.border.height = lCurrentGroup.height
-               lCurrentGroup.clip.width    = lCurrentGroup.width
-               lCurrentGroup.clip.height   = lCurrentGroup.height
-               if (spanCount == lCurrentGroup.span) then
+               currentGroup.border.width  = currentGroup.width
+               currentGroup.border.height = currentGroup.height
+               currentGroup.clip.width    = currentGroup.width
+               currentGroup.clip.height   = currentGroup.height
+               if (spanCount == currentGroup.span) then
                   if self._horizontal then
                      x = x + groupOffset -- Gap between groups
                   else
                      y = y + groupOffset
                   end
-                  lCurrentGroup = nil
+                  currentGroup = nil
                end
             end
          end
@@ -368,7 +368,7 @@ gui.toolbar = function(HostVP, Options)
 
       if Icon then
          catch(function()
-            local gname = 'bkgd' .. counter()
+            local gname = 'tbar_grd' .. counter()
             item.svgGroup = self.vp.new('VectorViewport', { x=0, y=0, width=self._iconSize, height=self._iconSize })
             item.svgGradient = gui.simpleGradient(self.vp.scene, gname, { lThemeColour.first, lThemeColour.last }, 0, 0, 0, 1)
             item.svg = obj.new('svg', { target=item.svgGroup, path='icons:' .. Icon .. '.svg' })
@@ -565,7 +565,7 @@ gui.toolbar = function(HostVP, Options)
                      hoverUpdate(self._current, true)
                   end
                end
-            elseif ev.type == JET_BUTTON_1 then
+            elseif (ev.type == JET_BUTTON_1) then
                if self._clicked then
                   self._clicked = nil
 
@@ -622,16 +622,16 @@ gui.toolbar = function(HostVP, Options)
 
       if (self.vp.acInit() != ERR_Okay) then error('Failed to initialise viewport.') end
 
-      self.vp.subscribe('free', function(Surface, Args)
+      self.vp.subscribe('free', function(Viewport, Args)
          if self._tipTimer then mSys.UpdateTimer(self._tipTimer, 0) end
          self = { }
       end)
 
-      self.vp.subscribe('focus', function(Surface, Args)
+      self.vp.subscribe('focus', function(Viewport, Args)
 
       end)
 
-      self.vp.subscribe('lostfocus', function(Surface, Args)
+      self.vp.subscribe('lostfocus', function(Viewport, Args)
          if self._current then
             self.hIcon.visibility = 'visible'
             self._current = nil

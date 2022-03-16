@@ -354,7 +354,7 @@ gui.createIcon = function(Scene, Path, Size)
    local lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
    local icon = { }
    gui.counter = gui.counter + 1
-   local gname   = 'icongrd' .. gui.counter
+   local gname   = 'icon_grd' .. gui.counter
    icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size })
    icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lThemeColour.first, lThemeColour.last }, 0, 0, 0, 1)
    icon.svg      = obj.new('svg', { target=icon.pattern.viewport, path='icons:' .. Path .. '.svg' })
