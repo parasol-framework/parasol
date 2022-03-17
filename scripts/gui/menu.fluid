@@ -23,36 +23,35 @@ Valid options to use when creating the menu are as follows:
    require 'common'
    require 'gui'
 
-gui.menu = function(Options)
-   local mFont = mod.load('font')
-   local mSurface = mod.load('surface')
-   local mGfx = mod.load('display')
+   if (not mFont)    then mFont = mod.load('font') end
+   if (not mSurface) then mSurface = mod.load('surface') end
+   if (not mGfx)     then mGfx = mod.load('display') end
 
-   local self = { // Public variables
-      surface  = nil
+local MARGIN = 6
+local lIconSize = 16
+local lRightMargin = MARGIN
+local FONT_FACE = 'Open Sans'
+local FONT_SIZE = 11
+
+gui.menu = function(Options)
+   local self = { -- Public variables
+      surface  = nil,
+      rootMenu = true,
+      reverseX = false
    }
 
-   local lScene, lViewport, lGroupClip
-   local lReverseX = false
    local lMenuWidth = nz(Options.width, 200)
-   local MARGIN = 6
-   local lIconSize = 16
-   local FONT_FACE = 'Open Sans'
-   local FONT_SIZE = 11
-   local lVectorGroup
    local lConfig = nz(Options.config, { })
    local lItems = { }
    local lPopup = nz(Options.popup, false)
    local lRelative = Options.relative
    local lTimeShow = 0
    local lTimeHide = 0
-   local lRightMargin = MARGIN
    local lVisible = false
    local lTipTimer
    local lHighlightItem
    local lVOffset = 0
    local lTipDelay = 500
-   local lRootMenu = true
 
    local function applyFill(Vector, Fill)
       while (Vector != nil) do
@@ -69,13 +68,9 @@ gui.menu = function(Options)
    local function initVectorScene()
       local GAP_X = 6
 
-      lScene    = obj.new('VectorScene', { })
-      lViewport = lScene.new('VectorViewport', { }) // Main viewport for vector graphics.
-      lVectorGroup = lViewport.new('VectorGroup', { })
-
-      // To use the clip, set the 'mask' field of any drawable vector.
-      lGroupClip = lScene.new('VectorClip', { units='BoundingBox' })
-      local clipRect = lGroupClip.new('VectorRectangle', {
+      -- To use the clip, set the 'mask' field of any drawable vector.
+      self.clip = self.scene.new('VectorClip', { units='BoundingBox' })
+      local clipRect = self.clip.new('VectorRectangle', {
          x    = 1.5,
          y    = 1.5,
          roundX = 3,
@@ -84,7 +79,7 @@ gui.menu = function(Options)
          height = 1
       })
 
-      local lBkgdRect = lVectorGroup.new('VectorRectangle', {
+      local lBkgdRect = self.vg.new('VectorRectangle', {
          fill   = 'rgb(240,240,240,255)',
          x      = 1.5,
          y      = 1.5,
@@ -94,16 +89,16 @@ gui.menu = function(Options)
          height = 1
       })
 
-      local lIconBar = lVectorGroup.new('VectorRectangle', {
+      local lIconBar = self.vg.new('VectorRectangle', {
          fill   = 'rgb(220,220,255,255)',
          x      = 0,
          y      = 0,
          width  = 30,
          height = '100%',
-         mask   = lGroupClip
+         mask   = self.clip
       })
 
-      local lBorder = lVectorGroup.new('VectorRectangle', {
+      local lBorder = self.vg.new('VectorRectangle', {
          stroke = 'rgb(60,60,80,255)',
          strokeWidth = 1.5,
          x      = 1.5,
@@ -130,7 +125,7 @@ gui.menu = function(Options)
       for _, item in ipairs(Options.config) do
          if item['item'] then
             local mi = { y=y, config=item }
-            local vText = lVectorGroup.new('VectorText', {
+            local vText = self.vg.new('VectorText', {
                x        = textX,
                face     = FONT_FACE,
                fontSize = string.format('%.2fpt', FONT_SIZE),
@@ -149,7 +144,7 @@ gui.menu = function(Options)
 
             if item['icon'] then
                catch(function()
-                  local svgGroup = lViewport.new('VectorViewport', { x=8, y=y, width=lIconSize, height=lIconSize })
+                  local svgGroup = self.vp.new('VectorViewport', { x=8, y=y, width=lIconSize, height=lIconSize })
                   local svg = obj.new('svg', { target=svgGroup, path='icons:' .. item['icon'] .. '.svg' })
                   applyFill(svgGroup, 'rgb(80,80,120,255)')
                   mi.svgIcon = svgGroup
@@ -162,7 +157,7 @@ gui.menu = function(Options)
                   key = item['qualifier'] .. ' + ' .. key
                end
 
-               local vKey = lVectorGroup.new('VectorText', {
+               local vKey = self.vg.new('VectorText', {
                   x        = self.surface.width,
                   face     = FONT_FACE,
                   fontSize = string.format('%.2fpt', FONT_SIZE),
@@ -201,27 +196,33 @@ gui.menu = function(Options)
       end
    end
 
-   // The switch() method alternates the the visible state of the menu - for example, if the menu is hidden, it
-   // will show the menu.  A time-lapse feature is supported so that rapid changes to menu visibility can be avoided.
-   // For example, if the TimeLapse option is set to 10 milliseconds, the menu state will not change unless the
-   // specified amount of time has elapsed since the last show() or hide() call.
+   -- The switch() method alternates the the visible state of the menu - for example, if the menu is hidden, it
+   -- will show the menu.  A time-lapse feature is supported so that rapid changes to menu visibility can be avoided.
+   -- For example, if the TimeLapse option is set to 10 milliseconds, the menu state will not change unless the
+   -- specified amount of time has elapsed since the last show() or hide() call.
 
+   local lastTime = 0
    self.switch = function(TimeLapse)
       local timelapse
-      if ((TimeLapse) and (TimeLapse >= 0)) then
+      if TimeLapse and (TimeLapse >= 0) then
          timelapse = TimeLapse * 1000
       else
          timelapse = 5000
       end
 
-      local time = mSys.PreciseTime()
-      if lTimeShow > lTimeHide then // Hide the menu
-         print('switch - hide menu')
-         if (time - lTimeShow >= timelapse) then self.hide() end
+      if self.focusTimer then -- Cancel the focus timer if it hasn't triggered, because it intends to hide the menu
+         mSys.UpdateTimer(self.focusTimer, 0)
+         self.focusTimer = nil
+      end
+
+      local currentTime = mSys.PreciseTime()
+      if lTimeShow > lTimeHide then -- Hide the menu
+         if (currentTime - lTimeShow >= timelapse) then self.hide() end
+         lastTime = currentTime
          return 0
       else
-         print('switch - show menu')
-         if (time - lTimeHide >= timelapse) then self.show() end
+         if (currentTime - lTimeHide >= timelapse) then self.show() end
+         lastTime = currentTime
          return 1
       end
    end
@@ -243,7 +244,7 @@ gui.menu = function(Options)
       local surface = self.surface
       if bit.band(surface.flags, RNF_VISIBLE) != 0 then return end
 
-      lReverseX = nz(Options.reverseX, false)
+      self.reverseX = nz(Options.reverseX, false)
 
       if lPopup then
          local err, cursor_x, cursor_y = mGfx.getCursorPos()
@@ -274,21 +275,21 @@ gui.menu = function(Options)
             end
 
             if parent.width and parent.height then
-               // Determine the position at which the pop-up menu will open at, relative to the parent surface.
-               // Notice that we don't want the menu to appear off the edge of the parent if we can help it.
+               -- Determine the position at which the pop-up menu will open at, relative to the parent surface.
+               -- Notice that we don't want the menu to appear off the edge of the parent if we can help it.
 
                local x
-               if lReverseX then
+               if self.reverseX then
                   x = cursor_x - parent.absX - 1 - surface.width + lRightMargin
                   if x < 0 then
                      x = 0
-                     lReverseX = false
+                     self.reverseX = false
                   end
                else
                   x = cursor_x - parent.absX - 1
                   if x + surface.width > parent.width - 2 then
                      x = x - surface.width + lRightMargin
-                     lReverseX = true
+                     self.reverseX = true
                   end
                end
 
@@ -300,7 +301,7 @@ gui.menu = function(Options)
                surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
             end
          end
-      elseif self.parentID then // Display this menu relative to its parent in the hierarchy
+      elseif self.parentID then -- Display this menu relative to its parent in the hierarchy
 --[[
          local parent = { x=0, y = 0, width = 0 }
          local parent = self.parentID
@@ -315,20 +316,20 @@ gui.menu = function(Options)
          parent.currentMenu = self
 
          local x = parent.x + parent.width - lRightMargin
-         if (lReverseX) then
+         if (self.reverseX) then
             x = parent.x - surface.width + lRightMargin
             if x < 2 then
                x = 2
-               lReverseX = false
+               self.reverseX = false
             end
          else
             SURFACEINFO *target
             if (Options.target) and (!mSurface.GetSurfaceInfo(Options.target, &target)) then
-               // A specific target surface is hosting the menu layer adjust the coordinate if necessary to keep
-               // it from being partially hidden.
+               -- A specific target surface is hosting the menu layer adjust the coordinate if necessary to keep
+               -- it from being partially hidden.
                if x + surface.width >= target.width then
                   x = target.x - surface.width + lRightMargin
-                  lReverseX = true
+                  self.reverseX = true
                end
             end
          end
@@ -338,7 +339,7 @@ gui.menu = function(Options)
          ensure_on_display(self)
 --]]
       elseif lRelative then
-         // Correct the position of the menu according to the relative object that it is offset from.
+         -- Correct the position of the menu according to the relative object that it is offset from.
 
          local err, target = mSurface.GetSurfaceInfo(lRelative)
          if err == ERR_Okay then
@@ -367,10 +368,10 @@ gui.menu = function(Options)
             end
 
             if y + surface.height > target.height then
-               if self.parent then // Child menu
-                  y = y - surface.height //+ get_item_height() + self.vWhiteSpace
+               if self.parent then -- Child menu
+                  y = y - surface.height --+ get_item_height() + self.vWhiteSpace
                else
-                  y = y - surface.height - nz(Options.y, 0) //+ self.vWhiteSpace
+                  y = y - surface.height - nz(Options.y, 0) --+ self.vWhiteSpace
                end
             end
 
@@ -392,7 +393,7 @@ gui.menu = function(Options)
          end
       end
 
-      if lHighlightItem then  // Redraw the previously highlighted item
+      if lHighlightItem then  -- Redraw the previously highlighted item
          lHighlightItem.text.fill = 'rgb(0,0,0)'
          self.surface.acDraw(0, lHighlightItem.y + lVOffset, 10000, lHighlightItem.height)
          lHighlightItem = nil
@@ -400,7 +401,7 @@ gui.menu = function(Options)
 
       lHighlightItem = Item
 
-      if Item then // Draw the newly highlighted area
+      if Item then -- Draw the newly highlighted area
          Item.text.fill = 'rgb(180,0,0)'
          self.surface.acDraw(0, Item.y + lVOffset, 10000, Item.height)
       end
@@ -414,35 +415,49 @@ gui.menu = function(Options)
       check(ERR_Terminate)
    end
 
-   // Main entry point
+   -- Main entry point
 
    catch(function()
       if not Options.config then error('A config value is required to define the Menu items') end
 
       self.surface = obj.new('surface')
-      self.surface.width  = lMenuWidth
-      self.surface.parent = Options.target
-      self.surface.flags  = '!stickToFront|composite'
-      self.surface.x      = nz(Options.x, 0)
-      self.surface.y      = nz(Options.y, 0)
+      self.surface.width      = lMenuWidth
+      self.surface.parent     = Options.target
+      self.surface.flags      = bit.bor(RNF_STICK_TO_FRONT, RNF_COMPOSITE)
+      self.surface.x          = nz(Options.x, 0)
+      self.surface.y          = nz(Options.y, 0)
       self.surface.windowType = 'NONE'
-      self.surface.height = 40
+      self.surface.height     = 40
       if (self.surface.acInit() != ERR_Okay) then error('Failed to initialise surface.') end
 
+      self.scene = obj.new('VectorScene', { })
+      self.vp = self.scene.new('VectorViewport', { }) -- Main viewport for vector graphics.
+      self.vg = self.vp.new('VectorGroup', { })
+
       self.surface.subscribe('free', function(Surface, Args)
+         if self.focusTimer then mSys.UpdateTimer(self.focusTimer, 0) end
+         if lTipTimer then mSys.UpdateTimer(lTipTimer, 0) end
          self.surface = nil
       end)
 
-      if lRootMenu then
+      if self.rootMenu then
          self.surface.subscribe('focus', function(Surface, Args)
             if (self.keyMonitorID == Args.objectID) and (not self.keyEvent) then
-               //SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, self, &self.prvKeyEvent)
+               --SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, self, &self.prvKeyEvent)
             end
          end)
       end
 
       self.surface.subscribe('lostfocus', function(Surface, Args)
-         self.surface.acHide()
+         -- A menu losing the focus normally means we'd hide it, but the user may have clicked a menubar
+         -- button that controls visibility.  Therefore we delay the hide, providing an opportunity to cancel it.
+         if not self.focusTimer then
+            _, self.focusTimer = mSys.SubscribeTimer(2/60, function(Elapsed, CurrentTime)
+               self.surface.acHide()
+               self.focusTimer = nil
+               check(ERR_Terminate)
+            end)
+         end
       end)
 
       self.surface.subscribe('hide', function(Surface, Args)
@@ -451,7 +466,7 @@ gui.menu = function(Options)
       end)
 
       self.surface.subscribe('show', function(Surface, Args)
-         if lPopup or lRootMenu then
+         if lPopup or self.rootMenu then
             self.surface.acFocus()
          end
          lVisible = true
@@ -459,18 +474,18 @@ gui.menu = function(Options)
       end)
 
       self.surface.mtAddCallback(function(Surface, Bitmap)
-         if lScene then
-            lScene.bitmap = Bitmap
-            lScene.pageWidth = Surface.width
-            lScene.pageHeight = Surface.height
-            lScene.acDraw()
+         if self.scene then
+            self.scene.bitmap = Bitmap
+            self.scene.pageWidth = Surface.width
+            self.scene.pageHeight = Surface.height
+            self.scene.acDraw()
          end
       end)
 
       input.subscribe(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), self.surface, 0, function(Surface, Msg)
          if Msg.type == JET_BUTTON_1 then
             if Msg.value == 0 then
-               if lHighlightItem and lHighlightItem.config.feedback then // Menu item activated
+               if lHighlightItem and lHighlightItem.config.feedback then -- Menu item activated
                   lHighlightItem.config.feedback(self, lHighlightItem.config)
                   self.surface.acHide()
                end
@@ -491,7 +506,7 @@ gui.menu = function(Options)
                end
             end
 
-            // Remove existing menu highlighting if the cursor is no longer positioned over a highlight-able item.
+            -- Remove existing menu highlighting if the cursor is no longer positioned over a highlight-able item.
 
             if not highlightFound and lHighlightItem then
                highlightItem(nil)

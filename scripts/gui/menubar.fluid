@@ -80,10 +80,11 @@ gui.menubar = function(HostVP, Options)
 
       menu.x = self._currentItem.x
 
+      if self._lastMenu and self._lastMenu != menu then
+         self._lastMenu.hide()
+      end
+
       if menu.switch() == 1 then
-         if self._lastMenu and self._lastMenu != menu then
-            self._lastMenu.hide()
-         end
          self._lastMenu = menu
       end
    end
@@ -97,7 +98,7 @@ gui.menubar = function(HostVP, Options)
    end
 
    local function newItem(Name, ID) -- Append an item to the menu bar
-      if ID and (self._lookup[ID]) then error('An item with identifier ' .. ID .. ' already exists.') end
+      if ID and self._lookup[ID] then error('An item with identifier ' .. ID .. ' already exists.') end
 
       local item = { id=ID, name=Name }
       if nz(Name) then
@@ -116,7 +117,7 @@ gui.menubar = function(HostVP, Options)
 
    local function getCursorItem(X, Y)
       local item = self._first
-      while (item) do
+      while item do
          if (X >= item.x) and (X <  item.x + item.width) and (Y >= item.y) and (Y <  item.y + item.height) then
             return item
          end
@@ -303,7 +304,7 @@ gui.menubar = function(HostVP, Options)
       self._hIcon.visibility = 'hidden' -- Turn off keyboard highlighting
       self._currentItem = Item
 
-      if self._prevItem and self._prevItem != self._currentItem then
+      if self._prevItem and (self._prevItem != self._currentItem) then
          self._prevItem.vectorText.fill = lColours.textFill
       end
 
@@ -331,26 +332,20 @@ gui.menubar = function(HostVP, Options)
 
             hoverUpdate(item)
          elseif (bit.band(ev.flags, JTYPE_BUTTON) != 0) then
+            if (ev.type != JET_BUTTON_1) then return end
+
             if (ev.value > 0) then
-               if self._disabled then return end
-
                if self._currentItem then
-                  if self._currentItem.disabled then return end
+                  if self._currentItem.disabled or self._disabled then return end
 
-                  if (ev.type == JET_BUTTON_1) then
-                     self._clicked = self._currentItem
-                     lClickX  = ev.x
-                     lClickY  = ev.y
-                     hoverUpdate(self._currentItem, true)
-                     activateItem()
-                  end
-               end
-            elseif (ev.type == JET_BUTTON_1) then
-               if self._clicked then
-                  self._clicked = nil
-
+                  self._clicked = self._currentItem
                   hoverUpdate(self._currentItem, true)
+                  activateItem()
                end
+            elseif self._clicked then
+               self._clicked = nil
+
+               hoverUpdate(self._currentItem, true)
             end
          end
 
@@ -420,9 +415,9 @@ gui.menubar = function(HostVP, Options)
       self._bkgd.new('VectorRectangle', { -- Main background
          fill   = 'rgb(0,0,0,200)',
          x      = 0,
+         y      = 0,
          width  = '100%',
-         height = self.vp.height - 1,
-         y      = 0
+         height = self.vp.height - 1
       })
 
       self._bkgd.new('VectorRectangle', { -- Bottom stroke
@@ -430,9 +425,9 @@ gui.menubar = function(HostVP, Options)
          stroke      = 'rgb(255,255,255,64)',
          strokeWidth = 1,
          x           = 0,
+         y           = self.vp.height - 1,
          width       = '100%',
-         height      = 1,
-         y           = self.vp.height - 1
+         height      = 1
       })
 
       arrangeItems()
