@@ -12,8 +12,8 @@ static const struct FieldDef clNetSocketFlags[] = {
    { "Server", 0x00000001 },
    { "SSL", 0x00000002 },
    { "MultiConnect", 0x00000004 },
-   { "Debug", 0x00000010 },
    { "Synchronous", 0x00000008 },
+   { "Debug", 0x00000010 },
    { NULL, 0 }
 };
 

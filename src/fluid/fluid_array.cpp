@@ -74,6 +74,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    struct structentry *sdef = NULL;
    if (FieldType & FD_STRUCT) {
       if (!StructName) { lua_pushnil(Lua); return; }
+
       {
          char struct_name[60];
          LONG i;
@@ -581,12 +582,14 @@ static int array_len(lua_State *Lua)
 
 void register_array_class(lua_State *Lua)
 {
-   static const struct luaL_reg functions[] = {
+   parasol::Log log;
+
+   static const struct luaL_Reg functions[] = {
       { "new",  array_new },
       { NULL, NULL }
    };
 
-   static const struct luaL_reg methods[] = {
+   static const struct luaL_Reg methods[] = {
       { "__index",    array_get },
       { "__newindex", array_set },
       { "__len",      array_len },
@@ -594,7 +597,7 @@ void register_array_class(lua_State *Lua)
       { NULL, NULL }
    };
 
-   MSG("Registering array interface.");
+   log.trace("Registering array interface.");
 
    luaL_newmetatable(Lua, "Fluid.array");
    lua_pushstring(Lua, "__index");

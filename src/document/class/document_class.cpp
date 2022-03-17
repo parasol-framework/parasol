@@ -50,7 +50,7 @@ static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Arg
       if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "FocusNotify");
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->EventCallback.Type = CALL_NONE;
       }
    }
@@ -139,7 +139,7 @@ static ERROR DOCUMENT_Activate(objDocument *Self, APTR Void)
 
    ChildEntry list[16];
    LONG count = ARRAYSIZE(list);
-   if (!ListChildren(Self->Head.UniqueID, TRUE, list, &count)) {
+   if (!ListChildren(Self->Head.UID, TRUE, list, &count)) {
       for (LONG i=0; i < count; i++) acActivateID(list[i].ObjectID);
    }
 
@@ -455,7 +455,7 @@ static ERROR DOCUMENT_DataFeed(objDocument *Self, struct acDataFeed *Args)
          }
       }
 
-      log.trace("Appending data to XML #%d at tag index %d.", Self->XML->Head.UniqueID, Self->XML->TagCount);
+      log.trace("Appending data to XML #%d at tag index %d.", Self->XML->Head.UID, Self->XML->TagCount);
 
       if (acDataXML(Self->XML, Args->Buffer) != ERR_Okay) {
          return log.warning(ERR_SetField);
@@ -496,7 +496,7 @@ static ERROR DOCUMENT_Disable(objDocument *Self, APTR Void)
 static ERROR DOCUMENT_Draw(objDocument *Self, APTR Void)
 {
    if (Self->SurfaceID) {
-      if (Self->Processing) DelayMsg(AC_Draw, Self->Head.UniqueID, NULL);
+      if (Self->Processing) DelayMsg(AC_Draw, Self->Head.UID, NULL);
       else redraw(Self, FALSE);
       return ERR_Okay;
    }
@@ -681,9 +681,6 @@ static ERROR DOCUMENT_Free(objDocument *Self, APTR Void)
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->FlashTimer) { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
-   if ((Self->VScroll) and (Self->FreeVScroll)) { acFree(Self->VScroll); Self->VScroll = NULL; }
-   if ((Self->HScroll) and (Self->FreeHScroll)) { acFree(Self->HScroll); Self->HScroll = NULL; }
-
    if (Self->PageID)    { acFreeID(Self->PageID); Self->PageID = 0; }
    if (Self->ViewID)    { acFreeID(Self->ViewID); Self->ViewID = 0; }
    if (Self->InsertXML) { acFree(Self->InsertXML); Self->InsertXML = NULL; }
@@ -706,7 +703,7 @@ static ERROR DOCUMENT_Free(objDocument *Self, APTR Void)
    }
 
    if (Self->PointerLocked) {
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
       Self->PointerLocked = FALSE;
    }
 
@@ -861,67 +858,11 @@ static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
    acShowID(Self->ViewID);
    acShowID(Self->PageID);
 
-   // Scan for scrollbars
+   // TODO: Launch the scrollbar script with references to our Target, Page and View viewports
 
    if (!(Self->Flags & DCF_NO_SCROLLBARS)) {
-      if ((!Self->VScroll) or (!Self->HScroll)) {
-         ChildEntry list[16];
-         LONG count = ARRAYSIZE(list);
-         if (!ListChildren(Self->SurfaceID, TRUE, list, &count)) {
-            for (--count; count >= 0; count--) {
-               if ((list[count].ObjectID > 0) and (list[count].ClassID IS (CLASSID)ID_SCROLLBAR)) {
-                  objScrollbar *scrollbar;
-                  if ((scrollbar = (objScrollbar *)GetObjectAddress(list[count].ObjectID))) {
-                     LONG direction;
-                     GetLong(scrollbar, FID_Direction, &direction);
 
-                     if ((direction IS SO_HORIZONTAL) and (!Self->HScroll)) {
-                        Self->HScroll = scrollbar;
-                     }
-                     else if ((direction IS SO_VERTICAL) and (!Self->VScroll)) {
-                        Self->VScroll = scrollbar;
-                     }
-                  }
-               }
-            }
-         }
-      }
 
-      if (!Self->VScroll) {
-         if (CreateObject(ID_SCROLLBAR, NF_INTEGRAL, &Self->VScroll,
-               FID_Name|TSTR,      "DocVScrollbar",
-               FID_Surface|TLONG,  Self->SurfaceID,
-               FID_Monitor|TLONG,  Self->PageID,   // Surface to monitor for wheel-scroll requests
-               FID_View|TLONG,     Self->ViewID,
-               FID_Direction|TSTR, "vertical",
-               FID_Object|TLONG,   Self->Head.UniqueID,
-               FID_Opacity|TLONG,  100,
-               TAGEND)) {
-            return ERR_CreateObject;
-         }
-         else Self->FreeVScroll = TRUE;
-      }
-
-      SURFACEINFO *info;
-      if (!drwGetSurfaceInfo(Self->VScroll->RegionID, &info)) {
-         Self->ScrollWidth = info->Width;
-      }
-      else Self->ScrollWidth = 16;
-
-      if (!Self->HScroll) {
-         if (CreateObject(ID_SCROLLBAR, NF_INTEGRAL, &Self->HScroll,
-               FID_Name|TSTR,       "DocHScrollbar",
-               FID_Surface|TLONG,   Self->SurfaceID,
-               FID_Monitor|TLONG,   Self->PageID,
-               FID_Direction|TSTR,  "horizontal",
-               FID_Object|TLONG,    Self->Head.UniqueID,
-               FID_Intersect|TLONG, (Self->VScroll) ? Self->VScroll->Head.UniqueID : 0,
-               FID_Opacity|TLONG,   100,
-               TAGEND)) {
-            return ERR_CreateObject;
-         }
-         else Self->FreeHScroll = TRUE;
-      }
    }
 
    // Flash the cursor via the timer
@@ -956,7 +897,6 @@ static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
    }
 
    redraw(Self, TRUE);
-   calc_scroll(Self);
    return ERR_Okay;
 }
 
@@ -1339,7 +1279,7 @@ static ERROR DOCUMENT_Refresh(objDocument *Self, APTR Void)
 
    if (Self->Processing) {
       log.msg("Recursion detected - refresh will be delayed.");
-      DelayMsg(AC_Refresh, Self->Head.UniqueID, NULL);
+      DelayMsg(AC_Refresh, Self->Head.UID, NULL);
       return ERR_Okay;
    }
 
@@ -1532,7 +1472,6 @@ static ERROR DOCUMENT_ScrollToPoint(objDocument *Self, struct acScrollToPoint *A
    //log.msg("%d, %d / %d, %d", (LONG)Args->X, (LONG)Args->Y, Self->XPosition, Self->YPosition);
 
    acMoveToPointID(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF_X|MTF_Y);
-   calc_scroll(Self);
    return ERR_Okay;
 }
 

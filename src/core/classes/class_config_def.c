@@ -2,9 +2,9 @@
 
 static const struct FieldDef clConfigFlags[] = {
    { "StripQuotes", 0x00000001 },
+   { "AutoSave", 0x00000002 },
    { "OptionalFiles", 0x00000004 },
    { "New", 0x00000008 },
-   { "AutoSave", 0x00000002 },
    { NULL, 0 }
 };
 

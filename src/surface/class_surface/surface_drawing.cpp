@@ -6,7 +6,7 @@ static void  copy_bkgd(SurfaceList *, WORD, WORD, WORD, WORD, WORD, WORD, WORD, 
 */
 
 static void redraw_nonintersect(OBJECTID SurfaceID, SurfaceList *List, WORD Index, WORD Total,
-   struct ClipRectangle *Region, struct ClipRectangle *RegionB, LONG RedrawFlags, LONG ExposeFlags)
+   ClipRectangle *Region, ClipRectangle *RegionB, LONG RedrawFlags, LONG ExposeFlags)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -93,6 +93,10 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
       return ERR_Okay|ERF_Notified;
    }
 
+   // Do not perform manual redraws when a redraw is scheduled.
+
+   if (Self->RedrawScheduled) return ERR_Okay|ERF_Notified;
+
    LONG x, y, width, height;
    if (!Args) {
       x = 0;
@@ -119,15 +123,15 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UniqueID)) {
+         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UID)) {
             if (action->SendArgs IS FALSE) {
                ReleaseMemoryID(msgqueue);
                return ERR_Okay|ERF_Notified;
             }
          }
-         else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->Head.UniqueID)) {
+         else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->Head.UID)) {
             if (action->SendArgs IS TRUE) {
-               struct acDraw *msgdraw = (struct acDraw *)(action + 1);
+               auto msgdraw = (struct acDraw *)(action + 1);
 
                if (!Args) { // Tell the next message to draw everything.
                   action->SendArgs = FALSE;
@@ -159,8 +163,8 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
    }
 
    log.traceBranch("%dx%d,%dx%d", x, y, width, height);
-   drwRedrawSurface(Self->Head.UniqueID, x, y, width, height, IRF_RELATIVE|IRF_IGNORE_CHILDREN);
-   drwExposeSurface(Self->Head.UniqueID, x, y, width, height, EXF_REDRAW_VOLATILE);
+   drwRedrawSurface(Self->Head.UID, x, y, width, height, IRF_RELATIVE|IRF_IGNORE_CHILDREN);
+   drwExposeSurface(Self->Head.UID, x, y, width, height, EXF_REDRAW_VOLATILE);
    return ERR_Okay|ERF_Notified;
 }
 
@@ -199,9 +203,9 @@ static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->Head.UniqueID)) {
+         if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->Head.UID)) {
             if (action->SendArgs) {
-               struct drwExpose *msgexpose = (struct drwExpose *)(action + 1);
+               auto msgexpose = (struct drwExpose *)(action + 1);
 
                if (!Args) {
                   // Invalidate everything
@@ -244,8 +248,8 @@ static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
    }
 
    ERROR error;
-   if (Args) error = drwExposeSurface(Self->Head.UniqueID, Args->X, Args->Y, Args->Width, Args->Height, Args->Flags);
-   else error = drwExposeSurface(Self->Head.UniqueID, 0, 0, Self->Width, Self->Height, 0);
+   if (Args) error = drwExposeSurface(Self->Head.UID, Args->X, Args->Y, Args->Width, Args->Height, Args->Flags);
+   else error = drwExposeSurface(Self->Head.UID, 0, 0, Self->Width, Self->Height, 0);
 
    return error;
 }
@@ -285,6 +289,10 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
       return ERR_Okay|ERF_Notified;
    }
 
+   // Do not perform manual redraws when a redraw is scheduled.
+
+   if (Self->RedrawTimer) return ERR_Okay|ERF_Notified;
+
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
    APTR queue;
@@ -294,7 +302,7 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion)];
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
-         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UniqueID)) {
+         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UID)) {
             if (action->SendArgs IS TRUE) {
                auto msginvalid = (struct drwInvalidateRegion *)(action + 1);
 
@@ -326,20 +334,18 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
    }
 
    if (Args) {
-      drwRedrawSurface(Self->Head.UniqueID, Args->X, Args->Y, Args->Width, Args->Height, IRF_RELATIVE);
-      drwExposeSurface(Self->Head.UniqueID, Args->X, Args->Y, Args->Width, Args->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      drwRedrawSurface(Self->Head.UID, Args->X, Args->Y, Args->Width, Args->Height, IRF_RELATIVE);
+      drwExposeSurface(Self->Head.UID, Args->X, Args->Y, Args->Width, Args->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
    else {
-      drwRedrawSurface(Self->Head.UniqueID, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
-      drwExposeSurface(Self->Head.UniqueID, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      drwRedrawSurface(Self->Head.UID, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
+      drwExposeSurface(Self->Head.UID, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
 
    return ERR_Okay|ERF_Notified;
 }
 
-/*****************************************************************************
-** Function: move_layer()
-*/
+//****************************************************************************
 
 static void move_layer(objSurface *Self, LONG X, LONG Y)
 {
@@ -401,7 +407,7 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
 
    drwReleaseList(ARF_READ);
 
-   struct ClipRectangle abs, old;
+   ClipRectangle abs, old;
    old.Left   = list[index].Left;
    old.Top    = list[index].Top;
    old.Right  = list[index].Right;
@@ -471,14 +477,14 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
       else if (list[index].BitmapID IS list[parent_index].BitmapID) redraw = TRUE;
       else redraw = FALSE;
 
-      if (redraw) _redraw_surface(Self->Head.UniqueID, list, index, total, destx, desty, destx+Self->Width, desty+Self->Height, NULL);
-      _expose_surface(Self->Head.UniqueID, list, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      if (redraw) _redraw_surface(Self->Head.UID, list, index, total, destx, desty, destx+Self->Width, desty+Self->Height, NULL);
+      _expose_surface(Self->Head.UID, list, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
 
       // Expose underlying graphics resulting from the movement
 
       for (vindex=index+1; list[vindex].Level > list[index].Level; vindex++);
       tlVolatileIndex = vindex;
-      redraw_nonintersect(Self->ParentID, list, parent_index, total, (struct ClipRectangle *)(&list[index].Left), &old,
+      redraw_nonintersect(Self->ParentID, list, parent_index, total, (ClipRectangle *)(&list[index].Left), &old,
          (list[index].BitmapID IS list[parent_index].BitmapID) ? IRF_SINGLE_BITMAP : -1,
          EXF_CHILDREN|EXF_REDRAW_VOLATILE);
       tlVolatileIndex = 0;
@@ -497,7 +503,7 @@ static void move_layer(objSurface *Self, LONG X, LONG Y)
 ** Stage:      Either STAGE_PRECOPY or STAGE_AFTERCOPY.
 */
 
-static void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD Index, objBitmap *DestBitmap, struct ClipRectangle *clip, BYTE Stage)
+static void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD Index, objBitmap *DestBitmap, ClipRectangle *clip, BYTE Stage)
 {
    parasol::Log log("prepare_bkgd");
 
@@ -553,7 +559,7 @@ static void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, 
    for (i=parentindex; i < end; i++) {
       if (list[i].Flags & (RNF_REGION|RNF_TRANSPARENT|RNF_CURSOR)) continue; // Ignore regions
 
-      struct ClipRectangle expose = {
+      ClipRectangle expose = {
          .Left   = clip->Left, // Take a copy of the expose coordinates
          .Right  = clip->Right,
          .Bottom = clip->Bottom,
@@ -605,7 +611,7 @@ static void copy_bkgd(SurfaceList *list, WORD Index, WORD End, WORD Master, WORD
       else if (list[i].Flags & RNF_TRANSPARENT) continue; // Invisibles may contain important regions we have to block
       else if ((Pervasive) and (list[i].Level > list[Index].Level)); // If the copy is pervasive then all children must be ignored (so that we can copy translucent graphics over them)
       else {
-         struct ClipRectangle listclip = {
+         ClipRectangle listclip = {
             .Left   = list[i].Left,
             .Right  = list[i].Right,
             .Bottom = list[i].Bottom,
@@ -639,7 +645,7 @@ static void copy_bkgd(SurfaceList *list, WORD Index, WORD End, WORD Master, WORD
    // Check if the exposed dimensions are outside of our boundary and/or our parent(s) boundaries.  If so then we must
    // restrict the exposed dimensions.
 
-   struct ClipRectangle expose = {
+   ClipRectangle expose = {
       .Left   = Left,
       .Right  = Right,
       .Bottom = Bottom,

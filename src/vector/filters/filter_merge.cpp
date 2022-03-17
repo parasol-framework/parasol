@@ -1,57 +1,110 @@
-
-//****************************************************************************
 // Defines the way in which results will be merged.
 
-static ERROR create_merge(objVectorFilter *Self, struct XMLTag *Tag)
-{
-   struct effect * list[50];
-   struct effect *filter;
+class MergeSource {
+   public:
+      objBitmap *Bitmap;
+      VectorEffect *Effect;
+      MergeSource(objBitmap *pBitmap, VectorEffect *pEffect) : Bitmap(pBitmap), Effect(pEffect) { };
+};
 
-   if (!(filter = add_effect(Self, FE_OFFSET))) return ERR_AllocMemory;
+class MergeEffect : public VectorEffect {
 
-   filter->Source = VSF_IGNORE;
+   std::vector<MergeSource> List;
+   objBitmap *MergeBitmap;
 
-   // Count the total number of merge nodes.
+public:
+   MergeEffect(objVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
+      parasol::Log log(__FUNCTION__);
 
-   struct XMLTag *child;
-   LONG count = 0;
-   for (child=Tag->Child; child; child=child->Next) {
-      if (!StrMatch("feMergeNode", child->Attrib->Name)) {
-         for (LONG a=1; a < child->TotalAttrib; a++) {
-            if (!StrMatch("in", child->Attrib[a].Name)) {
-               struct effect *ie = NULL;
-               switch (StrHash(child->Attrib[a].Value, FALSE)) {
-                  case SVF_SOURCEGRAPHIC:   ie = &Self->SrcGraphic; break;
-                  case SVF_SOURCEALPHA:     ie = &Self->SrcGraphic; break;
-                  //case SVF_BACKGROUNDIMAGE: ie = &Self->BkgdGraphic; break;
-                  //case SVF_BACKGROUNDALPHA: ie = &Self->BkgdGraphic; break;
-                  //case SVF_FILLPAINT:       ie = VSF_FILL; break;
-                  //case SVF_STROKEPAINT:     ie = VSF_STROKE; break;
-                  default:  {
-                     ie = find_effect(Self, child->Attrib[a].Value);
-                     if (!ie) LogErrorMsg("Unable to parse 'in' value '%s'", child->Attrib[a].Value);
-                     break;
+      Blank = true;
+      Source = VSF_IGNORE;
+      MergeBitmap = NULL;
+
+      for (auto child=Tag->Child; child; child=child->Next) {
+         if (!StrMatch("feMergeNode", child->Attrib->Name)) {
+            for (LONG a=1; a < child->TotalAttrib; a++) {
+               if (!StrMatch("in", child->Attrib[a].Name)) {
+                  switch (StrHash(child->Attrib[a].Value, FALSE)) {
+                     case SVF_SOURCEGRAPHIC:
+                        if (Filter->SrcBitmap) List.emplace_back(Filter->SrcBitmap, (VectorEffect *)NULL);
+                        break;
+                     case SVF_SOURCEALPHA:
+                        if (Filter->SrcBitmap) List.emplace_back(Filter->SrcBitmap, (VectorEffect *)NULL);
+                        break;
+                     //case SVF_BACKGROUNDIMAGE: List.emplace_back(Filter->BkgdGraphic); break;
+                     //case SVF_BACKGROUNDALPHA: List.emplace_back(Filter->BkgdGraphic); break;
+                     //case SVF_FILLPAINT:       List.emplace_back(VSF_FILL); break;
+                     //case SVF_STROKEPAINT:     List.emplace_back(VSF_STROKE); break;
+                     default:  {
+                        auto e = find_effect(Filter, child->Attrib[a].Value);
+                        if (e) List.emplace_back((objBitmap *)NULL, e);
+                        else log.warning("Unable to parse 'in' value '%s'", child->Attrib[a].Value);
+                        break;
+                     }
                   }
                }
-
-               if (ie) list[count++] = ie;
+               else log.warning("Invalid feMergeNode attribute '%s'", child->Attrib[a].Name);
             }
-            else LogErrorMsg("Invalid feMergeNode attribute '%s'", child->Attrib[a].Name);
          }
+         else log.warning("Invalid merge element '%s'", child->Attrib->Name);
       }
-      else LogErrorMsg("Invalid merge node '%s'", child->Attrib->Name);
    }
 
-   FMSG("create_merge","Detected %d merge nodes.", count);
+   // Merging overrides the default drawing process of the VectorFilter Draw action.
 
-   if (count > 0) {
-      if (count > ARRAYSIZE(list)) count = ARRAYSIZE(list);
-      if (!AllocMemory(sizeof(Self->Merge[0]) * (count + 1), MEM_DATA|MEM_NO_CLEAR, &Self->Merge, NULL)) {
-         CopyMemory(list, Self->Merge, sizeof(Self->Merge[0]) * count);
-         Self->Merge[count] = NULL;
-         return ERR_Okay;
+   void apply(objVectorFilter *Filter) {
+      // 1. Merge everything to the scratch bitmap allocated by the filter.
+      // 2. Do the linear2RGB conversion on the result.
+      // 3. Copy the result to the target.
+
+      Filter->Rendered = true;
+
+      if (!MergeBitmap) {
+         if (CreateObject(ID_BITMAP, NF_INTEGRAL, &MergeBitmap,
+               FID_Name|TSTR,          "MergeBitmap",
+               FID_Width|TLONG,        Filter->BoundWidth,
+               FID_Height|TLONG,       Filter->BoundHeight,
+               FID_BitsPerPixel|TLONG, 32,
+               FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
+               TAGEND)) return;
       }
-      else return ERR_AllocMemory;
+      else if ((Filter->BoundWidth != MergeBitmap->Width) or (Filter->BoundHeight != MergeBitmap->Height)) {
+         acResize(MergeBitmap, Filter->BoundWidth, Filter->BoundHeight, 32);
+      }
+
+      gfxDrawRectangle(MergeBitmap, 0, 0, MergeBitmap->Width, MergeBitmap->Height, 0x00000000, BAF_FILL);
+
+      UWORD bmpCount = 0;
+      for (auto source : List) {
+         objBitmap *bmp;
+         LONG dx, dy;
+         if (source.Bitmap) {
+            bmp = source.Bitmap;
+            dx = 0;
+            dy = 0;
+         }
+         else {
+            bmp = source.Effect->Bitmap;
+            dx = source.Effect->DestX;
+            dy = source.Effect->DestY;
+         }
+
+         if (++bmpCount IS 1) {
+            gfxCopyArea(bmp, MergeBitmap, 0, 0, 0, bmp->Width, bmp->Height, dx - Filter->BoundX, dy - Filter->BoundY);
+         }
+         else gfxCopyArea(bmp, MergeBitmap, BAF_BLEND|BAF_COPY, 0, 0, bmp->Width, bmp->Height, dx - Filter->BoundX, dy - Filter->BoundY);
+      }
+
+      // Final copy to the display.
+
+      if (Filter->ColourSpace IS CS_LINEAR_RGB) linear2RGB(*MergeBitmap);
+
+      if (Filter->Opacity < 1.0) MergeBitmap->Opacity = 255.0 * Filter->Opacity;
+      gfxCopyArea(MergeBitmap, Filter->BkgdBitmap, BAF_BLEND|BAF_COPY, 0, 0, Filter->BoundWidth, Filter->BoundHeight, Filter->BoundX, Filter->BoundY);
+      MergeBitmap->Opacity = 255;
    }
-   else return AllocMemory(sizeof(Self->Merge[0]), MEM_DATA, &Self->Merge, NULL); // Allocate an empty merge list (draws nothing)
-}
+
+   virtual ~MergeEffect() {
+      if (MergeBitmap) acFree(MergeBitmap);
+   }
+};

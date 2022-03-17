@@ -69,6 +69,10 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
       // For simplicity, a call to the handler is made for each individual input event.
 
       while (Events) {
+         if (Events->Flags & JTYPE_MOVEMENT) {
+            while ((Events->Next) and (Events->Next->Flags & JTYPE_MOVEMENT)) Events = Events->Next;
+         }
+
          lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
          lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->InputValue); // +1 Optional input value registered by the Fluid client
          named_struct_to_table(prv->Lua, "InputEvent", Events); // +1 Input message
@@ -270,7 +274,7 @@ static int input_request_item(lua_State *Lua)
       dcr.Preference[1] = 0;
 
       struct acDataFeed dc = {
-         .ObjectID = Lua->Script->Head.UniqueID,
+         .ObjectID = Lua->Script->Head.UID,
          .Datatype = DATA_REQUEST,
          .Buffer   = &dcr,
          .Size     = sizeof(dcr)
@@ -350,6 +354,7 @@ static int input_subscribe(lua_State *Lua)
       input->Mask        = mask;
       input->Mode        = FIM_DEVICE;
       input->Next        = prv->InputList;
+
       prv->InputList = input;
 
       auto callback = make_function_stdc(consume_input_events);
@@ -518,14 +523,14 @@ static int input_tostring(lua_State *Lua)
 
 void register_input_class(lua_State *Lua)
 {
-   static const struct luaL_reg inputlib_functions[] = {
+   static const struct luaL_Reg inputlib_functions[] = {
       { "subscribe",   input_subscribe },
       { "keyboard",    input_keyboard },
       { "requestItem", input_request_item },
       { NULL, NULL }
    };
 
-   static const struct luaL_reg inputlib_methods[] = {
+   static const struct luaL_Reg inputlib_methods[] = {
       { "__gc",       input_destruct },
       { "__tostring", input_tostring },
       { "__index",    input_index },

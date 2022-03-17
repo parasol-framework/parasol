@@ -6,7 +6,7 @@ VectorClip: Clips are used to define complex clipping regions for vectors.
 The VectorClip defines a clipping path that can be used by other vectors as a mask.  The clipping path is defined by
 creating Vector shapes that are initialised to the VectorClip as child objects.
 
-Any Vector that defines a shape can utilise a VectorClip by referencing it through the Vector's Mask field.
+Any Vector that defines a path can utilise a VectorClip by referencing it through the Vector's Mask field.
 
 VectorClip objects must always be owned by their relevant @VectorScene or @VectorViewport.  It is valid for a VectorClip
 to be shared by multiple vector objects within the same scene.
@@ -16,25 +16,28 @@ to be shared by multiple vector objects within the same scene.
 *****************************************************************************/
 
 static void draw_clips(objVectorClip *Self, objVector *Branch,
-   agg::rasterizer_scanline_aa<> &rasterizer,
-   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &solid)
+   agg::rasterizer_scanline_aa<> &Rasterizer,
+   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid)
 {
    agg::scanline_p8 sl;
    for (auto scan=Branch; scan; scan=(objVector *)scan->Next) {
       if (scan->Head.ClassID IS ID_VECTOR) {
-         if (scan->BasePath) {
-            agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(*scan->BasePath, *scan->Transform);
-            rasterizer.reset();
-            rasterizer.add_path(final_path);
-            agg::render_scanlines(rasterizer, sl, solid);
-         }
+         agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, scan->Transform);
+         Rasterizer.reset();
+         Rasterizer.add_path(final_path);
+         agg::render_scanlines(Rasterizer, sl, Solid);
       }
 
-      if (scan->Child) draw_clips(Self, (objVector *)scan->Child, rasterizer, solid);
+      if (scan->Child) draw_clips(Self, (objVector *)scan->Child, Rasterizer, Solid);
    }
 }
 
-//****************************************************************************
+/*****************************************************************************
+-ACTION-
+Name:  Draw
+Short: Renders the vector clipping shape(s) to an internal buffer.
+-END-
+*****************************************************************************/
 
 static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
 {
@@ -56,7 +59,10 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
    LONG width = bounds[2] + 1; // Vector->BX2 - Vector->BX1 + 1;
    LONG height = bounds[3] + 1; // Vector->BY2 - Vector->BY1 + 1;
 
-   if ((width <= 0) OR (height <= 0)) FMSG("@","Warning - invalid mask size of %dx%d detected.", width, height);
+   if ((width <= 0) or (height <= 0)) {
+      log.warning("Invalid mask size of %dx%d detected.", width, height);
+      DEBUG_BREAK
+   }
 
    if (width < 0) width = -width;
    else if (!width) width = 1;
@@ -65,7 +71,7 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
    else if (!height) height = 1;
 
    if ((width > 4096) or (height > 4096)) {
-      LogErrorMsg("Mask size of %dx%d pixels exceeds imposed limits.", width, height);
+      log.warning("Mask size of %dx%d pixels exceeds imposed limits.", width, height);
       if (width > 4096)  width = 4096;
       if (height > 4096) height = 4096;
    }
@@ -75,7 +81,7 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
    #endif
 
    LONG size = width * height;
-   if ((Self->ClipData) AND (size > Self->ClipSize)) {
+   if ((Self->ClipData) and (size > Self->ClipSize)) {
       FreeResource(Self->ClipData);
       Self->ClipData = NULL;
       Self->ClipSize = 0;
@@ -88,8 +94,8 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
       else return ERR_AllocMemory;
    }
 
-   Self->ClipRenderer->attach(Self->ClipData, width-1, height-1, width);
-   agg::pixfmt_gray8 pixf(*Self->ClipRenderer);
+   Self->ClipRenderer.attach(Self->ClipData, width-1, height-1, width);
+   agg::pixfmt_gray8 pixf(Self->ClipRenderer);
    agg::renderer_base<agg::pixfmt_gray8> rb(pixf);
    agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(rb);
    agg::rasterizer_scanline_aa<> rasterizer;
@@ -120,16 +126,11 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
 
 static ERROR CLIP_Free(objVectorClip *Self, APTR Void)
 {
-   VectorTransform *next;
-   for (auto scan=Self->Transforms; scan; scan=next) {
-      next = scan->Next;
-      FreeResource(scan);
-   }
-   Self->Transforms = NULL;
-
    if (Self->ClipData) { FreeResource(Self->ClipData); Self->ClipData = NULL; }
    if (Self->ClipPath) { delete Self->ClipPath; Self->ClipPath = NULL; }
-   if (Self->ClipRenderer) { delete Self->ClipRenderer; Self->ClipRenderer = NULL; }
+
+   using agg::rendering_buffer;
+   Self->ClipRenderer.~rendering_buffer();
    return ERR_Okay;
 }
 
@@ -141,10 +142,10 @@ static ERROR CLIP_Init(objVectorClip *Self, APTR Void)
 
    if ((Self->ClipUnits <= 0) or (Self->ClipUnits >= VUNIT_END)) {
       log.traceWarning("Invalid Units value of %d", Self->ClipUnits);
-      return log.warning(ERR_OutOfRange);
+      return ERR_OutOfRange;
    }
 
-   if ((!Self->Parent) OR ((Self->Parent->ClassID != ID_VECTORSCENE) AND (Self->Parent->SubID != ID_VECTORVIEWPORT))) {
+   if ((!Self->Parent) or ((Self->Parent->ClassID != ID_VECTORSCENE) and (Self->Parent->SubID != ID_VECTORVIEWPORT))) {
       log.warning("This VectorClip object must be a child of a Scene or Viewport object.");
       return ERR_Failed;
    }
@@ -156,10 +157,9 @@ static ERROR CLIP_Init(objVectorClip *Self, APTR Void)
 
 static ERROR CLIP_NewObject(objVectorClip *Self, APTR Void)
 {
-   Self->ClipUnits = VUNIT_BOUNDING_BOX;
-   Self->ClipRenderer = new (std::nothrow) agg::rendering_buffer;
-   if (!Self->ClipRenderer) return ERR_AllocMemory;
+   Self->ClipUnits  = VUNIT_BOUNDING_BOX;
    Self->Visibility = VIS_HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
+   new (&Self->ClipRenderer) agg::rendering_buffer;
    return ERR_Okay;
 }
 
@@ -172,79 +172,29 @@ string.
 
 *****************************************************************************/
 
-static ERROR CLIP_SET_Transform(objVectorClip *Self, CSTRING Value)
+static ERROR CLIP_SET_Transform(objVectorClip *Self, CSTRING Commands)
 {
    parasol::Log log;
 
-   if (!Value) return log.warning(ERR_NullArgs);
+   if (!Commands) return log.warning(ERR_InvalidValue);
 
-   // Clear any existing transforms.
-
-   VectorTransform *scan, *next;
-   for (scan=Self->Transforms; scan; scan=next) {
-      next = scan->Next;
-      FreeResource(scan);
+   if (!Self->Matrices) {
+      VectorMatrix *matrix;
+      if (!vecNewMatrix(Self, &matrix)) return vecParseTransform(matrix, Commands);
+      else return ERR_CreateResource;
    }
-   Self->Transforms = NULL;
-
-   VectorTransform *transform;
-
-   CSTRING str = Value;
-   while (*str) {
-      if (!StrCompare(str, "matrix", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_MATRIX))) {
-            str = read_numseq(str+6, &transform->Matrix[0], &transform->Matrix[1], &transform->Matrix[2], &transform->Matrix[3], &transform->Matrix[4], &transform->Matrix[5], TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "translate", 9, 0)) {
-         if ((transform = add_transform(Self, VTF_TRANSLATE))) {
-            DOUBLE x = 0;
-            DOUBLE y = 0;
-            str = read_numseq(str+9, &x, &y, TAGEND);
-            transform->X += x;
-            transform->Y += y;
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "rotate", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_ROTATE))) {
-            str = read_numseq(str+6, &transform->Angle, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "scale", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SCALE))) {
-            str = read_numseq(str+5, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewX", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW))) {
-            transform->X = 0;
-            str = read_numseq(str+5, &transform->X, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewY", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW))) {
-            transform->Y = 0;
-            str = read_numseq(str+5, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else str++;
+   else {
+      vecResetMatrix(Self->Matrices);
+      return vecParseTransform(Self->Matrices, Commands);
    }
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************
 -FIELD-
 Units: Defines the coordinate system for fields X, Y, Width and Height.
 
-The default coordinate system for clip-paths is BOUNDING_BOX, which positions the clipping region against the vector
-that references it.  The alternative is USERSPACE, which positions the path relative to the current viewport.
+The default coordinate system for clip-paths is `BOUNDING_BOX`, which positions the clipping region against the vector
+that references it.  The alternative is `USERSPACE`, which positions the path relative to the current viewport.
 -END-
 *****************************************************************************/
 

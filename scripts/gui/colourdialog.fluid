@@ -41,10 +41,12 @@ Valid options to use when creating the dialog are as follows:
    if (gui.dialog == nil) then gui.dialog = { } end
 
 gui.dialog.colour = function(Options)
-   local mFont = mod.load('font')
-   local mGfx  = mod.load('display')
+   local mFont   = mod.load('font')
+   local mGfx    = mod.load('display')
+   local mVector = mod.load('vector')
+   local mWidget = mod.load('widget')
 
-   local self = { // Public variables
+   local self = { -- Public variables and global resources that need to be retained
       windowID = nil,
       colour = { r=0, g=0, b=0, a=255 }
    }
@@ -52,181 +54,146 @@ gui.dialog.colour = function(Options)
    local lOptions = Options
    local lWindow, lFont, lPaletteChanged
    local lRGB = { r=200, g=200, b=200, a=255 }
+   local lColBorder = { r=0, g=0, b=0,  a=128 }
    local lPicker
    local lAbsX = -1
    local lAbsY = -1
    local lRainbowX = -1
    local lRainbowY = -1
+   local lRainbow = { winX = 0, winY = 0, winWidth = 0, winHeight = 0 }
    local lLinks = { }
-   local lSolid = { }
    local lCustom = { }
    local lWidgetGap = 3
-   local lRainbow // Rainbow palette bitmap
+   local lRainbowBmp -- Rainbow palette bitmap
    local BTNSIZE = 20
    local BTNGAP = 3
+   local WIDGET_GAP = 6
+   local lAddIcon
+   local updateRGB -- Forward declarations of functions
+   local lThemeColour
 
    local lCommon = {
-     '0,64,64', '0,128,128', '0,192,192', '0,255,255', '64,255,255',  '128,255,255', '192,255,255', '224,255,255', // Aqua
-     '0,64,0',  '0,128,0',   '0,192,0',   '0,255,0',   '64,255,64',   '128,255,128', '192,255,192', '224,255,224', // Green
-     '64,64,0', '128,128,0', '192,192,0', '255,255,0', '255,255,64',  '255,255,128', '255,255,192', '255,255,224', // Yellow
-     '64,0,0',  '128,0,0',   '192,0,0',   '255,0,0',   '255,64,64',   '255,128,128', '255,192,192', '255,224,224', // Red
-     '64,0,64', '128,0,128', '192,0,192', '255,0,255', '255,64,255',  '255,128,255', '255,192,255', '255,224,255', // Purple
-     '0,0,64',  '0,0,128',   '0,0,192',   '0,0,255',   '64,64,255',   '128,128,255', '192,192,255', '224,224,255', // Blue
-     '0,0,0',   '32,32,32',  '64,64,64',  '96,96,96',  '128,128,128', '160,160,160', '192,192,192', '255,255,255'  // Grey
+     '0,64,64', '0,128,128', '0,192,192', '0,255,255', '64,255,255',  '128,255,255', '192,255,255', '224,255,255', -- Aqua
+     '0,64,0',  '0,128,0',   '0,192,0',   '0,255,0',   '64,255,64',   '128,255,128', '192,255,192', '224,255,224', -- Green
+     '64,64,0', '128,128,0', '192,192,0', '255,255,0', '255,255,64',  '255,255,128', '255,255,192', '255,255,224', -- Yellow
+     '64,0,0',  '128,0,0',   '192,0,0',   '255,0,0',   '255,64,64',   '255,128,128', '255,192,192', '255,224,224', -- Red
+     '64,0,64', '128,0,128', '192,0,192', '255,0,255', '255,64,255',  '255,128,255', '255,192,255', '255,224,255', -- Purple
+     '0,0,64',  '0,0,128',   '0,0,192',   '0,0,255',   '64,64,255',   '128,128,255', '192,192,255', '224,224,255', -- Blue
+     '0,0,0',   '32,32,32',  '64,64,64',  '96,96,96',  '128,128,128', '160,160,160', '192,192,192', '255,255,255'  -- Grey
    }
 
-   local function updateRGB(RGB)
-      lRGB = RGB
-      lInputRGB.string = nz(lRGB.r,0) .. ',' .. nz(lRGB.g,0) .. ',' .. nz(lRGB.b,0)
-      lWindow.surface.acDraw(lSolid.x, lSolid.y, lSolid.width, lSolid.height)
-   end
-
-   // Executed when the user clicks the rainbow palette area.
-
-   local function selectPalette(X, Y)
-      if (X < 0) then X = 0 end
-      if (Y < 0) then Y = 0 end
-      if (X >= lRainbow.Width) then X = lRainbow.width - 1 end
-      if (Y >= lRainbow.Height) then Y = lRainbow.height - 1 end
-
-      local rgb = mGfx.ReadRGBPixel(lRainbow, X, Y)
-
-      if (not lPicker) then lPicker = { x=X, y=Y } end
-
-      local left   = lPicker.x - 4
-      local top    = lPicker.y - 4
-      local right  = lPicker.x + 4
-      local bottom = lPicker.y + 4
-
-      if (X < lPicker.x) then
-         left = X - 4
-      else
-         right = X + 4
-      end
-
-      if (Y < lPicker.y) then
-         top = Y - 4
-      else
-         bottom = Y + 4
-      end
-
-      lPicker = { x=X, y=Y }
-
-      lWindow.surface.acDraw(lRainbowX + left, lRainbowY + top, right - left, bottom - top)
-
-      updateRGB({ r=rgb.red, g=rgb.green, b=rgb.blue })
-   end
-
-   local function inputFeedback(SurfaceID, Msg)
-      if (Msg.type == JET_BUTTON_1) then
-         if (Msg.value > 0) then // Button down
-            if (Msg.x >= lRainbowX) and (Msg.y >= lRainbowY) and
-               (Msg.x < lRainbowX + lRainbow.Width) and (Msg.y < lRainbowY + lRainbow.Height) then
-               selectPalette(Msg.x - lRainbowX, Msg.y - lRainbowY)
-               lRainbowClick = true
-            end
-            lAbsX = Msg.absX
-            lAbsY = Msg.absY
-         else // Button released
-            lRainbowClick = false
-
-            if (math.abs(Msg.absX - lAbsX) <= 2) and (math.abs(Msg.absY - lAbsY) <= 2) then
-               for _, link in ipairs(lLinks) do
-                  if (Msg.x >= link.x) and (Msg.x < link.x + link.width) and
-                     (Msg.y >= link.y) and (Msg.y < link.y + link.height) then
-                     link.routine(link)
-                     break
-                  end
-               end
-            end
-         end
-      elseif (Msg.type == JET_ABS_X) or (Msg.type == JET_ABS_Y) then
-         if (lRainbowClick) then selectPalette(Msg.x - lRainbowX, Msg.y - lRainbowY) end
-      end
-   end
-
-   local function drawDialog(Surface, Bitmap)
-      local dx = Surface.leftMargin
-      local dy = Surface.topMargin
-
-      local err, shadeColour = Bitmap.mtGetColour(0, 0, 0, 128)
+   local buildLayout = function()
+      if not self.scene then return end
 
       lLinks = { }
 
-      lFont.bitmap   = Bitmap
-      lFont.alignHeight = 0
-      lFont.align    = ALIGN_TOP
-      lFont.wrapEdge = 0
-      lFont.x        = dx
-      lFont.y        = dy + lFont.leading
-      lFont.colour   = '0,0,0,255'
-      lFont.string   = 'Basic colours'
-      lFont.acDraw()
+      local dx = WIDGET_GAP
+      local dy = WIDGET_GAP
 
-      dy = dy + lFont.lineSpacing + BTNGAP
+      self.txtBasicColours = self.viewport.new('VectorText', {
+         x        = dx,
+         y        = dy + gui.getFontHeight(gui.fonts.widget),
+         string   = 'Basic colours',
+         fill     = 'rgb(0,0,0,255)',
+         face     = gui.fonts.widget.face,
+         fontSize = string.format('%.2fpt', gui.fonts.widget.size),
+         align    = 'left'
+      })
 
-      // Draw an array of 8x6 buttons representing basic colours
+      dy = dy + gui.getFontHeight(gui.fonts.widget) + WIDGET_GAP
 
+      -- Configure an array of 8x6 buttons representing a pre-selected colour palette
+
+      local y = dy
       local colour = 1
       for row=1, 7 do
-         local dx = Surface.leftMargin
+         local x = WIDGET_GAP - 1
          for col=1, 8 do
             local rgb = gui.strToRGB(lCommon[colour])
-            local err, pixel = Bitmap.mtGetColour(rgb.r, rgb.g, rgb.b, 255)
-            Bitmap.mtDrawRectangle(dx, dy, BTNSIZE, BTNSIZE, pixel, BAF_FILL)
-            Bitmap.mtDrawRectangle(dx, dy, BTNSIZE, BTNSIZE, shadeColour, BAF_BLEND)
 
-            table.insert(lLinks, { x=dx, y=dy, width=BTNSIZE, height=BTNSIZE, colour=rgb,
+            local vec = self.viewport.new('VectorRectangle', {
+               fill   = gui.rgbToSVG(rgb),
+               stroke = gui.rgbToSVG(lColBorder),
+               strokeWidth = 1,
+               x      = x,
+               y      = y,
+               width  = BTNSIZE,
+               height = BTNSIZE,
+               roundX = 2,
+               roundY = 2
+            })
+
+            table.insert(lLinks, {
+               vector=vec, x=x, y=y, width=BTNSIZE, height=BTNSIZE, colour=rgb,
                routine = function(Link)
                   updateRGB(Link.colour)
                end
             })
 
-            dx = dx + BTNSIZE + BTNGAP
+            x = x + BTNSIZE + BTNGAP
             colour = colour + 1
          end
-         dy = dy + BTNSIZE + BTNGAP
+         y = y + BTNSIZE + BTNGAP
       end
 
-      // Draw an array of 8x2 user customised colours
+      dy = y + BTNGAP
 
-      dx = Surface.leftMargin
-      dy = dy + lFont.lineSpacing
-      lFont.x = dx
-      lFont.y = dy + lFont.leading
-      lFont.colour = '0,0,0,255'
-      lFont.string = 'Personal colours'
-      lFont.acDraw()
-      dy = dy + lFont.lineSpacing + BTNGAP
+      -- Configure an array of 8x2 user customised colours
 
+      self.txtPersonalColours = self.viewport.new('VectorText', {
+         x        = dx,
+         y        = dy + gui.getFontHeight(gui.fonts.widget),
+         string   = 'Personal colours',
+         fill     = 'rgb(0,0,0,255)',
+         face     = gui.fonts.widget.face,
+         fontSize = string.format('%.2fpt', gui.fonts.widget.size),
+         align    = 'left'
+      })
+
+      dy = dy + gui.getFontHeight(gui.fonts.widget) + WIDGET_GAP
+      y = dy
       local ci = 1
       for row=1, 2 do
-         local dx = Surface.leftMargin
+         local x = dx
          for column=1, 7 do
-            local r, g, b
-            if (lCustom[ci] == nil) then
-               r, g, b = 255, 255, 255
-            else
-               r, g, b = lCustom[ci].r, lCustom[ci].g, lCustom[ci].b
-            end
-            local err, colour = Bitmap.mtGetColour(r, g, b, 255)
-            Bitmap.mtDrawRectangle(dx, dy, BTNSIZE, BTNSIZE, colour, BAF_FILL)
-            Bitmap.mtDrawRectangle(dx, dy, BTNSIZE, BTNSIZE, shadeColour, BAF_BLEND)
+            local rgb = nz(lCustom[ci], { r=255, g=255, b=255, a=255 })
+            if not rgb.r then rgb.r = 255 end
+            if not rgb.g then rgb.g = 255 end
+            if not rgb.b then rgb.b = 255 end
+            if not rgb.a then rgb.a = 255 end
 
-            table.insert(lLinks, { x=dx, y=dy, width=BTNSIZE, height=BTNSIZE, colour={ r=r, g=g, b=b },
+            local vec = self.viewport.new('VectorRectangle', {
+               fill   = gui.rgbToSVG(rgb),
+               stroke = gui.rgbToSVG(lColBorder),
+               strokeWidth = 1,
+               x      = x,
+               y      = y,
+               width  = BTNSIZE,
+               height = BTNSIZE,
+               roundX = 2,
+               roundY = 2
+            })
+
+            table.insert(lLinks, { vector=vec, x=x, y=y, width=BTNSIZE, height=BTNSIZE, colour=rgb,
                routine = function(Link)
                   updateRGB(Link.colour)
                end
             })
 
-            dx = dx + BTNSIZE + BTNGAP
+            x = x + BTNSIZE + BTNGAP
             ci = ci + 1
          end
 
-         if (row == 1) then
-            svgAdd.mtRender(Bitmap, dx+2, dy+2, BTNSIZE-4, BTNSIZE-4)
+         -- Add buttons for the adding and removing of personal colours
 
-            table.insert(lLinks, { x=dx, y=dy, width=BTNSIZE, height=BTNSIZE,
+         if (row == 1) then
+            lAddIcon = self.viewport.new('VectorViewport', { x=x+2, y=y, width=BTNSIZE, height=BTNSIZE })
+            gui.simpleGradient(self.scene, 'grdAddIcon', { lThemeColour.first, lThemeColour.last }, 0, 0, 0, 1)
+            obj.new('svg', { target=lAddIcon, path='icons:items/add.svg' })
+            gui.applyFill(lAddIcon, 'url(#grdAddIcon)')
+
+            table.insert(lLinks, {
+               vec=lAddIcon, x=x, y=y, width=BTNSIZE, height=BTNSIZE,
                routine = function(Link)
                   for k, v in pairs(lCustom) do
                      if (v.r == lRGB.r) and (v.g == lRGB.g) and (v.b == lRGB.b) then return end
@@ -235,7 +202,7 @@ gui.dialog.colour = function(Options)
                   if (#lCustom < 7 * 2) then
                      lPaletteChanged = true
                      table.insert(lCustom, lRGB)
-                     lWindow.surface.acDraw()
+                     lWindow.surface.mtScheduleRedraw()
                   else
                      local dlg = obj.new('dialog', {
                         image   = 'icons:items/error(48)',
@@ -249,15 +216,17 @@ gui.dialog.colour = function(Options)
                end
             })
          elseif (row == 2) then
-            svgDelete.mtRender(Bitmap, dx+2, dy+2, BTNSIZE-4, BTNSIZE-4)
+            lDeleteIcon = self.viewport.new('VectorViewport', { x=x+2, y=y, width=BTNSIZE, height=BTNSIZE })
+            obj.new('svg', { target=lDeleteIcon, path='icons:items/trash.svg' })
+            gui.applyFill(lDeleteIcon, 'url(#grdAddIcon)')
 
-            table.insert(lLinks, { x=dx, y=dy, width=BTNSIZE, height=BTNSIZE,
+            table.insert(lLinks, { vec=lDeleteIcon, x=x, y=y, width=BTNSIZE, height=BTNSIZE,
                routine = function(Link)
                   for k, v in pairs(lCustom) do
                      if (v.r == lRGB.r) and (v.g == lRGB.g) and (v.b == lRGB.b) then
                         lPaletteChanged = true
                         table.remove(lCustom, k)
-                        lWindow.surface.acDraw()
+                        lWindow.surface.mtScheduleRedraw()
                         break
                      end
                   end
@@ -265,65 +234,224 @@ gui.dialog.colour = function(Options)
             })
          end
 
-         dy = dy + BTNSIZE + BTNGAP
+         y = y + BTNSIZE + BTNGAP
       end
 
-      // Draw the palette selection area
+      local bottom = y + WIDGET_GAP
 
-      dx = Surface.leftMargin + ((BTNSIZE + BTNGAP) * 8) + 10
-      dy = Surface.topMargin
-      lFont.x = dx
-      lFont.y = dy + lFont.leading
-      lFont.colour = '0,0,0'
-      lFont.string = 'Rainbow palette'
-      lFont.acDraw()
-      dy = dy + lFont.lineSpacing + BTNGAP
+      -- Configure the palette selection area
 
-      lRainbow.mtCopyArea(Bitmap, 0, 0, 0, lRainbow.width, lRainbow.height, dx, dy)
-      Bitmap.mtDrawRectangle(dx, dy, lRainbow.width, lRainbow.height, shadeColour, BAF_BLEND)
+      dx = dx + ((BTNSIZE + BTNGAP) * 8) + 10
+      dy = WIDGET_GAP
+
+      self.txtRainbowPalette = self.viewport.new('VectorText', {
+         x        = dx,
+         y        = dy + gui.getFontHeight(gui.fonts.widget),
+         string   = 'Rainbow palette',
+         fill     = 'rgb(0,0,0,255)',
+         face     = gui.fonts.widget.face,
+         fontSize = string.format('%.2fpt', gui.fonts.widget.size),
+         align    = 'left'
+      })
+
+      dy = dy + gui.getFontHeight(gui.fonts.widget) + WIDGET_GAP
+
+      self.vecRainbowPalette = self.viewport.new('VectorRectangle', {
+         x      = dx,
+         y      = dy,
+         width  = lRainbowBmp.width,
+         height = lRainbowBmp.height,
+         roundX = 4,
+         roundY = 4,
+         stroke = gui.rgbToSVG(lColBorder),
+         fill   = 'url(#Rainbow)'
+      })
 
       lRainbowX = dx
       lRainbowY = dy
 
-      if (lPicker) then
-         local clip = { cl = Bitmap.ClipLeft, cr = Bitmap.ClipRight, cb = Bitmap.ClipBottom, ct = Bitmap.ClipTop }
+      dy = dy + self.vecRainbowPalette.height + WIDGET_GAP
 
-         if (dx > Bitmap.clipLeft) then Bitmap.clipLeft = dx end
-         if (dy > Bitmap.clipTop) then Bitmap.clipTop = dy end
-         if (dx + lRainbow.width < Bitmap.clipRight) then Bitmap.clipRight = dx + lRainbow.width end
-         if (dy + lRainbow.height < Bitmap.clipBottom) then Bitmap.clipBottom = dy + lRainbow.height end
+      -- The picker selects colours in the rainbow palette and is only visible if the user activates it.
 
-         local val = (lPicker.y * 255) / (lRainbow.height * 0.75)
-         if (val > 255) then val = 255 end
-         local err, val = Bitmap.mtGetColour(val, val, val, 255)
-         Bitmap.mtDrawRectangle(dx + lPicker.x - 4, dy + lPicker.y - 4, 8, 8, val, 0)
+      self.vecPicker = self.viewport.new('VectorEllipse', {
+         cx      = lRainbowX,
+         cy      = lRainbowY,
+         radiusX = 4,
+         radiusY = 4,
+         visibility = VIS_HIDDEN
+      })
 
-         Bitmap.clipLeft   = clip.cl
-         Bitmap.clipTop    = clip.ct
-         Bitmap.clipRight  = clip.cr
-         Bitmap.clipBottom = clip.cb
+      self.vecChosenColour = self.viewport.new('VectorRectangle', {
+         x      = dx,
+         y      = dy,
+         roundX = 4,
+         roundY = 4,
+         width  = lRainbowBmp.width,
+         height = 32,
+         fill   = gui.rgbToSVG(lRGB),
+         stroke = gui.rgbToSVG(lColBorder)
+      })
+
+      dy = dy + self.vecChosenColour.height + WIDGET_GAP
+
+      self.inputRGB = self.viewport.new('input', {
+         x = dx,
+         y = dy,
+         width = lRainbowBmp.width,
+         label = 'RGB:',
+         inputMask = '%d,%d,%d'
+      })
+
+      dy = dy + self.inputRGB.height + WIDGET_GAP
+
+      -- Okay and cancel buttons
+
+      lCancelButton = self.viewport.new('button', {
+         text    = nz(lOptions.cancelText, 'Cancel'),
+         xOffset = WIDGET_GAP,
+         y       = dy,
+         icon    = 'items/cancel'
+      })
+
+      lOkayButton = self.viewport.new('button', {
+         text    = nz(lOptions.okText, 'OK'),
+         xOffset = lCancelButton.width + (WIDGET_GAP * 2),
+         y       = dy,
+         icon    = 'items/checkmark'
+      })
+
+      lOkayButton.subscribe('activate', function()
+         saveColours()
+         if (lOptions.feedback != nil) then
+            lOptions.feedback(lRGB.r .. ',' .. lRGB.g .. ',' .. lRGB.b)
+         end
+         lWindow = nil
+      end)
+
+      lCancelButton.subscribe('activate', function()
+         if (lOptions.feedback != nil) then
+            lOptions.feedback(nil)
+         end
+         lWindow = nil
+      end)
+
+      dy = dy + lOkayButton.height + WIDGET_GAP
+      if (dy > bottom) then bottom = dy end
+
+      collectgarbage()
+
+      return (lRainbowX + lRainbowBmp.width + WIDGET_GAP), bottom
+   end
+
+   local function arrangeLayout()
+      -- Recalculate clickable links
+
+      for _, link in ipairs(lLinks) do
+         if link.vector then
+            _, link.x, link.y, link.width, link.height = link.vector.mtGetBoundary()
+         end
       end
 
-      // Draw a solid box representing the current selected colour
+      if self.vecRainbowPalette then
+         _, lRainbow.winX, lRainbow.winY, lRainbow.winWidth, lRainbow.winHeight = self.vecRainbowPalette.mtGetBoundary()
+      end
 
-      dy = dy + lRainbow.Height + lFont.lineSpacing
+      -- Draw the picker within the rainbow palette, if active
 
-      lFont.x      = dx
-      lFont.y      = dy
-      lFont.colour = '0,0,0,255'
-      lFont.align  = ALIGN_VERTICAL
-      lFont.alignHeight = BTNSIZE
-      lFont.string = 'Colour'
-      lFont.acDraw()
+      if not self.vecPicker then return end
 
-      local err, selectedColour = Bitmap.mtGetColour(lRGB.r, lRGB.g, lRGB.b, 255)
+      if (lPicker) then
+         local val = (lPicker.y * 255) / (lRainbowBmp.height * 0.75)
+         if (val > 255) then val = 255 end
 
-      local width = lFont.width + 12
-      dx = dx + width
-      Bitmap.mtDrawRectangle(dx, dy, lRainbow.Width - width, BTNSIZE, selectedColour, BAF_FILL)
-      Bitmap.mtDrawRectangle(dx, dy, lRainbow.Width - width, BTNSIZE, shadeColour, BAF_BLEND)
+         self.vecPicker.cx = lRainbowX + lPicker.x
+         self.vecPicker.cy = lRainbowY + lPicker.y
 
-      lSolid = { x=dx, y=dy, width=(lRainbow.width - width), height=BTNSIZE }
+         self.vecPicker.stroke   = 'rgb(' .. val .. ',' .. val .. ',' .. val .. ',255)'
+         self.vecPicker.visibility = VIS_VISIBLE
+      else
+         self.vecPicker.visibility = VIS_HIDDEN
+      end
+   end
+
+   updateRGB = function(RGB)
+      if not RGB then return end
+      lRGB = RGB
+      if self.vecChosenColour then
+         self.vecChosenColour.fill = gui.rgbToSVG(lRGB)
+      end
+      self.inputRGB.string = nz(lRGB.r,0) .. ',' .. nz(lRGB.g,0) .. ',' .. nz(lRGB.b,0)
+      lWindow.surface.mtScheduleRedraw()
+   end
+
+   -- Executed when the user clicks the rainbow palette area.  Some coordinate translation
+   -- occurs in order to manage viewport scaling within the display window.
+
+   local function selectPalette(X, Y)
+      if (X < 0) then X = 0 end
+      if (Y < 0) then Y = 0 end
+      if (X >= lRainbow.winWidth) then X = lRainbow.winWidth - 1 end
+      if (Y >= lRainbow.winHeight) then Y = lRainbow.winHeight - 1 end
+
+      local descaleX, descaleY = (lRainbowBmp.width / lRainbow.winWidth), (lRainbowBmp.height / lRainbow.winHeight)
+      local dX, dY = X * descaleX, Y * descaleY
+
+      local rgb = mGfx.ReadRGBPixel(lRainbowBmp, descaleX * X, descaleY * Y)
+
+      if (not lPicker) then lPicker = { x=dX, y=dY } end
+
+      local left, top, right, bottom = lPicker.x - 4, lPicker.y - 4, lPicker.x + 4, lPicker.y + 4
+
+      if (dX < lPicker.x) then
+         left = dX - 4
+      else
+         right = dX + 4
+      end
+
+      if (dY < lPicker.y) then
+         top = dY - 4
+      else
+         bottom = dY + 4
+      end
+
+      lPicker = { x=dX, y=dY }
+
+      arrangeLayout() -- Will set the picker to the correct location
+
+      lWindow.surface.mtScheduleRedraw()
+
+      updateRGB({ r=rgb.red, g=rgb.green, b=rgb.blue })
+   end
+
+   local function inputFeedback(SurfaceID, Msg)
+      if (Msg.type == JET_BUTTON_1) then
+         if (Msg.value > 0) then -- Button down
+            if (Msg.x >= lRainbow.winX) and
+               (Msg.y >= lRainbow.winY) and
+               (Msg.x < lRainbow.winX + lRainbow.winWidth) and
+               (Msg.y < lRainbow.winY + lRainbow.winHeight) then
+               selectPalette(Msg.x - lRainbow.winX, Msg.y - lRainbow.winY)
+               lRainbowClick = true
+            end
+            lAbsX = Msg.absX
+            lAbsY = Msg.absY
+         else -- Button released
+            lRainbowClick = false
+
+            if (math.abs(Msg.absX - lAbsX) <= 2) and (math.abs(Msg.absY - lAbsY) <= 2) then
+               for _, link in ipairs(lLinks) do
+                  if (Msg.x >= link.x) and (Msg.x < link.x + link.width) and
+                     (Msg.y >= link.y) and (Msg.y < link.y + link.height) then
+                     link.routine(link)
+                     break
+                  end
+               end
+            end
+         end
+      elseif (Msg.type == JET_ABS_X) or (Msg.type == JET_ABS_Y) then
+         if (lRainbowClick) then selectPalette(Msg.x - lRainbow.winX, Msg.y - lRainbow.winY) end
+      end
    end
 
    local function loadColours()
@@ -350,16 +478,16 @@ gui.dialog.colour = function(Options)
       end)
    end
 
-   local function createRainbow()
+   local function createRainbowBitmap()
       local size = ((BTNSIZE + BTNGAP) * 7) - BTNGAP
-      lRainbow = obj.new('bitmap', { width=size, height=size, bitsPerPixel=32 })
+      lRainbowBmp = obj.new('bitmap', { width=size, height=size, bitsPerPixel=32 })
 
-      local val = lRainbow.height / 2
-      for y=0, (lRainbow.height / 2) - 1 do
-         local s = 1 - (val / (lRainbow.height / 2))
+      local val = lRainbowBmp.height / 2
+      for y=0, (lRainbowBmp.height / 2) - 1 do
+         local s = 1 - (val / (lRainbowBmp.height / 2))
          local v = 1
-         for x=0, lRainbow.width-1 do
-            local h = x * 6 / lRainbow.width
+         for x=0, lRainbowBmp.width-1 do
+            local h = x * 6 / lRainbowBmp.width
             local i = math.floor(h)
             local f = h - i
             if bit.band(i, 1) == 0 then
@@ -369,25 +497,25 @@ gui.dialog.colour = function(Options)
             local n = v * (1 - s * f)
 
             local err, rgb
-            if (i == 1) then err, rgb = lRainbow.mtGetColour(n * 255, v * 255, m * 255, 255)
-            elseif (i == 2) then err, rgb = lRainbow.mtGetColour(m * 255, v * 255, n * 255, 255)
-            elseif (i == 3) then err, rgb = lRainbow.mtGetColour(m * 255, n * 255, v * 255, 255)
-            elseif (i == 4) then err, rgb = lRainbow.mtGetColour(n * 255, m * 255, v * 255, 255)
-            elseif (i == 5) then err, rgb = lRainbow.mtGetColour(v * 255, m * 255, n * 255, 255)
-            else err, rgb = lRainbow.mtGetColour(v * 255, n * 255, m * 255, 255)
+            if (i == 1) then err, rgb = lRainbowBmp.mtGetColour(n * 255, v * 255, m * 255, 255)
+            elseif (i == 2) then err, rgb = lRainbowBmp.mtGetColour(m * 255, v * 255, n * 255, 255)
+            elseif (i == 3) then err, rgb = lRainbowBmp.mtGetColour(m * 255, n * 255, v * 255, 255)
+            elseif (i == 4) then err, rgb = lRainbowBmp.mtGetColour(n * 255, m * 255, v * 255, 255)
+            elseif (i == 5) then err, rgb = lRainbowBmp.mtGetColour(v * 255, m * 255, n * 255, 255)
+            else err, rgb = lRainbowBmp.mtGetColour(v * 255, n * 255, m * 255, 255)
             end
 
-            mGfx.DrawPixel(lRainbow, x, y, rgb)
+            mGfx.DrawPixel(lRainbowBmp, x, y, rgb)
          end
          val = val - 1
       end
 
-      local val = lRainbow.height / 2
-      for y=lRainbow.height/2, lRainbow.height-1 do
-         local s = val / (lRainbow.height / 2)
-         local v = val / (lRainbow.height / 2)
-         for x=0, lRainbow.width-1 do
-            local h = x * 6.0 / lRainbow.width
+      local val = lRainbowBmp.height / 2
+      for y=lRainbowBmp.height/2, lRainbowBmp.height-1 do
+         local s = val / (lRainbowBmp.height / 2)
+         local v = val / (lRainbowBmp.height / 2)
+         for x=0, lRainbowBmp.width-1 do
+            local h = x * 6.0 / lRainbowBmp.width
             local i = math.floor(h)
             local f = h - i
             if bit.band(i, 1) == 0 then
@@ -397,15 +525,15 @@ gui.dialog.colour = function(Options)
             local n = v * (1 - s * f)
 
             local err, rgb
-            if (i == 1) then err, rgb = lRainbow.mtGetColour(n * 255, v * 255, m * 255, 255)
-            elseif (i == 2) then err, rgb = lRainbow.mtGetColour(m * 255, v * 255, n * 255, 255)
-            elseif (i == 3) then err, rgb = lRainbow.mtGetColour(m * 255, n * 255, v * 255, 255)
-            elseif (i == 4) then err, rgb = lRainbow.mtGetColour(n * 255, m * 255, v * 255, 255)
-            elseif (i == 5) then err, rgb = lRainbow.mtGetColour(v * 255, m * 255, n * 255, 255)
-            else err, rgb = lRainbow.mtGetColour(v * 255, n * 255, m * 255, 255)
+            if (i == 1) then err, rgb = lRainbowBmp.mtGetColour(n * 255, v * 255, m * 255, 255)
+            elseif (i == 2) then err, rgb = lRainbowBmp.mtGetColour(m * 255, v * 255, n * 255, 255)
+            elseif (i == 3) then err, rgb = lRainbowBmp.mtGetColour(m * 255, n * 255, v * 255, 255)
+            elseif (i == 4) then err, rgb = lRainbowBmp.mtGetColour(n * 255, m * 255, v * 255, 255)
+            elseif (i == 5) then err, rgb = lRainbowBmp.mtGetColour(v * 255, m * 255, n * 255, 255)
+            else err, rgb = lRainbowBmp.mtGetColour(v * 255, n * 255, m * 255, 255)
             end
 
-            mGfx.DrawPixel(lRainbow, x, y, rgb)
+            mGfx.DrawPixel(lRainbowBmp, x, y, rgb)
          end
          val = val - 1
       end
@@ -416,27 +544,26 @@ gui.dialog.colour = function(Options)
 
       lCustom = { }
 
+      if (Options.theme == 'dark') then
+         lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
+      else
+         lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
+      end
+
       loadColours()
-      createRainbow()
-
-      svgAdd = obj.new('svg', { path='icons:items/add.svg', flags='ManualRender' })
-      svgDelete = obj.new('svg', { path='icons:items/trash.svg', flags='ManualRender' })
-
-      local winWidth  = ((BTNSIZE + BTNGAP) * 8) + 10 + lRainbow.width
-      local winHeight = (lFont.lineSpacing + BTNGAP) + ((BTNSIZE + BTNGAP) * 7) + (lFont.lineSpacing * 2) + BTNGAP + ((BTNSIZE + BTNGAP) * 2)
+      createRainbowBitmap()
 
       lWindow = obj.new('window', {
-         insideWidth  = winWidth,
-         insideHeight = winHeight,
-         minWidth     = winWidth,
-         minHeight    = winHeight,
-         maxWidth     = winWidth,
-         maxHeight    = winHeight,
+         insideWidth  = 600,
+         insideHeight = 400,
+         minWidth     = 200,
+         minHeight    = 50,
          quit         = false,
          center       = true,
+         stickToFront = true,
+         aspectRatio  = true,
          popover      = lOptions.popover,
          parent       = lOptions.target,
-         stickToFront = true,
          icon         = 'tools/palette',
          title        = nz(lOptions.title, 'Select a colour'),
          modal        = nz(lOptions.modal, false)
@@ -452,63 +579,46 @@ gui.dialog.colour = function(Options)
 
       self.windowID = lWindow.id
 
+      -- Initialise the layout that will contain the vector graphics
+
+      self.layout = obj.new('layout')
+      self.layout.surface = lWindow.surface
+      self.layout.topMargin    = 4
+      self.layout.bottomMargin = 4
+      self.layout.rightMargin  = 4
+      self.layout.leftMargin   = 4
+
+      self.layout.subscribe('free', function()
+         self.layout = nil
+      end)
+
+      self.layout.resizeCallback = function(Owner)
+         arrangeLayout()
+      end
+
+      if self.layout.acInit() != ERR_Okay then error('Failed to initialise surface.') end
+
       lTab = lWindow.new('tabfocus', { })
 
-      // Okay and cancel buttons
-
-      local footer = lWindow.bottomMargin
-
-      lCancelButton = lWindow.new('button', {
-         text    = nz(lOptions.cancelText, 'Cancel'),
-         xOffset = lWidgetGap,
-         yOffset = footer,
-         icon    = 'items/cancel'
-      })
-
-      lOkayButton = lWindow.new('button', {
-         text    = nz(lOptions.okText, 'OK'),
-         xOffset = lWindow.insideWidth - lCancelButton.x + lWidgetGap,
-         yOffset = footer,
-         icon    = 'items/checkmark'
-      })
-
-      lOkayButton.subscribe('activate', function()
-         saveColours()
-         if (lOptions.feedback != nil) then
-            lOptions.feedback(lRGB.r .. ',' .. lRGB.g .. ',' .. lRGB.b)
-         end
-         lWindow = nil
-      end)
-
-      lCancelButton.subscribe('activate', function()
-         if (lOptions.feedback != nil) then
-            lOptions.feedback(nil)
-         end
-         lWindow = nil
-      end)
-
-      // Red-Green-Blue input box
-
-      lInputRGB = lWindow.new('input', {
-         xOffset = lWindow.rightMargin,
-         y       = lWindow.topMargin + lFont.lineSpacing + lRainbow.height + lFont.lineSpacing + BTNSIZE + BTNGAP + 6,
-         width   = lRainbow.width,
-         label   = 'RGB:',
-         labelWidth = mFont.StringWidth(lFont, 'Colour:  ', -1)
-      })
-
-      lInputRGB.subscribe('activate', function(Input)
-         updateRGB(gui.strToRGB(lInputRGB.string))
-      end)
-
-      local height = winHeight + lOkayButton.height + 6
-      lWindow.maxHeight = height
-      lWindow.minHeight = height
-      lWindow.insideHeight = height
-
-      lWindow.surface.mtAddCallback(drawDialog)
-
       input.subscribe(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), lWindow.surface, 0, inputFeedback)
+
+      self.scene = obj.new('VectorScene', { surface = lWindow.surface })
+
+      self.viewport = self.scene.new('VectorViewport', { })
+
+      self.scene.mtAddDef('Rainbow', self.scene.new('VectorImage', { bitmap = lRainbowBmp }))
+
+      self.viewport.viewWidth, self.viewport.viewHeight = buildLayout()
+
+      -- Manage the aspect ratio.  The current width will determine the height
+      scale = self.viewport.viewHeight / self.viewport.viewWidth
+      lWindow.insideHeight = lWindow.insideWidth * scale
+      lWindow.minWidth     = lWindow.insideWidth * 0.25
+      lWindow.minHeight    = lWindow.insideHeight * 0.25
+
+      self.inputRGB.subscribe('activate', function(Input)
+         updateRGB(gui.strToRGB(Input.string))
+      end)
 
       updateRGB(gui.strToRGB(nz(lOptions.colour, '200,200,200')))
 
@@ -517,6 +627,8 @@ gui.dialog.colour = function(Options)
 
       lWindow.acMoveToFront()
       lWindow.acShow()
+
+      arrangeLayout()
    end,
    function(Exception)
       error('Failed to initialise colour dialog: ' .. Exception.message)
@@ -525,9 +637,9 @@ gui.dialog.colour = function(Options)
    return self
 end
 
-//=====================================================================================================================
+--=====================================================================================================================
 
-   // This sub-routine is provided for languages other than Fluid to utilise the module.
+   -- This sub-routine is provided for languages other than Fluid to utilise the module.
 
    do
       local state = getExecutionState()

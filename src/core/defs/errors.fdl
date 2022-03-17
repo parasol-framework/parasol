@@ -10,7 +10,7 @@ function declareErrors()
     "Cancelled",        // Operation cancelled.
     "NothingDone",      // Operation did not perform any activity (non-fatal).
     "Continue",         // Please continue processing
-    "Skip",             // Skip this operation (this is not an error in the normal sense)
+    "Skip",             // Skip this operation (do not raise an error)
     "Retry",            // Retry the operation (could not succeed at this time)
     "DirEmpty",
     // Anything above this point is considered non-fatal for exception reporting purposes.
@@ -186,6 +186,8 @@ function declareErrors()
     "CreateResource",          // Failed to create a new resource.
     "NotPossible",             // It is not possible to perform the requested operation.
     "ResolveSymbol",           // Failed to resolve a linked library symbol
+    "Function",                // A function call failed
+    "AlreadyDefined",          // Attempted to change a value that cannot be redefined.
     "END") // NB: Any new error messages need to be added to data_errors.c manually.
 
   const("ERF", { comment="Special error flags" }, {
@@ -195,7 +197,7 @@ function declareErrors()
 end
 
    if (glProgram == "idl-c") then
-      header({ path="system/errors", copyright="Paul Manias © 1996-2020" }, declareErrors)
+      header({ path="system/errors", copyright="Paul Manias © 1996-2022" }, declareErrors)
    elseif (glProgram == "idl-def") then
       declareErrors()
    end

@@ -1,0 +1,137 @@
+-- $FLUID
+-- Flute tests for SVG generated images.
+--
+-- This technique uses pre-computed checksums from SVG images, captured from a 'good' state.  If a checksum doesn't
+-- match, the test will fail and the resulting image will be saved to "temp:svg_test_results/".  Check the
+-- corresponding image file, if it is acceptable then update the old checksum from the test output in order to pass
+-- future tests.
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function renderSVGToBitmap(Path)
+   local scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
+   local vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   local svg = obj.new('svg', { target=vp, path=Path })
+   local bmp = obj.new('bitmap', { width=scene.pageWidth, height=scene.pageHeight, bitsPerPixel=32 })
+   scene.bitmap = bmp
+   scene.acDraw()
+   return bmp
+end
+
+function hashTestSVG(Path, ExpectedHash)
+   if (ExpectedHash == 0) then
+      error('File "' .. Path .. '" is yet to be assigned a checksum.')
+   end
+   local bmp = renderSVGToBitmap(glSVGFolder .. Path)
+   local hash = mSys.GenCRC32(0, bmp.data, bmp.size)
+   if (ExpectedHash != hash) then
+      saveBitmap(bmp, Path)
+      error('Computed hash for "' .. Path .. '" is ' .. string.format('$%.8x', hash) .. ', expected ' .. string.format('$%.8x', ExpectedHash))
+   end
+end
+
+function saveBitmap(Bitmap, Path)
+   local folder, filename = file.splitPath(Path)
+   local split = string.split(filename, '\\.')
+   filename = split[1] .. '.png'
+
+   local pic = obj.new('picture', { width = Bitmap.width, height = Bitmap.height, bitsPerPixel = Bitmap.bitsPerPixel, flags='NEW' })
+   Bitmap.acCopyData(pic.bitmap)
+   local file = obj.new('file', { flags='NEW|WRITE', path='temp:svg_test_results/' .. filename })
+   pic.acSaveImage(file)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function testCircles()     hashTestSVG('paths/circles.svg', 0x075c07c8) end
+function testClip()        hashTestSVG('paths/clip.svg', 0x73ac10bf) end
+function testMorph()       hashTestSVG('paths/morph.svg', 0x03290de7) end
+function testPolygons()    hashTestSVG('paths/polygons.svg', 0x9408c974) end
+function testShapes()      hashTestSVG('paths/shapes.svg', 0x1ee44943) end
+function testSpirals()     hashTestSVG('paths/spirals.svg', 0x313798f4) end
+function testStrokes()     hashTestSVG('paths/strokes.svg', 0xaed9e827) end
+function testSuperShapes() hashTestSVG('paths/supershapes.svg', 0x33d37c59) end
+function testSuperSpiral() hashTestSVG('paths/superspiral.svg', 0x27599bd6) end
+function testTransitions() hashTestSVG('paths/transitions.svg', 0x919e10de) end
+function testWave()        hashTestSVG('paths/wave.svg', 0x65b74450) end
+
+function testChevrons()  hashTestSVG('patterns/chevrons.svg', 0) end
+function testComplex()   hashTestSVG('patterns/complex.svg', 0) end
+function testDiamonds()  hashTestSVG('patterns/diamonds.svg', 0) end
+function testDimple()    hashTestSVG('patterns/dimple.svg', 0x1806e6a0) end
+function testDot()       hashTestSVG('patterns/dot.svg', 0x13252bb4) end
+function testHoneycomb() hashTestSVG('patterns/honeycomb.svg', 0x3654fdd0) end
+function testSnake()     hashTestSVG('patterns/snake.svg', 0) end
+function testVStripes()  hashTestSVG('patterns/vstripes.svg', 0xc8ab997e) end
+
+function testComposite()    hashTestSVG('filters/composite.svg', 0) end
+function testConvolve()     hashTestSVG('filters/convolve.svg', 0xdb2c379b) end
+function testW3Filters()    hashTestSVG('filters/w3-filters.svg', 0x6b672899) end
+function testW3Filters2()   hashTestSVG('filters/w3-filters2.svg', 0xc2693f45) end
+function testW3Image()      hashTestSVG('filters/w3-image.svg', 0x49b14ef8) end
+function testW3Morphology() hashTestSVG('filters/w3-morphology.svg', 0xa34245c2) end
+function testW3Turbulence() hashTestSVG('filters/w3-turbulence.svg', 0x2b1f4122) end
+
+function testTransformations()  hashTestSVG('transforms/transformations.svg', 0xcc933198) end
+function testW3AspectRatio()    hashTestSVG('transforms/w3-aspectratio.svg', 0x2c86d72e) end
+function testW3SkewText()       hashTestSVG('transforms/w3-skew-text.svg', 0xe8984527) end
+function testW3Viewbox()        hashTestSVG('transforms/w3-viewbox.svg', 0x6efb0f07) end
+
+function testCSS()          hashTestSVG('misc/css.svg', 0xab6e2a08) end
+function testBrushStrokes() hashTestSVG('misc/brush-strokes.svg', 0xf9f469c3) end
+
+function testClock()  hashTestSVG('images/clock.svg', 0x5cd95107) end
+function testTiger()  hashTestSVG('images/tiger.svg', 0x3f0e95a6) end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = {
+        -- Patterns
+        'testChevrons',
+        'testComplex',
+        'testDiamonds',
+        'testDimple',
+        'testDot',
+        'testHoneycomb',
+        'testSnake',
+        'testVStripes',
+        -- Filters
+        'testComposite',
+        'testConvolve',
+        'testW3Filters',
+        'testW3Filters2',
+        'testW3Image',
+        'testW3Morphology',
+        'testW3Turbulence',
+        -- Transforms
+        'testTransformations',
+        'testW3AspectRatio',
+        'testW3SkewText',
+        'testW3Viewbox',
+        -- Misc
+        'testCSS',
+        'testBrushStrokes',
+        -- Stock Images
+        'testClock',
+        'testTiger',
+        -- Paths
+        'testCircles',
+        'testClip',
+        'testMorph',
+        'testPolygons',
+        'testShapes',
+        'testSpirals',
+        'testStrokes',
+        'testSuperShapes',
+        'testSuperSpiral',
+        'testTransitions',
+        'testWave'
+      },
+      init = function(Folder)
+         glSVGFolder = Folder
+      end,
+      cleanup = function()
+
+      end
+   }

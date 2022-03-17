@@ -15,31 +15,24 @@ static void generate_rectangle(objVectorRectangle *Vector)
 {
    DOUBLE width = Vector->rWidth, height = Vector->rHeight;
 
-   if (Vector->rDimensions & DMF_RELATIVE_WIDTH) {
-      if (Vector->ParentView->vpDimensions & DMF_WIDTH) width *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) width *= Vector->ParentView->vpViewWidth;
-      else width *= Vector->Scene->PageWidth;
+   if (Vector->rDimensions & (DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT)) {
+      if (Vector->rDimensions & DMF_RELATIVE_WIDTH) width *= get_parent_width(Vector);
+      if (Vector->rDimensions & DMF_RELATIVE_HEIGHT) height *= get_parent_height(Vector);
    }
 
-   if (Vector->rDimensions & DMF_RELATIVE_HEIGHT) {
-      if (Vector->ParentView->vpDimensions & DMF_HEIGHT) height *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) height *= Vector->ParentView->vpViewHeight;
-      else height *= Vector->Scene->PageHeight;
-   }
-
-   if ((Vector->rRoundX) OR (Vector->rRoundY)) {
+   if ((Vector->rRoundX) or (Vector->rRoundY)) {
       agg::rounded_rect aggrect(0, 0, width, height, Vector->rRoundX);
       if (Vector->rRoundX != Vector->rRoundY) aggrect.radius(Vector->rRoundX, Vector->rRoundY);
       aggrect.normalize_radius(); // Required because???
 
-      Vector->BasePath->concat_path(aggrect);
+      Vector->BasePath.concat_path(aggrect);
    }
    else {
-      Vector->BasePath->move_to(0, 0);
-      Vector->BasePath->line_to(width, 0);
-      Vector->BasePath->line_to(width, height);
-      Vector->BasePath->line_to(0, height);
-      Vector->BasePath->close_polygon();
+      Vector->BasePath.move_to(0, 0);
+      Vector->BasePath.line_to(width, 0);
+      Vector->BasePath.line_to(width, height);
+      Vector->BasePath.line_to(0, height);
+      Vector->BasePath.close_polygon();
    }
 }
 
@@ -49,16 +42,9 @@ static void get_rectangle_xy(objVectorRectangle *Vector)
 {
    DOUBLE x = Vector->rX, y = Vector->rY;
 
-   if (Vector->rDimensions & DMF_RELATIVE_X) {
-      if (Vector->ParentView->vpDimensions & DMF_WIDTH) x *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) x *= Vector->ParentView->vpViewWidth;
-      else x *= Vector->Scene->PageWidth;
-   }
-
-   if (Vector->rDimensions & DMF_RELATIVE_Y) {
-      if (Vector->ParentView->vpDimensions & DMF_HEIGHT) y *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) y *= Vector->ParentView->vpViewHeight;
-      else y *= Vector->Scene->PageHeight;
+   if (Vector->rDimensions & (DMF_RELATIVE_X|DMF_RELATIVE_Y)) {
+      if (Vector->rDimensions & DMF_RELATIVE_X) x *= get_parent_width(Vector);
+      if (Vector->rDimensions & DMF_RELATIVE_Y) y *= get_parent_height(Vector);
    }
 
    Vector->FinalX = x;
@@ -77,8 +63,8 @@ static ERROR RECTANGLE_Move(objVectorRectangle *Self, struct acMove *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   Self->rX += Args->XChange;
-   Self->rY += Args->YChange;
+   Self->rX += Args->DeltaX;
+   Self->rY += Args->DeltaY;
    mark_dirty(Self, RC_TRANSFORM);
    return ERR_Okay;
 }
@@ -219,7 +205,7 @@ static ERROR RECTANGLE_GET_RoundX(objVectorRectangle *Self, DOUBLE *Value)
 
 static ERROR RECTANGLE_SET_RoundX(objVectorRectangle *Self, DOUBLE Value)
 {
-   if ((Value < 0) OR (Value > 1000)) return ERR_OutOfRange;
+   if ((Value < 0) or (Value > 1000)) return ERR_OutOfRange;
    Self->rRoundX = Value;
    reset_path(Self);
    return ERR_Okay;
@@ -243,7 +229,7 @@ static ERROR RECTANGLE_GET_RoundY(objVectorRectangle *Self, DOUBLE *Value)
 
 static ERROR RECTANGLE_SET_RoundY(objVectorRectangle *Self, DOUBLE Value)
 {
-   if ((Value < 0) OR (Value > 1000)) return ERR_OutOfRange;
+   if ((Value < 0) or (Value > 1000)) return ERR_OutOfRange;
    Self->rRoundY = Value;
    reset_path(Self);
    return ERR_Okay;

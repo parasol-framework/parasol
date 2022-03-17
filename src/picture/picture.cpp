@@ -411,7 +411,8 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
          if (!ReadFileToBuffer(res_path, Self->prvHeader, sizeof(Self->prvHeader)-1, &result)) {
             Self->prvHeader[result] = 0;
 
-            char *buffer = Self->prvHeader;
+            auto buffer = (UBYTE *)Self->prvHeader;
+
             if ((buffer[0] IS 0x89) and (buffer[1] IS 0x50) and (buffer[2] IS 0x4e) and (buffer[3] IS 0x47) and
                 (buffer[4] IS 0x0d) and (buffer[5] IS 0x0a) and (buffer[6] IS 0x1a) and (buffer[7] IS 0x0a)) {
                if (Self->Flags & PCF_LAZY) return ERR_Okay;

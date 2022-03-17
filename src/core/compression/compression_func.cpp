@@ -7,7 +7,7 @@ static void print(objCompression *Self, CSTRING Buffer)
 
    if (Self->OutputID) {
       struct acDataFeed feed = {
-         .ObjectID = Self->Head.UniqueID,
+         .ObjectID = Self->Head.UID,
          .DataType = DATA_TEXT,
          .Buffer   = Buffer
       };

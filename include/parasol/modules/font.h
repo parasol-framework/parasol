@@ -2,7 +2,7 @@
 #define MODULES_FONT 1
 
 // Name:      font.h
-// Copyright: Paul Manias © 1998-2020
+// Copyright: Paul Manias © 1998-2022
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -28,25 +28,25 @@
 #define FTF_CHAR_CLIP 0x00000080
 #define FTF_BASE_LINE 0x00000100
 #define FTF_ALLOW_SCALE 0x00000200
-#define FTF_KERNING 0x80000000
-#define FTF_ITALIC 0x40000000
-#define FTF_BOLD 0x20000000
 #define FTF_SCALABLE 0x10000000
+#define FTF_BOLD 0x20000000
+#define FTF_ITALIC 0x40000000
+#define FTF_KERNING 0x80000000
 
 struct FontList {
    struct FontList * Next;    // Pointer to the next entry in the list.
-   STRING  Name;              // The name of the font face.
-   UBYTE * Points;            // Pointer to an array of fixed point sizes supported by the font.
-   STRING  Styles;            // Supported styles are listed here in CSV format.
-   BYTE    Scalable;          // TRUE if the font is scalable.
-   BYTE    Reserved1;         // Do not use.
-   WORD    Reserved2;         // Do not use.
+   STRING Name;               // The name of the font face.
+   LONG * Points;             // Pointer to an array of fixed point sizes supported by the font.
+   STRING Styles;             // Supported styles are listed here in CSV format.
+   BYTE   Scalable;           // TRUE if the font is scalable.
+   BYTE   Reserved1;          // Do not use.
+   WORD   Reserved2;          // Do not use.
 };
 
 // Options for the StringSize() function.
 
-#define FSS_LINE -2
 #define FSS_ALL -1
+#define FSS_LINE -2
 
 // Font class definition
 

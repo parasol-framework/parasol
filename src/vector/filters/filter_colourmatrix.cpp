@@ -329,135 +329,132 @@ public:
    }
 };
 
-/*****************************************************************************
-** Internal: apply_cmatrix()
-*/
-
-static void apply_cmatrix(objVectorFilter *Self, struct effect *Effect)
-{
-   objBitmap *bmp = Effect->Bitmap;
-   if (bmp->BytesPerPixel != 4) return;
-   if (!Effect->Colour.Matrix) return;
-
-   const UBYTE A = bmp->ColourFormat->AlphaPos>>3;
-   const UBYTE R = bmp->ColourFormat->RedPos>>3;
-   const UBYTE G = bmp->ColourFormat->GreenPos>>3;
-   const UBYTE B = bmp->ColourFormat->BluePos>>3;
-
-   ColourMatrix &matrix = *Effect->Colour.Matrix;
-
-   UBYTE *data = bmp->Data + (bmp->Clip.Left<<2) + (bmp->Clip.Top * bmp->LineWidth);
-
-   for (LONG y=0; y < bmp->Clip.Bottom - bmp->Clip.Top; y++) {
-      UBYTE *pixel = data + (bmp->LineWidth * y);
-      for (LONG x=0; x < bmp->Clip.Right - bmp->Clip.Left; x++) {
-
-         DOUBLE a = pixel[A];
-         DOUBLE r = pixel[R];
-         DOUBLE g = pixel[G];
-         DOUBLE b = pixel[B];
-
-         LONG r2 = 0.5 + (r * matrix[0]) + (g * matrix[1]) + (b * matrix[2]) + (a * matrix[3]) + matrix[4];
-         LONG g2 = 0.5 + (r * matrix[5]) + (g * matrix[6]) + (b * matrix[7]) + (a * matrix[8]) + matrix[9];
-         LONG b2 = 0.5 + (r * matrix[10]) + (g * matrix[11]) + (b * matrix[12]) + (a * matrix[13]) + matrix[14];
-         LONG a2 = 0.5 + (r * matrix[15]) + (g * matrix[16]) + (b * matrix[17]) + (a * matrix[18]) + matrix[19];
-
-         if (a2 < 0) pixel[A] = 0;
-         else if (a2 > 255) pixel[A] = 255;
-         else pixel[A] = a2;
-
-         if (r2 < 0)   pixel[R] = 0;
-         else if (r2 > 255) pixel[R] = 255;
-         else pixel[R] = r2;
-
-         if (g2 < 0) pixel[G] = 0;
-         else if (g2 > 255) pixel[G] = 255;
-         else pixel[G] = g2;
-
-         if (b2 < 0) pixel[B] = 0;
-         else if (b2 > 255) pixel[B] = 255;
-         else pixel[B] = b2;
-
-         pixel += 4;
-      }
-   }
-}
-
 //****************************************************************************
-// Create a new colour matrix effect.
 
-static ERROR create_cmatrix(objVectorFilter *Self, struct XMLTag *Tag)
-{
-   struct effect *effect;
-   if (!(effect = add_effect(Self, FE_COLOURMATRIX))) return ERR_AllocMemory;
+class ColourEffect : public VectorEffect {
+   class ColourMatrix *Matrix;
+   UBYTE Mode;
 
-   MATRIX m = IDENTITY;
-   for (LONG a=1; a < Tag->TotalAttrib; a++) {
-      CSTRING val = Tag->Attrib[a].Value;
-      if (!val) continue;
+public:
+   ColourEffect(struct rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
+      parasol::Log log(__FUNCTION__);
 
-      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
-      switch(hash) {
-         case SVF_TYPE: {
-            switch(StrHash(val, FALSE)) {
-               case SVF_MATRIX:        effect->Colour.Mode = CM_MATRIX; break;
-               case SVF_SATURATE:      effect->Colour.Mode = CM_SATURATE; break;
-               case SVF_HUEROTATE:     effect->Colour.Mode = CM_HUE_ROTATE; break;
-               case SVF_LUMINANCETOALPHA: effect->Colour.Mode = CM_LUMINANCE_ALPHA; break;
-               // These are special modes that are not included by SVG
-               case SVF_CONTRAST:      effect->Colour.Mode = CM_CONTRAST; break;
-               case SVF_BRIGHTNESS:    effect->Colour.Mode = CM_BRIGHTNESS; break;
-               case SVF_HUE:           effect->Colour.Mode = CM_HUE; break;
-               case SVF_COLOURISE:     effect->Colour.Mode = CM_COLOURISE; break;
-               case SVF_DESATURATE:    effect->Colour.Mode = CM_DESATURATE; break;
-               // These are special modes that are not included by SVG
-               case SVF_PROTANOPIA:    effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.567,0.433,0,0,0, 0.558,0.442,0,0,0, 0,0.242,0.758,0,0, 0,0,0,1,0 }; break;
-               case SVF_PROTANOMALY:   effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.817,0.183,0,0,0, 0.333,0.667,0,0,0, 0,0.125,0.875,0,0, 0,0,0,1,0 }; break;
-               case SVF_DEUTERANOPIA:  effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.625,0.375,0,0,0, 0.7,0.3,0,0,0, 0,0.3,0.7,0,0, 0,0,0,1,0 }; break;
-               case SVF_DEUTERANOMALY: effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.8,0.2,0,0,0, 0.258,0.742,0,0,0, 0,0.142,0.858,0,0, 0,0,0,1,0 }; break;
-               case SVF_TRITANOPIA:    effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.95,0.05,0,0,0, 0,0.433,0.567,0,0, 0,0.475,0.525,0,0, 0,0,0,1,0 }; break;
-               case SVF_TRITANOMALY:   effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.967,0.033,0,0,0, 0,0.733,0.267,0,0, 0,0.183,0.817,0,0, 0,0,0,1,0 }; break;
-               case SVF_ACHROMATOPSIA: effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0,0,0,1,0 }; break;
-               case SVF_ACHROMATOMALY: effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.618,0.320,0.062,0,0, 0.163,0.775,0.062,0,0, 0.163,0.320,0.516,0,0, 0,0,0,1,0 }; break;
+      MATRIX m = IDENTITY;
+      for (LONG a=1; a < Tag->TotalAttrib; a++) {
+         CSTRING val = Tag->Attrib[a].Value;
+         if (!val) continue;
 
-               default:
-                  LogErrorMsg("Unrecognised colour matrix type '%s'", val);
-                  return ERR_Failed;
+         ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+         switch(hash) {
+            case SVF_TYPE: {
+               switch(StrHash(val, FALSE)) {
+                  case SVF_MATRIX:        Mode = CM_MATRIX; break;
+                  case SVF_SATURATE:      Mode = CM_SATURATE; break;
+                  case SVF_HUEROTATE:     Mode = CM_HUE_ROTATE; break;
+                  case SVF_LUMINANCETOALPHA: Mode = CM_LUMINANCE_ALPHA; break;
+                  // These are special modes that are not included by SVG
+                  case SVF_CONTRAST:      Mode = CM_CONTRAST; break;
+                  case SVF_BRIGHTNESS:    Mode = CM_BRIGHTNESS; break;
+                  case SVF_HUE:           Mode = CM_HUE; break;
+                  case SVF_COLOURISE:     Mode = CM_COLOURISE; break;
+                  case SVF_DESATURATE:    Mode = CM_DESATURATE; break;
+                  // These are special modes that are not included by SVG
+                  case SVF_PROTANOPIA:    Mode = CM_MATRIX; m = MATRIX { 0.567,0.433,0,0,0, 0.558,0.442,0,0,0, 0,0.242,0.758,0,0, 0,0,0,1,0 }; break;
+                  case SVF_PROTANOMALY:   Mode = CM_MATRIX; m = MATRIX { 0.817,0.183,0,0,0, 0.333,0.667,0,0,0, 0,0.125,0.875,0,0, 0,0,0,1,0 }; break;
+                  case SVF_DEUTERANOPIA:  Mode = CM_MATRIX; m = MATRIX { 0.625,0.375,0,0,0, 0.7,0.3,0,0,0, 0,0.3,0.7,0,0, 0,0,0,1,0 }; break;
+                  case SVF_DEUTERANOMALY: Mode = CM_MATRIX; m = MATRIX { 0.8,0.2,0,0,0, 0.258,0.742,0,0,0, 0,0.142,0.858,0,0, 0,0,0,1,0 }; break;
+                  case SVF_TRITANOPIA:    Mode = CM_MATRIX; m = MATRIX { 0.95,0.05,0,0,0, 0,0.433,0.567,0,0, 0,0.475,0.525,0,0, 0,0,0,1,0 }; break;
+                  case SVF_TRITANOMALY:   Mode = CM_MATRIX; m = MATRIX { 0.967,0.033,0,0,0, 0,0.733,0.267,0,0, 0,0.183,0.817,0,0, 0,0,0,1,0 }; break;
+                  case SVF_ACHROMATOPSIA: Mode = CM_MATRIX; m = MATRIX { 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0,0,0,1,0 }; break;
+                  case SVF_ACHROMATOMALY: Mode = CM_MATRIX; m = MATRIX { 0.618,0.320,0.062,0,0, 0.163,0.775,0.062,0,0, 0.163,0.320,0.516,0,0, 0,0,0,1,0 }; break;
+
+                  default:
+                     log.warning("Unrecognised colour matrix type '%s'", val);
+                     Error = ERR_Failed;
+               }
+               break;
             }
-            break;
-         }
 
-         case SVF_VALUES: {
-            for (LONG i=0; (*val) AND (i < CM_SIZE); i++) {
-               DOUBLE dbl;
-               val = read_numseq(val, &dbl, TAGEND);
-               m[i] = dbl;
+            case SVF_VALUES: {
+               for (LONG i=0; (*val) AND (i < CM_SIZE); i++) {
+                  DOUBLE dbl;
+                  val = read_numseq(val, &dbl, TAGEND);
+                  m[i] = dbl;
+               }
+               break;
             }
-            break;
-         }
 
-         default: fe_default(Self, effect, hash, val); break;
+            default: fe_default(Filter, this, hash, val); break;
+         }
+      }
+
+      // If a special colour mode was selected, convert the provided value(s) to the matrix format.
+
+      ColourMatrix *matrix;
+
+      switch (Mode) {
+         case CM_SATURATE:        matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustSaturation(m[0]); break;
+         case CM_HUE_ROTATE:      matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->rotateHue(m[0]); break;
+         case CM_LUMINANCE_ALPHA: matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->luminance2Alpha(); break;
+         case CM_CONTRAST:        matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustContrast(m[0]); break;
+         case CM_BRIGHTNESS:      matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustBrightness(m[0]); break;
+         case CM_HUE:             matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustHue(m[0]); break;
+         case CM_COLOURISE:       matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->colourise(m[0], m[1], m[2], m[3] < 0.001 ? 1.0 : m[3]); break;
+         case CM_DESATURATE:      matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustSaturation(0); break;
+         default:                 matrix = new (std::nothrow) ColourMatrix(m); break;
+      }
+
+      if (!matrix) Error = ERR_AllocMemory;
+      else Matrix = matrix; // Will be deleted in free_effect_resources()
+   }
+
+   void apply(objVectorFilter *Filter) {
+      if (Bitmap->BytesPerPixel != 4) return;
+      if (!Matrix) return;
+
+      const UBYTE A = Bitmap->ColourFormat->AlphaPos>>3;
+      const UBYTE R = Bitmap->ColourFormat->RedPos>>3;
+      const UBYTE G = Bitmap->ColourFormat->GreenPos>>3;
+      const UBYTE B = Bitmap->ColourFormat->BluePos>>3;
+
+      ColourMatrix &matrix = *Matrix;
+
+      UBYTE *data = Bitmap->Data + (Bitmap->Clip.Left<<2) + (Bitmap->Clip.Top * Bitmap->LineWidth);
+      for (LONG y=0; y < Bitmap->Clip.Bottom - Bitmap->Clip.Top; y++) {
+         UBYTE *pixel = data + (Bitmap->LineWidth * y);
+         for (LONG x=0; x < Bitmap->Clip.Right - Bitmap->Clip.Left; x++) {
+            DOUBLE a = pixel[A];
+            DOUBLE r = pixel[R];
+            DOUBLE g = pixel[G];
+            DOUBLE b = pixel[B];
+
+            LONG r2 = 0.5 + (r * matrix[0]) + (g * matrix[1]) + (b * matrix[2]) + (a * matrix[3]) + matrix[4];
+            LONG g2 = 0.5 + (r * matrix[5]) + (g * matrix[6]) + (b * matrix[7]) + (a * matrix[8]) + matrix[9];
+            LONG b2 = 0.5 + (r * matrix[10]) + (g * matrix[11]) + (b * matrix[12]) + (a * matrix[13]) + matrix[14];
+            LONG a2 = 0.5 + (r * matrix[15]) + (g * matrix[16]) + (b * matrix[17]) + (a * matrix[18]) + matrix[19];
+
+            if (a2 < 0) pixel[A] = 0;
+            else if (a2 > 255) pixel[A] = 255;
+            else pixel[A] = a2;
+
+            if (r2 < 0)   pixel[R] = 0;
+            else if (r2 > 255) pixel[R] = 255;
+            else pixel[R] = r2;
+
+            if (g2 < 0) pixel[G] = 0;
+            else if (g2 > 255) pixel[G] = 255;
+            else pixel[G] = g2;
+
+            if (b2 < 0) pixel[B] = 0;
+            else if (b2 > 255) pixel[B] = 255;
+            else pixel[B] = b2;
+
+            pixel += 4;
+         }
       }
    }
 
-   // If a special colour mode was selected, convert the provided value(s) to the matrix format.
-
-   ColourMatrix *matrix;
-
-   switch (effect->Colour.Mode) {
-      case CM_SATURATE:        matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustSaturation(m[0]); break;
-      case CM_HUE_ROTATE:      matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->rotateHue(m[0]); break;
-      case CM_LUMINANCE_ALPHA: matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->luminance2Alpha(); break;
-      case CM_CONTRAST:        matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustContrast(m[0]); break;
-      case CM_BRIGHTNESS:      matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustBrightness(m[0]); break;
-      case CM_HUE:             matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustHue(m[0]); break;
-      case CM_COLOURISE:       matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->colourise(m[0], m[1], m[2], m[3] < 0.001 ? 1.0 : m[3]); break;
-      case CM_DESATURATE:      matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustSaturation(0); break;
-      default:                 matrix = new (std::nothrow) ColourMatrix(m); break;
+   virtual ~ColourEffect() {
+      if (Matrix) delete Matrix;
    }
-
-   if (!matrix) return ERR_AllocMemory;
-   effect->Colour.Matrix = matrix; // Will be deleted in free_effect_resources()
-
-   return ERR_Okay;
-}
+};

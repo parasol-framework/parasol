@@ -642,6 +642,7 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
    if ((Self->Static) and ((!Self->Path) or (!Self->Path[0]))) return ERR_Okay;
 
    if (Self->Path[0] IS ':') {
+      if (Self->Flags & FL_FILE) return log.warning(ERR_ExpectedFile);
       log.trace("Root folder initialised.");
       return ERR_Okay;
    }
@@ -718,9 +719,7 @@ retrydir:
 #endif
 
    if (Self->prvType & STAT_FOLDER) { // Open the folder
-      if (Self->Flags & FL_FILE) { // Check if the user expected the source to be a file, not a folder
-         return log.warning(ERR_ExpectedFile);
-      }
+      if (Self->Flags & FL_FILE) return log.warning(ERR_ExpectedFile);
 
       Self->Flags |= FL_FOLDER;
 

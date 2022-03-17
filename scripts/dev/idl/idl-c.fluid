@@ -1,7 +1,7 @@
 -- This program produces C/C++ headers and documentation from Parasol FDL files.
 --
--- Usage: fluid sdk:scripts/idl-c.fluid src=source.fdl
--- Example: fluid sdk:scripts/idl-c.fluid src=sdk:core/modules/core/core.fdl
+-- Usage: fluid sdk:scripts/dev/idl/idl-c.fluid src=source.fdl
+-- Example: fluid sdk:scripts/dev/idl/idl-c.fluid src=sdk:core/modules/core/core.fdl
 
    include 'core'
    include 'xml'
@@ -18,6 +18,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 
 glOutput = { }
+glActiveRefs = { } -- For cType()
 
 function output(String)
    table.insert(glOutput, nz(String, ''))
@@ -180,6 +181,7 @@ function flags(Prefix, Options, ...)
    Options = checkOptions(Options)
 
    local out = { }
+   local sortedFlags = { }
    if (nz(Options.comment)) then
       table.insert(out, '// ' .. Options.comment)
       table.insert(out, '')
@@ -187,11 +189,11 @@ function flags(Prefix, Options, ...)
 
    local function outputFlagDef(Options, Prefix, flag_name, val)
       if (Options.bits == 16) then
-         table.insert(out, string.format('#define %s_%s 0x%.4x', Prefix, flag_name, val))
+         table.insert(sortedFlags, { value = val, define = string.format('#define %s_%s 0x%.4x', Prefix, flag_name, val) })
       else
          -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
          local hash_id = string.format('%08x', val):sub(-8)
-         table.insert(out, string.format('#define %s_%s 0x%s', Prefix, flag_name, hash_id))
+         table.insert(sortedFlags, { value = val, define = string.format('#define %s_%s 0x%s', Prefix, flag_name, hash_id) } )
       end
    end
 
@@ -252,6 +254,12 @@ function flags(Prefix, Options, ...)
 
       f = f + 1
    end
+
+   table.sort(sortedFlags, function(a,b) return a.value < b.value end)
+   for _, flag in ipairs(sortedFlags) do
+      table.insert(out, flag.define)
+   end
+
    table.insert(out, '')
 
    if (glRestrict == nil) then
@@ -274,7 +282,7 @@ end
 -- FDL function
 
 function hash(Prefix, Format, ...)
-   for k,v in ipairs({...}) do
+   for _, v in ipairs({...}) do
       local hash_name = v:gsub('[^%w]', '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
       local hash_id = string.format('%08x', mSys.StrHash(v)):sub(-8)
@@ -307,15 +315,29 @@ function const(Prefix, Options, ...)
             table.insert(out, '#define ' .. Prefix .. '_' .. v)
          end
       elseif (type(va) == 'table') then
-         for k, v in pairs(va) do
-            local val, comment
-            if (type(v) == 'string') then
-               val, comment = v:match('^(.-):%s+(.+)$')
+         local sorted = { }
+         for name, value in pairs(va) do
+            table.insert(sorted, { name = name, value = value })
+         end
+         table.sort(sorted, function(a,b)
+            if (a.value == b.value) then
+               return a.name < b.name
+            elseif type(a.value) == 'number' and type(b.value) == 'number' then
+               return a.value < b.value
+            else
+               return tostring(a.value) < tostring(b.value)
             end
-            if (val == nil) then val = v end
+         end)
 
-            table.insert(out, '#define ' .. Prefix .. '_' .. k .. ' ' .. val)
-            table.insert(list, { name=k, value=val, comment=comment })
+         for _, v in ipairs(sorted) do
+            local val, comment
+            if (type(v.value) == 'string') then
+               val, comment = v.value:match('^(.-):%s+(.+)$')
+            end
+            if (val == nil) then val = v.value end
+
+            table.insert(out, '#define ' .. Prefix .. '_' .. v.name .. ' ' .. val)
+            table.insert(list, { name=v.name, value=val, comment=comment })
          end
       else
          error('Invalid const type for "' .. Prefix .. '", expected string, got "' .. type(va) .. '"')
@@ -492,8 +514,8 @@ function struct(Name, Options, Def, Append)
       end
 
       glStructures[Name] = {
-         version=Options.version, type=Options.type, comment=Options.comment, fields=fields,
-         restrict=nz(glRestrict, Options.restrict)
+         version = Options.version, type = Options.type, comment = Options.comment, fields = fields,
+         restrict = nz(glRestrict, Options.restrict), name = Name
       }
    end,
    function(Exception)
@@ -546,6 +568,10 @@ function class(Name, Options, Blueprint, Private)
    local class = registerClass(Name)
    class.name = Name -- The name defined by class() has priority over any name defined by method()
    class.src = Options.src
+   class.references = { }
+
+   glActiveRefs = class.references
+
    if (type(class.src) == 'string') then class.src = { class.src } end -- Convert string to an array of strings
 
    -- Attempt to load the class into memory.  This introduces a circular reference when the module is not yet
@@ -571,10 +597,10 @@ function class(Name, Options, Blueprint, Private)
       for _, path in pairs(class.src) do
          if (glFeedback == 'verbose') then
             print()
-            print('Class file: ' .. path)
+            print('Class file: ' .. glFDLFolder .. path)
          end
 
-         local content = file.readAll(path)
+         local content = file.readAll(glFDLFolder .. path)
          content = content:gsub('\r\n', '\n')
 
          -- Look for C/C++ action declarations, in the format: ERROR CLASS_Action(...).  This will create a series
@@ -787,7 +813,7 @@ function class(Name, Options, Blueprint, Private)
          mdef = mdef .. "   { 0, 0 }\n};\n\n"
       end
 
-      local file = obj.new("file", { flags="WRITE|NEW", location=Options.output } )
+      local file = obj.new("file", { flags="WRITE|NEW", location=glFDLFolder .. Options.output } )
       file.acWrite("// Auto-generated by idl-c.fluid\n\n")
       if nz(cdef) then file.acWrite(cdef) end
       if nz(mdef) then file.acWrite(mdef) end
@@ -845,14 +871,16 @@ function processAction(class, extract)
 
          local ecode, comment = line:match("(%a-):%s+(.+)")
          if (ecode != nil) then
-            action.results[ecode] = comment
+            table.insert(action.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = comment })
          else
             ecode = line:match("(%a+):?")
             if nz(ecode) then
-               action.results[ecode] = mSys.GetErrorMsg(_G['ERR_' .. ecode])
+               table.insert(action.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = mSys.GetErrorMsg(_G['ERR_' .. ecode]) })
             end
         end
       end
+
+      table.sort(action.results, function(a,b) return a.code < b.code end)
    end
 end
 
@@ -874,7 +902,7 @@ function processField(class, extract)
       if nz(lookup) then
          if (glCustomTypes[lookup]) then
             f.lookup = lookup
-            glCustomTypes[lookup].refCount = nz(glCustomTypes[lookup].refCount, 0) + 1
+            class.references['TYPE:' .. lookup] = 1
          else
             print('Requested lookup "' .. lookup .. '" is not known.')
          end
@@ -935,14 +963,16 @@ function processMethod(class, extract)
 
          local ecode, comment = line:match("(%a-):%s+(.+)")
          if (ecode != nil) then
-            method.results[ecode] = comment
+            table.insert(method.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = comment })
          else
             ecode = line:match("(%a+):?")
             if nz(ecode) then
-               method.results[ecode] = mSys.GetErrorMsg(_G['ERR_' .. ecode])
+               table.insert(method.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = mSys.GetErrorMsg(_G['ERR_' .. ecode]) })
             end
-        end
+         end
       end
+
+      table.sort(method.results, function(a,b) return nz(a.code,-1) < nz(b.code,-1) end)
    end
 
    if nz(input) then
@@ -981,7 +1011,7 @@ end
 -- Process the formal field definitions in a class blueprint.
 
 function processClassFields(class, Blueprint, Private)
-   local cdef = ""
+   local cdef = ''
 
    -- Process fields defined in the FDL
 
@@ -1029,7 +1059,7 @@ function processClassFields(class, Blueprint, Private)
       end
    end
 
-   -- NB: This code does not output anything, because as yet fields (including virtual fields) cannot be accurately
+   -- NB: FieldArray is not output because as yet fields (including virtual fields) cannot be accurately
    -- described without the developer writing a custom field configuration in C.
 
    local fdef = "static const struct FieldArray cl" .. class.name .. "Fields[] = {\n"
@@ -1054,7 +1084,20 @@ function processClassFields(class, Blueprint, Private)
 
          if (f.ref != nil) then
             cdef = cdef .. "static const struct FieldDef cl" .. class.name .. f.name .. "[] = {\n"
+
+            local sorted = { }
             for _, v in pairs(f.ref.list) do
+               table.insert(sorted, v)
+            end
+            table.sort(sorted, function(a,b)
+               if (a.value == b.value) then
+                  return a.name < b.name
+               else
+                  return a.value < b.value
+               end
+            end)
+
+            for _, v in ipairs(sorted) do
                if (v.name:upper() != "PRIVATE") and (v.name:upper() != "END") then
                   -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
                   local hash_id = '0x' .. string.format("%08x", v.value):sub(-8)
@@ -1345,7 +1388,7 @@ glTypes = {
    arraysize  = { fd='FD_LONG|FD_ARRAYSIZE', c_type='LONG' },
    mem        = { fd='FD_LONG',      c_type='MEMORYID' },
    int        = { fd='FD_LONG',      c_type='LONG' },
-   uint       = { fd='FD_LONG',      c_type='ULONG' },
+   uint       = { fd='FD_LONG|FD_UNSIGNED', c_type='ULONG' },
    ptr        = { fd='FD_PTR',       c_type='APTR' },
    cptr       = { fd='FD_PTR',       c_type='const void *' },
    oid        = { fd='FD_OBJECTID',  c_type='OBJECTID' },
@@ -1381,7 +1424,7 @@ function cType(Field, Origin)
 
    Field.defType = Field.type -- Save the original type name
 
-   -- A ! symbol indicates that the field is a result that is allocated and can be removed with either FreeMemory or acFree()
+   -- A ! symbol indicates that the field is a result that is allocated and can be removed with FreeResource() or acFree()
    -- A & symbol indicates that the field is a pointer to a reserved area that will store a result value, e.g. LONG *
 
    local resultValue
@@ -1406,7 +1449,7 @@ function cType(Field, Origin)
          Field.type = 'struct ' .. struct
 
          if (glStructures[struct] != nil) then
-            glStructures[struct].refCount = nz(glStructures[struct].refCount, 0) + 1
+            glActiveRefs['STRUCT:' .. struct] = 1
 
             if (glStructures[struct].version != nil) then
                Field.type = Field.type .. 'V' .. glStructures[struct].version
@@ -1449,7 +1492,7 @@ function cType(Field, Origin)
          Field.type = "struct " .. struct
 
          if (glStructures[struct] != nil) then
-            glStructures[struct].refCount = nz(glStructures[struct].refCount, 0) + 1
+            glActiveRefs['STRUCT:' .. struct] = 1
 
             if (glStructures[struct].version != nil) then
                Field.type = Field.type .. "V" .. glStructures[struct].version
@@ -1513,7 +1556,7 @@ function cType(Field, Origin)
          Field.ref      = glCustomTypes[prefix]
          Field.lookup   = prefix
 
-         glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+         glActiveRefs['TYPE:' .. prefix] = 1
          goto finalise
       end
    end
@@ -1527,7 +1570,7 @@ function cType(Field, Origin)
          Field.lookup   = prefix
 
          if (glCustomTypes[prefix]) then
-            glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+            glActiveRefs['TYPE:' .. prefix] = 1
          else
             print('Unknown custom type "' .. prefix .. '"')
          end
@@ -1544,7 +1587,7 @@ function cType(Field, Origin)
          Field.lookup   = prefix
 
          if (glCustomTypes[prefix] != nil) then
-            glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+            glActiveRefs['TYPE:' .. prefix] = 1
          else
             print('Unknown custom type "' .. prefix .. '"')
          end
@@ -1560,7 +1603,7 @@ function cType(Field, Origin)
          Field.ref      = glCustomTypes[prefix]
          Field.lookup   = prefix
 
-         glCustomTypes[prefix].refCount = nz(glCustomTypes[prefix].refCount, 0) + 1
+         glActiveRefs['TYPE:' .. prefix] = 1
          goto finalise
       end
    end
@@ -1803,11 +1846,13 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function processFDLFile(Source)
-   local err, type = mSys.AnalysePath(Source)
+   local err, full_path = mSys.ResolvePath(Source)
 
-   if (type == LOC_FILE) then
-      if (glFeedback == "verbose") then print("Process FDL file " .. Source) end
-      loadFile(Source)
+   glFDLFolder = file.splitPath(full_path)
+
+   if (err == ERR_Okay) then
+      if (glFeedback == "verbose") then print("Process FDL file " .. full_path) end
+      loadFile(full_path)
       return ERR_Okay
    else
       error("The specified source '" .. Source .. "' could not be located.")
@@ -1826,7 +1871,10 @@ function processSourceFiles()
       table.insert(srcFiles, arg('files(' .. (i-1) .. ')'))
    end
 
-   if (#srcFiles < 1) then return end
+   if (#srcFiles < 1) then
+      if (glFeedback == 'verbose') then print('No source files were detected.') end
+      return
+   end
 
    local path
    for _, path in pairs(srcFiles) do
@@ -1942,15 +1990,27 @@ function processFunction(extract)
          if not nz(line) then break end // A double line-break forces a premature end to error processing.
 
          local ecode, comment = line:match("(%a-):%s+(.-)")
-         if (ecode != nil) then
-            def.result.values[ecode] = comment
+         if nz(ecode) and nz(comment) then
+            local codeValue = _G['ERR_' .. ecode]
+            if not codeValue then
+               print('Error code "' .. ecode .. '" referenced in function ' .. Function.name .. '() is invalid.')
+            else
+               table.insert(def.result.values, { code = codeValue, codeName = ecode, msg = comment })
+            end
          else
             ecode = line:match("(%a+):?")
             if nz(ecode) then
-               def.result.values[ecode] = mSys.GetErrorMsg(_G['ERR_' .. ecode])
+               codeValue = _G['ERR_' .. ecode]
+               if not codeValue then
+                  print('Error code "' .. ecode .. '" referenced in function ' .. Function.name .. '() is invalid.')
+               else
+                  table.insert(def.result.values, { code = codeValue, codeName = ecode, msg = mSys.GetErrorMsg(codeValue) })
+               end
             end
-        end
+         end
       end
+
+      table.sort(def.result.values, function(a,b) return a.code < b.code end)
    else
       local result = extract:match("\n%-RESULT%-\n(.-)\n%-END%-")
       if nz(result) then
@@ -2177,7 +2237,7 @@ function buildDefs()
    if not nz(glFunctions) then return "" end
 
    local flist = "\nconst struct Function glFunctions[] = {\n"
-   for k, func in ipairs(glFunctions) do
+   for _, func in ipairs(glFunctions) do
       flist = flist .. "   { (APTR)" .. nz(glFunctionPrefix,"") .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
    end
    flist = flist .. "   { NULL, NULL, NULL }\n"
@@ -2258,22 +2318,30 @@ end
 function resolveSDKPath(Path)
    local sdk_path
    local err = ERR_Failed
+   local search_list = { }
    if not Path then
       local search_path = 'CMakeLists.txt'
       local limit = 5
       while (err != ERR_Okay) and (limit > 0) do
-         search_path = '../' .. search_path
+         table.insert(search_list, search_path)
          err, sdk_path = mSys.ResolvePath(search_path)
+         search_path = '../' .. search_path
          limit = limit - 1
       end
    else
+      table.insert(search_list, Path .. '/CMakeLists.txt')
       err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
    end
 
    if (err == ERR_Okay) then
       sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
    else
-      error('Failed to resolve a path to the Parasol SDK.')
+      local msg = ''
+      for _, path in ipairs(search_list) do
+         msg = msg .. path .. '\n'
+      end
+      print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
+      error('A path to the Parasol SDK could not be determined.')
    end
 
    mSys.SetVolume(AST_NAME, 'sdk', AST_PATH, sdk_path, AST_COMMENT, 'Parasol Software Development Kit')

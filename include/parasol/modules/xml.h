@@ -13,8 +13,8 @@
 
 // For SetAttrib()
 
-#define XMS_UPDATE_ONLY -2
 #define XMS_NEW -1
+#define XMS_UPDATE_ONLY -2
 #define XMS_UPDATE -3
 
 // Options for the Sort method.
@@ -30,8 +30,8 @@
 #define XMF_STRIP_CONTENT 0x00000004
 #define XMF_LOWER_CASE 0x00000008
 #define XMF_UPPER_CASE 0x00000010
-#define XMF_READABLE 0x00000020
 #define XMF_INDENT 0x00000020
+#define XMF_READABLE 0x00000020
 #define XMF_LOCK_REMOVE 0x00000040
 #define XMF_STRIP_HEADERS 0x00000080
 #define XMF_NEW 0x00000100

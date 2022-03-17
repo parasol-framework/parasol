@@ -6,7 +6,7 @@
     <name>Surface</name>
     <type>module</type>
     <version>1</version>
-    <copyright>Paul Manias © 2000-2020</copyright>
+    <copyright>Paul Manias © 2000-2022</copyright>
     <classes>
       <class>Layout</class>
       <class>Surface</class>
@@ -16,10 +16,10 @@
   <function>
     <name>ApplyStyleGraphics</name>
     <comment>Applies pre-defined graphics to a GUI object.</comment>
-    <prototype>ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID Surface, CSTRING StyleName, CSTRING StyleType)</prototype>
+    <prototype>ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID Target, CSTRING StyleName, CSTRING StyleType)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The object that requires styling.</param>
-      <param type="OBJECTID" name="Surface">The surface that will receive the style graphics.</param>
+      <param type="OBJECTID" name="Target">The surface or vector that will receive the style graphics.</param>
       <param type="CSTRING" name="StyleName">Optional.  Reference to a style that is alternative to the default.</param>
       <param type="CSTRING" name="StyleType">Optional.  Name of the type of style decoration to be applied.  Use in conjunction with StyleName.</param>
     </input>
@@ -27,10 +27,10 @@
 <p>This is an internal function created for use by classes in the GUI category.  It finds the style definition for the target Object and executes the procedure with the Surface as the graphics target.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">Operation successful.</error>
       <error code="NothingDone">There is nothing to process.</error>
       <error code="BadState">Object was in an incorrect state for the operation.</error>
-      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -47,7 +47,6 @@
 <p>Styles are defined in the order of the application's preference, the desktop preference, and then the default if no preference has been specified or a failure occurred.</p>
 <p>An application can define its preferred style by calling <function module="Surface">SetCurrentStyle</function> with the path of the XML style file.  This function can be called at any time, allowing the style to be changed on the fly.</p>
 <p>A desktop can set its preferred style by storing style information at <code>environment:config/style.xml</code>.</p>
-<p>To prevent security breaches, users can only set a style preference if the ability to make a choice is exposed by the desktop.  This is because style files can embed script functions that are executed within each application process space.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -67,9 +66,9 @@
     </description>
     <result type="ERROR">
       <error code="True">Operation successful.</error>
+      <error code="False">The result is false.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="False">The result is false.</error>
     </result>
   </function>
 
@@ -93,10 +92,10 @@
 <p>In the event that the owner of the surface is drawing to the graphics buffer at the time that you call this function, the results could be out of sync.  If this could be a problem, set the BDF_SYNC option in the Flags parameter.  Keep in mind that syncing has the negative side effect of having to wait for the other task to complete its draw process, which can potentially result in time lags.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -116,10 +115,10 @@
 <p>This expose routine will expose all content within a defined surface area, copying it to the display.  This will include all child surfaces that intersect with the region being exposed if you set the EXF_CHILDREN flag.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -178,8 +177,8 @@
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -196,9 +195,9 @@
 <p>For information on the available flags, please refer to the Flags field of the <class name="Surface">Surface</class> class.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -216,8 +215,8 @@
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="Args">Invalid arguments passed to function.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -249,8 +248,8 @@
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -268,8 +267,8 @@
 <p>Repeated calls to this function will nest.  To release a surface bitmap, call the <function module="Surface">UnlockBitmap</function> function.</p>
     </description>
     <result type="ERROR">
-      <error code="Args">Invalid arguments passed to function.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
     </result>
   </function>
 
@@ -304,10 +303,10 @@
 <p>The style definition does not affect default style values (i.e. fonts, colours and interface).  Style values can be set by accessing the glStyle XML object directly and updating the values (do this as early as possible in the startup process).</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">Operation successful.</error>
       <error code="CreateObject">A call to CreateObject() failed.</error>
       <error code="EmptyString">A required string value contains no characters.</error>
-      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -338,87 +337,113 @@
 <p>Call the UnlockBitmap() function to release a surface object from earlier calls to <function module="Surface">LockBitmap</function>.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
   <types>
+    <constants lookup="ARF" comment="AccessSurfaceList() flags">
+      <const name="NO_DELAY">Do not delay when waiting for access</const>
+      <const name="READ">Read only access required</const>
+      <const name="UPDATE">Update a single entry (limited write access)</const>
+      <const name="WRITE">Full write access required</const>
+    </constants>
+
     <constants lookup="BDF" comment="CopySurface() flags">
-      <const name="SYNC">Force synchronsiation so that changes to the source image do not occur mid-copy.</const>
       <const name="DITHER">Allow the use of dithering to improve image quality at a cost of speed.</const>
       <const name="REDRAW">Redraw the surface before performing the copy operation.</const>
+      <const name="SYNC">Force synchronsiation so that changes to the source image do not occur mid-copy.</const>
     </constants>
 
-    <constants lookup="SWIN" comment="Options for the Surface WindowType field.">
-      <const name="HOST">Default to the standard hosted window mode with full titlebar, borders and taskbar representation.</const>
-      <const name="TASKBAR">Create a borderless (custom) window with taskbar representation.</const>
-      <const name="ICON_TRAY">Create a borderless (custom) window with icon tray representation.</const>
-      <const name="NONE">Create a borderless (custom) window with no UI representation.</const>
+    <constants lookup="DRAG">
+      <const name="ANCHOR">The surface is being dragged and the mouse pointer is anchored to the surface.</const>
+      <const name="NONE">The surface is not being dragged.</const>
+      <const name="NORMAL">The surface is being dragged.</const>
     </constants>
 
-    <constants lookup="RNF">
-      <const name="FULL_SCREEN">Allow the surface to open as a new screen display</const>
-      <const name="POST_COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
-      <const name="INIT_ONLY">Synonym for HOST | TRANSPARENT | FAST_RESIZE | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</const>
-      <const name="FAST_RESIZE">Do not redraw when a surface is shrunk on either dimension.  If a dimension is expanded, only redraw the exposed portion.</const>
-      <const name="NO_PRECOMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
-      <const name="READ_ONLY">Synonym for HAS_FOCUS | REGION | CURSOR | AFTER_COPY</const>
-      <const name="GRAB_FOCUS">Helps application windows manage the user's focus within the window</const>
-      <const name="VIDEO">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
-      <const name="PERVASIVE_COPY">This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.</const>
-      <const name="STICKY">Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.</const>
-      <const name="PRECOPY">Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.</const>
-      <const name="HOST">Define host on initialisation to create a container that can host surfaces from other processes.</const>
-      <const name="NO_VERTICAL">Turns off all vertical movement (applies to the Move action only).</const>
-      <const name="NO_HORIZONTAL">Turns off all horizontal movement (applies to the Move action only).</const>
-      <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
-      <const name="TRANSPARENT">Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.</const>
-      <const name="FIXED_BUFFER">Passes the NEVER_SHRINK option to the surface bitmap</const>
-      <const name="IGNORE_FOCUS">Focus is diverted directly to the parent</const>
-      <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
-      <const name="VISIBLE">If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.</const>
-      <const name="NO_FOCUS">Prevents any kind of focussing on this object; no circumvention is possible</const>
-      <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
-      <const name="STICK_TO_BACK">Enable if the surface object must stick to the back of its container.</const>
-      <const name="HAS_FOCUS">Read-only.  If set, this flag indicates that the surface object currently has the focus.</const>
-      <const name="TOTAL_REDRAW">Perform a total redraw of the entire surface when drawing - no partial draws</const>
-      <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
-      <const name="SCROLL_CONTENT">If set, the surface object will send Move and MoveToPoint messages if the Scroll and ScrollToPoint actions are ever called on the object.</const>
-      <const name="FIXED_DEPTH">The target buffer always remains at the same depth</const>
-      <const name="VOLATILE">Synonym for PRECOPY | AFTER_COPY | CURSOR</const>
-      <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
-      <const name="REGION">Read/Init only.  This flag is set if the Region option has been used.</const>
-      <const name="STICK_TO_FRONT">Enable if the surface object must stick to the front of its container.</const>
-    </constants>
-
-    <constants lookup="ARF" comment="AccessSurfaceList() flags">
-      <const name="READ">Read only access required</const>
-      <const name="NO_DELAY">Do not delay when waiting for access</const>
-      <const name="WRITE">Full write access required</const>
-      <const name="UPDATE">Update a single entry (limited write access)</const>
+    <constants lookup="DSF">
+      <const name="NO_DRAW">Drawing and exposures are disabled</const>
+      <const name="NO_EXPOSE">Drawing is enabled, exposures are disabled</const>
     </constants>
 
     <constants lookup="EXF" comment="Optional flags for the ExposeSurface() function.">
+      <const name="ABSOLUTE">The supplied coordinates for exposure are absolute (relative to the display).</const>
+      <const name="ABSOLUTE_COORDS">The supplied coordinates for exposure are absolute (relative to the display).</const>
+      <const name="CHILDREN">If set, all child surfaces that intersect with exposed region will be included in the expose operation.</const>
       <const name="REDRAW_VOLATILE">Redraw every volatile object that intersects with the expose region, including internal volatile children.</const>
       <const name="REDRAW_VOLATILE_OVERLAP">Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.</const>
-      <const name="ABSOLUTE">The supplied coordinates for exposure are absolute (relative to the display).</const>
-      <const name="CHILDREN">If set, all child surfaces that intersect with exposed region will be included in the expose operation.</const>
-      <const name="ABSOLUTE_COORDS">The supplied coordinates for exposure are absolute (relative to the display).</const>
+    </constants>
+
+    <constants lookup="IRF" comment="Flags for RedrawSurface().">
+      <const name="FORCE_DRAW">Forces redrawing to the surface buffer (overrides visibility checks).</const>
+      <const name="IGNORE_CHILDREN">Do not draw child surfaces (this includes volatile children).</const>
+      <const name="IGNORE_NV_CHILDREN">Do not draw child surfaces unless they are volatile.</const>
+      <const name="RELATIVE">Coordinate arguments are expressed in relative format.  Right and Bottom reflect Width and Height respectively.</const>
+      <const name="SINGLE_BITMAP">Only draw children and/or siblings when they share our bitmap space.</const>
     </constants>
 
     <constants lookup="LVF" comment="drwLockBitmap() result flags">
       <const name="EXPOSE_CHANGES"/>
     </constants>
 
-    <constants lookup="DRAG">
-      <const name="NONE">The surface is not being dragged.</const>
-      <const name="ANCHOR">The surface is being dragged and the mouse pointer is anchored to the surface.</const>
-      <const name="NORMAL">The surface is being dragged.</const>
+    <constants lookup="RNF">
+      <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
+      <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.</const>
+      <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
+      <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
+      <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
+      <const name="FAST_RESIZE">Do not redraw when a surface is shrunk on either dimension.  If a dimension is expanded, only redraw the exposed portion.</const>
+      <const name="FIXED_BUFFER">Passes the NEVER_SHRINK option to the surface bitmap</const>
+      <const name="FIXED_DEPTH">The target buffer always remains at the same depth</const>
+      <const name="FULL_SCREEN">Allow the surface to open as a new screen display</const>
+      <const name="GRAB_FOCUS">Helps application windows manage the user's focus within the window</const>
+      <const name="HAS_FOCUS">Read-only.  If set, this flag indicates that the surface object currently has the focus.</const>
+      <const name="HOST">Define host on initialisation to create a container that can host surfaces from other processes.</const>
+      <const name="IGNORE_FOCUS">Focus is diverted directly to the parent</const>
+      <const name="INIT_ONLY">Synonym for HOST | TRANSPARENT | FAST_RESIZE | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</const>
+      <const name="NO_FOCUS">Prevents any kind of focussing on this object; no circumvention is possible</const>
+      <const name="NO_HORIZONTAL">Turns off all horizontal movement (applies to the Move action only).</const>
+      <const name="NO_PRECOMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
+      <const name="NO_VERTICAL">Turns off all vertical movement (applies to the Move action only).</const>
+      <const name="PERVASIVE_COPY">This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.</const>
+      <const name="POST_COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
+      <const name="PRECOPY">Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.</const>
+      <const name="READ_ONLY">Synonym for HAS_FOCUS | REGION | CURSOR | AFTER_COPY</const>
+      <const name="REGION">Read/Init only.  This flag is set if the Region option has been used.</const>
+      <const name="SCROLL_CONTENT">If set, the surface object will send Move and MoveToPoint messages if the Scroll and ScrollToPoint actions are ever called on the object.</const>
+      <const name="STICKY">Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.</const>
+      <const name="STICK_TO_BACK">Enable if the surface object must stick to the back of its container.</const>
+      <const name="STICK_TO_FRONT">Enable if the surface object must stick to the front of its container.</const>
+      <const name="TOTAL_REDRAW">Perform a total redraw of the entire surface when drawing - no partial draws</const>
+      <const name="TRANSPARENT">Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.</const>
+      <const name="VIDEO">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
+      <const name="VISIBLE">If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.</const>
+      <const name="VOLATILE">Synonym for PRECOPY | AFTER_COPY | CURSOR</const>
+      <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
+    </constants>
+
+    <constants lookup="RT">
+      <const name="ROOT"/>
+    </constants>
+
+    <constants lookup="SWIN" comment="Options for the Surface WindowType field.">
+      <const name="HOST">Default to the standard hosted window mode with full titlebar, borders and taskbar representation.</const>
+      <const name="ICON_TRAY">Create a borderless (custom) window with icon tray representation.</const>
+      <const name="NONE">Create a borderless (custom) window with no UI representation.</const>
+      <const name="TASKBAR">Create a borderless (custom) window with taskbar representation.</const>
     </constants>
 
   </types>
   <structs>
+    <struct name="SurfaceControl" comment="Internal structure returned by AccessList()">
+      <field name="ListIndex" type="LONG">Byte offset of the ordered list</field>
+      <field name="ArrayIndex" type="LONG">Byte offset of the list array</field>
+      <field name="EntrySize" type="LONG">Byte size of each entry in the array</field>
+      <field name="Total" type="LONG">Total number of entries currently in the list array</field>
+      <field name="ArraySize" type="LONG">Max limit of entries in the list array</field>
+    </struct>
+
     <struct name="SurfaceCoords">
       <field name="X" type="LONG">Horizontal coordinate</field>
       <field name="Y" type="LONG">Vertical coordinate</field>
@@ -426,14 +451,6 @@
       <field name="Height" type="LONG">Height</field>
       <field name="AbsX" type="LONG">Absolute X</field>
       <field name="AbsY" type="LONG">Absolute Y</field>
-    </struct>
-
-    <struct name="SurfaceControl" comment="Internal structure returned by AccessList()">
-      <field name="ListIndex" type="LONG">Byte offset of the ordered list</field>
-      <field name="ArrayIndex" type="LONG">Byte offset of the list array</field>
-      <field name="EntrySize" type="LONG">Byte size of each entry in the array</field>
-      <field name="Total" type="LONG">Total number of entries currently in the list array</field>
-      <field name="ArraySize" type="LONG">Max limit of entries in the list array</field>
     </struct>
 
     <struct name="SurfaceInfo" typeName="SURFACEINFO">
@@ -452,6 +469,32 @@
       <field name="BitsPerPixel" type="BYTE">Bits per pixel of the bitmap</field>
       <field name="BytesPerPixel" type="BYTE">Bytes per pixel of the bitmap</field>
       <field name="LineWidth" type="LONG">Line width of the bitmap, in bytes</field>
+    </struct>
+
+    <struct name="SurfaceList">
+      <field name="ParentID" type="OBJECTID">Object that owns the surface area</field>
+      <field name="SurfaceID" type="OBJECTID">ID of the surface area</field>
+      <field name="BitmapID" type="OBJECTID">Shared bitmap buffer, if available</field>
+      <field name="DisplayID" type="OBJECTID">Display</field>
+      <field name="DataMID" type="OBJECTID">For drwCopySurface()</field>
+      <field name="TaskID" type="OBJECTID">Task that owns the surface</field>
+      <field name="RootID" type="OBJECTID">RootLayer</field>
+      <field name="PopOverID" type="OBJECTID"></field>
+      <field name="Flags" type="LONG">Surface flags (RNF_VISIBLE etc)</field>
+      <field name="X" type="LONG">Horizontal coordinate</field>
+      <field name="Y" type="LONG">Vertical coordinate</field>
+      <field name="Width" type="LONG">Width</field>
+      <field name="Height" type="LONG">Height</field>
+      <field name="Left" type="LONG">Absolute X</field>
+      <field name="Right" type="LONG">Absolute right coordinate</field>
+      <field name="Bottom" type="LONG">Absolute bottom coordinate</field>
+      <field name="Top" type="LONG">Absolute Y</field>
+      <field name="Level" type="WORD">Level number within the hierarchy</field>
+      <field name="LineWidth" type="WORD">[applies to the bitmap owner]</field>
+      <field name="BytesPerPixel" type="BYTE">[applies to the bitmap owner]</field>
+      <field name="BitsPerPixel" type="BYTE">[applies to the bitmap owner]</field>
+      <field name="Cursor" type="BYTE">Preferred cursor image ID</field>
+      <field name="Opacity" type="UBYTE">Current opacity setting 0 - 255</field>
     </struct>
 
   </structs>

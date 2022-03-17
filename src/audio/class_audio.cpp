@@ -934,10 +934,10 @@ static ERROR AUDIO_Init(objAudio *Self, APTR Void)
    FUNCTION call;
 
    SET_FUNCTION_STDC(call, (APTR)task_removed);
-   SubscribeEvent(EVID_SYSTEM_TASK_REMOVED, &call, (APTR)(MAXINT)Self->Head.UniqueID, (APTR)&Self->TaskRemovedHandle);
+   SubscribeEvent(EVID_SYSTEM_TASK_REMOVED, &call, (APTR)(MAXINT)Self->Head.UID, (APTR)&Self->TaskRemovedHandle);
 
    SET_FUNCTION_STDC(call, (APTR)user_login);
-   SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, (APTR)(MAXINT)Self->Head.UniqueID, (APTR)&Self->UserLoginHandle);
+   SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, (APTR)(MAXINT)Self->Head.UID, (APTR)&Self->UserLoginHandle);
 
    return ERR_Okay;
 }
@@ -1240,7 +1240,7 @@ static ERROR AUDIO_SaveSettings(objAudio *Self, APTR Void)
          FID_Path|TSTR,   "user:config/audio.cfg",
          FID_Flags|TLONG, FL_NEW|FL_WRITE,
          TAGEND)) {
-      ERROR error = acSaveToObject(Self, file->UniqueID, 0);
+      ERROR error = acSaveToObject(Self, file->UID, 0);
       acFree(file);
       return error;
    }
@@ -1691,7 +1691,7 @@ static ERROR SET_MasterVolume(objAudio *Self, DOUBLE Value)
    setvol.Flags  = 0;
    if (setvol.Volume < 0) setvol.Volume = 0;
    if (setvol.Volume > 100) setvol.Volume = 100;
-   DelayMsg(MT_SndSetVolume, Self->Head.UniqueID, &setvol);
+   DelayMsg(MT_SndSetVolume, Self->Head.UID, &setvol);
 
    return ERR_Okay;
 }
@@ -1730,7 +1730,7 @@ static ERROR SET_Mute(objAudio *Self, LONG Value)
    };
    if (Value) setvol.Flags = SVF_MUTE;
    else setvol.Flags = SVF_UNMUTE;
-   DelayMsg(MT_SndSetVolume, Self->Head.UniqueID, &setvol);
+   DelayMsg(MT_SndSetVolume, Self->Head.UID, &setvol);
    return ERR_Okay;
 }
 
@@ -2088,7 +2088,7 @@ static ERROR audio_timer(objAudio *Self, LARGE Elapsed, LARGE CurrentTime)
             }
             else {
                log.warning("Audio error is terminal, self-destructing...");
-               DelayMsg(AC_Free, Self->Head.UniqueID, NULL);
+               DelayMsg(AC_Free, Self->Head.UID, NULL);
                return ERR_Failed;
             }
          }

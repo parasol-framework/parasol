@@ -432,7 +432,7 @@ void winInitCursors(struct WinCursor *Cursor, int Total)
 
 //****************************************************************************
 
-void winSetCursorPos(int X, int Y)
+void winSetCursorPos(double X, double Y)
 {
    POINT point;
    if (glMainScreen) {
@@ -617,8 +617,7 @@ static void HandleWheel(HWND window, WPARAM wparam, LPARAM lparam)
 
    int surface_id;
    if ((surface_id = winLookupSurfaceID(window))) {
-      double delta;
-      delta = -((FLOAT)GET_WHEEL_DELTA_WPARAM(wparam) / (FLOAT)WHEEL_DELTA) * 3;
+      double delta = -((DOUBLE)GET_WHEEL_DELTA_WPARAM(wparam) / (DOUBLE)WHEEL_DELTA) * 3.0;
       MsgWheelMovement(surface_id, delta);
    }
 }
@@ -898,6 +897,12 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          int wx, wy, wwidth, wheight, cx, cy;
          winGetCoords(window, &wx, &wy, &wwidth, &wheight, &cx, &cy, &cwidth, &cheight);
          MsgResizedWindow(winLookupSurfaceID(window), wx, wy, wwidth, wheight, cx, cy, cwidth, cheight);
+         return 0;
+      }
+
+      case WM_WINDOWPOSCHANGING: {
+         LPWINDOWPOS winpos = (LPWINDOWPOS)lParam;
+         winpos->flags |= SWP_NOCOPYBITS|SWP_NOREDRAW;
          return 0;
       }
 
@@ -1592,28 +1597,6 @@ LONG winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphama
 void winGetError(LONG Error, char *Buffer, LONG BufferSize)
 {
    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, Error, 0, Buffer, BufferSize, 0);
-}
-
-//****************************************************************************
-
-void winDrawEllipse(HDC hdc, LONG left, LONG top, LONG bottom, LONG right, LONG fill, UBYTE *rgb)
-{
-   HPEN pen, oldpen;
-   HBRUSH brush, oldbrush;
-
-   if ((pen = CreatePen(PS_SOLID, 1, RGB(rgb[0], rgb[1], rgb[2])))) {
-      if ((oldpen = SelectObject(hdc, pen))) {
-         if ((brush = CreateSolidBrush(RGB(rgb[0],rgb[1],rgb[2])))) {
-            if ((oldbrush = SelectObject(hdc, brush))) {
-               Ellipse(hdc, left, top, bottom, right);
-               SelectObject(hdc, oldbrush);
-            }
-            DeleteObject(brush);
-         }
-         SelectObject(hdc, oldpen);
-      }
-      DeleteObject(pen);
-   }
 }
 
 //****************************************************************************

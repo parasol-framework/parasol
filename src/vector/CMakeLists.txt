@@ -15,6 +15,8 @@ set_module_defaults (${MOD})
 target_compile_options (${MOD} PRIVATE
   "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-Wno-narrowing;-Wno-uninitialized>>")
 
+#add_definitions ("-DDBG_DRAW=1")
+
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/vector.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_arc.cpp"

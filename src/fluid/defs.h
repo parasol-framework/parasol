@@ -30,23 +30,24 @@ struct eventsub {
 };
 
 struct prvFluid {
-   lua_State *Lua;     // Lua instance
+   lua_State *Lua;                   // Lua instance
    struct actionmonitor *ActionList; // Action subscriptions managed by subscribe()
-   struct eventsub *EventList; // Event subscriptions managed by subscribeEvent()
-   struct finput *InputList; // Managed by the input interface
-   struct datarequest *Requests; // For drag and drop requests
-   struct KeyStore *Structs;
-   struct KeyStore *Includes; // Stores the status of loaded include files.
+   struct eventsub *EventList;       // Event subscriptions managed by subscribeEvent()
+   struct finput *InputList;         // Managed by the input interface
+   struct datarequest *Requests;     // For drag and drop requests
+   KeyStore *Structs;
+   KeyStore *Includes;               // Stores the status of loaded include files.
    APTR   FocusEventHandle;
-   struct DateTime CacheDate;
-   ERROR  CaughtError; // Set to -1 to enable catching of ERROR results.
+   std::unordered_map<OBJECTID, LONG> *StateMap;
+   DateTime CacheDate;
+   ERROR  CaughtError;               // Set to -1 to enable catching of ERROR results.
    LONG   CachePermissions;
    LONG   LoadedSize;
    UBYTE  Recurse;
    UBYTE  SaveCompiled;
-   UWORD  Catch; // Operating within a catch() block if > 0
+   UWORD  Catch;                     // Operating within a catch() block if > 0
    UWORD  RequireCounter;
-   LONG   ErrorLine;   // Line at which the last error was thrown.
+   LONG   ErrorLine;                 // Line at which the last error was thrown.
 };
 
 struct array {

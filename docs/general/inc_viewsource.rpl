@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<!DOCTYPE dmd PUBLIC "-//ROCKLYTE//DTD DMD 2.0//EN">
+<!DOCTYPE dmd PUBLIC "-//PARASOL//DTD DMD 2.0//EN">
 
 <template name="includeref">
   <p><a href="?include=[@file]"><print value="[@file]"/></a></p>
@@ -17,28 +17,21 @@
 
   <script type="Fluid">
 <![CDATA[
+   local srcfile = 'sdk:include/parasol/' .. args('include')
 
-   local result
-
-   local srcfile = "sdk:include/rocklyte/" .. args("include")
-
-   file = obj.new("file", { src=srcfile, flags="!read" } )
-
+   local file = obj.new('file', { src=srcfile, flags='!read' } )
    if (file == nil) then
       return("<p>Failed to load include file '" .. srcfile .. "'.</p>")
    end
 
-   local buf = mem.alloc(file.size+1, MEM_STRING)
-
-   error, result = file.acRead(buf, file.size)
-   if (error == ERR_Okay) then
-      buf.setchar(result, 0) /* Terminate the end of the buffer */
-
-      local str = buf.getstring(0, result)
-      result = "<p nowrap><font face=\"courier:10\"><pre><![CDATA[" .. str .. "]]" .. "></pre></font></p>"
+   local buf = string.rep(' ', file.size+1)
+   local err, result = file.acRead(buf, file.size)
+   if (err == ERR_Okay) then
+      buf[result] = 0 -- Terminate the end of the buffer
+      result = '<p nowrap><font face="courier:10"><pre><![CDATA[' .. buf .. ']]' .. '></pre></font></p>'
       return(result)
    else
-      return("<p>Failed to read content from the include file.</p>")
+      return('<p>Failed to read content from the include file.</p>')
    end
 ]]>
   </script>
@@ -52,28 +45,19 @@
 
   <script type="Fluid">
 <![CDATA[
-
-   local result
-
-   local srcfile = args("path") .. args("source")
-
-   file = obj.new("file", { src=srcfile, flags="!read" } )
-
+   local file = obj.new('file', { src=args('path') .. args('source'), flags='!read' } )
    if (file == nil) then
-      return("<p>Failed to load source file '" .. args("path") .. args("source") .. "'.</p>")
+      return("<p>Failed to load source file '" .. args('path') .. args('source') .. "'.</p>")
    end
 
-   local buf = mem.alloc(file.size+1, MEM_STRING)
-
-   error, result = file.acRead(buf, file.size)
-   if (error == ERR_Okay) then
-      buf.setchar(result, 0) /* Terminate the end of the buffer */
-
-      local str = buf.getstring(0, result)
-      result = "<p nowrap><font face=\"courier:10\"><pre><![CDATA[" .. str .. "]]" .. "></pre></font></p>"
+   local buf = string.rep(' ', file.size+1)
+   local err, result = file.acRead(buf, file.size)
+   if (err == ERR_Okay) then
+      buf[result] = 0 -- Terminate the end of the buffer
+      result = '<p nowrap><font face="courier:10"><pre><![CDATA[' .. buf .. ']]' .. '></pre></font></p>'
       return(result)
    else
-      return("<p>Failed to read content from the source file.</p>")
+      return('<p>Failed to read content from the source file.</p>')
    end
 ]]>
   </script>

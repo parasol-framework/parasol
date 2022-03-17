@@ -128,7 +128,7 @@ end
 
 function testStringify()
    local fl = obj.new('file', { src=glRawPath, flags='!READ|WRITE' } )
-   local buf = string.rep(nil, fl.size)
+   local buf = string.rep(' ', fl.size)
    local err, result = fl.acRead(buf, fl.size)
    if (err == ERR_Okay) then
       fl.acSeek(POS_START, 0)

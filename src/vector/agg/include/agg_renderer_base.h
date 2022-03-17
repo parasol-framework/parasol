@@ -95,6 +95,11 @@ namespace agg
             m_clip_box.y2 = y2;
         }
 
+        void clip_box_naked(rect_i &box)
+        {
+            m_clip_box = box;
+        }
+
         //--------------------------------------------------------------------
         bool inbox(int x, int y) const
         {
@@ -705,6 +710,7 @@ namespace agg
 
     private:
         pixfmt_type* m_ren;
+    public:
         rect_i       m_clip_box;
     };
 

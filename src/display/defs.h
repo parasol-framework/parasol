@@ -197,7 +197,6 @@ APTR winCreateCompatibleDC(void);
 APTR winCreateBitmap(LONG, LONG, LONG);
 void winDeleteDC(APTR);
 void winDeleteObject(void *);
-void winDrawEllipse(APTR, LONG, LONG, LONG, LONG, LONG, UBYTE *);
 void winDrawLine(APTR, LONG, LONG, LONG, LONG, UBYTE *);
 void winDrawRectangle(APTR, LONG, LONG, LONG, LONG, UBYTE, UBYTE, UBYTE);
 void winGetPixel(APTR, LONG, LONG, UBYTE *);

@@ -35,7 +35,7 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
 
       select_item(Item->Menu, Item, TRUE);
 
-      log.trace("exec_item: Item is an extension (%d).  Hiding %d", (Item->Menu) ? Item->Menu->Head.UniqueID : 0, (Item->Menu->CurrentMenu) ? Item->Menu->CurrentMenu->Head.UniqueID : 0);
+      log.trace("exec_item: Item is an extension (%d).  Hiding %d", (Item->Menu) ? Item->Menu->Head.UID : 0, (Item->Menu->CurrentMenu) ? Item->Menu->CurrentMenu->Head.UID : 0);
 
       // Hide any currently open sub-menu
 
@@ -47,7 +47,7 @@ static ERROR ITEM_Activate(objMenuItem *Item, APTR Void)
 
       objMenu *menu;
       if ((menu = Item->SubMenu)) {
-         log.trace("exec_item: Activating existing child menu #%d.", menu->Head.UniqueID);
+         log.trace("exec_item: Activating existing child menu #%d.", menu->Head.UID);
 
          // Hide any active sub menus that belong to the child
 
@@ -384,7 +384,7 @@ static ERROR load_submenu(objMenu *ParentMenu, objMenu **SubMenu, objMenuItem *I
    if (!NewObject(ID_MENU, NF_INTEGRAL, &menu)) {
       SetName(menu, Item->ObjectName ? (CSTRING)Item->ObjectName : (CSTRING)"submenu");
       menu->TargetID        = ParentMenu->TargetID;
-      menu->ParentID        = ParentMenu->Head.UniqueID;
+      menu->ParentID        = ParentMenu->Head.UID;
       menu->RootMenu        = ParentMenu->RootMenu;
       menu->Flags           = ParentMenu->Flags;
       menu->X               = info->X + info->Width - ParentMenu->RightMargin;

@@ -23,23 +23,9 @@ TODO: Add a SetPoint(DOUBLE X, DOUBLE Y) method for modifying existing points.
 static void generate_polygon(objVectorPoly *Vector)
 {
    DOUBLE view_width, view_height;
+   get_parent_size(Vector, view_width, view_height);
 
-   if (Vector->ParentView) {
-      if (Vector->ParentView->vpDimensions & DMF_WIDTH) view_width = Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) view_width = Vector->ParentView->vpViewWidth;
-      else view_width = Vector->Scene->PageWidth;
-
-      if (Vector->ParentView->vpDimensions & DMF_HEIGHT) view_height = Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) view_height = Vector->ParentView->vpViewHeight;
-      else view_height = Vector->Scene->PageHeight;
-   }
-   else if (Vector->Scene) {
-      view_width  = Vector->Scene->PageWidth;
-      view_height = Vector->Scene->PageHeight;
-   }
-   else return;
-
-   if ((Vector->Points) AND (Vector->TotalPoints >= 2)) {
+   if ((Vector->Points) and (Vector->TotalPoints >= 2)) {
       DOUBLE top = DBL_MAX, bottom = DBL_MIN; // This is for caching the polygon boundary.
       DOUBLE left = DBL_MAX, right = DBL_MIN;
 
@@ -47,7 +33,7 @@ static void generate_polygon(objVectorPoly *Vector)
       DOUBLE y = Vector->Points[0].Y;
       if (Vector->Points[0].XRelative) x *= view_width;
       if (Vector->Points[0].YRelative) y *= view_height;
-      Vector->BasePath->move_to(x, y);
+      Vector->BasePath.move_to(x, y);
 
       for (LONG i=1; i < Vector->TotalPoints; i++) {
          x = Vector->Points[i].X;
@@ -59,10 +45,10 @@ static void generate_polygon(objVectorPoly *Vector)
          if (Vector->Points[i].Y < top)    top    = y;
          if (Vector->Points[i].X > right)  right  = x;
          if (Vector->Points[i].Y > bottom) bottom = y;
-         Vector->BasePath->line_to(x, y);
+         Vector->BasePath.line_to(x, y);
       }
 
-      if ((Vector->TotalPoints > 2) AND (Vector->Closed)) Vector->BasePath->close_polygon();
+      if ((Vector->TotalPoints > 2) and (Vector->Closed)) Vector->BasePath.close_polygon();
 
       // Cache the polygon boundary values.
       Vector->X1 = left;
@@ -70,7 +56,6 @@ static void generate_polygon(objVectorPoly *Vector)
       Vector->X2 = right;
       Vector->Y2 = bottom;
    }
-   else FMSG("gen_polygon","Not enough points defined.");
 }
 
 //****************************************************************************
@@ -84,10 +69,10 @@ static ERROR read_points(objVectorPoly *Self, VectorPoint **Array, LONG *PointCo
 
    LONG count = 0;
    for (LONG pos=0; Value[pos];) {
-      if ((Value[pos] >= '0') AND (Value[pos] <= '9')) {
+      if ((Value[pos] >= '0') and (Value[pos] <= '9')) {
          count++;
          // Consume all characters up to the next comma or whitespace.
-         while (Value[pos]) { if ((Value[pos] IS ',') OR (Value[pos] <= 0x20)) break; pos++; }
+         while (Value[pos]) { if ((Value[pos] IS ',') or (Value[pos] <= 0x20)) break; pos++; }
       }
       else pos++;
    }
@@ -100,8 +85,8 @@ static ERROR read_points(objVectorPoly *Self, VectorPoint **Array, LONG *PointCo
       if (!AllocMemory(sizeof(VectorPoint) * count, MEM_DATA, Array, NULL)) {
          LONG point = 0;
          LONG index = 0;
-         for (LONG pos=0; (Value[pos]) AND (point < points);) {
-            if (((Value[pos] >= '0') AND (Value[pos] <= '9')) OR (Value[pos] IS '-') OR (Value[pos] IS '+')) {
+         for (LONG pos=0; (Value[pos]) and (point < points);) {
+            if (((Value[pos] >= '0') and (Value[pos] <= '9')) or (Value[pos] IS '-') or (Value[pos] IS '+')) {
                if (!(index & 0x1)) {
                   Array[0][point].X = StrToFloat(Value + pos);
                }
@@ -110,7 +95,7 @@ static ERROR read_points(objVectorPoly *Self, VectorPoint **Array, LONG *PointCo
                   point++;
                }
                index++;
-               while (Value[pos]) { if ((Value[pos] IS ',') OR (Value[pos] <= 0x20)) break; pos++; }
+               while (Value[pos]) { if ((Value[pos] IS ',') or (Value[pos] <= 0x20)) break; pos++; }
             }
             else pos++;
          }
@@ -145,23 +130,21 @@ static ERROR POLYGON_Move(objVectorPoly *Self, struct acMove *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   LONG i;
-
-   // Check if any of the polygon's points are relative, in which case we have to cancel the move.
-   for (i=0; i < Self->TotalPoints; i++) {
-      if ((Self->Points[i].XRelative) OR (Self->Points[i].YRelative)) return ERR_InvalidValue;
+   // If any of the polygon's points are relative then we have to cancel the move.
+   for (LONG i=0; i < Self->TotalPoints; i++) {
+      if ((Self->Points[i].XRelative) or (Self->Points[i].YRelative)) return ERR_InvalidValue;
    }
 
-   for (i=0; i < Self->TotalPoints; i++) {
-      Self->Points[i].X += Args->XChange;
-      Self->Points[i].Y += Args->YChange;
+   for (LONG i=0; i < Self->TotalPoints; i++) {
+      Self->Points[i].X += Args->DeltaX;
+      Self->Points[i].Y += Args->DeltaY;
    }
 
    // Alter the boundary.
-   Self->X1 += Args->XChange;
-   Self->Y1 += Args->YChange;
-   Self->X2 += Args->XChange;
-   Self->Y2 += Args->YChange;
+   Self->X1 += Args->DeltaX;
+   Self->Y1 += Args->DeltaY;
+   Self->X2 += Args->DeltaX;
+   Self->Y2 += Args->DeltaY;
    mark_dirty(Self, RC_TRANSFORM);
    return ERR_Okay;
 }
@@ -186,7 +169,7 @@ static ERROR POLYGON_MoveToPoint(objVectorPoly *Self, struct acMoveToPoint *Args
 
    // Check if any of the polygon's points are relative, in which case we have to cancel the move.
    for (i=0; i < Self->TotalPoints; i++) {
-      if ((Self->Points[i].XRelative) OR (Self->Points[i].YRelative)) return ERR_InvalidValue;
+      if ((Self->Points[i].XRelative) or (Self->Points[i].YRelative)) return ERR_InvalidValue;
    }
 
    // The provided (X,Y) coordinates will be treated as the polygon's new central position.
@@ -219,8 +202,8 @@ static ERROR POLYGON_MoveToPoint(objVectorPoly *Self, struct acMoveToPoint *Args
 static ERROR POLYGON_NewObject(objVectorPoly *Self, APTR Void)
 {
    Self->GeneratePath = (void (*)(rkVector *))&generate_polygon;
-   Self->Closed = TRUE;
-   Self->TotalPoints = 2;
+   Self->Closed       = TRUE;
+   Self->TotalPoints  = 2;
    if (AllocMemory(sizeof(VectorPoint) * Self->TotalPoints, MEM_DATA, &Self->Points, NULL)) return ERR_AllocMemory;
    return ERR_Okay;
 }
@@ -369,7 +352,7 @@ static ERROR POLY_SET_Points(objVectorPoly *Self, CSTRING Value)
 TotalPoints: The total number of coordinates defined in the Points field.
 
 TotalPoints is a read-only field value that reflects the total number of coordinates that have been set in the
-#Points array.
+#Points array.  The minimum value is 2.
 
 *****************************************************************************/
 
@@ -394,7 +377,7 @@ a percentage.
 static ERROR POLY_GET_X1(objVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[0].X;
-   if ((Value->Type & FD_PERCENTAGE) AND (Self->Points[0].XRelative)) val = val * 100;
+   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[0].XRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -434,7 +417,7 @@ a percentage.
 static ERROR POLY_GET_X2(objVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[1].X;
-   if ((Value->Type & FD_PERCENTAGE) AND (Self->Points[1].XRelative)) val = val * 100;
+   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[1].XRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -474,7 +457,7 @@ a percentage.
 static ERROR POLY_GET_Y1(objVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[0].Y;
-   if ((Value->Type & FD_PERCENTAGE) AND (Self->Points[0].YRelative)) val = val * 100;
+   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[0].YRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -514,7 +497,7 @@ a percentage.
 static ERROR POLY_GET_Y2(objVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[1].Y;
-   if ((Value->Type & FD_PERCENTAGE) AND (Self->Points[1].YRelative)) val = val * 100;
+   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[1].YRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;

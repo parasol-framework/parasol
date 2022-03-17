@@ -176,7 +176,7 @@ of ScriptArg structures.  The following example illustrates such a list:
 
 <pre>
 struct ScriptArg args[] = {
-   { "Object",       FD_OBJECTID, { .Long = Self->Head.UniqueID } },
+   { "Object",       FD_OBJECTID, { .Long = Self->Head.UID } },
    { "Output",       FD_PTR,      { .Address = output } },
    { "OutputLength", FD_LONG,     { .Long = len } }
 };
@@ -618,7 +618,7 @@ static ERROR SET_Name(objScript *Self, CSTRING Name)
 PRIVATE: Owner
 
 This field is implemented locally because the owner is temporarily modified during script activation (the owner is set
-to the user's task).  Our implementation returns the true owner during this time, which affects DML and Fluid code that
+to the user's task).  Our implementation returns the true owner during this time, which affects Fluid code that
 attempts to reference script.owner.  This does not affect the Core's view of the owner or C calls to GetOwner() because
 they read the OwnerID field directly.
 
@@ -661,10 +661,6 @@ specific routine whenever the script is activated with the Activate action.
 
 If this field is not set, the first procedure in the script, or the 'main' procedure (as defined by the script type) is
 executed by default.
-
-A special feature in DML allows the use of XPaths for running code at a specific point in the source.  Ensure that the
-xpath string starts with a forward slash and this special run-case will be enabled.  The target does not necessarily
-need to start with a 'dml' tag, although this is recommended.
 
 *****************************************************************************/
 

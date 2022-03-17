@@ -11,7 +11,7 @@
    struct rkMenuItem *HighlightItem;  /* Index of the item that is currently highlighted */ \
    struct rkMenuItem *ParentItem; \
    struct rkMenu *CurrentMenu;        /* Currently active sub-menu */ \
-   objScrollbar *Scrollbar; \
+   struct rkScrollbar *Scrollbar; \
    objXML *prvXML; \
    objPicture *Checkmark; \
    objConfig *Translation;      /* Translation data (config object) */ \

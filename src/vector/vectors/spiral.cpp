@@ -34,8 +34,8 @@ static void generate_spiral(objVectorSpiral *Vector)
       DOUBLE y = (Vector->Offset + Vector->Scale * angle) * sin(angle);
       if ((ABS(x) > Vector->Radius) or (ABS(y) > Vector->Radius)) break;
 
-      if (!i) Vector->BasePath->move_to(Vector->Radius + x, Vector->Radius + y);
-      else Vector->BasePath->line_to(Vector->Radius + x, Vector->Radius + y);
+      if (!i) Vector->BasePath.move_to(Vector->Radius + x, Vector->Radius + y);
+      else Vector->BasePath.line_to(Vector->Radius + x, Vector->Radius + y);
 
       angle += Vector->Step;
    }
@@ -48,23 +48,9 @@ static void get_spiral_xy(objVectorSpiral *Vector)
    DOUBLE cx = Vector->CX, cy = Vector->CY;
    DOUBLE radius = Vector->Radius;
 
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_X) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) cx *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) cx *= Vector->ParentView->vpViewWidth;
-      else cx *= Vector->Scene->PageWidth;
-   }
-
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) cy *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) cy *= Vector->ParentView->vpViewHeight;
-      else cy *= Vector->Scene->PageHeight;
-   }
-
-   if (Vector->Dimensions & DMF_RELATIVE_RADIUS) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) radius *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) radius *= Vector->ParentView->vpViewWidth;
-      else radius *= Vector->Scene->PageWidth;
-   }
+   if (Vector->Dimensions & DMF_RELATIVE_CENTER_X) cx *= get_parent_width(Vector);
+   if (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) cy *= get_parent_height(Vector);
+   if (Vector->Dimensions & DMF_RELATIVE_RADIUS) radius *= get_parent_width(Vector);
 
    Vector->FinalX = cx - radius;
    Vector->FinalY = cy - radius;

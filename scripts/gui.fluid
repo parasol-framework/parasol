@@ -6,7 +6,8 @@ if (gui == nil) then
       fonts = { },
       colours = { },
       interface = { },
-      rgb = { }
+      rgb = { },
+      counter = 0
    }
 
    do
@@ -22,8 +23,8 @@ if (gui == nil) then
                if nz(name) then
                   err, font.face = xml.mtGetAttrib(TagIndex, 'face')
                   if nz(font.face) then
-                     err, font.size = xml.mtGetAttrib(TagIndex, 'size')
-                     err, font.colour = xml.mtGetAttrib(TagIndex, 'colour')
+                     err, font.size      = xml.mtGetAttrib(TagIndex, 'size')
+                     err, font.colour    = xml.mtGetAttrib(TagIndex, 'colour')
                      err, font.highlight = xml.mtGetAttrib(TagIndex, 'highlight')
                      gui.fonts[name] = font
                      total = total + 1
@@ -93,9 +94,10 @@ end
 gui.getFontHeight = function(Font)
    if not Font.height then
       local fnt = obj.new('font', { face=Font.face })
-      Font.height = fnt.maxHeight
+      Font.height = fnt.height
+      Font.maxHeight = fnt.maxHeight
    end
-   return Font.height
+   return Font.maxHeight, Font.height
 end
 
 ------------------------------------------------------------------------------
@@ -112,40 +114,6 @@ gui.bitmapColour = function(Bitmap, ColourName)
    local rgb = gui.rgb[ColourName]
    local err, col = Bitmap.mtGetColour(rgb.r, rgb.g, rgb.b, rgb.a)
    return col
-end
-
-------------------------------------------------------------------------------
--- Create a border inside a surface, suitable for a basic rectangular widget.  Options include:
---
---   fill:  Fill the box with the default solid colour or pattern.
---   style: Set to 'input', 'output' or 'text'.
---   updateMargins: Update the surface margins to accomodate the border thickness.
-
-gui.insideBorder = function(Surface, Options)
-   local thickness = 0
-   if (Options.style == 'input') then thickness = gui.pixel(gui.interface.inputBorder) end
-   if (Options.style == 'output') then thickness = gui.pixel(gui.interface.outputBorder) end
-   if (Options.style == 'text') then thickness = gui.pixel(gui.interface.inputBorder) end
-
-   if (thickness > 0) then
-      if (Options.updateMargins) then
-         box.leftMargin   = thickness
-         box.rightMargin  = thickness
-         box.topMargin    = thickness
-         box.bottomMargin = thickness
-      end
-   end
-
-   Surface.mtAddCallback(function(Surface, Bitmap)
-      for i=0,thickness-1 do
-         Bitmap.mtDrawRectangle(i, i, Surface.width-(i*2), Surface.height-(i*2), gui.bitmapColour(Bitmap, 'border'), 0)
-      end
-
-      if Options.fill then
-         Bitmap.mtDrawRectangle(thickness, thickness, Surface.width-(thickness*2), Surface.height-(thickness*2),
-            gui.bitmapColour(Bitmap, 'background'), BAF_FILL)
-      end
-   end)
 end
 
 ------------------------------------------------------------------------------
@@ -223,7 +191,7 @@ end
 -- Convert an RGB table to a SVG colour string
 
 gui.rgbToSVG = function(Value)
-   return string.format('rgb(%d,%d,%d,%d)', Value.r, Value.g, Value.b, Value.a)
+   return string.format('rgb(%d,%d,%d,%d)', Value.r, Value.g, Value.b, nz(Value.a,255))
 end
 
 ------------------------------------------------------------------------------
@@ -332,12 +300,14 @@ end
 ------------------------------------------------------------------------------
 -- Generate a simple gradient fill for vectors.
 
-gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units)
+gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, IgnoreClashes)
+   if not Name then error('A name for the gradient is required.') end
+
    local stops = { }
    local i = 0
    for _, col in pairs(Colours) do
       local vc = struct.new('GradientStop')
-      vc.offset    = nz(col.offset, i / #Colours)
+      vc.offset    = nz(col.offset, i / (#Colours-1))
       vc.rgb.red   = col.r / 255
       vc.rgb.green = col.g / 255
       vc.rgb.blue  = col.b / 255
@@ -351,9 +321,64 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units)
    end
 
    local gradient = Scene.new('VectorGradient', {
-      type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
+      name=Name, type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
    })
-   Scene.mtAddDef(Name, gradient)
+
+   if IgnoreClashes then -- Do not fail if a resource with the same name already exists (nb: will return nil).
+      local ex = catch(function()
+         Scene.mtAddDef(Name, gradient)
+      end)
+
+      if (ex) then
+         if (ex.code == ERR_ResourceExists) then
+            gradient.acFree()
+            return nil
+         else
+            error(ex)
+         end
+      end
+   else
+      Scene.mtAddDef(Name, gradient)
+   end
+
    return gradient
 end
 
+------------------------------------------------------------------------------
+-- Return an icon styled with the current theme.  The icon is used as a fill, i.e. "url(#Path)".  Apply it to a
+-- VectorRectangle if you want to use the icon as a cached bitmap (fast), or to a VectorViewport for live
+-- rendering (typically needed for scaling and transforms).
+
+gui.createIcon = function(Scene, Path, Size)
+   if not Size then Size = 16 end
+   local lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
+   local icon = { }
+   gui.counter = gui.counter + 1
+   local gname   = 'icon_grd' .. gui.counter
+   icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size })
+   icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lThemeColour.first, lThemeColour.last }, 0, 0, 0, 1)
+   icon.svg      = obj.new('svg', { target=icon.pattern.viewport, path='icons:' .. Path .. '.svg' })
+   gui.applyFill(icon.pattern.viewport, 'url(#' .. gname .. ')')
+
+   -- Adjust gradient size to match the viewport height.
+
+   local viewport = icon.pattern.viewport.child
+   if (viewport != nil) then
+      while (child != nil) do
+         if (child.class.id == ID_VECTORVIEWPORT) then
+            viewport = child
+            break
+         end
+      end
+
+      if (viewport.viewHeight < viewport.viewWidth) then
+         icon.gradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
+         icon.gradient.y2 = icon.gradient.y1 + viewport.viewWidth
+      else
+         icon.gradient.y1 = viewport.viewY
+         icon.gradient.y2 = viewport.viewY + viewport.viewHeight
+      end
+   end
+
+   return icon
+end

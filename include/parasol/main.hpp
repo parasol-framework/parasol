@@ -35,7 +35,7 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing shared mem
 
 //****************************************************************************
 
-template <class T>
+template <class T = struct Head>
 class ScopedObject { // C++ wrapper for automatically freeing an object
    public:
       T *obj;
@@ -46,9 +46,10 @@ class ScopedObject { // C++ wrapper for automatically freeing an object
 };
 
 //****************************************************************************
+// Scoped object locker.  Use granted() to confirm that the lock has been granted.
 
-template <class T>
-class ScopedObjectLock { // C++ wrapper for automatically freeing an object
+template <class T = struct Head>
+class ScopedObjectLock { // C++ wrapper for automatically releasing an object
    public:
       ERROR error;
       T *obj;
@@ -167,7 +168,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          branches++;
       }
       #else
-      void traceBranch(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { }
+      void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) { }
       #endif
 
       void debranch() {

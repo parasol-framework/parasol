@@ -910,7 +910,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
 
    if (glLogLevel >= 9) log.function("MessageMID: %d, Type: %d, Data: %p, Size: %d", MessageMID, Type, Data, Size);
 
-   if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d, context #%d.", MessageMID, tlContext->Object->UniqueID);
+   if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d, context #%d.", MessageMID, tlContext->Object->UID);
 
    if ((!Type) or (Size < 0)) return log.warning(ERR_Args);
 
@@ -1087,7 +1087,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
 -FUNCTION-
 WaitForObjects: Process incoming messages while waiting on objects to complete their activities.
 
-The WaitForObjects() function acts as a front-end to ~ProcessMessages(), providing an additional feature of being
+The WaitForObjects() function acts as a front-end to ~ProcessMessages(), with the extension of being
 able to wait for a series of objects that must signal an end to their activities.  An object can be signalled via
 the Signal() action.  Termination of a monitored object is also treated as a signal.  The function will return once
 ALL of the objects are signalled or a time-out occurs.
@@ -1138,9 +1138,9 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
          ObjectSignals[i].Object->Flags &= ~NF_SIGNALLED;
       }
       else if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
-         log.debug("Monitoring object #%d", ObjectSignals[i].Object->UniqueID);
+         log.debug("Monitoring object #%d", ObjectSignals[i].Object->UID);
          if (SubscribeAction(ObjectSignals[i].Object, AC_Signal)) error = ERR_Failed;
-         glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UniqueID, ObjectSignals[i]));
+         glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
       }
       else error = ERR_Failed;
    }

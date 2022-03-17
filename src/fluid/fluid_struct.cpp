@@ -77,6 +77,7 @@ ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, CPTR Address)
 {
    auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
    structentry *def;
+
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
       return struct_to_table(Lua, NULL, def, Address);
    }
@@ -823,13 +824,13 @@ static int struct_destruct(lua_State *Lua)
 //****************************************************************************
 // Register the fstruct interface.
 
-static const luaL_reg structlib_functions[] = {
+static const luaL_Reg structlib_functions[] = {
    { "new",   struct_new },
    { "size",  struct_size },
    { NULL, NULL }
 };
 
-static const luaL_reg structlib_methods[] = {
+static const luaL_Reg structlib_methods[] = {
    { "__index",    struct_get },
    { "__newindex", struct_set },
    { "__len",      struct_len },

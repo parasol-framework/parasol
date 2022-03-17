@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 1000 1000" width="1000" height="1000">
+  <defs>
+    <pattern id="Pattern" x="0" y="0" width="75" height="100" patternUnits="userSpaceOnUse" patternTransform="rotate(20,20,20)">
+      <rect width="75" height="100" fill="slategray"/>
+      <circle cx="75" cy="50" r="25" stroke-width="12" stroke="#9aa6b2" fill="none"/>
+      <circle cx="0" r="25" stroke-width="12" stroke="#9aa6b2" fill="none"/>
+      <circle cy="100" r="25" stroke-width="12" stroke="#9aa6b2" fill="none"/>
+    </pattern>
+  </defs>
+
+  <rect width="100%" height="100%" fill="url(#Pattern)"  />
+</svg>

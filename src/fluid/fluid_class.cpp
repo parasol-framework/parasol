@@ -97,6 +97,7 @@ static void free_all(objScript *Self)
 
    clear_subscriptions(Self);
 
+   if (prv->StateMap) { delete prv->StateMap; prv->StateMap = NULL; }
    if (prv->Structs) { FreeResource(prv->Structs); prv->Structs = NULL; }
    if (prv->Includes) { FreeResource(prv->Includes); prv->Includes = NULL; }
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
@@ -225,6 +226,9 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *
 
 //****************************************************************************
 // Action notifications arrive when the user has used object.subscribe() in the Fluid script.
+//
+// function(ObjectID, Args, Reference)
+
 
 static ERROR FLUID_ActionNotify(objScript *Self, struct acActionNotify *Args)
 {
@@ -458,7 +462,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
                FID_Permissions|TLONG, prv->CachePermissions,
                TAGEND)) {
 
-            save_binary(Self, cachefile->Head.UniqueID);
+            save_binary(Self, cachefile->Head.UID);
 
             SetPointer(cachefile, FID_Date, &prv->CacheDate);
             acFree(cachefile);

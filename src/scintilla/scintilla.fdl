@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Scintilla", copyright="Paul Manias © 2005-2020", version=1.0 }, function()
+module({ name="Scintilla", copyright="Paul Manias © 2005-2022", version=1.0 }, function()
   c_include("<parasol/modules/display.h>",
   "<parasol/modules/font.h>",
   "<parasol/modules/surface.h>",
@@ -78,8 +78,6 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2020", version=1.0 }, 
     large(SEF) EventFlags      # SEF flags.  Indicates the events that will be reported.
     obj(Font) Font             # Font to use for the text
     cstr Path                  # Source text file
-    oid VScroll                # Reference to a vertical scroll bar
-    oid HScroll                # References to a horizontal scroll bar
     oid Surface                # The object that should be rendered to
     int(SCF) Flags             # Optional flags
     oid Focus
@@ -92,7 +90,6 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2020", version=1.0 }, 
     struct(RGB8) BkgdColour    # Colour for text background
     struct(RGB8) CursorColour  # The colour of the cursor
     struct(RGB8) TextColour    # The colour of foreground text
-    oid ScrollTarget           # Surface for created scrollbars
     int CursorRow              # Current cursor row
     int CursorCol              # Current cursor column
     int(SCLEX) Lexer           # Chosen lexer
@@ -107,8 +104,6 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2020", version=1.0 }, 
    objFont *ItalicFont;      // Italic version of the current font
    objFont *BIFont;          // Bold-Italic version of the current font
    ScintillaParasol *API;
-   objScrollbar *HScrollbar;
-   objScrollbar *VScrollbar;
    APTR   prvKeyEvent;
    STRING StringBuffer;
    LONG   LongestLine;         // Longest line in the document

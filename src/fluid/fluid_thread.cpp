@@ -56,7 +56,7 @@ static int thread_script(lua_State *Lua)
 
       objScript *script;
       if (!CreateObject(ID_SCRIPT, 0, &script,
-            FID_Owner|TLONG,    thread->Head.UniqueID,
+            FID_Owner|TLONG,    thread->Head.UID,
             FID_Statement|TSTR, statement,
             TAGEND)) {
 
@@ -65,7 +65,7 @@ static int thread_script(lua_State *Lua)
             thread_callback cb = {
                .callbackID   = luaL_ref(Lua, LUA_REGISTRYINDEX),
                .threadScript = script,
-               .mainScriptID = Lua->Script->Head.UniqueID
+               .mainScriptID = Lua->Script->Head.UID
             };
             thSetData(thread, &cb, sizeof(cb));
 
@@ -342,14 +342,14 @@ static int thread_method(lua_State *Lua)
 //****************************************************************************
 // Register the thread interface.
 
-static const luaL_reg threadlib_functions[] = {
+static const luaL_Reg threadlib_functions[] = {
    { "action", thread_action },
    { "method", thread_method },
    { "script", thread_script },
    { NULL, NULL }
 };
 
-static const luaL_reg threadlib_methods[] = {
+static const luaL_Reg threadlib_methods[] = {
    //{ "__index",    thread_get },
    //{ "__newindex", thread_set },
    { NULL, NULL }
@@ -357,7 +357,9 @@ static const luaL_reg threadlib_methods[] = {
 
 void register_thread_class(lua_State *Lua)
 {
-   MSG("Registering thread interface.");
+   parasol::Log log;
+
+   log.trace("Registering thread interface.");
 
    luaL_newmetatable(Lua, "Fluid.thread");
    lua_pushstring(Lua, "__index");

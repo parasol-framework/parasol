@@ -76,5 +76,6 @@ header({ }, function()
     "NEW",
     "TIMEOUT",
     "SIGNALS",
-    "LOCK")
+    "LOCK",
+    "STATE")
 end)

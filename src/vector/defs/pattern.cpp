@@ -6,11 +6,16 @@ Please note that this is not an extension of the Vector class.  It is used for t
 VectorPattern: Provides support for the filling and stroking of vectors with patterns.
 
 The VectorPattern class is used by Vector painting algorithms to fill and stroke vectors with pre-rendered patterns.
-This is achieved by initialising a VectorPattern object with the desired settings and then registering it with
-a @VectorScene via the <method class="VectorScene">AddDef</> method.
+It is the most efficient way of rendering a common set of graphics multiple times.
 
+The VectorPattern must be registered with a @VectorScene via the <method class="VectorScene">AddDef</> method.
 Any vector within the target scene will be able to utilise the pattern for filling or stroking by referencing its
 name through the @Vector.Fill and @Vector.Stroke fields.  For instance 'url(#dots)'.
+
+A special use case is made for patterns that are applied as a fill operation in @VectorViewport objects.  In this
+case the renderer will dynamically render the pattern as a background within the viewport.  This ensures that the
+pattern is rendered at maximum fidelity whenever it is used, and not affected by bitmap clipping restrictions.  It
+should be noted that this means the image caching feature will be disabled.
 
 It is strongly recommended that the VectorPattern is owned by the @VectorScene that is handling the
 definition.  This will ensure that the VectorPattern is deallocated when the scene is destroyed.
@@ -24,7 +29,7 @@ contains the pattern content.
 static ERROR PATTERN_Draw(objVectorPattern *Self, struct acDraw *Args)
 {
    if (Self->Bitmap) {
-      if ((Self->Scene->PageWidth != Self->Bitmap->Width) OR (Self->Scene->PageHeight != Self->Bitmap->Height)) {
+      if ((Self->Scene->PageWidth != Self->Bitmap->Width) or (Self->Scene->PageHeight != Self->Bitmap->Height)) {
          acResize(Self->Bitmap, Self->Scene->PageWidth, Self->Scene->PageHeight, 32);
       }
    }
@@ -46,15 +51,15 @@ static ERROR PATTERN_Draw(objVectorPattern *Self, struct acDraw *Args)
 
 static ERROR PATTERN_Free(objVectorPattern *Self, APTR Void)
 {
-   VectorTransform *next;
-   for (auto scan=Self->Transforms; scan; scan=next) {
+   VectorMatrix *next;
+   for (auto scan=Self->Matrices; scan; scan=next) {
       next = scan->Next;
       FreeResource(scan);
    }
-   Self->Transforms = NULL;
+   Self->Matrices = NULL;
 
    if (Self->Bitmap) { acFree(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Scene) { acFree(Self->Scene); Self->Scene = NULL; }
+   if (Self->Scene)  { acFree(Self->Scene); Self->Scene = NULL; }
 
    return ERR_Okay;
 }
@@ -176,69 +181,21 @@ A transform can be applied to the pattern by setting this field with an SVG comp
 
 *****************************************************************************/
 
-static ERROR PATTERN_SET_Transform(objVectorPattern *Self, CSTRING Value)
+static ERROR PATTERN_SET_Transform(objVectorPattern *Self, CSTRING Commands)
 {
-   if (!Value) return ERR_NullArgs;
+   parasol::Log log;
 
-   // Clear any existing transforms.
+   if (!Commands) return log.warning(ERR_InvalidValue);
 
-   VectorTransform *next;
-   for (auto scan=Self->Transforms; scan; scan=next) {
-      next = scan->Next;
-      FreeResource(scan);
+   if (!Self->Matrices) {
+      VectorMatrix *matrix;
+      if (!vecNewMatrix(Self, &matrix)) return vecParseTransform(matrix, Commands);
+      else return ERR_CreateResource;
    }
-   Self->Transforms = NULL;
-
-   VectorTransform *transform;
-
-   CSTRING str = Value;
-   while (*str) {
-      if (!StrCompare(str, "matrix", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_MATRIX))) {
-            str = read_numseq(str+6, &transform->Matrix[0], &transform->Matrix[1], &transform->Matrix[2], &transform->Matrix[3], &transform->Matrix[4], &transform->Matrix[5], TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "translate", 9, 0)) {
-         if ((transform = add_transform(Self, VTF_TRANSLATE))) {
-            DOUBLE x = 0;
-            DOUBLE y = 0;
-            str = read_numseq(str+9, &x, &y, TAGEND);
-            transform->X += x;
-            transform->Y += y;
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "rotate", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_ROTATE))) {
-            str = read_numseq(str+6, &transform->Angle, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "scale", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SCALE))) {
-            str = read_numseq(str+5, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewX", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW))) {
-            transform->X = 0;
-            str = read_numseq(str+5, &transform->X, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewY", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW))) {
-            transform->Y = 0;
-            str = read_numseq(str+5, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else str++;
+   else {
+      vecResetMatrix(Self->Matrices);
+      return vecParseTransform(Self->Matrices, Commands);
    }
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -365,7 +322,7 @@ static const FieldArray clPatternFields[] = {
    { "X",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_X, (APTR)PATTERN_SET_X },
    { "Y",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Y, (APTR)PATTERN_SET_Y },
    { "Opacity",      FDF_DOUBLE|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Opacity },
-   { "Scene",        FDF_INTEGRAL|FDF_R,            0, NULL, NULL },
+   { "Scene",        FDF_INTEGRAL|FDF_R,         0, NULL, NULL },
    { "Viewport",     FDF_OBJECT|FDF_R,           0, NULL, NULL },
    { "Inherit",      FDF_OBJECT|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_RW,            (MAXINT)&clPatternSpread, NULL, NULL },

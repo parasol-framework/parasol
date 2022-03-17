@@ -272,7 +272,7 @@ static void draw_menu(objMenu *Self, objSurface *Surface, objBitmap *Bitmap)
 
       if (item->Flags & MIF_SELECTED) {
          if (!Self->Checkmark) {
-            gfxDrawEllipse(Bitmap, x+(Self->ImageSize>>1), y+(Self->ImageSize>>1), Self->ImageSize>>1, Self->ImageSize>>1, 0, TRUE);
+            //gfxDrawEllipse(Bitmap, x+(Self->ImageSize>>1), y+(Self->ImageSize>>1), Self->ImageSize>>1, Self->ImageSize>>1, 0, TRUE);
          }
          else {
             objPicture *picture = Self->Checkmark;
@@ -457,38 +457,6 @@ static ERROR calc_menu_size(objMenu *Self)
 
 static void calc_scrollbar(objMenu *Menu)
 {
-   if (!Menu->MenuSurfaceID) return;
-
-   LONG total = 1;
-   for (auto scan=Menu->Items; scan; scan=scan->Next, total++) {
-      if (total >= Menu->LineLimit) {
-         if (!Menu->Scrollbar) {
-            if (!CreateObject(ID_SCROLLBAR, 0, &Menu->Scrollbar,
-                  FID_Owner|TLONG,    Menu->MenuSurfaceID,
-                  FID_Y|TLONG,        0,
-                  FID_XOffset|TLONG,  0,
-                  FID_YOffset|TLONG,  0,
-                  FID_Direction|TSTR, "Vertical",
-                  TAGEND)) {
-               objScroll *vscroll = Menu->Scrollbar->Scroll;
-               SetLong(vscroll, FID_Object, Menu->Head.UniqueID);
-            }
-         }
-
-         struct scUpdateScroll scroll = {
-            .PageSize = Menu->PageHeight,
-            .ViewSize = Menu->Height,
-            .Position = -Menu->YPosition,
-            .Unit     = get_item_height(Menu)
-         };
-         Action(MT_ScUpdateScroll, Menu->Scrollbar->Scroll, &scroll);
-
-         acShow(Menu->Scrollbar);
-         return;
-      }
-   }
-
-   if (Menu->Scrollbar) { acFree(Menu->Scrollbar); Menu->Scrollbar = NULL; }
 }
 
 /*****************************************************************************
@@ -601,7 +569,7 @@ static ERROR create_menu(objMenu *Self)
          SubscribeActionTags(surface, AC_Show, AC_Hide, AC_LostFocus, TAGEND);
 
          auto callback = make_function_stdc(consume_input_events);
-         gfxSubscribeInput(&callback, surface->Head.UniqueID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
+         gfxSubscribeInput(&callback, surface->Head.UID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
 
          // Calculate the correct coordinates for our menu.  This may mean retrieving the absolute coordinates of the
          // relative surface and using them to offset the menu coordinates.
@@ -611,10 +579,32 @@ static ERROR create_menu(objMenu *Self)
             if (!AccessObject(Self->RelativeID, 5000, &relative)) {
                SubscribeAction(relative, AC_LostFocus);
 
-               LONG x, y;
-               if (!GetFields(relative, FID_AbsX|TLONG, &x, FID_AbsY|TLONG, &y, TAGEND)) {
-                  acMoveToPoint(surface, Self->X + x, Self->Y + y, 0, MTF_X|MTF_Y);
+               if (relative->ClassID IS ID_SURFACE) {
+                  LONG x, y;
+                  if (!GetFields(relative, FID_AbsX|TLONG, &x, FID_AbsY|TLONG, &y, TAGEND)) {
+                     acMoveToPoint(surface, Self->X + x, Self->Y + y, 0, MTF_X|MTF_Y);
+                  }
                }
+               else if (relative->ClassID IS ID_VECTOR) {
+                  LONG x, y;
+                  if (!GetFields(relative, FID_AbsX|TLONG, &x, FID_AbsY|TLONG, &y, TAGEND)) {
+                     auto scene = ((objVector *)relative)->Scene;
+                     objSurface *scene_surface;
+                     LONG scene_x, scene_y;
+                     if ((scene->SurfaceID) and (!AccessObject(scene->SurfaceID, 4000, &scene_surface))) {
+                        if (!GetFields(scene_surface, FID_AbsX|TLONG, &scene_x, FID_AbsY|TLONG, &scene_y, TAGEND)) {
+                           x += scene_x;
+                           y += scene_y;
+                        }
+                        ReleaseObject(scene_surface);
+                     }
+
+                     acMoveToPoint(surface, Self->X + x, Self->Y + y, 0, MTF_X|MTF_Y);
+                  }
+                  else log.warning(ERR_GetField);
+               }
+               else log.warning(ERR_WrongClass);
+
                ReleaseObject(relative);
             }
          }

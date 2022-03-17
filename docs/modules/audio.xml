@@ -6,7 +6,7 @@
     <name>Audio</name>
     <type>module</type>
     <version>1</version>
-    <copyright>Paul Manias © 2002-2020</copyright>
+    <copyright>Paul Manias © 2002-2022</copyright>
     <classes>
       <class>Audio</class>
       <class>Sound</class>
@@ -67,59 +67,68 @@
   </function>
 
   <types>
-    <constants lookup="VCF" comment="Volume control flags">
-      <const name="SYNC">The mixer is synchronised.</const>
-      <const name="JOINED">The mixer channels are joined (e.g. left and right speakers cannot be adjusted separately).</const>
-      <const name="PLAYBACK">The mixer supports audio output.</const>
-      <const name="MUTE">The mixer is muted.</const>
-      <const name="CAPTURE">The mixer supports audio input.</const>
-      <const name="MONO">The mixer is restricted to mono input/output.</const>
-    </constants>
-
-    <constants lookup="SVF" comment="Flags for the SetVolume() method.">
-      <const name="SYNC">Synchronise volume settings between channels.</const>
-      <const name="CAPTURE">Set input, not output.</const>
-      <const name="MUTE">Mute the audio for this channel.</const>
-      <const name="UNMUTE">Unmute the audio for this channel.</const>
-      <const name="UNSYNC">Allow un-synchronised volume settings.</const>
-    </constants>
-
     <constants lookup="ADF" comment="Optional flags for the Audio object.">
-      <const name="STEREO">Enable stereo output (set by default if the platform supports stereo).  If not set, output is in mono.</const>
+      <const name="AUTO_SAVE">Save configuration information on exit.</const>
+      <const name="FILTER_HIGH">Enable a high level of output filtering to minimise distortion.</const>
+      <const name="FILTER_LOW">Enable a low level of output filtering to minimise distortion.</const>
       <const name="OVER_SAMPLING">Enables oversampling for higher quality audio at the cost of slower mixing.</const>
       <const name="SERVICE_MODE">Service mode gives the audio object complete control of the task.</const>
+      <const name="STEREO">Enable stereo output (set by default if the platform supports stereo).  If not set, output is in mono.</const>
       <const name="SYSTEM_WIDE">Mixer changes should be applied system-wide.</const>
-      <const name="FILTER_LOW">Enable a low level of output filtering to minimise distortion.</const>
-      <const name="FILTER_HIGH">Enable a high level of output filtering to minimise distortion.</const>
       <const name="VOL_RAMPING">Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).</const>
-      <const name="AUTO_SAVE">Save configuration information on exit.</const>
     </constants>
 
-    <constants lookup="SDF" comment="Sound flags">
-      <const name="STEREO">Indicates that the sound has multiple audio channels.</const>
-      <const name="NEW">Create the sample from scratch (e.g. for audio recording purposes).</const>
-      <const name="STREAM">Read-Only. Indicates that streaming is enabled.</const>
-      <const name="RESTRICT_PLAY">Restricts playback so that the sound can never play on more than one channel at any given time.</const>
-      <const name="TERMINATE">Self-terminate when the sound sample has finished playback.</const>
-      <const name="QUERY">Query the meta data of the sample source; do not load sample data.</const>
-      <const name="LOOP">Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.</const>
+    <constants lookup="CHF" comment="Optional flags for the AudioChannel structure.">
+      <const name="BACKWARD">Play channel backwards.</const>
+      <const name="CHANGED">Sample change</const>
+      <const name="MUTE">Channel is muted.</const>
+      <const name="VOL_RAMP">Volume ramping is enabled.</const>
     </constants>
 
     <constants lookup="CHS" comment="Channel status types for the AudioChannel structure.">
-      <const name="STOPPED">Playing is stopped.</const>
+      <const name="FADE_OUT">Playback is fading out.</const>
       <const name="FINISHED">Playing has ended (not force stopped).</const>
       <const name="PLAYING">Sample playing and not released.</const>
       <const name="RELEASED">Sample playing and note has been released.</const>
-      <const name="FADE_OUT">Playback is fading out.</const>
+      <const name="STOPPED">Playing is stopped.</const>
     </constants>
 
-    <constants lookup="STREAM" comment="Streaming options">
-      <const name="NEVER">No streaming - load all data into memory.</const>
-      <const name="SMART">Smart streaming is the default.  If the sample appears to be relatively small with respect to available system RAM, it will be loaded into memory.  Otherwise it will be streamed.</const>
-      <const name="ALWAYS">Stream if the sample length exceeds 64k.</const>
+    <constants lookup="CMD" comment="Audio channel commands">
+      <const name="CONTINUE">Continue a sound sample that has been stopped.</const>
+      <const name="END_SEQUENCE">Terminates the current command sequence.</const>
+      <const name="FADE_IN">Fades a channel in from zero to the current volume (as previously determined by the SetVolume command).</const>
+      <const name="FADE_OUT">Fade out a channel.</const>
+      <const name="MUTE">Mutes the channel so that no further audio will play until you unmute it.  The Data parameter needs to be set to either TRUE or FALSE to indicate the required mute status.</const>
+      <const name="PLAY">Plays the sample associated with the channel.  You are required to set the playback frequency in the Data parameter.  This command does nothing if the channel does not have a sample loaded against it.</const>
+      <const name="SET_FREQUENCY">Sets the current playback frequency of a channel.</const>
+      <const name="SET_LENGTH">Sets the byte length of the sample playing in the channel.</const>
+      <const name="SET_PAN">Sets a channel's panning position.  The Data parameter indicates the new pan and must be in the range of -100 to +100.  A setting of zero plays the sound at an equal level between both speakers.  If output is in mono, panning has no effect.</const>
+      <const name="SET_POSITION">Sets the playback position within a channel's currently associated sample (measured in bytes).  Useful for starting playback from a preset position.</const>
+      <const name="SET_RATE">Defines the interval between the processing of each command, measured in milliseconds.</const>
+      <const name="SET_SAMPLE">Sets a new sample against a channel.  You are required to supply the sample handle (as obtained from AddSample or AddStream) in the Data parameter.  The sample will not play until you use the Play command.</const>
+      <const name="SET_VOLUME">Sets a new channel volume.  The Data parameter indicates the new volume and must be in the range of 0 - 500% (100% is normal volume, 0% is silence).</const>
+      <const name="START_SEQUENCE">Required to start a new sequence of commands.</const>
+      <const name="STOP">Immediately stops a channel from playing any audio until the next Play command.</const>
+      <const name="STOP_LOOPING">Tells the channel to stop performing any more audio loops related to the currently playing sample.  This command does nothing if the current sample has no associated loop information.</const>
+    </constants>
+
+    <constants lookup="LOOP" comment="Loop modes for the AudioLoop structure.">
+      <const name="AMIGA">Single loop: Amiga style.</const>
+      <const name="AMIGA_NONE">Amiga loop: Do nothing.</const>
+      <const name="DOUBLE">Double loop: When the note is released, playing shifts to the second loop.</const>
+      <const name="SINGLE">Single loop: Releasing will end the note.</const>
+      <const name="SINGLE_RELEASE">Single loop: Sample data after the loop will be played when the note is released.</const>
+    </constants>
+
+    <constants lookup="LTYPE" comment="Loop types for the AudioLoop structure.">
+      <const name="BIDIRECTIONAL">The sample will play in reverse whenever it hits the end marker, then forwards when it hits the start marker.</const>
+      <const name="UNIDIRECTIONAL">The sample playback position returns to the byte position specified in the Loop1Start field.</const>
     </constants>
 
     <constants lookup="NOTE" comment="Definitions for the Note field.  An 'S' indicates a sharp note.">
+      <const name="A"/>
+      <const name="AS"/>
+      <const name="B"/>
       <const name="C"/>
       <const name="CS"/>
       <const name="D"/>
@@ -129,57 +138,48 @@
       <const name="FS"/>
       <const name="G"/>
       <const name="GS"/>
-      <const name="A"/>
-      <const name="AS"/>
-      <const name="B"/>
       <const name="OCTAVE"/>
     </constants>
 
-    <constants lookup="LTYPE" comment="Loop types for the AudioLoop structure.">
-      <const name="UNIDIRECTIONAL">The sample playback position returns to the byte position specified in the Loop1Start field.</const>
-      <const name="BIDIRECTIONAL">The sample will play in reverse whenever it hits the end marker, then forwards when it hits the start marker.</const>
+    <constants lookup="SDF" comment="Sound flags">
+      <const name="LOOP">Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.</const>
+      <const name="NEW">Create the sample from scratch (e.g. for audio recording purposes).</const>
+      <const name="QUERY">Query the meta data of the sample source; do not load sample data.</const>
+      <const name="RESTRICT_PLAY">Restricts playback so that the sound can never play on more than one channel at any given time.</const>
+      <const name="STEREO">Indicates that the sound has multiple audio channels.</const>
+      <const name="STREAM">Read-Only. Indicates that streaming is enabled.</const>
+      <const name="TERMINATE">Self-terminate when the sound sample has finished playback.</const>
     </constants>
 
     <constants lookup="SFM" comment="These audio bit formats are supported by AddSample and AddStream.">
-      <const name="S16_BIT_MONO">16-bit mono signed sample.</const>
-      <const name="U8_BIT_STEREO">8-bit stereo unsigned sample.</const>
-      <const name="U8_BIT_MONO">8-bit mono unsigned sample.</const>
       <const name="BIG_ENDIAN">Combine this flag with any audio format to declare it as big endian.</const>
+      <const name="S16_BIT_MONO">16-bit mono signed sample.</const>
       <const name="S16_BIT_STEREO">16-bit stereo signed sample.</const>
+      <const name="U8_BIT_MONO">8-bit mono unsigned sample.</const>
+      <const name="U8_BIT_STEREO">8-bit stereo unsigned sample.</const>
     </constants>
 
-    <constants lookup="CHF" comment="Optional flags for the AudioChannel structure.">
-      <const name="BACKWARD">Play channel backwards.</const>
-      <const name="CHANGED">Sample change</const>
-      <const name="VOL_RAMP">Volume ramping is enabled.</const>
-      <const name="MUTE">Channel is muted.</const>
+    <constants lookup="STREAM" comment="Streaming options">
+      <const name="ALWAYS">Stream if the sample length exceeds 64k.</const>
+      <const name="NEVER">No streaming - load all data into memory.</const>
+      <const name="SMART">Smart streaming is the default.  If the sample appears to be relatively small with respect to available system RAM, it will be loaded into memory.  Otherwise it will be streamed.</const>
     </constants>
 
-    <constants lookup="CMD" comment="Audio channel commands">
-      <const name="START_SEQUENCE">Required to start a new sequence of commands.</const>
-      <const name="END_SEQUENCE">Terminates the current command sequence.</const>
-      <const name="SET_SAMPLE">Sets a new sample against a channel.  You are required to supply the sample handle (as obtained from AddSample or AddStream) in the Data parameter.  The sample will not play until you use the Play command.</const>
-      <const name="SET_VOLUME">Sets a new channel volume.  The Data parameter indicates the new volume and must be in the range of 0 - 500% (100% is normal volume, 0% is silence).</const>
-      <const name="SET_PAN">Sets a channel's panning position.  The Data parameter indicates the new pan and must be in the range of -100 to +100.  A setting of zero plays the sound at an equal level between both speakers.  If output is in mono, panning has no effect.</const>
-      <const name="SET_FREQUENCY">Sets the current playback frequency of a channel.</const>
-      <const name="SET_RATE">Defines the interval between the processing of each command, measured in milliseconds.</const>
-      <const name="STOP">Immediately stops a channel from playing any audio until the next Play command.</const>
-      <const name="STOP_LOOPING">Tells the channel to stop performing any more audio loops related to the currently playing sample.  This command does nothing if the current sample has no associated loop information.</const>
-      <const name="SET_POSITION">Sets the playback position within a channel's currently associated sample (measured in bytes).  Useful for starting playback from a preset position.</const>
-      <const name="PLAY">Plays the sample associated with the channel.  You are required to set the playback frequency in the Data parameter.  This command does nothing if the channel does not have a sample loaded against it.</const>
-      <const name="FADE_IN">Fades a channel in from zero to the current volume (as previously determined by the SetVolume command).</const>
-      <const name="FADE_OUT">Fade out a channel.</const>
-      <const name="MUTE">Mutes the channel so that no further audio will play until you unmute it.  The Data parameter needs to be set to either TRUE or FALSE to indicate the required mute status.</const>
-      <const name="SET_LENGTH">Sets the byte length of the sample playing in the channel.</const>
-      <const name="CONTINUE">Continue a sound sample that has been stopped.</const>
+    <constants lookup="SVF" comment="Flags for the SetVolume() method.">
+      <const name="CAPTURE">Set input, not output.</const>
+      <const name="MUTE">Mute the audio for this channel.</const>
+      <const name="SYNC">Synchronise volume settings between channels.</const>
+      <const name="UNMUTE">Unmute the audio for this channel.</const>
+      <const name="UNSYNC">Allow un-synchronised volume settings.</const>
     </constants>
 
-    <constants lookup="LOOP" comment="Loop modes for the AudioLoop structure.">
-      <const name="SINGLE">Single loop: Releasing will end the note.</const>
-      <const name="SINGLE_RELEASE">Single loop: Sample data after the loop will be played when the note is released.</const>
-      <const name="DOUBLE">Double loop: When the note is released, playing shifts to the second loop.</const>
-      <const name="AMIGA_NONE">Amiga loop: Do nothing.</const>
-      <const name="AMIGA">Single loop: Amiga style.</const>
+    <constants lookup="VCF" comment="Volume control flags">
+      <const name="CAPTURE">The mixer supports audio input.</const>
+      <const name="JOINED">The mixer channels are joined (e.g. left and right speakers cannot be adjusted separately).</const>
+      <const name="MONO">The mixer is restricted to mono input/output.</const>
+      <const name="MUTE">The mixer is muted.</const>
+      <const name="PLAYBACK">The mixer supports audio output.</const>
+      <const name="SYNC">The mixer is synchronised.</const>
     </constants>
 
   </types>
@@ -203,6 +203,12 @@
       <field name="Pan" type="BYTE">Pan value (-100 to +100)</field>
     </struct>
 
+    <struct name="AudioCommand" comment="Audio command structure.">
+      <field name="CommandID" type="LONG">Command ID</field>
+      <field name="Handle" type="LONG">Channel handle</field>
+      <field name="Data" type="LONG">Special data related to the command ID</field>
+    </struct>
+
     <struct name="AudioLoop" comment="Loop settings for the AddSample() method.">
       <field name="LoopMode" type="WORD" lookup="LOOP">Loop mode (single, double)</field>
       <field name="Loop1Type" type="BYTE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
@@ -211,12 +217,6 @@
       <field name="Loop1End" type="LONG">End of the first loop</field>
       <field name="Loop2Start" type="LONG">Start of the second loop</field>
       <field name="Loop2End" type="LONG">End of the second loop</field>
-    </struct>
-
-    <struct name="AudioCommand" comment="Audio command structure.">
-      <field name="CommandID" type="LONG">Command ID</field>
-      <field name="Handle" type="LONG">Channel handle</field>
-      <field name="Data" type="LONG">Special data related to the command ID</field>
     </struct>
 
     <struct name="AudioSample" comment="Audio sample structure">
@@ -237,6 +237,30 @@
       <field name="Loop2Type" type="BYTE">Second loop type (unidirectional, bidirectional)</field>
       <field name="Used" type="BYTE"></field>
       <field name="Free" type="BYTE"></field>
+    </struct>
+
+    <struct name="ChannelSet" comment="Channel set management structure.">
+      <field name="Channel" type="struct AudioChannel *">Array of channel objects</field>
+      <field name="Commands" type="struct AudioCommand *">Array of buffered commands</field>
+      <field name="UpdateRate" type="LONG">Update rate, measured in milliseconds</field>
+      <field name="MixLeft" type="LONG">Amount of mix elements left before the next command-update occurs</field>
+      <field name="Key" type="LONG"></field>
+      <field name="TaskID" type="OBJECTID">Reference to the task that owns this set of channels</field>
+      <field name="ChannelMID" type="MEMORYID">Private</field>
+      <field name="CommandMID" type="MEMORYID">Private</field>
+      <field name="TaskVolume" type="DOUBLE"></field>
+      <field name="Total" type="WORD">Total number of base channels</field>
+      <field name="Actual" type="WORD">Total number of channels, including oversampling channels</field>
+      <field name="TotalCommands" type="WORD">Size of the command buffer</field>
+      <field name="Position" type="WORD">Index to write the next command to</field>
+      <field name="OpenCount" type="WORD"></field>
+    </struct>
+
+    <struct name="VolumeCtl">
+      <field name="Size" type="WORD">The size of the Channels array.</field>
+      <field name="Name" type="char" size="32">Name of the mixer</field>
+      <field name="Flags" type="LONG" lookup="VCF">Special flags identifying the mixer's attributes.</field>
+      <field name="Channels" type="FLOAT" size="1">A variable length array of channel volumes.</field>
     </struct>
 
   </structs>

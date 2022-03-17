@@ -90,7 +90,7 @@ static ERROR CLIPBOARD_ActionNotify(objClipboard *Self, struct acActionNotify *A
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
    if (Args->ActionID IS AC_Free) {
-      if ((Self->RequestHandler.Type IS CALL_SCRIPT) AND (Self->RequestHandler.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->RequestHandler.Type IS CALL_SCRIPT) AND (Self->RequestHandler.Script.Script->UID IS Args->ObjectID)) {
          Self->RequestHandler.Type = CALL_NONE;
       }
    }

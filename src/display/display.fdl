@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status="stable", prefix="gfx" }, function()
+module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status="stable", prefix="gfx" }, function()
 
   restrict(function()
     loadFile(glPath .. 'common.fdl')
@@ -56,15 +56,6 @@ module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status=
     "CLIP: Enable clipping of the source coordinates.",
     "OFFSET: Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.")
 
-  flags("CSTF", { comment="Flags for CopyStretch()." },
-    "BILINEAR|GOOD_QUALITY: Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.",
-    "FILTER_SOURCE: If the source bitmap is temporary and will not be required after the stretch operation, you have the option of setting this flag.  By doing so, the stretch routine will pass the source image through a simple filter so that it can improve the resulting image.  This option is available at a speed cost and is best used in conjunction with bilinear resizing.",
-    "BRESENHAM: Smooth bresenham.",
-    "NEIGHBOUR: Nearest neighbour scaling",
-    "CUBIC|BICUBIC: Cubic scaling.",
-    "CLAMP: Pixels that are past the edge of the source material will have a default alpha value of 0 unless the CLAMP flag is used, in which case the value is approximated with a bias of 255 if not otherwise calculable."
-  )
-
   enum("BMP", { start=2, comment="Bitmap types" },
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
      "CHUNKY: Chunky pixel mode (default).")
@@ -78,7 +69,7 @@ module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status=
     "INVERSE_ALPHA: Indicates reverse alpha blending, higher values are transparent.",
     "QUERIED: Automatically set after a Query on the bitmap.",
     "CLEAR: Clear graphics on initialisation and when resizing.",
-    "USER: User flag allows tagging of bitmaps for special meaning; not used internally.",
+    "USER: This user flag can be used to tag bitmaps with special meaning.  Not used internally.",
     "ACCELERATED_2D: 2D video acceleration is available.",
     "ACCELERATED_3D: 3D video acceleration is available.",
     "ALPHA_CHANNEL: For 32-bit images, indicates that an alpha channel is present.",
@@ -248,12 +239,10 @@ module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status=
     { id=2, name="Compress" },
     { id=3, name="Decompress" },
     { id=4, name="Flip" },
-    { id=5, name="Flood" },
     { id=6, name="DrawRectangle" },
     { id=7, name="SetClipRegion" },
     { id=8, name="GetColour", inline=false },
-    { id=9, name="DrawLine" },
-    { id=10, name="CopyStretch" }
+    { id=9, name="DrawLine" }
   })
 
   class("Bitmap", { version=2.0, src="class_bitmap.cpp", output="class_bitmap_def.c" }, [[
@@ -419,12 +408,12 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
     double Acceleration    # Acceleration level - keep between 0.0 and 3.0
     double DoubleClick     # Double click speed
     double WheelSpeed      # Mouse-wheel speed
-    int    X               # Current x coordinate
-    int    Y               # Current y coordinate
+    double X               # Current x coordinate
+    double Y               # Current y coordinate
+    double OverX           # The X coord relative to the closest object
+    double OverY           # The Y coord relative to the closest object
+    double OverZ           # The Z distance relative to the closest object
     int    MaxSpeed        # Maximum speed
-    int    OverX           # The X coord relative to the closest object
-    int    OverY           # The Y coord relative to the closest object
-    int    OverZ           # The Z distance relative to the closest object
     oid    Input           # Indicates where pointer input comes from (usually SystemMouse)
     oid    Surface         # Top-most surface that contains the pointer
     oid    Anchor          # Surface object that the pointer is anchored to
@@ -448,6 +437,8 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
    } Buttons[10];
    LARGE    ClickTime;
    LARGE    AnchorTime;
+   DOUBLE   LastClickX, LastClickY;
+   DOUBLE   LastReleaseX, LastReleaseY;
    APTR     UserLoginHandle;
    OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
    OBJECTID CursorReleaseID;
@@ -455,8 +446,6 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
    OBJECTID DragParent;         // Parent of the draggable surface
    MEMORYID MessageQueue;       // Message port of the task that holds the cursor
    MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
-   LONG     LastClickX, LastClickY;
-   LONG     LastReleaseX, LastReleaseY;
    LONG     CursorRelease;
    LONG     BufferCursor;
    LONG     BufferFlags;
@@ -496,7 +485,6 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
     "Resample",
     "GetColourFormat",
     "CopyArea",
-    "CopyStretch",
     "ReadRGBPixel",
     "ReadPixel",
     "DrawRGBPixel",
@@ -507,8 +495,6 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
     "SetClipRegion",
     "Compress",
     "Decompress",
-    "Flood",
-    "DrawEllipse",
     "SubscribeInput",
     "UnsubscribeInput",
     "GetInputTypeName",

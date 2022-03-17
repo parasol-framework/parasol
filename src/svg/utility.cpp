@@ -333,7 +333,7 @@ static void add_inherit(objSVG *Self, OBJECTPTR Object, CSTRING ID)
 {
    parasol::Log log(__FUNCTION__);
    svgInherit *inherit;
-   log.trace("Object: %d, ID: %s", Object->UniqueID, ID);
+   log.trace("Object: %d, ID: %s", Object->UID, ID);
    if (!AllocMemory(sizeof(svgInherit), MEM_DATA|MEM_NO_CLEAR, &inherit, NULL)) {
       inherit->Object = Object;
       inherit->Next = Self->Inherit;
@@ -380,12 +380,12 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
          if (!StrCompare("*.svgz", Path, 0, STR_WILDCARD)) {
             OBJECTPTR file, stream;
             if (!CreateObject(ID_FILE, 0, &file,
-                  FID_Owner|TLONG, xml->Head.UniqueID,
+                  FID_Owner|TLONG, xml->Head.UID,
                   FID_Path|TSTR,   Path,
                   FID_Flags|TLONG, FL_READ,
                   TAGEND)) {
                if (!CreateObject(ID_COMPRESSEDSTREAM, 0, &stream,
-                     FID_Owner|TLONG, file->UniqueID,
+                     FID_Owner|TLONG, file->UID,
                      FID_Input|TPTR,  file,
                      TAGEND)) {
                   SetPointer(xml, FID_Source, stream);

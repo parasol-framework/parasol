@@ -13,7 +13,8 @@ Please refer to it for further information on licensing.
 #define PRV_VECTORFILTER
 #define PRV_VECTORPATH
 #define PRV_VECTOR_MODULE
-#define DBG_TRANSFORM(args...) //MSG(args)
+
+#define DBG_TRANSFORM(args...) //log.trace(args)
 
 #include "agg_alpha_mask_u8.h"
 #include "agg_basics.h"
@@ -50,14 +51,19 @@ Please refer to it for further information on licensing.
 #include "agg_trans_affine.h"
 //#include "agg_vcgen_markers_term.h"
 
+#include <array>
+#include <memory>
+#include <unordered_set>
+#include <unordered_map>
+
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
 #include "vector.h"
 #include <parasol/modules/picture.h>
-
 #include <parasol/modules/display.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/vector.h>
+#include <parasol/modules/surface.h>
 
 #include <math.h>
 #define __STDC_FORMAT_MACROS
@@ -66,9 +72,6 @@ Please refer to it for further information on licensing.
 
 #include <ft2build.h>
 #include <freetype/freetype.h>
-
-#include <array>
-#include <memory>
 
 #include "vectors/vector.h"
 #include "idl.h"
@@ -121,17 +124,23 @@ static void get_super_xy(struct rkVectorShape *);
 static void get_text_xy(struct rkVectorText *);
 static void get_wave_xy(struct rkVectorWave *);
 
-static VectorTransform * add_transform(objVector *, LONG Type, LONG Create);
-static void apply_parent_transforms(objVector *, objVector *, agg::trans_affine &, WORD *);
-static void apply_transforms(VectorTransform *, DOUBLE, DOUBLE, agg::trans_affine &, WORD *);
-static void convert_to_aggpath(PathCommand *Paths, LONG TotalPoints, agg::path_storage *BasePath);
+static void apply_parent_transforms(objVector *, objVector *, agg::trans_affine &);
+static void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
+static void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *X, DOUBLE *Y);
+static void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *);
 static void gen_vector_path(objVector *);
+static void gen_vector_tree(objVector *);
+template <class T> inline static DOUBLE get_parent_height(T *);
+template <class T> inline static DOUBLE get_parent_width(T *);
+template <class T> inline static void get_parent_size(T *, DOUBLE &, DOUBLE &);
 static GRADIENT_TABLE * get_fill_gradient_table(objVector &, DOUBLE);
 static GRADIENT_TABLE * get_stroke_gradient_table(objVector &);
 static CSTRING read_numseq(CSTRING Value, ...);
-static ERROR read_path(PathCommand **, LONG *, CSTRING);
-static void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
-static void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *X, DOUBLE *Y);
+static ERROR read_path(std::vector<PathCommand> &, CSTRING);
+static void render_to_surface(objVectorScene *, objSurface *, objBitmap *);
+static ERROR scene_input_events(const InputEvent *, LONG);
+static ERROR vector_keyboard_events(objVector *, const evKey *);
+static void send_feedback(objVector *, LONG);
 
 FT_Error (*EFT_Set_Pixel_Sizes)(FT_Face, FT_UInt pixel_width, FT_UInt pixel_height );
 FT_Error (*EFT_Set_Char_Size)(FT_Face, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt horz_resolution, FT_UInt vert_resolution );

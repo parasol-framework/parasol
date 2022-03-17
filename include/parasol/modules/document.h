@@ -2,7 +2,7 @@
 #define MODULES_DOCUMENT 1
 
 // Name:      document.h
-// Copyright: Paul Manias © 2005-2020
+// Copyright: Paul Manias © 2005-2022
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -82,11 +82,11 @@
 #define FSO_UNDERLINE 0x00000004
 #define FSO_PREFORMAT 0x00000008
 #define FSO_CAPS 0x00000010
+#define FSO_STYLES 0x00000017
 #define FSO_ALIGN_RIGHT 0x00000020
 #define FSO_ALIGN_CENTER 0x00000040
 #define FSO_ANCHOR 0x00000080
 #define FSO_NO_WRAP 0x00000100
-#define FSO_STYLES 0x00000017
 
 #define VER_DOCSTYLE 1
 
@@ -181,8 +181,6 @@ typedef struct rkDocument {
    objXML *InsertXML;       // For temporary XML parsing by the InsertXML method
    objXML *Templates;       // All templates for the current document are stored here
    objXML *InjectXML;
-   objScrollbar *HScroll;
-   objScrollbar *VScroll;
    struct KeyStore *Vars;
    struct KeyStore *Params;
    struct escCell *CurrentCell;      // Used to assist drawing, reflects the cell we are currently drawing within (if any)
@@ -294,8 +292,6 @@ typedef struct rkDocument {
    ULONG  MouseOver:1;
    ULONG  PageProcessed:1;
    ULONG  NoWhitespace:1;
-   ULONG  FreeVScroll:1;
-   ULONG  FreeHScroll:1;
    ULONG  HasFocus:1;
    ULONG  CursorSet:1;
    ULONG  LMB:1;

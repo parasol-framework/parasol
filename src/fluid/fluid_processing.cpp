@@ -202,13 +202,13 @@ static int processing_destruct(lua_State *Lua)
 //****************************************************************************
 // Register the fprocessing interface.
 
-static const luaL_reg processinglib_functions[] = {
+static const luaL_Reg processinglib_functions[] = {
    { "new",   processing_new },
    { "sleep", processing_sleep },
    { NULL, NULL }
 };
 
-static const luaL_reg processinglib_methods[] = {
+static const luaL_Reg processinglib_methods[] = {
    { "__index",    processing_get },
    { "__gc",       processing_destruct },
    { NULL, NULL }

@@ -196,10 +196,10 @@ static int object_new(lua_State *Lua)
       }
 
       object->prvObject = obj;
-      object->ObjectID = obj->UniqueID;
+      object->ObjectID = obj->UID;
       object->ClassID  = obj->SubID ? obj->SubID : obj->ClassID;
       object->Class    = FindClass(object->ClassID); //obj->Class;
-      if (obj->UniqueID < 0) {
+      if (obj->UID < 0) {
          // If the object is shared, its address must be accessed through locking
          object->prvObject = NULL;
          object->AccessCount = 0;
@@ -232,6 +232,48 @@ static int object_new(lua_State *Lua)
       prv->CaughtError = ERR_NewObject;
       luaL_error(Lua, "NewObject() failed for class '%s', error: %s", class_name, GetErrorMsg(ERR_NewObject));
       return 0;
+   }
+}
+
+//****************************************************************************
+// Usage: state = some_object.state()
+//
+// Returns a table that can be used to store information that is specific to the object.  The state is linked to the
+// object ID to ensure that the state values are still accessible if referenced elsewhere in the script.
+
+static int object_state(lua_State *Lua)
+{
+   struct object *object;
+   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+      luaL_argerror(Lua, 1, "Expected object.");
+      return 0;
+   }
+
+   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+
+   if (!prv->StateMap) {
+      prv->StateMap = new (std::nothrow) std::unordered_map<OBJECTID, LONG>();
+      if (!prv->StateMap) {
+         luaL_error(Lua, "Memory allocation failure.");
+         return 0;
+      }
+   }
+
+   // Note: At this time no cleanup is performed on the StateMap.  Ideally this would be done with a hook into garbage
+   // collection cycles.
+
+   parasol::Log log(__FUNCTION__);
+   auto it = prv->StateMap->find(object->ObjectID);
+   if (it != prv->StateMap->end()) {
+      lua_rawgeti(Lua, LUA_REGISTRYINDEX, it->second);
+      return 1;
+   }
+   else {
+      lua_createtable(Lua, 0, 0); // Create a new table on the stack.
+      auto state_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      (*prv->StateMap)[object->ObjectID] = state_ref;
+      lua_rawgeti(Lua, LUA_REGISTRYINDEX, state_ref);
+      return 1;
    }
 }
 
@@ -339,7 +381,7 @@ static int object_newchild(lua_State *Lua)
       def->AccessCount = 0;
       def->Locked   = FALSE;
       def->Detached = TRUE;
-      def->ObjectID = obj->UniqueID;
+      def->ObjectID = obj->UID;
       def->ClassID  = obj->SubID ? obj->SubID : obj->ClassID;
       def->Class    = FindClass(def->ClassID); //obj->Class;
       ReleaseObject(obj);
@@ -364,7 +406,7 @@ struct object * push_object(lua_State *Lua, OBJECTPTR Object)
       auto_load_include(Lua, Object->Class);
 
       newobject->prvObject   = NULL;
-      newobject->ObjectID    = Object->UniqueID;
+      newobject->ObjectID    = Object->UID;
       newobject->ClassID     = Object->SubID ? Object->SubID : Object->ClassID;
       newobject->Class       = FindClass(newobject->ClassID); //object->Class;
       newobject->Detached    = TRUE; // The object is not linked to this Lua value (i.e. do not free or garbage collect it).
@@ -426,7 +468,7 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
    lua_setmetatable(Lua, -2); // -1 stack
 
    object->prvObject   = NULL;
-   object->ObjectID    = obj->UniqueID;
+   object->ObjectID    = obj->UID;
    object->ClassID     = obj->SubID ? obj->SubID : obj->ClassID;
    object->Class       = FindClass(object->ClassID); //obj->Class;
    object->Detached    = TRUE;
@@ -513,7 +555,7 @@ static int object_find(lua_State *Lua)
 //****************************************************************************
 // Usage: metaclass = obj.class(object)
 //
-// Returns the meta class information for an object.
+// Returns the MetaClass for an object, representing it as an inspectable object.
 
 static int object_class(lua_State *Lua)
 {
@@ -530,7 +572,7 @@ static int object_class(lua_State *Lua)
    lua_setmetatable(Lua, -2); // -1 stack
 
    def->prvObject = &cl->Head;
-   def->ObjectID  = cl->Head.UniqueID;
+   def->ObjectID  = cl->Head.UID;
    def->ClassID   = cl->Head.SubID ? cl->Head.SubID : cl->Head.ClassID;
    def->Class     = cl;
    def->Detached  = TRUE;
@@ -865,7 +907,7 @@ static int object_destruct(lua_State *Lua)
             // owned by a Database object).
 
             auto owner_id = GetOwnerID(def->ObjectID);
-            if ((def->ClassID IS ID_RECORDSET) or (owner_id IS Lua->Script->Head.UniqueID) or (owner_id IS Lua->Script->TargetID)) {
+            if ((def->ClassID IS ID_RECORDSET) or (owner_id IS Lua->Script->Head.UID) or (owner_id IS Lua->Script->TargetID)) {
                log.trace("Freeing Fluid-owned object #%d.", def->ObjectID);
                acFreeID(def->ObjectID);
             }
@@ -951,6 +993,7 @@ static int object_index(lua_State *Lua)
                case HASH_DETACH:      SET_CONTEXT(Lua, (APTR)object_detach); return 1;
                case HASH_GET:         SET_CONTEXT(Lua, (APTR)object_get); return 1;
                case HASH_NEW:         SET_CONTEXT(Lua, (APTR)object_newchild); return 1;
+               case HASH_STATE:       SET_CONTEXT(Lua, (APTR)object_state); return 1;
                case HASH_VAR:
                case HASH_GETVAR:      SET_CONTEXT(Lua, (APTR)object_getvar); return 1;
                case HASH_SET:         SET_CONTEXT(Lua, (APTR)object_set); return 1;
@@ -1060,14 +1103,14 @@ static int object_ipairs(lua_State *Lua)
 //****************************************************************************
 // Register the object interface.
 
-static const struct luaL_reg objectlib_functions[] = {
+static const struct luaL_Reg objectlib_functions[] = {
    { "new",  object_new },
    { "find", object_find },
    { "class", object_class },
    { NULL, NULL}
 };
 
-static const struct luaL_reg objectlib_methods[] = {
+static const struct luaL_Reg objectlib_methods[] = {
    { "__index",    object_index },
    { "__newindex", object_newindex },
    { "__tostring", object_tostring },

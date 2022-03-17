@@ -256,23 +256,23 @@ static ERROR HTTP_ActionNotify(objHTTP *Self, struct acActionNotify *Args)
          }
          else {
             log.msg("No username and password provided, deactivating...");
-            SetLong(Self, FID_State, HGS_TERMINATED);
+            SetLong(Self, FID_CurrentState, HGS_TERMINATED);
          }
          return ERR_Okay;
       }
-      else if ((Self->Outgoing.Type IS CALL_SCRIPT) and (Self->Outgoing.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->Outgoing.Type IS CALL_SCRIPT) and (Self->Outgoing.Script.Script->UID IS Args->ObjectID)) {
          Self->Outgoing.Type = CALL_NONE;
          return ERR_Okay;
       }
-      else if ((Self->StateChanged.Type IS CALL_SCRIPT) and (Self->StateChanged.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->StateChanged.Type IS CALL_SCRIPT) and (Self->StateChanged.Script.Script->UID IS Args->ObjectID)) {
          Self->StateChanged.Type = CALL_NONE;
          return ERR_Okay;
       }
-      else if ((Self->Incoming.Type IS CALL_SCRIPT) and (Self->Incoming.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->Incoming.Type IS CALL_SCRIPT) and (Self->Incoming.Script.Script->UID IS Args->ObjectID)) {
          Self->Incoming.Type = CALL_NONE;
          return ERR_Okay;
       }
-      else if ((Self->AuthCallback.Type IS CALL_SCRIPT) and (Self->AuthCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->AuthCallback.Type IS CALL_SCRIPT) and (Self->AuthCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->AuthCallback.Type = CALL_NONE;
          return ERR_Okay;
       }
@@ -330,7 +330,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
    Self->ResponseIndex = 0;
    Self->SearchIndex   = 0;
    Self->Index         = 0;
-   Self->State         = 0;
+   Self->CurrentState  = 0;
    Self->Status        = 0;
    Self->TotalSent     = 0;
    Self->Tunneling     = FALSE;
@@ -422,10 +422,10 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
 
          Self->Chunked = FALSE;
 
-         if ((!(Self->Flags & HTF_NO_HEAD)) and ((Self->SecurePath) or (Self->State IS HGS_AUTHENTICATING))) {
+         if ((!(Self->Flags & HTF_NO_HEAD)) and ((Self->SecurePath) or (Self->CurrentState IS HGS_AUTHENTICATING))) {
             log.trace("Executing HEAD statement for authentication.");
             len = set_http_method(Self, cmd, sizeof(cmd), "HEAD");
-            SetLong(Self, FID_State, HGS_AUTHENTICATING);
+            SetLong(Self, FID_CurrentState, HGS_AUTHENTICATING);
          }
          else {
             // You can post data from a file source or an object.  In the case of an object it is possible to preset
@@ -572,7 +572,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
 
       // Add any custom headers
 
-      if ((Self->State != HGS_AUTHENTICATING) AND (Self->Headers)) {
+      if ((Self->CurrentState != HGS_AUTHENTICATING) AND (Self->Headers)) {
          for (const auto& [k, v] : Self->Headers[0]) {
             log.trace("Custom header: %s: %s", k.c_str(), v.c_str());
             len += StrFormat(cmd+len, sizeof(cmd)-len, "%s: %s\r\n", k.c_str(), v.c_str());
@@ -618,7 +618,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
    }
 
    if (!Self->Tunneling) {
-      if (Self->State != HGS_AUTHENTICATING) {
+      if (Self->CurrentState != HGS_AUTHENTICATING) {
          if ((Self->Method IS HTM_PUT) or (Self->Method IS HTM_POST)) {
             SetPointer(Self->Socket, FID_Outgoing, (APTR)&socket_outgoing);
          }
@@ -680,7 +680,7 @@ static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
 
    log.branch("Closing connection to server & signalling children.");
 
-   if (Self->State < HGS_COMPLETED) SetLong(Self, FID_State, HGS_TERMINATED);
+   if (Self->CurrentState < HGS_COMPLETED) SetLong(Self, FID_CurrentState, HGS_TERMINATED);
 
    // Closing files is important for dropping the file locks
 
@@ -697,7 +697,7 @@ static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
       // (for example due to a timeout, or an early call to Deactivate).  This prevents any more incoming data from the
       // server being processed when we don't want it.
 
-      if ((Self->Socket->State IS NTC_DISCONNECTED) or (Self->State IS HGS_TERMINATED)) {
+      if ((Self->Socket->State IS NTC_DISCONNECTED) or (Self->CurrentState IS HGS_TERMINATED)) {
          log.msg("Terminating socket (disconnected).");
          SetPointer(Self->Socket, FID_Feedback, NULL);
          acFree(Self->Socket);
@@ -762,12 +762,12 @@ static ERROR HTTP_GetVar(objHTTP *Self, struct acGetVar *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   if (Self->Args->contains(Args->Field)) {
+   if ((Self->Args) and (Self->Args->contains(Args->Field))) {
       StrCopy(Self->Args[0][Args->Field].c_str(), Args->Buffer, Args->Size);
       return ERR_Okay;
    }
 
-   if (Self->Headers->contains(Args->Field)) {
+   if ((Self->Headers) and (Self->Headers->contains(Args->Field))) {
       StrCopy(Self->Headers[0][Args->Field].c_str(), Args->Buffer, Args->Size);
       return ERR_Okay;
    }
@@ -1458,41 +1458,41 @@ of the data transfer.  If this field is not set, the HTTP object will attempt to
 transfer by reading the size from the source file or object.
 
 -FIELD-
-State: Indicates the current state of an HTTP object during its interaction with an HTTP server.
+CurrentState: Indicates the current state of an HTTP object during its interaction with an HTTP server.
 
-The State is a readable field that tracks the current state of the client in its relationship with the target HTTP
-server.  The default state is READING_HEADER.  Changes to the state can be monitored through the #StateChanged field.
+The CurrentState is a readable field that tracks the current state of the client in its relationship with the target HTTP
+server.  The default state is `READING_HEADER`.  Changes to the state can be monitored through the #StateChanged field.
 
-On completion of an HTTP request, the state will be changed to either COMPLETED or TERMINATED.
+On completion of an HTTP request, the state will be changed to either `COMPLETED` or `TERMINATED`.
 
 *****************************************************************************/
 
-static ERROR SET_State(objHTTP *Self, LONG Value)
+static ERROR SET_CurrentState(objHTTP *Self, LONG Value)
 {
    parasol::Log log;
 
    if ((Value < 0) or (Value >= HGS_END)) return log.warning(ERR_OutOfRange);
 
-   if (Self->Flags & HTF_DEBUG) log.msg("New State: %s, Currently: %s", clHTTPState[Value].Name, clHTTPState[Self->State].Name);
+   if (Self->Flags & HTF_DEBUG) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[Value].Name, clHTTPCurrentState[Self->CurrentState].Name);
 
-   if ((Value >= HGS_COMPLETED) and (Self->State < HGS_COMPLETED)) {
-      Self->State = Value;
-      if (Self->Socket) DelayMsg(AC_Deactivate, Self->Head.UniqueID, NULL);
+   if ((Value >= HGS_COMPLETED) and (Self->CurrentState < HGS_COMPLETED)) {
+      Self->CurrentState = Value;
+      if (Self->Socket) DelayMsg(AC_Deactivate, Self->Head.UID, NULL);
    }
-   else Self->State = Value;
+   else Self->CurrentState = Value;
 
    if (Self->StateChanged.Type != CALL_NONE) {
       ERROR error;
       if (Self->StateChanged.Type IS CALL_STDC) {
          auto routine = (ERROR (*)(rkHTTP *, LONG))Self->StateChanged.StdC.Routine;
-         error = routine(Self, Self->State);
+         error = routine(Self, Self->CurrentState);
       }
       else if (Self->StateChanged.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->StateChanged.Script.Script)) {
             const ScriptArg args[] = {
-               { "HTTP", FD_OBJECTID, { .Long = Self->Head.UniqueID } },
-               { "State", FD_LONG, { .Long = Self->State } }
+               { "HTTP", FD_OBJECTID, { .Long = Self->Head.UID } },
+               { "State", FD_LONG, { .Long = Self->CurrentState } }
             };
 
             if (scCallback(script, Self->StateChanged.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
@@ -1504,14 +1504,14 @@ static ERROR SET_State(objHTTP *Self, LONG Value)
       if (error > ERR_ExceptionThreshold) SET_ERROR(Self, error);
 
       if (error IS ERR_Terminate) {
-         if (Self->State IS HGS_SENDING_CONTENT) {
+         if (Self->CurrentState IS HGS_SENDING_CONTENT) {
             // Stop sending and expect a response from the server.  If the client doesn't care about the response
             // then a subsequent ERR_Terminate code can be returned on notification of this state change.
-            SET_State(Self, HGS_SEND_COMPLETE);
+            SET_CurrentState(Self, HGS_SEND_COMPLETE);
          }
-         else if ((Self->State != HGS_TERMINATED) and (Self->State != HGS_COMPLETED)) {
+         else if ((Self->CurrentState != HGS_TERMINATED) and (Self->CurrentState != HGS_COMPLETED)) {
             log.branch("State changing to HGS_COMPLETED (ERR_Terminate received).");
-            SET_State(Self, HGS_COMPLETED);
+            SET_CurrentState(Self, HGS_COMPLETED);
          }
       }
    }
@@ -1622,7 +1622,7 @@ static const FieldArray clFields[] = {
    { "Status",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clStatus, NULL, NULL },
    { "Error",          FDF_LONG|FDF_RW,            0, NULL, NULL },
    { "Datatype",       FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPDatatype, NULL, NULL },
-   { "State",          FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPState, NULL, (APTR)SET_State },
+   { "CurrentState",   FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPCurrentState, NULL, (APTR)SET_CurrentState },
    { "ProxyServer",    FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_ProxyServer },
    { "ProxyPort",      FDF_LONG|FDF_RW,            0, NULL, NULL },
    { "BufferSize",     FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_BufferSize },

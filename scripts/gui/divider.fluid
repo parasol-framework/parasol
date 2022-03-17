@@ -41,13 +41,13 @@ gui.divider = function(Options)
 
    local lSelf = obj.find('self')
    local lSurface
+   local lLeft, lRight, lTop, lBottom // Surface arrays
    local lButtonState = 'released'
    local lStyle = nz(Options.style,'default')
    local lDirection = 'h'
    local lBackground = { r=0, g=0, b=0, a=0 }
    local lMin = { left=5, right=5, top=5, bottom=5 }
    local lMax = { left=4000, right=4000, top=4000, bottom=4000 }
-   local lLeft, lRight, lTop, lBottom // Surface arrays
    local lFixedSize = Options.fixedSize
    local lPercentX = 1.0
    local lPercentY = 1.0

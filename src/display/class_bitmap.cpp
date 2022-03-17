@@ -22,7 +22,7 @@ called under exclusive conditions, and it is not recommended that you call metho
 system.
 
 By default, the CPU can only be used to read and write data directly to or from a bitmap when it is held in standard
-memory (this is the default type).  If the BLIT or VIDEO flags are specified in the #DataFlags field then the
+memory (this is the default type).  If the `BLIT` or `VIDEO` flags are specified in the #DataFlags field then the
 CPU cannot access this memory, unless you specifically request it.  To do this, use the #Lock() and #Unlock() actions
 to temporarily gain read/write access to a bitmap.
 
@@ -30,7 +30,7 @@ If you require complex drawing functionality that is not available in the Bitmap
 provided by the Vector module.
 
 To save the image of a bitmap, you can either copy its image to a @Picture object, or you can use the SaveImage
-action to save the data in PCX format.  Raw data can also be processed through a bitmap by using the Read and Write
+action to save the data in PNG format.  Raw data can also be processed through a bitmap by using the Read and Write
 actions.
 -END-
 
@@ -281,7 +281,7 @@ Once a bitmap is compressed, its image data is invalid.  Any attempt to access t
 result in a memory access fault.  The image data will remain invalid until the #Decompress() method is
 called to restore the bitmap to its original state.
 
-The BMF_COMPRESSED bit will be set in the #Flags field after a successful call to this function to indicate that the
+The `BMF_COMPRESSED` bit will be set in the #Flags field after a successful call to this function to indicate that the
 bitmap is compressed.
 
 -INPUT-
@@ -393,37 +393,6 @@ static ERROR BITMAP_CopyArea(objBitmap *Self, struct bmpCopyArea *Args)
 {
    if (Args) return gfxCopyArea(Self, Args->DestBitmap, Args->Flags, Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest);
    else return ERR_NullArgs;
-}
-
-/*****************************************************************************
-
--METHOD-
-CopyStretch: Copies a rectangular area from one bitmap to another with stretching.
-
-This method is a proxy for ~Display.CopyStretch().
-
--INPUT-
-obj(Bitmap) DestBitmap: Pointer to the destination bitmap.
-int Flags:  Special flags.
-int X: The horizontal position of the area to be copied.
-int Y: The vertical position of the area to be copied.
-int Width:  The width of the source area.
-int Height: The height of the source area.
-int XDest:  The horizontal position to copy the area to.
-int YDest:  The vertical position to copy the area to.
-int DestWidth:  The width to use for the destination area.
-int DestHeight: The height to use for the destination area.
-
--ERRORS-
-Okay:
-Args:     The DestBitmap argument was not specified.
-Mismatch: The destination bitmap is not a close enough match to the source bitmap in order to perform the copy.
-
-*****************************************************************************/
-
-static ERROR BITMAP_CopyStretch(objBitmap *Self, struct bmpCopyStretch *Args)
-{
-   return gfxCopyStretch(Self, Args->DestBitmap, Args->Flags, Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest, Args->DestWidth, Args->DestHeight);
 }
 
 /*****************************************************************************
@@ -674,67 +643,6 @@ static ERROR BITMAP_Flip(objBitmap *Self, struct bmpFlip *Args)
    else return log.warning(ERR_Args);
 
    return ERR_Okay;
-}
-
-/*****************************************************************************
-
--METHOD-
-Flood: Fills a bitmap area with a specific colour.
-
-This method performs a flood-fill operation on a bitmap.  It requires an X and Y value that will target a pixel to
-initiate the flood-fill operation.  The colour value indicated in RGB will be used to change the targeted pixel and all
-adjacent pixels that share the targeted pixel's colour.
-
-The speed of the algorithm is wholly dependent on the amount of pixels that need to be filled, although hardware
-support may be used for filling if it is available.
-
--INPUT-
-int X: The horizontal point to start the flood fill.
-int Y: The vertical point to start the flood fill.
-uint Colour: The colour index to use for the fill.
-
--ERRORS-
-Okay
-NullArgs
-
-*****************************************************************************/
-
-static void flood_fill(objBitmap *, LONG, LONG, ULONG, ULONG);
-
-static ERROR BITMAP_Flood(objBitmap *Self, struct bmpFlood *Args)
-{
-   parasol::Log log;
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   if ((Args->X >= Self->Clip.Left) and (Args->X < Self->Clip.Right) AND
-       (Args->Y >= Self->Clip.Top) and (Args->Y < Self->Clip.Bottom)) {
-
-      ULONG background = Self->ReadUCPixel(Self, Args->X, Args->Y);;
-
-      if (background != Args->Colour) {
-         flood_fill(Self, Args->X, Args->Y, Args->Colour, background);
-      }
-   }
-
-   return ERR_Okay;
-}
-
-static void flood_fill(objBitmap *Self, LONG X, LONG Y, ULONG FillColour, ULONG Background)
-{
-   if ((X >= Self->Clip.Left) and (X < Self->Clip.Right) AND
-       (Y >= Self->Clip.Top) and (Y < Self->Clip.Bottom)) {
-
-      ULONG background = Self->ReadUCPixel(Self, X, Y);
-
-      if (background IS Background) {
-         Self->DrawUCPixel(Self, X, Y, FillColour);
-         flood_fill(Self, X + 1, Y, FillColour, Background);
-         flood_fill(Self, X - 1, Y, FillColour, Background);
-         flood_fill(Self, X, Y + 1, FillColour, Background);
-         flood_fill(Self, X, Y - 1, FillColour, Background);
-      }
-   }
 }
 
 /******************************************************************************
@@ -1483,12 +1391,16 @@ static ERROR BITMAP_ReleaseObject(objBitmap *Self, APTR Void)
 -ACTION-
 Resize: Resizes a bitmap object's dimensions.
 
-Resizing a bitmap allows you to change its dimensions in width and height, as well as depth.  The image data will be
-retained during the resize, although cropping will occur if any of the dimensions are reduced.  Reducing the depth of
-the bitmap will degrade the bitmap's quality.
+Resizing a bitmap will change its width, height and optionally bit depth.  Existing image data is not retained after
+this process.
 
-Bitmap resizing can be time consuming due to the retention of the image data.  Processing time can be significantly
-reduced by setting the VOLATILE flag in the bitmap #Flags field.
+The image data is cleared with #BkgdRGB if the CLEAR flag is defined in #Flags.
+
+-ERRORS-
+Okay
+NullArgs
+AllocMemory
+FieldNotSet
 -END-
 *****************************************************************************/
 
@@ -1500,10 +1412,6 @@ static ERROR BITMAP_Resize(objBitmap *Self, struct acResize *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   // Calculate new Bitmap values
-
-   LONG origwidth  = Self->Width;
-   LONG origheight = Self->Height;
    LONG origbpp    = Self->BitsPerPixel;
 
    if (Args->Width > 0) width = (LONG)Args->Width;
@@ -1572,7 +1480,10 @@ static ERROR BITMAP_Resize(objBitmap *Self, struct acResize *Args)
    UBYTE *data;
    if (Self->Flags & BMF_NO_DATA);
    else if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
-      if (!AllocMemory(size, MEM_NO_BLOCKING|MEM_NO_POOL|Self->Head.MemFlags|Self->DataFlags|MEM_NO_CLEAR, &data, &datamid)) {
+      if ((size <= Self->Size) and (size / Self->Size > 0.5)) { // Do nothing when shrinking unless able to save considerable resources
+         size = Self->Size;
+      }
+      else if (!AllocMemory(size, MEM_NO_BLOCKING|MEM_NO_POOL|Self->Head.MemFlags|Self->DataFlags|MEM_NO_CLEAR, &data, &datamid)) {
          if (Self->DataMID) {
             ReleaseMemoryID(Self->DataMID);
             FreeResourceID(Self->DataMID);
@@ -1667,8 +1578,7 @@ setfields:
    CalculatePixelRoutines(Self);
 
    if (Self->Flags & BMF_CLEAR) {
-      if (Self->Width > origwidth) gfxDrawRectangle(Self, origwidth, 0, Self->Width - origwidth, origheight, bmpGetColourRGB(Self, &Self->BkgdRGB), BAF_FILL);
-      if (Self->Height > origheight) gfxDrawRectangle(Self, 0, origheight, Self->Width, Self->Height - origheight, bmpGetColourRGB(Self, &Self->BkgdRGB), BAF_FILL);
+      gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, bmpGetColourRGB(Self, &Self->BkgdRGB), BAF_FILL);
    }
 
 #ifdef __xwindows__

@@ -182,3 +182,10 @@ struct("ClipRectangle", { comment="Generic structure for rectangular clipping." 
     int Bottom   # Bottom coordinate
     int Top      # Top coordinate
   ]])
+
+struct("Edges", { comment="Generic structure for declaring edge coordinates." }, [[
+    int Left     # Left-most coordinate
+    int Right    # Right-most coordinate
+    int Bottom   # Bottom coordinate
+    int Top      # Top coordinate
+  ]])

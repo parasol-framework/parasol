@@ -1,127 +1,247 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
-Vector: This is a base class for supporting vector graphics objects and functionality.
+Vector: An abstract class for supporting vector graphics objects and functionality.
 
 Vector is an abstract class that is used as a blueprint for other vector classes that provide specific functionality
 for a vector scene.  At this time the classes are @VectorClip, @VectorEllipse, @VectorGroup, @VectorPath,
-@VectorPolygon, @VectorRectangle, @VectorText and @VectorViewport.
+@VectorPolygon, @VectorRectangle, @VectorSpiral, @VectorText, @VectorViewport and @VectorWave.
 
 The majority of sub-classes support all of the functionality provided by Vector.  The general exception is that
 graphics functions will not be supported by non-graphical classes, for instance @VectorGroup and @VectorViewport do not
 produce a vector path and therefore cannot be rendered.
+
+To simplify the creation of complex vector graphics and maximise compatibility, we have designed the vector management
+code to use data structures that closely match SVG definitions.  For this reason we do not provide exhaustive
+documentation on the properties that can be applied to each vector type.  Instead, please refer to the SVG reference
+manuals from the W3C.  In cases where we are missing support for an SVG feature, assume that future support is intended
+unless otherwise documented.
+
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR VECTOR_Reset(objVector *, APTR);
+static ERROR VECTOR_Push(objVector *, struct vecPush *);
+
+//********************************************************************************************************************
+
+static void debug_tree(objVector *Vector, LONG &Level)
+{
+   parasol::Log log(__FUNCTION__);
+   char indent[Level + 1];
+   char buffer[120];
+   LONG i;
+
+   Level++;
+   for (i=0; i < Level; i++) indent[i] = ' '; // Indenting
+   indent[i] = 0;
+
+   for (auto v=Vector; v; v=(objVector *)v->Next) {
+      if (FindField(v, FID_Dimensions, NULL)) {
+         GetFieldVariable(v, "$Dimensions", buffer, sizeof(buffer));
+      }
+      else buffer[0] = 0;
+
+      if (v->Child) {
+         parasol::Log blog(__FUNCTION__);
+         blog.branch("Vector #%d%s %s %s %s", v->Head.UID, indent, v->Head.Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
+         debug_tree(v->Child, Level);
+      }
+      else log.msg("Vector #%d%s %s %s %s", v->Head.UID, indent, v->Head.Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
+   }
+
+   Level--;
+}
+
+//********************************************************************************************************************
+// Determine the parent object, based on the owner.
+
+void set_parent(objVector *Self, OBJECTID OwnerID)
+{
+   // Objects that don't belong to the Vector class will be ignored (i.e. they won't appear in the tree).
+
+   CLASSID class_id = GetClassID(OwnerID);
+   if ((class_id != ID_VECTORSCENE) and (class_id != ID_VECTOR)) return;
+
+   Self->Parent = (OBJECTPTR)GetObjectPtr(OwnerID);
+
+   // Ensure that the sibling fields are valid, if not then clear them.
+
+   if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = NULL;
+   if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = NULL;
+
+   if (Self->Parent->ClassID IS ID_VECTOR) {
+      if ((!Self->Prev) and (!Self->Next)) {
+         if (((objVector *)Self->Parent)->Child) { // Insert at the end
+            auto end = ((objVector *)Self->Parent)->Child;
+            while (end->Next) end = end->Next;
+            end->Next = Self;
+            Self->Prev = end;
+         }
+         else ((objVector *)Self->Parent)->Child = Self;
+      }
+
+      Self->Scene = ((objVector *)Self->Parent)->Scene;
+   }
+   else if (Self->Parent->ClassID IS ID_VECTORSCENE) {
+      if ((!Self->Prev) and (!Self->Next)) {
+         if (((objVectorScene *)Self->Parent)->Viewport) { // Insert at the end
+            auto end = ((objVectorScene *)Self->Parent)->Viewport;
+            while (end->Next) end = end->Next;
+            end->Next = Self;
+            Self->Prev = end;
+         }
+         else ((objVectorScene *)Self->Parent)->Viewport = Self;
+      }
+
+      Self->Scene = (objVectorScene *)Self->Parent;
+   }
+}
+
+//********************************************************************************************************************
 
 static ERROR VECTOR_ActionNotify(objVector *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) {
-      if ((Self->ClipMask) and (Args->ObjectID IS Self->ClipMask->Head.UniqueID)) Self->ClipMask = NULL;
-      else if ((Self->Morph) and (Args->ObjectID IS Self->Morph->Head.UniqueID)) Self->Morph = NULL;
-      else if ((Self->Transition) and (Args->ObjectID IS Self->Transition->Head.UniqueID)) Self->Transition = NULL;
+      if ((Self->ClipMask) and (Args->ObjectID IS Self->ClipMask->Head.UID)) Self->ClipMask = NULL;
+      else if ((Self->Morph) and (Args->ObjectID IS Self->Morph->Head.UID)) Self->Morph = NULL;
+      else if ((Self->Transition) and (Args->ObjectID IS Self->Transition->Head.UID)) Self->Transition = NULL;
+      else if (Self->FeedbackSubscriptions) {
+         for (auto it=Self->FeedbackSubscriptions->begin(); it != Self->FeedbackSubscriptions->end(); ) {
+            auto &sub = *it;
+            if ((sub.Callback.Type IS CALL_SCRIPT) and (sub.Callback.Script.Script->UID IS Args->ObjectID)) {
+               it = Self->FeedbackSubscriptions->erase(it);
+            }
+            else it++;
+         }
+      }
    }
    else return ERR_NoSupport;
 
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
-ApplyMatrix: Applies a 3x2 transform matrix to the vector.
+Debug: Internal functionality for debugging.
 
-This method will apply a 3x2 transformation matrix to the vector.  If the matrix is preceded with the application of
-other transforms, the outcome is that the matrix is multiplied with the combination of the former transforms.
-
--INPUT-
-double A: Matrix value at (0,0)
-double B: Matrix value at (1,0)
-double C: Matrix value at (2,0)
-double D: Matrix value at (0,1)
-double E: Matrix value at (1,1)
-double F: Matrix value at (2,1)
+This internal method prints comprehensive debugging information to the log.
 
 -ERRORS-
-Okay
-NullArgs
-AllocMemory
--END-
+Okay:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR VECTOR_ApplyMatrix(objVector *Self, struct vecApplyMatrix *Args)
+static ERROR VECTOR_Debug(objVector *Self, APTR Void)
 {
-   if (!Args) return ERR_NullArgs;
-
-   VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_MATRIX, FALSE))) {
-      transform->Matrix[0] = Args->A;
-      transform->Matrix[1] = Args->B;
-      transform->Matrix[2] = Args->C;
-      transform->Matrix[3] = Args->D;
-      transform->Matrix[4] = Args->E;
-      transform->Matrix[5] = Args->F;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*****************************************************************************
-
--METHOD-
-ClearTransforms: Clear all transform instructions currently associated with the vector.
-
-This method will clear all transform instructions that have been applied to the vector.
-
--ERRORS-
-Okay
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_ClearTransforms(objVector *Self, APTR Void)
-{
-   parasol::Log log;
-
-   log.traceBranch("");
-
-   if (Self->Transforms) {
-      VectorTransform *next;
-      for (auto scan=Self->Transforms; scan; scan=next) {
-         next = scan->Next;
-         FreeResource(scan);
-      }
-      Self->Transforms = NULL;
-   }
-
+   LONG level = 0;
+   debug_tree(Self, level);
    return ERR_Okay;
 }
 
-//****************************************************************************
+/*********************************************************************************************************************
+-ACTION-
+Disable: Disabling a vector can be used to trigger style changes and prevent user input.
+-END-
+*********************************************************************************************************************/
+
+static ERROR VECTOR_Disable(objVector *Self, APTR Void)
+{
+   // It is up to the client to monitor the Disable action if any reaction is required.
+   Self->Flags |= VF_DISABLED;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+-ACTION-
+Draw: Draws the surface associated with the vector.
+
+Calling the Draw action on a vector will schedule a redraw of the scene graph if it is associated with a @Surface.
+Internally, drawing is scheduled for the next frame and is not immediate.
+
+-ERROR-
+Okay
+FieldNotSet: The vector's scene graph is not associated with a Surface.
+-END-
+*********************************************************************************************************************/
+
+static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
+{
+   if ((Self->Scene) and (Self->Scene->SurfaceID)) {
+      if (Self->Dirty) gen_vector_tree((objVector *)Self);
+      if (!Self->BasePath.total_vertices()) return ERR_NoData;
+#if 0
+      // Retrieve bounding box, post-transformations.
+      // TODO: Would need to account for client defined brush stroke widths and stroke scaling.
+
+      DOUBLE bx1, by1, bx2, by2;
+      bounding_rect_single(Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
+
+      if (Self->Head.SubID IS ID_VECTORTEXT) {
+         bx1 += Self->FinalX;
+         by1 += Self->FinalY;
+         bx2 += Self->FinalX;
+         by2 += Self->FinalY;
+      }
+
+      const LONG STROKE_WIDTH = 2;
+      bx1 -= STROKE_WIDTH;
+      by1 -= STROKE_WIDTH;
+      bx2 += STROKE_WIDTH;
+      by2 += STROKE_WIDTH;
+
+      struct drwScheduleRedraw area = { .X = F2T(bx1), .Y = F2T(by1), .Width = F2T(bx2 - bx1), .Height = F2T(by2 - by1) };
+#endif
+
+      objSurface *surface;
+      if (!AccessObject(Self->Scene->SurfaceID, 1000, &surface)) {
+         Action(MT_DrwScheduleRedraw, surface, NULL);
+         ReleaseObject(surface);
+         return ERR_Okay;
+      }
+      else return ERR_AccessObject;
+   }
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldNotSet);
+   }
+}
+
+/*********************************************************************************************************************
+-ACTION-
+Enable: Reverses the effects of disabling the vector.
+-END-
+*********************************************************************************************************************/
+
+static ERROR VECTOR_Enable(objVector *Self, APTR Void)
+{
+  // It is up to the client to subscribe to the Enable action if any activity needs to take place.
+  Self->Flags &= ~VF_DISABLED;
+  return ERR_Okay;
+}
+
+//********************************************************************************************************************
 
 static ERROR VECTOR_Free(objVector *Self, APTR Args)
 {
+   Self->~objVector();
+
    if (Self->ID)           { FreeResource(Self->ID); Self->ID = NULL; }
-   if (Self->DashArray)    { FreeResource(Self->DashArray); Self->DashArray = NULL; }
    if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = NULL; }
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
 
-   if (Self->FillGradientTable) { delete Self->FillGradientTable; Self->FillGradientTable = NULL; }
+   if (Self->FillGradientTable)   { delete Self->FillGradientTable; Self->FillGradientTable = NULL; }
    if (Self->StrokeGradientTable) { delete Self->StrokeGradientTable; Self->StrokeGradientTable = NULL; }
+   if (Self->DashArray)           { delete Self->DashArray; Self->DashArray = NULL; }
 
-   VECTOR_ClearTransforms(Self, NULL);
-
-   // Patch the nearest vectors that are linked to ours.
+   // Patch the nearest vectors that are linked to this one.
    if (Self->Next) Self->Next->Prev = Self->Prev;
    if (Self->Prev) Self->Prev->Next = Self->Next;
    if ((Self->Parent) and (!Self->Prev)) {
@@ -130,27 +250,85 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    }
    if (Self->Child) Self->Child->Parent = NULL;
 
-   delete Self->Transform;       Self->Transform = NULL;
-   delete Self->BasePath;        Self->BasePath = NULL;
-   delete Self->StrokeRaster;    Self->StrokeRaster = NULL;
-   delete Self->FillRaster;      Self->FillRaster = NULL;
+   if ((Self->Scene) and (!(Self->Scene->Head.Flags & (NF_FREE|NF_FREE_MARK)))) {
+      Self->Scene->InputSubscriptions.erase(Self);
+      Self->Scene->KeyboardSubscriptions.erase(Self);
+   }
+
+   if (Self->Matrices) {
+      VectorMatrix *next;
+      for (auto t=Self->Matrices; t; t=next) {
+         next = t->Next;
+         FreeResource(t);
+      }
+   }
+
+   delete Self->StrokeRaster; Self->StrokeRaster = NULL;
+   delete Self->FillRaster;   Self->FillRaster   = NULL;
+   delete Self->InputSubscriptions;    Self->InputSubscriptions    = NULL;
+   delete Self->KeyboardSubscriptions; Self->KeyboardSubscriptions = NULL;
+   delete Self->FeedbackSubscriptions; Self->FeedbackSubscriptions = NULL;
 
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
+
+-METHOD-
+FreeMatrix: Remove an allocated VectorMatrix structure.
+
+Transformations allocated from ~Vector.NewMatrix() can be removed with this method.  If multiple transforms are
+attached to the vector then it should be noted that this will affect downstream transformations.
+
+-INPUT-
+struct(*VectorMatrix) Matrix: Reference to the structure that requires removal.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+*********************************************************************************************************************/
+
+static ERROR VECTOR_FreeMatrix(objVector *Self, struct vecFreeMatrix *Args)
+{
+   if ((!Args) or (!Args->Matrix)) return ERR_NullArgs;
+
+   // Clean up the linked list
+
+   if (Self->Matrices IS Args->Matrix) {
+      Self->Matrices = Args->Matrix->Next;
+   }
+   else {
+      for (auto t = Self->Matrices; t; t=t->Next) {
+         if (t->Next IS Args->Matrix) {
+            t->Next = Args->Matrix->Next;
+            break;
+         }
+      }
+   }
+
+   FreeResource(Args->Matrix);
+
+   mark_dirty(Self, RC_TRANSFORM);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -METHOD-
 GetBoundary: Returns the graphical boundary of a vector.
 
-This function will return the boundary of a vector's path in terms of its top-left position, width and height.  All
+This method will return the boundary of a vector's path in terms of its top-left position, width and height.  All
 transformations and position information that applies to the vector will be taken into account when computing the
 boundary.
 
-If the VBF_INCLUSIVE flag is used, the result will include an analysis of all paths that belong to children of the
-target vector.
+If the `VBF_INCLUSIVE` flag is used, the result will include an analysis of all paths that belong to children of the
+target vector, including transforms.
 
-If the VBF_NO_TRANSFORM flag is used, the transformation step is not applied to the vector's path.
+If the `VBF_NO_TRANSFORM` flag is used, the transformation step is not applied to the vector's path.
+
+It is recommended that this method is not called until at least one rendering pass has been made, as some vector
+dimensions may not be computed before then.
 
 -INPUT-
 int(VBF) Flags: Optional flags.
@@ -166,7 +344,7 @@ NoData: The vector does not have a computable path.
 NotPossible: The vector does not support path generation.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
 {
@@ -176,95 +354,53 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
 
    if (!Self->Scene) return log.warning(ERR_NotInitialised);
 
-   if (Args->Flags & VBF_INCLUSIVE) {
-      std::array<DOUBLE, 4> bounds = { 1000000, 1000000, -1000000, -1000000 };
-      calc_full_boundary(Self, bounds);
+   if (Self->GeneratePath) { // Path generation must be supported by the vector.
+      if (Self->Dirty) gen_vector_tree((objVector *)Self);
+      if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
-      Args->X = bounds[0];
-      Args->Y = bounds[1];
+      std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, -1000000, -1000000 };
+      DOUBLE bx1, by1, bx2, by2;
+
+      if (Args->Flags & VBF_NO_TRANSFORM) {
+         bounding_rect_single(Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
+         bounds[0] = bx1 + Self->FinalX;
+         bounds[1] = by1 + Self->FinalY;
+         bounds[2] = bx2 + Self->FinalX;
+         bounds[3] = by2 + Self->FinalY;
+      }
+      else {
+         agg::conv_transform<agg::path_storage, agg::trans_affine> path(Self->BasePath, Self->Transform);
+         bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+         bounds[0] = bx1;
+         bounds[1] = by1;
+         bounds[2] = bx2;
+         bounds[3] = by2;
+      }
+
+      if (Args->Flags & VBF_INCLUSIVE) calc_full_boundary(Self->Child, bounds);
+
+      Args->X      = bounds[0];
+      Args->Y      = bounds[1];
       Args->Width  = bounds[2] - bounds[0];
       Args->Height = bounds[3] - bounds[1];
       return ERR_Okay;
    }
-   else if (Self->GeneratePath) { // Path generation must be supported by the vector.
-      if ((!Self->BasePath) or (Self->Dirty)) {
-         gen_vector_path(Self);
-         Self->Dirty = 0;
-      }
-
-      if (Self->BasePath) {
-         DOUBLE bx1, by1, bx2, by2;
-
-         if (Args->Flags & VBF_NO_TRANSFORM) {
-            bounding_rect_single(*Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
-            bx1 += Self->FinalX;
-            bx2 += Self->FinalX;
-            by1 += Self->FinalY;
-            by2 += Self->FinalY;
-         }
-         else {
-            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Self->BasePath, *Self->Transform);
-            bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
-         }
-
-         Args->X = bx1;
-         Args->Y = by1;
-         Args->Width  = bx2 - bx1;
-         Args->Height = by2 - by1;
-         return ERR_Okay;
-      }
-      else return ERR_NoData;
-   }
    else return ERR_NotPossible;
 }
 
-/*****************************************************************************
-
--METHOD-
-GetTransform: Returns the values of applied transformation effects.
-
-This method returns a VECTOR_TRANSFORM structure for any given transform that has been applied to a vector.  It works
-for MATRIX, TRANSLATE, SCALE, ROTATE and SKEW transformations.  The structure of VECTOR_TRANSFORM is described in the
-#Transforms field.
-
-If the requested transform is not applied to the vector, the method will fail with an ERR_Search return code.
-
--INPUT-
-int Type: Type of transform to retrieve.  If set to zero, the first transformation is returned.
-&struct(*VectorTransform) Transform: A matching VECTOR_TRANSFORM structure is returned in this parameter, if found.
-
--ERRORS-
-Okay:
-NullArgs:
-Search: The requested transform type is not applied.
-NoData: No transformations are applied to the vector.
+/*********************************************************************************************************************
+-ACTION-
+Hide: Changes the vector's visibility setting to hidden.
 -END-
+*********************************************************************************************************************/
 
-*****************************************************************************/
-
-static ERROR VECTOR_GetTransform(objVector *Self, struct vecGetTransform *Args)
+static ERROR VECTOR_Hide(objVector *Self, APTR Void)
 {
-   parasol::Log log;
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   if (Args->Type & Self->ActiveTransforms) {
-      for (auto t=Self->Transforms; t; t=t->Next) {
-         if (t->Type IS Args->Type) {
-            Args->Transform = t;
-            return ERR_Okay;
-         }
-      }
-   }
-   else if (!Args->Type) { // If no type specified, return the first transformation.
-      if ((Args->Transform = Self->Transforms)) return ERR_Okay;
-      else return ERR_NoData;
-   }
-
-   return ERR_Search;
+   Self->Visibility = VIS_HIDDEN;
+   return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTOR_Init(objVector *Self, APTR Void)
 {
@@ -275,8 +411,10 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
       return ERR_Failed;
    }
 
-   log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UniqueID : 0,
-      Self->Prev ? Self->Prev->Head.UniqueID : 0, Self->Next ? Self->Next->Head.UniqueID : 0, Self);
+   if (!Self->Parent) set_parent(Self, Self->Head.OwnerID);
+
+   log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UID : 0,
+      Self->Prev ? Self->Prev->Head.UID : 0, Self->Next ? Self->Next->Head.UID : 0, Self);
 
    OBJECTPTR parent;
    if ((parent = Self->Parent)) {
@@ -312,15 +450,7 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
 
    // Find the nearest parent viewport.
 
-   OBJECTPTR scan = get_parent(Self);
-   while (scan) {
-      if (scan->SubID IS ID_VECTORVIEWPORT) {
-         Self->ParentView = (objVectorViewport *)scan;
-         break;
-      }
-      if (scan->ClassID IS ID_VECTOR) scan = ((objVector *)scan)->Parent;
-      else break;
-   }
+   Self->ParentView = get_parent_view(Self);
 
    // Reapply the filter if it couldn't be set prior to initialisation.
    if ((!Self->Filter) and (Self->FilterString)) {
@@ -330,7 +460,31 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+/*********************************************************************************************************************
+-ACTION-
+MoveToBack: Move a vector to the back of its stack.
+
+*********************************************************************************************************************/
+
+static ERROR VECTOR_MoveToBack(objVector *Self, APTR Void)
+{
+   struct vecPush push = { -32768 };
+   return VECTOR_Push(Self, &push);
+}
+
+/*********************************************************************************************************************
+-ACTION-
+MoveToFront: Move a vector to the front of its stack.
+-END-
+*********************************************************************************************************************/
+
+static ERROR VECTOR_MoveToFront(objVector *Self, APTR Void)
+{
+   struct vecPush push = { 32767 };
+   return VECTOR_Push(Self, &push);
+}
+
+//********************************************************************************************************************
 
 static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
 {
@@ -347,70 +501,85 @@ static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
    Self->FillRule      = VFR_NON_ZERO;
    Self->ClipRule      = VFR_NON_ZERO;
    Self->Dirty         = RC_ALL;
+   new (Self) objVector;
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTOR_NewOwner(objVector *Self, struct acNewOwner *Args)
 {
    parasol::Log log;
 
    if (!Self->Head.SubID) return ERR_Okay;
-   if (Self->Scene) { // Modifying the owner after the root vector has been established is not permitted.
-      return log.warning(ERR_UnsupportedOwner);
-   }
 
-   // Objects that don't belong to the Vector class will be ignored (i.e. they won't appear in the tree).
+   // Modifying the owner after the root vector has been established is not permitted.
+   // The client should instead create a new object under the target and transfer the field values.
 
-   CLASSID class_id = GetClassID(Args->NewOwnerID);
-   if ((class_id != ID_VECTORSCENE) and (class_id != ID_VECTOR)) return ERR_Okay;
+   if (Self->Head.Flags & NF_INITIALISED) return log.warning(ERR_AlreadyDefined);
 
-   Self->Parent = (OBJECTPTR)GetObjectPtr(Args->NewOwnerID);
-
-   // Ensure that the sibling fields are valid, if not then clear them.
-
-   if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = NULL;
-   if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = NULL;
-
-   if (Self->Parent->ClassID IS ID_VECTOR) {
-      if ((!Self->Prev) and (!Self->Next)) {
-         if (((objVector *)Self->Parent)->Child) { // Insert at the end
-            auto end = ((objVector *)Self->Parent)->Child;
-            while (end->Next) end = end->Next;
-            end->Next = Self;
-            Self->Prev = end;
-         }
-         else ((objVector *)Self->Parent)->Child = Self;
-      }
-
-      Self->Scene = ((objVector *)Self->Parent)->Scene;
-   }
-   else if (Self->Parent->ClassID IS ID_VECTORSCENE) {
-      if ((!Self->Prev) and (!Self->Next)) {
-         if (((objVectorScene *)Self->Parent)->Viewport) { // Insert at the end
-            auto end = ((objVectorScene *)Self->Parent)->Viewport;
-            while (end->Next) end = end->Next;
-            end->Next = Self;
-            Self->Prev = end;
-         }
-         else ((objVectorScene *)Self->Parent)->Viewport = Self;
-      }
-
-      Self->Scene = (objVectorScene *)Self->Parent;
-   }
+   set_parent(Self, Args->NewOwnerID);
 
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
+
+-METHOD-
+NewMatrix: Returns a VectorMatrix structure that allows transformations to be applied to the vector.
+
+Call NewMatrix() to allocate a transformation matrix that allows transforms to be applied to a vector.  Manipulating
+the transformation matrix is supported by functions in the Vector module, such as ~Vector.Scale() and
+~Vector.Rotate().
+
+Note that if multiple matrices are allocated by the client, they will be applied to the vector in the
+order of their creation.
+
+The structure will be owned by the Vector object and is automatically terminated when the Vector is destroyed.  If the
+transform is no longer required before then, it can be manually removed with ~Vector.FreeMatrix().
+
+-INPUT-
+&resource(*VectorMatrix) Transform: A reference to the new transform structure is returned here.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+*********************************************************************************************************************/
+
+static ERROR VECTOR_NewMatrix(objVector *Self, struct vecNewMatrix *Args)
+{
+   if (!Args) return ERR_NullArgs;
+
+   VectorMatrix *transform;
+   if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &transform, NULL)) {
+      // Insert transform at the start of the list.
+
+      transform->Vector = Self;
+      transform->Next   = Self->Matrices;
+      transform->ScaleX = 1.0;
+      transform->ScaleY = 1.0;
+      transform->ShearX = 0;
+      transform->ShearY = 0;
+      transform->TranslateX = 0;
+      transform->TranslateY = 0;
+
+      Self->Matrices = transform;
+      Args->Transform = transform;
+
+      mark_dirty(Self, RC_TRANSFORM);
+      return ERR_Okay;
+   }
+   else return ERR_AllocMemory;
+}
+
+/*********************************************************************************************************************
 
 -METHOD-
 PointInPath: Checks if point at (X,Y) is within a vector's path.
 
-This method provides an accurate means of determining if a specific coordinate is inside the path of a vector.  It is
-important to note that in some cases this operation may be computationally expensive, as each pixel normally drawn in
-the path may need to be calculated until the (X,Y) point is hit.
+This method provides an accurate means of determining if a specific coordinate is inside the path of a vector.
+Transforms are taken into account, as are clip masks.
 
 -INPUT-
 double X: The X coordinate of the point.
@@ -423,7 +592,7 @@ NullArgs:
 NoData: The vector is unable to generate a path based on its current values.
 NoSupport: The vector type does not support path generation.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
 {
@@ -431,34 +600,61 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Self->GeneratePath) {
-      if ((!Self->BasePath) or (Self->Dirty)) {
-         gen_vector_path(Self);
-         Self->Dirty = 0;
-      }
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
-      if (!Self->BasePath) return ERR_NoData;
+   if (Self->Head.SubID IS ID_VECTORVIEWPORT) {
+      agg::vertex_d w, x, y, z;
 
-      // Quick check to see if (X,Y) is within the path's boundary.
+      auto &vertices = Self->BasePath.vertices(); // Note: Viewport BasePath is fully transformed.
+      vertices.vertex(0, &x.x, &x.y);
+      vertices.vertex(1, &y.x, &y.y);
+      vertices.vertex(2, &z.x, &z.y);
+      vertices.vertex(3, &w.x, &w.y);
 
-      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(*Self->BasePath, *Self->Transform);
+      agg::vertex_d pt = agg::vertex_d(Args->X, Args->Y, 0);
 
+      // Test assumes clockwise points; for counter-clockwise you'd use < 0.
+      bool inside = (is_left(x, y, pt) > 0) and (is_left(y, z, pt) > 0) and
+                    (is_left(z, w, pt) > 0) and (is_left(w, x, pt) > 0);
+
+      if (inside) return ERR_Okay;
+   }
+   else if (Self->Head.SubID IS ID_VECTORRECTANGLE) {
+      agg::vertex_d w, x, y, z;
+      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(Self->BasePath, Self->Transform);
+
+      base_path.rewind(0);
+      base_path.vertex(&x.x, &x.y);
+      base_path.vertex(&y.x, &y.y);
+      base_path.vertex(&z.x, &z.y);
+      base_path.vertex(&w.x, &w.y);
+
+      agg::vertex_d pt = agg::vertex_d(Args->X, Args->Y, 0);
+
+      bool inside = (is_left(x, y, pt) > 0) and (is_left(y, z, pt) > 0) and
+                    (is_left(z, w, pt) > 0) and (is_left(w, x, pt) > 0);
+
+      if (inside) return ERR_Okay;
+   }
+   else {
+      // Quick check to see if (X,Y) is within the path's boundary, then follow-up with a hit test.
+
+      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(Self->BasePath, Self->Transform);
       DOUBLE bx1, by1, bx2, by2;
       bounding_rect_single(base_path, 0, &bx1, &by1, &bx2, &by2);
       if ((Args->X >= bx1) and (Args->Y >= by1) and (Args->X < bx2) and (Args->Y < by2)) {
-         // Do the hit testing.
-
+         // Do the hit testing.  TODO: There is potential for more sophisticated & optimal hit testing methods.
          agg::rasterizer_scanline_aa<> raster;
          raster.add_path(base_path);
          if (raster.hit_test(Args->X, Args->Y)) return ERR_Okay;
       }
-
-      return ERR_False;
    }
-   else return ERR_NoSupport;
+
+   return ERR_False;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Push: Push a vector to a new position within its area of the vector stack.
@@ -478,7 +674,7 @@ int Position: Specify a relative position index here (-ve to move backwards, +ve
 Okay:
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
 {
@@ -528,58 +724,189 @@ static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
-Reset: Clears all transform settings from the vector.
+Show: Changes the vector's visibility setting to visible.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR VECTOR_Reset(objVector *Self, APTR Void)
+static ERROR VECTOR_Show(objVector *Self, APTR Void)
 {
-   Self->ActiveTransforms = 0;
+   Self->Visibility = VIS_VISIBLE;
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
-Rotate: Applies a rotation transformation to the vector.
+SubscribeFeedback: Create a subscription for internal events that have modified the vector.
 
-This method will apply a rotation transformation to a vector.  The rotation will be computed on a run-time
-basis and does not affect the path stored with the vector.  Any children associated with the vector will also be
-affected by the transformation.
+To receive feedback for events that have modified a vector's attributes, use this method to create a subscription.
 
-If a rotation already exists for the vector, it will be replaced with the new specifications.
+To remove an existing subscription, call this method again with the same Callback and an empty Mask.
+Alternatively have the callback function return `ERR_Terminate`.
 
-The transformation can be removed at any time by calling the #ClearTransforms() method.
+The synopsis for the Callback is:
+
+```
+ERROR callback(*Vector, LONG Event)
+```
 
 -INPUT-
-double Angle: Angle of rotation
-double CenterX: Center of rotation on the horizontal axis.
-double CenterY: Center of rotation on the vertical axis.
+int(FM) Mask: Combine FM flags to define the feedback events required by the client.  Set to 0xffffffff if all messages are desirable.
+ptr(func) Callback: The function that will receive feedback events.
 
 -ERRORS-
 Okay:
 NullArgs:
-AllocMemory:
 
 ****************************************************************************/
 
-static ERROR VECTOR_Rotate(objVector *Self, struct vecRotate *Args)
+static ERROR VECTOR_SubscribeFeedback(objVector *Self, struct vecSubscribeFeedback *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   parasol::Log log;
 
-   VectorTransform *t;
-   if ((t = add_transform(Self, VTF_ROTATE, FALSE))) {
-      t->Angle = Args->Angle;
-      t->X = Args->CenterX;
-      t->Y = Args->CenterY;
-      return ERR_Okay;
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+
+   if (Args->Mask) {
+      if (!Self->FeedbackSubscriptions) {
+         Self->FeedbackSubscriptions = new (std::nothrow) std::vector<FeedbackSubscription>;
+         if (!Self->FeedbackSubscriptions) return log.warning(ERR_AllocMemory);
+      }
+
+      Self->FeedbackSubscriptions->emplace_back(*Args->Callback, Args->Mask);
    }
-   else return ERR_AllocMemory;
+   else if (Self->FeedbackSubscriptions) { // Remove existing subscriptions for this callback
+      for (auto it=Self->FeedbackSubscriptions->begin(); it != Self->FeedbackSubscriptions->end(); ) {
+         if (*Args->Callback IS it->Callback) it = Self->FeedbackSubscriptions->erase(it);
+         else it++;
+      }
+   }
+
+   return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
+
+-METHOD-
+SubscribeInput: Create a subscription for input events that relate to the vector.
+
+The SubscribeInput method is provided as an extension to gfxSubscribeInput(), whereby the user's input events
+will be restricted to those within the vector's scene graph.  The original events are transferred as-is, although the
+`ENTERED_SURFACE` and `LEFT_SURFACE` events are modified so that they trigger during passage through the scene's
+boundaries.
+
+It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
+
+To remove an existing subscription, call this method again with the same Callback and an empty Mask.
+Alternatively have the function return `ERR_Terminate`.
+
+Please refer to gfxSubscribeInput() for further information on event management and message handling.
+
+The synopsis for the Callback is:
+
+```
+ERROR callback(*Vector, *InputEvent)
+```
+
+-INPUT-
+int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.
+ptr(func) Callback: Reference to a callback function that will receive input messages.
+
+-ERRORS-
+Okay:
+NullArgs:
+FieldNotSet: The VectorScene has no reference to a Surface.
+AllocMemory:
+Function: A call to gfxSubscribeInput() failed.
+
+*********************************************************************************************************************/
+
+static ERROR VECTOR_SubscribeInput(objVector *Self, struct vecSubscribeInput *Args)
+{
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+
+   if (Args->Mask) {
+      if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return log.warning(ERR_FieldNotSet);
+
+      if (!Self->InputSubscriptions) {
+         Self->InputSubscriptions = new (std::nothrow) std::vector<InputSubscription>;
+         if (!Self->InputSubscriptions) return log.warning(ERR_AllocMemory);
+      }
+
+      LONG mask = Args->Mask;
+      if (mask & JTYPE_FEEDBACK) mask |= JTYPE_MOVEMENT;
+
+      Self->InputMask |= mask;
+      Self->Scene->InputSubscriptions[Self] = Self->InputMask;
+      Self->InputSubscriptions->emplace_back(*Args->Callback, mask);
+   }
+   else if (Self->InputSubscriptions) { // Remove existing subscriptions for this callback
+      for (auto it=Self->InputSubscriptions->begin(); it != Self->InputSubscriptions->end(); ) {
+         if (*Args->Callback IS it->Callback) it = Self->InputSubscriptions->erase(it);
+         else it++;
+      }
+
+      if (Self->InputSubscriptions->empty()) {
+         if ((Self->Scene) and (!(Self->Scene->Head.Flags & (NF_FREE|NF_FREE_MARK)))) {
+            Self->Scene->InputSubscriptions.erase(Self);
+         }
+      }
+   }
+
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+SubscribeKeyboard: Create a subscription for input events that relate to the vector.
+
+The SubscribeKeyboard method is provided to simplify the handling of keyboard messages for the client.  It is a
+pre-requisite that the associated @VectorScene has been linked to a @Surface.
+
+A callback is required and this will receive input messages as they arrive from the user.  The prototype for the
+callback is as follows, whereby Flags are keyboard qualifiers `KQ` and the Value will be a `K` constant.
+
+```
+ERROR callback(*Viewport, LONG Flags, LONG Value);
+```
+
+To remove the subscription, the function can return `ERR_Terminate`.
+
+-INPUT-
+ptr(func) Callback: Reference to a callback function that will receive input messages.
+
+-ERRORS-
+Okay:
+NullArgs:
+FieldNotSet: The VectorScene has no reference to a Surface.
+AllocMemory:
+Function: A call to gfxSubscribeInput() failed.
+
+*********************************************************************************************************************/
+
+static ERROR VECTOR_SubscribeKeyboard(objVector *Self, struct vecSubscribeKeyboard *Args)
+{
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+
+   if (!Self->Scene->SurfaceID) return log.warning(ERR_FieldNotSet);
+
+   if (!Self->KeyboardSubscriptions) {
+      Self->KeyboardSubscriptions = new (std::nothrow) std::vector<KeyboardSubscription>;
+      if (!Self->KeyboardSubscriptions) return log.warning(ERR_AllocMemory);
+   }
+
+   Self->Scene->KeyboardSubscriptions.emplace(Self);
+   Self->KeyboardSubscriptions->emplace_back(*Args->Callback);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -METHOD-
 TracePath: Returns the coordinates for a vector path, using callbacks.
@@ -591,7 +918,7 @@ function is `ERROR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X
 The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects
 the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.
 
-If the Callback returns ERR_Terminate, then no further coordinates will be processed.
+If the Callback returns `ERR_Terminate`, then no further coordinates will be processed.
 
 -INPUT-
 ptr(func) Callback: The function to call with each coordinate of the path.
@@ -608,265 +935,55 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
 
    if ((!Args) or (Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Self->Dirty) {
-      gen_vector_path(Self);
-      Self->Dirty = 0;
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (!Self->BasePath.total_vertices()) return ERR_NoData;
+
+   Self->BasePath.rewind(0);
+
+   DOUBLE x, y;
+   LONG cmd = -1;
+
+  if (Args->Callback->Type IS CALL_STDC) {
+      auto routine = ((void (*)(objVector *, LONG, LONG, DOUBLE, DOUBLE))(Args->Callback->StdC.Routine));
+
+      parasol::SwitchContext context(GetParentContext());
+
+      LONG index = 0;
+      do {
+        cmd = Self->BasePath.vertex(&x, &y);
+        if (agg::is_vertex(cmd)) routine(Self, index++, cmd, x, y);
+      } while (cmd != agg::path_cmd_stop);
    }
+   else if (Args->Callback->Type IS CALL_SCRIPT) {
+      ScriptArg args[] = {
+         { "Vector",  FD_OBJECTID },
+         { "Index",   FD_LONG },
+         { "Command", FD_LONG },
+         { "X",       FD_DOUBLE },
+         { "Y",       FD_DOUBLE }
+      };
+      args[0].Long = Self->Head.UID;
 
-   if (Self->BasePath) {
-      Self->BasePath->rewind(0);
-
-      DOUBLE x, y;
-      LONG cmd = -1;
-
-     if (Args->Callback->Type IS CALL_STDC) {
-         auto routine = ((void (*)(objVector *, LONG, LONG, DOUBLE, DOUBLE))(Args->Callback->StdC.Routine));
-
-         parasol::SwitchContext context(GetParentContext());
-
+      OBJECTPTR script;
+      if ((script = Args->Callback->Script.Script)) {
          LONG index = 0;
          do {
-           cmd = Self->BasePath->vertex(&x, &y);
-           if (agg::is_vertex(cmd)) routine(Self, index++, cmd, x, y);
+           cmd = Self->BasePath.vertex(&x, &y);
+           if (agg::is_vertex(cmd)) {
+              args[1].Long = index++;
+              args[2].Long = cmd;
+              args[3].Double = x;
+              args[4].Double = y;
+              scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+           }
          } while (cmd != agg::path_cmd_stop);
       }
-      else if (Args->Callback->Type IS CALL_SCRIPT) {
-         ScriptArg args[] = {
-            { "Vector",  FD_OBJECTID },
-            { "Index",   FD_LONG },
-            { "Command", FD_LONG },
-            { "X",       FD_DOUBLE },
-            { "Y",       FD_DOUBLE }
-         };
-         args[0].Long = Self->Head.UniqueID;
-
-         OBJECTPTR script;
-         if ((script = Args->Callback->Script.Script)) {
-            LONG index = 0;
-            do {
-              cmd = Self->BasePath->vertex(&x, &y);
-              if (agg::is_vertex(cmd)) {
-                 args[1].Long = index++;
-                 args[2].Long = cmd;
-                 args[3].Double = x;
-                 args[4].Double = y;
-                 scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-              }
-            } while (cmd != agg::path_cmd_stop);
-         }
-      }
-
-      return ERR_Okay;
-   }
-   else return ERR_NoData;
-}
-
-/*****************************************************************************
-
--METHOD-
-Transform: Apply a transformation to a vector.
-
-This method parses a sequence of transformation instructions and applies them to the vector.  The transformation will
-be computed on a run-time basis and does not affect the path stored with the vector.  Any children associated with the
-vector will be affected by the transformation.
-
-The transform string must be written using SVG guidelines for the transform attribute, for example
-`skewX(20) rotate(45 50 50)` would be valid.
-
-Any existing transformation instructions for the vector will be replaced by this operation.
-
-The transformation can be removed at any time by calling the #ClearTransforms() method.
-
--INPUT-
-cstr Transform: The transform to apply, expressed as a string instruction.
-
--ERRORS-
-Okay:
-NullArgs:
-AllocMemory:
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_Transform(objVector *Self, struct vecTransform *Args)
-{
-   if ((!Args) or (!Args->Transform)) return ERR_NullArgs;
-
-   VECTOR_ClearTransforms(Self, NULL);
-
-   VectorTransform *transform;
-
-   CSTRING str = Args->Transform;
-   while (*str) {
-      if (!StrCompare(str, "matrix", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_MATRIX, FALSE))) {
-            str = read_numseq(str+6, &transform->Matrix[0], &transform->Matrix[1], &transform->Matrix[2], &transform->Matrix[3], &transform->Matrix[4], &transform->Matrix[5], TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "translate", 9, 0)) {
-         if ((transform = add_transform(Self, VTF_TRANSLATE, FALSE))) {
-            DOUBLE x = 0;
-            DOUBLE y = 0;
-            str = read_numseq(str+9, &x, &y, TAGEND);
-            transform->X += x;
-            transform->Y += y;
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "rotate", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_ROTATE, FALSE))) {
-            str = read_numseq(str+6, &transform->Angle, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "scale", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SCALE, FALSE))) {
-            str = read_numseq(str+5, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewX", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW, FALSE))) {
-            transform->X = 0;
-            str = read_numseq(str+5, &transform->X, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewY", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW, FALSE))) {
-            transform->Y = 0;
-            str = read_numseq(str+5, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else str++;
    }
 
    return ERR_Okay;
 }
 
-/*****************************************************************************
-
--METHOD-
-Translate: Translates the vector by (X,Y).
-
-This method will apply a translation along (X,Y) to the vector's transform command sequence.
-
--INPUT-
-double X: Translation along the x-axis.
-double Y: Translation along the y-axis.
-
--ERRORS-
-Okay:
-NullArgs:
-AllocMemory:
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_Translate(objVector *Self, struct vecTranslate *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_TRANSLATE, FALSE))) {
-      transform->X = Args->X;
-      transform->Y = Args->Y;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*****************************************************************************
-
--METHOD-
-Skew: Skews the vector along the horizontal and/or vertical axis.
-
-The Skew method applies a skew transformation to the horizontal and/or vertical axis of the vector and its children.
-Valid X and Y values are in the range of -90 < Angle < 90.
-
--INPUT-
-double X: The angle to skew along the horizontal.
-double Y: The angle to skew along the vertical.
-
--ERRORS-
-Okay:
-NullArgs:
-OutOfRange: At least one of the angles is out of the allowable range.
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_Skew(objVector *Self, struct vecSkew *Args)
-{
-   parasol::Log log;
-
-   if ((!Args) or ((!Args->X) and (!Args->Y))) return log.warning(ERR_NullArgs);
-
-   VectorTransform *transform;
-   if ((transform = add_transform(Self, VTF_SKEW, FALSE))) {
-      if ((Args->X > -90) and (Args->X < 90)) {
-         transform->X = Args->X;
-      }
-      else return log.warning(ERR_OutOfRange);
-
-      if ((Args->Y > -90) and (Args->Y < 90)) transform->Y = Args->Y;
-      else return log.warning(ERR_OutOfRange);
-
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*****************************************************************************
-
--METHOD-
-Scale: Scale the size of the vector by (x,y)
-
-This method will add a scale transformation to the vector's transform commands.  Values of less than 1.0 will shrink
-the path along the target axis, while values greater than 1.0 will enlarge it.
-
-The scale factors are applied to every path point, and scaling is relative to position (0,0).  If the width and height
-of the vector shape needs to be transformed without affecting its top-left position, the client must translate the
-vector to (0,0) around its center point.  The vector should then be scaled and transformed back to its original
-top-left coordinate.
-
-The scale transform can also be formed to flip the vector path if negative values are used.  For instance, a value of
--1.0 on the x axis would result in a 1:1 flip across the horizontal.
-
--INPUT-
-double X: The scale factor on the x-axis.
-double Y: The scale factor on the y-axis.
-
--ERRORS-
-Okay
-NullArgs
-AllocMemory
--END-
-
-*****************************************************************************/
-
-static ERROR VECTOR_Scale(objVector *Self, struct vecScale *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   VectorTransform *t;
-   if ((t = add_transform(Self, VTF_SKEW, FALSE))) {
-      t->X = Args->X;
-      t->Y = Args->Y;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*****************************************************************************
-
--FIELD-
-ActiveTransforms: Indicates the transforms that are currently applied to a vector.
-
-Each time that a transform is applied to a vector through methods such as #Scale() and #Translate(), a
-flag will be set in ActiveTransforms that indicates the type of transform that was applied.
+/*********************************************************************************************************************
 
 -FIELD-
 Child: The first child vector, or NULL.
@@ -882,7 +999,7 @@ Lookup: VFR
 The ClipRule attribute only applies to vector shapes when they are contained within a @VectorClip object.  In
 terms of outcome, the ClipRule works similarly to #FillRule.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_ClipRule(objVector *Self, LONG *Value)
 {
@@ -896,7 +1013,53 @@ static ERROR VECTOR_SET_ClipRule(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+Cursor: The mouse cursor to display when the pointer is within the vector's boundary.
+
+The Cursor field provides a convenient way of defining the pointer's cursor image within a vector boundary.  The cursor
+will automatically switch to the specified image when it enters the boundary defined by the vector's path.  This effect
+lasts until the cursor vacates the area.
+
+It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
+-END-
+****************************************************************************/
+
+static ERROR VECTOR_SET_Cursor(objVector *Self, LONG Value)
+{
+   Self->Cursor = Value;
+
+   if (Self->Head.Flags & NF_INITIALISED) {
+      // Send a dummy input event to refresh the cursor
+
+      DOUBLE x, y, absx, absy;
+
+      gfxGetRelativeCursorPos(Self->Scene->SurfaceID, &x, &y);
+      gfxGetCursorPos(&absx, &absy);
+
+      const InputEvent event = {
+         .Next        = NULL,
+         .Value       = 0,
+         .Timestamp   = 0,
+         .RecipientID = Self->Scene->SurfaceID,
+         .OverID      = Self->Scene->SurfaceID,
+         .AbsX        = absx,
+         .AbsY        = absy,
+         .X           = x,
+         .Y           = y,
+         .DeviceID    = 0,
+         .Type        = JET_ABS_X,
+         .Flags       = JTYPE_MOVEMENT,
+         .Mask        = JTYPE_MOVEMENT
+      };
+      scene_input_events(&event, 0);
+   }
+
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 DashArray: Controls the pattern of dashes and gaps used to stroke paths.
@@ -905,26 +1068,45 @@ The DashArray is a list of lengths that alternate between dashes and gaps.  If a
 then the list of values is repeated to yield an even number of values.  Thus `5,3,2` is equivalent to
 `5,3,2,5,3,2`.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_DashArray(objVector *Self, DOUBLE **Value, LONG *Elements)
 {
-   *Value = Self->DashArray;
-   *Elements = Self->DashTotal;
+   if (Self->DashArray) {
+      *Value    = Self->DashArray->values.data();
+      *Elements = Self->DashArray->values.size();
+   }
+   else {
+      *Value    = NULL;
+      *Elements = 0;
+   }
    return ERR_Okay;
 }
 
 static ERROR VECTOR_SET_DashArray(objVector *Self, DOUBLE *Value, LONG Elements)
 {
-   if (Self->DashArray) { FreeResource(Self->DashArray); Self->DashArray = NULL; Self->DashTotal = 0; }
+   if (Self->DashArray) { delete Self->DashArray; Self->DashArray = NULL; }
 
    if ((Value) and (Elements >= 2)) {
       LONG total = Elements;
       if (total & 1) total++; // There must be an even count of dashes and gaps.
-      if (!AllocMemory(sizeof(DOUBLE) * total, MEM_DATA|MEM_NO_CLEAR, &Self->DashArray, NULL)) {
-         CopyMemory(Value, Self->DashArray, sizeof(DOUBLE) * Elements);
-         if (total > Elements) Self->DashArray[Elements] = 0;
-         Self->DashTotal = total;
+
+      Self->DashArray = new (std::nothrow) DashedStroke(Self->BasePath, total);
+      if (Self->DashArray) {
+         Self->DashArray->values.assign(*Value, Elements);
+         if (total > Elements) Self->DashArray->values[Elements] = 0;
+
+         DOUBLE total_length = 0;
+         for (LONG i=0; i < total-1; i+=2) {
+            Self->DashArray->path.add_dash(Value[i], Value[i+1]);
+            total_length += Value[i] + Value[i+1];
+         }
+
+         // The stroke-dashoffset is used to set how far into dash pattern to start the pattern.  E.g. a
+         // value of 5 means that the entire pattern is shifted 5 pixels to the left.
+
+         if (Self->DashOffset > 0) Self->DashArray->path.dash_start(Self->DashOffset);
+         else if (Self->DashOffset < 0) Self->DashArray->path.dash_start(total_length + Self->DashOffset);
       }
       else return ERR_AllocMemory;
    }
@@ -932,13 +1114,27 @@ static ERROR VECTOR_SET_DashArray(objVector *Self, DOUBLE *Value, LONG Elements)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DashOffset: The distance into the dash pattern to start the dash.  Can be a negative number.
 
--FIELD-
-DashTotal: The total number of values in the #DashArray.
+The DashOffset can be set in conjunction with the #DashArray to shift the dash pattern to the left.  If the offset is
+negative then the shift will be to the right.
+
+*********************************************************************************************************************/
+
+static ERROR VECTOR_SET_DashOffset(objVector *Self, DOUBLE Value)
+{
+   Self->DashOffset = Value;
+   if (Self->DashArray) {
+      if (Self->DashOffset > 0) Self->DashArray->path.dash_start(Self->DashOffset);
+      else Self->DashArray->path.dash_start(Self->DashArray->path.dash_length() + Self->DashOffset);
+   }
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 EnableBkgd: If true, allows filters to use BackgroundImage and BackgroundAlpha source types.
@@ -949,11 +1145,8 @@ will not produce the expected behaviour.
 
 The EnableBkgd option can be enabled on Vector sub-classes @VectorGroup, @VectorPattern and @VectorViewport.  All other
 sub-classes will ignore the option if used.
--END-
 
-SVG expects support for 'a', 'defs', 'glyph', 'g', 'marker', 'mask', 'missing-glyph', 'pattern', 'svg', 'switch' and 'symbol'.
-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_EnableBkgd(objVector *Self, LONG *Value)
 {
@@ -968,7 +1161,7 @@ static ERROR VECTOR_SET_EnableBkgd(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Fill: Defines the fill painter using SVG's IRI format.
@@ -976,7 +1169,7 @@ Fill: Defines the fill painter using SVG's IRI format.
 The painter used for filling a vector path can be defined through this field.  The string is parsed through the
 ~ReadPainter() function in the Vector module.  Please refer to it for further details on valid formatting.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Fill(objVector *Self, CSTRING *Value)
 {
@@ -992,7 +1185,7 @@ static ERROR VECTOR_SET_Fill(objVector *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FillColour: Defines a solid colour for filling the vector path.
@@ -1003,7 +1196,7 @@ values in that order.
 
 If the Alpha component is set to zero then the FillColour will be ignored by the renderer.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_FillColour(objVector *Self, FLOAT **Value, LONG *Elements)
 {
@@ -1028,7 +1221,7 @@ static ERROR VECTOR_SET_FillColour(objVector *Self, FLOAT *Value, LONG Elements)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FillOpacity: The opacity to use when filling the vector.
@@ -1036,7 +1229,7 @@ FillOpacity: The opacity to use when filling the vector.
 The FillOpacity value is used by the painting algorithm when it is rendering a filled vector.  It is multiplied with
 the #Opacity to determine a final opacity value for the render.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_FillOpacity(objVector *Self, DOUBLE *Value)
 {
@@ -1055,7 +1248,7 @@ static ERROR VECTOR_SET_FillOpacity(objVector *Self, DOUBLE Value)
    else return log.warning(ERR_OutOfRange);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Filter: Assign a post-effects filter to a vector.
@@ -1067,7 +1260,7 @@ for further details on filter configuration.
 
 The Filter value can be in the format `ID` or `url(#ID)` according to client preference.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Filter(objVector *Self, CSTRING *Value)
 {
@@ -1113,7 +1306,7 @@ static ERROR VECTOR_SET_Filter(objVector *Self, CSTRING Value)
    else return log.warning(ERR_InvalidValue);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 FillRule: Determines the algorithm to use when filling the shape.
 
@@ -1122,7 +1315,7 @@ when filling the shape. For a simple, non-intersecting path, it is intuitively c
 however, for a more complex path, such as a path that intersects itself or where one sub-path encloses another, the
 interpretation of "inside" is not so obvious.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_FillRule(objVector *Self, LONG *Value)
 {
@@ -1136,14 +1329,14 @@ static ERROR VECTOR_SET_FillRule(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 ID: String identifier for a vector.
 
 The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the
 existing object name and automatically assigned ID's for identifiers.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_ID(objVector *Self, STRING *Value)
 {
@@ -1166,7 +1359,7 @@ static ERROR VECTOR_SET_ID(objVector *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 InnerJoin: Adjusts the handling of thickly stroked paths that cross back at the join.
 Lookup: VIJ
@@ -1175,11 +1368,12 @@ The InnerJoin value is used to make very technical adjustments to the way that p
 corners.  Visually, the impact of this setting is only noticeable when a path forms an awkward corner that crosses
 over itself - usually due to the placement of bezier control points.
 
-The available settings are MITER, ROUND, BEVEL, JAG and INHERIT.  The default of MITER is recommended as it is the
-fastest, but ROUND produces the best results in ensuring that the stroked path is filled correctly.  The best approach
-is to leave this field at the default setting and switch to ROUND if issues are noted near the corners of the path.
+The available settings are `MITER`, `ROUND`, `BEVEL`, `JAG` and `INHERIT`.  The default of `MITER` is recommended as
+it is the fastest, but `ROUND` produces the best results in ensuring that the stroked path is filled correctly.  The
+most optimal approach is to use the default setting and switch to `ROUND` if issues are noted near the corners of the
+path.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 // See the AGG bezier_div demo to get a better understanding of what is affected by this field value.
 
@@ -1207,7 +1401,7 @@ static ERROR VECTOR_SET_InnerJoin(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 InnerMiterLimit: Private. No internal documentation exists for this feature.
@@ -1219,7 +1413,7 @@ Lookup: VLC
 LineCap is the equivalent of SVG's stroke-linecap attribute.  It defines the shape to be used at the start and end
 of a stroked path.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_LineCap(objVector *Self, LONG *Value)
 {
@@ -1243,7 +1437,7 @@ static ERROR VECTOR_SET_LineCap(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 LineJoin: The shape to be used at path corners that are stroked.
 Lookup: VLJ
@@ -1251,7 +1445,7 @@ Lookup: VLJ
 LineJoin is the equivalent of SVG's stroke-linejoin attribute.  It defines the shape to be used at path corners
 that are being stroked.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_LineJoin(objVector *Self, LONG *Value)
 {
@@ -1280,14 +1474,14 @@ static ERROR VECTOR_SET_LineJoin(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Mask: Reference a VectorClip object here to apply a clipping mask to the rendered vector.
 
 A mask can be applied to a vector by setting the Mask field with a reference to a @VectorClip object.  Please
 refer to the @VectorClip class for further information.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Mask(objVector *Self, objVectorClip **Value)
 {
@@ -1318,7 +1512,7 @@ static ERROR VECTOR_SET_Mask(objVector *Self, objVectorClip *Value)
    else return log.warning(ERR_InvalidObject);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MiterLimit: Imposes a limit on the ratio of the miter length to the StrokeWidth.
@@ -1336,7 +1530,7 @@ For example, a miter limit of 1.414 converts miters to bevels for theta less tha
 them for theta less than approximately 29 degrees, and a limit of 10.0 converts them for theta less than approximately
 11.5 degrees.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SET_MiterLimit(objVector *Self, DOUBLE Value)
 {
@@ -1349,7 +1543,7 @@ static ERROR VECTOR_SET_MiterLimit(objVector *Self, DOUBLE Value)
    else return log.warning(ERR_InvalidValue);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Morph: Enables morphing of the vector to a target path.
 
@@ -1360,7 +1554,7 @@ than it is tall.
 Squat shapes will fare poorly if morphed, so experimentation may be necessary to understand how the morph feature is
 best utilised.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Morph(objVector *Self, objVector **Value)
 {
@@ -1391,12 +1585,12 @@ static ERROR VECTOR_SET_Morph(objVector *Self, objVector *Value)
    else return log.warning(ERR_InvalidObject);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MorphFlags: Optional flags that affect morphing.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_MorphFlags(objVector *Self, LONG *Value)
 {
@@ -1410,7 +1604,7 @@ static ERROR VECTOR_SET_MorphFlags(objVector *Self, LONG Value)
     return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Next: The next vector in the branch, or NULL.
@@ -1427,7 +1621,7 @@ InvalidObject: The value is not a member of the Vector class.
 InvalidValue: The provided value is either NULL or refers to itself.
 UnsupportedOwner: The referenced vector does not share the same owner.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SET_Next(objVector *Self, objVector *Value)
 {
@@ -1454,7 +1648,7 @@ static ERROR VECTOR_SET_Next(objVector *Self, objVector *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 NumericID: A unique identifier for the vector.
@@ -1464,7 +1658,7 @@ This field assigns a numeric ID to a vector.  Alternatively it can also reflect 
 
 If NumericID is set by the client, then any value in #ID will be immediately cleared.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_NumericID(objVector *Self, LONG *Value)
 {
@@ -1479,16 +1673,16 @@ static ERROR VECTOR_SET_NumericID(objVector *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Opacity: Defines an overall opacity for the vector's graphics.
 
 The overall opacity of a vector can be defined here using a value between 0 and 1.0.  The value will be multiplied
 with other opacity settings as required during rendering.  For instance, when filling a vector the opacity will be
-calculated as #FillOpacity * Opacity.
+calculated as `#FillOpacity * Opacity`.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SET_Opacity(objVector *Self, DOUBLE Value)
 {
@@ -1499,7 +1693,7 @@ static ERROR VECTOR_SET_Opacity(objVector *Self, DOUBLE Value)
    else return ERR_OutOfRange;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Parent: The parent of the vector, or NULL if this is the top-most vector.
@@ -1522,7 +1716,7 @@ InvalidObject: The value is not a member of the Vector class.
 InvalidValue: The provided value is either NULL or refers to itself.
 UnsupportedOwner: The referenced vector does not share the same owner.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
 {
@@ -1556,7 +1750,7 @@ static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Scene: Short-cut to the top-level @VectorScene.
@@ -1568,7 +1762,7 @@ on initialisation and a reference to the top-level @VectorScene is recorded in t
 Sequence: Convert the vector's path to the equivalent SVG path string.
 
 The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path
-element 'd' attribute, but also provides some additional features that are present in the vector engine.  Commands are
+element `d` attribute, but also provides some additional features that are present in the vector engine.  Commands are
 case insensitive.
 
 The following commands are supported:
@@ -1589,7 +1783,7 @@ Z: Close Path
 The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate
 of the previous command).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
 {
@@ -1597,23 +1791,19 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
 
    if (!Self->GeneratePath) return log.warning(ERR_Mismatch); // Path generation must be supported by the vector.
 
-   if ((!Self->BasePath) or (Self->Dirty)) {
-      gen_vector_path(Self);
-      Self->Dirty = 0;
-   }
-
-   if (!Self->BasePath) return ERR_NoData;
+   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
    char seq[4096] = "";
 
    // See agg_path_storage.h for vertex traversal
    // All vertex coordinates are stored in absolute format.
 
-   agg::path_storage *base = Self->BasePath;
+   agg::path_storage &base = Self->BasePath;
 
    // TODO: Decide what to do with bounding box information, if anything.
    DOUBLE bx1, by1, bx2, by2;
-   bounding_rect_single(*base, 0, &bx1, &by1, &bx2, &by2);
+   bounding_rect_single(base, 0, &bx1, &by1, &bx2, &by2);
    bx1 += Self->FinalX;
    bx2 += Self->FinalX;
    by1 += Self->FinalY;
@@ -1621,8 +1811,8 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
 
    DOUBLE x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
    LONG p = 0;
-   for (ULONG i=0; i < base->total_vertices(); i++) {
-      LONG cmd = base->command(i);
+   for (ULONG i=0; i < base.total_vertices(); i++) {
+      LONG cmd = base.command(i);
       //LONG cmd_flags = cmd & (~agg::path_cmd_mask);
       cmd &= agg::path_cmd_mask;
 
@@ -1635,22 +1825,22 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
             break;
 
          case agg::path_cmd_move_to: // PE_Move
-            base->vertex(i, &x, &y);
+            base.vertex(i, &x, &y);
             p += StrFormat(seq+p, sizeof(seq)-p, "M%g,%g", x, y);
             last_x = x;
             last_y = y;
             break;
 
          case agg::path_cmd_line_to: // PE_Line
-            base->vertex(i, &x, &y);
+            base.vertex(i, &x, &y);
             p += StrFormat(seq+p, sizeof(seq)-p, "L%g,%g", x, y);
             last_x = x;
             last_y = y;
             break;
 
          case agg::path_cmd_curve3: // PE_QuadCurve
-            base->vertex(i, &x, &y);
-            base->vertex(i+1, &x2, &y2); // End of line
+            base.vertex(i, &x, &y);
+            base.vertex(i+1, &x2, &y2); // End of line
             p += StrFormat(seq+p, sizeof(seq)-p, "q%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y);
             last_x = x;
             last_y = y;
@@ -1658,9 +1848,9 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
             break;
 
          case agg::path_cmd_curve4: // PE_Curve
-            base->vertex(i, &x, &y);
-            base->vertex(i+1, &x2, &y2);
-            base->vertex(i+2, &x3, &y3); // End of line
+            base.vertex(i, &x, &y);
+            base.vertex(i+1, &x2, &y2);
+            base.vertex(i+2, &x3, &y3); // End of line
             p += StrFormat(seq+p, sizeof(seq)-p, "c%g,%g,%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y, x3 - last_x, y3 - last_y);
             last_x = x3;
             last_y = y3;
@@ -1685,7 +1875,7 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
    else return ERR_NoData;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Stroke: Defines the stroke of a path using SVG's IRI format.
@@ -1693,7 +1883,7 @@ Stroke: Defines the stroke of a path using SVG's IRI format.
 The stroker used for rendering a vector path can be defined through this field.  The string is parsed through
 the ~ReadPainter() function in the Vector module.  Please refer to it for further details on valid formatting.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Stroke(objVector *Self, CSTRING *Value)
 {
@@ -1709,7 +1899,7 @@ static ERROR VECTOR_SET_Stroke(objVector *Self, STRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 StrokeColour: Defines the colour of the path stroke in RGB float format.
@@ -1721,7 +1911,7 @@ the vector.
 
 This field is complemented by the #StrokeOpacity and #Stroke fields.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_StrokeColour(objVector *Self, FLOAT **Value, LONG *Elements)
 {
@@ -1743,7 +1933,7 @@ static ERROR VECTOR_SET_StrokeColour(objVector *Self, FLOAT *Value, LONG Element
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 StrokeOpacity: Defines the opacity of the path stroke.
 
@@ -1753,7 +1943,7 @@ render the stroke invisible and the maximum value of one would render it opaque.
 Please note that thinly stroked paths may not be able to appear as fully opaque in some cases due to anti-aliased
 rendering.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_StrokeOpacity(objVector *Self, DOUBLE *Value)
 {
@@ -1770,7 +1960,7 @@ static ERROR VECTOR_SET_StrokeOpacity(objVector *Self, DOUBLE Value)
    else return ERR_OutOfRange;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 StrokeWidth: The width to use when stroking the path.
 
@@ -1779,7 +1969,7 @@ be stroked.
 
 The StrokeWidth is affected by scaling factors imposed by transforms and viewports.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SET_StrokeWidth(objVector *Self, DOUBLE Value)
 {
@@ -1790,15 +1980,15 @@ static ERROR VECTOR_SET_StrokeWidth(objVector *Self, DOUBLE Value)
    else return ERR_OutOfRange;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
-Transforms: A linked list of transforms that have been applied to the vector.
+Matrices: A linked list of transform matrices that have been applied to the vector.
 
-Any transforms that have been applied to the vector can be read from the Transforms field.  Each transform is
-represented by the VECTOR_TRANSFORM structure, and are linked in the order in which they are applied to the vector.
+All transforms that have been allocated via ~Vector.NewMatrix() can be read from the Matrices field.  Each transform is
+represented by the `VectorMatrix` structure, and are linked in the order in which they are added to the vector.
 
-&VectorTransform
+&VectorMatrix
 
 -FIELD-
 Transition: Reference a VectorTransition object here to apply multiple transforms over the vector's path.
@@ -1809,7 +1999,7 @@ refer to the @VectorTransition class for further information.
 Not all vector types are well-suited or adapted to the use of transitions.  At the time of writing, only @VectorText
 and @VectorWave are able to take full advantage of this feature.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_GET_Transition(objVector *Self, rkVectorTransition **Value)
 {
@@ -1840,22 +2030,83 @@ static ERROR VECTOR_SET_Transition(objVector *Self, rkVectorTransition *Value)
    else return log.warning(ERR_InvalidObject);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Visibility: Controls the visibility of a vector and its children.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static const FieldDef clTransformFlags[] = {
-   { "Matrix",    VTF_MATRIX },
-   { "Translate", VTF_TRANSLATE },
-   { "Scale",     VTF_SCALE },
-   { "Rotate",    VTF_ROTATE },
-   { "Skew",      VTF_SKEW },
-   { NULL, 0 }
-};
+//********************************************************************************************************************
+// For sending events to the client
+
+static void send_feedback(objVector *Vector, LONG Event)
+{
+   if (!(Vector->Head.Flags & NF_INITIALISED)) return;
+   if (!Vector->FeedbackSubscriptions) return;
+
+   for (auto it=Vector->FeedbackSubscriptions->begin(); it != Vector->FeedbackSubscriptions->end(); ) {
+      ERROR result;
+      auto &sub = *it;
+      if (sub.Mask & Event) {
+         sub.Mask &= ~Event; // Turned off to prevent recursion
+
+         if (sub.Callback.Type IS CALL_STDC) {
+            parasol::SwitchContext ctx(sub.Callback.StdC.Context);
+            auto callback = (ERROR (*)(objVector *, LONG))sub.Callback.StdC.Routine;
+            result = callback(Vector, Event);
+         }
+         else if (sub.Callback.Type IS CALL_SCRIPT) {
+            // In this implementation the script function will receive all the events chained via the Next field
+            ScriptArg args[] = {
+               { "Vector", FDF_OBJECT, { .Address = Vector } },
+               { "Event",  FDF_LONG,   { .Long = Event } }
+            };
+            scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+         }
+
+         sub.Mask |= Event;
+
+         if (result IS ERR_Terminate) Vector->FeedbackSubscriptions->erase(it);
+         else it++;
+      }
+      else it++;
+   }
+}
+
+//********************************************************************************************************************
+// Receiver for keyboard events
+
+static ERROR vector_keyboard_events(objVector *Vector, const evKey *Event)
+{
+   for (auto it=Vector->KeyboardSubscriptions->begin(); it != Vector->KeyboardSubscriptions->end(); ) {
+      ERROR result;
+      auto &sub = *it;
+      if (sub.Callback.Type IS CALL_STDC) {
+         parasol::SwitchContext ctx(sub.Callback.StdC.Context);
+         auto callback = (ERROR (*)(objVector *, LONG, LONG, LONG))sub.Callback.StdC.Routine;
+         result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode);
+      }
+      else if (sub.Callback.Type IS CALL_SCRIPT) {
+         // In this implementation the script function will receive all the events chained via the Next field
+         ScriptArg args[] = {
+            { "Vector",     FDF_OBJECT, { .Address = Vector } },
+            { "Qualifiers", FDF_LONG,   { .Long = Event->Qualifiers } },
+            { "Code",       FDF_LONG,   { .Long = Event->Code } },
+            { "Unicode",    FDF_LONG,   { .Long = Event->Unicode } }
+         };
+         scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+      }
+
+      if (result IS ERR_Terminate) Vector->KeyboardSubscriptions->erase(it);
+      else it++;
+   }
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
 
 static const FieldDef clMorphFlags[] = {
    { "Stretch",     VMF_STRETCH },
@@ -1903,55 +2154,47 @@ static const FieldDef clFillRule[] = {
    { NULL, 0 }
 };
 
-static const FieldDef clVisibility[] = {
-   { "Hidden",   VIS_HIDDEN },
-   { "Visible",  VIS_VISIBLE },
-   { "Collapse", VIS_COLLAPSE },
-   { "Inherit",  VIS_INHERIT },
-   { NULL, 0 }
-};
+#include "vector_def.c"
 
 static const FieldArray clVectorFields[] = {
-   { "Child",            FDF_OBJECT|FD_R,       ID_VECTOR, NULL, NULL },
-   { "Scene",            FDF_OBJECT|FD_R,       ID_VECTORSCENE, NULL, NULL },
-   { "Next",             FDF_OBJECT|FD_RW,      ID_VECTOR, NULL, (APTR)VECTOR_SET_Next },
-   { "Prev",             FDF_OBJECT|FD_RW,      ID_VECTOR, NULL, (APTR)VECTOR_SET_Prev },
-   { "Parent",           FDF_OBJECT|FD_R,       0, NULL, NULL },
-   { "Transforms",       FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorTransform", NULL, NULL },
-   { "StrokeWidth",      FDF_DOUBLE|FD_RW,      0, NULL, (APTR)VECTOR_SET_StrokeWidth },
-   { "StrokeOpacity",    FDF_DOUBLE|FDF_RW,     0, (APTR)VECTOR_GET_StrokeOpacity, (APTR)VECTOR_SET_StrokeOpacity },
-   { "FillOpacity",      FDF_DOUBLE|FDF_RW,     0, (APTR)VECTOR_GET_FillOpacity, (APTR)VECTOR_SET_FillOpacity },
-   { "Opacity",          FDF_DOUBLE|FD_RW,      0, NULL, (APTR)VECTOR_SET_Opacity },
-   { "MiterLimit",       FDF_DOUBLE|FD_RW,      0, NULL, (APTR)VECTOR_SET_MiterLimit },
-   { "InnerMiterLimit",  FDF_DOUBLE|FD_RW,      0, NULL, NULL },
-   { "DashOffset",       FDF_DOUBLE|FD_RW,      0, NULL, NULL },
-   { "ActiveTransforms", FDF_LONGFLAGS|FD_R,    (MAXINT)&clTransformFlags, NULL, NULL },
-   { "DashTotal",        FDF_LONG|FDF_R,        0, NULL, NULL },
-   { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,  (MAXINT)&clVisibility, NULL, NULL },
+   { "Child",            FDF_OBJECT|FD_R,              ID_VECTOR, NULL, NULL },
+   { "Scene",            FDF_OBJECT|FD_R,              ID_VECTORSCENE, NULL, NULL },
+   { "Next",             FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Next },
+   { "Prev",             FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Prev },
+   { "Parent",           FDF_OBJECT|FD_R,              0, NULL, NULL },
+   { "Matrices",         FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorMatrix", NULL, NULL },
+   { "StrokeWidth",      FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_StrokeWidth },
+   { "StrokeOpacity",    FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_StrokeOpacity, (APTR)VECTOR_SET_StrokeOpacity },
+   { "FillOpacity",      FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_FillOpacity, (APTR)VECTOR_SET_FillOpacity },
+   { "Opacity",          FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_Opacity },
+   { "MiterLimit",       FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_MiterLimit },
+   { "InnerMiterLimit",  FDF_DOUBLE|FD_RW,             0, NULL, NULL },
+   { "DashOffset",       FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_DashOffset },
+   { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorVisibility, NULL, NULL },
+   { "Flags",            FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clVectorFlags, NULL, NULL },
+   { "Cursor",           FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorCursor, NULL, (APTR)VECTOR_SET_Cursor },
    // Virtual fields
-   { "ClipRule",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
-   { "DashArray",     FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },
-   { "Mask",          FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Mask, (APTR)VECTOR_SET_Mask },
-   { "Morph",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Morph, (APTR)VECTOR_SET_Morph },
-   { "MorphFlags",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clMorphFlags, (APTR)VECTOR_GET_MorphFlags, (APTR)VECTOR_SET_MorphFlags },
-   { "NumericID",     FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_NumericID, (APTR)VECTOR_SET_NumericID },
-   { "ID",            FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_ID, (APTR)VECTOR_SET_ID },
-   { "Sequence",      FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)VECTOR_GET_Sequence, NULL },
-   { "Stroke",        FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Stroke, (APTR)VECTOR_SET_Stroke },
-   { "StrokeColour",  FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   0, (APTR)VECTOR_GET_StrokeColour, (APTR)VECTOR_SET_StrokeColour },
-   { "Transition",    FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Transition, (APTR)VECTOR_SET_Transition },
-   { "EnableBkgd",    FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_EnableBkgd, (APTR)VECTOR_SET_EnableBkgd },
-   { "Fill",          FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Fill, (APTR)VECTOR_SET_Fill },
-   { "FillColour",    FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FDF_RW,  0, (APTR)VECTOR_GET_FillColour, (APTR)VECTOR_SET_FillColour },
-   { "FillRule",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_FillRule, (APTR)VECTOR_SET_FillRule },
-   { "Filter",        FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Filter, (APTR)VECTOR_SET_Filter },
-   { "LineJoin",      FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clLineJoin,  (APTR)VECTOR_GET_LineJoin, (APTR)VECTOR_SET_LineJoin },
-   { "LineCap",       FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clLineCap,   (APTR)VECTOR_GET_LineCap, (APTR)VECTOR_SET_LineCap },
-   { "InnerJoin",     FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clInnerJoin, (APTR)VECTOR_GET_InnerJoin, (APTR)VECTOR_SET_InnerJoin },
+   { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
+   { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },
+   { "Mask",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Mask, (APTR)VECTOR_SET_Mask },
+   { "Morph",        FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Morph, (APTR)VECTOR_SET_Morph },
+   { "MorphFlags",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clMorphFlags, (APTR)VECTOR_GET_MorphFlags, (APTR)VECTOR_SET_MorphFlags },
+   { "NumericID",    FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_NumericID, (APTR)VECTOR_SET_NumericID },
+   { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_ID, (APTR)VECTOR_SET_ID },
+   { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)VECTOR_GET_Sequence, NULL },
+   { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Stroke, (APTR)VECTOR_SET_Stroke },
+   { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   0, (APTR)VECTOR_GET_StrokeColour, (APTR)VECTOR_SET_StrokeColour },
+   { "Transition",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Transition, (APTR)VECTOR_SET_Transition },
+   { "EnableBkgd",   FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_EnableBkgd, (APTR)VECTOR_SET_EnableBkgd },
+   { "Fill",         FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Fill, (APTR)VECTOR_SET_Fill },
+   { "FillColour",   FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FDF_RW,  0, (APTR)VECTOR_GET_FillColour, (APTR)VECTOR_SET_FillColour },
+   { "FillRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_FillRule, (APTR)VECTOR_SET_FillRule },
+   { "Filter",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Filter, (APTR)VECTOR_SET_Filter },
+   { "LineJoin",     FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clLineJoin,  (APTR)VECTOR_GET_LineJoin, (APTR)VECTOR_SET_LineJoin },
+   { "LineCap",      FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clLineCap,   (APTR)VECTOR_GET_LineCap, (APTR)VECTOR_SET_LineCap },
+   { "InnerJoin",    FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clInnerJoin, (APTR)VECTOR_GET_InnerJoin, (APTR)VECTOR_SET_InnerJoin },
    END_FIELD
 };
-
-#include "vector_def.c"
 
 static ERROR init_vector(void)
 {

@@ -15,60 +15,6 @@ of the Surface class are inherited by the window, thereby allowing the client to
 fields (such as x, y, width and height) through the window object.
 -END-
 
-STYLE INFORMATION
-
-It is typical to define preferred values for the window coordinates and set the resize parameters.  The window
-margins should also be configured so that it is clear how much space around the edges of the window is for custom
-graphics.  Here is an example:
-
-<pre>
-&lt;values&gt;
-  &lt;resize value="left|bottomleft|bottom|bottomright|right"/&gt;
-  &lt;xcoord value="[=[[self.parent].leftmargin]+10]"/&gt;
-  &lt;ycoord value="[=[[self.parent].topmargin]+10]"/&gt;
-  &lt;resizeborder value="4"/&gt;
-  &lt;topmargin value="22"/&gt;
-  &lt;leftmargin value="6"/&gt;
-  &lt;rightmargin value="6"/&gt;
-  &lt;bottommargin value="6"/&gt;
-&lt;/values&gt;
-</pre>
-
-The bulk of the window graphics are defined in the 'graphics' tag.  You are expected to create graphics objects that
-will be initialised directly to the window's surface.  The surface can be referenced via the [@owner] argument and
-the window referenced through the [@window] argument.  Your script should also take note of the InsideBorder field
-and create a window border if the border has a value of 1.  The following example illustrates:
-
-<pre>
-&lt;graphics&gt;
-  &lt;box colour="[glStyle./colours/@colour]" shadow="[glStyle./colours/@shadow]"
-    highlight="[glStyle./colours/@highlight]" raised/&gt;
-
-  &lt;if statement="[[@window].insideborder] = 1"&gt;
-    &lt;box sunken x="[=[owner.leftmargin]-1]" y="[=[owner.topmargin]-1]" xoffset="[=[owner.rightmargin]-1]"
-      yoffset="[=[owner.bottommargin]-1]" highlight="#dfdfdf" shadow="#202020"/&gt;
-
-    &lt;box sunken x="[=[owner.leftmargin]-2]" y="[=[owner.topmargin]-2]"
-      xoffset="[=[owner.rightmargin]-2]" yoffset="[=[owner.bottommargin]-2]"
-      highlight="#ffffff" shadow="#808080"/&gt;
-  &lt;/if&gt;
-&lt;/graphics&gt;
-</pre>
-
-The window title bar is configured in the 'titlebar' tag.  The title bar should allow the user to drag the window
-around the display and provide a series of gadgets that control the window (such as minimise and maximise buttons).
-You should also define an object that will control the window title.  You will need to communicate with the window
-object for the purpose of determining the titlebar configuration, plus you will need to set certain window fields
-for communication purposes.  For examples on how to generate the titlebar, please refer to your style:window.xml file.
-
-Finally, a number of optional tags may be used for window control purposes.  These tags can contain Fluid scripts that
-will be executed when certain actions occur to the window.  The following table describes the available tags:
-
-<types type="Tag">
-<type name="Maximise">Executed when the Maximise method is called on the window.</>
-<type name="Minimise">Executed when the Minimise method is called on the window.</>
-</table>
-
 *****************************************************************************/
 
 #define PRV_WINDOW
@@ -115,7 +61,6 @@ static ERROR add_window_class(void);
 static void calc_surface_center(objWindow *, LONG *, LONG *);
 static ERROR check_overlap(objWindow *, LONG *, LONG *, LONG *, LONG *);
 static void smart_limits(objWindow *);
-static void draw_border(objWindow *, objSurface *, objBitmap *);
 
 //****************************************************************************
 
@@ -164,26 +109,26 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
 
    if (Args->ActionID IS AC_Disable) {
       Self->Flags |= WNF_DISABLED;
-      DelayMsg(AC_Draw, Self->SurfaceID, NULL);
+      ActionMsg(MT_DrwScheduleRedraw, Self->SurfaceID, NULL);
    }
    else if (Args->ActionID IS AC_Enable) {
       Self->Flags &= ~WNF_DISABLED;
-      DelayMsg(AC_Draw, Self->SurfaceID, NULL);
+      ActionMsg(MT_DrwScheduleRedraw, Self->SurfaceID, NULL);
    }
    else if (Args->ActionID IS AC_Free) {
       if (Args->ObjectID IS Self->SurfaceID) {
          acFree(Self);
       }
       else if ((Self->MaximiseCallback.Type IS CALL_SCRIPT) and
-               (Self->MaximiseCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+               (Self->MaximiseCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->MaximiseCallback.Type = CALL_NONE;
       }
       else if ((Self->MinimiseCallback.Type IS CALL_SCRIPT) and
-               (Self->MinimiseCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+               (Self->MinimiseCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->MinimiseCallback.Type = CALL_NONE;
       }
    }
-   else if ((Args->ActionID IS AC_Focus) and (Args->ObjectID IS Self->Surface->Head.UniqueID)) {
+   else if ((Args->ActionID IS AC_Focus) and (Args->ObjectID IS Self->Surface->Head.UID)) {
       if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_Okay;
 
       parasol::Log log;
@@ -208,13 +153,13 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
          // If the current focus has GRABFOCUS defined, do not attempt to divert the user focus.
 
          OBJECTID userfocus_id;
-         BYTE grab = TRUE;
+         bool grab = true;
          if ((userfocus_id = drwGetUserFocus())) {
             LONG flags;
             if (!drwGetSurfaceFlags(userfocus_id, &flags)) {
                if (flags & RNF_GRAB_FOCUS) {
                   log.trace("Current focus surface #%d has GRAB flag set.", userfocus_id);
-                  grab = FALSE;
+                  grab = false;
                }
             }
          }
@@ -234,7 +179,7 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
 
       NotifySubscribers(Self, AC_Focus, NULL, NULL, ERR_Okay);
    }
-   else if ((Args->ActionID IS MT_DrwInheritedFocus) and (Args->ObjectID IS Self->Surface->Head.UniqueID)) {
+   else if ((Args->ActionID IS MT_DrwInheritedFocus) and (Args->ObjectID IS Self->Surface->Head.UID)) {
       // InheritedFocus is reported if one of the children in the window has received the focus.
 
       // If Inheritance->Flags has RNF_GRAB_FOCUS, the window updates its UserFocus field.  If it doesn't have
@@ -365,6 +310,18 @@ static ERROR WINDOW_Disable(objWindow *Self, APTR Void)
 
 /*****************************************************************************
 -ACTION-
+Draw: Schedules a redraw for the next frame.
+-END-
+*****************************************************************************/
+
+static ERROR WINDOW_Draw(objWindow *Self, APTR Void)
+{
+   Action(MT_DrwScheduleRedraw, Self->Surface, NULL);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-ACTION-
 Enable: Enables user interactivity after prior disablement.
 -END-
 *****************************************************************************/
@@ -459,7 +416,7 @@ static ERROR WINDOW_Hide(objWindow *Self, APTR Void)
             auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex + ((ctl->Total-1) * ctl->EntrySize));
             if (list->ParentID) {
                for (auto i=ctl->Total-1; i >= 0; i--, list=(SurfaceList *)((BYTE *)list - ctl->EntrySize)) {
-                  if ((list->ParentID IS parent_id) and (list->SurfaceID != Self->Surface->Head.UniqueID)) {
+                  if ((list->ParentID IS parent_id) and (list->SurfaceID != Self->Surface->Head.UID)) {
                      if (list->Flags & RNF_VISIBLE) {
                         if ((window_id = GetOwnerID(list->SurfaceID))) {
                            if (GetClassID(window_id) IS ID_WINDOW) {
@@ -638,8 +595,6 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
          SetString(Self->Surface, FID_Colour, colour);
       }
       else SetString(Self->Surface, FID_Colour, "230,230,230");
-
-      if (Self->InsideBorder) drwAddCallback(Self->Surface, (APTR)&draw_border);
    }
 
    if ((Self->ResizeFlags) and (Self->ResizeBorder > 0) and (Self->Surface->ParentID)) {
@@ -999,7 +954,7 @@ static ERROR WINDOW_NewObject(objWindow *Self, APTR Void)
       error = NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->Head.Flags, &Self->Surface, &Self->SurfaceID);
    }
    else if (!(error = NewObject(ID_SURFACE, NF_INTEGRAL|Self->Head.Flags, &Self->Surface))) {
-      Self->SurfaceID = GetUniqueID(Self->Surface);
+      Self->SurfaceID = GetUID(Self->Surface);
    }
 
    if (error) return ERR_NewObject;
@@ -1121,6 +1076,32 @@ static ERROR WINDOW_Show(objWindow *Self, APTR Void)
 /*****************************************************************************
 
 -FIELD-
+AspectRatio: Always enforce the window's aspect ratio, as based on the MinWidth and MinHeight values.
+
+Set this field to TRUE to force the window to honour the aspect ratio as defined by the MinWidth and MinHeight values
+of the Surface.  When the user attempts to resize the window, the aspect ratio will be maintained.
+
+The capabilities of this feature are limited to user activity on the desktop.  Writing the Width and Height
+values of the window programatically will not be impacted.
+
+*****************************************************************************/
+
+static ERROR GET_AspectRatio(objWindow *Self, LONG *Value)
+{
+   if (Self->Surface->Flags & RNF_ASPECT_RATIO) *Value = TRUE;
+   else *Value = FALSE;
+   return ERR_Okay;
+}
+
+static ERROR SET_AspectRatio(objWindow *Self, LONG Value)
+{
+   if (Value) return SetLong(Self->Surface, FID_Flags, Self->Surface->Flags | RNF_ASPECT_RATIO);
+   else return SetLong(Self->Surface, FID_Flags, Self->Surface->Flags & ~RNF_ASPECT_RATIO);
+}
+
+/*****************************************************************************
+
+-FIELD-
 Canvas: Allocates a surface canvas inside the window when read.
 
 To automatically allocate a surface inside a window after it has been initialised, read the Canvas field.  A basic
@@ -1155,14 +1136,14 @@ static ERROR GET_Canvas(objWindow *Self, OBJECTID *Value)
    }
    else {
       error = NewObject(ID_SURFACE, 0, &surface);
-      Self->CanvasID = GetUniqueID(surface);
+      Self->CanvasID = GetUID(surface);
    }
 
    if (error) return ERR_NewObject;
 
    SetFields(surface,
       FID_Name|TSTR,     "winCanvas",
-      FID_Parent|TLONG,  Self->Surface->Head.UniqueID,
+      FID_Parent|TLONG,  Self->Surface->Head.UID,
       FID_X|TLONG,       Self->Surface->LeftMargin,
       FID_Y|TLONG,       Self->Surface->TopMargin,
       FID_XOffset|TLONG, Self->Surface->RightMargin,
@@ -1995,9 +1976,8 @@ static void calc_surface_center(objWindow *Self, LONG *X, LONG *Y)
    }
 }
 
-/*****************************************************************************
-** Smart limits are used to prevent the window from moving outside of the visible display area.
-*/
+//****************************************************************************
+// Smart limits are used to prevent the window from moving outside of the visible display area.
 
 static void smart_limits(objWindow *Self)
 {
@@ -2010,39 +1990,6 @@ static void smart_limits(objWindow *Self)
          Self->Surface->RightLimit  = -(Self->Surface->Width * 0.75);
       }
    }
-}
-
-//****************************************************************************
-
-static void draw_border(objWindow *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   LONG lm = Surface->LeftMargin - 1;
-   LONG tm = Surface->TopMargin - 1;
-   LONG rm = Surface->Width - Surface->RightMargin + 1;
-   LONG bm = Surface->Height - Surface->BottomMargin + 1;
-
-   static RGB8 highlightA = { .Red = 255, .Green = 255, .Blue = 255, .Alpha = 0x70 };
-   static RGB8 highlightB = { .Red = 255, .Green = 255, .Blue = 255, .Alpha = 0xa0 };
-   static RGB8 shadowA    = { .Red = 0, .Green = 0, .Blue = 0, .Alpha = 0x80 };
-   static RGB8 shadowB    = { .Red = 0, .Green = 0, .Blue = 0, .Alpha = 0x40 };
-
-   // Top, Bottom, Left, Right
-   ULONG shadow    = PackPixelRGBA(Bitmap, &shadowA);
-   ULONG highlight = PackPixelRGBA(Bitmap, &highlightA);
-
-   gfxDrawRectangle(Bitmap, lm, tm, rm-lm, 1, shadow, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, lm, bm, rm-lm, 1, highlight, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, lm, tm, 1, bm-tm, shadow, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, rm, tm, 1, bm-tm, highlight, BAF_FILL|BAF_BLEND);
-
-   // Top, Bottom, Left, Right
-   shadow    = PackPixelRGBA(Bitmap, &shadowB);
-   highlight = PackPixelRGBA(Bitmap, &highlightB);
-   lm--; tm--; rm++; bm++;
-   gfxDrawRectangle(Bitmap, lm, tm, rm-lm, 1, shadow, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, lm, bm, rm-lm, 1, highlight, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, lm, tm, 1, bm-tm, shadow, BAF_FILL|BAF_BLEND);
-   gfxDrawRectangle(Bitmap, rm, tm, 1, bm-tm, highlight, BAF_FILL|BAF_BLEND);
 }
 
 //****************************************************************************
@@ -2079,9 +2026,10 @@ static const FieldArray clWindowFields[] = {
    { "ClientTop",        FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "ClientBottom",     FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
-   { "CloseFeedback", FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_CloseFeedback, (APTR)SET_CloseFeedback },
-   { "MinimiseCallback", FDF_FUNCTIONPTR|FDF_I, 0, NULL, (APTR)SET_MinimiseCallback },
-   { "MaximiseCallback", FDF_FUNCTIONPTR|FDF_I, 0, NULL, (APTR)SET_MaximiseCallback },
+   { "AspectRatio",      FDF_LONG|FDF_RW,        0, (APTR)GET_AspectRatio, (APTR)SET_AspectRatio },
+   { "CloseFeedback",    FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_CloseFeedback, (APTR)SET_CloseFeedback },
+   { "MinimiseCallback", FDF_FUNCTIONPTR|FDF_I,  0, NULL, (APTR)SET_MinimiseCallback },
+   { "MaximiseCallback", FDF_FUNCTIONPTR|FDF_I,  0, NULL, (APTR)SET_MaximiseCallback },
    { "Icon",          FDF_STRING|FDF_RW, 0, (APTR)GET_Icon,         (APTR)SET_Icon },
    { "Menu",          FDF_STRING|FDF_RW, 0, (APTR)GET_Menu,         (APTR)SET_Menu },
    { "InsideWidth",   FDF_LONG|FDF_RW,   0, (APTR)GET_InsideWidth,  (APTR)SET_InsideWidth },

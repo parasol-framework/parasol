@@ -80,7 +80,7 @@
   </args>
   <description>
     <p>The Clipboard action is used on objects for the purpose of shifting data between them and the standard clipboard system.  Generally, you should only use this action when the user has done something that requires it to be called, for instance, holding the CTRL+C keys to make a copy operation.</p>
-    <p>You will need to supply a reference to a valid clipboard object and indicate the operation mode when using this action.  The easiest way to find a valid clipboard object is to search the system for the 'SystemClipboard' object, which is automatically created when Athene is loaded.  If this object does not exist, you have the option of creating a new clipboard object from scratch.  Please refer to the clipboard documentation for information on how the clipboard class works.</p>
+    <p>You will need to supply a reference to a valid clipboard object and indicate the operation mode when using this action.  The easiest way to find a valid clipboard object is to search the system for the 'SystemClipboard' object, which is automatically created when a UI object is created.  If this object does not exist, you have the option of creating a new clipboard object from scratch.  Please refer to the clipboard documentation for information on how the clipboard class works.</p>
     <p>Three modes are currently available for performing clip operations, as illustrated in the following table:</p>
     <types type="Mode">
       <type name="CLIP_CUT">Cut (copy and delete) the currently selected data from the target object and copy it into the clipboard.</>
@@ -167,9 +167,9 @@
     <p>To send joyport data, you need to create an array using the dcJoyEntry structure and write a value to every field in the array.  The dcJoyEntry structure is defined as follows:</p>
 
 <fields struct="dcJoyEntry">
-<fld type="DOUBLE" name="XChange">The amount of units moved horizontally by the virtual joyport device.</>
-<fld type="DOUBLE" name="YChange">The amount of units moved vertically by the virtual joyport device.</>
-<fld type="DOUBLE" name="ZChange">The amount of units moved on the Z axis by the virtual joyport device.</>
+<fld type="DOUBLE" name="DeltaX">The amount of units moved horizontally by the virtual joyport device.</>
+<fld type="DOUBLE" name="DeltaY">The amount of units moved vertically by the virtual joyport device.</>
+<fld type="DOUBLE" name="DeltaZ">The amount of units moved on the Z axis by the virtual joyport device.</>
 <fld type="DOUBLE" name="AbsX">The absolute X coordinate of the pointing device.</>
 <fld type="DOUBLE" name="AbsY">The absolute Y coordinate of the pointing device.</>
 <fld type="DOUBLE" name="AbsZ">The absolute Z coordinate of the pointing device.</>
@@ -177,7 +177,7 @@
 <fld type="LONG" name="ButtonReleaseFlags">Button flags previously set in ButtonPressFlags and now released.  If you are not going to send a follow-up message for earlier ButtonPressFlags settings, set the ButtonReleaseFlags to the same flag values that you set for the ButtonPressFlags field.</>
 </>
 
-    <p>If the XChange, YChange and ZChange fields are set to zero, then the AbsX, AbsY and AbsZ fields can be set to the absolute coordinates  of the pointing device represented by the virtual joyport.  Otherwise, the absolute coordinate values should all be set to a value of -1.</p>
+    <p>If the DeltaX, DeltaY and DeltaZ fields are set to zero, then the AbsX, AbsY and AbsZ fields can be set to the absolute coordinates  of the pointing device represented by the virtual joyport.  Otherwise, the absolute coordinate values should all be set to a value of -1.</p>
 
     <h3>DATA_KEYPRESS</h3>
     <p>The keypress data type is used to send simulated key-presses to  objects.  It can  be useful for sending key-presses to the SystemKeyboard object, to make it look as if the user is typing at the keyboard.  To send keypress information, you need to create an array using the dcKeyEntry structure and specify the keypress values for each array entry.  The dcKeyEntry structure is defined as follows:</p>
@@ -355,7 +355,7 @@
   <description>
     <p>This action will draw an object's graphic, either to the video display or to a virtual drawing space, according to the object type and your specifications.  If the object is not linked to a drawable area, or if the object belongs to a non-graphical class,   calling this action will usually have no effect and an error code will be returned.</p>
     <p>The dimension arguments specify the size of the region that you want to draw.  If you wish, you may choose not to supply these arguments if the entire region of the object should be drawn.</p>
-    <p>To draw graphics in Athene, the Draw action is usually called on <class>Surface</> objects to update the video display.  Refer to the <class>Surface</> class for more information on interface-based drawing.  For information on drawing primitive graphics to drawable areas, refer to the <bitmap>Bitmap</> class.</p>
+    <p>To draw graphics, the Draw action is usually called on <class>Surface</> objects to update the video display.  Refer to the <class>Surface</> class for more information on interface-based drawing.  For information on drawing primitive graphics to drawable areas, refer to the <bitmap>Bitmap</> class.</p>
   </description>
   <support>
     <p>The Draw action is provided for classes that need graphical support.  A programmer will typically set up an object so that it can be drawn according to your specifications, then call the Draw action with the expectation that the object will be drawn to a graphical object (such as a Bitmap).  The exact technical details of the process are for you to define.</p>
@@ -432,7 +432,7 @@
   <synopsis>ERROR acFocus(*Object)</>
   <short>The Focus action is used to focus on objects within the user interface.</>
   <description>
-    <p>The Focus action is primarily used within  Athene for focussing on areas of the graphical user interface.  Objects supporting the Focus action are typically members of the Drawable category,  of which only the <class>Surface</> class currently qualifies.</p>
+    <p>The Focus action is primarily used within the UI for focussing on areas of the graphical user interface.  Objects supporting the Focus action are typically members of the Drawable category,  of which only the <class>Surface</> class currently qualifies.</p>
     <p>When a drawable object receives the focus it will usually do very little, but external objects that are listening for focus activity will respond to the change accordingly.  For instance, input based objects within surface areas often listen to Focus activity so that they know when to start responding to  keyboard input.</p>
   </description>
   <support>
@@ -598,19 +598,19 @@
 <action>
   <name>Move</>
   <category>GUI</>
-  <synopsis>ERROR acMove(*Object, DOUBLE XChange, DOUBLE YChange, DOUBLE ZChange)</>
+  <synopsis>ERROR acMove(*Object, DOUBLE DeltaX, DOUBLE DeltaY, DOUBLE DeltaZ)</>
   <short>Moves the physical representation of an object to a new location.</>
   <args>
-    <arg type="DOUBLE" name="XChange">The amount of units  to move along the horizontal axis.</>
-    <arg type="DOUBLE" name="YChange">The amount of units to move along the vertical axis.</>
-    <arg type="DOUBLE" name="ZChange">The amount of units to move along the Z axis.</>
+    <arg type="DOUBLE" name="DeltaX">The amount of units  to move along the horizontal axis.</>
+    <arg type="DOUBLE" name="DeltaY">The amount of units to move along the vertical axis.</>
+    <arg type="DOUBLE" name="DeltaZ">The amount of units to move along the Z axis.</>
   </args>
   <description>
     <p>The Move action is  provided to move graphical objects to new coordinates within drawable areas.  The result of moving an object is determined by the object's current coordinates in combination with the unit changes that you want to apply.  For instance, if the object is at position (43x, 95y) and you apply movement arguments of (-3x, 2y, 0) then the object will be moved to position (40x, 97y).  If you need to know the current coordinates of an object in order to move it to a specific location, read its X and Y fields to determine its current position.</p>
-    <p>Please note that while most graphical objects will support the ability to be moved on the X and Y axis, the ZChange argument is ignored unless the object supports 3 dimensional space.</p>
+    <p>Please note that while most graphical objects will support the ability to be moved on the X and Y axis, the DeltaZ argument is ignored unless the object supports 3 dimensional space.</p>
   </description>
   <support>
-    <p>If your class supports a coordinate system (this is typically the case for all graphical classes) then you should support the Move action.  Movement originating from this action is relevant to the current position of the object, rather than being based on absolute coordinates.  If for example a program wishes to move your object 5 units to the left, it will set the XChange argument to -5 and the other arguments to zero.</p>
+    <p>If your class supports a coordinate system (this is typically the case for all graphical classes) then you should support the Move action.  Movement originating from this action is relevant to the current position of the object, rather than being based on absolute coordinates.  If for example a program wishes to move your object 5 units to the left, it will set the DeltaX argument to -5 and the other arguments to zero.</p>
     <p>If there is a limit as to how far an object can move in any direction, you can limit its movement by reducing the number of units if they would place the object in an out-of-bounds position.  For example, if an object is at position (15,18) and a program wants to move it 40 units upwards, you could reduce that value to 18 units if you wanted to prevent the object moving into negative space.  You should still return an error code of ERR_Okay in such a case.</p>
     <p>In conjunction with your support of the Move action, your class definition should define X and Y fields if it is 2-dimensional and a Z field if it is 3-dimensional.  If you do not support these standard fields then it will be difficult for a program to determine the position of your objects.</p>
   </support>
@@ -879,7 +879,7 @@
     <arg type="DOUBLE" name="Depth">The new depth for the object.</>
   </args>
   <description>
-    <p>The Resize action is used to alter the width, height and depth of an object with a single action call.  Resizing is commonly used in the Athene interface for manipulating  drawable areas that represent gadgets like windows, buttons and scrollbars.  This means that it is typically applied to <class>Surface</> objects, but it can also be useful for quickly adjusting the dimensions of graphical objects  like boxes and ellipses.</p>
+    <p>The Resize action is used to alter the width, height and depth of an object with a single action call.  Resizing is commonly used in the UI for manipulating  drawable areas that represent gadgets like windows, buttons and scrollbars.  This means that it is typically applied to <class>Surface</> objects, but it can also be useful for quickly adjusting the dimensions of graphical objects  like boxes and ellipses.</p>
     <p>If a resized object contains other drawable objects, they will often respond to the resize by adjusting their dimensions to the new size.  The exact result will depend on what children are contained by the target object  and how you have programmed them.</p>
     <p>If you only want to resize a particular dimension (for example if you want to resize the Width and leave the Depth and Height "as is"),  set the other arguments to zero.  The Depth argument is only used for 3-Dimensional objects - set it to zero if you know that the object is represented in 2D only.</p>
   </description>
@@ -940,12 +940,12 @@
 <action>
   <name>Scroll</>
   <category>GUI</>
-  <synopsis>ERROR acScroll(*Object, DOUBLE XChange, DOUBLE YChange, DOUBLE ZChange)</>
+  <synopsis>ERROR acScroll(*Object, DOUBLE DeltaX, DOUBLE DeltaY, DOUBLE DeltaZ)</>
   <short>Scroll the contents of a container.</>
   <args>
-    <arg type="DOUBLE" name="XChange">The amount of units to scroll along the horizontal axis.</>
-    <arg type="DOUBLE" name="YChange">The amount of units to scroll along the vertical axis.</>
-    <arg type="DOUBLE" name="ZChange">The amount of units to scroll along the Z axis.</>
+    <arg type="DOUBLE" name="DeltaX">The amount of units to scroll along the horizontal axis.</>
+    <arg type="DOUBLE" name="DeltaY">The amount of units to scroll along the vertical axis.</>
+    <arg type="DOUBLE" name="DeltaZ">The amount of units to scroll along the Z axis.</>
   </args>
   <description>
     <p>The Scroll action is used to scroll the graphical contents of drawable objects.  Simply provide the necessary values to indicate the shift in direction and apply the action to the target object to scroll its contents.</p>
@@ -1147,24 +1147,24 @@
 <action>
   <name>UserClickRelease</>
   <category>GUI</>
-  <synopsis>ERROR acUserClickRelease(*Object, OBJECTID OverObject, LONG X, LONG Y, LONG Z, LONG XChange, LONG YChange, LONG ZChange)</>
+  <synopsis>ERROR acUserClickRelease(*Object, OBJECTID OverObject, LONG X, LONG Y, LONG Z, LONG DeltaX, LONG DeltaY, LONG DeltaZ)</>
   <short>Informs an object that a user click has been released.</>
   <args>
     <arg type="OBJECTID" name="OverObject">The ID of the object that the pointer is currently positioned over.</>
     <arg type="LONG" name="X">The current horizontal coordinate in relation to the target object.</>
     <arg type="LONG" name="Y">The current vertical coordinate in relation to the target object.</>
     <arg type="LONG" name="Z">The current Z coordinate in relation to the target object.</>
-    <arg type="LONG" name="XChange">The change in direction from the user's position since the previous call to UserClick.</>
-    <arg type="LONG" name="YChange">The change in direction from the user's position since the previous call to UserClick.</>
-    <arg type="LONG" name="ZChange">The change in direction from the user's position since the previous call to UserClick.</>
+    <arg type="LONG" name="DeltaX">The change in direction from the user's position since the previous call to UserClick.</>
+    <arg type="LONG" name="DeltaY">The change in direction from the user's position since the previous call to UserClick.</>
+    <arg type="LONG" name="DeltaZ">The change in direction from the user's position since the previous call to UserClick.</>
     <arg type="LONG" name="Buttons">The flags used in the matching UserClick call must be specified here.</>
   </args>
   <description>
     <p>The UserClickRelease action complements the <action>UserClick</> action in order to provide a means of indicating the release of a clicked button.  There are many circumstances where a component needs to be informed of the user clicking and then releasing that click - which is something that can happen instantly, or over a period of seconds.  For example, when a button is clicked, it may change its graphical look to show that it has been selected.  The selection state may remain until the click is released, whereupon the graphics return to normal.  The only way for the button to detect a click release is for the sender of the original UserClick to return a corresponding UserClickRelease action.</p>
-    <p>Because it is possible for the user to move the focus while holding down a clicked button (common usage for drag and drop), the OverObject argument specifies where the user has shifted the focus to while holding down one or more buttons.  Objects that support drag and drop may use the OverObject argument to identify the new container.  In relation to this, the XChange, YChange and ZChange arguments specify the shift in position from the point where the original UserClick action was called.</p>
+    <p>Because it is possible for the user to move the focus while holding down a clicked button (common usage for drag and drop), the OverObject argument specifies where the user has shifted the focus to while holding down one or more buttons.  Objects that support drag and drop may use the OverObject argument to identify the new container.  In relation to this, the DeltaX, DeltaY and DeltaZ arguments specify the shift in position from the point where the original UserClick action was called.</p>
   </description>
   <support>
-    <p>If you need to be informed when the user has clicked and then released a button on one of your objects, you must support UserClickRelease. This action is commonly supported for achieving drag and drop functionality. If the user is trying to drag an object somewhere, you can find out where that is by checking the OverObject argument.  Note that the XChange, YChange and ZChange arguments specify the shift in position from the point where the original UserClick action was called.</p>
+    <p>If you need to be informed when the user has clicked and then released a button on one of your objects, you must support UserClickRelease. This action is commonly supported for achieving drag and drop functionality. If the user is trying to drag an object somewhere, you can find out where that is by checking the OverObject argument.  Note that the DeltaX, DeltaY and DeltaZ arguments specify the shift in position from the point where the original UserClick action was called.</p>
   </support>
 </action>
 
@@ -1194,16 +1194,16 @@
 <action>
   <name>UserMovement</>
   <category>GUI</>
-  <synopsis>ERROR acUserMovement(OBJECTID OverObject, LONG X, LONG Y, LONG Z, LONG XChange, LONG YChange, LONG ZChange)</>
+  <synopsis>ERROR acUserMovement(OBJECTID OverObject, LONG X, LONG Y, LONG Z, LONG DeltaX, LONG DeltaY, LONG DeltaZ)</>
   <short>Used to inform components of user movement.</>
   <args>
     <arg type="OBJECTID" name="OverObject">The object that the user is currently positioned over.</>
     <arg type="LONG" name="X">The current position of the pointer in relation to the target object's top left corner.</>
     <arg type="LONG" name="Y">The current position of the pointer in relation to the target object's top left corner.</>
     <arg type="LONG" name="Z">The current position of the pointer in relation to the target object's top left corner.</>
-    <arg type="LONG" name="XChange">The change in direction since the last UserMovement call.</>
-    <arg type="LONG" name="YChange">The change in direction since the last UserMovement call.</>
-    <arg type="LONG" name="ZChange">The change in direction since the last UserMovement call.</>
+    <arg type="LONG" name="DeltaX">The change in direction since the last UserMovement call.</>
+    <arg type="LONG" name="DeltaY">The change in direction since the last UserMovement call.</>
+    <arg type="LONG" name="DeltaZ">The change in direction since the last UserMovement call.</>
   </args>
   <description>
     <p>The UserMovement action controls the heart of user interactivity.  It is typically used to reflect incoming movement from user devices like mouse pointers, graphics tablets and touch-screens.  This action allows objects participating in the user interface to detect the current focus as the user moves the pointing device over them.</p>
@@ -1213,7 +1213,7 @@
       <li>Movement from one drawable object to another.  In a case such as this, it is necessary to make two UserMovement action calls - one to tell the previous object that the user has moved away, and another to the new object so that it knows that the user has moved into its region.</>
     </>
     <p>The OverObject argument is used to indicate what object  the pointing device is currently positioned over.  Objects that detect user movement will check this argument to see if it refers back to themselves.  If it it doesn't, they know that the user has moved out of their graphical region and into the region of the indicated object.</p>
-    <p>The coordinate values must reflect the position of the pointing device in relation to the target object.  If the user is positioned 10 pixels left and 40 pixels above the top left corner of the target object, the correct coordinate values will be (-10, -40, 0).  The XChange, YChange and ZChange values must reflect the change in direction since the last time that the pointing device was moved.</p>
+    <p>The coordinate values must reflect the position of the pointing device in relation to the target object.  If the user is positioned 10 pixels left and 40 pixels above the top left corner of the target object, the correct coordinate values will be (-10, -40, 0).  The DeltaX, DeltaY and DeltaZ values must reflect the change in direction since the last time that the pointing device was moved.</p>
   </description>
   <support>
     <p>To detect the movement of the user when he/she moves a pointing device over your object, add support for this action.  There are two cases for when you might be called by this action:</p>

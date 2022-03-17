@@ -6,7 +6,7 @@
     <name>Vector</name>
     <type>module</type>
     <version>1</version>
-    <copyright>Paul Manias © 2010-2020</copyright>
+    <copyright>Paul Manias © 2010-2022</copyright>
     <classes>
       <class>Vector</class>
       <class>VectorClip</class>
@@ -41,8 +41,8 @@
 <p>This method is particularly useful when paths need to be generated or changed in real-time and the alternative of processing the path as a string is detrimental to performance.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -127,8 +127,8 @@
 <p>A StrokeStyle and/or FillStyle will be required to render the path.  Valid styles are allocated and configured using recognised vector style objects, specifically from the classes <class name="VectorImage">VectorImage</class>, <class name="VectorPattern">VectorPattern</class> and <class name="VectorGradient">VectorGradient</class>.  If a fill or stroke operation is not required, set the relevant parameter to NULL.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -160,9 +160,9 @@
 <p>Use GenerateEllipse() to create an elliptical path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Vector">FreePath</function> once it is no longer required.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -193,9 +193,9 @@ Z: Close Path
 <p>If the Sequence is NULL then an empty path resource will be generated.  This path will be suitable for passing to path modifying functions such as <function module="Vector">MoveTo</function> and <function module="Vector">LineTo</function> for custom path generation.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -214,9 +214,9 @@ Z: Close Path
 <p>Use GenerateRectangle() to create a rectangular path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Vector">FreePath</function> once it is no longer required.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -259,9 +259,67 @@ Z: Close Path
       <param type="DOUBLE" name="Y">The vertical end point for the command.</param>
     </input>
     <description>
-<p>This function will set an move-to command at the current vertex.  It then increments the vertex position for the next path command.</p>
+<p>This function will set a move-to command at the current vertex.  It then increments the vertex position for the next path command.</p>
 <p>The move-to command is used to move the pen to a new coordinate without drawing a line.</p>
     </description>
+  </function>
+
+  <function>
+    <name>Multiply</name>
+    <comment>Combines a matrix with a series of matrix values.</comment>
+    <prototype>ERROR vecMultiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)</prototype>
+    <input>
+      <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
+      <param type="DOUBLE" name="ScaleX">Matrix value A.</param>
+      <param type="DOUBLE" name="ShearY">Matrix value B.</param>
+      <param type="DOUBLE" name="ShearX">Matrix value C.</param>
+      <param type="DOUBLE" name="ScaleY">Matrix value D.</param>
+      <param type="DOUBLE" name="TranslateX">Matrix value E.</param>
+      <param type="DOUBLE" name="TranslateY">Matrix value F.</param>
+    </input>
+    <description>
+<p>This function uses matrix multiplication to combine a set of values with a VectorMatrix structure.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MultiplyMatrix</name>
+    <comment>Combines a source matrix with a target.</comment>
+    <prototype>ERROR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source)</prototype>
+    <input>
+      <param type="struct VectorMatrix *" name="Target">The target transformation matrix.</param>
+      <param type="struct VectorMatrix *" name="Source">The source transformation matrix.</param>
+    </input>
+    <description>
+<p>This function uses matrix multiplication to combine a Source matrix with a Target.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>ParseTransform</name>
+    <comment>Parse an SVG transformation string and apply the values to a matrix.</comment>
+    <prototype>ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform)</prototype>
+    <input>
+      <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
+      <param type="CSTRING" name="Transform">The transform to apply, expressed as a string instruction.</param>
+    </input>
+    <description>
+<p>This function parses a sequence of transform instructions and applies them to a matrix.</p>
+<p>The string must be written using SVG guidelines for the transform attribute.  For example, <code>skewX(20) rotate(45 50 50)</code> would be valid.  Transform instructions are applied in reverse, as per the standard.</p>
+<p>Note that any existing transforms applied to the matrix will be cancelled as a result of calling this function. If existing matrix values need to be retained, create a fresh matrix and use <function module="Vector">Multiply</function> to combine them.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
   </function>
 
   <function>
@@ -278,9 +336,25 @@ Z: Close Path
     </input>
     <description>
 <p>This function will parse an SVG style IRI into its equivalent internal lookup values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
-<p>Colours can be referenced using one of three methods.  Colour names such as 'orange' and 'red' are accepted.  Hexadecimal RGB values are supported in the format '#RRGGBBAA'.  Floating point RGB is supported as 'rgb(r,g,b,a)' whereby the component values range between 0.0 and 1.0.</p>
+<p>Colours can be referenced using one of three methods.  Colour names such as <code>orange</code> and <code>red</code> are accepted.  Hexadecimal RGB values are supported in the format <code>#RRGGBBAA</code>.  Floating point RGB is supported as <code>rgb(r,g,b,a)</code> whereby the component values range between 0.0 and 1.0.</p>
 <p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the given Vector object.  If Vector is NULL then it will not be possible to find the reference. Any failure to lookup a reference will be silently discarded.</p>
     </description>
+  </function>
+
+  <function>
+    <name>ResetMatrix</name>
+    <comment>Resets a transformation matrix to its default state.</comment>
+    <prototype>ERROR vecResetMatrix(struct VectorMatrix * Matrix)</prototype>
+    <input>
+      <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
+    </input>
+    <description>
+<p>Call ResetMatrix() to reset a transformation matrix to its default state, undoing all former transform operations.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
   </function>
 
   <function>
@@ -294,6 +368,64 @@ Z: Close Path
 <p>Rewinding a path will reset the current vertex index to zero.  The next call to a vertex modification function such as <function module="Vector">LineTo</function> would result in the first vertex being modified.</p>
 <p>If the referenced Path is empty, this function does nothing.</p>
     </description>
+  </function>
+
+  <function>
+    <name>Rotate</name>
+    <comment>Applies a rotation transformation to a matrix.</comment>
+    <prototype>ERROR vecRotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)</prototype>
+    <input>
+      <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
+      <param type="DOUBLE" name="Angle">Angle of rotation, in degrees.</param>
+      <param type="DOUBLE" name="CenterX">Center of rotation on the horizontal axis.</param>
+      <param type="DOUBLE" name="CenterY">Center of rotation on the vertical axis.</param>
+    </input>
+    <description>
+<p>This function will apply a rotation transformation to a matrix.  By default, rotation will occur around point (0,0) unless CenterX and CenterY values are specified.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>Scale</name>
+    <comment>Scale the size of the vector by (x,y)</comment>
+    <prototype>ERROR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
+    <input>
+      <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
+      <param type="DOUBLE" name="X">The scale factor on the x-axis.</param>
+      <param type="DOUBLE" name="Y">The scale factor on the y-axis.</param>
+    </input>
+    <description>
+<p>This function will perform a scale operation on a matrix.  Values of less than 1.0 will shrink the affected vector path, while values greater than 1.0 will enlarge it.</p>
+<p>Scaling is relative to position (0,0).  If the width and height of the vector path needs to be transformed without affecting its top-left position, the client must translate the path to (0,0) around its center point.  The path should then be scaled before being transformed back to its original top-left coordinate.</p>
+<p>The scale operation can also be used to flip a vector path if negative values are used.  For instance, a value of -1.0 on the x axis would result in a 1:1 flip across the horizontal.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>Skew</name>
+    <comment>Skews the matrix along the horizontal and/or vertical axis.</comment>
+    <prototype>ERROR vecSkew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
+    <input>
+      <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
+      <param type="DOUBLE" name="X">The angle to skew along the horizontal.</param>
+      <param type="DOUBLE" name="Y">The angle to skew along the vertical.</param>
+    </input>
+    <description>
+<p>The Skew function applies a skew transformation to the horizontal and/or vertical axis of the matrix. Valid X and Y values are in the range of -90 &lt; Angle &lt; 90.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
   </function>
 
   <function>
@@ -329,6 +461,24 @@ Z: Close Path
   </function>
 
   <function>
+    <name>Translate</name>
+    <comment>Translates the vector by (X,Y).</comment>
+    <prototype>ERROR vecTranslate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
+    <input>
+      <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
+      <param type="DOUBLE" name="X">Translation along the x-axis.</param>
+      <param type="DOUBLE" name="Y">Translation along the y-axis.</param>
+    </input>
+    <description>
+<p>This function will translate the matrix in the direction of the provided (X,Y) values.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
     <name>TranslatePath</name>
     <comment>Translates a path by (x,y)</comment>
     <prototype>void vecTranslatePath(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
@@ -348,154 +498,237 @@ Z: Close Path
       <const name="SWEEP"/>
     </constants>
 
+    <constants lookup="ARF" comment="Aspect ratios control alignment, scaling and clipping.">
+      <const name="MEET">Aspect ratio is preserved. The entire viewbox will be visible in the viewport.  The viewbox is scaled up as much as possible.</const>
+      <const name="NONE">Scale the viewbox to match the size of the viewport.  Aspect ratio is not preserved.</const>
+      <const name="SLICE">Aspect ratio is preserved. The viewbox can extend beyond the viewport's edges on one axis.  The viewbox is scaled up as much as possible.</const>
+      <const name="X_MAX">Align to the right.</const>
+      <const name="X_MID">Align to the horizontal center.</const>
+      <const name="X_MIN">Align to the left.</const>
+      <const name="Y_MAX">Align to the bottom.</const>
+      <const name="Y_MID">Align to the vertical center.</const>
+      <const name="Y_MIN">Align to the top.</const>
+    </constants>
+
     <constants lookup="CS" comment="Colour space options.">
-      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
-      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
       <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
+      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
+      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
     </constants>
 
-    <constants lookup="VIJ" comment="Inner join options for angled lines.">
-      <const name="BEVEL">Blunts the edge of the join.</const>
-      <const name="MITER">Forms a sharp point at the join.  Typically not the best looking option.</const>
-      <const name="JAG">A special non-SVG option.</const>
-      <const name="ROUND">Rounds the edge of the join to produce the best looking results.</const>
-      <const name="INHERIT">Inherit the parent's join value.</const>
+    <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
+      <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
     </constants>
 
-    <constants lookup="VBF" comment="For vecGetBoundary()">
+    <constants lookup="PE">
+      <const name="Arc"/>
+      <const name="ArcRel"/>
+      <const name="ClosePath"/>
+      <const name="Curve"/>
+      <const name="CurveRel"/>
+      <const name="HLine"/>
+      <const name="HLineRel"/>
+      <const name="Line"/>
+      <const name="LineRel"/>
+      <const name="Move"/>
+      <const name="MoveRel"/>
+      <const name="QuadCurve"/>
+      <const name="QuadCurveRel"/>
+      <const name="QuadSmooth"/>
+      <const name="QuadSmoothRel"/>
+      <const name="Smooth"/>
+      <const name="SmoothRel"/>
+      <const name="VLine"/>
+      <const name="VLineRel"/>
+    </constants>
+
+    <constants lookup="RC">
+      <const name="ALL">Synonym for FINAL_PATH | BASE_PATH | TRANSFORM</const>
+      <const name="BASE_PATH">The base path (shape of the vector) must be recalculated.</const>
+      <const name="FINAL_PATH">The final path will need to be recalculated, so as to take transforms and/or relative coordinates into account.</const>
+      <const name="TRANSFORM">The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.</const>
+    </constants>
+
+    <constants lookup="VBF" comment="Options for vecGetBoundary().">
       <const name="INCLUSIVE">The result will be inclusive of all paths that belong to children of the queried vector.</const>
       <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
     </constants>
 
+    <constants lookup="VF" comment="Optional flags and indicators for the Vector class.">
+      <const name="DISABLED">The vector is disabled and user input should be ignored.</const>
+      <const name="HAS_FOCUS">The vector holds the user's input focus.</const>
+    </constants>
+
+    <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">
+      <const name="EVEN_ODD">This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses. If this number is odd, the point is inside; if even, the point is outside.</const>
+      <const name="INHERIT">The rule is inherited from the parent vector(s).</const>
+      <const name="NON_ZERO">This is the default.  This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray. Starting with a count of zero, add one each time a path segment crosses the ray from left to right and subtract one each time a path segment crosses the ray from right to left. After counting the crossings, if the result is zero then the point is outside the path. Otherwise, it is inside.</const>
+    </constants>
+
+    <constants lookup="VGF" comment="Gradient flags">
+      <const name="FIXED_CX">CX is fixed</const>
+      <const name="FIXED_CY">CY is fixed</const>
+      <const name="FIXED_FX">FX is fixed</const>
+      <const name="FIXED_FY">FY is fixed</const>
+      <const name="FIXED_RADIUS">is fixed</const>
+      <const name="FIXED_X1">X1 is fixed</const>
+      <const name="FIXED_X2">X2 is fixed</const>
+      <const name="FIXED_Y1">Y1 is fixed</const>
+      <const name="FIXED_Y2">Y2 is fixed</const>
+      <const name="RELATIVE_CX">CX is relative</const>
+      <const name="RELATIVE_CY">CY is relative</const>
+      <const name="RELATIVE_FX">FX is relative</const>
+      <const name="RELATIVE_FY">FY is relative</const>
+      <const name="RELATIVE_RADIUS">Radius is relative</const>
+      <const name="RELATIVE_X1">X1 is relative</const>
+      <const name="RELATIVE_X2">X2 is relative</const>
+      <const name="RELATIVE_Y1">Y1 is relative</const>
+      <const name="RELATIVE_Y2">Y2 is relative</const>
+    </constants>
+
+    <constants lookup="VGT" comment="VectorGradient options.">
+      <const name="CONIC">The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.</const>
+      <const name="CONTOUR">Contoured gradients follow the contours of the vector path in which they are rendered.</const>
+      <const name="DIAMOND">A diamond gradient is drawn as a square emanating from the center point.</const>
+      <const name="LINEAR">A linear gradient is drawn from (X1,Y1) to (X2,Y2).</const>
+      <const name="RADIAL">A radial gradient is drawn from CenterX,CenterY to Radius.  An optional focal point can be expressed with FX and FY.</const>
+    </constants>
+
+    <constants lookup="VIJ" comment="Inner join options for angled lines.">
+      <const name="BEVEL">Blunts the edge of the join.</const>
+      <const name="INHERIT">Inherit the parent's join value.</const>
+      <const name="JAG">A special non-SVG option.</const>
+      <const name="MITER">Forms a sharp point at the join.  Typically not the best looking option.</const>
+      <const name="ROUND">Rounds the edge of the join to produce the best looking results.</const>
+    </constants>
+
+    <constants lookup="VIS" comment="Options for the Vector class' Visibility field.">
+      <const name="COLLAPSE">Hide the vector and its children.  Do not use - provided for SVG compatibility only.</const>
+      <const name="HIDDEN">Hide the vector and its children.</const>
+      <const name="INHERIT">Inherit the visibility state from the parent.</const>
+      <const name="VISIBLE">The default.  Ensures that the vector is visible.</const>
+    </constants>
+
+    <constants lookup="VLC" comment="Line-cap options.">
+      <const name="BUTT">The default.  The line is sharply squared off at its exact end point.</const>
+      <const name="INHERIT">The cap type is inherited from the parent (defaults to butt if unspecified).</const>
+      <const name="ROUND">The line cap is a half-circle and the line's end-point forms the center point.</const>
+      <const name="SQUARE">Similar to butt, the line is sharply squared off but will extend past the end point by 'StrokeWidth / 2'.</const>
+    </constants>
+
+    <constants lookup="VLJ" comment="Options for the look of line joins.">
+      <const name="BEVEL">The join is blunted, eliminating overly sharp edges.</const>
+      <const name="INHERIT">Inherit the join option from the parent.</const>
+      <const name="MITER">The default.  The join will form a pointed edge.</const>
+      <const name="MITER_REVERT"/>
+      <const name="MITER_ROUND">Default to MITER, but switch to ROUND if the miter limit is exceeded.</const>
+      <const name="ROUND">The join is rounded.</const>
+    </constants>
+
+    <constants lookup="VMF" comment="Morph flags">
+      <const name="AUTO_SPACING">Applicable when used on VectorText, auto-spacing allows the spacing between glyphs to be shrunk or expanded along the target path so that they can produce a better fit.  The default is for the glyphs to conform to their original spacing requirements.</const>
+      <const name="STRETCH">Applicable when used on VectorText, the stretch option converts glyph outlines into paths, and then all end points and control points will be adjusted to be along the perpendicular vectors from the path, thereby stretching and possibly warping the glyphs.  With this approach, connected glyphs, such as in cursive scripts, will maintain their connections.</const>
+      <const name="X_MAX">Align the source so that it is morphed along the right of the target path.</const>
+      <const name="X_MID">Align the source so that it is morphed along the middle of the target path.</const>
+      <const name="X_MIN">Align the source so that it is morphed along the left of the target path.</const>
+      <const name="Y_MAX">Align the source so that it is morphed along the bottom of the target path.</const>
+      <const name="Y_MID">Align the source so that it is morphed along the middle of the target path.</const>
+      <const name="Y_MIN">Align the source so that it is morphed along the top of the target path.</const>
+    </constants>
+
+    <constants lookup="VOF" comment="Viewport overflow options.">
+      <const name="HIDDEN">All content is clipped to within the viewport's boundary.</const>
+      <const name="INHERIT">The overflow state is inherited from the parent.</const>
+      <const name="SCROLL">All content is clipped to within the viewport's boundary.  A mechanism to scroll the viewport's content may be provided to the user (SVG capability not currently implemented).</const>
+      <const name="VISIBLE">The content is not clipped to the viewport's boundary.  This is the default.</const>
+    </constants>
+
     <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
-      <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
       <const name="BITMAP_SIZED">Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.</const>
+      <const name="OUTLINE_VIEWPORTS">Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.</const>
+      <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
       <const name="RESIZE">The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.</const>
     </constants>
 
     <constants lookup="VSM">
       <const name="AUTO">The default option is chosen by the system.  This will typically be bilinear, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.</const>
-      <const name="NEIGHBOUR">Nearest neighbour is the fastest sampler at the cost of poor quality.</const>
-      <const name="BILINEAR">Bilinear is a common algorithm that produces a reasonable quality image.</const>
-      <const name="BICUBIC">Produces a similar result to bilinear with a marginally sharper after-effect.</const>
-      <const name="SPLINE16">About 1/2 the speed of bilinear, this method produces a considerably better result.</const>
-      <const name="KAISER"/>
-      <const name="QUADRIC"/>
-      <const name="GAUSSIAN"/>
       <const name="BESSEL"/>
-      <const name="MITCHELL"/>
-      <const name="SINC3">Five times slower than bilinear, the final result is of very good quality.</const>
-      <const name="LANCZOS3">This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with SINC and BLACKMAN.</const>
+      <const name="BICUBIC">Produces a similar result to bilinear with a marginally sharper after-effect.</const>
+      <const name="BILINEAR">Bilinear is a common algorithm that produces a reasonable quality image.</const>
       <const name="BLACKMAN3">Five times slower than bilinear, the final result will lack sharpness when compared to SINC3.</const>
-      <const name="SINC8">15 times slower than bilinear, the final result is of excellent quality but may be marginally over-sharpened.</const>
-      <const name="LANCZOS8"/>
       <const name="BLACKMAN8">15 times slower than bilinear, the final result is of excellent quality and sharpness is well balanced.</const>
-    </constants>
-
-    <constants lookup="VGF" comment="Gradient flags">
-      <const name="FIXED_FY">FY is fixed</const>
-      <const name="RELATIVE_X2">X2 is relative</const>
-      <const name="RELATIVE_X1">X1 is relative</const>
-      <const name="FIXED_X1">X1 is fixed</const>
-      <const name="FIXED_Y2">Y2 is fixed</const>
-      <const name="RELATIVE_CX">CX is relative</const>
-      <const name="FIXED_RADIUS">is fixed</const>
-      <const name="RELATIVE_RADIUS">Radius is relative</const>
-      <const name="RELATIVE_FX">FX is relative</const>
-      <const name="FIXED_CX">CX is fixed</const>
-      <const name="RELATIVE_Y2">Y2 is relative</const>
-      <const name="RELATIVE_CY">CY is relative</const>
-      <const name="FIXED_FX">FX is fixed</const>
-      <const name="RELATIVE_FY">FY is relative</const>
-      <const name="FIXED_Y1">Y1 is fixed</const>
-      <const name="FIXED_CY">CY is fixed</const>
-      <const name="RELATIVE_Y1">Y1 is relative</const>
-      <const name="FIXED_X2">X2 is fixed</const>
-    </constants>
-
-    <constants lookup="VLC" comment="Line-cap options.">
-      <const name="BUTT">The default.  The line is sharply squared off at its exact end point.</const>
-      <const name="SQUARE">Similar to butt, the line is sharply squared off but will extend past the end point by 'StrokeWidth / 2'.</const>
-      <const name="ROUND">The line cap is a half-circle and the line's end-point forms the center point.</const>
-      <const name="INHERIT">The cap type is inherited from the parent (defaults to butt if unspecified).</const>
-    </constants>
-
-    <constants lookup="ARF" comment="Aspect ratios">
-      <const name="NONE">Scale the viewbox to match the size of the viewport.</const>
-      <const name="Y_MIN">Align to the top</const>
-      <const name="Y_MAX">Align to the bottom</const>
-      <const name="X_MID">Align to the horizontal center</const>
-      <const name="X_MIN">Align to the left</const>
-      <const name="X_MAX">Align to the right</const>
-      <const name="SLICE">Aspect ratio is preserved. The entire viewport is covered by the viewbox.  The viewbox is scaled down as much as possible.</const>
-      <const name="Y_MID">Align to the vertical center</const>
-      <const name="MEET">Aspect ratio is preserved. The entire viewbox is visible within the viewport.  The viewbox is scaled up as much as possible.</const>
-    </constants>
-
-    <constants lookup="VUNIT">
-      <const name="UNDEFINED"/>
-      <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
-      <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
-    </constants>
-
-    <constants lookup="VIS" comment="Options for the Vector class' Visibility field.">
-      <const name="HIDDEN">Hide the vector and its children.</const>
-      <const name="VISIBLE">The default.  Ensures that the vector is visible.</const>
-      <const name="COLLAPSE">Hide the vector and its children.  Do not use - provided for SVG compatibility only.</const>
-      <const name="INHERIT">Inherit the visibility state from the parent.</const>
-    </constants>
-
-    <constants lookup="VTF" comment="Types of vector transforms.">
-      <const name="SKEW">Skew the vector by (X,Y)</const>
-      <const name="TRANSLATE">Translate the vector by (X,Y)</const>
-      <const name="MATRIX">Apply a 2x3 matrix transformation to the vector.</const>
-      <const name="SCALE">Scale the vector by (X,Y)</const>
-      <const name="ROTATE">Rotate the vector around (CX,CY) by Angle.</const>
-    </constants>
-
-    <constants lookup="VGT" comment="VectorGradient options.">
-      <const name="LINEAR">A linear gradient is drawn from (X1,Y1) to (X2,Y2).</const>
-      <const name="RADIAL">A radial gradient is drawn from CenterX,CenterY to Radius.  An optional focal point can be expressed with FX and FY.</const>
-      <const name="CONIC">The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.</const>
-      <const name="DIAMOND">A diamond gradient is drawn as a square emanating from the center point.</const>
-      <const name="CONTOUR">Contoured gradients follow the contours of the vector path in which they are rendered.</const>
+      <const name="GAUSSIAN"/>
+      <const name="KAISER"/>
+      <const name="LANCZOS3">This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with SINC and BLACKMAN.</const>
+      <const name="LANCZOS8"/>
+      <const name="MITCHELL"/>
+      <const name="NEIGHBOUR">Nearest neighbour is the fastest sampler at the cost of poor quality.</const>
+      <const name="QUADRIC"/>
+      <const name="SINC3">Five times slower than bilinear, the final result is of very good quality.</const>
+      <const name="SINC8">15 times slower than bilinear, the final result is of excellent quality but may be marginally over-sharpened.</const>
+      <const name="SPLINE16">About 1/2 the speed of bilinear, this method produces a considerably better result.</const>
     </constants>
 
     <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">
-      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
+      <const name="CLIP">Do not scale the graphic.  Clip it if it extends past imposed boundaries.</const>
       <const name="PAD">Scale the graphic to the object bounds.</const>
       <const name="REFLECT">Tile the graphic, reflecting the image alternately on the X and Y axis.</const>
-      <const name="REPEAT">Tile the graphic repeatedly.</const>
       <const name="REFLECT_X">Tile the graphic, reflecting the image alternately on the X axis only.</const>
       <const name="REFLECT_Y">Tile the graphic, reflecting the image alternately on the Y axis only.</const>
-      <const name="CLIP">Do not scale the graphic in any way and clip it if it extends past imposed boundaries.</const>
+      <const name="REPEAT">Tile the graphic repeatedly.</const>
+      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
     </constants>
 
-    <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">
-      <const name="NON_ZERO">This is the default.  This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray. Starting with a count of zero, add one each time a path segment crosses the ray from left to right and subtract one each time a path segment crosses the ray from right to left. After counting the crossings, if the result is zero then the point is outside the path. Otherwise, it is inside.</const>
-      <const name="EVEN_ODD">This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses. If this number is odd, the point is inside; if even, the point is outside.</const>
-      <const name="INHERIT">The rule is inherited from the parent vector(s).</const>
+    <constants lookup="VTS" comment="Options for stretching text in VectorText.">
+      <const name="CONDENSED"/>
+      <const name="EXPANDED"/>
+      <const name="EXTRA_CONDENSED"/>
+      <const name="EXTRA_EXPANDED"/>
+      <const name="INHERIT"/>
+      <const name="NARROWER"/>
+      <const name="NORMAL"/>
+      <const name="SEMI_CONDENSED"/>
+      <const name="SEMI_EXPANDED"/>
+      <const name="ULTRA_CONDENSED"/>
+      <const name="ULTRA_EXPANDED"/>
+      <const name="WIDER"/>
     </constants>
 
-    <constants lookup="VLJ" comment="Options for the look of line joins.">
-      <const name="MITER">The default.  The join will form a pointed edge.</const>
-      <const name="MITER_REVERT"/>
-      <const name="ROUND">The join is rounded.</const>
-      <const name="BEVEL">The join is blunted, eliminating overly sharp edges.</const>
-      <const name="MITER_ROUND">Default to MITER, but switch to ROUND if the miter limit is exceeded.</const>
-      <const name="INHERIT">Inherit the join option from the parent.</const>
+    <constants lookup="VTXF" comment="VectorText flags.">
+      <const name="AREA_SELECTED">Automatically set if a region of text has been selected.</const>
+      <const name="BLINK">Enable animated blinking (not supported - exists as SVG dummy option).</const>
+      <const name="EDIT">Allow user editing of the text if the nearest viewport has the focus.</const>
+      <const name="EDITABLE">Allow user editing of the text if the nearest viewport has the focus.</const>
+      <const name="LINE_THROUGH">Enable a strike-through line in the text.</const>
+      <const name="NO_SYS_KEYS">Disables support for system-keys that enable common key combinations such as Ctrl-C, Ctrl-X etc.</const>
+      <const name="OVERLINE">Enable overlining of the text.</const>
+      <const name="OVERWRITE">Turns on overwrite mode (if off, insert mode is enabled).</const>
+      <const name="UNDERLINE">Enable underlining of the text.</const>
+    </constants>
+
+    <constants lookup="VUNIT">
+      <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
+      <const name="UNDEFINED"/>
+      <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
+    </constants>
+
+    <constants lookup="WVC" comment="Wave options.">
+      <const name="BOTTOM">Close the path across the bottom of its area.</const>
+      <const name="NONE">Do not close the path.</const>
+      <const name="TOP">Close the path across the top of its area.</const>
+    </constants>
+
+    <constants lookup="WVS" comment="Wave style options.">
+      <const name="ANGLED">Chevron style angles at 45 degrees either side of the peak and bottom edge.</const>
+      <const name="CURVED">Standard sine-wave curvature, this is the default.</const>
+      <const name="SAWTOOTH">Sawtooth patterns rise at 45 degrees to the peak, then direct 90 degrees to the bottom.</const>
     </constants>
 
   </types>
   <structs>
-    <struct name="VectorTransform">
-      <field name="Next" type="struct VectorTransform *">The next transform in the list.</field>
-      <field name="Prev" type="struct VectorTransform *">The previous transform in the list.</field>
-      <field name="X" type="DOUBLE">The X value, the meaning of which is defined by the Type</field>
-      <field name="Y" type="DOUBLE">The Y value, the meaning of which is defined by the Type</field>
-      <field name="Angle" type="DOUBLE">Requires VTF_ROTATE.  A rotation by Angle degrees about a given point.  If optional parameters X and Y are not specified, the rotate is about the origin of the current user coordinate system.</field>
-      <field name="Matrix[6]" type="DOUBLE">Requires VTF_MATRIX.  A transformation expressed as a matrix of six values.</field>
-      <field name="Type" type="WORD" lookup="VTF">The VTF indicates the type of transformation: rotate, skew etc</field>
+    <struct name="GradientStop" comment="Describes a colour stop for the VectorGradient Stops field.">
+      <field name="Offset" type="DOUBLE">An offset in the range of 0 - 1.0</field>
+      <field name="RGB" type="struct DRGB">A floating point RGB value.</field>
     </struct>
 
     <struct name="PathCommand" comment="Base structure for path commands.">
@@ -504,8 +737,8 @@ Z: Close Path
       <field name="LargeArc" type="UBYTE">Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.</field>
       <field name="Sweep" type="UBYTE">Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.</field>
       <field name="Pad" type="LONG">Private</field>
-      <field name="X" type="DOUBLE">The targeted X coordinate for the command</field>
-      <field name="Y" type="DOUBLE">The targeted Y coordinate for the command</field>
+      <field name="X" type="DOUBLE">The targeted X coordinate (absolute or relative) for the command</field>
+      <field name="Y" type="DOUBLE">The targeted Y coordinate (absolute or relative) for the command</field>
       <field name="AbsX" type="DOUBLE">Private</field>
       <field name="AbsY" type="DOUBLE">Private</field>
       <field name="X2" type="DOUBLE">The X2 coordinate for curve commands, or RX for arcs</field>
@@ -513,6 +746,29 @@ Z: Close Path
       <field name="X3" type="DOUBLE">The X3 coordinate for curve-to or smooth-curve-to</field>
       <field name="Y3" type="DOUBLE">The Y3 coordinate for curve-to or smooth-curve-to</field>
       <field name="Angle" type="DOUBLE">Arc angle</field>
+    </struct>
+
+    <struct name="Transition" comment="For VectorTransition definitions">
+      <field name="Offset" type="DOUBLE">An offset from 0.0 to 1.0 at which to apply the transform.</field>
+      <field name="Transform" type="CSTRING">A transform string, as per SVG guidelines.</field>
+    </struct>
+
+    <struct name="VectorMatrix" comment="Vector transformation matrix.">
+      <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
+      <field name="Vector" type="struct rkVector *">The vector associated with the transform.</field>
+      <field name="ScaleX" type="DOUBLE">Matrix value A</field>
+      <field name="ShearY" type="DOUBLE">Matrix value B</field>
+      <field name="ShearX" type="DOUBLE">Matrix value C</field>
+      <field name="ScaleY" type="DOUBLE">Matrix value D</field>
+      <field name="TranslateX" type="DOUBLE">Matrix value E</field>
+      <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+    </struct>
+
+    <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
+      <field name="X" type="DOUBLE">The X coordinate of this point.</field>
+      <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
+      <field name="XRelative" type="UBYTE">TRUE if the X value is relative to its viewport (between 0 and 1.0).</field>
+      <field name="YRelative" type="UBYTE">TRUE if the Y value is relative to its viewport (between 0 and 1.0).</field>
     </struct>
 
   </structs>
