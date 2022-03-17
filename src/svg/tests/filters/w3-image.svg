@@ -1,0 +1,29 @@
+
+<svg width="600" height="250" viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <filter id="Default">
+      <feImage xlink:href="smiley.png" image-rendering="optimizeQuality" />
+    </filter>
+
+    <filter id="Fitted" primitiveUnits="userSpaceOnUse">
+      <feImage xlink:href="smiley.png" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none"/>
+    </filter>
+
+    <filter id="Shifted">
+      <feImage xlink:href="smiley.png" x="450" y="0"/>
+    </filter>
+  </defs>
+
+  <rect fill="white" stroke="blue" stroke-width="2" x="0" y="0" width="100%" height="100%"/>
+
+  <g>
+    <rect x="50"  y="25" width="100" height="200" filter="url(#Default)"/>
+    <rect x="50"  y="25" width="100" height="200" fill="none" stroke="green"/>
+
+    <rect x="250" y="25" width="100" height="200" filter="url(#Fitted)"/>
+    <rect x="250" y="25" width="100" height="200" fill="none" stroke="green"/>
+
+    <rect x="450" y="25" width="100" height="200" filter="url(#Shifted)"/>
+    <rect x="450" y="25" width="100" height="200" fill="none" stroke="green"/>
+  </g>
+</svg>

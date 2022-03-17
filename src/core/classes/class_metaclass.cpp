@@ -171,7 +171,7 @@ rkMetaClass glMetaClass = {
      .CreatorMeta   = NULL,
      .ClassID       = ID_METACLASS,
      .SubID         = ID_METACLASS,
-     .UniqueID      = 123,
+     .UID           = 123,
      .OwnerID       = 0,
      .Flags         = NF_INITIALISED,
      .MemFlags      = 0,
@@ -753,7 +753,7 @@ static ERROR GET_PrivateObjects(rkMetaClass *Self, OBJECTID **Array, LONG *Eleme
          OBJECTPTR object;
          if ((mem.Flags & MEM_OBJECT) and (object = (OBJECTPTR)mem.Address)) {
             if (Self->SubClassID IS object->ClassID) {
-               objlist.push_back(object->UniqueID);
+               objlist.push_back(object->UID);
             }
          }
       }

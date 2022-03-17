@@ -12,7 +12,7 @@
     <idstring>ID_WINDOW</idstring>
     <category>GUI</category>
     <include>modules/window.h</include>
-    <copyright>Paul Manias © 2003-2020</copyright>
+    <copyright>Paul Manias © 2003-2022</copyright>
     <description>
 <p>The Window class provides a simple API for the creation and management of application windows within the host's UI. Windows are designed to act as containers that are physically represented by a <class name="Surface">Surface</class>.  The characteristics of the Surface class are inherited by the window, thereby allowing the client to read and manipulate surface fields (such as x, y, width and height) through the window object.</p></description>
     <source>
@@ -29,6 +29,11 @@
     <action>
       <name>Disable</name>
       <comment>Disables the user's ability to interact with the window.</comment>
+    </action>
+
+    <action>
+      <name>Draw</name>
+      <comment>Schedules a redraw for the next frame.</comment>
     </action>
 
     <action>
@@ -110,8 +115,8 @@
 <p>An optional Toggle argument allows restoration of the window to its original position if the method routine discovers that the window is already maximised.</p>
       </description>
       <result>
-        <error code="AccessObject">Failed to access the window's parent surface.</error>
         <error code="Okay">The window was maximised successfully.</error>
+        <error code="AccessObject">Failed to access the window's parent surface.</error>
       </result>
     </method>
 
@@ -130,6 +135,17 @@
   </methods>
 
   <fields>
+    <field>
+      <name>AspectRatio</name>
+      <comment>Always enforce the window's aspect ratio, as based on the MinWidth and MinHeight values.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Set this field to TRUE to force the window to honour the aspect ratio as defined by the MinWidth and MinHeight values of the Surface.  When the user attempts to resize the window, the aspect ratio will be maintained.</p>
+<p>The capabilities of this feature are limited to user activity on the desktop.  Writing the Width and Height values of the window programatically will not be impacted.</p>
+      </description>
+    </field>
+
     <field>
       <name>Canvas</name>
       <comment>Allocates a surface canvas inside the window when read.</comment>
@@ -179,19 +195,19 @@
 
     <field>
       <name>Close</name>
-      <comment>The surface that represents the close gadget</comment>
-      <access>-/-</access>
-      <type>OBJECTID</type>
-    </field>
-
-    <field>
-      <name>Close</name>
       <comment>Control switch for the window's close gadget.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
 <p>The Close field controls the close widget and any activity that proceeds when the widget is activated.  The default value for this field is TRUE.  If changed to FALSE, it will not be possible for the user to close the window unless it is forcibly removed with the <action>Free</action> action.</p>
       </description>
+    </field>
+
+    <field>
+      <name>Close</name>
+      <comment>The surface that represents the close gadget</comment>
+      <access>-/-</access>
+      <type>OBJECTID</type>
     </field>
 
     <field>
@@ -570,19 +586,19 @@
   </fields>
   <types>
     <constants lookup="WNF" comment="Window flags.">
-      <const name="SMART_LIMITS">Use automated limits to prevent the window from leaving the display.  This mode will ensure that enough of the title bar is visible so as to allow the user to drag the window back into the display area.</const>
+      <const name="BACKGROUND">This option will guarantee that the background of the window will always be cleared to a neutral colour (probably grey).  Background clearing occurs automatically for desktop windows, but not for windows that are in full-screen mode.  The client must set this flag if there is no intention to draw a customised background or fill the canvas.</const>
+      <const name="BORDERLESS">Create the window without the titlebar, border and background.</const>
+      <const name="DISABLED">Disable on creation.</const>
       <const name="FORCE_POS">Force window coordinates, don't try to be smart about it.</const>
       <const name="NO_MARGINS">Do not apply margins within the window (graphics will be aligned to the window borders).</const>
-      <const name="DISABLED">Disable on creation.</const>
-      <const name="BACKGROUND">This option will guarantee that the background of the window will always be cleared to a neutral colour (probably grey).  Background clearing occurs automatically for desktop windows, but not for windows that are in full-screen mode.  The client must set this flag if there is no intention to draw a customised background or fill the canvas.</const>
+      <const name="SMART_LIMITS">Use automated limits to prevent the window from leaving the display.  This mode will ensure that enough of the title bar is visible so as to allow the user to drag the window back into the display area.</const>
       <const name="VIDEO">Request that the window be buffered in video RAM instead of software RAM.</const>
-      <const name="BORDERLESS">Create the window without the titlebar, border and background.</const>
     </constants>
 
     <constants lookup="WOR" comment="The orientation to use for the display when the window is maximised.">
       <const name="ANY">The default.  Any orientation is acceptable to the application.</const>
-      <const name="PORTRAIT">Portrait mode is preferred.</const>
       <const name="LANDSCAPE">Landscape mode is preferred.</const>
+      <const name="PORTRAIT">Portrait mode is preferred.</const>
     </constants>
 
   </types>

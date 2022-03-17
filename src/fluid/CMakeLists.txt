@@ -7,7 +7,7 @@ set (MOD "fluid")
 idl_c ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashes.h")
 idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp")
 
-link_directories("${CMAKE_BINARY_DIR}/libffi-3.3/lib" "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5/src")
+link_directories("${CMAKE_BINARY_DIR}/libffi-3.3/lib" "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
 
 # FFI library custom build
 
@@ -28,15 +28,17 @@ ExternalProject_Add(
    COMMENT "Compiling FFI library")
 
 # LuaJIT library custom build
+# Activate BUILD_ALWAYS if you're working on the library code.
 
 ExternalProject_Add(
    luajit
-   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5/src"
+   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src"
    CONFIGURE_COMMAND ""
-   BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.0.5"
-   INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.0.5" "PREFIX="
-   BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/luajit-2.0.5/lib/libluajit-5.1.a"
-   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.0.5"
+#   BUILD_ALWAYS TRUE
+   BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1"
+   INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1" "PREFIX="
+   BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
+   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1"
    COMMENT "Compiling LuaJIT library")
 
 # Fluid library build
@@ -53,11 +55,11 @@ target_sources (${MOD} PRIVATE "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp
 
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_BINARY_DIR}/libffi-3.3/include"
-   "luajit-2.0.5/src")
+   "luajit-2.1/src")
 
 target_link_libraries (${MOD} PRIVATE
    "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.a"
-   "${CMAKE_BINARY_DIR}/luajit-2.0.5/lib/libluajit-5.1.a"
+   "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
    m) # The link order matters, math must come last
 
 add_definitions ("-DLUAJIT_ENABLE_LUA52COMPAT")

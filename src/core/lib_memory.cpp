@@ -168,10 +168,10 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
    else if (Flags & MEM_UNTRACKED) object_id = 0;
    else if (Flags & MEM_TASK)      object_id = glCurrentTaskID;
    else if (Flags & MEM_CALLER) {
-      if (tlContext->Stack) object_id = tlContext->Stack->Object->UniqueID;
+      if (tlContext->Stack) object_id = tlContext->Stack->Object->UID;
       else object_id = glCurrentTaskID;
    }
-   else if (tlContext != &glTopContext) object_id = tlContext->Object->UniqueID;
+   else if (tlContext != &glTopContext) object_id = tlContext->Object->UID;
    else object_id = SystemTaskID;
 
    // Allocate the memory block according to whether it is public or private.
@@ -432,8 +432,8 @@ retry:
 
          if (Flags & MEM_TMP_LOCK) tlPreventSleep++;
          glSharedBlocks[blk].AccessCount = 1;
-         glSharedBlocks[blk].ContextID = tlContext->Object->UniqueID; // For debugging, indicates the object that acquired the first lock.
-         glSharedBlocks[blk].ActionID  = tlContext->Action;           // For debugging.
+         glSharedBlocks[blk].ContextID = tlContext->Object->UID; // For debugging, indicates the object that acquired the first lock.
+         glSharedBlocks[blk].ActionID  = tlContext->Action;      // For debugging.
 
          if (Flags & MEM_STRING) ((STRING)(*Address))[0] = 0; // Strings are easily 'cleared' by setting the first byte.
          else if (!(Flags & MEM_NO_CLEAR)) {  // Clear the memory block unless told otherwise.
@@ -685,7 +685,7 @@ ERROR FreeResource(const void *Address)
 
       auto it = glPrivateMemory.find(id);
 
-      if (it IS glPrivateMemory.end()) {
+      if ((it IS glPrivateMemory.end()) or (!it->second.Address)) {
          if (head IS CODE_MEMH) log.warning("Second attempt at freeing address %p detected.", Address);
          else log.warning("Address %p is not a known private memory block.", Address);
          #ifdef DEBUG
@@ -700,7 +700,7 @@ ERROR FreeResource(const void *Address)
          log.pmsg("FreeResource(%p, Size: %d, $%.8x, Owner: #%d)", Address, mem.Size, mem.Flags, mem.OwnerID);
       }
 
-      if ((mem.OwnerID) and (tlContext->Object->UniqueID) and (mem.OwnerID != tlContext->Object->UniqueID)) {
+      if ((mem.OwnerID) and (tlContext->Object->UID) and (mem.OwnerID != tlContext->Object->UID)) {
          log.warning("Attempt to free address %p (size %d) owned by #%d.", Address, mem.Size, mem.OwnerID);
       }
 
@@ -724,7 +724,10 @@ ERROR FreeResource(const void *Address)
       BYTE *end = ((BYTE *)Address) + size;
 
       if (head != CODE_MEMH) log.warning("Bad header on address %p, size %d.", Address, size);
-      if (((LONG *)end)[0] != CODE_MEMT) log.warning("Bad tail on address %p, size %d.", Address, size);
+      if (((LONG *)end)[0] != CODE_MEMT) {
+         log.warning("Bad tail on address %p, size %d.", Address, size);
+         DEBUG_BREAK
+      }
 
       if (mem.Flags & MEM_OBJECT) {
          if (glObjectChildren.contains(mem.OwnerID)) glObjectChildren[mem.OwnerID].erase(id);
@@ -874,7 +877,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
          auto it = glPrivateMemory.find(MemoryID);
-         if (glPrivateMemory.contains(MemoryID)) {
+         if ((it != glPrivateMemory.end()) and (it->second.Address)) {
             auto &mem = it->second;
             ERROR error = ERR_Okay;
             if (mem.AccessCount > 0) {
@@ -1025,7 +1028,7 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
          auto mem = glPrivateMemory.find(MemoryID);
-         if (mem != glPrivateMemory.end()) {
+         if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
             MemInfo->Start       = mem->second.Address;
             MemInfo->ObjectID    = mem->second.OwnerID;
             MemInfo->Size        = mem->second.Size;

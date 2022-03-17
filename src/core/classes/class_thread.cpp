@@ -106,7 +106,7 @@ void threadpool_release(objThread *Thread)
 {
    parasol::Log log;
 
-   log.traceBranch("Thread: #%d, Total: %d", Thread->Head.UniqueID, glActionThreadsIndex);
+   log.traceBranch("Thread: #%d, Total: %d", Thread->Head.UID, glActionThreadsIndex);
 
    ThreadLock lock(TL_THREADPOOL, 2000);
    if (lock.granted()) {
@@ -274,7 +274,7 @@ static void * thread_entry(objThread *Self)
             // so the callback can be processed by the main program thread.  See msg_threadcallback()
 
             ThreadMessage msg;
-            msg.ThreadID = Self->Head.UniqueID;
+            msg.ThreadID = Self->Head.UID;
             SendMessage(0, MSGID_THREAD_CALLBACK, MSF_ADD|MSF_WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
 
             //Self->prv.Active = FALSE; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).

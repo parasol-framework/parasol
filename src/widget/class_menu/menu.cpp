@@ -199,7 +199,7 @@ static ERROR MENU_Clear(objMenu *Self, APTR Void)
 
       ChildEntry list[16];
       LONG count = ARRAYSIZE(list);
-      if (!ListChildren(Self->Head.UniqueID, FALSE, list, &count)) {
+      if (!ListChildren(Self->Head.UID, FALSE, list, &count)) {
          for (LONG i=0; i < count; i++) {
             if (list[i].ClassID IS ID_MENU) acFreeID(list[i].ObjectID);
          }
@@ -819,7 +819,7 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
          else log.warning(ERR_AccessObject);
       }
       else if (Self->Flags & MNF_POINTER_PLACEMENT) {
-         LONG cursor_x, cursor_y;
+         DOUBLE cursor_x, cursor_y;
          if (!gfxGetCursorPos(&cursor_x, &cursor_y)) {
             LONG x, p_width, p_height, p_absx, p_absy;
             SURFACEINFO *parentinfo;
@@ -868,6 +868,8 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
       else if (Self->RelativeID) {
          // Correct the position of the menu according to the relative object that it is offset from.
 
+         OBJECTPTR relative;
+
          SURFACEINFO *target;
          if (!drwGetSurfaceInfo(Self->RelativeID, &target)) {
             LONG rel_absx = target->AbsX;
@@ -900,6 +902,12 @@ static ERROR MENU_Show(objMenu *Self, APTR Void)
             }
 
             acMoveToPoint(surface, x, y, 0, MTF_X|MTF_Y);
+         }
+         else if (!AccessObject(Self->RelativeID, 3000, &relative)) {
+            if (relative->SubID IS ID_VECTORVIEWPORT) {
+
+            }
+            ReleaseObject(relative);
          }
          else log.warning(ERR_Failed);
       }
@@ -1340,7 +1348,7 @@ Parent: If this is a sub-menu, this field refers to the parent.
 This field will refer to the parent menu if the object was generated as a sub-menu.
 
 -FIELD-
-Relative: The primary surface to which the menu relates.
+Relative: The primary surface or viewport to which the menu relates.
 
 The Relative field should refer to a foreign surface to which the menu relates.  It is normally used to refer to an
 application window so that the menu can be correctly offset at all times, as well as ensuring that the user focus

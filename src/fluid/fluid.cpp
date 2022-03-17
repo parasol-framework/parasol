@@ -172,8 +172,7 @@ struct references * alloc_references(void)
 
 void free_references(lua_State *Lua, struct references *Ref)
 {
-   LONG i;
-   for (i=0; i < Ref->Index; i++) {
+   for (LONG i=0; i < Ref->Index; i++) {
       luaL_unref(Lua, LUA_REGISTRYINDEX, Ref->List[i].Ref);
    }
    FreeResource(Ref);
@@ -375,7 +374,7 @@ static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 
    if ((!Script) or (Script->Head.ClassID != ID_FLUID) or (!Name) or (!*Name)) return log.warning(ERR_Args);
 
-   log.branch("Script: %d, Name: %s, Type: $%.8x", Script->Head.UniqueID, Name, Type);
+   log.branch("Script: %d, Name: %s, Type: $%.8x", Script->Head.UID, Name, Type);
 
    if (!(prv = (prvFluid *)Script->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 

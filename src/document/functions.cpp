@@ -704,7 +704,7 @@ static LONG parse_tag(objDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
 
       tagarg[i] = 0;
 
-      log.traceBranch("XML: %d, First-Tag: '%.30s', Face: %.20s, Tag: %p, Flags: $%.8x", XML->Head.UniqueID, tagarg, Self->Style.Face, Tag, Flags);
+      log.traceBranch("XML: %d, First-Tag: '%.30s', Face: %.20s, Tag: %p, Flags: $%.8x", XML->Head.UID, tagarg, Self->Style.Face, Tag, Flags);
 
    #endif
 
@@ -2029,7 +2029,7 @@ wrap_object:
                            else if (new_width > cellwidth) new_width = cellwidth;
                         }
                         else {
-                           LAYOUT("@layout_obj","No width specified for %s #%d (dimensions $%x), defaulting to 1 pixel.", object->Class->ClassName, object->UniqueID, surface->Dimensions);
+                           LAYOUT("@layout_obj","No width specified for %s #%d (dimensions $%x), defaulting to 1 pixel.", object->Class->ClassName, object->UID, surface->Dimensions);
                            new_width = 1;
                         }
 
@@ -2139,7 +2139,7 @@ wrap_object:
                         if (layoutflags & LAYOUT_IGNORE_CURSOR) width_check = cell.Right - AbsX;
                         else width_check = cell.Right + l.right_margin;
 
-                        LAYOUT("layout_object","#%d, Pos: %dx%d,%dx%d, Align: $%.8x, From: %dx%d,%dx%d,%dx%d, WidthCheck: %d/%d", object->UniqueID, new_x, new_y, new_width, new_height, align, F2T(surface->X), F2T(surface->Y), F2T(surface->Width), F2T(surface->Height), F2T(surface->XOffset), F2T(surface->YOffset), width_check, *Width);
+                        LAYOUT("layout_object","#%d, Pos: %dx%d,%dx%d, Align: $%.8x, From: %dx%d,%dx%d,%dx%d, WidthCheck: %d/%d", object->UID, new_x, new_y, new_width, new_height, align, F2T(surface->X), F2T(surface->Y), F2T(surface->Width), F2T(surface->Height), F2T(surface->XOffset), F2T(surface->YOffset), width_check, *Width);
                         LAYOUT("layout_object","Clip Size: %dx%d,%dx%d, LineHeight: %d, LayoutFlags: $%.8x", cell.Left, cell.Top, cellwidth, cellheight, lineheight, layoutflags);
 
                         dimensions = surface->Dimensions;
@@ -2477,7 +2477,7 @@ wrap_object:
                            if (layoutflags & LAYOUT_IGNORE_CURSOR) width_check = cell.Right - AbsX;
                            else width_check = cell.Right + l.right_margin;
 
-                           LAYOUT("layout_object","#%d, Pos: %dx%d,%dx%d, Align: $%.8x, From: %dx%d,%dx%d,%dx%d, WidthCheck: %d/%d", object->UniqueID, layout->BoundX, layout->BoundY, layout->BoundWidth, layout->BoundHeight, align, F2T(layout->X), F2T(layout->Y), F2T(layout->Width), F2T(layout->Height), F2T(layout->XOffset), F2T(layout->YOffset), width_check, *Width);
+                           LAYOUT("layout_object","#%d, Pos: %dx%d,%dx%d, Align: $%.8x, From: %dx%d,%dx%d,%dx%d, WidthCheck: %d/%d", object->UID, layout->BoundX, layout->BoundY, layout->BoundWidth, layout->BoundHeight, align, F2T(layout->X), F2T(layout->Y), F2T(layout->Width), F2T(layout->Height), F2T(layout->XOffset), F2T(layout->YOffset), width_check, *Width);
                            LAYOUT("layout_object","Clip Size: %dx%d,%dx%d, LineHeight: %d, GfxSize: %dx%d, LayoutFlags: $%.8x", cell.Left, cell.Top, cellwidth, cellheight, lineheight, layout->GraphicWidth, layout->GraphicHeight, layoutflags);
 
                            dimensions = layout->Dimensions;
@@ -2505,7 +2505,7 @@ wrap_object:
                   if ((cell.Bottom <= cell.Top) or (cell.Right <= cell.Left)) {
                      CSTRING name;
                      if ((name = GetName(object))) log.warning("%s object %s returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, name, cell.Left, cell.Top, cell.Right, cell.Bottom);
-                     else log.warning("%s object #%d returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, object->UniqueID, cell.Left, cell.Top, cell.Right, cell.Bottom);
+                     else log.warning("%s object #%d returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, object->UID, cell.Left, cell.Top, cell.Right, cell.Bottom);
                      break;
                   }
 
@@ -2539,7 +2539,7 @@ wrap_object:
                   else if (width_check > *Width) {
                      // Perform a wrapping check if the object possibly extends past the width of the page/cell.
 
-                     LAYOUT("layout_object","Wrapping %s object #%d as it extends past the page width (%d > %d).  Pos: %dx%d", object->Class->ClassName, object->UniqueID, width_check, *Width, cell.Left, cell.Top);
+                     LAYOUT("layout_object","Wrapping %s object #%d as it extends past the page width (%d > %d).  Pos: %dx%d", object->Class->ClassName, object->UID, width_check, *Width, cell.Left, cell.Top);
 
                      j = check_wordwrap("Object", Self, i, &l, AbsX, Width, i, &cell.Left, &cell.Top, cell.Right - cell.Left, cell.Bottom - cell.Top);
 
@@ -3790,9 +3790,10 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                      }
                      else if (esclist->Type IS LT_BULLET) {
                         #define SIZE_BULLET 5
-                        gfxDrawEllipse(Bitmap,
-                           fx - escpara->ItemIndent, segment->Y + ((segment->BaseLine - SIZE_BULLET)/2),
-                           SIZE_BULLET, SIZE_BULLET, PackPixelRGB(Bitmap, &esclist->Colour), TRUE);
+                        // TODO: Requires conversion to vector
+                        //gfxDrawEllipse(Bitmap,
+                        //   fx - escpara->ItemIndent, segment->Y + ((segment->BaseLine - SIZE_BULLET)/2),
+                        //   SIZE_BULLET, SIZE_BULLET, PackPixelRGB(Bitmap, &esclist->Colour), TRUE);
                      }
                   }
                   break;
@@ -4296,44 +4297,44 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
       }
 
       case K_PAGE_DOWN:
-         scroll.XChange = 0;
-         scroll.YChange = Self->AreaHeight;
-         scroll.ZChange = 0;
+         scroll.DeltaX = 0;
+         scroll.DeltaY = Self->AreaHeight;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_PAGE_UP:
-         scroll.XChange = 0;
-         scroll.YChange = -Self->AreaHeight;
-         scroll.ZChange = 0;
+         scroll.DeltaX = 0;
+         scroll.DeltaY = -Self->AreaHeight;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_LEFT:
-         scroll.XChange = -10;
-         scroll.YChange = 0;
-         scroll.ZChange = 0;
+         scroll.DeltaX = -10;
+         scroll.DeltaY = 0;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_RIGHT:
-         scroll.XChange = 10;
-         scroll.YChange = 0;
-         scroll.ZChange = 0;
+         scroll.DeltaX = 10;
+         scroll.DeltaY = 0;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_DOWN:
-         scroll.XChange = 0;
-         scroll.YChange = 10;
-         scroll.ZChange = 0;
+         scroll.DeltaX = 0;
+         scroll.DeltaY = 10;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_UP:
-         scroll.XChange = 0;
-         scroll.YChange = -10;
-         scroll.ZChange = 0;
+         scroll.DeltaX = 0;
+         scroll.DeltaY = -10;
+         scroll.DeltaZ = 0;
          DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
          break;
    }
@@ -4419,10 +4420,7 @@ static void layout_doc(objDocument *Self)
 restart:
    Self->BreakLoop--;
 
-   if (Self->VScrollVisible) {
-      hscroll_offset = Self->AreaX + Self->AreaWidth - (Self->SurfaceWidth - Self->ScrollWidth);
-   }
-   else hscroll_offset = 0;
+   hscroll_offset = 0;
 
    if (Self->PageWidth <= 0) {
       // If no preferred page width is set, maximise the page width to the available viewing area
@@ -4561,8 +4559,6 @@ restart:
       }
    }
 
-   calc_scroll(Self);
-
    Self->UpdateLayout = FALSE;
 
 #ifdef DBG_LINES
@@ -4624,13 +4620,13 @@ restart:
 
 static ERROR process_page(objDocument *Self, objXML *xml)
 {
-   LONG x, y;
+   DOUBLE x, y;
 
    if (!xml) return ERR_NoData;
 
    parasol::Log log(__FUNCTION__);
 
-   log.branch("Page: %s, XML: %d, Tags: %d", Self->PageName, xml->Head.UniqueID, xml->TagCount);
+   log.branch("Page: %s, XML: %d, Tags: %d", Self->PageName, xml->Head.UID, xml->TagCount);
 
    // Look for the first page that matches the requested page name (if a name is specified).  Pages can be located anywhere
    // within the XML source - they don't have to be at the root.
@@ -4996,7 +4992,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
 
    if (Self->LinkIndex != -1) {
       Self->LinkIndex = -1;
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
    }
 
    if (Self->FontFace) FreeResource(Self->FontFace);
@@ -5200,7 +5196,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
       SetFields(dialog,
          FID_Name|TSTR,    "scDialog",
          FID_Owner|TLONG,  CurrentTaskID(),
-         FID_Path|TSTR,    "system:scripts/gui/dialog.fluid",
+         FID_Path|TSTR,    "scripts:gui/dialog.fluid",
          TAGEND);
 
       acSetVar(dialog, "modal", "1");
@@ -5318,7 +5314,7 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
 
    objFont *font;
    if (!CreateObject(ID_FONT, NF_INTEGRAL, &font,
-         FID_Owner|TLONG, modDocument->UniqueID,
+         FID_Owner|TLONG, modDocument->UID,
          FID_Face|TSTR,   Face,
          FID_Style|TSTR,  Style,
          FID_Point|TLONG, Point,
@@ -5710,7 +5706,7 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
                   error = insert_string(name, Buffer, Self->BufferSize, pos, sizeof("[%id]")-1);
                }
                else if (!StrCompare("self]", str, 0, 0)) {
-                  IntToStr(Self->Head.UniqueID, name, sizeof(name));
+                  IntToStr(Self->Head.UID, name, sizeof(name));
                   error = insert_string(name, Buffer, Self->BufferSize, pos, sizeof("[%self]")-1);
                }
                else if (!StrCompare("platform]", str, 0, 0)) {
@@ -5981,7 +5977,7 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
                      log.warning("It is not possible for an object to reference itself via [self] in RIPPLE.");
                   }
                   else if (!StrMatch(name, "owner")) {
-                     if (Self->CurrentObject) objectid = Self->CurrentObject->UniqueID;
+                     if (Self->CurrentObject) objectid = Self->CurrentObject->UID;
                   }
                   else {
                      // Find the nearest object with this name.  Objects are sorted by their creation time.  To find the correct object
@@ -5997,7 +5993,7 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
                            OBJECTID parent_id = list[j];
                            while (parent_id) {
                               parent_id = GetOwnerID(parent_id);
-                              if (parent_id IS Self->Head.UniqueID) {
+                              if (parent_id IS Self->Head.UID) {
                                  objectid = list[j];
                                  break;
                               }
@@ -6161,7 +6157,7 @@ static BYTE valid_object(objDocument *Self, OBJECTPTR Object)
    obj = Object;
    while (obj) {
       if (!obj->OwnerID) return FALSE;
-      if (obj->OwnerID < 0) return valid_objectid(Self, obj->UniqueID); // Switch to scanning public objects
+      if (obj->OwnerID < 0) return valid_objectid(Self, obj->UID); // Switch to scanning public objects
       obj = GetObjectPtr(obj->OwnerID);
       if (obj IS (OBJECTPTR)Self) return TRUE;
    }
@@ -6177,7 +6173,7 @@ static BYTE valid_objectid(objDocument *Self, OBJECTID ObjectID)
 
    while (ObjectID) {
       ObjectID = GetOwnerID(ObjectID);
-      if (ObjectID IS Self->Head.UniqueID) return TRUE;
+      if (ObjectID IS Self->Head.UID) return TRUE;
    }
    return FALSE;
 }
@@ -6551,7 +6547,7 @@ static void pointer_enter(objDocument *Self, LONG Index, CSTRING Function, LONG 
 
 //****************************************************************************
 
-static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
+static void check_mouse_click(objDocument *Self, DOUBLE X, DOUBLE Y)
 {
    parasol::Log log(__FUNCTION__);
    LONG segment, bytepos;
@@ -6644,7 +6640,7 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
          Self->SelectIndex = -1; //Self->Segments[segment].Index + bytepos; // SelectIndex is for text selections where the user holds the LMB and drags the mouse
          Self->SelectCharX = Self->CursorCharX;
 
-         log.msg("User clicked on point %dx%d in segment %d, cursor index: %d, char x: %d", X, Y, segment, Self->CursorIndex, Self->CursorCharX);
+         log.msg("User clicked on point %.2fx%.2f in segment %d, cursor index: %d, char x: %d", X, Y, segment, Self->CursorIndex, Self->CursorCharX);
 
          if (Self->Segments[segment].Edit) {
             // If the segment is editable, we'll have to turn on edit mode so
@@ -6674,7 +6670,7 @@ static void check_mouse_click(objDocument *Self, LONG X, LONG Y)
 
 //****************************************************************************
 
-static void check_mouse_release(objDocument *Self, LONG X, LONG Y)
+static void check_mouse_release(objDocument *Self, DOUBLE X, DOUBLE Y)
 {
    if ((ABS(X - Self->ClickX) > 3) or (ABS(Y - Self->ClickY) > 3)) {
       parasol::Log log(__FUNCTION__);
@@ -6687,7 +6683,7 @@ static void check_mouse_release(objDocument *Self, LONG X, LONG Y)
 
 //****************************************************************************
 
-static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
+static void check_mouse_pos(objDocument *Self, DOUBLE X, DOUBLE Y)
 {
    DocEdit *edit;
    UBYTE found;
@@ -6784,7 +6780,7 @@ static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
             // The mouse pointer is inside a link
 
             if (Self->LinkIndex IS -1) {
-               gfxSetCursor(0, CRF_BUFFER, PTR_HAND, 0, Self->Head.UniqueID);
+               gfxSetCursor(0, CRF_BUFFER, PTR_HAND, 0, Self->Head.UID);
                Self->CursorSet = TRUE;
             }
 
@@ -6808,7 +6804,7 @@ static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
 
    if (Self->MouseOverSegment != -1) {
       if ((Self->Segments[Self->MouseOverSegment].TextContent) or (Self->Segments[Self->MouseOverSegment].Edit)) {
-         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UniqueID);
+         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UID);
          Self->CursorSet = TRUE;
       }
       return;
@@ -6817,7 +6813,7 @@ static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
    for (LONG i=0; i < Self->ECIndex; i++) {
       if ((X >= Self->EditCells[i].X) and (X < Self->EditCells[i].X + Self->EditCells[i].Width) and
           (Y >= Self->EditCells[i].Y) and (Y < Self->EditCells[i].Y + Self->EditCells[i].Height)) {
-         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UniqueID);
+         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UID);
          Self->CursorSet = TRUE;
          return;
       }
@@ -6827,7 +6823,7 @@ static void check_mouse_pos(objDocument *Self, LONG X, LONG Y)
 
    if (Self->CursorSet) {
       Self->CursorSet = FALSE;
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
    }
 }
 
@@ -7490,44 +7486,14 @@ static void process_parameters(objDocument *Self, CSTRING String)
 }
 
 //****************************************************************************
+// Obsoletion of the old scrollbar code means that we should be adjusting page size only and let the scrollbars
+// automatically adjust in the background.
 
 static void calc_scroll(objDocument *Self)
 {
    parasol::Log log(__FUNCTION__);
-   struct scUpdateScroll scroll;
-
-   if ((!Self->VScroll) or (!Self->HScroll)) return;
 
    log.traceBranch("PageHeight: %d/%d, PageWidth: %d/%d, XPos: %d, YPos: %d", Self->PageHeight, Self->AreaHeight, Self->CalcWidth, Self->AreaWidth, Self->XPosition, Self->YPosition);
-
-   // VERTICAL
-
-   scroll.ViewSize = -1;
-   scroll.PageSize = Self->PageHeight;
-   scroll.Position = -Self->YPosition;
-   scroll.Unit     = 10;
-   Action(MT_ScUpdateScroll, Self->VScroll->Scroll, &scroll);
-
-   // UpdateScroll() will have checked the position value to ensure that it is legal and adjusts accordingly, so do a comparison
-   // here in case we need to move our page to a corrected position.
-
-   if (-Self->VScroll->Scroll->Position != Self->YPosition) {
-      Self->YPosition = -Self->VScroll->Scroll->Position;
-      acMoveToPointID(Self->PageID, 0, Self->YPosition, 0, MTF_Y);
-   }
-
-   // HORIZONTAL
-
-   scroll.ViewSize = -1;
-   scroll.PageSize = Self->CalcWidth;
-   scroll.Position = -Self->XPosition;
-   scroll.Unit     = 10;
-   Action(MT_ScUpdateScroll, Self->HScroll->Scroll, &scroll);
-
-   if (-Self->HScroll->Scroll->Position != Self->XPosition) {
-      Self->XPosition = -Self->HScroll->Scroll->Position;
-      acMoveToPointID(Self->PageID, Self->XPosition, 0, 0, MTF_X);
-   }
 }
 
 /*****************************************************************************
@@ -7614,7 +7580,7 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
                log.warning("Function reference to object '%s' is not a Script object.", scriptref);
                return ERR_WrongClass;
             }
-            else if ((Script[0]->OwnerID != Self->Head.UniqueID) and (!(Self->Flags & DCF_UNRESTRICTED))) {
+            else if ((Script[0]->OwnerID != Self->Head.UID) and (!(Self->Flags & DCF_UNRESTRICTED))) {
                log.warning("Script '%s' does not belong to this document.  Action ignored due to security restrictions.", scriptref);
                return ERR_NoPermission;
             }

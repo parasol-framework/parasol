@@ -12,7 +12,7 @@ the display and as such is not recommended.
 static ERROR GET_BitsPerPixel(objSurface *Self, LONG *Value)
 {
    SURFACEINFO *info;
-   if (!drwGetSurfaceInfo(Self->Head.UniqueID, &info)) {
+   if (!drwGetSurfaceInfo(Self->Head.UID, &info)) {
       *Value = info->BitsPerPixel;
    }
    else *Value = 0;
@@ -95,7 +95,7 @@ For instance, if you create a window with a title-bar at the top, you would set 
 point to the object ID of the window. If necessary, you can set the Drag field to point back to your surface object
 (this can be useful for creating icons and other small widgets).
 
-To turn off dragging, simply write back to the field with a 0 value.
+To turn off dragging, set the field to zero.
 
 *****************************************************************************/
 
@@ -103,7 +103,7 @@ static ERROR SET_Drag(objSurface *Self, OBJECTID Value)
 {
    if (Value) {
       auto callback = make_function_stdc(consume_input_events);
-      if (!gfxSubscribeInput(&callback, Self->Head.UniqueID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle)) {
+      if (!gfxSubscribeInput(&callback, Self->Head.UID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle)) {
          Self->DragID = Value;
          return ERR_Okay;
       }
@@ -172,7 +172,7 @@ LayoutSurface: Private. Simply return the surface as itself as the 'layout surfa
 
 static ERROR GET_LayoutSurface(objSurface *Self, OBJECTID *Value)
 {
-   *Value = Self->Head.UniqueID;
+   *Value = Self->Head.UID;
    return ERR_Okay;
 }
 
@@ -207,7 +207,7 @@ static ERROR SET_Modal(objSurface *Self, LONG Modal)
          Self->PrevModalID = 0;
       }
       else if ((task = (TaskList *)GetResourcePtr(RES_TASK_CONTROL))) {
-         if (task->ModalID IS Self->Head.UniqueID) task->ModalID = 0;
+         if (task->ModalID IS Self->Head.UID) task->ModalID = 0;
       }
    }
 
@@ -360,7 +360,7 @@ static ERROR SET_PopOver(objSurface *Self, OBJECTID Value)
 {
    parasol::Log log;
 
-   if (Value IS Self->Head.UniqueID) return ERR_Okay;
+   if (Value IS Self->Head.UID) return ERR_Okay;
 
    if (Self->Head.Flags & NF_INITIALISED) return log.warning(ERR_Immutable);
 
@@ -386,7 +386,7 @@ static ERROR SET_PopOver(objSurface *Self, OBJECTID Value)
 -FIELD-
 PrecopyRegion: Defines the regions to be copied when precopy is enabled.
 
-This field allows the client to define the regions that are precopied when the PRECOPY flag is enabled.  When
+This field allows the client to define the regions that are precopied when the `PRECOPY` flag is enabled.  When
 precopying is enabled without a region specification, the entire background behind the surface will be copied, which
 can be sub-optimal in many circumstances.  By providing exact information to the precopy process, you can achieve a
 faster redrawing process.
@@ -552,17 +552,17 @@ static ERROR SET_PrecopyRegion(objSurface *Self, STRING Value)
 
 /*****************************************************************************
 -FIELD-
-Region: Specifies whether or not a surface object is acting as a simple region.
+Region: Specifies whether or not a surface object is acting as a primitive region.
 
-Setting the Region field to a value of TRUE allows you to create surface objects that act as basic surface regions.
-Region based surface objects are identical to normal surface objects in most respects, except they do not participate
+Setting the Region field to a value of TRUE allows the client to create surface objects that act as primitive surface
+regions.  Primitive surfaces are identical to normal surface objects in most respects, except they do not participate
 in the layered drawing process.  This means that they are susceptible to the influence of other graphics within their
-parent object, because they are treated no differently to @Image, @Text or other graphical class types.
+parent object and do not have protected boundaries.
 
-Region based surface areas are most useful when you can sacrifice functionality for speed.  Buttons, menu content and
-title bars are often implemented as regions because they are small and consist of only a small group of graphical objects.
+Primitive surfaces are useful when functionality can be sacrificed for speed.  Buttons, menu content and title bars
+are often implemented as regions because they are small and consist of a small group of graphical objects.
 
-Depending on the arrangement of the region and parent object's graphics, drawing around regions can cause flickering.
+Depending on the arrangement of the region and parent object, drawing around regions can cause flickering.
 Use of the #Buffer option can avoid this problem if it becomes an issue.
 
 *****************************************************************************/

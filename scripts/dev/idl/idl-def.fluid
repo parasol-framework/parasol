@@ -77,12 +77,12 @@ function flags(Prefix, Options, ...)
 
    local list = { }
    local f = 0
-   for k, flag_def in ipairs({...}) do
+   for _, flag_def in ipairs({...}) do
       if (type(flag_def) == 'string') then
          local key, comment = flag_def:match('^(.+):%s+(.+)$')
          if (key == nil) then key = flag_def end
 
-         for k, v in ipairs(key:split('|')) do
+         for _, v in ipairs(key:split('|')) do
             list[v] = bit.lshift(1, f)
          end
       elseif (type(flag_def) == 'table') then
@@ -108,7 +108,7 @@ function flags(Prefix, Options, ...)
                list[flag] = key
             else
                local f = 0
-               for k, v in ipairs(key:split('|')) do
+               for _, v in ipairs(key:split('|')) do
                   if (list[v] != nil) then
                      f = bit.bor(f, list[v])
                   else

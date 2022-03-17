@@ -1,7 +1,10 @@
 # Parasol Core Build File
+#
 # Prepare:    cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -G"MinGW Makefiles"
 #             cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles"
-# Local Opts: -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+#
+# Options for local folder: -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+#
 # Build:      cmake --build release -j 8 -- -O
 # Install:    sudo cmake --install release
 # Test:       make -C release test ARGS=--verbose
@@ -24,8 +27,10 @@ endif()
 
 project (Parasol LANGUAGES C CXX)
 
-set (VERSION "2020.12")
+set (VERSION "2022.2")
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
+
+# To switch on a custom option use -D, e.g. -DPARASOL_VLOG=ON
 
 option (PARASOL_STATIC   "Build as a static library" OFF)
 option (PARASOL_SHARED   "Build as a shared library" ON)
@@ -332,12 +337,12 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
    add_definitions ("-D_DARWIN_C_SOURCE")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
    add_definitions ("-D_GNU_SOURCE")
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -ffunction-sections -fno-strict-aliasing")
+	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing")
 elseif (WIN32)
    add_definitions ("-D_WIN32" "-U__unix__")
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign ${PARASOL_ARCH}")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -ffunction-sections -fno-strict-aliasing ${PARASOL_ARCH}")
+	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign ${PARASOL_ARCH}")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -fdiagnostics-color=auto -ffunction-sections -fno-strict-aliasing ${PARASOL_ARCH}")
    if (PRINTF64_ID)
       add_definitions ("-DPRINTF64I")
    endif ()

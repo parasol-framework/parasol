@@ -326,7 +326,7 @@ static ERROR CONFIG_Free(objConfig *Self, APTR Void)
                   FID_Flags|TLONG,       FL_WRITE|FL_NEW,
                   FID_Permissions|TLONG, 0,
                   TAGEND)) {
-               ActionTags(AC_SaveToObject, (OBJECTPTR)Self, file->UniqueID, 0);
+               ActionTags(AC_SaveToObject, (OBJECTPTR)Self, file->UID, 0);
                acFree(file);
             }
          }
@@ -599,7 +599,7 @@ static ERROR CONFIG_SaveSettings(objConfig *Self, APTR Void)
             FID_Flags|TLONG,       FL_WRITE|FL_NEW,
             FID_Permissions|TLONG, 0,
             TAGEND)) {
-         if (!ActionTags(AC_SaveToObject, (OBJECTPTR)Self, file->UniqueID, 0)) {
+         if (!ActionTags(AC_SaveToObject, (OBJECTPTR)Self, file->UID, 0)) {
             Self->CRC = crc;
          }
          acFree(file);

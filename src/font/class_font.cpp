@@ -14,7 +14,7 @@ as bold, italic and underlined text, along with extra features such as adjustabl
 outlining. Fixed-point bitmap fonts are supported through the Windows .fon file format and TrueType font files are
 supported for scaled font rendering.
 
-Fonts must be stored in the "fonts:" directory in order to be recognised and either in the "fixed" or "truetype"
+Fonts must be stored in the `fonts:` directory in order to be recognised and either in the "fixed" or "truetype"
 sub-directories as appropriate.  The process of font installation and file management is managed by functions supplied
 in the Font module.
 
@@ -69,9 +69,7 @@ const char * get_ft_error(FT_Error err)
 -ACTION-
 Draw: Draws a font to a Bitmap.
 
-When you are ready to draw a font to a Bitmap, use the Draw action. Drawing will start from the coordinates given in
-the #X and #Y fields, using the characters in the font #String.  The result of calling Draw will depend on the type
-of Font and its configuration.
+Draws a font to a target Bitmap, starting at the coordinates of #X and #Y, using the characters in the font #String.
 
 -ERRORS-
 Okay
@@ -157,8 +155,6 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
 
    if (!Self->Point) Self->Point = global_point_size();
 
-   // Search the SystemFonts object to gather initial information about this face
-
    if (!Self->Path) {
       CSTRING path;
       if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF_PREFER_SCALED|FTF_PREFER_FIXED|FTF_ALLOW_SCALE), &path)) {
@@ -184,6 +180,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
 
    OBJECTPTR file;
    if (cache); // The font exists in the cache
+   else if (!StrCompare("*.ttf", Self->Path, 0, STR_WILDCARD)); // The font is truetype
    else if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
          FID_Path|TSTR,   Self->Path,
          FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
@@ -383,14 +380,14 @@ in comparison to setting the X and Y fields directly.
 -FIELD-
 AlignHeight: The height to use when aligning the font string.
 
-If the VERTICAL or TOP alignment options are used in the #Align field, the AlignHeight should be set so
+If the `VERTICAL` or `TOP` alignment options are used in the #Align field, the AlignHeight should be set so
 that the alignment of the font string can be correctly calculated.  If the AlignHeight is not defined, the target
 #Bitmap's height will be used when computing alignment.
 
 -FIELD-
 AlignWidth: The width to use when aligning the font string.
 
-If the HORIZONTAL or RIGHT alignment options are used in the #Align field, the AlignWidth should be set so
+If the `HORIZONTAL` or `RIGHT` alignment options are used in the #Align field, the AlignWidth should be set so
 that the alignment of the font string can be correctly calculated.  If the AlignWidth is not defined, the target
 #Bitmap's width will be used when computing alignment.
 
@@ -499,13 +496,13 @@ static ERROR SET_EscapeChar(objFont *Self, CSTRING Value)
 -FIELD-
 Face: The name of a font face that is to be loaded on initialisation.
 
-The name of the face that you wish to use for a font must be specified here.  If this field is not set then the
+The name of an installed font face must be specified here for initialisation.  If this field is not set then the
 initialisation process will use the user's preferred face.  A list of available faces can be obtained from the Font
 module's ~Font.GetList() function.
 
-For convenience, the face string can also be extended with extra parameters so that you can define point size and style
-information at the same time when writing this field.  Extra parameters are delimited with the colon character and must
-follow a set order defined as `face:pointsize:style:colour`.
+For convenience, the face string can also be extended with extra parameters so that the point size and style are
+defined at the same time.  Extra parameters are delimited with the colon character and must follow a set order
+defined as `face:pointsize:style:colour`.
 
 Here are some examples:
 
@@ -614,7 +611,8 @@ a font that has been loaded by the FreeType library (FT_Face).
 
 static ERROR GET_FreeTypeFace(objFont *Self, APTR *Handle)
 {
-   *Handle = Self->Cache->Face;
+   if (Self->Cache) *Handle = Self->Cache->Face;
+   else *Handle = NULL;
    return ERR_Okay;
 }
 
@@ -709,13 +707,12 @@ static ERROR GET_LineCount(objFont *Self, LONG *Value)
 LineSpacing: The amount of spacing between each line.
 
 This field defines the amount of space between each line that is printed with a font object.  It is set automatically
-during initialisation to reflect the recommended distance between each line.   You can increase or decrease this value
-to make finer adjustments to the line spacing.  If negative, the text will be printed in a reverse vertical direction
-with each new line.
+during initialisation to reflect the recommended distance between each line.   The client can increase or decrease
+this value to make finer adjustments to the line spacing.  If negative, the text will be printed in a reverse vertical
+direction with each new line.
 
-If you set this field prior to initialisation, the value that you set will be added to the font's normal line-spacing,
-instead of over-riding it.  For instance, setting the LineSpacing to 2 will result in an extra 2 pixels being added to
-the font's spacing.
+If set prior to initialisation, the value will be added to the font's normal line-spacing instead of over-riding it.
+For instance, setting the LineSpacing to 2 will result in an extra 2 pixels being added to the font's spacing.
 
 -FIELD-
 Path: The path to a font file.
@@ -749,9 +746,8 @@ point size.
 Opacity: Determines the level of translucency applied to a font.
 
 This field determines the translucency level of a font graphic.  The default setting is 100%, which means that the font
-will not be translucent.  Any other value that you set here will alter the impact of a font's graphic over the
-destination Bitmap.  High values will retain the boldness of the font, while low values can render it close to
-invisible.
+will not be translucent.  Any other value set here will alter the impact of a font's graphic over the destination
+Bitmap.  High values will retain the boldness of the font, while low values can render it close to invisible.
 
 Please note that the use of translucency will always have an impact on the time it normally takes to draw a font.
 
@@ -795,7 +791,7 @@ exact number of dots will depend on the printer device and final DPI).
 The Point field also supports proportional sizing based on the default value set by the system or user.  For instance
 if a Point value of 150% is specified and the default font size is 10, the final point size for the font will be 15.
 This feature is very important in order to support multiple devices at varying DPI's - i.e. mobile devices.  You can
-change the global point size for your application by calling SetDefaultSize() in the Font module.
+change the global point size for your application by calling ~Font.SetDefaultSize() in the Font module.
 
 When setting the point size of a bitmap font, the system will try and find the closest matching value for the requested
 point size.  For instance, if you request a fixed font at point 11 and the closest size is point 8, the system will
@@ -913,9 +909,9 @@ face will be used on initialisation.
 Bitmap fonts are a special case if a bold or italic style is selected.  In this situation the system can automatically
 convert the font to that style even if the correct graphics set does not exist.
 
-Typical font styles are "Bold", "Bold Italic", "Italic" and "Regular" (the default).  TrueType fonts can consist of any
-style that the designer chooses, such as "Narrow" or "Wide", so check the SystemFonts object if you need to analyse
-available styles.
+Conventional font styles are `Bold`, `Bold Italic`, `Italic` and `Regular` (the default).  TrueType fonts can consist
+of any style that the designer chooses, such as `Narrow` or `Wide`, so use ~Font.GetList() to retrieve available style
+names.
 
 *****************************************************************************/
 
@@ -1023,7 +1019,7 @@ static ERROR GET_Width(objFont *Self, LONG *Value)
 WrapCallback: The routine defined here will be called when the wordwrap boundary is encountered.
 
 Customisation of a font's word-wrap behaviour can be achieved by defining a word-wrap callback routine.  If
-word-wrapping has been enabled via the WORDWRAP flag, the WrapCallback routine will be called when the word-wrap
+word-wrapping has been enabled via the `WORDWRAP` flag, the WrapCallback routine will be called when the word-wrap
 boundary is encountered.  The routine defined in the WrapCallback field must follow this synopsis:
 `ERROR WrapCallback(*Font, STRING String, LONG *X, LONG *Y)`.
 
@@ -1900,178 +1896,193 @@ static ERROR draw_bitmap_font(objFont *Self)
          str += charlen;
 
          if ((unicode > 0x20) and (draw_line)) {
+            if (Self->Outline.Alpha > 0) { // Outline support
+               auto outline = Self->BmpCache->get_outline();
+               if (outline) {
+                  auto data = outline + Self->prvChar[unicode].OutlineOffset;
+                  bytewidth = (Self->prvChar[unicode].Width + 9)>>3;
 
-         // Outline support
+                  sx = dxcoord - 1;
+                  ex = sx + Self->prvChar[unicode].Width + 2;
 
-         if (Self->Outline.Alpha > 0) {
-            auto outline = Self->BmpCache->get_outline();
-            if (outline) {
-               auto data = outline + Self->prvChar[unicode].OutlineOffset;
-               bytewidth = (Self->prvChar[unicode].Width + 9)>>3;
+                  if (ex > bitmap->Clip.Right) ex = bitmap->Clip.Right;
 
-               sx = dxcoord - 1;
-               ex = sx + Self->prvChar[unicode].Width + 2;
+                  xinc = 0;
+                  if (sx < bitmap->Clip.Left) {
+                     xinc = bitmap->Clip.Left - sx;
+                     sx = bitmap->Clip.Left;
+                  }
 
-               if (ex > bitmap->Clip.Right) ex = bitmap->Clip.Right;
+                  sy = dycoord - 1;
 
-               xinc = 0;
-               if (sx < bitmap->Clip.Left) {
-                  xinc = bitmap->Clip.Left - sx;
-                  sx = bitmap->Clip.Left;
-               }
+                  ey = sy + Self->prvBitmapHeight + 2;
+                  if (ey > bitmap->Clip.Bottom) ey = bitmap->Clip.Bottom;
 
-               sy = dycoord - 1;
+                  if (sy < bitmap->Clip.Top) {
+                     data += bytewidth * (bitmap->Clip.Top - sy);
+                     sy = bitmap->Clip.Top;
+                  }
 
-               ey = sy + Self->prvBitmapHeight + 2;
-               if (ey > bitmap->Clip.Bottom) ey = bitmap->Clip.Bottom;
+                  sx += bitmap->XOffset;
+                  sy += bitmap->YOffset;
+                  dx += bitmap->XOffset;
+                  dy += bitmap->YOffset;
+                  ex += bitmap->XOffset;
+                  ey += bitmap->YOffset;
 
-               if (sy < bitmap->Clip.Top) {
-                  data += bytewidth * (bitmap->Clip.Top - sy);
-                  sy = bitmap->Clip.Top;
-               }
-
-               sx += bitmap->XOffset;
-               sy += bitmap->YOffset;
-               dx += bitmap->XOffset;
-               dy += bitmap->YOffset;
-               ex += bitmap->XOffset;
-               ey += bitmap->YOffset;
-
-               if (Self->Outline.Alpha < 255) {
-                  alpha = 255 - Self->Outline.Alpha;
-                  for (dy=sy; dy < ey; dy++) {
-                     xpos = xinc;
-                     for (dx=sx; dx < ex; dx++) {
-                        if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
-                           bitmap->ReadUCRPixel(bitmap, dx, dy, &rgb);
-                           rgb.Red   = Self->Outline.Red   + (((rgb.Red   - Self->Outline.Red) * alpha)>>8);
-                           rgb.Green = Self->Outline.Green + (((rgb.Green - Self->Outline.Green) * alpha)>>8);
-                           rgb.Blue  = Self->Outline.Blue  + (((rgb.Blue  - Self->Outline.Blue) * alpha)>>8);
-                           bitmap->DrawUCRPixel(bitmap, dx, dy, &rgb);
+                  if (Self->Outline.Alpha < 255) {
+                     alpha = 255 - Self->Outline.Alpha;
+                     for (dy=sy; dy < ey; dy++) {
+                        xpos = xinc;
+                        for (dx=sx; dx < ex; dx++) {
+                           if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
+                              bitmap->ReadUCRPixel(bitmap, dx, dy, &rgb);
+                              rgb.Red   = Self->Outline.Red   + (((rgb.Red   - Self->Outline.Red) * alpha)>>8);
+                              rgb.Green = Self->Outline.Green + (((rgb.Green - Self->Outline.Green) * alpha)>>8);
+                              rgb.Blue  = Self->Outline.Blue  + (((rgb.Blue  - Self->Outline.Blue) * alpha)>>8);
+                              bitmap->DrawUCRPixel(bitmap, dx, dy, &rgb);
+                           }
+                           xpos++;
                         }
-                        xpos++;
+                        data += bytewidth;
                      }
+                  }
+                  else {
+                     for (dy=sy; dy < ey; dy++) {
+                        xpos = xinc;
+                        for (dx=sx; dx < ex; dx++) {
+                           if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
+                              bitmap->DrawUCPixel(bitmap, dx, dy, ocolour);
+                           }
+                           xpos++;
+                        }
+                        data += bytewidth;
+                     }
+                  }
+               }
+            }
+
+            data = Self->prvData + Self->prvChar[unicode].Offset;
+            bytewidth = (Self->prvChar[unicode].Width + 7)>>3;
+
+            // Horizontal coordinates
+
+            sx = dxcoord;
+
+            ex = sx + Self->prvChar[unicode].Width;
+            if (ex > bitmap->Clip.Right) ex = bitmap->Clip.Right;
+
+            xinc = 0;
+            if (sx < bitmap->Clip.Left) {
+               xinc = bitmap->Clip.Left - sx;
+               sx = bitmap->Clip.Left;
+            }
+
+            // Vertical coordinates
+
+            sy = dycoord;
+
+            ey = sy + Self->prvBitmapHeight;
+            if (ey > bitmap->Clip.Bottom) ey = bitmap->Clip.Bottom;
+
+            if (sy < bitmap->Clip.Top) {
+               data += bytewidth * (bitmap->Clip.Top - sy);
+               sy = bitmap->Clip.Top;
+            }
+
+            sx += bitmap->XOffset; // Add offsets only after clipping adjustments
+            sy += bitmap->YOffset;
+            dx += bitmap->XOffset;
+            dy += bitmap->YOffset;
+            ex += bitmap->XOffset;
+            ey += bitmap->YOffset;
+
+            if (Self->Colour.Alpha < 255) {
+               alpha = 255 - Self->Colour.Alpha;
+               for (dy=sy; dy < ey; dy++) {
+                  xpos = xinc;
+                  for (dx=sx; dx < ex; dx++) {
+                     if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
+                        bitmap->ReadUCRPixel(bitmap, dx, dy, &rgb);
+                        rgb.Red   = Self->Colour.Red   + (((rgb.Red   - Self->Colour.Red) * alpha)>>8);
+                        rgb.Green = Self->Colour.Green + (((rgb.Green - Self->Colour.Green) * alpha)>>8);
+                        rgb.Blue  = Self->Colour.Blue  + (((rgb.Blue  - Self->Colour.Blue) * alpha)>>8);
+                        bitmap->DrawUCRPixel(bitmap, dx, dy, &rgb);
+                     }
+                     xpos++;
+                  }
+                  data += bytewidth;
+               }
+            }
+            else {
+               if (bitmap->BytesPerPixel IS 4) {
+                  auto dest = (ULONG *)(bitmap->Data + (sx<<2) + (sy * bitmap->LineWidth));
+                  for (dy=sy; dy < ey; dy++) {
+                     xpos = xinc & 0x07;
+                     xdata = data + (xinc>>3);
+                     for (dx=0; dx < ex-sx; dx++) {
+                        if (*xdata & table[xpos++]) dest[dx] = colour;
+                        if (xpos > 7) {
+                           xpos = 0;
+                           xdata++;
+                        }
+                     }
+                     dest = (ULONG *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     data += bytewidth;
+                  }
+               }
+               else if (bitmap->BytesPerPixel IS 2) {
+                  auto dest = (UWORD *)(bitmap->Data + (sx<<1) + (sy * bitmap->LineWidth));
+                  for (dy=sy; dy < ey; dy++) {
+                     xpos = xinc & 0x07;
+                     xdata = data + (xinc>>3);
+                     for (dx=0; dx < ex-sx; dx++) {
+                        if (*xdata & table[xpos++]) dest[dx] = colour;
+                        if (xpos > 7) {
+                           xpos = 0;
+                           xdata++;
+                        }
+                     }
+                     dest = (UWORD *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     data += bytewidth;
+                  }
+               }
+               else if (bitmap->BitsPerPixel IS 8) {
+                  if (bitmap->Flags & BMF_MASK) {
+                     if (bitmap->Flags & BMF_INVERSE_ALPHA) colour = 0;
+                     else colour = 255;
+                  }
+
+                  auto dest = (UBYTE *)(bitmap->Data + sx + (sy * bitmap->LineWidth));
+                  for (dy=sy; dy < ey; dy++) {
+                     xpos = xinc & 0x07;
+                     xdata = data + (xinc>>3);
+                     for (dx=0; dx < ex-sx; dx++) {
+                        if (*xdata & table[xpos++]) dest[dx] = (UBYTE)colour;
+                        if (xpos > 7) {
+                           xpos = 0;
+                           xdata++;
+                        }
+                     }
+                     dest = (UBYTE *)(((UBYTE *)dest) + bitmap->LineWidth);
                      data += bytewidth;
                   }
                }
                else {
                   for (dy=sy; dy < ey; dy++) {
-                     xpos = xinc;
+                     xpos = xinc & 0x07;
+                     xdata = data + (xinc>>3);
                      for (dx=sx; dx < ex; dx++) {
-                        if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
-                           bitmap->DrawUCPixel(bitmap, dx, dy, ocolour);
+                        if (*xdata & table[xpos++]) bitmap->DrawUCPixel(bitmap, dx, dy, colour);
+                        if (xpos > 7) {
+                           xpos = 0;
+                           xdata++;
                         }
-                        xpos++;
                      }
                      data += bytewidth;
                   }
                }
             }
-         }
-
-         data = Self->prvData + Self->prvChar[unicode].Offset;
-         bytewidth = (Self->prvChar[unicode].Width + 7)>>3;
-
-         // Horizontal coordinates
-
-         sx = dxcoord;
-
-         ex = sx + Self->prvChar[unicode].Width;
-         if (ex > bitmap->Clip.Right) ex = bitmap->Clip.Right;
-
-         xinc = 0;
-         if (sx < bitmap->Clip.Left) {
-            xinc = bitmap->Clip.Left - sx;
-            sx = bitmap->Clip.Left;
-         }
-
-         // Vertical coordinates
-
-         sy = dycoord;
-
-         ey = sy + Self->prvBitmapHeight;
-         if (ey > bitmap->Clip.Bottom) ey = bitmap->Clip.Bottom;
-
-         if (sy < bitmap->Clip.Top) {
-            data += bytewidth * (bitmap->Clip.Top - sy);
-            sy = bitmap->Clip.Top;
-         }
-
-         sx += bitmap->XOffset; // Add offsets only after clipping adjustments
-         sy += bitmap->YOffset;
-         dx += bitmap->XOffset;
-         dy += bitmap->YOffset;
-         ex += bitmap->XOffset;
-         ey += bitmap->YOffset;
-
-         if (Self->Colour.Alpha < 255) {
-            alpha = 255 - Self->Colour.Alpha;
-            for (dy=sy; dy < ey; dy++) {
-               xpos = xinc;
-               for (dx=sx; dx < ex; dx++) {
-                  if (data[xpos>>3] & (0x80>>(xpos & 0x7))) {
-                     bitmap->ReadUCRPixel(bitmap, dx, dy, &rgb);
-                     rgb.Red   = Self->Colour.Red   + (((rgb.Red   - Self->Colour.Red) * alpha)>>8);
-                     rgb.Green = Self->Colour.Green + (((rgb.Green - Self->Colour.Green) * alpha)>>8);
-                     rgb.Blue  = Self->Colour.Blue  + (((rgb.Blue  - Self->Colour.Blue) * alpha)>>8);
-                     bitmap->DrawUCRPixel(bitmap, dx, dy, &rgb);
-                  }
-                  xpos++;
-               }
-               data += bytewidth;
-            }
-         }
-         else {
-            if (bitmap->BytesPerPixel IS 4) {
-               ULONG *dest;
-               dest = (ULONG *)(bitmap->Data + (sx<<2) + (sy * bitmap->LineWidth));
-               for (dy=sy; dy < ey; dy++) {
-                  xpos = xinc & 0x07;
-                  xdata = data + (xinc>>3);
-                  for (dx=0; dx < ex-sx; dx++) {
-                     if (*xdata & table[xpos++]) dest[dx] = colour;
-                     if (xpos > 7) {
-                        xpos = 0;
-                        xdata++;
-                     }
-                  }
-                  dest = (ULONG *)(((UBYTE *)dest) + bitmap->LineWidth);
-                  data += bytewidth;
-               }
-            }
-            else if (bitmap->BytesPerPixel IS 2) {
-               UWORD *dest;
-               dest = (UWORD *)(bitmap->Data + (sx<<1) + (sy * bitmap->LineWidth));
-               for (dy=sy; dy < ey; dy++) {
-                  xpos = xinc & 0x07;
-                  xdata = data + (xinc>>3);
-                  for (dx=0; dx < ex-sx; dx++) {
-                     if (*xdata & table[xpos++]) dest[dx] = colour;
-                     if (xpos > 7) {
-                        xpos = 0;
-                        xdata++;
-                     }
-                  }
-                  dest = (UWORD *)(((UBYTE *)dest) + bitmap->LineWidth);
-                  data += bytewidth;
-               }
-            }
-            else {
-               for (dy=sy; dy < ey; dy++) {
-                  xpos = xinc & 0x07;
-                  xdata = data + (xinc>>3);
-                  for (dx=sx; dx < ex; dx++) {
-                     if (*xdata & table[xpos++]) bitmap->DrawUCPixel(bitmap, dx, dy, colour);
-                     if (xpos > 7) {
-                        xpos = 0;
-                        xdata++;
-                     }
-                  }
-                  data += bytewidth;
-               }
-            }
-         }
-
          }
 
          dxcoord += charwidth + Self->GlyphSpacing;

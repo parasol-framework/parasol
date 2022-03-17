@@ -5,7 +5,7 @@ Please note that this is not an extension of the Vector class.  It is used for t
 -CLASS-
 VectorFilter: Filters can be applied as post-effects to rendered vectors.
 
-The VectorFilter class allows for post-effect filters to be applied to vectors once they have been rendered.  Filter
+The VectorFilter class allows post-effect filters to be applied to vectors once they have been rendered.  Filter
 support is closely modelled around the SVG standard, and effect results are intended to match that of the standard.
 
 Filter instructions are passed to VectorFilter objects via the XML data feed, where they will be parsed into an
@@ -20,42 +20,36 @@ in cached bitmaps.
 
 *****************************************************************************/
 
-static effect * add_effect(objVectorFilter *, UBYTE Type);
-static void apply_cmatrix(objVectorFilter *, effect *);
-static void apply_convolve(objVectorFilter *, effect *);
-static void apply_blur(objVectorFilter *, effect *);
-static void apply_composite(objVectorFilter *, effect *);
-static void apply_flood(objVectorFilter *, effect *);
-static void apply_image(objVectorFilter *, effect *);
-static void apply_morph(objVectorFilter *, effect *);
-static void apply_turbulence(objVectorFilter *, effect *);
-static ERROR create_blur(objVectorFilter *, XMLTag *);
-static ERROR create_cmatrix(objVectorFilter *, XMLTag *);
-static ERROR create_convolve(objVectorFilter *, XMLTag *);
-static ERROR create_composite(objVectorFilter *, XMLTag *);
-static ERROR create_flood(objVectorFilter *, XMLTag *);
-static ERROR create_image(objVectorFilter *, XMLTag *);
-static ERROR create_morph(objVectorFilter *, XMLTag *);
-static ERROR create_turbulence(objVectorFilter *, XMLTag *);
 static void demultiply_bitmap(objBitmap *);
-static ERROR fe_default(objVectorFilter *, effect *, ULONG ID, CSTRING Value);
-static effect * find_effect(objVectorFilter *, CSTRING Name);
-static ERROR get_bitmap(objVectorFilter *, objBitmap **, UBYTE, effect *);
+static ERROR fe_default(objVectorFilter *, VectorEffect *, ULONG, CSTRING);
+static VectorEffect * find_effect(objVectorFilter *, CSTRING);
+static VectorEffect * find_effect(objVectorFilter *, ULONG);
+static ERROR get_bitmap(objVectorFilter *, objBitmap **, UBYTE, ULONG);
 static void premultiply_bitmap(objBitmap *);
-static void remove_effect(objVectorFilter *, effect *);
 
 //****************************************************************************
 
 #include "filter_blur.cpp"
+#include "filter_merge.cpp"
 #include "filter_composite.cpp"
 #include "filter_flood.cpp"
 #include "filter_image.cpp"
 #include "filter_offset.cpp"
-#include "filter_merge.cpp"
 #include "filter_colourmatrix.cpp"
 #include "filter_convolve.cpp"
 #include "filter_turbulence.cpp"
 #include "filter_morphology.cpp"
+
+//****************************************************************************
+
+VectorEffect::VectorEffect()
+{
+   Source  = VSF_GRAPHIC; // Default is SourceGraphic
+   Bitmap  = NULL;
+   InputID = 0;
+   Error   = ERR_Okay;
+   Blank   = false;
+}
 
 //****************************************************************************
 
@@ -125,7 +119,7 @@ static void demultiply_bitmap(objBitmap *bmp)
 //****************************************************************************
 // Retrieve a bitmap that is associated with the effect.
 
-static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE Source, effect *Input)
+static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE Source, ULONG InputID)
 {
    parasol::Log log(__FUNCTION__);
    //log.trace("Effect: %p, Size: %dx%d", Effect, width, height);
@@ -138,9 +132,11 @@ static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE S
 
    objBitmap *bmp;
    if (!Self->Bank[bi].Bitmap) {
+      // NB: Width and Height can be large because the clip region will be defining the true size,
+      // and no data is allocated.
       if (CreateObject(ID_BITMAP, NF_INTEGRAL, &bmp,
             FID_Name|TSTR,          "EffectBitmap",
-            FID_Width|TLONG,        10000, // Can be large because the clip region will be defining the true size.
+            FID_Width|TLONG,        10000,
             FID_Height|TLONG,       10000,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        BMF_ALPHA_CHANNEL|BMF_NO_DATA,
@@ -160,7 +156,7 @@ static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE S
    const LONG canvas_height = bmp->Clip.Bottom - bmp->Clip.Top;
    bmp->LineWidth = canvas_width * bmp->BytesPerPixel;
 
-   if ((Self->Bank[bi].Data) AND (Self->Bank[bi].DataSize < bmp->LineWidth * canvas_height)) {
+   if ((Self->Bank[bi].Data) and (Self->Bank[bi].DataSize < bmp->LineWidth * canvas_height)) {
       FreeResource(Self->Bank[bi].Data);
       Self->Bank[bi].Data = NULL;
       bmp->Data = NULL;
@@ -198,7 +194,7 @@ static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE S
    }
    else if (Source IS VSF_BKGD) { // "Represents an image snapshot of the canvas under the filter region at the time that the filter element is invoked."
       //gfxDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0x00000000, BAF_FILL);
-      if ((Self->BkgdBitmap) AND (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
+      if ((Self->BkgdBitmap) and (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
          gfxCopyArea(Self->BkgdBitmap, bmp, 0, Self->BoundX, Self->BoundY, Self->BoundWidth, Self->BoundHeight,
            bmp->Clip.Left, bmp->Clip.Top);
          if (Self->ColourSpace IS CS_LINEAR_RGB) rgb2linear(*bmp);
@@ -206,7 +202,7 @@ static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE S
    }
    else if (Source IS VSF_BKGD_ALPHA) {
       //gfxDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0x00000000, BAF_FILL);
-      if ((Self->BkgdBitmap) AND (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
+      if ((Self->BkgdBitmap) and (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
          LONG dy = bmp->Clip.Top;
          for (LONG sy=Self->BkgdBitmap->Clip.Top; sy < Self->BkgdBitmap->Clip.Bottom; sy++) {
             ULONG *src = (ULONG *)(Self->BkgdBitmap->Data + (sy * Self->BkgdBitmap->LineWidth));
@@ -219,13 +215,15 @@ static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE S
          }
       }
    }
-   else if ((Source IS VSF_REFERENCE) AND (Input)) {
-      objBitmap *input;
-      if ((input = Input->Bitmap)) {
-         //bmpDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0x00000000, BAF_FILL);
-         gfxCopyArea(input, bmp, 0, 0, 0, input->Width, input->Height, 0, 0);
+   else if ((Source IS VSF_REFERENCE) and (InputID)) {
+      auto input = find_effect(Self, InputID);
+      if (input) {
+         if (input->Bitmap) {
+            //bmpDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0x00000000, BAF_FILL);
+            gfxCopyArea(input->Bitmap, bmp, 0, 0, 0, input->Bitmap->Width, input->Bitmap->Height, 0, 0);
+         }
+         else log.warning("Referenced filter has no bitmap.");
       }
-      else log.warning("Referenced filter has no bitmap.");
    }
    else if (Source IS VSF_IGNORE) {
       *BitmapResult = NULL;
@@ -240,62 +238,12 @@ static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE S
 }
 
 //****************************************************************************
-// Create a new filter and append it to the filter chain.
 
-static effect * add_effect(objVectorFilter *Filter, UBYTE Type)
-{
-   parasol::Log log(__FUNCTION__);
-   effect *effect;
-
-   log.trace("Type: %d", Type);
-   if (!AllocMemory(sizeof(effect), MEM_DATA, &effect, NULL)) {
-      effect->Prev = Filter->LastEffect;
-      effect->Next = NULL;
-      effect->Type = Type;
-      effect->Source = VSF_GRAPHIC; // Default is SourceGraphic
-
-      if (Filter->LastEffect) Filter->LastEffect->Next = effect;
-      if (!Filter->Effects) Filter->Effects = effect;
-      Filter->LastEffect = effect;
-      return effect;
-   }
-   else return NULL;
-}
-
-//****************************************************************************
-
-static void free_effect_resources(effect *Effect)
-{
-   if (Effect->Type IS FE_COLOURMATRIX) delete Effect->Colour.Matrix;
-   else if (Effect->Type IS FE_CONVOLVEMATRIX) delete Effect->Convolve.Matrix;
-   else if (Effect->Type IS FE_TURBULENCE) {
-      if (Effect->Turbulence.Tables) FreeResource(Effect->Turbulence.Tables);
-   }
-   else if (Effect->Type IS FE_IMAGE) {
-      if (Effect->Image.Picture) acFree(Effect->Image.Picture);
-   }
-}
-
-//****************************************************************************
-
-static void remove_effect(objVectorFilter *Self, effect *Effect)
-{
-   if (Effect->Prev) Effect->Prev->Next = Effect->Next;
-   if (Effect->Next) Effect->Next->Prev = Effect->Prev;
-   if (Self->LastEffect IS Effect) Self->LastEffect = Effect->Prev;
-   if (Self->Effects IS Effect) Self->Effects = Effect->Next;
-
-   free_effect_resources(Effect);
-
-   FreeResource(Effect);
-}
-
-//****************************************************************************
-
-static effect * find_effect(objVectorFilter *Self, CSTRING Name)
+static VectorEffect * find_effect(objVectorFilter *Self, CSTRING Name)
 {
    ULONG id = StrHash(Name, TRUE);
-   for (auto *e=Self->Effects; e; e=e->Next) {
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
       if (e->ID IS id) return e;
    }
    parasol::Log log(__FUNCTION__);
@@ -304,21 +252,39 @@ static effect * find_effect(objVectorFilter *Self, CSTRING Name)
 }
 
 //****************************************************************************
+
+static VectorEffect * find_effect(objVectorFilter *Self, ULONG ID)
+{
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
+      if (e->ID IS ID) return e;
+   }
+   return NULL;
+}
+
+//****************************************************************************
 // Determine the usage count of each effect (i.e. the total number of times the effect is referenced in the pipeline).
 
 static void calc_usage(objVectorFilter *Self)
 {
-   for (auto e=Self->Effects; e; e=e->Next) {
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
       e->UsageCount = 0;
-      if (e->Input) e->Input->UsageCount++;
-      if ((e->Type IS FE_COMPOSITE) AND (e->Composite.Input)) e->Composite.Input->UsageCount++;
+   }
+
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
+      if (e->InputID) {
+         auto ref = find_effect(Self, e->InputID);
+         if (ref) ref->UsageCount++;
+      }
    }
 }
 
 //****************************************************************************
 // Parser for common filter attributes.
 
-static ERROR fe_default(objVectorFilter *Self, effect *Effect, ULONG ID, CSTRING Value)
+static ERROR fe_default(objVectorFilter *Filter, VectorEffect *Effect, ULONG ID, CSTRING Value)
 {
    switch (ID) {
       case SVF_IN: {
@@ -330,11 +296,11 @@ static ERROR fe_default(objVectorFilter *Self, effect *Effect, ULONG ID, CSTRING
             case SVF_FILLPAINT:       Effect->Source = VSF_FILL; break;
             case SVF_STROKEPAINT:     Effect->Source = VSF_STROKE; break;
             default:  {
-               effect *e;
-               if ((e = find_effect(Self, Value))) {
+               VectorEffect *e;
+               if ((e = find_effect(Filter, Value))) {
                   if (e != Effect) {
                      Effect->Source = VSF_REFERENCE;
-                     Effect->Input = e;
+                     Effect->InputID = e->ID;
                   }
                }
                break;
@@ -359,18 +325,7 @@ Clear: Clears all filter instructions from the object.
 
 static ERROR VECTORFILTER_Clear(objVectorFilter *Self, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
-   log.trace("Clearing all effects.");
-
-   effect *next;
-   for (auto scan=Self->Effects; scan; scan=next) {
-      next = scan->Next;
-      free_effect_resources(scan);
-      FreeResource(scan);
-   }
-   Self->Effects = NULL;
-
-   if (Self->Merge) { FreeResource(Self->Merge); Self->Merge = NULL; }
+   Self->Effects.clear();
 
    for (LONG i=0; i < ARRAYSIZE(Self->Bank); i++) {
       if (Self->Bank[i].Bitmap) { acFree(Self->Bank[i].Bitmap); Self->Bank[i].Bitmap = NULL; }
@@ -414,6 +369,7 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
 
    if (!Args) return ERR_NullArgs;
 
+   ERROR error = ERR_Okay;
    if (Args->DataType IS DATA_XML) {
       if (Self->EffectXML) { acFree(Self->EffectXML); Self->EffectXML = NULL; }
 
@@ -423,22 +379,22 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
             for (auto tag = Self->EffectXML->Tags[0]; tag; tag=tag->Next) {
                log.trace("Processing filter element '%s'", tag->Attrib->Name);
                switch(StrHash(tag->Attrib->Name, FALSE)) {
-                  case SVF_FEBLUR: create_blur(Self, tag); break;
-                  case SVF_FEGAUSSIANBLUR: create_blur(Self, tag); break;
-                  case SVF_FEOFFSET: create_offset(Self, tag); break;
-                  case SVF_FEMERGE: create_merge(Self, tag); break;
-                  case SVF_FECOLORMATRIX:
-                  case SVF_FECOLOURMATRIX: create_cmatrix(Self, tag); break;
-                  case SVF_FECONVOLVEMATRIX: create_convolve(Self, tag); break;
-                  case SVF_FEBLEND: // Blend and composite share the same code.
-                  case SVF_FECOMPOSITE: create_composite(Self, tag); break;
-                  case SVF_FEFLOOD: create_flood(Self, tag); break;
-                  case SVF_FETURBULENCE: create_turbulence(Self, tag); break;
-                  case SVF_FEMORPHOLOGY: create_morph(Self, tag); break;
-                  case SVF_FEIMAGE: create_image(Self, tag); break;
+                  case SVF_FEBLUR:           Self->Effects.emplace_back(std::make_unique<BlurEffect>(Self, tag)); break;
+                  case SVF_FEGAUSSIANBLUR:   Self->Effects.emplace_back(std::make_unique<BlurEffect>(Self, tag)); break;
+
+                  case SVF_FEOFFSET:         Self->Effects.emplace_back(std::make_unique<OffsetEffect>(Self, tag)); break;
+                  case SVF_FEMERGE:          Self->Effects.emplace_back(std::make_unique<MergeEffect>(Self, tag)); break;
+                  case SVF_FECOLORMATRIX:    // American spelling
+                  case SVF_FECOLOURMATRIX:   Self->Effects.emplace_back(std::make_unique<ColourEffect>(Self, tag)); break;
+                  case SVF_FECONVOLVEMATRIX: Self->Effects.emplace_back(std::make_unique<ConvolveEffect>(Self, tag)); break;
+                  case SVF_FEBLEND:          // Blend and composite share the same code.
+                  case SVF_FECOMPOSITE:      Self->Effects.emplace_back(std::make_unique<CompositeEffect>(Self, tag)); break;
+                  case SVF_FEFLOOD:          Self->Effects.emplace_back(std::make_unique<FloodEffect>(Self, tag)); break;
+                  case SVF_FETURBULENCE:     Self->Effects.emplace_back(std::make_unique<TurbulenceEffect>(Self, tag)); break;
+                  case SVF_FEMORPHOLOGY:     Self->Effects.emplace_back(std::make_unique<MorphEffect>(Self, tag)); break;
+                  case SVF_FEIMAGE:          Self->Effects.emplace_back(std::make_unique<ImageEffect>(Self, tag)); break;
                   case SVF_FEDISPLACEMENTMAP:
                   case SVF_FETILE:
-
                   case SVF_FECOMPONENTTRANSFER:
                   case SVF_FEDIFFUSELIGHTING:
                   case SVF_FESPECULARLIGHTING:
@@ -452,15 +408,22 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
                      log.warning("Filter element '%s' not recognised.", tag->Attrib->Name);
                      break;
                }
+
+               if (error) log.warning("Failed to process filter element '%s'", tag->Attrib->Name);
             }
 
             calc_usage(Self);
          }
+         else {
+            acFree(Self->EffectXML);
+            Self->EffectXML = NULL;
+            error = ERR_Init;
+         }
       }
-      else return ERR_CreateObject;
+      else error = ERR_NewObject;
    }
 
-   return ERR_Okay;
+   return error;
 }
 
 //****************************************************************************
@@ -476,11 +439,12 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
 
    if (!Self->Viewport->Child) { log.warning("Target vector not defined."); return ERR_FieldNotSet; }
 
+   Self->Rendered = false;
    Self->DrawStamp = PreciseTime();
 
    // The target bitmap will mirror the size of the vector's nearest viewport.
 
-   objVector *child = (objVector *)Self->Viewport->Child;
+   auto child = (objVector *)Self->Viewport->Child;
 
    SetFields(Self->Scene,
       FID_PageWidth|TDOUBLE,  (DOUBLE)child->ParentView->vpFixedWidth,
@@ -491,7 +455,7 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
    LONG page_width = Self->Scene->PageWidth;
    LONG page_height = Self->Scene->PageHeight;
 
-   if ((page_width < 1) OR (page_height < 1)) return ERR_Okay;
+   if ((page_width < 1) or (page_height < 1)) return ERR_Okay;
    if (page_width > 4096) page_width = 4096;
    if (page_height > 4096) page_height = 4096;
 
@@ -531,8 +495,8 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
       else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->BoundHeight = Self->Height * (bounds[3] - bounds[1]);
       else Self->BoundHeight = bounds[3] = bounds[1];
 
-      Self->ViewX = Self->Viewport->vpFixedRelX;
-      Self->ViewY = Self->Viewport->vpFixedRelY;
+      Self->ViewX = Self->Viewport->FinalX;
+      Self->ViewY = Self->Viewport->FinalY;
       Self->ViewWidth  = Self->Viewport->vpFixedWidth;
       Self->ViewHeight = Self->Viewport->vpFixedHeight;
       bound = TRUE;
@@ -560,7 +524,7 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
       else fh = page_height;
 
       // Sometimes transforms need to be applied, e.g. <g transform="translate(...)">
-      if (child->Transforms) {
+      if (child->Matrices) {
          agg::path_storage rect;
          rect.move_to(fx, fy);
          rect.line_to(fx+fw, fy);
@@ -569,7 +533,9 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
          rect.close_polygon();
 
          agg::trans_affine transform;
-         apply_transforms(child->Transforms, fx, fx, transform);
+         transform.tx += fx;
+         transform.ty += fy;
+         compile_transforms(*child, transform);
          rect.transform(transform);
 
          bounding_rect_single(rect, 0, &fx, &fy, &fw, &fh);
@@ -608,9 +574,9 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
       acResize(Self->SrcBitmap, Self->BoundX + Self->BoundWidth, Self->BoundY + Self->BoundHeight, 32);
    }
 
-   Self->SrcBitmap->Clip.Left = Self->BoundX;
-   Self->SrcBitmap->Clip.Top = Self->BoundY;
-   Self->SrcBitmap->Clip.Right = Self->BoundX + Self->BoundWidth;
+   Self->SrcBitmap->Clip.Left   = Self->BoundX;
+   Self->SrcBitmap->Clip.Top    = Self->BoundY;
+   Self->SrcBitmap->Clip.Right  = Self->BoundX + Self->BoundWidth;
    Self->SrcBitmap->Clip.Bottom = Self->BoundY + Self->BoundHeight;
    if (Self->SrcBitmap->Clip.Left < 0) Self->SrcBitmap->Clip.Left = 0;
    if (Self->SrcBitmap->Clip.Top < 0) Self->SrcBitmap->Clip.Top = 0;
@@ -620,118 +586,60 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
    gfxDrawRectangle(Self->SrcBitmap, 0, 0, Self->SrcBitmap->Width, Self->SrcBitmap->Height, 0x00000000, BAF_FILL);
 
    Self->BankIndex = 1;
-   Self->SrcGraphic.Bitmap = Self->SrcBitmap;
    Self->Scene->Bitmap = Self->SrcBitmap;
    acDraw(Self->Scene);
 
    child->Filter = Self;
    child->Next = save_vector;
 
-   /*** Now apply the effects to the rendered scene ***/
+   // Now apply the effects to the rendered scene
 
-   for (auto *e = Self->Effects; e; e=e->Next) {
-      if (e->Input) { // Offset inheritance (from any referenced effect)
-         e->DestX = e->XOffset + e->Input->DestX;
-         e->DestY = e->YOffset + e->Input->DestY;
-      }
-      else {
-         e->DestX = e->XOffset;
-         e->DestY = e->YOffset;
-      }
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
+      if (e->Blank) continue; // Ignore effects that don't produce graphics
 
-      // Ignore any types that don't produce graphics
-      if ((e->Type IS FE_OFFSET) OR (e->Type IS FE_MERGE)) continue;
+      ERROR error = ERR_Okay;
+      e->DestX = e->XOffset;
+      e->DestY = e->YOffset;
+      e->Bitmap = NULL;
 
-      if ((e->Input) AND (e->Input->Type IS FE_OFFSET)) {
-         // This one-off optimisation is used to inherit the offset coordinates and source type from feOffset effects.
-         e->Source  = e->Input->Source;
-         e->XOffset += e->Input->XOffset;
-         e->YOffset += e->Input->YOffset;
-         e->Input = NULL;
+      if (e->InputID) {
+         auto input = find_effect(Self, e->InputID);
+
+         if (input) { // Offset inheritance from the input
+            e->DestX += input->DestX;
+            e->DestY += input->DestY;
+
+            input->applyInput(*e);
+
+            if ((e->Source IS VSF_REFERENCE) and (input->UsageCount IS 1) and (input->Bitmap)) {
+               e->Bitmap = input->Bitmap;
+            }
+         }
       }
 
       // If we inherit the bitmap from another effect, try and use it rather than copying a new bitmap from scratch.
 
-      ERROR error;
-      if ((e->Source IS VSF_REFERENCE) AND (e->Input) AND (e->Input->UsageCount IS 1) AND (e->Input->Bitmap)) {
-         e->Bitmap = e->Input->Bitmap;
-         error = ERR_Okay;
-      }
-      else error = get_bitmap(Self, &e->Bitmap, e->Source, e->Input);
+      if (!e->Bitmap) error = get_bitmap(Self, &e->Bitmap, e->Source, 0);
 
-      if (!error) {
-         //log.trace("Processing effect %s with source type %d", get_effect_name(e->Type), e->Source);
-
-         switch (e->Type) {
-            case FE_BLUR:           apply_blur(Self, e); break;
-            case FE_COLOURMATRIX:   apply_cmatrix(Self, e); break;
-            case FE_CONVOLVEMATRIX: apply_convolve(Self, e); break;
-            case FE_BLEND:          // Blend and composite share the same code
-            case FE_COMPOSITE:      apply_composite(Self, e); break;
-            case FE_FLOOD:          apply_flood(Self, e); break;
-            case FE_IMAGE:          apply_image(Self, e); break;
-            case FE_TURBULENCE:     apply_turbulence(Self, e); break;
-            case FE_MORPHOLOGY:     apply_morph(Self, e); break;
-            default:
-               log.warning("No support for applying effect %s", get_effect_name(e->Type)); break;
-         }
-      }
-      else if (error != ERR_Continue) log.warning("Failed to configure bitmap for effect type %s", get_effect_name(e->Type));
+      if (!error) e->apply(Self);
+      else if (error != ERR_Continue) log.warning("Failed to configure bitmap for effect.");
    }
 
    // Render the filter results to the destination bitmap
 
-   if (Self->Merge) {
-      // 1. Merge everything to the scratch bitmap allocated by the filter.
-      // 2. Do the linear2RGB conversion on the result.
-      // 3. Copy the result to the display.
-
-      if (!Self->MergeBitmap) {
-         if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->MergeBitmap,
-               FID_Name|TSTR,          "MergeBitmap",
-               FID_Width|TLONG,        Self->BoundWidth,
-               FID_Height|TLONG,       Self->BoundHeight,
-               FID_BitsPerPixel|TLONG, 32,
-               FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
-               TAGEND)) return ERR_CreateObject;
-      }
-      else if ((Self->BoundWidth != Self->MergeBitmap->Width) or (Self->BoundHeight != Self->MergeBitmap->Height)) {
-         acResize(Self->MergeBitmap, Self->BoundWidth, Self->BoundHeight, 32);
-      }
-
-      gfxDrawRectangle(Self->MergeBitmap, 0, 0, Self->MergeBitmap->Width, Self->MergeBitmap->Height, 0x00000000, BAF_FILL);
-
-      UWORD bmpCount = 0;
-      for (auto m=0; Self->Merge[m]; m++) {
-         objBitmap *bmp;
-         auto e = Self->Merge[m];
-         if ((bmp = e->Bitmap)) {
-            if (++bmpCount IS 1) {
-               gfxCopyArea(e->Bitmap, Self->MergeBitmap, 0, 0, 0, bmp->Width, bmp->Height, e->DestX - Self->BoundX, e->DestY - Self->BoundY);
-            }
-            else gfxCopyArea(e->Bitmap, Self->MergeBitmap, BAF_BLEND|BAF_COPY, 0, 0, bmp->Width, bmp->Height, e->DestX - Self->BoundX, e->DestY - Self->BoundY);
-         }
-      }
-
-      // Final copy to the display.
-
-      if (Self->ColourSpace IS CS_LINEAR_RGB) linear2RGB(*Self->MergeBitmap);
-
-      if (Self->Opacity < 1.0) Self->MergeBitmap->Opacity = 255.0 * Self->Opacity;
-      gfxCopyArea(Self->MergeBitmap, Self->BkgdBitmap, BAF_BLEND|BAF_COPY, 0, 0, Self->BoundWidth, Self->BoundHeight, Self->BoundX, Self->BoundY);
-      Self->MergeBitmap->Opacity = 255;
-   }
-   else { // If no merge is specified, then draw all the available bitmaps in sequence.
+   if (!Self->Rendered) {
+      Self->Rendered = true;
       objBitmap *bmp;
-      for (auto e = Self->Effects; e; e=e->Next) {
-         if ((e->ID) AND (e->UsageCount > 0)) continue; // Don't draw the effect if it's being piped to something else.
-         if ((bmp = e->Bitmap)) {
+      for (auto &ptr : Self->Effects) {
+         auto e = ptr.get();
+         if ((e->ID) and (e->UsageCount > 0)) continue; // Don't draw the effect if it's being piped to something else.
+         if ((bmp = e->Bitmap)) { // Note that blank effects don't generate bitmaps
             if (Self->ColourSpace IS CS_LINEAR_RGB) linear2RGB(*bmp);
             if (Self->Opacity < 1.0) bmp->Opacity = 255.0 * Self->Opacity;
             gfxCopyArea(bmp, Self->BkgdBitmap, BAF_BLEND|BAF_COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
             bmp->Opacity = 255;
          }
-         else log.trace("No Bitmap generated by effect '%s'.", get_effect_name(e->Type));
       }
    }
 
@@ -744,10 +652,11 @@ static ERROR VECTORFILTER_Free(objVectorFilter *Self, APTR Void)
 {
    VECTORFILTER_Clear(Self, NULL);
 
-   if (Self->EffectXML)   { acFree(Self->EffectXML);   Self->EffectXML = NULL; }
-   if (Self->Scene)       { acFree(Self->Scene);       Self->Scene = NULL; }
-   if (Self->MergeBitmap) { acFree(Self->MergeBitmap); Self->MergeBitmap = NULL; }
-   if (Self->Path)        { FreeResource(Self->Path);  Self->Path = NULL; }
+   Self->Effects.~vector();
+
+   if (Self->EffectXML) { acFree(Self->EffectXML);  Self->EffectXML = NULL; }
+   if (Self->Scene)     { acFree(Self->Scene);      Self->Scene = NULL; }
+   if (Self->Path)      { FreeResource(Self->Path); Self->Path = NULL; }
    return ERR_Okay;
 }
 
@@ -774,17 +683,18 @@ static ERROR VECTORFILTER_NewObject(objVectorFilter *Self, APTR Void)
    if (!NewObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Scene)) {
       if (!NewObject(ID_VECTORVIEWPORT, 0, &Self->Viewport)) {
          SetOwner(Self->Viewport, Self->Scene);
+         new (&Self->Effects) std::vector<VectorEffect>;
          Self->Scene->PageWidth  = 1;
          Self->Scene->PageHeight = 1;
          Self->Units          = VUNIT_BOUNDING_BOX;
          Self->PrimitiveUnits = VUNIT_UNDEFINED;
-         Self->Opacity = 1.0;
-         Self->X       = -0.1;
-         Self->Y       = -0.1;
-         Self->Width   = 1.2;
-         Self->Height  = 1.2;
-         Self->ColourSpace = CS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
-         Self->Dimensions = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
+         Self->Opacity        = 1.0;
+         Self->X              = -0.1;
+         Self->Y              = -0.1;
+         Self->Width          = 1.2;
+         Self->Height         = 1.2;
+         Self->ColourSpace    = CS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
+         Self->Dimensions     = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
          return ERR_Okay;
       }
       else return ERR_NewObject;
@@ -903,14 +813,14 @@ a filter image.  Any relative file reference will be prefixed with the path stri
 
 static ERROR VECTORFILTER_SET_Path(objVectorFilter *Self, CSTRING Value)
 {
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       // Setting a path of "my/house/is/red.svg" results in "my/house/is/"
 
       STRING str;
       if (!ResolvePath(Value, RSF_NO_FILE_CHECK, &str)) {
          WORD last = 0;
          for (WORD i=0; str[i]; i++) {
-            if ((str[i] IS '/') OR (str[i] IS '\\')) last = i + 1;
+            if ((str[i] IS '/') or (str[i] IS '\\')) last = i + 1;
          }
          str[last] = 0;
 
@@ -941,8 +851,8 @@ not be modified as it is managed entirely by the filter.
 -FIELD-
 Units: Defines the coordinate system for fields X, Y, Width and Height.
 
-The default coordinate system for gradients is BOUNDING_BOX, which positions the filter around the vector that
-references it.  The alternative is USERSPACE, which positions the filter relative to the current viewport.
+The default coordinate system for gradients is `BOUNDING_BOX`, which positions the filter around the vector that
+references it.  The alternative is `USERSPACE`, which positions the filter relative to the current viewport.
 
 -FIELD-
 Vector: Private. Must refer to a vector that will be processed through the filter.  Refer to draw_vectors().

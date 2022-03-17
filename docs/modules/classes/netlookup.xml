@@ -12,7 +12,7 @@
     <idstring>ID_NETLOOKUP</idstring>
     <category>Network</category>
     <include>modules/netlookup.h</include>
-    <copyright>Paul Manias © 2005-2020</copyright>
+    <copyright>Paul Manias © 2005-2022</copyright>
     <description>
 <p>Use the NetLookup class for resolving network names to IP addresses and vice versa.</p></description>
     <source>
@@ -44,10 +44,10 @@
 <p>The results can be read from the <field>HostName</field> field or received via the <field>Callback</field> function.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Failed">The address could not be resolved</error>
         <error code="Okay">The IP address was resolved successfully.</error>
+        <error code="Failed">The address could not be resolved</error>
         <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -63,10 +63,10 @@
 <p>The results can be read from the <field>Addresses</field> field or received via the <field>Callback</field> function.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">Operation successful.</error>
         <error code="Failed">General failure.</error>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -82,10 +82,10 @@
 <p>If synchronous (blocking) operation is desired then use the @BlockingResolveAddress() method.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Failed">The address could not be resolved</error>
         <error code="Okay">The IP address was resolved successfully.</error>
+        <error code="Failed">The address could not be resolved</error>
         <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -101,10 +101,10 @@
 <p>If synchronous (blocking) operation is desired then use the @BlockingResolveName() method.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">Operation successful.</error>
         <error code="Failed">General failure.</error>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -161,47 +161,11 @@
 
   </fields>
   <types>
-    <constants lookup="IPADDR" comment="Address types for the IPAddress structure.">
-      <const name="V4"/>
-      <const name="V6"/>
-    </constants>
-
-    <constants lookup="NSF">
-      <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
-      <const name="SSL">Use Secure Sockets Layer for all communication.</const>
-      <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
-      <const name="DEBUG">Print extra log messages.</const>
-      <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
-    </constants>
-
     <constants lookup="NLF" comment="Options for NetLookup">
       <const name="NO_CACHE">Contact the name service and do not use the local DNS cache.</const>
     </constants>
 
-    <constants lookup="NTC" comment="NetSocket states">
-      <const name="DISCONNECTED">There is no connection.</const>
-      <const name="CONNECTING">A connection is being established.</const>
-      <const name="CONNECTING_SSL">An SSL connection is being established.</const>
-      <const name="CONNECTED">There is an active connection at present.</const>
-    </constants>
-
   </types>
   <structs>
-    <struct name="IPAddress">
-      <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
-      <field name="Type" type="LONG" lookup="IPADDR"></field>
-      <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
-    </struct>
-
-    <struct name="rkNetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
-      <field name="IP" type="char" size="8">IP address in 4/8-byte format</field>
-      <field name="Next" type="struct rkNetClient *">Next client in the chain</field>
-      <field name="Prev" type="struct rkNetClient *">Previous client in the chain</field>
-      <field name="NetSocket" type="struct rkNetSocket *">Reference to the parent socket</field>
-      <field name="Sockets" type="struct rkClientSocket *">Pointer to a list of sockets opened with this client.</field>
-      <field name="UserData" type="APTR">Free for user data storage.</field>
-      <field name="TotalSockets" type="LONG">Count of all created sockets</field>
-    </struct>
-
   </structs>
 </book>

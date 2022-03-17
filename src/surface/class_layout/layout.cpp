@@ -3,20 +3,12 @@
 -CLASS-
 Layout: Manages the layout of objects that support graphics.
 
-The Layout class is provided as an extension for a generic, standardised system of graphics management for all objects.
-It extends the features of other existing classes only - i.e. it is not provided for high level, independent use.
-
-The Layout class supports a large number of features and it is not expected that a class will make use of all them.
-Certain fields and features exist for exotic and rare occasions only.  As a developer, do not not feel pressured to
-support all of the extensions provided by the Layout class.
+The Layout class provides a generic, standardised system of graphics management for all objects.
+It should be used to extend the features of other classes only and is not for use in client programs.
 
 -END-
 
-Each task is allocated one layout object.  The layout object acts as a layout management interface for all objects that
-want to use the Parasol Surface GUI.
-
-Other Layout classes can be used as a drop-in replacement for this default class
-- e.g. the DocLayout class.
+NOTE: This class is likely to become deprecated once the remaining widgets that use it are rewritten.
 
 *****************************************************************************/
 
@@ -67,7 +59,7 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
    parasol::Log log(__FUNCTION__);
    objSurface *surface;
 
-   if ((Self->SurfaceID) AND (SurfaceID != Self->SurfaceID)) {
+   if ((Self->SurfaceID) and (SurfaceID != Self->SurfaceID)) {
       log.warning("Attempt to change surface from #%d to #%d - switching surfaces is not allowed.", Self->SurfaceID, SurfaceID);
       return ERR_Failed;
    }
@@ -83,12 +75,12 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
          Self->PageID = surface->ParentID;
          Self->Document = GetObjectPtr(GetOwnerID(Self->PageID));
 
-         if ((!Self->Document) OR (Self->Document->ClassID != ID_DOCUMENT)) {
+         if ((!Self->Document) or (Self->Document->ClassID != ID_DOCUMENT)) {
             log.warning("Expected a Document object to control this surface.");
             return ERR_Failed;
          }
 
-         if ((Self->PageID) AND (!AccessObject(Self->PageID, 3000, &view))) {
+         if ((Self->PageID) and (!AccessObject(Self->PageID, 3000, &view))) {
             SubscribeActionTags(view, AC_Redimension, TAGEND);
 
             Self->ParentSurface.X = view->X;
@@ -110,7 +102,7 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
 
       }
 
-      if ((!Self->Document) AND (Self->DrawCallback.Type)) {
+      if ((!Self->Document) and (Self->DrawCallback.Type)) {
          struct drwAddCallback args = { &Self->DrawCallback };
          Action(MT_DrwAddCallback, surface, &args);
       }
@@ -126,19 +118,19 @@ static ERROR init_surface(objLayout *Self, OBJECTID SurfaceID)
 static ERROR LAYOUT_ActionNotify(objLayout *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) {
-      if ((Self->ResizeCallback.Type IS CALL_SCRIPT) AND (Self->ResizeCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->ResizeCallback.Type IS CALL_SCRIPT) and (Self->ResizeCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->ResizeCallback.Type = CALL_NONE;
       }
    }
    else if (Args->ActionID IS AC_Redimension) {
       auto resize = (struct acRedimension *)Args->Args;
 
-      // PLEASE NOTE: If the layout is part of a document, then the page surface is monitored as that
+      // PLEASE NOTE: If the layout is part of a document then the page surface is monitored as that
       // contains the true width/height of the page as opposed to the containing surface.
 
       if (resize->Depth) Self->BitsPerPixel = resize->Depth;
 
-      if ((resize->Width IS Self->ParentSurface.Width) AND (resize->Height IS Self->ParentSurface.Height)) return ERR_Okay;
+      if ((resize->Width IS Self->ParentSurface.Width) and (resize->Height IS Self->ParentSurface.Height)) return ERR_Okay;
 
       Self->ParentSurface.X = resize->X;
       Self->ParentSurface.Y = resize->Y;
@@ -162,7 +154,7 @@ static ERROR LAYOUT_ActionNotify(objLayout *Self, struct acActionNotify *Args)
             OBJECTPTR script;
             if ((script = Self->ResizeCallback.Script.Script)) {
                const ScriptArg args[] = {
-                  { "Owner", FD_OBJECTID, { .Long = Self->Owner ? Self->Owner->UniqueID : 0 } },
+                  { "Owner", FD_OBJECTID, { .Long = Self->Owner ? Self->Owner->UID : 0 } },
                };
                scCallback(script, Self->ResizeCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }
@@ -205,7 +197,7 @@ static ERROR LAYOUT_Free(objLayout *Self, APTR Void)
       }
    }
 
-   if ((Self->PageID) AND (Self->PageID != Self->SurfaceID)) {
+   if ((Self->PageID) and (Self->PageID != Self->SurfaceID)) {
       if (!AccessObject(Self->PageID, 5000, &surface)) {
          UnsubscribeAction(surface, 0);
          ReleaseObject(surface);
@@ -247,7 +239,7 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
 
    if (!Self->SurfaceID) {
       OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) AND (GetClassID(owner_id) != ID_SURFACE)) {
+      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
 
@@ -260,11 +252,11 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
    else init_surface(Self, Self->SurfaceID);
 
    if ((Self->Dimensions & 0xffff)) {
-      if ((Self->Dimensions & DMF_X) AND (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH|DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET))) {
+      if ((Self->Dimensions & DMF_X) and (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH|DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET))) {
          Self->PresetX = TRUE;
          Self->PresetWidth = TRUE;
       }
-      else if ((Self->Dimensions & DMF_X_OFFSET) AND (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH|DMF_FIXED_X|DMF_RELATIVE_X))) {
+      else if ((Self->Dimensions & DMF_X_OFFSET) and (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH|DMF_FIXED_X|DMF_RELATIVE_X))) {
          Self->PresetX = TRUE;
          Self->PresetWidth = TRUE;
       }
@@ -272,11 +264,11 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
          Self->PresetWidth = TRUE;
       }
 
-      if ((Self->Dimensions & DMF_Y) AND (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET))) {
+      if ((Self->Dimensions & DMF_Y) and (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET))) {
          Self->PresetY = TRUE;
          Self->PresetHeight = TRUE;
       }
-      else if ((Self->Dimensions & DMF_Y_OFFSET) AND (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT|DMF_FIXED_Y|DMF_RELATIVE_Y))) {
+      else if ((Self->Dimensions & DMF_Y_OFFSET) and (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT|DMF_FIXED_Y|DMF_RELATIVE_Y))) {
          Self->PresetY = TRUE;
          Self->PresetHeight = TRUE;
       }
@@ -307,8 +299,8 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
       SET_Layout_YOffset(Self, &var);
    }
 
-   if ((Self->PresetX) AND (Self->PresetY)) {
-      // If the user has set fixed values on *both* axis, he can enable fixed placement mode, which means that the
+   if ((Self->PresetX) and (Self->PresetY)) {
+      // If the client has set fixed values on *both* axis then it can enable fixed placement mode, which means that the
       // cursor is completely ignored and the existing Bound* fields will be used without alteration.
       //
       // This also means that the left, right, top and bottom margins are all ignored.  Text will still be wrapped
@@ -318,7 +310,7 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
    }
 
    if (Self->Layout & LAYOUT_BACKGROUND) Self->Layout &= ~LAYOUT_EMBEDDED;
-   else if ((Self->PresetX) AND (Self->PresetY)) Self->Layout &= ~LAYOUT_EMBEDDED;
+   else if ((Self->PresetX) and (Self->PresetY)) Self->Layout &= ~LAYOUT_EMBEDDED;
    else if (Self->Align) Self->Layout &= ~LAYOUT_EMBEDDED;
    else Self->Layout |= LAYOUT_EMBEDDED;
 
@@ -328,8 +320,8 @@ static ERROR LAYOUT_Init(objLayout *Self, APTR Void)
    GET_Layout_Width(Self, &var); Self->BoundWidth = var.Large;
    GET_Layout_Height(Self, &var); Self->BoundHeight = var.Large;
 
-   if ((!Self->Document) AND (Self->DrawCallback.Type)) {
-      if ((Self->SurfaceID) AND (!AccessObject(Self->SurfaceID, 5000, &surface))) {
+   if ((!Self->Document) and (Self->DrawCallback.Type)) {
+      if ((Self->SurfaceID) and (!AccessObject(Self->SurfaceID, 5000, &surface))) {
          struct drwAddCallback args = { &Self->DrawCallback };
          Action(MT_DrwAddCallback, surface, &args);
          ReleaseObject(surface);
@@ -373,7 +365,7 @@ static ERROR LAYOUT_MoveToFront(objLayout *Self, APTR Void)
    if (Self->Document) return ERR_NoSupport;
 
    if (Self->DrawCallback.Type) {
-      if ((Self->SurfaceID) AND (!AccessObject(Self->SurfaceID, 3000, &surface))) {
+      if ((Self->SurfaceID) and (!AccessObject(Self->SurfaceID, 3000, &surface))) {
          struct drwAddCallback args = { &Self->DrawCallback };
          Action(MT_DrwAddCallback, surface, &args);
          ReleaseObject(surface);
@@ -816,7 +808,7 @@ static ERROR SET_Layout_GraphicWidth(objLayout *Self, Variable *Value)
          log.warning("A GraphicWidth of %.2f is illegal.", Value->Double);
          return ERR_OutOfRange;
       }
-      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelWidth = Value->Double / 100.0;
+      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelWidth = Value->Double * 0.01;
       else {
          Self->GraphicWidth = F2T(Value->Double);
          Self->GraphicRelWidth = 0;
@@ -827,7 +819,7 @@ static ERROR SET_Layout_GraphicWidth(objLayout *Self, Variable *Value)
          log.warning("A GraphicWidth of " PF64() " is illegal.", Value->Large);
          return ERR_OutOfRange;
       }
-      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelWidth = (DOUBLE)Value->Large / 100.0;
+      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelWidth = (DOUBLE)Value->Large * 0.01;
       else {
          Self->GraphicWidth = Value->Large;
          Self->GraphicRelWidth = 0;
@@ -860,7 +852,7 @@ static ERROR SET_Layout_GraphicX(objLayout *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
       if (Value->Type & FD_PERCENTAGE) {
-         Self->GraphicRelX = Value->Double / 100.0;
+         Self->GraphicRelX = Value->Double * 0.01;
       }
       else {
          Self->GraphicX = F2T(Value->Double);
@@ -869,7 +861,7 @@ static ERROR SET_Layout_GraphicX(objLayout *Self, Variable *Value)
    }
    else if (Value->Type & FD_LARGE) {
       if (Value->Type & FD_PERCENTAGE) {
-         Self->GraphicRelX = (DOUBLE)Value->Large / 100.0;
+         Self->GraphicRelX = (DOUBLE)Value->Large * 0.01;
       }
       else {
          Self->GraphicX = Value->Large;
@@ -905,14 +897,14 @@ static ERROR GET_Layout_GraphicY(objLayout *Self, Variable *Value)
 static ERROR SET_Layout_GraphicY(objLayout *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelY = Value->Double / 100.0;
+      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelY = Value->Double * 0.01;
       else {
          Self->GraphicY = F2T(Value->Double);
          Self->GraphicRelY = 0;
       }
    }
    else if (Value->Type & FD_LARGE) {
-      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelY = (DOUBLE)Value->Large / 100.0;
+      if (Value->Type & FD_PERCENTAGE) Self->GraphicRelY = (DOUBLE)Value->Large * 0.01;
       else {
          Self->GraphicY = Value->Large;
          Self->GraphicRelY = 0;
@@ -945,7 +937,7 @@ static ERROR GET_Layout_Height(objLayout *Self, Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) {
       value = (DOUBLE)Self->Height * (DOUBLE)Self->ParentSurface.Height * 0.01;
    }
-   else if ((Self->Dimensions & DMF_Y) AND
+   else if ((Self->Dimensions & DMF_Y) and
             (Self->Dimensions & DMF_Y_OFFSET)) {
       if (Self->Dimensions & DMF_FIXED_Y) ycoord = Self->Y;
       else ycoord = (DOUBLE)Self->ParentSurface.Height * (DOUBLE)Self->Y * 0.01;
@@ -954,7 +946,7 @@ static ERROR GET_Layout_Height(objLayout *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentSurface.Height;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / (DOUBLE)Self->ParentSurface.Height;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -986,7 +978,7 @@ static ERROR SET_Layout_Height(objLayout *Self, Variable *Value)
    if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_RELATIVE_HEIGHT;
    else Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_HEIGHT) | DMF_FIXED_HEIGHT;
 
-   if ((Self->Dimensions & (DMF_RELATIVE_Y|DMF_FIXED_Y)) AND (Self->Dimensions & (DMF_RELATIVE_Y_OFFSET|DMF_RELATIVE_Y))) Self->Dimensions &= ~(DMF_RELATIVE_Y_OFFSET|DMF_FIXED_Y_OFFSET);
+   if ((Self->Dimensions & (DMF_RELATIVE_Y|DMF_FIXED_Y)) and (Self->Dimensions & (DMF_RELATIVE_Y_OFFSET|DMF_RELATIVE_Y))) Self->Dimensions &= ~(DMF_RELATIVE_Y_OFFSET|DMF_FIXED_Y_OFFSET);
 
    if (Self->Head.Flags & NF_INITIALISED) {
       Variable var;
@@ -1629,7 +1621,7 @@ static ERROR GET_Layout_Width(objLayout *Self, Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_WIDTH) {
       value = (DOUBLE)Self->Width * (DOUBLE)Self->ParentSurface.Width * 0.01;
    }
-   else if ((Self->Dimensions & DMF_X) AND (Self->Dimensions & DMF_X_OFFSET)) {
+   else if ((Self->Dimensions & DMF_X) and (Self->Dimensions & DMF_X_OFFSET)) {
       if (Self->Dimensions & DMF_FIXED_X) xcoord = Self->X;
       else xcoord = (DOUBLE)Self->ParentSurface.Width * (DOUBLE)Self->X * 0.01;
 
@@ -1638,7 +1630,7 @@ static ERROR GET_Layout_Width(objLayout *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentSurface.Width;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / (DOUBLE)Self->ParentSurface.Width;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -1673,7 +1665,7 @@ static ERROR SET_Layout_Width(objLayout *Self, Variable *Value)
    if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_RELATIVE_WIDTH;
    else Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_WIDTH) | DMF_FIXED_WIDTH;
 
-   if ((Self->Dimensions & (DMF_RELATIVE_X|DMF_FIXED_X)) AND (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_RELATIVE_X))) Self->Dimensions &= ~(DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET);
+   if ((Self->Dimensions & (DMF_RELATIVE_X|DMF_FIXED_X)) and (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_RELATIVE_X))) Self->Dimensions &= ~(DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET);
 
    if (Self->Head.Flags & NF_INITIALISED) {
       Variable var;
@@ -1703,14 +1695,13 @@ fixed.  Negative values are permitted.
 
 static ERROR GET_Layout_X(objLayout *Self, Variable *Value)
 {
-   parasol::Log log;
    DOUBLE width, value;
 
    if (Self->Dimensions & DMF_FIXED_X) value = Self->X;
    else if (Self->Dimensions & DMF_RELATIVE_X) {
       value = (DOUBLE)Self->X * (DOUBLE)Self->ParentSurface.Width * 0.01;
    }
-   else if ((Self->Dimensions & DMF_WIDTH) AND
+   else if ((Self->Dimensions & DMF_WIDTH) and
             (Self->Dimensions & DMF_X_OFFSET)) {
       if (Self->Dimensions & DMF_FIXED_WIDTH) width = Self->Width;
       else width = (DOUBLE)Self->ParentSurface.Width * (DOUBLE)Self->Width * 0.01;
@@ -1719,11 +1710,14 @@ static ERROR GET_Layout_X(objLayout *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentSurface.Width;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / (DOUBLE)Self->ParentSurface.Width;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
-   else return log.warning(ERR_FieldTypeMismatch);
+   else {
+      parasol::Log log;
+      return log.warning(ERR_FieldTypeMismatch);
+   }
 
    return ERR_Okay;
 }
@@ -1781,7 +1775,7 @@ static ERROR GET_Layout_XOffset(objLayout *Self, Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) {
       value = (DOUBLE)Self->XOffset * (DOUBLE)Self->ParentSurface.Width * 0.01;
    }
-   else if ((Self->Dimensions & DMF_X) AND
+   else if ((Self->Dimensions & DMF_X) and
             (Self->Dimensions & DMF_WIDTH)) {
 
       if (Self->Dimensions & DMF_FIXED_WIDTH) width = Self->Width;
@@ -1847,7 +1841,7 @@ static ERROR GET_Layout_Y(objLayout *Self, Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_Y) {
       value = (DOUBLE)Self->Y * (DOUBLE)Self->ParentSurface.Height * 0.01;
    }
-   else if ((Self->Dimensions & DMF_HEIGHT) AND
+   else if ((Self->Dimensions & DMF_HEIGHT) and
             (Self->Dimensions & DMF_Y_OFFSET)) {
       if (Self->Dimensions & DMF_FIXED_HEIGHT) height = Self->Height;
       else height = (DOUBLE)Self->ParentSurface.Height * (DOUBLE)Self->Height * 0.01;
@@ -1918,7 +1912,7 @@ static ERROR GET_Layout_YOffset(objLayout *Self, Variable *Value)
    else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) {
       value = (DOUBLE)Self->YOffset * (DOUBLE)Self->ParentSurface.Height * 0.01;
    }
-   else if ((Self->Dimensions & DMF_Y) AND (Self->Dimensions & DMF_HEIGHT)) {
+   else if ((Self->Dimensions & DMF_Y) and (Self->Dimensions & DMF_HEIGHT)) {
       if (Self->Dimensions & DMF_FIXED_HEIGHT) height = Self->Height;
       else height = (DOUBLE)Self->ParentSurface.Height * (DOUBLE)Self->Height * 0.01;
 
@@ -1927,7 +1921,7 @@ static ERROR GET_Layout_YOffset(objLayout *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = ((DOUBLE)value * 100.0) / (DOUBLE)Self->ParentSurface.Height;
+   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / (DOUBLE)Self->ParentSurface.Height;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -2010,47 +2004,47 @@ static const FieldArray clLayoutFields[] = {
    { "BoundY",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_BoundY,       (APTR)SET_Layout_BoundY },
    { "BoundYOffset", FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_BoundYOffset, (APTR)SET_Layout_BoundYOffset },
 #endif
-   { "AbsX",          FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_AbsX,            (APTR)SET_Layout_AbsX },
-   { "AbsY",          FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_AbsY,            (APTR)SET_Layout_AbsY },
-   { "Align",         FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSurfaceAlign,             (APTR)GET_Layout_Align, (APTR)SET_Layout_Align },
-   { "Bottom",        FDF_LONG|FDF_R,       0, (APTR)GET_Layout_Bottom,          NULL },
-   { "BottomLimit",   FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_BottomLimit,     (APTR)SET_Layout_BottomLimit },
-   { "BottomMargin",  FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_BottomMargin,    (APTR)SET_Layout_BottomMargin },
+   { "AbsX",          FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_AbsX,            (APTR)SET_Layout_AbsX },
+   { "AbsY",          FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_AbsY,            (APTR)SET_Layout_AbsY },
+   { "Align",         FDF_LONGFLAGS|FDF_RW,   (MAXINT)&clSurfaceAlign,             (APTR)GET_Layout_Align, (APTR)SET_Layout_Align },
+   { "Bottom",        FDF_LONG|FDF_R,         0, (APTR)GET_Layout_Bottom,          NULL },
+   { "BottomLimit",   FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_BottomLimit,     (APTR)SET_Layout_BottomLimit },
+   { "BottomMargin",  FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_BottomMargin,    (APTR)SET_Layout_BottomMargin },
    { "Cursor",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clSurfaceCursor,      (APTR)GET_Layout_Cursor,     (APTR)SET_Layout_Cursor },
-   { "Dimensions",    FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSurfaceDimensions,        (APTR)GET_Layout_Dimensions, (APTR)SET_Layout_Dimensions },
-   { "DisableDrawing",FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_DisableDrawing,  (APTR)SET_Layout_DisableDrawing },
+   { "Dimensions",    FDF_LONGFLAGS|FDF_RW,   (MAXINT)&clSurfaceDimensions,        (APTR)GET_Layout_Dimensions, (APTR)SET_Layout_Dimensions },
+   { "DisableDrawing",FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_DisableDrawing,  (APTR)SET_Layout_DisableDrawing },
    { "DrawCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_Layout_DrawCallback,  (APTR)SET_Layout_DrawCallback },
-   { "EastGap",       FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_RightMargin,     (APTR)SET_Layout_RightMargin },
-   { "Layout",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clLayoutFlags,              (APTR)GET_Layout_Layout,  (APTR)SET_Layout_Layout },
-   { "Gap",           FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_Gap,             (APTR)SET_Layout_Gap },
+   { "EastGap",       FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_RightMargin,     (APTR)SET_Layout_RightMargin },
+   { "Layout",        FDF_LONGFLAGS|FDF_RW,   (MAXINT)&clLayoutFlags,              (APTR)GET_Layout_Layout,  (APTR)SET_Layout_Layout },
+   { "Gap",           FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_Gap,             (APTR)SET_Layout_Gap },
    { "GraphicX",      FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicX, (APTR)SET_Layout_GraphicX },
    { "GraphicY",      FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicY, (APTR)SET_Layout_GraphicY },
    { "GraphicWidth",  FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicWidth, (APTR)SET_Layout_GraphicWidth },
    { "GraphicHeight", FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0,          (APTR)GET_Layout_GraphicHeight, (APTR)SET_Layout_GraphicHeight },
-   { "Hide",          FDF_LONG|FDF_RI,      0, (APTR)GET_Layout_Hide,            (APTR)SET_Layout_Hide },
-   { "InsideHeight",  FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_InsideHeight,    (APTR)SET_Layout_InsideHeight },
-   { "InsideWidth",   FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_InsideWidth,     (APTR)SET_Layout_InsideWidth },
-   { "LeftLimit",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_LeftLimit,      (APTR)SET_Layout_LeftLimit },
-   { "LeftMargin",    FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_LeftMargin,     (APTR)SET_Layout_LeftMargin },
-   { "MaxHeight",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MaxHeight,      (APTR)SET_Layout_MaxHeight },
-   { "MaxWidth",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MaxWidth,       (APTR)SET_Layout_MaxWidth },
-   { "MinHeight",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MinHeight,      (APTR)SET_Layout_MinHeight },
-   { "MinWidth",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_MinWidth,       (APTR)SET_Layout_MinWidth },
-   { "NorthGap",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_TopMargin,      (APTR)SET_Layout_TopMargin },
-   { "ResizeCallback",FDF_FUNCTIONPTR|FDF_RI,   0, (APTR)GET_Layout_ResizeCallback, (APTR)SET_Layout_ResizeCallback },
-   { "Right",         FDF_LONG|FDF_R,       0, (APTR)GET_Layout_Right,          NULL },
-   { "RightLimit",    FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_RightLimit,     (APTR)SET_Layout_RightLimit },
-   { "RightMargin",   FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_RightMargin,    (APTR)SET_Layout_RightMargin },
-   { "SouthGap",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_BottomMargin,   (APTR)SET_Layout_BottomMargin },
-   { "Surface",       FDF_OBJECTID|FDF_RI,  0, (APTR)GET_Layout_Surface,        (APTR)SET_Layout_Surface },
-   { "TopMargin",     FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_TopMargin,      (APTR)SET_Layout_TopMargin },
-   { "TopLimit",      FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_TopLimit,       (APTR)SET_Layout_TopLimit },
-   { "Visible",       FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_Visible,        (APTR)SET_Layout_Visible },
-   { "VisibleHeight", FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleHeight,  NULL },
-   { "VisibleWidth",  FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleWidth,   NULL },
-   { "VisibleX",      FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleX,       NULL },
-   { "VisibleY",      FDF_LONG|FDF_R,       0, (APTR)GET_Layout_VisibleY,       NULL },
-   { "WestGap",       FDF_LONG|FDF_RW,      0, (APTR)GET_Layout_LeftMargin,     (APTR)SET_Layout_LeftMargin },
+   { "Hide",          FDF_LONG|FDF_RI,        0, (APTR)GET_Layout_Hide,            (APTR)SET_Layout_Hide },
+   { "InsideHeight",  FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_InsideHeight,    (APTR)SET_Layout_InsideHeight },
+   { "InsideWidth",   FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_InsideWidth,     (APTR)SET_Layout_InsideWidth },
+   { "LeftLimit",     FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_LeftLimit,      (APTR)SET_Layout_LeftLimit },
+   { "LeftMargin",    FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_LeftMargin,     (APTR)SET_Layout_LeftMargin },
+   { "MaxHeight",     FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_MaxHeight,      (APTR)SET_Layout_MaxHeight },
+   { "MaxWidth",      FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_MaxWidth,       (APTR)SET_Layout_MaxWidth },
+   { "MinHeight",     FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_MinHeight,      (APTR)SET_Layout_MinHeight },
+   { "MinWidth",      FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_MinWidth,       (APTR)SET_Layout_MinWidth },
+   { "NorthGap",      FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_TopMargin,      (APTR)SET_Layout_TopMargin },
+   { "ResizeCallback",FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_Layout_ResizeCallback, (APTR)SET_Layout_ResizeCallback },
+   { "Right",         FDF_LONG|FDF_R,         0, (APTR)GET_Layout_Right,          NULL },
+   { "RightLimit",    FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_RightLimit,     (APTR)SET_Layout_RightLimit },
+   { "RightMargin",   FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_RightMargin,    (APTR)SET_Layout_RightMargin },
+   { "SouthGap",      FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_BottomMargin,   (APTR)SET_Layout_BottomMargin },
+   { "Surface",       FDF_OBJECTID|FDF_RI,    0, (APTR)GET_Layout_Surface,        (APTR)SET_Layout_Surface },
+   { "TopMargin",     FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_TopMargin,      (APTR)SET_Layout_TopMargin },
+   { "TopLimit",      FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_TopLimit,       (APTR)SET_Layout_TopLimit },
+   { "Visible",       FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_Visible,        (APTR)SET_Layout_Visible },
+   { "VisibleHeight", FDF_LONG|FDF_R,         0, (APTR)GET_Layout_VisibleHeight,  NULL },
+   { "VisibleWidth",  FDF_LONG|FDF_R,         0, (APTR)GET_Layout_VisibleWidth,   NULL },
+   { "VisibleX",      FDF_LONG|FDF_R,         0, (APTR)GET_Layout_VisibleX,       NULL },
+   { "VisibleY",      FDF_LONG|FDF_R,         0, (APTR)GET_Layout_VisibleY,       NULL },
+   { "WestGap",       FDF_LONG|FDF_RW,        0, (APTR)GET_Layout_LeftMargin,     (APTR)SET_Layout_LeftMargin },
    { "Width",         FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_Width,   (APTR)SET_Layout_Width },
    { "Height",        FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_Height,  (APTR)SET_Layout_Height },
    { "X",             FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Layout_X,       (APTR)SET_Layout_X },

@@ -188,7 +188,7 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
       event->EventID   = EventID;
       event->Callback  = (void (*)(APTR, APTR, LONG))Callback->StdC.Routine;
       event->Group     = ((EventID>>56) & 0xff);
-      event->ContextID = context->UniqueID;
+      event->ContextID = context->UID;
       event->Next      = glEventList;
       event->Prev      = NULL;
       event->Custom    = Custom;

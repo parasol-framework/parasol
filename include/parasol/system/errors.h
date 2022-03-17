@@ -2,7 +2,7 @@
 #define SYSTEM_ERRORS 1
 
 // Name:      system/errors.h
-// Copyright: Paul Manias © 1996-2020
+// Copyright: Paul Manias © 1996-2022
 // Generator: idl-c
 
 // Universal error codes
@@ -205,11 +205,13 @@
 #define ERR_CreateResource 178
 #define ERR_NotPossible 179
 #define ERR_ResolveSymbol 180
-#define ERR_END 181
+#define ERR_Function 181
+#define ERR_AlreadyDefined 182
+#define ERR_END 183
 
 // Special error flags
 
-#define ERF_Notified 1073741824
 #define ERF_Delay 536870912
+#define ERF_Notified 1073741824
 
 #endif

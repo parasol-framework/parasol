@@ -2,7 +2,7 @@
 #define MODULES_SURFACE 1
 
 // Name:      surface.h
-// Copyright: Paul Manias © 2000-2020
+// Copyright: Paul Manias © 2000-2022
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -78,27 +78,28 @@
 #define RNF_AUTO_QUIT 0x00000400
 #define RNF_HOST 0x00000800
 #define RNF_PRECOPY 0x00001000
-#define RNF_VIDEO 0x00002000
 #define RNF_WRITE_ONLY 0x00002000
+#define RNF_VIDEO 0x00002000
 #define RNF_NO_HORIZONTAL 0x00004000
 #define RNF_NO_VERTICAL 0x00008000
-#define RNF_CURSOR 0x00010000
 #define RNF_POINTER 0x00010000
+#define RNF_CURSOR 0x00010000
 #define RNF_SCROLL_CONTENT 0x00020000
 #define RNF_AFTER_COPY 0x00040000
+#define RNF_READ_ONLY 0x00050240
+#define RNF_VOLATILE 0x00051000
 #define RNF_FIXED_BUFFER 0x00080000
 #define RNF_PERVASIVE_COPY 0x00100000
 #define RNF_NO_FOCUS 0x00200000
 #define RNF_FIXED_DEPTH 0x00400000
 #define RNF_TOTAL_REDRAW 0x00800000
+#define RNF_POST_COMPOSITE 0x01000000
 #define RNF_COMPOSITE 0x01000000
 #define RNF_NO_PRECOMPOSITE 0x01000000
-#define RNF_POST_COMPOSITE 0x01000000
 #define RNF_FULL_SCREEN 0x02000000
 #define RNF_IGNORE_FOCUS 0x04000000
-#define RNF_VOLATILE 0x00051000
-#define RNF_READ_ONLY 0x00050240
 #define RNF_INIT_ONLY 0x06583981
+#define RNF_ASPECT_RATIO 0x08000000
 
 struct SurfaceControl {
    LONG ListIndex;    // Byte offset of the ordered list
@@ -242,6 +243,7 @@ typedef struct rkSurface {
    LONG     ScrollFromX, ScrollFromY;
    LONG     ListIndex;            // Last known list index
    LONG     InputHandle;          // Input handler for dragging of surfaces
+   TIMER    RedrawTimer;          // For ScheduleRedraw()
    TIMER    ScrollTimer;
    MEMORYID DataMID;              // Bitmap memory reference
    MEMORYID PrecopyMID;           // Precopy region information
@@ -254,6 +256,8 @@ typedef struct rkSurface {
    UWORD    FixedX:1;
    UWORD    FixedY:1;
    UWORD    Document:1;
+   UWORD    RedrawScheduled:1;
+   UWORD    RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
    BYTE     BitsPerPixel;         // Bitmap bits per pixel
    BYTE     BytesPerPixel;        // Bitmap bytes per pixel
    UBYTE    CallbackCount;
@@ -276,6 +280,7 @@ typedef struct rkSurface {
 #define MT_DrwMinimise -7
 #define MT_DrwResetDimensions -8
 #define MT_DrwRemoveCallback -9
+#define MT_DrwScheduleRedraw -10
 
 struct drwInheritedFocus { OBJECTID FocusID; LONG Flags;  };
 struct drwExpose { LONG X; LONG Y; LONG Width; LONG Height; LONG Flags;  };
@@ -317,6 +322,8 @@ INLINE ERROR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOU
    struct drwResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
    return(Action(MT_DrwResetDimensions, (OBJECTPTR)Ob, &args));
 }
+
+#define drwScheduleRedraw(obj) Action(MT_DrwScheduleRedraw,(obj),0)
 
 
 // Layout class definition
@@ -429,12 +436,11 @@ struct SurfaceBase {
 
 // Helper function for surface lookups.
 
-INLINE LONG FIND_SURFACE_INDEX(struct SurfaceControl *Ctl, OBJECTID SurfaceID) {
-   struct SurfaceList *list = (struct SurfaceList *)((char *)Ctl + Ctl->ArrayIndex);
-   LONG j;
-   for (j=0; j < Ctl->Total; j++) {
+INLINE LONG FIND_SURFACE_INDEX(SurfaceControl *Ctl, OBJECTID SurfaceID) {
+   auto *list = (SurfaceList *)((char *)Ctl + Ctl->ArrayIndex);
+   for (LONG j=0; j < Ctl->Total; j++) {
       if (list->SurfaceID IS SurfaceID) return j;
-      list = (struct SurfaceList *)((char *)list + Ctl->EntrySize);
+      list = (SurfaceList *)((char *)list + Ctl->EntrySize);
    }
    return -1;
 }
@@ -459,9 +465,7 @@ INLINE ERROR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment)
 INLINE ERROR drwAddCallback(APTR Surface, APTR Callback) {
    if (Callback) {
       FUNCTION func;
-      func.Type = CALL_STDC;
-      func.StdC.Context = CurrentContext();
-      func.StdC.Routine = Callback;
+      SET_FUNCTION_STDC(func, Callback);
       struct drwAddCallback args = { &func };
       return Action(MT_DrwAddCallback, Surface, &args);
    }
@@ -474,9 +478,7 @@ INLINE ERROR drwAddCallback(APTR Surface, APTR Callback) {
 INLINE ERROR drwRemoveCallback(APTR Surface, APTR Callback) {
    if (Callback) {
       FUNCTION func;
-      func.Type = CALL_STDC;
-      func.StdC.Context = CurrentContext();
-      func.StdC.Routine = Callback;
+      SET_FUNCTION_STDC(func, Callback);
       struct drwRemoveCallback args = { &func };
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }

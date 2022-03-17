@@ -2,7 +2,7 @@
 #define MODULES_SCINTILLA 1
 
 // Name:      scintilla.h
-// Copyright: Paul Manias © 2005-2020
+// Copyright: Paul Manias © 2005-2022
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -29,28 +29,28 @@
 
 // Scintilla Lexers.  These codes originate from the Scintilla library.
 
-#define SCLEX_PERL 6
-#define SCLEX_ASSEMBLER 34
+#define SCLEX_ERRORLIST 10
+#define SCLEX_MAKEFILE 11
+#define SCLEX_BATCH 12
+#define SCLEX_FLUID 15
+#define SCLEX_DIFF 16
+#define SCLEX_PASCAL 18
+#define SCLEX_RUBY 22
+#define SCLEX_VBSCRIPT 28
 #define SCLEX_ASP 29
 #define SCLEX_PYTHON 2
-#define SCLEX_CPP 3
-#define SCLEX_FLUID 15
-#define SCLEX_VBSCRIPT 28
-#define SCLEX_RUBY 22
-#define SCLEX_SQL 7
-#define SCLEX_PROPERTIES 9
-#define SCLEX_BATCH 12
-#define SCLEX_MAKEFILE 11
-#define SCLEX_REBOL 71
-#define SCLEX_PASCAL 18
-#define SCLEX_HTML 4
-#define SCLEX_PHPSCRIPT 69
-#define SCLEX_BASH 62
+#define SCLEX_ASSEMBLER 34
 #define SCLEX_CSS 38
+#define SCLEX_CPP 3
+#define SCLEX_HTML 4
 #define SCLEX_XML 5
-#define SCLEX_ERRORLIST 10
+#define SCLEX_BASH 62
+#define SCLEX_PHPSCRIPT 69
+#define SCLEX_PERL 6
+#define SCLEX_REBOL 71
+#define SCLEX_SQL 7
 #define SCLEX_VB 8
-#define SCLEX_DIFF 16
+#define SCLEX_PROPERTIES 9
 
 // Optional flags.
 
@@ -84,8 +84,6 @@ typedef struct rkScintilla {
    LARGE    EventFlags;          // SEF flags.  Indicates the events that will be reported.
    struct rkFont * Font;         // Font to use for the text
    CSTRING  Path;                // Source text file
-   OBJECTID VScrollID;           // Reference to a vertical scroll bar
-   OBJECTID HScrollID;           // References to a horizontal scroll bar
    OBJECTID SurfaceID;           // The object that should be rendered to
    LONG     Flags;               // Optional flags
    OBJECTID FocusID;
@@ -98,7 +96,6 @@ typedef struct rkScintilla {
    struct RGB8 BkgdColour;       // Colour for text background
    struct RGB8 CursorColour;     // The colour of the cursor
    struct RGB8 TextColour;       // The colour of foreground text
-   OBJECTID ScrollTargetID;      // Surface for created scrollbars
    LONG     CursorRow;           // Current cursor row
    LONG     CursorCol;           // Current cursor column
    LONG     Lexer;               // Chosen lexer
@@ -113,8 +110,6 @@ typedef struct rkScintilla {
    objFont *ItalicFont;      // Italic version of the current font
    objFont *BIFont;          // Bold-Italic version of the current font
    ScintillaParasol *API;
-   objScrollbar *HScrollbar;
-   objScrollbar *VScrollbar;
    APTR   prvKeyEvent;
    STRING StringBuffer;
    LONG   LongestLine;         // Longest line in the document

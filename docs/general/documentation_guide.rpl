@@ -2,9 +2,9 @@
 
 <info>
  <title>Documentation Guide</title>
- <author>Rocklyte Systems</author>
+ <author>Paul Manias</author>
  <keywords>documentation, standards, manual, layout, document, html</keywords>
- <description>The definitive guide to Rocklyte's documentation standards.</description>
+ <description>The definitive guide to Parasol's documentation standards.</description>
 </info>
 
 <include src="inc_style.rpl"/>
@@ -13,9 +13,9 @@
 
 <startpage title="Documentation Guide"/>
 
-<p>This guide provides you with the necessary information on how to write class and module documentation that is compatible with Rocklyte's internal standards. This applies to developer related materials only - there is no official standard for documenting technical information.</p>
+<p>This guide provides you with the necessary information on how to write class and module documentation that is compatible with Parasol's internal standards. This applies to developer related materials only - there is no official standard for documenting technical information.</p>
 
-<p>Although our technical manuals are distributed in XML format, all code written by Rocklyte is self-documented in a format that is referred to as "Section Based Formatting", or SBF.  It is from these files that the XML is produced.  The code that performs the necessary processing is found in the DocCompiler class. You can see real-world examples of SBF source files by viewing almost any of the existing source files in the Rocklyte SDK. To see how it works, try processing one of these files through the DocCompiler and observe the output.</p>
+<p>Although our technical manuals are distributed in XML format, all code written by Parasol is self-documented in a format that is referred to as "Section Based Formatting", or SBF.  It is from these files that the XML is produced.  The code that performs the necessary processing is found in the DocCompiler class. You can see real-world examples of SBF source files by viewing almost any of the existing source files in the Parasol Framework. To see how it works, try processing one of these files through the DocCompiler and observe the output.</p>
 
 <p>Writing self-documenting source code as opposed to writing raw document files is helpful for a number of reasons, including:</p>
 
@@ -23,7 +23,7 @@
  <li>The documentation is easier to update when you make changes to the code.</li>
  <li>The code will be easier to understand because it is self-documenting.</li>
  <li>The time required to write the documentation is considerably shorter.</li>
- <li>Using system-wide standards increases levels of understanding amongst all Rocklyte developers.</li>
+ <li>Using system-wide standards increases levels of understanding amongst all Parasol developers.</li>
 </ul>
 
 <p>Before you start writing documentation for your source code, it is recommended that you read the rest of this manual to ascertain the specifics of writing self-documenting source files.</p>

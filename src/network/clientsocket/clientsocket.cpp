@@ -27,7 +27,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    Socket->InUse++;
    ClientSocket->ReadCalled = FALSE;
 
-   log.traceBranch("Handle: " PF64() ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->Head.UniqueID, ClientSocket->Head.UniqueID);
+   log.traceBranch("Handle: " PF64() ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->Head.UID, ClientSocket->Head.UID);
 
    ERROR error = ERR_Okay;
    if (Socket->Incoming.Type) {
@@ -125,7 +125,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
          if (len > 0) {
             error = SEND(Socket, ClientSocket->SocketHandle, (BYTE *)ClientSocket->WriteQueue.Buffer + ClientSocket->WriteQueue.Index, &len, 0);
             if ((error) OR (!len)) break;
-            log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Socket->Head.UniqueID, len, ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index);
+            log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Socket->Head.UID, len, ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index);
             ClientSocket->WriteQueue.Index += len;
          }
 
@@ -169,7 +169,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       // we don't tax the system resources.
 
       if ((ClientSocket->Outgoing.Type IS CALL_NONE) AND (!ClientSocket->WriteQueue.Buffer)) {
-         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->Head.UniqueID, ClientSocket->SocketHandle);
+         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->Head.UID, ClientSocket->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
          #elif _WIN32

@@ -17,10 +17,18 @@ FDEF argsGenerateRectangle[] = { { "Error", FD_LONG|FD_ERROR }, { "X", FD_DOUBLE
 FDEF argsGetVertex[] = { { "Result", FD_LONG }, { "Path", FD_PTR }, { "X", FD_DOUBLE|FD_RESULT }, { "Y", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
 FDEF argsLineTo[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsMoveTo[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
+FDEF argsMultiply[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "ScaleX", FD_DOUBLE }, { "ShearY", FD_DOUBLE }, { "ShearX", FD_DOUBLE }, { "ScaleY", FD_DOUBLE }, { "TranslateX", FD_DOUBLE }, { "TranslateY", FD_DOUBLE }, { 0, 0 } };
+FDEF argsMultiplyMatrix[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Target", FD_PTR|FD_STRUCT }, { "VectorMatrix:Source", FD_PTR|FD_STRUCT }, { 0, 0 } };
+FDEF argsParseTransform[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "Transform", FD_STR }, { 0, 0 } };
 FDEF argsReadPainter[] = { { "Void", FD_VOID }, { "Vector", FD_OBJECTPTR }, { "IRI", FD_STR }, { "DRGB:RGB", FD_PTR|FD_STRUCT }, { "Gradient", FD_OBJECTPTR|FD_RESULT }, { "Image", FD_OBJECTPTR|FD_RESULT }, { "Pattern", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
+FDEF argsResetMatrix[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsRewindPath[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { 0, 0 } };
+FDEF argsRotate[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "Angle", FD_DOUBLE }, { "CenterX", FD_DOUBLE }, { "CenterY", FD_DOUBLE }, { 0, 0 } };
+FDEF argsScale[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
+FDEF argsSkew[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsSmooth3[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsSmooth4[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "CtrlX", FD_DOUBLE }, { "CtrlY", FD_DOUBLE }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
+FDEF argsTranslate[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsTranslatePath[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
@@ -42,6 +50,14 @@ const struct Function glFunctions[] = {
    { (APTR)vecRewindPath, "RewindPath", argsRewindPath },
    { (APTR)vecGetVertex, "GetVertex", argsGetVertex },
    { (APTR)vecApplyPath, "ApplyPath", argsApplyPath },
+   { (APTR)vecRotate, "Rotate", argsRotate },
+   { (APTR)vecTranslate, "Translate", argsTranslate },
+   { (APTR)vecSkew, "Skew", argsSkew },
+   { (APTR)vecMultiply, "Multiply", argsMultiply },
+   { (APTR)vecMultiplyMatrix, "MultiplyMatrix", argsMultiplyMatrix },
+   { (APTR)vecScale, "Scale", argsScale },
+   { (APTR)vecParseTransform, "ParseTransform", argsParseTransform },
+   { (APTR)vecResetMatrix, "ResetMatrix", argsResetMatrix },
    { NULL, NULL, NULL }
 };
 

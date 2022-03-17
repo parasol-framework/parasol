@@ -99,14 +99,14 @@ static void  invalidate_overlap(objSurface *, SurfaceList *, WORD, LONG, LONG, L
 static void  move_layer(objSurface *, LONG, LONG);
 static void  move_layer_pos(SurfaceControl *, LONG, LONG);
 static LONG  msg_handler(APTR, LONG, LONG, APTR, LONG);
-static void  prepare_background(objSurface *, SurfaceList *, WORD, WORD, objBitmap *, struct ClipRectangle *, BYTE);
+static void  prepare_background(objSurface *, SurfaceList *, WORD, WORD, objBitmap *, ClipRectangle *, BYTE);
 static void  process_surface_callbacks(objSurface *, objBitmap *);
-static void  redraw_nonintersect(OBJECTID, SurfaceList *, WORD, WORD, struct ClipRectangle *, struct ClipRectangle *, LONG, LONG);
+static void  redraw_nonintersect(OBJECTID, SurfaceList *, WORD, WORD, ClipRectangle *, ClipRectangle *, LONG, LONG);
 static void  release_video(objDisplay *);
 static ERROR track_layer(objSurface *);
 static void  untrack_layer(OBJECTID);
 static void  check_bmp_buffer_depth(objSurface *, objBitmap *);
-static BYTE  restrict_region_to_parents(SurfaceList *, LONG, struct ClipRectangle *, BYTE);
+static BYTE  restrict_region_to_parents(SurfaceList *, LONG, ClipRectangle *, BYTE);
 static ERROR load_style_values(void);
 static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD total, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags);
 static ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD Index, WORD Total, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags);
@@ -127,7 +127,7 @@ static ERROR UpdateSurfaceCopy(objSurface *Self, SurfaceList *Copy);
    if ((ctl = drwAccessList(ARF_UPDATE))) { \
       list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
       for (i=0; i < ctl->Total; i++) { \
-         if (list[i].SurfaceID IS (a)->Head.UniqueID) { \
+         if (list[i].SurfaceID IS (a)->Head.UID) { \
             list[i].b = (a)->b; \
             break; \
          } \
@@ -143,7 +143,7 @@ static ERROR UpdateSurfaceCopy(objSurface *Self, SurfaceList *Copy);
       if ((ctl = drwAccessList(ARF_UPDATE))) { \
          list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
          for (i=0; i < ctl->Total; i++) { \
-            if (list[i].SurfaceID IS (a)->Head.UniqueID) { \
+            if (list[i].SurfaceID IS (a)->Head.UID) { \
                list[i].b = (a)->c; \
                break; \
             } \
@@ -194,7 +194,7 @@ static void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
 static THREADVAR LONG glRecentSurfaceIndex = 0;
 
 #define find_surface_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
-#define find_own_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->Head.UniqueID)
+#define find_own_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->Head.UID)
 
 static LONG find_surface_list(SurfaceList *list, LONG Total, OBJECTID SurfaceID)
 {
@@ -222,7 +222,7 @@ static LONG find_parent_list(SurfaceList *list, WORD Total, objSurface *Self)
       if (list[glRecentSurfaceIndex].SurfaceID IS Self->ParentID) return glRecentSurfaceIndex;
    }
 
-   if ((Self->ListIndex < Total) and (list[Self->ListIndex].SurfaceID IS Self->Head.UniqueID)) {
+   if ((Self->ListIndex < Total) and (list[Self->ListIndex].SurfaceID IS Self->Head.UID)) {
       for (LONG i=Self->ListIndex-1; i >= 0; i--) {
          if (list[i].SurfaceID IS Self->ParentID) {
             glRecentSurfaceIndex = i;
@@ -245,7 +245,7 @@ static LONG find_parent_list(SurfaceList *list, WORD Total, objSurface *Self)
 
 //**********************************************************************
 
-static inline void ClipRectangle(struct ClipRectangle *rect, struct ClipRectangle *clip)
+static inline void clip_rectangle(ClipRectangle *rect, ClipRectangle *clip)
 {
    if (rect->Left   < clip->Left)   rect->Left   = clip->Left;
    if (rect->Top    < clip->Top)    rect->Top    = clip->Top;
@@ -275,8 +275,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Add a message handler to the system for responding to interface messages
 
-   FUNCTION call;
-   SET_FUNCTION_STDC(call, (APTR)&msg_handler);
+   auto call = make_function_stdc(msg_handler);
    if (AddMsgHandler(NULL, MSGID_EXPOSE, &call, &glExposeHandler) != ERR_Okay) {
       return log.warning(ERR_Failed);
    }
@@ -399,10 +398,10 @@ static ERROR CMDOpen(OBJECTPTR Module)
 ERROR CMDExpunge(void)
 {
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
-   if (glStyle)         { acFree(glStyle); glStyle = NULL; }
-   if (glAppStyle)      { acFree(glAppStyle); glAppStyle = NULL; }
-   if (glDesktopStyleScript) { acFree(glDesktopStyleScript); glDesktopStyleScript = NULL; }
-   if (glDefaultStyleScript) { acFree(glDefaultStyleScript); glDefaultStyleScript = NULL; }
+   if (glStyle)               { acFree(glStyle); glStyle = NULL; }
+   if (glAppStyle)            { acFree(glAppStyle); glAppStyle = NULL; }
+   if (glDesktopStyleScript)  { acFree(glDesktopStyleScript); glDesktopStyleScript = NULL; }
+   if (glDefaultStyleScript)  { acFree(glDefaultStyleScript); glDefaultStyleScript = NULL; }
    if (glExposeHandler) { FreeResource(glExposeHandler); glExposeHandler = NULL; }
    if (glComposite)     { acFree(glComposite); glComposite = NULL; }
    if (modDisplay)      { acFree(modDisplay); modDisplay = NULL; }
@@ -499,10 +498,9 @@ static ERROR drwCopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, LONG Flags,
 
    SurfaceControl *ctl;
    if ((ctl = drwAccessList(ARF_READ))) {
-      WORD i;
       BITMAPSURFACE surface;
-      SurfaceList *list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      for (i=0; i < ctl->Total; i++) {
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+      for (WORD i=0; i < ctl->Total; i++) {
          if (list[i].SurfaceID IS SurfaceID) {
             if (X < 0) { XDest -= X; Width  += X; X = 0; }
             if (Y < 0) { YDest -= Y; Height += Y; Y = 0; }
@@ -534,9 +532,9 @@ static ERROR drwCopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, LONG Flags,
                   src->Clip.Right  = list_i.Width;
                   src->Clip.Bottom = list_i.Height;
 
-                  BYTE composite;
-                  if (list_i.Flags & RNF_COMPOSITE) composite = TRUE;
-                  else composite = FALSE;
+                  bool composite;
+                  if (list_i.Flags & RNF_COMPOSITE) composite = true;
+                  else composite = false;
 
                   if (composite) {
                      gfxCopyArea(src, Bitmap, BAF_BLEND|((Flags & BDF_DITHER) ? BAF_DITHER : 0), X, Y, Width, Height, XDest, YDest);
@@ -556,9 +554,9 @@ static ERROR drwCopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, LONG Flags,
                surface.BitsPerPixel  = list_root.BitsPerPixel;
                surface.BytesPerPixel = list_root.BytesPerPixel;
 
-               BYTE composite;
-               if (list_i.Flags & RNF_COMPOSITE) composite = TRUE;
-               else composite = FALSE;
+               bool composite;
+               if (list_i.Flags & RNF_COMPOSITE) composite = true;
+               else composite = false;
 
                if (composite) gfxCopySurface(&surface, Bitmap, CSRF_DEFAULT_FORMAT|CSRF_OFFSET|CSRF_ALPHA, X, Y, Width, Height, XDest, YDest);
                else gfxCopySurface(&surface, Bitmap, CSRF_DEFAULT_FORMAT|CSRF_OFFSET, X, Y, Width, Height, XDest, YDest);
@@ -629,7 +627,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
 {
    parasol::Log log("expose_surface");
    objBitmap *bitmap;
-   struct ClipRectangle abs;
+   ClipRectangle abs;
    WORD i, j;
    UBYTE skip;
    OBJECTID parent_id;
@@ -683,7 +681,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
 
    for (i=index, parent_id = SurfaceID; ;) {
       if (!(list[i].Flags & RNF_VISIBLE)) return ERR_Okay;
-      ClipRectangle(&abs, (struct ClipRectangle *)&list[i].Left);
+      clip_rectangle(&abs, (ClipRectangle *)&list[i].Left);
       if (!(parent_id = list[i].ParentID)) break;
       i--;
       while (list[i].SurfaceID != parent_id) i--;
@@ -709,7 +707,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
       WORD cursor;
       for (cursor=index+1; (cursor < Total) and (!(list[cursor].Flags & RNF_CURSOR)); cursor++);
       if (cursor < Total) {
-         if ((list[cursor].SurfaceID) and (list[cursor].Bottom < abs.Bottom) and (list[cursor].Bottom > abs.Top) AND
+         if ((list[cursor].SurfaceID) and (list[cursor].Bottom < abs.Bottom) and (list[cursor].Bottom > abs.Top) and
              (list[cursor].Right > abs.Left) and (list[cursor].Left < abs.Right)) {
             parasol::Log log("expose_surface");
             log.traceBranch("Splitting cursor.");
@@ -749,7 +747,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
       }
       if (skip) continue;
 
-      struct ClipRectangle childexpose = abs;
+      ClipRectangle childexpose = abs;
 
       if (i != index) {
          // Check this child object and its parents to make sure they are visible
@@ -762,7 +760,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
                   break;
                }
 
-               ClipRectangle(&childexpose, (struct ClipRectangle *)&list[j].Left);
+               clip_rectangle(&childexpose, (ClipRectangle *)&list[j].Left);
 
                parent_id = list[j].ParentID;
             }
@@ -846,7 +844,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
          if (list[i].Flags & (RNF_VOLATILE|RNF_COMPOSITE|RNF_CURSOR)) {
             if (list[i].SurfaceID IS SurfaceID) continue;
 
-            if ((list[i].Right > abs.Left) and (list[i].Bottom > abs.Top) AND
+            if ((list[i].Right > abs.Left) and (list[i].Bottom > abs.Top) and
                 (list[i].Left < abs.Right) and (list[i].Top < abs.Bottom)) {
 
                if ((list[i].TaskID != CurrentTaskID()) and (!(list[i].Flags & RNF_COMPOSITE))) {
@@ -874,7 +872,7 @@ static ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
 
       LONG i = Total - 1;
       if ((list[i].Flags & RNF_CURSOR) and (list[i].SurfaceID != SurfaceID)) {
-         if ((list[i].Right > abs.Left) and (list[i].Bottom > abs.Top) AND
+         if ((list[i].Right > abs.Left) and (list[i].Bottom > abs.Top) and
              (list[i].Left < abs.Right) and (list[i].Top < abs.Bottom)) {
 
             parasol::Log log(__FUNCTION__);
@@ -910,7 +908,7 @@ static void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIn
       }
       else if (list[i].Flags & (RNF_REGION|RNF_CURSOR)); // Skip regions and the cursor
       else {
-         struct ClipRectangle listclip = {
+         ClipRectangle listclip = {
             .Left   = list[i].Left,
             .Right  = list[i].Right,
             .Bottom = list[i].Bottom,
@@ -992,9 +990,9 @@ static void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIn
    // is at the root level (no ParentID).
 
    LONG sx, sy;
-   if ((list[Index].Flags & RNF_COMPOSITE) AND
+   if ((list[Index].Flags & RNF_COMPOSITE) and
        ((list[Index].ParentID) or (list[Index].Flags & RNF_CURSOR))) {
-      struct ClipRectangle clip;
+      ClipRectangle clip;
       if (glComposite) {
          if (glComposite->BitsPerPixel != list[Index].BitsPerPixel) {
             acFree(glComposite);
@@ -1234,15 +1232,16 @@ static ERROR drwGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX,
          return ERR_Search;
       }
 
-      struct ClipRectangle clip;
-      clip.Left   = list[i].Left;
-      clip.Top    = list[i].Top;
-      clip.Right  = list[i].Right;
-      clip.Bottom = list[i].Bottom;
+      ClipRectangle clip = {
+         .Left   = list[i].Left,
+         .Right  = list[i].Right,
+         .Bottom = list[i].Bottom,
+         .Top    = list[i].Top
+      };
       restrict_region_to_parents(list, i, &clip, FALSE);
 
-      if (X) *X = clip.Left - list[i].Left;
-      if (Y) *Y = clip.Top - list[i].Top;
+      if (X)      *X      = clip.Left - list[i].Left;
+      if (Y)      *Y      = clip.Top - list[i].Top;
       if (Width)  *Width  = clip.Right - clip.Left;
       if (Height) *Height = clip.Bottom - clip.Top;
       if (AbsX)   *AbsX   = clip.Left;
@@ -1524,7 +1523,7 @@ static ERROR drwLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
       SurfaceList list_zero = list[0];
       OBJECTID bitmap_id = list[i].BitmapID;
 
-      struct ClipRectangle expose = {
+      ClipRectangle expose = {
          .Left   = list_root.Left,
          .Right  = list_root.Right,
          .Bottom = list_root.Bottom,
@@ -1800,8 +1799,7 @@ static ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
    if (!(Flags & IRF_IGNORE_CHILDREN)) {
       log.trace("Redrawing intersecting child surfaces.");
       WORD level = list[index].Level;
-      WORD i;
-      for (i=index+1; i < Total; i++) {
+      for (WORD i=index+1; i < Total; i++) {
          if (list[i].Level <= level) break; // End of list - exit this loop
 
          if (Flags & IRF_IGNORE_NV_CHILDREN) {
@@ -1816,7 +1814,7 @@ static ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, 
             continue; // Skip regions and non-visible children
          }
 
-         if ((list[i].Right > Left) and (list[i].Bottom > Top) AND
+         if ((list[i].Right > Left) and (list[i].Bottom > Top) and
              (list[i].Left < Right) and (list[i].Top < Bottom)) {
             recursive++;
             _redraw_surface(list[i].SurfaceID, list, i, Total, Left, Top, Right, Bottom, Flags|IRF_IGNORE_CHILDREN);
@@ -1840,7 +1838,7 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
 
    if (Index >= Total) log.warning("Index %d > %d", Index, Total);
 
-   struct ClipRectangle abs;
+   ClipRectangle abs;
    abs.Left   = Left;
    abs.Top    = Top;
    abs.Right  = Right;
@@ -1921,13 +1919,13 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
    // our Index field will not match with the surface that is referenced in Self.  We need to ensure
    // correctness before going any further.
 
-   if (list[Index].SurfaceID != Self->Head.UniqueID) {
-      Index = find_surface_list(list, Total, Self->Head.UniqueID);
+   if (list[Index].SurfaceID != Self->Head.UID) {
+      Index = find_surface_list(list, Total, Self->Head.UID);
    }
 
    // Prepare the buffer so that it matches the exposed area
 
-   if (Self->BitmapOwnerID != Self->Head.UniqueID) {
+   if (Self->BitmapOwnerID != Self->Head.UID) {
       for (i=Index; (i > 0) and (list[i].SurfaceID != Self->BitmapOwnerID); i--);
       DestBitmap->XOffset = list[Index].Left - list[i].Left; // Offset is relative to the bitmap owner
       DestBitmap->YOffset = list[Index].Top - list[i].Top;
@@ -1982,7 +1980,7 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
 
             if (regions[j].Dimensions & DMF_FIXED_WIDTH) width = regions[j].Width;
             else if (regions[j].Dimensions & DMF_RELATIVE_WIDTH) width = Self->Width * regions[j].Width / 100;
-            else if ((regions[j].Dimensions & DMF_X_OFFSET) AND
+            else if ((regions[j].Dimensions & DMF_X_OFFSET) and
                      (regions[j].Dimensions & DMF_X)) {
                width = Self->Width - x - xoffset;
             }
@@ -1992,7 +1990,7 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
 
             if (regions[j].Dimensions & DMF_FIXED_HEIGHT) height = regions[j].Height;
             else if (regions[j].Dimensions & DMF_RELATIVE_HEIGHT) height = Self->Height * regions[j].Height / 100;
-            else if ((regions[j].Dimensions & DMF_Y_OFFSET) AND
+            else if ((regions[j].Dimensions & DMF_Y_OFFSET) and
                      (regions[j].Dimensions & DMF_Y)) {
                height = Self->Height - y - yoffset;
             }
@@ -2008,7 +2006,7 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
 
             // Y coordinate check
 
-            if ((regions[j].Dimensions & DMF_Y_OFFSET) AND
+            if ((regions[j].Dimensions & DMF_Y_OFFSET) and
                 (regions[j].Dimensions & DMF_HEIGHT)) {
                y = Self->Height - yoffset - height;
             }
@@ -2045,7 +2043,7 @@ static void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, 
 
    // Draw graphics to the buffer
 
-   tlFreeExpose = DestBitmap->Head.UniqueID;
+   tlFreeExpose = DestBitmap->Head.UID;
 
       process_surface_callbacks(Self, DestBitmap);
 
@@ -2330,10 +2328,6 @@ file.  This function can be called at any time, allowing the style to be changed
 
 A desktop can set its preferred style by storing style information at `environment:config/style.xml`.
 
-To prevent security breaches, users can only set a style preference if the ability to make a choice is exposed by the
-desktop.  This is because style files can embed script functions that are executed within each application process
-space.
-
 -INPUT-
 obj Object: The object that will receive the default values.
 cstr Name:  Optional.  Reference to an alternative style to be applied.
@@ -2349,7 +2343,7 @@ static ERROR drwApplyStyleValues(OBJECTPTR Object, CSTRING StyleName)
 
    if (!Object) return log.warning(ERR_NullArgs);
 
-   log.branch("#%d, Style: %s", Object->UniqueID, StyleName);
+   log.branch("#%d, Style: %s", Object->UID, StyleName);
 
    ERROR error;
    if ((error = load_styles())) return error;
@@ -2375,7 +2369,7 @@ target Object and executes the procedure with the Surface as the graphics target
 
 -INPUT-
 obj Object:  The object that requires styling.
-oid Surface: The surface that will receive the style graphics.
+oid Target: The surface or vector that will receive the style graphics.
 cstr StyleName: Optional.  Reference to a style that is alternative to the default.
 cstr StyleType: Optional.  Name of the type of style decoration to be applied.  Use in conjunction with StyleName.
 
@@ -2387,13 +2381,13 @@ NothingDone: No style information is defined for the object's class.
 
 *****************************************************************************/
 
-static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID SurfaceID, CSTRING StyleName, CSTRING StyleType)
+static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID TargetID, CSTRING StyleName, CSTRING StyleType)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Object) or (!SurfaceID)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!TargetID)) return log.warning(ERR_NullArgs);
 
-   log.branch("Object: %d, Surface: %d, Style: %s, StyleType: %s", Object->UniqueID, SurfaceID, StyleName, StyleType);
+   log.branch("Object: %d, Target: %d, Style: %s, StyleType: %s", Object->UID, TargetID, StyleName, StyleType);
 
    ERROR error;
    if ((error = load_styles())) return error;
@@ -2404,7 +2398,7 @@ static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID SurfaceID, CSTRING
    if (glAppStyle) {
       if (!xmlFindTag(xml, xpath, NULL, NULL)) {
          SetString(script, FID_Procedure, xpath);
-         SetLong(script, FID_Target, SurfaceID);
+         SetLong(script, FID_Target, TargetID);
          if (!acActivate(script)) return ERR_Okay;
       }
    }
@@ -2415,7 +2409,7 @@ static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID SurfaceID, CSTRING
       const ScriptArg args[] = {
          { "Class",     FDF_STRING,   { .Address = StyleName ? (APTR)StyleName : (APTR)Object->Class->ClassName } },
          { "Object",    FDF_OBJECT,   { .Address = Object } },
-         { "Surface",   FDF_OBJECTID, { .Long = SurfaceID } },
+         { "Target",    FDF_OBJECTID, { .Long = TargetID } },
          { "StyleType", FDF_STRING,   { .Address = (APTR)StyleType } }
       };
 
@@ -2436,7 +2430,7 @@ static ERROR drwApplyStyleGraphics(OBJECTPTR Object, OBJECTID SurfaceID, CSTRING
       const ScriptArg args[] = {
          { "Class",   FDF_STRING,   { .Address = StyleName ? (APTR)StyleName : (APTR)Object->Class->ClassName } },
          { "Object",  FDF_OBJECT,   { .Address = Object } },
-         { "Surface", FDF_OBJECTID, { .Long = SurfaceID } },
+         { "Target",  FDF_OBJECTID, { .Long = TargetID } },
          { "StyleType", FDF_STRING, { .Address = (APTR)StyleType } }
       };
 
@@ -2548,15 +2542,15 @@ static ERROR apply_style(OBJECTPTR Object, OBJECTPTR Script, CSTRING StyleName)
 
 static ERROR load_styles(void)
 {
-   static BYTE desktop_attempted = FALSE;
-   static BYTE default_attempted = FALSE;
+   static bool desktop_attempted = false;
+   static bool default_attempted = false;
 
    if ((!glDefaultStyleScript) and (!default_attempted)) {
       parasol::Log log(__FUNCTION__);
       log.branch("Loading default style information.");
       parasol::SwitchContext context(modSurface);
 
-      default_attempted = TRUE;
+      default_attempted = true;
 
       // The app can set a style path that we have to honour if present.  This is typically used for emulating other
       // system styles, like mobile.
@@ -2575,7 +2569,7 @@ static ERROR load_styles(void)
    if ((!glDesktopStyleScript) and (!desktop_attempted)) {
       parasol::Log log(__FUNCTION__);
 
-      desktop_attempted = TRUE;
+      desktop_attempted = true;
       if (!AnalysePath("environment:config/style.xml", NULL)) {
          log.branch("Loading desktop style information.");
 
@@ -2713,10 +2707,10 @@ static ERROR track_layer(objSurface *Self)
          if (i < ctl->Total) CopyMemory(list+i, list+i+1, sizeof(SurfaceList) * (ctl->Total-i));
       }
 
-      log.trace("Surface: %d, Index: %d, Level: %d, Parent: %d", Self->Head.UniqueID, i, level, Self->ParentID);
+      log.trace("Surface: %d, Index: %d, Level: %d, Parent: %d", Self->Head.UID, i, level, Self->ParentID);
 
       list[i].ParentID  = Self->ParentID;
-      list[i].SurfaceID = Self->Head.UniqueID;
+      list[i].SurfaceID = Self->Head.UID;
       list[i].BitmapID  = Self->BufferID;
       list[i].DisplayID = Self->DisplayID;
       list[i].TaskID    = Self->Head.TaskID;
@@ -2836,7 +2830,7 @@ static ERROR UpdateSurfaceCopy(objSurface *Self, SurfaceList *Copy)
 
       if (i != -1) {
          list[i].ParentID      = Self->ParentID;
-         //list[i].SurfaceID    = Self->Head.UniqueID; Never changes
+         //list[i].SurfaceID    = Self->Head.UID; Never changes
          list[i].BitmapID      = Self->BufferID;
          list[i].DisplayID     = Self->DisplayID;
          //list[i].TaskID      = Self->Head.TaskID; Never changes
@@ -3034,7 +3028,7 @@ static void check_bmp_buffer_depth(objSurface *Self, objBitmap *Bitmap)
    DISPLAYINFO *info;
    if (!gfxGetDisplayInfo(Self->DisplayID, &info)) {
       if (info->BitsPerPixel != Bitmap->BitsPerPixel) {
-         log.msg("[%d] Updating buffer Bitmap %dx%dx%d to match new display depth of %dbpp.", Bitmap->Head.UniqueID, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel, info->BitsPerPixel);
+         log.msg("[%d] Updating buffer Bitmap %dx%dx%d to match new display depth of %dbpp.", Bitmap->Head.UID, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel, info->BitsPerPixel);
          acResize(Bitmap, Bitmap->Width, Bitmap->Height, info->BitsPerPixel);
          Self->LineWidth     = Bitmap->LineWidth;
          Self->BytesPerPixel = Bitmap->BytesPerPixel;
@@ -3121,7 +3115,7 @@ static void process_surface_callbacks(objSurface *Self, objBitmap *Bitmap)
    parasol::Log log(__FUNCTION__);
 
    #ifdef DBG_DRAW_ROUTINES
-      log.traceBranch("Bitmap: %d, Count: %d", Bitmap->Head.UniqueID, Self->CallbackCount);
+      log.traceBranch("Bitmap: %d, Count: %d", Bitmap->Head.UID, Self->CallbackCount);
    #endif
 
    for (LONG i=0; i < Self->CallbackCount; i++) {
@@ -3162,7 +3156,7 @@ static void process_surface_callbacks(objSurface *Self, objBitmap *Bitmap)
 ** returned.
 */
 
-static BYTE restrict_region_to_parents(SurfaceList *List, LONG Index, struct ClipRectangle *Clip, BYTE MatchBitmap)
+static BYTE restrict_region_to_parents(SurfaceList *List, LONG Index, ClipRectangle *Clip, BYTE MatchBitmap)
 {
    UBYTE visible = TRUE;
    OBJECTID id = List[Index].SurfaceID;

@@ -8,16 +8,20 @@ A demonstration of standard widgets
    require 'gui/fontdialog'
    require 'gui/dialog'
    require 'gui/filedialog'
+   require 'gui/icon'
+   require 'vfx'
+
+   mVector = mod.load('vector')
 
    local win  = obj.new('window', { title='Widget Examples', insideWidth=600, insideHeight=400 })
-
-   local y = win.topMargin
+   local scene = win.surface.new('VectorScene', { flags=VPF_RESIZE, surface=win.surface })
+   local viewport = scene.new('VectorViewport', { aspectRatio = ARF_MEET })
 
 function itemCallback(ID, Name)
    print('Callback: ' .. ID .. ', ' .. Name)
 end
 
-// This callback is activated whenever a menu is activated by the user.
+-- This callback is activated whenever a menu is activated by the user.
 
 function menuCallback(ID, Name)
    print('Callback: ' .. ID .. ', ' .. Name)
@@ -27,13 +31,13 @@ function itemClicked(Menu, Item)
 
 end
 
-// This is a universal callback for any menu item that is activated by the user.
+-- This is a universal callback for any menu item that is activated by the user.
 
 function popupClicked(Menu, Item)
    print(Item.item)
 end
 
-   menubar = gui.menubar(win.surface, {
+   local menubar = gui.menubar(viewport, {
       createItems = function(Bar)
          Bar.addItem(1, 'File', 'devices/harddisk', menuCallback, {
             { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=itemClicked },
@@ -60,19 +64,18 @@ end
       end
    })
 
-   y = menubar.surface.height
+   local y = menubar.vp.height
 
-   lToolbar = gui.toolbar(win.surface, {
-      xOffset = 0,
-      hoverColour  = '#00000030',
-      iconSize = 22,
-      y = y,
+   lToolbar = gui.toolbar(viewport, {
+      xOffset     = 0,
+      y           = y,
+      iconSize    = 22,
       createItems = function(Bar)
          Bar.addGroup(1, 'Navigation', 2)
          Bar.addItem(2, 'Root', 'Root Directory', 'devices/harddisk', itemCallback)
          Bar.addItem(3, 'Parent', 'Parent Folder', 'arrows/arrow_nw', itemCallback)
          Bar.addGroup(4, 'Clipboard', 3)
-         Bar.addItem(5, 'Cut', 'Cut', 'tools/cffut', itemCallback)
+         Bar.addItem(5, 'Cut', 'Cut', 'tools/not_an_icon', itemCallback)
          Bar.addItem(6, 'Copy', 'Copy', 'tools/copy', itemCallback)
          Bar.addItem(7, 'Paste', 'Paste', 'tools/paste', itemCallback)
          Bar.addGroup(8, 'Actions', 3)
@@ -86,11 +89,11 @@ end
       end
    })
 
-   y = y + lToolbar.surface.height + 8
+   y = y + lToolbar.vp.height + 8
 
    local popupMenu = gui.menu({
-      x = 30,
-      y = 50,
+      x     = 30,
+      y     = 50,
       popup = true,
       config = {
          { group='Files' },
@@ -113,17 +116,20 @@ end
       end
    end)
 
-   local text = win.new('text', { x=win.leftMargin, y=y, string='Text Widget', face='Open Sans:20' })
-   y = y + text.textHeight + 8
+   local text = viewport.new('vectortext', {
+      x=win.leftMargin, y=y, string='Text Widget', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
+   })
+   text.y = y + text.font.height
+   y = y + text.font.height + 8
 
-   local msgButton = win.new('button', { text='Message Box', x=win.leftMargin, y=y, icon='items/question',
+   local msgButton = viewport.new('button', { text='Message Box', x=win.leftMargin, y=y, icon='items/question',
       feedback = function()
          gui.dialog.message({
-            modal = true,
-            image = 'icons:items/warning',
-            title = 'Hamlet has a question',
-            message = 'To be or not to be?',
-            userInput = 'That is the question',
+            modal         = true,
+            image         = 'icons:items/warning',
+            title         = 'Hamlet has a question',
+            message       = 'To be or not to be?',
+            userInput     = 'That is the question',
             checkboxLabel = '\'Tis nobler to suffer',
             options = {
                { id=1, text='To be', icon='items/checkmark' },
@@ -146,10 +152,10 @@ end
       end
    })
 
-   local colourButton = win.new('button', { text='Select Colour', x=msgButton.right + 4, y=y, icon='tools/palette',
+   local colourButton = viewport.new('button', { text='Select Colour', x=msgButton.right + 4, y=y, icon='tools/palette',
       feedback = function()
          gui.dialog.colour({
-            modal = true,
+            modal  = true,
             colour = '255,0,0',
             feedback = function(Colour)
                if (not Colour) then
@@ -163,7 +169,7 @@ end
       end
    })
 
-   local fontButton = win.new('button', { text='Select Font', x=colourButton.right + 4, y=y, icon='items/font',
+   local fontButton = viewport.new('button', { text='Select Font', x=colourButton.right + 4, y=y, icon='items/font',
       feedback = function()
          gui.dialog.font({
             okText     = 'Select Font',
@@ -181,14 +187,14 @@ end
       end
    })
 
-   local fileButton = win.new('button', { text='Select File', x=fontButton.right + 4, y=y, icon='folders/folder',
+   local fileButton = viewport.new('button', { text='Select File', x=fontButton.right + 4, y=y, icon='folders/folder',
       feedback = function()
          gui.dialog.file({
-            filterList = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
-            okText     = 'Select File',
-            cancelText = 'Exit',
-            modal      = true,
-            warnExists = true,
+            filterList  = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
+            okText      = 'Select File',
+            cancelText  = 'Exit',
+            modal       = true,
+            warnExists  = true,
             multiSelect = true,
             feedback = function(Dialog, Path, Files)
                if (Files == nil) then
@@ -206,16 +212,57 @@ end
 
    y = y + msgButton.height + 8
 
-   local checkbox = win.new('checkbox', { label='Checkbox', x=win.leftMargin, y=y })
+   local checkbox = viewport.new('checkbox', { label='Check Box', x=win.leftMargin, y=y })
    y = y + checkbox.height + 8
 
-   local combobox = win.new('combobox', { label='Combobox', x=win.leftMargin, y=y, string='Your text here' })
+   local combobox = viewport.new('combobox', {
+      label='Combo Box', x=win.leftMargin, y=y, string='Your text here', width=200
+   })
    y = y + combobox.height + 8
 
-   local input = win.new('input', { label='Inputbox', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here' })
+   local input = viewport.new('input', {
+      label='Input Box', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here'
+   })
    y = y + input.height + 8
+
+   gui.icon({
+      target = viewport,
+      x      = 20,
+      y      = y,
+      image  = 'time/alarm',
+      text   = 'Alarm',
+      size   = 80,
+      vfx    = vfx.fadeIn(1.0, 0.1),
+      feedback = function(Icon, Event)
+         if Icon.effect then return end
+         Icon.effect = vfx.shake(1.0, 0, 1.0)
+         Icon.effect.init(Icon.viewport, function(Effect)
+            Icon.effect = nil
+         end)
+      end
+   })
+
+   gui.icon({
+      target = viewport,
+      x      = 120,
+      y      = y,
+      image  = 'programs/filemanager',
+      text   = 'Wilhelm\'s House',
+      vfx    = vfx.chain(vfx.rotate(0.8, 0.3), vfx.zoomIn(0.4, 0.3)),
+      feedback = function(Icon, Event)
+         if (Icon.effect) then return end
+         Icon.effect = vfx.chain(vfx.rotate(0.8), vfx.zoomOut(0.8))
+         Icon.effect.init(Icon.viewport, function(Effect)
+            Icon.effect = nil
+            if (Icon.viewport) then
+               Icon.viewport.acFree()
+               Icon.viewport = nil
+            end
+         end)
+      end
+   })
 
    win.acShow()
 
-   processing.sleep() // Will sleep until the window close widget sends MSGID_QUIT
+   processing.sleep() -- Will sleep until the window sends MSGID_QUIT
 

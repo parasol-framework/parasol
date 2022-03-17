@@ -144,7 +144,6 @@ static const struct {
    { "*.errorlist",   SCLEX_ERRORLIST },
    { "*.lua|*.fluid", SCLEX_FLUID },
    { "*.dmd",         SCLEX_HTML },
-   { "*.dml",         SCLEX_XML },
    { "*.html",        SCLEX_HTML },
    { "*.latex",       SCLEX_LATEX },
    { "makefile|*.make", SCLEX_MAKEFILE },
@@ -189,7 +188,6 @@ static ERROR SET_BkgdColour(objScintilla *, RGB8 *);
 static ERROR SET_CursorColour(objScintilla *, RGB8 *);
 static ERROR SET_FileDrop(objScintilla *, FUNCTION *);
 static ERROR SET_FoldingMarkers(objScintilla *, LONG);
-static ERROR SET_HScroll(objScintilla *, OBJECTID);
 static ERROR SET_LeftMargin(objScintilla *, LONG);
 static ERROR SET_Lexer(objScintilla *, LONG);
 static ERROR SET_LineHighlight(objScintilla *, RGB8 *);
@@ -206,7 +204,6 @@ static ERROR SET_String(objScintilla *, CSTRING);
 static ERROR SET_Symbols(objScintilla *, LONG);
 static ERROR SET_TabWidth(objScintilla *, LONG);
 static ERROR SET_TextColour(objScintilla *, RGB8 *);
-static ERROR SET_VScroll(objScintilla *, OBJECTID);
 static ERROR SET_Wordwrap(objScintilla *, LONG);
 
 //****************************************************************************
@@ -292,7 +289,7 @@ static ERROR SCINTILLA_ActionNotify(objScintilla *Self, struct acActionNotify *A
       request.Preference[2] = 0;
 
       struct acDataFeed dc;
-      dc.ObjectID = Self->Head.UniqueID;
+      dc.ObjectID = Self->Head.UID;
       dc.Datatype = DATA_REQUEST;
       dc.Buffer   = &request;
       dc.Size     = sizeof(request);
@@ -312,7 +309,7 @@ static ERROR SCINTILLA_ActionNotify(objScintilla *Self, struct acActionNotify *A
       else log.msg("(Focus) Cannot receive focus, surface not visible or disabled.");
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->EventCallback.Type = CALL_NONE;
       }
    }
@@ -359,7 +356,7 @@ static ERROR SCINTILLA_ActionNotify(objScintilla *Self, struct acActionNotify *A
       SCICALL(SCI_SETUNDOCOLLECTION, 0UL); // Turn off undo
 
       if (write->Buffer) {
-         acDataFeed(Self, Self->Head.UniqueID, DATA_TEXT, write->Buffer, write->Result);
+         acDataFeed(Self, Self->Head.UID, DATA_TEXT, write->Buffer, write->Result);
       }
       else { // We have to read the data from the file stream
       }
@@ -637,7 +634,7 @@ static ERROR SCINTILLA_Free(objScintilla *Self, APTR)
    }
 
    /*if (Self->PointerLocked) {
-      RestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+      RestoreCursor(PTR_DEFAULT, Self->Head.UID);
       Self->PointerLocked = FALSE;
    }*/
 
@@ -757,16 +754,6 @@ static ERROR SCINTILLA_Hide(objScintilla *Self, APTR Void)
 
       log.branch();
 
-      if (Self->VScrollbar) {
-         SetLong(Self->VScrollbar, FID_Hide, TRUE);
-         acHide(Self->VScrollbar);
-      }
-
-      if (Self->HScrollbar) {
-         SetLong(Self->HScrollbar, FID_Hide, TRUE);
-         acHide(Self->HScrollbar);
-      }
-
       Self->Visible = FALSE;
       acDraw(Self);
    }
@@ -836,34 +823,7 @@ static ERROR SCINTILLA_Init(objScintilla *Self, APTR)
       gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
    }
 
-   // Generate scrollbars if they haven't been provided
-
-   AdjustLogLevel(2);
-
-   if (!Self->VScrollID) {
-      if (!CreateObject(ID_SCROLLBAR, 0, &Self->VScrollbar,
-            FID_Name|TSTR,      "page_vscroll",
-            FID_Surface|TLONG,  (Self->ScrollTargetID) ? Self->ScrollTargetID : Self->SurfaceID,
-            FID_Direction|TSTR, "VERTICAL",
-            FID_Monitor|TLONG,  Self->SurfaceID,
-            TAGEND)) {
-         SET_VScroll(Self, Self->VScrollbar->Head.UniqueID);
-      }
-   }
-
-   if (!Self->HScrollID) {
-      if (!CreateObject(ID_SCROLLBAR, 0, &Self->HScrollbar,
-            FID_Name|TSTR,       "page_hscroll",
-            FID_Surface|TLONG,   (Self->ScrollTargetID) ? Self->ScrollTargetID : Self->SurfaceID,
-            FID_Direction|TSTR,  "HORIZONTAL",
-            FID_Monitor|TLONG,   Self->SurfaceID,
-            FID_Intersect|TLONG, Self->VScrollID,
-            TAGEND)) {
-         SET_HScroll(Self, Self->HScrollbar->Head.UniqueID);
-      }
-   }
-
-   AdjustLogLevel(-2);
+   // TODO: Run the scrollbar script here
 
    if (acInit(Self->Font) != ERR_Okay) return ERR_Init;
 
@@ -1412,16 +1372,6 @@ static ERROR SCINTILLA_Show(objScintilla *Self, APTR Void)
 
       Self->Visible = TRUE;
 
-      if (Self->VScrollbar) {
-         SetLong(Self->VScrollbar, FID_Hide, FALSE);
-         acShow(Self->VScrollbar);
-      }
-
-      if (Self->HScrollbar) {
-         SetLong(Self->HScrollbar, FID_Hide, FALSE);
-         acShow(Self->HScrollbar);
-      }
-
       acDraw(Self);
 
       return ERR_Okay;
@@ -1661,46 +1611,6 @@ font customisation takes place prior to initialisation of the Scintilla object. 
 after initialisation may result in clashes with the Scintilla class that produce unpredictable results.
 
 To change the font post-initialisation, please use the #SetFont() method.
-
--FIELD-
-HScroll: Refers to a scroll object that is managing horizontal scrolling.
-
-This field refers to the scroll object that is managing horizontal scrolling of the document page.  It is possible
-to set this field with either a @Scroll or @ScrollBar object, although in the latter case the
-Scroll object will be extracted automatically and referenced in this field.
-
-*****************************************************************************/
-
-static ERROR SET_HScroll(objScintilla *Self, OBJECTID Value)
-{
-   parasol::Log log;
-
-   if (GetClassID(Value) IS ID_SCROLLBAR) {
-      OBJECTPTR object;
-      if (!AccessObject(Value, 3000, &object)) {
-         GetLong(object, FID_Scroll, &Value);
-         ReleaseObject(object);
-      }
-   }
-
-   if (GetClassID(Value) IS ID_SCROLL) {
-      OBJECTPTR object;
-      if (!AccessObject(Value, 3000, &object)) {
-         SetLong(object, FID_Object, Self->Head.UniqueID);
-         Self->HScrollID = Value;
-         //Self->XPosition = 0;
-         //if (Self->Head.Flags & NF_INITIALISED) CalculateHScroll(Self);
-         ReleaseObject(object);
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_AccessObject);
-   }
-   else return log.warning(ERR_WrongObjectType);
-
-   return ERR_Okay;
-}
-
-/*****************************************************************************
 
 -FIELD-
 LeftMargin: The amount of white-space at the left side of the page.
@@ -1987,12 +1897,6 @@ To receive event notifications, set #EventCallback with a function reference and
 indicates the events that need to be received.
 
 -FIELD-
-ScrollTarget: Sets an alternative target surface for scrollbar creation.
-
-During initialisation the Scintilla class will create scrollbars within the target #Surface.  If this
-behaviour is undesirable, an alternative target surface can be defined by setting the ScrollTarget field.
-
--FIELD-
 SelectBkgd: Defines the background colour of selected text.  Supports alpha blending.
 
 *****************************************************************************/
@@ -2132,46 +2036,6 @@ static ERROR SET_TabWidth(objScintilla *Self, LONG Value)
 /*****************************************************************************
 
 -FIELD-
-VScroll: Refers to a scroll object that is managing horizontal scrolling.
-
-This field refers to the scroll object that is managing horizontal scrolling of the document page.  It is possible
-to set this field with either a @Scroll or @ScrollBar object, although in the latter case the
-Scroll object will be extracted automatically and referenced in this field.
-
-*****************************************************************************/
-
-static ERROR SET_VScroll(objScintilla *Self, OBJECTID Value)
-{
-   parasol::Log log;
-   OBJECTPTR object;
-
-   // If we've been given a scrollbar, extract the scroll object
-
-   if (GetClassID(Value) IS ID_SCROLLBAR) {
-      if (!AccessObject(Value, 3000, &object)) {
-         GetLong(object, FID_Scroll, &Value);
-         ReleaseObject(object);
-      }
-      else return log.warning(ERR_AccessObject);
-   }
-
-   // Use the scroll object for issuing commands
-
-   if (GetClassID(Value) IS ID_SCROLL) {
-      if (!AccessObject(Value, 3000, &object)) {
-         SetLong(object, FID_Object, Self->Head.UniqueID);
-         Self->VScrollID = Value;
-         ReleaseObject(object);
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_AccessObject);
-   }
-   else return log.warning(ERR_WrongObjectType);
-}
-
-/*****************************************************************************
-
--FIELD-
 TextColour: Defines the default colour of foreground text.  Supports alpha blending.
 
 *****************************************************************************/
@@ -2273,7 +2137,7 @@ static void draw_scintilla(objScintilla *Self, objSurface *Surface, struct rkBit
    if (!Self->Visible) return;
    if (!(Self->Head.Flags & NF_INITIALISED)) return;
 
-   log.traceBranch("Surface: %d, Bitmap: %d. Clip: %dx%d,%dx%d, Offset: %dx%d", Surface->Head.UniqueID, Bitmap->Head.UniqueID, Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left, Bitmap->Clip.Bottom - Bitmap->Clip.Top, Bitmap->XOffset, Bitmap->YOffset);
+   log.traceBranch("Surface: %d, Bitmap: %d. Clip: %dx%d,%dx%d, Offset: %dx%d", Surface->Head.UID, Bitmap->Head.UID, Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left, Bitmap->Clip.Bottom - Bitmap->Clip.Top, Bitmap->XOffset, Bitmap->YOffset);
 
    glBitmap = Bitmap;
 
@@ -2354,7 +2218,7 @@ static ERROR load_file(objScintilla *Self, CSTRING Path)
 
    if (!CreateObject(ID_FILE, NF_INTEGRAL, &file, FID_Flags|TLONG, FL_READ, FID_Path|TSTR, Path, TAGEND)) {
       if (file->Flags & FL_STREAM) {
-         if (!flStartStream(file, Self->Head.UniqueID, FL_READ, 0)) {
+         if (!flStartStream(file, Self->Head.UID, FL_READ, 0)) {
             acClear(Self);
 
             SubscribeActionTags(file, AC_Write, TAGEND);
@@ -2627,8 +2491,6 @@ static const FieldArray clFields[] = {
    { "EventFlags",     FDF_LARGE|FDF_FLAGS|FDF_RW, (MAXINT)&clScintillaEventFlags, NULL, NULL },
    { "Font",           FDF_INTEGRAL|FDF_R,   ID_FONT,    NULL, NULL },
    { "Path",           FDF_STRING|FDF_RW,    0,          NULL, (APTR)SET_Path },
-   { "VScroll",        FDF_OBJECTID|FDF_RI,  ID_SCROLL,  NULL, (APTR)SET_VScroll },
-   { "HScroll",        FDF_OBJECTID|FDF_RI,  ID_SCROLL,  NULL, (APTR)SET_HScroll },
    { "Surface",        FDF_OBJECTID|FDF_RI,  ID_SURFACE, NULL, NULL },
    { "Flags",          FDF_LONGFLAGS|FDF_RI, (MAXINT)&clScintillaFlags, NULL, NULL },
    { "Focus",          FDF_OBJECTID|FDF_RI,  0,          NULL, NULL },
@@ -2641,7 +2503,6 @@ static const FieldArray clFields[] = {
    { "BkgdColour",     FDF_RGB|FDF_RW,       0,          NULL, (APTR)SET_BkgdColour },
    { "CursorColour",   FDF_RGB|FDF_RW,       0,          NULL, (APTR)SET_CursorColour },
    { "TextColour",     FDF_RGB|FDF_RW,       0,          NULL, (APTR)SET_TextColour },
-   { "ScrollTarget",   FDF_OBJECTID|FDF_RI,  0,          NULL, NULL },
    { "CursorRow",      FDF_LONG|FDF_RW,      0,          NULL, NULL },
    { "CursorCol",      FDF_LONG|FDF_RW,      0,          NULL, NULL },
    { "Lexer",          FDF_LONG|FDF_LOOKUP|FDF_RI, (MAXINT)&clScintillaLexer, NULL, (APTR)SET_Lexer },

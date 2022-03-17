@@ -561,7 +561,7 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
             FID_Flags|TLONG,       FL_NEW|FL_WRITE,
             TAGEND)) {
 
-         error = acSaveToObject(config, file->Head.UniqueID, 0);
+         error = acSaveToObject(config, file->Head.UID, 0);
          acFree(file);
       }
       else error = ERR_CreateObject;

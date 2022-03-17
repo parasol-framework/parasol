@@ -2,7 +2,7 @@
 #define MODULES_VECTOR 1
 
 // Name:      vector.h
-// Copyright: Paul Manias © 2010-2020
+// Copyright: Paul Manias © 2010-2022
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -19,6 +19,11 @@
 
 #define ARC_LARGE 0x00000001
 #define ARC_SWEEP 0x00000002
+
+// Optional flags and indicators for the Vector class.
+
+#define VF_DISABLED 0x00000001
+#define VF_HAS_FOCUS 0x00000002
 
 #define VUNIT_UNDEFINED 0
 #define VUNIT_BOUNDING_BOX 1
@@ -117,20 +122,24 @@
 #define VTS_ULTRA_EXPANDED 10
 #define VTS_EXTRA_EXPANDED 11
 
+// Viewport overflow options.
+
+#define VOF_VISIBLE 0
+#define VOF_HIDDEN 1
+#define VOF_SCROLL 2
+#define VOF_INHERIT 3
+
 // VectorText flags.
 
 #define VTXF_UNDERLINE 0x00000001
 #define VTXF_OVERLINE 0x00000002
 #define VTXF_LINE_THROUGH 0x00000004
 #define VTXF_BLINK 0x00000008
-
-// Types of vector transforms.
-
-#define VTF_MATRIX 0x0001
-#define VTF_TRANSLATE 0x0002
-#define VTF_SCALE 0x0004
-#define VTF_ROTATE 0x0008
-#define VTF_SKEW 0x0010
+#define VTXF_EDIT 0x00000010
+#define VTXF_EDITABLE 0x00000010
+#define VTXF_AREA_SELECTED 0x00000020
+#define VTXF_NO_SYS_KEYS 0x00000040
+#define VTXF_OVERWRITE 0x00000080
 
 // Morph flags
 
@@ -160,11 +169,17 @@
 #define VSF_REFERENCE 7
 #define VSF_IGNORE 8
 
-// VectorWave options
+// Wave options.
 
 #define WVC_NONE 1
 #define WVC_TOP 2
 #define WVC_BOTTOM 3
+
+// Wave style options.
+
+#define WVS_CURVED 1
+#define WVS_ANGLED 2
+#define WVS_SAWTOOTH 3
 
 // Gradient flags
 
@@ -192,6 +207,7 @@
 #define VPF_BITMAP_SIZED 0x00000001
 #define VPF_RENDER_TIME 0x00000002
 #define VPF_RESIZE 0x00000004
+#define VPF_OUTLINE_VIEWPORTS 0x00000008
 
 #define VSM_AUTO 0
 #define VSM_NEIGHBOUR 1
@@ -213,9 +229,9 @@
 #define RC_FINAL_PATH 0x00000001
 #define RC_BASE_PATH 0x00000002
 #define RC_TRANSFORM 0x00000004
-#define RC_ALL 0x000000ff
+#define RC_ALL 0x00000007
 
-// Aspect ratios
+// Aspect ratios control alignment, scaling and clipping.
 
 #define ARF_X_MIN 0x00000001
 #define ARF_X_MID 0x00000002
@@ -227,10 +243,14 @@
 #define ARF_SLICE 0x00000080
 #define ARF_NONE 0x00000100
 
-// For vecGetBoundary()
+// Options for vecGetBoundary().
 
 #define VBF_INCLUSIVE 0x00000001
 #define VBF_NO_TRANSFORM 0x00000002
+
+// Mask for controlling feedback events that are received.
+
+#define FM_PATH_CHANGED 0x00000001
 
 struct VectorDef {
    OBJECTPTR Object;    // Reference to the definition object.
@@ -259,8 +279,8 @@ struct PathCommand {
    UBYTE  LargeArc;   // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
    UBYTE  Sweep;      // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
    LONG   Pad;        // Private
-   DOUBLE X;          // The targeted X coordinate for the command
-   DOUBLE Y;          // The targeted Y coordinate for the command
+   DOUBLE X;          // The targeted X coordinate (absolute or relative) for the command
+   DOUBLE Y;          // The targeted Y coordinate (absolute or relative) for the command
    DOUBLE AbsX;       // Private
    DOUBLE AbsY;       // Private
    DOUBLE X2;         // The X2 coordinate for curve commands, or RX for arcs
@@ -270,14 +290,15 @@ struct PathCommand {
    DOUBLE Angle;      // Arc angle
 };
 
-struct VectorTransform {
-   struct VectorTransform * Next;    // The next transform in the list.
-   struct VectorTransform * Prev;    // The previous transform in the list.
-   DOUBLE X;                         // The X value, the meaning of which is defined by the Type
-   DOUBLE Y;                         // The Y value, the meaning of which is defined by the Type
-   DOUBLE Angle;                     // Requires VTF_ROTATE.  A rotation by Angle degrees about a given point.  If optional parameters X and Y are not specified, the rotate is about the origin of the current user coordinate system.
-   DOUBLE Matrix[6];                 // Requires VTF_MATRIX.  A transformation expressed as a matrix of six values.
-   WORD   Type;                      // The VTF indicates the type of transformation: rotate, skew etc
+struct VectorMatrix {
+   struct VectorMatrix * Next;    // The next transform in the list.
+   struct rkVector * Vector;      // The vector associated with the transform.
+   DOUBLE ScaleX;                 // Matrix value A
+   DOUBLE ShearY;                 // Matrix value B
+   DOUBLE ShearX;                 // Matrix value C
+   DOUBLE ScaleY;                 // Matrix value D
+   DOUBLE TranslateX;             // Matrix value E
+   DOUBLE TranslateY;             // Matrix value F
 };
 
 // VectorPath class definition
@@ -344,19 +365,29 @@ typedef struct rkVectorColour {
 
 typedef struct rkVectorScene {
    OBJECT_HEADER
-   LARGE  RenderTime;             // Microseconds elapsed during the last rendering operation.
-   DOUBLE Gamma;                  // Not currently implemented.
+   LARGE    RenderTime;           // Microseconds elapsed during the last rendering operation.
+   DOUBLE   Gamma;                // Not currently implemented.
    struct rkVector * Viewport;    // Reference to the VectorViewport that contains the VectorScene.
    struct rkBitmap * Bitmap;      // Target bitmap.
    struct KeyStore * Defs;        // Stores references to gradients, images, patterns etc
-   LONG   Flags;                  // Optional flags.
-   LONG   PageWidth;              // Fixed page width - vector viewport width will be stretched to fit this if resizing is enabled.
-   LONG   PageHeight;             // Fixed page height - vector viewport height will be stretched to fit this if resizing is enabled.
-   LONG   SampleMethod;           // VSM: Method to use for resampling images and patterns.
+   OBJECTID SurfaceID;            // Target surface for automated rendering
+   LONG     Flags;                // Optional flags.
+   LONG     PageWidth;            // Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
+   LONG     PageHeight;           // Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
+   LONG     SampleMethod;         // VSM: Method to use for resampling images and patterns.
 
 #ifdef PRV_VECTORSCENE
-   class VMAdaptor *Adaptor;
-   agg::rendering_buffer *Buffer;
+   DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
+   class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
+   agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
+   APTR KeyHandle; // Keyboard subscription
+   std::unordered_map<OBJECTID, struct acRedimension> PendingResizeMsgs;
+   std::unordered_map<struct rkVector *, LONG> InputSubscriptions;
+   std::unordered_set<struct rkVector *> KeyboardSubscriptions;
+   std::vector<struct InputBoundary> InputBoundaries;
+   OBJECTID ButtonLock; // The vector currently holding a button lock
+   OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
+   LONG InputHandle;
    UBYTE  AdaptorType;
   
 #endif
@@ -398,13 +429,14 @@ INLINE ERROR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) {
 
 typedef struct rkVectorImage {
    OBJECT_HEADER
-   DOUBLE X;
-   DOUBLE Y;
+   DOUBLE X;                      // Starting horizontal coordinate
+   DOUBLE Y;                      // Starting vertical coordinate
    struct rkPicture * Picture;
    struct rkBitmap * Bitmap;
    LONG   Units;                  // VUNIT constant, defines the coordinate system for (X,Y)
    LONG   Dimensions;
    LONG   SpreadMethod;
+   LONG   AspectRatio;            // Defines how the referenced image should fit in the boundary of its target shape.
 } objVectorImage;
 
 // VectorPattern class definition
@@ -413,9 +445,9 @@ typedef struct rkVectorImage {
 
 typedef struct rkVectorPattern {
    OBJECT_HEADER
-   DOUBLE X;
-   DOUBLE Y;
-   DOUBLE Opacity;
+   DOUBLE X;                              // Starting horizontal coordinate
+   DOUBLE Y;                              // Starting vertical coordinate
+   DOUBLE Opacity;                        // Level of opacity from 0 - 1.0
    struct rkVectorScene * Scene;          // Internal scene
    struct rkVectorViewport * Viewport;    // Internal viewport
    struct rkVectorPattern * Inherit;      // Reference to another pattern from which to inherit attributes
@@ -425,7 +457,7 @@ typedef struct rkVectorPattern {
    LONG   Dimensions;
 
 #ifdef PRV_VECTORPATTERN
-   struct VectorTransform *Transforms;
+   struct VectorMatrix *Matrices;
    objBitmap *Bitmap;
   
 #endif
@@ -446,16 +478,16 @@ typedef struct rkVectorGradient {
    DOUBLE FX;                            // Focal X coordinate for radial gradient shapes.
    DOUBLE FY;                            // Focal Y coordinate for radial gradient shapes.
    DOUBLE Radius;                        // The size of a radial gradient radius.
-   struct rkVectorGradient * Inherit;    // Reference to another gradient from which to inherit attributes
+   struct rkVectorGradient * Inherit;    // Reference to another gradient from which to inherit attributes.
    LONG   SpreadMethod;                  // Defines the spread method to use for gradient fills.
    LONG   Units;                         // Defines the coordinate system for (x1,y1),(x2,y2)
    LONG   Type;
-   LONG   Flags;                         // Optional flags
+   LONG   Flags;                         // Optional flags.
    LONG   TotalStops;                    // The total number of records in the Stops array.
 
 #ifdef PRV_VECTORGRADIENT
    struct GradientStop *Stops;  // An array of gradient stop colours.
-   struct VectorTransform *Transforms;
+   struct VectorMatrix *Matrices;
    class GradientColours *Colours;
    STRING ID;
    LONG NumericID;
@@ -486,23 +518,19 @@ typedef struct rkVectorFilter {
 
 #ifdef PRV_VECTORFILTER
    LARGE DrawStamp; // Timestamp at which this filter was last rendered
-   struct effect *Effects;
-   struct effect *LastEffect;
-   struct effect **Merge;
+   std::vector<std::unique_ptr<VectorEffect>> Effects;
    objBitmap *SrcBitmap; // A temporary alpha enabled drawing of the vector that is targeted by the filter.
-   objBitmap *BkgdBitmap;
-   objBitmap *MergeBitmap;
+   objBitmap *BkgdBitmap; // Defined by Scene.acDraw()
    STRING Path; // Affix this path to file references (e.g. feImage).
    struct {
       objBitmap *Bitmap;
       UBYTE *Data;
       LONG DataSize;
    } Bank[10];
-   struct effect SrcGraphic;
-   struct effect BkgdGraphic;
    LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Calculated pixel boundary for the entire filter and its effects.
    LONG ViewX, ViewY, ViewWidth, ViewHeight; // Boundary of the target area (for user space coordinate mode)
    UBYTE BankIndex;
+   bool Rendered;
   
 #endif
 } objVectorFilter;
@@ -510,6 +538,18 @@ typedef struct rkVectorFilter {
 // VectorText class definition
 
 #define VER_VECTORTEXT (1.000000)
+
+// VectorText methods
+
+#define MT_VTDeleteLine -30
+
+struct vtDeleteLine { LONG Line;  };
+
+INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
+   struct vtDeleteLine args = { Line };
+   return(Action(MT_VTDeleteLine, (OBJECTPTR)Ob, &args));
+}
+
 
 // VectorWave class definition
 
@@ -549,7 +589,7 @@ typedef struct rkVectorFilter {
    struct rkVector *Next; \
    struct rkVector *Prev; \
    OBJECTPTR Parent; \
-   struct VectorTransform *Transforms; \
+   struct VectorMatrix *Matrices; \
    DOUBLE StrokeWidth; \
    DOUBLE StrokeOpacity; \
    DOUBLE FillOpacity; \
@@ -557,9 +597,9 @@ typedef struct rkVectorFilter {
    DOUBLE MiterLimit; \
    DOUBLE InnerMiterLimit; \
    DOUBLE DashOffset; \
-   LONG   ActiveTransforms; \
-   LONG   DashTotal; \
-   LONG   Visibility;
+   LONG   Visibility; \
+   LONG   Flags; \
+   LONG   Cursor;
   
 // Vector class definition
 
@@ -567,22 +607,22 @@ typedef struct rkVectorFilter {
 
 typedef struct rkVector {
    OBJECT_HEADER
-   struct rkVector * Child;                // The first child vector, or NULL.
-   struct rkVectorScene * Scene;           // Short-cut to the top-level VectorScene.
-   struct rkVector * Next;                 // The next vector in the branch, or NULL.
-   struct rkVector * Prev;                 // The previous vector in the branch, or NULL.
-   OBJECTPTR Parent;                       // The parent vector, or NULL if this is the top-most vector.
-   struct VectorTransform * Transforms;    // A list of transforms to apply to the vector.
-   DOUBLE    StrokeWidth;                  // The width to use when stroking the path.
-   DOUBLE    StrokeOpacity;                // Defines the opacity of the path stroke.
-   DOUBLE    FillOpacity;                  // The opacity to use when filling the vector.
-   DOUBLE    Opacity;                      // An overall opacity value for the vector.
-   DOUBLE    MiterLimit;                   // Imposes a limit on the ratio of the miter length to the StrokeWidth.
-   DOUBLE    InnerMiterLimit;              // A special limit to apply when the MITER_ROUND line-join effect is in use.
-   DOUBLE    DashOffset;                   // For the DashArray, applies an initial dash offset.
-   LONG      ActiveTransforms;             // Indicates the transforms that are currently applied to a vector.
-   LONG      DashTotal;                    // The total number of values in the DashArray.
-   LONG      Visibility;                   // Controls the visibility of a vector and its children.
+   struct rkVector * Child;         // The first child vector, or NULL.
+   struct rkVectorScene * Scene;    // Short-cut to the top-level VectorScene.
+   struct rkVector * Next;          // The next vector in the branch, or NULL.
+   struct rkVector * Prev;          // The previous vector in the branch, or NULL.
+   OBJECTPTR Parent;                // The parent vector, or NULL if this is the top-most vector.
+   struct VectorMatrix * Matrices;  // A list of transform matrices to apply to the vector.
+   DOUBLE    StrokeWidth;           // The width to use when stroking the path.
+   DOUBLE    StrokeOpacity;         // Defines the opacity of the path stroke.
+   DOUBLE    FillOpacity;           // The opacity to use when filling the vector.
+   DOUBLE    Opacity;               // An overall opacity value for the vector.
+   DOUBLE    MiterLimit;            // Imposes a limit on the ratio of the miter length to the StrokeWidth.
+   DOUBLE    InnerMiterLimit;       // A special limit to apply when the MITER_ROUND line-join effect is in use.
+   DOUBLE    DashOffset;            // For the DashArray, applies an initial dash offset.
+   LONG      Visibility;            // Controls the visibility of a vector and its children.
+   LONG      Flags;                 // Optional flags.
+   LONG      Cursor;                // The mouse cursor to display when the pointer is within the vector's boundary.
 
 #ifdef PRV_VECTOR
  SHAPE_PRIVATE 
@@ -594,27 +634,23 @@ typedef struct rkVector {
 #define MT_VecPush -1
 #define MT_VecTracePath -2
 #define MT_VecGetBoundary -3
-#define MT_VecRotate -4
-#define MT_VecTransform -5
-#define MT_VecApplyMatrix -6
-#define MT_VecTranslate -7
-#define MT_VecScale -8
-#define MT_VecSkew -9
-#define MT_VecPointInPath -10
-#define MT_VecClearTransforms -11
-#define MT_VecGetTransform -12
+#define MT_VecPointInPath -4
+#define MT_VecSubscribeInput -5
+#define MT_VecSubscribeKeyboard -6
+#define MT_VecSubscribeFeedback -7
+#define MT_VecDebug -8
+#define MT_VecNewMatrix -9
+#define MT_VecFreeMatrix -10
 
 struct vecPush { LONG Position;  };
 struct vecTracePath { FUNCTION * Callback;  };
 struct vecGetBoundary { LONG Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
-struct vecRotate { DOUBLE Angle; DOUBLE CenterX; DOUBLE CenterY;  };
-struct vecTransform { CSTRING Transform;  };
-struct vecApplyMatrix { DOUBLE A; DOUBLE B; DOUBLE C; DOUBLE D; DOUBLE E; DOUBLE F;  };
-struct vecTranslate { DOUBLE X; DOUBLE Y;  };
-struct vecScale { DOUBLE X; DOUBLE Y;  };
-struct vecSkew { DOUBLE X; DOUBLE Y;  };
 struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
-struct vecGetTransform { LONG Type; struct VectorTransform * Transform;  };
+struct vecSubscribeInput { LONG Mask; FUNCTION * Callback;  };
+struct vecSubscribeKeyboard { FUNCTION * Callback;  };
+struct vecSubscribeFeedback { LONG Mask; FUNCTION * Callback;  };
+struct vecNewMatrix { struct VectorMatrix * Transform;  };
+struct vecFreeMatrix { struct VectorMatrix * Matrix;  };
 
 INLINE ERROR vecPush(APTR Ob, LONG Position) {
    struct vecPush args = { Position };
@@ -636,48 +672,38 @@ INLINE ERROR vecGetBoundary(APTR Ob, LONG Flags, DOUBLE * X, DOUBLE * Y, DOUBLE 
    return(error);
 }
 
-INLINE ERROR vecRotate(APTR Ob, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY) {
-   struct vecRotate args = { Angle, CenterX, CenterY };
-   return(Action(MT_VecRotate, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR vecTransform(APTR Ob, CSTRING Transform) {
-   struct vecTransform args = { Transform };
-   return(Action(MT_VecTransform, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR vecApplyMatrix(APTR Ob, DOUBLE A, DOUBLE B, DOUBLE C, DOUBLE D, DOUBLE E, DOUBLE F) {
-   struct vecApplyMatrix args = { A, B, C, D, E, F };
-   return(Action(MT_VecApplyMatrix, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR vecTranslate(APTR Ob, DOUBLE X, DOUBLE Y) {
-   struct vecTranslate args = { X, Y };
-   return(Action(MT_VecTranslate, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR vecScale(APTR Ob, DOUBLE X, DOUBLE Y) {
-   struct vecScale args = { X, Y };
-   return(Action(MT_VecScale, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR vecSkew(APTR Ob, DOUBLE X, DOUBLE Y) {
-   struct vecSkew args = { X, Y };
-   return(Action(MT_VecSkew, (OBJECTPTR)Ob, &args));
-}
-
 INLINE ERROR vecPointInPath(APTR Ob, DOUBLE X, DOUBLE Y) {
    struct vecPointInPath args = { X, Y };
    return(Action(MT_VecPointInPath, (OBJECTPTR)Ob, &args));
 }
 
-#define vecClearTransforms(obj) Action(MT_VecClearTransforms,(obj),0)
+INLINE ERROR vecSubscribeInput(APTR Ob, LONG Mask, FUNCTION * Callback) {
+   struct vecSubscribeInput args = { Mask, Callback };
+   return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
+}
 
-INLINE ERROR vecGetTransform(APTR Ob, LONG Type, struct VectorTransform ** Transform) {
-   struct vecGetTransform args = { Type, 0 };
-   ERROR error = Action(MT_VecGetTransform, (OBJECTPTR)Ob, &args);
+INLINE ERROR vecSubscribeKeyboard(APTR Ob, FUNCTION * Callback) {
+   struct vecSubscribeKeyboard args = { Callback };
+   return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR vecSubscribeFeedback(APTR Ob, LONG Mask, FUNCTION * Callback) {
+   struct vecSubscribeFeedback args = { Mask, Callback };
+   return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
+}
+
+#define vecDebug(obj) Action(MT_VecDebug,(obj),0)
+
+INLINE ERROR vecNewMatrix(APTR Ob, struct VectorMatrix ** Transform) {
+   struct vecNewMatrix args = { 0 };
+   ERROR error = Action(MT_VecNewMatrix, (OBJECTPTR)Ob, &args);
    if (Transform) *Transform = args.Transform;
    return(error);
+}
+
+INLINE ERROR vecFreeMatrix(APTR Ob, struct VectorMatrix * Matrix) {
+   struct vecFreeMatrix args = { Matrix };
+   return(Action(MT_VecFreeMatrix, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -700,6 +726,14 @@ struct VectorBase {
    void (*_RewindPath)(APTR);
    LONG (*_GetVertex)(APTR, DOUBLE *, DOUBLE *);
    ERROR (*_ApplyPath)(APTR, APTR);
+   ERROR (*_Rotate)(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
+   ERROR (*_Translate)(struct VectorMatrix *, DOUBLE, DOUBLE);
+   ERROR (*_Skew)(struct VectorMatrix *, DOUBLE, DOUBLE);
+   ERROR (*_Multiply)(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+   ERROR (*_MultiplyMatrix)(struct VectorMatrix *, struct VectorMatrix *);
+   ERROR (*_Scale)(struct VectorMatrix *, DOUBLE, DOUBLE);
+   ERROR (*_ParseTransform)(struct VectorMatrix *, CSTRING);
+   ERROR (*_ResetMatrix)(struct VectorMatrix *);
 };
 
 #ifndef PRV_VECTOR_MODULE
@@ -721,6 +755,14 @@ struct VectorBase {
 #define vecRewindPath(...) (VectorBase->_RewindPath)(__VA_ARGS__)
 #define vecGetVertex(...) (VectorBase->_GetVertex)(__VA_ARGS__)
 #define vecApplyPath(...) (VectorBase->_ApplyPath)(__VA_ARGS__)
+#define vecRotate(...) (VectorBase->_Rotate)(__VA_ARGS__)
+#define vecTranslate(...) (VectorBase->_Translate)(__VA_ARGS__)
+#define vecSkew(...) (VectorBase->_Skew)(__VA_ARGS__)
+#define vecMultiply(...) (VectorBase->_Multiply)(__VA_ARGS__)
+#define vecMultiplyMatrix(...) (VectorBase->_MultiplyMatrix)(__VA_ARGS__)
+#define vecScale(...) (VectorBase->_Scale)(__VA_ARGS__)
+#define vecParseTransform(...) (VectorBase->_ParseTransform)(__VA_ARGS__)
+#define vecResetMatrix(...) (VectorBase->_ResetMatrix)(__VA_ARGS__)
 #endif
 
 //****************************************************************************

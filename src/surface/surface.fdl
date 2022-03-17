@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Surface", copyright="Paul Manias © 2000-2020", version=1.0 }, function()
+module({ name="Surface", copyright="Paul Manias © 2000-2022", version=1.0 }, function()
   c_include("<parasol/modules/display.h>")
 
   restrict(function()
@@ -81,6 +81,7 @@ module({ name="Surface", copyright="Paul Manias © 2000-2020", version=1.0 }, fu
     "COMPOSITE|NO_PRECOMPOSITE|POST_COMPOSITE: Do not copy background information into the surface buffer - composite on the fly instead",
     "FULL_SCREEN: Allow the surface to open as a new screen display",
     "IGNORE_FOCUS: Focus is diverted directly to the parent",
+    "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.",
     { VOLATILE = "PRECOPY|AFTER_COPY|CURSOR" },
     { READ_ONLY = "HAS_FOCUS|REGION|CURSOR|AFTER_COPY" },
     { INIT_ONLY = "HOST|TRANSPARENT|FAST_RESIZE|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })
@@ -177,7 +178,8 @@ module({ name="Surface", copyright="Paul Manias © 2000-2020", version=1.0 }, fu
     { id=6, name="AddCallback", inline=false },
     { id=7, name="Minimise" },
     { id=8, name="ResetDimensions" },
-    { id=9, name="RemoveCallback", inline=false }
+    { id=9, name="RemoveCallback", inline=false },
+    { id=10, name="ScheduleRedraw" }
   })
 
   class("Surface", { src={
@@ -244,6 +246,7 @@ module({ name="Surface", copyright="Paul Manias © 2000-2020", version=1.0 }, fu
    LONG     ScrollFromX, ScrollFromY;
    LONG     ListIndex;            // Last known list index
    LONG     InputHandle;          // Input handler for dragging of surfaces
+   TIMER    RedrawTimer;          // For ScheduleRedraw()
    TIMER    ScrollTimer;
    MEMORYID DataMID;              // Bitmap memory reference
    MEMORYID PrecopyMID;           // Precopy region information
@@ -256,6 +259,8 @@ module({ name="Surface", copyright="Paul Manias © 2000-2020", version=1.0 }, fu
    UWORD    FixedX:1;
    UWORD    FixedY:1;
    UWORD    Document:1;
+   UWORD    RedrawScheduled:1;
+   UWORD    RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
    BYTE     BitsPerPixel;         // Bitmap bits per pixel
    BYTE     BytesPerPixel;        // Bitmap bytes per pixel
    UBYTE    CallbackCount;
@@ -344,12 +349,11 @@ module({ name="Surface", copyright="Paul Manias © 2000-2020", version=1.0 }, fu
   c_insert([[
 // Helper function for surface lookups.
 
-INLINE LONG FIND_SURFACE_INDEX(struct SurfaceControl *Ctl, OBJECTID SurfaceID) {
-   struct SurfaceList *list = (struct SurfaceList *)((char *)Ctl + Ctl->ArrayIndex);
-   LONG j;
-   for (j=0; j < Ctl->Total; j++) {
+INLINE LONG FIND_SURFACE_INDEX(SurfaceControl *Ctl, OBJECTID SurfaceID) {
+   auto *list = (SurfaceList *)((char *)Ctl + Ctl->ArrayIndex);
+   for (LONG j=0; j < Ctl->Total; j++) {
       if (list->SurfaceID IS SurfaceID) return j;
-      list = (struct SurfaceList *)((char *)list + Ctl->EntrySize);
+      list = (SurfaceList *)((char *)list + Ctl->EntrySize);
    }
    return -1;
 }
@@ -374,9 +378,7 @@ INLINE ERROR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment)
 INLINE ERROR drwAddCallback(APTR Surface, APTR Callback) {
    if (Callback) {
       FUNCTION func;
-      func.Type = CALL_STDC;
-      func.StdC.Context = CurrentContext();
-      func.StdC.Routine = Callback;
+      SET_FUNCTION_STDC(func, Callback);
       struct drwAddCallback args = { &func };
       return Action(MT_DrwAddCallback, Surface, &args);
    }
@@ -389,9 +391,7 @@ INLINE ERROR drwAddCallback(APTR Surface, APTR Callback) {
 INLINE ERROR drwRemoveCallback(APTR Surface, APTR Callback) {
    if (Callback) {
       FUNCTION func;
-      func.Type = CALL_STDC;
-      func.StdC.Context = CurrentContext();
-      func.StdC.Routine = Callback;
+      SET_FUNCTION_STDC(func, Callback);
       struct drwRemoveCallback args = { &func };
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }

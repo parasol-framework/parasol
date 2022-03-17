@@ -2,43 +2,43 @@
 
 static const struct FieldDef clScintillaEventFlags[] = {
    { "Modified", 0x00000001 },
-   { "NewChar", 0x00000008 },
    { "CursorPos", 0x00000002 },
    { "FailRo", 0x00000004 },
+   { "NewChar", 0x00000008 },
    { NULL, 0 }
 };
 
 static const struct FieldDef clScintillaFlags[] = {
    { "Disabled", 0x00000001 },
-   { "ExtPage", 0x00000008 },
-   { "Edit", 0x00000004 },
    { "DetectLexer", 0x00000002 },
+   { "Edit", 0x00000004 },
+   { "ExtPage", 0x00000008 },
    { NULL, 0 }
 };
 
 static const struct FieldDef clScintillaLexer[] = {
-   { "Perl", 0x00000006 },
-   { "Assembler", 0x00000022 },
-   { "Asp", 0x0000001d },
-   { "Python", 0x00000002 },
-   { "Cpp", 0x00000003 },
-   { "Fluid", 0x0000000f },
-   { "Vbscript", 0x0000001c },
-   { "Ruby", 0x00000016 },
-   { "Sql", 0x00000007 },
-   { "Properties", 0x00000009 },
-   { "Batch", 0x0000000c },
-   { "Makefile", 0x0000000b },
-   { "Rebol", 0x00000047 },
-   { "Pascal", 0x00000012 },
-   { "HTML", 0x00000004 },
-   { "Phpscript", 0x00000045 },
-   { "Bash", 0x0000003e },
-   { "Css", 0x00000026 },
-   { "Xml", 0x00000005 },
    { "Errorlist", 0x0000000a },
-   { "Vb", 0x00000008 },
+   { "Makefile", 0x0000000b },
+   { "Batch", 0x0000000c },
+   { "Fluid", 0x0000000f },
    { "Diff", 0x00000010 },
+   { "Pascal", 0x00000012 },
+   { "Python", 0x00000002 },
+   { "Ruby", 0x00000016 },
+   { "Vbscript", 0x0000001c },
+   { "Asp", 0x0000001d },
+   { "Cpp", 0x00000003 },
+   { "Assembler", 0x00000022 },
+   { "Css", 0x00000026 },
+   { "HTML", 0x00000004 },
+   { "Xml", 0x00000005 },
+   { "Perl", 0x00000006 },
+   { "Bash", 0x0000003e },
+   { "Phpscript", 0x00000045 },
+   { "Sql", 0x00000007 },
+   { "Rebol", 0x00000047 },
+   { "Vb", 0x00000008 },
+   { "Properties", 0x00000009 },
    { NULL, 0 }
 };
 

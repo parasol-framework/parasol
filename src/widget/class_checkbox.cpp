@@ -13,120 +13,46 @@ The CheckBox class simplifies the creation and management of checkbox widgets in
 simple widgets that are limited to exhibiting an on/off state.  The CheckBox class allows for its graphics to be
 customised, so it is possible to redefine how the on/off states are displayed.
 
-The standard mechanism for configuring a response to changing state in a CheckBox object is to set the #Feedback field
-with a callback function.
+To respond to user interaction with the Checkbox, set the #Feedback field with a callback function.
 -END-
 
 *****************************************************************************/
 
 #define PRV_CHECKBOX
 #define PRV_WIDGET_MODULE
-#include <parasol/modules/document.h>
-#include <parasol/modules/surface.h>
 #include <parasol/modules/widget.h>
+#include <parasol/modules/vector.h>
 #include "defs.h"
 
 static OBJECTPTR clCheckBox = NULL;
 
-static const FieldDef Align[] = {
-   { "Right",      ALIGN_RIGHT      }, { "Left",     ALIGN_LEFT },
-   { "Bottom",     ALIGN_BOTTOM     }, { "Top",      ALIGN_TOP },
-   { "Horizontal", ALIGN_HORIZONTAL }, { "Vertical", ALIGN_VERTICAL },
-   { "Center",     ALIGN_CENTER     }, { "Middle",   ALIGN_MIDDLE },
-   { NULL, 0 }
-};
+//****************************************************************************
 
-static void key_event(objCheckBox *, evKey *, LONG);
+static void style_trigger(objCheckBox *Self, LONG Style)
+{
+   if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) {
+      OBJECTPTR script;
+      if ((script = Self->prvStyleTrigger.Script.Script)) {
+         const ScriptArg args[] = {
+            { "CheckBox", FD_OBJECTPTR, { .Address = Self } },
+            { "Style", FD_LONG,         { .Long = Style } }
+         };
+         scCallback(script, Self->prvStyleTrigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+      }
+   }
+}
 
 //****************************************************************************
 
 static ERROR CHECKBOX_ActionNotify(objCheckBox *Self, struct acActionNotify *Args)
 {
-   if (Args->ActionID IS AC_Focus) {
-      if (!Self->prvKeyEvent) {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&key_event);
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
-      }
-
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_LostFocus) {
-      if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_Disable) {
-      Self->Flags |= CBF_DISABLED;
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_Enable) {
-      Self->Flags &= ~CBF_DISABLED;
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
-         Self->Feedback.Type = CALL_NONE;
+   if (Args->ActionID IS AC_Free) {
+      if ((Self->prvFeedback.Type IS CALL_SCRIPT) and (Self->prvFeedback.Script.Script->UID IS Args->ObjectID)) {
+         Self->prvFeedback.Type = CALL_NONE;
       }
    }
    else return ERR_NoSupport;
 
-   return ERR_Okay;
-}
-
-/*****************************************************************************
--ACTION-
-Activate: Activates the checkbox.
--END-
-*****************************************************************************/
-
-static ERROR CHECKBOX_Activate(objCheckBox *Self, APTR Void)
-{
-   parasol::Log log;
-   log.branch();
-
-   if (Self->Active) {
-      log.warning("Warning - recursion detected");
-      return ERR_Failed;
-   }
-
-   Self->Active = TRUE;
-
-   SURFACEINFO *info;
-   if (!drwGetSurfaceInfo(Self->RegionID, &info)) {
-      if (!(info->Flags & RNF_DISABLED)) {
-         Self->Value ^= 1;
-         acDrawID(Self->RegionID);
-
-         if (Self->Feedback.Type IS CALL_STDC) {
-            auto routine = (void (*)(APTR, objCheckBox *, LONG))Self->Feedback.StdC.Routine;
-
-            if (Self->Feedback.StdC.Context) {
-               parasol::SwitchContext context(Self->Feedback.StdC.Context);
-               routine(Self->Feedback.StdC.Context, Self, Self->Value);
-            }
-            else routine(Self->Feedback.StdC.Context, Self, Self->Value);
-         }
-         else if (Self->Feedback.Type IS CALL_SCRIPT) {
-            OBJECTPTR script;
-            if ((script = Self->Feedback.Script.Script)) {
-               const ScriptArg args[] = {
-                  { "CheckBox", FD_OBJECTPTR, { .Address = Self } },
-                  { "State", FD_LONG, { .Long = Self->Value } }
-               };
-               scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-            }
-         }
-
-         ChildEntry list[16];
-         LONG count = ARRAYSIZE(list);
-         if (!ListChildren(Self->Head.UniqueID, FALSE, list, &count)) {
-            for (WORD i=0; i < count; i++) DelayMsg(AC_Activate, list[i].ObjectID, NULL);
-         }
-      }
-   }
-
-   Self->Active = FALSE;
    return ERR_Okay;
 }
 
@@ -138,9 +64,7 @@ Disable: Disables the checkbox.
 
 static ERROR CHECKBOX_Disable(objCheckBox *Self, APTR Void)
 {
-   // See the ActionNotify routine to see what happens when the surface is disabled.
-
-   acDisableID(Self->RegionID);
+   Self->Flags |= CBF_DISABLED;
    return ERR_Okay;
 }
 
@@ -152,9 +76,7 @@ Enable: Turns the checkbox on if it has been disabled.
 
 static ERROR CHECKBOX_Enable(objCheckBox *Self, APTR Void)
 {
-   // See the ActionNotify routine to see what happens when the surface is enabled.
-
-   acEnableID(Self->RegionID);
+   Self->Flags &= ~CBF_DISABLED;
    return ERR_Okay;
 }
 
@@ -166,7 +88,7 @@ Focus: Sets the focus on the checkbox and activates keyboard monitoring.
 
 static ERROR CHECKBOX_Focus(objCheckBox *Self, APTR Void)
 {
-   return acFocusID(Self->RegionID);
+   return acFocus(Self->Viewport);
 }
 
 //****************************************************************************
@@ -174,7 +96,7 @@ static ERROR CHECKBOX_Focus(objCheckBox *Self, APTR Void)
 static ERROR CHECKBOX_Free(objCheckBox *Self, APTR Void)
 {
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-   if (Self->RegionID) { acFreeID(Self->RegionID); Self->RegionID = 0; }
+   if (Self->Viewport)    { acFree(Self->Viewport); Self->Viewport = NULL; }
    return ERR_Okay;
 }
 
@@ -187,7 +109,7 @@ Hide: Removes the checkbox from the display.
 static ERROR CHECKBOX_Hide(objCheckBox *Self, APTR Void)
 {
    Self->Flags |= CBF_HIDE;
-   return acHideID(Self->RegionID);
+   return acHide(Self->Viewport);
 }
 
 //****************************************************************************
@@ -196,45 +118,31 @@ static ERROR CHECKBOX_Init(objCheckBox *Self, APTR Void)
 {
    parasol::Log log;
 
-   if (!Self->SurfaceID) { // Find the parent surface
-      OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
-         owner_id = GetOwnerID(owner_id);
+   if (!Self->ParentViewport) { // Find our parent viewport
+      OBJECTID owner_id;
+      for (owner_id=GetOwner(Self); (owner_id); owner_id=GetOwnerID(owner_id)) {
+          if (GetClassID(owner_id) IS ID_VECTOR) {
+             Self->ParentViewport = (objVector *)GetObjectPtr(owner_id);
+             if ((Self->ParentViewport->Head.SubID != ID_VECTORVIEWPORT) and
+                 (Self->ParentViewport->Head.SubID != ID_VECTORSCENE)) return ERR_UnsupportedOwner;
+             else break;
+          }
       }
-      if (owner_id) Self->SurfaceID = owner_id;
-      else return log.warning(ERR_UnsupportedOwner);
+      if (!owner_id) return ERR_UnsupportedOwner;
    }
 
-   if (drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
-      return ERR_Failed; // Graphics styling is required.
-   }
+   Self->Viewport->Parent = &Self->ParentViewport->Head;
 
-   objSurface *region;
-   if (!AccessObject(Self->RegionID, 5000, &region)) { // Initialise the checkbox region
-      SetFields(region, FID_Parent|TLONG, Self->SurfaceID,
-                        FID_Region|TLONG, TRUE,
-                        TAGEND);
+   if (Self->Flags & CBF_HIDE) Self->Viewport->Visibility = VIS_HIDDEN;
 
-      region->Flags |= RNF_GRAB_FOCUS;
-
-      if (!acInit(region)) {
-         SubscribeActionTags(region,
-            AC_Disable,
-            AC_Enable,
-            AC_Focus,
-            AC_LostFocus,
-            TAGEND);
-      }
-      else {
-         ReleaseObject(region);
-         return ERR_Init;
+   if (!acInit(Self->Viewport)) {
+      if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UID, NULL, NULL)) {
+         return ERR_Failed; // Graphics styling is required.
       }
 
-      ReleaseObject(region);
+      //region->Flags |= RNF_GRAB_FOCUS;
    }
    else return ERR_AccessObject;
-
-   if (!(Self->Flags & CBF_HIDE)) acShow(Self);
 
    return ERR_Okay;
 }
@@ -247,7 +155,7 @@ MoveToBack: Moves the checkbox to the back of the display area.
 
 static ERROR CHECKBOX_MoveToBack(objCheckBox *Self, APTR Void)
 {
-   return acMoveToBackID(Self->RegionID);
+   return acMoveToBack(Self->Viewport);
 }
 
 /*****************************************************************************
@@ -258,14 +166,14 @@ MoveToFront: Moves the checkbox to the front of the display area.
 
 static ERROR CHECKBOX_MoveToFront(objCheckBox *Self, APTR Void)
 {
-   return acMoveToFrontID(Self->RegionID);
+   return acMoveToFront(Self->Viewport);
 }
 
 //****************************************************************************
 
 static ERROR CHECKBOX_NewObject(objCheckBox *Self, APTR Void)
 {
-   if (!NewLockedObject(ID_SURFACE, Self->Head.Flags|NF_INTEGRAL, NULL, &Self->RegionID)) {
+   if (!NewObject(ID_VECTORVIEWPORT, NF_INTEGRAL, &Self->Viewport)) {
       drwApplyStyleValues(Self, NULL);
       return ERR_Okay;
    }
@@ -280,7 +188,7 @@ Redimension: Changes the size and position of the checkbox.
 
 static ERROR CHECKBOX_Redimension(objCheckBox *Self, struct acRedimension *Args)
 {
-   return ActionMsg(AC_Redimension, Self->RegionID, Args);
+   return Action(AC_Redimension, Self->Viewport, Args);
 }
 
 /*****************************************************************************
@@ -291,7 +199,7 @@ Resize: Alters the size of the checkbox.
 
 static ERROR CHECKBOX_Resize(objCheckBox *Self, struct acResize *Args)
 {
-   return ActionMsg(AC_Resize, Self->RegionID, Args);
+   return Action(AC_Resize, Self->Viewport, Args);
 }
 
 /*****************************************************************************
@@ -303,7 +211,7 @@ Show: Make the checkbox visible.
 static ERROR CHECKBOX_Show(objCheckBox *Self, APTR Void)
 {
    Self->Flags &= ~CBF_HIDE;
-   return acShowID(Self->RegionID);
+   return acShow(Self->Viewport);
 }
 
 /*****************************************************************************
@@ -321,12 +229,12 @@ Bottom: The bottom coordinate of the checkbox (Y + Height).
 
 static ERROR GET_Bottom(objCheckBox *Self, LONG *Value)
 {
-   LONG y, height;
-   if (!drwGetSurfaceCoords(Self->RegionID, NULL, &y, NULL, NULL, NULL, &height)) {
-      *Value = y + height;
+   DOUBLE y, height;
+   if (!GetFields(Self->Viewport, FID_Y|TDOUBLE, &y, FID_Height|TDOUBLE, &height, TAGEND)) {
+      *Value = F2T(y + height);
       return ERR_Okay;
    }
-   else return ERR_GetSurfaceInfo;
+   else return ERR_GetField;
 }
 
 /*****************************************************************************
@@ -361,14 +269,14 @@ static ERROR SET_Disable(objCheckBox *Self, LONG Value)
 Feedback: Provides instant feedback when a user interacts with the checkbox.
 
 Set the Feedback field with a callback function in order to receive instant feedback when user interaction occurs.  The
-function prototype is `routine(*CheckBox, LONG State)`
+function prototype is `routine(*CheckBox, LONG Status)`
 
 *****************************************************************************/
 
 static ERROR GET_Feedback(objCheckBox *Self, FUNCTION **Value)
 {
-   if (Self->Feedback.Type != CALL_NONE) {
-      *Value = &Self->Feedback;
+   if (Self->prvFeedback.Type != CALL_NONE) {
+      *Value = &Self->prvFeedback;
       return ERR_Okay;
    }
    else return ERR_FieldNotSet;
@@ -377,11 +285,11 @@ static ERROR GET_Feedback(objCheckBox *Self, FUNCTION **Value)
 static ERROR SET_Feedback(objCheckBox *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Feedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
-      Self->Feedback = *Value;
-      if (Self->Feedback.Type IS CALL_SCRIPT) SubscribeAction(Self->Feedback.Script.Script, AC_Free);
+      if (Self->prvFeedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->prvFeedback.Script.Script, AC_Free);
+      Self->prvFeedback = *Value;
+      if (Self->prvFeedback.Type IS CALL_SCRIPT) SubscribeAction(Self->prvFeedback.Script.Script, AC_Free);
    }
-   else Self->Feedback.Type = CALL_NONE;
+   else Self->prvFeedback.Type = CALL_NONE;
    return ERR_Okay;
 }
 
@@ -401,32 +309,14 @@ height, use the FD_PERCENT flag when setting the field.
 
 static ERROR GET_Height(objCheckBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Height, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Height, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Height, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_Height(objCheckBox *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) OR ((Value->Type & FD_LARGE) and (!Value->Large))) {
-      return ERR_Okay;
-   }
-
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Height, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_Height, Value);
 }
 
 /*****************************************************************************
@@ -463,26 +353,7 @@ string will be restricted to the space available.
 
 *****************************************************************************/
 
-// Internal field for supporting dynamic style changes when a GUI object is used in a document.
-
-static ERROR SET_LayoutStyle(objCheckBox *Self, DOCSTYLE *Value)
-{
-   if (!Value) return ERR_Okay;
-
-   //if (Self->Head.Flags & NF_INITIALISED) docApplyFontStyle(Value->Document, Value, Self->Font);
-   //else docApplyFontStyle(Value->Document, Value, Self->Font);
-
-   return ERR_Okay;
-}
-
 /*****************************************************************************
-
--FIELD-
-Region: The surface that represents the checkbox is referenced here.
-
-The drawable area that represents the checkbox display can be accessed through this field.  For further information,
-refer to the @Surface class.  Note that talking to the surface directly can have adverse effects on the
-checkbox control system.  Where possible, all communication should be limited to the checkbox object itself.
 
 -FIELD-
 Right: The right coordinate of the checkbox (X + Width).
@@ -491,21 +362,35 @@ Right: The right coordinate of the checkbox (X + Width).
 
 static ERROR GET_Right(objCheckBox *Self, LONG *Value)
 {
-   LONG x, width;
-   if (!drwGetSurfaceCoords(Self->RegionID, &x, NULL, NULL, NULL, &width, NULL)) {
-      *Value = x + width;
+   DOUBLE x, width;
+   if (!GetFields(Self->Viewport, FID_X|TDOUBLE, &x, FID_Width|TDOUBLE, &width, TAGEND)) {
+      *Value = F2T(x + width);
       return ERR_Okay;
    }
-   else return ERR_GetSurfaceInfo;
+   else return ERR_GetField;
 }
 
 /*****************************************************************************
 
 -FIELD-
-Surface: The surface that will represent the checkbox widget.
+StyleTrigger: Requires a callback for reporting changes that can affect graphics styling.
 
-The surface that will contain the checkbox widget is set here.  If this field is not set prior to initialisation, the
-checkbox will attempt to scan for the correct surface by analysing its parents until it finds a suitable candidate.
+This field is reserved for use by the style code that is managing the widget graphics.
+
+*****************************************************************************/
+
+static ERROR SET_StyleTrigger(objCheckBox *Self, FUNCTION *Value)
+{
+   if (Value) {
+      if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) UnsubscribeAction(Self->prvStyleTrigger.Script.Script, AC_Free);
+      Self->prvStyleTrigger = *Value;
+      if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) SubscribeAction(Self->prvStyleTrigger.Script.Script, AC_Free);
+   }
+   else Self->prvStyleTrigger.Type = CALL_NONE;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 
 -FIELD-
 TabFocus: Set this field to a TabFocus object to register the checkbox in a tab-list.
@@ -521,7 +406,7 @@ static ERROR SET_TabFocus(objCheckBox *Self, OBJECTID Value)
    OBJECTPTR tabfocus;
    if (!AccessObject(Value, 5000, &tabfocus)) {
       if (tabfocus->ClassID IS ID_TABFOCUS) {
-         tabAddObject(tabfocus, Self->RegionID);
+         tabAddObject(tabfocus, Self->Viewport->Head.UID);
       }
       ReleaseObject(tabfocus);
    }
@@ -533,32 +418,51 @@ static ERROR SET_TabFocus(objCheckBox *Self, OBJECTID Value)
 /*****************************************************************************
 
 -FIELD-
-Value: Indicates the current on/off state of the checkbox.
+Status: Indicates the current on/off state of the checkbox.
 
-To get the on/off state of the checkbox, read this field.  It can also be set at run-time to force the checkbox into
+To get the on/off state of the checkbox, read this field.  It can also be set at run-time to change the checkbox to
 an on or off state.  Only values of 0 (off) and 1 (on) are valid.
+
+If the state is altered post-initialisation, the UI will be updated and the #Feedback function will be called
+with the new state value.
 
 *****************************************************************************/
 
-static ERROR GET_Value(objCheckBox *Self, LONG *Value)
+static ERROR SET_Status(objCheckBox *Self, LONG Value)
 {
-   *Value = Self->Value;
-   return ERR_Okay;
-}
+   parasol::Log log;
 
-static ERROR SET_Value(objCheckBox *Self, LONG Value)
-{
+   log.branch();
+
+   if ((Value != TRUE) and (Value != FALSE)) return log.warning(ERR_InvalidValue);
+
    if (Self->Head.Flags & NF_INITIALISED) {
-      if ((Value IS TRUE) and (Self->Value != TRUE)) {
-         Self->Value = TRUE;
-         acDrawID(Self->RegionID);
-      }
-      else if ((Value IS FALSE) and (Self->Value != FALSE)) {
-         Self->Value = FALSE;
-         acDrawID(Self->RegionID);
+      if (Self->Status != Value) {
+         if (Self->Active) return log.warning(ERR_Recursion);
+         Self->Active = TRUE;
+         Self->Status = Value;
+         style_trigger(Self, STYLE_CONTENT);
+
+         if (Self->prvFeedback.Type IS CALL_STDC) {
+            parasol::SwitchContext context(Self->prvFeedback.StdC.Context);
+            auto routine = (void (*)(APTR, objCheckBox *, LONG))Self->prvFeedback.StdC.Routine;
+            routine(Self->prvFeedback.StdC.Context, Self, Self->Status);
+         }
+         else if (Self->prvFeedback.Type IS CALL_SCRIPT) {
+            OBJECTPTR script;
+            if ((script = Self->prvFeedback.Script.Script)) {
+               const ScriptArg args[] = {
+                  { "CheckBox", FD_OBJECTPTR, { .Address = Self } },
+                  { "Status", FD_LONG, { .Long = Self->Status } }
+               };
+               scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+            }
+         }
+
+         Self->Active = FALSE;
       }
    }
-   else Self->Value = Value;
+   else Self->Status = Value;
 
    return ERR_Okay;
 }
@@ -575,33 +479,14 @@ use the FD_PERCENT flag when setting the field.
 
 static ERROR GET_Width(objCheckBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Width, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Width, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Width, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_Width(objCheckBox *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) OR ((Value->Type & FD_LARGE) and (!Value->Large))) {
-      return ERR_Okay;
-   }
-
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Width, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_Width, Value);
 }
 
 /*****************************************************************************
@@ -617,29 +502,14 @@ fixed.  Negative values are permitted.
 
 static ERROR GET_X(objCheckBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_X, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_X, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_X, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_X(objCheckBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_X, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_X, Value);
 }
 
 /*****************************************************************************
@@ -661,28 +531,14 @@ coordinate calculated from the formula `X = ContainerWidth - CheckBoxWidth - XOf
 
 static ERROR GET_XOffset(objCheckBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_XOffset, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_XOffset, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_XOffset, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_XOffset(objCheckBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_XOffset, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_XOffset, Value);
 }
 
 /*****************************************************************************
@@ -698,29 +554,13 @@ as fixed.  Negative values are permitted.
 
 static ERROR GET_Y(objCheckBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Y, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-
-}
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Y, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Y, &Value->Large);
+   else return ERR_FieldTypeMismatch;}
 
 static ERROR SET_Y(objCheckBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Y, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_Y, Value);
 }
 
 /*****************************************************************************
@@ -743,40 +583,14 @@ coordinate calculated from the formula `Y = ContainerHeight - CheckBoxHeight - Y
 
 static ERROR GET_YOffset(objCheckBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_YOffset, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_YOffset, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_YOffset, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_YOffset(objCheckBox *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_YOffset, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-}
-
-//****************************************************************************
-
-static void key_event(objCheckBox *Self, evKey *Event, LONG Size)
-{
-   if (!(Event->Qualifiers & KQ_PRESSED)) return;
-
-   if ((Event->Code IS K_ENTER) OR (Event->Code IS K_SPACE)) {
-      acActivate(Self);
-   }
+   return SetVariable(Self->Viewport, FID_YOffset, Value);
 }
 
 //****************************************************************************
@@ -784,21 +598,19 @@ static void key_event(objCheckBox *Self, evKey *Event, LONG Size)
 #include "class_checkbox_def.c"
 
 static const FieldArray clFields[] = {
-   { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
-   { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clCheckBoxFlags, NULL, NULL },
-   { "LabelWidth",   FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "Value",        FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_Value },
-   { "Align",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&Align, NULL, NULL },
+   { "Viewport",       FDF_OBJECT|FDF_R,     ID_VECTORVIEWPORT, NULL, NULL },
+   { "ParentViewport", FDF_OBJECT|FDF_RI,    ID_VECTORVIEWPORT, NULL, NULL },
+   { "Flags",          FDF_LONGFLAGS|FDF_RW, (MAXINT)&clCheckBoxFlags, NULL, NULL },
+   { "LabelWidth",     FDF_LONG|FDF_RW,      0, NULL, NULL },
+   { "Status",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_Status },
+   { "Align",          FDF_LONGFLAGS|FDF_RW, (MAXINT)&clCheckBoxAlign, NULL, NULL },
    // Virtual fields
    { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,               0, (APTR)GET_Bottom, NULL },
    { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,              0, (APTR)GET_Disable, (APTR)SET_Disable },
    { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW,       0, (APTR)GET_Feedback, (APTR)SET_Feedback },
    { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,            0, (APTR)GET_Label, (APTR)SET_Label },
-   { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL, (APTR)SET_LayoutStyle },
    { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,               0, (APTR)GET_Right, NULL },
-   { "Selected",     FDF_SYNONYM|FDF_VIRTUAL|FDF_LONG|FDF_RW,  0, (APTR)GET_Value, (APTR)SET_Value },
+   { "StyleTrigger", FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_W,        0, NULL, (APTR)SET_StyleTrigger },
    { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,           ID_TABFOCUS, NULL,   (APTR)SET_TabFocus },
    // Variable Fields
    { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height,  (APTR)SET_Height },

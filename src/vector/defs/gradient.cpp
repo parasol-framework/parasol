@@ -30,7 +30,7 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
    if (!cols) {
       if (Vector.FillGradient->Inherit) cols = Vector.FillGradient->Inherit->Colours;
       if (!cols) {
-         log.warning("No colour table referenced in gradient %p for vector #%d.", Vector.FillGradient, Vector.Head.UniqueID);
+         log.warning("No colour table referenced in fill gradient %p for vector #%d.", Vector.FillGradient, Vector.Head.UID);
          return NULL;
       }
    }
@@ -40,11 +40,14 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
       return &cols->table;
    }
    else {
-      if (Opacity IS Vector.FillGradientAlpha) return Vector.FillGradientTable;
+      if ((Vector.FillGradientTable) and (Opacity IS Vector.FillGradientAlpha)) return Vector.FillGradientTable;
 
       delete Vector.FillGradientTable;
       Vector.FillGradientTable = new (std::nothrow) GRADIENT_TABLE();
-      if (!Vector.FillGradientTable) return NULL;
+      if (!Vector.FillGradientTable) {
+         log.warning("Failed to allocate fill gradient table");
+         return NULL;
+      }
       Vector.FillGradientAlpha = Opacity;
 
       for (unsigned i=0; i < Vector.FillGradientTable->size(); i++) {
@@ -58,23 +61,31 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
 
 GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
 {
+   parasol::Log log(__FUNCTION__);
+
    GradientColours *cols = Vector.StrokeGradient->Colours;
    if (!cols) {
       if (Vector.StrokeGradient->Inherit) cols = Vector.StrokeGradient->Inherit->Colours;
-      if (!cols) return NULL;
+      if (!cols) {
+         log.warning("No colour table referenced in stroke gradient %p for vector #%d.", Vector.FillGradient, Vector.Head.UID);
+         return NULL;
+      }
    }
 
-   if ((Vector.StrokeOpacity IS 1.0) AND (Vector.Opacity IS 1.0)) {
+   if ((Vector.StrokeOpacity IS 1.0) and (Vector.Opacity IS 1.0)) {
       Vector.StrokeGradientAlpha = 1.0;
       return &cols->table;
    }
    else {
       DOUBLE opacity = Vector.StrokeOpacity * Vector.Opacity;
-      if (opacity IS Vector.StrokeGradientAlpha) return Vector.StrokeGradientTable;
+      if ((Vector.StrokeGradientTable) and (opacity IS Vector.StrokeGradientAlpha)) return Vector.StrokeGradientTable;
 
       delete Vector.StrokeGradientTable;
       Vector.StrokeGradientTable = new (std::nothrow) GRADIENT_TABLE();
-      if (!Vector.StrokeGradientTable) return NULL;
+      if (!Vector.StrokeGradientTable) {
+         log.warning("Failed to allocate stroke gradient table");
+         return NULL;
+      }
       Vector.StrokeGradientAlpha = opacity;
 
       for (unsigned i=0; i < Vector.StrokeGradientTable->size(); i++) {
@@ -86,10 +97,9 @@ GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
    }
 }
 
-/*****************************************************************************
-** Constructor for the GradientColours class.  This expects to be called whenever the Gradient class updates the
-** Stops array.
-*/
+//****************************************************************************
+// Constructor for the GradientColours class.  This expects to be called whenever the Gradient class updates the
+// Stops array.
 
 GradientColours::GradientColours(rkVectorGradient *Gradient, DOUBLE Alpha)
 {
@@ -133,12 +143,12 @@ static ERROR VECTORGRADIENT_Free(objVectorGradient *Self, APTR Void)
    if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
    if (Self->Colours) { delete Self->Colours; Self->Colours = NULL; }
 
-   VectorTransform *next;
-   for (auto scan=Self->Transforms; scan; scan=next) {
+   VectorMatrix *next;
+   for (auto scan=Self->Matrices; scan; scan=next) {
       next = scan->Next;
       FreeResource(scan);
    }
-   Self->Transforms = NULL;
+   Self->Matrices = NULL;
 
    return ERR_Okay;
 }
@@ -166,16 +176,16 @@ static ERROR VECTORGRADIENT_Init(objVectorGradient *Self, APTR Void)
 
 static ERROR VECTORGRADIENT_NewObject(objVectorGradient *Self, APTR Void)
 {
-   Self->Type  = VGT_LINEAR;
-   Self->Units = VUNIT_BOUNDING_BOX;
    Self->SpreadMethod = VSPREAD_PAD;
+   Self->Type    = VGT_LINEAR;
+   Self->Units   = VUNIT_BOUNDING_BOX;
    // SVG requires that these are all set to 50%
    Self->CenterX = 0.5;
    Self->CenterY = 0.5;
-   Self->Radius = 0.5;
-   Self->X1 = 0;
-   Self->X2 = 100; // For an effective contoured gradient, this needs to default to 100
-   Self->Flags |= VGF_RELATIVE_CX|VGF_RELATIVE_CY|VGF_RELATIVE_RADIUS;
+   Self->Radius  = 0.5;
+   Self->X1      = 0;
+   Self->X2      = 100; // For an effective contoured gradient, this needs to default to 100
+   Self->Flags  |= VGF_RELATIVE_CX|VGF_RELATIVE_CY|VGF_RELATIVE_RADIUS;
    return ERR_Okay;
 }
 
@@ -461,7 +471,7 @@ to define a start and end point for interpolating the gradient colours.
 
 static ERROR VECTORGRADIENT_GET_Stops(objVectorGradient *Self, GradientStop **Value, LONG *Elements)
 {
-   *Value = Self->Stops;
+   *Value    = Self->Stops;
    *Elements = Self->TotalStops;
    return ERR_Okay;
 }
@@ -503,84 +513,37 @@ A transform can be applied to the gradient by setting this field with an SVG com
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_SET_Transform(objVectorGradient *Self, CSTRING Value)
+static ERROR VECTORGRADIENT_SET_Transform(objVectorGradient *Self, CSTRING Commands)
 {
-   if (!Value) return ERR_NullArgs;
+   parasol::Log log;
 
-   // Clear any existing transforms.
+   if (!Commands) return log.warning(ERR_InvalidValue);
 
-   VectorTransform *scan, *next;
-   for (scan=Self->Transforms; scan; scan=next) {
-      next = scan->Next;
-      FreeResource(scan);
+   if (!Self->Matrices) {
+      VectorMatrix *matrix;
+      if (!vecNewMatrix(Self, &matrix)) return vecParseTransform(matrix, Commands);
+      else return ERR_CreateResource;
    }
-   Self->Transforms = NULL;
-
-   VectorTransform *transform;
-
-   CSTRING str = Value;
-   while (*str) {
-      if (!StrCompare(str, "matrix", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_MATRIX))) {
-            str = read_numseq(str+6, &transform->Matrix[0], &transform->Matrix[1], &transform->Matrix[2], &transform->Matrix[3], &transform->Matrix[4], &transform->Matrix[5], TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "translate", 9, 0)) {
-         if ((transform = add_transform(Self, VTF_TRANSLATE))) {
-            DOUBLE x = 0;
-            DOUBLE y = 0;
-            str = read_numseq(str+9, &x, &y, TAGEND);
-            transform->X += x;
-            transform->Y += y;
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "rotate", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_ROTATE))) {
-            str = read_numseq(str+6, &transform->Angle, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "scale", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SCALE))) {
-            str = read_numseq(str+5, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewX", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW))) {
-            transform->X = 0;
-            str = read_numseq(str+5, &transform->X, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewY", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW))) {
-            transform->Y = 0;
-            str = read_numseq(str+5, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else str++;
+   else {
+      vecResetMatrix(Self->Matrices);
+      return vecParseTransform(Self->Matrices, Commands);
    }
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************
 -FIELD-
-Transforms: A linked list of transforms that have been applied to the gradient.
+Matrices: A linked list of transform matrices that have been applied to the gradient.
 
-Any transforms that have been applied to the gradient can be read from the Transforms field.  Each transform is
-represented by the VECTOR_TRANSFORM structure, and are linked in the order in which they are applied to the gradient.
+All transforms that have been applied to the gradient can be read from the Matrices field.  Each transform is
+represented by the VectorMatrix structure, and are linked in the order in which they were applied to the gradient.
 
-&VectorTransform
+&VectorMatrix
+
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Transforms(objVectorGradient *Self, VectorTransform **Value)
+static ERROR VECTORGRADIENT_GET_Matrices(objVectorGradient *Self, VectorMatrix **Value)
 {
-   *Value = Self->Transforms;
+   *Value = Self->Matrices;
    return ERR_Okay;
 }
 
@@ -594,8 +557,8 @@ The type of the gradient to be drawn is specified here.
 -FIELD-
 Units: Defines the coordinate system for fields X1, Y1, X2 and Y2.
 
-The default coordinate system for gradients is BOUNDING_BOX, which positions the gradient around the vector that
-references it.  The alternative is USERSPACE, which positions the gradient relative to the current viewport.
+The default coordinate system for gradients is `BOUNDING_BOX`, which positions the gradient around the vector that
+references it.  The alternative is `USERSPACE`, which positions the gradient relative to the current viewport.
 
 -FIELD-
 X1: Initial X coordinate for the gradient.
@@ -767,7 +730,7 @@ static const FieldArray clGradientFields[] = {
    { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)VECTORGRADIENT_GET_ID, (APTR)VECTORGRADIENT_SET_ID },
    { "Stops",        FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW, (MAXINT)"GradientStop", (APTR)VECTORGRADIENT_GET_Stops, (APTR)VECTORGRADIENT_SET_Stops },
    { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)VECTORGRADIENT_SET_Transform },
-   { "Transforms",   FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorTransform", (APTR)VECTORGRADIENT_GET_Transforms, NULL },
+   { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorMatrix", (APTR)VECTORGRADIENT_GET_Matrices, NULL },
    END_FIELD
 };
 

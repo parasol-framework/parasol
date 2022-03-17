@@ -1146,10 +1146,8 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
       if (!AllocMemory(sizeof(CacheFile) + pathlen + file_size + 1, MEM_NO_CLEAR|MEM_UNTRACKED, (APTR *)&cache, NULL)) {
          ClearMemory(cache, sizeof(CacheFile));
          cache->Path = (STRING)(cache + 1);
-         if (file_size) {
-            cache->Data = cache->Path + pathlen;
-            ((STRING)cache->Data)[file_size] = 0; // Null terminator is added to help with text file processing
-         }
+         cache->Data = cache->Path + pathlen;
+         ((STRING)cache->Data)[file_size] = 0; // Null terminator is added to help with text file processing
          cache->Locks     = 1;
          cache->Size      = file_size;
          cache->TimeStamp = timestamp;
@@ -1158,23 +1156,24 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
          CopyMemory(path, cache->Path, pathlen);
          FreeResource(path);
 
-         if (!file_size) error = ERR_Okay;
-         else {
+         if (file_size) {
             LONG result;
-            if ((!acRead(file, cache->Data, file_size, &result)) and (file_size IS result)) {
-               glCache[index] = cache;
-               *Cache = cache;
-               acFree(file);
+            error = acRead(file, cache->Data, file_size, &result);
+            if ((!error) and (file_size != result)) error = ERR_Read;
+         }
 
-               if (!glCacheTimer) {
-                  parasol::SwitchContext context(CurrentTask());
-                  auto call = make_function_stdc(check_cache);
-                  SubscribeTimer(60, &call, &glCacheTimer);
-               }
+         if (!error) {
+            glCache[index] = cache;
+            *Cache = cache;
+            acFree(file);
 
-               return ERR_Okay;
+            if (!glCacheTimer) {
+               parasol::SwitchContext context(CurrentTask());
+               auto call = make_function_stdc(check_cache);
+               SubscribeTimer(60, &call, &glCacheTimer);
             }
-            else error = ERR_Read;
+
+            return ERR_Okay;
          }
 
          FreeResource(cache);
@@ -1540,7 +1539,7 @@ ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Perm
    OBJECTPTR file;
    ERROR error;
 
-   log.branch("Object: %d, Dest: %s", Object->UniqueID, Path);
+   log.branch("Object: %d, Dest: %s", Object->UID, Path);
 
    if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
          FID_Path|TSTR,         Path,
@@ -1548,7 +1547,7 @@ ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Perm
          FID_Permissions|TLONG, Permissions,
          TAGEND))) {
 
-      error = acSaveImage(Object, file->UniqueID, ClassID);
+      error = acSaveImage(Object, file->UID, ClassID);
 
       acFree(file);
       return error;
@@ -1585,7 +1584,7 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
 
    if ((!Object) or (!Path)) return log.warning(ERR_NullArgs);
 
-   log.branch("#%d to %s", Object->UniqueID, Path);
+   log.branch("#%d to %s", Object->UID, Path);
 
    OBJECTPTR file;
    ERROR error;
@@ -1595,7 +1594,7 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
          FID_Permissions|TLONG, Permissions,
          TAGEND))) {
 
-      error = acSaveToObject(Object, file->UniqueID, 0);
+      error = acSaveToObject(Object, file->UID, 0);
 
       acFree(file);
       return error;

@@ -148,7 +148,7 @@ paths that are attributed to the volume if the name already exists.  If the volu
 will be created from scratch.
 
 This function uses tags to create new volumes.  The following table lists all tags that are accepted by this
-function.  Remember to terminate the taglist with TAGEND.
+function.  Remember to terminate the taglist with `TAGEND`.
 
 <types type="Tag">
 <type name="AST_NAME">Required.  Follow this tag with the string name of the volume.</>
@@ -160,7 +160,7 @@ function.  Remember to terminate the taglist with TAGEND.
 <type name="AST_LABEL">An optional label or short comment may be applied to the volume.  This may be useful if the volume name has little meaning to the user (e.g. drive1, drive2 ...).</>
 </types>
 
-Flags that may be passed with the AST_FLAGS tag are as follows:
+Flags that may be passed with the `AST_FLAGS` tag are as follows:
 
 <types lookup="VOLUME"/>
 

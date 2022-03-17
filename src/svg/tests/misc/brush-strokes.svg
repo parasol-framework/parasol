@@ -1,0 +1,51 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg width="1024px" height="840" viewBox="0 0 1024 840"  version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <image id="chain" xlink:href="../brushes/chain.png"/>
+    <image id="chequer" xlink:href="../brushes/chequer.png"/>
+    <image id="fuzz" xlink:href="../brushes/fuzz.png"/>
+    <image id="helix" xlink:href="../brushes/helix.png"/>
+    <image id="speckle" xlink:href="../brushes/speckle.png"/>
+    <image id="triangle" xlink:href="../brushes/triangle.png"/>
+  </defs>
+
+  <rect fill="#FFFFFF" width="1900" height="1024"/>
+
+  <rect x="20" y="20" width="100" height="100" fill="none" stroke-width="12" stroke="url(#helix)"/>
+
+  <rect x="10" y="410" width="100" height="100" rx="10" ry="10" fill="none" stroke-width="6" stroke="url(#chequer)"
+    transform="skewX(30)"/>
+
+  <rect fill="none" width="100" height="200" rx="3" ry="3" stroke="url(#speckle)" stroke-width="12"
+    transform="translate(250,600) rotate(45,70,70) "/>
+
+  <desc>Rotated and skewed image.  The accompanying rectangle should be positioned at the same point.</desc>
+
+  <g transform="translate(200,460) rotate(20,0,0) skewX(30)">
+    <rect width="300" height="100" fill="none" stroke-width="12" stroke="url(#fuzz)" stroke-opacity="0.5"/>
+  </g>
+
+  <desc>Spiral</desc>
+  <g transform="translate(300,300) scale(0.4)">
+    <polyline transform="skewX(30)" stroke="url(#chequer)" stroke-width="12" fill="none"
+       points="50,375 150,375 150,325 250,325 250,375 350,375 350,250 450,250 450,375 550,375 550,175 650,175 650,375 750,375 750,100 850,100 850,375 950,375 950,25 1050,25 1050,375 1150,375" />
+  </g>
+
+  <g transform="rotate(10,300,300)">
+    <path id="Spiral" transform="translate(500,150)" d="M153 334 C153 334 151 334 151 334 C151 339 153 344 156 344 C164 344 171 339 171 334 C171 322 164 314 156 314 C142 314 131 322 131 334 C131 350 142 364 156 364 C175 364 191 350 191 334 C191 311 175 294 156 294 C131 294 111 311 111 334 C111 361 131 384 156 384 C186 384 211 361 211 334 C211 300 186 274 156 274"
+      stroke="url(#chain)" stroke-width="12" fill="none"/>
+  </g>
+
+  <path id="SimpleCurve" fill="none" transform="translate(0,640)" d="M100 200 C100 100 400 100 400 200"
+    stroke="url(#triangle)" stroke-width="4"/>
+
+  <desc>Rotated rectangle with radial gradient</desc>
+
+  <rect width="140" height="210" rx="20" ry="20" transform="translate(80,240) rotate(45,70,105)"
+    fill="none" stroke="url(#fuzz)" stroke-opacity="0.5" stroke-width="12" stroke-linecap="round"
+    stroke-linejoin="round" stroke-innerjoin="jag" stroke-dasharray="10,20,10,40,10,60"/>
+
+  <text x="250" y="250" font-size="300" fill="lightgrey" stroke-width="12" stroke="url(#triangle)">Abc</text>
+</svg>

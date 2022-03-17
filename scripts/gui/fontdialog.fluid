@@ -34,6 +34,7 @@ Valid options to use when creating the dialog are as follows:
 --]]
 
    require 'common'
+   require 'gui/listview'
    include 'display'
 
    if (gui == nil) then gui = { } end
@@ -42,13 +43,13 @@ Valid options to use when creating the dialog are as follows:
 gui.dialog.font = function(Options)
    local mFont = mod.load('font')
 
-   local self = { // Public variables
-      windowID = nil,
-      face = 'Open Sans',
-      size = 12,
-      style = 'Regular',
+   local self = { -- Public variables
+      windowID    = nil,
+      face        = 'Open Sans',
+      size        = 12,
+      style       = 'Regular',
       compactFace = nil,
-      colour = { r=0, g=0, b=0, a=255 }
+      colour      = { r=0, g=0, b=0, a=255 }
    }
 
    local lLongText = [[
@@ -61,15 +62,17 @@ Suspendisse sed diam ut sem euismod accumsan commodo vehicula sapien. Nullam nis
 Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas non nisi vehicula, aliquam turpis in, mattis lectus. Donec magna metus, tempor fringilla metus ac, ultricies efficitur ante. Quisque at semper elit. Ut in purus in est venenatis interdum. Curabitur a dui mauris. Suspendisse potenti. Suspendisse tempus dictum ipsum, id condimentum nulla fermentum sed. Etiam mattis ligula lacus, a tempor felis sodales fermentum. Donec in risus vulputate, tempor neque vel, volutpat mauris. Integer placerat a nunc a aliquet. Phasellus quis porta leo. Etiam et arcu ex. Nunc dictum at ipsum eu dapibus.
 
 Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla eget ornare ante, ac efficitur turpis. Proin venenatis eget sapien vitae volutpat. In interdum id ante in aliquet. Quisque convallis lacus in gravida fringilla. Nam porta pellentesque turpis, ut efficitur neque suscipit vel. Morbi vitae consequat nisl. Donec turpis lorem, dapibus eget scelerisque quis, porttitor bibendum leo.
-   ]]
+]]
 
+   local lWindow, lFonts, vwSize, vwStyle, vwFace, lTab
    local lShortText = 'The Quick Brown Fox Jumped Over The Lazy Dog'
+   local lOptions   = Options
+   local lSizes     = { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
+   local WIDGET_GAP = 6
 
-   local lOptions = Options
-   local lWindow, lFont, lFonts, vwSize, vwStyle, vwFace, lTab, rgnExample
-
-   local lSizes = { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
-   local lWidgetGap = 3
+   local function exampleMargin()
+      return math.round(self.examplePage.width * 0.05)
+   end
 
    local function sendFeedback(Accepted)
       local colour = self.colour.r .. ',' .. self.colour.g .. ',' .. self.colour.b .. ',' .. self.colour.a
@@ -83,69 +86,76 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       return true
    end
 
-   local function drawExample(Surface, Bitmap)
-      // Background
+   local function refreshGuidelines()
+      local seq = ''
+      local gap = exampleMargin()
+      local spacing = self.font.lineSpacing
+      local pageWidth = self.examplePage.width
 
-      local err, bkgd = Bitmap.mtGetColour(255, 255, 255, 255)
-      local err, border = Bitmap.mtGetColour(128, 128, 128, 255)
-      Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, bkgd, BAF_FILL)
-      Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, border, 0)
-
-      local clip = { left=Bitmap.ClipLeft, right=Bitmap.ClipRight, top=Bitmap.ClipTop, bottom=Bitmap.ClipBottom }
-
-      if (Bitmap.ClipLeft   < 1) then Bitmap.ClipLeft = 1 end
-      if (Bitmap.ClipTop    < 1) then Bitmap.ClipTop = 1 end
-      if (Bitmap.ClipRight  > Surface.Width - 1) then Bitmap.ClipRight = Surface.width - 1 end
-      if (Bitmap.ClipBottom > Surface.Height - 1) then Bitmap.ClipBottom = Surface.height - 1 end
-
-      if (not lFont) and (self.face) then
-         lFont = obj.new('font', {
-            x           = 12,
-            y           = 10,
-            align       = 'top',
-            alignHeight = Surface.height,
-            face        = nz(self.face, 'Open Sans'),
-            point       = nz(self.size, 12),
-            style       = nz(self.style, 'Regular'),
-            string      = nz(lOptions.example, lLongText)
-         })
+      local x1 = gap
+      local x2 = pageWidth - gap
+      for y = gap + self.font.height, self.examplePage.height, spacing do
+         seq = seq .. string.format('M%f,%f L%f,%f ', x1, y, x2, y)
       end
+      self.guidelines.sequence = seq
 
-      if (lFont) then
-         // Text guidelines
-
-         local err, guide = Bitmap.mtGetColour(240, 240, 255, 255)
-         local lines = Surface.height / lFont.height
-         local y = lFont.y + lFont.height
-         while (y < Surface.height) do
-            Bitmap.mtDrawRectangle(1, y, Surface.width-2, 1, guide, BAF_FILL)
-            y = y + lFont.lineSpacing
-         end
-
-         // Example text
-
-         lFont.bitmap = Bitmap
-         lFont.wrapEdge = Surface.width - lFont.x
-         lFont.alignHeight = Surface.height
-         lFont.acDraw()
+      if self.exampleText then
+         self.exampleText.inlineSize = x2 - x1
+         self.exampleText.x = gap
+         self.exampleText.y = gap + self.font.height
       end
-
-      Bitmap.ClipLeft   = clip.left
-      Bitmap.ClipRight  = clip.right
-      Bitmap.ClipTop    = clip.top
-      Bitmap.ClipBottom = clip.bottom
    end
 
-   // Retrieve the system list of known installed fonts and convert it to a Lua table.
+   local function refreshExample()
+      if not self.guidelines then
+         self.guidelines = self.examplePage.new('VectorPath', { strokeWidth = 0.5, stroke = 'rgb(0,0,180,64)' })
+      end
+
+      local pageWidth = self.examplePage.width
+      local newStyle = self.face .. '+' .. self.size .. '+' .. self.style
+      if newStyle == self.currentStyle then return end
+      self.currentStyle = newStyle
+
+      self.font = obj.new('font', {
+         face   = self.face,
+         point  = self.size,
+         style  = self.style,
+         string = nz(lOptions.example, lLongText)
+      })
+
+      local gap = exampleMargin()
+
+      refreshGuidelines()
+
+      if self.exampleText then
+         self.exampleText.acFree()
+      end
+
+      self.exampleText = self.examplePage.new('VectorText', {
+         x          = gap,
+         y          = gap + self.font.height,
+         fill       = 'rgb(0,0,0)',
+         inlineSize = pageWidth - (gap * 2),
+         face       = self.face,
+         fontSize   = self.size .. 'pt',
+         fontStyle  = self.font.style,
+         string     = lLongText
+      })
+
+      collectgarbage()
+      lWindow.acDraw()
+   end
+
+   -- Retrieve the system list of known installed fonts and convert it to a Lua table.
 
    local function getFonts()
       local err, list = mFont.GetList()
       if (list == nil) then error('Failed to retrieve list of fonts, error: ' .. mSys.GetErrorMsg(err)) end
 
-      lFonts = { }
+      lFonts       = { }
       lFontsSorted = { }
-      local font = list
-      local index = 0
+      local font   = list
+      local index  = 0
       while (font) do
          lFonts[font.name] = { }
          lFonts[font.name].order  = index
@@ -162,36 +172,47 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
    end
 
    local function showFontSizes(List)
-      local xml = ''
-      for k,v in ipairs(List) do
-         xml = xml .. '<item>' .. v .. '</item>\n'
+      local sizes = { }
+      for _, v in ipairs(List) do
+         table.insert(sizes, { id=v, name=v })
       end
-      vwSize.xml.acClear()
-      vwSize.xml.acDataFeed(0, DATA_XML, xml)
-      vwSize.acRefresh()
+      vwSize.loadItems(sizes)
    end
 
-   // Refresh the style list for the selected face
+   -- Refresh the style list for the selected face
 
    local function showStyles(Face)
-      vwStyle.xml.acClear()
-
-      local style = nz(lFonts[Face].styles, { 'Regular' })
-      local xml = ''
-      for k, v in ipairs(style) do
-         xml = xml .. '<item>' .. v .. '</item>'
+      local styles = { }
+      local font_styles = nz(lFonts[Face].styles, { 'Regular' })
+      for _, v in ipairs(font_styles) do
+         table.insert(styles, { id=v, name=v })
       end
-      vwStyle.xml.acDataFeed(0, DATA_XML, xml)
-      vwStyle.acRefresh()
+      vwStyle.loadItems(styles)
+   end
+
+   local function highlightSize(Size)
+      if not Size then return end
+      local selectSize = Size
+      for _,v in ipairs(lSizes) do
+         if v <= Size then
+            selectSize = v
+         else
+            break
+         end
+      end
+
+      vwSize.selectItems(function(Item)
+         if Item.id == selectSize then return true end
+      end)
    end
 
    catch(function()
       getFonts()
 
-      // Disassemble any compact font face definition.
+      -- Disassemble any compact font face definition.
 
       if (lOptions.face) then
-         local s = string.split(face, ':') // FaceName, Size, Style, Colour
+         local s = string.split(face, ':') -- FaceName, Size, Style, Colour
          if (s[1]) then lOptions.face = s[1] end
          if (s[2]) then lOptions.size = s[2] end
          if (s[3]) then lOptions.style = s[3] end
@@ -222,23 +243,24 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       end)
 
       self.windowID = lWindow.id
-
       lTab = lWindow.new('tabfocus', { })
+      self.scene = obj.new('VectorScene', { surface = lWindow.surface })
+      self.viewport = self.scene.new('VectorViewport', { })
 
-      // Okay and cancel buttons
+      -- Okay and cancel buttons
 
       local footer = lWindow.bottomMargin
 
-      lCancelButton = lWindow.new('button', {
+      lCancelButton = self.viewport.new('button', {
          text    = nz(lOptions.cancelText, 'Cancel'),
-         xOffset = lWidgetGap,
+         xOffset = WIDGET_GAP,
          yOffset = footer,
          icon    = 'items/cancel'
       })
 
-      lOkayButton = lWindow.new('button', {
+      lOkayButton = self.viewport.new('button', {
          text    = nz(lOptions.okText, 'OK'),
-         xOffset = lWindow.insidewidth - lCancelButton.x + lWidgetGap,
+         xOffset = lCancelButton.width + (WIDGET_GAP * 2),
          yOffset = footer,
          icon    = 'items/checkmark'
       })
@@ -246,174 +268,164 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       lOkayButton.subscribe('activate', function() sendFeedback(true) end)
       lCancelButton.subscribe('activate', function() sendFeedback(false) end)
 
-      footer = footer + lOkayButton.height + lWidgetGap
+      footer = footer + lOkayButton.height + WIDGET_GAP
 
-      // Font demonstration area
+      -- Font example area
 
-      rgnExample = lWindow.new('surface', {
-         x       = 200,
+      self.exampleVP = self.viewport.new('VectorViewport', {
+         x       = 210,
          y       = lWindow.topMargin,
          xOffset = lWindow.rightMargin,
          yOffset = footer
       })
-      rgnExample.acShow()
 
-      rgnExample.mtAddCallback(drawExample)
-
-      // Font size selection
-
-      local rgnSize = lWindow.new('surface', {
-         x       = rgnExample.x - lWidgetGap - 60,
-         yOffset = footer,
-         height  = 140,
-         width   = 60
+      self.exampleBkgd = self.exampleVP.new('VectorRectangle', {
+         fill   = 'rgb(253,255,246)',
+         stroke = 'rgb(0,0,0,64)',
+         strokeWidth = 2,
+         x      = 0,
+         y      = 0,
+         width  = '100%',
+         height = '100%'
       })
-      rgnSize.acShow()
 
-      vwSize = rgnSize.new('view', {
-         flags = '!NoIcons|Sensitive',
-         style = 'longlist',
-         selectCallback = function(View, Flags, Tag)
-            local selection = View.selection
-            if (selection) then
-               self.size = tonumber(selection)
-               if (self.size < 4) then
-                  self.size = 4
-               elseif (self.size > 400) then
-                  self.size = 400
-               end
+      self.exampleView = self.exampleVP.new('VectorViewport', {
+         x = 4, y = 4, xOffset = 4, yOffset = 4, overflow = VOF_HIDDEN
+      })
+
+      self.examplePage = self.exampleView.new('VectorViewport', {
+         name='view_page', width='100%', height='100%'
+      })
+
+      refreshExample()
+
+      -- Font size selection
+
+      vwSize = gui.listView({
+         x          = self.exampleVP.x - WIDGET_GAP - 60,
+         yOffset    = footer,
+         height     = 140,
+         width      = 60,
+         target     = self.viewport,
+         style      = 'LongList',
+         sensitive  = true,
+         noIcons    = true,
+         textAttrib = 'name',
+         itemSelected = function(View, Reason, Item)
+            local selection = Item.name
+            self.size = tonumber(selection)
+            if (self.size < 4) then
+               self.size = 4
+            elseif (self.size > 400) then
+               self.size = 400
             end
-            lFont = nil // A new font object will be needed.
             collectgarbage()
-            rgnExample.acDraw()
+            refreshExample()
          end
       })
 
       showFontSizes(lSizes)
 
-      // Font style selection
+      -- Font style selection
 
-      local rgnStyle = lWindow.new('surface', {
-         x       = lWindow.leftMargin,
-         yOffset = footer,
-         height  = 140,
-         width   = rgnSize.x - lWidgetGap - lWindow.leftMargin
-      })
-      rgnStyle.acShow()
-
-      vwStyle = rgnStyle.new('view', {
-         name  = 'ViewFontStyle',
-         style = 'LongList',
-         flags = '!NoIcons|Sensitive',
-         selectCallback = function(View, Flags, Tag)
-            local selection = View.selection
-            if (selection) then self.style = selection end
-            lFont = nil // A new font object will be needed.
+      vwStyle = gui.listView({
+         x            = lWindow.leftMargin,
+         yOffset      = footer,
+         height       = 140,
+         width        = vwSize.viewport.x - WIDGET_GAP - lWindow.leftMargin,
+         target       = self.viewport,
+         sensitive    = true,
+         noIcons      = true,
+         textAttrib   = 'name',
+         itemSelected = function(View, Reason, Item)
+            self.style = Item.name
             collectgarbage()
-            rgnExample.acDraw()
+            refreshExample()
          end
       })
 
-      footer = footer + rgnStyle.height + (lWidgetGap*2)
+      footer = footer + vwStyle.viewport.height + WIDGET_GAP
 
-      // Available font faces
+      -- Available font faces
 
-      local rgnFace = lWindow.new('surface', {
-         x = lWindow.leftMargin,
-         y = lWindow.topMargin,
-         width = rgnExample.x - lWidgetGap - lWindow.leftMargin,
-         yOffset = footer
-      })
-      rgnFace.acShow()
-
-      vwFace = rgnFace.new('view', {
-         style = 'LongList',
-         flags = '!Sensitive',
-         selectCallback = function(View, Flags, Tag)
-            local face = View.selection
-            if (lFonts[face] == nil) then
-               error('Font ' .. nz(self.face,'NIL') .. ' not in list.')
+      vwFace = gui.listView({
+         x            = lWindow.leftMargin,
+         y            = lWindow.topMargin,
+         width        = self.exampleVP.x - WIDGET_GAP - lWindow.leftMargin,
+         yOffset      = footer,
+         target       = self.viewport,
+         sensitive    = true,
+         textAttrib   = 'name',
+         itemSelected = function(View, Reason, Item)
+            if (lFonts[Item.name] == nil) then
+               error('Font "' .. nz(Item.name,'NIL') .. '" not recognised.')
             end
 
-            self.face = face
+            self.face = Item.name
 
-            showStyles(face)
+            showStyles(Item.name)
 
-            // Highlight the correct style, trying to keep the current setting if possible.
+            -- Highlight the correct style, trying to keep the current setting if possible.
 
-            catch(function()
-               vwStyle.selection = self.style
-            end,
-            function(Exception)
-               catch(function()
-                  vwStyle.selection = 'Regular'
-               end,
-               function(Exception)
-                  vwStyle.selectionIndex = 0
-               end)
+            if not self.style then
+               self.style = 'Regular'
+            end
+
+            vwStyle.selectItems(function(Item)
+               if (Item.id == self.style) then return true end
             end)
 
-            local sizes = lFonts[face].sizes
-            if (lFonts[face].scalable) or (sizes == nil) or (#sizes == 0) then
+            local sizes = lFonts[Item.name].sizes
+            if (lFonts[Item.name].scalable) or (sizes == nil) or (#sizes == 0) then
                sizes = lSizes
             end
 
             showFontSizes(sizes)
 
-            local closestSize = self.size
-            if (sizes[1] > closestSize) then closestSize = sizes[1] end
-            for _, size in ipairs(sizes) do
-               if (size <= self.size) then
-                  closestSize = size
-               else
-                  break
-               end
-            end
+            if (sizes[1] > self.size) then self.size = sizes[1] end
+            highlightSize(self.size)
 
-            vwSize.selection = closestSize
-
-            lFont = nil // A new font object will be needed.
-            rgnExample.acDraw()
+            refreshExample()
          end
       })
 
-      local xml = ''
-      for _, font in ipairs(lFontsSorted) do
-         if (font.scalable) then
-            xml = xml .. '<item icon="items/font">' .. font.name .. '</item>'
-         else
-            xml = xml .. '<item icon="layout/text_size">' .. font.name .. '</item>'
-         end
-      end
-      vwFace.xml.acDataFeed(0, DATA_XML, xml)
-      vwFace.acRefresh()
+      lWindow.surface.subscribe('redimension', function(Window, Args, State)
+         refreshGuidelines()
+      end, self)
 
-      lTab.mtAddObject(rgnFace)
-      lTab.mtAddObject(rgnStyle)
-      lTab.mtAddObject(rgnSize)
+      local faces = { }
+      for _, font in ipairs(lFontsSorted) do
+         local new_font = { id=font.name, name=font.name }
+         if (font.scalable) then
+            new_font.icon = 'items/font'
+         else
+            new_font.icon = 'layout/text_sans'
+         end
+         table.insert(faces, new_font)
+      end
+      vwFace.loadItems(faces)
+
+      --lTab.mtAddObject(vwFace.viewport)
+      --lTab.mtAddObject(vwStyle.viewport)
+      --lTab.mtAddObject(vwSize.viewport)
       lTab.mtAddObject(lOkayButton)
       lTab.mtAddObject(lCancelButton)
 
-      // Preselect list items based on the preferences supplied by the client.
+      -- Preselect list items based on the preferences supplied by the client.
 
-      vwFace.selection = nz(lOptions.face, 'Open Sans')
-      vwStyle.selection = nz(lOptions.style, 'Regular')
+      vwFace.selectItems(function(Item)
+         if Item.id == nz(lOptions.face, 'Open Sans') then return true end
+      end)
 
-      if (lOptions.size) then
-         local selectSize = lOptions.size
-         for k,v in ipairs(lSizes) do
-            if (v < lOptions.size) then
-               selectSize = v
-            else
-               break
-            end
-         end
-         vwSize.selection = selectSize
-      end
+      vwStyle.selectItems(function(Item)
+         if Item.id == nz(lOptions.style, 'Regular') then return true end
+      end)
+
+      highlightSize(self.size)
 
       lWindow.acMoveToFront()
       lWindow.acShow()
-      rgnFace.acFocus()
+      --vwFace.acFocus()
    end,
    function(Exception)
       error('Failed to initialise font dialog: ' .. Exception.message)
@@ -422,7 +434,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
    return self
 end
 
-   // This sub-routine is provided for languages other than Fluid to utilise the module.
+   -- This sub-routine is provided for languages other than Fluid to utilise the module.
 
    do
       local state = getExecutionState()

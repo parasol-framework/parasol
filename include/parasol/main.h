@@ -111,6 +111,15 @@ extern "C" {
   #define PF64() "%lld"
 #endif
 
+// Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
+// in to debug builds.
+
+#ifdef DEBUG
+ #define DEBUG_BREAK asm("int $3");
+#else
+ #define DEBUG_BREAK
+#endif
+
 /*****************************************************************************
 ** Endian management routines.
 */
@@ -325,7 +334,7 @@ struct Head { // Must be 64-bit aligned
    APTR  CreatorMeta;           // The creator (via NewObject) is permitted to store a custom data pointer here.
    CLASSID ClassID;             // Reference to the object's class, used to resolve the Class pointer
    CLASSID SubID;               // Reference to the object's sub-class, used to resolve the Class pointer
-   OBJECTID UniqueID;           // Unique object identifier
+   OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // Refers to the owner of this object
    WORD Flags;                  // Object flags
    WORD MemFlags;               // Recommended memory allocation flags

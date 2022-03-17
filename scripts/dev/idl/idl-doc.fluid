@@ -113,8 +113,8 @@ function saveDocuments()
          if (cl.meta) then
             local status, err = pcall(function()
                local out = docClass(cl)
-               out = out .. docTypes()
-               out = out .. docStructures()
+               out = out .. docTypes(cl.references)
+               out = out .. docStructures(cl.references)
                out = out .. '</book>\n'
                if nz(out) then
                   local file = obj.new('file', { flags='WRITE|NEW', path=outPath .. 'classes/' .. className:lower() .. '.xml' } )
@@ -139,7 +139,7 @@ end
 -- Used for extracting descriptions, notes etc.  NB: <pre> should be used for multi-line preformatting, while <code>
 -- should be used for in-place code formatting.
 
-function extractParagraph(Input, Caller)
+function extractParagraph(Input, Caller, References)
    Input = Input:trim()
 
    -- Convert dangling XML characters: < > &
@@ -176,10 +176,14 @@ function extractParagraph(Input, Caller)
             action = 'insert'
             line = line:gsub('&(%w*)', function(Lookup)
                if (glStructures[Lookup]) then
-                  glStructures[Lookup].refCount = nz(glStructures[Lookup].refCount, 0) + 1
+                  if References then
+                     References['STRUCT:' .. Lookup] = 1
+                  end
                   return '<struct lookup="' .. Lookup .. '"/>'
                elseif (glCustomTypes[Lookup]) then
-                  glCustomTypes[Lookup].refCount = nz(glCustomTypes[Lookup].refCount, 0) + 1
+                  if References then
+                     References['TYPE:' .. Lookup] = 1
+                  end
                   return '<types lookup="' .. Lookup .. '"/>'
                else
                   print('Unrecognised struct or constant "' .. Lookup .. '"')
@@ -260,10 +264,10 @@ function substituteReferences(String, Class)
 
    String = String:gsub('&([A-Z]%w*)', function(Lookup)
       if (glStructures[Lookup]) then
-         glStructures[Lookup].refCount = nz(glStructures[Lookup].refCount, 0) + 1
+         if Class then Class.references['STRUCT:' .. Lookup] = 1 end
          return '<struct>' .. Lookup .. '</struct>'
       elseif (glCustomTypes[Lookup]) then
-         glCustomTypes[Lookup].refCount = nz(glCustomTypes[Lookup].refCount, 0) + 1
+         if Class then Class.references['TYPE:' .. Lookup] = 1 end
          return '<type>' .. Lookup .. '</type>'
       else
          print('Unrecognised struct or constant "' .. Lookup .. '"')
@@ -397,7 +401,7 @@ function docClass(Class)
    out = out .. '    <include>modules/' .. Class.name:lower() .. '.h</include>\n'
    if nz(Class.date)         then out = out .. '    <date>' .. Class.date .. '</date>\n' end
    if nz(glModule.copyright) then out = out .. '    <copyright>' .. glModule.copyright:escXML() .. '</copyright>\n' end
-   if nz(Class.description)  then out = out .. '    <description>\n' .. extractParagraph(Class.description, Class) .. '</description>\n' end
+   if nz(Class.description)  then out = out .. '    <description>\n' .. extractParagraph(Class.description, Class, Class.references) .. '</description>\n' end
 
    if nz(Class.src) then
       out = out .. '    <source>\n'
@@ -426,14 +430,14 @@ function docClass(Class)
 
             if nz(a.description) then
                out = out .. "      <description>\n"
-               out = out .. extractParagraph(a.description, Class)
+               out = out .. extractParagraph(a.description, Class, Class.references)
                out = out .. "\n      </description>\n"
             end
 
             if nz(a.results) then
                local results = ''
-               for code, comment in pairs(a.results) do
-                  results = results .. "        <error code=\"" .. code .. "\">" .. substituteReferences(comment:escXML(), Class) .. "</error>\n"
+               for _, result in ipairs(a.results) do
+                  results = results .. "        <error code=\"" .. result.codeName .. "\">" .. substituteReferences(result.msg:escXML(), Class) .. "</error>\n"
                end
 
                if nz(results) then
@@ -478,14 +482,14 @@ function docClass(Class)
 
             if nz(method.description) then
                out = out .. '      <description>\n'
-               out = out .. extractParagraph(method.description, Class)
+               out = out .. extractParagraph(method.description, Class, Class.references)
                out = out .. '\n      </description>\n'
             end
 
             if nz(method.results) then
                local results = ''
-               for code, comment in pairs(method.results) do
-                  results = results .. "        <error code=\"" .. code .. "\">" .. substituteReferences(comment:escXML(), Class) .. "</error>\n"
+               for _, result in ipairs(method.results) do
+                  results = results .. "        <error code=\"" .. result.codeName .. "\">" .. substituteReferences(result.msg:escXML(), Class) .. "</error>\n"
                end
 
                if nz(results) then
@@ -548,7 +552,7 @@ function docClass(Class)
 
                local description = f.description
                if (description) then
-                  description = extractParagraph(description, Class)
+                  description = extractParagraph(description, Class, Class.references)
                end
 
                if (f.lookup != nil) then
@@ -688,24 +692,15 @@ function docFunction(Function)
    if nz(Function.result) then
       if nz(Function.result.values) then
          local errors = ''
-         if nz(Function.result.values) then
-            for ecode, comment in pairs(Function.result.values) do
-               if nz(ecode) then
-                  local code = _G['ERR_' .. ecode]
-                  if (code == nil) then
-                     print('Error code "' .. ecode .. '" referenced in function ' .. Function.name .. '() is invalid.')
-                  end
-
-                  comment = nz(comment, mSys.GetErrorMsg(code))
-                  errors = errors .. "      <error code=\"" .. ecode .. "\">" .. substituteReferences(comment:escXML()) .. "</error>\n"
-               end
-            end
+         for _, result in ipairs(Function.result.values) do
+            local comment = nz(result.msg, mSys.GetErrorMsg(code))
+            errors = errors .. "      <error code=\"" .. result.codeName .. "\">" .. substituteReferences(comment:escXML()) .. "</error>\n"
          end
 
          if nz(errors) then
             out = out .. "    <result type=\"ERROR\">\n" .. errors .. "    </result>\n"
          end
-      else
+      elseif nz(Function.result.comment) then
          local ref = ''
          if (Function.result.ref != nil) then
             ref = " lookup=\"" .. Function.result.lookup .. '"'
@@ -720,9 +715,16 @@ end
 
 -- Output custom types - flags, enumerators etc
 
-function docTypes()
+function docTypes(References)
    local out = ''
+   local sortedTypes = { }
    for prefix, ct in pairs(glCustomTypes) do
+      table.insert(sortedTypes, ct)
+   end
+
+   table.sort(sortedTypes, function(a,b) return a.prefix < b.prefix end)
+
+   for _, ct in ipairs(sortedTypes) do
       local comment = ''
       if (ct.comment) then comment = " comment=\"" .. ct.comment:escXML() .. '"' end
 
@@ -735,9 +737,20 @@ function docTypes()
          error("Unknowning grouping for custom type, '" .. ct.grouping .. "'")
       end
 
-      if not nz(ct.restrict) and nz(ct.refCount) then
-         out = out .. "    <constants lookup=\"" .. prefix .. '"' .. comment:escXML() .. '>\n'
-         for index, v in pairs(ct.list) do
+      if nz(ct.restrict) then
+         -- Ignore private types
+      elseif References and (References['TYPE:' .. ct.prefix] == nil) then
+         -- Type is not referenced
+      else
+         out = out .. "    <constants lookup=\"" .. ct.prefix .. '"' .. comment:escXML() .. '>\n'
+
+         local sortedValues = { }
+         for _, v in pairs(ct.list) do
+            table.insert(sortedValues, v)
+         end
+         table.sort(sortedValues, function(a,b) return a.name < b.name end)
+
+         for _, v in pairs(sortedValues) do
             if (v.synonym) then
                -- Don't publish synonyms
             elseif nz(v.comment) then
@@ -761,22 +774,32 @@ function docTypes()
    return out
 end
 
--- Output structures
+-- Output structures.  Modules need to output all the structures; Classes output structures that are referenced.
 
-function docStructures()
+function docStructures(References)
    local out = '  <structs>\n'
-   for name, struct in pairs(glStructures) do
+
+   local sortedStructs = { }
+   for _, f in pairs(glStructures) do
+      table.insert(sortedStructs, f)
+   end
+
+   table.sort(sortedStructs, function(a,b) return a.name < b.name end)
+
+   for _, struct in ipairs(sortedStructs) do
       if nz(struct.restrict) then
          -- Don't output restricted structures.
-      elseif nz(struct.refCount, 0) == 0 then
+         if (glFeedback == 'verbose') then print(struct.name .. ' is restricted.') end
+      elseif References and (References['STRUCT:' .. struct.name] == nil) then
          -- Don't output unreferenced structures.
+         if (glFeedback == 'verbose') then print(struct.name .. ' is unreferenced.') end
       else
          local comment = ''
          local typeName = ''
          if (struct.comment) then comment = " comment=\"" .. struct.comment:escXML() .. '"' end
          if (struct.type) then typeName = " typeName=\"" .. struct.type .. '"' end
 
-         out = out .. "    <struct name=\"" .. name .. '"' .. comment .. typeName .. '>\n'
+         out = out .. "    <struct name=\"" .. struct.name .. '"' .. comment .. typeName .. '>\n'
          for i, f in ipairs(struct.fields) do
             local ref = ''
             if (f.lookup) then ref = " lookup=\"" .. f.lookup .. '"' end

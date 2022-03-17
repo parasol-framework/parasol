@@ -256,12 +256,12 @@ void LogF(CSTRING Header, CSTRING Format, ...)
             else name = ((rkMetaClass *)tlContext->Object->Class)->Name;
 
             if (glLogLevel > 5) {
-               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UniqueID, tlContext->Field->Name, Format);
-               else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UniqueID, Format);
+               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UID, tlContext->Field->Name, Format);
+               else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UID, Format);
             }
             else {
-               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s:%d:%s] %s", name, tlContext->Object->UniqueID, tlContext->Field->Name, Format);
-               else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, tlContext->Object->UniqueID, Format);
+               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s:%d:%s] %s", name, tlContext->Object->UID, tlContext->Field->Name, Format);
+               else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, tlContext->Object->UID, Format);
             }
 
             va_list arg;
@@ -295,14 +295,14 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
             if (glLogLevel > 5) {
                if (tlContext->Field) {
-                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UniqueID, tlContext->Field->Name);
+                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, tlContext->Field->Name);
                }
-               else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UniqueID);
+               else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID);
             }
             else if (tlContext->Field) {
-               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UniqueID, tlContext->Field->Name);
+               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, tlContext->Field->Name);
             }
-            else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UniqueID);
+            else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UID);
          }
          else fprintf(stderr, "%s", msgheader);
 
@@ -467,12 +467,12 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
             else name = ((rkMetaClass *)tlContext->Object->Class)->Name;
 
             if (glLogLevel > 5) {
-               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UniqueID, tlContext->Field->Name, Message);
-               else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UniqueID, Message);
+               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UID, tlContext->Field->Name, Message);
+               else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UID, Message);
             }
             else {
-               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s:%d:%s] %s", name, tlContext->Object->UniqueID, tlContext->Field->Name, Message);
-               else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, tlContext->Object->UniqueID, Message);
+               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s:%d:%s] %s", name, tlContext->Object->UID, tlContext->Field->Name, Message);
+               else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, tlContext->Object->UID, Message);
             }
 
             __android_log_vprint((level <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, msg, Args);
@@ -500,14 +500,14 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
             if (glLogLevel > 5) {
                if (tlContext->Field) {
-                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UniqueID, tlContext->Field->Name);
+                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, tlContext->Field->Name);
                }
-               else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UniqueID);
+               else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID);
             }
             else if (tlContext->Field) {
-               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UniqueID, tlContext->Field->Name);
+               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, tlContext->Field->Name);
             }
-            else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UniqueID);
+            else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UID);
          }
          else fprintf(stderr, "%s", msgheader);
 
@@ -600,9 +600,9 @@ ERROR FuncError(CSTRING Header, ERROR Code)
             else name = ((rkMetaClass *)tlContext->Object->Class)->Name;
 
             if (tlContext->Field) {
-                __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d:%s] %s", name, tlContext->Object->UniqueID, tlContext->Field->Name, glMessages[Code]);
+                __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d:%s] %s", name, tlContext->Object->UID, tlContext->Field->Name, glMessages[Code]);
             }
-            else __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d] %s", name, tlContext->Object->UniqueID, glMessages[Code]);
+            else __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d] %s", name, tlContext->Object->UID, glMessages[Code]);
          }
          else __android_log_print(ANDROID_LOG_ERROR, Header, "%s", glMessages[Code]);
       #else
@@ -627,9 +627,9 @@ ERROR FuncError(CSTRING Header, ERROR Code)
             else name = ((rkMetaClass *)tlContext->Object->Class)->ClassName;
 
             if (tlContext->Field) {
-               fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, tlContext->Object->UniqueID, tlContext->Field->Name, glMessages[Code], hiend);
+               fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, tlContext->Object->UID, tlContext->Field->Name, glMessages[Code], hiend);
             }
-            else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, tlContext->Object->UniqueID, glMessages[Code], hiend);
+            else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, tlContext->Object->UID, glMessages[Code], hiend);
          }
          else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[Code], hiend);
 

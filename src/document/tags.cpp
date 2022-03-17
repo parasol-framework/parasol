@@ -334,7 +334,7 @@ static void tag_call(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
    {
       parasol::Log log(__FUNCTION__);
-      log.traceBranch("Calling script #%d function '%s'", GetUniqueID(script), function);
+      log.traceBranch("Calling script #%d function '%s'", GetUID(script), function);
 
       if (Tag->TotalAttrib > 2) {
          ScriptArg args[40];
@@ -374,7 +374,7 @@ static void tag_call(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
          // Add the created XML object to the document rather than destroying it
 
-         add_resource_id(Self, xmlinc->Head.UniqueID, RT_OBJECT_TEMP);
+         add_resource_id(Self, xmlinc->Head.UID, RT_OBJECT_TEMP);
       }
       FreeResource(results);
    }
@@ -691,7 +691,7 @@ static void tag_include(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 
          parse_tag(Self, xmlinc, xmlinc->Tags[0], Index, Flags);
 
-         add_resource_id(Self, xmlinc->Head.UniqueID, RT_OBJECT_TEMP);
+         add_resource_id(Self, xmlinc->Head.UID, RT_OBJECT_TEMP);
       }
       else log.warning("Failed to include '%s'", src);
    }
@@ -726,7 +726,7 @@ static void tag_parse(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 
             // Add the created XML object to the document rather than destroying it
 
-            add_resource_id(Self, xmlinc->Head.UniqueID, RT_OBJECT_TEMP);
+            add_resource_id(Self, xmlinc->Head.UID, RT_OBJECT_TEMP);
          }
       }
    }
@@ -1213,7 +1213,7 @@ static void tag_xml_content(objDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
 
    Tag = Tag->Child;
 
-   LAYOUT("~tag_xml()","XML: %d, Tag: %d/%d, Target: %d", XML->Head.UniqueID, Tag->Index, XML->TagCount, target->UniqueID);
+   LAYOUT("~tag_xml()","XML: %d, Tag: %d/%d, Target: %d", XML->Head.UID, Tag->Index, XML->TagCount, target->UID);
 
    if (!target) {
       log.warning("<xml> used without a valid object reference to receive the XML.");
@@ -1372,7 +1372,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
       return;
    }
 
-   log.branch("Processing %s object from document tag, owner #%d.", object->Class->ClassName, Self->CurrentObject ? Self->CurrentObject->UniqueID : -1);
+   log.branch("Processing %s object from document tag, owner #%d.", object->Class->ClassName, Self->CurrentObject ? Self->CurrentObject->UID : -1);
 
    // If the class supports the LayoutStyle field, set it with current style information.
 
@@ -1385,7 +1385,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
    // Setup the callback interception so that we can control the order in which objects draw their graphics to the surface.
 
    if (Self->CurrentObject) {
-      SetLong(object, FID_Owner, Self->CurrentObject->UniqueID);
+      SetLong(object, FID_Owner, Self->CurrentObject->UID);
    }
    else if (pagetarget) {
       field_id = StrHash(pagetarget, 0);
@@ -1530,7 +1530,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
          else {
             objLayout *layout;
 
-            escobj.ObjectID = object->UniqueID;
+            escobj.ObjectID = object->UID;
             escobj.ClassID = object->ClassID;
             escobj.Embedded = FALSE;
             if (Self->CurrentObject) escobj.Owned = TRUE;
@@ -1762,7 +1762,7 @@ static void tag_script(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 
       // Object references are to be limited in scope to the Document object
 
-      //SetLong(script, FID_ObjectScope, Self->Head.UniqueID);
+      //SetLong(script, FID_ObjectScope, Self->Head.UID);
 
       // Pass custom arguments in the script tag
 
@@ -1784,10 +1784,10 @@ static void tag_script(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
          }
 
          if (!(error = acActivate(script))) { // Persistent scripts survive refreshes.
-            add_resource_id(Self, script->UniqueID, (persistent) ? RT_PERSISTENT_SCRIPT : RT_OBJECT_UNLOAD_DELAY);
+            add_resource_id(Self, script->UID, (persistent) ? RT_PERSISTENT_SCRIPT : RT_OBJECT_UNLOAD_DELAY);
 
             if ((!Self->DefaultScript) or (defaultscript)) {
-               log.msg("Script #%d is the default script for this document.", script->UniqueID);
+               log.msg("Script #%d is the default script for this document.", script->UID);
                Self->DefaultScript = script;
             }
 
@@ -1805,7 +1805,7 @@ static void tag_script(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 
                   // Add the created XML object to the document rather than destroying it
 
-                  add_resource_id(Self, xmlinc->Head.UniqueID, RT_OBJECT_TEMP);
+                  add_resource_id(Self, xmlinc->Head.UID, RT_OBJECT_TEMP);
                }
             }
          }
@@ -2600,7 +2600,7 @@ static void tag_trigger(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
             }
             else FuncError(ERR_AllocMemory);
          }
-         else log.warning("Unable to resolve '%s' in script #%d to a function ID (the procedure may not exist)", function_name, script->UniqueID);
+         else log.warning("Unable to resolve '%s' in script #%d to a function ID (the procedure may not exist)", function_name, script->UID);
       }
       else log.warning("The script for '%s' is not available - check if it is declared prior to the trigger tag.", function_name);
    }

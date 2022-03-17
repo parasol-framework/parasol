@@ -6,7 +6,7 @@ VectorGroup: Extends the Vector class with support for organising vectors into g
 Groups provide a simple way of grouping vector objects.  Groups have a passive effect on the drawing process and can be
 effective at assigning inheritable attributes to child vectors.
 
-If the ability to adjust the group's dimensions is needed, use a @VectorViewport as a container instead.
+If there is a need to adjust the container dimensions, use a @VectorViewport instead.
 
 -END-
 

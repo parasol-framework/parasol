@@ -22,7 +22,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
 #define FDEF static const struct FunctionField
 #endif
 
-FDEF argsCharWidth[] = { { "Result", FD_LONG }, { "Font", FD_OBJECTPTR }, { "Char", FD_LONG }, { "KChar", FD_LONG }, { "Kerning", FD_LONG|FD_RESULT }, { 0, 0 } };
+FDEF argsCharWidth[] = { { "Result", FD_LONG }, { "Font", FD_OBJECTPTR }, { "Char", FD_LONG|FD_UNSIGNED }, { "KChar", FD_LONG|FD_UNSIGNED }, { "Kerning", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsConvertCoords[] = { { "Error", FD_LONG|FD_ERROR }, { "Font", FD_OBJECTPTR }, { "String", FD_STR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Column", FD_LONG|FD_RESULT }, { "Row", FD_LONG|FD_RESULT }, { "ByteColumn", FD_LONG|FD_RESULT }, { "BytePos", FD_LONG|FD_RESULT }, { "CharX", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsFreetypeHandle[] = { { "Result", FD_PTR }, { 0, 0 } };
 FDEF argsGetList[] = { { "Error", FD_LONG|FD_ERROR }, { "FontList:Result", FD_PTR|FD_STRUCT|FD_ALLOC|FD_RESULT }, { 0, 0 } };
@@ -48,4 +48,4 @@ const struct Function glFunctions[] = {
 };
 
 #undef MOD_IDL
-#define MOD_IDL "s.FontList:pNext:FontList,sName,ucPoints[0],sStyles,cScalable,cReserved1,wReserved2\nc.FSS:LINE=0xfffffffe,ALL=0xffffffff\nc.FTF:SCALABLE=0x10000000,BOLD=0x20000000,ANTIALIAS=0x10,ITALIC=0x40000000,ALLOW_SCALE=0x200,KERNING=0x80000000,BASE_LINE=0x100,CHAR_CLIP=0x80,HEAVY_LINE=0x20,QUICK_ALIAS=0x40,SMOOTH=0x10,REQUIRE_FIXED=0x8,PREFER_FIXED=0x2,PREFER_SCALED=0x1,REQUIRE_SCALED=0x4\n"
+#define MOD_IDL "s.FontList:pNext:FontList,sName,lPoints[0],sStyles,cScalable,cReserved1,wReserved2\nc.FTF:QUICK_ALIAS=0x40,PREFER_SCALED=0x1,CHAR_CLIP=0x80,PREFER_FIXED=0x2,SCALABLE=0x10000000,REQUIRE_SCALED=0x4,BOLD=0x20000000,REQUIRE_FIXED=0x8,ITALIC=0x40000000,KERNING=0x80000000,ALLOW_SCALE=0x200,ANTIALIAS=0x10,SMOOTH=0x10,HEAVY_LINE=0x20,BASE_LINE=0x100\nc.FSS:LINE=0xfffffffe,ALL=0xffffffff\n"

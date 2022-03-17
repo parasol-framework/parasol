@@ -166,11 +166,9 @@ ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
       if (lock.granted()) {
          LONG result = ERR_False;
          auto mem = glPrivateMemory.find(ObjectID);
-         if (mem != glPrivateMemory.end()) {
-            if (mem->second.Object) {
-               if (mem->second.Object->Flags & NF_UNLOCK_FREE);
-               else result = ERR_True;
-            }
+         if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
+            if (mem->second.Object->Flags & NF_UNLOCK_FREE);
+            else result = ERR_True;
          }
          return result;
       }
@@ -505,10 +503,10 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
                OBJECTPTR object = list[i];
                if ((object) and ((!ClassID) or (ClassID IS object->ClassID))) {
                   if (objlist.size() < (size_t)Count[0]) {
-                     objlist.emplace_back(object->UniqueID, glTaskMessageMID);
+                     objlist.emplace_back(object->UID, glTaskMessageMID);
                   }
-                  else if (objlist.back().id < object->UniqueID) {
-                     objlist.back().id = object->UniqueID;
+                  else if (objlist.back().id < object->UID) {
+                     objlist.back().id = object->UID;
                      objlist.back().messagemid = glTaskMessageMID;
                   }
                }
@@ -639,11 +637,9 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
             auto mem = glPrivateMemory.find(objectid);
-            if (mem != glPrivateMemory.end()) {
-               if (mem->second.Object) {
-                  *Object = mem->second.Object;
-                  return ERR_Okay;
-               }
+            if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
+               *Object = mem->second.Object;
+               return ERR_Okay;
             }
          }
          else return log.warning(ERR_LockFailed);
@@ -714,17 +710,17 @@ MEMORYID GetFeedList(OBJECTPTR Object)
 GetClassID: Returns the class ID of an object.
 Category: Objects
 
-This function can be used on any valid object ID to retrieve the ID of its class.  This is the quickest way to
+Call this function with any valid object ID to learn the identifier for its base class.  This is the quickest way to
 retrieve the class of an object without having to gain exclusive access to the object first.
 
-Please note that if you already have access to an object through an address pointer, the quickest way to learn of its
-class is to read the ClassID field in the object header.
+Note that if the object's pointer is already known, the quickest way to learn of its class is to read the ClassID
+field in the object header.
 
 -INPUT-
 oid Object: The object to be examined.
 
 -RESULT-
-cid: Returns the class ID of the object or NULL if failure.
+cid: Returns the base class ID of the object or NULL if failure.
 
 *****************************************************************************/
 
@@ -737,7 +733,7 @@ CLASSID GetClassID(OBJECTID ObjectID)
    OBJECTPTR object;
    if (ObjectID < 0) {
       SharedObjectHeader *header;
-      LONG id;
+      CLASSID id;
       if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
          auto shared_obj = (SharedObject *)ResolveAddress(header, header->Offset);
          LONG pos;
@@ -1128,7 +1124,7 @@ OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
       auto mem = glPrivateMemory.find(ObjectID);
       if (mem != glPrivateMemory.end()) {
          if ((mem->second.Flags & MEM_OBJECT) and (mem->second.Object)) {
-            if (mem->second.Object->UniqueID IS ObjectID) {
+            if (mem->second.Object->UID IS ObjectID) {
                return mem->second.Object;
             }
          }
@@ -1232,8 +1228,6 @@ LARGE GetResource(LONG Resource)
       case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
       case RES_GLOBAL_INSTANCE: return glSharedControl->GlobalInstance;
       case RES_PRIVILEGED:      return glPrivileged;
-      case RES_PARENT_CONTEXT:  if (tlContext->Stack) return (MAXINT)tlContext->Stack->Object;
-                                else return 0;
       case RES_KEY_STATE:       return glKeyState;
       case RES_LOG_LEVEL:       return glLogLevel;
       case RES_SHARED_BLOCKS:   return (MAXINT)glSharedBlocks;
@@ -1248,6 +1242,14 @@ LARGE GetResource(LONG Resource)
       case RES_THREAD_ID:       return (MAXINT)get_thread_id();
       case RES_CORE_IDL:        return (MAXINT)glIDL;
       case RES_DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
+
+      case RES_PARENT_CONTEXT: {
+         // Return the first parent context that differs to the current context.  This avoids any confusion
+         // arising from the the current object making calls to itself.
+         auto parent = tlContext->Stack;
+         while ((parent) and (parent->Object IS tlContext->Object)) parent = parent->Stack;
+         return parent ? (MAXINT)parent->Object : 0;
+      }
 
 #ifdef __linux__
       // NB: This value is not cached.  Although unlikely, it is feasible that the total amount of physical RAM could
@@ -1444,7 +1446,7 @@ ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG
 
             OBJECTPTR child;
             if (((child = mem->second.Object)) and (!(child->Flags & NF_INTEGRAL))) {
-               List[i].ObjectID = child->UniqueID;
+               List[i].ObjectID = child->UID;
                List[i].ClassID  = child->ClassID;
                if (++i >= *Count) break;
             }
@@ -1755,7 +1757,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    if ((!Object) or (!Owner)) return log.warning(ERR_NullArgs);
 
-   if (Object->OwnerID IS Owner->UniqueID) return ERR_Okay;
+   if (Object->OwnerID IS Owner->UID) return ERR_Okay;
 
    if (((rkMetaClass *)Object->Class)->Flags & CLF_NO_OWNERSHIP) {
       log.traceWarning("Cannot set the object owner as CLF_NO_OWNERSHIP is set in its class.");
@@ -1767,7 +1769,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       return ERR_Args;
    }
 
-   //log.msg("Object: %d, New Owner: %d, Current Owner: %d", Object->UniqueID, Owner->UniqueID, Object->OwnerID);
+   //log.msg("Object: %d, New Owner: %d, Current Owner: %d", Object->UID, Owner->UID, Object->OwnerID);
 
    // Send a new child alert to the owner.  If the owner returns an error then we return immediately.
 
@@ -1775,7 +1777,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    if (!CheckAction(Owner, AC_NewChild)) {
       ERROR error;
-      struct acNewChild newchild = { .NewChildID = Object->UniqueID };
+      struct acNewChild newchild = { .NewChildID = Object->UID };
       if ((error = Action(AC_NewChild, Owner, &newchild)) != ERR_NoSupport) {
          if (error != ERR_Okay) { // If the owner has passed the object through to another owner, return ERR_Okay, otherwise error.
             if (error IS ERR_OwnerPassThrough) return ERR_Okay;
@@ -1785,14 +1787,14 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
    }
 
    struct acNewOwner newowner = {
-      .NewOwnerID = Owner->UniqueID, // Send a owner alert to the object
+      .NewOwnerID = Owner->UID, // Send a owner alert to the object
       .ClassID    = Owner->ClassID
    };
    Action(AC_NewOwner, Object, &newowner);
 
    // Make the change
 
-   //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UniqueID, Object->OwnerID, Owner->UniqueID);
+   //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
 
    if (Object->Flags & NF_FOREIGN_OWNER) { // Remove subscription to AC_OwnerDestroyed
       OBJECTPTR obj;
@@ -1804,20 +1806,20 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       }
    }
 
-   if (Object->UniqueID < 0) { // Public object
+   if (Object->UID < 0) { // Public object
       ScopedAccessMemory<SharedObjectHeader> header(RPM_SharedObjects, MEM_READ, 2000);
       if (header.granted()) {
          LONG pos;
-         if (!find_public_object_entry(header.ptr, Object->UniqueID, &pos)) {
+         if (!find_public_object_entry(header.ptr, Object->UID, &pos)) {
             auto list = (SharedObject *)ResolveAddress(header.ptr, header.ptr->Offset);
 
             if (Object->OwnerID) { // Remove reference from the now previous owner
                auto it = glObjectChildren.find(Object->OwnerID);
-               if (it != glObjectChildren.end()) it->second.erase(Object->UniqueID);
+               if (it != glObjectChildren.end()) it->second.erase(Object->UID);
             }
 
-            Object->OwnerID = Owner->UniqueID;
-            list[pos].OwnerID = Owner->UniqueID;
+            Object->OwnerID = Owner->UID;
+            list[pos].OwnerID = Owner->UID;
          }
          else return log.warning(ERR_Search);
       }
@@ -1829,7 +1831,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       if (lock.granted()) {
          LONG i;
          if ((i = find_public_address(glSharedControl, Object)) != -1) {
-            glSharedBlocks[i].ObjectID = Owner->UniqueID;
+            glSharedBlocks[i].ObjectID = Owner->UID;
          }
          else return log.warning(ERR_Search);
       }
@@ -1839,16 +1841,16 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       { // Track the object's memory header to the new owner
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
-            auto mem = glPrivateMemory.find(Object->UniqueID);
+            auto mem = glPrivateMemory.find(Object->UID);
             if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
-            mem->second.OwnerID = Owner->UniqueID;
+            mem->second.OwnerID = Owner->UID;
 
             // Remove reference from the now previous owner
-            if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UniqueID);
+            if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UID);
 
-            Object->OwnerID = Owner->UniqueID;
+            Object->OwnerID = Owner->UID;
 
-            glObjectChildren[Owner->UniqueID].insert(Object->UniqueID);
+            glObjectChildren[Owner->UID].insert(Object->UID);
          }
          else return log.warning(ERR_Lock);
       }
@@ -1859,8 +1861,8 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       // TODO: Would it be better if public object termination was broadcast via events and processes could
       // check their own glObjectChildren for any references?
 
-      if ((Owner->UniqueID < 0) and (Owner->TaskID) and (Owner->TaskID != glCurrentTaskID) and (Owner->TaskID != SystemTaskID)) {
-         log.msg("Owner %d is in task %d, will monitor for termination.", Owner->UniqueID, Owner->TaskID);
+      if ((Owner->UID < 0) and (Owner->TaskID) and (Owner->TaskID != glCurrentTaskID) and (Owner->TaskID != SystemTaskID)) {
+         log.msg("Owner %d is in task %d, will monitor for termination.", Owner->UID, Owner->TaskID);
          parasol::SwitchContext ctx(Object);
          SubscribeAction(Owner, AC_OwnerDestroyed);
          Object->Flags |= NF_FOREIGN_OWNER;
@@ -1970,7 +1972,7 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 
    // Remove any existing name first.
 
-   if ((Object->Stats->Name[0]) and (Object->UniqueID > 0)) {
+   if ((Object->Stats->Name[0]) and (Object->UID > 0)) {
       ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
       if (lock.granted()) remove_object_hash(Object);
    }
@@ -1996,7 +1998,7 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
    }
    Object->Stats->Name[i] = 0;
 
-   if (Object->UniqueID >= 0) {
+   if (Object->UID >= 0) {
       if (Object->Stats->Name[0]) {
          ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
          if (lock.granted()) {
@@ -2020,7 +2022,7 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
       return ERR_Okay;
    }
    else if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, (void **)&header)) {
-      if (!find_public_object_entry(header, Object->UniqueID, &pos)) {
+      if (!find_public_object_entry(header, Object->UID, &pos)) {
          auto list = (SharedObject *)ResolveAddress(header, header->Offset);
          for (i=0; (Object->Stats->Name[i]) and (i < (MAX_NAME_LEN-1)); i++) {
             list[pos].Name[i] = Object->Stats->Name[i];
@@ -2243,7 +2245,7 @@ ERROR SetSubscriptionPriority(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subs
 
    if (AccessMemory(Object->Stats->ActionSubscriptions.ID, MEM_READ_WRITE, 2000, (APTR *)&list) IS ERR_Okay) {
       for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
-         if ((list[i].ActionID IS ActionID) and (list[i].SubscriberID IS Subscriber->UniqueID)) break;
+         if ((list[i].ActionID IS ActionID) and (list[i].SubscriberID IS Subscriber->UID)) break;
       }
 
       if (i >= Object->Stats->SubscriptionSize) {
@@ -2282,7 +2284,7 @@ ERROR SetSubscriptionPriority(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subs
       }
 
       list[i].ActionID       = ActionID;
-      list[i].SubscriberID   = Subscriber->UniqueID;
+      list[i].SubscriberID   = Subscriber->UID;
       list[i].ClassID        = Subscriber->ClassID;
       list[i].MessagePortMID = glTaskMessageMID;
 
@@ -2333,7 +2335,7 @@ ERROR SubscribeFeed(OBJECTPTR Object)
 
    ScopedObjectAccess objlock(Object);
 
-   log.traceBranch("%s: %d", ((rkMetaClass *)Object->Class)->ClassName, Object->UniqueID);
+   log.traceBranch("%s: %d", ((rkMetaClass *)Object->Class)->ClassName, Object->UID);
 
    if (Object->Flags & NF_PUBLIC) memflags = Object->MemFlags|MEM_PUBLIC;
    else memflags = Object->MemFlags;
@@ -2343,7 +2345,7 @@ ERROR SubscribeFeed(OBJECTPTR Object)
    if (!Object->Stats->MID_FeedList) { // Allocate a feed list for the first time
       if (!AllocMemory(sizeof(FeedSubscription)*2, MEM_NO_CLEAR|memflags, NULL, &Object->Stats->MID_FeedList)) {
          if (!AccessMemory(Object->Stats->MID_FeedList, MEM_WRITE, 2000, (APTR *)&list)) {
-            list[0].SubscriberID   = tlContext->Object->UniqueID;
+            list[0].SubscriberID   = tlContext->Object->UID;
             list[0].MessagePortMID = glTaskMessageMID;
             list[0].ClassID        = tlContext->Object->ClassID;
             list[1].SubscriberID   = 0;
@@ -2365,7 +2367,7 @@ ERROR SubscribeFeed(OBJECTPTR Object)
 
             for (i=0; list[i].SubscriberID; i++) newlist[i] = list[i];
 
-            newlist[i].SubscriberID   = tlContext->Object->UniqueID;
+            newlist[i].SubscriberID   = tlContext->Object->UID;
             newlist[i].MessagePortMID = glTaskMessageMID;
             newlist[i].ClassID        = tlContext->Object->ClassID;
             newlist[i+1].SubscriberID   = 0;
@@ -2403,7 +2405,7 @@ A callback function must be provided that follows this prototype: `ERROR Functio
 The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime
 parameter is set to the ~PreciseTime() value just prior to the Callback being called.  The callback function
 can return ERR_Terminate at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks
-should call check(ERR_Terminate) to perform the equivalent of this behaviour.
+should call `check(ERR_Terminate)` to perform the equivalent of this behaviour.
 
 To change the interval, call ~UpdateTimer() with the new value.  To release a timer subscription, call
 ~UpdateTimer() with the resulting SubscriptionID and an Interval of zero.
@@ -2451,7 +2453,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 
       auto it = glTimers.emplace(glTimers.end());
       LARGE subscribed = PreciseTime();
-      it->SubscriberID = subscriber->UniqueID;
+      it->SubscriberID = subscriber->UID;
       it->Interval     = usInterval;
       it->LastCall     = subscribed;
       it->NextCall     = subscribed + usInterval;
@@ -2459,7 +2461,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
       it->Locked       = false;
       it->Cycle        = glTimerCycle - 1;
 
-      if (subscriber->UniqueID > 0) it->Subscriber = subscriber;
+      if (subscriber->UID > 0) it->Subscriber = subscriber;
       else it->Subscriber = NULL;
 
       // For resource tracking purposes it is important for us to keep a record of the subscription so that
@@ -2526,7 +2528,7 @@ ERROR UnsubscribeFeed(OBJECTPTR Object)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.trace("%s: %d", ((rkMetaClass *)Object->Class)->ClassName, Object->UniqueID);
+   log.trace("%s: %d", ((rkMetaClass *)Object->Class)->ClassName, Object->UID);
 
    if (!Object) return log.warning(ERR_NullArgs);
 
@@ -2537,7 +2539,7 @@ ERROR UnsubscribeFeed(OBJECTPTR Object)
    FeedSubscription *list;
    if (!AccessMemory(Object->Stats->MID_FeedList, MEM_READ_WRITE, 2000, (APTR *)&list)) {
       for (LONG i=0; list[i].SubscriberID; i++) {
-         if (list[i].SubscriberID IS tlContext->Object->UniqueID) {
+         if (list[i].SubscriberID IS tlContext->Object->UID) {
             while (list[i+1].SubscriberID) { // Compact the list
                list[i] = list[i+1];
                i++;
@@ -2703,7 +2705,7 @@ void remove_object_hash(OBJECTPTR Object)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (Object->UniqueID < 0) return; // Public objects not supported by this function
+   if (Object->UID < 0) return; // Public objects not supported by this function
 
    OBJECTPTR *list;
    LONG list_size;
@@ -2733,12 +2735,12 @@ void set_object_flags(OBJECTPTR Object, LONG Flags)
 
    Object->Flags = Flags;
 
-   if (Object->UniqueID < 0) {
+   if (Object->UID < 0) {
       SharedObjectHeader *header;
       if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
          auto pubobj = (SharedObject *)ResolveAddress(header, header->Offset);
          LONG index;
-         if (!find_public_object_entry(header, Object->UniqueID, &index)) {
+         if (!find_public_object_entry(header, Object->UID, &index)) {
             pubobj[index].Flags = Flags;
          }
          ReleaseMemoryID(RPM_SharedObjects);

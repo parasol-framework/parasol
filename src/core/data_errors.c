@@ -180,7 +180,9 @@ CSTRING glMessages[ERR_END] = {
  "This feature is no longer available (obsolete).",
  "Failed to create a new resource.",
  "It is not possible to perform the requested operation.",
- "Failed to resolve a linked library symbol."
+ "Failed to resolve a linked library symbol.",
+ "A function call failed.",
+ "Attempted to change a value that cannot be redefined."
 };
 
 const LONG glTotalMessages = ARRAYSIZE(glMessages);

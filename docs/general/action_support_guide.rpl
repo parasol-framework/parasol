@@ -2,7 +2,7 @@
 
 <info>
  <title>Action Support Guide</>
- <author>Rocklyte Systems</>
+ <author>Paul Manias</>
  <description>Describes the minimum requirements for supporting the available system actions.</>
  <keywords>action, support, class, kernel, event</>
 </info>
@@ -89,8 +89,8 @@
 
     <p><table columns="100,0" width="100%">
       <row><td>Date:</td><td>October 2007</td></row>
-      <row><td>Author:</td><td>Rocklyte Systems</td></row>
-      <row><td>Copyright:</td><td>Rocklyte Ltd © 1996-2007</td></row>
+      <row><td>Author:</td><td>Paul Manias</td></row>
+      <row><td>Copyright:</td><td>Paul Manias © 1996-2022</td></row>
     </table></p>
 
     <p>This document describes the complete list of system actions and the standards that must be adhered to by class developers supporting the available action types.  Advice on the basic requirements and potential issues is also included.  For general documentation on the available actions and what they are intended to do, please refer to the <a href="action_list.rpl">Action List</a> instead.</p>

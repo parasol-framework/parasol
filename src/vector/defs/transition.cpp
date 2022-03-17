@@ -110,79 +110,27 @@ static void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE 
 
 //****************************************************************************
 
-static ERROR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop, CSTRING Value)
+static ERROR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop, CSTRING Commands)
 {
    parasol::Log log;
 
-   log.traceBranch("%s", Value);
+   log.traceBranch("%s", Commands);
 
-   Self->Dirty = TRUE;
-   if (!Value) Value = ""; // Empty transforms are permitted - it will result in an identity matrix being created.
+   Self->Dirty = true;
+   if (!Commands) Commands = ""; // Empty transforms are permitted - it will result in an identity matrix being created.
 
-   // Clear any existing transforms.
+   vecParseTransform(&Stop->Matrix, Commands);
 
-   VectorTransform *next;
-   for (auto t=Stop->Transforms; t; t=next) {
-      next = t->Next;
-      FreeResource(t);
+   auto &m = Stop->Matrix;
+   if (Stop->AGGTransform) {
+      Stop->AGGTransform->load_all(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX, m.TranslateY);
+      return ERR_Okay;
    }
-   Stop->Transforms = NULL;
-
-   VectorTransform *transform;
-
-   auto str = Value;
-   while (*str) {
-      if (!StrCompare(str, "matrix", 6, 0)) {
-         if ((transform = add_transform(Stop, VTF_MATRIX))) {
-            str = read_numseq(str+6, &transform->Matrix[0], &transform->Matrix[1], &transform->Matrix[2], &transform->Matrix[3], &transform->Matrix[4], &transform->Matrix[5], TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "translate", 9, 0)) {
-         if ((transform = add_transform(Stop, VTF_TRANSLATE))) {
-            DOUBLE x = 0;
-            DOUBLE y = 0;
-            str = read_numseq(str+9, &x, &y, TAGEND);
-            transform->X += x;
-            transform->Y += y;
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "rotate", 6, 0)) {
-         if ((transform = add_transform(Stop, VTF_ROTATE))) {
-            str = read_numseq(str+6, &transform->Angle, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "scale", 5, 0)) {
-         if ((transform = add_transform(Stop, VTF_SCALE))) {
-            str = read_numseq(str+5, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewX", 5, 0)) {
-         if ((transform = add_transform(Stop, VTF_SKEW))) {
-            transform->X = 0;
-            str = read_numseq(str+5, &transform->X, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewY", 5, 0)) {
-         if ((transform = add_transform(Stop, VTF_SKEW))) {
-            transform->Y = 0;
-            str = read_numseq(str+5, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else str++;
+   else {
+      Stop->AGGTransform = new (std::nothrow) agg::trans_affine(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX, m.TranslateY);
+      if (Stop->AGGTransform) return ERR_Okay;
+      else return log.warning(ERR_AllocMemory);
    }
-
-   if (Stop->AGGTransform) Stop->AGGTransform->reset();
-   else Stop->AGGTransform = new (std::nothrow) agg::trans_affine;
-
-   apply_transforms(Stop->Transforms, 0, 0, *Stop->AGGTransform);
-
-   return ERR_Okay;
 }
 
 //****************************************************************************
@@ -190,11 +138,6 @@ static ERROR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop,
 static ERROR TRANSITION_Free(objVectorTransition *Self, APTR Void)
 {
    for (auto i=0; i < Self->TotalStops; i++) {
-      VectorTransform *next;
-      for (auto t=Self->Stops[i].Transforms; t; t=next) {
-         next = t->Next;
-         FreeResource(t);
-      }
       delete Self->Stops[i].AGGTransform;
    }
    Self->TotalStops = 0;
@@ -215,7 +158,7 @@ static ERROR TRANSITION_Init(objVectorTransition *Self, APTR Void)
 
 static ERROR TRANSITION_NewObject(objVectorTransition *Self, APTR Void)
 {
-   Self->Dirty = TRUE;
+   Self->Dirty = true;
    return ERR_Okay;
 }
 
@@ -243,7 +186,7 @@ static ERROR TRANSITION_SET_Stops(objVectorTransition *Self, Transition *Value, 
       DOUBLE last_offset = 0;
       for (auto i=0; i < Elements; i++) {
          if (Value[i].Offset < last_offset) return log.warning(ERR_InvalidValue); // Offsets must be in incrementing order.
-         if ((Value[i].Offset < 0.0) OR (Value[i].Offset > 1.0)) return log.warning(ERR_OutOfRange);
+         if ((Value[i].Offset < 0.0) or (Value[i].Offset > 1.0)) return log.warning(ERR_OutOfRange);
 
          Self->Stops[i].Offset = Value[i].Offset;
          set_stop_transform(Self, &Self->Stops[i], Value[i].Transform);

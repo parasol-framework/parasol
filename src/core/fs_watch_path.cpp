@@ -132,7 +132,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
       // Use the watch descriptor to determine what user routine we are supposed to call.
 
       for (LONG i=0; i < MAX_FILEMONITOR; i++) {
-         if (!glFileMonitor[i].UniqueID) continue;
+         if (!glFileMonitor[i].UID) continue;
          if (FD != glInotify) continue;
          if (event->wd != glFileMonitor[i].Handle) continue;
 
@@ -252,7 +252,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
 
    AdjustLogLevel(2);
 
-   log.branch("File monitoring event received (Handle %p, File #%d).", Handle, File->Head.UniqueID);
+   log.branch("File monitoring event received (Handle %p, File #%d).", Handle, File->Head.UID);
 
    ERROR error;
    ERROR (*routine)(objFile *, CSTRING path, LARGE Custom, LONG Flags);

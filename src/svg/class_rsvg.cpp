@@ -9,7 +9,7 @@ static ERROR RSVG_Activate(objPicture *Self, APTR Void)
    ERROR error;
    if ((error = acQuery(Self)) != ERR_Okay) return error;
 
-   objBitmap *bmp = Self->Bitmap;
+   auto bmp = Self->Bitmap;
    if (!(bmp->Head.Flags & NF_INITIALISED)) {
       if (acInit(bmp) != ERR_Okay) return ERR_Init;
    }

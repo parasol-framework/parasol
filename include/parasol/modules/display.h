@@ -2,7 +2,7 @@
 #define MODULES_DISPLAY 1
 
 // Name:      display.h
-// Copyright: Paul Manias 2003-2020
+// Copyright: Paul Manias 2003-2022
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -50,8 +50,8 @@
 // Instructions for basic graphics operations.
 
 #define BAF_DITHER 0x00000001
-#define BAF_BLEND 0x00000002
 #define BAF_FILL 0x00000001
+#define BAF_BLEND 0x00000002
 #define BAF_COPY 0x00000004
 
 // Flags for CopySurface().
@@ -62,17 +62,6 @@
 #define CSRF_DEFAULT_FORMAT 0x00000008
 #define CSRF_CLIP 0x00000010
 #define CSRF_OFFSET 0x00000020
-
-// Flags for CopyStretch().
-
-#define CSTF_BILINEAR 0x00000001
-#define CSTF_GOOD_QUALITY 0x00000001
-#define CSTF_FILTER_SOURCE 0x00000002
-#define CSTF_BRESENHAM 0x00000004
-#define CSTF_NEIGHBOUR 0x00000008
-#define CSTF_CUBIC 0x00000010
-#define CSTF_BICUBIC 0x00000010
-#define CSTF_CLAMP 0x00000020
 
 // Bitmap types
 
@@ -105,24 +94,24 @@
 
 // Display flags.
 
+#define SCR_READ_ONLY 0xfe300019
 #define SCR_VISIBLE 0x00000001
 #define SCR_AUTO_SAVE 0x00000002
 #define SCR_BUFFER 0x00000004
 #define SCR_NO_ACCELERATION 0x00000008
 #define SCR_BIT_6 0x00000010
 #define SCR_BORDERLESS 0x00000020
-#define SCR_ALPHA_BLEND 0x00000040
 #define SCR_COMPOSITE 0x00000040
-#define SCR_MAXIMISE 0x80000000
-#define SCR_CUSTOM_WINDOW 0x40000000
-#define SCR_FLIPPABLE 0x20000000
-#define SCR_GTF_ENABLED 0x10000000
-#define SCR_DPMS_ENABLED 0x08000000
-#define SCR_POWERSAVE 0x04000000
-#define SCR_HOSTED 0x02000000
+#define SCR_ALPHA_BLEND 0x00000040
 #define SCR_MAXSIZE 0x00100000
 #define SCR_REFRESH 0x00200000
-#define SCR_READ_ONLY 0xfe300019
+#define SCR_HOSTED 0x02000000
+#define SCR_POWERSAVE 0x04000000
+#define SCR_DPMS_ENABLED 0x08000000
+#define SCR_GTF_ENABLED 0x10000000
+#define SCR_FLIPPABLE 0x20000000
+#define SCR_CUSTOM_WINDOW 0x40000000
+#define SCR_MAXIMISE 0x80000000
 
 // Flags for the Display class SetMonitor() method.
 
@@ -331,23 +320,19 @@ typedef struct rkBitmap {
 #define MT_BmpCompress -2
 #define MT_BmpDecompress -3
 #define MT_BmpFlip -4
-#define MT_BmpFlood -5
 #define MT_BmpDrawRectangle -6
 #define MT_BmpSetClipRegion -7
 #define MT_BmpGetColour -8
 #define MT_BmpDrawLine -9
-#define MT_BmpCopyStretch -10
 
 struct bmpCopyArea { struct rkBitmap * DestBitmap; LONG Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
 struct bmpCompress { LONG Level;  };
 struct bmpDecompress { LONG RetainData;  };
 struct bmpFlip { LONG Orientation;  };
-struct bmpFlood { LONG X; LONG Y; ULONG Colour;  };
 struct bmpDrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; LONG Flags;  };
 struct bmpSetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate;  };
 struct bmpGetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
 struct bmpDrawLine { LONG X; LONG Y; LONG XEnd; LONG YEnd; ULONG Colour;  };
-struct bmpCopyStretch { struct rkBitmap * DestBitmap; LONG Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest; LONG DestWidth; LONG DestHeight;  };
 
 INLINE ERROR bmpCopyArea(APTR Ob, struct rkBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
    struct bmpCopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
@@ -369,11 +354,6 @@ INLINE ERROR bmpFlip(APTR Ob, LONG Orientation) {
    return(Action(MT_BmpFlip, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR bmpFlood(APTR Ob, LONG X, LONG Y, ULONG Colour) {
-   struct bmpFlood args = { X, Y, Colour };
-   return(Action(MT_BmpFlood, (OBJECTPTR)Ob, &args));
-}
-
 INLINE ERROR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags) {
    struct bmpDrawRectangle args = { X, Y, Width, Height, Colour, Flags };
    return(Action(MT_BmpDrawRectangle, (OBJECTPTR)Ob, &args));
@@ -387,11 +367,6 @@ INLINE ERROR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Ri
 INLINE ERROR bmpDrawLine(APTR Ob, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Colour) {
    struct bmpDrawLine args = { X, Y, XEnd, YEnd, Colour };
    return(Action(MT_BmpDrawLine, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR bmpCopyStretch(APTR Ob, struct rkBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest, LONG DestWidth, LONG DestHeight) {
-   struct bmpCopyStretch args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest, DestWidth, DestHeight };
-   return(Action(MT_BmpCopyStretch, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -559,12 +534,12 @@ typedef struct rkPointer {
    DOUBLE   Acceleration;  // Acceleration level - keep between 0.0 and 3.0
    DOUBLE   DoubleClick;   // Double click speed
    DOUBLE   WheelSpeed;    // Mouse-wheel speed
-   LONG     X;             // Current x coordinate
-   LONG     Y;             // Current y coordinate
+   DOUBLE   X;             // Current x coordinate
+   DOUBLE   Y;             // Current y coordinate
+   DOUBLE   OverX;         // The X coord relative to the closest object
+   DOUBLE   OverY;         // The Y coord relative to the closest object
+   DOUBLE   OverZ;         // The Z distance relative to the closest object
    LONG     MaxSpeed;      // Maximum speed
-   LONG     OverX;         // The X coord relative to the closest object
-   LONG     OverY;         // The Y coord relative to the closest object
-   LONG     OverZ;         // The Z distance relative to the closest object
    OBJECTID InputID;       // Indicates where pointer input comes from (usually SystemMouse)
    OBJECTID SurfaceID;     // Top-most surface that contains the pointer
    OBJECTID AnchorID;      // Surface object that the pointer is anchored to
@@ -588,6 +563,8 @@ typedef struct rkPointer {
    } Buttons[10];
    LARGE    ClickTime;
    LARGE    AnchorTime;
+   DOUBLE   LastClickX, LastClickY;
+   DOUBLE   LastReleaseX, LastReleaseY;
    APTR     UserLoginHandle;
    OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
    OBJECTID CursorReleaseID;
@@ -595,8 +572,6 @@ typedef struct rkPointer {
    OBJECTID DragParent;         // Parent of the draggable surface
    MEMORYID MessageQueue;       // Message port of the task that holds the cursor
    MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
-   LONG     LastClickX, LastClickY;
-   LONG     LastReleaseX, LastReleaseY;
    LONG     CursorRelease;
    LONG     BufferCursor;
    LONG     BufferFlags;
@@ -622,9 +597,9 @@ struct DisplayBase {
    LONG (*_GetDisplayType)(void);
    ERROR (*_SetCursor)(OBJECTID, LONG, LONG, CSTRING, OBJECTID);
    ERROR (*_RestoreCursor)(LONG, OBJECTID);
-   ERROR (*_GetCursorPos)(LONG *, LONG *);
-   ERROR (*_SetCursorPos)(LONG, LONG);
-   ERROR (*_GetRelativeCursorPos)(OBJECTID, LONG *, LONG *);
+   ERROR (*_GetCursorPos)(DOUBLE *, DOUBLE *);
+   ERROR (*_SetCursorPos)(DOUBLE, DOUBLE);
+   ERROR (*_GetRelativeCursorPos)(OBJECTID, DOUBLE *, DOUBLE *);
    ERROR (*_GetCursorInfo)(struct CursorInfo *, LONG);
    ERROR (*_SetCustomCursor)(OBJECTID, LONG, struct rkBitmap *, LONG, LONG, OBJECTID);
    struct rkPointer * (*_AccessPointer)(void);
@@ -638,7 +613,6 @@ struct DisplayBase {
    ERROR (*_Resample)(struct rkBitmap *, struct ColourFormat *);
    void (*_GetColourFormat)(struct ColourFormat *, LONG, LONG, LONG, LONG, LONG);
    ERROR (*_CopyArea)(struct rkBitmap *, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
-   ERROR (*_CopyStretch)(struct rkBitmap *, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
    void (*_ReadRGBPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 **);
    ULONG (*_ReadPixel)(struct rkBitmap *, LONG, LONG);
    void (*_DrawRGBPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *);
@@ -649,8 +623,6 @@ struct DisplayBase {
    void (*_SetClipRegion)(struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG);
    ERROR (*_Compress)(struct rkBitmap *, LONG);
    ERROR (*_Decompress)(struct rkBitmap *, LONG);
-   ERROR (*_Flood)(struct rkBitmap *, LONG, LONG, ULONG);
-   void (*_DrawEllipse)(struct rkBitmap *, LONG, LONG, LONG, LONG, ULONG, LONG);
    ERROR (*_SubscribeInput)(FUNCTION *, OBJECTID, LONG, OBJECTID, LONG *);
    ERROR (*_UnsubscribeInput)(LONG);
    CSTRING (*_GetInputTypeName)(LONG);
@@ -678,7 +650,6 @@ struct DisplayBase {
 #define gfxResample(...) (DisplayBase->_Resample)(__VA_ARGS__)
 #define gfxGetColourFormat(...) (DisplayBase->_GetColourFormat)(__VA_ARGS__)
 #define gfxCopyArea(...) (DisplayBase->_CopyArea)(__VA_ARGS__)
-#define gfxCopyStretch(...) (DisplayBase->_CopyStretch)(__VA_ARGS__)
 #define gfxReadRGBPixel(...) (DisplayBase->_ReadRGBPixel)(__VA_ARGS__)
 #define gfxReadPixel(...) (DisplayBase->_ReadPixel)(__VA_ARGS__)
 #define gfxDrawRGBPixel(...) (DisplayBase->_DrawRGBPixel)(__VA_ARGS__)
@@ -689,8 +660,6 @@ struct DisplayBase {
 #define gfxSetClipRegion(...) (DisplayBase->_SetClipRegion)(__VA_ARGS__)
 #define gfxCompress(...) (DisplayBase->_Compress)(__VA_ARGS__)
 #define gfxDecompress(...) (DisplayBase->_Decompress)(__VA_ARGS__)
-#define gfxFlood(...) (DisplayBase->_Flood)(__VA_ARGS__)
-#define gfxDrawEllipse(...) (DisplayBase->_DrawEllipse)(__VA_ARGS__)
 #define gfxSubscribeInput(...) (DisplayBase->_SubscribeInput)(__VA_ARGS__)
 #define gfxUnsubscribeInput(...) (DisplayBase->_UnsubscribeInput)(__VA_ARGS__)
 #define gfxGetInputTypeName(...) (DisplayBase->_GetInputTypeName)(__VA_ARGS__)

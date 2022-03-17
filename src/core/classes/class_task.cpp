@@ -515,7 +515,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
                   fields = objclass->Methods[-action->ActionID].Args;
                }
                else {
-                  log.warning("No method table for object #%d, class %d", obj->UniqueID, obj->ClassID);
+                  log.warning("No method table for object #%d, class %d", obj->UID, obj->ClassID);
                   fields = NULL;
                   ReleaseObject(obj);
                }
@@ -687,7 +687,7 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
 
    // Post an event for the task's closure
 
-   evTaskRemoved task_removed = { EVID_SYSTEM_TASK_REMOVED, Task->Head.UniqueID, Task->ProcessID };
+   evTaskRemoved task_removed = { EVID_SYSTEM_TASK_REMOVED, Task->Head.UID, Task->ProcessID };
    BroadcastEvent(&task_removed, sizeof(task_removed));
 
    // Send a break if we're waiting for this process to end
@@ -1428,11 +1428,11 @@ Okay
 
 static ERROR TASK_Expunge(objTask *Self, APTR Void)
 {
-   if (Self->Head.UniqueID IS SystemTaskID) {
+   if (Self->Head.UID IS SystemTaskID) {
       parasol::ScopedSysLock lock(PL_PROCESSES, 4000);
       if (lock.granted()) {
          for (LONG i=0; i < MAX_TASKS; i++) {
-            if ((shTasks[i].TaskID) and (shTasks[i].TaskID != Self->Head.UniqueID)) {
+            if ((shTasks[i].TaskID) and (shTasks[i].TaskID != Self->Head.UID)) {
                ActionMsg(MT_TaskExpunge, shTasks[i].TaskID, NULL, 0, 0);
             }
          }
@@ -1801,7 +1801,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
    MessageHeader *msgblock;
    LONG i, len;
 
-   if (Self->Head.UniqueID IS SystemTaskID) {
+   if (Self->Head.UID IS SystemTaskID) {
       // Perform the following if this is the System Task
       Self->ProcessID = 0;
    }
@@ -1810,7 +1810,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
 
       Self->ProcessID = glProcessID;
 
-      glCurrentTaskID = Self->Head.UniqueID;
+      glCurrentTaskID = Self->Head.UID;
       glCurrentTask   = Self;
 
       // Allocate the message block for this Task
@@ -1825,7 +1825,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
       // Refer to the task object ID in the system list
 
       if (!LOCK_PROCESS_TABLE(4000)) {
-         glTaskEntry->TaskID = Self->Head.UniqueID;
+         glTaskEntry->TaskID = Self->Head.UID;
          glTaskEntry->MessageID = glTaskMessageMID;
          UNLOCK_PROCESS_TABLE();
       }

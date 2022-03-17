@@ -105,7 +105,7 @@ static ERROR thread_resolve_name(objThread *Thread)
 
    auto rb = (resolve_buffer *)Thread->Data;
 
-   log.traceBranch("Thread %d resolving name %s", Thread->Head.UniqueID, (CSTRING)(rb + 1));
+   log.traceBranch("Thread %d resolving name %s", Thread->Head.UID, (CSTRING)(rb + 1));
 
    DNSEntry *dummy;
    rb->Error = resolve_name((CSTRING)(rb + 1), &dummy);
@@ -122,7 +122,7 @@ static ERROR thread_resolve_addr(objThread *Thread)
 
    auto rb = (resolve_buffer *)Thread->Data;
 
-   log.traceBranch("Thread %d resolving address", Thread->Head.UniqueID);
+   log.traceBranch("Thread %d resolving address", Thread->Head.UID);
 
    DNSEntry *dummy;
    auto ip_address = (const IPAddress *)(rb + 1);
@@ -139,7 +139,7 @@ static ERROR NETLOOKUP_ActionNotify(objNetLookup *Self, struct acActionNotify *A
    if (!Args) return ERR_NullArgs;
 
    if (Args->ActionID IS AC_Free) {
-      if ((Self->Callback.Type IS CALL_SCRIPT) AND (Self->Callback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->Callback.Type IS CALL_SCRIPT) AND (Self->Callback.Script.Script->UID IS Args->ObjectID)) {
          Self->Callback.Type = CALL_NONE;
       }
    }
@@ -342,13 +342,13 @@ static ERROR NETLOOKUP_ResolveAddress(objNetLookup *Self, struct nlResolveAddres
             TAGEND)) {
          char buffer[pkg_size];
          auto rb = (resolve_buffer *)&buffer;
-         rb->NetLookupID = Self->Head.UniqueID;
-         rb->ThreadID = thread->UniqueID;
+         rb->NetLookupID = Self->Head.UID;
+         rb->ThreadID = thread->UID;
          CopyMemory(&ip, (rb + 1), sizeof(ip));
          StrCopy(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), COPY_ALL);
          if ((!thSetData(thread, rb, pkg_size)) and (!acActivate(thread))) {
             std::lock_guard<std::mutex> lock(*Self->ThreadLock);
-            Self->Threads->insert(thread->UniqueID);
+            Self->Threads->insert(thread->UID);
             return ERR_Okay;
          }
          else {
@@ -412,12 +412,12 @@ static ERROR NETLOOKUP_ResolveName(objNetLookup *Self, struct nlResolveName *Arg
          TAGEND)) {
       char buffer[pkg_size];
       auto rb = (resolve_buffer *)&buffer;
-      rb->NetLookupID = Self->Head.UniqueID;
-      rb->ThreadID = thread->UniqueID;
+      rb->NetLookupID = Self->Head.UID;
+      rb->ThreadID = thread->UID;
       StrCopy(Args->HostName, (STRING)(rb + 1), COPY_ALL);
       if ((!thSetData(thread, buffer, pkg_size)) and (!acActivate(thread))) {
          std::lock_guard<std::mutex> lock(*Self->ThreadLock);
-         Self->Threads->insert(thread->UniqueID);
+         Self->Threads->insert(thread->UID);
          return ERR_Okay;
       }
       else {

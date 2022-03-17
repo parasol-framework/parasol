@@ -5,15 +5,15 @@
   <!-- Use percentages for scalable sizes, where 100% is equivalent to the value of "/interface/@fontsize" -->
 
   <font name="default"  face="Open Sans,Source Sans Pro" size="100%" colour="0,0,0"/>
-  <font name="window"   face="Open Sans,Source Sans Pro" size="100%" colour="0,0,0"/> <!-- Default inner window text -->
+  <font name="window"   face="Open Sans,Source Sans Pro" size="100%" colour="0,0,0"/> <!-- For text that is not inside a widget -->
   <font name="button"   face="Open Sans,Source Sans Pro" size="100%" colour="0,0,0"/> <!-- Text inside buttons -->
   <font name="icon"     face="Open Sans,Source Sans Pro" size="100%" colour="255,255,255"/> <!-- Text at the bottom of icons -->
   <font name="menu"     face="Open Sans,Source Sans Pro" size="100%" colour="255,255,255" highlight="255,255,255"/> <!-- Menu item text -->
   <font name="titlebar" face="Open Sans" size="100%" colour="255,255,255"/> <!-- Title bar text (in standalone OS mode) -->
-  <font name="small"    face="Tiny" size="6" colour="0,0,0"/> <!-- Recommended text for small sizes -->
-  <font name="large"    face="Open Sans,Source Sans Pro" size="130%" colour="0,0,0"/> <!-- Recommended text for headers -->
-  <font name="widget"   face="Open Sans,Source Sans Pro" size="11" colour="255,255,255"/> <!-- Default text for widgets (e.g. combobox) -->
-  <font name="label"    face="Open Sans,Source Sans Pro:10:bold" size="11" colour="255,255,255"/> <!-- Text for labels -->
+  <font name="small"    face="Tiny" size="6"/> <!-- Recommended text for small sizes -->
+  <font name="large"    face="Open Sans,Source Sans Pro" size="130%"/> <!-- Recommended text for headers -->
+  <font name="widget"   face="Open Sans,Source Sans Pro" size="11" colour="0,0,0"/> <!-- Text inside widgets (e.g. combobox) -->
+  <font name="label"    face="Open Sans,Source Sans Pro:11:bold" size="11" colour="0,0,0"/> <!-- Text for labels and outside widgets -->
 </fonts>
 
 <colours shadow="0,0,0,100" highlight="255,255,255,150" colour="220,220,220" widgetText="255,255,255"

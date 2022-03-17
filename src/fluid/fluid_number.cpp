@@ -178,7 +178,7 @@ static int number_tostring(lua_State *Lua)
 
 void register_number_class(lua_State *Lua)
 {
-   static const luaL_reg numlib_functions[] = {
+   static const luaL_Reg numlib_functions[] = {
       { "int",    number_i32 },
       { "long",   number_i32 },
       { "large",  number_i64 },
@@ -190,7 +190,7 @@ void register_number_class(lua_State *Lua)
       { NULL, NULL }
    };
 
-   static const luaL_reg numlib_methods[] = {
+   static const luaL_Reg numlib_methods[] = {
       { "__tostring", number_tostring },
       { "__index",    number_index },
       { NULL, NULL }

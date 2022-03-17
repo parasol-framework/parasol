@@ -42,10 +42,6 @@ surface.new('text', x=3, y=4,
 })
 </pre>
 
-For long text lists, scrollbars can be attached via the HScroll and VScroll fields.  For hints on how to use a text
-object to build a full featured text editing application, refer to the script file located at
-`programs:apps/textviewer/main.dml`.
-
 By default the Text class supports text highlighting for cut, copy and paste operations.  This support is backed by
 system keypresses such as CTRL-C, CTRL-V and CTRL-X.
 
@@ -94,8 +90,6 @@ enum {
 static void  add_history(objText *, CSTRING);
 static ERROR add_line(objText *, CSTRING, LONG, LONG, LONG);
 static ERROR add_xml(objText *, XMLTag *, WORD, LONG);
-static ERROR calc_hscroll(objText *);
-static ERROR calc_vscroll(objText *);
 static LONG  calc_width(objText *, CSTRING, LONG);
 static LONG  column_coord(objText *, LONG, LONG);
 static ERROR consume_input_events(const InputEvent *, LONG);
@@ -146,7 +140,6 @@ INLINE void set_point(objText *Self, DOUBLE Value)
 static void resize_text(objText *Self)
 {
    if (Self->Flags & TXF_STRETCH) stretch_text(Self);
-   if (Self->Flags & TXF_WORDWRAP) calc_vscroll(Self);
 
    if (Self->RelSize > 0) {
       DOUBLE point = Self->Layout->BoundHeight * Self->RelSize / 100.0;
@@ -191,10 +184,10 @@ static ERROR TEXT_ActionNotify(objText *Self, struct acActionNotify *Args)
       }
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->ValidateInput.Type IS CALL_SCRIPT) and (Self->ValidateInput.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->ValidateInput.Type IS CALL_SCRIPT) and (Self->ValidateInput.Script.Script->UID IS Args->ObjectID)) {
          Self->ValidateInput.Type = CALL_NONE;
       }
-      else if ((Self->Activated.Type IS CALL_SCRIPT) and (Self->Activated.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->Activated.Type IS CALL_SCRIPT) and (Self->Activated.Script.Script->UID IS Args->ObjectID)) {
          Self->Activated.Type = CALL_NONE;
       }
    }
@@ -223,7 +216,7 @@ static ERROR TEXT_ActionNotify(objText *Self, struct acActionNotify *Args)
       log.msg("%d bytes incoming from file stream.", write->Result);
 
       if (write->Buffer) {
-         acDataFeed(Self, Self->Head.UniqueID, DATA_TEXT, write->Buffer, write->Result);
+         acDataFeed(Self, Self->Head.UID, DATA_TEXT, write->Buffer, write->Result);
       }
    }
 
@@ -303,8 +296,6 @@ static ERROR TEXT_Clear(objText *Self, APTR Void)
 
    if (!Self->NoUpdate) {
       Redraw(Self);
-      calc_hscroll(Self);
-      calc_vscroll(Self);
    }
 
    return ERR_Okay;
@@ -629,9 +620,6 @@ static ERROR TEXT_DataFeed(objText *Self, struct acDataFeed *Args)
       Self->NoUpdate--;
 
       if (!Self->NoUpdate) {
-         calc_hscroll(Self);
-         calc_vscroll(Self);
-
          draw_lines(Self, linestart, Self->AmtLines - linestart);
          view_cursor(Self);
       }
@@ -747,8 +735,6 @@ static ERROR TEXT_DeleteLine(objText *Self, struct txtDeleteLine *Args)
       else draw_lines(Self, Args->Line, Self->AmtLines - Args->Line + 1);
    }
 
-   calc_hscroll(Self);
-   calc_vscroll(Self);
    return ERR_Okay;
 }
 
@@ -818,7 +804,7 @@ static ERROR TEXT_Free(objText *Self, APTR Void)
    if (Self->Layout) { acFree(Self->Layout); Self->Layout = NULL; }
 
    if (Self->PointerLocked) {
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
       Self->PointerLocked = FALSE;
    }
 
@@ -994,9 +980,6 @@ static ERROR TEXT_Init(objText *Self, APTR Void)
    if (Self->LineLimit IS 1) {
       if (Self->Array[0].String) Self->CursorColumn = Self->Array[0].Length;
    }
-
-   calc_hscroll(Self);
-   calc_vscroll(Self);
 
    return ERR_Okay;
 }
@@ -1245,8 +1228,6 @@ static ERROR TEXT_SetFont(objText *Self, struct txtSetFont *Args)
       Self->Flags &= ~TXF_AREA_SELECTED;
 
       Redraw(Self);
-      calc_hscroll(Self);
-      calc_vscroll(Self);
       return ERR_Okay;
    }
    else return ERR_CreateObject;
@@ -1442,14 +1423,14 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
                else if (Self->State != STATE_INSIDE) {
                   Self->State = STATE_ENTERED;
 
-                  gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UniqueID);
+                  gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UID);
                   Self->PointerLocked = TRUE;
                }
             }
             else {
                if (Self->State != STATE_EXITED) {
                   Self->State = STATE_EXITED;
-                  gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+                  gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
                   Self->PointerLocked = FALSE;
                }
             }
@@ -1509,8 +1490,6 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 static const FieldArray clFields[] = {
    { "Layout",          FDF_INTEGRAL|FDF_SYSTEM|FDF_R, 0,   NULL, NULL },
    { "Font",            FDF_INTEGRAL|FDF_R,   ID_FONT,   NULL, NULL },
-   { "VScroll",         FDF_OBJECTID|FDF_RW,  ID_SCROLL, NULL, (APTR)SET_VScroll },
-   { "HScroll",         FDF_OBJECTID|FDF_RW,  ID_SCROLL, NULL, (APTR)SET_HScroll },
    { "TabFocus",        FDF_OBJECTID|FDF_RW,  0,         NULL, NULL },
    { "Focus",           FDF_OBJECTID|FDF_RI,  0,         NULL, NULL },
    { "CursorColumn",    FDF_LONG|FDF_RW,      0,         NULL, (APTR)SET_CursorColumn },

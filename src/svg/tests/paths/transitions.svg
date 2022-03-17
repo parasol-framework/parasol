@@ -1,0 +1,32 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg viewBox="0 0 500 300" aspectRatio="xMid yMid Meet" version = "1.1"  xmlns="http://www.w3.org/2000/svg"  xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <parasol:transition id="hill">
+      <stop offset="0" transform="scale(0.3,0.3)"/>
+      <stop offset="50%" transform="scale(1.5,2.0)"/>
+      <stop offset="100%" transform="scale(0.3,0.3)"/>
+    </parasol:transition>
+
+    <parasol:transition id="flip">
+      <stop offset="0" transform="scale(0.3,-0.3)"/>
+      <stop offset="50%" transform="scale(1.5,-1.0)"/>
+      <stop offset="100%" transform="scale(0.3,-0.3)"/>
+    </parasol:transition>
+
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="rgb(200,200,255)" stop-opacity="0.9"/>
+      <stop offset="0.1" stop-color="rgb(200,200,255)" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="rgb(200,200,255)" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect fill="#ffffff" width="100%" height="100%"/>
+
+  <g transform="translate(0,80)">
+    <rect fill="url(#floor)" x="0" width="100%" y="-2" height="100"/>
+    <text x="3" font-size="19.6" fill="navy" transition="url(#hill)">Using transitions allows vectors to be morphed over distance.</text>
+    <text x="3" font-size="19.6" fill="navy" opacity="0.2" transition="url(#flip)">Using transitions allows vectors to be morphed over distance.</text>
+  </g>
+</svg>

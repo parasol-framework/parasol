@@ -49,13 +49,13 @@
   <text x="20" y="0" height="32" xoffset="190" string="[@title:Untitled]"
     face="helvete:14" colour="255,255,255" align="vertical" font.flags="!charclip"/>
 
-  <image src="../images/rocklyte.png" x="2" y="0" height="32" xoffset="2"
+  <image src="../images/parasol.png" x="2" y="0" height="32" xoffset="2"
     align="vertical|right" eastgap="8"/>
 </template>
 
 <footer>
   <p><box color="190,190,190" x="0" xoffset="0" height="1"/></p>
-  <p align="center"><font face="opti small" size="8" colour="100,100,100">Rocklyte Ltd © 2000-2013</font></p>
+  <p align="center"><font face="opti small" size="8" colour="100,100,100">Paul Manias © 2000-2022</font></p>
 </template>
 
 <template name="ul">

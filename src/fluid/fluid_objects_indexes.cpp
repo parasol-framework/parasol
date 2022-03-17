@@ -201,7 +201,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
    else if ((FName[0] IS 'i') AND (FName[1] IS 'd') AND (!FName[2])) {
       // Note that if the object actually has a defined ID field in its structure, the Lua code can read it
       // by using an uppercase 'ID'.
-      lua_pushnumber(Lua, obj->UniqueID);
+      lua_pushnumber(Lua, obj->UID);
    }
    else if ((field = FindField(obj, StrHash(FName, FALSE), &src))) {
       if (field->Flags & FD_ARRAY) {

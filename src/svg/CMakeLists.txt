@@ -4,7 +4,7 @@ set (MOD svg)
 
 idl_c ("${MOD}.fdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
-   ARGS "--files={" "class_rsvg.cpp" "class_svg.cpp" "class_svgimage.cpp" "}")
+   ARGS "--files={" "class_rsvg.cpp" "class_svg.cpp" "}")
 
 idl_def ("${MOD}.fdl" NAME ${MOD}_idl
    OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}_def.c")
@@ -26,3 +26,5 @@ target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/katana-parser/src")
 
 target_link_libraries (${MOD} PRIVATE "m")
+
+flute_test (svg_output "tests/test-svg.fluid")

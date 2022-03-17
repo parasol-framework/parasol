@@ -67,13 +67,13 @@ ERROR CreateObjectF(LARGE ClassID, LONG Flags, OBJECTPTR *argObject, va_list Lis
       if (!SetFieldsF(object, List)) {
          if (!(error = acInit(object))) {
             if (argObject) *argObject = object;
-            else if (object->UniqueID < 0) ReleaseObject(object);
+            else if (object->UID < 0) ReleaseObject(object);
             return ERR_Okay;
          }
       }
       else error = log.warning(ERR_SetField);
 
-      if (object->UniqueID < 0) {
+      if (object->UID < 0) {
          acFree(object);
          ReleaseObject(object);
       }
@@ -175,7 +175,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
 
    if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK|(Flags & NF_UNTRACKED ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
       head->Stats     = (Stats *)ResolveAddress(head, mc->Size);
-      head->UniqueID  = head_id;
+      head->UID  = head_id;
       head->MemFlags |= MEM_NO_LOCK; // Prevents private memory allocations made by this class from being automatically locked.
       head->ClassID   = mc->BaseClassID;
       if (mc->BaseClassID IS mc->SubClassID) { // Object derived from a base class
@@ -394,13 +394,13 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
       if (!AllocMemory(mc->Size + sizeof(Stats), MEM_PUBLIC|MEM_OBJECT, (void **)&head, &head_id)) {
          head->Stats = (Stats *)ResolveAddress(head, mc->Size);
          head->MemFlags |= MEM_PUBLIC;
-         head->UniqueID = head_id;
+         head->UID = head_id;
       }
       else error = ERR_AllocMemory;
    }
    else if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK, (APTR *)&head, &head_id)) {
       head->Stats = (Stats *)ResolveAddress(head, mc->Size);
-      head->UniqueID = head_id;
+      head->UID = head_id;
       head->MemFlags |= MEM_NO_LOCK; // Prevents private memory allocations made by this class from being automatically locked.
    }
    else error = ERR_AllocMemory;

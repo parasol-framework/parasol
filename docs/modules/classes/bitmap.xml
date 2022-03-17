@@ -12,13 +12,13 @@
     <idstring>ID_BITMAP</idstring>
     <category>Graphics</category>
     <include>modules/bitmap.h</include>
-    <copyright>Paul Manias 2003-2020</copyright>
+    <copyright>Paul Manias 2003-2022</copyright>
     <description>
 <p>The Bitmap class provides a way of describing an area of memory that an application can draw to, and/or display if the data is held in video memory.  Bitmaps are used in the handling of <class name="Display">Display</class> and <class name="Picture">Picture</class> objects, and form the backbone of Parasol's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and alpha blending features.</p>
 <p>To create a new bitmap object, you need to specify its <field>Width</field> and <field>Height</field> at a minimum.  Preferably, you should also know how many colours you want to use and whether the bitmap data should be held in standard memory (for CPU based reading and writing) or video memory (for hardware based drawing).  After creating a bitmap you can use a number of available drawing methods for the purpose of image management.  Please note that these methods are designed to be called under exclusive conditions, and it is not recommended that you call methods on a bitmap using the message system.</p>
-<p>By default, the CPU can only be used to read and write data directly to or from a bitmap when it is held in standard memory (this is the default type).  If the BLIT or VIDEO flags are specified in the <field>DataFlags</field> field then the CPU cannot access this memory, unless you specifically request it.  To do this, use the <action>Lock</action> and <action>Unlock</action> actions to temporarily gain read/write access to a bitmap.</p>
+<p>By default, the CPU can only be used to read and write data directly to or from a bitmap when it is held in standard memory (this is the default type).  If the <code>BLIT</code> or <code>VIDEO</code> flags are specified in the <field>DataFlags</field> field then the CPU cannot access this memory, unless you specifically request it.  To do this, use the <action>Lock</action> and <action>Unlock</action> actions to temporarily gain read/write access to a bitmap.</p>
 <p>If you require complex drawing functionality that is not available in the Bitmap class, please use the functionality provided by the Vector module.</p>
-<p>To save the image of a bitmap, you can either copy its image to a <class name="Picture">Picture</class> object, or you can use the SaveImage action to save the data in PCX format.  Raw data can also be processed through a bitmap by using the Read and Write actions.</p></description>
+<p>To save the image of a bitmap, you can either copy its image to a <class name="Picture">Picture</class> object, or you can use the SaveImage action to save the data in PNG format.  Raw data can also be processed through a bitmap by using the Read and Write actions.</p></description>
     <source>
       <file>class_bitmap.cpp</file>
     </source>
@@ -89,9 +89,15 @@
       <name>Resize</name>
       <comment>Resizes a bitmap object's dimensions.</comment>
       <description>
-<p>Resizing a bitmap allows you to change its dimensions in width and height, as well as depth.  The image data will be retained during the resize, although cropping will occur if any of the dimensions are reduced.  Reducing the depth of the bitmap will degrade the bitmap's quality.</p>
-<p>Bitmap resizing can be time consuming due to the retention of the image data.  Processing time can be significantly reduced by setting the VOLATILE flag in the bitmap <field>Flags</field> field.</p>
+<p>Resizing a bitmap will change its width, height and optionally bit depth.  Existing image data is not retained after this process.</p>
+<p>The image data is cleared with <field>BkgdRGB</field> if the CLEAR flag is defined in <field>Flags</field>.</p>
       </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="FieldNotSet">A vital field has not been set in this object.</error>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
     </action>
 
     <action>
@@ -127,14 +133,14 @@
       <description>
 <p>A bitmap can be compressed with the CompressBitmap method to save memory when the bitmap is not in use.  This is useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.</p>
 <p>Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap's image data will likely result in a memory access fault.  The image data will remain invalid until the <method>Decompress</method> method is called to restore the bitmap to its original state.</p>
-<p>The BMF_COMPRESSED bit will be set in the <field>Flags</field> field after a successful call to this function to indicate that the bitmap is compressed.</p>
+<p>The <code>BMF_COMPRESSED</code> bit will be set in the <field>Flags</field> field after a successful call to this function to indicate that the bitmap is compressed.</p>
       </description>
       <result>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="CreateObject">A Compression object could not be created.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="ReallocMemory">The reallocation of a memory block failed.</error>
+        <error code="CreateObject">A Compression object could not be created.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -156,35 +162,9 @@
 <p>This method is a proxy for <function module="Display">CopyArea</function>.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">Operation successful.</error>
         <error code="Mismatch">The destination bitmap is not a close enough match to the source bitmap in order to perform the operation.</error>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
-    <method>
-      <name>CopyStretch</name>
-      <comment>Copies a rectangular area from one bitmap to another with stretching.</comment>
-      <prototype>ERROR bmpCopyStretch(OBJECTPTR Object, struct rkBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest, LONG DestWidth, LONG DestHeight)</prototype>
-      <input>
-        <param type="struct rkBitmap *" name="DestBitmap">Pointer to the destination bitmap.</param>
-        <param type="LONG" name="Flags">Special flags.</param>
-        <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
-        <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
-        <param type="LONG" name="Width">The width of the source area.</param>
-        <param type="LONG" name="Height">The height of the source area.</param>
-        <param type="LONG" name="XDest">The horizontal position to copy the area to.</param>
-        <param type="LONG" name="YDest">The vertical position to copy the area to.</param>
-        <param type="LONG" name="DestWidth">The width to use for the destination area.</param>
-        <param type="LONG" name="DestHeight">The height to use for the destination area.</param>
-      </input>
-      <description>
-<p>This method is a proxy for <function module="Display">CopyStretch</function>.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Mismatch">The destination bitmap is not a close enough match to the source bitmap in order to perform the copy.</error>
-        <error code="Args">The DestBitmap argument was not specified.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -200,8 +180,8 @@
 <p>By default the original compression data will be destroyed, however it can be retained by setting the RetainData argument to TRUE.  Retaining the data will allow it to be decompressed on consecutive occasions.  Because both the raw and compressed image data will be held in memory, the next call to <method>Compress</method> will remove the raw image data from memory while retaining the original compressed data without starting a re-compression process.</p>
       </description>
       <result>
-        <error code="AllocMemory">Insufficient memory in recreating the bitmap data buffer.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="AllocMemory">Insufficient memory in recreating the bitmap data buffer.</error>
       </result>
     </method>
 
@@ -220,8 +200,8 @@
 <p>This method is a proxy for <function module="Display">DrawLine</function>.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -241,8 +221,8 @@
 <p>This method draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified Width and Height.  If the Fill argument is set to TRUE then the rectangle will be filled, otherwise the rectangle's outline will be drawn.  The colour of the rectangle is determined by the pixel value in the Colour argument.</p>
       </description>
       <result>
-        <error code="Args">Invalid arguments passed to function.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
       </result>
     </method>
 
@@ -257,28 +237,9 @@
 <p>This method is used to flip bitmap images on their horizontal or vertical axis.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
         <error code="Args">Invalid arguments passed to function.</error>
-      </result>
-    </method>
-
-    <method>
-      <name>Flood</name>
-      <comment>Fills a bitmap area with a specific colour.</comment>
-      <prototype>ERROR bmpFlood(OBJECTPTR Object, LONG X, LONG Y, ULONG Colour)</prototype>
-      <input>
-        <param type="LONG" name="X">The horizontal point to start the flood fill.</param>
-        <param type="LONG" name="Y">The vertical point to start the flood fill.</param>
-        <param type="ULONG" name="Colour">The colour index to use for the fill.</param>
-      </input>
-      <description>
-<p>This method performs a flood-fill operation on a bitmap.  It requires an X and Y value that will target a pixel to initiate the flood-fill operation.  The colour value indicated in RGB will be used to change the targeted pixel and all adjacent pixels that share the targeted pixel's colour.</p>
-<p>The speed of the algorithm is wholly dependent on the amount of pixels that need to be filled, although hardware support may be used for filling if it is available.</p>
-      </description>
-      <result>
         <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Okay">Operation successful.</error>
       </result>
     </method>
 
@@ -297,8 +258,8 @@
 <p>The GetColour method is used to convert Red, Green and Blue colour components into a single colour index that can be used for directly writing colours to the bitmap.  The result is returned in the Colour parameter.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -318,8 +279,8 @@
 <p>This method is a proxy for <function module="Display">SetClipRegion</function>.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -728,43 +689,34 @@ UnpackAlpha(Bitmap, Colour)
 
   </fields>
   <types>
-    <constants lookup="CSRF" comment="Flags for CopySurface().">
-      <const name="ALPHA">Enable alpha blending if the source is in 32-bit colour format with an alpha channel.</const>
-      <const name="TRANSLUCENT">Perform a translucent copy operation, using the strength value specified in the Surface Opacity field.</const>
-      <const name="OFFSET">Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.</const>
-      <const name="CLIP">Enable clipping of the source coordinates.</const>
-      <const name="TRANSPARENT">Enable transparent copying, whereby colours matching the source's Colour field will be ignored.</const>
-      <const name="DEFAULT_FORMAT">Ignore the colour format defined in the source surface (if any) and generate a default format based on the BitsPerPixel value.</const>
-    </constants>
-
-    <constants lookup="ACF" comment="Acceleration flags for GetDisplayInfo().">
-      <const name="VIDEO_BLIT">Video blitting is supported for this display.</const>
-      <const name="SOFTWARE_BLIT">Software blitting is used (or forced) for this display.</const>
+    <constants lookup="BAF" comment="Instructions for basic graphics operations.">
+      <const name="BLEND">Enable alpha blending to the destination if the source supports an alpha channel.</const>
+      <const name="COPY">Special CopyArea() option that avoids blending when the destination pixel is empty.</const>
+      <const name="DITHER">Perform dithering if the colour formats differ between the source and destination.</const>
+      <const name="FILL">For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture.</const>
     </constants>
 
     <constants lookup="BMF" comment="Bitmap flags">
-      <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
-      <const name="FIXED_DEPTH">Prevent changing of bitmap depth after initialisation (e.g. via acResize()).</const>
-      <const name="QUERIED">Automatically set after a Query on the bitmap.</const>
+      <const name="ACCELERATED_2D">2D video acceleration is available.</const>
       <const name="ACCELERATED_3D">3D video acceleration is available.</const>
       <const name="ALPHA_CHANNEL">For 32-bit images, indicates that an alpha channel is present.</const>
-      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the ColourRGB field is set and support exists in functions such as CopyArea().</const>
-      <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
-      <const name="ACCELERATED_2D">2D video acceleration is available.</const>
+      <const name="BLANK_PALETTE">Forces a blank/black palette on initialisation.</const>
       <const name="CLEAR">Clear graphics on initialisation and when resizing.</const>
       <const name="COMPRESSED">The bitmap data is compressed.</const>
-      <const name="USER">User flag allows tagging of bitmaps for special meaning; not used internally.</const>
-      <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
-      <const name="BLANK_PALETTE">Forces a blank/black palette on initialisation.</const>
+      <const name="FIXED_DEPTH">Prevent changing of bitmap depth after initialisation (e.g. via acResize()).</const>
       <const name="INVERSE_ALPHA">Indicates reverse alpha blending, higher values are transparent.</const>
       <const name="MASK">Declare the Bitmap as a 1 or 8 bit mask.  Must be set in conjunction with the BitsPerPixel field on initialisation.</const>
+      <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
+      <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
+      <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
+      <const name="QUERIED">Automatically set after a Query on the bitmap.</const>
+      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the ColourRGB field is set and support exists in functions such as CopyArea().</const>
+      <const name="USER">This user flag can be used to tag bitmaps with special meaning.  Not used internally.</const>
     </constants>
 
-    <constants lookup="DPMS" comment="Possible modes for the Display class' DPMS field.">
-      <const name="DEFAULT">Use the default DPMS mode as defined by the display driver.</const>
-      <const name="OFF">Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).</const>
-      <const name="SUSPEND">Puts the display into suspend mode (blanks the display output while maintaining normal power levels).</const>
-      <const name="STANDBY">Puts the display into standby (reduced power) mode.</const>
+    <constants lookup="BMP" comment="Bitmap types">
+      <const name="CHUNKY">Chunky pixel mode (default).</const>
+      <const name="PLANAR">Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.</const>
     </constants>
 
     <constants lookup="FLIP" comment="Flags for the bitmap Flip method.">
@@ -772,147 +724,7 @@ UnpackAlpha(Bitmap, Colour)
       <const name="VERTICAL">Flip the bitmap from left to right.</const>
     </constants>
 
-    <constants lookup="CSTF" comment="Flags for CopyStretch().">
-      <const name="BICUBIC">Cubic scaling.</const>
-      <const name="BRESENHAM">Smooth bresenham.</const>
-      <const name="CLAMP">Pixels that are past the edge of the source material will have a default alpha value of 0 unless the CLAMP flag is used, in which case the value is approximated with a bias of 255 if not otherwise calculable.</const>
-      <const name="GOOD_QUALITY">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
-      <const name="CUBIC">Cubic scaling.</const>
-      <const name="NEIGHBOUR">Nearest neighbour scaling</const>
-      <const name="FILTER_SOURCE">If the source bitmap is temporary and will not be required after the stretch operation, you have the option of setting this flag.  By doing so, the stretch routine will pass the source image through a simple filter so that it can improve the resulting image.  This option is available at a speed cost and is best used in conjunction with bilinear resizing.</const>
-      <const name="BILINEAR">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
-    </constants>
-
-    <constants lookup="DT" comment="Flags for GetDisplayType().">
-      <const name="NATIVE">The display is native (supported by internal drivers).</const>
-      <const name="X11">The display is driven by the X Window System (X11, X.Org, XFree86)</const>
-      <const name="WINDOWS">The display is driven by Microsoft Windows drivers.</const>
-      <const name="GLES">The display is driven by OpenGLES.</const>
-    </constants>
-
-    <constants lookup="SMF" comment="Flags for the Display class SetMonitor() method.">
-      <const name="AUTO_DETECT">Monitor settings to be auto-detected on startup.</const>
-      <const name="BIT_6">The device is limited to 6-bit colour production in real terms.</const>
-    </constants>
-
-    <constants lookup="GMF" comment="Flags for gamma operations.">
-      <const name="SAVE">Save the provided settings permanently.</const>
-    </constants>
-
-    <constants lookup="HOST">
-      <const name="TRAY_ICON">All new displays are represented in the system tray when this option is active.</const>
-      <const name="TASKBAR">The hosted display is given a taskbar button.</const>
-      <const name="STICK_TO_FRONT">The hosted display sticks to the front.</const>
-      <const name="TRANSLUCENCE">Change the alpha channel level for the entire window.</const>
-      <const name="TRANSPARENT">Defines an RGB colour that is to be used as transparent.</const>
-    </constants>
-
-    <constants lookup="PF" comment="Flags for the Pointer class.">
-      <const name="UNUSED"/>
-      <const name="VISIBLE">Indicates that the pointer is currently visible.  Read-only.</const>
-      <const name="ANCHOR">Allow the pointer to be anchored.</const>
-    </constants>
-
-    <constants lookup="CRF" comment="Flags for the SetCursor() function.">
-      <const name="LMB">Release the cursor after the left mouse button is held and released.</const>
-      <const name="NO_BUTTONS">Set the cursor only on the condition that the user is not holding down any buttons.  ERR_NothingDone is returned if the user has a button held down.</const>
-      <const name="MMB">Release the cursor after the middle mouse button is held and released.</const>
-      <const name="BUFFER">Use of the BUFFER option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the SetCursor() function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the ANCHOR option.</const>
-      <const name="RMB">Release the cursor after the right mouse button is held and released.</const>
-      <const name="RESTRICT">Similar to the anchor option, but allows the pointer to move within the surface referred to by ObjectID.</const>
-    </constants>
-
-    <constants lookup="BAF" comment="Instructions for basic graphics operations.">
-      <const name="COPY">Special CopyArea() option that avoids blending when the destination pixel is empty.</const>
-      <const name="BLEND">Enable alpha blending to the destination if the source supports an alpha channel.</const>
-      <const name="FILL">For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture.</const>
-      <const name="DITHER">Perform dithering if the colour formats differ between the source and destination.</const>
-    </constants>
-
-    <constants lookup="BMP" comment="Bitmap types">
-      <const name="PLANAR">Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.</const>
-      <const name="CHUNKY">Chunky pixel mode (default).</const>
-    </constants>
-
-    <constants lookup="SCR" comment="Display flags.">
-      <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
-      <const name="BIT_6">Display is limited to 6-bit output per colour gun.</const>
-      <const name="AUTO_SAVE">Saves settings to the global display state when the object is freed.</const>
-      <const name="MAXSIZE">For GetDisplayInfo() only, indicates that the width and height values indicate the display's maximum size.</const>
-      <const name="NO_ACCELERATION">2D graphics card acceleration is not available.</const>
-      <const name="VISIBLE">Set if the screen is on display.</const>
-      <const name="COMPOSITE">Enables alpha channel blending (if display is hosted and 32-bit).</const>
-      <const name="READ_ONLY">Synonym for MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</const>
-      <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
-      <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
-      <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
-      <const name="BORDERLESS">If display is hosted, create it as a popup / borderless window.</const>
-      <const name="HOSTED">The display is a desktop hosted window.</const>
-      <const name="BUFFER">Set if you would like a complementing buffer in video RAM.</const>
-      <const name="POWERSAVE">Power saving is active (read-only).</const>
-      <const name="ALPHA_BLEND">Enables alpha channel blending (if display is hosted and 32-bit).</const>
-      <const name="MAXIMISE">Special win32 flag.</const>
-      <const name="FLIPPABLE">If SCR_BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
-    </constants>
-
   </types>
   <structs>
-    <struct name="CursorInfo">
-      <field name="Width" type="LONG">Maximum cursor width for custom cursors</field>
-      <field name="Height" type="LONG">Maximum cursor height for custom cursors</field>
-      <field name="Flags" type="LONG">Currently unused</field>
-      <field name="BitsPerPixel" type="WORD">Preferred bits-per-pixel setting for custom cursors</field>
-    </struct>
-
-    <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
-      <field name="RedShift" type="UBYTE">Right shift value</field>
-      <field name="GreenShift" type="UBYTE"></field>
-      <field name="BlueShift" type="UBYTE"></field>
-      <field name="AlphaShift" type="UBYTE"></field>
-      <field name="RedMask" type="UBYTE">The unshifted mask value (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE"></field>
-      <field name="BlueMask" type="UBYTE"></field>
-      <field name="AlphaMask" type="UBYTE"></field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value</field>
-      <field name="GreenPos" type="UBYTE"></field>
-      <field name="BluePos" type="UBYTE"></field>
-      <field name="AlphaPos" type="UBYTE"></field>
-    </struct>
-
-    <struct name="DisplayInfo" typeName="DISPLAYINFO">
-      <field name="Display" type="OBJECTID">Object ID related to the display</field>
-      <field name="Flags" type="LONG" lookup="SCR">Display flags</field>
-      <field name="Width" type="WORD">Pixel width of the display</field>
-      <field name="Height" type="WORD">Pixel height of the display</field>
-      <field name="BitsPerPixel" type="WORD">Bits per pixel</field>
-      <field name="BytesPerPixel" type="WORD">Bytes per pixel</field>
-      <field name="AccelFlags" type="LARGE" lookup="ACF">Flags describing supported hardware features.</field>
-      <field name="AmtColours" type="LONG">Total number of supported colours.</field>
-      <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
-      <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>
-      <field name="MaxRefresh" type="FLOAT">Maximum refresh rate</field>
-      <field name="RefreshRate" type="FLOAT">Recommended refresh rate</field>
-      <field name="Index" type="LONG">Display mode ID (internal)</field>
-      <field name="HDensity" type="LONG">Horizontal pixel density per inch.</field>
-      <field name="VDensity" type="LONG">Vertical pixel density per inch.</field>
-    </struct>
-
-    <struct name="BitmapSurface" typeName="BITMAPSURFACE">
-      <field name="Data" type="APTR">Pointer to the bitmap graphics data.</field>
-      <field name="Width" type="WORD">Pixel width of the bitmap.</field>
-      <field name="Height" type="WORD">Pixel height of the bitmap.</field>
-      <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
-      <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
-      <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
-      <field name="Version" type="UBYTE">Version of this structure.</field>
-      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
-      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
-      <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
-      <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
-      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
-      <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
-    </struct>
-
   </structs>
 </book>

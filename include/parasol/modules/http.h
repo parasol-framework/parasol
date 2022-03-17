@@ -2,7 +2,7 @@
 #define MODULES_HTTP 1
 
 // Name:      http.h
-// Copyright: Paul Manias © 2005-2020
+// Copyright: Paul Manias © 2005-2022
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -63,46 +63,46 @@
 
 // HTTP status codes
 
-#define HTS_ENTITY_TOO_LARGE 413
+#define HTS_CONTINUE 100
+#define HTS_SWITCH_PROTOCOLS 101
+#define HTS_OKAY 200
+#define HTS_CREATED 201
+#define HTS_ACCEPTED 202
+#define HTS_UNVERIFIED_CONTENT 203
 #define HTS_NO_CONTENT 204
-#define HTS_TEMP_REDIRECT 307
+#define HTS_RESET_CONTENT 205
+#define HTS_PARTIAL_CONTENT 206
+#define HTS_MULTIPLE_CHOICES 300
+#define HTS_MOVED_PERMANENTLY 301
+#define HTS_FOUND 302
 #define HTS_SEE_OTHER 303
+#define HTS_NOT_MODIFIED 304
+#define HTS_USE_PROXY 305
+#define HTS_TEMP_REDIRECT 307
+#define HTS_BAD_REQUEST 400
+#define HTS_UNAUTHORISED 401
+#define HTS_PAYMENT_REQUIRED 402
+#define HTS_FORBIDDEN 403
+#define HTS_NOT_FOUND 404
+#define HTS_METHOD_NOT_ALLOWED 405
+#define HTS_NOT_ACCEPTABLE 406
+#define HTS_PROXY_AUTHENTICATION 407
+#define HTS_REQUEST_TIMEOUT 408
+#define HTS_CONFLICT 409
+#define HTS_GONE 410
+#define HTS_LENGTH_REQUIRED 411
+#define HTS_PRECONDITION_FAILED 412
+#define HTS_ENTITY_TOO_LARGE 413
+#define HTS_URI_TOO_LONG 414
+#define HTS_UNSUPPORTED_MEDIA 415
 #define HTS_OUT_OF_RANGE 416
 #define HTS_EXPECTATION_FAILED 417
-#define HTS_REQUEST_TIMEOUT 408
-#define HTS_UNAUTHORISED 401
-#define HTS_CONTINUE 100
-#define HTS_NOT_FOUND 404
-#define HTS_VERSION_UNSUPPORTED 505
-#define HTS_UNSUPPORTED_MEDIA 415
-#define HTS_MULTIPLE_CHOICES 300
-#define HTS_GONE 410
-#define HTS_PROXY_AUTHENTICATION 407
-#define HTS_LENGTH_REQUIRED 411
-#define HTS_BAD_REQUEST 400
-#define HTS_ACCEPTED 202
-#define HTS_MOVED_PERMANENTLY 301
-#define HTS_PRECONDITION_FAILED 412
-#define HTS_USE_PROXY 305
-#define HTS_NOT_IMPLEMENTED 501
-#define HTS_SERVICE_UNAVAILABLE 503
-#define HTS_OKAY 200
 #define HTS_SERVER_ERROR 500
+#define HTS_NOT_IMPLEMENTED 501
 #define HTS_BAD_GATEWAY 502
+#define HTS_SERVICE_UNAVAILABLE 503
 #define HTS_GATEWAY_TIMEOUT 504
-#define HTS_FOUND 302
-#define HTS_RESET_CONTENT 205
-#define HTS_NOT_ACCEPTABLE 406
-#define HTS_CREATED 201
-#define HTS_NOT_MODIFIED 304
-#define HTS_SWITCH_PROTOCOLS 101
-#define HTS_PAYMENT_REQUIRED 402
-#define HTS_UNVERIFIED_CONTENT 203
-#define HTS_FORBIDDEN 403
-#define HTS_METHOD_NOT_ALLOWED 405
-#define HTS_PARTIAL_CONTENT 206
-#define HTS_URI_TOO_LONG 414
-#define HTS_CONFLICT 409
+#define HTS_VERSION_UNSUPPORTED 505
 
 // HTTP flags
 
@@ -145,7 +145,7 @@ typedef struct rkHTTP {
    LONG     Status;          // Status code recieved in the HTML response header
    ERROR    Error;           // Result of the operation
    LONG     Datatype;        // Datatype to use when sending HTTP data to a target object
-   LONG     State;           // Current state of the http get operation
+   LONG     CurrentState;    // Current state of the http get operation
    STRING   ProxyServer;     // If using a proxy server, this is the name or IP address of the server
    LONG     ProxyPort;       // The port of the proxy server
    LONG     BufferSize;      // Preferred buffer size for things like outgoing operations (sending data)

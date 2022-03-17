@@ -2,7 +2,7 @@
 #define SYSTEM_FIELDS 1
 
 // Name:      system/fields.h
-// Copyright: Paul Manias © 1996-2020
+// Copyright: Paul Manias © 1996-2022
 // Generator: idl-c
 
 #define FID_Category 0x19ee1863LL
@@ -71,6 +71,7 @@
 #define FID_Total 0x1070f309LL
 #define FID_Base 0x7c947880LL
 #define FID_Config 0xf6e46c7bLL
+#define FID_CurrentState 0x46b57569LL
 #define FID_State 0x10614a06LL
 #define FID_Host 0x7c97fe63LL
 #define FID_X 0x0002b61dLL
@@ -418,8 +419,8 @@
 #define FID_ZCoord 0x2bb2a0b6LL
 #define FID_ZSpeed 0x2cd488f0LL
 #define FID_PublicObjects 0xb90c95aeLL
-#define FID_Option1 0x71f0504fLL
-#define FID_Option2 0x71f05050LL
+#define FID_Viewport 0xe8f01225LL
+#define FID_ParentViewport 0x679f3aafLL
 #define FID_Option3 0x71f05051LL
 #define FID_Option4 0x71f05052LL
 #define FID_Address 0x1f2653ebLL
@@ -790,9 +791,9 @@
 #define FID_ErrorHeader 0xe709ad18LL
 #define FID_Class 0x0f3b5edbLL
 #define FID_ClassNo 0xcb8e9038LL
-#define FID_XChange 0x078bd4e3LL
-#define FID_YChange 0x548611a4LL
-#define FID_ZChange 0xa1804e65LL
+#define FID_DeltaX 0xf883c1e7LL
+#define FID_DeltaY 0xf883c1e8LL
+#define FID_DeltaZ 0xf883c1e9LL
 #define FID_LimitEast 0xc1823831LL
 #define FID_LimitWest 0xc18c2807LL
 #define FID_LimitNorth 0xf273c44fLL

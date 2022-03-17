@@ -7,14 +7,12 @@ Please refer to it for further information on licensing.
 ******************************************************************************
 
 -CLASS-
-Input: The Input class manages the display and interactivity of user input boxes.
+Input: Manages the display and interactivity of user input boxes.
 
-The Input class simplifies the creation and management of input boxes as part of the user interface.  New input areas
-can be created by specifying as little as the graphical dimensions for the box area.  The Input class allows for the
-specifics of the graphics to be altered, such as the colours and the font used.
+The Input class simplifies the creation and management of input boxes as part of the user interface.
 
-It is likely that when when the user clicks or tabs away from the input box, you will need it to perform an action.
-Set the #Feedback field in order to receive this notification and respond with your own custom functionality.
+When the user clicks or tabs away from the input box, your program may need to perform an action.  Set the
+#Feedback field in order to receive a notification and formulate a response.
 
 -END-
 
@@ -22,17 +20,74 @@ Set the #Feedback field in order to receive this notification and respond with y
 
 #define PRV_INPUT
 #define PRV_WIDGET_MODULE
-#include <parasol/modules/document.h>
 #include <parasol/modules/widget.h>
-#include <parasol/modules/xml.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/surface.h>
+#include <parasol/modules/vector.h>
 #include "defs.h"
 
 static OBJECTPTR clInput = NULL;
 
-static void text_validation(objText *);
-static void text_activated(objText *);
+//****************************************************************************
+
+static void style_trigger(objInput *Self, LONG Style)
+{
+   if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) {
+      OBJECTPTR script;
+      if ((script = Self->prvStyleTrigger.Script.Script)) {
+         const ScriptArg args[] = {
+            { "Input", FD_OBJECTPTR, { .Address = Self } },
+            { "Style", FD_LONG,      { .Long = Style } }
+         };
+         scCallback(script, Self->prvStyleTrigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+      }
+   }
+}
+
+//****************************************************************************
+// Internal, to be called from the style code when the user hits enter.
+
+static ERROR INPUT_Activate(objInput *Self, APTR Void)
+{
+   parasol::Log log;
+
+   if (Self->prvActive) {
+      log.warning("Warning - recursion detected");
+      return ERR_Okay;
+   }
+
+   log.branch();
+
+   Self->prvActive = TRUE;
+
+   CSTRING str = NULL;
+   GetString(Self->TextInput, FID_String, (STRING *)&str);
+
+   ULONG hash = StrHash(str, FALSE);
+   if (hash != Self->prvLastStringHash) { // Do nothing if the string hasn't changed.
+      Self->prvLastStringHash = hash;
+
+      if (Self->prvFeedback.Type IS CALL_STDC) {
+         auto routine = (void (*)(objInput *, CSTRING, LONG))Self->prvFeedback.StdC.Routine;
+         parasol::SwitchContext ctx(Self->prvFeedback.StdC.Context);
+         routine(Self, str, TRUE);
+      }
+      else if (Self->prvFeedback.Type IS CALL_SCRIPT) {
+         OBJECTPTR script;
+         if ((script = Self->prvFeedback.Script.Script)) {
+            const ScriptArg args[] = {
+               { "Input", FD_OBJECTPTR, { .Address = Self } },
+               { "Value", FD_STRING,    { .Address = (STRING)str } },
+               { "Activated", FD_LONG,  { .Long = TRUE } }
+            };
+            scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         }
+      }
+   }
+
+   Self->prvActive = FALSE;
+   return ERR_Okay;
+}
 
 //****************************************************************************
 
@@ -40,17 +95,13 @@ static ERROR INPUT_ActionNotify(objInput *Self, struct acActionNotify *Args)
 {
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
-   if (Args->ActionID IS AC_Disable) {
-      Self->Flags |= INF_DISABLED;
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_Enable) {
-      Self->Flags &= ~INF_DISABLED;
-      DelayMsg(AC_Draw, Self->RegionID, NULL);
-   }
-   else if (Args->ActionID IS AC_Free) {
-      if ((Self->prvFeedback.Type IS CALL_SCRIPT) and (Self->prvFeedback.Script.Script->UniqueID IS Args->ObjectID)) {
+   if (Args->ActionID IS AC_Free) {
+      if ((Self->prvFeedback.Type IS CALL_SCRIPT) and (Self->prvFeedback.Script.Script->UID IS Args->ObjectID)) {
          Self->prvFeedback.Type = CALL_NONE;
+      }
+
+      if ((Self->prvStyleTrigger.Type IS CALL_SCRIPT) and (Self->prvStyleTrigger.Script.Script->UID IS Args->ObjectID)) {
+         Self->prvStyleTrigger.Type = CALL_NONE;
       }
    }
    else return ERR_NoSupport;
@@ -66,8 +117,7 @@ Disable: Turns the input box off.
 
 static ERROR INPUT_Disable(objInput *Self, APTR Void)
 {
-   // See the ActionNotify routine to see what happens when the surface is disabled.
-   acDisableID(Self->RegionID);
+   Self->Flags |= INF_DISABLED;
    return ERR_Okay;
 }
 
@@ -79,8 +129,7 @@ Enable: Turns the input box back on if it has previously been disabled.
 
 static ERROR INPUT_Enable(objInput *Self, APTR Void)
 {
-   // See the ActionNotify routine to see what happens when the surface is enabled.
-   acEnableID(Self->RegionID);
+   Self->Flags &= ~INF_DISABLED;
    return ERR_Okay;
 }
 
@@ -92,8 +141,7 @@ Focus: Sets the focus on the input box.
 
 static ERROR INPUT_Focus(objInput *Self, APTR Void)
 {
-   acFocusID(Self->RegionID);
-   return ERR_Okay;
+   return acFocus(Self->Viewport);
 }
 
 //****************************************************************************
@@ -102,14 +150,10 @@ static ERROR INPUT_Free(objInput *Self, APTR Void)
 {
    if (Self->TextInput) { acFree(Self->TextInput); Self->TextInput = NULL; }
 
-   if (Self->RegionID) {
-      OBJECTPTR object;
-      if (!AccessObject(Self->RegionID, 3000, &object)) {
-         UnsubscribeAction(object, 0);
-         ReleaseObject(object);
-      }
-      acFreeID(Self->RegionID);
-      Self->RegionID = 0;
+   if (Self->Viewport) {
+      UnsubscribeAction(Self->Viewport, 0);
+      acFree(Self->Viewport);
+      Self->Viewport = NULL;
    }
 
    return ERR_Okay;
@@ -123,47 +167,36 @@ Hide: Removes the input box from the display.
 
 static ERROR INPUT_Hide(objInput *Self, APTR Void)
 {
-   Self->Flags |= INF_HIDE;
-   acHideID(Self->RegionID);
-   return ERR_Okay;
+   return acHide(Self->Viewport);
 }
 
 //****************************************************************************
 
 static ERROR INPUT_Init(objInput *Self, APTR Void)
 {
-   if (!Self->SurfaceID) { // Find our parent surface
-      OBJECTID owner_id = GetOwner(Self);
-      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
-         owner_id = GetOwnerID(owner_id);
+   if (!Self->ParentViewport) { // Find our parent viewport
+      OBJECTID owner_id;
+      for (owner_id=GetOwner(Self); (owner_id); owner_id=GetOwnerID(owner_id)) {
+          if (GetClassID(owner_id) IS ID_VECTOR) {
+             Self->ParentViewport = (objVector *)GetObjectPtr(owner_id);
+             if ((Self->ParentViewport->Head.SubID != ID_VECTORVIEWPORT) and
+                 (Self->ParentViewport->Head.SubID != ID_VECTORSCENE)) return ERR_UnsupportedOwner;
+             else break;
+          }
       }
-      if (owner_id) Self->SurfaceID = owner_id;
-      else return ERR_UnsupportedOwner;
+      if (!owner_id) return ERR_UnsupportedOwner;
    }
 
-   objSurface *region;
-   if (!AccessObject(Self->RegionID, 5000, &region)) {
-      SetFields(region,
-         FID_Parent|TLONG, Self->SurfaceID,
-         FID_Region|TLONG, TRUE,
-         TAGEND);
+   Self->Viewport->Parent = &Self->ParentViewport->Head;
 
-      // NB: The styling code will initialise the region.
-      if (drwApplyStyleGraphics(Self, Self->RegionID, NULL, NULL)) {
-         ReleaseObject(region);
+   if (!acInit(Self->Viewport)) {
+      if (drwApplyStyleGraphics(Self, Self->Viewport->Head.UID, NULL, NULL)) {
          return ERR_Failed; // Graphics styling is required.
       }
 
-      SubscribeActionTags(region, AC_Disable, AC_Enable, TAGEND);
-
-      ReleaseObject(region);
+      return ERR_Okay;
    }
-   else return ERR_AccessObject;
-
-   SetFunctionPtr(Self->TextInput, FID_ValidateInput, (APTR)&text_validation);
-   SetFunctionPtr(Self->TextInput, FID_Activated, (APTR)&text_activated);
-
-   return ERR_Okay;
+   else return ERR_Init;
 }
 
 /*****************************************************************************
@@ -174,8 +207,7 @@ MoveToBack: Moves the input box to the back of the display area.
 
 static ERROR INPUT_MoveToBack(objInput *Self, APTR Void)
 {
-   acMoveToBackID(Self->RegionID);
-   return ERR_Okay;
+   return acMoveToBack(Self->Viewport);
 }
 
 /*****************************************************************************
@@ -186,17 +218,16 @@ MoveToFront: Moves the input box to the front of the display area.
 
 static ERROR INPUT_MoveToFront(objInput *Self, APTR Void)
 {
-   acMoveToFrontID(Self->RegionID);
-   return ERR_Okay;
+   return acMoveToFront(Self->Viewport);
 }
 
 //****************************************************************************
 
 static ERROR INPUT_NewObject(objInput *Self, APTR Void)
 {
-   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->Head.Flags, NULL, &Self->RegionID)) {
-      if (!NewObject(ID_TEXT, NF_INTEGRAL, &Self->TextInput)) {
-         SetLong(Self->TextInput, FID_Surface, Self->RegionID);
+   if (!NewObject(ID_VECTORVIEWPORT, NF_INTEGRAL, &Self->Viewport)) {
+      if (!NewObject(ID_VECTORTEXT, NF_INTEGRAL, &Self->TextInput)) {
+         SetOwner(Self->TextInput, Self->Viewport);
          SetString(Self->TextInput->Font, FID_Face, glWidgetFace);
          drwApplyStyleValues(Self, NULL);
          return ERR_Okay;
@@ -214,7 +245,7 @@ Redimension: Changes the size and position of the input box.
 
 static ERROR INPUT_Redimension(objInput *Self, struct acRedimension *Args)
 {
-   return ActionMsg(AC_Redimension, Self->RegionID, Args);
+   return Action(AC_Redimension, Self->Viewport, Args);
 }
 
 /*****************************************************************************
@@ -225,20 +256,18 @@ Resize: Alters the size of the input box.
 
 static ERROR INPUT_Resize(objInput *Self, struct acResize *Args)
 {
-   return ActionMsg(AC_Resize, Self->RegionID, Args);
+   return Action(AC_Resize, Self->Viewport, Args);
 }
 
 /*****************************************************************************
 -ACTION-
-Show: Puts the input box on display.
+Show: Display the input box.
 -END-
 *****************************************************************************/
 
 static ERROR INPUT_Show(objInput *Self, APTR Void)
 {
-   Self->Flags &= ~INF_HIDE;
-   acShowID(Self->RegionID);
-   return ERR_Okay;
+   return acShow(Self->Viewport);
 }
 
 /*****************************************************************************
@@ -250,12 +279,12 @@ Bottom: The bottom coordinate of the input box (Y + Height).
 
 static ERROR GET_Bottom(objInput *Self, LONG *Value)
 {
-   SURFACEINFO *info;
-   if (!drwGetSurfaceInfo(Self->RegionID, &info)) {
-      *Value = info->Y + info->Height;
+   DOUBLE y, height;
+   if (!GetFields(Self->Viewport, FID_Y|TDOUBLE, &y, FID_Height|TDOUBLE, &height, TAGEND)) {
+      *Value = F2T(y + height);
       return ERR_Okay;
    }
-   else return ERR_GetSurfaceInfo;
+   else return ERR_GetField;
 }
 
 /*****************************************************************************
@@ -280,9 +309,9 @@ static ERROR GET_Disable(objInput *Self, LONG *Value)
 
 static ERROR SET_Disable(objInput *Self, LONG Value)
 {
-   if (Value IS TRUE) acDisable(Self);
-   else if (Value IS FALSE) acEnable(Self);
-   return ERR_Okay;
+   if (Value IS TRUE) return acDisable(Self);
+   else if (Value IS FALSE) return acEnable(Self);
+   else return ERR_InvalidValue;
 }
 
 /*****************************************************************************
@@ -290,8 +319,8 @@ static ERROR SET_Disable(objInput *Self, LONG Value)
 -FIELD-
 Feedback: Provides instant feedback when a user interacts with the object.
 
-Set the Feedback field with a callback function that will receive instant feedback when user interaction occurs.  The
-function prototype is `Function(*Input, STRING Value, LONG Activated)`
+Set a callback function here to receive instant feedback when user interaction occurs.  The
+function prototype is `Function(*Input, CSTRING Value, LONG Activated)`
 
 The Activated parameter is a boolean value that will be set to TRUE if the user has affirmed the input by pressing the
 enter key or its equivalent.
@@ -333,33 +362,41 @@ height, use the FD_PERCENT flag when setting the field.
 
 static ERROR GET_Height(objInput *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Height, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Height, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Height, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_Height(objInput *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or ((Value->Type & FD_LARGE) and (!Value->Large))) {
-      return ERR_Okay;
-   }
+   return SetVariable(Self->Viewport, FID_Height, Value);
+}
 
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Height, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+/*****************************************************************************
+
+-FIELD-
+InputMask: Restricts user input with a validation filter.
+
+User input can be automatically validated by defining an InputMask.  The pattern matching format that is used for
+the mask must be compliant with Lua 5.1 specifications.  As an example `%d%d/%d%d/%d%d%d%d` could be used to match
+to a valid date entry.
+
+If the user inputs a string that does not match the InputMask filter, the string automatically reverts to its most
+recent and valid value.
+
+*****************************************************************************/
+
+static ERROR GET_InputMask(objInput *Self, STRING *Value)
+{
+   *Value = Self->prvInputMask;
+   return ERR_Okay;
+}
+
+static ERROR SET_InputMask(objInput *Self, CSTRING Value)
+{
+   if (Value) StrCopy(Value, Self->prvInputMask, sizeof(Self->prvInputMask));
+   else Self->prvInputMask[0] = 0;
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -369,6 +406,20 @@ InputWidth: The width of the input area.
 
 A fixed width for the input area can be defined in this field (note that this does not include the width of the label,
 which is handled separately by #LabelWidth.
+
+*****************************************************************************/
+
+static ERROR SET_InputWidth(objInput *Self, LONG Value)
+{
+   Self->InputWidth = Value;
+
+   if (Self->Head.Flags & NF_INITIALISED) style_trigger(Self, STYLE_RESIZE);
+   else Self->Flags |= INF_FIXED_INPUT_WIDTH; // Important not to set this if already initialised
+
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 
 -FIELD-
 Label: The label is a string displayed to the left of the input area.
@@ -411,39 +462,9 @@ static ERROR SET_LabelWidth(objInput *Self, LONG Value)
 
    if (Self->Head.Flags & NF_INITIALISED) {
       SetLong(Self->TextInput, FID_X, Self->LabelWidth);
+      style_trigger(Self, STYLE_RESIZE);
    }
-
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
-Layout: Private. Overrides the Layout in the TextInput child object (because our layout is reflected in the Surface object).
-
-*****************************************************************************/
-
-static ERROR GET_Layout(objInput *Self, objLayout **Value)
-{
-   *Value = NULL;
-   return ERR_NoSupport;
-}
-
-/*****************************************************************************
-
--FIELD-
-LayoutStyle: Private field for supporting dynamic style changes when an input object is used in a document.
-
-*****************************************************************************/
-
-// Internal field for supporting dynamic style changes when a GUI object is used in a document.
-
-static ERROR SET_LayoutStyle(objInput *Self, DOCSTYLE *Value)
-{
-   if (!Value) return ERR_Okay;
-
-   //if (Self->Head.Flags & NF_INITIALISED) docApplyFontStyle(Value->Document, Value, Self->Font);
-   //else docApplyFontStyle(Value->Document, Value, Self->Font);
+   else Self->Flags |= INF_FIXED_LABEL_WIDTH;
 
    return ERR_Okay;
 }
@@ -475,46 +496,18 @@ static ERROR SET_PostLabel(objInput *Self, CSTRING Value)
 /*****************************************************************************
 
 -FIELD-
-Region: The surface that represents the input box is referenced through this field.
-
-The surface area that represents the input display can be accessed through this field.  For further information, refer
-to the @Surface class.  Note that interfacing with the surface directly can have adverse effects on the input
-control system.  Where possible, all communication should be limited to the input object itself.
-
-*****************************************************************************/
-
-static ERROR SET_Region(objInput *Self, LONG Value)
-{
-   // NOTE: For backwards compatibility with the Surface class, the region can be set to a value of TRUE
-   // to define the input as a simple surface region.
-
-   if ((Value IS FALSE) or (Value IS TRUE)) {
-      OBJECTPTR surface;
-      if (!AccessObject(Self->RegionID, 4000, &surface)) {
-         SetLong(surface, FID_Region, Value);
-         ReleaseObject(surface);
-         return ERR_Okay;
-      }
-      else return ERR_AccessObject;
-   }
-   else return ERR_Failed;
-}
-
-/*****************************************************************************
-
--FIELD-
 Right: The right-most coordinate of the input box (X + Width).
 
 *****************************************************************************/
 
 static ERROR GET_Right(objInput *Self, LONG *Value)
 {
-   SURFACEINFO *info;
-   if (!drwGetSurfaceInfo(Self->RegionID, &info)) {
-      *Value = info->X + info->Width;
+   DOUBLE x, width;
+   if (!GetFields(Self->Viewport, FID_X|TDOUBLE, &x, FID_Width|TDOUBLE, &width, TAGEND)) {
+      *Value = F2T(x + width);
       return ERR_Okay;
    }
-   else return ERR_GetSurfaceInfo;
+   else return ERR_GetField;
 }
 
 /*****************************************************************************
@@ -544,19 +537,37 @@ static ERROR GET_String(objInput *Self, STRING *Value)
 static ERROR SET_String(objInput *Self, CSTRING Value)
 {
    Self->prvStringReset = TRUE;
-   if (!SetString(Self->TextInput, FID_String, Value)) {
-      return ERR_Okay;
-   }
+   if (!SetString(Self->TextInput, FID_String, Value)) return ERR_Okay;
    else return ERR_Failed;
 }
 
 /*****************************************************************************
 
 -FIELD-
-Surface: The surface that will contain the input graphic.
+ParentViewport: The viewport that will contain the input graphic.
 
-The surface that will contain the input graphic is set here.  If this field is not set prior to initialisation, the
-input will attempt to scan for the correct surface by analysing its parents until it finds a suitable candidate.
+The @VectorViewport that will contain the input graphic is defined here.  If this field is not set prior to initialisation, the
+input object will scan its parent branch to find a suitable candidate.
+
+-FIELD-
+StyleTrigger: Requires a callback for reporting changes that can affect graphics styling.
+
+This field is reserved for use by the style code that is managing the input graphics.
+
+*****************************************************************************/
+
+static ERROR SET_StyleTrigger(objInput *Self, FUNCTION *Value)
+{
+   if (Value) {
+      if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) UnsubscribeAction(Self->prvStyleTrigger.Script.Script, AC_Free);
+      Self->prvStyleTrigger = *Value;
+      if (Self->prvStyleTrigger.Type IS CALL_SCRIPT) SubscribeAction(Self->prvStyleTrigger.Script.Script, AC_Free);
+   }
+   else Self->prvStyleTrigger.Type = CALL_NONE;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 
 -FIELD-
 TabFocus: Setting this field to a valid TabFocus object will cause the input to add itself to the tab list.
@@ -571,7 +582,7 @@ static ERROR SET_TabFocus(objInput *Self, OBJECTID Value)
 {
    OBJECTPTR tabfocus;
    if (!AccessObject(Value, 5000, &tabfocus)) {
-      if (tabfocus->ClassID IS ID_TABFOCUS) tabAddObject(tabfocus, Self->Head.UniqueID); //RegionID);
+      if (tabfocus->ClassID IS ID_TABFOCUS) tabAddObject(tabfocus, Self->Head.UID);
       ReleaseObject(tabfocus);
       return ERR_Okay;
    }
@@ -587,6 +598,13 @@ This field refers to a @Text object that handles the text inside the input area.
 interacting with this object directly, as doing so may interfere with the expected behaviour of the input class.
 
 -FIELD-
+Viewport: The VectorViewport that represents the input box.
+
+The viewport area that represents the input display can be accessed through this field.  For further information, refer
+to the @VectorViewport class.  Note that interfacing with the viewport directly can have adverse effects on the input
+control system.  Where possible, all communication should be limited to the input object itself.
+
+-FIELD-
 Width: Defines the width of an input box.
 
 An input box can be given a fixed or relative width by setting this field to the desired value.  To set a relative
@@ -596,33 +614,14 @@ width, use the FD_PERCENT flag when setting the field.
 
 static ERROR GET_Width(objInput *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Width, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Width, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Width, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_Width(objInput *Self, Variable *Value)
 {
-   if (((Value->Type & FD_DOUBLE) and (!Value->Double)) or
-       ((Value->Type & FD_LARGE) and (!Value->Large))) {
-      return ERR_Okay;
-   }
-
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Width, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_Width, Value);
 }
 
 /*****************************************************************************
@@ -638,28 +637,14 @@ interpreted as fixed.  Negative values are permitted.
 
 static ERROR GET_X(objInput *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_X, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_X, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_X, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_X(objInput *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_X, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_X, Value);
 }
 
 /*****************************************************************************
@@ -681,28 +666,14 @@ coordinate calculated from the formula `X = ContainerWidth - InputWidth - XOffse
 
 static ERROR GET_XOffset(objInput *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_XOffset, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_XOffset, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_XOffset, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_XOffset(objInput *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_XOffset, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_XOffset, Value);
 }
 
 /*****************************************************************************
@@ -718,29 +689,14 @@ fixed.  Negative values are permitted.
 
 static ERROR GET_Y(objInput *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_Y, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_Y, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_Y, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_Y(objInput *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_Y, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   return SetVariable(Self->Viewport, FID_Y, Value);
 }
 
 /*****************************************************************************
@@ -763,145 +719,14 @@ coordinate calculated from the formula `Y = ContainerHeight - InputHeight - YOff
 
 static ERROR GET_YOffset(objInput *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      DOUBLE value;
-      GetDouble(surface, FID_YOffset, &value);
-      ReleaseObject(surface);
-
-      if (Value->Type & FD_DOUBLE) Value->Double = value;
-      else if (Value->Type & FD_LARGE) Value->Large = value;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   if (Value->Type & FD_DOUBLE) return GetDouble(Self->Viewport, FID_YOffset, &Value->Double);
+   else if (Value->Type & FD_LARGE) return GetLarge(Self->Viewport, FID_YOffset, &Value->Large);
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR SET_YOffset(objInput *Self, Variable *Value)
 {
-   OBJECTPTR surface;
-   if (!AccessObject(Self->RegionID, 4000, &surface)) {
-      SetVariable(surface, FID_YOffset, Value);
-      ReleaseObject(surface);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-}
-
-//**********************************************************************
-// This callback is triggered when the user moves focus away from the text widget.
-
-static void text_validation(objText *Text)
-{
-   parasol::Log log(__FUNCTION__);
-
-   auto Self = (objInput *)CurrentContext();
-
-   if (Self->prvActive) {
-      log.warning("Warning - recursion detected");
-      return;
-   }
-
-   log.branch();
-
-   Self->prvActive = TRUE;
-
-   CSTRING str;
-
-   /* 2017-03: Not sure what this code is meant for
-   if (Self->prvStringReset) {
-      log.msg("String reset requested.");
-      Self->prvStringReset = FALSE;
-      str = "";
-   }
-   else */
-
-   ULONG hash = 0; // Do nothing if the string hasn't changed.
-   if (!GetString(Text, FID_String, (STRING *)&str)) hash = StrHash(str, TRUE);
-   if (hash != Self->prvLastStringHash) {
-      Self->prvLastStringHash = hash;
-
-      if (Self->prvFeedback.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, objInput *, CSTRING, LONG))Self->prvFeedback.StdC.Routine;
-         if (Self->prvFeedback.StdC.Context) {
-            parasol::SwitchContext ctx(Self->prvFeedback.StdC.Context);
-            routine(Self->prvFeedback.StdC.Context, Self, str, FALSE);
-         }
-         else routine(Self->prvFeedback.StdC.Context, Self, str, FALSE);
-      }
-      else if (Self->prvFeedback.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = Self->prvFeedback.Script.Script)) {
-            const ScriptArg args[] = {
-               { "Input", FD_OBJECTPTR, { .Address = Self } },
-               { "Value", FD_STRING,    { .Address = (STRING)str } },
-               { "Activated", FD_LONG,  { .Long = FALSE } }
-            };
-            scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-         }
-      }
-   }
-
-   Self->prvActive = FALSE;
-}
-
-//**********************************************************************
-// This callback is triggered when the user hits the enter key, or its equivalent.
-
-static void text_activated(objText *Text)
-{
-   parasol::Log log(__FUNCTION__);
-
-   auto Self = (objInput *)CurrentContext();
-
-   if (Self->prvActive) {
-      log.warning("Warning - recursion detected");
-      return;
-   }
-
-   log.branch();
-
-   Self->prvActive = TRUE;
-
-   CSTRING str;
-
-   /* 2017-03: Not sure what this code is meant for
-   if (Self->prvStringReset) {
-      log.msg("String reset requested.");
-      Self->prvStringReset = FALSE;
-      str = "";
-   }
-   else */
-
-   ULONG hash = 0; // Do nothing if the string hasn't changed.
-   if (!GetString(Text, FID_String, (STRING *)&str)) {
-      hash = StrHash(str, FALSE);
-   }
-
-   if (hash != Self->prvLastStringHash) {
-      Self->prvLastStringHash = hash;
-
-      if (Self->prvFeedback.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, objInput *, CSTRING, LONG))Self->prvFeedback.StdC.Routine;
-         if (Self->prvFeedback.StdC.Context) {
-            parasol::SwitchContext ctx(Self->prvFeedback.StdC.Context);
-            routine(Self->prvFeedback.StdC.Context, Self, str, TRUE);
-         }
-         else routine(Self->prvFeedback.StdC.Context, Self, str, TRUE);
-      }
-      else if (Self->prvFeedback.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = Self->prvFeedback.Script.Script)) {
-            const ScriptArg args[] = {
-               { "Input", FD_OBJECTPTR, { .Address = Self } },
-               { "Value", FD_STRING,    { .Address = (STRING)str } },
-               { "Activated", FD_LONG,  { .Long = TRUE } }
-            };
-            scCallback(script, Self->prvFeedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-         }
-      }
-   }
-
-   Self->prvActive = FALSE;
+   return SetVariable(Self->Viewport, FID_YOffset, Value);
 }
 
 //**********************************************************************
@@ -909,25 +734,24 @@ static void text_activated(objText *Text)
 #include "class_input_def.c"
 
 static const FieldArray clFields[] = {
-   { "TextInput",    FDF_INTEGRAL|FDF_R,      ID_TEXT, NULL, NULL },
-   { "LayoutSurface",FDF_VIRTUAL|FDF_OBJECTID|FDF_SYSTEM|FDF_R, ID_SURFACE, NULL, NULL }, // VIRTUAL: This is a synonym for the Region field
-   { "Region",       FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, (APTR)SET_Region },
-   { "Surface",      FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clInputFlags, NULL, NULL },
-   { "LabelWidth",   FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_LabelWidth },
-   { "InputWidth",   FDF_LONG|FDF_RI,      0, NULL, NULL },
+   { "TextInput",      FDF_OBJECT|FDF_R,     ID_VECTORTEXT, NULL, NULL },
+   { "Viewport",       FDF_OBJECT|FDF_RI,    ID_VECTORVIEWPORT, NULL, NULL },
+   { "ParentViewport", FDF_OBJECT|FDF_RI,    ID_VECTORVIEWPORT, NULL, NULL },
+   { "Flags",          FDF_LONGFLAGS|FDF_RW, (MAXINT)&clInputFlags, NULL, NULL },
+   { "LabelWidth",     FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_LabelWidth },
+   { "InputWidth",     FDF_LONG|FDF_RI,      0, NULL, (APTR)SET_InputWidth },
    // Virtual fields
-   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,         0, (APTR)GET_Bottom,        NULL },
-   { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,        0, (APTR)GET_Disable,       (APTR)SET_Disable },
-   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback,      (APTR)SET_Feedback },
-   { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_Label,         (APTR)SET_Label },
-   { "LayoutStyle",  FDF_VIRTUAL|FDF_POINTER|FDF_SYSTEM|FDF_W, 0, NULL,        (APTR)SET_LayoutStyle },
-   { "PostLabel",    FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_PostLabel,     (APTR)SET_PostLabel },
-   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,         0, (APTR)GET_Right,         NULL },
-   { "String",       FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_String,        (APTR)SET_String },
-   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,     ID_TABFOCUS, NULL,    (APTR)SET_TabFocus },
+   { "Bottom",       FDF_VIRTUAL|FDF_LONG|FDF_R,         0, (APTR)GET_Bottom,    NULL },
+   { "Disable",      FDF_VIRTUAL|FDF_LONG|FDF_RW,        0, (APTR)GET_Disable,   (APTR)SET_Disable },
+   { "Feedback",     FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback,  (APTR)SET_Feedback },
+   { "InputMask",    FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_InputMask, (APTR)SET_InputMask },
+   { "Label",        FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_Label,     (APTR)SET_Label },
+   { "PostLabel",    FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_PostLabel, (APTR)SET_PostLabel },
+   { "Right",        FDF_VIRTUAL|FDF_LONG|FDF_R,         0, (APTR)GET_Right,     NULL },
+   { "String",       FDF_VIRTUAL|FDF_STRING|FDF_RW,      0, (APTR)GET_String,    (APTR)SET_String },
+   { "TabFocus",     FDF_VIRTUAL|FDF_OBJECTID|FDF_W,     ID_TABFOCUS, NULL,      (APTR)SET_TabFocus },
    { "Text",         FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)GET_String, (APTR)SET_String },
-   { "Layout",       FDF_SYSTEM|FDF_VIRTUAL|FDF_OBJECT|FDF_R,   0, (APTR)GET_Layout, NULL },  // Dummy field.  Prevents the Layout in the TextInput child from being used
+   { "StyleTrigger", FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_W,  0, NULL, (APTR)SET_StyleTrigger },
    // Variable Fields
    { "Height",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height, (APTR)SET_Height },
    { "Width",   FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Width, (APTR)SET_Width },

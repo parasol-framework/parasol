@@ -149,7 +149,7 @@ file.readAll = function(Path)
       error('Failed to open file "' .. nz(Path,'NIL') .. '": ' .. Exception.message)
    end)
 
-   local fileBuffer = string.rep(nil, fl.size)
+   local fileBuffer = string.rep(' ', fl.size)
    local err, bytesRead = fl.acRead(fileBuffer)
    if (err == ERR_Okay) then
       return fileBuffer

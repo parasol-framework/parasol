@@ -1136,14 +1136,14 @@ INLINE CSTRING GET_FIELD_NAME(ULONG FieldID)
 INLINE BYTE INC_QUEUE(OBJECTPTR Object)
 {
    BYTE result = __sync_add_and_fetch(&(Object)->Queue, 1);
-   if (Object->UniqueID IS 2435) LogF("@Add","%d", result);
+   if (Object->UID IS 2435) LogF("@Add","%d", result);
    return result;
 }
 
 INLINE BYTE SUB_QUEUE(OBJECTPTR Object)
 {
    BYTE result = __sync_sub_and_fetch(&(Object)->Queue, 1);
-   if (Object->UniqueID IS 2435) LogF("@Sub","%d", result);
+   if (Object->UID IS 2435) LogF("@Sub","%d", result);
    return result;
 }
 */

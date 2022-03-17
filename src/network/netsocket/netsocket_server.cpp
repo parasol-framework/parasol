@@ -216,7 +216,7 @@ static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSock
 
    if (!ClientSocket) return;
 
-   log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, Socket->Head.UniqueID, ClientSocket->Head.UniqueID);
+   log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, Socket->Head.UID, ClientSocket->Head.UID);
 
    if ((Signal) and (Socket->Feedback.Type)) {
       if (Socket->Feedback.Type IS CALL_STDC) {
