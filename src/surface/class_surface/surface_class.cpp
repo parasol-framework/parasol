@@ -1425,11 +1425,13 @@ static ERROR SURFACE_LostFocus(objSurface *Self, APTR Void)
 
    glLastFocusTime = PreciseTime();
 #endif
-   // Drop the focus
 
-   Self->Flags &= ~RNF_HAS_FOCUS;
-   UpdateSurfaceField(Self, Flags);
-   return ERR_Okay;
+   if (Self->Flags & RNF_HAS_FOCUS) {
+      Self->Flags &= ~RNF_HAS_FOCUS;
+      UpdateSurfaceField(Self, Flags);
+      return ERR_Okay;
+   }
+   else return ERR_Okay | ERF_Notified;
 }
 
 /*****************************************************************************
