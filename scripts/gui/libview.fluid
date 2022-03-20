@@ -18,7 +18,6 @@ gui.initView = function(Options, BuildUI)
       activeZone = nil,
       zones      = { },
       items      = { },
-      viewport   = nil,
       activeTag  = nil,
       disabled   = false,
       sensitive  = nz(Options.sensitive, false),
@@ -128,10 +127,21 @@ gui.initView = function(Options, BuildUI)
 
       vw.sItem = Item
 
-      if (Item) then
+      if Item then
          Item._selected = true
-         if (Item._selectEvent) then
+         if Item._selectEvent then
             Item._selectEvent(vw, Item)
+         end
+      end
+   end
+
+   local function deselectAll()
+      for _, i in ipairs(vw.items) do
+         if i._selected then
+            i._selected = false
+            if i._selectEvent then
+               i._selectEvent(vw, i)
+            end
          end
       end
    end
@@ -139,20 +149,9 @@ gui.initView = function(Options, BuildUI)
    local function deselectItem(Item)
       if (vw.sItem == Item) then vw.sItem = nil end
 
-      if (Item) then
-         Item._selected = false
-         if (Item._selectEvent) then
-            Item._selectEvent(vw, Item)
-         end
-      else -- Deselect everything
-         for _, i in ipairs(vw.items) do
-            if (i._selected) then
-               i._selected = false
-               if (i._selectEvent) then
-                  i._selectEvent(vw, i)
-               end
-            end
-         end
+      Item._selected = false
+      if Item._selectEvent then
+         Item._selectEvent(vw, Item)
       end
    end
 
@@ -224,7 +223,7 @@ gui.initView = function(Options, BuildUI)
       end
 
       highlightItem(nil)
-      deselectItem(nil)
+      deselectAll(nil)
       vw.activeItem = nil
 
       loadItems({ })
@@ -324,12 +323,8 @@ gui.initView = function(Options, BuildUI)
 
    -- Deselects all currently selected items.
 
-   vw.selectNone = function()
-      for _, item in ipairs(vw.items) do
-         if (item._selected) then
-            deselectItem(item)
-         end
-      end
+   vw.deselectAll = function()
+      deselectAll()
 
       vw.activeItem = nil
       reportItemDeselected('deselected', vw.items[1])
