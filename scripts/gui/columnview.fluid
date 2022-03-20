@@ -14,7 +14,7 @@ Initialisation options:
    x, y:             Top left coordinates.  Defaults to 0,0.
    width, height:    Width and height values, default to 100%.
    xOffset, yOffset: Offsets are an alternative to width and height.
-   columns:          Active columns may be set via this field.
+   columns:          Declares the visible columns.
    dateFormat:       Sets the format to use when displaying date types.
    multiSelect:      If true, more than one item can be selected at a time by the user.
    sensitive:        If true, activation will occur whenever a new item is selected (double click no longer necessary).
@@ -281,11 +281,12 @@ local function bannerZoneClick(View, Col, X, Y, Value)
       View._sort.icon.x = Col.width - MARGIN - lIconSize
    end
 
-   View.sortColumn(View, Col, View._sort.ascending)
+   View:sortColumn(Col, View._sort.ascending)
    View.viewport.acDraw()
 end
 
 gui.columnView = function(Options)
+
    local function constructColumnBanner(View, Scene, Window, Page)
       -- Note that the banner is placed outside of the view so that it cannot be scrolled vertically.
 
@@ -307,7 +308,7 @@ gui.columnView = function(Options)
 
       if not View.banner.viewport then
          View.banner.viewport = View.viewport.new('VectorViewport', {
-            x = 0, y = 0, width = '100%', height = View.bannerHeight
+            x = 0, y = 0, width = '100%', height = View.bannerHeight, overflow = VOF_HIDDEN
          })
 
          View.banner.bkgd = View.banner.viewport.new('VectorRectangle', {
@@ -451,25 +452,30 @@ gui.columnView = function(Options)
       Window.y = View.bannerHeight
    end
 
-   -- Generate graphics for items in a columnar view.
-
-   local function constructColumnView(View, Scene, Window, Page)
+   local function setColumns(View, Columns)
       local c = 1
-      View.columns = { }
+      local set = { }
       View.namedCol = { }
-      for _, col in pairs(Options.columns) do
+      for _, col in pairs(Columns) do
          if not col['attrib'] then error('No attrib defined for column ' .. c) end
 
          local new_col = { _index=c, width=100, title='Untitled' }
          for k, v in pairs(col) do
             new_col[k] = v
          end
-         table.insert(View.columns, new_col)
+         table.insert(set, new_col)
          View.namedCol[col['attrib']] = new_col
          c = c + 1
       end
 
-      constructColumnBanner(View, Scene, Window, Page)
+      View.columns = set
+      constructColumnBanner(View, View.scene, View.window, View.page)
+   end
+
+   -- Generate graphics for items in a columnar view.
+
+   local function constructColumnView(View, Scene, Window, Page)
+      setColumns(View, nz(Options.columns, { }))
 
       local width = Window.width - EDGE - EDGE
       local y = EDGE
@@ -588,6 +594,8 @@ gui.columnView = function(Options)
    end
 
    local vw = gui.initView(Options, constructColumnView)
+
+   vw.setColumns = setColumns
 
    -- Sorts the view by column (name or index).
 
