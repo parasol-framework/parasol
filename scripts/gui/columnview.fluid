@@ -311,7 +311,11 @@ gui.columnView = function(Options)
       -- Background graphics
 
       if not View.banner.viewport then
-         View.banner.viewport = View.viewport.new('VectorViewport', {
+         View.banner.clip = View.viewport.new('VectorViewport', {
+            x = 0, y = 0, width = '100%', height = View.bannerHeight, overflow = VOF_HIDDEN
+         })
+
+         View.banner.viewport = View.banner.clip.new('VectorViewport', {
             x = 0, y = 0, width = '100%', height = View.bannerHeight, overflow = VOF_HIDDEN
          })
 
