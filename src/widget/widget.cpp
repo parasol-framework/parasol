@@ -240,7 +240,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (SetVolume(AST_NAME, "icons",
       AST_PATH,  "archive:icons/",
       AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN,
-      AST_ICON,  "programs/iconthemes",
+      AST_ICON,  "misc/picture",
       TAGEND) != ERR_Okay) return ERR_SetVolume;
 
    char fontstyle[] = "[glStyle./fonts/font[@name='default']/@face]:[glStyle./fonts/font[@name='default']/@size]";
