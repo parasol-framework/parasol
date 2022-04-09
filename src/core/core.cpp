@@ -2454,7 +2454,7 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
 
    create_archive_volume();
 
-   for (CSTRING vol : Volumes) {
+   for (auto vol : Volumes) {
       char name[120], path[MAX_FILENAME];
       size_t n, p, v;
       for (n=0, v=0; vol[v] and (vol[v] != '=') and (n < sizeof(name)-1); v++) name[n++] = vol[v];

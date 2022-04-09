@@ -100,6 +100,7 @@ static int processing_new(lua_State *Lua)
 // Usage: err = proc.sleep([Seconds])
 //
 // Puts a process to sleep with message processing in the background.  Can be woken early with a signal.
+// Setting seconds to zero will process outstanding messages and return immediately.
 //
 // NOTE: Can be called directly as an interface function or as a member of a processing object.
 
