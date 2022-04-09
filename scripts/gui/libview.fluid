@@ -8,11 +8,118 @@
    if (not mGfx) then mGfx = mod.load('display') end
    if (not mVec) then mVec = mod.load('vector') end
 
-local lColBackground = 'rgb(255,255,255)'
-local lColBorder     = 'rgb(160,160,160)'
-local lItemCounter   = 1
+   local lColBackground = 'rgb(255,255,255)'
+   local lColBorder     = 'rgb(160,160,160)'
+   local lItemCounter   = 1
 
-gui.initView = function(Options, BuildUI)
+----------------------------------------------------------------------------------------------------------------------
+
+local function checkCursorImage(View)
+   if View.pointerLocked and not View.activeZone then
+      mGfx.restoreCursor(PTR_DEFAULT, View.scene.surface)
+      View.pointerLocked = nil
+   end
+end
+
+local function highlightItem(View, Item)  -- Simplifies the process of highlighting an item.  Item can be nil for deselection.
+   if (Item == View.hItem) then return end
+
+   if View.hItem and View.hItem._highlightEvent and (Item != View.hItem) then
+      View.hItem._highlightEvent(View, View.hItem, false)
+   end
+
+   View.hItem = Item
+
+   if Item and Item._highlightEvent then
+      Item._highlightEvent(View, Item, true)
+   end
+
+   View.scene.surface.mtScheduleRedraw()
+end
+
+local function clearItems(View)
+   if View.items then
+      for _, item in pairs(View.items) do
+         if item then
+            item:_free()
+         end
+      end
+   end
+
+   View.items = { }
+   View.lookup = { }
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function deselectAll(View)
+   for _, i in ipairs(View.items) do
+      if i._selected then
+         i._selected = false
+         if i._selectEvent then
+            i._selectEvent(View, i)
+         end
+      end
+   end
+end
+
+local function deselectItem(View, Item)
+   if (View.sItem == Item) then View.sItem = nil end
+
+   Item._selected = false
+   if Item._selectEvent then
+      Item._selectEvent(View, Item)
+   end
+end
+
+local function selectItem(View, Item)
+   if (Item == View.sItem) then return end
+
+   View.sItem = Item
+
+   if Item then
+      Item._selected = true
+      if Item._selectEvent then
+         Item._selectEvent(View, Item)
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Reasons for a reported change:
+--
+--   clear:     All items in the view were removed.
+--   inverted:  Item automatically deselected due to an invert operation.
+--   moved:     The item has been deselected due to moving position.
+--   user:      Selected by user interaction (click or keypress)
+--   manual:    Item was manually selected (by the application, not the user).
+
+local function reportItemSelected(View, Reason, Item)
+   if View.itemSelected then
+      View.itemSelected(View, Reason, Item)
+   end
+end
+
+local function reportItemDeselected(View, Reason, Item)
+   if View.itemDeselected then
+      View.itemDeselected(View, Reason, Item)
+   end
+end
+
+local function reportItemActivated(View, Reason, Item)
+   if Item.activity then Item.activity(Item) end
+   if View.itemActivated then View.itemActivated(View, Reason, Item) end
+end
+
+local function reportActiveChange(View, Reason, Item)
+   if View.activeChange then
+      View.activeChange(View, Reason, Item)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+gui.initView = function(Options, BuildUI, NewItems)
    local vw = {
       lookup     = { }, -- Lookup items by ID
       activeZone = nil,
@@ -27,30 +134,29 @@ gui.initView = function(Options, BuildUI)
       scene      = nil,
       viewport   = nil,
       page       = nil,
-      window     = nil
+      window     = nil,
+      itemSelected   = Options.itemSelected,
+      itemDeselected = Options.itemDeselected,
+      itemActivated  = Options.itemActivated,
+      activeChange   = Options.activeChange
    }
 
-   local function loadItems(Items)
+   vw.addItem = function(Item)
+      if not Item then error('No Item provided') end
+      vw.addItems({ Item })
+   end
+
+   vw.addItems = function(Items)
       if not Items then error('No Items provided') end
 
-      msg('Processing ' .. #Items .. ' items')
-
-      if vw.items then -- Clear existing items
-         for _, item in pairs(vw.items) do
-            if item then
-               item:_free()
-            end
-         end
-      end
-
-      vw.items = { }
-      vw.lookup = { }
-      for _, item in pairs(Items) do
+      local new_items = { }
+      for k, item in pairs(Items) do
          local new_item = {
             _id = lItemCounter,
+            _vectors = { },
             _free = function(Item)
                if Item._vectors and Item._vectors.viewport then
-                  -- Presume that freeing the root viewport removes all vectors.
+                  -- Presume that freeing the root viewport removes all vectors for the item.
                   Item._vectors.viewport.acFree()
                end
             end
@@ -61,109 +167,23 @@ gui.initView = function(Options, BuildUI)
          end
 
          table.insert(vw.items, new_item)
+         table.insert(new_items, new_item)
          vw.lookup[lItemCounter] = new_item
          lItemCounter = lItemCounter + 1
       end
-   end
 
-   -- Reasons for a reported change:
-   --
-   --   clear:     All items in the view were removed.
-   --   inverted:  Item automatically deselected due to an invert operation.
-   --   moved:     The item has been deselected due to moving position.
-   --   user:      Selected by user interaction (click or keypress)
-   --   manual:    Item was manually selected (by the application, not the user).
-
-   local function reportItemSelected(Reason, Item)
-      if Options.itemSelected then
-         Options.itemSelected(vw, Reason, Item)
-      end
-   end
-
-   local function reportItemDeselected(Reason, Item)
-      if Options.itemDeselected then
-         Options.itemDeselected(vw, Reason, Item)
-      end
-   end
-
-   local function reportItemActivated(Reason, Item)
-      if Item.activity then Item.activity(Item) end
-      if Options.itemActivated then Options.itemActivated(vw, Reason, Item) end
-   end
-
-   local function reportActiveChange(Reason, Item)
-      if Options.activeChange then
-         Options.activeChange(vw, Reason, Item)
-      end
-   end
-
-   local function checkCursorImage()
-      if vw.pointerLocked and not vw.activeZone then
-         mGfx.restoreCursor(PTR_DEFAULT, vw.scene.surface)
-         vw.pointerLocked = nil
-      end
-   end
-
-   local function highlightItem(Item)  -- Simplifies the process of highlighting an item.  Item can be nil for deselection.
-      if (Item == vw.hItem) then return end
-
-      if vw.hItem and vw.hItem._highlightEvent and (Item != vw.hItem) then
-         vw.hItem._highlightEvent(vw, vw.hItem, false)
-      end
-
-      vw.hItem = Item
-
-      if Item and Item._highlightEvent then
-         Item._highlightEvent(vw, Item, true)
-      end
-
-      vw.scene.surface.mtScheduleRedraw()
-   end
-
-   -- Simplifies the process of selecting an item.  For deselection use deselectItem()
-
-   local function selectItem(Item)
-      if (Item == vw.sItem) then return end
-
-      vw.sItem = Item
-
-      if Item then
-         Item._selected = true
-         if Item._selectEvent then
-            Item._selectEvent(vw, Item)
-         end
-      end
-   end
-
-   local function deselectAll()
-      for _, i in ipairs(vw.items) do
-         if i._selected then
-            i._selected = false
-            if i._selectEvent then
-               i._selectEvent(vw, i)
-            end
-         end
-      end
-   end
-
-   local function deselectItem(Item)
-      if (vw.sItem == Item) then vw.sItem = nil end
-
-      Item._selected = false
-      if Item._selectEvent then
-         Item._selectEvent(vw, Item)
-      end
+      if NewItems then NewItems(vw, new_items) end -- Report new items to view manager
    end
 
    -- Generic callback for the user hovering and interacting with listed items
 
    local function itemHoverCallback(Zone, CursorX, CursorY)
-      highlightItem(Zone.item)
+      highlightItem(vw, Zone.item)
 
       vw.hoveredItem = {
          click = function(Input)
             if (Input.value == 0) and (bit.band(Input.flags, JTYPE_DBL_CLICK) != 0) then
-               reportItemActivated('user', Zone.item)
+               reportItemActivated(vw, 'user', Zone.item)
             end
          end
       }
@@ -175,7 +195,7 @@ gui.initView = function(Options, BuildUI)
             if (vw.cursorY >= zone.y) and (vw.cursorY < zone.y + zone.height) then
                if ((not zone.width) or ((vw.cursorX >= zone.x) and (vw.cursorX < zone.x + zone.width))) then
                   local cursor = zone.hoverCallback(zone, vw.cursorX, vw.cursorY)
-                  if not cursor then checkCursorImage() end
+                  if not cursor then checkCursorImage(vw) end
                   break
                end
             end
@@ -214,23 +234,23 @@ gui.initView = function(Options, BuildUI)
    vw.clear = function()
       local activate = false
       if vw.sItem then
-         reportItemDeselected('clear', vw.sItem)
+         reportItemDeselected(vw, 'clear', vw.sItem)
          activate = true
       end
 
       if vw.activeItem then
-         reportActiveChange('clear', vw.activeItem)
+         reportActiveChange(vw, 'clear', vw.activeItem)
       end
 
-      highlightItem(nil)
-      deselectAll(nil)
+      highlightItem(vw, nil)
+      deselectAll(vw, nil)
       vw.activeItem = nil
 
-      loadItems({ })
+      clearItems(vw)
       vw.rebuild()
 
       --if activate and Options.notifyOnClear or vw.sensitive then
-         --reportItemActivated('clear', nil)
+         --reportItemActivated(vw, 'clear', nil)
       --end
    end
 
@@ -239,22 +259,22 @@ gui.initView = function(Options, BuildUI)
    vw.invertSelection = function()
       if vw.sensitive then return end
 
-      highlightItem(nil)
+      highlightItem(vw, nil)
 
       for _, item in ipairs(vw.items) do
          if item._selected then
-            deselectItem(item)
+            deselectItem(vw, item)
          else
-            selectItem(item)
+            selectItem(vw, item)
          end
       end
 
       vw.activeItem = nil
 
       if vw.sItem then
-         reportItemSelected('inverted', vw.sItem)
+         reportItemSelected(vw, 'inverted', vw.sItem)
       else
-         reportItemDeselected('inverted', nil)
+         reportItemDeselected(vw, 'inverted', nil)
       end
 
       vw.scene.surface.mtScheduleRedraw()
@@ -294,14 +314,14 @@ gui.initView = function(Options, BuildUI)
 
    vw.selectAll = function()
       for _, item in ipairs(vw.items) do
-         selectItem(item)
+         selectItem(vw, item)
       end
 
-      highlightItem(nil)
+      highlightItem(vw, nil)
       vw.activeItem = vw.items[1]
       vw.sItem = vw.items[1]
-      reportItemSelected('selected', vw.items[1])
-      reportActiveChange('selected', vw.items[1])
+      reportItemSelected(vw, 'selected', vw.items[1])
+      reportActiveChange(vw, 'selected', vw.items[1])
 
       vw.scene.surface.mtScheduleRedraw()
    end
@@ -312,10 +332,10 @@ gui.initView = function(Options, BuildUI)
    vw.selectItems = function(TestItem)
       for _, item in ipairs(vw.items) do
          if TestItem(item) == true then
-            selectItem(item)
+            selectItem(vw, item)
             vw.activeItem = item
-            reportItemSelected('selected', item)
-            reportActiveChange('selected', item)
+            reportItemSelected(vw, 'selected', item)
+            reportActiveChange(vw, 'selected', item)
          end
       end
       vw.scene.surface.mtScheduleRedraw()
@@ -324,11 +344,11 @@ gui.initView = function(Options, BuildUI)
    -- Deselects all currently selected items.
 
    vw.deselectAll = function()
-      deselectAll()
+      deselectAll(vw)
 
       vw.activeItem = nil
-      reportItemDeselected('deselected', vw.items[1])
-      reportActiveChange('deselected', vw.items[1])
+      reportItemDeselected(vw, 'deselected', vw.items[1])
+      reportActiveChange(vw, 'deselected', vw.items[1])
 
       vw.scene.surface.mtScheduleRedraw()
    end
@@ -342,7 +362,8 @@ gui.initView = function(Options, BuildUI)
    -- Load a new set of items and display them for the user.  Any existing items will be cleared.
 
    vw.loadItems = function(Items)
-      loadItems(Items)
+      clearItems(vw)
+      vw.addItems(Items)
       vw.rebuild()
    end
 
@@ -363,6 +384,7 @@ gui.initView = function(Options, BuildUI)
 
       BuildUI(vw, vw.scene, vw.window, vw.page)
       cursorActivity() -- Reset the cursor
+      vw.border.acMoveToFront()
       vw.scene.surface.mtScheduleRedraw()
    end
 
@@ -388,7 +410,7 @@ gui.initView = function(Options, BuildUI)
       width  = '100%',
       height = '100%',
       stroke = lColBorder,
-      strokeWidth = 1
+      strokeWidth = 1.5
    })
 
    for k, v in pairs({ 'x', 'y', 'xOffset', 'yOffset', 'width', 'height'}) do
@@ -427,9 +449,9 @@ gui.initView = function(Options, BuildUI)
                      scan = scan.prev
                   end
                   if (not scan) then scan = lastIcon() end
-                  highlightItem(scan)
+                  highlightItem(vw, scan)
                else
-                  highlightItem(vw.items)
+                  highlightItem(vw, vw.items)
                end
             elseif (Code == K_DOWN) or (Code == K_RIGHT) then
                if vw.hItem then
@@ -438,9 +460,9 @@ gui.initView = function(Options, BuildUI)
                      scan = scan.next
                   end
                   if not scan then scan = vw.items end
-                  highlightItem(scan)
+                  highlightItem(vw, scan)
                else
-                  highlightItem(vw.items)
+                  highlightItem(vw, vw.items)
                end
             end
          end
@@ -453,13 +475,13 @@ gui.initView = function(Options, BuildUI)
          if (ev.type == JET_ENTERED_SURFACE) then
             vw.cursorX = ev.x
             vw.cursorY = ev.y
-            checkCursorImage()
+            checkCursorImage(vw)
          elseif (ev.type == JET_LEFT_SURFACE) then
             vw.cursorX = nil
             vw.cursorY = nil
-            checkCursorImage()
+            checkCursorImage(vw)
             if vw.hItem then
-               highlightItem(nil)
+               highlightItem(vw, nil)
             end
          elseif (ev.type == JET_WHEEL) then
             local length = vw.page.height - vw.window.height
@@ -496,15 +518,15 @@ gui.initView = function(Options, BuildUI)
 
             if (ev.value == 1) and vw.hItem then
                if not Options.multiSelect and vw.sItem then
-                  deselectItem(vw.sItem)
+                  deselectItem(vw, vw.sItem)
                end
 
                if vw.hItem._selected then
-                  deselectItem(vw.hItem)
-                  reportItemDeselected('user', vw.hItem)
+                  deselectItem(vw, vw.hItem)
+                  reportItemDeselected(vw, 'user', vw.hItem)
                else
-                  selectItem(vw.hItem)
-                  reportItemSelected('user', vw.hItem)
+                  selectItem(vw, vw.hItem)
+                  reportItemSelected(vw, 'user', vw.hItem)
                end
 
                vw.scene.surface.mtScheduleRedraw()
@@ -525,7 +547,7 @@ gui.initView = function(Options, BuildUI)
    end)
 
    if Options.items then
-      loadItems(Options.items)
+      vw.addItems(Options.items)
    end
 
    vw.rebuild()

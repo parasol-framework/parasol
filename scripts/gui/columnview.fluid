@@ -148,6 +148,14 @@ local function setColumnGradient(View, Column)
       Column.vecGradient.x2 = Column.width
       Column.vecGradientSelect.x2 = Column.width
    end
+
+   if View.scrollbar then
+      local page_width = 0
+      for _, col in pairs(View.columns) do
+         page_width = col.x + col.width + EDGE
+      end
+      View.scrollbar.setDynamicPageSize(page_width, page_width, View.page.height)
+   end
 end
 
 local function setListTextFill(Item, Fill)
@@ -482,12 +490,14 @@ gui.columnView = function(Options)
 
    -- Generate graphics for items in a columnar view.
 
-   local function constructColumnView(View, Scene, Window, Page)
-      setColumns(View, nz(Options.columns, { }))
+   local function newItems(View, Items)
+      if not View.columns then return end
 
-      local width = Window.width - EDGE - EDGE
+      local width = View.window.width - EDGE - EDGE
       local y = EDGE
-      for _, item in pairs(View.items) do
+      y = y + ((#View.items - #Items) * (lLineHeight + lVSpacing))
+
+      for _, item in pairs(Items) do
          if not item._vectors then item._vectors = { } end
          if not item._col then item._col = { } end
 
@@ -496,7 +506,7 @@ gui.columnView = function(Options)
          -- Each item gets a viewport within the page
 
          if not item._vectors.viewport then
-            item._vectors.viewport = Page.new('VectorViewport', {
+            item._vectors.viewport = View.page.new('VectorViewport', {
                x = EDGE, y = y, xOffset = EDGE, height = lLineHeight
             })
          else
@@ -525,8 +535,8 @@ gui.columnView = function(Options)
             if col.showIcons and item.icon then
                catch(function()
                   if not View.icons[item.icon] then
-                     View.icons[item.icon] = gui.createIcon(Scene, item.icon, lIconSize)
-                     Scene.mtAddDef(item.icon, View.icons[item.icon].pattern)
+                     View.icons[item.icon] = gui.createIcon(View.scene, item.icon, lIconSize)
+                     View.scene.mtAddDef(item.icon, View.icons[item.icon].pattern)
                   end
 
                   if not item._vectors.iconImage then
@@ -590,18 +600,20 @@ gui.columnView = function(Options)
          y = y + lLineHeight + lVSpacing
       end
 
-      local page_width = 0
+      View.page.height = y + EDGE
+
       for _, col in pairs(View.columns) do
          col.vecViewport.acMoveToFront()
-         page_width = col.x + col.width + EDGE
-      end
-
-      if View.scrollbar then
-         View.scrollbar.setDynamicPageSize(page_width, page_width, y + EDGE)
       end
    end
 
-   local vw = gui.initView(Options, constructColumnView)
+   local function constructColumnView(View, Scene, Window, Page)
+      setColumns(View, nz(Options.columns, { }))
+
+      newItems(View, View.items)
+   end
+
+   local vw = gui.initView(Options, constructColumnView, newItems)
 
    vw.setColumns = setColumns
 
