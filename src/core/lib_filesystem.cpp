@@ -3187,26 +3187,26 @@ restart:
                if (not keys.contains("Name")) continue;
                auto& name = keys["Name"];
 
-               bool match = FALSE;
+               bool match = false;
                ULONG j;
                for (j=0; (j < (ULONG)name.size()) and (j < pathend); j++) {
                   if (LCASE(Path[j]) != LCASE(name[j])) break;
                }
-               if ((j IS pathend) and ((j IS (ULONG)name.size()) or (name[j] IS ':'))) match = TRUE;
+               if ((j IS pathend) and ((j IS (ULONG)name.size()) or (name[j] IS ':'))) match = true;
 
                if (!match) continue;
 
-               if (!keys.contains("Path")) {
+               if (keys.contains("Path")) {
                   if (!keys["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
                }
 
-               if (!keys.contains("Device")) {
+               if (keys.contains("Device")) {
                   auto& device = keys["Device"];
                   if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE_FLOPPY_DISK|DEVICE_REMOVABLE|DEVICE_READ|DEVICE_WRITE;
                   else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE_HARD_DISK|DEVICE_READ|DEVICE_WRITE;
                   else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE_COMPACT_DISC|DEVICE_REMOVABLE|DEVICE_READ;
                   else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE_USB|DEVICE_REMOVABLE;
-                  else log.warning("Device '%s' unknown.", device.c_str());
+                  else log.warning("Device '%s' unrecognised.", device.c_str());
                }
             }
          }
@@ -3257,16 +3257,16 @@ restart:
    if (!error) {
       if (!(winGetFreeDiskSpace(location[0], &bytes_avail, &total_size))) {
          log.msg("Failed to read location \"%s\" (from \"%s\")", location, Path);
-         Info->BytesFree = -1;
-         Info->BytesUsed      = 0;
-         Info->DeviceSize     = -1;
+         Info->BytesFree  = -1;
+         Info->BytesUsed  = 0;
+         Info->DeviceSize = -1;
          FreeResource(location);
          return ERR_Okay; // Even though the disk space calculation failed, we succeeded on resolving other device information
       }
       else {
-         Info->BytesFree = bytes_avail;
-         Info->BytesUsed      = total_size - bytes_avail;
-         Info->DeviceSize     = total_size;
+         Info->BytesFree  = bytes_avail;
+         Info->BytesUsed  = total_size - bytes_avail;
+         Info->DeviceSize = total_size;
          FreeResource(location);
          return ERR_Okay;
       }
