@@ -321,7 +321,7 @@ next:
                         ukeys["Path"] = path;
                         if (icon)    ukeys["Icon"]    = icon;
                         if (comment) ukeys["Comment"] = comment;
-                        if (devid)   ukeys["ID"]     = devid;
+                        if (devid)   ukeys["ID"]      = devid;
                         if (flags & VOLUME_HIDDEN) ukeys["Hidden"] = "Yes";
                         break;
                      }
