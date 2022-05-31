@@ -106,7 +106,7 @@ static int processing_new(lua_State *Lua)
 
 static int processing_sleep(lua_State *Lua)
 {
-   static std::mutex recursion; // Intentionally accessible to all threads
+   static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
    {
       parasol::Log log;
@@ -133,18 +133,16 @@ static int processing_sleep(lua_State *Lua)
       for (auto &entry : *fp->Signals) signal_list_c[i++] = entry;
       signal_list_c[i].Object = NULL;
 
-      recursion.lock();
+      std::scoped_lock lock(recursion);
       error = WaitForObjects(0, timeout, signal_list_c);
-      recursion.unlock();
    }
    else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
       ObjectSignal signal_list_c[2];
       signal_list_c[0].Object   = &Lua->Script->Head;
       signal_list_c[1].Object   = NULL;
 
-      recursion.lock();
+      std::scoped_lock lock(recursion);
       error = WaitForObjects(0, timeout, signal_list_c);
-      recursion.unlock();
    }
 
    lua_pushinteger(Lua, error);

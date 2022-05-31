@@ -92,6 +92,11 @@ int fcmd_check(lua_State *Lua)
 // The caught error code is returned by default, or if no exception handler is defined then the entire exception table
 // is returned.
 //
+// Be aware that the scope of the catch will extend into any sub-routines that are called.  Mis-use of catch() can be
+// confusing for this reason, and pcall() is more appropriate when broad exception handling is desired.
+//
+// catch() is most useful for creating small code segments that limit any failures to their own scope.
+//
 //   err = catch(function()
 //      // Code to execute
 //   end,
