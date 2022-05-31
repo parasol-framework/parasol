@@ -135,6 +135,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       viewport   = nil,
       page       = nil,
       window     = nil,
+      noIcons    = Options.noIcons,
       itemSelected   = Options.itemSelected,
       itemDeselected = Options.itemDeselected,
       itemActivated  = Options.itemActivated,
@@ -369,8 +370,11 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    -- Sort items by named attribute
 
-   vw.sort = function(Attrib)
+   -- Sort items by any named attribute (Attrib must appear in all items)
+   -- Functionality must be defined by the host.
 
+   vw.sort = function(Attrib, Ascending)
+      msg('The view implementation must override the sort() method.')
    end
 
    -- Internal function for building the view's UI
@@ -501,7 +505,7 @@ gui.initView = function(Options, BuildUI, NewItems)
                vw.clickY = ev.y
             end
 
-            if vw.activeZone then
+            if vw.activeZone then -- Custom zone for click activity
                if vw.activeZone.clickRelease then
                   vw.activeZone.clickRelease(ev.x, ev.y, ev.absX, ev.absY)
                end
@@ -510,7 +514,7 @@ gui.initView = function(Options, BuildUI, NewItems)
                return
             end
 
-            if vw.hoveredItem and vw.hoveredItem.click then
+            if vw.hoveredItem and vw.hoveredItem.click then -- Feedback for all click types.  Refer to hoveredItem()
                if vw.hoveredItem.click(ev) then
                   return
                end

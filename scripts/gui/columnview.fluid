@@ -15,7 +15,7 @@ Initialisation options:
    width, height:    Width and height values, default to 100%.
    xOffset, yOffset: Offsets are an alternative to width and height.
    columns:          Declares the visible columns.
-   dateFormat:       Sets the format to use when displaying date types.
+   dateFormat:       The format to use when displaying date types.
    multiSelect:      If true, more than one item can be selected at a time by the user.
    sensitive:        If true, activation will occur whenever a new item is selected (double click no longer necessary).
    target:           The surface or vector viewport that will host the view.
@@ -34,14 +34,15 @@ Readable fields:
 
 Methods:
 
-   loadItems()     Load a new set of items and display them for the user.  Any existing items will be cleared.
-   selectedItems() TODO - Returns a table of all currently selected items.
+   loadItems(Items)
+      Load a new set of items and display them for the user.  Any existing items will be cleared.
+
+   selectedItems()
+      TODO - Returns a table of all currently selected items.
 
 Graphics and UI options:
 
-   noIcons:       Do not display icons alongside the item text.
    dragDrop:      Enable support for drag and drop.
-   autoDeselect:  Deselects a highlighted item when it is activated by user clicking or the enter key.
 
 --]]
 
@@ -76,6 +77,10 @@ Graphics and UI options:
 local function columnText(Value, Type)
    if type(Value) == 'table' then
       Value = Value.value
+   end
+
+   if not Value then
+      return ''
    end
 
    if (Type == 'bytesize') then
@@ -126,19 +131,19 @@ local function setColumnGradient(View, Column)
 
       if (nz(Column.align, 'left') == 'right') then
          Column.vecGradient = gui.simpleGradient(View.scene, defName,
-            { {r=0,g=0,b=0,a=0,offset=0.1 }, {r=0,g=0,b=0,a=255,offset=0.2}, {r=0,g=0,b=0,a=255,offset=1.0} },
+            { { r=0,g=0,b=0,a=0,offset=0.1 }, { r=0,g=0,b=0,a=255,offset=0.2 }, { r=0,g=0,b=0,a=255,offset=1.0 } },
             0, 0, Column.width, 0, 'userspace')
 
          Column.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-            { {r=255,g=255,b=255,a=0,offset=0.1 }, {r=255,g=255,b=255,a=255,offset=0.2}, {r=255,g=255,b=255,a=255,offset=1.0} },
+            { { r=255,g=255,b=255,a=0,offset=0.1 }, { r=255,g=255,b=255,a=255,offset=0.2}, { r=255,g=255,b=255,a=255,offset=1.0 } },
             0, 0, Column.width, 0, 'userspace')
       else
          Column.vecGradient = gui.simpleGradient(View.scene, defName,
-            { {r=0,g=0,b=0,a=255,offset=0 }, {r=0,g=0,b=0,a=255,offset=0.9}, {r=0,g=0,b=0,a=0,offset=0.98} },
+            { { r=0,g=0,b=0,a=255,offset=0 }, { r=0,g=0,b=0,a=255,offset=0.9 }, { r=0,g=0,b=0,a=0,offset=0.98 } },
             0, 0, Column.width, 0, 'userspace')
 
          Column.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-            { {r=255,g=255,b=255,a=255,offset=0 }, {r=255,g=255,b=255,a=255,offset=0.9}, {r=255,g=255,b=255,a=0,offset=0.98} },
+            { { r=255,g=255,b=255,a=255,offset=0 }, { r=255,g=255,b=255,a=255,offset=0.9 }, { r=255,g=255,b=255,a=0,offset=0.98 } },
             0, 0, Column.width, 0, 'userspace')
       end
 
@@ -313,8 +318,10 @@ gui.columnView = function(Options)
 
       View.bannerHeight = math.round(lLineHeight * 1.3)
       View.y      = View.bannerHeight
-      View.icons  = { }
       View.banner = { }
+      if not View.icons then
+         View.icons = { }
+      end
 
       -- Background graphics
 
@@ -588,7 +595,6 @@ gui.columnView = function(Options)
                end
 
                item._col[attrib].text.string = columnText(item[attrib], col.type)
-
                item._highlightEvent(View, item, false)
             end
 
@@ -607,6 +613,8 @@ gui.columnView = function(Options)
       end
    end
 
+   -- Callback function for constructing the view from scratch
+
    local function constructColumnView(View, Scene, Window, Page)
       setColumns(View, nz(Options.columns, { }))
 
@@ -617,7 +625,8 @@ gui.columnView = function(Options)
 
    vw.setColumns = setColumns
 
-   -- Sorts the view by column (name or index).
+   -- Sorts the view by column (named or index).
+   -- NB: Attrib values that evaluate to nil are not permitted/supported.
 
    vw.sortColumn = function(View, Column, Ascending)
       if (type(Column) == 'string') then
@@ -632,8 +641,6 @@ gui.columnView = function(Options)
       end
 
       if type(Column) == 'table' then
-         -- NB: Attrib values that evaluate to nil are not permitted/supported.
-
          if (#View.items > 0) then
             local attrib = Column['attrib']
             if (type(View.items[1][attrib]) == 'table') then
