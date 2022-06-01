@@ -155,11 +155,17 @@ gui.initView = function(Options, BuildUI, NewItems)
          local new_item = {
             _id = lItemCounter,
             _vectors = { },
-            _free = function(Item)
-               if Item._vectors and Item._vectors.viewport then
-                  -- Presume that freeing the root viewport removes all vectors for the item.
-                  Item._vectors.viewport.acFree()
+            _free = function(Item) -- This hook can be overridden by the client
+               local vp = Item._vectors.viewport
+               Item._vectors.viewport = nil
+
+               for k, v in pairs(Item._vectors) do
+                  v.acFree()
                end
+
+               if vp then vp.acFree() end
+
+               Item._vectors = { }
             end
          }
 
@@ -368,7 +374,57 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.rebuild()
    end
 
-   -- Sort items by named attribute
+   -- Internal function for sorting items by any named attribute.  Clients must call sort() instead.
+
+   vw.sortItems = function(Attrib, Ascending)
+      if not Attrib then
+         Attrib = 'name'
+      end
+
+      if Ascending == nil then
+         Ascending = true
+      end
+
+      if (#vw.items <= 1) then return end
+
+      if (type(vw.items[1][Attrib]) == 'table') then
+         if vw.items[1][Attrib]['sort'] then
+            table.sort(vw.items, function(a,b)
+               if Ascending then
+                  return a[Attrib].sort < b[Attrib].sort
+               else
+                  return a[Attrib].sort > b[Attrib].sort
+               end
+            end)
+         else
+            table.sort(vw.items, function(a,b)
+               if Ascending then
+                  return a[Attrib].value < b[Attrib].value
+               else
+                  return a[Attrib].value > b[Attrib].value
+               end
+            end)
+         end
+      elseif type(vw.items[1][Attrib]) == 'string' then
+         table.sort(vw.items, function(a,b)
+            if Ascending then
+               return a[Attrib]:lower() < b[Attrib]:lower()
+            else
+               return a[Attrib]:lower() > b[Attrib]:lower()
+            end
+         end)
+      else
+         table.sort(vw.items, function(a,b)
+            if Ascending then
+               return a[Attrib] < b[Attrib]
+            else
+               return a[Attrib] > b[Attrib]
+            end
+         end)
+      end
+
+      vw.scene.surface.mtScheduleRedraw()
+   end
 
    -- Sort items by any named attribute (Attrib must appear in all items)
    -- Functionality must be defined by the host.
