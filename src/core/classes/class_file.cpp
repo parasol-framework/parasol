@@ -2073,7 +2073,7 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
 
    if (!glDatatypes) {
       if (load_datatypes() != ERR_Okay) {
-         if (link) *Value = Self->prvIcon = StrClone("icons:filetypes/empty"); // _shortcut
+         if (link) *Value = Self->prvIcon = StrClone("icons:filetypes/empty_shortcut");
          else *Value = Self->prvIcon = StrClone("icons:filetypes/empty");
          return ERR_Okay;
       }
@@ -2147,7 +2147,7 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
    }
 
    if (!icon[0]) {
-      if (link) *Value = Self->prvIcon = StrClone("icons:filetypes/empty+overlays/link");
+      if (link) *Value = Self->prvIcon = StrClone("icons:filetypes/empty_shortcut");
       else *Value = Self->prvIcon = StrClone("icons:filetypes/empty");
       return ERR_Okay;
    }
@@ -2155,11 +2155,6 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
    if (StrCompare("icons:", icon, 6, 0) != ERR_Okay) {
       CopyMemory(icon, icon+6, sizeof(icon) - 6);
       for (LONG i=0; i < 6; i++) icon[i] = "icons:"[i];
-   }
-
-   if (link) {
-      LONG i = StrLength(icon);
-      StrCopy("+overlays/link", icon + i, sizeof(icon)-i);
    }
 
    *Value = Self->prvIcon = StrClone(icon);
