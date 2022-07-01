@@ -3449,7 +3449,7 @@ ERROR load_datatypes(void)
 {
    parasol::Log log(__FUNCTION__);
    FileInfo info;
-   static LARGE user_ts = 0, system_ts = 0;
+   static LARGE user_ts = 0;
    bool reload;
 
    log.traceBranch("");
@@ -3457,26 +3457,18 @@ ERROR load_datatypes(void)
    if (!glDatatypes) {
       reload = true;
 
-      if (!get_file_info("user:config/associations.cfg", &info, sizeof(info))) {
+      if (!get_file_info("config:users/associations.cfg", &info, sizeof(info))) {
          user_ts = info.TimeStamp;
       }
-
-      if (!get_file_info("config:software/associations.cfg", &info, sizeof(info))) {
-         system_ts = info.TimeStamp;
+      else {
+         return log.warning(ERR_FileDoesNotExist);
       }
    }
    else {
       reload = false;
-      if (!get_file_info("user:config/associations.cfg", &info, sizeof(info))) {
+      if (!get_file_info("config:users/associations.cfg", &info, sizeof(info))) {
          if (user_ts != info.TimeStamp) {
             user_ts = info.TimeStamp;
-            reload = true;
-         }
-      }
-
-      if (!get_file_info("config:software/associations.cfg", &info, sizeof(info))) {
-         if (system_ts != info.TimeStamp) {
-            system_ts = info.TimeStamp;
             reload = true;
          }
       }
@@ -3486,7 +3478,7 @@ ERROR load_datatypes(void)
       objConfig *datatypes;
 
       if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&datatypes,
-            FID_Path|TSTR, "config:software/associations.cfg|user:config/associations.cfg",
+            FID_Path|TSTR, "config:users/associations.cfg",
             FID_Flags|TLONG, CNF_OPTIONAL_FILES,
             TAGEND) != ERR_Okay) {
          return log.warning(ERR_CreateObject);
