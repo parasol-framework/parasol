@@ -7,7 +7,20 @@ if (gui == nil) then
       colours = { },
       interface = { },
       rgb = { },
-      counter = 0
+      counter = 0,
+      iconColours = {
+         default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+         yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke='rgb(60,30,30,90)' },
+         orange  = { first={ r=0xFD,g=0xC8,b=0x30 }, last={ r=0xF3,g=0x73,b=0x35 } },
+         blue    = { first={ r=0x4b,g=0x6c,b=0xb7 }, last={ r=0x18,g=0x28,b=0x48 } },
+         ocean   = { first={ r=0xA8,g=0xC0,b=0xFF }, last={ r=0x3F,g=0x2B,b=0x96 } },
+         green   = { first={ r=0x7e,g=0x9d,b=0x13 }, last={ r=0x00,g=0x65,b=0x32 } },
+         red     = { first={ r=0xf5,g=0xaf,b=0x19 }, last={ r=0xf1,g=0x27,b=0x11 } },
+         indigo  = { first={ r=0xad,g=0x53,b=0x89 }, last={ r=0x3c,g=0x10,b=0x53 } },
+         rose    = { first={ r=0xff,g=0xc3,b=0xa0 }, last={ r=0xFF,g=0xAF,b=0xBD } },
+         pink    = { first={ r=0xff,g=0xdd,b=0xe1 }, last={ r=0xee,g=0x9c,b=0xa7 } },
+         grey    = { first={ r=100,g=100,b=100 }, last={ r=70,g=70,b=70 } }
+      }
    }
 
    do
@@ -284,6 +297,18 @@ gui.rgbToHSV = function(Value)
 end
 
 ------------------------------------------------------------------------------
+-- Call a client function for each vector in the tree
+
+gui.forVector = function(Vector, Function)
+   while (Vector != nil) do
+      Function(Vector)
+      local child = Vector.child
+      if (child != nil) then gui.forVector(child, Function) end
+      Vector = Vector.next
+   end
+end
+
+------------------------------------------------------------------------------
 
 gui.applyFill = function(Vector, Fill)
    while (Vector != nil) do
@@ -349,19 +374,37 @@ end
 -- VectorRectangle if you want to use the icon as a cached bitmap (fast), or to a VectorViewport for live
 -- rendering (typically needed for scaling and transforms).
 
-gui.createIcon = function(Scene, Path, Size)
+gui.createIcon = function(Scene, Path, Size, Colour)
    if not Size then Size = 16 end
-   local lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
+   local lColour = gui.iconColours.default
    local icon = { }
+
+   if type(Colour) == 'table' then
+      lColour = Colour
+   elseif type(Colour) == 'string' then
+      if gui.iconColours[Colour] then
+         lColour = gui.iconColours[Colour]
+      else
+         error('gui.createIcon() colour ' .. Colour .. ' not recognised.')
+      end
+   end
+
    gui.counter = gui.counter + 1
    local gname   = 'icon_grd' .. gui.counter
    icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size })
-   icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lThemeColour.first, lThemeColour.last }, 0, 0, 0, 1)
+   icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lColour.first, lColour.last }, 0, 0, 0, 1)
    if string.find(Path, 'icons:') != 1 then
       Path = 'icons:' .. Path .. '.svg'
    end
    icon.svg = obj.new('svg', { target=icon.pattern.viewport, path=Path })
-   gui.applyFill(icon.pattern.viewport, 'url(#' .. gname .. ')')
+
+   gui.forVector(icon.pattern.viewport, function(Vector)
+      if (Vector.fill != 'none') then
+         Vector.fill = 'url(#' .. gname .. ')'
+      end
+      Vector.stroke = nz(lColour.stroke, 'rgb(60,30,30,90)')
+      Vector.strokeWidth = "1.5%"
+   end)
 
    -- Adjust gradient size to match the viewport height.
 
