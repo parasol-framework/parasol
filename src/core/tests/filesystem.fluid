@@ -140,8 +140,29 @@ end
 
 --=====================================================================================================================
 
+function testFileIcons()
+   local icon_pairs = {
+      { path='parasol:fluid.exe',               icon='icons:items/launch' },
+      { path='fonts:fonts.cfg',                 icon='icons:filetypes/text' },
+      { path='fonts:license-courier-prime.txt', icon='icons:filetypes/text' },
+      { path='fonts:truetype/Micro-6.ttf',      icon='icons:filetypes/font' },
+      { path='parasol:include/parasol/main.h',  icon='icons:filetypes/source_h' },
+      { path='scripts:common.fluid',            icon='icons:filetypes/source' },
+      { path='styles:default/values.xml',       icon='icons:filetypes/xml' }
+   }
+
+   for k, v in ipairs(icon_pairs) do
+      local icon = obj.new('file', { path=v.path }).icon
+      if (icon != v.icon) then
+         error('Icon for ' .. v.path .. ' evaluated to ' .. icon .. ' instead of expected "' .. v.icon .. '"')
+      end
+   end
+end
+
+--=====================================================================================================================
+
    return {
-      tests = { 'testPathExtract', 'testFolderScan', 'testScanDir', 'testStringify', 'testScanVolumes' },
+      tests = { 'testPathExtract', 'testFolderScan', 'testScanDir', 'testStringify', 'testScanVolumes', 'testFileIcons' },
       init = function()
          glRawPath = 'user:test.out'
          local out = obj.new('file', { src=glRawPath, flags='!NEW|WRITE' } )
