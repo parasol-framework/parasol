@@ -590,7 +590,6 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
    struct rkVector *Prev; \
    OBJECTPTR Parent; \
    struct VectorMatrix *Matrices; \
-   DOUBLE StrokeWidth; \
    DOUBLE StrokeOpacity; \
    DOUBLE FillOpacity; \
    DOUBLE Opacity; \
@@ -613,7 +612,6 @@ typedef struct rkVector {
    struct rkVector * Prev;          // The previous vector in the branch, or NULL.
    OBJECTPTR Parent;                // The parent vector, or NULL if this is the top-most vector.
    struct VectorMatrix * Matrices;  // A list of transform matrices to apply to the vector.
-   DOUBLE    StrokeWidth;           // The width to use when stroking the path.
    DOUBLE    StrokeOpacity;         // Defines the opacity of the path stroke.
    DOUBLE    FillOpacity;           // The opacity to use when filling the vector.
    DOUBLE    Opacity;               // An overall opacity value for the vector.

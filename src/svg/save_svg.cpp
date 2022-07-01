@@ -301,8 +301,13 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
    else if (Vector->Visibility IS VIS_COLLAPSE) error = xmlSetAttrib(XML, Tag, XMS_NEW, "visibility", "collapse");
    else if (Vector->Visibility IS VIS_INHERIT)  error = xmlSetAttrib(XML, Tag, XMS_NEW, "visibility", "inherit");
 
-   if ((!error) and (Vector->StrokeWidth != 1.0))
-      error = xmlSetAttribDouble(XML, Tag, XMS_NEW, "stroke-width", Vector->StrokeWidth);
+   STRING stroke_width;
+   if ((!error) and (!GetString(Vector, FID_StrokeWidth, &stroke_width))) {
+      if (!stroke_width) stroke_width = "0";
+      if ((stroke_width[0] != '1') and (stroke_width[1] != 0)) {
+         error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke-width", stroke_width);
+      }
+   }
 
    if ((!error) and (!GetString(Vector, FID_Fill, &str)) and (str)) {
       if (StrMatch("rgb(0,0,0)", str) != ERR_Okay) {

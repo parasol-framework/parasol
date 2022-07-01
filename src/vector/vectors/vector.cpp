@@ -1964,17 +1964,45 @@ static ERROR VECTOR_SET_StrokeOpacity(objVector *Self, DOUBLE Value)
 -FIELD-
 StrokeWidth: The width to use when stroking the path.
 
-The StrokeWidth defines the pixel width of a path when it is stroked.  If this field is set to zero, the path will not
-be stroked.
+The StrokeWidth defines the pixel width of a path when it is stroked.  The path will not be stroked if the value is
+zero.  A percentage can be used to define the stroke width if it should be relative to the size of the viewbox
+(along its diagonal).  Note that this incurs a slight computational penalty when drawing.
 
-The StrokeWidth is affected by scaling factors imposed by transforms and viewports.
+The size of the stroke is also affected by scaling factors imposed by transforms and viewports.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_StrokeWidth(objVector *Self, DOUBLE Value)
+static ERROR VECTOR_GET_StrokeWidth(objVector *Self, Variable *Value)
 {
-   if ((Value >= 0.0) and (Value <= 1000.0)) {
-      Self->StrokeWidth = Value;
+   DOUBLE val;
+
+   if (Value->Type & FD_PERCENTAGE) {
+      if (Self->RelativeStrokeWidth) val = Self->StrokeWidth * 100.0;
+      else val = 0;
+   }
+   else val = Self->fixed_stroke_width();
+
+   if (Value->Type & FD_DOUBLE) Value->Double = val;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   return ERR_Okay;
+}
+
+static ERROR VECTOR_SET_StrokeWidth(objVector *Self, Variable *Value)
+{
+   DOUBLE val;
+   if (Value->Type & FD_DOUBLE) val = Value->Double;
+   else if (Value->Type & FD_LARGE) val = Value->Large;
+   else return ERR_FieldTypeMismatch;
+
+   if ((val >= 0.0) and (val <= 1000.0)) {
+      if (Value->Type & FD_PERCENTAGE) {
+         Self->StrokeWidth = val * 0.01;
+         Self->RelativeStrokeWidth = true;
+      }
+      else {
+         Self->StrokeWidth = val;
+         Self->RelativeStrokeWidth = false;
+      }
       return ERR_Okay;
    }
    else return ERR_OutOfRange;
@@ -2108,6 +2136,16 @@ static ERROR vector_keyboard_events(objVector *Vector, const evKey *Event)
 
 //********************************************************************************************************************
 
+DOUBLE rkVector::fixed_stroke_width()
+{
+   if (this->RelativeStrokeWidth) {
+      return get_parent_diagonal(this) * this->StrokeWidth;
+   }
+   else return this->StrokeWidth;
+}
+
+//********************************************************************************************************************
+
 static const FieldDef clMorphFlags[] = {
    { "Stretch",     VMF_STRETCH },
    { "AutoSpacing", VMF_AUTO_SPACING },
@@ -2163,7 +2201,6 @@ static const FieldArray clVectorFields[] = {
    { "Prev",             FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Prev },
    { "Parent",           FDF_OBJECT|FD_R,              0, NULL, NULL },
    { "Matrices",         FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorMatrix", NULL, NULL },
-   { "StrokeWidth",      FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_StrokeWidth },
    { "StrokeOpacity",    FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_StrokeOpacity, (APTR)VECTOR_SET_StrokeOpacity },
    { "FillOpacity",      FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_FillOpacity, (APTR)VECTOR_SET_FillOpacity },
    { "Opacity",          FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_Opacity },
@@ -2184,6 +2221,7 @@ static const FieldArray clVectorFields[] = {
    { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)VECTOR_GET_Sequence, NULL },
    { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Stroke, (APTR)VECTOR_SET_Stroke },
    { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   0, (APTR)VECTOR_GET_StrokeColour, (APTR)VECTOR_SET_StrokeColour },
+   { "StrokeWidth",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTOR_GET_StrokeWidth, (APTR)VECTOR_SET_StrokeWidth },
    { "Transition",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Transition, (APTR)VECTOR_SET_Transition },
    { "EnableBkgd",   FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_EnableBkgd, (APTR)VECTOR_SET_EnableBkgd },
    { "Fill",         FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Fill, (APTR)VECTOR_SET_Fill },

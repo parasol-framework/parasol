@@ -309,8 +309,11 @@
     <field>
       <name>DashOffset</name>
       <comment>The distance into the dash pattern to start the dash.  Can be a negative number.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
+      <description>
+<p>The DashOffset can be set in conjunction with the <field>DashArray</field> to shift the dash pattern to the left.  If the offset is negative then the shift will be to the right.</p>
+      </description>
     </field>
 
     <field>
@@ -603,11 +606,11 @@ Z: Close Path
     <field>
       <name>StrokeWidth</name>
       <comment>The width to use when stroking the path.</comment>
-      <access read="R" write="S">Read/Set</access>
+      <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The StrokeWidth defines the pixel width of a path when it is stroked.  If this field is set to zero, the path will not be stroked.</p>
-<p>The StrokeWidth is affected by scaling factors imposed by transforms and viewports.</p>
+<p>The StrokeWidth defines the pixel width of a path when it is stroked.  If this field is set to zero, the path will not be stroked.  A percentage can be used to define the stroke width if it should be relative to the size of the viewbox. In this case, the width is computed from the diagonal length of the viewbox.  Note that this incurs a slight computational penalty when drawing.</p>
+<p>The StrokeWidth is affected by additional scaling factors imposed by transforms and viewports.</p>
       </description>
     </field>
 

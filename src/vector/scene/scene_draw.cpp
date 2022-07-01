@@ -938,7 +938,7 @@ private:
       if (Vector.StrokeGradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
             draw_gradient(&Vector, &Vector.BasePath, Vector.FinalX, Vector.FinalY, view_width(), view_height(),
-               *Vector.StrokeGradient, table, mRenderBase, Raster, Vector.StrokeWidth);
+               *Vector.StrokeGradient, table, mRenderBase, Raster, Vector.fixed_stroke_width());
          }
       }
       else if (Vector.StrokePattern) {
@@ -946,7 +946,7 @@ private:
             view_width(), view_height(), *Vector.StrokePattern, mRenderBase, Raster);
       }
       else if (Vector.StrokeImage) {
-         DOUBLE stroke_width = Vector.StrokeWidth * Vector.Transform.scale();
+         DOUBLE stroke_width = Vector.fixed_stroke_width() * Vector.Transform.scale();
          if (stroke_width < 1) stroke_width = 1;
 
          auto transform = Vector.Transform * State.mTransform;

@@ -430,7 +430,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
    struct rkVector *Prev; \
    OBJECTPTR Parent; \
    struct VectorMatrix *Matrices; \
-   DOUBLE StrokeWidth; \
    DOUBLE StrokeOpacity; \
    DOUBLE FillOpacity; \
    DOUBLE Opacity; \
@@ -462,7 +461,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     obj(Vector) Prev        # The previous vector in the branch, or NULL.
     obj Parent              # The parent vector, or NULL if this is the top-most vector.
     struct(*VectorMatrix) Matrices # A list of transform matrices to apply to the vector.
-    double StrokeWidth      # The width to use when stroking the path.
     double StrokeOpacity    # Defines the opacity of the path stroke.
     double FillOpacity      # The opacity to use when filling the vector.
     double Opacity          # An overall opacity value for the vector.
