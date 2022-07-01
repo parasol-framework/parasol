@@ -2045,19 +2045,17 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
    }
 
    FileInfo info;
-   BYTE link = FALSE;
+   bool link = false;
    if (!get_file_info(Self->Path, &info, sizeof(info))) {
-      if (info.Flags & RDF_LINK) link = TRUE;
+      if (info.Flags & RDF_LINK) link = true;
 
       if (info.Flags & RDF_VIRTUAL) { // Virtual drives can specify custom icons, even for folders
          *Value = Self->prvIcon = VarGetString(info.Tags, "Icon");
-         if (*Value) {
-            return ERR_Okay;
-         }
+         if (*Value) return ERR_Okay;
       }
 
       if (info.Flags & RDF_FOLDER) {
-         if (link) *Value = Self->prvIcon = StrClone("icons:folders/folder+overlays/link");
+         if (link) *Value = Self->prvIcon = StrClone("icons:folders/folder_shortcut");
          else *Value = Self->prvIcon = StrClone("icons:folders/folder");
          return ERR_Okay;
       }
@@ -2065,7 +2063,7 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
 
    while (Self->Path[i]) i++;
    if ((Self->Path[i-1] IS '/') or (Self->Path[i-1] IS '\\')) {
-      if (link) *Value = Self->prvIcon = StrClone("icons:folders/folder+overlays/link");
+      if (link) *Value = Self->prvIcon = StrClone("icons:folders/folder_shortcut");
       else *Value = Self->prvIcon = StrClone("icons:folders/folder");
       return ERR_Okay;
    }
@@ -2075,7 +2073,7 @@ static ERROR GET_Icon(objFile *Self, CSTRING *Value)
 
    if (!glDatatypes) {
       if (load_datatypes() != ERR_Okay) {
-         if (link) *Value = Self->prvIcon = StrClone("icons:filetypes/empty+overlays/link");
+         if (link) *Value = Self->prvIcon = StrClone("icons:filetypes/empty"); // _shortcut
          else *Value = Self->prvIcon = StrClone("icons:filetypes/empty");
          return ERR_Okay;
       }
