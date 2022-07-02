@@ -541,14 +541,19 @@ gui.columnView = function(Options)
 
             if col.showIcons and item.icon then
                catch(function()
-                  if not View.icons[item.icon] then
-                     View.icons[item.icon] = gui.createIcon(View.scene, item.icon, lIconSize)
-                     View.scene.mtAddDef(item.icon, View.icons[item.icon].pattern)
+                  local uid = item.icon
+                  if item.iconColour then
+                     uid = uid .. '+' .. item.iconColour
+                  end
+
+                  if not View.icons[uid] then
+                     View.icons[uid] = gui.createIcon(View.scene, item.icon, lIconSize, item.iconColour)
+                     View.scene.mtAddDef(uid, View.icons[uid].pattern)
                   end
 
                   if not item._vectors.iconImage then
                      item._vectors.iconImage = col.vecViewport.new('VectorRectangle', {
-                        fill   = 'url(#' .. item.icon .. ')',
+                        fill   = 'url(#' .. uid .. ')',
                         x      = MARGIN,
                         y      = y + lIconOffset,
                         width  = lIconSize,
