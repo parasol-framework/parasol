@@ -258,12 +258,11 @@ glStyles = {
 
          local ICON_SIZE = height * 0.56
          local X_GAP     = height * 0.25
-         local COL_BKGD  = 'rgb(0,0,0,80)'
          local COL_EDGE  = 'rgb(255,255,255,60)'
          local STROKE_WIDTH = 2
 
          state.bkgd = Viewport.new('VectorRectangle', {
-            fill        = COL_BKGD,
+            fill        = gui.colours.rgb('widgetBkgd'),
             stroke      = COL_EDGE,
             strokeWidth = STROKE_WIDTH,
             x           = STROKE_WIDTH * 0.5,
@@ -317,13 +316,13 @@ glStyles = {
          end
 
          Viewport.subscribe('disable', function(Viewport, Args, State)
-            State.bkgd.fill = COL_BKGD
+            State.bkgd.fill = gui.colours.rgb('widgetBkgd')
             State.label.opacity = 0.25
             Viewport.acDraw()
          end, state)
 
          Viewport.subscribe('enable', function(Viewport, Args, State)
-            State.bkgd.fill = COL_BKGD
+            State.bkgd.fill = gui.colours.rgb('widgetBkgd')
             State.label.opacity = 1.0
             Viewport.acDraw()
          end, state)
@@ -393,7 +392,7 @@ glStyles = {
                   elseif Msg.type == JET_LEFT_SURFACE then
                      Button.hoverState = BHS_OUTSIDE
                      if bit.band(Button.flags, BTF_DISABLED) == 0 then
-                        state.bkgd.fill = COL_BKGD
+                        state.bkgd.fill = gui.colours.rgb('widgetBkgd')
                         Viewport.acDraw()
                      end
                   elseif Msg.type == JET_LMB then
@@ -436,7 +435,6 @@ glStyles = {
 
       end,
       decoration = function(Check, Viewport)
-         local COL_BKGD = 'rgb(0,0,0,64)'
          local COL_STROKE_NO_FOCUS = 'rgb(255,255,255,60)'
          local COL_STROKE_HAS_FOCUS = 'rgb(255,255,255,90)'
          local GAP = 5
@@ -455,7 +453,7 @@ glStyles = {
          local lBoxSize = Viewport.height
 
          state.bkgd = Viewport.new('VectorRectangle', {
-            fill        = COL_BKGD,
+            fill        = gui.colours.rgb('widgetBkgd'),
             stroke      = COL_STROKE_NO_FOCUS,
             strokeWidth = STROKE_WIDTH,
             x           = STROKE_WIDTH * 0.5,
@@ -588,9 +586,9 @@ glStyles = {
 
                      if not (bit.band(Check.flags, CBF_DISABLED) == CBF_DISABLED) then
                         state.bkgd.stroke = COL_HIGHLIGHT
-                        state.bkgd.fill = COL_BKGD
+                        state.bkgd.fill = gui.colours.rgb('widgetBkgd')
                      else
-                        state.bkgd.fill = COL_BKGD
+                        state.bkgd.fill = gui.colours.rgb('widgetBkgd')
                      end
 
                      if bit.band(Check.flags, CBF_DISABLED) == 0 then
@@ -598,7 +596,7 @@ glStyles = {
                      end
                   elseif (Msg.type == JET_LEFT_SURFACE) then
                      state.entered = false
-                     state.bkgd.fill = COL_BKGD
+                     state.bkgd.fill = gui.colours.rgb('widgetBkgd')
 
                      if bit.band(Check.flags, CBF_DISABLED) == 0 then
                         Viewport.acDraw()
@@ -624,7 +622,6 @@ glStyles = {
 
       end,
       decoration = function(Combo, Viewport)
-         local COL_BKGD = 'rgb(0,0,0,64)'
          local COL_HIGHLIGHT = 'rgb(255,255,255,255)'
          local COL_STROKE_NO_FOCUS = 'rgb(255,255,255,60)'
          local COL_STROKE_HAS_FOCUS = 'rgb(255,255,255,130)'
@@ -662,13 +659,14 @@ glStyles = {
          end
 
          state.bkgd = Viewport.new('VectorRectangle', {
-            fill   = COL_BKGD,
+            fill   = gui.colours.rgb('widgetBkgd'),
             stroke = COL_STROKE_NO_FOCUS,
             strokeWidth = STROKE_WIDTH,
             x      = Combo.labelWidth,
             roundX = STROKE_WIDTH * 2,
             roundY = STROKE_WIDTH * 2
          })
+         state.bkgd.acMoveToBack()
 
          -- Initialise the text area that the user will be able to interact with.
 
@@ -773,14 +771,14 @@ glStyles = {
 
          Viewport.subscribe('disable', function(Viewport, Args, Combo)
             local state = Combo.viewport.state()
-            state.bkgd.fill = COL_BKGD
+            state.bkgd.fill = gui.colours.rgb('widgetBkgd')
             if state.label then state.label.opacity = 0.25 end
             Viewport.acDraw()
          end, Combo)
 
          Viewport.subscribe('enable', function(Viewport, Args, Combo)
             local state = Combo.viewport.state()
-            state.bkgd.fill = COL_BKGD
+            state.bkgd.fill = gui.colours.rgb('widgetBkgd')
             if state.label then state.label.opacity = 1.0 end
             Viewport.acDraw()
          end, Combo)
@@ -826,14 +824,14 @@ glStyles = {
                      state.entered = true
                      if bit.band(Viewport.flags, VF_DISABLED) == 0 then
                         state.bkgd.stroke = COL_HIGHLIGHT
-                        state.bkgd.fill   = COL_BKGD
+                        state.bkgd.fill = gui.colours.rgb('widgetBkgd')
                      else
-                        state.bkgd.fill = COL_BKGD
+                        state.bkgd.fill = gui.colours.rgb('widgetBkgd')
                      end
                      Viewport.acDraw()
                   elseif Msg.type == JET_LEFT_SURFACE then
                      state.entered = false
-                     state.bkgd.fill = COL_BKGD
+                     state.bkgd.fill = gui.colours.rgb('widgetBkgd')
                      Viewport.acDraw()
                   elseif (Msg.type == JET_LMB) and (Msg.value > 0) then
                      if bit.band(Viewport.flags, VF_DISABLED) == 0 and (Msg.x > Combo.labelWidth) then
@@ -857,12 +855,11 @@ glStyles = {
    },
    input = {
       defaultValues = function(Input)
-         Input.textInput.fill      = 'rgb(' .. gui.colours.widgetText .. ')'
+         Input.textInput.fill      = gui.colours.rgb('widgetText')
          Input.textInput.lineLimit = 1
          Input.textInput.face      = gui.fonts.widget.face
       end,
       decoration = function(Input, Viewport)
-         local COL_BKGD = 'rgb(0,0,0,64)'
          local COL_STROKE_NO_FOCUS = 'rgb(255,255,255,60)'
          local COL_STROKE_HAS_FOCUS = 'rgb(255,255,255,90)'
          local GAP = 5
@@ -906,12 +903,13 @@ glStyles = {
          end
 
          state.bkgd = Viewport.new('VectorRectangle', {
-            fill   = COL_BKGD,
+            fill   = gui.colours.rgb('widgetBkgd'),
             stroke = COL_STROKE_NO_FOCUS,
             strokeWidth = STROKE_WIDTH,
             roundX = STROKE_WIDTH * 2,
             roundY = STROKE_WIDTH * 2
          })
+         state.bkgd.acMoveToBack()
 
          if bit.band(Viewport.dimensions, bit.bor(DMF_FIXED_WIDTH, DMF_RELATIVE_WIDTH)) != 0 then
             state.computeFixedWidth = false
@@ -1011,13 +1009,13 @@ glStyles = {
          if bit.band(Input.flags, INF_DISABLED) != 0 then Input.acDisable() end
 
          Viewport.subscribe('disable', function(Viewport, Args, State)
-            State.bkgd.fill = COL_BKGD
+            State.bkgd.fill = gui.colours.rgb('widgetBkgd')
             if State.label then State.label.opacity = 0.25 end
             if State.postlabel then State.postlabel.opacity = 1.0 end
          end, state)
 
          Viewport.subscribe('enable', function(Viewport, Args, State)
-            State.bkgd.fill = COL_BKGD
+            State.bkgd.fill = gui.colours.rgb('widgetBkgd')
             if State.label then State.label.opacity = 1.0 end
             if State.postlabel then State.postlabel.opacity = 1.0 end
          end, state)
