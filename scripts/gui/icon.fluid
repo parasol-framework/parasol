@@ -51,7 +51,6 @@ gui.icon = function(Options)
    local lIconSize   = nz(Options.size, 66)
    local lIconWidth  = lIconSize
    local MARGIN      = 6
-   local FONT_FACE   = 'Open Sans'
    local lFontSize   = 10
    local lLineHeight = 0
 
@@ -97,7 +96,7 @@ gui.icon = function(Options)
          lFontSize = 10
       end
 
-      local font = obj.new('font', { face = FONT_FACE, point = lFontSize })
+      local font = obj.new('font', { face = gui.fonts.icon.face, point = lFontSize })
 
       lLineHeight = font.maxHeight
 
@@ -157,15 +156,15 @@ gui.icon = function(Options)
       -- Create a dark rounded box in the background of the text, this will make it easier to distinguish the text
       -- against a busy background or one of a similar colour.
 
-      local box_height = self.viewport.height - (lIconSize + MARGIN) - 0.5
+      local box_height = self.viewport.height - (lIconSize + MARGIN)
       local y = lIconSize + MARGIN
 
       lTextGroup = self.viewport.new('VectorGroup', { })
 
       lTextGroup.new('VectorRectangle', {
          fill   = 'rgb(0,0,0,128)',
-         x      = 0.5,
-         y      = y,
+         x      = 0,
+         y      = math.floor(y),
          roundX = 5,
          roundY = 5,
          width  = lIconSize - 1.0,
@@ -174,17 +173,16 @@ gui.icon = function(Options)
 
       for _, line in ipairs(lLines) do
          local vText = lTextGroup.new('VectorText', {
-            x        = lIconSize * 0.5,
-            face     = FONT_FACE,
+            x        = math.floor(lIconSize * 0.5),
+            face     = gui.fonts.icon.face,
             fontSize = string.format('%.2fpt', lFontSize),
-            fill     = 'rgb(255,255,255)',
-            stroke   = 'rgb(255,255,255)',
+            fill     = gui.colours.rgb('widgetText'),
             align    = 'horizontal',
             string   = line
          })
 
          y = y + lLineHeight
-         vText.y = y
+         vText.y = math.floor(y)
       end
    end
 
