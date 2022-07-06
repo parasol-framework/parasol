@@ -23,6 +23,11 @@ if (gui == nil) then
       }
    }
 
+   gui.colours.rgb = function(Name)
+      if not gui.colours[Name] then error('Invalid colour name "' .. Name .. '"') end
+      return 'rgb(' .. gui.colours[Name] .. ')'
+   end
+
    do
       local mSurface = mod.load('surface') // Temporarily load to ensure glStyle is available.
       local xml = obj.find('glStyle')
@@ -55,6 +60,10 @@ if (gui == nil) then
             err, gui.colours['highlight']     = xml.mtGetAttrib(index, 'highlight')
             err, gui.colours['colour']        = xml.mtGetAttrib(index, 'colour')
             err, gui.colours['widgetText']    = xml.mtGetAttrib(index, 'widgetText')
+            err, gui.colours['widgetBkgd']    = xml.mtGetAttrib(index, 'widgetBkgd')
+            err, gui.colours['widgetStroke']  = xml.mtGetAttrib(index, 'widgetStroke')
+            err, gui.colours['widgetStrokeFocus']   = xml.mtGetAttrib(index, 'widgetStrokeFocus')
+            err, gui.colours['widgetStrokeDisabled'] = xml.mtGetAttrib(index, 'widgetStrokeDisabled')
             err, gui.colours['button']        = xml.mtGetAttrib(index, 'button')
             err, gui.colours['buttonClick']   = xml.mtGetAttrib(index, 'buttonClick')
             err, gui.colours['menubar']       = xml.mtGetAttrib(index, 'menubar')
@@ -71,6 +80,7 @@ if (gui == nil) then
             err, gui.colours['textHighlight'] = xml.mtGetAttrib(index, 'textHighlight')
             err, gui.colours['window']        = xml.mtGetAttrib(index, 'window')
             err, gui.colours['boxedText']     = xml.mtGetAttrib(index, 'boxedText')
+            err, gui.colours['windowText']    = xml.mtGetAttrib(index, 'windowText')
          else
             error('No colours tag in style values.')
          end
@@ -106,7 +116,7 @@ end
 
 gui.getFontHeight = function(Font)
    if not Font.height then
-      local fnt = obj.new('font', { face=Font.face })
+      local fnt = obj.new('font', { face=Font.face, point=Font.size })
       Font.height = fnt.height
       Font.maxHeight = fnt.maxHeight
    end
