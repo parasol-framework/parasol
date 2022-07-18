@@ -878,7 +878,7 @@ static ERROR TEXT_SET_String(objVectorText *Self, CSTRING Value)
 
 /*****************************************************************************
 -FIELD-
-TextLength: Reflects the expected length of the text after all computations have been taken into account.
+TextLength: The expected length of the text after all computations have been taken into account.
 
 The purpose of this attribute is to allow exact alignment of the text graphic in the computed result.  If the
 #Width that is initially computed does not match this value, then the text will be scaled to match the
@@ -898,6 +898,27 @@ static ERROR TEXT_GET_TextLength(objVectorText *Self, DOUBLE *Value)
 static ERROR TEXT_SET_TextLength(objVectorText *Self, DOUBLE Value)
 {
    Self->txTextLength = Value;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-FIELD-
+TextWidth: The raw pixel width of the widest line in the @String value..
+
+*****************************************************************************/
+
+static ERROR TEXT_GET_TextWidth(objVectorText *Self, LONG *Value)
+{
+   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_NotInitialised;
+
+   if (!Self->txFont) reset_font(Self);
+
+   LONG width = 0;
+   for (auto &line : Self->txLines) {
+      LONG w = fntStringWidth(Self->txFont, line.c_str(), -1);
+      if (w > width) width = w;
+   }
+   *Value = width;
    return ERR_Okay;
 }
 
@@ -1279,10 +1300,8 @@ static void generate_text_bitmap(objVectorText *Vector)
    if ((!Vector->txInlineSize) and (!(Vector->txCursor.vector))) { // Fast calculation if no wrapping or active cursor
       for (auto &line : Vector->txLines) {
          line.chars.clear();
-         for (auto str=line.c_str(); *str; ) {
-            LONG line_width = fntStringWidth(Vector->txFont, str, 0);
-            if (line_width > longest_line_width) longest_line_width = line_width;
-         }
+         LONG line_width = fntStringWidth(Vector->txFont, line.c_str(), -1);
+         if (line_width > longest_line_width) longest_line_width = line_width;
          dy += Vector->txFont->LineSpacing;
       }
    }
@@ -2084,6 +2103,7 @@ static const FieldArray clTextFields[] = {
    { "ShapeSubtract", FDF_VIRTUAL|FDF_OBJECTID|FDF_RW,         ID_VECTOR, (APTR)TEXT_GET_ShapeSubtract, (APTR)TEXT_SET_ShapeSubtract },
    { "TextLength",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           0, (APTR)TEXT_GET_TextLength, (APTR)TEXT_SET_TextLength },
    { "TextFlags",     FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,        (MAXINT)&clTextFlags, (APTR)TEXT_GET_Flags, (APTR)TEXT_SET_Flags },
+   { "TextWidth",     FDF_VIRTUAL|FDF_LONG|FDF_R,              0, (APTR)TEXT_GET_TextWidth, NULL },
    { "StartOffset",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           0, (APTR)TEXT_GET_StartOffset, (APTR)TEXT_SET_StartOffset },
    { "Spacing",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           0, (APTR)TEXT_GET_Spacing, (APTR)TEXT_SET_Spacing },
    { "Font",          FDF_VIRTUAL|FDF_OBJECT|FDF_R,            0, (APTR)TEXT_GET_Font, NULL },
