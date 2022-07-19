@@ -2028,7 +2028,11 @@ static void insert_char(objVectorText *Self, LONG Unicode, LONG Column)
    char buffer[6];
    LONG charlen = UTF8WriteValue(Unicode, buffer, 6);
 
-   if (Self->txLines[Self->txCursor.row()].empty()) {
+   if (Self->txLines.empty()) {
+      Self->txLines.emplace_back(std::string(buffer, charlen));
+      Self->txCursor.move(Self, 0, 1);
+   }
+   else if (Self->txLines[Self->txCursor.row()].empty()) {
       if (Self->txCharLimit < 1) return;
       Self->txLines[Self->txCursor.row()].append(buffer, charlen);
       Self->txCursor.move(Self, Self->txCursor.row(), 1);
