@@ -80,9 +80,11 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE *X, 
 
 //****************************************************************************
 
-static ERROR VECTORTEXT_ActionNotify(objVectorText *Self, struct acActionNotify *Args)
+static ERROR text_focus_event(objVector *Vector, LONG Event)
 {
-   if (Args->ActionID IS AC_Focus) {
+   objVectorText *Self = (objVectorText *)CurrentContext();
+
+   if (Event & FM_HAS_FOCUS) {
       if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
          if (Self->txCursor.timer) UpdateTimer(Self->txCursor.timer, 1.0);
          else {
@@ -100,7 +102,7 @@ static ERROR VECTORTEXT_ActionNotify(objVectorText *Self, struct acActionNotify 
          DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
       }
    }
-   else if (Args->ActionID IS AC_LostFocus) {
+   else if (Event & (FM_LOST_FOCUS|FM_CHILD_HAS_FOCUS)) {
       if (Self->txCursor.vector) SetLong(Self->txCursor.vector, FID_Visibility, VIS_HIDDEN);
       if (Self->txCursor.timer)  { UpdateTimer(Self->txCursor.timer, 0); Self->txCursor.timer = 0; }
       if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
@@ -113,7 +115,6 @@ static ERROR VECTORTEXT_ActionNotify(objVectorText *Self, struct acActionNotify 
 
       DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
    }
-   else return ERR_NoSupport;
 
    return ERR_Okay;
 }
@@ -177,7 +178,9 @@ static ERROR VECTORTEXT_Free(objVectorText *Self, APTR Void)
    if (Self->txFocusID) {
       OBJECTPTR focus;
       if (!AccessObject(Self->txFocusID, 5000, &focus)) {
-         UnsubscribeAction(focus, 0);
+         FUNCTION callback;
+         SET_FUNCTION_STDC(callback, (APTR)text_focus_event);
+         vecSubscribeFeedback(focus, 0, &callback);
          ReleaseObject(focus);
       }
    }
@@ -201,7 +204,9 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
 
       OBJECTPTR focus;
       if (!AccessObject(Self->txFocusID, 5000, &focus)) {
-         SubscribeActionTags(focus, AC_Focus, AC_LostFocus, TAGEND);
+         FUNCTION callback;
+         SET_FUNCTION_STDC(callback, (APTR)text_focus_event);
+         vecSubscribeFeedback(focus, FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, &callback);
          ReleaseObject(focus);
       }
 
@@ -462,9 +467,10 @@ static ERROR TEXT_SET_Flags(objVectorText *Self, LONG Value)
 -FIELD-
 Focus: Refers to the object that will be monitored for user focussing.
 
-By default, a VectorText object with editing enabled will become active (capable of receiving keyboard input)
-when its nearest viewport receives the focus.  Setting the Focus field allows monitoring to be redirected to an
-alternative viewport.
+A VectorText object in edit mode will become active when its nearest viewport receives the focus.  Setting the Focus
+field to a different vector in the scene graph will redirect monitoring to it.
+
+Changing this value post-initialisation has no effect.
 
 *****************************************************************************/
 

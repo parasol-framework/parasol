@@ -739,9 +739,9 @@ static ERROR VECTOR_Show(objVector *Self, APTR Void)
 /*********************************************************************************************************************
 
 -METHOD-
-SubscribeFeedback: Create a subscription for internal events that have modified the vector.
+SubscribeFeedback: Subscribe to events that relate to the vector.
 
-To receive feedback for events that have modified a vector's attributes, use this method to create a subscription.
+Use this method to receive feedback for events that have affected the state of a vector.
 
 To remove an existing subscription, call this method again with the same Callback and an empty Mask.
 Alternatively have the callback function return `ERR_Terminate`.

@@ -207,7 +207,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
      "NO_TRANSFORM: The transformation step will not be applied to the vector's path.")
 
   flags("FM", { comment="Mask for controlling feedback events that are received." },
-     "PATH_CHANGED: The vector path has been modified or affected by a transform.")
+     "PATH_CHANGED: The vector path has been modified or affected by a transform.",
+     "HAS_FOCUS: The vector has gained the user focus.",
+     "CHILD_HAS_FOCUS: A child of the vector has gained the user focus.",
+     "LOST_FOCUS: The vector has lost the user focus.")
 
   struct("VectorDef", { comment="Describes a definition for the VectorScene AddDef() method.", restrict="c" }, [[
     obj Object   # Reference to the definition object.

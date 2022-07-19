@@ -593,6 +593,7 @@ static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitm
 //********************************************************************************************************************
 // Apply focus to a vector and all other vectors within that tree branch (not necessarily just the viewports).
 // Also sends LostFocus notifications to vectors that previously had the focus.
+// The glFocusList maintains the current focus state, with the most foreground vector at the beginning.
 
 void apply_focus(objVectorScene *Scene, objVector *Vector)
 {
@@ -609,35 +610,48 @@ void apply_focus(objVectorScene *Scene, objVector *Vector)
       else break;
    }
 
+#if 0
+   std::string vlist;
+   for (auto const id : focus_gained) {
+      char buffer[30];
+      snprintf(buffer, sizeof(buffer), "#%d ", id);
+      vlist.append(buffer);
+   }
+
+   log.msg("Vector focus list now: %s", vlist.c_str());
+#endif
+
    // Report focus events to vector subscribers.
 
+   LONG focus_event = FM_HAS_FOCUS;
    for (auto const id : focus_gained) {
-      bool has_focus = false;
-      for (auto check_id : glFocusList) {
-         if (check_id IS id) { has_focus = true; break; }
+      bool no_focus = true, lost_focus_to_child = false, was_child_now_primary = false;
+
+      if (!glFocusList.empty()) {
+         no_focus = std::find(glFocusList.begin(), glFocusList.end(), id) IS glFocusList.end();
+         if (!no_focus) {
+            lost_focus_to_child = ((id IS glFocusList.front()) and (focus_event IS FM_CHILD_HAS_FOCUS));
+            was_child_now_primary = ((id != glFocusList.front()) and (focus_event IS FM_HAS_FOCUS));
+         }
       }
 
-      if (!has_focus) {
+      if ((no_focus) or (lost_focus_to_child) or (was_child_now_primary)) {
          OBJECTPTR vec;
          if (!AccessObject(id, 5000, &vec)) {
-            NotifySubscribers(vec, AC_Focus, 0, 0, ERR_Okay);
+            send_feedback((objVector *)vec, focus_event);
+            focus_event = FM_CHILD_HAS_FOCUS;
             ReleaseObject(vec);
          }
       }
    }
 
-   // Process lost focus events
+   // Report lost focus events, starting from the foreground.
 
-   for (auto const id : glFocusList) { // Starting from the foreground...
-      bool in_list = false;
-      for (auto check_id : focus_gained) {
-         if (check_id IS id) { in_list = true; break; }
-      }
-
-      if (!in_list) {
+   for (auto const id : glFocusList) {
+      if (std::find(focus_gained.begin(), focus_gained.end(), id) IS focus_gained.end()) {
          OBJECTPTR vec;
          if (!AccessObject(id, 5000, &vec)) {
-            NotifySubscribers(vec, AC_LostFocus, 0, 0, ERR_Okay);
+            send_feedback((objVector *)vec, FM_LOST_FOCUS);
             ReleaseObject(vec);
          }
       }

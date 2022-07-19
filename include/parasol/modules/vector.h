@@ -251,6 +251,9 @@
 // Mask for controlling feedback events that are received.
 
 #define FM_PATH_CHANGED 0x00000001
+#define FM_HAS_FOCUS 0x00000002
+#define FM_CHILD_HAS_FOCUS 0x00000004
+#define FM_LOST_FOCUS 0x00000008
 
 struct VectorDef {
    OBJECTPTR Object;    // Reference to the definition object.

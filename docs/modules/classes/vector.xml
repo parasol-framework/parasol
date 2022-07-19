@@ -609,8 +609,8 @@ Z: Close Path
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The StrokeWidth defines the pixel width of a path when it is stroked.  If this field is set to zero, the path will not be stroked.  A percentage can be used to define the stroke width if it should be relative to the size of the viewbox. In this case, the width is computed from the diagonal length of the viewbox.  Note that this incurs a slight computational penalty when drawing.</p>
-<p>The StrokeWidth is affected by additional scaling factors imposed by transforms and viewports.</p>
+<p>The StrokeWidth defines the pixel width of a path when it is stroked.  The path will not be stroked if the value is zero.  A percentage can be used to define the stroke width if it should be relative to the size of the viewbox (along its diagonal).  Note that this incurs a slight computational penalty when drawing.</p>
+<p>The size of the stroke is also affected by scaling factors imposed by transforms and viewports.</p>
       </description>
     </field>
 
@@ -643,6 +643,9 @@ Z: Close Path
     </constants>
 
     <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
+      <const name="CHILD_HAS_FOCUS">A child of the vector has gained the user focus.</const>
+      <const name="HAS_FOCUS">The vector has gained the user focus.</const>
+      <const name="LOST_FOCUS">The vector has lost the user focus.</const>
       <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
     </constants>
 

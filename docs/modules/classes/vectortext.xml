@@ -278,12 +278,19 @@
 
     <field>
       <name>TextLength</name>
-      <comment>Reflects the expected length of the text after all computations have been taken into account.</comment>
+      <comment>The expected length of the text after all computations have been taken into account.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
 <p>The purpose of this attribute is to allow exact alignment of the text graphic in the computed result.  If the #Width that is initially computed does not match this value, then the text will be scaled to match the TextLength.</p>
       </description>
+    </field>
+
+    <field>
+      <name>TextWidth</name>
+      <comment>The raw pixel width of the widest line in the @String value..</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
     </field>
 
     <field>
