@@ -175,7 +175,7 @@ static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
       if (Self->Dirty) gen_vector_tree((objVector *)Self);
-      if (!Self->BasePath.total_vertices()) return ERR_NoData;
+      //if (!Self->BasePath.total_vertices()) return ERR_NoData;
 #if 0
       // Retrieve bounding box, post-transformations.
       // TODO: Would need to account for client defined brush stroke widths and stroke scaling.

@@ -86,6 +86,8 @@ static ERROR text_focus_event(objVector *Vector, LONG Event)
 
    if (Event & FM_HAS_FOCUS) {
       if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
+         acMoveToFront(Self->txCursor.vector);
+
          if (Self->txCursor.timer) UpdateTimer(Self->txCursor.timer, 1.0);
          else {
             auto callback = make_function_stdc(cursor_timer);
@@ -178,8 +180,7 @@ static ERROR VECTORTEXT_Free(objVectorText *Self, APTR Void)
    if (Self->txFocusID) {
       OBJECTPTR focus;
       if (!AccessObject(Self->txFocusID, 5000, &focus)) {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)text_focus_event);
+         auto callback = make_function_stdc(text_focus_event);
          vecSubscribeFeedback(focus, 0, &callback);
          ReleaseObject(focus);
       }
@@ -204,8 +205,7 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
 
       OBJECTPTR focus;
       if (!AccessObject(Self->txFocusID, 5000, &focus)) {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)text_focus_event);
+         auto callback = make_function_stdc(text_focus_event);
          vecSubscribeFeedback(focus, FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, &callback);
          ReleaseObject(focus);
       }
@@ -219,12 +219,14 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
             FID_Y2|TLONG,     1,
             FID_Closed|TLONG, FALSE,
             FID_Stroke|TSTR,  "rgb(255,0,0,255)",
-            FID_StrokeWidth|TDOUBLE, 1.5,
+            FID_StrokeWidth|TDOUBLE, 1.25,
             FID_Visibility|TLONG,    VIS_HIDDEN,
             TAGEND)) {
 
       }
       else return ERR_CreateObject;
+
+      if (Self->txLines.empty()) Self->txLines.emplace_back(std::string(""));
    }
 
    return ERR_Okay;
@@ -531,9 +533,8 @@ static ERROR TEXT_SET_LetterSpacing(objVectorText *Self, DOUBLE Value)
 -FIELD-
 FontSize: Defines the vertical size of the font.
 
-The FontSize refers to the height of the font from baseline to baseline.  Without an identifier, the height value
-corresponds to the current user coordinate system (pixels by default).  If you intend to set the font's point size,
-please ensure that 'pt' is appended to the number.
+The FontSize refers to the height of the font from baseline to baseline.  By default, the value corresponds to the
+current user coordinate system in pixels.  To define the point size, append 'pt' to the number.
 
 If retrieving the font size, the string must be freed by the client when no longer in use.
 
@@ -562,8 +563,11 @@ static ERROR TEXT_SET_FontSize(objVectorText *Self, CSTRING Value)
 FontStyle: Determines font styling.
 
 Unique styles for a font can be selected through the FontStyle field.  Conventional font styles are `Bold`,
-`Bold Italic`, `Italic` and `Regular` (the default).  TrueType fonts can use any style name that the designer
-chooses, such as `Narrow` or `Wide`, so use ~Font.GetList() for a definitive list of available style names.
+`Bold Italic`, `Italic` and `Regular` (the default).  Because TrueType fonts can use any style name that the
+designer chooses such as `Thin`, `Narrow` or `Wide`, use ~Font.GetList() for a definitive list of available
+style names.
+
+Errors are not returned if the style name is invalid or unavailable.
 
 *****************************************************************************/
 
@@ -969,6 +973,24 @@ static ERROR TEXT_SET_Weight(objVectorText *Self, LONG Value)
 }
 
 //****************************************************************************
+// Calculate the cursor that would be displayed at this character position and save it to the
+// line's chars array.
+
+static void calc_cursor_position(TextLine &Line, agg::trans_affine &transform, DOUBLE PointSize, DOUBLE PathScale)
+{
+   agg::path_storage cursor_path;
+   DOUBLE cx1, cy1, cx2, cy2;
+
+   cursor_path.move_to(0, PointSize * 0.1);
+   cursor_path.line_to(0, -(PointSize * PathScale) - (PointSize * 0.2));
+   agg::conv_transform<agg::path_storage, agg::trans_affine> trans_cursor(cursor_path, transform);
+
+   trans_cursor.vertex(&cx1, &cy1);
+   trans_cursor.vertex(&cx2, &cy2);
+   Line.chars.emplace_back(cx1, cy1, cx2, cy2);
+}
+
+//****************************************************************************
 // This path generator creates text as a single path, by concatenating the paths of all individual characters in the
 // string.
 
@@ -982,7 +1004,7 @@ static void generate_text(objVectorText *Vector)
    }
 
    auto &lines = Vector->txLines;
-   if (!lines.size()) return;
+   if (lines.empty()) return;
 
    if (!(Vector->txFont->Flags & FTF_SCALABLE)) {
       generate_text_bitmap(Vector);
@@ -1048,6 +1070,7 @@ static void generate_text(objVectorText *Vector)
 
    agg::trans_affine scale_char;
    const DOUBLE point_size = Vector->txFontSize * (3.0 / 4.0) * upscale;
+
    if (path_scale != 1.0) {
       scale_char.translate(0, point_size);
       scale_char.scale(path_scale);
@@ -1177,7 +1200,11 @@ static void generate_text(objVectorText *Vector)
          LONG current_col = 0;
          line.chars.clear();
          auto wrap_state = WS_NO_WORD;
-         for (auto str=line.c_str(); *str; ) {
+         if ((line.empty()) and (Vector->txCursor.vector)) {
+            agg::trans_affine transform(scale_char);
+            calc_cursor_position(line, transform, point_size, path_scale);
+         }
+         else for (auto str=line.c_str(); *str; ) {
             LONG char_len;
             LONG unicode = UTF8ReadValue(str, &char_len);
 
@@ -1233,31 +1260,11 @@ static void generate_text(objVectorText *Vector)
                   Vector->BasePath.concat_path(trans_char);
 
                   if (Vector->txCursor.vector) {
-                     // Calculate the cursor line that would be displayed at this character position and save it to the
-                     // line's chars array.
-
-                     agg::path_storage cursor_path;
-                     cursor_path.move_to(0, point_size * 0.1);
-                     cursor_path.line_to(0, -(point_size * path_scale) - (point_size * 0.2));
-                     agg::conv_transform<agg::path_storage, agg::trans_affine> trans_cursor(cursor_path, transform);
-
-                     DOUBLE cx1, cy1, cx2, cy2;
-                     trans_cursor.vertex(&cx1, &cy1);
-                     trans_cursor.vertex(&cx2, &cy2);
-                     line.chars.emplace_back(cx1, cy1, cx2, cy2);
+                     calc_cursor_position(line, transform, point_size, path_scale);
 
                      if (!*str) { // Last character reached, add a final cursor entry past the character position.
                         transform.translate(char_width, 0);
-
-                        agg::path_storage cursor_path;
-                        cursor_path.move_to(0, 0);
-                        cursor_path.line_to(0, -(point_size * path_scale));
-                        agg::conv_transform<agg::path_storage, agg::trans_affine> trans_cursor(cursor_path, transform);
-
-                        DOUBLE cx1, cy1, cx2, cy2;
-                        trans_cursor.vertex(&cx1, &cy1);
-                        trans_cursor.vertex(&cx2, &cy2);
-                        line.chars.emplace_back(cx1, cy1, cx2, cy2);
+                        calc_cursor_position(line, transform, point_size, path_scale);
                      }
                   }
 
@@ -1842,7 +1849,7 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
       if ((Self->txLineLimit) and (Self->txLines.size() >= (size_t)Self->txLineLimit)) break;
 
       if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
-      if (!Self->txLines.size()) Self->txLines.resize(1);
+      if (Self->txLines.empty()) Self->txLines.resize(1);
 
       auto row    = Self->txCursor.row();
       auto offset = Self->txLines[row].utf8CharOffset(Self->txCursor.column());
@@ -1873,11 +1880,13 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
    case K_RIGHT:
       Self->txCursor.resetFlash();
       SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
-      if (Self->txCursor.column() < Self->txLines[Self->txCursor.row()].utf8Length()) {
-         Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()+1);
-      }
-      else if ((size_t)Self->txCursor.row() < Self->txLines.size() - 1) {
-         Self->txCursor.move(Self, Self->txCursor.row()+1, 0);
+      if (!Self->txLines.empty()) {
+         if (Self->txCursor.column() < Self->txLines[Self->txCursor.row()].utf8Length()) {
+            Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()+1);
+         }
+         else if ((size_t)Self->txCursor.row() < Self->txLines.size() - 1) {
+            Self->txCursor.move(Self, Self->txCursor.row()+1, 0);
+         }
       }
       break;
 
@@ -1989,14 +1998,13 @@ void TextCursor::resetVector(objVectorText *Vector)
 {
    if (Vector->txCursor.vector) {
       auto &line = Vector->txLines[mRow];
-      auto col = mColumn;
-      if ((size_t)col > line.chars.size()) col = line.chars.size();
 
-      if (line.chars.empty()); // Chars not defined yet
-      else {
-         Vector->txCursor.vector->Points[0].X = line.chars[col].x1;
+      if (!line.chars.empty()) {
+         auto col = mColumn;
+         if ((size_t)col > line.chars.size()) col = line.chars.size();
+         Vector->txCursor.vector->Points[0].X = line.chars[col].x1 + 0.5;
          Vector->txCursor.vector->Points[0].Y = line.chars[col].y1;
-         Vector->txCursor.vector->Points[1].X = line.chars[col].x2;
+         Vector->txCursor.vector->Points[1].X = line.chars[col].x2 + 0.5;
          Vector->txCursor.vector->Points[1].Y = line.chars[col].y2;
          reset_path(Vector->txCursor.vector);
       }
