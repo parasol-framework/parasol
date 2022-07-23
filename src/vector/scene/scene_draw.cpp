@@ -1197,12 +1197,12 @@ private:
                }
 
                if (shape->InputSubscriptions) {
-                  // If the vector reads user input then we record the collision box for the cursor.
+                  // If the vector receives user input events then we record the collision box for the mouse cursor.
                   DOUBLE xmin = mRenderBase.xmin(), xmax = mRenderBase.xmax();
                   DOUBLE ymin = mRenderBase.ymin(), ymax = mRenderBase.ymax();
                   DOUBLE bx1, by1, bx2, by2;
 
-                  if (shape->ClipMask) {
+                  if ((shape->ClipMask) and (shape->ClipMask->ClipPath)) {
                      agg::conv_transform<agg::path_storage, agg::trans_affine> path(*shape->ClipMask->ClipPath, shape->Transform);
                      bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
                   }
