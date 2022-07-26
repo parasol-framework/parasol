@@ -644,10 +644,13 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
       DOUBLE bx1, by1, bx2, by2;
       bounding_rect_single(base_path, 0, &bx1, &by1, &bx2, &by2);
       if ((Args->X >= bx1) and (Args->Y >= by1) and (Args->X < bx2) and (Args->Y < by2)) {
-         // Do the hit testing.  TODO: There is potential for more sophisticated & optimal hit testing methods.
-         agg::rasterizer_scanline_aa<> raster;
-         raster.add_path(base_path);
-         if (raster.hit_test(Args->X, Args->Y)) return ERR_Okay;
+         if (Self->DisableHitTesting) return ERR_Okay;
+         else {
+            // Do the hit testing.  TODO: There is potential for more sophisticated & optimal hit testing methods.
+            agg::rasterizer_scanline_aa<> raster;
+            raster.add_path(base_path);
+            if (raster.hit_test(Args->X, Args->Y)) return ERR_Okay;
+         }
       }
    }
 
@@ -810,8 +813,8 @@ ERROR callback(*Vector, *InputEvent)
 ```
 
 -INPUT-
-int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.
-ptr(func) Callback: Reference to a callback function that will receive input messages.
+int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.
+ptr(func) Callback: Reference to a function that will receive input messages.
 
 -ERRORS-
 Okay:
@@ -1018,12 +1021,12 @@ static ERROR VECTOR_SET_ClipRule(objVector *Self, LONG Value)
 -FIELD-
 Cursor: The mouse cursor to display when the pointer is within the vector's boundary.
 
-The Cursor field provides a convenient way of defining the pointer's cursor image within a vector boundary.  The cursor
-will automatically switch to the specified image when it enters the boundary defined by the vector's path.  This effect
+The Cursor field declares the pointer's cursor image to display within the vector's boundary.  The cursor will
+automatically switch to the specified image when it enters the boundary defined by the vector's path.  This effect
 lasts until the cursor vacates the area.
 
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
--END-
+
 ****************************************************************************/
 
 static ERROR VECTOR_SET_Cursor(objVector *Self, LONG Value)

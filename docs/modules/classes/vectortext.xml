@@ -128,7 +128,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>OBJECTID</type>
       <description>
-<p>By default, a VectorText object with editing enabled will become active (capable of receiving keyboard input) when its nearest viewport receives the focus.  Setting the Focus field allows monitoring to be redirected to an alternative viewport.</p>
+<p>A VectorText object in edit mode will become active when its nearest viewport receives the focus.  Setting the Focus field to a different vector in the scene graph will redirect monitoring to it.</p>
+<p>Changing this value post-initialisation has no effect.</p>
       </description>
     </field>
 
@@ -148,7 +149,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The FontSize refers to the height of the font from baseline to baseline.  Without an identifier, the height value corresponds to the current user coordinate system (pixels by default).  If you intend to set the font's point size, please ensure that 'pt' is appended to the number.</p>
+<p>The FontSize refers to the height of the font from baseline to baseline.  By default, the value corresponds to the current user coordinate system in pixels.  To define the point size, append 'pt' to the number.</p>
 <p>If retrieving the font size, the string must be freed by the client when no longer in use.</p>
       </description>
     </field>
@@ -159,7 +160,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Unique styles for a font can be selected through the FontStyle field.  Conventional font styles are <code>Bold</code>, <code>Bold Italic</code>, <code>Italic</code> and <code>Regular</code> (the default).  TrueType fonts can use any style name that the designer chooses, such as <code>Narrow</code> or <code>Wide</code>, so use <function module="Font">GetList</function> for a definitive list of available style names.</p>
+<p>Unique styles for a font can be selected through the FontStyle field.  Conventional font styles are <code>Bold</code>, <code>Bold Italic</code>, <code>Italic</code> and <code>Regular</code> (the default).  Because TrueType fonts can use any style name that the designer chooses such as <code>Thin</code>, <code>Narrow</code> or <code>Wide</code>, use <function module="Font">GetList</function> for a definitive list of available style names.</p>
+<p>Errors are not returned if the style name is invalid or unavailable.</p>
       </description>
     </field>
 

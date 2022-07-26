@@ -320,6 +320,8 @@ static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
       }
    }
 
+   Self->Cursor = PTR_DEFAULT;
+
    return ERR_Okay;
 }
 
@@ -353,7 +355,7 @@ static ERROR VECTORSCENE_Redimension(objVectorScene *Self, struct acRedimension 
 
 /*********************************************************************************************************************
 -ACTION-
-Reset: Clears all registered definitions and resets field values.  Child vectors are untouched.
+Reset: Clears all registered definitions and resets field values.  Child vectors are unmodified.
 -END-
 *********************************************************************************************************************/
 
@@ -747,7 +749,7 @@ static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
 
 //********************************************************************************************************************
 
-static void send_input_event(objVector *Vector, InputEvent *Event)
+static void send_input_events(objVector *Vector, InputEvent *Event)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -789,8 +791,8 @@ static void send_enter_event(objVector *Vector, const InputEvent *Event, DOUBLE 
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->Head.UID,
       .OverID      = Vector->Head.UID,
-      .AbsX        = Event->AbsX,
-      .AbsY        = Event->AbsY,
+      .AbsX        = Event->X,
+      .AbsY        = Event->Y,
       .X           = Event->X - X,
       .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
@@ -798,7 +800,7 @@ static void send_enter_event(objVector *Vector, const InputEvent *Event, DOUBLE 
       .Flags       = JTYPE_FEEDBACK,
       .Mask        = JTYPE_FEEDBACK
    };
-   send_input_event(Vector, &event);
+   send_input_events(Vector, &event);
 }
 
 //********************************************************************************************************************
@@ -811,8 +813,8 @@ static void send_left_event(objVector *Vector, const InputEvent *Event, DOUBLE X
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->Head.UID,
       .OverID      = Vector->Head.UID,
-      .AbsX        = Event->AbsX,
-      .AbsY        = Event->AbsY,
+      .AbsX        = Event->X,
+      .AbsY        = Event->Y,
       .X           = Event->X - X,
       .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
@@ -820,7 +822,7 @@ static void send_left_event(objVector *Vector, const InputEvent *Event, DOUBLE X
       .Flags       = JTYPE_FEEDBACK,
       .Mask        = JTYPE_FEEDBACK
    };
-   send_input_event(Vector, &event);
+   send_input_events(Vector, &event);
 }
 
 //********************************************************************************************************************
@@ -833,8 +835,8 @@ static void send_wheel_event(objVectorScene *Scene, objVector *Vector, const Inp
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->Head.UID,
       .OverID      = Event->OverID,
-      .AbsX        = Event->AbsX,
-      .AbsY        = Event->AbsY,
+      .AbsX        = Event->X,
+      .AbsY        = Event->Y,
       .X           = Event->X - Scene->ActiveVectorX,
       .Y           = Event->Y - Scene->ActiveVectorY,
       .DeviceID    = Event->DeviceID,
@@ -842,7 +844,7 @@ static void send_wheel_event(objVectorScene *Scene, objVector *Vector, const Inp
       .Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT,
       .Mask        = JTYPE_EXT_MOVEMENT
    };
-   send_input_event(Vector, &event);
+   send_input_events(Vector, &event);
 }
 
 //********************************************************************************************************************
@@ -855,7 +857,7 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
    auto Self = (objVectorScene *)CurrentContext();
    if (!Self->SurfaceID) return ERR_Okay;
 
-   LONG cursor = PTR_DEFAULT;
+   LONG cursor = -1;
 
    // Distribute input events to any vectors that have subscribed.  Bear in mind that a consequence of calling client
    // code is that the scene's surface could be destroyed at any time.
@@ -896,22 +898,25 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             if (lock.granted()) {
                InputEvent event = *input;
                event.Next = NULL;
-               event.X = input->X - Self->ActiveVectorX; // Coords to be relative to the vector, not the surface
-               event.Y = input->Y - Self->ActiveVectorY;
-               send_input_event(lock.obj, &event);
+               event.AbsX = input->X;
+               event.AbsY = input->Y;
+               event.X    = input->X - Self->ActiveVectorX;
+               event.Y    = input->Y - Self->ActiveVectorY;
+               send_input_events(lock.obj, &event);
 
                if ((input->Type IS JET_LMB) and (!(input->Flags & JTYPE_REPEATED))) {
                   Self->ButtonLock = input->Value ? target : 0;
                }
-
-               if (lock.obj->Cursor) cursor = lock.obj->Cursor;
             }
          }
       }
       else if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+         if (cursor IS -1) cursor = PTR_DEFAULT;
          bool processed = false;
          for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {
             auto &bounds = *it;
+
+            if ((processed) and (!bounds.Cursor)) continue;
 
             // When the user holds a mouse button over a vector, a 'button lock' will be held.  This causes all events to
             // be captured by that vector until the button is released.
@@ -941,25 +946,31 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
             if ((!Self->ButtonLock) and (vector->Cursor)) cursor = vector->Cursor;
 
-            InputEvent event = *input;
-            event.Next = NULL;
-            event.X = input->X - bounds.X; // Coords to be relative to the vector, not the surface
-            event.Y = input->Y - bounds.Y;
-            send_input_event(vector, &event);
+            if (!processed) {
+               InputEvent event = *input;
+               event.Next = NULL;
+               event.AbsX = input->X;
+               event.AbsY = input->Y;
+               event.X    = input->X - bounds.X;
+               event.Y    = input->Y - bounds.Y;
+               send_input_events(vector, &event);
 
-            if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
-               if ((Self->ActiveVector) and (Self->ActiveVector != vector->Head.UID)) {
-                  parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
-                  if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
+               if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+                  if ((Self->ActiveVector) and (Self->ActiveVector != vector->Head.UID)) {
+                     parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
+                     if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
+                  }
+
+                  Self->ActiveVector  = vector->Head.UID;
+                  Self->ActiveVectorX = bounds.X;
+                  Self->ActiveVectorY = bounds.Y;
                }
 
-               Self->ActiveVector  = vector->Head.UID;
-               Self->ActiveVectorX = bounds.X;
-               Self->ActiveVectorY = bounds.Y;
+               processed = true;
             }
 
-            processed = true;
-            break; // Input consumed
+            if (cursor IS PTR_DEFAULT) continue; // Keep scanning in case an input boundary defines a cursor.
+            else break; // Input consumed and cursor image identified.
          }
 
          // If no vectors received a hit for a movement message, we may need to inform the last active vector that the
@@ -974,9 +985,10 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
       else log.warning("Unrecognised movement type %d", input->Type);
    }
 
-   if ((!Self->ButtonLock) and (Self->SurfaceID)) {
+   if ((cursor != -1) and (!Self->ButtonLock) and (Self->SurfaceID)) {
+      Self->Cursor = cursor;
       parasol::ScopedObjectLock<objSurface> lock(Self->SurfaceID);
-      if (lock.granted() and (lock.obj->Cursor != cursor)) {
+      if (lock.granted() and (lock.obj->Cursor != Self->Cursor)) {
          SetLong(lock.obj, FID_Cursor, cursor);
       }
    }

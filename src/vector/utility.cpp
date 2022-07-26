@@ -120,6 +120,15 @@ template <class T> inline static DOUBLE get_parent_diagonal(T *Vector)
    else return std::sqrt((width * width) + (height * height));
 }
 
+inline static DOUBLE dist(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
+{
+   DOUBLE width = X2 - X1;
+   DOUBLE height = Y2 - Y1;
+   if (width > height) std::swap(width, height);
+   if ((height / width) <= 1.5) return 5.0 * (width + height) / 7.0; // Fast hypot calculation accurate to within 1% for specific use cases.
+   else return std::sqrt((width * width) + (height * height));
+}
+
 //********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
@@ -278,7 +287,7 @@ static void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds)
       if (Vector->Head.SubID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
          DOUBLE bx1, by1, bx2, by2;
 
-         if (Vector->ClipMask) {
+         if ((Vector->ClipMask) and (Vector->ClipMask->ClipPath)) {
             agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->ClipMask->ClipPath, Vector->Transform);
             bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
          }

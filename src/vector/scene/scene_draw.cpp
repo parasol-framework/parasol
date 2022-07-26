@@ -249,7 +249,7 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
 
    if (Vector) {
       compile_transforms(*Vector, transform);
-      apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+      apply_parent_transforms((objVector *)get_parent(Vector), transform);
    }
 
    transform.invert(); // Required
@@ -444,7 +444,7 @@ static void draw_image(objVector *Vector, agg::path_storage &Path, LONG SampleMe
       transform.tx += dx;
       transform.ty += dy;
       compile_transforms(*Vector, transform);
-      apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+      apply_parent_transforms((objVector *)get_parent(Vector), transform);
    }
 
    transform.invert(); // Required
@@ -521,7 +521,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
       if (Vector) {
          compile_transforms(*Vector, transform);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+         apply_parent_transforms((objVector *)get_parent(Vector), transform);
       }
 
       transform.invert();
@@ -614,7 +614,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
          if (Vector) {
             compile_transforms(*Vector, transform);
-            apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+            apply_parent_transforms((objVector *)get_parent(Vector), transform);
          }
 
          transform.invert();
@@ -667,7 +667,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
          if (Vector) {
             compile_transforms(*Vector, transform);
-            apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+            apply_parent_transforms((objVector *)get_parent(Vector), transform);
          }
 
          transform.invert();
@@ -733,7 +733,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
       if (Vector) {
          compile_transforms(*Vector, transform);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+         apply_parent_transforms((objVector *)get_parent(Vector), transform);
       }
 
       transform.invert();
@@ -798,7 +798,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
       if (Vector) {
          compile_transforms(*Vector, transform);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+         apply_parent_transforms((objVector *)get_parent(Vector), transform);
       }
 
       transform.invert();
@@ -821,7 +821,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
       if (Vector) {
          compile_transforms(*Vector, transform);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+         apply_parent_transforms((objVector *)get_parent(Vector), transform);
       }
 
       transform.invert();
@@ -1092,7 +1092,7 @@ private:
                      if (view->vpBX2 < x2) x2 = view->vpBX2;
                      if (view->vpBY1 > y1) y1 = view->vpBY1;
                      if (view->vpBY2 < y2) y2 = view->vpBY2;
-                     Scene->InputBoundaries.emplace_back(shape->Head.UID, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
+                     Scene->InputBoundaries.emplace_back(shape->Head.UID, view->Cursor, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
                   }
 
                   if (Scene->Flags & VPF_OUTLINE_VIEWPORTS) { // Debug option: Draw the viewport's path with a green outline
@@ -1225,7 +1225,7 @@ private:
                   if (xmax < bx2) bx2 = xmax;
                   if (ymax < by2) by2 = ymax;
 
-                  Scene->InputBoundaries.emplace_back(shape->Head.UID, bx1, by1, bx2, by2, absx, absy);
+                  Scene->InputBoundaries.emplace_back(shape->Head.UID, shape->Cursor, bx1, by1, bx2, by2, absx, absy);
                }
 
                state.mClipMask = saved_mask;

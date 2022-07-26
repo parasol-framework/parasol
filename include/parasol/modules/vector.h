@@ -391,6 +391,7 @@ typedef struct rkVectorScene {
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
+   LONG Cursor; // Current cursor image
    UBYTE  AdaptorType;
   
 #endif

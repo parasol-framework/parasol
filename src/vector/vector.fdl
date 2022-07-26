@@ -312,6 +312,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
+   LONG Cursor; // Current cursor image
    UBYTE  AdaptorType;
   ]])
 

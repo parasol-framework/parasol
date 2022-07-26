@@ -54,6 +54,8 @@ static void generate_text(objVectorText *);
 static void generate_text_bitmap(objVectorText *);
 static void key_event(objVectorText *, evKey *, LONG);
 static void reset_font(objVectorText *);
+static ERROR text_input_events(objVector *, const InputEvent *);
+static ERROR text_focus_event(objVector *, LONG);
 
 enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
 
@@ -76,49 +78,6 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE *X, 
    EFT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);
    *X = int26p6_to_dbl(delta.x);
    *Y = int26p6_to_dbl(delta.y);
-}
-
-//****************************************************************************
-
-static ERROR text_focus_event(objVector *Vector, LONG Event)
-{
-   objVectorText *Self = (objVectorText *)CurrentContext();
-
-   if (Event & FM_HAS_FOCUS) {
-      if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
-         acMoveToFront(Self->txCursor.vector);
-
-         if (Self->txCursor.timer) UpdateTimer(Self->txCursor.timer, 1.0);
-         else {
-            auto callback = make_function_stdc(cursor_timer);
-            SubscribeTimer(0.8, &callback, &Self->txCursor.timer);
-
-            if (!Self->txKeyEvent) {
-               auto callback = make_function_stdc(key_event);
-               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->txKeyEvent);
-            }
-         }
-
-         Self->txCursor.resetFlash();
-         SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
-         acDraw(Self);
-      }
-   }
-   else if (Event & (FM_LOST_FOCUS|FM_CHILD_HAS_FOCUS)) {
-      if (Self->txCursor.vector) SetLong(Self->txCursor.vector, FID_Visibility, VIS_HIDDEN);
-      if (Self->txCursor.timer)  { UpdateTimer(Self->txCursor.timer, 0); Self->txCursor.timer = 0; }
-      if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
-
-      // When a simple input line loses the focus, all selections are deselected
-
-      if (Self->txLineLimit IS 1) {
-         if (Self->txFlags & VTXF_AREA_SELECTED) Self->txFlags &= ~VTXF_AREA_SELECTED;
-      }
-
-      acDraw(Self);
-   }
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -213,6 +172,7 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
       // The editing cursor will inherit transforms from the VectorText as long as it is a direct child.
 
       if (!CreateObject(ID_VECTORPOLYGON, 0, &Self->txCursor.vector,
+            FID_Name|TSTR,    "VTCursor",
             FID_X1|TLONG,     0,
             FID_Y1|TLONG,     0,
             FID_X2|TLONG,     1,
@@ -227,6 +187,14 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
       else return ERR_CreateObject;
 
       if (Self->txLines.empty()) Self->txLines.emplace_back(std::string(""));
+
+      for (auto parent=Self->Parent; parent; parent=((objVector *)parent)->Parent) {
+         if (parent->SubID IS ID_VECTORVIEWPORT) {
+            auto callback = make_function_stdc(text_input_events);
+            vecSubscribeInput(parent, JTYPE_BUTTON, &callback);
+            break;
+         }
+      }
    }
 
    return ERR_Okay;
@@ -250,6 +218,7 @@ static ERROR VECTORTEXT_NewObject(objVectorText *Self, APTR Void)
    Self->FillColour.Green = 1;
    Self->FillColour.Blue  = 1;
    Self->FillColour.Alpha = 1;
+   Self->DisableHitTesting = true;
    return ERR_Okay;
 }
 
@@ -1726,6 +1695,119 @@ static void add_line(objVectorText *Self, std::string String, LONG Offset, LONG 
    }
 
    acDraw(Self);
+}
+
+//****************************************************************************
+
+static ERROR text_focus_event(objVector *Vector, LONG Event)
+{
+   objVectorText *Self = (objVectorText *)CurrentContext();
+
+   if (Event & FM_HAS_FOCUS) {
+      if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
+         acMoveToFront(Self->txCursor.vector);
+
+         if (Self->txCursor.timer) UpdateTimer(Self->txCursor.timer, 1.0);
+         else {
+            auto callback = make_function_stdc(cursor_timer);
+            SubscribeTimer(0.8, &callback, &Self->txCursor.timer);
+
+            if (!Self->txKeyEvent) {
+               auto callback = make_function_stdc(key_event);
+               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->txKeyEvent);
+            }
+         }
+
+         Self->txCursor.resetFlash();
+         SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
+         acDraw(Self);
+      }
+   }
+   else if (Event & (FM_LOST_FOCUS|FM_CHILD_HAS_FOCUS)) {
+      if (Self->txCursor.vector) SetLong(Self->txCursor.vector, FID_Visibility, VIS_HIDDEN);
+      if (Self->txCursor.timer)  { UpdateTimer(Self->txCursor.timer, 0); Self->txCursor.timer = 0; }
+      if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
+
+      // When a simple input line loses the focus, all selections are deselected
+
+      if (Self->txLineLimit IS 1) {
+         if (Self->txFlags & VTXF_AREA_SELECTED) Self->txFlags &= ~VTXF_AREA_SELECTED;
+      }
+
+      acDraw(Self);
+   }
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
+
+static ERROR text_input_events(objVector *Vector, const InputEvent *Events)
+{
+   objVectorText *Self = (objVectorText *)CurrentContext();
+
+   parasol::Log log(__FUNCTION__);
+
+   while (Events) {
+      if ((Events->Type IS JET_LMB) and (!(Events->Flags & JTYPE_REPEATED)) and (Events->Value IS 1)) {
+         // Determine the nearest cursor position to the clicked point.
+
+         agg::trans_affine transform;
+         if (Self->txLines.size() > 1) {
+            apply_parent_transforms((objVector *)Self, transform);
+         }
+
+         DOUBLE shortest_dist = 100000000000;
+         LONG shortest_row = 0, shortest_col = 0;
+         LONG row = 0;
+         for (auto &line : Self->txLines) {
+            bool test_line = true;
+
+            // The first row is always fully tested (this is important if all rows fail the hit test).
+            // Subsequent rows are only tested when there is a hit in their line boundary.
+
+            if (row > 0) {
+               agg::path_storage path;
+               DOUBLE offset = Self->txFont->LineSpacing * row;
+               path.move_to(0, -Self->txFont->LineSpacing + offset);
+               path.line_to(Self->txWidth, -Self->txFont->LineSpacing + offset);
+               path.line_to(Self->txWidth, offset);
+               path.line_to(0, offset);
+               path.close_polygon();
+
+               path.transform(transform);
+
+               DOUBLE bx1, bx2, by1, by2;
+               bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+
+               test_line = ((Events->AbsX >= bx1) and (Events->AbsY >= by1) and (Events->AbsX < bx2) and (Events->AbsX < by2));
+            }
+
+            LONG coli = 0;
+            for (auto &col : line.chars) {
+               DOUBLE mx = Self->FinalX + ((col.x1 + col.x2) * 0.5); // Calculate the cursor midpoint
+               DOUBLE my = Self->FinalY + ((col.y1 + col.y2) * 0.5);
+               DOUBLE d = std::abs(dist(Events->X, Events->Y, mx, my)); // Distance to the midpoint.
+
+               if (d < shortest_dist) {
+                  shortest_dist = d;
+                  shortest_row = row;
+                  shortest_col = coli;
+               }
+               coli++;
+            }
+
+            row++;
+         }
+
+         Self->txCursor.move(Self, shortest_row, shortest_col);
+         Self->txCursor.resetFlash();
+      }
+
+      Events = Events->Next;
+   }
+
+   return ERR_Okay;
 }
 
 //****************************************************************************
