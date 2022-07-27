@@ -69,7 +69,8 @@ gui.toolbar = function(HostVP, Options)
       _cellMargin = nz(Options.cellMargin, 6),
       _disabled = false,
       _lookup = { },
-      _iconSize = nz(Options.iconSize, 20)
+      _iconSize = nz(Options.iconSize, 20),
+      _hasFocus = false
    }
 
    local function sendFeedback()
@@ -145,36 +146,6 @@ gui.toolbar = function(HostVP, Options)
       self.vp.acDraw()
    end
 
-   local function keyFeedback(Input, Surface, Flags, Code, Unicode)
-      if bit.band(Flags, KQ_PRESSED) != 0 then
-         if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
-            sendFeedback()
-         elseif (Code == K_UP) or (Code == K_LEFT) then
-            if self._current then
-               local scan = self._current.prev
-               while scan and (scan.type != TI_ICON) do
-                  scan = scan.prev
-               end
-               if (not scan) then scan = lastIcon() end
-               highlightItem(scan)
-            else
-               highlightItem(firstIcon())
-            end
-         elseif (Code == K_DOWN) or (Code == K_RIGHT) then
-            if self._current then
-               local scan = self._current.next
-               while scan and (scan.type != TI_ICON) do
-                  scan = scan.next
-               end
-               if (not scan) then scan = firstIcon() end
-               highlightItem(scan)
-            else
-               highlightItem(firstIcon())
-            end
-         end
-      end
-   end
-
    -- Main routine for arranging items within the toolbar's viewport.
 
    local function arrangeItems()
@@ -182,8 +153,6 @@ gui.toolbar = function(HostVP, Options)
       if (self._groupCount > 0) then
          groupOffset = self._groupMargin
       end
-
-      -- Vector scene generation
 
       if (not self._vHover) then
          if (self._groupCount > 0) then
@@ -197,7 +166,7 @@ gui.toolbar = function(HostVP, Options)
          end
       end
 
-      -- self._groupClip simplifies masking and self.vg provides a container for hosting temporary vectors.
+      -- The _groupClip simplifies masking and 'vg' provides a container for hosting temporary vectors.
 
       if self._groupClip then self._groupClip.acFree() end
       if self.vg then self.vg.acFree() end
@@ -316,6 +285,7 @@ gui.toolbar = function(HostVP, Options)
             spanCount = spanCount + 1
 
             if currentGroup then
+               item.group = currentGroup
                if self._horizontal then
                   currentGroup.width  = x - currentGroup.x
                   currentGroup.height = self.vp.height - (groupOffset * 2)
@@ -627,28 +597,58 @@ gui.toolbar = function(HostVP, Options)
          self = { }
       end)
 
-      self.vp.subscribe('focus', function(Viewport, Args)
+      self.vp.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
+         if (Event == FM_LOST_FOCUS) then
+            self._hasFocus = false
+            if self._current then
+               self.hIcon.visibility = 'hidden'
+               self._current = nil
+            end
+         else
+            self._hasFocus = true
+         end
 
+         self.vp.acDraw()
       end)
 
-      self.vp.subscribe('lostfocus', function(Viewport, Args)
-         if self._current then
-            self.hIcon.visibility = 'visible'
-            self._current = nil
-            self.vp.acDraw()
+      self.vp.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
+         if bit.band(Qualifiers, KQ_PRESSED) != 0 then
+            if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
+               sendFeedback()
+            elseif (Code == K_UP) or (Code == K_LEFT) then
+               if self._current then
+                  local scan = self._current.prev
+                  while scan and (scan.type != TI_ICON) do
+                     scan = scan.prev
+                  end
+                  if (not scan) then scan = lastIcon() end
+                  highlightItem(scan)
+               else
+                  highlightItem(firstIcon())
+               end
+            elseif (Code == K_DOWN) or (Code == K_RIGHT) then
+               if self._current then
+                  local scan = self._current.next
+                  while scan and (scan.type != TI_ICON) do
+                     scan = scan.next
+                  end
+                  if (not scan) then scan = firstIcon() end
+                  highlightItem(scan)
+               else
+                  highlightItem(firstIcon())
+               end
+            end
          end
       end)
 
       self.vp.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), inputFeedback)
-
-      input.keyboard(self.vp.scene.surface, keyFeedback)
 
       local fill = 'rgb(0,0,0,128)'
       if (Options.theme != 'light') then
          fill = 'rgb(255,255,255,200)'
       end
 
-      self.hIcon = self.vp.new('VectorRectangle', { -- Keyboard-based selection
+      self.hIcon = self.vp.new('VectorRectangle', { -- Icon highlighter, for keyboard-based selection
          fill   = fill,
          x      = 0,
          y      = 0,
