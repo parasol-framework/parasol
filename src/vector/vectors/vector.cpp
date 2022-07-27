@@ -867,17 +867,19 @@ static ERROR VECTOR_SubscribeInput(objVector *Self, struct vecSubscribeInput *Ar
 -METHOD-
 SubscribeKeyboard: Create a subscription for input events that relate to the vector.
 
-The SubscribeKeyboard method is provided to simplify the handling of keyboard messages for the client.  It is a
-pre-requisite that the associated @VectorScene has been linked to a @Surface.
+The SubscribeKeyboard method provides a callback mechanism for handling keyboard events.  Events are reported when the
+vector or one of its children has the user focus.  It is a pre-requisite that the associated @VectorScene has been
+linked to a @Surface.
 
-A callback is required and this will receive input messages as they arrive from the user.  The prototype for the
-callback is as follows, whereby Flags are keyboard qualifiers `KQ` and the Value will be a `K` constant.
+The prototype for the callback is as follows, whereby Qualifers are `KQ` flags and the Code is a `K` constant
+representing the raw key value.  The Unicode value is the resulting character when the qualifier and code are
+translated through the user's keymap.
 
 ```
-ERROR callback(*Viewport, LONG Flags, LONG Value);
+ERROR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode);
 ```
 
-To remove the subscription, the function can return `ERR_Terminate`.
+If the callback returns `ERR_Terminate` then the subscription will be ended.  All other error codes are ignored.
 
 -INPUT-
 ptr(func) Callback: Reference to a callback function that will receive input messages.
