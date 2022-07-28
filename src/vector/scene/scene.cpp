@@ -837,8 +837,8 @@ static void send_wheel_event(objVectorScene *Scene, objVector *Vector, const Inp
       .OverID      = Event->OverID,
       .AbsX        = Event->X,
       .AbsY        = Event->Y,
-      .X           = Event->X - Scene->ActiveVectorX,
-      .Y           = Event->Y - Scene->ActiveVectorY,
+      .X           = Scene->ActiveVectorX,
+      .Y           = Scene->ActiveVectorY,
       .DeviceID    = Event->DeviceID,
       .Type        = JET_WHEEL,
       .Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT,
@@ -848,7 +848,7 @@ static void send_wheel_event(objVectorScene *Scene, objVector *Vector, const Inp
 }
 
 //********************************************************************************************************************
-// Input events within the scene are distributed within the scene graph.
+// Incoming input events from the Surface hosting the scene are distributed within the scene graph.
 
 static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 {
@@ -898,10 +898,10 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             if (lock.granted()) {
                InputEvent event = *input;
                event.Next = NULL;
-               event.AbsX = input->X;
+               event.AbsX = input->X; // Absolute coordinates are not translated.
                event.AbsY = input->Y;
-               event.X    = input->X - Self->ActiveVectorX;
-               event.Y    = input->Y - Self->ActiveVectorY;
+               event.X    = Self->ActiveVectorX;
+               event.Y    = Self->ActiveVectorY;
                send_input_events(lock.obj, &event);
 
                if ((input->Type IS JET_LMB) and (!(input->Flags & JTYPE_REPEATED))) {
@@ -947,12 +947,16 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             if ((!Self->ButtonLock) and (vector->Cursor)) cursor = vector->Cursor;
 
             if (!processed) {
+               DOUBLE tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
+               auto invert = ~vector->Transform; // Presume that prior path generation has configured the transform.
+               invert.transform(&tx, &ty);
+
                InputEvent event = *input;
                event.Next = NULL;
-               event.AbsX = input->X;
+               event.AbsX = input->X; // Absolute coordinates are not translated.
                event.AbsY = input->Y;
-               event.X    = input->X - bounds.X;
-               event.Y    = input->Y - bounds.Y;
+               event.X    = tx;
+               event.Y    = ty;
                send_input_events(vector, &event);
 
                if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
@@ -962,8 +966,8 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                   }
 
                   Self->ActiveVector  = vector->Head.UID;
-                  Self->ActiveVectorX = bounds.X;
-                  Self->ActiveVectorY = bounds.Y;
+                  Self->ActiveVectorX = tx;
+                  Self->ActiveVectorY = ty;
                }
 
                processed = true;
