@@ -154,12 +154,7 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
 {
    if (Self->txFlags & VTXF_EDITABLE) {
       if (!Self->txFocusID) {
-         for (auto parent=Self->Parent; parent; parent=((objVector *)parent)->Parent) {
-            if (parent->SubID IS ID_VECTORVIEWPORT) {
-               Self->txFocusID = parent->UID;
-               break;
-            }
-         }
+         if (Self->ParentView) Self->txFocusID = Self->ParentView->Head.UID;
       }
 
       OBJECTPTR focus;
@@ -173,6 +168,7 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
 
       if (!CreateObject(ID_VECTORPOLYGON, 0, &Self->txCursor.vector,
             FID_Name|TSTR,    "VTCursor",
+            FID_Parent|TPTR,  Self->ParentView,
             FID_X1|TLONG,     0,
             FID_Y1|TLONG,     0,
             FID_X2|TLONG,     1,
@@ -188,12 +184,9 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
 
       if (Self->txLines.empty()) Self->txLines.emplace_back(std::string(""));
 
-      for (auto parent=Self->Parent; parent; parent=((objVector *)parent)->Parent) {
-         if (parent->SubID IS ID_VECTORVIEWPORT) {
-            auto callback = make_function_stdc(text_input_events);
-            vecSubscribeInput(parent, JTYPE_BUTTON, &callback);
-            break;
-         }
+      if (Self->ParentView) {
+         auto callback = make_function_stdc(text_input_events);
+         vecSubscribeInput(Self->ParentView, JTYPE_BUTTON, &callback);
       }
    }
 
@@ -950,8 +943,8 @@ static void calc_cursor_position(TextLine &Line, agg::trans_affine &transform, D
    agg::path_storage cursor_path;
    DOUBLE cx1, cy1, cx2, cy2;
 
-   cursor_path.move_to(0, PointSize * 0.1);
-   cursor_path.line_to(0, -(PointSize * PathScale) - (PointSize * 0.2));
+   cursor_path.move_to(0, -(PointSize * PathScale) - (PointSize * 0.2));
+   cursor_path.line_to(0, PointSize * 0.1);
    agg::conv_transform<agg::path_storage, agg::trans_affine> trans_cursor(cursor_path, transform);
 
    trans_cursor.vertex(&cx1, &cy1);
@@ -1589,8 +1582,8 @@ static void get_text_xy(objVectorText *Vector)
       y -= Vector->txFont->Height + Vector->txFont->Leading;
    }
 
-   Vector->FinalX = x;
-   Vector->FinalY = y;
+   Vector->FinalX = x + Vector->txXOffset;
+   Vector->FinalY = y + Vector->txYOffset;
 }
 
 //****************************************************************************
@@ -1940,6 +1933,8 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
 
       if (!offset) Self->txLines[row].clear();
       else Self->txLines[row].replace(offset, Self->txLines[row].length() - offset, "");
+      mark_dirty(Self, RC_BASE_PATH);
+      acDraw(Self);
       break;
    }
 
@@ -2089,6 +2084,33 @@ void TextCursor::resetVector(objVectorText *Vector)
          Vector->txCursor.vector->Points[1].X = line.chars[col].x2 + 0.5;
          Vector->txCursor.vector->Points[1].Y = line.chars[col].y2;
          reset_path(Vector->txCursor.vector);
+
+         // If the cursor X,Y lies outside of the parent viewport, offset the text so that it remains visible to
+         // the user.
+
+         if ((!Vector->Morph) and (Vector->ParentView) and (mRow > 0)) {
+            auto p_width = Vector->ParentView->vpFixedWidth;
+            DOUBLE xo = 0;
+            const DOUBLE CURSOR_MARGIN = Vector->txFontSize * 0.5;
+            if (p_width > 8) {
+               if (Vector->txX + line.chars[col].x1 <= 0) xo = Vector->txX + line.chars[col].x1;
+               else if (Vector->txX + line.chars[col].x1 + CURSOR_MARGIN > p_width) xo = -(Vector->txX + line.chars[col].x1 + CURSOR_MARGIN - p_width);
+            }
+
+            auto p_height = Vector->ParentView->vpFixedHeight;
+            DOUBLE yo = 0;
+            if (p_height > Vector->txFontSize) {
+               if (Vector->txY + line.chars[col].y1 <= 0) yo = Vector->txY + line.chars[col].y1;
+               else if (Vector->txY + line.chars[col].y2 > p_height) yo = -(Vector->txY + line.chars[col].y2 - p_height + CURSOR_MARGIN);
+            }
+
+            if ((xo != Vector->txXOffset) or (yo != Vector->txYOffset)) {
+               Vector->txXOffset = xo;
+               Vector->txYOffset = yo;
+
+               mark_dirty(Vector, RC_TRANSFORM);
+            }
+         }
       }
    }
 }
