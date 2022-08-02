@@ -9,6 +9,7 @@ A demonstration of standard widgets
    require 'gui/dialog'
    require 'gui/filedialog'
    require 'gui/icon'
+   require 'gui/input'
    require 'vfx'
 
    mVector = mod.load('vector')
@@ -220,10 +221,19 @@ end
    })
    y = y + combobox.height + 8
 
-   local input = viewport.new('input', {
-      label='Input Box', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here'
+   local input = gui.input({
+      target = viewport,
+      x      = win.leftMargin,
+      y      = y,
+      width  = 260,
+      label  = 'Input box: ',
+      text   = 'Your text here',
+      feedback = function(Input, Value, State)
+         print('Input state set to ' .. State .. ', text "' .. Value .. '"')
+
+      end
    })
-   y = y + input.height + 8
+   y = y + input.viewport.height + 8
 
    gui.icon({
       target = viewport,
