@@ -301,9 +301,8 @@ gui.dialog.colour = function(Options)
          y      = dy,
          width  = lRainbowBmp.width,
          label  = 'RGB:',
-         inputMask = '%d,%d,%d',
+         inputMask = '^%d+,%d+,%d+$',
          feedback = function(Input, Value, State)
-            print('RGB input state set to ' .. State .. ', text "' .. Value .. '"')
             updateRGB(gui.strToRGB(Value))
          end
       })
