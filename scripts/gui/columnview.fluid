@@ -203,7 +203,13 @@ local function highlightItem(View, Item, Highlighted)
          end
       else
          for k, col in pairs(Item._col) do
-            if col.text then col.text.fill = View.namedCol[k].fillItem end
+            if col.text then
+               if View.namedCol[k] then
+                  col.text.fill = View.namedCol[k].fillItem
+               else
+                  msg('No fillItem defined for ' .. k .. ' in View.namedCol')
+               end
+            end
          end
       end
 
