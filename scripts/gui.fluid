@@ -10,7 +10,8 @@ if (gui == nil) then
       counter = 0,
       iconColours = {
          default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
-         yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke='rgb(60,30,30,90)' },
+         carbon  = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+         yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke={ r=60, g=30, b=30, a=90 } },
          orange  = { first={ r=0xFD,g=0xC8,b=0x30 }, last={ r=0xF3,g=0x73,b=0x35 } },
          blue    = { first={ r=0x4b,g=0x6c,b=0xb7 }, last={ r=0x18,g=0x28,b=0x48 } },
          ocean   = { first={ r=0xA8,g=0xC0,b=0xFF }, last={ r=0x3F,g=0x2B,b=0x96 } },
@@ -425,8 +426,13 @@ gui.createIcon = function(Scene, Path, Size, Gradient)
       if (Vector.fill != 'none') then
          Vector.fill = 'url(#' .. gname .. ')'
       end
-      Vector.stroke = nz(lGradient.stroke, 'rgb(60,30,30,90)')
-      Vector.strokeWidth = "1.5%"
+
+      if (Vector.stroke != nil) then
+         Vector.stroke = 'url(#' .. gname .. ')'
+      elseif lGradient.stroke then
+         Vector.stroke = gui.rgbToSVG(lGradient.stroke)
+         Vector.strokeWidth = '1.5%'
+      end
    end)
 
    -- Adjust gradient size to match the viewport height.
