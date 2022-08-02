@@ -168,7 +168,6 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
 
       if (!CreateObject(ID_VECTORPOLYGON, 0, &Self->txCursor.vector,
             FID_Name|TSTR,    "VTCursor",
-            FID_Parent|TPTR,  Self->ParentView,
             FID_X1|TLONG,     0,
             FID_Y1|TLONG,     0,
             FID_X2|TLONG,     1,
@@ -842,6 +841,7 @@ static ERROR TEXT_SET_String(objVectorText *Self, CSTRING Value)
          if (*Value IS '\n') Value++;
       }
    }
+   else Self->txLines.emplace_back("");
 
    reset_path((objVector *)Self);
    if (Self->txCursor.vector) Self->txCursor.validatePosition(Self);
@@ -2116,17 +2116,25 @@ void TextCursor::resetVector(objVectorText *Vector)
 }
 
 //****************************************************************************
-// If the cursor is out of the current line's boundaries, this function will move it to a safe position.
+// Move the cursor if it's outside the line boundary.
 
 void TextCursor::validatePosition(objVectorText *Self)
 {
-   if (Self->txLines[mRow].empty()) {
-      if (mColumn != 0) Self->txCursor.move(Self, mRow, 0);
+   auto row = mRow;
+   auto col = mColumn;
+
+   if (Self->txLines.empty()) Self->txLines.resize(1);
+   if (row > Self->txLines.size()) row = Self->txLines.size() - 1;
+
+   if (Self->txLines[row].empty()) {
+      if (col != 0) col = 0;
    }
    else {
-      LONG max_col = Self->txLines[mRow].utf8Length();
-      if (mColumn > max_col) Self->txCursor.move(Self, mRow, max_col);
+      auto max_col = Self->txLines[row].utf8Length();
+      if (col > max_col) col = max_col;
    }
+
+   if ((row != mRow) or (col != mColumn)) Self->txCursor.move(Self, row, col);
 }
 
 //****************************************************************************
