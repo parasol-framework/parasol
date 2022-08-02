@@ -794,10 +794,10 @@ static ERROR VECTOR_SubscribeFeedback(objVector *Self, struct vecSubscribeFeedba
 -METHOD-
 SubscribeInput: Create a subscription for input events that relate to the vector.
 
-The SubscribeInput method is provided as an extension to gfxSubscribeInput(), whereby the user's input events
-will be restricted to those within the vector's scene graph.  The original events are transferred as-is, although the
-`ENTERED_SURFACE` and `LEFT_SURFACE` events are modified so that they trigger during passage through the scene's
-boundaries.
+The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target
+vector.  The original events are transferred with some modifications - `X`, `Y`, `AbsX` and `AbsY` are converted to
+the vector's coordinate system, and `ENTERED_SURFACE` and `LEFT_SURFACE` events are triggered during passage through
+the clipping area.
 
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
 
