@@ -14,16 +14,16 @@ The following example illustrates typical usage:
       end,
    })
 
-Valid options to use when creating the icon are as follows:
+Valid options to use when creating the input box are as follows:
 
-  target:     Required.  Refers to a viewport that will contain the icon.
+  target:     Required.  Refers to a viewport that will contain the input box.
   feedback:   A function to be called when the user changes the input content.
   flushEdges: Set to true if the box needs to be squared off for flush edges.
   inputMask:  Restrict input with a pattern that is compliant with Lua 5.1's string.find().
   secret:     Set to true if the input box needs to hide a secret phrase from view.
   selected:   Set to true if the input text should be pre-selected for the user.
   text:       A preset string to display in the input box.
-  vfx:        A special effect to apply to the icon on its creation.
+  vfx:        A special effect to apply to the input box on its creation.
   width:      Width of the box (including any label).
   x:          The x coordinate of the box.
   xOffset:    X offset, if not defining x.
