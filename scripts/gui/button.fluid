@@ -37,12 +37,20 @@ Valid options to use when creating the button are as follows:
    require 'common'
    require 'gui'
 
+local STROKE_WIDTH = 2
+local DEFAULT_WIDTH = 160
+
 local function iconScheme()
    if (gui.rgbValue(gui.strToRGB(gui.colours['widgetText'])) > 127) then
       return 'pearl'
    else
       return 'default' -- The default theme is dark
    end
+end
+
+local function reportFeedback(self, State)
+   if not self.feedback then return end
+   self.feedback(self, State)
 end
 
 gui.button = function(Options)
@@ -53,14 +61,6 @@ gui.button = function(Options)
       text           = nil, -- A VectorText that represents the string
       viewport       = nil, -- The button's primary viewport
    }
-
-   local STROKE_WIDTH = 2
-   local DEFAULT_WIDTH = 160
-
-   local function reportFeedback(self, State)
-      if not self.feedback then return end
-      self.feedback(self, State)
-   end
 
    -- Change the active state of the button to disabled or enabled
 

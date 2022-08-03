@@ -10,6 +10,7 @@ A demonstration of standard widgets
    require 'gui/filedialog'
    require 'gui/icon'
    require 'gui/input'
+   require 'gui/button'
    require 'vfx'
 
    mVector = mod.load('vector')
@@ -123,7 +124,12 @@ end
    text.y = y + text.font.height
    y = y + text.font.height + 8
 
-   local msgButton = viewport.new('button', { text='Message Box', x=win.leftMargin, y=y, icon='items/question',
+   local msgButton = gui.button({
+      target = viewport,
+      text   = 'Message Box',
+      x      = win.leftMargin,
+      y      = y,
+      icon   = 'items/question',
       feedback = function()
          gui.dialog.message({
             modal         = true,
@@ -153,7 +159,12 @@ end
       end
    })
 
-   local colourButton = viewport.new('button', { text='Select Colour', x=msgButton.right + 4, y=y, icon='tools/palette',
+   local colourButton = gui.button({
+      target = viewport,
+      text   = 'Select Colour',
+      x      = msgButton.viewport.x + msgButton.viewport.width + 4,
+      y      = y,
+      icon   = 'tools/palette',
       feedback = function()
          gui.dialog.colour({
             modal  = true,
@@ -170,7 +181,12 @@ end
       end
    })
 
-   local fontButton = viewport.new('button', { text='Select Font', x=colourButton.right + 4, y=y, icon='items/font',
+   local fontButton = gui.button({
+      target = viewport,
+      text   = 'Select Font',
+      x      = colourButton.viewport.x + colourButton.viewport.width + 4,
+      y      = y,
+      icon   = 'items/font',
       feedback = function()
          gui.dialog.font({
             okText     = 'Select Font',
@@ -188,7 +204,12 @@ end
       end
    })
 
-   local fileButton = viewport.new('button', { text='Select File', x=fontButton.right + 4, y=y, icon='folders/folder',
+   local fileButton = gui.button({
+      target = viewport,
+      text   = 'Select File',
+      x      = fontButton.viewport.x + fontButton.viewport.width + 4,
+      y      = y,
+      icon   = 'folders/folder',
       feedback = function()
          gui.dialog.file({
             filterList  = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
@@ -211,7 +232,7 @@ end
       end
    })
 
-   y = y + msgButton.height + 8
+   y = y + msgButton.viewport.height + 8
 
    local checkbox = viewport.new('checkbox', { label='Check Box', x=win.leftMargin, y=y })
    y = y + checkbox.height + 8
@@ -233,7 +254,7 @@ end
 
       end
    })
-   y = y + input.viewport.height + 8
+   y = y + input.viewport.height + 16
 
    gui.icon({
       target = viewport,

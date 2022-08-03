@@ -311,36 +311,36 @@ gui.dialog.colour = function(Options)
 
       -- Okay and cancel buttons
 
-      lCancelButton = self.viewport.new('button', {
+      lCancelButton = gui.button({
+         target  = self.viewport,
          text    = nz(lOptions.cancelText, 'Cancel'),
          xOffset = WIDGET_GAP,
          y       = dy,
-         icon    = 'items/cancel'
+         icon    = 'items/cancel',
+         feedback = function(Button)
+            if (lOptions.feedback != nil) then
+               lOptions.feedback(nil)
+            end
+            lWindow = nil
+         end
       })
 
-      lOkayButton = self.viewport.new('button', {
+      lOkayButton = gui.button({
+         target  = self.viewport,
          text    = nz(lOptions.okText, 'OK'),
-         xOffset = lCancelButton.width + (WIDGET_GAP * 2),
+         xOffset = lCancelButton.viewport.width + (WIDGET_GAP * 2),
          y       = dy,
-         icon    = 'items/checkmark'
+         icon    = 'items/checkmark',
+         feedback = function(Button)
+            saveColours()
+            if (lOptions.feedback != nil) then
+               lOptions.feedback(lRGB.r .. ',' .. lRGB.g .. ',' .. lRGB.b)
+            end
+            lWindow = nil
+         end
       })
 
-      lOkayButton.subscribe('activate', function()
-         saveColours()
-         if (lOptions.feedback != nil) then
-            lOptions.feedback(lRGB.r .. ',' .. lRGB.g .. ',' .. lRGB.b)
-         end
-         lWindow = nil
-      end)
-
-      lCancelButton.subscribe('activate', function()
-         if (lOptions.feedback != nil) then
-            lOptions.feedback(nil)
-         end
-         lWindow = nil
-      end)
-
-      dy = dy + lOkayButton.height + WIDGET_GAP
+      dy = dy + lOkayButton.viewport.height + WIDGET_GAP
       if (dy > bottom) then bottom = dy end
 
       collectgarbage()
@@ -621,9 +621,6 @@ gui.dialog.colour = function(Options)
       lWindow.minHeight    = lWindow.insideHeight * 0.25
 
       updateRGB(gui.strToRGB(nz(lOptions.colour, '200,200,200')))
-
-      lTab.mtAddObject(lOkayButton)
-      lTab.mtAddObject(lCancelButton)
 
       lWindow.acMoveToFront()
       lWindow.acShow()

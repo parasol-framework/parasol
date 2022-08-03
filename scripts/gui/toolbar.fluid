@@ -338,8 +338,7 @@ gui.toolbar = function(HostVP, Options)
 
       if Icon then
          pcall(function()
-            item.icon = gui.createIcon(self.vp.scene, 'icons:' .. Icon .. '.svg', self._iconSize, lColours.iconGradient)
-            self.vp.scene.mtAddDef(Icon, item.icon.pattern)
+            item.icon = gui.createIcon(self.vp.scene, 'icons:' .. Icon .. '.svg', self._iconSize, lColours.iconGradient, Icon)
             item.svgGroup = self.vp.new('VectorRectangle', {
                fill = 'url(#' .. Icon .. ')',
                x=0, y=0, width=self._iconSize, height=self._iconSize
