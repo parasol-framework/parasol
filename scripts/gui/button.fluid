@@ -1,30 +1,23 @@
 --[[
 The gui.button API creates and manages buttons in the user interface.
 
-The following example illustrates typical usage:
+Basic template for creating a new button:
 
-   my_button = gui.button({
-      target = viewport,
-      x      = 10,
-      y      = 10,
-      label  = 'Click here',
-      feedback = function(Button)
-         print('Click received.')
-      end,
-   })
+   require 'gui/button'
+   my_button = gui.button({ Options... })
 
 Valid options to use when creating the button are as follows:
 
   target:     Required.  Refers to a viewport that will contain the button.
   icon:       An optional icon to display alongside the text.
   text:       A label to display in the button.
+  feedback:   A function to be called when the user clicks the button.
   vfx:        A special effect to apply to the button on its creation.
   width:      Width of the button (including any label).
   x:          The x coordinate of the button.
   xOffset:    X offset, if not defining x.
   y:          The y coordinate of the button.
   yOffset:    Y offset, if not defining y.
-  feedback:   A function to be called when the user clicks the button.
 
   :disable()
     Disable user interactivity.
@@ -190,7 +183,7 @@ gui.button = function(Options)
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
       if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
 
-      if (Value == K_ENTER) or (Value == K_SPACE) (Value == K_NP_ENTER) then
+      if (Value == K_ENTER) or (Value == K_SPACE) or (Value == K_NP_ENTER) then
          reportFeedback(self, 'activated')
       end
    end)

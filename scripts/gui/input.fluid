@@ -159,7 +159,6 @@ gui.input = function(Options)
    end
 
    self.bkgd = self.boxViewport.new('VectorRectangle', {
-      name   = 'InputBkgd',
       fill   = gui.colours.rgb('widgetBkgd'),
       x      = 0,
       y      = 0,
@@ -179,7 +178,6 @@ gui.input = function(Options)
    })
 
    self.text = self._textClip.new('VectorText', {
-      name      = 'InputString',
       x         = 4,
       y         = font_height + math.floor((box_height - font_height - STROKE_WIDTH - STROKE_WIDTH) * 0.5),
       face      = gui.fonts.widget.face,
