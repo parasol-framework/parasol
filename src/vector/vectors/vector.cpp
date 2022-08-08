@@ -385,6 +385,16 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
       Args->Height = bounds[3] - bounds[1];
       return ERR_Okay;
    }
+   else if (Self->Head.SubID IS ID_VECTORVIEWPORT) {
+      if (Self->Dirty) gen_vector_tree((objVector *)Self);
+
+      auto view = (objVectorViewport *)Self;
+      Args->X      = view->vpBX1;
+      Args->Y      = view->vpBY1;
+      Args->Width  = view->vpBX2 - view->vpBX1;
+      Args->Height = view->vpBY2 - view->vpBY1;
+      return ERR_Okay;
+   }
    else return ERR_NotPossible;
 }
 
