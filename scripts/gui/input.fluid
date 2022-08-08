@@ -1,18 +1,10 @@
 --[[
 The gui.input API creates and manages input boxes in the user interface.
 
-The following example illustrates typical usage:
+Basic template for creating a new input box:
 
-   gui.input({
-      target = viewport,
-      x      = 10,
-      y      = 10,
-      label  = 'My Input:',
-      text   = 'Hello World',
-      feedback = function(Input, Value, State)
-         print('Received event: ' .. Event.name)
-      end,
-   })
+   require 'gui/input'
+   my_button = gui.input({ Options... })
 
 Valid options to use when creating the input box are as follows:
 
@@ -95,14 +87,14 @@ gui.input = function(Options)
 
    -- Change the active state of the input box to disabled or enabled
 
-   self.disable = function()
+   self.disable = function(self)
       self.disabled = true
       self.viewport.acDisable()
       self.text.opacity = 0.5
       self.bkgd.fill = gui.colours.rgb('widgetBkgd')
    end
 
-   self.enable = function()
+   self.enable = function(self)
       self.disabled = false
       self.viewport.acDisable()
       self.text.opacity = 1.0

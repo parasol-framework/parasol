@@ -30,7 +30,11 @@ Valid options to use when creating the button are as follows:
    require 'common'
    require 'gui'
 
-local STROKE_WIDTH = 2
+local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+local HEIGHT        = math.floor(FONT_MAX_HEIGHT * 1.75) + 1
+local ICON_SIZE     = HEIGHT * 0.56
+local GAP           = HEIGHT * 0.35
+local STROKE_WIDTH  = 2
 local DEFAULT_WIDTH = 160
 
 local function iconScheme()
@@ -77,10 +81,6 @@ gui.button = function(Options)
 
    if not Options.target then error('A target viewport is required.') end
 
-   local font_max_height, font_height = gui.getFontHeight(gui.fonts.widget)
-   local HEIGHT    = math.floor(font_max_height * 1.75) + 1
-   local ICON_SIZE = HEIGHT * 0.56
-   local GAP       = HEIGHT * 0.35
    local label_offset = 0
 
    local vps = { -- Viewport settings
@@ -136,7 +136,7 @@ gui.button = function(Options)
 
    self.text = self._textClip.new('VectorText', {
       x         = GAP + label_offset,
-      y         = font_height + math.floor((HEIGHT - font_height - STROKE_WIDTH - STROKE_WIDTH) * 0.5),
+      y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - STROKE_WIDTH - STROKE_WIDTH) * 0.5),
       face      = gui.fonts.widget.face,
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
       fill      = gui.colours.rgb('widgetText'),

@@ -405,12 +405,6 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       end
       vwFace.loadItems(faces)
 
-      --lTab.mtAddObject(vwFace.viewport)
-      --lTab.mtAddObject(vwStyle.viewport)
-      --lTab.mtAddObject(vwSize.viewport)
-      lTab.mtAddObject(lOkayButton)
-      lTab.mtAddObject(lCancelButton)
-
       -- Preselect list items based on the preferences supplied by the client.
 
       vwFace.selectItems(function(Item)

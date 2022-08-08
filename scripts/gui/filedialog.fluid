@@ -1,5 +1,5 @@
 --[[
-To display a dialog box:
+To display a file dialog box:
 
    gui.dialog.file({ Options... })
 

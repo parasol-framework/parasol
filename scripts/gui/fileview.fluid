@@ -814,15 +814,17 @@ gui.fileview = function(View, Options)
 
       if self.path then -- Monitor the new path for changes.  Note that not all platforms support this feature.
          msg('Monitor path "' .. self.path .. '"')
-         self.watch = obj.new('file', { path = self.path })
-         if self.watch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE,MFF_DELETE,MFF_ATTRIB,MFF_CLOSED,MFF_MOVED)) != ERR_Okay then
-            self.watch = nil
-            local err
-            err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
-            msg('Timer-based file monitoring is enabled.')
-         else
-            msg('Active file monitoring is enabled.')
-         end
+         catch(function()
+            self.watch = obj.new('file', { path = self.path })
+            if self.watch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE,MFF_DELETE,MFF_ATTRIB,MFF_CLOSED,MFF_MOVED)) != ERR_Okay then
+               self.watch = nil
+               local err
+               err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
+               msg('Timer-based file monitoring is enabled.')
+            else
+               msg('Active file monitoring is enabled.')
+            end
+         end)
       end
 
       if self.pathChanged then
