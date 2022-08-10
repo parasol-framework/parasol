@@ -721,10 +721,29 @@ static void process_resize_msgs(objVectorScene *Self)
 {
    if (Self->PendingResizeMsgs.size() > 0) {
       for (auto it=Self->PendingResizeMsgs.begin(); it != Self->PendingResizeMsgs.end(); it++) {
-         objVectorViewport *viewport;
-         if (!AccessObject(it->first, 1000, &viewport)) {
-            NotifySubscribers(viewport, AC_Redimension, &it->second, 0, ERR_Okay);
-            ReleaseObject(viewport);
+         objVectorViewport *view = *it;
+
+         auto list = Self->ResizeSubscriptions[view];
+         for (auto &sub : list) {
+            ERROR result;
+            auto vector = sub.first;
+            auto func = sub.second;
+            if (func.Type IS CALL_STDC) {
+               parasol::SwitchContext ctx(func.StdC.Context);
+               auto callback = (ERROR (*)(objVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE))func.StdC.Routine;
+               result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight);
+            }
+            else if (func.Type IS CALL_SCRIPT) {
+               ScriptArg args[] = {
+                  { "Viewport", FDF_OBJECT, { .Address = view } },
+                  { "Vector",   FDF_OBJECT, { .Address = vector } },
+                  { "X",        FDF_DOUBLE, { .Double = view->FinalX } },
+                  { "Y",        FDF_DOUBLE, { .Double = view->FinalY } },
+                  { "Width",    FDF_DOUBLE, { .Double = view->vpFixedWidth } },
+                  { "Height",   FDF_DOUBLE, { .Double = view->vpFixedHeight } }
+               };
+               scCallback(func.Script.Script, func.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+            }
          }
       }
 

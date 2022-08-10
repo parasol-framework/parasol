@@ -79,6 +79,7 @@ public:
    UBYTE  ButtonLock:1; \
    UBYTE  RelativeStrokeWidth:1; \
    UBYTE  DisableHitTesting:1; \
+   UBYTE  ResizeSubscription:1; \
    agg::line_join_e  LineJoin; \
    agg::line_cap_e   LineCap; \
    agg::inner_join_e InnerJoin; \

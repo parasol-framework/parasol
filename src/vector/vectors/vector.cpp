@@ -26,6 +26,9 @@ unless otherwise documented.
 
 *********************************************************************************************************************/
 
+static std::unordered_map<objVector *, FUNCTION> glResizeSubscriptions; // Temporary cache for holding subscriptions.
+static std::mutex glResizeLock;
+
 static ERROR VECTOR_Push(objVector *, struct vecPush *);
 
 //********************************************************************************************************************
@@ -251,8 +254,19 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    if (Self->Child) Self->Child->Parent = NULL;
 
    if ((Self->Scene) and (!(Self->Scene->Head.Flags & (NF_FREE|NF_FREE_MARK)))) {
+      if ((Self->ParentView) and (Self->ResizeSubscription) and (Self->Scene->ResizeSubscriptions.contains(Self->ParentView))) {
+         auto sub = Self->Scene->ResizeSubscriptions[Self->ParentView];
+         sub.erase(Self);
+      }
       Self->Scene->InputSubscriptions.erase(Self);
       Self->Scene->KeyboardSubscriptions.erase(Self);
+   }
+
+   {
+      const std::lock_guard<std::mutex> lock(glResizeLock);
+      if ((!glResizeSubscriptions.empty()) and (glResizeSubscriptions.contains(Self))) {
+         glResizeSubscriptions.erase(Self);
+      }
    }
 
    if (Self->Matrices) {
@@ -465,6 +479,14 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
    // Reapply the filter if it couldn't be set prior to initialisation.
    if ((!Self->Filter) and (Self->FilterString)) {
       SetString(Self, FID_Filter, Self->FilterString);
+   }
+
+   {
+      const std::lock_guard<std::mutex> lock(glResizeLock);
+      if (glResizeSubscriptions.contains(Self)) {
+         Self->Scene->ResizeSubscriptions[Self->ParentView][Self] = glResizeSubscriptions[Self];
+         glResizeSubscriptions.erase(Self);
+      }
    }
 
    return ERR_Okay;
@@ -1768,6 +1790,36 @@ static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
 /*********************************************************************************************************************
 
 -FIELD-
+ResizeEvent: A callback to trigger when the host viewport is resized.
+
+Use ResizeEvent to receive feedback when the viewport that hosts the vector is resized.  The function prototype is as
+follows:
+
+<pre>
+void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)
+</pre>
+
+The dimension values refer to the current location and size of the viewport.
+
+*********************************************************************************************************************/
+
+static ERROR VECTOR_SET_ResizeEvent(objVector *Self, FUNCTION *Value)
+{
+   Self->ResizeSubscription = TRUE;
+   if ((Self->Scene) and (Self->ParentView)) {
+      Self->Scene->ResizeSubscriptions[Self->ParentView][Self] = *Value;
+   }
+   else {
+      const std::lock_guard<std::mutex> lock(glResizeLock);
+      glResizeSubscriptions[Self] = *Value; // Save the subscription for initialisation.
+   }
+
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 Scene: Short-cut to the top-level @VectorScene.
 
 All vectors are required to be grouped within the hierarchy of a @VectorScene.  This requirement is enforced
@@ -2233,6 +2285,7 @@ static const FieldArray clVectorFields[] = {
    { "MorphFlags",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clMorphFlags, (APTR)VECTOR_GET_MorphFlags, (APTR)VECTOR_SET_MorphFlags },
    { "NumericID",    FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_NumericID, (APTR)VECTOR_SET_NumericID },
    { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_ID, (APTR)VECTOR_SET_ID },
+   { "ResizeEvent",  FDF_VIRTUAL|FDF_FUNCTION|FDF_W,         0, NULL, (APTR)VECTOR_SET_ResizeEvent },
    { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)VECTOR_GET_Sequence, NULL },
    { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Stroke, (APTR)VECTOR_SET_Stroke },
    { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   0, (APTR)VECTOR_GET_StrokeColour, (APTR)VECTOR_SET_StrokeColour },

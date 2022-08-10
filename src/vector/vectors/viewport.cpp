@@ -116,6 +116,12 @@ static ERROR VECTORVIEWPORT_Free(objVectorViewport *Self, APTR Void)
 {
    if (Self->vpClipMask) { acFree(Self->vpClipMask); Self->vpClipMask = NULL; }
 
+   if ((Self->Scene) and (!Self->Scene->ResizeSubscriptions.empty())) {
+      if (Self->Scene->ResizeSubscriptions.contains(Self)) {
+         Self->Scene->ResizeSubscriptions.erase(Self);
+      }
+   }
+
    if (Self->vpDragCallback.Type) {
       auto callback = make_function_stdc(drag_callback);
       vecSubscribeInput(Self, 0, &callback);

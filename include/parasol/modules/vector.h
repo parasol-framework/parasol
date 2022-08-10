@@ -384,10 +384,11 @@ typedef struct rkVectorScene {
    class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
    APTR KeyHandle; // Keyboard subscription
-   std::unordered_map<OBJECTID, struct acRedimension> PendingResizeMsgs;
+   std::unordered_set<struct rkVectorViewport *> PendingResizeMsgs;
    std::unordered_map<struct rkVector *, LONG> InputSubscriptions;
    std::unordered_set<struct rkVector *> KeyboardSubscriptions;
    std::vector<struct InputBoundary> InputBoundaries;
+   std::unordered_map<struct rkVectorViewport *, std::unordered_map<struct rkVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;

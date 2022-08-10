@@ -241,10 +241,9 @@ static void gen_vector_path(objVector *Vector)
 
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
 
-      Vector->Scene->PendingResizeMsgs.insert({ Vector->Head.UID, {
-          view->FinalX, view->FinalY, 0,
-          view->vpFixedWidth, view->vpFixedHeight, 0 }
-      });
+      if (Vector->Scene->ResizeSubscriptions.contains(view)) {
+         Vector->Scene->PendingResizeMsgs.insert(view);
+      }
    }
    else if (Vector->Head.ClassID IS ID_VECTOR) {
       if ((Vector->Dirty & RC_TRANSFORM) AND (Vector->Head.SubID != ID_VECTORTEXT)) {
