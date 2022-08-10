@@ -2088,7 +2088,7 @@ void TextCursor::resetVector(objVectorText *Vector)
          // If the cursor X,Y lies outside of the parent viewport, offset the text so that it remains visible to
          // the user.
 
-         if ((!Vector->Morph) and (Vector->ParentView) and (mRow > 0)) {
+         if ((!Vector->Morph) and (Vector->ParentView)) {
             auto p_width = Vector->ParentView->vpFixedWidth;
             DOUBLE xo = 0;
             const DOUBLE CURSOR_MARGIN = Vector->txFontSize * 0.5;
@@ -2099,7 +2099,7 @@ void TextCursor::resetVector(objVectorText *Vector)
 
             auto p_height = Vector->ParentView->vpFixedHeight;
             DOUBLE yo = 0;
-            if (p_height > Vector->txFontSize) {
+            if ((mRow > 0) and (p_height > Vector->txFontSize)) {
                if (Vector->txY + line.chars[col].y1 <= 0) yo = Vector->txY + line.chars[col].y1;
                else if (Vector->txY + line.chars[col].y2 > p_height) yo = -(Vector->txY + line.chars[col].y2 - p_height + CURSOR_MARGIN);
             }
@@ -2124,7 +2124,7 @@ void TextCursor::validatePosition(objVectorText *Self)
    auto col = mColumn;
 
    if (Self->txLines.empty()) Self->txLines.resize(1);
-   if (row > Self->txLines.size()) row = Self->txLines.size() - 1;
+   if ((size_t)row > Self->txLines.size()) row = Self->txLines.size() - 1;
 
    if (Self->txLines[row].empty()) {
       if (col != 0) col = 0;
