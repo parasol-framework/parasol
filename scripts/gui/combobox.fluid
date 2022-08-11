@@ -12,7 +12,7 @@ Valid options to use when creating the combobox box are as follows:
   items:         Required.  List of menu items (refer to gui.menu for formatting)
   feedback:      A function to be called when the user changes the combobox content.
   flushEdges:    Set to true if the box needs to be squared off for flush edges.
-  text:          A preset string to display in the box.
+  text:          A preset string to display in the box.  If not set, defaults to first entry in items.
   vfx:           A special effect to apply to the combobox box on its creation.
   showIcons:     If true, show icons in the dropdown list.
   allowCustom:   If true, the user can enter enter text that isn't in the combobox list.
@@ -190,13 +190,18 @@ gui.combobox = function(Options)
       x=STROKE_WIDTH, y=STROKE_WIDTH, xOffset=self.iconRender.width + MARGIN + MARGIN, yOffset=STROKE_WIDTH, overflow=VOF_HIDDEN
    })
 
+   local defaultText = Options.text
+   if not Options.allowCustom then
+      defaultText = Options.items[1].item
+   end
+
    self.text = self._textClip.new('VectorText', {
       x         = 4,
       y         = FONT_HEIGHT + math.floor((BOX_HEIGHT - FONT_HEIGHT - STROKE_WIDTH - STROKE_WIDTH) * 0.5),
       face      = gui.fonts.widget.face,
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
       fill      = gui.colours.rgb('widgetText'),
-      string    = Options.text,
+      string    = defaultText,
       lineLimit = 1,
       textFlags = (function()
          local flags = 0
