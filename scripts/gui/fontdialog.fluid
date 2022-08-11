@@ -251,24 +251,29 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
       local footer = lWindow.bottomMargin
 
-      lCancelButton = self.viewport.new('button', {
+      lCancelButton = gui.button({
+         target  = self.viewport,
          text    = nz(lOptions.cancelText, 'Cancel'),
          xOffset = WIDGET_GAP,
          yOffset = footer,
-         icon    = 'items/cancel'
+         icon    = 'items/cancel',
+         feedback = function(Button)
+            sendFeedback(false)
+         end
       })
 
-      lOkayButton = self.viewport.new('button', {
+      lOkayButton = gui.button({
+         target  = self.viewport,
          text    = nz(lOptions.okText, 'OK'),
-         xOffset = lCancelButton.width + (WIDGET_GAP * 2),
+         xOffset = lCancelButton.viewport.width + (WIDGET_GAP * 2),
          yOffset = footer,
-         icon    = 'items/checkmark'
+         icon    = 'items/checkmark',
+         feedback = function(Button)
+            sendFeedback(true)
+         end
       })
 
-      lOkayButton.subscribe('activate', function() sendFeedback(true) end)
-      lCancelButton.subscribe('activate', function() sendFeedback(false) end)
-
-      footer = footer + lOkayButton.height + WIDGET_GAP
+      footer = footer + lOkayButton.viewport.height + WIDGET_GAP
 
       -- Font example area
 
