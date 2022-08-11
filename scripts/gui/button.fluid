@@ -112,6 +112,15 @@ gui.button = function(Options)
       roundY = STROKE_WIDTH * 2,
       stroke = gui.colours.rgb('widgetStroke'),
       strokeWidth = STROKE_WIDTH,
+      resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
+         if (Vector.width != Width) then
+            Vector.width = Width - STROKE_WIDTH
+         end
+
+         if (Vector.height != Height) then
+            Vector.height = Height - STROKE_WIDTH
+         end
+      end
    })
 
    if Options.icon then
@@ -167,18 +176,6 @@ gui.button = function(Options)
 
       Viewport.acDraw()
    end)
-
-   self.viewport.subscribe('redimension', function(Viewport, Args, self)
-      local new_width = Viewport.width
-      if (self.bkgd.width != new_width) then
-         self.bkgd.width = new_width - STROKE_WIDTH
-      end
-
-      local new_height = Viewport.height
-      if (self.bkgd.height != new_height) then
-         self.bkgd.height = new_height - STROKE_WIDTH
-      end
-   end, self)
 
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
       if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end

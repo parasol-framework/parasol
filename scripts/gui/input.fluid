@@ -49,18 +49,6 @@ gui.input = function(Options)
    local STROKE_WIDTH = 2
    local DEFAULT_WIDTH = 160
 
-   local function resizeTriggered(self, Viewport)
-      local new_width = Viewport.width - self.labelWidth
-      if (self.boxViewport.width != new_width) then
-         self.boxViewport.width = new_width
-      end
-
-      local new_height = Viewport.height
-      if (self.boxViewport.height != new_height) then
-         self.boxViewport.height = new_height - STROKE_WIDTH
-      end
-   end
-
    local function reportFeedback(self, State)
       if not self.feedback then return end
       local text = self.text.string
@@ -128,7 +116,17 @@ gui.input = function(Options)
       x = 0,
       y = 0,
       width = self.viewport.width,
-      yOffset = 0
+      yOffset = 0,
+      resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
+         local new_width = Width - self.labelWidth
+         if (Vector.width != new_width) then
+            Vector.width = new_width
+         end
+
+         if (Vector.height != Height) then
+            Vector.height = Height
+         end
+      end
    })
 
    if self.label then
@@ -209,10 +207,6 @@ gui.input = function(Options)
 
       Viewport.acDraw()
    end)
-
-   self.viewport.subscribe('redimension', function(Viewport, Args, self)
-      resizeTriggered(self, Viewport)
-   end, self)
 
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
       if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
