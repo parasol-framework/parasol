@@ -202,7 +202,7 @@
         <param type="FUNCTION *" name="Callback">Reference to a function that will receive input messages.</param>
       </input>
       <description>
-<p>The SubscribeInput method is provided as an extension to gfxSubscribeInput(), whereby the user's input events will be restricted to those within the vector's scene graph.  The original events are transferred as-is, although the <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> events are modified so that they trigger during passage through the scene's boundaries.</p>
+<p>The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target vector.  The original events are transferred with some modifications - <code>X</code>, <code>Y</code>, <code>AbsX</code> and <code>AbsY</code> are converted to the vector's coordinate system, and <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> events are triggered during passage through the clipping area.</p>
 <p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
 <p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the function return <code>ERR_Terminate</code>.</p>
 <p>Please refer to gfxSubscribeInput() for further information on event management and message handling.</p>
@@ -227,11 +227,11 @@
         <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
       </input>
       <description>
-<p>The SubscribeKeyboard method is provided to simplify the handling of keyboard messages for the client.  It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
-<p>A callback is required and this will receive input messages as they arrive from the user.  The prototype for the callback is as follows, whereby Flags are keyboard qualifiers <code>KQ</code> and the Value will be a <code>K</code> constant.</p>
+<p>The SubscribeKeyboard method provides a callback mechanism for handling keyboard events.  Events are reported when the vector or one of its children has the user focus.  It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
+<p>The prototype for the callback is as follows, whereby Qualifers are <code>KQ</code> flags and the Code is a <code>K</code> constant representing the raw key value.  The Unicode value is the resulting character when the qualifier and code are translated through the user's keymap.</p>
 <p>
-<code/><code> ERROR callback(*Viewport, LONG Flags, LONG Value); </code><code/></p>
-<p>To remove the subscription, the function can return <code>ERR_Terminate</code>.</p>
+<code/><code> ERROR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode); </code><code/></p>
+<p>If the callback returns <code>ERR_Terminate</code> then the subscription will be ended.  All other error codes are ignored.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -535,6 +535,19 @@
       <description>
 <p>The Prev value refers to the previous vector in the branch.  If the value is NULL, then the vector is positioned at the top of the branch.</p>
 <p>The Prev value can be set to another vector at any time, on the condition that both vectors share the same owner.  If this is not true, change the current owner before setting the Prev field.  Changing the value will result in updates to the <field>Parent</field> and <field>Next</field> values.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ResizeEvent</name>
+      <comment>A callback to trigger when the host viewport is resized.</comment>
+      <access write="S">Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Use ResizeEvent to receive feedback when the viewport that hosts the vector is resized.  The function prototype is as follows:</p>
+<pre>void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)
+</pre>
+<p>The dimension values refer to the current location and size of the viewport.</p>
       </description>
     </field>
 
