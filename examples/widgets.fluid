@@ -11,6 +11,8 @@ A demonstration of standard widgets
    require 'gui/icon'
    require 'gui/input'
    require 'gui/button'
+   require 'gui/checkbox'
+   require 'gui/combobox'
    require 'vfx'
 
    mVector = mod.load('vector')
@@ -212,7 +214,7 @@ end
       icon   = 'folders/folder',
       feedback = function()
          gui.dialog.file({
-            filterList  = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
+            filterList  = { { name='All Files', pattern='*' }, { name='MP3 Audio Files', pattern='*.mp3' }, { name='Text Files', pattern='*.txt' } },
             okText      = 'Select File',
             cancelText  = 'Exit',
             modal       = true,
@@ -234,20 +236,40 @@ end
 
    y = y + msgButton.viewport.height + 8
 
-   local checkbox = viewport.new('checkbox', { label='Check Box', x=win.leftMargin, y=y })
-   y = y + checkbox.height + 8
-
-   local combobox = viewport.new('combobox', {
-      label='Combo Box', x=win.leftMargin, y=y, string='Your text here', width=200
+   local checkbox = gui.checkbox({
+      target = viewport,
+      label  = 'Checkbox',
+      align = 'left',
+      x = win.leftMargin,
+      y = y
    })
-   y = y + combobox.height + 8
+   y = y + checkbox.viewport.height + 8
+
+   local combobox = gui.combobox({
+      target = viewport,
+      label  = 'Combobox:',
+      string = 'Your text here',
+      x = win.leftMargin, y = y,
+      allowCustom = true,
+      items = {
+         { group='Office' },
+         { item='Address Book', icon='office/addressbook' },
+         { item='Inbox', icon='office/cabinet_in' },
+         { item='Tasks', icon='office/tasks' },
+         { item='Finances', icon='office/money' },
+         { group='Weather' },
+         { item='Snow', icon='weather/snow' },
+         { item='Thunder', icon='weather/thunder' }
+      }
+   })
+   y = y + combobox.viewport.height + 8
 
    local input = gui.input({
       target = viewport,
       x      = win.leftMargin,
       y      = y,
       width  = 260,
-      label  = 'Input box: ',
+      label  = 'Inputbox: ',
       text   = 'Your text here',
       feedback = function(Input, Value, State)
          print('Input state set to ' .. State .. ', text "' .. Value .. '"')
