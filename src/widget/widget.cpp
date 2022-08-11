@@ -138,13 +138,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 
    if (init_clipboard() != ERR_Okay) return ERR_AddClass;
-   if (init_button() != ERR_Okay) return ERR_AddClass;
-   if (init_checkbox() != ERR_Okay) return ERR_AddClass;
    if (init_resize() != ERR_Okay) return ERR_AddClass;
-   if (init_combobox() != ERR_Okay) return ERR_AddClass;
    if (init_tabfocus() != ERR_Okay) return ERR_AddClass;
-   if (init_input() != ERR_Okay) return ERR_AddClass;
-   if (init_text() != ERR_Okay) return ERR_AddClass;
 
    return ERR_Okay;
 }
@@ -156,16 +151,11 @@ static ERROR CMDOpen(OBJECTPTR Module)
 
 static ERROR CMDExpunge(void)
 {
-   free_button();
-   free_checkbox();
    free_resize();
-   free_combobox();
    free_tabfocus();
-   free_input();
-   free_text();
    free_clipboard();
 
-   if (glIconArchive) { acFree(glIconArchive);    glIconArchive = NULL; }
+   if (glIconArchive) { acFree(glIconArchive); glIconArchive = NULL; }
    if (modDisplay)    { acFree(modDisplay);    modDisplay = NULL; }
    if (modFont)       { acFree(modFont);       modFont = NULL; }
    if (modSurface)    { acFree(modSurface);    modSurface = NULL; }
