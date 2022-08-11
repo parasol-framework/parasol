@@ -34,9 +34,9 @@ as follows:
    if (not mFont) then mFont = mod.load('font') end
 
 local lColours = {
-   textFill = 'rgb(255,255,255)',
+   textFill      = 'rgb(255,255,255)',
    textHighlight = 'rgb(160,160,220)',
-   iconGradient = { first={ r=250,g=249,b=248 }, last={ r=190,g=191,b=192 } }
+   iconGradient  = { first={ r=250,g=249,b=248 }, last={ r=190,g=191,b=192 } }
 }
 
 local VMARGIN   = 6
@@ -75,7 +75,7 @@ local function activateItem(self) -- Activate the current menu item.
       self._lastMenu.hide()
    end
 
-   if menu.switch() == 1 then
+   if menu.toggle() == 1 then
       self._lastMenu = menu
    end
 end
