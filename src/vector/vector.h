@@ -2,11 +2,12 @@
 class InputBoundary {
 public:
    OBJECTID VectorID;
+   LONG Cursor; // This value buffers the Vector.Cursor field for optimisation purposes.
    DOUBLE BX1, BY1, BX2, BY2; // Collision boundary
    DOUBLE X, Y; // Absolute X,Y without collision
 
-   InputBoundary(OBJECTID pV, DOUBLE p1, DOUBLE p2, DOUBLE p3, DOUBLE p4, DOUBLE p5, DOUBLE p6) :
-      VectorID(pV), BX1(p1), BY1(p2), BX2(p3), BY2(p4), X(p5), Y(p6) {};
+   InputBoundary(OBJECTID pV, LONG pC, DOUBLE p1, DOUBLE p2, DOUBLE p3, DOUBLE p4, DOUBLE p5, DOUBLE p6) :
+      VectorID(pV), Cursor(pC), BX1(p1), BY1(p2), BX2(p3), BY2(p4), X(p5), Y(p6) {};
 };
 
 class InputSubscription {
@@ -43,6 +44,7 @@ public:
 #define SHAPE_PRIVATE \
    DOUBLE FinalX, FinalY; \
    DOUBLE FillGradientAlpha, StrokeGradientAlpha; \
+   DOUBLE StrokeWidth; \
    agg::path_storage BasePath; \
    agg::trans_affine Transform; \
    struct RGB8 rgbStroke, rgbFill; \
@@ -75,9 +77,13 @@ public:
    UBYTE  EnableBkgd:1; \
    UBYTE  DisableFillColour:1; \
    UBYTE  ButtonLock:1; \
+   UBYTE  RelativeStrokeWidth:1; \
+   UBYTE  DisableHitTesting:1; \
+   UBYTE  ResizeSubscription:1; \
    agg::line_join_e  LineJoin; \
    agg::line_cap_e   LineCap; \
-   agg::inner_join_e InnerJoin;
+   agg::inner_join_e InnerJoin; \
+   DOUBLE fixed_stroke_width();
 
 class VectorEffect {
 public:

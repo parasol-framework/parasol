@@ -55,6 +55,7 @@ Please refer to it for further information on licensing.
 #include <memory>
 #include <unordered_set>
 #include <unordered_map>
+#include <mutex>
 
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
@@ -124,7 +125,7 @@ static void get_super_xy(struct rkVectorShape *);
 static void get_text_xy(struct rkVectorText *);
 static void get_wave_xy(struct rkVectorWave *);
 
-static void apply_parent_transforms(objVector *, objVector *, agg::trans_affine &);
+static void apply_parent_transforms(objVector *, agg::trans_affine &);
 static void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 static void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *X, DOUBLE *Y);
 static void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *);

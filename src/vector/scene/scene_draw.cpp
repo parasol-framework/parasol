@@ -249,7 +249,7 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
 
    if (Vector) {
       compile_transforms(*Vector, transform);
-      apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+      apply_parent_transforms((objVector *)get_parent(Vector), transform);
    }
 
    transform.invert(); // Required
@@ -444,7 +444,7 @@ static void draw_image(objVector *Vector, agg::path_storage &Path, LONG SampleMe
       transform.tx += dx;
       transform.ty += dy;
       compile_transforms(*Vector, transform);
-      apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+      apply_parent_transforms((objVector *)get_parent(Vector), transform);
    }
 
    transform.invert(); // Required
@@ -521,7 +521,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
       if (Vector) {
          compile_transforms(*Vector, transform);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+         apply_parent_transforms((objVector *)get_parent(Vector), transform);
       }
 
       transform.invert();
@@ -614,7 +614,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
          if (Vector) {
             compile_transforms(*Vector, transform);
-            apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+            apply_parent_transforms((objVector *)get_parent(Vector), transform);
          }
 
          transform.invert();
@@ -667,7 +667,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
          if (Vector) {
             compile_transforms(*Vector, transform);
-            apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+            apply_parent_transforms((objVector *)get_parent(Vector), transform);
          }
 
          transform.invert();
@@ -733,7 +733,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
       if (Vector) {
          compile_transforms(*Vector, transform);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+         apply_parent_transforms((objVector *)get_parent(Vector), transform);
       }
 
       transform.invert();
@@ -798,7 +798,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
       if (Vector) {
          compile_transforms(*Vector, transform);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+         apply_parent_transforms((objVector *)get_parent(Vector), transform);
       }
 
       transform.invert();
@@ -821,7 +821,7 @@ void draw_gradient(objVector *Vector, agg::path_storage *mPath, DOUBLE X, DOUBLE
 
       if (Vector) {
          compile_transforms(*Vector, transform);
-         apply_parent_transforms(Vector, (objVector *)get_parent(Vector), transform);
+         apply_parent_transforms((objVector *)get_parent(Vector), transform);
       }
 
       transform.invert();
@@ -938,7 +938,7 @@ private:
       if (Vector.StrokeGradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
             draw_gradient(&Vector, &Vector.BasePath, Vector.FinalX, Vector.FinalY, view_width(), view_height(),
-               *Vector.StrokeGradient, table, mRenderBase, Raster, Vector.StrokeWidth);
+               *Vector.StrokeGradient, table, mRenderBase, Raster, Vector.fixed_stroke_width());
          }
       }
       else if (Vector.StrokePattern) {
@@ -946,7 +946,7 @@ private:
             view_width(), view_height(), *Vector.StrokePattern, mRenderBase, Raster);
       }
       else if (Vector.StrokeImage) {
-         DOUBLE stroke_width = Vector.StrokeWidth * Vector.Transform.scale();
+         DOUBLE stroke_width = Vector.fixed_stroke_width() * Vector.Transform.scale();
          if (stroke_width < 1) stroke_width = 1;
 
          auto transform = Vector.Transform * State.mTransform;
@@ -1087,12 +1087,12 @@ private:
 
                   // For vectors that read user input, we record the collision box for the cursor.
 
-                  if (shape->InputSubscriptions) {
+                  if ((shape->InputSubscriptions) or ((shape->Cursor) and (shape->Cursor != PTR_DEFAULT))) {
                      if (view->vpBX1 > x1) x1 = view->vpBX1;
                      if (view->vpBX2 < x2) x2 = view->vpBX2;
                      if (view->vpBY1 > y1) y1 = view->vpBY1;
                      if (view->vpBY2 < y2) y2 = view->vpBY2;
-                     Scene->InputBoundaries.emplace_back(shape->Head.UID, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
+                     Scene->InputBoundaries.emplace_back(shape->Head.UID, view->Cursor, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
                   }
 
                   if (Scene->Flags & VPF_OUTLINE_VIEWPORTS) { // Debug option: Draw the viewport's path with a green outline
@@ -1197,12 +1197,12 @@ private:
                }
 
                if (shape->InputSubscriptions) {
-                  // If the vector reads user input then we record the collision box for the cursor.
+                  // If the vector receives user input events then we record the collision box for the mouse cursor.
                   DOUBLE xmin = mRenderBase.xmin(), xmax = mRenderBase.xmax();
                   DOUBLE ymin = mRenderBase.ymin(), ymax = mRenderBase.ymax();
                   DOUBLE bx1, by1, bx2, by2;
 
-                  if (shape->ClipMask) {
+                  if ((shape->ClipMask) and (shape->ClipMask->ClipPath)) {
                      agg::conv_transform<agg::path_storage, agg::trans_affine> path(*shape->ClipMask->ClipPath, shape->Transform);
                      bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
                   }
@@ -1225,7 +1225,7 @@ private:
                   if (xmax < bx2) bx2 = xmax;
                   if (ymax < by2) by2 = ymax;
 
-                  Scene->InputBoundaries.emplace_back(shape->Head.UID, bx1, by1, bx2, by2, absx, absy);
+                  Scene->InputBoundaries.emplace_back(shape->Head.UID, shape->Cursor, bx1, by1, bx2, by2, absx, absy);
                }
 
                state.mClipMask = saved_mask;

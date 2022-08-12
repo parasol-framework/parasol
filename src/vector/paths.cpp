@@ -202,7 +202,7 @@ static void gen_vector_path(objVector *Vector)
       Vector->Transform.tx += Vector->FinalX;
       Vector->Transform.ty += Vector->FinalY;
 
-      apply_parent_transforms(Vector, get_parent(Vector), Vector->Transform);
+      apply_parent_transforms(get_parent(Vector), Vector->Transform);
 
       Vector->BasePath.free_all();
       Vector->BasePath.move_to(0, 0); // Top left
@@ -241,10 +241,9 @@ static void gen_vector_path(objVector *Vector)
 
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
 
-      Vector->Scene->PendingResizeMsgs.insert({ Vector->Head.UID, {
-          view->FinalX, view->FinalY, 0,
-          view->vpFixedWidth, view->vpFixedHeight, 0 }
-      });
+      if (Vector->Scene->ResizeSubscriptions.contains(view)) {
+         Vector->Scene->PendingResizeMsgs.insert(view);
+      }
    }
    else if (Vector->Head.ClassID IS ID_VECTOR) {
       if ((Vector->Dirty & RC_TRANSFORM) AND (Vector->Head.SubID != ID_VECTORTEXT)) {
@@ -261,7 +260,7 @@ static void gen_vector_path(objVector *Vector)
          }
 
          Vector->Transform.reset();
-         apply_parent_transforms(Vector, Vector, Vector->Transform);
+         apply_parent_transforms(Vector, Vector->Transform);
 
          Vector->Dirty = (Vector->Dirty & (~RC_TRANSFORM)) | RC_FINAL_PATH;
       }
@@ -326,7 +325,7 @@ static void gen_vector_path(objVector *Vector)
          get_text_xy((rkVectorText *)Vector); // Sets FinalX/Y
 
          Vector->Transform.reset();
-         apply_parent_transforms(Vector, Vector, Vector->Transform);
+         apply_parent_transforms(Vector, Vector->Transform);
 
          Vector->Dirty = (Vector->Dirty & (~RC_TRANSFORM)) | RC_FINAL_PATH;
       }
@@ -399,7 +398,7 @@ static void gen_vector_path(objVector *Vector)
 // Apply all transforms in the correct SVG order to a target agg::trans_affine object.  The process starts with the
 // vector passed in to the function, and proceeds upwards through the parent nodes.
 
-static void apply_parent_transforms(objVector *Self, objVector *Start, agg::trans_affine &AGGTransform)
+static void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform)
 {
    parasol::Log log(__FUNCTION__);
 

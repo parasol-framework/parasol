@@ -4,8 +4,8 @@ Tests for file functions
 
    glPath = 'parasol:'
 
-//=====================================================================================================================
-// Test that the standard extraction pattern for folder and file names works as expected.
+--=====================================================================================================================
+-- Test that the standard extraction pattern for folder and file names works as expected.
 
 function testPathExtract()
    local pattern = '([^:/]+)/-$'
@@ -39,7 +39,7 @@ function testPathExtract()
    end
 end
 
-//=====================================================================================================================
+--=====================================================================================================================
 
 function testFolderScan()
    local folder = obj.new('file', { src=glPath } )
@@ -70,7 +70,7 @@ function testFolderScan()
    return 'Found ' .. count .. ' files.'
 end
 
-//=====================================================================================================================
+--=====================================================================================================================
 
 function testScanDir()
    local err, dir = mSys.OpenDir(glPath, bit.bor(RDF_FILES,RDF_FOLDERS,RDF_QUALIFY,RDF_DATE,RDF_SIZE,RDF_TAGS))
@@ -93,7 +93,7 @@ function testScanDir()
    end
 end
 
-//=====================================================================================================================
+--=====================================================================================================================
 
 function testScanVolumes()
    local err, dir = mSys.OpenDir(':', bit.bor(RDF_FILES,RDF_FOLDERS,RDF_TAGS))
@@ -115,7 +115,7 @@ function testScanVolumes()
       logOutput(names)
 
       if (not volumes['parasol']) then error("The expected 'parasol' volume is not present.") end
-      //if (not volumes['bin']) then error("The expected 'bin' volume is not present.") end
+      --if (not volumes['bin']) then error("The expected 'bin' volume is not present.") end
       if (not volumes['drive1']) then error("The expected 'drive1' volume is not present.") end
       if (not volumes['system']) then error("The expected 'system' volume is not present.") end
    else
@@ -123,8 +123,8 @@ function testScanVolumes()
    end
 end
 
-//=====================================================================================================================
-// This code loads a raw file, converts it to a string, reverses it and then writes the string back to the file.
+--=====================================================================================================================
+-- This code loads a raw file, converts it to a string, reverses it and then writes the string back to the file.
 
 function testStringify()
    local fl = obj.new('file', { src=glRawPath, flags='!READ|WRITE' } )
@@ -138,10 +138,31 @@ function testStringify()
    end
 end
 
-//=====================================================================================================================
+--=====================================================================================================================
+
+function testFileIcons()
+   local icon_pairs = {
+      { path='parasol:fluid.exe',               icon='icons:items/launch' },
+      { path='fonts:fonts.cfg',                 icon='icons:filetypes/text' },
+      { path='fonts:license-courier-prime.txt', icon='icons:filetypes/text' },
+      { path='fonts:truetype/Micro-6.ttf',      icon='icons:filetypes/font' },
+      { path='parasol:include/parasol/main.h',  icon='icons:filetypes/source_h' },
+      { path='scripts:common.fluid',            icon='icons:filetypes/source' },
+      { path='styles:default/values.xml',       icon='icons:filetypes/xml' }
+   }
+
+   for k, v in ipairs(icon_pairs) do
+      local icon = obj.new('file', { path=v.path }).icon
+      if (icon != v.icon) then
+         error('Icon for ' .. v.path .. ' evaluated to ' .. icon .. ' instead of expected "' .. v.icon .. '"')
+      end
+   end
+end
+
+--=====================================================================================================================
 
    return {
-      tests = { 'testPathExtract', 'testFolderScan', 'testScanDir', 'testStringify', 'testScanVolumes' },
+      tests = { 'testPathExtract', 'testFolderScan', 'testScanDir', 'testStringify', 'testScanVolumes', 'testFileIcons' },
       init = function()
          glRawPath = 'user:test.out'
          local out = obj.new('file', { src=glRawPath, flags='!NEW|WRITE' } )

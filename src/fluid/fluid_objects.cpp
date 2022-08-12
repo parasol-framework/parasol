@@ -110,6 +110,8 @@ static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const 
 ** Variable fields can be denoted with an underscore prefix.
 **
 ** An object can be allocated as public by prefixing a '@' to the class name.
+**
+** Also see object_newchild() for creating objects from a parent.
 */
 
 static int object_new(lua_State *Lua)
@@ -216,12 +218,12 @@ static int object_new(lua_State *Lua)
 
 #ifdef MAINTAIN_OBJECT_LOCK
          object->AccessCount = 1;
-         object->Locked = TRUE;
-         object->NewLock = TRUE;
+         object->Locked      = TRUE;
+         object->NewLock     = TRUE;
 #else
-         object->prvObject = NULL;
+         object->prvObject   = NULL;
          object->AccessCount = 0;
-         object->Locked = FALSE;
+         object->Locked      = FALSE;
          ReleaseObject(obj);
 #endif
       }

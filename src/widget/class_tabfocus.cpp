@@ -408,19 +408,10 @@ static void focus_object(objTabFocus *Self, UBYTE Index)
 
    CLASSID class_id = GetClassID(Self->TabList[Index].ObjectID);
 
-   if (class_id IS ID_INPUT) {
-      OBJECTPTR input, text;
-      if (!AccessObject(Self->TabList[Index].ObjectID, 1000, &input)) {
-         acFocus(input);
-
-         // If the object has a textinput field, select the text
-
-         if ((!GetPointer(input, FID_UserInput, &text)) AND (text)) {
-            txtSelectArea(text, 0,0, 200000, 200000);
-         }
-
-         ReleaseObject(input);
-      }
+   if (class_id IS ID_VECTORTEXT) {
+      //if ((!GetPointer(input, FID_UserInput, &text)) AND (text)) {
+      //   txtSelectArea(text, 0,0, 200000, 200000);
+      //}
    }
    else if (acFocusID(Self->TabList[Index].ObjectID) != ERR_Okay) {
       acFocusID(Self->TabList[Index].SurfaceID);

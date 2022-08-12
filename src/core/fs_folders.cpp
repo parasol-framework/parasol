@@ -204,10 +204,12 @@ ERROR ScanDir(DirInfo *Dir)
                   }
                   file->Flags |= RDF_VOLUME;
                }
-               else if (keys.contains("Hidden") and (keys["Hidden"].compare("Yes"))) {
+
+               if (keys.contains("Hidden") and (keys["Hidden"].compare("Yes"))) {
                   file->Flags |= RDF_HIDDEN;
                }
-               else if ((Dir->prvFlags & RDF_TAGS) AND (keys.contains("Label"))) {
+
+               if (keys.contains("Label")) {
                   AddInfoTag(file, "Label", keys["Label"].c_str());
                }
 

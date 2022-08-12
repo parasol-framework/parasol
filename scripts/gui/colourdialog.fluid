@@ -53,20 +53,20 @@ gui.dialog.colour = function(Options)
 
    local lOptions = Options
    local lWindow, lFont, lPaletteChanged
-   local lRGB = { r=200, g=200, b=200, a=255 }
+   local lRGB       = { r=200, g=200, b=200, a=255 }
    local lColBorder = { r=0, g=0, b=0,  a=128 }
    local lPicker
-   local lAbsX = -1
-   local lAbsY = -1
-   local lRainbowX = -1
-   local lRainbowY = -1
-   local lRainbow = { winX = 0, winY = 0, winWidth = 0, winHeight = 0 }
-   local lLinks = { }
-   local lCustom = { }
+   local lAbsX      = -1
+   local lAbsY      = -1
+   local lRainbowX  = -1
+   local lRainbowY  = -1
+   local lRainbow   = { winX = 0, winY = 0, winWidth = 0, winHeight = 0 }
+   local lLinks     = { }
+   local lCustom    = { }
    local lWidgetGap = 3
    local lRainbowBmp -- Rainbow palette bitmap
-   local BTNSIZE = 20
-   local BTNGAP = 3
+   local BTNSIZE    = 20
+   local BTNGAP     = 3
    local WIDGET_GAP = 6
    local lAddIcon
    local updateRGB -- Forward declarations of functions
@@ -295,48 +295,52 @@ gui.dialog.colour = function(Options)
 
       dy = dy + self.vecChosenColour.height + WIDGET_GAP
 
-      self.inputRGB = self.viewport.new('input', {
-         x = dx,
-         y = dy,
-         width = lRainbowBmp.width,
-         label = 'RGB:',
-         inputMask = '%d,%d,%d'
+      self.inputRGB = gui.input({
+         target = self.viewport,
+         x      = dx,
+         y      = dy,
+         width  = lRainbowBmp.width,
+         label  = 'RGB:',
+         inputMask = '^%d+,%d+,%d+$',
+         feedback = function(Input, Value, State)
+            updateRGB(gui.strToRGB(Value))
+         end
       })
 
-      dy = dy + self.inputRGB.height + WIDGET_GAP
+      dy = dy + self.inputRGB.viewport.height + WIDGET_GAP
 
       -- Okay and cancel buttons
 
-      lCancelButton = self.viewport.new('button', {
+      lCancelButton = gui.button({
+         target  = self.viewport,
          text    = nz(lOptions.cancelText, 'Cancel'),
          xOffset = WIDGET_GAP,
          y       = dy,
-         icon    = 'items/cancel'
+         icon    = 'items/cancel',
+         feedback = function(Button)
+            if (lOptions.feedback != nil) then
+               lOptions.feedback(nil)
+            end
+            lWindow = nil
+         end
       })
 
-      lOkayButton = self.viewport.new('button', {
+      lOkayButton = gui.button({
+         target  = self.viewport,
          text    = nz(lOptions.okText, 'OK'),
-         xOffset = lCancelButton.width + (WIDGET_GAP * 2),
+         xOffset = lCancelButton.viewport.width + (WIDGET_GAP * 2),
          y       = dy,
-         icon    = 'items/checkmark'
+         icon    = 'items/checkmark',
+         feedback = function(Button)
+            saveColours()
+            if (lOptions.feedback != nil) then
+               lOptions.feedback(lRGB.r .. ',' .. lRGB.g .. ',' .. lRGB.b)
+            end
+            lWindow = nil
+         end
       })
 
-      lOkayButton.subscribe('activate', function()
-         saveColours()
-         if (lOptions.feedback != nil) then
-            lOptions.feedback(lRGB.r .. ',' .. lRGB.g .. ',' .. lRGB.b)
-         end
-         lWindow = nil
-      end)
-
-      lCancelButton.subscribe('activate', function()
-         if (lOptions.feedback != nil) then
-            lOptions.feedback(nil)
-         end
-         lWindow = nil
-      end)
-
-      dy = dy + lOkayButton.height + WIDGET_GAP
+      dy = dy + lOkayButton.viewport.height + WIDGET_GAP
       if (dy > bottom) then bottom = dy end
 
       collectgarbage()
@@ -381,7 +385,7 @@ gui.dialog.colour = function(Options)
       if self.vecChosenColour then
          self.vecChosenColour.fill = gui.rgbToSVG(lRGB)
       end
-      self.inputRGB.string = nz(lRGB.r,0) .. ',' .. nz(lRGB.g,0) .. ',' .. nz(lRGB.b,0)
+      self.inputRGB.text.string = nz(lRGB.r,0) .. ',' .. nz(lRGB.g,0) .. ',' .. nz(lRGB.b,0)
       lWindow.surface.mtScheduleRedraw()
    end
 
@@ -616,14 +620,7 @@ gui.dialog.colour = function(Options)
       lWindow.minWidth     = lWindow.insideWidth * 0.25
       lWindow.minHeight    = lWindow.insideHeight * 0.25
 
-      self.inputRGB.subscribe('activate', function(Input)
-         updateRGB(gui.strToRGB(Input.string))
-      end)
-
       updateRGB(gui.strToRGB(nz(lOptions.colour, '200,200,200')))
-
-      lTab.mtAddObject(lOkayButton)
-      lTab.mtAddObject(lCancelButton)
 
       lWindow.acMoveToFront()
       lWindow.acShow()

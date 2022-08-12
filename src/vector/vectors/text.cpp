@@ -54,6 +54,8 @@ static void generate_text(objVectorText *);
 static void generate_text_bitmap(objVectorText *);
 static void key_event(objVectorText *, evKey *, LONG);
 static void reset_font(objVectorText *);
+static ERROR text_input_events(objVector *, const InputEvent *);
+static ERROR text_focus_event(objVector *, LONG);
 
 enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
 
@@ -76,46 +78,6 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE *X, 
    EFT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);
    *X = int26p6_to_dbl(delta.x);
    *Y = int26p6_to_dbl(delta.y);
-}
-
-//****************************************************************************
-
-static ERROR VECTORTEXT_ActionNotify(objVectorText *Self, struct acActionNotify *Args)
-{
-   if (Args->ActionID IS AC_Focus) {
-      if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
-         if (Self->txCursor.timer) UpdateTimer(Self->txCursor.timer, 1.0);
-         else {
-            auto callback = make_function_stdc(cursor_timer);
-            SubscribeTimer(0.8, &callback, &Self->txCursor.timer);
-
-            if (!Self->txKeyEvent) {
-               auto callback = make_function_stdc(key_event);
-               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->txKeyEvent);
-            }
-         }
-
-         Self->txCursor.resetFlash();
-         SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
-         DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
-      }
-   }
-   else if (Args->ActionID IS AC_LostFocus) {
-      if (Self->txCursor.vector) SetLong(Self->txCursor.vector, FID_Visibility, VIS_HIDDEN);
-      if (Self->txCursor.timer)  { UpdateTimer(Self->txCursor.timer, 0); Self->txCursor.timer = 0; }
-      if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
-
-      // When a simple input line loses the focus, all selections are deselected
-
-      if (Self->txLineLimit IS 1) {
-         if (Self->txFlags & VTXF_AREA_SELECTED) Self->txFlags &= ~VTXF_AREA_SELECTED;
-      }
-
-      DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
-   }
-   else return ERR_NoSupport;
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -177,7 +139,8 @@ static ERROR VECTORTEXT_Free(objVectorText *Self, APTR Void)
    if (Self->txFocusID) {
       OBJECTPTR focus;
       if (!AccessObject(Self->txFocusID, 5000, &focus)) {
-         UnsubscribeAction(focus, 0);
+         auto callback = make_function_stdc(text_focus_event);
+         vecSubscribeFeedback(focus, 0, &callback);
          ReleaseObject(focus);
       }
    }
@@ -191,35 +154,39 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
 {
    if (Self->txFlags & VTXF_EDITABLE) {
       if (!Self->txFocusID) {
-         for (auto parent=Self->Parent; parent; parent=((objVector *)parent)->Parent) {
-            if (parent->SubID IS ID_VECTORVIEWPORT) {
-               Self->txFocusID = parent->UID;
-               break;
-            }
-         }
+         if (Self->ParentView) Self->txFocusID = Self->ParentView->Head.UID;
       }
 
       OBJECTPTR focus;
       if (!AccessObject(Self->txFocusID, 5000, &focus)) {
-         SubscribeActionTags(focus, AC_Focus, AC_LostFocus, TAGEND);
+         auto callback = make_function_stdc(text_focus_event);
+         vecSubscribeFeedback(focus, FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, &callback);
          ReleaseObject(focus);
       }
 
       // The editing cursor will inherit transforms from the VectorText as long as it is a direct child.
 
       if (!CreateObject(ID_VECTORPOLYGON, 0, &Self->txCursor.vector,
+            FID_Name|TSTR,    "VTCursor",
             FID_X1|TLONG,     0,
             FID_Y1|TLONG,     0,
             FID_X2|TLONG,     1,
             FID_Y2|TLONG,     1,
             FID_Closed|TLONG, FALSE,
             FID_Stroke|TSTR,  "rgb(255,0,0,255)",
-            FID_StrokeWidth|TDOUBLE, 1.5,
+            FID_StrokeWidth|TDOUBLE, 1.25,
             FID_Visibility|TLONG,    VIS_HIDDEN,
             TAGEND)) {
 
       }
       else return ERR_CreateObject;
+
+      if (Self->txLines.empty()) Self->txLines.emplace_back(std::string(""));
+
+      if (Self->ParentView) {
+         auto callback = make_function_stdc(text_input_events);
+         vecSubscribeInput(Self->ParentView, JTYPE_BUTTON, &callback);
+      }
    }
 
    return ERR_Okay;
@@ -243,6 +210,7 @@ static ERROR VECTORTEXT_NewObject(objVectorText *Self, APTR Void)
    Self->FillColour.Green = 1;
    Self->FillColour.Blue  = 1;
    Self->FillColour.Alpha = 1;
+   Self->DisableHitTesting = true;
    return ERR_Okay;
 }
 
@@ -462,9 +430,10 @@ static ERROR TEXT_SET_Flags(objVectorText *Self, LONG Value)
 -FIELD-
 Focus: Refers to the object that will be monitored for user focussing.
 
-By default, a VectorText object with editing enabled will become active (capable of receiving keyboard input)
-when its nearest viewport receives the focus.  Setting the Focus field allows monitoring to be redirected to an
-alternative viewport.
+A VectorText object in edit mode will become active when its nearest viewport receives the focus.  Setting the Focus
+field to a different vector in the scene graph will redirect monitoring to it.
+
+Changing this value post-initialisation has no effect.
 
 *****************************************************************************/
 
@@ -525,9 +494,8 @@ static ERROR TEXT_SET_LetterSpacing(objVectorText *Self, DOUBLE Value)
 -FIELD-
 FontSize: Defines the vertical size of the font.
 
-The FontSize refers to the height of the font from baseline to baseline.  Without an identifier, the height value
-corresponds to the current user coordinate system (pixels by default).  If you intend to set the font's point size,
-please ensure that 'pt' is appended to the number.
+The FontSize refers to the height of the font from baseline to baseline.  By default, the value corresponds to the
+current user coordinate system in pixels.  To define the point size, append 'pt' to the number.
 
 If retrieving the font size, the string must be freed by the client when no longer in use.
 
@@ -556,8 +524,11 @@ static ERROR TEXT_SET_FontSize(objVectorText *Self, CSTRING Value)
 FontStyle: Determines font styling.
 
 Unique styles for a font can be selected through the FontStyle field.  Conventional font styles are `Bold`,
-`Bold Italic`, `Italic` and `Regular` (the default).  TrueType fonts can use any style name that the designer
-chooses, such as `Narrow` or `Wide`, so use ~Font.GetList() for a definitive list of available style names.
+`Bold Italic`, `Italic` and `Regular` (the default).  Because TrueType fonts can use any style name that the
+designer chooses such as `Thin`, `Narrow` or `Wide`, use ~Font.GetList() for a definitive list of available
+style names.
+
+Errors are not returned if the style name is invalid or unavailable.
 
 *****************************************************************************/
 
@@ -870,6 +841,7 @@ static ERROR TEXT_SET_String(objVectorText *Self, CSTRING Value)
          if (*Value IS '\n') Value++;
       }
    }
+   else Self->txLines.emplace_back("");
 
    reset_path((objVector *)Self);
    if (Self->txCursor.vector) Self->txCursor.validatePosition(Self);
@@ -878,7 +850,7 @@ static ERROR TEXT_SET_String(objVectorText *Self, CSTRING Value)
 
 /*****************************************************************************
 -FIELD-
-TextLength: Reflects the expected length of the text after all computations have been taken into account.
+TextLength: The expected length of the text after all computations have been taken into account.
 
 The purpose of this attribute is to allow exact alignment of the text graphic in the computed result.  If the
 #Width that is initially computed does not match this value, then the text will be scaled to match the
@@ -898,6 +870,27 @@ static ERROR TEXT_GET_TextLength(objVectorText *Self, DOUBLE *Value)
 static ERROR TEXT_SET_TextLength(objVectorText *Self, DOUBLE Value)
 {
    Self->txTextLength = Value;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-FIELD-
+TextWidth: The raw pixel width of the widest line in the @String value..
+
+*****************************************************************************/
+
+static ERROR TEXT_GET_TextWidth(objVectorText *Self, LONG *Value)
+{
+   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_NotInitialised;
+
+   if (!Self->txFont) reset_font(Self);
+
+   LONG width = 0;
+   for (auto &line : Self->txLines) {
+      LONG w = fntStringWidth(Self->txFont, line.c_str(), -1);
+      if (w > width) width = w;
+   }
+   *Value = width;
    return ERR_Okay;
 }
 
@@ -942,6 +935,24 @@ static ERROR TEXT_SET_Weight(objVectorText *Self, LONG Value)
 }
 
 //****************************************************************************
+// Calculate the cursor that would be displayed at this character position and save it to the
+// line's chars array.
+
+static void calc_cursor_position(TextLine &Line, agg::trans_affine &transform, DOUBLE PointSize, DOUBLE PathScale)
+{
+   agg::path_storage cursor_path;
+   DOUBLE cx1, cy1, cx2, cy2;
+
+   cursor_path.move_to(0, -(PointSize * PathScale) - (PointSize * 0.2));
+   cursor_path.line_to(0, PointSize * 0.1);
+   agg::conv_transform<agg::path_storage, agg::trans_affine> trans_cursor(cursor_path, transform);
+
+   trans_cursor.vertex(&cx1, &cy1);
+   trans_cursor.vertex(&cx2, &cy2);
+   Line.chars.emplace_back(cx1, cy1, cx2, cy2);
+}
+
+//****************************************************************************
 // This path generator creates text as a single path, by concatenating the paths of all individual characters in the
 // string.
 
@@ -955,7 +966,7 @@ static void generate_text(objVectorText *Vector)
    }
 
    auto &lines = Vector->txLines;
-   if (!lines.size()) return;
+   if (lines.empty()) return;
 
    if (!(Vector->txFont->Flags & FTF_SCALABLE)) {
       generate_text_bitmap(Vector);
@@ -1021,6 +1032,7 @@ static void generate_text(objVectorText *Vector)
 
    agg::trans_affine scale_char;
    const DOUBLE point_size = Vector->txFontSize * (3.0 / 4.0) * upscale;
+
    if (path_scale != 1.0) {
       scale_char.translate(0, point_size);
       scale_char.scale(path_scale);
@@ -1150,7 +1162,11 @@ static void generate_text(objVectorText *Vector)
          LONG current_col = 0;
          line.chars.clear();
          auto wrap_state = WS_NO_WORD;
-         for (auto str=line.c_str(); *str; ) {
+         if ((line.empty()) and (Vector->txCursor.vector)) {
+            agg::trans_affine transform(scale_char);
+            calc_cursor_position(line, transform, point_size, path_scale);
+         }
+         else for (auto str=line.c_str(); *str; ) {
             LONG char_len;
             LONG unicode = UTF8ReadValue(str, &char_len);
 
@@ -1206,31 +1222,11 @@ static void generate_text(objVectorText *Vector)
                   Vector->BasePath.concat_path(trans_char);
 
                   if (Vector->txCursor.vector) {
-                     // Calculate the cursor line that would be displayed at this character position and save it to the
-                     // line's chars array.
-
-                     agg::path_storage cursor_path;
-                     cursor_path.move_to(0, point_size * 0.1);
-                     cursor_path.line_to(0, -(point_size * path_scale) - (point_size * 0.2));
-                     agg::conv_transform<agg::path_storage, agg::trans_affine> trans_cursor(cursor_path, transform);
-
-                     DOUBLE cx1, cy1, cx2, cy2;
-                     trans_cursor.vertex(&cx1, &cy1);
-                     trans_cursor.vertex(&cx2, &cy2);
-                     line.chars.emplace_back(cx1, cy1, cx2, cy2);
+                     calc_cursor_position(line, transform, point_size, path_scale);
 
                      if (!*str) { // Last character reached, add a final cursor entry past the character position.
                         transform.translate(char_width, 0);
-
-                        agg::path_storage cursor_path;
-                        cursor_path.move_to(0, 0);
-                        cursor_path.line_to(0, -(point_size * path_scale));
-                        agg::conv_transform<agg::path_storage, agg::trans_affine> trans_cursor(cursor_path, transform);
-
-                        DOUBLE cx1, cy1, cx2, cy2;
-                        trans_cursor.vertex(&cx1, &cy1);
-                        trans_cursor.vertex(&cx2, &cy2);
-                        line.chars.emplace_back(cx1, cy1, cx2, cy2);
+                        calc_cursor_position(line, transform, point_size, path_scale);
                      }
                   }
 
@@ -1279,10 +1275,8 @@ static void generate_text_bitmap(objVectorText *Vector)
    if ((!Vector->txInlineSize) and (!(Vector->txCursor.vector))) { // Fast calculation if no wrapping or active cursor
       for (auto &line : Vector->txLines) {
          line.chars.clear();
-         for (auto str=line.c_str(); *str; ) {
-            LONG line_width = fntStringWidth(Vector->txFont, str, 0);
-            if (line_width > longest_line_width) longest_line_width = line_width;
-         }
+         LONG line_width = fntStringWidth(Vector->txFont, line.c_str(), -1);
+         if (line_width > longest_line_width) longest_line_width = line_width;
          dy += Vector->txFont->LineSpacing;
       }
    }
@@ -1588,8 +1582,8 @@ static void get_text_xy(objVectorText *Vector)
       y -= Vector->txFont->Height + Vector->txFont->Leading;
    }
 
-   Vector->FinalX = x;
-   Vector->FinalY = y;
+   Vector->FinalX = x + Vector->txXOffset;
+   Vector->FinalY = y + Vector->txYOffset;
 }
 
 //****************************************************************************
@@ -1660,7 +1654,7 @@ static ERROR cursor_timer(objVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
       parasol::Log log(__FUNCTION__);
       Self->txCursor.flash ^= 1;
       SetLong(Self->txCursor.vector, FID_Visibility, Self->txCursor.flash ? VIS_VISIBLE : VIS_HIDDEN);
-      DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
+      acDraw(Self);
       return ERR_Okay;
    }
    else {
@@ -1693,7 +1687,120 @@ static void add_line(objVectorText *Self, std::string String, LONG Offset, LONG 
       Self->txLines.insert(Self->txLines.begin() + Line, 1, tl);
    }
 
-   ActionMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
+   acDraw(Self);
+}
+
+//****************************************************************************
+
+static ERROR text_focus_event(objVector *Vector, LONG Event)
+{
+   objVectorText *Self = (objVectorText *)CurrentContext();
+
+   if (Event & FM_HAS_FOCUS) {
+      if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
+         acMoveToFront(Self->txCursor.vector);
+
+         if (Self->txCursor.timer) UpdateTimer(Self->txCursor.timer, 1.0);
+         else {
+            auto callback = make_function_stdc(cursor_timer);
+            SubscribeTimer(0.8, &callback, &Self->txCursor.timer);
+
+            if (!Self->txKeyEvent) {
+               auto callback = make_function_stdc(key_event);
+               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->txKeyEvent);
+            }
+         }
+
+         Self->txCursor.resetFlash();
+         SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
+         acDraw(Self);
+      }
+   }
+   else if (Event & (FM_LOST_FOCUS|FM_CHILD_HAS_FOCUS)) {
+      if (Self->txCursor.vector) SetLong(Self->txCursor.vector, FID_Visibility, VIS_HIDDEN);
+      if (Self->txCursor.timer)  { UpdateTimer(Self->txCursor.timer, 0); Self->txCursor.timer = 0; }
+      if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
+
+      // When a simple input line loses the focus, all selections are deselected
+
+      if (Self->txLineLimit IS 1) {
+         if (Self->txFlags & VTXF_AREA_SELECTED) Self->txFlags &= ~VTXF_AREA_SELECTED;
+      }
+
+      acDraw(Self);
+   }
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
+
+static ERROR text_input_events(objVector *Vector, const InputEvent *Events)
+{
+   objVectorText *Self = (objVectorText *)CurrentContext();
+
+   parasol::Log log(__FUNCTION__);
+
+   while (Events) {
+      if ((Events->Type IS JET_LMB) and (!(Events->Flags & JTYPE_REPEATED)) and (Events->Value IS 1)) {
+         // Determine the nearest cursor position to the clicked point.
+
+         agg::trans_affine transform;
+         if (Self->txLines.size() > 1) {
+            apply_parent_transforms((objVector *)Self, transform);
+         }
+
+         DOUBLE shortest_dist = 100000000000;
+         LONG shortest_row = 0, shortest_col = 0;
+         LONG row = 0;
+         for (auto &line : Self->txLines) {
+            bool test_line = true;
+
+            // The first row is always fully tested (this is important if all rows fail the hit test).
+            // Subsequent rows are only tested when there is a hit in their line boundary.
+
+            if (row > 0) {
+               agg::path_storage path;
+               DOUBLE offset = Self->txFont->LineSpacing * row;
+               path.move_to(0, -Self->txFont->LineSpacing + offset);
+               path.line_to(Self->txWidth, -Self->txFont->LineSpacing + offset);
+               path.line_to(Self->txWidth, offset);
+               path.line_to(0, offset);
+               path.close_polygon();
+
+               path.transform(transform);
+
+               DOUBLE bx1, bx2, by1, by2;
+               bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+
+               test_line = ((Events->AbsX >= bx1) and (Events->AbsY >= by1) and (Events->AbsX < bx2) and (Events->AbsX < by2));
+            }
+
+            LONG coli = 0;
+            for (auto &col : line.chars) {
+               DOUBLE mx = Self->FinalX + ((col.x1 + col.x2) * 0.5); // Calculate the cursor midpoint
+               DOUBLE my = Self->FinalY + ((col.y1 + col.y2) * 0.5);
+               DOUBLE d = std::abs(dist(Events->X, Events->Y, mx, my)); // Distance to the midpoint.
+
+               if (d < shortest_dist) {
+                  shortest_dist = d;
+                  shortest_row = row;
+                  shortest_col = coli;
+               }
+               coli++;
+            }
+
+            row++;
+         }
+
+         Self->txCursor.move(Self, shortest_row, shortest_col);
+         Self->txCursor.resetFlash();
+      }
+
+      Events = Events->Next;
+   }
+
+   return ERR_Okay;
 }
 
 //****************************************************************************
@@ -1780,7 +1887,7 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
       else; // Do nothing, cursor at (0,0)
 
       mark_dirty(Self, RC_BASE_PATH);
-      DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
+      acDraw(Self);
       break;
 
    case K_CLEAR:
@@ -1802,7 +1909,7 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
          Self->txLines.erase(Self->txLines.begin() + Self->txCursor.row() + 1);
       }
       mark_dirty(Self, RC_BASE_PATH);
-      ActionMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
+      acDraw(Self);
       break;
 
    case K_END:
@@ -1817,7 +1924,7 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
       if ((Self->txLineLimit) and (Self->txLines.size() >= (size_t)Self->txLineLimit)) break;
 
       if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
-      if (!Self->txLines.size()) Self->txLines.resize(1);
+      if (Self->txLines.empty()) Self->txLines.resize(1);
 
       auto row    = Self->txCursor.row();
       auto offset = Self->txLines[row].utf8CharOffset(Self->txCursor.column());
@@ -1826,6 +1933,8 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
 
       if (!offset) Self->txLines[row].clear();
       else Self->txLines[row].replace(offset, Self->txLines[row].length() - offset, "");
+      mark_dirty(Self, RC_BASE_PATH);
+      acDraw(Self);
       break;
    }
 
@@ -1848,11 +1957,13 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
    case K_RIGHT:
       Self->txCursor.resetFlash();
       SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
-      if (Self->txCursor.column() < Self->txLines[Self->txCursor.row()].utf8Length()) {
-         Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()+1);
-      }
-      else if ((size_t)Self->txCursor.row() < Self->txLines.size() - 1) {
-         Self->txCursor.move(Self, Self->txCursor.row()+1, 0);
+      if (!Self->txLines.empty()) {
+         if (Self->txCursor.column() < Self->txLines[Self->txCursor.row()].utf8Length()) {
+            Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()+1);
+         }
+         else if ((size_t)Self->txCursor.row() < Self->txLines.size() - 1) {
+            Self->txCursor.move(Self, Self->txCursor.row()+1, 0);
+         }
       }
       break;
 
@@ -1900,7 +2011,7 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
          if (new_column > Self->txCursor.endColumn) Self->txCursor.endColumn = new_column;
          Self->txCursor.savePos = ((LONG)new_row << 16) | new_column;
          Self->txCursor.move(Self, new_row, new_column);
-         DelayMsg(AC_Draw, Self->ParentView->Head.UID, NULL);
+         acDraw(Self);
       }
       break;
    }
@@ -1955,7 +2066,7 @@ void TextCursor::move(objVectorText *Vector, LONG Row, LONG Column, bool Validat
 
    resetVector(Vector);
 
-   DelayMsg(AC_Draw, Vector->ParentView->Head.UID, NULL);
+   acDraw(Vector);
 }
 
 //****************************************************************************
@@ -1964,32 +2075,66 @@ void TextCursor::resetVector(objVectorText *Vector)
 {
    if (Vector->txCursor.vector) {
       auto &line = Vector->txLines[mRow];
-      auto col = mColumn;
-      if ((size_t)col > line.chars.size()) col = line.chars.size();
 
-      if (line.chars.empty()); // Chars not defined yet
-      else {
-         Vector->txCursor.vector->Points[0].X = line.chars[col].x1;
+      if (!line.chars.empty()) {
+         auto col = mColumn;
+         if ((size_t)col > line.chars.size()) col = line.chars.size();
+         Vector->txCursor.vector->Points[0].X = line.chars[col].x1 + 0.5;
          Vector->txCursor.vector->Points[0].Y = line.chars[col].y1;
-         Vector->txCursor.vector->Points[1].X = line.chars[col].x2;
+         Vector->txCursor.vector->Points[1].X = line.chars[col].x2 + 0.5;
          Vector->txCursor.vector->Points[1].Y = line.chars[col].y2;
          reset_path(Vector->txCursor.vector);
+
+         // If the cursor X,Y lies outside of the parent viewport, offset the text so that it remains visible to
+         // the user.
+
+         if ((!Vector->Morph) and (Vector->ParentView)) {
+            auto p_width = Vector->ParentView->vpFixedWidth;
+            DOUBLE xo = 0;
+            const DOUBLE CURSOR_MARGIN = Vector->txFontSize * 0.5;
+            if (p_width > 8) {
+               if (Vector->txX + line.chars[col].x1 <= 0) xo = Vector->txX + line.chars[col].x1;
+               else if (Vector->txX + line.chars[col].x1 + CURSOR_MARGIN > p_width) xo = -(Vector->txX + line.chars[col].x1 + CURSOR_MARGIN - p_width);
+            }
+
+            auto p_height = Vector->ParentView->vpFixedHeight;
+            DOUBLE yo = 0;
+            if ((mRow > 0) and (p_height > Vector->txFontSize)) {
+               if (Vector->txY + line.chars[col].y1 <= 0) yo = Vector->txY + line.chars[col].y1;
+               else if (Vector->txY + line.chars[col].y2 > p_height) yo = -(Vector->txY + line.chars[col].y2 - p_height + CURSOR_MARGIN);
+            }
+
+            if ((xo != Vector->txXOffset) or (yo != Vector->txYOffset)) {
+               Vector->txXOffset = xo;
+               Vector->txYOffset = yo;
+
+               mark_dirty(Vector, RC_TRANSFORM);
+            }
+         }
       }
    }
 }
 
 //****************************************************************************
-// If the cursor is out of the current line's boundaries, this function will move it to a safe position.
+// Move the cursor if it's outside the line boundary.
 
 void TextCursor::validatePosition(objVectorText *Self)
 {
-   if (Self->txLines[mRow].empty()) {
-      if (mColumn != 0) Self->txCursor.move(Self, mRow, 0);
+   auto row = mRow;
+   auto col = mColumn;
+
+   if (Self->txLines.empty()) Self->txLines.resize(1);
+   if ((size_t)row > Self->txLines.size()) row = Self->txLines.size() - 1;
+
+   if (Self->txLines[row].empty()) {
+      if (col != 0) col = 0;
    }
    else {
-      LONG max_col = Self->txLines[mRow].utf8Length();
-      if (mColumn > max_col) Self->txCursor.move(Self, mRow, max_col);
+      auto max_col = Self->txLines[row].utf8Length();
+      if (col > max_col) col = max_col;
    }
+
+   if ((row != mRow) or (col != mColumn)) Self->txCursor.move(Self, row, col);
 }
 
 //****************************************************************************
@@ -2003,7 +2148,11 @@ static void insert_char(objVectorText *Self, LONG Unicode, LONG Column)
    char buffer[6];
    LONG charlen = UTF8WriteValue(Unicode, buffer, 6);
 
-   if (Self->txLines[Self->txCursor.row()].empty()) {
+   if (Self->txLines.empty()) {
+      Self->txLines.emplace_back(std::string(buffer, charlen));
+      Self->txCursor.move(Self, 0, 1);
+   }
+   else if (Self->txLines[Self->txCursor.row()].empty()) {
       if (Self->txCharLimit < 1) return;
       Self->txLines[Self->txCursor.row()].append(buffer, charlen);
       Self->txCursor.move(Self, Self->txCursor.row(), 1);
@@ -2084,6 +2233,7 @@ static const FieldArray clTextFields[] = {
    { "ShapeSubtract", FDF_VIRTUAL|FDF_OBJECTID|FDF_RW,         ID_VECTOR, (APTR)TEXT_GET_ShapeSubtract, (APTR)TEXT_SET_ShapeSubtract },
    { "TextLength",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           0, (APTR)TEXT_GET_TextLength, (APTR)TEXT_SET_TextLength },
    { "TextFlags",     FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,        (MAXINT)&clTextFlags, (APTR)TEXT_GET_Flags, (APTR)TEXT_SET_Flags },
+   { "TextWidth",     FDF_VIRTUAL|FDF_LONG|FDF_R,              0, (APTR)TEXT_GET_TextWidth, NULL },
    { "StartOffset",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           0, (APTR)TEXT_GET_StartOffset, (APTR)TEXT_SET_StartOffset },
    { "Spacing",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           0, (APTR)TEXT_GET_Spacing, (APTR)TEXT_SET_Spacing },
    { "Font",          FDF_VIRTUAL|FDF_OBJECT|FDF_R,            0, (APTR)TEXT_GET_Font, NULL },

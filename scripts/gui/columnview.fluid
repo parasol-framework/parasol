@@ -14,8 +14,8 @@ Initialisation options:
    x, y:             Top left coordinates.  Defaults to 0,0.
    width, height:    Width and height values, default to 100%.
    xOffset, yOffset: Offsets are an alternative to width and height.
-   columns:          Active columns may be set via this field.
-   dateFormat:       Sets the format to use when displaying date types.
+   columns:          Declares the visible columns.
+   dateFormat:       The format to use when displaying date types.
    multiSelect:      If true, more than one item can be selected at a time by the user.
    sensitive:        If true, activation will occur whenever a new item is selected (double click no longer necessary).
    target:           The surface or vector viewport that will host the view.
@@ -34,46 +34,54 @@ Readable fields:
 
 Methods:
 
-   loadItems()     Load a new set of items and display them for the user.  Any existing items will be cleared.
-   selectedItems() TODO - Returns a table of all currently selected items.
+   loadItems(Items)
+      Load a new set of items and display them for the user.  Any existing items will be cleared.
+
+   selectedItems()
+      TODO - Returns a table of all currently selected items.
 
 Graphics and UI options:
 
-   noIcons:       Do not display icons alongside the item text.
    dragDrop:      Enable support for drag and drop.
-   autoDeselect:  Deselects a highlighted item when it is activated by user clicking or the enter key.
 
 --]]
 
    require 'gui/libview'
 
-local lDate
-local lVSpacing = 2
-local lIconSize = 16
-local lCounter  = 1
-local EDGE      = 4 -- Whitespace around the page
+   local lDate
+   local VSPACING  = 2
+   local ICON_SIZE = 16
+   local lCounter  = 1
+   local EDGE      = 4 -- Whitespace around the page
 
-local lLineHeight, lFontHeight = gui.getFontHeight(gui.fonts.widget)
-local MARGIN = math.round(lLineHeight * 0.3) -- Min space between graphics elements
+   local LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+   local MARGIN = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
 
-   lLineHeight = math.round(lLineHeight * 1.33)
+   LINE_HEIGHT = math.round(LINE_HEIGHT * 1.33)
 
-local lIconOffset = (lLineHeight - lIconSize) * 0.5
-local lLineOffset = (lLineHeight + lFontHeight) * 0.5
+   local ICON_OFFSET = (LINE_HEIGHT - ICON_SIZE) * 0.5
+   local LINE_OFFSET = (LINE_HEIGHT + FONT_HEIGHT) * 0.5
+   local BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
 
-local lColours = {
-   buttonBackground        = 'rgb(240,240,240)',
-   fillTitleFont           = 'rgb(0,0,0)',
-   fillTitleSortFont       = 'rgb(0,0,0)',
-   fillSelect              = 'rgb(0,0,60,140)',
-   fillBkgdHighlight       = 'rgb(0,0,0,10)',
-   fillBkgdSelectHighlight = 'rgb(0,0,90,140)',
-   strokeButton            = 'rgb(160,160,160)'
-}
+   local lColours = {
+      buttonBackground        = 'rgb(240,240,240)',
+      fillTitleFont           = 'rgb(0,0,0)',
+      fillTitleSortFont       = 'rgb(0,0,0)',
+      fillSelect              = 'rgb(0,0,60,140)',
+      fillBkgdHighlight       = 'rgb(0,0,0,10)',
+      fillBkgdSelectHighlight = 'rgb(0,0,90,140)',
+      strokeButton            = 'rgb(160,160,160)'
+   }
+
+----------------------------------------------------------------------------------------------------------------------
 
 local function columnText(Value, Type)
    if type(Value) == 'table' then
       Value = Value.value
+   end
+
+   if not Value then
+      return ''
    end
 
    if (Type == 'bytesize') then
@@ -124,19 +132,19 @@ local function setColumnGradient(View, Column)
 
       if (nz(Column.align, 'left') == 'right') then
          Column.vecGradient = gui.simpleGradient(View.scene, defName,
-            { {r=0,g=0,b=0,a=0,offset=0.1 }, {r=0,g=0,b=0,a=255,offset=0.2}, {r=0,g=0,b=0,a=255,offset=1.0} },
+            { { r=0,g=0,b=0,a=0,offset=0.1 }, { r=0,g=0,b=0,a=255,offset=0.2 }, { r=0,g=0,b=0,a=255,offset=1.0 } },
             0, 0, Column.width, 0, 'userspace')
 
          Column.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-            { {r=255,g=255,b=255,a=0,offset=0.1 }, {r=255,g=255,b=255,a=255,offset=0.2}, {r=255,g=255,b=255,a=255,offset=1.0} },
+            { { r=255,g=255,b=255,a=0,offset=0.1 }, { r=255,g=255,b=255,a=255,offset=0.2}, { r=255,g=255,b=255,a=255,offset=1.0 } },
             0, 0, Column.width, 0, 'userspace')
       else
          Column.vecGradient = gui.simpleGradient(View.scene, defName,
-            { {r=0,g=0,b=0,a=255,offset=0 }, {r=0,g=0,b=0,a=255,offset=0.9}, {r=0,g=0,b=0,a=0,offset=0.98} },
+            { { r=0,g=0,b=0,a=255,offset=0 }, { r=0,g=0,b=0,a=255,offset=0.9 }, { r=0,g=0,b=0,a=0,offset=0.98 } },
             0, 0, Column.width, 0, 'userspace')
 
          Column.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-            { {r=255,g=255,b=255,a=255,offset=0 }, {r=255,g=255,b=255,a=255,offset=0.9}, {r=255,g=255,b=255,a=0,offset=0.98} },
+            { { r=255,g=255,b=255,a=255,offset=0 }, { r=255,g=255,b=255,a=255,offset=0.9 }, { r=255,g=255,b=255,a=0,offset=0.98 } },
             0, 0, Column.width, 0, 'userspace')
       end
 
@@ -145,6 +153,14 @@ local function setColumnGradient(View, Column)
    else
       Column.vecGradient.x2 = Column.width
       Column.vecGradientSelect.x2 = Column.width
+   end
+
+   if View.scrollbar then
+      local page_width = 0
+      for _, col in pairs(View.columns) do
+         page_width = col.x + col.width + EDGE
+      end
+      View.scrollbar.setDynamicPageSize(page_width, page_width, View.page.height)
    end
 end
 
@@ -187,7 +203,13 @@ local function highlightItem(View, Item, Highlighted)
          end
       else
          for k, col in pairs(Item._col) do
-            if col.text then col.text.fill = View.namedCol[k].fillItem end
+            if col.text then
+               if View.namedCol[k] then
+                  col.text.fill = View.namedCol[k].fillItem
+               else
+                  msg('No fillItem defined for ' .. k .. ' in View.namedCol')
+               end
+            end
          end
       end
 
@@ -230,7 +252,7 @@ local function arrangeColumns(View)
       if (col.align == 'right') then
          View._sort.icon.x = MARGIN
       else
-         View._sort.icon.x = col.width - MARGIN - lIconSize
+         View._sort.icon.x = col.width - MARGIN - ICON_SIZE
       end
    end
 end
@@ -247,45 +269,46 @@ local function bannerZoneClick(View, Col, X, Y, Value)
       View._sort = { col=Col, ascending=false }
       if not View.iconDescending then
          if not View.icons['sort_desc'] then
-            View.icons['sort_desc'] = gui.createIcon(View.scene, 'layout/sort_alpha_desc', lIconSize)
-            View.scene.mtAddDef('sort_desc', View.icons['sort_desc'].pattern)
+            View.icons['sort_desc'] = gui.createIcon(View.scene, 'layout/sort_alpha_desc', ICON_SIZE, nil, 'sort_desc')
          end
 
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
             fill   = 'url(#sort_desc)',
-            y      = math.round(EDGE + ((lLineHeight - lIconSize) * 0.5)),
-            width  = lIconSize,
-            height = lIconSize
+            y      = math.round( ((BANNER_HEIGHT - ICON_SIZE) * 0.5)),
+            width  = ICON_SIZE,
+            height = ICON_SIZE
          })
       end
    else
       View._sort = { col=Col, ascending=true }
       if not View.iconAscending then
          if not View.icons['sort_asc'] then
-            View.icons['sort_asc'] = gui.createIcon(View.scene, 'layout/sort_alpha_asc', lIconSize)
-            View.scene.mtAddDef('sort_asc', View.icons['sort_asc'].pattern)
+            View.icons['sort_asc'] = gui.createIcon(View.scene, 'layout/sort_alpha_asc', ICON_SIZE, nil, 'sort_asc')
          end
 
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
             fill   = 'url(#sort_asc)',
-            y      = math.round(EDGE + ((lLineHeight - lIconSize) * 0.5)),
-            width  = lIconSize,
-            height = lIconSize
+            y      = math.round( ((BANNER_HEIGHT - ICON_SIZE) * 0.5)),
+            width  = ICON_SIZE,
+            height = ICON_SIZE
          })
       end
    end
 
-   if Col.align == 'right' then
+   if (Col.align == 'right') then
       View._sort.icon.x = MARGIN
    else
-      View._sort.icon.x = Col.width - MARGIN - lIconSize
+      View._sort.icon.x = Col.width - MARGIN - ICON_SIZE
    end
 
-   View.sortColumn(View, Col, View._sort.ascending)
+   View:sortColumn(Col, View._sort.ascending)
    View.viewport.acDraw()
 end
 
+----------------------------------------------------------------------------------------------------------------------
+
 gui.columnView = function(Options)
+
    local function constructColumnBanner(View, Scene, Window, Page)
       -- Note that the banner is placed outside of the view so that it cannot be scrolled vertically.
 
@@ -298,16 +321,22 @@ gui.columnView = function(Options)
          end
       end
 
-      View.bannerHeight = math.round(lLineHeight * 1.3)
+      View.bannerHeight = BANNER_HEIGHT
       View.y      = View.bannerHeight
-      View.icons  = { }
       View.banner = { }
+      if not View.icons then
+         View.icons = { }
+      end
 
       -- Background graphics
 
       if not View.banner.viewport then
-         View.banner.viewport = View.viewport.new('VectorViewport', {
-            x = 0, y = 0, width = '100%', height = View.bannerHeight
+         View.banner.clip = View.viewport.new('VectorViewport', {
+            x = 0, y = 0, width = '100%', height = View.bannerHeight, overflow = VOF_HIDDEN
+         })
+
+         View.banner.viewport = View.banner.clip.new('VectorViewport', {
+            x = 0, y = 0, width = '100%', height = View.bannerHeight, overflow = VOF_HIDDEN
          })
 
          View.banner.bkgd = View.banner.viewport.new('VectorRectangle', {
@@ -374,7 +403,7 @@ gui.columnView = function(Options)
                face     = gui.fonts.widget.face,
                fontSize = string.format('%.2fpt', gui.fonts.widget.size),
                align    = nz(col.align, 'left'),
-               y        = (View.bannerHeight + lFontHeight) * 0.5
+               y        = (View.bannerHeight + FONT_HEIGHT) * 0.5
             })
 
             -- Support for resize management
@@ -451,29 +480,41 @@ gui.columnView = function(Options)
       Window.y = View.bannerHeight
    end
 
-   -- Generate graphics for items in a columnar view.
-
-   local function constructColumnView(View, Scene, Window, Page)
+   local function setColumns(View, Columns)
       local c = 1
-      View.columns = { }
+      local set = { }
       View.namedCol = { }
-      for _, col in pairs(Options.columns) do
+      for _, col in pairs(Columns) do
          if not col['attrib'] then error('No attrib defined for column ' .. c) end
 
          local new_col = { _index=c, width=100, title='Untitled' }
          for k, v in pairs(col) do
             new_col[k] = v
          end
-         table.insert(View.columns, new_col)
+         table.insert(set, new_col)
          View.namedCol[col['attrib']] = new_col
          c = c + 1
       end
 
-      constructColumnBanner(View, Scene, Window, Page)
+      View.columns = set
+      constructColumnBanner(View, View.scene, View.window, View.page)
+   end
 
-      local width = Window.width - EDGE - EDGE
+   -- Generate graphics for items in a columnar view.
+
+   local function newItems(View, Items)
+      if not View.columns then return end
+
+      if #Items == 0 then
+         msg('Warning - received an empty Items table')
+         return
+      end
+
+      local width = View.window.width - EDGE - EDGE
       local y = EDGE
-      for _, item in pairs(View.items) do
+      y = y + ((#View.items - #Items) * (LINE_HEIGHT + VSPACING))
+
+      for _, item in pairs(Items) do
          if not item._vectors then item._vectors = { } end
          if not item._col then item._col = { } end
 
@@ -482,8 +523,8 @@ gui.columnView = function(Options)
          -- Each item gets a viewport within the page
 
          if not item._vectors.viewport then
-            item._vectors.viewport = Page.new('VectorViewport', {
-               x = EDGE, y = y, xOffset = EDGE, height = lLineHeight
+            item._vectors.viewport = View.page.new('VectorViewport', {
+               x = EDGE, y = y, xOffset = EDGE, height = LINE_HEIGHT
             })
          else
             item._vectors.viewport.y     = y
@@ -510,18 +551,22 @@ gui.columnView = function(Options)
 
             if col.showIcons and item.icon then
                catch(function()
-                  if not View.icons[item.icon] then
-                     View.icons[item.icon] = gui.createIcon(Scene, item.icon, lIconSize)
-                     Scene.mtAddDef(item.icon, View.icons[item.icon].pattern)
+                  local uid = item.icon
+                  if item.iconColour then
+                     uid = uid .. '+' .. item.iconColour
+                  end
+
+                  if not View.icons[uid] then
+                     View.icons[uid] = gui.createIcon(View.scene, item.icon, ICON_SIZE, item.iconColour, uid)
                   end
 
                   if not item._vectors.iconImage then
                      item._vectors.iconImage = col.vecViewport.new('VectorRectangle', {
-                        fill   = 'url(#' .. item.icon .. ')',
+                        fill   = 'url(#' .. uid .. ')',
                         x      = MARGIN,
-                        y      = y + lIconOffset,
-                        width  = lIconSize,
-                        height = lIconSize
+                        y      = y + ICON_OFFSET,
+                        width  = ICON_SIZE,
+                        height = ICON_SIZE
                      })
                   end
                end,
@@ -546,50 +591,84 @@ gui.columnView = function(Options)
                      face     = gui.fonts.widget.face,
                      fontSize = string.format('%.2fpt', gui.fonts.widget.size),
                      align    = nz(col.align, 'left'),
-                     y        = y + lLineOffset
+                     y        = y + LINE_OFFSET
                   })
                   item._vectors['_a_' .. attrib] = item._col[attrib].text -- Referenced for future termination
                else
-                  item._col[attrib].text.y = y + lLineOffset
+                  item._col[attrib].text.y = y + LINE_OFFSET
                end
 
-               if col.align == 'right' then
+               if (col.align == 'right') then
                   item._col[attrib].text.x = col.width - MARGIN
                else
                   if col.showIcons then
-                     item._col[attrib].text.x = MARGIN + lIconSize + MARGIN
+                     item._col[attrib].text.x = MARGIN + ICON_SIZE + MARGIN
                   else
                      item._col[attrib].text.x = MARGIN
                   end
                end
 
                item._col[attrib].text.string = columnText(item[attrib], col.type)
-
                item._highlightEvent(View, item, false)
             end
 
-            View.addZone(0, item._y, nil, lLineHeight, item)
+            View.addZone(0, item._y, nil, LINE_HEIGHT, item)
 
             cx = cx + col.width
          end
 
-         y = y + lLineHeight + lVSpacing
+         y = y + LINE_HEIGHT + VSPACING
       end
 
-      local page_width = 0
+      View.page.height = y + EDGE
+
       for _, col in pairs(View.columns) do
          col.vecViewport.acMoveToFront()
-         page_width = col.x + col.width + EDGE
-      end
-
-      if View.scrollbar then
-         View.scrollbar.setDynamicPageSize(page_width, page_width, y + EDGE)
       end
    end
 
-   local vw = gui.initView(Options, constructColumnView)
+   -- Callback function for constructing the view from scratch
 
-   -- Sorts the view by column (name or index).
+   local function constructColumnView(View, Scene, Window, Page)
+      setColumns(View, nz(Options.columns, { }))
+
+      newItems(View, View.items)
+
+      collectgarbage('collect')
+   end
+
+   local function rearrangeItems(View)
+      -- Rearrange items vertically
+
+      View.zones = { }
+      local y = EDGE
+      for _, item in pairs(View.items) do
+         item._y = y
+         if item._vectors.viewport then
+            item._vectors.viewport.y = y
+         end
+
+         if item._vectors.iconImage then
+            item._vectors.iconImage.y = y + ICON_OFFSET
+         end
+
+         for _, col in pairs(View.columns) do
+            if item._col and item._col[col.attrib].text then
+               item._col[col.attrib].text.y = y + LINE_OFFSET
+            end
+         end
+
+         View.addZone(0, item._y, nil, LINE_HEIGHT, item)
+         y = y + LINE_HEIGHT + VSPACING
+      end
+   end
+
+   local vw = gui.initView(Options, constructColumnView, newItems)
+
+   vw.setColumns = setColumns
+
+   -- Sorts the view by column (named or index).
+   -- NB: Attrib values that evaluate to nil are not permitted/supported.
 
    vw.sortColumn = function(View, Column, Ascending)
       if (type(Column) == 'string') then
@@ -604,8 +683,6 @@ gui.columnView = function(Options)
       end
 
       if type(Column) == 'table' then
-         -- NB: Attrib values that evaluate to nil are not permitted/supported.
-
          if (#View.items > 0) then
             local attrib = Column['attrib']
             if (type(View.items[1][attrib]) == 'table') then
@@ -645,29 +722,13 @@ gui.columnView = function(Options)
             end
          end
 
-         -- Rearrange items vertically
-
-         View.zones = { }
-         View.hoveredItem = { }
-         local y = EDGE
-         for _, item in pairs(View.items) do
-            item._y = y
-            item._vectors.viewport.y = y
-
-            if item._vectors.iconImage then
-               item._vectors.iconImage.y = y + lIconOffset
-            end
-
-            for _, col in pairs(View.columns) do
-               if item._col[col.attrib].text then
-                  item._col[col.attrib].text.y = y + lLineOffset
-               end
-            end
-
-            View.addZone(0, item._y, nil, lLineHeight, item)
-            y = y + lLineHeight + lVSpacing
-         end
+         rearrangeItems(View)
       end
+   end
+
+   vw.sort = function(Attrib, Ascending)
+      vw.sortItems(Attrib, Ascending)
+      rearrangeItems(vw)
    end
 
    return vw

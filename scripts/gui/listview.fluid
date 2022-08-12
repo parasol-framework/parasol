@@ -167,7 +167,6 @@ gui.listView = function(Options)
 
                if not View.icons[item.icon] then
                   View.icons[item.icon] = gui.createIcon(Scene, item.icon, lIconSize)
-                  Scene.mtAddDef(item.icon, View.icons[item.icon].pattern)
                end
 
                if not item._vectors.iconImage then

@@ -100,12 +100,13 @@ static int processing_new(lua_State *Lua)
 // Usage: err = proc.sleep([Seconds])
 //
 // Puts a process to sleep with message processing in the background.  Can be woken early with a signal.
+// Setting seconds to zero will process outstanding messages and return immediately.
 //
 // NOTE: Can be called directly as an interface function or as a member of a processing object.
 
 static int processing_sleep(lua_State *Lua)
 {
-   static std::mutex recursion; // Intentionally accessible to all threads
+   static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
    {
       parasol::Log log;
@@ -132,18 +133,16 @@ static int processing_sleep(lua_State *Lua)
       for (auto &entry : *fp->Signals) signal_list_c[i++] = entry;
       signal_list_c[i].Object = NULL;
 
-      recursion.lock();
+      std::scoped_lock lock(recursion);
       error = WaitForObjects(0, timeout, signal_list_c);
-      recursion.unlock();
    }
    else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
       ObjectSignal signal_list_c[2];
       signal_list_c[0].Object   = &Lua->Script->Head;
       signal_list_c[1].Object   = NULL;
 
-      recursion.lock();
+      std::scoped_lock lock(recursion);
       error = WaitForObjects(0, timeout, signal_list_c);
-      recursion.unlock();
    }
 
    lua_pushinteger(Lua, error);

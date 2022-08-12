@@ -298,12 +298,12 @@ gui.scrollbar = function(Options)
       end
    end
 
+   -- NB: As a client you can set the page height and width directly if no mode change is required.
+
    self.setFixedPageSize = function(Width, Height)
       lPageMode = 'fixed'
-      if (Width != lPage.width) or (Height != lPage.height) then
-         lPage.width  = Width
-         lPage.height = Height
-      end
+      if (Width != lPage.width) then lPage.width = Width end
+      if (Height != lPage.height) then lPage.height = Height end
    end
 
    self.setDynamicPageSize = function(NominalWidth, MinWidth, Height)

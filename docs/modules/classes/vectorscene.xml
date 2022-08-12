@@ -44,7 +44,7 @@
 
     <action>
       <name>Reset</name>
-      <comment>Clears all registered definitions and resets field values.  Child vectors are untouched.</comment>
+      <comment>Clears all registered definitions and resets field values.  Child vectors are unmodified.</comment>
     </action>
 
     <action>

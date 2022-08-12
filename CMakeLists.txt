@@ -1,13 +1,12 @@
 # Parasol Core Build File
 #
-# Prepare:    cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -G"MinGW Makefiles"
-#             cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles"
+# Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -G"MinGW Makefiles"
+# Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles"
+#                  For a local folder, add -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
 #
-# Options for local folder: -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
-#
-# Build:      cmake --build release -j 8 -- -O
-# Install:    sudo cmake --install release
-# Test:       make -C release test ARGS=--verbose
+# Build:   cmake --build release -j 8 -- -O
+# Install: sudo cmake --install release
+# Test:    make -C release test ARGS=--verbose
 
 cmake_minimum_required(VERSION 3.13)
 

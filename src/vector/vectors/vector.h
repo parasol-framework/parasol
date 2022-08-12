@@ -198,6 +198,7 @@ typedef struct rkVectorText {
    DOUBLE txSpacing;
    DOUBLE *txDX, *txDY; // A series of spacing adjustments that apply on a per-character level.
    DOUBLE *txRotate;  // A series of angles that will rotate each individual character.
+   DOUBLE txXOffset, txYOffset; // X,Y adjustment for ensuring that the cursor is visible.
    struct rkFont *txFont;
    objBitmap *txAlphaBitmap; // Host for the bitmap font texture
    struct rkVectorImage *txBitmapImage;

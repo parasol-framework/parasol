@@ -320,6 +320,8 @@ static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
       }
    }
 
+   Self->Cursor = PTR_DEFAULT;
+
    return ERR_Okay;
 }
 
@@ -353,7 +355,7 @@ static ERROR VECTORSCENE_Redimension(objVectorScene *Self, struct acRedimension 
 
 /*********************************************************************************************************************
 -ACTION-
-Reset: Clears all registered definitions and resets field values.  Child vectors are untouched.
+Reset: Clears all registered definitions and resets field values.  Child vectors are unmodified.
 -END-
 *********************************************************************************************************************/
 
@@ -593,6 +595,7 @@ static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitm
 //********************************************************************************************************************
 // Apply focus to a vector and all other vectors within that tree branch (not necessarily just the viewports).
 // Also sends LostFocus notifications to vectors that previously had the focus.
+// The glFocusList maintains the current focus state, with the most foreground vector at the beginning.
 
 void apply_focus(objVectorScene *Scene, objVector *Vector)
 {
@@ -609,35 +612,48 @@ void apply_focus(objVectorScene *Scene, objVector *Vector)
       else break;
    }
 
+#if 0
+   std::string vlist;
+   for (auto const id : focus_gained) {
+      char buffer[30];
+      snprintf(buffer, sizeof(buffer), "#%d ", id);
+      vlist.append(buffer);
+   }
+
+   log.msg("Vector focus list now: %s", vlist.c_str());
+#endif
+
    // Report focus events to vector subscribers.
 
+   LONG focus_event = FM_HAS_FOCUS;
    for (auto const id : focus_gained) {
-      bool has_focus = false;
-      for (auto check_id : glFocusList) {
-         if (check_id IS id) { has_focus = true; break; }
+      bool no_focus = true, lost_focus_to_child = false, was_child_now_primary = false;
+
+      if (!glFocusList.empty()) {
+         no_focus = std::find(glFocusList.begin(), glFocusList.end(), id) IS glFocusList.end();
+         if (!no_focus) {
+            lost_focus_to_child = ((id IS glFocusList.front()) and (focus_event IS FM_CHILD_HAS_FOCUS));
+            was_child_now_primary = ((id != glFocusList.front()) and (focus_event IS FM_HAS_FOCUS));
+         }
       }
 
-      if (!has_focus) {
+      if ((no_focus) or (lost_focus_to_child) or (was_child_now_primary)) {
          OBJECTPTR vec;
          if (!AccessObject(id, 5000, &vec)) {
-            NotifySubscribers(vec, AC_Focus, 0, 0, ERR_Okay);
+            send_feedback((objVector *)vec, focus_event);
+            focus_event = FM_CHILD_HAS_FOCUS;
             ReleaseObject(vec);
          }
       }
    }
 
-   // Process lost focus events
+   // Report lost focus events, starting from the foreground.
 
-   for (auto const id : glFocusList) { // Starting from the foreground...
-      bool in_list = false;
-      for (auto check_id : focus_gained) {
-         if (check_id IS id) { in_list = true; break; }
-      }
-
-      if (!in_list) {
+   for (auto const id : glFocusList) {
+      if (std::find(focus_gained.begin(), focus_gained.end(), id) IS focus_gained.end()) {
          OBJECTPTR vec;
          if (!AccessObject(id, 5000, &vec)) {
-            NotifySubscribers(vec, AC_LostFocus, 0, 0, ERR_Okay);
+            send_feedback((objVector *)vec, FM_LOST_FOCUS);
             ReleaseObject(vec);
          }
       }
@@ -705,10 +721,29 @@ static void process_resize_msgs(objVectorScene *Self)
 {
    if (Self->PendingResizeMsgs.size() > 0) {
       for (auto it=Self->PendingResizeMsgs.begin(); it != Self->PendingResizeMsgs.end(); it++) {
-         objVectorViewport *viewport;
-         if (!AccessObject(it->first, 1000, &viewport)) {
-            NotifySubscribers(viewport, AC_Redimension, &it->second, 0, ERR_Okay);
-            ReleaseObject(viewport);
+         objVectorViewport *view = *it;
+
+         auto list = Self->ResizeSubscriptions[view];
+         for (auto &sub : list) {
+            ERROR result;
+            auto vector = sub.first;
+            auto func = sub.second;
+            if (func.Type IS CALL_STDC) {
+               parasol::SwitchContext ctx(func.StdC.Context);
+               auto callback = (ERROR (*)(objVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE))func.StdC.Routine;
+               result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight);
+            }
+            else if (func.Type IS CALL_SCRIPT) {
+               ScriptArg args[] = {
+                  { "Viewport", FDF_OBJECT, { .Address = view } },
+                  { "Vector",   FDF_OBJECT, { .Address = vector } },
+                  { "X",        FDF_DOUBLE, { .Double = view->FinalX } },
+                  { "Y",        FDF_DOUBLE, { .Double = view->FinalY } },
+                  { "Width",    FDF_DOUBLE, { .Double = view->vpFixedWidth } },
+                  { "Height",   FDF_DOUBLE, { .Double = view->vpFixedHeight } }
+               };
+               scCallback(func.Script.Script, func.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+            }
          }
       }
 
@@ -733,7 +768,7 @@ static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
 
 //********************************************************************************************************************
 
-static void send_input_event(objVector *Vector, InputEvent *Event)
+static void send_input_events(objVector *Vector, InputEvent *Event)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -775,8 +810,8 @@ static void send_enter_event(objVector *Vector, const InputEvent *Event, DOUBLE 
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->Head.UID,
       .OverID      = Vector->Head.UID,
-      .AbsX        = Event->AbsX,
-      .AbsY        = Event->AbsY,
+      .AbsX        = Event->X,
+      .AbsY        = Event->Y,
       .X           = Event->X - X,
       .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
@@ -784,7 +819,7 @@ static void send_enter_event(objVector *Vector, const InputEvent *Event, DOUBLE 
       .Flags       = JTYPE_FEEDBACK,
       .Mask        = JTYPE_FEEDBACK
    };
-   send_input_event(Vector, &event);
+   send_input_events(Vector, &event);
 }
 
 //********************************************************************************************************************
@@ -797,8 +832,8 @@ static void send_left_event(objVector *Vector, const InputEvent *Event, DOUBLE X
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->Head.UID,
       .OverID      = Vector->Head.UID,
-      .AbsX        = Event->AbsX,
-      .AbsY        = Event->AbsY,
+      .AbsX        = Event->X,
+      .AbsY        = Event->Y,
       .X           = Event->X - X,
       .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
@@ -806,7 +841,7 @@ static void send_left_event(objVector *Vector, const InputEvent *Event, DOUBLE X
       .Flags       = JTYPE_FEEDBACK,
       .Mask        = JTYPE_FEEDBACK
    };
-   send_input_event(Vector, &event);
+   send_input_events(Vector, &event);
 }
 
 //********************************************************************************************************************
@@ -819,20 +854,20 @@ static void send_wheel_event(objVectorScene *Scene, objVector *Vector, const Inp
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->Head.UID,
       .OverID      = Event->OverID,
-      .AbsX        = Event->AbsX,
-      .AbsY        = Event->AbsY,
-      .X           = Event->X - Scene->ActiveVectorX,
-      .Y           = Event->Y - Scene->ActiveVectorY,
+      .AbsX        = Event->X,
+      .AbsY        = Event->Y,
+      .X           = Scene->ActiveVectorX,
+      .Y           = Scene->ActiveVectorY,
       .DeviceID    = Event->DeviceID,
       .Type        = JET_WHEEL,
       .Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT,
       .Mask        = JTYPE_EXT_MOVEMENT
    };
-   send_input_event(Vector, &event);
+   send_input_events(Vector, &event);
 }
 
 //********************************************************************************************************************
-// Input events within the scene are distributed within the scene graph.
+// Incoming input events from the Surface hosting the scene are distributed within the scene graph.
 
 static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 {
@@ -841,7 +876,7 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
    auto Self = (objVectorScene *)CurrentContext();
    if (!Self->SurfaceID) return ERR_Okay;
 
-   LONG cursor = PTR_DEFAULT;
+   LONG cursor = -1;
 
    // Distribute input events to any vectors that have subscribed.  Bear in mind that a consequence of calling client
    // code is that the scene's surface could be destroyed at any time.
@@ -882,22 +917,25 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             if (lock.granted()) {
                InputEvent event = *input;
                event.Next = NULL;
-               event.X = input->X - Self->ActiveVectorX; // Coords to be relative to the vector, not the surface
-               event.Y = input->Y - Self->ActiveVectorY;
-               send_input_event(lock.obj, &event);
+               event.AbsX = input->X; // Absolute coordinates are not translated.
+               event.AbsY = input->Y;
+               event.X    = Self->ActiveVectorX;
+               event.Y    = Self->ActiveVectorY;
+               send_input_events(lock.obj, &event);
 
                if ((input->Type IS JET_LMB) and (!(input->Flags & JTYPE_REPEATED))) {
                   Self->ButtonLock = input->Value ? target : 0;
                }
-
-               if (lock.obj->Cursor) cursor = lock.obj->Cursor;
             }
          }
       }
       else if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+         if (cursor IS -1) cursor = PTR_DEFAULT;
          bool processed = false;
          for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {
             auto &bounds = *it;
+
+            if ((processed) and (!bounds.Cursor)) continue;
 
             // When the user holds a mouse button over a vector, a 'button lock' will be held.  This causes all events to
             // be captured by that vector until the button is released.
@@ -927,25 +965,35 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
             if ((!Self->ButtonLock) and (vector->Cursor)) cursor = vector->Cursor;
 
-            InputEvent event = *input;
-            event.Next = NULL;
-            event.X = input->X - bounds.X; // Coords to be relative to the vector, not the surface
-            event.Y = input->Y - bounds.Y;
-            send_input_event(vector, &event);
+            if (!processed) {
+               DOUBLE tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
+               auto invert = ~vector->Transform; // Presume that prior path generation has configured the transform.
+               invert.transform(&tx, &ty);
 
-            if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
-               if ((Self->ActiveVector) and (Self->ActiveVector != vector->Head.UID)) {
-                  parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
-                  if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
+               InputEvent event = *input;
+               event.Next = NULL;
+               event.AbsX = input->X; // Absolute coordinates are not translated.
+               event.AbsY = input->Y;
+               event.X    = tx;
+               event.Y    = ty;
+               send_input_events(vector, &event);
+
+               if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+                  if ((Self->ActiveVector) and (Self->ActiveVector != vector->Head.UID)) {
+                     parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
+                     if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
+                  }
+
+                  Self->ActiveVector  = vector->Head.UID;
+                  Self->ActiveVectorX = tx;
+                  Self->ActiveVectorY = ty;
                }
 
-               Self->ActiveVector  = vector->Head.UID;
-               Self->ActiveVectorX = bounds.X;
-               Self->ActiveVectorY = bounds.Y;
+               processed = true;
             }
 
-            processed = true;
-            break; // Input consumed
+            if (cursor IS PTR_DEFAULT) continue; // Keep scanning in case an input boundary defines a cursor.
+            else break; // Input consumed and cursor image identified.
          }
 
          // If no vectors received a hit for a movement message, we may need to inform the last active vector that the
@@ -960,9 +1008,10 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
       else log.warning("Unrecognised movement type %d", input->Type);
    }
 
-   if ((!Self->ButtonLock) and (Self->SurfaceID)) {
+   if ((cursor != -1) and (!Self->ButtonLock) and (Self->SurfaceID)) {
+      Self->Cursor = cursor;
       parasol::ScopedObjectLock<objSurface> lock(Self->SurfaceID);
-      if (lock.granted() and (lock.obj->Cursor != cursor)) {
+      if (lock.granted() and (lock.obj->Cursor != Self->Cursor)) {
          SetLong(lock.obj, FID_Cursor, cursor);
       }
    }
