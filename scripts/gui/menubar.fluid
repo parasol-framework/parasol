@@ -34,9 +34,9 @@ as follows:
    if (not mFont) then mFont = mod.load('font') end
 
 local lColours = {
-   textFill = 'rgb(255,255,255)',
+   textFill      = 'rgb(255,255,255)',
    textHighlight = 'rgb(160,160,220)',
-   iconGradient = { first={ r=250,g=249,b=248 }, last={ r=190,g=191,b=192 } }
+   iconGradient  = { first={ r=250,g=249,b=248 }, last={ r=190,g=191,b=192 } }
 }
 
 local VMARGIN   = 6
@@ -50,6 +50,138 @@ local function counter()
    return count
 end
 
+local function activateItem(self) -- Activate the current menu item.
+   if not self._currentItem then return end
+
+   if self._currentItem.callback then
+      self._currentItem.callback(self._currentItem.id, self._currentItem.name)
+   end
+
+   local menu = self._currentItem.menu
+   if not menu then
+      menu = gui.menu({
+         relative     = self.vp.scene.surface,
+         x            = self._currentItem.x,
+         y            = self.vp.height - 2,
+         keyMonitor   = self.vp,
+         config       = self._currentItem.menuConfig
+      })
+      self._currentItem.menu = menu
+   end
+
+   menu.x = self._currentItem.x
+
+   if self._lastMenu and self._lastMenu != menu then
+      self._lastMenu.hide()
+   end
+
+   if menu.toggle() == 1 then
+      self._lastMenu = menu
+   end
+end
+
+local function firstItem(self) -- Return the first item
+   return self._first
+end
+
+local function lastItem(self) -- Return the last item
+   return self._last
+end
+
+local function newItem(self, Name, ID) -- Append an item to the menu bar
+   if ID and self._lookup[ID] then error('An item with identifier ' .. ID .. ' already exists.') end
+
+   local item = { id=ID, name=Name }
+   if nz(Name) then
+      item.displayName = mSys.StrTranslateText(Name)
+   end
+
+   if self._last then self._last.next = item end
+   item.prev = self._last
+   item.next = nil
+   self._last = item
+   if (not self._first) then self._first = item end
+
+   if ID then self._lookup[ID] = item end
+   return item
+end
+
+local function getCursorItem(self, X, Y)
+   local item = self._first
+   while item do
+      if (X >= item.x) and (X <  item.x + item.width) and (Y >= item.y) and (Y <  item.y + item.height) then
+         return item
+      end
+      item = item.next
+   end
+end
+
+-- Highlight selected item (for keyboard item selection)
+
+local function highlightItem(self, Item)
+   self._currentItem = Item
+   self._hIcon.x          = Item.x + 1
+   self._hIcon.y          = 1
+   self._hIcon.width      = Item.width - 2
+   self._hIcon.height     = self.vp.height - 2
+   self._hIcon.visibility = 'visible'
+
+   self.vp.acDraw()
+end
+
+local function arrangeItems(self)
+   if self._vg then self._vg.acFree() end
+
+   self._vg = self.vp.new('VectorGroup', { name='ItemGroup' })
+
+   local item = self._first
+   local x = 0
+   local y = 0
+   local spanCount = 0
+   while item do
+      item.x        = x
+      item.y        = y
+      item.width    = ICON_SIZE + (VMARGIN * 2)
+      item.height   = ICON_SIZE + (VMARGIN * 2)
+      item.gfxWidth = item.width
+
+      local iconWidth = 0
+      if item.svg then
+         iconWidth = ICON_SIZE + VMARGIN
+         item.svgGroup.x = x + VMARGIN
+         item.svgGroup.y = y + VMARGIN
+         if self._disabled or item.disabled then
+            item.vectorIcon.opacity = 0.5
+         end
+      end
+
+      if nz(item.displayName) then
+         item.vectorText = self._vg.new('VectorText', {
+            x        = x + iconWidth + VMARGIN,
+            face     = 'Source Sans Pro',
+            fontSize = FONT_SIZE,
+            fill     = lColours.textFill,
+            string   = item.displayName
+         })
+
+         item.gfxWidth = iconWidth + mFont.StringWidth(item.vectorText.font, item.displayName, -1) + (VMARGIN * 2)
+         item.width = item.gfxWidth + GAP
+         item.vectorText.y = (self.vp.height * 0.5) + (item.vectorText.font.height * 0.5)
+
+         if self._disabled or item.disabled then
+            item.vectorText.opacity = 0.5
+         end
+      end
+
+      x = x + item.width
+      spanCount = spanCount + 1
+
+      item = item.next
+   end
+
+   self._arranged = true
+end
+
 gui.menubar = function(HostVP, Options)
    local self = { -- Public variables
       host = nil,
@@ -58,162 +190,6 @@ gui.menubar = function(HostVP, Options)
       _disabled = false,
       _arranged = false
    }
-
-   local function activateItem() -- Activate the current menu item.
-      if not self._currentItem then return end
-
-      if self._currentItem.callback then
-         self._currentItem.callback(self._currentItem.id, self._currentItem.name)
-      end
-
-      local menu = self._currentItem.menu
-      if not menu then
-         menu = gui.menu({
-            relative     = self.vp.scene.surface,
-            x            = self._currentItem.x,
-            y            = self.vp.height - 2,
-            keyMonitor   = self.vp,
-            config       = self._currentItem.menuConfig
-         })
-         self._currentItem.menu = menu
-      end
-
-      menu.x = self._currentItem.x
-
-      if self._lastMenu and self._lastMenu != menu then
-         self._lastMenu.hide()
-      end
-
-      if menu.switch() == 1 then
-         self._lastMenu = menu
-      end
-   end
-
-   local function firstItem() -- Return the first item
-      return self._first
-   end
-
-   local function lastItem() -- Return the last item
-      return self._last
-   end
-
-   local function newItem(Name, ID) -- Append an item to the menu bar
-      if ID and self._lookup[ID] then error('An item with identifier ' .. ID .. ' already exists.') end
-
-      local item = { id=ID, name=Name }
-      if nz(Name) then
-         item.displayName = mSys.StrTranslateText(Name)
-      end
-
-      if self._last then self._last.next = item end
-      item.prev = self._last
-      item.next = nil
-      self._last = item
-      if (not self._first) then self._first = item end
-
-      if ID then self._lookup[ID] = item end
-      return item
-   end
-
-   local function getCursorItem(X, Y)
-      local item = self._first
-      while item do
-         if (X >= item.x) and (X <  item.x + item.width) and (Y >= item.y) and (Y <  item.y + item.height) then
-            return item
-         end
-         item = item.next
-      end
-   end
-
-   -- Highlight selected item (for keyboard item selection)
-
-   local function highlightItem(Item)
-      self._currentItem = Item
-      self._hIcon.x          = Item.x + 1
-      self._hIcon.y          = 1
-      self._hIcon.width      = Item.width - 2
-      self._hIcon.height     = self.vp.height - 2
-      self._hIcon.visibility = 'visible'
-
-      self.vp.acDraw()
-   end
-
-   local function keyFeedback(Input, Surface, Flags, Code, Unicode)
-      if (bit.band(Flags, KQ_PRESSED) != 0) then
-         if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
-            activateItem()
-         elseif (Code == K_UP) or (Code == K_LEFT) then
-            if (self._currentItem) then
-               local scan = self._currentItem.prev
-               if (not scan) then scan = lastItem() end
-               highlightItem(scan)
-            else
-               highlightItem(firstItem())
-            end
-         elseif (Code == K_DOWN) or (Code == K_RIGHT) or (Code == K_TAB) then
-            if self._currentItem then
-               local scan = self._currentItem.next
-               if (not scan) then scan = firstItem() end
-               highlightItem(scan)
-            else
-               highlightItem(firstItem())
-            end
-         end
-      end
-   end
-
-   local function arrangeItems()
-      if self._vg then self._vg.acFree() end
-
-      self._vg = self.vp.new('VectorGroup', { name='ItemGroup' })
-
-      local item = self._first
-      local x = 0
-      local y = 0
-      local spanCount = 0
-      while item do
-         item.x        = x
-         item.y        = y
-         item.width    = ICON_SIZE + (VMARGIN * 2)
-         item.height   = ICON_SIZE + (VMARGIN * 2)
-         item.gfxWidth = item.width
-
-         local iconWidth = 0
-         if item.svg then
-            iconWidth = ICON_SIZE + VMARGIN
-            item.svgGroup.x = x + VMARGIN
-            item.svgGroup.y = y + VMARGIN
-            if self._disabled or item.disabled then
-               item.vectorIcon.opacity = 0.5
-            end
-         end
-
-         if nz(item.displayName) then
-            item.vectorText = self._vg.new('VectorText', {
-               x        = x + iconWidth + VMARGIN,
-               face     = 'Source Sans Pro',
-               fontSize = FONT_SIZE,
-               fill     = lColours.textFill,
-               string   = item.displayName
-            })
-
-            item.gfxWidth = iconWidth + mFont.StringWidth(item.vectorText.font, item.displayName, -1) + (VMARGIN * 2)
-            item.width = item.gfxWidth + GAP
-            item.vectorText.y = (self.vp.height * 0.5) + (item.vectorText.font.height * 0.5)
-
-            if self._disabled or item.disabled then
-               item.vectorText.opacity = 0.5
-            end
-         end
-
-         x = x + item.width
-         spanCount = spanCount + 1
-
-         item = item.next
-      end
-
-      self._arranged = true
-   end
 
    local function applyFill(Vector, Fill)
       while (Vector != nil) do
@@ -231,7 +207,7 @@ gui.menubar = function(HostVP, Options)
    -- icon can be displayed.  The icon string must be in the standard format of 'category/icon'.
 
    self.addItem = function(ID, Name, Icon, Function, Menu)
-      local item = newItem(Name, ID)
+      local item = newItem(self, Name, ID)
       item.callback = Function
       item.menuConfig = Menu
 
@@ -316,43 +292,6 @@ gui.menubar = function(HostVP, Options)
       self.vp.acDraw()
    end
 
-   local function inputFeedback(Viewport, Events) -- Internal input handler
-      local ev = Events
-      while ev do
-         if (ev.type == JET_ENTERED_SURFACE) then
-
-         elseif (ev.type == JET_LEFT_SURFACE) then
-            if self._currentItem then
-               hoverUpdate(nil)
-            end
-         elseif (bit.band(ev.flags, JTYPE_MOVEMENT) != 0) then
-            if self._clicked then return end
-
-            local item = getCursorItem(ev.x, ev.y)
-
-            hoverUpdate(item)
-         elseif (bit.band(ev.flags, JTYPE_BUTTON) != 0) then
-            if (ev.type != JET_BUTTON_1) then return end
-
-            if (ev.value > 0) then
-               if self._currentItem then
-                  if self._currentItem.disabled or self._disabled then return end
-
-                  self._clicked = self._currentItem
-                  hoverUpdate(self._currentItem, true)
-                  activateItem()
-               end
-            elseif self._clicked then
-               self._clicked = nil
-
-               hoverUpdate(self._currentItem, true)
-            end
-         end
-
-         ev = ev.next
-      end
-   end
-
    -- Main entry point
 
    catch(function()
@@ -370,15 +309,17 @@ gui.menubar = function(HostVP, Options)
          self = { }
       end)
 
-      self.vp.subscribe('focus', function(Viewport, Args)
-         self.vp.acDraw()
-      end)
-
-      self.vp.subscribe('lostfocus', function(Viewport, Args)
-         if self._currentItem then
-            self._hIcon.visibility = 'hidden' -- Turn off keyboard highlighting
-            self.vp.acDraw()
+      self.vp.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
+         if (Event == FM_LOST_FOCUS) then
+            self._hasFocus = false
+            if self._currentItem then
+               self._hIcon.visibility = 'hidden' -- Turn off keyboard highlighting
+            end
+         else
+            self._hasFocus = true
          end
+
+         self.vp.acDraw()
       end)
 
       self.enable = function()
@@ -391,8 +332,66 @@ gui.menubar = function(HostVP, Options)
          self.vp.acDraw()
       end
 
-      self.vp.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), inputFeedback)
-      input.keyboard(self.vp.scene.surface, keyFeedback)
+      self.vp.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), function(Viewport, Events)
+         local ev = Events
+         while ev do
+            if (ev.type == JET_ENTERED_SURFACE) then
+
+            elseif (ev.type == JET_LEFT_SURFACE) then
+               if self._currentItem then
+                  hoverUpdate(nil)
+               end
+            elseif (bit.band(ev.flags, JTYPE_MOVEMENT) != 0) then
+               if self._clicked then return end
+
+               local item = getCursorItem(self, ev.x, ev.y)
+
+               hoverUpdate(item)
+            elseif (bit.band(ev.flags, JTYPE_BUTTON) != 0) then
+               if (ev.type != JET_BUTTON_1) then return end
+
+               if (ev.value > 0) then
+                  if self._currentItem then
+                     if self._currentItem.disabled or self._disabled then return end
+
+                     self._clicked = self._currentItem
+                     hoverUpdate(self._currentItem, true)
+                     activateItem(self)
+                  end
+               elseif self._clicked then
+                  self._clicked = nil
+
+                  hoverUpdate(self._currentItem, true)
+               end
+            end
+
+            ev = ev.next
+         end
+      end)
+
+      self.vp.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
+         if (bit.band(Qualifiers, KQ_PRESSED) != 0) then
+            if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
+               activateItem(self)
+            elseif (Code == K_UP) or (Code == K_LEFT) then
+               if (self._currentItem) then
+                  local scan = self._currentItem.prev
+                  if (not scan) then scan = lastItem(self) end
+                  highlightItem(self, scan)
+               else
+                  highlightItem(self, firstItem(self))
+               end
+            elseif (Code == K_DOWN) or (Code == K_RIGHT) or (Code == K_TAB) then
+               if self._currentItem then
+                  local scan = self._currentItem.next
+                  if (not scan) then scan = firstItem(self) end
+                  highlightItem(self, scan)
+               else
+                  highlightItem(self, firstItem(self))
+               end
+            end
+         end
+      end)
 
       self._bkgd = self.vp.new('VectorGroup', { name='ItemBackground' })
 
@@ -430,7 +429,7 @@ gui.menubar = function(HostVP, Options)
          height      = 1
       })
 
-      arrangeItems()
+      arrangeItems(self)
 
       if Options.tabFocus then
          Options.tabFocus.mtAddObject(self.vp)

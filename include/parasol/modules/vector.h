@@ -251,6 +251,9 @@
 // Mask for controlling feedback events that are received.
 
 #define FM_PATH_CHANGED 0x00000001
+#define FM_HAS_FOCUS 0x00000002
+#define FM_CHILD_HAS_FOCUS 0x00000004
+#define FM_LOST_FOCUS 0x00000008
 
 struct VectorDef {
    OBJECTPTR Object;    // Reference to the definition object.
@@ -381,13 +384,15 @@ typedef struct rkVectorScene {
    class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
    APTR KeyHandle; // Keyboard subscription
-   std::unordered_map<OBJECTID, struct acRedimension> PendingResizeMsgs;
+   std::unordered_set<struct rkVectorViewport *> PendingResizeMsgs;
    std::unordered_map<struct rkVector *, LONG> InputSubscriptions;
    std::unordered_set<struct rkVector *> KeyboardSubscriptions;
    std::vector<struct InputBoundary> InputBoundaries;
+   std::unordered_map<struct rkVectorViewport *, std::unordered_map<struct rkVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
+   LONG Cursor; // Current cursor image
    UBYTE  AdaptorType;
   
 #endif
@@ -590,7 +595,6 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
    struct rkVector *Prev; \
    OBJECTPTR Parent; \
    struct VectorMatrix *Matrices; \
-   DOUBLE StrokeWidth; \
    DOUBLE StrokeOpacity; \
    DOUBLE FillOpacity; \
    DOUBLE Opacity; \
@@ -613,7 +617,6 @@ typedef struct rkVector {
    struct rkVector * Prev;          // The previous vector in the branch, or NULL.
    OBJECTPTR Parent;                // The parent vector, or NULL if this is the top-most vector.
    struct VectorMatrix * Matrices;  // A list of transform matrices to apply to the vector.
-   DOUBLE    StrokeWidth;           // The width to use when stroking the path.
    DOUBLE    StrokeOpacity;         // Defines the opacity of the path stroke.
    DOUBLE    FillOpacity;           // The opacity to use when filling the vector.
    DOUBLE    Opacity;               // An overall opacity value for the vector.

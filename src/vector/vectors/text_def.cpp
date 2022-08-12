@@ -8,7 +8,6 @@ static const struct MethodArray clVectorTextMethods[] = {
 };
 
 static const struct ActionArray clVectorTextActions[] = {
-   { AC_ActionNotify, (APTR)VECTORTEXT_ActionNotify },
    { AC_Free, (APTR)VECTORTEXT_Free },
    { AC_Init, (APTR)VECTORTEXT_Init },
    { AC_NewObject, (APTR)VECTORTEXT_NewObject },

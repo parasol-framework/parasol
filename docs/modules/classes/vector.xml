@@ -174,14 +174,14 @@
 
     <method>
       <name>SubscribeFeedback</name>
-      <comment>Create a subscription for internal events that have modified the vector.</comment>
+      <comment>Subscribe to events that relate to the vector.</comment>
       <prototype>ERROR vecSubscribeFeedback(OBJECTPTR Object, LONG Mask, FUNCTION * Callback)</prototype>
       <input>
         <param type="LONG" name="Mask" lookup="FM">Combine FM flags to define the feedback events required by the client.  Set to 0xffffffff if all messages are desirable.</param>
         <param type="FUNCTION *" name="Callback">The function that will receive feedback events.</param>
       </input>
       <description>
-<p>To receive feedback for events that have modified a vector's attributes, use this method to create a subscription.</p>
+<p>Use this method to receive feedback for events that have affected the state of a vector.</p>
 <p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the callback function return <code>ERR_Terminate</code>.</p>
 <p>The synopsis for the Callback is:</p>
 <p>
@@ -198,11 +198,11 @@
       <comment>Create a subscription for input events that relate to the vector.</comment>
       <prototype>ERROR vecSubscribeInput(OBJECTPTR Object, LONG Mask, FUNCTION * Callback)</prototype>
       <input>
-        <param type="LONG" name="Mask">Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.</param>
-        <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
+        <param type="LONG" name="Mask">Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.</param>
+        <param type="FUNCTION *" name="Callback">Reference to a function that will receive input messages.</param>
       </input>
       <description>
-<p>The SubscribeInput method is provided as an extension to gfxSubscribeInput(), whereby the user's input events will be restricted to those within the vector's scene graph.  The original events are transferred as-is, although the <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> events are modified so that they trigger during passage through the scene's boundaries.</p>
+<p>The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target vector.  The original events are transferred with some modifications - <code>X</code>, <code>Y</code>, <code>AbsX</code> and <code>AbsY</code> are converted to the vector's coordinate system, and <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> events are triggered during passage through the clipping area.</p>
 <p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
 <p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the function return <code>ERR_Terminate</code>.</p>
 <p>Please refer to gfxSubscribeInput() for further information on event management and message handling.</p>
@@ -227,11 +227,11 @@
         <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
       </input>
       <description>
-<p>The SubscribeKeyboard method is provided to simplify the handling of keyboard messages for the client.  It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
-<p>A callback is required and this will receive input messages as they arrive from the user.  The prototype for the callback is as follows, whereby Flags are keyboard qualifiers <code>KQ</code> and the Value will be a <code>K</code> constant.</p>
+<p>The SubscribeKeyboard method provides a callback mechanism for handling keyboard events.  Events are reported when the vector or one of its children has the user focus.  It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
+<p>The prototype for the callback is as follows, whereby Qualifers are <code>KQ</code> flags and the Code is a <code>K</code> constant representing the raw key value.  The Unicode value is the resulting character when the qualifier and code are translated through the user's keymap.</p>
 <p>
-<code/><code> ERROR callback(*Viewport, LONG Flags, LONG Value); </code><code/></p>
-<p>To remove the subscription, the function can return <code>ERR_Terminate</code>.</p>
+<code/><code> ERROR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode); </code><code/></p>
+<p>If the callback returns <code>ERR_Terminate</code> then the subscription will be ended.  All other error codes are ignored.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -290,7 +290,7 @@
       <access read="R" write="S">Read/Set</access>
       <type lookup="PTR">INT</type>
       <description>
-<p>The Cursor field provides a convenient way of defining the pointer's cursor image within a vector boundary.  The cursor will automatically switch to the specified image when it enters the boundary defined by the vector's path.  This effect lasts until the cursor vacates the area.</p>
+<p>The Cursor field declares the pointer's cursor image to display within the vector's boundary.  The cursor will automatically switch to the specified image when it enters the boundary defined by the vector's path.  This effect lasts until the cursor vacates the area.</p>
 <p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
 <types lookup="PTR"/>
       </description>
@@ -309,8 +309,11 @@
     <field>
       <name>DashOffset</name>
       <comment>The distance into the dash pattern to start the dash.  Can be a negative number.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
+      <description>
+<p>The DashOffset can be set in conjunction with the <field>DashArray</field> to shift the dash pattern to the left.  If the offset is negative then the shift will be to the right.</p>
+      </description>
     </field>
 
     <field>
@@ -536,6 +539,19 @@
     </field>
 
     <field>
+      <name>ResizeEvent</name>
+      <comment>A callback to trigger when the host viewport is resized.</comment>
+      <access write="S">Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Use ResizeEvent to receive feedback when the viewport that hosts the vector is resized.  The function prototype is as follows:</p>
+<pre>void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)
+</pre>
+<p>The dimension values refer to the current location and size of the viewport.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Scene</name>
       <comment>Short-cut to the top-level <class name="VectorScene">VectorScene</class>.</comment>
       <access read="R">Read</access>
@@ -603,11 +619,11 @@ Z: Close Path
     <field>
       <name>StrokeWidth</name>
       <comment>The width to use when stroking the path.</comment>
-      <access read="R" write="S">Read/Set</access>
+      <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The StrokeWidth defines the pixel width of a path when it is stroked.  If this field is set to zero, the path will not be stroked.</p>
-<p>The StrokeWidth is affected by scaling factors imposed by transforms and viewports.</p>
+<p>The StrokeWidth defines the pixel width of a path when it is stroked.  The path will not be stroked if the value is zero.  A percentage can be used to define the stroke width if it should be relative to the size of the viewbox (along its diagonal).  Note that this incurs a slight computational penalty when drawing.</p>
+<p>The size of the stroke is also affected by scaling factors imposed by transforms and viewports.</p>
       </description>
     </field>
 
@@ -640,6 +656,9 @@ Z: Close Path
     </constants>
 
     <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
+      <const name="CHILD_HAS_FOCUS">A child of the vector has gained the user focus.</const>
+      <const name="HAS_FOCUS">The vector has gained the user focus.</const>
+      <const name="LOST_FOCUS">The vector has lost the user focus.</const>
       <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
     </constants>
 

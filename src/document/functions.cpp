@@ -7223,16 +7223,12 @@ static void set_focus(objDocument *Self, LONG Index, CSTRING Caller)
       if (Self->HasFocus) {
          CLASSID class_id = GetClassID(Self->Tabs[Index].Ref);
          OBJECTPTR text, input;
-         if (class_id IS ID_INPUT) {
+         if (class_id IS ID_VECTORTEXT) {
             if (!AccessObject(Self->Tabs[Index].Ref, 1000, &input)) {
                acFocus(input);
-
-               // If the object has a textinput field, select the text
-
-               if ((GetPointer(input, FID_UserInput, &text) IS ERR_Okay) and (text)) {
-                  txtSelectArea(text, 0,0, 200000, 200000);
-               }
-
+               //if ((GetPointer(input, FID_UserInput, &text) IS ERR_Okay) and (text)) {
+               //   txtSelectArea(text, 0,0, 200000, 200000);
+               //}
                ReleaseObject(input);
             }
          }

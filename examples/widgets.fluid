@@ -9,6 +9,10 @@ A demonstration of standard widgets
    require 'gui/dialog'
    require 'gui/filedialog'
    require 'gui/icon'
+   require 'gui/input'
+   require 'gui/button'
+   require 'gui/checkbox'
+   require 'gui/combobox'
    require 'vfx'
 
    mVector = mod.load('vector')
@@ -122,7 +126,12 @@ end
    text.y = y + text.font.height
    y = y + text.font.height + 8
 
-   local msgButton = viewport.new('button', { text='Message Box', x=win.leftMargin, y=y, icon='items/question',
+   local msgButton = gui.button({
+      target = viewport,
+      text   = 'Message Box',
+      x      = win.leftMargin,
+      y      = y,
+      icon   = 'items/question',
       feedback = function()
          gui.dialog.message({
             modal         = true,
@@ -152,7 +161,12 @@ end
       end
    })
 
-   local colourButton = viewport.new('button', { text='Select Colour', x=msgButton.right + 4, y=y, icon='tools/palette',
+   local colourButton = gui.button({
+      target = viewport,
+      text   = 'Select Colour',
+      x      = msgButton.viewport.x + msgButton.viewport.width + 4,
+      y      = y,
+      icon   = 'tools/palette',
       feedback = function()
          gui.dialog.colour({
             modal  = true,
@@ -169,7 +183,12 @@ end
       end
    })
 
-   local fontButton = viewport.new('button', { text='Select Font', x=colourButton.right + 4, y=y, icon='items/font',
+   local fontButton = gui.button({
+      target = viewport,
+      text   = 'Select Font',
+      x      = colourButton.viewport.x + colourButton.viewport.width + 4,
+      y      = y,
+      icon   = 'items/font',
       feedback = function()
          gui.dialog.font({
             okText     = 'Select Font',
@@ -187,10 +206,15 @@ end
       end
    })
 
-   local fileButton = viewport.new('button', { text='Select File', x=fontButton.right + 4, y=y, icon='folders/folder',
+   local fileButton = gui.button({
+      target = viewport,
+      text   = 'Select File',
+      x      = fontButton.viewport.x + fontButton.viewport.width + 4,
+      y      = y,
+      icon   = 'folders/folder',
       feedback = function()
          gui.dialog.file({
-            filterList  = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
+            filterList  = { { name='All Files', pattern='*' }, { name='MP3 Audio Files', pattern='*.mp3' }, { name='Text Files', pattern='*.txt' } },
             okText      = 'Select File',
             cancelText  = 'Exit',
             modal       = true,
@@ -210,20 +234,49 @@ end
       end
    })
 
-   y = y + msgButton.height + 8
+   y = y + msgButton.viewport.height + 8
 
-   local checkbox = viewport.new('checkbox', { label='Check Box', x=win.leftMargin, y=y })
-   y = y + checkbox.height + 8
-
-   local combobox = viewport.new('combobox', {
-      label='Combo Box', x=win.leftMargin, y=y, string='Your text here', width=200
+   local checkbox = gui.checkbox({
+      target = viewport,
+      label  = 'Checkbox',
+      align = 'left',
+      x = win.leftMargin,
+      y = y
    })
-   y = y + combobox.height + 8
+   y = y + checkbox.viewport.height + 8
 
-   local input = viewport.new('input', {
-      label='Input Box', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here'
+   local combobox = gui.combobox({
+      target = viewport,
+      label  = 'Combobox:',
+      string = 'Your text here',
+      x = win.leftMargin, y = y,
+      allowCustom = true,
+      items = {
+         { group='Office' },
+         { item='Address Book', icon='office/addressbook' },
+         { item='Inbox', icon='office/cabinet_in' },
+         { item='Tasks', icon='office/tasks' },
+         { item='Finances', icon='office/money' },
+         { group='Weather' },
+         { item='Snow', icon='weather/snow' },
+         { item='Thunder', icon='weather/thunder' }
+      }
    })
-   y = y + input.height + 8
+   y = y + combobox.viewport.height + 8
+
+   local input = gui.input({
+      target = viewport,
+      x      = win.leftMargin,
+      y      = y,
+      width  = 260,
+      label  = 'Inputbox: ',
+      text   = 'Your text here',
+      feedback = function(Input, Value, State)
+         print('Input state set to ' .. State .. ', text "' .. Value .. '"')
+
+      end
+   })
+   y = y + input.viewport.height + 16
 
    gui.icon({
       target = viewport,

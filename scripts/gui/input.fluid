@@ -1,0 +1,230 @@
+--[[
+The gui.input API creates and manages input boxes in the user interface.
+
+Basic template for creating a new input box:
+
+   require 'gui/input'
+   my_button = gui.input({ Options... })
+
+Valid options to use when creating the input box are as follows:
+
+  target:     Required.  Refers to a viewport that will contain the input box.
+  feedback:   A function to be called when the user changes the input content.
+  flushEdges: Set to true if the box needs to be squared off for flush edges.
+  inputMask:  Restrict input with a pattern that is compliant with Lua 5.1's string.find().
+  secret:     Set to true if the input box needs to hide a secret phrase from view.
+  selected:   Set to true if the input text should be pre-selected for the user.
+  text:       A preset string to display in the input box.
+  vfx:        A special effect to apply to the input box on its creation.
+  width:      Width of the box (including any label).
+  x:          The x coordinate of the box.
+  xOffset:    X offset, if not defining x.
+  y:          The y coordinate of the box.
+  yOffset:    Y offset, if not defining y.
+
+  disable()
+    Disable user interactivity.
+
+  enable()
+    Enable user interactivity.
+
+--]]
+
+   require 'common'
+   require 'gui'
+
+gui.input = function(Options)
+   local self = { -- Public variables
+      feedback       = Options.feedback,
+      label          = Options.label,
+      parentViewport = Options.target,
+      vfx            = Options.vfx, -- The active visual effect, if any
+      inputMask      = Options.inputMask,
+      text           = nil, -- A VectorText that represents the string
+      viewport       = nil, -- The input box's primary viewport
+      _lastGoodInput = ''
+   }
+
+   local MARGIN       = 6
+   local STROKE_WIDTH = 2
+   local DEFAULT_WIDTH = 160
+
+   local function reportFeedback(self, State)
+      if not self.feedback then return end
+      local text = self.text.string
+      local hash = mSys.StrHash(text)
+      if (hash != self.hash) then
+         self.hash = hash
+         self.feedback(self, text, State)
+      end
+   end
+
+   local function validateInput(self)
+      if self.inputMask then
+         local userInput = nz(self.text.string, '')
+         if string.len(userInput) > 0 then
+            if not string.find(userInput, self.inputMask) then
+               self.text.string = self._lastGoodInput
+               return false
+            end
+         end
+         self._lastGoodInput = userInput
+      end
+      return true
+   end
+
+   -- Change the active state of the input box to disabled or enabled
+
+   self.disable = function(self)
+      self.disabled = true
+      self.viewport.acDisable()
+      self.text.opacity = 0.5
+      self.bkgd.fill = gui.colours.rgb('widgetBkgd')
+   end
+
+   self.enable = function(self)
+      self.disabled = false
+      self.viewport.acDisable()
+      self.text.opacity = 1.0
+      self.bkgd.fill = gui.colours.rgb('widgetBkgd')
+   end
+
+   -- Main entry point --
+
+   if not Options.target then error('A target viewport is required.') end
+
+   local font_max_height, font_height = gui.getFontHeight(gui.fonts.widget)
+   local box_height = math.floor(font_max_height * 1.35) + 1
+
+   local vps = { -- Viewport settings
+      x       = Options.x,
+      y       = Options.y,
+      width   = Options.width,
+      height  = box_height,
+      xOffset = Options.xOffset,
+      yOffset = Options.yOffset
+   }
+
+   if not vps.x and not vps.xOffset then vps.x = 0 end
+   if not vps.y and not vps.yOffset then vps.y = 0 end
+   if not vps.width and not vps.xOffset then vps.width = DEFAULT_WIDTH end
+
+   self.viewport = self.parentViewport.new('VectorViewport', vps)
+
+   self.boxViewport = self.viewport.new('VectorViewport', {
+      cursor  = 'text',
+      x = 0,
+      y = 0,
+      width = self.viewport.width,
+      yOffset = 0,
+      resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
+         local new_width = Width - self.labelWidth
+         if (Vector.width != new_width) then
+            Vector.width = new_width
+         end
+
+         if (Vector.height != Height) then
+            Vector.height = Height
+         end
+      end
+   })
+
+   if self.label then
+      self.labelText = self.viewport.new('VectorText', {
+         name     = 'Label',
+         x        = 0,
+         y        = font_height + math.floor((box_height - font_height) * 0.5),
+         face     = gui.fonts.widget.face,
+         fontSize = string.format('%.2fpt', gui.fonts.widget.size),
+         fill     = gui.colours.rgb('windowText'),
+         string   = self.label,
+         lineLimit = 1
+      })
+
+      self.labelWidth = self.labelText.textWidth + MARGIN
+      self.boxViewport.x = self.labelText.x + self.labelWidth
+      self.boxViewport.width = self.viewport.width - self.labelWidth
+   else
+      self.labelWidth = 0
+   end
+
+   self.bkgd = self.boxViewport.new('VectorRectangle', {
+      fill   = gui.colours.rgb('widgetBkgd'),
+      x      = 0,
+      y      = 0,
+      width  = '100%',
+      height = '100%',
+   })
+
+   if not Options.flushEdges then
+      self.bkgd.stroke      = gui.colours.rgb('widgetStroke')
+      self.bkgd.strokeWidth = STROKE_WIDTH
+      self.bkgd.roundX      = STROKE_WIDTH * 2
+      self.bkgd.roundY      = STROKE_WIDTH * 2
+   end
+
+   self._textClip = self.boxViewport.new('VectorViewport', {
+      x=STROKE_WIDTH, y=STROKE_WIDTH, xOffset=STROKE_WIDTH, yOffset=STROKE_WIDTH, overflow=VOF_HIDDEN
+   })
+
+   self.text = self._textClip.new('VectorText', {
+      x         = 4,
+      y         = font_height + math.floor((box_height - font_height - STROKE_WIDTH - STROKE_WIDTH) * 0.5),
+      face      = gui.fonts.widget.face,
+      fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
+      fill      = gui.colours.rgb('widgetText'),
+      string    = Options.text,
+      lineLimit = 1,
+      textFlags = (function()
+         local flags = VTXF_EDITABLE
+         if Options.secret then flags = bit.bor(flags, VTXF_SECRET) end
+         return flags
+      end)()
+   })
+
+   if Options.selected then self.text.mtSelectArea(0, 20000) end
+
+   if self.vfx then
+      self.vfx.init(self.viewport, function()
+         self.vfx = nil
+      end)
+   end
+
+   self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
+      if (Event == FM_LOST_FOCUS) then
+         self.bkgd.stroke = gui.colours.rgb('widgetStroke')
+         if validateInput(self) then
+            reportFeedback(self, 'lost-focus')
+         end
+      else
+         self._lastGoodInput = self.text.string
+         if self.disabled then
+            self.bkgd.stroke = gui.colours.rgb('widgetStroke')
+         else
+            self.bkgd.stroke = gui.colours.rgb('widgetStrokeFocus')
+         end
+      end
+
+      Viewport.acDraw()
+   end)
+
+   self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
+      if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
+
+      if (Value == K_ENTER) or (Value == K_TAB) or (Value == K_NP_ENTER) then
+         validateInput(self)
+         reportFeedback(self, 'activated')
+      end
+   end)
+--[[
+   self.boxViewport.mtSubscribeInput(JTYPE_FEEDBACK, function(Viewport, Msg)
+      repeat
+         if (Msg.type == JET_ENTERED_SURFACE) then
+         elseif (Msg.type == JET_LEFT_SURFACE) then
+         end
+         Msg = Msg.next
+      until Msg == nil
+   end)
+--]]
+   return self
+end

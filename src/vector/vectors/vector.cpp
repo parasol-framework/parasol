@@ -26,6 +26,9 @@ unless otherwise documented.
 
 *********************************************************************************************************************/
 
+static std::unordered_map<objVector *, FUNCTION> glResizeSubscriptions; // Temporary cache for holding subscriptions.
+static std::mutex glResizeLock;
+
 static ERROR VECTOR_Push(objVector *, struct vecPush *);
 
 //********************************************************************************************************************
@@ -175,7 +178,7 @@ static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
       if (Self->Dirty) gen_vector_tree((objVector *)Self);
-      if (!Self->BasePath.total_vertices()) return ERR_NoData;
+      //if (!Self->BasePath.total_vertices()) return ERR_NoData;
 #if 0
       // Retrieve bounding box, post-transformations.
       // TODO: Would need to account for client defined brush stroke widths and stroke scaling.
@@ -251,8 +254,19 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    if (Self->Child) Self->Child->Parent = NULL;
 
    if ((Self->Scene) and (!(Self->Scene->Head.Flags & (NF_FREE|NF_FREE_MARK)))) {
+      if ((Self->ParentView) and (Self->ResizeSubscription) and (Self->Scene->ResizeSubscriptions.contains(Self->ParentView))) {
+         auto sub = Self->Scene->ResizeSubscriptions[Self->ParentView];
+         sub.erase(Self);
+      }
       Self->Scene->InputSubscriptions.erase(Self);
       Self->Scene->KeyboardSubscriptions.erase(Self);
+   }
+
+   {
+      const std::lock_guard<std::mutex> lock(glResizeLock);
+      if ((!glResizeSubscriptions.empty()) and (glResizeSubscriptions.contains(Self))) {
+         glResizeSubscriptions.erase(Self);
+      }
    }
 
    if (Self->Matrices) {
@@ -385,6 +399,16 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
       Args->Height = bounds[3] - bounds[1];
       return ERR_Okay;
    }
+   else if (Self->Head.SubID IS ID_VECTORVIEWPORT) {
+      if (Self->Dirty) gen_vector_tree((objVector *)Self);
+
+      auto view = (objVectorViewport *)Self;
+      Args->X      = view->vpBX1;
+      Args->Y      = view->vpBY1;
+      Args->Width  = view->vpBX2 - view->vpBX1;
+      Args->Height = view->vpBY2 - view->vpBY1;
+      return ERR_Okay;
+   }
    else return ERR_NotPossible;
 }
 
@@ -455,6 +479,14 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
    // Reapply the filter if it couldn't be set prior to initialisation.
    if ((!Self->Filter) and (Self->FilterString)) {
       SetString(Self, FID_Filter, Self->FilterString);
+   }
+
+   {
+      const std::lock_guard<std::mutex> lock(glResizeLock);
+      if (glResizeSubscriptions.contains(Self)) {
+         Self->Scene->ResizeSubscriptions[Self->ParentView][Self] = glResizeSubscriptions[Self];
+         glResizeSubscriptions.erase(Self);
+      }
    }
 
    return ERR_Okay;
@@ -644,10 +676,13 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
       DOUBLE bx1, by1, bx2, by2;
       bounding_rect_single(base_path, 0, &bx1, &by1, &bx2, &by2);
       if ((Args->X >= bx1) and (Args->Y >= by1) and (Args->X < bx2) and (Args->Y < by2)) {
-         // Do the hit testing.  TODO: There is potential for more sophisticated & optimal hit testing methods.
-         agg::rasterizer_scanline_aa<> raster;
-         raster.add_path(base_path);
-         if (raster.hit_test(Args->X, Args->Y)) return ERR_Okay;
+         if (Self->DisableHitTesting) return ERR_Okay;
+         else {
+            // Do the hit testing.  TODO: There is potential for more sophisticated & optimal hit testing methods.
+            agg::rasterizer_scanline_aa<> raster;
+            raster.add_path(base_path);
+            if (raster.hit_test(Args->X, Args->Y)) return ERR_Okay;
+         }
       }
    }
 
@@ -739,9 +774,9 @@ static ERROR VECTOR_Show(objVector *Self, APTR Void)
 /*********************************************************************************************************************
 
 -METHOD-
-SubscribeFeedback: Create a subscription for internal events that have modified the vector.
+SubscribeFeedback: Subscribe to events that relate to the vector.
 
-To receive feedback for events that have modified a vector's attributes, use this method to create a subscription.
+Use this method to receive feedback for events that have affected the state of a vector.
 
 To remove an existing subscription, call this method again with the same Callback and an empty Mask.
 Alternatively have the callback function return `ERR_Terminate`.
@@ -791,10 +826,10 @@ static ERROR VECTOR_SubscribeFeedback(objVector *Self, struct vecSubscribeFeedba
 -METHOD-
 SubscribeInput: Create a subscription for input events that relate to the vector.
 
-The SubscribeInput method is provided as an extension to gfxSubscribeInput(), whereby the user's input events
-will be restricted to those within the vector's scene graph.  The original events are transferred as-is, although the
-`ENTERED_SURFACE` and `LEFT_SURFACE` events are modified so that they trigger during passage through the scene's
-boundaries.
+The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target
+vector.  The original events are transferred with some modifications - `X`, `Y`, `AbsX` and `AbsY` are converted to
+the vector's coordinate system, and `ENTERED_SURFACE` and `LEFT_SURFACE` events are triggered during passage through
+the clipping area.
 
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
 
@@ -810,8 +845,8 @@ ERROR callback(*Vector, *InputEvent)
 ```
 
 -INPUT-
-int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.
-ptr(func) Callback: Reference to a callback function that will receive input messages.
+int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.
+ptr(func) Callback: Reference to a function that will receive input messages.
 
 -ERRORS-
 Okay:
@@ -864,17 +899,19 @@ static ERROR VECTOR_SubscribeInput(objVector *Self, struct vecSubscribeInput *Ar
 -METHOD-
 SubscribeKeyboard: Create a subscription for input events that relate to the vector.
 
-The SubscribeKeyboard method is provided to simplify the handling of keyboard messages for the client.  It is a
-pre-requisite that the associated @VectorScene has been linked to a @Surface.
+The SubscribeKeyboard method provides a callback mechanism for handling keyboard events.  Events are reported when the
+vector or one of its children has the user focus.  It is a pre-requisite that the associated @VectorScene has been
+linked to a @Surface.
 
-A callback is required and this will receive input messages as they arrive from the user.  The prototype for the
-callback is as follows, whereby Flags are keyboard qualifiers `KQ` and the Value will be a `K` constant.
+The prototype for the callback is as follows, whereby Qualifers are `KQ` flags and the Code is a `K` constant
+representing the raw key value.  The Unicode value is the resulting character when the qualifier and code are
+translated through the user's keymap.
 
 ```
-ERROR callback(*Viewport, LONG Flags, LONG Value);
+ERROR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode);
 ```
 
-To remove the subscription, the function can return `ERR_Terminate`.
+If the callback returns `ERR_Terminate` then the subscription will be ended.  All other error codes are ignored.
 
 -INPUT-
 ptr(func) Callback: Reference to a callback function that will receive input messages.
@@ -1018,12 +1055,12 @@ static ERROR VECTOR_SET_ClipRule(objVector *Self, LONG Value)
 -FIELD-
 Cursor: The mouse cursor to display when the pointer is within the vector's boundary.
 
-The Cursor field provides a convenient way of defining the pointer's cursor image within a vector boundary.  The cursor
-will automatically switch to the specified image when it enters the boundary defined by the vector's path.  This effect
+The Cursor field declares the pointer's cursor image to display within the vector's boundary.  The cursor will
+automatically switch to the specified image when it enters the boundary defined by the vector's path.  This effect
 lasts until the cursor vacates the area.
 
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
--END-
+
 ****************************************************************************/
 
 static ERROR VECTOR_SET_Cursor(objVector *Self, LONG Value)
@@ -1753,6 +1790,36 @@ static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
 /*********************************************************************************************************************
 
 -FIELD-
+ResizeEvent: A callback to trigger when the host viewport is resized.
+
+Use ResizeEvent to receive feedback when the viewport that hosts the vector is resized.  The function prototype is as
+follows:
+
+<pre>
+void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)
+</pre>
+
+The dimension values refer to the current location and size of the viewport.
+
+*********************************************************************************************************************/
+
+static ERROR VECTOR_SET_ResizeEvent(objVector *Self, FUNCTION *Value)
+{
+   Self->ResizeSubscription = TRUE;
+   if ((Self->Scene) and (Self->ParentView)) {
+      Self->Scene->ResizeSubscriptions[Self->ParentView][Self] = *Value;
+   }
+   else {
+      const std::lock_guard<std::mutex> lock(glResizeLock);
+      glResizeSubscriptions[Self] = *Value; // Save the subscription for initialisation.
+   }
+
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 Scene: Short-cut to the top-level @VectorScene.
 
 All vectors are required to be grouped within the hierarchy of a @VectorScene.  This requirement is enforced
@@ -1964,17 +2031,45 @@ static ERROR VECTOR_SET_StrokeOpacity(objVector *Self, DOUBLE Value)
 -FIELD-
 StrokeWidth: The width to use when stroking the path.
 
-The StrokeWidth defines the pixel width of a path when it is stroked.  If this field is set to zero, the path will not
-be stroked.
+The StrokeWidth defines the pixel width of a path when it is stroked.  The path will not be stroked if the value is
+zero.  A percentage can be used to define the stroke width if it should be relative to the size of the viewbox
+(along its diagonal).  Note that this incurs a slight computational penalty when drawing.
 
-The StrokeWidth is affected by scaling factors imposed by transforms and viewports.
+The size of the stroke is also affected by scaling factors imposed by transforms and viewports.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_StrokeWidth(objVector *Self, DOUBLE Value)
+static ERROR VECTOR_GET_StrokeWidth(objVector *Self, Variable *Value)
 {
-   if ((Value >= 0.0) and (Value <= 1000.0)) {
-      Self->StrokeWidth = Value;
+   DOUBLE val;
+
+   if (Value->Type & FD_PERCENTAGE) {
+      if (Self->RelativeStrokeWidth) val = Self->StrokeWidth * 100.0;
+      else val = 0;
+   }
+   else val = Self->fixed_stroke_width();
+
+   if (Value->Type & FD_DOUBLE) Value->Double = val;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   return ERR_Okay;
+}
+
+static ERROR VECTOR_SET_StrokeWidth(objVector *Self, Variable *Value)
+{
+   DOUBLE val;
+   if (Value->Type & FD_DOUBLE) val = Value->Double;
+   else if (Value->Type & FD_LARGE) val = Value->Large;
+   else return ERR_FieldTypeMismatch;
+
+   if ((val >= 0.0) and (val <= 1000.0)) {
+      if (Value->Type & FD_PERCENTAGE) {
+         Self->StrokeWidth = val * 0.01;
+         Self->RelativeStrokeWidth = true;
+      }
+      else {
+         Self->StrokeWidth = val;
+         Self->RelativeStrokeWidth = false;
+      }
       return ERR_Okay;
    }
    else return ERR_OutOfRange;
@@ -2108,6 +2203,16 @@ static ERROR vector_keyboard_events(objVector *Vector, const evKey *Event)
 
 //********************************************************************************************************************
 
+DOUBLE rkVector::fixed_stroke_width()
+{
+   if (this->RelativeStrokeWidth) {
+      return get_parent_diagonal(this) * this->StrokeWidth;
+   }
+   else return this->StrokeWidth;
+}
+
+//********************************************************************************************************************
+
 static const FieldDef clMorphFlags[] = {
    { "Stretch",     VMF_STRETCH },
    { "AutoSpacing", VMF_AUTO_SPACING },
@@ -2163,7 +2268,6 @@ static const FieldArray clVectorFields[] = {
    { "Prev",             FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Prev },
    { "Parent",           FDF_OBJECT|FD_R,              0, NULL, NULL },
    { "Matrices",         FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorMatrix", NULL, NULL },
-   { "StrokeWidth",      FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_StrokeWidth },
    { "StrokeOpacity",    FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_StrokeOpacity, (APTR)VECTOR_SET_StrokeOpacity },
    { "FillOpacity",      FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_FillOpacity, (APTR)VECTOR_SET_FillOpacity },
    { "Opacity",          FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_Opacity },
@@ -2181,9 +2285,11 @@ static const FieldArray clVectorFields[] = {
    { "MorphFlags",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clMorphFlags, (APTR)VECTOR_GET_MorphFlags, (APTR)VECTOR_SET_MorphFlags },
    { "NumericID",    FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_NumericID, (APTR)VECTOR_SET_NumericID },
    { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_ID, (APTR)VECTOR_SET_ID },
+   { "ResizeEvent",  FDF_VIRTUAL|FDF_FUNCTION|FDF_W,         0, NULL, (APTR)VECTOR_SET_ResizeEvent },
    { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)VECTOR_GET_Sequence, NULL },
    { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Stroke, (APTR)VECTOR_SET_Stroke },
    { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   0, (APTR)VECTOR_GET_StrokeColour, (APTR)VECTOR_SET_StrokeColour },
+   { "StrokeWidth",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTOR_GET_StrokeWidth, (APTR)VECTOR_SET_StrokeWidth },
    { "Transition",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          0, (APTR)VECTOR_GET_Transition, (APTR)VECTOR_SET_Transition },
    { "EnableBkgd",   FDF_VIRTUAL|FDF_LONG|FDF_RW,            0, (APTR)VECTOR_GET_EnableBkgd, (APTR)VECTOR_SET_EnableBkgd },
    { "Fill",         FDF_VIRTUAL|FDF_STRING|FDF_RW,          0, (APTR)VECTOR_GET_Fill, (APTR)VECTOR_SET_Fill },

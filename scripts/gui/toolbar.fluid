@@ -69,7 +69,8 @@ gui.toolbar = function(HostVP, Options)
       _cellMargin = nz(Options.cellMargin, 6),
       _disabled = false,
       _lookup = { },
-      _iconSize = nz(Options.iconSize, 16)
+      _iconSize = nz(Options.iconSize, 20),
+      _hasFocus = false
    }
 
    local function sendFeedback()
@@ -145,36 +146,6 @@ gui.toolbar = function(HostVP, Options)
       self.vp.acDraw()
    end
 
-   local function keyFeedback(Input, Surface, Flags, Code, Unicode)
-      if bit.band(Flags, KQ_PRESSED) != 0 then
-         if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
-            sendFeedback()
-         elseif (Code == K_UP) or (Code == K_LEFT) then
-            if self._current then
-               local scan = self._current.prev
-               while scan and (scan.type != TI_ICON) do
-                  scan = scan.prev
-               end
-               if (not scan) then scan = lastIcon() end
-               highlightItem(scan)
-            else
-               highlightItem(firstIcon())
-            end
-         elseif (Code == K_DOWN) or (Code == K_RIGHT) then
-            if self._current then
-               local scan = self._current.next
-               while scan and (scan.type != TI_ICON) do
-                  scan = scan.next
-               end
-               if (not scan) then scan = firstIcon() end
-               highlightItem(scan)
-            else
-               highlightItem(firstIcon())
-            end
-         end
-      end
-   end
-
    -- Main routine for arranging items within the toolbar's viewport.
 
    local function arrangeItems()
@@ -182,8 +153,6 @@ gui.toolbar = function(HostVP, Options)
       if (self._groupCount > 0) then
          groupOffset = self._groupMargin
       end
-
-      -- Vector scene generation
 
       if (not self._vHover) then
          if (self._groupCount > 0) then
@@ -197,7 +166,7 @@ gui.toolbar = function(HostVP, Options)
          end
       end
 
-      -- self._groupClip simplifies masking and self.vg provides a container for hosting temporary vectors.
+      -- The _groupClip simplifies masking and 'vg' provides a container for hosting temporary vectors.
 
       if self._groupClip then self._groupClip.acFree() end
       if self.vg then self.vg.acFree() end
@@ -280,7 +249,7 @@ gui.toolbar = function(HostVP, Options)
             item.width  = self._iconSize + (self._cellMargin * 2)
             item.height = self._iconSize + (self._cellMargin * 2)
 
-            if item.svg then
+            if item.svgGroup then
                item.svgGroup.x = x + self._cellMargin
                item.svgGroup.y = y + self._cellMargin
                if self._disabled or item.disabled then
@@ -316,6 +285,7 @@ gui.toolbar = function(HostVP, Options)
             spanCount = spanCount + 1
 
             if currentGroup then
+               item.group = currentGroup
                if self._horizontal then
                   currentGroup.width  = x - currentGroup.x
                   currentGroup.height = self.vp.height - (groupOffset * 2)
@@ -367,30 +337,12 @@ gui.toolbar = function(HostVP, Options)
       end
 
       if Icon then
-         catch(function()
-            local gname = 'tbar_grd' .. counter()
-            item.svgGroup = self.vp.new('VectorViewport', { x=0, y=0, width=self._iconSize, height=self._iconSize })
-            item.svgGradient = gui.simpleGradient(self.vp.scene, gname, { lColours.iconGradient.first, lColours.iconGradient.last }, 0, 0, 0, 1)
-            item.svg = obj.new('svg', { target=item.svgGroup, path='icons:' .. Icon .. '.svg' })
-            gui.applyFill(item.svgGroup, 'url(#' .. gname .. ')')
-
-            local viewport = item.svgGroup.child
-            if (viewport != nil) then
-               while (child != nil) do
-                  if (child.class.id == ID_VECTORVIEWPORT) then
-                     viewport = child
-                     break
-                  end
-               end
-
-               if (viewport.viewHeight < viewport.viewWidth) then
-                  item.svgGradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
-                  item.svgGradient.y2 = item.svgGradient.y1 + viewport.viewWidth
-               else
-                  item.svgGradient.y1 = viewport.viewY
-                  item.svgGradient.y2 = viewport.viewY + viewport.viewHeight
-               end
-            end
+         pcall(function()
+            item.icon = gui.createIcon(self.vp.scene, 'icons:' .. Icon .. '.svg', self._iconSize, lColours.iconGradient, Icon)
+            item.svgGroup = self.vp.new('VectorRectangle', {
+               fill = 'url(#' .. Icon .. ')',
+               x=0, y=0, width=self._iconSize, height=self._iconSize
+            })
          end)
       end
 
@@ -589,108 +541,133 @@ gui.toolbar = function(HostVP, Options)
 
    -- Main entry point
 
-   catch(function()
-      if (not HostVP) then error('A host viewport is required.') end
+   if (not HostVP) then error('A host viewport is required.') end
 
-      if Options.groupMargin then
-         self._groupMargin = Options.groupMargin
-         if self._groupMargin < 1 then self._groupMargin = 1 end
-      end
+   if Options.groupMargin then
+      self._groupMargin = Options.groupMargin
+      if self._groupMargin < 1 then self._groupMargin = 1 end
+   end
 
-      self.host = HostVP
-      self.vp = HostVP.new('VectorViewport')
-      self.vp.x = nz(Options.x, 0)
-      self.vp.y = nz(Options.y, 0)
+   self.host = HostVP
+   self.vp = HostVP.new('VectorViewport')
+   self.vp.x = nz(Options.x, 0)
+   self.vp.y = nz(Options.y, 0)
 
-      if Options.yOffset then
-         self.vp.yOffset = Options.yOffset
-      else
-         self.vp.height = 1
-      end
+   if Options.yOffset then
+      self.vp.yOffset = Options.yOffset
+   else
+      self.vp.height = 1
+   end
 
-      if Options.xOffset then
-         self.vp.xOffset = Options.xOffset
-      else
-         self.vp.width = HostVP.width - self.vp.x
-         self._arrangedWidth = true
-      end
+   if Options.xOffset then
+      self.vp.xOffset = Options.xOffset
+   else
+      self.vp.width = HostVP.width - self.vp.x
+      self._arrangedWidth = true
+   end
 
-      if Options.width then
-         self.vp.width = Options.width
-         self._arrangedWidth = false
-      end
+   if Options.width then
+      self.vp.width = Options.width
+      self._arrangedWidth = false
+   end
 
-      if (self.vp.acInit() != ERR_Okay) then error('Failed to initialise viewport.') end
+   if (self.vp.acInit() != ERR_Okay) then error('Failed to initialise viewport.') end
 
-      self.vp.subscribe('free', function(Viewport, Args)
-         if self._tipTimer then mSys.UpdateTimer(self._tipTimer, 0) end
-         self = { }
-      end)
-
-      self.vp.subscribe('focus', function(Viewport, Args)
-
-      end)
-
-      self.vp.subscribe('lostfocus', function(Viewport, Args)
-         if self._current then
-            self.hIcon.visibility = 'visible'
-            self._current = nil
-            self.vp.acDraw()
-         end
-      end)
-
-      self.vp.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), inputFeedback)
-
-      input.keyboard(self.vp.scene.surface, keyFeedback)
-
-      local fill = 'rgb(0,0,0,128)'
-      if (Options.theme != 'light') then
-         fill = 'rgb(255,255,255,200)'
-      end
-
-      self.hIcon = self.vp.new('VectorRectangle', { -- Keyboard-based selection
-         fill   = fill,
-         x      = 0,
-         y      = 0,
-         width  = 16,
-         height = 16,
-         visibility = 'hidden'
-      })
-
-      Options.createItems(self)
-
-      self._colBreadth = self._iconSize + (self._cellMargin * 2)
-      if (self._groupCount > 0) then
-         self._colBreadth = self._colBreadth + (self._groupMargin*2)
-      end
-
-      if (Options.orientation == 'horizontal') then
-         self._horizontal = true
-      elseif (Options.orientation == 'vertical') then
-         self._horizontal = false
-      end
-
-      if (not self._horizontal) and (Options.y and Options.yOffset) then
-         self._horizontal = false
-      else
-         self._horizontal = true
-      end
-
-      if self._horizontal then
-         self.vp.height = self._colBreadth
-      else
-         self.vp.width = self._colBreadth
-      end
-
-      arrangeItems()
-
-      if Options.tabFocus then
-         Options.tabFocus.mtAddObject(self.vp)
-      end
-   end,
-   function(Exception)
-      error('Failed to initialise Toolbar: ' .. Exception.message)
+   self.vp.subscribe('free', function(Viewport, Args)
+      if self._tipTimer then mSys.UpdateTimer(self._tipTimer, 0) end
+      self = { }
    end)
+
+   self.vp.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
+      if (Event == FM_LOST_FOCUS) then
+         self._hasFocus = false
+         if self._current then
+            self.hIcon.visibility = 'hidden'
+            self._current = nil
+         end
+      else
+         self._hasFocus = true
+      end
+
+      self.vp.acDraw()
+   end)
+
+   self.vp.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
+      if bit.band(Qualifiers, KQ_PRESSED) != 0 then
+         if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
+            sendFeedback()
+         elseif (Code == K_UP) or (Code == K_LEFT) then
+            if self._current then
+               local scan = self._current.prev
+               while scan and (scan.type != TI_ICON) do
+                  scan = scan.prev
+               end
+               if (not scan) then scan = lastIcon() end
+               highlightItem(scan)
+            else
+               highlightItem(firstIcon())
+            end
+         elseif (Code == K_DOWN) or (Code == K_RIGHT) then
+            if self._current then
+               local scan = self._current.next
+               while scan and (scan.type != TI_ICON) do
+                  scan = scan.next
+               end
+               if (not scan) then scan = firstIcon() end
+               highlightItem(scan)
+            else
+               highlightItem(firstIcon())
+            end
+         end
+      end
+   end)
+
+   self.vp.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), inputFeedback)
+
+   local fill = 'rgb(0,0,0,128)'
+   if (Options.theme != 'light') then
+      fill = 'rgb(255,255,255,200)'
+   end
+
+   self.hIcon = self.vp.new('VectorRectangle', { -- Icon highlighter, for keyboard-based selection
+      fill   = fill,
+      x      = 0,
+      y      = 0,
+      width  = 16,
+      height = 16,
+      visibility = 'hidden'
+   })
+
+   Options.createItems(self)
+
+   self._colBreadth = self._iconSize + (self._cellMargin * 2)
+   if (self._groupCount > 0) then
+      self._colBreadth = self._colBreadth + (self._groupMargin*2)
+   end
+
+   if (Options.orientation == 'horizontal') then
+      self._horizontal = true
+   elseif (Options.orientation == 'vertical') then
+      self._horizontal = false
+   end
+
+   if (not self._horizontal) and (Options.y and Options.yOffset) then
+      self._horizontal = false
+   else
+      self._horizontal = true
+   end
+
+   if self._horizontal then
+      self.vp.height = self._colBreadth
+   else
+      self.vp.width = self._colBreadth
+   end
+
+   arrangeItems()
+
+   if Options.tabFocus then
+      Options.tabFocus.mtAddObject(self.vp)
+   end
 
    return self
 end

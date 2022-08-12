@@ -124,9 +124,9 @@ static ERROR SET_Volume(objStorageDevice *Self, CSTRING Value)
 
    if (Self->Head.Flags & NF_INITIALISED) return log.warning(ERR_Immutable);
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       LONG len;
-      for (len=0; (Value[len]) AND (Value[len] != ':'); len++);
+      for (len=0; (Value[len]) and (Value[len] != ':'); len++);
 
       if (Self->prvVolume) FreeResource(Self->prvVolume);
 
