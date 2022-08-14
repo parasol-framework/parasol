@@ -64,7 +64,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla eget ornare ante, ac efficitur turpis. Proin venenatis eget sapien vitae volutpat. In interdum id ante in aliquet. Quisque convallis lacus in gravida fringilla. Nam porta pellentesque turpis, ut efficitur neque suscipit vel. Morbi vitae consequat nisl. Donec turpis lorem, dapibus eget scelerisque quis, porttitor bibendum leo.
 ]]
 
-   local lWindow, lFonts, vwSize, vwStyle, vwFace, lTab
+   local lWindow, lFonts, vwSize, vwStyle, vwFace
    local lShortText = 'The Quick Brown Fox Jumped Over The Lazy Dog'
    local lOptions   = Options
    local lSizes     = { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
@@ -243,7 +243,6 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       end)
 
       self.windowID = lWindow.id
-      lTab = lWindow.new('tabfocus', { })
       self.scene = obj.new('VectorScene', { surface = lWindow.surface })
       self.viewport = self.scene.new('VectorViewport', { })
 

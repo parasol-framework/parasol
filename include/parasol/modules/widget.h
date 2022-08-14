@@ -35,20 +35,6 @@
 #include <parasol/modules/document.h>
 #endif
 
-// Flags for the TabFocus class.
-
-#define TF_LOCAL_FOCUS 0x00000001
-#define TF_CHILD_FOCUS 0x00000002
-#define TF_LIMIT_TO_LIST 0x00000004
-
-// Activation flags
-
-#define ACF_RELEASE 0x00000001
-#define ACF_SINGLE_CLICK 0x00000002
-#define ACF_DOUBLE_CLICK 0x00000004
-#define ACF_MOVEMENT 0x00000008
-#define ACF_SENSITIVE 0x0000000a
-
 // Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)
 
 #define AXIS_X 0
@@ -94,62 +80,6 @@ typedef struct rkResize {
   
 #endif
 } objResize;
-
-// TabFocus class definition
-
-#define VER_TABFOCUS (1.000000)
-
-typedef struct rkTabFocus {
-   OBJECT_HEADER
-   OBJECTID SurfaceID;  // The surface to monitor for the primary focus when managing the tab key
-   LONG     Total;      // Total number of objects on the tab list
-   LONG     Flags;      // Optional flags
-
-#ifdef PRV_TABFOCUS
-   struct {
-      OBJECTID ObjectID;
-      OBJECTID SurfaceID;
-   } TabList[50];         // List of objects to be managed by the tab key
-   APTR prvKeyEvent;
-   WORD Index;            // Current focus index
-   OBJECTID CurrentFocus;
-   BYTE Reverse:1;
-  
-#endif
-} objTabFocus;
-
-// TabFocus methods
-
-#define MT_TabAddObject -1
-#define MT_TabInsertObject -2
-#define MT_TabRemoveObject -3
-#define MT_TabSetObject -4
-
-struct tabAddObject { OBJECTID ObjectID;  };
-struct tabInsertObject { LONG Index; OBJECTID ObjectID;  };
-struct tabRemoveObject { OBJECTID ObjectID;  };
-struct tabSetObject { LONG Index; OBJECTID ObjectID;  };
-
-INLINE ERROR tabAddObject(APTR Ob, OBJECTID ObjectID) {
-   struct tabAddObject args = { ObjectID };
-   return(Action(MT_TabAddObject, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR tabInsertObject(APTR Ob, LONG Index, OBJECTID ObjectID) {
-   struct tabInsertObject args = { Index, ObjectID };
-   return(Action(MT_TabInsertObject, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR tabRemoveObject(APTR Ob, OBJECTID ObjectID) {
-   struct tabRemoveObject args = { ObjectID };
-   return(Action(MT_TabRemoveObject, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR tabSetObject(APTR Ob, LONG Index, OBJECTID ObjectID) {
-   struct tabSetObject args = { Index, ObjectID };
-   return(Action(MT_TabSetObject, (OBJECTPTR)Ob, &args));
-}
-
 
 #define CT_DATA 0
 #define CT_AUDIO 1

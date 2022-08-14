@@ -68,7 +68,7 @@ end
       end
    })
 
-   local y = menubar.vp.height
+   local y = menubar.viewport.height
 
    lToolbar = gui.toolbar(viewport, {
       xOffset     = 0,
@@ -93,7 +93,7 @@ end
       end
    })
 
-   y = y + lToolbar.vp.height + 8
+   y = y + lToolbar.viewport.height + 8
 
    local popupMenu = gui.menu({
       x     = 30,

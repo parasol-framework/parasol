@@ -23,7 +23,6 @@ as follows:
   createItems: Required.  A function that will define the items to display in the menubar.
   x, y:        The x and y coordinates of the menubar.
   xOffset:     Optional x offset (defaults to 0).
-  tabFocus:    Optional reference to a TabFocus object for the MenuBar to connect to.
 --]]
 
    require 'common'
@@ -60,10 +59,10 @@ local function activateItem(self) -- Activate the current menu item.
    local menu = self._currentItem.menu
    if not menu then
       menu = gui.menu({
-         relative     = self.vp.scene.surface,
+         relative     = self.viewport.scene.surface,
          x            = self._currentItem.x,
-         y            = self.vp.height - 2,
-         keyMonitor   = self.vp,
+         y            = self.viewport.height - 2,
+         keyMonitor   = self.viewport,
          config       = self._currentItem.menuConfig
       })
       self._currentItem.menu = menu
@@ -123,16 +122,16 @@ local function highlightItem(self, Item)
    self._hIcon.x          = Item.x + 1
    self._hIcon.y          = 1
    self._hIcon.width      = Item.width - 2
-   self._hIcon.height     = self.vp.height - 2
+   self._hIcon.height     = self.viewport.height - 2
    self._hIcon.visibility = 'visible'
 
-   self.vp.acDraw()
+   self.viewport.acDraw()
 end
 
 local function arrangeItems(self)
    if self._vg then self._vg.acFree() end
 
-   self._vg = self.vp.new('VectorGroup', { name='ItemGroup' })
+   self._vg = self.viewport.new('VectorGroup', { name='ItemGroup' })
 
    local item = self._first
    local x = 0
@@ -166,7 +165,7 @@ local function arrangeItems(self)
 
          item.gfxWidth = iconWidth + mFont.StringWidth(item.vectorText.font, item.displayName, -1) + (VMARGIN * 2)
          item.width = item.gfxWidth + GAP
-         item.vectorText.y = (self.vp.height * 0.5) + (item.vectorText.font.height * 0.5)
+         item.vectorText.y = (self.viewport.height * 0.5) + (item.vectorText.font.height * 0.5)
 
          if self._disabled or item.disabled then
             item.vectorText.opacity = 0.5
@@ -185,7 +184,7 @@ end
 gui.menubar = function(HostVP, Options)
    local self = { -- Public variables
       host = nil,
-      vp = nil,
+      viewport = nil,
       _lookup = { },
       _disabled = false,
       _arranged = false
@@ -214,8 +213,8 @@ gui.menubar = function(HostVP, Options)
       if Icon then
          catch(function()
             local gname = 'menu_grd' .. counter()
-            item.svgGroup = self.vp.new('VectorViewport', { x=0, y=0, width=ICON_SIZE, height=ICON_SIZE })
-            item.svgGradient = gui.simpleGradient(self.vp.scene, gname, { lColours.iconGradient.first, lColours.iconGradient.last }, 0, 0, 0, ICON_SIZE, 'userspace', true)
+            item.svgGroup = self.viewport.new('VectorViewport', { x=0, y=0, width=ICON_SIZE, height=ICON_SIZE })
+            item.svgGradient = gui.simpleGradient(self.viewport.scene, gname, { lColours.iconGradient.first, lColours.iconGradient.last }, 0, 0, 0, ICON_SIZE, 'userspace', true)
             item.svg = obj.new('svg', { target=item.svgGroup, path='icons:' .. Icon .. '.svg' })
             applyFill(item.svgGroup, 'url(#' .. gname .. ')')
 
@@ -248,7 +247,7 @@ gui.menubar = function(HostVP, Options)
       local item = self._lookup[ID]
       if item and (not item.disabled) then
          item.disabled = true
-         self.vp.acDraw()
+         self.viewport.acDraw()
       end
    end
 
@@ -258,7 +257,7 @@ gui.menubar = function(HostVP, Options)
       local item = self._lookup[ID]
       if item and item.disabled then
          item.disabled = false
-         self.vp.acDraw()
+         self.viewport.acDraw()
       end
    end
 
@@ -289,7 +288,7 @@ gui.menubar = function(HostVP, Options)
          self._prevItem = self._currentItem
       end
 
-      self.vp.acDraw()
+      self.viewport.acDraw()
    end
 
    -- Main entry point
@@ -297,19 +296,19 @@ gui.menubar = function(HostVP, Options)
    catch(function()
       if (not HostVP) then error('A target viewport is required.') end
 
-      self.vp = HostVP.new('vectorviewport')
-      self.vp.x      = nz(Options.x, 0)
-      self.vp.y      = nz(Options.y, 0)
-      self.vp.height = 1
-      self.vp.xOffset = nz(Options.xOffset, 0)
+      self.viewport = HostVP.new('vectorviewport')
+      self.viewport.x      = nz(Options.x, 0)
+      self.viewport.y      = nz(Options.y, 0)
+      self.viewport.height = 1
+      self.viewport.xOffset = nz(Options.xOffset, 0)
 
-      if (self.vp.acInit() != ERR_Okay) then error('Failed to initialise viewport.') end
+      if (self.viewport.acInit() != ERR_Okay) then error('Failed to initialise viewport.') end
 
-      self.vp.subscribe('free', function(Viewport, Args)
+      self.viewport.subscribe('free', function(Viewport, Args)
          self = { }
       end)
 
-      self.vp.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
+      self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
          if (Event == FM_LOST_FOCUS) then
             self._hasFocus = false
             if self._currentItem then
@@ -319,20 +318,20 @@ gui.menubar = function(HostVP, Options)
             self._hasFocus = true
          end
 
-         self.vp.acDraw()
+         self.viewport.acDraw()
       end)
 
       self.enable = function()
          self._disabled = false
-         self.vp.acDraw()
+         self.viewport.acDraw()
       end
 
       self.disable = function()
          self._disabled = true
-         self.vp.acDraw()
+         self.viewport.acDraw()
       end
 
-      self.vp.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), function(Viewport, Events)
+      self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), function(Viewport, Events)
          local ev = Events
          while ev do
             if (ev.type == JET_ENTERED_SURFACE) then
@@ -369,7 +368,7 @@ gui.menubar = function(HostVP, Options)
          end
       end)
 
-      self.vp.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
+      self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
          if (bit.band(Qualifiers, KQ_PRESSED) != 0) then
             if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
                activateItem(self)
@@ -393,9 +392,9 @@ gui.menubar = function(HostVP, Options)
          end
       end)
 
-      self._bkgd = self.vp.new('VectorGroup', { name='ItemBackground' })
+      self._bkgd = self.viewport.new('VectorGroup', { name='ItemBackground' })
 
-      self._hIcon = self.vp.new('VectorRectangle', { -- Keyboard-based selection
+      self._hIcon = self.viewport.new('VectorRectangle', { -- Keyboard-based selection
          stroke    = 'rgb(0,0,0,128)',
          dashArray = '1, 1',
          roundX    = 3,
@@ -409,14 +408,14 @@ gui.menubar = function(HostVP, Options)
 
       Options.createItems(self)
 
-      self.vp.height = ICON_SIZE + (VMARGIN * 2)
+      self.viewport.height = ICON_SIZE + (VMARGIN * 2)
 
       self._bkgd.new('VectorRectangle', { -- Main background
          fill   = 'rgb(0,0,0,200)',
          x      = 0,
          y      = 0,
          width  = '100%',
-         height = self.vp.height - 1
+         height = self.viewport.height - 1
       })
 
       self._bkgd.new('VectorRectangle', { -- Bottom stroke
@@ -424,16 +423,12 @@ gui.menubar = function(HostVP, Options)
          stroke      = 'rgb(255,255,255,64)',
          strokeWidth = 1,
          x           = 0,
-         y           = self.vp.height - 1,
+         y           = self.viewport.height - 1,
          width       = '100%',
          height      = 1
       })
 
       arrangeItems(self)
-
-      if Options.tabFocus then
-         Options.tabFocus.mtAddObject(self.vp)
-      end
    end,
    function(Exception)
       error('Failed to initialise Menubar: ' .. Exception.message)

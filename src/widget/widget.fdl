@@ -53,18 +53,6 @@ module({ name='Widget', copyright='Paul Manias 2003-2020', version=1.0, prefix='
   c_include('<parasol/modules/font.h>', '<parasol/modules/picture.h>', '<parasol/modules/vector.h>',
     '<parasol/modules/xml.h>',  '<parasol/modules/display.h>', '<parasol/modules/document.h>')
 
-  flags('TF', { comment='Flags for the TabFocus class.' },
-    'LOCAL_FOCUS: In this mode, the user\'s point of focus must match the monitored Surface for the tabfocus to function.',
-    'CHILD_FOCUS: In this mode, the user\'s point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.',
-    'LIMIT_TO_LIST: In limit-to-list mode, the tabfocus only functions if the user\'s point of focus is on the monitored Surface or one of objects in the tab list.')
-
-  flags('ACF', { comment='Activation flags' },
-    'RELEASE: Releasing a mouse button will create an Activate action.',
-    'SINGLE_CLICK: Single clicking on any line will create an Activate action.',
-    'DOUBLE_CLICK: Double clicking on any line will create an Activate action.',
-    'MOVEMENT: Moving to a new line cause activation.',
-    { SENSITIVE = 'SINGLE_CLICK|MOVEMENT' })
-
   enum('AXIS', { comment='Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)' },
     'X', 'Y', 'Z')
 
@@ -93,29 +81,6 @@ module({ name='Widget', copyright='Paul Manias 2003-2020', version=1.0, prefix='
    WORD  CursorSet;
    WORD  State;
    BYTE  prvAnchored;
-  ]])
-
-  methods('TabFocus', 'Tab', {
-    { id=1, name='AddObject' },
-    { id=2, name='InsertObject' },
-    { id=3, name='RemoveObject' },
-    { id=4, name='SetObject' }
-  })
-
-  class('TabFocus', { comment='Manages the \'user focus\' via the tab key.', src='class_tabfocus.cpp', output='class_tabfocus_def.c' }, [[
-    oid Surface     # The surface to monitor for the primary focus when managing the tab key
-    int Total       # Total number of objects on the tab list
-    int(TF) Flags   # Optional flags
-  ]],
-  [[
-   struct {
-      OBJECTID ObjectID;
-      OBJECTID SurfaceID;
-   } TabList[50];         // List of objects to be managed by the tab key
-   APTR prvKeyEvent;
-   WORD Index;            // Current focus index
-   OBJECTID CurrentFocus;
-   BYTE Reverse:1;
   ]])
 
   def_clipboard()

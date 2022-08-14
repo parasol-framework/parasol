@@ -139,7 +139,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if (init_clipboard() != ERR_Okay) return ERR_AddClass;
    if (init_resize() != ERR_Okay) return ERR_AddClass;
-   if (init_tabfocus() != ERR_Okay) return ERR_AddClass;
 
    return ERR_Okay;
 }
@@ -152,7 +151,6 @@ static ERROR CMDOpen(OBJECTPTR Module)
 static ERROR CMDExpunge(void)
 {
    free_resize();
-   free_tabfocus();
    free_clipboard();
 
    if (glIconArchive) { acFree(glIconArchive); glIconArchive = NULL; }

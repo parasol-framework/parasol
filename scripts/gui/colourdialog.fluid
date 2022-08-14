@@ -602,8 +602,6 @@ gui.dialog.colour = function(Options)
 
       if self.layout.acInit() != ERR_Okay then error('Failed to initialise surface.') end
 
-      lTab = lWindow.new('tabfocus', { })
-
       input.subscribe(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), lWindow.surface, 0, inputFeedback)
 
       self.scene = obj.new('VectorScene', { surface = lWindow.surface })
