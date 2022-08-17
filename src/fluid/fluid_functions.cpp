@@ -87,8 +87,10 @@ int fcmd_check(lua_State *Lua)
 }
 
 //****************************************************************************
-// Use catch() to switch on exception handling for functions that return an error code other than ERR_Okay.  Areas
-// affected include obj.new(); any module function that returns an ERROR; any method or action called on an object.
+// Use catch() to switch on exception handling for functions that return an error code other than ERR_Okay, as well as
+// normal exceptions that would otherwise be caught by pcall().  Areas affected include obj.new(); any module function
+// that returns an ERROR; any method or action called on an object.
+//
 // The caught error code is returned by default, or if no exception handler is defined then the entire exception table
 // is returned.
 //
