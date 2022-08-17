@@ -5,9 +5,7 @@
     loadFile(glPath .. 'common-graphics.fdl')
   end)
 
-----------------------------------------------------------------------------------------------------------------------
-
-function def_clipboard()
+module({ name='Widget', copyright='Paul Manias 2003-2020', version=1.0, prefix='widget' }, function()
   enum('CT', { start=0 }, 'DATA', 'AUDIO', 'IMAGE', 'FILE', 'OBJECT', 'TEXT', 'END')
 
   -- Note: It is intentional that the CLIP types are expressed as flags and not constants.
@@ -45,43 +43,4 @@ function def_clipboard()
    FUNCTION RequestHandler;
    BYTE     ClusterAllocated:1;
   ]])
-end
-
-----------------------------------------------------------------------------------------------------------------------
-
-module({ name='Widget', copyright='Paul Manias 2003-2020', version=1.0, prefix='widget' }, function()
-  c_include('<parasol/modules/font.h>', '<parasol/modules/picture.h>', '<parasol/modules/vector.h>',
-    '<parasol/modules/xml.h>',  '<parasol/modules/display.h>', '<parasol/modules/document.h>')
-
-  enum('AXIS', { comment='Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)' },
-    'X', 'Y', 'Z')
-
-  enum('SD', { start=1, comment='Scroll directions.' },
-    'NEGATIVE|UP|LEFT',
-    'POSITIVE|DOWN|RIGHT')
-
-  enum('SO', { start=1, comment='Direction options' },
-     'HORIZONTAL',
-     'VERTICAL')
-
-  class('Resize', { src='class_resize.cpp', output='class_resize_def.c' }, [[
-    obj(Layout) Layout    # Layout manager
-    oid Object            # Object that is to be resized
-    int(JET) Button       # Determines what button is used for resizing
-    int(MOVE) Direction   # Direction flags (horizontal/vertical)
-    int(EDGE) Border      # Border flags can be used to monitor up to 8 separate areas at once
-    int BorderSize        # Determines the size of the border edge
-  ]],
-  [[
-   LONG  OriginalWidth, OriginalHeight;
-   LONG  OriginalX, OriginalY;
-   LONG  OriginalAbsX, OriginalAbsY;
-   LONG  prvAnchorX, prvAnchorY;
-   LONG  InputHandle;
-   WORD  CursorSet;
-   WORD  State;
-   BYTE  prvAnchored;
-  ]])
-
-  def_clipboard()
 end)
