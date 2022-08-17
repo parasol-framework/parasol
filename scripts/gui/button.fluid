@@ -11,8 +11,7 @@ Valid options to use when creating the button are as follows:
   target:     Required.  Refers to a viewport that will contain the button.
   icon:       An optional icon to display alongside the text.
   text:       A label to display in the button.
-  feedback:   A function to be called when the user clicks the button.
-  vfx:        A special effect to apply to the button on its creation.
+  events:     A table of event triggers.  Supported events: activate, show, focus, lostFocus, cursorEntry, cursorExit, enable, disable
   width:      Width of the button (including any label).
   x:          The x coordinate of the button.
   xOffset:    X offset, if not defining x.
@@ -37,7 +36,7 @@ local GAP           = HEIGHT * 0.35
 local STROKE_WIDTH  = 2
 local DEFAULT_WIDTH = 160
 
-local function iconScheme()
+local function iconTheme()
    if (gui.rgbValue(gui.strToRGB(gui.colours['widgetText'])) > 127) then
       return 'pearl'
    else
@@ -45,16 +44,10 @@ local function iconScheme()
    end
 end
 
-local function reportFeedback(self, State)
-   if not self.feedback then return end
-   self.feedback(self, State)
-end
-
 gui.button = function(Options)
    local self = { -- Public variables
-      feedback       = Options.feedback,
+      events         = nz(Options.events, { }),
       parentViewport = Options.target,
-      vfx            = Options.vfx, -- The active visual effect, if any
       text           = nil, -- A VectorText that represents the string
       viewport       = nil, -- The button's primary viewport
    }
@@ -66,6 +59,7 @@ gui.button = function(Options)
       self.viewport.acDisable()
       self.text.opacity = 0.5
       self.bkgd.fill = gui.colours.rgb('widgetBkgd')
+      if self.events.disable then self.events.disable(self) end
       self.viewport.acDraw()
    end
 
@@ -74,12 +68,17 @@ gui.button = function(Options)
       self.viewport.acDisable()
       self.text.opacity = 1.0
       self.bkgd.fill = gui.colours.rgb('widgetBkgd')
+      if self.events.enable then self.events.enable(self) end
       self.viewport.acDraw()
    end
 
    -- Main entry point --
 
    if not Options.target then error('A target viewport is required.') end
+   if Options.feedback then -- Backwards compatibility
+      print('Replace the use of button feedback with the event equivalent.')
+      self.events.activate = Options.feedback
+   end
 
    local label_offset = 0
 
@@ -125,7 +124,7 @@ gui.button = function(Options)
 
    if Options.icon then
       pcall(function()
-         self.icon = gui.createIcon(self.viewport.scene, Options.icon, ICON_SIZE, iconScheme())
+         self.icon = gui.createIcon(self.viewport.scene, Options.icon, ICON_SIZE, iconTheme())
 
          self.iconRender = self.viewport.new('VectorViewport', {
             x      = GAP,
@@ -157,20 +156,16 @@ gui.button = function(Options)
       self.viewport.width = GAP + label_offset + self.text.textWidth + GAP
    end
 
-   if self.vfx then
-      self.vfx.init(self.viewport, function()
-         self.vfx = nil
-      end)
-   end
-
    self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
       if (Event == FM_LOST_FOCUS) then
          self.bkgd.stroke = gui.colours.rgb('widgetStroke')
+         if self.events.lostFocus then self.events.lostFocus(self) end
       else
          if self.disabled then
             self.bkgd.stroke = gui.colours.rgb('widgetStroke')
          else
             self.bkgd.stroke = gui.colours.rgb('widgetStrokeFocus')
+            if self.events.focus then self.events.focus(self) end
          end
       end
 
@@ -181,7 +176,7 @@ gui.button = function(Options)
       if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
 
       if (Value == K_ENTER) or (Value == K_SPACE) or (Value == K_NP_ENTER) then
-         reportFeedback(self, 'activated')
+         if self.events.activate then self.events.activate(self) end
       end
    end)
 
@@ -191,14 +186,20 @@ gui.button = function(Options)
             local highlight = gui.strToRGB(gui.colours.rgb('widgetBkgd'))
             highlight.a = highlight.a * 0.5
             self.bkgd.fill = gui.rgbToSVG(highlight)
+            if self.events.cursorEntry then
+               self.events.cursorEntry(self)
+            end
          elseif (Msg.type == JET_LEFT_SURFACE) then
             self.bkgd.fill = gui.colours.rgb('widgetBkgd')
+            if self.events.cursorExit then
+               self.events.cursorExit(self)
+            end
          elseif Msg.type == JET_LMB then
             if (Msg.value > 0) then
                if not self.disabled then
                   if bit.band(Msg.flags, JTYPE_REPEATED) != 0 then
                      if self.pulse then
-                        reportFeedback(self, 'activated')
+                        if self.events.activate then self.events.activate(self) end
                      end
                   else
                      self.clicked = true
@@ -214,7 +215,7 @@ gui.button = function(Options)
                if (clickY < 0) then clickY = -clickY end
 
                if ((clickX < 4) and (clickY < 4)) or self.pulse then
-                  reportFeedback(self, 'activated')
+                  if self.events.activate then self.events.activate(self) end
                end
             end
          end
@@ -223,6 +224,8 @@ gui.button = function(Options)
 
       Viewport.acDraw()
    end)
+
+   if self.events.show then self.events.show(self) end
 
    return self
 end

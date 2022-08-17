@@ -10,10 +10,9 @@ Valid options to use when creating the checkbox are as follows:
 
   target:     Required.  Refers to a viewport that will contain the checkbox.
   label:      A label to display next to the checkbox.
-  feedback:   A function to be called when the user clicks the checkbox.
+  events:     A table of event triggers.  Supported events: activate, show, focus, lostFocus, enable, disable
   state:      1 = Selected, 0 = Not selected, -1 = Indeterminate
   align:      The checkbox icon can be aligned to the 'left' or to the 'right'.  Default is always 'left'.
-  vfx:        A special effect to apply to the checkbox on its creation.
   width:      Width of the checkbox (including any label).
   x:          The x coordinate of the checkbox.
   xOffset:    X offset, if not defining x.
@@ -33,8 +32,12 @@ Valid options to use when creating the checkbox are as follows:
 
 local STROKE_WIDTH = 2
 local DEFAULT_WIDTH = 160
+local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+local HEIGHT    = math.floor(FONT_MAX_HEIGHT * 1.25) + 1
+local ICON_SIZE = HEIGHT * 0.56
+local GAP       = HEIGHT * 0.35
 
-local function iconScheme()
+local function iconTheme()
    if (gui.rgbValue(gui.strToRGB(gui.colours['widgetText'])) > 127) then
       return 'pearl'
    else
@@ -42,22 +45,22 @@ local function iconScheme()
    end
 end
 
-local function reportFeedback(self, State)
+local function toggleState(self)
    if self.state == 1 then
-      self.iconRender.opacity = 1.0
-   else
+      self.state = 0
       self.iconRender.opacity = 0.25
+   else
+      self.state = 1
+      self.iconRender.opacity = 1.0
    end
 
-   if not self.feedback then return end
-   self.feedback(self, State)
+   if self.events.activate then self.events.activate(self) end
 end
 
 gui.checkbox = function(Options)
    local self = { -- Public variables
-      feedback       = Options.feedback,
+      events         = nz(Options.events, { }),
       parentViewport = Options.target,
-      vfx            = Options.vfx, -- The active visual effect, if any
       state          = nz(Options.state, 0),
       text           = nil, -- A VectorText that represents the string
       viewport       = nil, -- The checkbox's primary viewport
@@ -70,6 +73,7 @@ gui.checkbox = function(Options)
       self.viewport.acDisable()
       self.text.opacity = 0.5
       self.bkgd.fill = gui.colours.rgb('widgetBkgd')
+      if self.events.disable then self.events.disable(self) end
       self.viewport.acDraw()
    end
 
@@ -78,6 +82,7 @@ gui.checkbox = function(Options)
       self.viewport.acDisable()
       self.text.opacity = 1.0
       self.bkgd.fill = gui.colours.rgb('widgetBkgd')
+      if self.events.enable then self.events.enable(self) end
       self.viewport.acDraw()
    end
 
@@ -85,10 +90,6 @@ gui.checkbox = function(Options)
 
    if not Options.target then error('A target viewport is required.') end
 
-   local font_max_height, font_height = gui.getFontHeight(gui.fonts.widget)
-   local HEIGHT    = math.floor(font_max_height * 1.25) + 1
-   local ICON_SIZE = HEIGHT * 0.56
-   local GAP       = HEIGHT * 0.35
    local label_offset = 0
 
    local vps = { -- Viewport settings
@@ -123,7 +124,7 @@ gui.checkbox = function(Options)
       strokeWidth = STROKE_WIDTH,
    })
 
-   self.icon = gui.createIcon(self.viewport.scene, 'items/checkmark', ICON_SIZE, iconScheme())
+   self.icon = gui.createIcon(self.viewport.scene, 'items/checkmark', ICON_SIZE, iconTheme())
 
    self.iconRender = self.viewport.new('VectorViewport', {
       x      = (HEIGHT - ICON_SIZE) * 0.5,
@@ -142,7 +143,7 @@ gui.checkbox = function(Options)
 
    self.text = self.viewport.new('VectorText', {
       x         = 0,
-      y         = font_height + math.floor((HEIGHT - font_height) * 0.5),
+      y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT) * 0.5),
       face      = gui.fonts.widget.face,
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
       fill      = gui.colours.rgb('windowText'),
@@ -162,20 +163,16 @@ gui.checkbox = function(Options)
       self.text.x = GAP + (GAP * 0.5) + ICON_SIZE
    end
 
-   if self.vfx then
-      self.vfx.init(self.viewport, function()
-         self.vfx = nil
-      end)
-   end
-
    self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
       if (Event == FM_LOST_FOCUS) then
          self.bkgd.stroke = gui.colours.rgb('widgetStroke')
+         if self.events.lostFocus then self.events.lostFocus(self) end
       else
          if self.disabled then
             self.bkgd.stroke = gui.colours.rgb('widgetStroke')
          else
             self.bkgd.stroke = gui.colours.rgb('widgetStrokeFocus')
+            if self.events.focus then self.events.focus(self) end
          end
       end
 
@@ -186,7 +183,7 @@ gui.checkbox = function(Options)
       if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
 
       if (Value == K_ENTER) or (Value == K_SPACE) or (Value == K_NP_ENTER) then
-         reportFeedback(self, 'activated')
+         toggleState(self)
       end
    end)
 
@@ -194,12 +191,7 @@ gui.checkbox = function(Options)
       repeat
          if Msg.type == JET_LMB then
             if (Msg.value > 0) then
-               if self.state == 1 then
-                  self.state = 0
-               else
-                  self.state = 1
-               end
-               reportFeedback(self, 'activated')
+               toggleState(self)
             end
          end
          Msg = Msg.next
@@ -207,6 +199,8 @@ gui.checkbox = function(Options)
 
       Viewport.acDraw()
    end)
+
+   if self.events.show then self.events.show(self) end
 
    return self
 end
