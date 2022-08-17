@@ -14,33 +14,32 @@ end
 -- Seconds:  Specifies the maximum number of seconds for the fade effect to complete.
 -- Delay: Delays the initial start of the icon fade effect, measured in seconds.
 
-vfx.fadeIn = function(Seconds, Delay)
-   local state = { name = 'fadeIn', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0) }
+vfx.fadeIn = function(Viewport, Seconds, Delay)
+   local state = { name = 'fadeIn', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
 
-   state.init = function(Viewport)
-      Viewport.opacity = 0
-      local err
-      err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-         if (state.time == nil) then state.time = CurrentTime end
-         if (state.delay > 0) then
-            if ((CurrentTime - state.time) >= state.delay * 1000000) then
-               state.delay = 0
-               mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
-               state.time = nil
-            end
-         else
-            local value = (CurrentTime - state.time) / (state.seconds * 1000000)
-            if (value >= 1.0) then
-               Viewport.opacity = 1.0
-               Viewport.acDraw()
-               check(ERR_Terminate)
-            else
-               Viewport.opacity = value
-               Viewport.acDraw()
-            end
+   Viewport.opacity = 0
+   local err
+   err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+      if (state.time == nil) then state.time = CurrentTime end
+      if (state.delay > 0) then
+         if ((CurrentTime - state.time) >= state.delay * 1000000) then
+            state.delay = 0
+            mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
+            state.time = nil
          end
-      end)
-   end
+      else
+         local value = (CurrentTime - state.time) / (state.seconds * 1000000)
+         if (value >= 1.0) then
+            Viewport.opacity = 1.0
+            Viewport.acDraw()
+            if state.callback then state.callback(state) end
+            check(ERR_Terminate)
+         else
+            Viewport.opacity = value
+            Viewport.acDraw()
+         end
+      end
+   end)
 
    return state
 end
@@ -48,42 +47,40 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Scale the viewport from nothing to full-size within the allotted time.
 
-vfx.zoomIn = function(Seconds, Delay)
-   local state = { name = 'zoomIn', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0) }
+vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
+   local state = { name = 'zoomIn', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
 
-   state.init = function(Viewport, CallbackOnCompletion)
-      local err
-      err, state.matrix = Viewport.mtNewMatrix()
-      mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
-      mVector.Scale(state.matrix, value, value)
-      mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
-      Viewport.acDraw()
+   local err
+   err, state.matrix = Viewport.mtNewMatrix()
+   mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
+   mVector.Scale(state.matrix, value, value)
+   mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
+   Viewport.acDraw()
 
-      err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-         if (state.time == nil) then state.time = CurrentTime end
-         if (state.delay > 0) then
-            if ((CurrentTime - state.time) >= state.delay * 1000000) then
-               state.delay = 0
-               mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
-               state.time = nil
-            end
-         else
-            local value = (CurrentTime - state.time) / (state.seconds * 1000000)
-            if (value >= 1.0) then value = 1.0 end
-
-            mVector.ResetMatrix(state.matrix)
-            mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
-            mVector.Scale(state.matrix, value, value)
-            mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
-            Viewport.acDraw()
-
-            if (value >= 1.0) then
-               if CallbackOnCompletion then CallbackOnCompletion(state) end
-               check(ERR_Terminate)
-            end
+   err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+      if (state.time == nil) then state.time = CurrentTime end
+      if (state.delay > 0) then
+         if ((CurrentTime - state.time) >= state.delay * 1000000) then
+            state.delay = 0
+            mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
+            state.time = nil
          end
-      end)
-   end
+      else
+         local value = (CurrentTime - state.time) / (state.seconds * 1000000)
+         if (value >= 1.0) then value = 1.0 end
+
+         mVector.ResetMatrix(state.matrix)
+         mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
+         mVector.Scale(state.matrix, value, value)
+         mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
+         Viewport.acDraw()
+
+         if (value >= 1.0) then
+            if state.callback then state.callback(state) end
+            check(ERR_Terminate)
+         end
+      end
+   end)
 
    return state
 end
@@ -91,42 +88,40 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Scale the viewport from full-size to nothing within the allotted time.
 
-vfx.zoomOut = function(Seconds, Delay)
-   local state = { name = 'zoomOut', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0) }
+vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
+   local state = { name = 'zoomOut', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
 
-   state.init = function(Viewport, CallbackOnCompletion)
-      local err
-      err, state.matrix = Viewport.mtNewMatrix()
-      mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
-      mVector.Scale(state.matrix, value, value)
-      mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
-      Viewport.acDraw()
+   local err
+   err, state.matrix = Viewport.mtNewMatrix()
+   mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
+   mVector.Scale(state.matrix, value, value)
+   mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
+   Viewport.acDraw()
 
-      err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-         if (state.time == nil) then state.time = CurrentTime end
-         if (state.delay > 0) then
-            if ((CurrentTime - state.time) >= state.delay * 1000000) then
-               state.delay = 0
-               mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
-               state.time = nil
-            end
-         else
-            local value = (CurrentTime - state.time) / (state.seconds * 1000000)
-            if (value >= 1.0) then value = 1.0 end
-
-            mVector.ResetMatrix(state.matrix)
-            mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
-            mVector.Scale(state.matrix, 1.0 - value, 1.0 - value)
-            mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
-            Viewport.acDraw()
-
-            if (value >= 1.0) then
-               if CallbackOnCompletion then CallbackOnCompletion(state) end
-               check(ERR_Terminate)
-            end
+   err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+      if (state.time == nil) then state.time = CurrentTime end
+      if (state.delay > 0) then
+         if ((CurrentTime - state.time) >= state.delay * 1000000) then
+            state.delay = 0
+            mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
+            state.time = nil
          end
-      end)
-   end
+      else
+         local value = (CurrentTime - state.time) / (state.seconds * 1000000)
+         if (value >= 1.0) then value = 1.0 end
+
+         mVector.ResetMatrix(state.matrix)
+         mVector.Translate(state.matrix, -Viewport.width*0.5, -Viewport.height*0.5)
+         mVector.Scale(state.matrix, 1.0 - value, 1.0 - value)
+         mVector.Translate(state.matrix, Viewport.width*0.5, Viewport.height*0.5)
+         Viewport.acDraw()
+
+         if (value >= 1.0) then
+            if state.callback then state.callback(state) end
+            check(ERR_Terminate)
+         end
+      end
+   end)
 
    return state
 end
@@ -135,11 +130,11 @@ end
 -- Move the viewport to its indicated (x,y) position within the allotted time.  By default the move will commence from
 -- an out-of-bounds position on the left.  The client can override this with a custom FromX, FromY position.
 
-vfx.moveIn = function(Seconds, Delay, FromX, FromY)
+vfx.moveIn = function(Viewport, Seconds, Delay, FromX, FromY)
 
 end
 
-vfx.moveOut = function(Seconds, Delay, FromX, FromY)
+vfx.moveOut = function(Viewport, Seconds, Delay, FromX, FromY)
 
 end
 
@@ -147,8 +142,8 @@ end
 -- 'Shake' a vector by applying an alternating rotation around its center.  Intensity is between 0.1 and 2.0 and
 -- affects the number of shakes and maximum angle of rotation.
 
-vfx.shake = function(Seconds, Delay, Intensity)
-   local state = { name = 'shake', intensity = nz(Intensity, 1.0), seconds = nz(Seconds, 1.0), delay = nz(Delay, 0) }
+vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
+   local state = { name = 'shake', intensity = nz(Intensity, 1.0), seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
 
    if (state.intensity < 0.1) then
       state.intensity = 0.1
@@ -156,47 +151,45 @@ vfx.shake = function(Seconds, Delay, Intensity)
       state.intensity = 2
    end
 
-   state.init = function(Viewport, CallbackOnCompletion)
-      local MAX_ANGLE = 90 * Intensity
-      local QRT_ANGLE = MAX_ANGLE * 0.25
-      local SHAKES    = math.round(6 * Intensity)
-      if (SHAKES < 1) then SHAKES = 1 end
+   local MAX_ANGLE = 90 * Intensity
+   local QRT_ANGLE = MAX_ANGLE * 0.25
+   local SHAKES    = math.round(6 * Intensity)
+   if (SHAKES < 1) then SHAKES = 1 end
 
-      local err
-      err, state.matrix = Viewport.mtNewMatrix()
-      err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-         if (state.time == nil) then state.time = CurrentTime end
-         if (state.delay > 0) then
-            if ((CurrentTime - state.time) >= state.delay * 1000000) then
-               state.delay = 0
-               mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
-               state.time = nil
-            end
-         else
-            mVector.ResetMatrix(state.matrix)
-
-            if (CurrentTime > state.time + (state.seconds * 1000000)) then
-               Viewport.acDraw()
-               if CallbackOnCompletion then CallbackOnCompletion(state) end
-               check(ERR_Terminate)
-            end
-
-            local cycle = (state.seconds / SHAKES) * 1000000
-            local angle = (math.fmod(CurrentTime - state.time, cycle) / cycle) * MAX_ANGLE
-
-            if (angle < QRT_ANGLE) then -- (45)
-               angle = angle
-            elseif (angle < (MAX_ANGLE - QRT_ANGLE)) then
-               angle = QRT_ANGLE - (angle - QRT_ANGLE)
-            else
-               angle = -QRT_ANGLE + (angle - (MAX_ANGLE - QRT_ANGLE))
-            end
-
-            mVector.Rotate(state.matrix, angle, Viewport.width*0.5, Viewport.height*0.5)
-            Viewport.acDraw()
+   local err
+   err, state.matrix = Viewport.mtNewMatrix()
+   err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+      if (state.time == nil) then state.time = CurrentTime end
+      if (state.delay > 0) then
+         if ((CurrentTime - state.time) >= state.delay * 1000000) then
+            state.delay = 0
+            mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
+            state.time = nil
          end
-      end)
-   end
+      else
+         mVector.ResetMatrix(state.matrix)
+
+         if (CurrentTime > state.time + (state.seconds * 1000000)) then
+            Viewport.acDraw()
+            if state.callback then state.callback(state) end
+            check(ERR_Terminate)
+         end
+
+         local cycle = (state.seconds / SHAKES) * 1000000
+         local angle = (math.fmod(CurrentTime - state.time, cycle) / cycle) * MAX_ANGLE
+
+         if (angle < QRT_ANGLE) then -- (45)
+            angle = angle
+         elseif (angle < (MAX_ANGLE - QRT_ANGLE)) then
+            angle = QRT_ANGLE - (angle - QRT_ANGLE)
+         else
+            angle = -QRT_ANGLE + (angle - (MAX_ANGLE - QRT_ANGLE))
+         end
+
+         mVector.Rotate(state.matrix, angle, Viewport.width*0.5, Viewport.height*0.5)
+         Viewport.acDraw()
+      end
+   end)
 
    return state
 end
@@ -205,57 +198,53 @@ end
 -- Rotate the viewport 360 degrees within the allotted time.  This feature is typically chained for use with other
 -- effects.
 
-vfx.rotate = function(Seconds)
-   local state = { name = 'rotate', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0) }
+vfx.rotate = function(Viewport, Seconds, Delay, CallbackOnCompletion)
+   local state = { name = 'rotate', seconds = nz(Seconds, 1.0), delay = nz(Delay, 0), callback = CallbackOnCompletion }
 
-   state.init = function(Viewport, CallbackOnCompletion)
-      local err
-      err, state.matrix = Viewport.mtNewMatrix()
-      err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
-         if (state.time == nil) then state.time = CurrentTime end
-         if (state.delay > 0) then
-            if ((CurrentTime - state.time) >= state.delay * 1000000) then
-               state.delay = 0
-               mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
-               state.time = nil
-            end
-         else
-            local value = (CurrentTime - state.time) / (state.seconds * 1000000)
-            if (value >= 1.0) then value = 1.0 end
-
-            mVector.ResetMatrix(state.matrix)
-            mVector.Rotate(state.matrix, 360 * value, Viewport.width*0.5, Viewport.height*0.5)
-
-            Viewport.acDraw()
-
-            if (value >= 1.0) then
-               if CallbackOnCompletion then CallbackOnCompletion(state) end
-               check(ERR_Terminate)
-            end
+   local err
+   err, state.matrix = Viewport.mtNewMatrix()
+   err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+      if (state.time == nil) then state.time = CurrentTime end
+      if (state.delay > 0) then
+         if ((CurrentTime - state.time) >= state.delay * 1000000) then
+            state.delay = 0
+            mSys.UpdateTimer(state.timerID, 1*vfx.fps) -- Resubscribe to the timer to clear the TotalElapsed counter
+            state.time = nil
          end
-      end)
-   end
+      else
+         local value = (CurrentTime - state.time) / (state.seconds * 1000000)
+         if (value >= 1.0) then value = 1.0 end
+
+         mVector.ResetMatrix(state.matrix)
+         mVector.Rotate(state.matrix, 360 * value, Viewport.width*0.5, Viewport.height*0.5)
+
+         Viewport.acDraw()
+
+         if (value >= 1.0) then
+            if state.callback then state.callback(state) end
+            check(ERR_Terminate)
+         end
+      end
+   end)
 
    return state
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Use chain() to bring multiple effects together for execution simultaneously.
+-- Use chain() to receive a single callback once all effects in the chain have finished processing.
 --
--- Example: vfx.chain(vfx.zoomIn(0.5), vfx.fadeIn(0.25))
+-- Example: vfx.chain({ vfx.zoomIn(Viewport, 0.5), vfx.fadeIn(Viewport, 0.25) }, Callback)
 
-vfx.chain = function(...)
-   local state = { effects = { ... } }
+vfx.chain = function(Effects, CallbackOnCompletion)
+   local state = { effects = Effects }
 
-   state.init = function(Viewport, CallbackOnCompletion)
-      state.counter = #state.effects
-      for _, effect in ipairs(state.effects) do
-         effect.init(Viewport, function(Effect)
-            state.counter = state.counter - 1
-            if (state.counter == 0) then
-               CallbackOnCompletion(state)
-            end
-         end)
+   state.counter = #Effects
+   for _, effect in ipairs(Effects) do
+      effect.callback = function()
+         state.counter = state.counter - 1
+         if (state.counter == 0) and CallbackOnCompletion then
+            CallbackOnCompletion(state)
+         end
       end
    end
 
