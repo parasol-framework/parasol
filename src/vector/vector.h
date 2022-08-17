@@ -74,6 +74,7 @@ public:
    UBYTE  FillRule; \
    UBYTE  ClipRule; \
    UBYTE  Dirty; \
+   UBYTE  TabOrder; \
    UBYTE  EnableBkgd:1; \
    UBYTE  DisableFillColour:1; \
    UBYTE  ButtonLock:1; \
