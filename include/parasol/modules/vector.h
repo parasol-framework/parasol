@@ -362,6 +362,12 @@ typedef struct rkVectorColour {
    DOUBLE Alpha;
 } objVectorColour;
 
+#ifdef PRV_VECTORSCENE
+struct OrderedVector {
+   bool operator()(const struct rkVector *a, const struct rkVector *b) const;
+};
+#endif
+   
 // VectorScene class definition
 
 #define VER_VECTORSCENE (1.000000)
@@ -386,14 +392,14 @@ typedef struct rkVectorScene {
    APTR KeyHandle; // Keyboard subscription
    std::unordered_set<struct rkVectorViewport *> PendingResizeMsgs;
    std::unordered_map<struct rkVector *, LONG> InputSubscriptions;
-   std::unordered_set<struct rkVector *> KeyboardSubscriptions;
+   std::set<struct rkVector *, OrderedVector> KeyboardSubscriptions;
    std::vector<struct InputBoundary> InputBoundaries;
    std::unordered_map<struct rkVectorViewport *, std::unordered_map<struct rkVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
    LONG Cursor; // Current cursor image
-   UBYTE  AdaptorType;
+   UBYTE AdaptorType;
   
 #endif
 } objVectorScene;
@@ -769,6 +775,13 @@ struct VectorBase {
 #endif
 
 //****************************************************************************
+
+#ifdef PRV_VECTORSCENE
+__inline__ bool OrderedVector::operator()(const struct rkVector *a, const struct rkVector *b) const {
+   if (a->TabOrder == b->TabOrder) return a->Head.UID < b->Head.UID;
+   else return a->TabOrder < b->TabOrder;
+}
+#endif
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
    Colour->Head.ClassID = ID_VECTORCOLOUR;

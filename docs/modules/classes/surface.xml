@@ -479,16 +479,6 @@ the surface area first).</li>
     </field>
 
     <field>
-      <name>Frame</name>
-      <comment>Manipulates the frame number that a surface object has on display.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>Through clever use of the Frame field, the graphics of a surface object can be organised into individual frames that can be switched in-and-out of the display by updating the current frame number.  To use the Frame field effectively you need to use frame-enabled objects and define the frames that will activate them.  You will also need to write a functional mechanism to change the frame number.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Height</name>
       <comment>Defines the height of a surface object.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -707,13 +697,8 @@ the surface area first).</li>
 
     <field>
       <name>ScrollSpeed</name>
-      <comment>Determines the speed used for animated movement.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
-      <description>
-<p>The maximum speed of animated motion is limited by the value in this field. A value between 1 and 10 is recommended - the higher the value, the faster the animation will progress.</p>
-<p>Animated motion is enabled when the <action>MoveToPoint</action> action is called with the MTF_ANIM flag.</p>
-      </description>
     </field>
 
     <field>
@@ -890,6 +875,19 @@ the surface area first).</li>
 
   </fields>
   <types>
+    <constants lookup="ARF" comment="AccessSurfaceList() flags">
+      <const name="NO_DELAY">Do not delay when waiting for access</const>
+      <const name="READ">Read only access required</const>
+      <const name="UPDATE">Update a single entry (limited write access)</const>
+      <const name="WRITE">Full write access required</const>
+    </constants>
+
+    <constants lookup="BDF" comment="CopySurface() flags">
+      <const name="DITHER">Allow the use of dithering to improve image quality at a cost of speed.</const>
+      <const name="REDRAW">Redraw the surface before performing the copy operation.</const>
+      <const name="SYNC">Force synchronsiation so that changes to the source image do not occur mid-copy.</const>
+    </constants>
+
     <constants lookup="DRAG">
       <const name="ANCHOR">The surface is being dragged and the mouse pointer is anchored to the surface.</const>
       <const name="NONE">The surface is not being dragged.</const>
@@ -902,6 +900,10 @@ the surface area first).</li>
       <const name="CHILDREN">If set, all child surfaces that intersect with exposed region will be included in the expose operation.</const>
       <const name="REDRAW_VOLATILE">Redraw every volatile object that intersects with the expose region, including internal volatile children.</const>
       <const name="REDRAW_VOLATILE_OVERLAP">Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.</const>
+    </constants>
+
+    <constants lookup="LVF" comment="drwLockBitmap() result flags">
+      <const name="EXPOSE_CHANGES"/>
     </constants>
 
     <constants lookup="RNF">
@@ -949,5 +951,31 @@ the surface area first).</li>
 
   </types>
   <structs>
+    <struct name="SurfaceControl" comment="Internal structure returned by AccessList()">
+      <field name="ListIndex" type="LONG">Byte offset of the ordered list</field>
+      <field name="ArrayIndex" type="LONG">Byte offset of the list array</field>
+      <field name="EntrySize" type="LONG">Byte size of each entry in the array</field>
+      <field name="Total" type="LONG">Total number of entries currently in the list array</field>
+      <field name="ArraySize" type="LONG">Max limit of entries in the list array</field>
+    </struct>
+
+    <struct name="SurfaceInfo" typeName="SURFACEINFO">
+      <field name="ParentID" type="OBJECTID">Object that contains the surface area</field>
+      <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
+      <field name="DataMID" type="OBJECTID">Bitmap data memory ID</field>
+      <field name="DisplayID" type="OBJECTID">If the surface object is root, its display is reflected here</field>
+      <field name="Flags" type="LONG">Surface flags (RNF_VISIBLE etc)</field>
+      <field name="X" type="LONG">Horizontal coordinate</field>
+      <field name="Y" type="LONG">Vertical coordinate</field>
+      <field name="Width" type="LONG">Width of the surface area</field>
+      <field name="Height" type="LONG">Height of the surface area</field>
+      <field name="AbsX" type="LONG">Absolute X coordinate</field>
+      <field name="AbsY" type="LONG">Absolute Y coordinate</field>
+      <field name="Level" type="WORD">Branch level within the tree</field>
+      <field name="BitsPerPixel" type="BYTE">Bits per pixel of the bitmap</field>
+      <field name="BytesPerPixel" type="BYTE">Bytes per pixel of the bitmap</field>
+      <field name="LineWidth" type="LONG">Line width of the bitmap, in bytes</field>
+    </struct>
+
   </structs>
 </book>

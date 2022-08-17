@@ -29,8 +29,6 @@ static ERROR VECTORSCENE_Reset(objVectorScene *, APTR);
 static void scene_key_event(objVectorScene *, evKey *, LONG);
 static void process_resize_msgs(objVectorScene *);
 
-static std::vector<OBJECTID> glFocusList; // The first reference is the most foreground object with the focus
-
 //********************************************************************************************************************
 
 static ERROR VECTORSCENE_ActionNotify(objVectorScene *Self, struct acActionNotify *Args)
@@ -149,7 +147,7 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
 -ACTION-
 Draw: Renders the scene to a bitmap.
 
-The Draw action will render the scene to the target #Bitmap.  If #Bitmap is NULL, an error will be
+The Draw action will render the scene to the target #Bitmap immediately.  If #Bitmap is NULL, an error will be
 returned.
 
 In addition, the #RenderTime field will be updated if the `RENDER_TIME` flag is defined.
@@ -601,22 +599,24 @@ void apply_focus(objVectorScene *Scene, objVector *Vector)
 {
    if (!Vector) return;
 
-   if ((!glFocusList.empty()) and (Vector->Head.UID IS glFocusList.front())) return;
+   const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
 
-   std::vector<OBJECTID> focus_gained; // The first reference is the most foreground object
+   if ((!glFocusList.empty()) and (Vector IS glFocusList.front())) return;
+
+   std::vector<objVector *> focus_gained; // The first reference is the most foreground object
 
    for (auto scan=Vector; scan; scan=(objVector *)scan->Parent) {
       if (scan->Head.ClassID IS ID_VECTOR) {
-         focus_gained.emplace_back(scan->Head.UID);
+         focus_gained.emplace_back(scan);
       }
       else break;
    }
 
 #if 0
    std::string vlist;
-   for (auto const id : focus_gained) {
+   for (auto const fv : focus_gained) {
       char buffer[30];
-      snprintf(buffer, sizeof(buffer), "#%d ", id);
+      snprintf(buffer, sizeof(buffer), "#%d ", fv->Head.UID);
       vlist.append(buffer);
    }
 
@@ -625,37 +625,33 @@ void apply_focus(objVectorScene *Scene, objVector *Vector)
 
    // Report focus events to vector subscribers.
 
-   LONG focus_event = FM_HAS_FOCUS;
-   for (auto const id : focus_gained) {
+   auto focus_event = FM_HAS_FOCUS;
+   for (auto const fgv : focus_gained) {
       bool no_focus = true, lost_focus_to_child = false, was_child_now_primary = false;
 
       if (!glFocusList.empty()) {
-         no_focus = std::find(glFocusList.begin(), glFocusList.end(), id) IS glFocusList.end();
+         no_focus = std::find(glFocusList.begin(), glFocusList.end(), fgv) IS glFocusList.end();
          if (!no_focus) {
-            lost_focus_to_child = ((id IS glFocusList.front()) and (focus_event IS FM_CHILD_HAS_FOCUS));
-            was_child_now_primary = ((id != glFocusList.front()) and (focus_event IS FM_HAS_FOCUS));
+            lost_focus_to_child = ((fgv IS glFocusList.front()) and (focus_event IS FM_CHILD_HAS_FOCUS));
+            was_child_now_primary = ((fgv != glFocusList.front()) and (focus_event IS FM_HAS_FOCUS));
          }
       }
 
       if ((no_focus) or (lost_focus_to_child) or (was_child_now_primary)) {
-         OBJECTPTR vec;
-         if (!AccessObject(id, 5000, &vec)) {
-            send_feedback((objVector *)vec, focus_event);
+         parasol::ScopedObjectLock<objVector> vec(&fgv->Head, 1000);
+         if (vec.granted()) {
+            send_feedback(fgv, focus_event);
             focus_event = FM_CHILD_HAS_FOCUS;
-            ReleaseObject(vec);
          }
       }
    }
 
    // Report lost focus events, starting from the foreground.
 
-   for (auto const id : glFocusList) {
-      if (std::find(focus_gained.begin(), focus_gained.end(), id) IS focus_gained.end()) {
-         OBJECTPTR vec;
-         if (!AccessObject(id, 5000, &vec)) {
-            send_feedback((objVector *)vec, FM_LOST_FOCUS);
-            ReleaseObject(vec);
-         }
+   for (auto const fv : glFocusList) {
+      if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
+         parasol::ScopedObjectLock<objVector> vec(&fv->Head, 1000);
+         if (vec.granted()) send_feedback(fv, FM_LOST_FOCUS);
       }
       else break;
    }
@@ -756,9 +752,46 @@ static void process_resize_msgs(objVectorScene *Self)
 
 static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
 {
-   for (auto const vector : Self->KeyboardSubscriptions) {
+   const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
+
+   if (Event->Code IS K_TAB) {
+      if (!(Event->Qualifiers & KQ_RELEASED)) return;
+
+      bool reverse = ((Event->Qualifiers & KQ_QUALIFIERS) & KQ_SHIFT);
+
+      if ((!(Event->Qualifiers & KQ_QUALIFIERS)) or (reverse)) {
+         if (Self->KeyboardSubscriptions.size() > 1) {
+            for (auto it=glFocusList.begin(); it != glFocusList.end(); it++) {
+               auto find = Self->KeyboardSubscriptions.find(*it);
+               if (find != Self->KeyboardSubscriptions.end()) {
+                  if (reverse) {
+                     if (find IS Self->KeyboardSubscriptions.begin()) {
+                        apply_focus(Self, *Self->KeyboardSubscriptions.rbegin());
+                     }
+                     else apply_focus(Self, *(--find));
+                  }
+                  else {
+                     if (++find IS Self->KeyboardSubscriptions.end()) find = Self->KeyboardSubscriptions.begin();
+                     apply_focus(Self, *find);
+                  }
+                  return;
+               }
+            }
+         }
+      }
+
+      if (!Self->KeyboardSubscriptions.empty()) {
+         apply_focus(Self, *Self->KeyboardSubscriptions.begin());
+      }
+
+      return;
+   }
+
+   for (auto vi = Self->KeyboardSubscriptions.begin(); vi != Self->KeyboardSubscriptions.end(); vi++) {
+      auto const vector = *vi;
+      // Use the focus list to determine where the key event needs to be sent.
       for (auto it=glFocusList.begin(); it != glFocusList.end(); it++) {
-         if (*it IS vector->Head.UID) {
+         if (*it IS vector) {
             vector_keyboard_events(vector, Event);
             break;
          }

@@ -15,7 +15,7 @@
     <copyright>Paul Manias © 2010-2022</copyright>
     <description>
 <p>This class is used to declare a viewport within a vector scene graph.  A master viewport is required as the first object in a <class name="VectorScene">VectorScene</class> and it must contain all vector graphics content.</p>
-<p>The size of the viewport is initially set to (0,0,100%,100%) so as to be all inclusive.  Setting the <field>X</field>, <field>Y</field>, <field>Width</field> and <field>Height</field> fields will determine the position and clipping of the displayed content (the 'target area').  The <field>ViewX</field>, <field>ViewY</field>, <field>ViewWidth</field> and <field>ViewHeight</field> fields declare the viewbox ('source area') that will be sampled for the target.</p>
+<p>The size of the viewport is initially set to <code>(0,0,100%,100%)</code> so as to be all inclusive.  Setting the <field>X</field>, <field>Y</field>, <field>Width</field> and <field>Height</field> fields will determine the position and clipping of the displayed content (the 'target area').  The <field>ViewX</field>, <field>ViewY</field>, <field>ViewWidth</field> and <field>ViewHeight</field> fields declare the viewbox ('source area') that will be sampled for the target.</p>
 <p>To configure the scaling and alignment method that is applied to the viewport content, set the <field>AspectRatio</field> field.</p></description>
     <source>
       <file path="vectors/">viewport.cpp</file>

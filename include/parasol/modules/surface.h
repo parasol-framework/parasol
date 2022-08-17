@@ -202,7 +202,6 @@ typedef struct rkSurface {
    LONG     RightLimit; // Limits the surface area from moving too far right
    LONG     TopLimit;   // Limits the surface area from moving too far up
    LONG     BottomLimit; // Limits the surface area from moving too far down
-   LONG     Frame;      // Current frame number
    OBJECTID DisplayID;  // Refers to the Display object that is managing the surface's graphics.
    LONG     Flags;      // Special flags
    LONG     X;          // Fixed horizontal coordinate
@@ -215,7 +214,6 @@ typedef struct rkSurface {
    LONG     Dimensions; // Dimension flags
    LONG     DragStatus; // Indicates the draggable state when dragging is enabled.
    LONG     Cursor;     // The preferred cursor image to use when the pointer is over the surface
-   LONG     ScrollSpeed; // Speed when using animated scrolling
    struct RGB8 Colour;  // Background colour specification
    LONG     Type;       // Internal surface type flags
    LONG     Modal;      // Set to 1 to enable modal mode
@@ -325,66 +323,6 @@ INLINE ERROR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOU
 
 #define drwScheduleRedraw(obj) Action(MT_DrwScheduleRedraw,(obj),0)
 
-
-// Layout class definition
-
-#define VER_LAYOUT (1.000000)
-
-typedef struct rkLayout {
-   OBJECT_HEADER
-   DOUBLE    X;
-   DOUBLE    Y;
-   DOUBLE    Width;
-   DOUBLE    Height;
-   DOUBLE    XOffset;
-   DOUBLE    YOffset;
-   DOUBLE    GraphicRelX;                 // If the X position is relative, the ratio is expressed here relative to the container's width.
-   DOUBLE    GraphicRelY;                 // If the Y position is relative, the ratio is expressed here relative to the container's height.
-   DOUBLE    GraphicRelWidth;             // If the width is relative, the ratio is expressed here relative to the container's width.
-   DOUBLE    GraphicRelHeight;            // If the height is relative, the ratio is expressed here relative to the container's height.
-   OBJECTPTR Document;                    // Private.  For use by the Document class only.
-   OBJECTID  SurfaceID;
-   LONG      Align;
-   LONG      Dimensions;
-   LONG      Layout;
-   LONG      BitsPerPixel;                // Total bits per pixel for the canvas.
-   LONG      GraphicX;
-   LONG      GraphicY;
-   LONG      GraphicWidth;
-   LONG      GraphicHeight;
-   LONG      LeftMargin;                  // Fixed pixel margins specify the amount of whitespace from the Bound* fields
-   LONG      TopMargin;
-   LONG      RightMargin;
-   LONG      BottomMargin;
-   LONG      BoundX;                      // The boundary of space available for drawing, i.e. the clip region, for the X coordinate
-   LONG      BoundY;                      // The boundary of space available for drawing, i.e. the clip region, for the Y coordinate
-   LONG      BoundWidth;                  // The boundary of space available for drawing, i.e. the clip region, for the width
-   LONG      BoundHeight;                 // The boundary of space available for drawing, i.e. the clip region, for the height
-   ULONG     Visible:1;                   // TRUE if the layout is visible
-   ULONG     PresetX:1;                   // TRUE if the horizontal position was defined by the client.
-   ULONG     PresetY:1;                   // TRUE if the vertical position was defined by the client.
-   ULONG     PresetWidth:1;               // TRUE if the width was defined by the client
-   ULONG     PresetHeight:1;              // TRUE if the height was defined by the client
-   ULONG     DisableDrawing:1;            // TRUE to disable automatic redrawing
-   struct SurfaceCoords ParentSurface;    // The coordinates and dimensions of the parent surface are cached here.
-   FUNCTION  DrawCallback;
-
-#ifdef PRV_LAYOUT
-    FUNCTION ResizeCallback;
-    OBJECTPTR Owner;
-    OBJECTID PageID;
-    LONG MinWidth;
-    LONG MaxWidth;
-    LONG MinHeight;
-    LONG MaxHeight;
-    LONG Cursor;
-    LONG LeftLimit;
-    LONG TopLimit;
-    LONG RightLimit;
-    LONG BottomLimit;
-  
-#endif
-} objLayout;
 
 struct SurfaceBase {
    ERROR (*_GetSurfaceInfo)(OBJECTID, struct SurfaceInfoV2 **);

@@ -72,27 +72,48 @@ Example usage:
    if (gui == nil) then gui = { } end
    if (gui.dialog == nil) then gui.dialog = { } end
 
+local function defaultIcon(self)
+   if nz(self.type) then
+      local icons = {
+         error     = 'error',
+         critical  = 'error',
+         warning   = 'warning',
+         attention = 'info',
+         alarm     = 'alarm',
+         help      = 'question',
+         question  = 'question',
+         request   = 'info',
+         info      = 'info'
+      }
+      for k,v in pairs(icons) do
+         if self.type == k then return 'icons:items/' .. v end
+      end
+   end
+   return 'icons:items/question'
+end
+
 gui.dialog.message = function(Options)
    local self = { // Public variables
       windowID = nil,
-      document = nil
+      document = nil,
+      options  = Options.options,
+      type     = Options.type,
+      feedback = Options.feedback,
+      inputRequired = Options.inputRequired,
+      message    = Options.message,
+      fmtMessage = nz(Options.message, Options.fmtMessage)
    }
-
-   local lOptions = Options
-   local lWindow, lInput, lCheckbox
 
    -- Change the message in the dialog
 
-   self.message = function(Message)
-      lOptions.message = Message
-      lOptions.fmtMessage = nil
-      lDoc.acClear()
-      lDoc.acDataFeed(0, DATA_XML, buildDocument())
-   end
-
-   self.fmtMessage = function(Message)
-      lOptions.fmtMessage = Message
-      lOptions.message = nil
+   self.setMessage = function(Message, Formatted)
+      if Formatted then
+         self.message = nil
+         self.fmtMessage = Message
+      else
+         self.message = Message
+         self.fmtMessage = nil
+      end
       lDoc.acClear()
       lDoc.acDataFeed(0, DATA_XML, buildDocument())
    end
@@ -115,53 +136,33 @@ gui.dialog.message = function(Options)
       Window.insideWidth  = page_width
    end
 
-   local function defaultIcon()
-      if nz(lOptions.type) then
-         local icons = {
-            error     = 'error',
-            critical  = 'error',
-            warning   = 'warning',
-            attention = 'info',
-            alarm     = 'alarm',
-            help      = 'question',
-            question  = 'question',
-            request   = 'info',
-            info      = 'info'
-         }
-         for k,v in pairs(icons) do
-            if lOptions.type == k then return 'icons:items/' .. v end
-         end
-      end
-      return 'icons:items/question'
-   end
-
    local function docEvent(Document, EventFlag, Parameters)
       if bit.band(EventFlag, DEF_LINK_ACTIVATED) != 0 then
-         if lOptions.feedback then
+         if self.feedback then
             local responseIndex = tonumber(mSys.VarGetString(Parameters.parameters, 'response'))
-            local response = lOptions.options[responseIndex]
+            local response = self.options[responseIndex]
             local state = { }
 
-            if lCheckbox then
-               if lCheckbox.value == 1 then
-                  state.checkbox = true
+            if self.checkbox then
+               if self.checkbox.value == 1 then
+                  state.checkboxState = true
                else
-                  state.checkbox = false
+                  state.checkboxState = false
                end
             end
 
-            if lInput then
-               state.input = nz(lInput.string, nil)
-               if lOptions.inputRequired and not state.input then
+            if self.input then
+               state.input = nz(self.input.string, nil)
+               if self.inputRequired and not state.input then
                   // If input is mandatory, the response is cancelled when no input is given
                   response = nil
                end
             end
 
-            lOptions.feedback(self, response, state)
+            self.feedback(self, response, state)
          end
 
-         lWindow = nil
+         table.clear(self)
       else
          print('Document event received')
       end
@@ -174,18 +175,18 @@ gui.dialog.message = function(Options)
   colour="240,240,250" fontcolour="0,0,0" selectcolour="80,160,80"/>
 ]]
 
-      if lOptions.envTemplate then
+      if Options.envTemplate then
          // The EnvTemplate can redefine the default body, GUI templates etc
          doc = doc .. options.envTemplate .. '\n'
       end
 
-      if lOptions.template then
+      if Options.template then
          // A dialog-specific template can override the body style and change any class templates,
          // header and footer etc
          doc = doc .. '<include src="' .. options.template .. '"/>\n'
       end
 
-      image = nz(lOptions.image, defaultIcon())
+      image = nz(Options.image, defaultIcon(self))
       if image:startsWith('icons:') then
          image = image:gsub('^icons:(%w+)/(%w+)', 'icons:%1/%2(48)')
       else
@@ -200,18 +201,18 @@ gui.dialog.message = function(Options)
         <image src="]] .. image .. [[" align="left" eastgap="18"/>
       </cell>
       <cell>
-        <p>]] .. nz(lOptions.fmtMessage, string.escXML(nz(lOptions.message,''))) .. [[</p>
+        <p>]] .. nz(self.fmtMessage, string.escXML(nz(self.message,''))) .. [[</p>
 ]]
 
-      if lOptions.userInput then
+      if Options.userInput then
          local inputFlags = '!IgnoreFocus'
-         if lOptions.secret then
+         if Options.secret then
             inputFlags = inputFlags .. '|Secret'
          end
 
          local msg
-         if type(lOptions.userInput) == 'string' then
-            msg = lOptions.userInput
+         if type(Options.userInput) == 'string' then
+            msg = Options.userInput
          else
             msg = ''
          end
@@ -219,32 +220,32 @@ gui.dialog.message = function(Options)
          doc = doc .. '<p><input name="inDialog" flags="' .. inputFlags .. '" width="200" string="' .. msg .. '"/></p>\n'
       end
 
-      if lOptions.checkboxLabel then
+      if Options.checkboxLabel then
          local checkbox_value = 'false'
-         if lOptions.checkboxState then checkbox_value = 'true' end
-         doc = doc .. '<p><checkbox name="dlgCheckbox" label="' .. lOptions.checkboxLabel .. '" value="' .. checkbox_value .. '"/></p>\n'
+         if Options.checkboxState then checkbox_value = 'true' end
+         doc = doc .. '<p><checkbox name="dlgCheckbox" label="' .. Options.checkboxLabel .. '" value="' .. checkbox_value .. '"/></p>\n'
       end
 
-      if lOptions.inject then
-         doc = doc .. lOptions.inject
+      if Options.inject then
+         doc = doc .. Options.inject
       end
 
       // Build the clickable options/buttons.  At minimum, there must be an OK option.
 
-      if not ((type(lOptions.options) == 'table') and (#lOptions.options > 0)) then
-         lOptions.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
+      if not ((type(self.options) == 'table') and (#self.options > 0)) then
+         self.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
       end
 
       doc = doc .. '<p><box height="1" colour="0,0,0,50"/></p>\n<p nowrap>'
 
-      for i, option in ipairs(lOptions.options) do
+      for i, option in ipairs(self.options) do
          if option['icon'] then
             doc = doc .. '<image src="icons:' .. option.icon .. '(16)" eastgap="4"/>\n'
          end
 
          doc = doc .. '<a @response="' .. i .. '">' .. option.text .. '</a>\n'
 
-         if i < #lOptions.options then
+         if i < #self.options then
             doc = doc .. '<advance x="30"/>'
          end
       end
@@ -262,95 +263,90 @@ gui.dialog.message = function(Options)
       return doc
    end
 
-   catch(function()
-      local dlg_width = 320
-      if lOptions.message then
-         local longest = 0
-         for word in lOptions.message:gmatch("%S+") do
-            if (word:len() > longest) then
-               longest = word:len()
-            end
-         end
-         dlg_width = 120 + (longest * 12)
-         if dlg_width < 300 then
-            dlg_width = 300
-         elseif dlg_width > 480 then
-            dlg_width = 480
-         end
-      elseif lOptions.fmtMessage then
-         if lOptions.fmtMessage:len() > 80 then
-            dlg_width = 390
+   local dlg_width = 320
+   if self.message then
+      local longest = 0
+      for word in self.message:gmatch("%S+") do
+         if (word:len() > longest) then
+            longest = word:len()
          end
       end
+      dlg_width = 120 + (longest * 12)
+      if dlg_width < 300 then
+         dlg_width = 300
+      elseif dlg_width > 480 then
+         dlg_width = 480
+      end
+   elseif self.fmtMessage then
+      if self.fmtMessage:len() > 80 then
+         dlg_width = 390
+      end
+   end
 
-      lWindow = obj.new('window', {
-         insideWidth  = dlg_width,
-         insideHeight = 102,
-         minWidth     = 190,
-         minHeight    = 102,
-         quit         = nz(lOptions.quit, false),
-         center       = true,
-         popover      = lOptions.popover,
-         parent       = lOptions.target,
-         icon         = nz(lOptions.icon, 'items/question'),
-         title        = nz(lOptions.title, 'Confirmation Required'),
-         modal        = nz(lOptions.modal, false),
-         flags        = 'NoMargins',
-         closeFeedback = function(Window)
-            if (lOptions.feedback != nil) then
-               lOptions.feedback(self, nil, nil)
-            end
-
-            lWindow = nil
+   self.window = obj.new('window', {
+      insideWidth  = dlg_width,
+      insideHeight = 102,
+      minWidth     = 190,
+      minHeight    = 102,
+      quit         = nz(Options.quit, false),
+      center       = true,
+      popover      = Options.popover,
+      parent       = Options.target,
+      icon         = nz(Options.icon, 'items/question'),
+      title        = nz(Options.title, 'Confirmation Required'),
+      modal        = nz(Options.modal, false),
+      flags        = 'NoMargins',
+      closeFeedback = function(Window)
+         if (self.feedback != nil) then
+            self.feedback(self, nil, nil)
          end
+
+         table.clear(self)
+      end
+   })
+
+   self.window.lock(function()
+      lDocSurface = self.window.new('surface', {
+         name    = 'docSurface',
+         x       = self.window.leftMargin,
+         y       = self.window.topMargin,
+         xOffset = self.window.rightMargin,
+         yOffset = self.window.bottomMargin,
+         flags   = 'GrabFocus'
       })
 
-      lWindow.lock(function()
-         lDocSurface = lWindow.new('surface', {
-            name    = 'docSurface',
-            x       = lWindow.leftMargin,
-            y       = lWindow.topMargin,
-            xOffset = lWindow.rightMargin,
-            yOffset = lWindow.bottomMargin,
-            flags   = 'GrabFocus'
+      lDocSurface.lock(function()
+         lDocSurface.acShow()
+
+         lDoc = lDocSurface.new('document', {
+            eventMask     = 'LinkActivated',
+            eventCallback = docEvent,
+            path          = '#Index',
+            flags         = 'Unrestricted|NoScrollbars',
+            defaultScript = obj.find('self')
          })
 
-         lDocSurface.lock(function()
-            lDocSurface.acShow()
+         lDoc.acDataFeed(0, DATA_XML, buildDocument())
 
-            lDoc = lDocSurface.new('document', {
-               eventMask     = 'LinkActivated',
-               eventCallback = docEvent,
-               path          = '#Index',
-               flags         = 'Unrestricted|NoScrollbars',
-               defaultScript = obj.find('self')
-            })
+         self.input = obj.find('inDialog')
+         self.checkbox = obj.find('dlgCheckbox')
 
-            lDoc.acDataFeed(0, DATA_XML, buildDocument())
+         if self.input then
+            self.input.textinput.mtSelectArea(0, 0, 20000, 20000)
+         end
 
-            lInput = obj.find('inDialog')
-            lCheckbox = obj.find('dlgCheckbox')
+         matchWindowToDocSize(self.window, lDoc)
 
-            if lInput then
-               lInput.textinput.mtSelectArea(0, 0, 20000, 20000)
-            end
+         self.window.userFocus = lDocSurface.id
 
-            matchWindowToDocSize(lWindow, lDoc)
-
-            lWindow.userFocus = lDocSurface.id
-
-            lWindow.acMoveToFront()
-            lWindow.acShow()
-            lDocSurface.acFocus()
-         end)
+         self.window.acMoveToFront()
+         self.window.acShow()
+         lDocSurface.acFocus()
       end)
-
-      self.windowID = lWindow.id
-      self.document = lDoc
-   end,
-   function(Exception)
-      error('Failed to initialise Dialog: ' .. Exception.message)
    end)
+
+   self.windowID = self.window.id
+   self.document = lDoc
 
    return self
 end

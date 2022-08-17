@@ -263,6 +263,12 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    }
 
    {
+      const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
+      auto pos = std::find(glFocusList.begin(), glFocusList.end(), Self);
+      if (pos != glFocusList.end()) glFocusList.erase(pos, glFocusList.end());
+   }
+
+   {
       const std::lock_guard<std::mutex> lock(glResizeLock);
       if ((!glResizeSubscriptions.empty()) and (glResizeSubscriptions.contains(Self))) {
          glResizeSubscriptions.erase(Self);
@@ -484,7 +490,12 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
    {
       const std::lock_guard<std::mutex> lock(glResizeLock);
       if (glResizeSubscriptions.contains(Self)) {
-         Self->Scene->ResizeSubscriptions[Self->ParentView][Self] = glResizeSubscriptions[Self];
+         if (Self->ParentView) {
+            Self->Scene->ResizeSubscriptions[Self->ParentView][Self] = glResizeSubscriptions[Self];
+         }
+         else if (Self->Head.SubID IS ID_VECTORVIEWPORT) { // The top-level viewport responds to its own sizing.
+            Self->Scene->ResizeSubscriptions[(objVectorViewport *)Self][Self] = glResizeSubscriptions[Self];
+         }
          glResizeSubscriptions.erase(Self);
       }
    }
@@ -533,6 +544,7 @@ static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
    Self->FillRule      = VFR_NON_ZERO;
    Self->ClipRule      = VFR_NON_ZERO;
    Self->Dirty         = RC_ALL;
+   Self->TabOrder      = 255;
    new (Self) objVector;
    return ERR_Okay;
 }
@@ -1552,6 +1564,14 @@ static ERROR VECTOR_SET_Mask(objVector *Self, objVectorClip *Value)
 /*********************************************************************************************************************
 
 -FIELD-
+Matrices: A linked list of transform matrices that have been applied to the vector.
+
+All transforms that have been allocated via ~Vector.NewMatrix() can be read from the Matrices field.  Each transform is
+represented by the `VectorMatrix` structure, and are linked in the order in which they are added to the vector.
+
+&VectorMatrix
+
+-FIELD-
 MiterLimit: Imposes a limit on the ratio of the miter length to the StrokeWidth.
 
 When two line segments meet at a sharp angle and miter joins have been specified in #LineJoin, it is possible
@@ -1805,7 +1825,7 @@ The dimension values refer to the current location and size of the viewport.
 
 static ERROR VECTOR_SET_ResizeEvent(objVector *Self, FUNCTION *Value)
 {
-   Self->ResizeSubscription = TRUE;
+   Self->ResizeSubscription = true;
    if ((Self->Scene) and (Self->ParentView)) {
       Self->Scene->ResizeSubscriptions[Self->ParentView][Self] = *Value;
    }
@@ -2078,12 +2098,30 @@ static ERROR VECTOR_SET_StrokeWidth(objVector *Self, Variable *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Matrices: A linked list of transform matrices that have been applied to the vector.
+TabOrder: Defines the priority of this vector within the tab order.
 
-All transforms that have been allocated via ~Vector.NewMatrix() can be read from the Matrices field.  Each transform is
-represented by the `VectorMatrix` structure, and are linked in the order in which they are added to the vector.
+If a vector maintains a keyboard subscription then it can define its priority within the tab order (the order in which
+vectors receive the focus when the user presses the tab key).  The highest priority is 1, the lowest is 255 (the default).
+When two vectors share the same priority, preference is given to the older of the two objects.
 
-&VectorMatrix
+*********************************************************************************************************************/
+
+static ERROR VECTOR_GET_TabOrder(objVector *Self, LONG *Value)
+{
+   *Value = Self->TabOrder;
+   return ERR_Okay;
+}
+
+static ERROR VECTOR_SET_TabOrder(objVector *Self, LONG Value)
+{
+   if ((Value >= 1) and (Value <= 255)) {
+      Self->TabOrder = Value;
+      return ERR_Okay;
+   }
+   else return ERR_OutOfRange;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 Transition: Reference a VectorTransition object here to apply multiple transforms over the vector's path.
@@ -2299,6 +2337,7 @@ static const FieldArray clVectorFields[] = {
    { "LineJoin",     FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clLineJoin,  (APTR)VECTOR_GET_LineJoin, (APTR)VECTOR_SET_LineJoin },
    { "LineCap",      FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clLineCap,   (APTR)VECTOR_GET_LineCap, (APTR)VECTOR_SET_LineCap },
    { "InnerJoin",    FDF_VIRTUAL|FD_LONG|FD_LOOKUP|FDF_RW,   (MAXINT)&clInnerJoin, (APTR)VECTOR_GET_InnerJoin, (APTR)VECTOR_SET_InnerJoin },
+   { "TabOrder",     FDF_VIRTUAL|FD_LONG|FD_RW,              0, (APTR)VECTOR_GET_TabOrder, (APTR)VECTOR_SET_TabOrder },
    END_FIELD
 };
 

@@ -333,12 +333,12 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.scene.surface.mtScheduleRedraw()
    end
 
-   -- Manually select an item(s).  The client must provide the function 'TestItem', which will receive
+   -- Manually select an item(s).  The client must provide the Conditional function that will receive
    -- a reference to each known item.  It must return 'true' for any item that needs to be selected.
 
-   vw.selectItems = function(TestItem)
+   vw.selectItems = function(Conditional)
       for _, item in ipairs(vw.items) do
-         if TestItem(item) == true then
+         if Conditional(item) == true then
             selectItem(vw, item)
             vw.activeItem = item
             reportItemSelected(vw, 'selected', item)
@@ -346,6 +346,18 @@ gui.initView = function(Options, BuildUI, NewItems)
          end
       end
       vw.scene.surface.mtScheduleRedraw()
+   end
+
+   -- Return a table of all selected items
+
+   vw.selectedItems = function()
+      local list = { }
+      for _, item in ipairs(vw.items) do
+         if item._selected then
+            table.insert(list, item)
+         end
+      end
+      return list
    end
 
    -- Deselects all currently selected items.

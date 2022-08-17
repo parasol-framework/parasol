@@ -37,37 +37,6 @@ local function defineGradient(Scene, Name, First, Last, X1, Y1, X2, Y2, Units)
 end
 
 glStyles = {
-   combobox = {
-      decoration = function(Combo, Viewport)
-
-         -- Compute the width of the combobox relative to the width of the drop-down menu.
---[[
-         if bit.band(Viewport.dimensions, DMF_WIDTH) == 0 then
-            if bit.band(Viewport.dimensions, DMF_X) == 0 or bit.band(Viewport.dimensions, DMF_X_OFFSET) == 0 then
-               local menuWidth = menu.width
-               if (menuWidth > MAX_MENU_WIDTH) then menuWidth = MAX_MENU_WIDTH end
-               if (Combo.labelWidth + menuWidth > MIN_MENU_WIDTH) then
-                  Viewport.width = Combo.labelWidth + menuWidth + iconSize
-               else
-                  Viewport.width = Combo.labelWidth + MIN_MENU_WIDTH + iconSize
-               end
-            end
-         end
-
-         Combo.menu.subscribe('activate', function(Menu, Args, Combo)
-            local item = Combo.menu.selection
-            if item then
-               if item.text != textInput.string then
-                  Combo.string = item.text
-                  Combo.acActivate()
-               end
-            else
-               error('No item selected.')
-            end
-         end, Combo)
---]]
-      end
-   },
    window = {
       defaultValues = function(Window)
          local parent = Window.parent

@@ -11,7 +11,7 @@ VectorViewport: Provides support for viewport definitions within a vector tree.
 This class is used to declare a viewport within a vector scene graph.  A master viewport is required as the first object
 in a @VectorScene and it must contain all vector graphics content.
 
-The size of the viewport is initially set to (0,0,100%,100%) so as to be all inclusive.  Setting the #X, #Y, #Width and
+The size of the viewport is initially set to `(0,0,100%,100%)` so as to be all inclusive.  Setting the #X, #Y, #Width and
 #Height fields will determine the position and clipping of the displayed content (the 'target area').  The #ViewX, #ViewY,
 #ViewWidth and #ViewHeight fields declare the viewbox ('source area') that will be sampled for the target.
 

@@ -26,7 +26,6 @@ Surface: Provides UI management functionality.
 #endif
 
 #define __system__
-#define PRV_LAYOUT
 #define PRV_SURFACE
 #define PRV_SURFACE_MODULE
 
@@ -45,7 +44,7 @@ static struct DisplayBase *DisplayBase;
 static SharedControl *glSharedControl = NULL;
 static TIMER glRefreshPointerTimer = 0;
 static objBitmap *glComposite = NULL;
-static OBJECTPTR SurfaceClass = NULL, LayoutClass = NULL;
+static OBJECTPTR SurfaceClass = NULL;
 static OBJECTPTR modDisplay = NULL, modSurface = NULL;
 static BYTE glDisplayType = DT_NATIVE;
 static DOUBLE glpRefreshRate = -1, glpGammaRed = 1, glpGammaGreen = 1, glpGammaBlue = 1;
@@ -91,7 +90,6 @@ static BYTE  check_surface_list(void);
 static UBYTE CheckVisibility(SurfaceList *, WORD);
 static UBYTE check_volatile(SurfaceList *, WORD);
 static ERROR create_surface_class(void);
-static ERROR create_layout_class(void);
 static void expose_buffer(SurfaceList *, WORD Total, WORD Index, WORD ScanIndex, LONG Left, LONG Top, LONG Right, LONG Bottom, OBJECTID VideoID, objBitmap *);
 static WORD  FindBitmapOwner(SurfaceList *, WORD);
 static ERROR drwRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
@@ -266,7 +264,6 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    const SystemState *state = GetSystemState();
    if (state->Stage < 0) { // An early load indicates that classes are being probed, so just return them.
-      create_layout_class();
       return create_surface_class();
    }
 
@@ -380,8 +377,6 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    load_style_values();
 
-   create_layout_class();
-
    return create_surface_class();
 }
 
@@ -406,7 +401,6 @@ ERROR CMDExpunge(void)
    if (glComposite)     { acFree(glComposite); glComposite = NULL; }
    if (modDisplay)      { acFree(modDisplay); modDisplay = NULL; }
    if (SurfaceClass)    { acFree(SurfaceClass); SurfaceClass = NULL; }
-   if (LayoutClass)     { acFree(LayoutClass); LayoutClass = NULL; }
 
    return ERR_Okay;
 }
@@ -3283,7 +3277,6 @@ static void refresh_pointer(objSurface *Self)
 //**********************************************************************
 
 #include "class_surface/surface_class.cpp"
-#include "class_layout/layout.cpp"
 
 //****************************************************************************
 
