@@ -41,6 +41,7 @@ Valid options to use when creating the dialog are as follows:
    require 'gui/toolbar'
    require 'gui/button'
    require 'gui/combobox'
+   require 'gui/input'
    include 'widget'
 
    if (gui == nil) then gui = { } end

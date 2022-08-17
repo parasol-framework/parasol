@@ -12,24 +12,6 @@ Particle Benchmark
 
 ------------------------------------------------------------------------------
 
-function drawVector(Surface, Bitmap)
-   glSurfaceWidth = Surface.width
-   glSurfaceHeight = Surface.height
-
-   local start = mSys.PreciseTime()
-   local err, bkgd = Bitmap.mtGetColour(255, 255, 255, 255)
-   Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, bkgd, BAF_FILL)
-
-   glScene.bitmap = Bitmap
-   glScene.pageWidth = glSurfaceWidth
-   glScene.pageHeight = glSurfaceHeight
-   glScene.acDraw()
-
-   updateTime(mSys.PreciseTime() - start)
-end
-
-------------------------------------------------------------------------------
-
 function drawDirectVector(Surface, Bitmap)
    glSurfaceWidth = Surface.width
    glSurfaceHeight = Surface.height
@@ -73,7 +55,9 @@ function updateTime(elapsed)
    end
    totalTime = totalTime / #glTimes
    local fps = 1000000 / totalTime
-   glFPS.string = string.format('Render Time: %.2fms, FPS: %.0f', totalTime/1000, fps)
+
+   if glFPS then glFPS.string = string.format('Render Time: %.2fms, FPS: %.0f', totalTime/1000, fps) end
+
    if (#glTimes >= 50) and (fps > glBestFPS) then
       glBestFPS = fps
    end
@@ -170,6 +154,7 @@ function timer(Subscriber, Elapsed, Current)
    end
 
    glSurface.acDraw()
+   updateTime(glScene.renderTime)
 end
 
 ------------------------------------------------------------------------------
@@ -184,15 +169,18 @@ function createWindow()
       end
    })
 
-   glFPS = glWindow.new('text', { x=glWindow.leftMargin, y=glWindow.topMargin, string='FPS:' })
-
    glSurface = glWindow.new('surface', {
-      name = 'rgnMain',
       x = glWindow.leftMargin,
-      y = glFPS.y + glFPS.textHeight,
+      y = glWindow.topMargin,
       xOffset = glWindow.rightMargin,
       yOffset = glWindow.bottomMargin
    })
+
+   glScene    = obj.new('VectorScene', { surface = glSurface, flags = 'RENDER_TIME' })
+   glViewport = glScene.new('VectorViewport', { }) // Main viewport for vector graphics.
+   glViewport.new('VectorRectangle', { x=0, y=0, width='100%', height='100%', fill='rgb(255,255,255)' })
+   glFPS      = glViewport.new('VectorText', { x=10, y = 30, string='FPS:', fill='rgb(0,0,0)' })
+
    glSurface.acShow()
 end
 
@@ -234,10 +222,6 @@ end
       }
    elseif (glMode == MODE_VECTOR) then
       print('Drawing Mode: Vector')
-
-      glScene    = obj.new('VectorScene', { })
-      glViewport = glScene.new('VectorViewport', { }) // Main viewport for vector graphics.
-      glSurface.mtAddCallback(drawVector)
 
       glColours = {
         { r=0xcc, g=0, b=0 }, { r=0xff, g=0xcc, b=0 }, { r=0xaa, g=0xff, b=0 },

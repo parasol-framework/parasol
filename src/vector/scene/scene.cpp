@@ -147,7 +147,7 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
 -ACTION-
 Draw: Renders the scene to a bitmap.
 
-The Draw action will render the scene to the target #Bitmap.  If #Bitmap is NULL, an error will be
+The Draw action will render the scene to the target #Bitmap immediately.  If #Bitmap is NULL, an error will be
 returned.
 
 In addition, the #RenderTime field will be updated if the `RENDER_TIME` flag is defined.

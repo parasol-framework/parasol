@@ -456,7 +456,7 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
       end
    end
 
-   Scene.mtAddDef(Name, icon.pattern)
+   check(Scene.mtAddDef(Name, icon.pattern))
 
    return icon
 end
