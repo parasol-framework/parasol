@@ -205,7 +205,6 @@ module({ name="Surface", copyright="Paul Manias © 2000-2022", version=1.0 }, fu
     int RightLimit        # Limits the surface area from moving too far right
     int TopLimit          # Limits the surface area from moving too far up
     int BottomLimit       # Limits the surface area from moving too far down
-    int Frame             # Current frame number
     oid Display           # Refers to the Display object that is managing the surface's graphics.
     int(RNF) Flags        # Special flags
     int X                 # Fixed horizontal coordinate
@@ -218,7 +217,6 @@ module({ name="Surface", copyright="Paul Manias © 2000-2022", version=1.0 }, fu
     int(DMF) Dimensions   # Dimension flags
     int(DRAG) DragStatus  # Indicates the draggable state when dragging is enabled.
     int(PTR) Cursor       # The preferred cursor image to use when the pointer is over the surface
-    int ScrollSpeed       # Speed when using animated scrolling
     struct(RGB8) Colour   # Background colour specification
     int Type              # Internal surface type flags
     int Modal             # Set to 1 to enable modal mode
@@ -268,59 +266,6 @@ module({ name="Surface", copyright="Paul Manias © 2000-2022", version=1.0 }, fu
    BYTE     WindowType;           // See SWIN constants
    BYTE     PrecopyTotal;
    BYTE     Anchored;
-  ]])
-
-  class("Layout", { comment="Layout management class", src="class_layout/layout.cpp" }, [[
-    double X
-    double Y
-    double Width
-    double Height
-    double XOffset
-    double YOffset
-    double GraphicRelX      # If the X position is relative, the ratio is expressed here relative to the container's width.
-    double GraphicRelY      # If the Y position is relative, the ratio is expressed here relative to the container's height.
-    double GraphicRelWidth  # If the width is relative, the ratio is expressed here relative to the container's width.
-    double GraphicRelHeight # If the height is relative, the ratio is expressed here relative to the container's height.
-    obj Document            # Private.  For use by the Document class only.
-    oid Surface
-    int(ALIGN) Align
-    int(DMF) Dimensions
-    int(LAYOUT) Layout
-    int BitsPerPixel       # Total bits per pixel for the canvas.
-    int GraphicX
-    int GraphicY
-    int GraphicWidth
-    int GraphicHeight
-    int LeftMargin         # Fixed pixel margins specify the amount of whitespace from the Bound* fields
-    int TopMargin
-    int RightMargin
-    int BottomMargin
-    int BoundX             # The boundary of space available for drawing, i.e. the clip region, for the X coordinate
-    int BoundY             # The boundary of space available for drawing, i.e. the clip region, for the Y coordinate
-    int BoundWidth         # The boundary of space available for drawing, i.e. the clip region, for the width
-    int BoundHeight        # The boundary of space available for drawing, i.e. the clip region, for the height
-    bit(uint) Visible      # TRUE if the layout is visible
-    bit(uint) PresetX      # TRUE if the horizontal position was defined by the client.
-    bit(uint) PresetY      # TRUE if the vertical position was defined by the client.
-    bit(uint) PresetWidth  # TRUE if the width was defined by the client
-    bit(uint) PresetHeight # TRUE if the height was defined by the client
-    bit(uint) DisableDrawing # TRUE to disable automatic redrawing
-    struct(SurfaceCoords) ParentSurface  # The coordinates and dimensions of the parent surface are cached here.
-    func DrawCallback
-  ]],
-  [[
-    FUNCTION ResizeCallback;
-    OBJECTPTR Owner;
-    OBJECTID PageID;
-    LONG MinWidth;
-    LONG MaxWidth;
-    LONG MinHeight;
-    LONG MaxHeight;
-    LONG Cursor;
-    LONG LeftLimit;
-    LONG TopLimit;
-    LONG RightLimit;
-    LONG BottomLimit;
   ]])
 
   functionNames("drw",

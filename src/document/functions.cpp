@@ -1940,7 +1940,6 @@ list_repass:
                OBJECTID object_id;
                LONG objheight;
                OBJECTPTR object;
-               objLayout *layout;
 
                // Tell the object our CursorX and CursorY positions so that it can position itself within the stream
                // layout.  The object will tell us its clipping boundary when it returns (if it has a clipping boundary).
@@ -1949,8 +1948,6 @@ list_repass:
                if (!(object_id = escobj->ObjectID)) break;
                if (!escobj->Graphical) break; // Do not bother with objects that do not draw anything
                if (escobj->Owned) break; // Do not manipulate objects that have owners
-
-               layout = NULL;
 
                // cell: Reflects the page/cell coordinates and width/height of the page/cell.
 
@@ -1969,7 +1966,7 @@ wrap_object:
                LONG width_check = 0;
                LONG dimensions = 0;
                LONG layoutflags = 0;
-
+/*
                if (!(error = AccessObject(object_id, 5000, &object))) {
                   LAYOUT("layout_object:","[Idx:%d] The %s's available page area is %d-%d,%d-%d, margins %dx%d,%d, cursor %dx%d", i, object->Class->ClassName, cell.Left, cell.Right, cell.Top, cell.Bottom, l.left_margin-AbsX, l.right_margin, TopMargin, l.cursorx, l.cursory);
 
@@ -2164,15 +2161,14 @@ wrap_object:
                      layoutflags = layout->Layout;
 
                      if (layoutflags & (LAYOUT_BACKGROUND|LAYOUT_TILE)) {
-                        /* In background mode, the bounds are adjusted to match the size of the cell
-                        ** if the object supports GraphicWidth and GraphicHeight.  For all other objects,
-                        ** it is assumed that the bounds have been preset.
-                        **
-                        ** Positioning within the cell bounds is managed by the GraphicX/Y/Width/Height and
-                        ** Align fields.
-                        **
-                        ** Gaps are automatically worked into the calculated X/Y value.
-                        */
+                        // In background mode, the bounds are adjusted to match the size of the cell
+                        // if the object supports GraphicWidth and GraphicHeight.  For all other objects,
+                        // it is assumed that the bounds have been preset.
+                        //
+                        // Positioning within the cell bounds is managed by the GraphicX/Y/Width/Height and
+                        // Align fields.
+                        //
+                        // Gaps are automatically worked into the calculated X/Y value.
 
                         if ((layout->GraphicWidth) and (layout->GraphicHeight) and (!(layoutflags & LAYOUT_TILE))) {
                            layout->BoundX = cell.Left;
@@ -2609,7 +2605,7 @@ wrap_object:
                   LAYOUT("layout_object","Vertical repass may be required.");
                   object_vertical_repass = TRUE;
                }
-
+*/
                break;
             }
 
@@ -3704,7 +3700,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                         AccessObject(escobject->ObjectID, 3000, &object);
                      }
                      else object = GetObjectPtr(escobject->ObjectID);
-
+/*
                      if (object) {
                         objLayout *layout;
 
@@ -3733,6 +3729,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                         if (escobject->ObjectID < 0) ReleaseObject(object);
                      }
+*/
                   }
 
                   break;
