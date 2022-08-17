@@ -54,6 +54,7 @@ Please refer to it for further information on licensing.
 #include <array>
 #include <memory>
 #include <unordered_set>
+#include <set>
 #include <unordered_map>
 #include <mutex>
 
@@ -93,6 +94,9 @@ static OBJECTPTR clVectorSpiral = NULL, clVectorShape = NULL, clVectorTransition
 
 static OBJECTPTR modDisplay = NULL;
 static OBJECTPTR modFont = NULL;
+
+static std::recursive_mutex glFocusLock;
+static std::vector<objVector *> glFocusList; // The first reference is the most foreground object with the focus
 
 #define DEG2RAD 0.0174532925 // Multiple any angle by this value to convert to radians
 

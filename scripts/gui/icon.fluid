@@ -12,34 +12,50 @@ The following example illustrates typical usage:
       y      = 10,
       text   = 'File Manager',
       image  = 'programs/filemanager',
-      vfx    = vfx.fadeIn(1.0, 0.1)
-      feedback = function(Icon, Event)
-         print('Received event: ' .. Event.name)
-      end,
+      events = {
+         activate = function(Icon, Event)
+            print('Icon activated.')
+         end
+      }
    })
 
 Valid options to use when creating the icon are as follows:
 
   target:    Required.  Refers to a viewport that will contain the icon.
-  feedback:  Important events such as clicks and double-clicks will be passed to the feedback function defined here.
   image:     The name of an icon image to display, in format 'category/name'.
   x:         The x coordinate of the icon.
   y:         The y coordinate of the icon.
   size:      The preferred size of the icon, in pixels.
   text:      A string to display in the icon.
-  vfx:       A special effect to apply to the icon on its creation.
+  events:    A table of event triggers.  Supported events: activate, show
 --]]
 
    require 'common'
    require 'gui'
 
+local MARGIN      = 6
+
+-- NB: If a custom SVG file is desired then the client must specify a volume in the path.
+
+local function imageLocation(Path)
+   if (Path:find('^icons:') == 1) then
+      return Path
+   else
+      local colon = Path:find('^[%w]+:')
+      if (colon == 1) then
+         return Path
+      else
+         return 'icons:' .. Path
+      end
+   end
+end
+
 gui.icon = function(Options)
    local mFont = mod.load('font')
 
    local self = { -- Public variables
-      feedback       = Options.feedback,
       parentViewport = Options.target,
-      vfx            = Options.vfx, -- The active visual effect, if any
+      events         = nz(Options.events, { }),
       viewport       = nil -- The icon's primary viewport
    }
 
@@ -50,7 +66,6 @@ gui.icon = function(Options)
    local lLines      = { }
    local lIconSize   = nz(Options.size, 66)
    local lIconWidth  = lIconSize
-   local MARGIN      = 6
    local lFontSize   = 10
    local lLineHeight = 0
 
@@ -69,17 +84,17 @@ gui.icon = function(Options)
 
             if ((math.abs(Msg.absX - lClick.x) > 2) or (math.abs(Msg.absY - lClick.y) > 2)) then
                -- Do nothing - mouse moved/dragged when icon was clicked
-            elseif self.feedback then
+            elseif self.events.activate then
                if (bit.band(Msg.flags, JTYPE_DBL_CLICK) != 0) then
-                  self.feedback(self, { name='dblclick' })
+                  self.events.activate(self, { name='dblclick' })
                else
-                  self.feedback(self, { name='click' })
+                  self.events.activate(self, { name='click' })
                end
             end
          end
          Viewport.acDraw()
       elseif (Msg.type == JET_BUTTON_2) then
-         self.feedback(self, { name='altclick' })
+         self.events.activate(self, { name='altclick' })
       end
    end
 
@@ -137,24 +152,11 @@ gui.icon = function(Options)
       end
    end
 
-   -- NB: If a custom SVG file is desired then the client must specify a volume in the path.
-
-   local function imageLocation(Path, IconSize)
-      if (Path:find('^icons:') == 1) then
-         return Path
-      else
-         local colon = Path:find('^[%w]+:')
-         if (colon == 1) then
-            return Path
-         else
-            return 'icons:' .. Path
-         end
-      end
-   end
-
    local function initText()
       -- Create a dark rounded box in the background of the text, this will make it easier to distinguish the text
       -- against a busy background or one of a similar colour.
+
+      if #lLines == 0 then return end
 
       local box_height = self.viewport.height - (lIconSize + MARGIN)
       local y = lIconSize + MARGIN
@@ -188,70 +190,63 @@ gui.icon = function(Options)
 
    -- Main entry point
 
-   catch(function()
-      if nz(Options.text) then
-         lText = Options.text:trim():gsub('%s+', ' '):split(' ')
-      else
-         lText = nil
-      end
+   if nz(Options.text) then
+      lText = Options.text:trim():gsub('%s+', ' '):split(' ')
+   else
+      lText = nil
+   end
 
-      if not Options.target then error('A target viewport is required.') end
-      if not nz(Options.image) then error('The image option is required.') end
+   if not Options.target then error('A target viewport is required.') end
+   if not nz(Options.image) then error('The image option is required.') end
 
-      if (Options.theme == 'light') then
-         lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
-      else
-         lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
-      end
+   if (Options.theme == 'light') then
+      lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
+   else
+      lThemeColour = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
+   end
 
-      calcWords()
+   calcWords()
 
-      self.viewport = Options.target.new('VectorViewport', {
-         x = nz(Options.x, 0), y = nz(Options.y, 0),
-         width = lIconSize, height = lIconSize,
-         aspectRatio = 'XMid|YMin|Meet',
-         cursor = 'hand'
-      })
+   self.viewport = Options.target.new('VectorViewport', {
+      x = nz(Options.x, 0), y = nz(Options.y, 0),
+      width = lIconSize, height = lIconSize,
+      aspectRatio = 'XMid|YMin|Meet',
+      cursor = 'hand'
+   })
 
-      self.iconVP = self.viewport.new('VectorViewport', {
-         x = 0, y = 0, width = lIconSize, height = lIconSize
-      })
+   self.iconVP = self.viewport.new('VectorViewport', {
+      x = 0, y = 0, width = lIconSize, height = lIconSize
+   })
 
-      self.viewport.dragCallback = function(Viewport, X, Y)
-         Viewport.x = X
-         Viewport.y = Y
-         Viewport.acDraw()
-      end
+   self.viewport.dragCallback = function(Viewport, X, Y)
+      Viewport.x = X
+      Viewport.y = Y
+      Viewport.acDraw()
+   end
 
-      local src = imageLocation(Options.image, lIconSize)
-      if not src then error('Invalid image source ' .. Options.image) end
-      self.svg = obj.new('svg', { target=self.iconVP, path=src })
+   local src = imageLocation(Options.image)
+   if not src then error('Invalid image source ' .. Options.image) end
+   self.svg = obj.new('svg', { target=self.iconVP, path=src })
 
-      local gname = 'iconFill' .. self.iconVP.id
-      self.svgGradient = gui.simpleGradient(self.iconVP.scene, gname, { lThemeColour.first, lThemeColour.last },
-         0, self.iconVP.y, 0, self.iconVP.height, 'boundingbox')
-      gui.applyFill(self.iconVP, 'url(#' .. gname .. ')')
+   local gname = 'iconFill' .. self.iconVP.id
+   self.svgGradient = gui.simpleGradient(self.iconVP.scene, gname, { lThemeColour.first, lThemeColour.last },
+      0, self.iconVP.y, 0, self.iconVP.height, 'boundingbox')
+   gui.applyFill(self.iconVP, 'url(#' .. gname .. ')')
 
-      self.viewport.mtSubscribeInput(JTYPE_BUTTON, inputFeedback)
+   check(self.viewport.mtSubscribeInput(JTYPE_BUTTON, inputFeedback))
 
-      local gap = self.viewport.height * 0.1
-      if (gap < 2) then gap = 2 end
+   local gap = self.viewport.height * 0.1
+   if (gap < 2) then gap = 2 end
 
-      self.viewport.height = self.viewport.height + gap + MARGIN + (lLineHeight * #lLines)
+   self.viewport.height = self.viewport.height + gap + MARGIN + (lLineHeight * #lLines)
 
-      initText()
+   initText()
 
-      if self.vfx then
-         self.vfx.init(self.viewport, function()
-            self.vfx = nil
-         end)
-      end
+   if self.events.show then
+      self.events.show(self)
+   end
 
-      self.viewport.acDraw()
-   end,
-   function(Exception)
-      error('Failed to initialise Icon: ' .. Exception.message)
-   end)
+   self.viewport.acDraw()
 
    return self
 end

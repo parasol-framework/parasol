@@ -38,7 +38,7 @@ Methods:
       Load a new set of items and display them for the user.  Any existing items will be cleared.
 
    selectedItems()
-      TODO - Returns a table of all currently selected items.
+      Returns a table of all currently selected items.
 
 Graphics and UI options:
 
@@ -48,30 +48,30 @@ Graphics and UI options:
 
    require 'gui/libview'
 
-   local lDate
-   local VSPACING  = 2
-   local ICON_SIZE = 16
-   local lCounter  = 1
-   local EDGE      = 4 -- Whitespace around the page
+local lDate
+local VSPACING  = 2
+local ICON_SIZE = 16
+local lCounter  = 1
+local EDGE      = 4 -- Whitespace around the page
 
-   local LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-   local MARGIN = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
+local LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+local MARGIN = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
 
-   LINE_HEIGHT = math.round(LINE_HEIGHT * 1.33)
+LINE_HEIGHT = math.round(LINE_HEIGHT * 1.33)
 
-   local ICON_OFFSET = (LINE_HEIGHT - ICON_SIZE) * 0.5
-   local LINE_OFFSET = (LINE_HEIGHT + FONT_HEIGHT) * 0.5
-   local BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
+local ICON_OFFSET = (LINE_HEIGHT - ICON_SIZE) * 0.5
+local LINE_OFFSET = (LINE_HEIGHT + FONT_HEIGHT) * 0.5
+local BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
 
-   local lColours = {
-      buttonBackground        = 'rgb(240,240,240)',
-      fillTitleFont           = 'rgb(0,0,0)',
-      fillTitleSortFont       = 'rgb(0,0,0)',
-      fillSelect              = 'rgb(0,0,60,140)',
-      fillBkgdHighlight       = 'rgb(0,0,0,10)',
-      fillBkgdSelectHighlight = 'rgb(0,0,90,140)',
-      strokeButton            = 'rgb(160,160,160)'
-   }
+local lColours = {
+   buttonBackground        = 'rgb(240,240,240)',
+   fillTitleFont           = 'rgb(0,0,0)',
+   fillTitleSortFont       = 'rgb(0,0,0)',
+   fillSelect              = 'rgb(0,0,60,140)',
+   fillBkgdHighlight       = 'rgb(0,0,0,10)',
+   fillBkgdSelectHighlight = 'rgb(0,0,90,140)',
+   strokeButton            = 'rgb(160,160,160)'
+}
 
 ----------------------------------------------------------------------------------------------------------------------
 

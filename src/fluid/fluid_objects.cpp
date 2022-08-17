@@ -112,6 +112,8 @@ static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const 
 ** An object can be allocated as public by prefixing a '@' to the class name.
 **
 ** Also see object_newchild() for creating objects from a parent.
+**
+** Errors are immediately thrown.
 */
 
 static int object_new(lua_State *Lua)

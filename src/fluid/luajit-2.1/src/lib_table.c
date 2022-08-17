@@ -293,7 +293,8 @@ LJLIB_NOREG LJLIB_CF(table_new)		LJLIB_REC(.)
   return 1;
 }
 
-LJLIB_NOREG LJLIB_CF(table_clear)	LJLIB_REC(.)
+// PARASOL PATCHED IN
+LJLIB_CF(table_clear)	LJLIB_REC(.)
 {
   lj_tab_clear(lj_lib_checktab(L, 1));
   return 0;
@@ -304,10 +305,7 @@ static int luaopen_table_new(lua_State *L)
   return lj_lib_postreg(L, lj_cf_table_new, FF_table_new, "new");
 }
 
-static int luaopen_table_clear(lua_State *L)
-{
-  return lj_lib_postreg(L, lj_cf_table_clear, FF_table_clear, "clear");
-}
+// PARASOL PATCHED IN
 
 /* ------------------------------------------------------------------------ */
 
@@ -321,7 +319,7 @@ LUALIB_API int luaopen_table(lua_State *L)
   lua_setfield(L, -2, "unpack");
 #endif
   lj_lib_prereg(L, LUA_TABLIBNAME ".new", luaopen_table_new, tabV(L->top-1));
-  lj_lib_prereg(L, LUA_TABLIBNAME ".clear", luaopen_table_clear, tabV(L->top-1));
+// PARASOL PATCHED IN
   return 1;
 }
 

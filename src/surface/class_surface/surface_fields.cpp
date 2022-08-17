@@ -148,36 +148,6 @@ static ERROR SET_Flags(objSurface *Self, LONG Value)
 
 /*****************************************************************************
 -FIELD-
-Frame: Manipulates the frame number that a surface object has on display.
-
-Through clever use of the Frame field, the graphics of a surface object can be organised into individual frames that
-can be switched in-and-out of the display by updating the current frame number.  To use the Frame field effectively you
-need to use frame-enabled objects and define the frames that will activate them.  You will also need to write
-a functional mechanism to change the frame number.
-
-*****************************************************************************/
-
-static ERROR SET_Frame(objSurface *Self, LONG Value)
-{
-   if (Value < 0) Self->Frame = 0;
-   else Self->Frame = Value;
-   return ERR_Okay;
-}
-
-/*****************************************************************************
--FIELD-
-LayoutSurface: Private. Simply return the surface as itself as the 'layout surface' (refer to classes like Button and CheckBox to see why this makes sense).
-
-*****************************************************************************/
-
-static ERROR GET_LayoutSurface(objSurface *Self, OBJECTID *Value)
-{
-   *Value = Self->Head.UID;
-   return ERR_Okay;
-}
-
-/*****************************************************************************
--FIELD-
 LayoutStyle: Private. This system field is supported purely to receive notification that we are being used in a document.
 
 *****************************************************************************/
@@ -388,8 +358,8 @@ PrecopyRegion: Defines the regions to be copied when precopy is enabled.
 
 This field allows the client to define the regions that are precopied when the `PRECOPY` flag is enabled.  When
 precopying is enabled without a region specification, the entire background behind the surface will be copied, which
-can be sub-optimal in many circumstances.  By providing exact information to the precopy process, you can achieve a
-faster redrawing process.
+can be sub-optimal in many circumstances.  By providing exact information to the precopy process, a faster redrawing
+process is achieved.
 
 PrecopyRegion requires that you specify the coordinates and dimensions for each region in sets of four numbers - that
 is, the X and Y coordinate followed by either the Width and Height or XOffset and YOffset.  To aid you in your
@@ -605,18 +575,9 @@ static ERROR SET_RootLayer(objSurface *Self, OBJECTID Value)
 /*****************************************************************************
 
 -FIELD-
-ScrollSpeed: Determines the speed used for animated movement.
-
-The maximum speed of animated motion is limited by the value in this field. A value between 1 and 10 is recommended -
-the higher the value, the faster the animation will progress.
-
-Animated motion is enabled when the #MoveToPoint() action is called with the MTF_ANIM flag.
-
--FIELD-
 UserFocus: Refers to the surface object that has the current focus.
 
-This readable field will tell you the surface object that has the current user focus (within the context of the object
-hierarchy).  If no object has the user's focus, this field will return a value of NULL.
+Returns the surface object that has the primary user focus.  Returns NULL if no object has the focus.
 
 *****************************************************************************/
 

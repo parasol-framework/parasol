@@ -55,7 +55,6 @@ static ERROR SET_YOffset(objSurface *, Variable *);
 
 static ERROR consume_input_events(const InputEvent *, LONG);
 static void draw_region(objSurface *, objSurface *, objBitmap *);
-static ERROR scroll_timer(objSurface *, LARGE, LARGE);
 static ERROR redraw_timer(objSurface *, LARGE, LARGE);
 
 //****************************************************************************
@@ -1824,30 +1823,17 @@ MoveToPoint: Moves a surface object to an absolute coordinate.
 
 static ERROR SURFACE_MoveToPoint(objSurface *Self, struct acMoveToPoint *Args)
 {
-   if (Args->Flags & MTF_ANIM) {
-      Self->ScrollToX   = (Args->Flags & MTF_X) ? F2I(Args->X) : 0;
-      Self->ScrollToY   = (Args->Flags & MTF_Y) ? F2I(Args->Y) : 0;
-      Self->ScrollFromX = Self->X;
-      Self->ScrollFromY = Self->Y;
-      Self->ScrollProgress = 0;
-      FUNCTION callback;
-      SET_FUNCTION_STDC(callback, (APTR)&scroll_timer);
-      SubscribeTimer(0.02, &callback, &Self->ScrollTimer);
-      return ERR_Okay;
-   }
-   else {
-      struct acMove move;
+   struct acMove move;
 
-      if (Args->Flags & MTF_X) move.DeltaX = Args->X - Self->X;
-      else move.DeltaX = 0;
+   if (Args->Flags & MTF_X) move.DeltaX = Args->X - Self->X;
+   else move.DeltaX = 0;
 
-      if (Args->Flags & MTF_Y) move.DeltaY = Args->Y - Self->Y;
-      else move.DeltaY = 0;
+   if (Args->Flags & MTF_Y) move.DeltaY = Args->Y - Self->Y;
+   else move.DeltaY = 0;
 
-      move.DeltaZ = 0;
+   move.DeltaZ = 0;
 
-      return Action(AC_Move, Self, &move)|ERF_Notified;
-   }
+   return Action(AC_Move, Self, &move)|ERF_Notified;
 }
 
 /*****************************************************************************
@@ -1880,8 +1866,6 @@ static ERROR SURFACE_NewObject(objSurface *Self, APTR Void)
    Self->MaxHeight   = 16777216;
    Self->MinWidth    = 1;
    Self->MinHeight   = 1;
-   Self->Frame       = 1;
-   Self->ScrollSpeed = 5;
    Self->Opacity  = 255;
    Self->RootID   = Self->Head.UID;
    Self->ProgramID   = Self->Head.TaskID;
@@ -2422,40 +2406,6 @@ static ERROR redraw_timer(objSurface *Self, LARGE Elapsed, LARGE CurrentTime)
 
 //****************************************************************************
 
-static ERROR scroll_timer(objSurface *Self, LARGE Elapsed, LARGE CurrentTime)
-{
-   if (Self->ScrollSpeed < 1) Self->ScrollSpeed = 1;
-   else if (Self->ScrollSpeed > 30) Self->ScrollSpeed = 30;
-
-   Self->ScrollProgress += Self->ScrollSpeed;
-   if (Self->ScrollProgress > 100) Self->ScrollProgress = 100;
-
-   LONG x = Self->ScrollFromX + (((Self->ScrollToX - Self->ScrollFromX) * Self->ScrollProgress) / 100);
-   LONG y = Self->ScrollFromY + (((Self->ScrollToY - Self->ScrollFromY) * Self->ScrollProgress) / 100);
-
-   x = x - Self->X;
-   y = y - Self->Y;
-
-   if ((x) or (y)) {
-      acMove(Self, x, y, 0);
-
-      if (Self->ScrollProgress >= 100) {
-         Self->ScrollTimer = 0;
-         Self->ScrollProgress = 0;
-         return ERR_Terminate;
-      }
-   }
-   else {
-      Self->ScrollTimer = 0;
-      Self->ScrollProgress = 0;
-      return ERR_Terminate;
-   }
-
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
 static void draw_region(objSurface *Self, objSurface *Parent, objBitmap *Bitmap)
 {
    // Only region objects can respond to draw messages
@@ -2749,7 +2699,6 @@ static const FieldArray clSurfaceFields[] = {
    { "RightLimit",   FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_RightLimit },
    { "TopLimit",     FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_TopLimit },
    { "BottomLimit",  FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_BottomLimit },
-   { "Frame",        FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_Frame },
    { "Display",      FDF_OBJECTID|FDF_R,   ID_DISPLAY, NULL, NULL },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSurfaceFlags, NULL, (APTR)SET_Flags },
    { "X",            FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_XCoord, (APTR)SET_XCoord },
@@ -2762,7 +2711,6 @@ static const FieldArray clSurfaceFields[] = {
    { "Dimensions",   FDF_LONG|FDF_RW,       (MAXINT)&clSurfaceDimensions, NULL, (APTR)SET_Dimensions },
    { "DragStatus",   FDF_LONG|FDF_LOOKUP|FDF_R,  (MAXINT)&clSurfaceDragStatus, NULL, NULL },
    { "Cursor",       FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clSurfaceCursor, NULL, (APTR)SET_Cursor },
-   { "ScrollSpeed",  FDF_LONG|FDF_RW,       0, NULL, NULL },
    { "Colour",       FDF_RGB|FDF_RW,        0, NULL, NULL },
    { "Type",         FDF_SYSTEM|FDF_LONG|FDF_RI, (MAXINT)&clTypeFlags, NULL, NULL },
    { "Modal",        FDF_LONG|FDF_RW,       0, NULL, (APTR)SET_Modal },
@@ -2774,7 +2722,6 @@ static const FieldArray clSurfaceFields[] = {
    { "InsideHeight",  FDF_VIRTUAL|FDF_LONG|FDF_RW,     0,         (APTR)GET_InsideHeight,   (APTR)SET_InsideHeight },
    { "InsideWidth",   FDF_VIRTUAL|FDF_LONG|FDF_RW,     0,         (APTR)GET_InsideWidth,    (APTR)SET_InsideWidth },
    { "LayoutStyle",   FDF_VIRTUAL|FDF_SYSTEM|FDF_POINTER|FDF_W, 0, NULL,                    (APTR)SET_LayoutStyle },
-   { "LayoutSurface", FDF_VIRTUAL|FDF_OBJECTID|FDF_R,  0,         (APTR)GET_LayoutSurface,  NULL },
    { "Movement",      FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,(MAXINT)&MovementFlags, NULL,        (APTR)SET_Movement },
    { "Opacity",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,   0,         (APTR)GET_Opacity,        (APTR)SET_Opacity },
    { "PrecopyRegion", FDF_VIRTUAL|FDF_STRING|FDF_W,    0,         NULL,                     (APTR)SET_PrecopyRegion },

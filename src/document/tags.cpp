@@ -1495,8 +1495,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
       ClearMemory(&escobj, sizeof(escobj));
 
-      if (FindField(object, FID_Layout, NULL)) escobj.Graphical = TRUE;
-      else if (FindField(object, FID_LayoutSurface, NULL)) escobj.Graphical = TRUE;
+      if (object->ClassID IS ID_VECTOR) escobj.Graphical = TRUE;
       else escobj.Graphical = FALSE;
 
       // Child tags are processed as normal, but are applied with respect to the object.  Any tags that reflect
@@ -1528,7 +1527,6 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
             if (resource) resource->ClassID = class_id;
          }
          else {
-            objLayout *layout;
 
             escobj.ObjectID = object->UID;
             escobj.ClassID = object->ClassID;
@@ -1538,9 +1536,9 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
             // By default objects are assumed to be in the background (thus not embedded as part of the text stream).
             // This section is intended to confirm the graphical state of the object.
 
-            if ((FindField(object, FID_Layout, NULL)) and (!GetPointer(object, FID_Layout, &layout))) {
-               if (layout->Layout & (LAYOUT_BACKGROUND|LAYOUT_FOREGROUND));
-               else if (layout->Layout & LAYOUT_EMBEDDED) escobj.Embedded = TRUE;
+            if (object->ClassID IS ID_VECTOR) {
+               //if (layout->Layout & (LAYOUT_BACKGROUND|LAYOUT_FOREGROUND));
+               //else if (layout->Layout & LAYOUT_EMBEDDED) escobj.Embedded = TRUE;
             }
             else escobj.Embedded = TRUE; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
 

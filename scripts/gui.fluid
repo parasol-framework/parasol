@@ -8,7 +8,7 @@ if (gui == nil) then
       interface = { },
       rgb = { },
       counter = 0,
-      iconColours = {
+      iconThemes = {
          default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
          carbon  = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
          yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke={ r=60, g=30, b=30, a=90 } },
@@ -398,19 +398,19 @@ end
 -- VectorRectangle if you want to use the icon as a cached bitmap (fast), or apply to a VectorViewport for live
 -- rendering (higher quality transforms).
 
-gui.createIcon = function(Scene, Path, Size, Gradient, Name)
+gui.createIcon = function(Scene, Path, Size, Theme, Name)
    if not Size then Size = 16 end
    if not Name then Name = Path end
-   local lGradient = gui.iconColours.default
+   local lGradient = gui.iconThemes.default
    local icon = { }
 
-   if type(Gradient) == 'table' then
-      lGradient = Gradient
-   elseif type(Gradient) == 'string' then
-      if gui.iconColours[Gradient] then
-         lGradient = gui.iconColours[Gradient]
+   if type(Theme) == 'table' then
+      lGradient = Theme
+   elseif type(Theme) == 'string' then
+      if gui.iconThemes[Theme] then
+         lGradient = gui.iconThemes[Theme]
       else
-         error('gui.createIcon() gradient ' .. Gradient .. ' not recognised.')
+         error('gui.createIcon() theme ' .. Theme .. ' not recognised.')
       end
    end
 
@@ -456,7 +456,7 @@ gui.createIcon = function(Scene, Path, Size, Gradient, Name)
       end
    end
 
-   Scene.mtAddDef(Name, icon.pattern)
+   check(Scene.mtAddDef(Name, icon.pattern))
 
    return icon
 end

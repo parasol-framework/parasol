@@ -15,8 +15,6 @@ A demonstration of standard widgets
    require 'gui/combobox'
    require 'vfx'
 
-   mVector = mod.load('vector')
-
    local win  = obj.new('window', { title='Widget Examples', insideWidth=600, insideHeight=400 })
    local scene = win.surface.new('VectorScene', { flags=VPF_RESIZE, surface=win.surface })
    local viewport = scene.new('VectorViewport', { aspectRatio = ARF_MEET })
@@ -33,6 +31,13 @@ end
 
 function itemClicked(Menu, Item)
 
+end
+
+function widgetFocus(Widget)
+   --if Widget.effect then return end
+   --Widget.effect = vfx.shake(nz(Widget.inputViewport, Widget.viewport), 0.2, 0, 0.2, function(Effect)
+   --   Widget.effect = nil
+   --end)
 end
 
 -- This is a universal callback for any menu item that is activated by the user.
@@ -68,7 +73,7 @@ end
       end
    })
 
-   local y = menubar.vp.height
+   local y = menubar.viewport.height
 
    lToolbar = gui.toolbar(viewport, {
       xOffset     = 0,
@@ -93,7 +98,7 @@ end
       end
    })
 
-   y = y + lToolbar.vp.height + 8
+   y = y + lToolbar.viewport.height + 8
 
    local popupMenu = gui.menu({
       x     = 30,
@@ -132,33 +137,36 @@ end
       x      = win.leftMargin,
       y      = y,
       icon   = 'items/question',
-      feedback = function()
-         gui.dialog.message({
-            modal         = true,
-            image         = 'icons:items/warning',
-            title         = 'Hamlet has a question',
-            message       = 'To be or not to be?',
-            userInput     = 'That is the question',
-            checkboxLabel = '\'Tis nobler to suffer',
-            options = {
-               { id=1, text='To be', icon='items/checkmark' },
-               { id=2, text='Not to be', icon='items/cancel' }
-            },
-            feedback = function(Dialog, Response, State)
-               if Response then
-                  print('User selected option ' .. Response.id)
-               end
-               if State then
-                  if State.input then
-                     print('User entered string: ' .. State.input)
+      events = {
+         activate = function(Widget)
+            gui.dialog.message({
+               modal         = true,
+               image         = 'icons:items/warning',
+               title         = 'Hamlet has a question',
+               message       = 'To be or not to be?',
+               userInput     = 'That is the question',
+               checkboxLabel = '\'Tis nobler to suffer',
+               options = {
+                  { id=1, text='To be', icon='items/checkmark' },
+                  { id=2, text='Not to be', icon='items/cancel' }
+               },
+               feedback = function(Dialog, Response, State)
+                  if Response then
+                     print('User selected option ' .. Response.id)
                   end
-                  if State.checkbox then
-                     print('User activated the checkbox')
+                  if State then
+                     if State.input then
+                        print('User entered string: ' .. State.input)
+                     end
+                     if State.checkbox then
+                        print('User activated the checkbox')
+                     end
                   end
                end
-            end
-         })
-      end
+            })
+         end,
+         focus = widgetFocus
+      }
    })
 
    local colourButton = gui.button({
@@ -167,20 +175,23 @@ end
       x      = msgButton.viewport.x + msgButton.viewport.width + 4,
       y      = y,
       icon   = 'tools/palette',
-      feedback = function()
-         gui.dialog.colour({
-            modal  = true,
-            colour = '255,0,0',
-            feedback = function(Colour)
-               if (not Colour) then
-                  print('Dialog was cancelled.')
-                  return
-               end
+      events = {
+         activate = function(Widget)
+            gui.dialog.colour({
+               modal  = true,
+               colour = '255,0,0',
+               feedback = function(Colour)
+                  if (not Colour) then
+                     print('Dialog was cancelled.')
+                     return
+                  end
 
-               print('The user selected colour is ' .. Colour)
-            end
-         })
-      end
+                  print('The user selected colour is ' .. Colour)
+               end
+            })
+         end,
+         focus = widgetFocus
+      }
    })
 
    local fontButton = gui.button({
@@ -189,21 +200,24 @@ end
       x      = colourButton.viewport.x + colourButton.viewport.width + 4,
       y      = y,
       icon   = 'items/font',
-      feedback = function()
-         gui.dialog.font({
-            okText     = 'Select Font',
-            cancelText = 'Exit',
-            modal      = true,
-            feedback = function(Dialog, Accepted)
-               if (not Accepted) then
-                  print('Dialog was cancelled.')
-               else
-                  print("The user selected '" .. Dialog.face .. "', size " .. Dialog.size .. ", style '" .. Dialog.style .. "'")
-                  print("This can be compacted to '" .. Dialog.compactFace .. "'")
+      events = {
+         activate = function(Widget)
+            gui.dialog.font({
+               okText     = 'Select Font',
+               cancelText = 'Exit',
+               modal      = true,
+               feedback = function(Dialog, Accepted)
+                  if (not Accepted) then
+                     print('Dialog was cancelled.')
+                  else
+                     print("The user selected '" .. Dialog.face .. "', size " .. Dialog.size .. ", style '" .. Dialog.style .. "'")
+                     print("This can be compacted to '" .. Dialog.compactFace .. "'")
+                  end
                end
-            end
-         })
-      end
+            })
+         end,
+         focus = widgetFocus
+      }
    })
 
    local fileButton = gui.button({
@@ -212,26 +226,29 @@ end
       x      = fontButton.viewport.x + fontButton.viewport.width + 4,
       y      = y,
       icon   = 'folders/folder',
-      feedback = function()
-         gui.dialog.file({
-            filterList  = { { name='All Files', pattern='*' }, { name='MP3 Audio Files', pattern='*.mp3' }, { name='Text Files', pattern='*.txt' } },
-            okText      = 'Select File',
-            cancelText  = 'Exit',
-            modal       = true,
-            warnExists  = true,
-            multiSelect = true,
-            feedback = function(Dialog, Path, Files)
-               if (Files == nil) then
-                  print('Dialog was cancelled.')
-                  return
-               end
+      events = {
+         activate = function(Widget)
+            gui.dialog.file({
+               filterList  = { { name='All Files', pattern='*' }, { name='MP3 Audio Files', pattern='*.mp3' }, { name='Text Files', pattern='*.txt' } },
+               okText      = 'Select File',
+               cancelText  = 'Exit',
+               modal       = true,
+               warnExists  = true,
+               multiSelect = true,
+               feedback = function(Dialog, Path, Files)
+                  if (Files == nil) then
+                     print('Dialog was cancelled or no files selected.')
+                     return
+                  end
 
-               for k, v in ipairs(Files) do
-                   print(k, ' = ', nz(Path,'') .. v)
+                  for k, v in ipairs(Files) do
+                      print(k, ' = ', nz(Path,'') .. v.filename)
+                  end
                end
-            end
-         })
-      end
+            })
+         end,
+         focus = widgetFocus
+      }
    })
 
    y = y + msgButton.viewport.height + 8
@@ -241,7 +258,12 @@ end
       label  = 'Checkbox',
       align = 'left',
       x = win.leftMargin,
-      y = y
+      y = y,
+      events = {
+         activate = function(Widget)
+         end,
+         focus = widgetFocus
+      }
    })
    y = y + checkbox.viewport.height + 8
 
@@ -260,6 +282,11 @@ end
          { group='Weather' },
          { item='Snow', icon='weather/snow' },
          { item='Thunder', icon='weather/thunder' }
+      },
+      events = {
+         activate = function(Widget)
+         end,
+         focus = widgetFocus
       }
    })
    y = y + combobox.viewport.height + 8
@@ -271,10 +298,12 @@ end
       width  = 260,
       label  = 'Inputbox: ',
       text   = 'Your text here',
-      feedback = function(Input, Value, State)
-         print('Input state set to ' .. State .. ', text "' .. Value .. '"')
-
-      end
+      events = {
+         activate = function(Widget, Event)
+            print('Input state set to "' .. nz(Event.state,'NIL') .. '", text "' .. nz(Event.text,'NIL') .. '"')
+         end,
+         focus = widgetFocus
+      }
    })
    y = y + input.viewport.height + 16
 
@@ -285,14 +314,17 @@ end
       image  = 'time/alarm',
       text   = 'Alarm',
       size   = 80,
-      vfx    = vfx.fadeIn(1.0, 0.1),
-      feedback = function(Icon, Event)
-         if Icon.effect then return end
-         Icon.effect = vfx.shake(1.0, 0, 1.0)
-         Icon.effect.init(Icon.viewport, function(Effect)
-            Icon.effect = nil
-         end)
-      end
+      events = {
+         show = function(Icon)
+            vfx.fadeIn(Icon.viewport, 1.0, 0.1)
+         end,
+         activate = function(Icon)
+            if Icon.effect then return end
+            Icon.effect = vfx.shake(Icon.viewport, 1.0, 0, 1.0, function(Effect)
+               Icon.effect = nil
+            end)
+         end
+      }
    })
 
    gui.icon({
@@ -301,18 +333,23 @@ end
       y      = y,
       image  = 'programs/filemanager',
       text   = 'Wilhelm\'s House',
-      vfx    = vfx.chain(vfx.rotate(0.8, 0.3), vfx.zoomIn(0.4, 0.3)),
-      feedback = function(Icon, Event)
-         if (Icon.effect) then return end
-         Icon.effect = vfx.chain(vfx.rotate(0.8), vfx.zoomOut(0.8))
-         Icon.effect.init(Icon.viewport, function(Effect)
-            Icon.effect = nil
-            if (Icon.viewport) then
+      events = {
+         show = function(Icon)
+            vfx.rotate(Icon.viewport, 0.8, 0)
+            vfx.zoomIn(Icon.viewport, 0.4, 0.3)
+         end,
+         activate = function(Icon)
+            if Icon.effect then return end
+
+            Icon.effect = vfx.chain({
+               vfx.rotate(Icon.viewport, 0.8),
+               vfx.zoomOut(Icon.viewport, 0.8)
+            }, function()
                Icon.viewport.acFree()
                Icon.viewport = nil
-            end
-         end)
-      end
+            end)
+         end
+      }
    })
 
    win.acShow()
