@@ -38,7 +38,7 @@ Methods:
       Load a new set of items and display them for the user.  Any existing items will be cleared.
 
    selectedItems()
-      TODO - Returns a table of all currently selected items.
+      Returns a table of all currently selected items.
 
 Graphics and UI options:
 
