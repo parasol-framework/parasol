@@ -1545,7 +1545,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
             style_check(Self, Index);
             insert_escape(Self, Index, ESC_OBJECT, &escobj, sizeof(escobj));
 
-            docresource *resource;
+            docresource *resource = NULL;
             if (Self->ObjectCache) {
                switch (object->ClassID) {
                   // The following class types can be cached

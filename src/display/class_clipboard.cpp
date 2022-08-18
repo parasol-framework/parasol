@@ -454,7 +454,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
          ERROR error;
          if (Self->RequestHandler.Type IS CALL_STDC) {
-            auto routine = (ERROR (*)(objClipboard *, OBJECTID, LONG, BYTE *))Self->RequestHandler.StdC.Routine;
+            auto routine = (ERROR (*)(objClipboard *, OBJECTID, LONG, char *))Self->RequestHandler.StdC.Routine;
             parasol::SwitchContext ctx(Self->RequestHandler.StdC.Context);
             error = routine(Self, Args->ObjectID, request->Item, request->Preference);
          }

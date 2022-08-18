@@ -1941,7 +1941,7 @@ list_repass:
 
                // cell: Reflects the page/cell coordinates and width/height of the page/cell.
 
-wrap_object:
+//wrap_object:
                cell.Left   = AbsX;
                cell.Top    = AbsY;
                cell.Right  = cell.Left + *Width;
@@ -7209,7 +7209,7 @@ static void set_focus(objDocument *Self, LONG Index, CSTRING Caller)
    else if (Self->Tabs[Index].Type IS TT_OBJECT) {
       if (Self->HasFocus) {
          CLASSID class_id = GetClassID(Self->Tabs[Index].Ref);
-         OBJECTPTR text, input;
+         OBJECTPTR input;
          if (class_id IS ID_VECTORTEXT) {
             if (!AccessObject(Self->Tabs[Index].Ref, 1000, &input)) {
                acFocus(input);
