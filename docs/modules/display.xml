@@ -11,6 +11,7 @@
     <copyright>Paul Manias 2003-2022</copyright>
     <classes>
       <class>Bitmap</class>
+      <class>Clipboard</class>
       <class>Display</class>
       <class>Pointer</class>
     </classes>
@@ -726,6 +727,25 @@ if ((pointer = gfxAccessPointer())) {
       <const name="PLANAR">Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.</const>
     </constants>
 
+    <constants lookup="CEF">
+      <const name="DELETE">Requests that the original file source is deleted if a successful paste operation takes place.</const>
+      <const name="EXTEND">Instead of replacing existing clipboard data, add the new data to the group.</const>
+    </constants>
+
+    <constants lookup="CLF" comment="Clipboard flags">
+      <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
+      <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
+    </constants>
+
+    <constants lookup="CLIPTYPE" comment="Clipboard types">
+      <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
+      <const name="DATA">Raw information that is uncategorised can be defined as a data clip.</const>
+      <const name="FILE">Pure file references are stored as file clips.  This type is typically used by file managers for moving and copying files.</const>
+      <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
+      <const name="OBJECT">An object that has been deserialised into binary form.</const>
+      <const name="TEXT">Plain text files such as ASCII and UTF-8 must be identified through this clip type.</const>
+    </constants>
+
     <constants lookup="CRF" comment="Flags for the SetCursor() function.">
       <const name="BUFFER">Use of the BUFFER option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the SetCursor() function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the ANCHOR option.</const>
       <const name="LMB">Release the cursor after the left mouse button is held and released.</const>
@@ -742,6 +762,16 @@ if ((pointer = gfxAccessPointer())) {
       <const name="OFFSET">Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.</const>
       <const name="TRANSLUCENT">Perform a translucent copy operation, using the strength value specified in the Surface Opacity field.</const>
       <const name="TRANSPARENT">Enable transparent copying, whereby colours matching the source's Colour field will be ignored.</const>
+    </constants>
+
+    <constants lookup="CT">
+      <const name="AUDIO"/>
+      <const name="DATA"/>
+      <const name="END"/>
+      <const name="FILE"/>
+      <const name="IMAGE"/>
+      <const name="OBJECT"/>
+      <const name="TEXT"/>
     </constants>
 
     <constants lookup="DPMS" comment="Possible modes for the Display class' DPMS field.">

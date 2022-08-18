@@ -5,14 +5,14 @@
   <info>
     <name>Clipboard</name>
     <type>class</type>
-    <module>Widget</module>
+    <module>Display</module>
     <comment>The Clipboard class manages cut, copy and paste operations.</comment>
     <version>1</version>
     <id>4912a9b5</id>
     <idstring>ID_CLIPBOARD</idstring>
     <category>IO</category>
     <include>modules/clipboard.h</include>
-    <copyright>Paul Manias 2003-2020</copyright>
+    <copyright>Paul Manias 2003-2022</copyright>
     <description>
 <p>The Clipboard class manages data transfer between applications on behalf of the user.  It holds a data cache of clipped items that originate from source applications, and these can be retrieved and 'pasted' into target applications.  The Clipboard class is provided for the primary purpose of allowing applications to implement the traditional 'cut', 'copy' and 'paste' actions.</p>
 <p>Multiple clipboard objects can be created, but they all control the same group of clipped data for the logged-in user. All items that are passed to the clipboard object are stored in the 'clipboard:' assignment, which defaults to <code>temp:clipboard/</code>.</p>
