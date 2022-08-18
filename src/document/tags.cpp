@@ -1554,7 +1554,6 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
                   case ID_CONFIG:
                   case ID_COMPRESSION:
                   case ID_SCRIPT:
-                  case ID_RSS:
                      resource = add_resource_id(Self, object_id, RT_PERSISTENT_OBJECT);
                      break;
 
@@ -1562,8 +1561,8 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
                   default:
                      log.warning("Cannot cache object of class type '%s'", ResolveClassID(object->ClassID));
-                  case ID_IMAGE:
-                     resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
+                  //case ID_IMAGE:
+                  //   resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
                      break;
                }
             }
@@ -1577,7 +1576,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
             // Add the object to the tab-list if it is in our list of classes that support keyboard input.
 
-            CLASSID classes[] = { ID_INPUT, ID_CHECKBOX, ID_COMBOBOX, ID_VIEW };
+            CLASSID classes[] = { ID_VECTOR };
 
             for (LONG i=0; i < ARRAYSIZE(classes); i++) {
                if (classes[i] IS class_id) {

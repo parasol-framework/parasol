@@ -15,15 +15,8 @@ static const struct {
    CSTRING Fields;
 } glDocClasses[] = {
    // GUI
-   { "button",      ID_BUTTON,    "surface", "" },
-   { "checkbox",    ID_CHECKBOX,  "surface", "" },
-   { "combobox",    ID_COMBOBOX,  "surface", "" },
+   { "vector",      ID_VECTOR,    "surface", "" },
    { "document",    ID_DOCUMENT,  "surface", "" },
-   { "image",       ID_IMAGE,     "surface", "" },
-   { "input",       ID_INPUT,     "surface", "" },
-   { "surface",     ID_SURFACE,   "parent",  "" },
-   { "text",        ID_TEXT,      "surface", "" },
-   { "view",        ID_VIEW,      "surface", "" },
    // TOOLS
    { "scintilla",    ID_SCINTILLA,    NULL, "" },
    // NETWORK
@@ -1537,7 +1530,6 @@ static LONG layout_section(objDocument *Self, LONG Offset, objFont **Font,
    escParagraph *escpara;
    LAYOUT_STATE tablestate, rowstate, liststate;
    LONG start_ecindex, start_links, start_SegCount, unicode, i, j, page_height, lastheight, lastwidth, edit_segment;
-   ERROR error;
    UBYTE checkwrap;
    BYTE object_vertical_repass;
 
@@ -1938,8 +1930,6 @@ list_repass:
             case ESC_OBJECT: {
                SurfaceClip cell;
                OBJECTID object_id;
-               LONG objheight;
-               OBJECTPTR object;
 
                // Tell the object our CursorX and CursorY positions so that it can position itself within the stream
                // layout.  The object will tell us its clipping boundary when it returns (if it has a clipping boundary).
@@ -1963,10 +1953,10 @@ wrap_object:
                }
                else if (cell.Bottom < l.cursory + 1) cell.Bottom = l.cursory + 1;
 
+/*
                LONG width_check = 0;
                LONG dimensions = 0;
                LONG layoutflags = 0;
-/*
                if (!(error = AccessObject(object_id, 5000, &object))) {
                   LAYOUT("layout_object:","[Idx:%d] The %s's available page area is %d-%d,%d-%d, margins %dx%d,%d, cursor %dx%d", i, object->Class->ClassName, cell.Left, cell.Right, cell.Top, cell.Bottom, l.left_margin-AbsX, l.right_margin, TopMargin, l.cursorx, l.cursory);
 
