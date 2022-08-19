@@ -77,7 +77,7 @@ void ListBoxImp::Create(Scintilla::Window &Window, int, Scintilla::Point, int, b
    OBJECTID surface_id = getSurfaceID(&Window);
 
    LogF("ListBoxImp::Create()","Surface: %d", surface_id);
-
+/*
    if (CreateObject(ID_MENU, 0, &menu,
          FID_Surface|TLONG,  surface_id,
          TAGEND) != ERR_Okay) {
@@ -99,6 +99,7 @@ void ListBoxImp::Create(Scintilla::Window &Window, int, Scintilla::Point, int, b
    dc_args.Size = StrLength((STRING)dc_args.Buffer);
    Action(AC_DataFeed, menu, &dc_args);
    acShow(menu);
+*/
 }
 
 /****************************************************************************/

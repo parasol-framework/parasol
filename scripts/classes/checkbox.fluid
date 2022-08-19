@@ -3,8 +3,6 @@
    require 'common'
    require 'gui'
 
-   include 'widget'
-
 do
    local mGfx = mod.load('display')
 

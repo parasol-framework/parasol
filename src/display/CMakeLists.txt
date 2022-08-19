@@ -2,7 +2,39 @@
 
 set (MOD "display")
 
-idl_def ("display.fdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
+set (DISPLAY_SOURCES # Full paths are required for add_custom_command() dependencies to work correctly
+   "${CMAKE_CURRENT_SOURCE_DIR}/display-driver.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_bitmap.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_display.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_clipboard.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_pointer.cpp")
+
+set (DISPLAY_DEFS # Full paths are required for add_custom_command() dependencies to work correctly
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_bitmap_def.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_clipboard_def.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_display_def.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_pointer_def.c")
+
+if (BUILD_DEFS)
+   idl_def ("display.fdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
+
+   add_custom_command (OUTPUT
+      ${DISPLAY_DEFS}
+      "${DOCS}/modules/classes/bitmap.xml"
+      "${DOCS}/modules/classes/clipboard.xml"
+      "${DOCS}/modules/classes/display.xml"
+      "${DOCS}/modules/classes/pointer.xml"
+      PRE_BUILD
+      COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--sdk=${PROJECT_SOURCE_DIR}"
+         "--files={" "${MOD}.cpp" "}"
+      DEPENDS "${MOD}.fdl" ${DISPLAY_SOURCES}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      COMMENT "Producing C definition files for the ${MOD} module"
+      VERBATIM)
+
+   #add_custom_target (display_defs DEPENDS ${DISPLAY_DEFS})
+   #add_dependencies (build_headers display_defs)
+endif ()
 
 idl_c ("display.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    FILES "display-driver.cpp" "input_events.cpp"

@@ -98,7 +98,6 @@ capabilities.
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
 #include <parasol/modules/font.h>
-#include <parasol/modules/widget.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/surface.h>
 #include <parasol/modules/font.h>

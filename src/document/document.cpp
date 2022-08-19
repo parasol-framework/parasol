@@ -177,7 +177,6 @@ thickness, or text inside the cell will mix with the border.
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
 #include <parasol/modules/document.h>
-#include <parasol/modules/widget.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/surface.h>

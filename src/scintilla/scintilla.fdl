@@ -3,8 +3,7 @@
 module({ name="Scintilla", copyright="Paul Manias © 2005-2022", version=1.0 }, function()
   c_include("<parasol/modules/display.h>",
   "<parasol/modules/font.h>",
-  "<parasol/modules/surface.h>",
-  "<parasol/modules/widget.h>")
+  "<parasol/modules/surface.h>")
 
   restrict(function()
     loadFile(glPath .. 'common-graphics.fdl')

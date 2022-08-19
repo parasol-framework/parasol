@@ -23,10 +23,6 @@
 #include <parasol/modules/font.h>
 #endif
 
-#ifndef MODULES_WIDGET_H
-#include <parasol/modules/widget.h>
-#endif
-
 #ifndef MODULES_SURFACE_H
 #include <parasol/modules/surface.h>
 #endif

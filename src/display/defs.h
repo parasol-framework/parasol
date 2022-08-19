@@ -5,6 +5,7 @@
 #define PRV_BITMAP
 #define PRV_DISPLAY
 #define PRV_POINTER
+#define PRV_CLIPBOARD
 
 #include <unordered_set>
 
@@ -151,10 +152,31 @@ namespace std {
    };
 }
 
+#define MAX_CLIPS 10     // Maximum number of clips stored in the historical buffer
+
+struct ClipHeader {
+   LONG Counter;
+#ifdef _WIN32
+   LONG LastID;
+   UBYTE Init:1;
+#endif
+};
+
+struct ClipEntry {
+   LONG     Datatype;    // The type of data clipped
+   LONG     Flags;       // CEF_DELETE may be set for the 'cut' operation
+   CLASSID  ClassID;     // Class ID that is capable of managing the clip data, if it originated from an object
+   MEMORYID Files;       // List of file locations, separated with semi-colons, referencing all the data in this clip entry
+   LONG     FilesLen;    // Complete byte-length of the Files string
+   UWORD    ID;          // Unique identifier for the clipboard entry
+   WORD     TotalItems;  // Total number of items in the clip-set
+};
+
 static std::unordered_map<LONG, InputCallback> glInputCallbacks;
 
 static void input_event_loop(HOSTHANDLE, APTR);
 
+static ERROR create_clipboard_class(void);
 static ERROR create_pointer_class(void);
 static ERROR create_display_class(void);
 static ERROR GetSurfaceAbs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
@@ -190,6 +212,13 @@ extern "C" {
 DLLCALL LONG WINAPI SetPixelV(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI SetPixel(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
+
+extern int winAddClip(int Datatype, void * Data, int Size, int Cut);
+extern void winClearClipboard(void);
+extern void winCopyClipboard(void);
+extern int winExtractFile(void *pida, int Index, char *Result, int Size);
+extern void winGetClip(int Datatype);
+extern void winTerminate(void);
 
 LONG winBlit(APTR, LONG, LONG, LONG, LONG, APTR, LONG, LONG);
 void winGetError(LONG, STRING, LONG);

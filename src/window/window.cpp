@@ -596,7 +596,7 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
       }
       else SetString(Self->Surface, FID_Colour, "230,230,230");
    }
-
+/*
    if ((Self->ResizeFlags) and (Self->ResizeBorder > 0) and (Self->Surface->ParentID)) {
       CreateObject(ID_RESIZE, 0, &Self->Resize,
          FID_Object|TLONG,     Self->SurfaceID,
@@ -605,7 +605,7 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
          FID_Border|TLONG,     Self->ResizeFlags,
          TAGEND);
    }
-
+*/
    // If we are running in a hosted environment, set the window titlebar
 
    if (!Self->Surface->ParentID) {
