@@ -2553,7 +2553,7 @@ static const FieldArray clBitmapFields[] = {
 
 static ERROR create_bitmap_class(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &BitmapClass,
+   return(CreateObject(ID_METACLASS, 0, &clBitmap,
       FID_ClassVersion|TFLOAT, VER_BITMAP,
       FID_Name|TSTR,      "Bitmap",
       FID_Category|TLONG, CCF_GRAPHICS,

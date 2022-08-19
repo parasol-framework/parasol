@@ -247,12 +247,9 @@ static const CSTRING glInputNames[JET_END] = {
    "DISPLAY_EDGE"
 };
 
-static OBJECTPTR BitmapClass = NULL;
 static OBJECTPTR glCompress = NULL;
+static objCompression *glIconArchive = NULL;
 struct CoreBase *CoreBase;
-#if defined(_WIN32) || defined(__xwindows__)
-struct KeyboardBase *KeyboardBase;
-#endif
 static struct SurfaceBase *SurfaceBase;
 static ColourFormat glColourFormat;
 static BYTE glHeadless = FALSE;
@@ -273,8 +270,8 @@ static OBJECTID glActiveDisplayID = 0;
 #endif
 
 static OBJECTPTR glModule = NULL;
-static OBJECTPTR modSurface = NULL, modKeyboard = NULL;
-static OBJECTPTR clDisplay = NULL, clPointer = NULL;
+static OBJECTPTR modSurface = NULL;
+static OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL;
 static OBJECTID glPointerID = 0;
 static DISPLAYINFO *glDisplayInfo;
 static APTR glDither = NULL;
@@ -952,8 +949,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          }
       #endif
 
-      if (x11WindowManager() IS FALSE) {
-         // We are an X11 client
+      if (x11WindowManager() IS FALSE) { // We are a client of X11
 //         XSelectInput(XDisplay, RootWindow(XDisplay, DefaultScreen(XDisplay)), NULL);
       }
 
@@ -961,8 +957,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       XWADeleteWindow = XInternAtom(XDisplay, "WM_DELETE_WINDOW", False);
       atomSurfaceID   = XInternAtom(XDisplay, "PARASOL_SCREENID", False);
-
-      // Get root window attributes
 
       XGetWindowAttributes(XDisplay, DefaultRootWindow(XDisplay), &glRootWindow);
 
@@ -987,10 +981,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 #elif _WIN32
 
-   // Load cursor graphics
-
-   log.msg("Loading cursor graphics.");
-
    if ((glInstance = winGetModuleHandle())) {
       if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
    }
@@ -999,6 +989,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    winDisableBatching();
 
    winInitCursors(winCursors, ARRAYSIZE(winCursors));
+
+   memoryid = RPM_Clipboard;
+   AllocMemory(sizeof(ClipHeader) + (MAX_CLIPS * sizeof(ClipEntry)), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, NULL, &memoryid);
 
 #endif
 
@@ -1016,6 +1009,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if (create_bitmap_class() != ERR_Okay) {
       log.warning("Failed to create Bitmap class.");
+      return ERR_AddClass;
+   }
+
+   if (create_clipboard_class() != ERR_Okay) {
+      log.warning("Failed to create Clipboard class.");
       return ERR_AddClass;
    }
 
@@ -1042,6 +1040,50 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
    }
    else return ERR_AllocMemory;
+
+   STRING icon_path;
+   if (ResolvePath("iconsource:", 0, &icon_path) != ERR_Okay) { // The client can set iconsource: to redefine the icon origins
+      icon_path = StrClone("styles:icons/");
+   }
+
+   // Icons are stored in compressed archives, accessible via "archive:icons/<category>/<icon>.svg"
+
+   std::string src(icon_path);
+   src.append("Default.zip");
+   if (CreateObject(ID_COMPRESSION, NF_INTEGRAL, &glIconArchive,
+         FID_Path|TSTR,        src.c_str(),
+         FID_ArchiveName|TSTR, "icons",
+         FID_Flags|TLONG,      CMF_READ_ONLY,
+         TAGEND)) {
+      return ERR_CreateObject;
+   }
+
+   FreeResource(icon_path);
+
+   // The icons: special volume is a simple reference to the archive path.
+
+   if (SetVolume(AST_NAME, "icons",
+      AST_PATH,  "archive:icons/",
+      AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN,
+      AST_ICON,  "misc/picture",
+      TAGEND) != ERR_Okay) return ERR_SetVolume;
+
+#ifdef _WIN32 // Get any existing Windows clipboard content
+
+   ClipHeader *clipboard;
+   if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &clipboard)) {
+      if (!clipboard->Init) {
+         log.branch("Populating clipboard for the first time from the Windows host.");
+         winCopyClipboard();
+         clipboard->Init = TRUE;
+         log.debranch();
+      }
+      else log.msg("Clipboard already initialised by other process.");
+      ReleaseMemory(clipboard);
+   }
+   else log.warning(ERR_AccessMemory);
+
+#endif
 
    return ERR_Okay;
 }
@@ -1132,16 +1174,18 @@ static ERROR CMDExpunge(void)
 #elif _WIN32
 
    winRemoveWindowClass("ScreenClass");
-   winFreeDragDrop();
+   winTerminate();
 
 #endif
+
+   if (glIconArchive) { acFree(glIconArchive); glIconArchive = NULL; }
 
    if (glInputEvents) { ReleaseMemory(glInputEvents); glInputEvents = NULL; }
    if (glDisplayInfo) { ReleaseMemory(glDisplayInfo); glDisplayInfo = NULL; }
    if (clPointer)     { acFree(clPointer);   clPointer   = NULL; }
    if (clDisplay)     { acFree(clDisplay);   clDisplay   = NULL; }
-   if (BitmapClass)   { acFree(BitmapClass); BitmapClass = NULL; }
-   if (modKeyboard)   { acFree(modKeyboard); modKeyboard = NULL; }
+   if (clBitmap)      { acFree(clBitmap);    clBitmap    = NULL; }
+   if (clClipboard)   { acFree(clClipboard); clClipboard = NULL; }
 
    #ifdef _GLES_
       free_egl();
@@ -5038,6 +5082,7 @@ static void free_egl(void)
 //****************************************************************************
 
 #include "input_events.cpp"
+#include "class_clipboard.cpp"
 #include "class_pointer.cpp"
 #include "class_display.cpp"
 #include "class_bitmap.cpp"

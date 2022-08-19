@@ -23,10 +23,6 @@
 #include <parasol/modules/surface.h>
 #endif
 
-#ifndef MODULES_WIDGET_H
-#include <parasol/modules/widget.h>
-#endif
-
 // Scintilla Lexers.  These codes originate from the Scintilla library.
 
 #define SCLEX_ERRORLIST 10

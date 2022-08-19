@@ -21,7 +21,7 @@ recommended that the process is terminated because the loss of system privileges
 #define PRV_PARC
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
-#include <parasol/modules/widget.h>
+//#include <parasol/modules/display.h>
 
 #define VER_PARC 1.0
 

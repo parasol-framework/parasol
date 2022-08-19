@@ -25,19 +25,6 @@ number of clips that can be stored in the history cache.
 
 *****************************************************************************/
 
-#define PRV_CLIPBOARD
-#define PRV_WIDGET_MODULE
-#include <parasol/modules/widget.h>
-
-#ifdef _WIN32
-#define WINDOWS_WINDOWS_H
-#include "platform/windows.c"
-#endif
-
-#include "defs.h"
-
-static objMetaClass *clClipboard = NULL;
-
 static const FieldDef glDatatypes[] = {
    { "data",   CLIPTYPE_DATA },
    { "audio",  CLIPTYPE_AUDIO },
@@ -46,26 +33,6 @@ static const FieldDef glDatatypes[] = {
    { "object", CLIPTYPE_OBJECT },
    { "text",   CLIPTYPE_TEXT },
    { NULL, 0 }
-};
-
-#define MAX_CLIPS 10     // Maximum number of clips stored in the historical buffer
-
-struct ClipHeader {
-   LONG Counter;
-#ifdef _WIN32
-   LONG LastID;
-   UBYTE Init:1;
-#endif
-};
-
-struct ClipEntry {
-   LONG     Datatype;    // The type of data clipped
-   LONG     Flags;       // CEF_DELETE may be set for the 'cut' operation
-   CLASSID  ClassID;     // Class ID that is capable of managing the clip data, if it originated from an object
-   MEMORYID Files;       // List of file locations, separated with semi-colons, referencing all the data in this clip entry
-   LONG     FilesLen;    // Complete byte-length of the Files string
-   UWORD    ID;          // Unique identifier for the clipboard entry
-   WORD     TotalItems;  // Total number of items in the clip-set
 };
 
 static ERROR add_clip(MEMORYID, LONG, CSTRING, LONG, CLASSID, LONG, LONG *);
@@ -487,7 +454,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
          ERROR error;
          if (Self->RequestHandler.Type IS CALL_STDC) {
-            auto routine = (ERROR (*)(objClipboard *, OBJECTID, LONG, BYTE *))Self->RequestHandler.StdC.Routine;
+            auto routine = (ERROR (*)(objClipboard *, OBJECTID, LONG, char *))Self->RequestHandler.StdC.Routine;
             parasol::SwitchContext ctx(Self->RequestHandler.StdC.Context);
             error = routine(Self, Args->ObjectID, request->Item, request->Preference);
          }
@@ -1138,11 +1105,7 @@ void report_windows_clip_text(CSTRING String)
 // Called when the windows clipboard holds new file references.
 
 #ifdef _WIN32
-#ifdef  __cplusplus
 extern "C" void report_windows_files(APTR Data, LONG CutOperation)
-#else
-void report_windows_files(APTR Data, LONG CutOperation)
-#endif
 {
    parasol::Log log("Clipboard");
 
@@ -1162,11 +1125,7 @@ void report_windows_files(APTR Data, LONG CutOperation)
 //****************************************************************************
 
 #ifdef _WIN32
-#ifdef  __cplusplus
 extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
-#else
-void report_windows_hdrop(STRING Data, LONG CutOperation)
-#endif
 {
    parasol::Log log("Clipboard");
 
@@ -1188,11 +1147,7 @@ void report_windows_hdrop(STRING Data, LONG CutOperation)
 // Called when the windows clipboard holds new text in UTF-16 format.
 
 #ifdef _WIN32
-#ifdef  __cplusplus
 extern "C" void report_windows_clip_utf16(UWORD *String)
-#else
-void report_windows_clip_utf16(UWORD *String)
-#endif
 {
    parasol::Log log("Clipboard");
 
@@ -1252,11 +1207,8 @@ static const FieldArray clFields[] = {
 
 //****************************************************************************
 
-ERROR init_clipboard(void)
+ERROR create_clipboard_class(void)
 {
-   MEMORYID memoryid = RPM_Clipboard;
-   AllocMemory(sizeof(ClipHeader) + (MAX_CLIPS * sizeof(ClipEntry)), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, NULL, &memoryid);
-
    if (CreateObject(ID_METACLASS, 0, &clClipboard,
          FID_BaseClassID|TLONG,   ID_CLIPBOARD,
          FID_ClassVersion|TFLOAT, VER_CLIPBOARD,
@@ -1271,38 +1223,5 @@ ERROR init_clipboard(void)
       return ERR_AddClass;
    }
 
-#ifdef _WIN32
-
-   // If this is the first initialisation of the clipboard module, we need to copy the current Windows clipboard
-   // content into our clipboard.
-
-   ClipHeader *clipboard;
-   if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &clipboard)) {
-      if (!clipboard->Init) {
-         parasol::Log log;
-         log.branch("Populating clipboard for the first time from the Windows host.");
-
-         if (!winInit()) {
-            clipboard->Init = TRUE;
-            winCopyClipboard();
-         }
-         else log.warning(ERR_SystemCall);
-      }
-      ReleaseMemory(clipboard);
-   }
-
-#endif
-
    return ERR_Okay;
-}
-
-void free_clipboard(void)
-{
-#ifdef _WIN32
-   parasol::Log log(__FUNCTION__);
-   log.extmsg("Terminating Windows clipboard resources.");
-   winTerminate();
-#endif
-
-   if (clClipboard) { acFree(clClipboard); clClipboard = NULL; }
 }

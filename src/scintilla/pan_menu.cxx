@@ -9,7 +9,7 @@ Scintilla::Menu::Menu() {}
 void Scintilla::Menu::CreatePopUp()
 {
    OBJECTID display_id;
-   OBJECTPTR menu;
+   //OBJECTPTR menu;
 
    LogF("Menu::CreatePopUp","");
 
@@ -30,6 +30,7 @@ void Scintilla::Menu::CreatePopUp()
    FindObject((STRING)"SystemSurface", ID_SURFACE, FOF_INCLUDE_SHARED, &display_id, &count);
 
    //id = *reinterpret_cast<MenuID *>(&surface_id);
+/*
    if (CreateObject(ID_MENU, 0, &menu,
       FID_Target|TLONG,       display_id,
       //FID_Relative|TLONG,     surface_id,
@@ -40,6 +41,7 @@ void Scintilla::Menu::CreatePopUp()
       LogF("@Menu::CreatePopUp: ", "Menu creation failed.");
       return;
    }
+*/
 }
 
 /****************************************************************************/

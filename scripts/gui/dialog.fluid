@@ -67,7 +67,6 @@ Example usage:
 --]]
 
    require 'common'
-   include 'widget'
 
    if (gui == nil) then gui = { } end
    if (gui.dialog == nil) then gui.dialog = { } end

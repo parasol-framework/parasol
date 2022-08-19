@@ -97,7 +97,7 @@ For information about the HTTP protocol, please refer to the official protocol w
 
 #include <parasol/main.h>
 #include <parasol/modules/http.h>
-#include <parasol/modules/widget.h>
+//#include <parasol/modules/display.h>
 #include <parasol/modules/network.h>
 
 #include "md5.c"
