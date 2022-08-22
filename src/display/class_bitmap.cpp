@@ -29,15 +29,14 @@ to temporarily gain read/write access to a bitmap.
 If you require complex drawing functionality that is not available in the Bitmap class, please use the functionality
 provided by the Vector module.
 
-To save the image of a bitmap, you can either copy its image to a @Picture object, or you can use the SaveImage
+To save the image of a bitmap, either copy its image to a @Picture object, or use the SaveImage
 action to save the data in PNG format.  Raw data can also be processed through a bitmap by using the Read and Write
 actions.
 -END-
 
 *****************************************************************************/
 
-#define PRV_BITMAP
-#define PRV_DISPLAY
+#include "defs.h"
 
 #ifdef _WIN32
 #define DLLCALL // __declspec(dllimport)
@@ -2551,7 +2550,7 @@ static const FieldArray clBitmapFields[] = {
 
 //****************************************************************************
 
-static ERROR create_bitmap_class(void)
+ERROR create_bitmap_class(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clBitmap,
       FID_ClassVersion|TFLOAT, VER_BITMAP,

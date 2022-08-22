@@ -81,7 +81,30 @@
 #include <parasol/modules/xml.h>
 #include <parasol/modules/surface.h>
 
-#include "display.h"
+struct dcDisplayInputReady { // This is an internal structure used by the display module to replace dcInputReady
+   LARGE NextIndex;    // Next message index for the subscriber to look at
+   LONG  SubIndex;     // Index into the InputSubscription list
+};
+
+#define MT_PtrSetWinCursor -1
+#define MT_PtrGrabX11Pointer -2
+#define MT_PtrUngrabX11Pointer -3
+
+struct ptrSetWinCursor { LONG Cursor;  };
+struct ptrGrabX11Pointer { OBJECTID SurfaceID;  };
+
+INLINE ERROR ptrSetWinCursor(APTR Ob, LONG Cursor) {
+   struct ptrSetWinCursor args = { Cursor };
+   return Action(MT_PtrSetWinCursor, Ob, &args);
+}
+
+#define ptrUngrabX11Pointer(obj) Action(MT_PtrUngrabX11Pointer,(obj),0)
+
+INLINE ERROR ptrGrabX11Pointer(APTR Ob, OBJECTID SurfaceID) {
+   struct ptrGrabX11Pointer args = { SurfaceID };
+   return Action(MT_PtrGrabX11Pointer, Ob, &args);
+}
+
 #include "idl.h"
 
 #ifdef __ANDROID__
@@ -105,17 +128,12 @@ struct resolution {
 
 // glInputEvents is allocated in shared memory for all processes consuming input events.
 
-static struct {
+struct InputEventMgr {
    ULONG  IndexCounter;   // Counter for message ID's
    InputEvent Msgs[MAX_INPUTMSG];
-} *glInputEvents = NULL;
+};
 
-static resolution * get_resolutions(objDisplay *);
-static ERROR create_bitmap_class(void);
-static ERROR dither(objBitmap *, objBitmap *, ColourFormat *, LONG, LONG, LONG, LONG, LONG, LONG);
-
-static SharedControl *glSharedControl = NULL;
-static LONG glSixBitDisplay = FALSE;
+extern InputEventMgr *glInputEvents;
 
 #define INPUT_MASK        (MAX_INPUTMSG-1) // All bits will be set if MAX_INPUTMSG is a power of two
 
@@ -172,18 +190,46 @@ struct ClipEntry {
    WORD     TotalItems;  // Total number of items in the clip-set
 };
 
-static std::unordered_map<LONG, InputCallback> glInputCallbacks;
+extern ERROR create_clipboard_class(void);
+extern ERROR create_pointer_class(void);
+extern ERROR create_display_class(void);
+extern ERROR GetSurfaceAbs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
+extern ULONG ConvertRGBToPackedPixel(objBitmap *, RGB8 *) __attribute__ ((unused));
+extern void input_event_loop(HOSTHANDLE, APTR);
+extern ERROR LockSurface(objBitmap *, WORD);
+extern ERROR UnlockSurface(objBitmap *);
+extern resolution * get_resolutions(objDisplay *);
+extern ERROR create_bitmap_class(void);
+extern ERROR dither(objBitmap *, objBitmap *, ColourFormat *, LONG, LONG, LONG, LONG, LONG, LONG);
+extern ERROR get_display_info(OBJECTID, DISPLAYINFO *, LONG);
+extern void update_displayinfo(objDisplay *);
+extern void resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
 
-static void input_event_loop(HOSTHANDLE, APTR);
+extern std::unordered_map<LONG, InputCallback> glInputCallbacks;
+extern SharedControl *glSharedControl;
+extern LONG glSixBitDisplay;
+extern OBJECTPTR glModule;
+extern OBJECTPTR modSurface;
+extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard;
+extern OBJECTID glPointerID;
+extern DISPLAYINFO *glDisplayInfo;
+extern APTR glDither;
+extern LONG glDitherSize;
+extern OBJECTPTR glCompress;
+extern objCompression *glIconArchive;
+extern struct CoreBase *CoreBase;
+extern struct SurfaceBase *SurfaceBase;
+extern ColourFormat glColourFormat;
+extern BYTE glHeadless;
+extern FieldDef CursorLookup[];
 
-static ERROR create_clipboard_class(void);
-static ERROR create_pointer_class(void);
-static ERROR create_display_class(void);
-static ERROR GetSurfaceAbs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
-static ULONG ConvertRGBToPackedPixel(objBitmap *, RGB8 *) __attribute__ ((unused));
-static void input_event_loop(HOSTHANDLE, APTR);
-static ERROR LockSurface(objBitmap *, WORD);
-static ERROR UnlockSurface(objBitmap *);
+struct InputType {
+   LONG Flags;  // As many flags as necessary to describe the input type
+   LONG Mask;   // Limited flags to declare the mask that must be used to receive that type
+};
+
+extern const std::array<struct InputType, JET_END> glInputType;
+extern const std::array<std::string, JET_END> glInputNames;
 
 //****************************************************************************
 
@@ -195,10 +241,10 @@ static ERROR UnlockSurface(objBitmap *);
 #endif
 
 #ifdef _GLES_ // OpenGL related prototypes
-static GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID);
-static void refresh_display_from_egl(objDisplay *Self);
-static ERROR init_egl(void);
-static void free_egl(void);
+GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID);
+void refresh_display_from_egl(objDisplay *Self);
+ERROR init_egl(void);
+void free_egl(void);
 #endif
 
 #ifdef _WIN32
@@ -220,6 +266,7 @@ extern int winExtractFile(void *pida, int Index, char *Result, int Size);
 extern void winGetClip(int Datatype);
 extern void winTerminate(void);
 
+APTR GetWinCursor(LONG);
 LONG winBlit(APTR, LONG, LONG, LONG, LONG, APTR, LONG, LONG);
 void winGetError(LONG, STRING, LONG);
 APTR winCreateCompatibleDC(void);
@@ -237,4 +284,42 @@ void winSetDIBitsToDevice(APTR, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, 
 
 #include "win32/windows.h"
 
+#endif // _WIN32
+
+#ifdef __xwindows__
+
+extern Cursor create_blank_cursor(void);
+extern Cursor get_x11_cursor(LONG CursorID);
+extern void X11ManagerLoop(HOSTHANDLE, APTR);
+extern void handle_button_press(XEvent *);
+extern void handle_button_release(XEvent *);
+extern void handle_configure_notify(XConfigureEvent *);
+extern void handle_enter_notify(XCrossingEvent *);
+extern void handle_exposure(XExposeEvent *);
+extern void handle_key_press(XEvent *);
+extern void handle_key_release(XEvent *);
+extern void handle_motion_notify(XMotionEvent *);
+extern void handle_stack_change(XCirculateEvent *);
+extern LONG x11WindowManager(void);
+
+extern WORD glDGAAvailable;
+extern APTR glDGAMemory;
+extern X11Globals *glX11;
+extern _XDisplay *XDisplay;
+extern struct XRandRBase *XRandRBase;
+extern UBYTE glX11ShmImage;
+extern UBYTE KeyHeld[K_LIST_END];
+extern UBYTE glTrayIcon, glTaskBar, glStickToFront;
+extern LONG glKeyFlags, glXFD, glDGAPixelsPerLine, glDGABankSize;
+extern Atom atomSurfaceID, XWADeleteWindow;
+extern GC glXGC, glClipXGC;
+extern XWindowAttributes glRootWindow;
+extern Window glDisplayWindow;
+extern Cursor C_Default;
+extern OBJECTPTR modXRR;
+extern WORD glPlugin;
+extern APTR glDGAVideo;
+
 #endif
+
+#include "prototypes.h"

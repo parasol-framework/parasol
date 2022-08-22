@@ -14,6 +14,8 @@ used for all interactions with this service.
 
 *****************************************************************************/
 
+#include "defs.h"
+
 static ERROR GET_ButtonOrder(objPointer *, CSTRING *);
 static ERROR GET_ButtonState(objPointer *, LONG *);
 
@@ -1584,6 +1586,35 @@ static ERROR init_mouse_driver(void)
 
 //****************************************************************************
 
+FieldDef CursorLookup[] = {
+   { "None",            0 },
+   { "Default",         PTR_DEFAULT },             // Values start from 1 and go up
+   { "SizeBottomLeft",  PTR_SIZE_BOTTOM_LEFT },
+   { "SizeBottomRight", PTR_SIZE_BOTTOM_RIGHT },
+   { "SizeTopLeft",     PTR_SIZE_TOP_LEFT },
+   { "SizeTopRight",    PTR_SIZE_TOP_RIGHT },
+   { "SizeLeft",        PTR_SIZE_LEFT },
+   { "SizeRight",       PTR_SIZE_RIGHT },
+   { "SizeTop",         PTR_SIZE_TOP },
+   { "SizeBottom",      PTR_SIZE_BOTTOM },
+   { "Crosshair",       PTR_CROSSHAIR },
+   { "Sleep",           PTR_SLEEP },
+   { "Sizing",          PTR_SIZING },
+   { "SplitVertical",   PTR_SPLIT_VERTICAL },
+   { "SplitHorizontal", PTR_SPLIT_HORIZONTAL },
+   { "Magnifier",       PTR_MAGNIFIER },
+   { "Hand",            PTR_HAND },
+   { "HandLeft",        PTR_HAND_LEFT },
+   { "HandRight",       PTR_HAND_RIGHT },
+   { "Text",            PTR_TEXT },
+   { "Paintbrush",      PTR_PAINTBRUSH },
+   { "Stop",            PTR_STOP },
+   { "Invisible",       PTR_INVISIBLE },
+   { "Custom",          PTR_CUSTOM },
+   { "Dragable",        PTR_DRAGGABLE },
+   { NULL, 0 }
+};
+
 static const ActionArray clPointerActions[] = {
    { AC_DataFeed,     (APTR)PTR_DataFeed },
    { AC_Free,         (APTR)PTR_Free },
@@ -1652,7 +1683,7 @@ static const FieldArray clPointerFields[] = {
 
 //****************************************************************************
 
-static ERROR create_pointer_class(void)
+ERROR create_pointer_class(void)
 {
 #ifdef __native__
    struct utsname syslinux;
