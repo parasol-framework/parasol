@@ -282,8 +282,9 @@ APTR winSetClipping(APTR, LONG, LONG, LONG, LONG);
 void winSetDIBitsToDevice(APTR, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, APTR, LONG, LONG, LONG);
 }
 
-#include "prototypes.h"
 #include "win32/windows.h"
+
+#endif // _WIN32
 
 #ifdef __xwindows__
 
@@ -299,6 +300,7 @@ extern void handle_key_press(XEvent *);
 extern void handle_key_release(XEvent *);
 extern void handle_motion_notify(XMotionEvent *);
 extern void handle_stack_change(XCirculateEvent *);
+extern LONG x11WindowManager(void);
 
 extern WORD glDGAAvailable;
 extern APTR glDGAMemory;
@@ -320,4 +322,4 @@ extern APTR glDGAVideo;
 
 #endif
 
-#endif
+#include "prototypes.h"

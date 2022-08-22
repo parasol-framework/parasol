@@ -1,5 +1,5 @@
 
-static void process_movement(Window Window, LONG X, LONG Y);
+void process_movement(Window Window, LONG X, LONG Y);
 
 static inline OBJECTID get_display(Window Window)
 {
@@ -21,7 +21,7 @@ static inline OBJECTID get_display(Window Window)
 
 //****************************************************************************
 
-static void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
+void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 {
    XEvent xevent;
    OBJECTID surface_id, display_id, owner_id, *list;
@@ -128,7 +128,7 @@ static void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
 //****************************************************************************
 
-static void handle_button_press(XEvent *xevent)
+void handle_button_press(XEvent *xevent)
 {
    struct acDataFeed feed;
    struct dcDeviceInput input;
@@ -190,7 +190,7 @@ static void handle_button_press(XEvent *xevent)
 
 //****************************************************************************
 
-static void handle_button_release(XEvent *xevent)
+void handle_button_release(XEvent *xevent)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -240,14 +240,14 @@ static void handle_button_release(XEvent *xevent)
 
 //****************************************************************************
 
-static void handle_stack_change(XCirculateEvent *xevent)
+void handle_stack_change(XCirculateEvent *xevent)
 {
    MSG("Window %d stack position has changed.", (int)xevent->window);
 }
 
 //****************************************************************************
 
-static void handle_configure_notify(XConfigureEvent *xevent)
+void handle_configure_notify(XConfigureEvent *xevent)
 {
    objDisplay *display;
    OBJECTID display_id;
@@ -306,7 +306,7 @@ static void handle_configure_notify(XConfigureEvent *xevent)
 
 //****************************************************************************
 
-static void handle_exposure(XExposeEvent *event)
+void handle_exposure(XExposeEvent *event)
 {
    OBJECTID display_id;
 
@@ -325,7 +325,7 @@ static void handle_exposure(XExposeEvent *event)
 //****************************************************************************
 // XK symbols are defined in X11/keysymdef.h
 
-static LONG xkeysym_to_pkey(KeySym KSym)
+LONG xkeysym_to_pkey(KeySym KSym)
 {
    switch(KSym) {
       case XK_A: return K_A;
@@ -518,7 +518,7 @@ static LONG xkeysym_to_pkey(KeySym KSym)
 ** Refer: man page XKeyEvent
 */
 
-static void handle_key_press(XEvent *xevent)
+void handle_key_press(XEvent *xevent)
 {
    ULONG unicode = 0;
    KeySym mod_sym; // A KeySym is an encoding of a symbol on the cap of a key.  See X11/keysym.h
@@ -580,7 +580,7 @@ static void handle_key_press(XEvent *xevent)
 
 //****************************************************************************
 
-static void handle_key_release(XEvent *xevent)
+void handle_key_release(XEvent *xevent)
 {
    // Check if the key is -really- released (when keys are held down, X11 annoyingly generates a stream of release
    // events until it is really released).
@@ -647,14 +647,14 @@ static void handle_key_release(XEvent *xevent)
 
 //****************************************************************************
 
-static void handle_enter_notify(XCrossingEvent *xevent)
+void handle_enter_notify(XCrossingEvent *xevent)
 {
    process_movement(xevent->window, xevent->x_root, xevent->y_root);
 }
 
 //****************************************************************************
 
-static void handle_motion_notify(XMotionEvent *xevent)
+void handle_motion_notify(XMotionEvent *xevent)
 {
    // If the user is moving the X11 pointer quite rapidly, a queue of motion events can build up very quickly.  Our
    // solution to this is to read all the motion events up to the most recent one, because we're only interested in the
@@ -668,7 +668,7 @@ static void handle_motion_notify(XMotionEvent *xevent)
 
 //****************************************************************************
 
-static void process_movement(Window Window, LONG X, LONG Y)
+void process_movement(Window Window, LONG X, LONG Y)
 {
    objPointer *pointer;
 
