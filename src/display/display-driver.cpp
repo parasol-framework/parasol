@@ -50,34 +50,34 @@ static XCursor XCursors[] = {
    { 0, PTR_DRAGGABLE,         XC_sizing }
 };
 
-static Cursor create_blank_cursor(void);
-static Cursor get_x11_cursor(LONG CursorID);
-static void X11ManagerLoop(HOSTHANDLE, APTR);
-static void handle_button_press(XEvent *);
-static void handle_button_release(XEvent *);
-static void handle_configure_notify(XConfigureEvent *);
-static void handle_enter_notify(XCrossingEvent *);
-static void handle_exposure(XExposeEvent *);
-static void handle_key_press(XEvent *);
-static void handle_key_release(XEvent *);
-static void handle_motion_notify(XMotionEvent *);
-static void handle_stack_change(XCirculateEvent *);
+Cursor create_blank_cursor(void);
+Cursor get_x11_cursor(LONG CursorID);
+void X11ManagerLoop(HOSTHANDLE, APTR);
+void handle_button_press(XEvent *);
+void handle_button_release(XEvent *);
+void handle_configure_notify(XConfigureEvent *);
+void handle_enter_notify(XCrossingEvent *);
+void handle_exposure(XExposeEvent *);
+void handle_key_press(XEvent *);
+void handle_key_release(XEvent *);
+void handle_motion_notify(XMotionEvent *);
+void handle_stack_change(XCirculateEvent *);
 
-static X11Globals *glX11 = 0;
-static _XDisplay *XDisplay = 0;
-static XRandRBase *XRandRBase = 0;
-static UBYTE glX11ShmImage = FALSE;
-static UBYTE KeyHeld[K_LIST_END];
-static UBYTE glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
-static LONG glKeyFlags = 0, glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
-static Atom atomSurfaceID = 0, XWADeleteWindow = 0;
-static GC glXGC = 0, glClipXGC = 0;
-static XWindowAttributes glRootWindow;
-static Window glDisplayWindow = 0;
-static Cursor C_Default;
-static OBJECTPTR modXRR = NULL;
-static WORD glPlugin = FALSE;
-static APTR glDGAVideo = NULL;
+X11Globals *glX11 = 0;
+_XDisplay *XDisplay = 0;
+XRandRBase *XRandRBase = 0;
+UBYTE glX11ShmImage = FALSE;
+UBYTE KeyHeld[K_LIST_END];
+UBYTE glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
+LONG glKeyFlags = 0, glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
+Atom atomSurfaceID = 0, XWADeleteWindow = 0;
+GC glXGC = 0, glClipXGC = 0;
+XWindowAttributes glRootWindow;
+Window glDisplayWindow = 0;
+Cursor C_Default;
+OBJECTPTR modXRR = NULL;
+WORD glPlugin = FALSE;
+APTR glDGAVideo = NULL;
 #endif
 
 #ifdef _WIN32

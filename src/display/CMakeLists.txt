@@ -18,8 +18,6 @@ set (DISPLAY_DEFS # Full paths are required for add_custom_command() dependencie
    "${CMAKE_CURRENT_SOURCE_DIR}/class_pointer_def.c")
 
 if (BUILD_DEFS)
-#   idl_def ("display.fdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
-
    add_custom_command (OUTPUT
       ${DISPLAY_DEFS}
       "${DOCS}/modules/classes/bitmap.xml"
@@ -40,10 +38,6 @@ if (BUILD_DEFS)
 
    add_dependencies (build_headers display_defs)
 endif ()
-
-#idl_c ("display.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
-#   FILES "display-driver.cpp" "input_events.cpp"
-#   ARGS "--output-defs=module_def.c" "--output-proto=module_def.c" "--prototypes=static")
 
 link_directories("/usr/X11R6/lib" "/usr/lib")
 

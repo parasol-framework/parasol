@@ -285,4 +285,39 @@ void winSetDIBitsToDevice(APTR, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, 
 #include "prototypes.h"
 #include "win32/windows.h"
 
+#ifdef __xwindows__
+
+extern Cursor create_blank_cursor(void);
+extern Cursor get_x11_cursor(LONG CursorID);
+extern void X11ManagerLoop(HOSTHANDLE, APTR);
+extern void handle_button_press(XEvent *);
+extern void handle_button_release(XEvent *);
+extern void handle_configure_notify(XConfigureEvent *);
+extern void handle_enter_notify(XCrossingEvent *);
+extern void handle_exposure(XExposeEvent *);
+extern void handle_key_press(XEvent *);
+extern void handle_key_release(XEvent *);
+extern void handle_motion_notify(XMotionEvent *);
+extern void handle_stack_change(XCirculateEvent *);
+
+extern WORD glDGAAvailable;
+extern APTR glDGAMemory;
+extern X11Globals *glX11;
+extern _XDisplay *XDisplay;
+extern XRandRBase *XRandRBase;
+extern UBYTE glX11ShmImage;
+extern UBYTE KeyHeld[K_LIST_END];
+extern UBYTE glTrayIcon, glTaskBar, glStickToFront;
+extern LONG glKeyFlags, glXFD, glDGAPixelsPerLine, glDGABankSize;
+extern Atom atomSurfaceID, XWADeleteWindow;
+extern GC glXGC, glClipXGC;
+extern XWindowAttributes glRootWindow;
+extern Window glDisplayWindow;
+extern Cursor C_Default;
+extern OBJECTPTR modXRR;
+extern WORD glPlugin;
+extern APTR glDGAVideo;
+
+#endif
+
 #endif
