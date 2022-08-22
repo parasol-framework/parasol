@@ -132,10 +132,10 @@
       <comment>Presents a display object to the user.</comment>
       <description>
 <p>This method presents a display object to the user.  On a hosted platform, this will result in a window appearing on screen.  By default the window will be hosted within a window border which may contain regular window gadgets such as a titlebar and buttons for close, maximise and minimise operations.  The position of the window is determined by the <field>X</field> and <field>Y</field> fields.  In Parasol's native platform, the user's screen display will be altered to match the required resolution and the graphics of the display's <field>Bitmap</field> object will take up the entirety of the screen.</p>
-<p>If the BORDERLESS flag has been set in the <field>Flags</field> field, the window will appear without the surrounding border and gadgets normally associated with new windows.</p>
+<p>If the <code>BORDERLESS</code> flag has been set in the <field>Flags</field> field, the window will appear without the surrounding border and gadgets normally associated with new windows.</p>
 <p>In Microsoft Windows, the <field>LeftMargin</field>, <field>RightMargin</field>, <field>TopMargin</field> and <field>BottomMargin</field> fields will be updated to reflect the position of the client area within the hosted window.  In X11 these field values are all set to zero.</p>
 <p>If the window is minimised at the time this action is called, the window will be restored to its original position if the code for the host platform supports this capability.</p>
-<p>The VISIBLE flag in the <field>Flags</field> field will be set if the Show operation is successful.</p>
+<p>The <code>VISIBLE</code> flag in the <field>Flags</field> field will be set if the Show operation is successful.</p>
       </description>
     </action>
 
@@ -195,7 +195,7 @@
       </input>
       <description>
 <p>The SetGamma method controls the gamma correction levels for the display.  Gamma levels for the red, green and blue colour components can be set at floating point precision.  The default gamma level for each component is 1.0; the minimum value is 0.0 and the maximum value is 100.</p>
-<p>Optional flags include GMF_SAVE.  This option will save the requested settings as the user default when future displays are opened.</p>
+<p>Optional flags include <code>GMF_SAVE</code>.  This option will save the requested settings as the user default when future displays are opened.</p>
 <p>If you would like to know the default gamma correction settings for a display, please refer to the <field>Gamma</field> field.</p>
       </description>
       <result>

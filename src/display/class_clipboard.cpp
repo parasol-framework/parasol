@@ -25,6 +25,8 @@ number of clips that can be stored in the history cache.
 
 *****************************************************************************/
 
+#include "defs.h"
+
 static const FieldDef glDatatypes[] = {
    { "data",   CLIPTYPE_DATA },
    { "audio",  CLIPTYPE_AUDIO },

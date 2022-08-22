@@ -8,39 +8,8 @@ Please refer to it for further information on licensing.
 
 #include "defs.h"
 
-static ERROR GET_HDensity(objDisplay *Self, LONG *Value);
-static ERROR GET_VDensity(objDisplay *Self, LONG *Value);
-
-//****************************************************************************
-
-FieldDef CursorLookup[] = {
-   { "None",            0 },
-   { "Default",         PTR_DEFAULT },             // Values start from 1 and go up
-   { "SizeBottomLeft",  PTR_SIZE_BOTTOM_LEFT },
-   { "SizeBottomRight", PTR_SIZE_BOTTOM_RIGHT },
-   { "SizeTopLeft",     PTR_SIZE_TOP_LEFT },
-   { "SizeTopRight",    PTR_SIZE_TOP_RIGHT },
-   { "SizeLeft",        PTR_SIZE_LEFT },
-   { "SizeRight",       PTR_SIZE_RIGHT },
-   { "SizeTop",         PTR_SIZE_TOP },
-   { "SizeBottom",      PTR_SIZE_BOTTOM },
-   { "Crosshair",       PTR_CROSSHAIR },
-   { "Sleep",           PTR_SLEEP },
-   { "Sizing",          PTR_SIZING },
-   { "SplitVertical",   PTR_SPLIT_VERTICAL },
-   { "SplitHorizontal", PTR_SPLIT_HORIZONTAL },
-   { "Magnifier",       PTR_MAGNIFIER },
-   { "Hand",            PTR_HAND },
-   { "HandLeft",        PTR_HAND_LEFT },
-   { "HandRight",       PTR_HAND_RIGHT },
-   { "Text",            PTR_TEXT },
-   { "Paintbrush",      PTR_PAINTBRUSH },
-   { "Stop",            PTR_STOP },
-   { "Invisible",       PTR_INVISIBLE },
-   { "Custom",          PTR_CUSTOM },
-   { "Dragable",        PTR_DRAGGABLE },
-   { NULL, 0 }
-};
+ERROR GET_HDensity(objDisplay *Self, LONG *Value);
+ERROR GET_VDensity(objDisplay *Self, LONG *Value);
 
 //****************************************************************************
 
@@ -115,8 +84,6 @@ static APTR glDGAVideo = NULL;
 
 HINSTANCE glInstance = 0;
 
-static APTR GetWinCursor(LONG);
-
 static WinCursor winCursors[] = {
    { 0, PTR_DEFAULT,           },  // NOTE: Refer to the microsoft.c file if you change anything here
    { 0, PTR_SIZE_BOTTOM_LEFT,  },
@@ -158,10 +125,7 @@ static void android_term_window(LONG);
 //****************************************************************************
 // Note: These values are used as the input masks
 
-static const struct {
-   LONG Flags;  // As many flags as necessary to describe the input type
-   LONG Mask;   // Limited flags to declare the mask that must be used to receive that type
-} glInputType[JET_END] = {
+const std::array<struct InputType, JET_END> glInputType{{
    { 0, 0 },                                         // UNUSED
    { JTYPE_DIGITAL|JTYPE_MOVEMENT, JTYPE_MOVEMENT }, // JET_DIGITAL_X
    { JTYPE_DIGITAL|JTYPE_MOVEMENT, JTYPE_MOVEMENT }, // JET_DIGITAL_Y
@@ -202,9 +166,9 @@ static const struct {
    { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_DEVICE_TILT_Y
    { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_DEVICE_TILT_Z
    { JTYPE_FEEDBACK,               JTYPE_FEEDBACK }     // JET_DISPLAY_EDGE
-};
+}};
 
-static const CSTRING glInputNames[JET_END] = {
+const std::array<std::string, JET_END> glInputNames{
    "",
    "DIGITAL_X",
    "DIGITAL_Y",
@@ -247,12 +211,7 @@ static const CSTRING glInputNames[JET_END] = {
    "DISPLAY_EDGE"
 };
 
-static OBJECTPTR glCompress = NULL;
-static objCompression *glIconArchive = NULL;
-struct CoreBase *CoreBase;
-static struct SurfaceBase *SurfaceBase;
-static ColourFormat glColourFormat;
-static BYTE glHeadless = FALSE;
+struct InputEventMgr *glInputEvents = NULL;
 
 #ifdef _GLES_ // OpenGL specific data
 enum { EGL_STOPPED=0, EGL_REQUIRES_INIT, EGL_INITIALISED, EGL_TERMINATED };
@@ -269,13 +228,22 @@ static LONG glLockCount = 0;
 static OBJECTID glActiveDisplayID = 0;
 #endif
 
-static OBJECTPTR glModule = NULL;
-static OBJECTPTR modSurface = NULL;
-static OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL;
-static OBJECTID glPointerID = 0;
-static DISPLAYINFO *glDisplayInfo;
-static APTR glDither = NULL;
-static LONG glDitherSize = 0;
+OBJECTPTR glCompress = NULL;
+objCompression *glIconArchive = NULL;
+struct CoreBase *CoreBase;
+struct SurfaceBase *SurfaceBase;
+ColourFormat glColourFormat;
+BYTE glHeadless = FALSE;
+OBJECTPTR glModule = NULL;
+OBJECTPTR modSurface = NULL;
+OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL;
+OBJECTID glPointerID = 0;
+DISPLAYINFO *glDisplayInfo;
+APTR glDither = NULL;
+LONG glDitherSize = 0;
+SharedControl *glSharedControl = NULL;
+LONG glSixBitDisplay = FALSE;
+std::unordered_map<LONG, InputCallback> glInputCallbacks;
 
 //****************************************************************************
 // Alpha blending data.
@@ -338,7 +306,7 @@ int pthread_mutex_timedlock (pthread_mutex_t *mutex, int Timeout)
 // display is unavailable then this function will fail even if the lock could otherwise be granted.
 
 #ifdef _GLES_
-static ERROR lock_graphics_active(CSTRING Caller)
+ERROR lock_graphics_active(CSTRING Caller)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -374,7 +342,7 @@ static ERROR lock_graphics_active(CSTRING Caller)
    }
 }
 
-static void unlock_graphics(void)
+void unlock_graphics(void)
 {
    glLockCount--;
    if (!glLockCount) {
@@ -390,7 +358,7 @@ static void unlock_graphics(void)
 
 //****************************************************************************
 
-static ERROR GetSurfaceAbs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
+ERROR GetSurfaceAbs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
    SurfaceControl *ctl;
 
@@ -417,10 +385,10 @@ static ERROR GetSurfaceAbs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Wid
 
 #ifdef __xwindows__
 
-static WORD glDGAAvailable = -1; // -1 indicates that we have not tried the setup process yet
-static APTR glDGAMemory = NULL;
+WORD glDGAAvailable = -1; // -1 indicates that we have not tried the setup process yet
+APTR glDGAMemory = NULL;
 
-static LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
+LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
 {
    parasol::Log log(__FUNCTION__);
    STRING displayname;
@@ -489,7 +457,7 @@ static LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankS
 //**********************************************************************
 // This routine is called if there is another window manager running.
 
-static XErrorHandler CatchRedirectError(Display *XDisplay, XErrorEvent *event)
+XErrorHandler CatchRedirectError(Display *XDisplay, XErrorEvent *event)
 {
    parasol::Log log("X11");
    log.msg("A window manager has been detected on this X11 server.");
@@ -517,7 +485,7 @@ const CSTRING glXProtoList[] = { NULL,
 "RotateProperties","ForceScreenSaver","SetPointerMapping","GetPointerMapping","SetModifierMapping","GetModifierMapping","NoOperation"
 };
 
-static XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
+XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
 {
    parasol::Log log("X11");
    char buffer[80];
@@ -534,7 +502,7 @@ static XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
 
 //****************************************************************************
 
-static int CatchXIOError(Display *XDisplay)
+int CatchXIOError(Display *XDisplay)
 {
    parasol::Log log("X11");
    log.error("A fatal XIO error occurred in relation to display \"%s\".", XDisplayName(NULL));
@@ -545,7 +513,7 @@ static int CatchXIOError(Display *XDisplay)
 ** Returns TRUE if we are the window manager for the display.
 */
 
-static LONG x11WindowManager(void)
+LONG x11WindowManager(void)
 {
    if (glX11) return glX11->Manager;
    else return FALSE;
@@ -555,7 +523,7 @@ static LONG x11WindowManager(void)
 
 //****************************************************************************
 
-static ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
+ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1241,7 +1209,7 @@ InUse: A drag and drop operation has already been started.
 
 *****************************************************************************/
 
-static ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)
+ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1316,7 +1284,7 @@ AllocMemory:
 
 *****************************************************************************/
 
-static ERROR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
+ERROR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
 {
    static THREADVAR DISPLAYINFO *t_info = NULL;
 
@@ -1352,7 +1320,7 @@ int(DT): Returns an integer indicating the display type.
 
 *****************************************************************************/
 
-static LONG gfxGetDisplayType(void)
+LONG gfxGetDisplayType(void)
 {
 #ifdef _WIN32
    return DT_WINDOWS;
@@ -1380,7 +1348,7 @@ obj(Pointer): Returns the address of the default pointer object.
 
 ******************************************************************************/
 
-static objPointer * gfxAccessPointer(void)
+objPointer * gfxAccessPointer(void)
 {
    objPointer *pointer;
 
@@ -1431,7 +1399,7 @@ NoSupport: The device does not support a cursor (common for touch screen display
 
 ******************************************************************************/
 
-static ERROR gfxGetCursorInfo(CursorInfo *Info, LONG Size)
+ERROR gfxGetCursorInfo(CursorInfo *Info, LONG Size)
 {
    if (!Info) return ERR_NullArgs;
 
@@ -1504,7 +1472,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 ******************************************************************************/
 
-static ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
+ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
 {
    parasol::Log log(__FUNCTION__);
    objPointer *pointer;
@@ -1552,7 +1520,7 @@ AccessObject: Failed to access the pointer object.
 
 ******************************************************************************/
 
-static ERROR gfxLockCursor(OBJECTID SurfaceID)
+ERROR gfxLockCursor(OBJECTID SurfaceID)
 {
 #ifdef __native__
    parasol::Log log(__FUNCTION__);
@@ -1609,7 +1577,7 @@ Args
 
 ******************************************************************************/
 
-static ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
+ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
 {
    parasol::Log log(__FUNCTION__);
    objPointer *pointer;
@@ -1676,7 +1644,7 @@ Search: There are no more display modes to return that are a match for the Filte
 
 *****************************************************************************/
 
-static ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
+ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
 {
 #ifdef __snap__
 
@@ -1830,7 +1798,7 @@ AccessObject: Failed to access the internally maintained image object.
 
 ******************************************************************************/
 
-static ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, OBJECTID OwnerID)
+ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, OBJECTID OwnerID)
 {
    parasol::Log log(__FUNCTION__);
    objPointer *pointer;
@@ -2066,7 +2034,7 @@ AccessObject: Failed to access the internally maintained image object.
 
 ******************************************************************************/
 
-static ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
+ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
 {
 #ifdef __snap__
    parasol::Log log(__FUNCTION__);
@@ -2147,7 +2115,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 ******************************************************************************/
 
-static ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
+ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
 {
    objPointer *pointer;
 
@@ -2177,7 +2145,7 @@ Okay
 
 *****************************************************************************/
 
-static ERROR gfxSetHostOption(LONG Option, LARGE Value)
+ERROR gfxSetHostOption(LONG Option, LARGE Value)
 {
 #if defined(_WIN32) || defined(__xwindows__)
    parasol::Log log(__FUNCTION__);
@@ -2224,7 +2192,7 @@ NotLocked: A lock is not present, or the lock belongs to another surface.
 
 ******************************************************************************/
 
-static ERROR gfxUnlockCursor(OBJECTID SurfaceID)
+ERROR gfxUnlockCursor(OBJECTID SurfaceID)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -2252,7 +2220,7 @@ static ERROR gfxUnlockCursor(OBJECTID SurfaceID)
 //****************************************************************************
 
 #ifdef __xwindows__
-static Cursor create_blank_cursor(void)
+Cursor create_blank_cursor(void)
 {
    parasol::Log log(__FUNCTION__);
    Pixmap data_pixmap, mask_pixmap;
@@ -2286,7 +2254,7 @@ static Cursor create_blank_cursor(void)
 
 #ifdef __xwindows__
 
-static Cursor get_x11_cursor(LONG CursorID)
+Cursor get_x11_cursor(LONG CursorID)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -2301,7 +2269,7 @@ static Cursor get_x11_cursor(LONG CursorID)
 
 #ifdef _WIN32
 
-static APTR GetWinCursor(LONG CursorID)
+APTR GetWinCursor(LONG CursorID)
 {
    for (WORD i=0; i < ARRAYSIZE(winCursors); i++) {
       if (winCursors[i].CursorID IS CursorID) return winCursors[i].WinCursor;
@@ -2315,7 +2283,7 @@ static APTR GetWinCursor(LONG CursorID)
 
 //*****************************************************************************
 
-static void update_displayinfo(objDisplay *Self)
+void update_displayinfo(objDisplay *Self)
 {
    if (StrMatch("SystemDisplay", GetName(Self)) != ERR_Okay) return;
 
@@ -2335,7 +2303,7 @@ static void update_displayinfo(objDisplay *Self)
 
 #ifdef _WIN32
 
-static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
+ERROR LockSurface(objBitmap *Bitmap, WORD Access)
 {
    if (!Bitmap->Data) {
       parasol::Log log(__FUNCTION__);
@@ -2346,14 +2314,14 @@ static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
    return ERR_Okay;
 }
 
-static ERROR UnlockSurface(objBitmap *Bitmap)
+ERROR UnlockSurface(objBitmap *Bitmap)
 {
    return ERR_Okay;
 }
 
 #elif __xwindows__
 
-static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
+ERROR LockSurface(objBitmap *Bitmap, WORD Access)
 {
    LONG size;
    WORD alignment;
@@ -2411,7 +2379,7 @@ ERROR UnlockSurface(objBitmap *Bitmap)
 
 #elif _GLES_
 
-static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
+ERROR LockSurface(objBitmap *Bitmap, WORD Access)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -2460,7 +2428,7 @@ static ERROR LockSurface(objBitmap *Bitmap, WORD Access)
    return ERR_Okay;
 }
 
-static ERROR UnlockSurface(objBitmap *Bitmap)
+ERROR UnlockSurface(objBitmap *Bitmap)
 {
    if ((Bitmap->DataFlags & MEM_VIDEO) and (Bitmap->prvWriteBackBuffer)) {
       if (!lock_graphics_active(__func__)) {
@@ -2513,7 +2481,7 @@ static ERROR UnlockSurface(objBitmap *Bitmap)
 */
 
 #ifdef _GLES_
-static GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID)
+GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID)
 {
    GLenum glerror;
 
@@ -2575,7 +2543,7 @@ Mismatch: The destination bitmap is not a close enough match to the source bitma
 
 *****************************************************************************/
 
-static UBYTE validate_clip(CSTRING Header, CSTRING Name, objBitmap *Bitmap)
+UBYTE validate_clip(CSTRING Header, CSTRING Name, objBitmap *Bitmap)
 {
    parasol::Log log(Header);
 
@@ -2624,7 +2592,7 @@ static UBYTE validate_clip(CSTRING Header, CSTRING Name, objBitmap *Bitmap)
    return 0;
 }
 
-static ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG DestX, LONG DestY)
+ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG DestX, LONG DestY)
 {
    parasol::Log log(__FUNCTION__);
    RGB8 pixel, src;
@@ -3441,7 +3409,7 @@ static ULONG read_surface32(BITMAPSURFACE *Surface, WORD X, WORD Y)
    return ((ULONG *)((UBYTE *)Surface->Data + (Surface->LineWidth * Y) + (X<<2)))[0];
 }
 
-static ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
+ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
           LONG Flags, LONG X, LONG Y, LONG Width, LONG Height,
           LONG XDest, LONG YDest)
 {
@@ -3844,7 +3812,7 @@ CreateObject: A Compression object could not be created.
 
 *****************************************************************************/
 
-static ERROR gfxCompress(objBitmap *Bitmap, LONG Level)
+ERROR gfxCompress(objBitmap *Bitmap, LONG Level)
 {
    return ActionTags(MT_BmpCompress, Bitmap, Level);
 }
@@ -3873,7 +3841,7 @@ AllocMemory
 
 *****************************************************************************/
 
-static ERROR gfxDecompress(objBitmap *Bitmap, LONG RetainData)
+ERROR gfxDecompress(objBitmap *Bitmap, LONG RetainData)
 {
    return ActionTags(MT_BmpDecompress, Bitmap, RetainData);
 }
@@ -3926,7 +3894,7 @@ int AlphaMask:    Alpha component bit mask value.
 
 *****************************************************************************/
 
-static void gfxGetColourFormat(ColourFormat *Format, LONG BPP, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)
+void gfxGetColourFormat(ColourFormat *Format, LONG BPP, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)
 {
    LONG mask;
 
@@ -3987,6 +3955,302 @@ static void gfxGetColourFormat(ColourFormat *Format, LONG BPP, LONG RedMask, LON
    Format->BitsPerPixel = BPP;
 }
 
+/******************************************************************************
+
+-FUNCTION-
+GetInputTypeName: Returns the string name for an input type.
+
+This function converts JET integer constants to their string equivalent.  Refer to ~SubscribeInput() for a
+list of JET constants.
+
+-INPUT-
+int(JET) Type: JET type integer.
+
+-RESULT-
+cstr: A string describing the input type is returned or NULL if the Type is invalid.
+
+******************************************************************************/
+
+CSTRING gfxGetInputTypeName(LONG Type)
+{
+   if ((Type < 1) or (Type >= JET_END)) return NULL;
+   return glInputNames[Type].c_str();
+}
+
+/******************************************************************************
+
+-FUNCTION-
+SubscribeInput: Subscribe to incoming input messages for any active surface object.
+
+The SubscribeInput() function provides a systematic way of receiving input events as they occur.  Coverage is limited
+to device events that are linked to the display (i.e. events from track pads, mouse pointers, graphics tablets and
+touch screens).  Keyboard devices are not included.
+
+The client is required to remove the subscription with ~UnsubscribeInput() once tracking is no longer required.
+
+Input events can be filtered so that they are received in relation to surfaces and devices.  An input mask can also be
+applied so that only certain types of events are received.
+
+A callback is required for receiving the input events.  The following C/C++ code illustrates a method for processing
+events in the callback:
+
+<pre>
+ERROR consume_input_events(const struct InputEvent *Events, LONG Handle)
+{
+   for (auto event=Events; event; event=event->Next) {
+      if ((event->Flags & JTYPE_BUTTON) and (event->Value > 0)) {
+         process_click(Self, event->RecipientID, event->X, event->Y);
+      }
+   }
+
+   return ERR_Okay;
+}
+</pre>
+
+All processable events are referenced in the InputEvent structure in the Events parameter.  The structure format is as
+follows:
+
+<fields>
+<fld type="*InputEvent" name="Next">The next input event in the list.</>
+<fld type="UWORD" name="Type">This value is set to a JET constant that describes the input event.</>
+<fld type="UWORD" name="Flags">Flags provide a broad description of the event type and can also provide more specific information relevant to the event (see JTYPE flags).</>
+<fld type="DOUBLE" name="Value">The value associated with the Type</>
+<fld type="OBJECTID" name="RecipientID">The surface that the input message is being conveyed to.</>
+<fld type="OBJECTID" name="OverID">The surface that was directly under the mouse pointer at the time of the event.</>
+<fld type="DOUBLE" name="AbsX">Absolute horizontal coordinate of the mouse pointer (relative to the top left of the display).</>
+<fld type="DOUBLE" name="AbsY">Absolute vertical coordinate of the mouse pointer (relative to the top left of the display).</>
+<fld type="DOUBLE" name="OverX">Horizontal pointer coordinate, usually relative to the surface that the pointer is positioned over.  If a mouse button is held or the pointer is anchored, the coordinates are relative to the Recipient surface.</>
+<fld type="DOUBLE" name="OverY">Vertical pointer coordinate.</>
+<fld type="LARGE" name="Timestamp">Millisecond counter at which the input was recorded, or as close to it as possible.</>
+<fld type="OBJECTID" name="DeviceID">Reference to the hardware device that this event originated from.  There is no guarantee that the DeviceID is a reference to a publicly accessible object.</>
+</>
+
+JET constants are as follows and take note of `ENTERED_SURFACE` and `LEFT_SURFACE` which are software generated and not
+a device event:
+
+<types lookup="JET"/>
+
+The JTYPE values for the Flags field are as follows.  Note that these flags also serve as input masks for the
+SubscribeInput() function, so to receive a message of the given type the appropriate JTYPE flag must have been set in the
+original subscription call.
+
+<types lookup="JTYPE"/>
+
+-INPUT-
+ptr(func) Callback: Reference to a callback function that will receive input messages.
+oid SurfaceFilter: Optional.  Only the input messages that match the given surface ID will be received.
+int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.
+oid DeviceFilter: Optional.  Only the input messages that match the given device ID will be received.  NOTE - Support not yet implemented, set to zero.
+&int Handle: A handle for the subscription is returned here.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+******************************************************************************/
+
+ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, LONG InputMask, OBJECTID DeviceFilter, LONG *Handle)
+{
+   #define CHUNK_INPUT 50
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Callback) or (!Handle)) return log.warning(ERR_NullArgs);
+
+   log.branch("Surface Filter: #%d, Mask: $%.4x, Handle: %d", SurfaceFilter, InputMask, glSharedControl->InputIDCounter+1);
+
+   // Allocate the subscription array if it does not exist.  NB: The memory is untracked and will be removed by the
+   // last task that cleans up the memory resource pool.
+
+   if (!glSharedControl->InputMID) {
+      if (AllocMemory(sizeof(InputSubscription) * CHUNK_INPUT, MEM_PUBLIC|MEM_UNTRACKED, NULL, &glSharedControl->InputMID)) {
+         return log.warning(ERR_AllocMemory);
+      }
+      glSharedControl->InputSize = CHUNK_INPUT;
+   }
+
+   // Add the process to the subscription list.  Note that access to InputMID acts as a lock for variables like InputTotal.
+
+   InputSubscription *list, *newlist;
+   if (!AccessMemory(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
+      if (glSharedControl->InputTotal >= glSharedControl->InputSize) {
+         log.msg("Input array needs to be expanded from %d entries.", glSharedControl->InputSize);
+
+         MEMORYID newlistid;
+         if (AllocMemory(sizeof(InputSubscription) * (glSharedControl->InputSize + CHUNK_INPUT), MEM_PUBLIC|MEM_UNTRACKED, (APTR *)&newlist, &newlistid)) {
+            ReleaseMemory(list);
+            return ERR_AllocMemory;
+         }
+
+         CopyMemory(list, newlist, sizeof(InputSubscription) * glSharedControl->InputSize);
+
+         ReleaseMemory(list);
+
+         FreeResourceID(glSharedControl->InputMID);
+         glSharedControl->InputMID = newlistid;
+         glSharedControl->InputSize += CHUNK_INPUT;
+         list = newlist;
+      }
+
+      LONG i = glSharedControl->InputTotal;
+      list[i].SurfaceFilter = SurfaceFilter;
+      list[i].ProcessID = ((objTask *)CurrentTask())->ProcessID;
+
+      if (!InputMask) list[i].InputMask = 0xffff;
+      else list[i].InputMask = InputMask;
+
+      list[i].Handle = __sync_add_and_fetch(&glSharedControl->InputIDCounter, 1);
+      *Handle = list[i].Handle;
+
+      __sync_fetch_and_add(&glSharedControl->InputTotal, 1);
+
+      ReleaseMemory(list);
+
+      const InputCallback is = {
+         .SurfaceFilter = SurfaceFilter,
+         .InputMask     = (WORD)InputMask,
+         .Callback      = *Callback
+      };
+
+      glInputCallbacks.emplace(*Handle, is);
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_AccessMemory);
+}
+
+/******************************************************************************
+
+-FUNCTION-
+UnsubscribeInput: Removes an input subscription.
+
+This function removes an input subscription that has been created with ~SubscribeInput().
+
+-INPUT-
+int Handle: Reference to a handle returned by SubscribeInput().
+
+-ERRORS-
+Okay
+NullArgs
+NotFound
+-END-
+
+******************************************************************************/
+
+ERROR gfxUnsubscribeInput(LONG Handle)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!Handle) return log.warning(ERR_NullArgs);
+
+   log.branch("Handle: %d", Handle);
+
+   {
+      auto it = glInputCallbacks.find(Handle);
+      if (it IS glInputCallbacks.end()) return log.warning(ERR_NotFound);
+      else glInputCallbacks.erase(it);
+   }
+
+   InputSubscription *list;
+   if (!AccessMemory(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
+      bool removed = false;
+      for (LONG i=glSharedControl->InputTotal-1; i >= 0; i--) {
+         if (list[i].Handle != Handle) continue;
+
+         removed = true;
+         if (i+1 < glSharedControl->InputTotal) { // Remove by compacting the list
+            CopyMemory(list+i+1, list+i, sizeof(InputSubscription) * (glSharedControl->InputTotal - i - 1));
+         }
+
+         __sync_fetch_and_sub(&glSharedControl->InputTotal, 1);
+         break;
+      }
+
+      ReleaseMemory(list);
+
+      if (!glSharedControl->InputTotal) {
+         log.trace("Freeing subscriber memory (last subscription removed)");
+         FreeResourceID(glSharedControl->InputMID);
+         glSharedControl->InputMID   = 0;
+         glSharedControl->InputSize  = 0;
+         glSharedControl->InputTotal = 0;
+      }
+
+      if (!removed) return log.warning(ERR_NotFound);
+      else return ERR_Okay;
+   }
+   else return log.warning(ERR_AccessMemory);
+}
+
+//****************************************************************************
+// This routine is called on every cycle of ProcessMessages() so that we can check if there are input events
+// that need to be processed.
+
+void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
+{
+   static ULONG current_index = 0;
+   parasol::Log log(__FUNCTION__);
+
+   if (current_index IS glInputEvents->IndexCounter) return; // Check if there are events to consume
+
+   // Check for underflow in case this process hasn't been active enough in consuming events.
+
+   if ((glInputEvents->IndexCounter > MAX_INPUTMSG) and (current_index < glInputEvents->IndexCounter - MAX_INPUTMSG + 1)) {
+      current_index = glInputEvents->IndexCounter - MAX_INPUTMSG + 1;
+   }
+
+   ULONG max_events = glInputEvents->IndexCounter - current_index;
+   InputEvent events[max_events];
+
+   //log.traceBranch("Index: %u/%u (%u events)", current_index, glInputEvents->IndexCounter, max_events);
+
+   std::unordered_map<LONG, InputCallback> copyInputCallbacks(glInputCallbacks); // In case of modification
+
+   for (const auto & [ handle, sub ] : copyInputCallbacks) {
+      // Construct a linked list of filtered input events for this subscription.
+
+      LONG total_events = 0;
+      for (ULONG i=0; i < max_events; i++) {
+         LONG e = (current_index + i) & (MAX_INPUTMSG - 1); // Modulo cheat works as long as MAX_INPUTMSG is a ^2
+
+         if (((glInputEvents->Msgs[e].RecipientID IS sub.SurfaceFilter) or (!sub.SurfaceFilter)) and
+             (glInputEvents->Msgs[e].Flags & sub.InputMask)) {
+            events[total_events] = glInputEvents->Msgs[e];
+            events[total_events].Next = &events[total_events + 1];
+            total_events++;
+         }
+      }
+
+      //log.msg("Handle: %d, Filter: #%d, Mask: $%.8x, Events: %d", handle, sub.SurfaceFilter, sub.InputMask, total_events);
+
+      if (total_events > 0) {
+         events[total_events-1].Next = NULL;
+
+         auto &cb = sub.Callback;
+         if (cb.Type IS CALL_STDC) {
+            if (!AccessPrivateObject(cb.StdC.Context, 2000)) { // Ensure that the object can't be removed until after input processing
+               OBJECTPTR oldcontext = SetContext(cb.StdC.Context);
+               auto func = (ERROR (*)(InputEvent *, LONG))cb.StdC.Routine;
+               func(events, handle);
+               SetContext(oldcontext);
+               ReleasePrivateObject(cb.StdC.Context);
+            }
+         }
+         else if (cb.Type IS CALL_SCRIPT) {
+            OBJECTPTR script;
+            if ((script = cb.Script.Script)) {
+               const ScriptArg args[] = {
+                  { "Events:InputEvent", FD_PTR|FDF_STRUCT, { .Address  = events } },
+                  { "Handle", FD_LONG, { .Long = handle } },
+               };
+               ERROR result;
+               scCallback(script, cb.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+            }
+         }
+      }
+   }
+
+   current_index = glInputEvents->IndexCounter;
+}
+
 /*****************************************************************************
 
 -FUNCTION-
@@ -4007,7 +4271,7 @@ uint Colour: The pixel colour for drawing the line.
 
 *****************************************************************************/
 
-static void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY, ULONG Colour)
+void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY, ULONG Colour)
 {
    RGB8 pixel, rgb;
    LONG i, dx, dy, l, m, x_inc, y_inc;
@@ -4188,7 +4452,7 @@ uint Colour: The colour value to use for the pixel.
 
 *****************************************************************************/
 
-static void gfxDrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
+void gfxDrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 {
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
    if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
@@ -4217,7 +4481,7 @@ int(BAF) Flags: Use BAF_FILL to fill the rectangle.  Use of BAF_BLEND will enabl
 
 *****************************************************************************/
 
-static void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)
+void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    RGB8 pixel;
@@ -4487,7 +4751,7 @@ int(FLIP) Orientation: Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.  If set t
 
 *****************************************************************************/
 
-static void gfxFlipBitmap(objBitmap *Bitmap, LONG Orientation)
+void gfxFlipBitmap(objBitmap *Bitmap, LONG Orientation)
 {
    ActionTags(MT_BmpFlip, Bitmap, Orientation);
 }
@@ -4510,7 +4774,7 @@ int Y: The vertical coordinate of the pixel.
 
 *****************************************************************************/
 
-static void gfxReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 **Pixel)
+void gfxReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 **Pixel)
 {
    static THREADVAR RGB8 pixel;
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left) or
@@ -4542,7 +4806,7 @@ uint: The colour value of the pixel will be returned.  Zero is returned if the p
 
 *****************************************************************************/
 
-static ULONG gfxReadPixel(objBitmap *Bitmap, LONG X, LONG Y)
+ULONG gfxReadPixel(objBitmap *Bitmap, LONG X, LONG Y)
 {
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left) or
        (Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return 0;
@@ -4569,7 +4833,7 @@ double: The scaled value is returned.
 
 *****************************************************************************/
 
-static DOUBLE gfxScaleToDPI(DOUBLE Value)
+DOUBLE gfxScaleToDPI(DOUBLE Value)
 {
    if ((!glDisplayInfo->HDensity) or (!glDisplayInfo->VDensity)) return Value;
    else return 96.0 / (((DOUBLE)glDisplayInfo->HDensity + (DOUBLE)glDisplayInfo->VDensity) * 0.5) * Value;
@@ -4597,7 +4861,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR gfxResample(objBitmap *Bitmap, ColourFormat *Format)
+ERROR gfxResample(objBitmap *Bitmap, ColourFormat *Format)
 {
    if ((!Bitmap) or (!Format)) return ERR_NullArgs;
 
@@ -4634,7 +4898,7 @@ int Terminate: Set to TRUE if this is the last clip region in the list, otherwis
 
 *****************************************************************************/
 
-static void gfxSetClipRegion(objBitmap *Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom,
+void gfxSetClipRegion(objBitmap *Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom,
    LONG Terminate)
 {
    Bitmap->Clip.Left   = Left;
@@ -4662,7 +4926,7 @@ obj(Bitmap) Bitmap: Pointer to the bitmap that you want to synchronise or NULL t
 
 *****************************************************************************/
 
-static void gfxSync(objBitmap *Bitmap)
+void gfxSync(objBitmap *Bitmap)
 {
 
 }
@@ -4690,7 +4954,7 @@ static void gfxSync(objBitmap *Bitmap)
       }                                  \
    }
 
-static ERROR dither(objBitmap *Bitmap, objBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
+ERROR dither(objBitmap *Bitmap, objBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
    LONG SrcX, LONG SrcY, LONG DestX, LONG DestY)
 {
    parasol::Log log(__FUNCTION__);
@@ -4908,7 +5172,7 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 ** PLEASE NOTE: EGL's design for embedded devices means that only one Display object can be active at any time.
 */
 
-static ERROR init_egl(void)
+ERROR init_egl(void)
 {
    parasol::Log log(__FUNCTION__);
    EGLint format;
@@ -5018,7 +5282,7 @@ static ERROR init_egl(void)
 
 //****************************************************************************
 
-static void refresh_display_from_egl(objDisplay *Self)
+void refresh_display_from_egl(objDisplay *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -5049,7 +5313,7 @@ static void refresh_display_from_egl(objDisplay *Self)
 ** active as it normally does.  For this reason, we just focus on resource deallocation.
 */
 
-static void free_egl(void)
+void free_egl(void)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -5080,12 +5344,6 @@ static void free_egl(void)
 #endif
 
 //****************************************************************************
-
-#include "input_events.cpp"
-#include "class_clipboard.cpp"
-#include "class_pointer.cpp"
-#include "class_display.cpp"
-#include "class_bitmap.cpp"
 
 #ifdef __xwindows__
 #include "x11/handlers.cpp"

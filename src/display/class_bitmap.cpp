@@ -36,8 +36,7 @@ actions.
 
 *****************************************************************************/
 
-#define PRV_BITMAP
-#define PRV_DISPLAY
+#include "defs.h"
 
 #ifdef _WIN32
 #define DLLCALL // __declspec(dllimport)
@@ -2551,7 +2550,7 @@ static const FieldArray clBitmapFields[] = {
 
 //****************************************************************************
 
-static ERROR create_bitmap_class(void)
+ERROR create_bitmap_class(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clBitmap,
       FID_ClassVersion|TFLOAT, VER_BITMAP,

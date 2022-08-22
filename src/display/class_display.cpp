@@ -22,6 +22,8 @@ mind the implications of creating a shared display.
 
 *****************************************************************************/
 
+#include "defs.h"
+
 // Class definition at end of this source file.
 
 static ERROR DISPLAY_Resize(objDisplay *, struct acResize *);
@@ -101,7 +103,7 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 
 //****************************************************************************
 
-static void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
+void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1627,7 +1629,7 @@ The SetGamma method controls the gamma correction levels for the display.  Gamma
 colour components can be set at floating point precision.  The default gamma level for each component is 1.0; the
 minimum value is 0.0 and the maximum value is 100.
 
-Optional flags include GMF_SAVE.  This option will save the requested settings as the user default when future displays
+Optional flags include `GMF_SAVE`.  This option will save the requested settings as the user default when future displays
 are opened.
 
 If you would like to know the default gamma correction settings for a display, please refer to the #Gamma
@@ -1887,7 +1889,7 @@ titlebar and buttons for close, maximise and minimise operations.  The position 
 #X and #Y fields.  In Parasol's native platform, the user's screen display will be altered to match the required
 resolution and the graphics of the display's #Bitmap object will take up the entirety of the screen.
 
-If the BORDERLESS flag has been set in the #Flags field, the window will appear without the surrounding border
+If the `BORDERLESS` flag has been set in the #Flags field, the window will appear without the surrounding border
 and gadgets normally associated with new windows.
 
 In Microsoft Windows, the #LeftMargin, #RightMargin, #TopMargin and #BottomMargin fields will be updated to reflect
@@ -1896,7 +1898,7 @@ the position of the client area within the hosted window.  In X11 these field va
 If the window is minimised at the time this action is called, the window will be restored to its original position if
 the code for the host platform supports this capability.
 
-The VISIBLE flag in the #Flags field will be set if the Show operation is successful.
+The `VISIBLE` flag in the #Flags field will be set if the Show operation is successful.
 -END-
 
 *****************************************************************************/
@@ -2004,7 +2006,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
 -METHOD-
 UpdateDisplay: Private. Updates the display using content from a source bitmap.
 
-Called by the Surface module when a surface buffer needs to be exposed to the display.
+Called by the Surface class when a surface buffer needs to be exposed to the display.
 
 -INPUT-
 obj(Bitmap) Bitmap: Source bitmap.
@@ -2240,7 +2242,7 @@ Reading this field always succeeds.
 
 *****************************************************************************/
 
-static ERROR GET_HDensity(objDisplay *Self, LONG *Value)
+ERROR GET_HDensity(objDisplay *Self, LONG *Value)
 {
    if (Self->HDensity) {
       *Value = Self->HDensity;
@@ -2312,7 +2314,7 @@ Reading this field always succeeds.
 
 *****************************************************************************/
 
-static ERROR GET_VDensity(objDisplay *Self, LONG *Value)
+ERROR GET_VDensity(objDisplay *Self, LONG *Value)
 {
    if (Self->VDensity) {
       *Value = Self->VDensity;
@@ -3087,7 +3089,7 @@ static ERROR SET_Y(objDisplay *Self, LONG Value)
 //****************************************************************************
 // Build a list of valid resolutions.
 
-static resolution * get_resolutions(objDisplay *Self)
+resolution * get_resolutions(objDisplay *Self)
 {
 #ifdef __xwindows__
 
@@ -3156,7 +3158,7 @@ static resolution * get_resolutions(objDisplay *Self)
 // Attempt to create a display buffer (process is not guaranteed, programmer has to check the Buffer field to know if
 // this succeeded or not).
 
-static void alloc_display_buffer(objDisplay *Self)
+void alloc_display_buffer(objDisplay *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -3242,14 +3244,14 @@ static const FieldArray DisplayFields[] = {
 
 //****************************************************************************
 
-static CSTRING dpms_name(LONG Index)
+CSTRING dpms_name(LONG Index)
 {
    return clDisplayDPMS[Index].Name;
 }
 
 //****************************************************************************
 
-static ERROR create_display_class(void)
+ERROR create_display_class(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clDisplay,
       FID_ClassVersion|TFLOAT, VER_DISPLAY,
