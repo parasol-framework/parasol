@@ -306,7 +306,7 @@ extern WORD glDGAAvailable;
 extern APTR glDGAMemory;
 extern X11Globals *glX11;
 extern _XDisplay *XDisplay;
-extern XRandRBase *XRandRBase;
+extern struct XRandRBase *XRandRBase;
 extern UBYTE glX11ShmImage;
 extern UBYTE KeyHeld[K_LIST_END];
 extern UBYTE glTrayIcon, glTaskBar, glStickToFront;

@@ -65,7 +65,7 @@ void handle_stack_change(XCirculateEvent *);
 
 X11Globals *glX11 = 0;
 _XDisplay *XDisplay = 0;
-XRandRBase *XRandRBase = 0;
+struct XRandRBase *XRandRBase = 0;
 UBYTE glX11ShmImage = FALSE;
 UBYTE KeyHeld[K_LIST_END];
 UBYTE glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
