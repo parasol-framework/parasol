@@ -56,7 +56,6 @@ gui.tooltip = function(Options)
       x        = FONT_SIZE,
       string   = Options.text,
       fill     = 'rgb(0,0,0)',
-      flags    = '!wordwrap',
       face     = FONT_FACE,
       fontSize = string.format('%.2fpt', FONT_SIZE),
    })
