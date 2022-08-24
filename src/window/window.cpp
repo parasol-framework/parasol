@@ -38,17 +38,15 @@ fields (such as x, y, width and height) through the window object.
 
 #include <parasol/modules/xml.h>
 #include <parasol/modules/window.h>
-#include <parasol/modules/surface.h>
 #include <parasol/modules/display.h>
 
 #undef NULL
 #define NULL 0
 
 struct CoreBase *CoreBase;
-static struct SurfaceBase *SurfaceBase;
 static struct DisplayBase *DisplayBase;
 static OBJECTPTR clWindow = NULL;
-static OBJECTPTR modSurface = NULL, modDisplay = NULL;
+static OBJECTPTR modDisplay = NULL;
 static OBJECTID glDefaultDisplay = NULL;
 static LONG glDisplayType = 0;
 
@@ -68,7 +66,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
    glDisplayType = gfxGetDisplayType();
@@ -81,7 +78,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 static ERROR CMDExpunge(void)
 {
    if (clWindow)   { acFree(clWindow);   clWindow   = NULL; }
-   if (modSurface) { acFree(modSurface); modSurface = NULL; }
    if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
    return ERR_Okay;
 }
@@ -154,9 +150,9 @@ static ERROR WINDOW_ActionNotify(objWindow *Self, struct acActionNotify *Args)
 
          OBJECTID userfocus_id;
          bool grab = true;
-         if ((userfocus_id = drwGetUserFocus())) {
+         if ((userfocus_id = gfxGetUserFocus())) {
             LONG flags;
-            if (!drwGetSurfaceFlags(userfocus_id, &flags)) {
+            if (!gfxGetSurfaceFlags(userfocus_id, &flags)) {
                if (flags & RNF_GRAB_FOCUS) {
                   log.trace("Current focus surface #%d has GRAB flag set.", userfocus_id);
                   grab = false;
@@ -412,7 +408,7 @@ static ERROR WINDOW_Hide(objWindow *Self, APTR Void)
       OBJECTID parent_id, window_id;
       if ((parent_id = Self->Surface->ParentID)) {
          SurfaceControl *ctl;
-         if ((ctl = drwAccessList(ARF_READ))) {
+         if ((ctl = gfxAccessList(ARF_READ))) {
             auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex + ((ctl->Total-1) * ctl->EntrySize));
             if (list->ParentID) {
                for (auto i=ctl->Total-1; i >= 0; i--, list=(SurfaceList *)((BYTE *)list - ctl->EntrySize)) {
@@ -429,7 +425,7 @@ static ERROR WINDOW_Hide(objWindow *Self, APTR Void)
                }
             }
 
-            drwReleaseList(ARF_READ);
+            gfxReleaseList(ARF_READ);
          }
          else log.warning(ERR_AccessMemory);
       }
@@ -457,7 +453,7 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
       log.trace("Checking if popover surface is stick-to-front");
 
       SURFACEINFO *info;
-      if (!drwGetSurfaceInfo(Self->Surface->PopOverID, &info)) {
+      if (!gfxGetSurfaceInfo(Self->Surface->PopOverID, &info)) {
          if (info->Flags & RNF_STICK_TO_FRONT) {
             Self->Surface->Flags |= RNF_STICK_TO_FRONT;
          }
@@ -565,10 +561,10 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
    }
 
    if (Self->Surface->ParentID) { // Run the graphics script
-      ERROR error = drwApplyStyleGraphics(Self, Self->SurfaceID, NULL, NULL);
+      ERROR error = gfxApplyStyleGraphics(Self, Self->SurfaceID, NULL, NULL);
 
       if (!error) {
-         error = drwApplyStyleGraphics(Self, Self->SurfaceID, "window", "titlebar");
+         error = gfxApplyStyleGraphics(Self, Self->SurfaceID, "window", "titlebar");
          if (error) log.warning("Failed to process window titlebar graphics.");
       }
       else log.warning("Failed to process window style graphics.");
@@ -663,7 +659,7 @@ static ERROR WINDOW_Init(objWindow *Self, APTR Void)
 
    if (Self->Surface->ParentID) {
       SURFACEINFO *info;
-      if (!drwGetSurfaceInfo(Self->Surface->ParentID, &info)) {
+      if (!gfxGetSurfaceInfo(Self->Surface->ParentID, &info)) {
          // Check position against limits
 
          if (Self->Surface->X + Self->Surface->Width > info->Width - Self->Surface->RightLimit) {
@@ -785,7 +781,7 @@ static ERROR WINDOW_Maximise(objWindow *Self, struct winMaximise *Args)
       ReleaseObject(parent);
 
       LONG vx, vy, vwidth, vheight;
-      if (drwGetVisibleArea(Self->Surface->ParentID, &vx, &vy, NULL, NULL, &vwidth, &vheight)) return ERR_Failed;
+      if (gfxGetVisibleArea(Self->Surface->ParentID, &vx, &vy, NULL, NULL, &vwidth, &vheight)) return ERR_Failed;
 
       LONG x = vx;
       LONG y = vy;
@@ -980,7 +976,7 @@ static ERROR WINDOW_NewObject(objWindow *Self, APTR Void)
    StrCopy("Window", Self->Title, sizeof(Self->Title));
    StrCopy("icons:devices/monitor", Self->Icon, sizeof(Self->Icon));
 
-   drwApplyStyleValues(Self, NULL);
+   gfxApplyStyleValues(Self, NULL);
    return ERR_Okay;
 }
 
@@ -1593,7 +1589,7 @@ static ERROR GET_ParentHeight(objWindow *Self, LONG *Value)
 {
    if (Self->Surface->ParentID) {
       LONG height;
-      if (!drwGetSurfaceCoords(Self->Surface->ParentID, NULL, NULL, NULL, NULL, NULL, &height)) {
+      if (!gfxGetSurfaceCoords(Self->Surface->ParentID, NULL, NULL, NULL, NULL, NULL, &height)) {
          *Value = height;
          return ERR_Okay;
       }
@@ -1622,7 +1618,7 @@ static ERROR GET_ParentWidth(objWindow *Self, LONG *Value)
 {
    if (Self->Surface->ParentID) {
       LONG width;
-      if (!drwGetSurfaceCoords(Self->Surface->ParentID, NULL, NULL, NULL, NULL, &width, NULL)) {
+      if (!gfxGetSurfaceCoords(Self->Surface->ParentID, NULL, NULL, NULL, NULL, &width, NULL)) {
          *Value = width;
          return ERR_Okay;
       }
@@ -1864,7 +1860,7 @@ static ERROR check_overlap(objWindow *Self, LONG *X, LONG *Y, LONG *Width, LONG 
    if (y < 0) y = 0;
 
    SurfaceControl *ctl;
-   if ((ctl = drwAccessList(ARF_READ))) {
+   if ((ctl = gfxAccessList(ARF_READ))) {
 restart:
       {
          auto surfacelist = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
@@ -1887,13 +1883,13 @@ restart:
 
             LONG list_width = list->Width;
             LONG list_height = list->Height;
-            drwReleaseList(ARF_READ);
+            gfxReleaseList(ARF_READ);
 
             if ((x + Self->Surface->Width < list_width) and (y + Self->Surface->Height < list_height)) {
                acMoveToPoint(Self->Surface, x, y, 0, MTF_X|MTF_Y);
             }
          }
-         else drwReleaseList(ARF_READ);
+         else gfxReleaseList(ARF_READ);
       }
    }
 
@@ -1905,7 +1901,7 @@ restart:
       if ((y < 0) and (y + *Height > 0)) y = 0;
 
       LONG vx, vy, vwidth, vheight;
-      if (!drwGetVisibleArea(Self->Surface->ParentID, &vx, &vy, NULL, NULL, &vwidth, &vheight)) {
+      if (!gfxGetVisibleArea(Self->Surface->ParentID, &vx, &vy, NULL, NULL, &vwidth, &vheight)) {
          if (*Width > vwidth) *Width = vwidth; // The window is wider than the visible display
          if (*Height > vheight) *Height = vheight; // The window is taller than the visible display
 
@@ -1947,11 +1943,11 @@ static void calc_surface_center(objWindow *Self, LONG *X, LONG *Y)
       log.msg("Centering the window [PopOver]");
 
       LONG x, y, width, height;
-      if (!drwGetSurfaceCoords(Self->Surface->PopOverID, NULL, NULL, &x, &y, &width, &height)) {
+      if (!gfxGetSurfaceCoords(Self->Surface->PopOverID, NULL, NULL, &x, &y, &width, &height)) {
          *X = x + ((width - Self->Surface->Width)>>1);
          *Y = y + ((height - Self->Surface->Height)>>1);
 
-         if (!drwGetSurfaceCoords(Self->Surface->ParentID, NULL, NULL, &x, &y, NULL, NULL)) {
+         if (!gfxGetSurfaceCoords(Self->Surface->ParentID, NULL, NULL, &x, &y, NULL, NULL)) {
             *X -= x;
             *Y -= y;
          }
@@ -1960,7 +1956,7 @@ static void calc_surface_center(objWindow *Self, LONG *X, LONG *Y)
    else if (Self->Surface->ParentID) {
       log.msg("Centering the window [Within Parent]");
       LONG vx, vy, vwidth, vheight;
-      if (!drwGetVisibleArea(Self->Surface->ParentID, &vx, &vy, NULL, NULL, &vwidth, &vheight)) {
+      if (!gfxGetVisibleArea(Self->Surface->ParentID, &vx, &vy, NULL, NULL, &vwidth, &vheight)) {
          *X = vx + ((vwidth - Self->Surface->Width)>>1);
          *Y = vy + ((vheight - Self->Surface->Height)>>1);
          check_overlap(Self, X, Y, 0, 0);
@@ -1983,7 +1979,7 @@ static void smart_limits(objWindow *Self)
 {
    if ((Self->Flags & WNF_SMART_LIMITS) and (Self->Surface->ParentID)) {
       SURFACEINFO *info;
-      if (!drwGetSurfaceInfo(Self->Surface->ParentID, &info)) {
+      if (!gfxGetSurfaceInfo(Self->Surface->ParentID, &info)) {
          Self->Surface->TopLimit    = 0;
          Self->Surface->BottomLimit = -Self->Surface->Height + Self->Surface->TopMargin;
          Self->Surface->LeftLimit   = -(Self->Surface->Width * 0.75);

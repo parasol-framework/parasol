@@ -211,8 +211,6 @@ const std::array<std::string, JET_END> glInputNames{
    "DISPLAY_EDGE"
 };
 
-struct InputEventMgr *glInputEvents = NULL;
-
 #ifdef _GLES_ // OpenGL specific data
 enum { EGL_STOPPED=0, EGL_REQUIRES_INIT, EGL_INITIALISED, EGL_TERMINATED };
 static UBYTE glEGLState = 0;
@@ -228,15 +226,14 @@ static LONG glLockCount = 0;
 static OBJECTID glActiveDisplayID = 0;
 #endif
 
+struct InputEventMgr *glInputEvents = NULL;
 OBJECTPTR glCompress = NULL;
 objCompression *glIconArchive = NULL;
 struct CoreBase *CoreBase;
-struct SurfaceBase *SurfaceBase;
 ColourFormat glColourFormat;
 BYTE glHeadless = FALSE;
 OBJECTPTR glModule = NULL;
-OBJECTPTR modSurface = NULL;
-OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL;
+OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL;
 OBJECTID glPointerID = 0;
 DISPLAYINFO *glDisplayInfo;
 APTR glDither = NULL;
@@ -244,6 +241,28 @@ LONG glDitherSize = 0;
 SharedControl *glSharedControl = NULL;
 LONG glSixBitDisplay = FALSE;
 std::unordered_map<LONG, InputCallback> glInputCallbacks;
+MsgHandler *glExposeHandler = NULL;
+TIMER glRefreshPointerTimer = 0;
+objBitmap *glComposite = NULL;
+BYTE glDisplayType = DT_NATIVE;
+DOUBLE glpRefreshRate = -1, glpGammaRed = 1, glpGammaGreen = 1, glpGammaBlue = 1;
+LONG glpDisplayWidth = 1024, glpDisplayHeight = 768, glpDisplayX = 0, glpDisplayY = 0;
+LONG glpDisplayDepth = 0; // If zero, the display depth will be based on the hosted desktop's bit depth.
+LONG glpMaximise = FALSE, glpFullScreen = FALSE;
+LONG glpWindowType = SWIN_HOST;
+char glpDPMS[20] = "Standby";
+LONG glClassFlags = CLF_SHARED_ONLY|CLF_PUBLIC_OBJECTS; // Set on CMDInit()
+objXML *glStyle = NULL;
+OBJECTPTR glAppStyle = NULL;
+OBJECTPTR glDesktopStyleScript = NULL;
+OBJECTPTR glDefaultStyleScript = NULL;
+
+THREADVAR APTR glSurfaceMutex = NULL;
+THREADVAR WORD tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;
+THREADVAR UBYTE tlListCount = 0; // For drwAccesslist()
+THREADVAR OBJECTID tlFreeExpose = 0;
+THREADVAR SurfaceControl *tlSurfaceList = NULL;
+THREADVAR LONG glRecentSurfaceIndex = 0;
 
 //****************************************************************************
 // Alpha blending data.
@@ -379,6 +398,1386 @@ ERROR GetSurfaceAbs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LON
       return ERR_Okay;
    }
    else return ERR_AccessMemory;
+}
+
+//****************************************************************************
+
+void forbidDrawing(void)
+{
+   tlNoDrawing++;
+   tlNoExpose++;
+}
+
+void forbidExpose(void)
+{
+   tlNoExpose++;
+}
+
+void permitDrawing(void)
+{
+   tlNoDrawing--;
+   tlNoExpose--;
+}
+
+void permitExpose(void)
+{
+   tlNoExpose--;
+}
+
+
+#ifdef DBG_LAYERS
+void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
+{
+   SurfaceList *list = (SurfaceList *)((BYTE *)Ctl + Ctl->ArrayIndex);
+   fprintf(stderr, "LAYER LIST: %d of %d Entries, From %s()\n", Ctl->Total, Ctl->ArraySize, Function);
+
+   LONG j;
+   for (LONG i=0; i < Ctl->Total; i++) {
+      fprintf(stderr, "%.2d: ", i);
+      for (j=0; j < list[i].Level; j++) fprintf(stderr, " ");
+      fprintf(stderr, "#%d, Parent: %d, Flags: $%.8x", list[i].SurfaceID, list[i].ParentID, list[i].Flags);
+
+      // Highlight any point of interest
+
+      if (i IS POI) fprintf(stderr, " <---- POI");
+
+      // Error checks
+
+      if (!list[i].SurfaceID) fprintf(stderr, " <---- ERROR");
+      else if (CheckObjectExists(list[i].SurfaceID, NULL) != ERR_True) fprintf(stderr, " <---- OBJECT MISSING");
+
+      // Does the parent exist in the layer list?
+
+      if (list[i].ParentID) {
+         for (j=i-1; j >= 0; j--) {
+            if (list[j].SurfaceID IS list[i].ParentID) break;
+         }
+         if (j < 0) fprintf(stderr, " <---- PARENT MISSING");
+      }
+
+      fprintf(stderr, "\n");
+   }
+}
+#endif
+
+//****************************************************************************
+// Surface list lookup routines.
+
+LONG find_surface_list(SurfaceList *list, LONG Total, OBJECTID SurfaceID)
+{
+   if (glRecentSurfaceIndex < Total) { // Cached lookup
+      if (list[glRecentSurfaceIndex].SurfaceID IS SurfaceID) return glRecentSurfaceIndex;
+   }
+
+   // Search for the object
+
+   for (LONG i=0; i < Total; i++) {
+      if (list[i].SurfaceID IS SurfaceID) {
+         glRecentSurfaceIndex = i;
+         return i;
+      }
+   }
+
+   return -1;
+}
+
+
+LONG find_parent_list(SurfaceList *list, WORD Total, objSurface *Self)
+{
+   if (glRecentSurfaceIndex < Total) { // Cached lookup
+      if (list[glRecentSurfaceIndex].SurfaceID IS Self->ParentID) return glRecentSurfaceIndex;
+   }
+
+   if ((Self->ListIndex < Total) and (list[Self->ListIndex].SurfaceID IS Self->Head.UID)) {
+      for (LONG i=Self->ListIndex-1; i >= 0; i--) {
+         if (list[i].SurfaceID IS Self->ParentID) {
+            glRecentSurfaceIndex = i;
+            return i;
+         }
+      }
+   }
+
+   // Search for the object
+
+   for (LONG i=0; i < Total; i++) {
+      if (list[i].SurfaceID IS Self->ParentID) {
+         glRecentSurfaceIndex = i;
+         return i;
+      }
+   }
+
+   return -1;
+}
+
+//****************************************************************************
+// Handles incoming interface messages.
+
+ERROR msg_handler(APTR Custom, LONG UniqueID, LONG Type, APTR Data, LONG Size)
+{
+   if ((Data) and ((size_t)Size >= sizeof(ExposeMessage))) {
+      auto expose = (ExposeMessage *)Data;
+      gfxExposeSurface(expose->ObjectID, expose->X, expose->Y, expose->Width, expose->Height, expose->Flags);
+   }
+
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-INTERNAL-
+RedrawSurface: Redraws all of the content in a surface object.
+
+Invalidating a surface object will cause everything within a specified area to be redrawn.  This includes child surface
+objects that intersect with the area that you have specified.  Overlapping siblings are not redrawn unless they are
+marked as volatile.
+
+To quickly redraw an entire surface object's content, call this method directly without supplying an argument structure.
+To redraw a surface object and ignore all of its surface children, use the #Draw() action instead of this
+function.
+
+To expose the surface area to the display, use the ~ExposeSurface() function.  The ~ExposeSurface() function copies the
+graphics buffer to the display only, thus avoiding the speed loss of a complete redraw.
+
+Because RedrawSurface() only redraws internal graphics buffers, this function is typically followed with a call to
+ExposeSurface().
+
+Flag options:
+
+&IRF
+
+-INPUT-
+oid Surface: The ID of the surface that you want to invalidate.
+int Left:    Absolute horizontal coordinate of the region to invalidate.
+int Top:     Absolute vertical coordinate of the region to invalidate.
+int Right:   Absolute right-hand coordinate of the region to invalidate.
+int Bottom:  Absolute bottom coordinate of the region to invalidate.
+int(IRF) Flags: Optional flags.
+
+-ERRORS-
+Okay:
+AccessMemory: Failed to access the internal surface list.
+
+*****************************************************************************/
+
+ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (tlNoDrawing) {
+      log.trace("tlNoDrawing: %d", tlNoDrawing);
+      return ERR_Okay;
+   }
+
+   SurfaceControl *ctl;
+   if (!(ctl = gfxAccessList(ARF_READ))) {
+      log.warning("Unable to access the surfacelist.");
+      return ERR_AccessMemory;
+   }
+
+   LONG total = ctl->Total;
+   SurfaceList list[total];
+   CopyMemory((BYTE *)ctl + ctl->ArrayIndex, list, sizeof(list[0]) * ctl->Total);
+   gfxReleaseList(ARF_READ);
+
+   WORD index;
+   if ((index = find_surface_list(list, total, SurfaceID)) IS -1) {
+      log.traceWarning("Unable to find surface #%d in surface list.", SurfaceID);
+      return ERR_Search;
+   }
+
+   return _redraw_surface(SurfaceID, list, index, total, Left, Top, Right, Bottom, Flags);
+}
+
+//****************************************************************************
+
+ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD Total,
+   LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags)
+{
+   parasol::Log log("redraw_surface");
+   static THREADVAR BYTE recursive = 0;
+
+   if (list[index].Flags & RNF_TOTAL_REDRAW) {
+      // If the TOTALREDRAW flag is set against the surface then the entire surface must be redrawn regardless
+      // of the circumstances.  This is often required for algorithmic effects as seen in the Blur class.
+
+      Left   = list[index].Left;
+      Top    = list[index].Top;
+      Right  = list[index].Right;
+      Bottom = list[index].Bottom;
+   }
+   else if (Flags & IRF_RELATIVE) {
+      Left   = list[index].Left + Left;
+      Top    = list[index].Top + Top;
+      Right  = Left + Right;
+      Bottom = Top + Bottom;
+      Flags &= ~IRF_RELATIVE;
+   }
+
+   log.traceBranch("[%d] %d/%d Size: %dx%d,%dx%d Expose: %dx%d,%dx%d", SurfaceID, index, Total, list[index].Left, list[index].Top, list[index].Width, list[index].Height, Left, Top, Right-Left, Bottom-Top);
+
+   if ((list[index].Flags & (RNF_REGION|RNF_TRANSPARENT)) and (!recursive)) {
+      log.trace("Passing draw request to parent (I am a %s)", (list[index].Flags & RNF_REGION) ? "region" : "invisible");
+      WORD parent_index;
+      if ((parent_index = find_surface_list(list, Total, list[index].ParentID)) != -1) {
+         _redraw_surface(list[parent_index].SurfaceID, list, parent_index, Total, Left, Top, Right, Bottom, Flags & (~IRF_IGNORE_CHILDREN));
+      }
+      else log.trace("Failed to find parent surface #%d", list[index].ParentID); // No big deal, this often happens when freeing a bunch of surfaces due to the parent/child relationships.
+      return ERR_Okay;
+   }
+
+   // Check if any of the parent surfaces are invisible
+
+   if (!(Flags & IRF_FORCE_DRAW)) {
+      if ((!(list[index].Flags & RNF_VISIBLE)) or (CheckVisibility(list, index) IS FALSE)) {
+         log.trace("Surface is not visible.");
+         return ERR_Okay;
+      }
+   }
+
+   // Because we are executing a redraw, we need to ensure that the surface belongs to our process before going any further.
+
+   if (list[index].TaskID != CurrentTaskID()) {
+      log.trace("Surface object #%d belongs to task #%d (we are #%d)", SurfaceID, list[index].TaskID, CurrentTaskID());
+
+      LONG x = Left - list[index].Left;
+      LONG y = Top - list[index].Top;
+      if (Flags & IRF_IGNORE_CHILDREN) {
+         acDrawAreaID(list[index].SurfaceID, x, y, Right - Left, Bottom - Top);
+      }
+      else drwInvalidateRegionID(list[index].SurfaceID, x, y, Right - Left, Bottom - Top);
+      return ERR_Okay;
+   }
+
+   // Check if the exposed dimensions are outside of our boundary and/or our parent(s) boundaries.  If so then we must restrict the exposed dimensions.
+
+   if (Flags & IRF_FORCE_DRAW) {
+      if (Left   < list[index].Left)   Left   = list[index].Left;
+      if (Top    < list[index].Top)    Top    = list[index].Top;
+      if (Right  > list[index].Right)  Right  = list[index].Right;
+      if (Bottom > list[index].Bottom) Bottom = list[index].Bottom;
+   }
+   else {
+      OBJECTID parent_id = SurfaceID;
+      WORD i = index;
+      while (parent_id) {
+         while ((list[i].SurfaceID != parent_id) and (i > 0)) i--;
+
+         if (list[i].BitmapID != list[index].BitmapID) break; // Stop if we encounter a separate bitmap
+
+         if (Left   < list[i].Left)   Left   = list[i].Left;
+         if (Top    < list[i].Top)    Top    = list[i].Top;
+         if (Right  > list[i].Right)  Right  = list[i].Right;
+         if (Bottom > list[i].Bottom) Bottom = list[i].Bottom;
+
+         parent_id = list[i].ParentID;
+      }
+   }
+
+   if ((Left >= Right) or (Top >= Bottom)) return ERR_Okay;
+
+   // Draw the surface graphics into the bitmap buffer
+
+   objSurface *surface;
+   ERROR error;
+   if (!(error = AccessObject(list[index].SurfaceID, 5000, &surface))) {
+      log.trace("Area: %dx%d,%dx%d", Left, Top, Right-Left, Bottom-Top);
+
+      objBitmap *bitmap;
+      if (!AccessObject(list[index].BitmapID, 5000, &bitmap)) {
+         // Check if there has been a change in the video bit depth.  If so, regenerate the bitmap with a matching depth.
+
+         check_bmp_buffer_depth(surface, bitmap);
+         _redraw_surface_do(surface, list, Total, index, Left, Top, Right, Bottom, bitmap, (Flags & IRF_FORCE_DRAW) | ((Flags & (IRF_IGNORE_CHILDREN|IRF_IGNORE_NV_CHILDREN)) ? 0 : URF_HATE_CHILDREN));
+         ReleaseObject(bitmap);
+      }
+      else {
+         ReleaseObject(surface);
+         return log.warning(ERR_AccessObject);
+      }
+
+      ReleaseObject(surface);
+   }
+   else {
+      // If the object does not exist then its task has crashed and we need to remove it from the surface list.
+
+      if (error IS ERR_NoMatchingObject) {
+         log.warning("Removing references to surface object #%d (owner crashed).", list[index].SurfaceID);
+         untrack_layer(list[index].SurfaceID);
+      }
+      else log.warning("Unable to access surface object #%d, error %d.", list[index].SurfaceID, error);
+      return error;
+   }
+
+   // We have done the redraw, so now we can send invalidation messages to any intersecting -child- surfaces for this region.  This process is
+   // not recursive (notice the use of IRF_IGNORE_CHILDREN) but all children will be covered due to the way the tree is traversed.
+
+   if (!(Flags & IRF_IGNORE_CHILDREN)) {
+      log.trace("Redrawing intersecting child surfaces.");
+      WORD level = list[index].Level;
+      for (WORD i=index+1; i < Total; i++) {
+         if (list[i].Level <= level) break; // End of list - exit this loop
+
+         if (Flags & IRF_IGNORE_NV_CHILDREN) {
+            // Ignore children except for those that are volatile
+            if (!(list[i].Flags & RNF_VOLATILE)) continue;
+         }
+         else {
+            if ((Flags & IRF_SINGLE_BITMAP) and (list[i].BitmapID != list[index].BitmapID)) continue;
+         }
+
+         if ((list[i].Flags & (RNF_REGION|RNF_CURSOR)) or (!(list[i].Flags & RNF_VISIBLE))) {
+            continue; // Skip regions and non-visible children
+         }
+
+         if ((list[i].Right > Left) and (list[i].Bottom > Top) and
+             (list[i].Left < Right) and (list[i].Top < Bottom)) {
+            recursive++;
+            _redraw_surface(list[i].SurfaceID, list, i, Total, Left, Top, Right, Bottom, Flags|IRF_IGNORE_CHILDREN);
+            recursive--;
+         }
+      }
+   }
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
+// This function fulfils the recursive drawing requirements of _redraw_surface() and is not intended for any other use.
+
+void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, WORD Index,
+                               LONG Left, LONG Top, LONG Right, LONG Bottom, objBitmap *DestBitmap, LONG Flags)
+{
+   parasol::Log log("redraw_surface");
+
+   if (Self->Flags & (RNF_REGION|RNF_TRANSPARENT)) return;
+
+   if (Index >= Total) log.warning("Index %d > %d", Index, Total);
+
+   ClipRectangle abs;
+   abs.Left   = Left;
+   abs.Top    = Top;
+   abs.Right  = Right;
+   abs.Bottom = Bottom;
+   if (abs.Left   < list[Index].Left)   abs.Left   = list[Index].Left;
+   if (abs.Top    < list[Index].Top)    abs.Top    = list[Index].Top;
+   if (abs.Right  > list[Index].Right)  abs.Right  = list[Index].Right;
+   if (abs.Bottom > list[Index].Bottom) abs.Bottom = list[Index].Bottom;
+
+   WORD i;
+   if (!(Flags & IRF_FORCE_DRAW)) {
+      LONG level = list[Index].Level + 1;   // The +1 is used to include children contained in the surface object
+
+      for (i=Index+1; (i < Total) and (list[i].Level > 1); i++) {
+         if (list[i].Level < level) level = list[i].Level;
+
+         // If the listed object obscures our surface area, analyse the region around it
+
+         if (list[i].Level <= level) {
+            // If we have a bitmap buffer and the underlying child region also has its own bitmap,
+            // we have to ignore it in order for our graphics buffer to be correct when exposes are made.
+
+            if (list[i].BitmapID != Self->BufferID) continue;
+            if (!(list[i].Flags & RNF_VISIBLE)) continue;
+            if (list[i].Flags & RNF_REGION) continue; // Regions are completely ignored because it is impossible for them to contain true surface layers
+
+            // Check for an intersection and respond to it
+
+            LONG listx      = list[i].Left;
+            LONG listy      = list[i].Top;
+            LONG listright  = list[i].Right;
+            LONG listbottom = list[i].Bottom;
+
+            if ((listx < Right) and (listy < Bottom) and (listright > Left) and (listbottom > Top)) {
+               if (list[i].Flags & RNF_CURSOR) {
+                  // Objects like the pointer cursor are ignored completely.  They are redrawn following exposure.
+
+                  return;
+               }
+               else if (list[i].Flags & RNF_TRANSPARENT) {
+                  // If the surface object is see-through then we will ignore its bounds, but legally
+                  // it can also contain child surface objects that are solid.  For that reason,
+                  // we have to 'go inside' to check for solid children and draw around them.
+
+                  _redraw_surface_do(Self, list, Total, i, Left, Top, Right, Bottom, DestBitmap, Flags);
+                  return;
+               }
+
+               if ((Flags & URF_HATE_CHILDREN) and (list[i].Level > list[Index].Level)) {
+                  // The HATE_CHILDREN flag is used if the caller intends to redraw all children surfaces.
+                  // In this case, we may as well ignore children when they are smaller than 100x100 in size,
+                  // because splitting our drawing process into four sectors is probably going to be slower
+                  // than just redrawing the entire background in one shot.
+
+                  if (list[i].Width + list[i].Height <= 200) continue;
+               }
+
+               if (listx <= Left) listx = Left;
+               else _redraw_surface_do(Self, list, Total, Index, Left, Top, listx, Bottom, DestBitmap, Flags); // left
+
+               if (listright >= Right) listright = Right;
+               else _redraw_surface_do(Self, list, Total, Index, listright, Top, Right, Bottom, DestBitmap, Flags); // right
+
+               if (listy <= Top) listy = Top;
+               else _redraw_surface_do(Self, list, Total, Index, listx, Top, listright, listy, DestBitmap, Flags); // top
+
+               if (listbottom < Bottom) _redraw_surface_do(Self, list, Total, Index, listx, listbottom, listright, Bottom, DestBitmap, Flags); // bottom
+
+               return;
+            }
+         }
+      }
+   }
+
+   log.traceBranch("Index %d, %dx%d,%dx%d", Index, Left, Top, Right-Left, Bottom-Top);
+
+   // If we have been called recursively due to the presence of volatile/invisible regions (see above),
+   // our Index field will not match with the surface that is referenced in Self.  We need to ensure
+   // correctness before going any further.
+
+   if (list[Index].SurfaceID != Self->Head.UID) {
+      Index = find_surface_list(list, Total, Self->Head.UID);
+   }
+
+   // Prepare the buffer so that it matches the exposed area
+
+   if (Self->BitmapOwnerID != Self->Head.UID) {
+      for (i=Index; (i > 0) and (list[i].SurfaceID != Self->BitmapOwnerID); i--);
+      DestBitmap->XOffset = list[Index].Left - list[i].Left; // Offset is relative to the bitmap owner
+      DestBitmap->YOffset = list[Index].Top - list[i].Top;
+
+   }
+   else {
+      // Set the clipping so that we only draw the area that has been exposed
+      DestBitmap->XOffset = 0;
+      DestBitmap->YOffset = 0;
+   }
+
+   DestBitmap->Clip.Left   = Left - list[Index].Left;
+   DestBitmap->Clip.Top    = Top - list[Index].Top;
+   DestBitmap->Clip.Right  = Right - list[Index].Left;
+   DestBitmap->Clip.Bottom = Bottom - list[Index].Top;
+
+   // THIS SHOULD NOT BE NEEDED - but occasionally it detects surface problems (bugs in other areas of the surface code?)
+
+   if (((DestBitmap->XOffset + DestBitmap->Clip.Left) < 0) or ((DestBitmap->YOffset + DestBitmap->Clip.Top) < 0) OR
+       ((DestBitmap->XOffset + DestBitmap->Clip.Right) > DestBitmap->Width) or ((DestBitmap->YOffset + DestBitmap->Clip.Bottom) > DestBitmap->Height)) {
+      log.warning("Invalid coordinates detected (outside of the surface area).  CODE FIX REQUIRED!");
+      if ((DestBitmap->XOffset + DestBitmap->Clip.Left) < 0) DestBitmap->Clip.Left = 0;
+      if ((DestBitmap->YOffset + DestBitmap->Clip.Top) < 0)  DestBitmap->Clip.Top = 0;
+      DestBitmap->Clip.Right = DestBitmap->Width - DestBitmap->XOffset;
+      DestBitmap->Clip.Bottom = DestBitmap->Height - DestBitmap->YOffset;
+   }
+
+   // Clear the background
+
+   if ((Self->Flags & RNF_PRECOPY) and (!(Self->Flags & RNF_COMPOSITE))) {
+      PrecopyRegion *regions;
+      LONG x, y, xoffset, yoffset, width, height;
+      WORD j;
+
+      if ((Self->PrecopyMID) and (!AccessMemory(Self->PrecopyMID, MEM_READ, 2000, &regions))) {
+         for (j=0; j < Self->PrecopyTotal; j++) {
+            // Convert relative values to their fixed equivalent
+
+            if (regions[j].Dimensions & DMF_RELATIVE_X_OFFSET) xoffset = Self->Width * regions[j].XOffset / 100;
+            else xoffset = regions[j].XOffset;
+
+            if (regions[j].Dimensions & DMF_RELATIVE_Y_OFFSET) yoffset = Self->Height * regions[j].YOffset / 100;
+            else yoffset = regions[j].YOffset;
+
+            if (regions[j].Dimensions & DMF_RELATIVE_X) x = Self->Width * regions[j].X / 100;
+            else x = regions[j].X;
+
+            if (regions[j].Dimensions & DMF_RELATIVE_Y) y = Self->Height * regions[j].Y / 100;
+            else y = regions[j].Y;
+
+            // Calculate absolute width
+
+            if (regions[j].Dimensions & DMF_FIXED_WIDTH) width = regions[j].Width;
+            else if (regions[j].Dimensions & DMF_RELATIVE_WIDTH) width = Self->Width * regions[j].Width / 100;
+            else if ((regions[j].Dimensions & DMF_X_OFFSET) and
+                     (regions[j].Dimensions & DMF_X)) {
+               width = Self->Width - x - xoffset;
+            }
+            else continue;
+
+            // Calculate absolute height
+
+            if (regions[j].Dimensions & DMF_FIXED_HEIGHT) height = regions[j].Height;
+            else if (regions[j].Dimensions & DMF_RELATIVE_HEIGHT) height = Self->Height * regions[j].Height / 100;
+            else if ((regions[j].Dimensions & DMF_Y_OFFSET) and
+                     (regions[j].Dimensions & DMF_Y)) {
+               height = Self->Height - y - yoffset;
+            }
+            else continue;
+
+            if ((width < 1) or (height < 1)) continue;
+
+            // X coordinate check
+
+            if ((regions[j].Dimensions & DMF_X_OFFSET) and (regions[j].Dimensions & DMF_WIDTH)) {
+               x = Self->Width - xoffset - width;
+            }
+
+            // Y coordinate check
+
+            if ((regions[j].Dimensions & DMF_Y_OFFSET) and
+                (regions[j].Dimensions & DMF_HEIGHT)) {
+               y = Self->Height - yoffset - height;
+            }
+
+            // Trim coordinates to bitmap clip area
+
+            abs.Left   = x;
+            abs.Top    = y;
+            abs.Right  = x + width;
+            abs.Bottom = y + height;
+
+            if (abs.Left   < DestBitmap->Clip.Left)   abs.Left   = DestBitmap->Clip.Left;
+            if (abs.Top    < DestBitmap->Clip.Top)    abs.Top    = DestBitmap->Clip.Top;
+            if (abs.Right  > DestBitmap->Clip.Right)  abs.Right  = DestBitmap->Clip.Right;
+            if (abs.Bottom > DestBitmap->Clip.Bottom) abs.Bottom = DestBitmap->Clip.Bottom;
+
+            abs.Left   += list[Index].Left;
+            abs.Top    += list[Index].Top;
+            abs.Right  += list[Index].Left;
+            abs.Bottom += list[Index].Top;
+
+            prepare_background(Self, list, Total, Index, DestBitmap, &abs, STAGE_PRECOPY);
+         }
+         ReleaseMemory(regions);
+      }
+      else prepare_background(Self, list, Total, Index, DestBitmap, &abs, STAGE_PRECOPY);
+   }
+   else if (Self->Flags & RNF_COMPOSITE) {
+      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, PackPixelA((objBitmap *)DestBitmap, 0, 0, 0, 0), TRUE);
+   }
+   else if (Self->Colour.Alpha > 0) {
+      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, PackPixelA((objBitmap *)DestBitmap, Self->Colour.Red, Self->Colour.Green, Self->Colour.Blue, 255), TRUE);
+   }
+
+   // Draw graphics to the buffer
+
+   tlFreeExpose = DestBitmap->Head.UID;
+
+      process_surface_callbacks(Self, DestBitmap);
+
+   tlFreeExpose = NULL;
+
+   // After-copy management
+
+   if (!(Self->Flags & RNF_COMPOSITE)) {
+      if (Self->Flags & RNF_AFTER_COPY) {
+         #ifdef DBG_DRAW_ROUTINES
+            log.trace("After-copy graphics drawing.");
+         #endif
+         prepare_background(Self, list, Total, Index, DestBitmap, &abs, STAGE_AFTERCOPY);
+      }
+      else if (Self->Type & RT_ROOT) {
+         // If the surface object is part of a global background, we have to look for the root layer and check if it has the AFTERCOPY flag set.
+
+         if ((i = find_surface_list(list, Total, Self->RootID)) != -1) {
+            if (list[i].Flags & RNF_AFTER_COPY) {
+               #ifdef DBG_DRAW_ROUTINES
+                  log.trace("After-copy graphics drawing.");
+               #endif
+               prepare_background(Self, list, Total, Index, DestBitmap, &abs, STAGE_AFTERCOPY);
+            }
+         }
+      }
+   }
+}
+
+
+//****************************************************************************
+// Reloads a style script if the time stamp has changed.  This should be done only when an environment change occurs.
+
+void check_styles(STRING Path, OBJECTPTR *Script)
+{
+   objFile *file;
+   if (!CreateObject(ID_FILE, NF_INTEGRAL, &file, FID_Path|TSTR, Path, TAGEND)) {
+      LARGE script_timestamp, script_filesize, size, ts;
+
+      GetFields(*Script, FID_TimeStamp|TLARGE, &script_timestamp,
+                         FID_FileSize|TLARGE,  &script_filesize,
+                         TAGEND);
+
+      GetFields(file, FID_Size|TLARGE, &size,
+                      FID_TimeStamp|TLARGE, &ts,
+                      TAGEND);
+
+      acFree(file);
+
+      if ((ts != script_timestamp) or (size != script_filesize)) {
+         OBJECTPTR newscript;
+         if (!CreateObject(ID_SCRIPT, NF_INTEGRAL, &newscript, FID_Path|TSTR, Path, TAGEND)) {
+            SetOwner(newscript, glModule);
+            acFree(*Script);
+            *Script = newscript;
+         }
+      }
+   }
+}
+
+//****************************************************************************
+
+ERROR apply_style(OBJECTPTR Object, OBJECTPTR Script, CSTRING StyleName)
+{
+   const ScriptArg args[] = {
+      { "Class",  FDF_STRING, { .Address = StyleName ? (APTR)StyleName : (APTR)Object->Class->ClassName } },
+      { "Object", FDF_OBJECT, { .Address = Object } }
+   };
+
+   struct scExec exec = {
+      .Procedure = "applyStyle",
+      .Args      = args,
+      .TotalArgs = ARRAYSIZE(args)
+   };
+
+   Action(MT_ScExec, Script, &exec);
+   return ERR_Okay; // Return Okay only in the event that we did something.
+}
+
+//****************************************************************************
+
+ERROR load_styles(void)
+{
+   static bool desktop_attempted = false;
+   static bool default_attempted = false;
+
+   if ((!glDefaultStyleScript) and (!default_attempted)) {
+      parasol::Log log(__FUNCTION__);
+      log.branch("Loading default style information.");
+      parasol::SwitchContext context(glModule);
+
+      default_attempted = true;
+
+      // The app can set a style path that we have to honour if present.  This is typically used for emulating other
+      // system styles, like mobile.
+
+      if (!AnalysePath("style:", NULL)) {
+         CreateObject(ID_FLUID, 0, &glDefaultStyleScript, FID_Path|TSTR, "style:style.fluid", TAGEND);
+      }
+
+      if (!glDefaultStyleScript) {
+         CreateObject(ID_FLUID, 0, &glDefaultStyleScript, FID_Path|TSTR, "styles:default/style.fluid", TAGEND);
+      }
+
+      if (!glDefaultStyleScript) return ERR_CreateObject;
+   }
+
+   if ((!glDesktopStyleScript) and (!desktop_attempted)) {
+      parasol::Log log(__FUNCTION__);
+
+      desktop_attempted = true;
+      if (!AnalysePath("environment:config/style.xml", NULL)) {
+         log.branch("Loading desktop style information.");
+
+         parasol::SwitchContext context(glModule);
+         CreateObject(ID_FLUID, 0, &glDesktopStyleScript,
+            FID_Path|TSTR, "environment:config/style.fluid",
+            TAGEND);
+      }
+   }
+
+   // Note that there's no auto-loading for glAppStyle, as that has to be provided by calling SetCurrentStyle()
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
+// Scans the surfacelist for the 'true owner' of a given bitmap.
+
+WORD FindBitmapOwner(SurfaceList *List, WORD Index)
+{
+   WORD owner = Index;
+   for (LONG i=Index; i >= 0; i--) {
+      if (List[i].SurfaceID IS List[owner].ParentID) {
+         if (List[i].BitmapID != List[owner].BitmapID) return owner;
+         owner = i;
+      }
+   }
+   return owner;
+}
+
+//****************************************************************************
+// This function is responsible for inserting new surface objects into the list of layers for positional/depth management.
+//
+// Surface levels start at 1, which indicates the top-most level.
+
+ERROR track_layer(objSurface *Self)
+{
+   parasol::Log log(__FUNCTION__);
+   SurfaceControl *ctl;
+   WORD i;
+
+   if ((ctl = gfxAccessList(ARF_WRITE))) {
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+
+      if (ctl->Total >= ctl->ArraySize - 1) { // Array is maxed out, we need to expand it
+         if ((ctl->Total >= 0xffff) or (tlListCount > 1)) {
+            gfxReleaseList(ARF_WRITE);
+            return log.warning(ERR_ArrayFull);
+         }
+
+         LONG blocksize = 200;
+         LONG newtotal = ctl->ArraySize + blocksize;
+         if (newtotal > 0xffff) newtotal = 0xffff;
+
+         log.msg("Expanding the size of the surface list to %d entries.", newtotal);
+
+         if (!LockSharedMutex(glSurfaceMutex, 5000)) {
+            SurfaceControl *nc;
+            MEMORYID nc_id;
+            if (!AllocMemory(sizeof(SurfaceControl) + (newtotal * sizeof(UWORD)) + (newtotal * sizeof(SurfaceList)),
+                  MEM_UNTRACKED|MEM_PUBLIC|MEM_NO_CLEAR, &nc, &nc_id)) {
+               nc->ListIndex  = sizeof(SurfaceControl);
+               nc->ArrayIndex = sizeof(SurfaceControl) + (newtotal * sizeof(UWORD));
+               nc->EntrySize  = sizeof(SurfaceList);
+               nc->Total      = ctl->Total;
+               nc->ArraySize  = newtotal;
+
+               CopyMemory((BYTE *)ctl + ctl->ListIndex,  (BYTE *)nc + nc->ListIndex, sizeof(UWORD) * ctl->Total);
+               CopyMemory((BYTE *)ctl + ctl->ArrayIndex, (BYTE *)nc + nc->ArrayIndex, sizeof(SurfaceList) * ctl->Total);
+               gfxReleaseList(ARF_WRITE);
+
+               tlSurfaceList = nc;
+               ctl = nc;
+               list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+               glSharedControl->SurfacesMID = nc_id;
+            }
+            else {
+               UnlockSharedMutex(glSurfaceMutex);
+               gfxReleaseList(ARF_WRITE);
+               return log.warning(ERR_AllocMemory);
+            }
+
+            UnlockSharedMutex(glSurfaceMutex);
+         }
+         else {
+            gfxReleaseList(ARF_WRITE);
+            return log.warning(ERR_AccessMemory);
+         }
+
+         if (ctl->Total >= ctl->ArraySize) {
+            gfxReleaseList(ARF_WRITE);
+            return log.warning(ERR_BufferOverflow);
+         }
+      }
+
+      // Find the position at which the surface object should be inserted
+
+      WORD level;
+      WORD absx = 0;
+      WORD absy = 0;
+      if (!Self->ParentID) {
+         // Insert the surface object at the end of the list
+
+         i = ctl->Total;
+         level = 1;
+         absx = Self->X;
+         absy = Self->Y;
+      }
+      else {
+         level = 0;
+         if ((i = find_parent_index(ctl, Self)) != -1) {
+            level = list[i].Level + 1;
+            absx  = list[i].Left + Self->X;
+            absy  = list[i].Top + Self->Y;
+
+            // Find the insertion point
+
+            i++;
+            while ((i < ctl->Total) and (list[i].Level >= level)) {
+               if (Self->Flags & RNF_STICK_TO_FRONT) {
+                  if (list[i].Flags & RNF_POINTER) break;
+               }
+               else if ((list[i].Flags & RNF_STICK_TO_FRONT) and (list[i].Level IS level)) break;
+               i++;
+            }
+         }
+         else {
+            gfxReleaseList(ARF_WRITE);
+            log.warning("track_layer() failed to find parent object #%d.", Self->ParentID);
+            return ERR_Search;
+         }
+
+         // Make space for insertion
+
+         if (i < ctl->Total) CopyMemory(list+i, list+i+1, sizeof(SurfaceList) * (ctl->Total-i));
+      }
+
+      log.trace("Surface: %d, Index: %d, Level: %d, Parent: %d", Self->Head.UID, i, level, Self->ParentID);
+
+      list[i].ParentID  = Self->ParentID;
+      list[i].SurfaceID = Self->Head.UID;
+      list[i].BitmapID  = Self->BufferID;
+      list[i].DisplayID = Self->DisplayID;
+      list[i].TaskID    = Self->Head.TaskID;
+      list[i].PopOverID = Self->PopOverID;
+      list[i].Flags     = Self->Flags;
+      list[i].X         = Self->X;
+      list[i].Y         = Self->Y;
+      list[i].Left      = absx;
+      list[i].Top       = absy;
+      list[i].Width     = Self->Width;
+      list[i].Height    = Self->Height;
+      list[i].Right     = absx + Self->Width;
+      list[i].Bottom    = absy + Self->Height;
+      list[i].Level     = level;
+      list[i].Opacity   = Self->Opacity;
+      list[i].BitsPerPixel  = Self->BitsPerPixel;
+      list[i].BytesPerPixel = Self->BytesPerPixel;
+      list[i].LineWidth     = Self->LineWidth;
+      list[i].DataMID       = Self->DataMID;
+      list[i].Cursor        = Self->Cursor;
+      list[i].RootID        = Self->RootID;
+
+      ctl->Total++;
+      list[ctl->Total].SurfaceID = 0; // Backwards compatibility terminators
+      list[ctl->Total].Level = 0;
+
+      gfxReleaseList(ARF_WRITE);
+      return ERR_Okay;
+   }
+   else {
+      log.warning("track_layer() failed to access the surfacelist.");
+      return ERR_LockMutex;
+   }
+}
+
+//****************************************************************************
+
+void untrack_layer(OBJECTID ObjectID)
+{
+   parasol::Log log(__FUNCTION__);
+   SurfaceControl *ctl;
+   if ((ctl = gfxAccessList(ARF_WRITE))) {
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+
+      LONG i, end;
+      if ((i = find_surface_index(ctl, ObjectID)) != -1) {
+         #ifdef DBG_LAYERS
+            log.msg("%d, Index: %d/%d", ObjectID, i, ctl->Total);
+            //print_layer_list("untrack_layer", ctl, i);
+         #endif
+
+         // Mark all subsequent layers as invisible
+
+         for (end=i+1; (end < ctl->Total) and (list[end].Level > list[i].Level); end++) {
+            list[end].Flags &= ~RNF_VISIBLE;
+         }
+
+         // If this object is at the end of the list, we can simply reduce the total.  Otherwise, shift the objects in front of us down the list.
+
+         if (end >= ctl->Total) {
+            // NOTE: All child surfaces are also removed as a result of truncating the list in this way.  This is fast, but can impact
+            // on routines that expect the entries to exist irrespective of the destruction process.
+
+            ctl->Total = i;
+         }
+         else {
+            CopyMemory(list+i+1, list+i, sizeof(SurfaceList) * (ctl->Total-i));
+            ctl->Total--;
+         }
+
+         list[ctl->Total].SurfaceID = 0; // This provided for backwards compatibility when the list was terminated with a nil object ID
+         list[ctl->Total].Level = 0;
+
+         #ifdef DBG_LAYERS
+            print_layer_list("untrack_layer_end", ctl, i);
+         #endif
+      }
+
+      gfxReleaseList(ARF_WRITE);
+   }
+}
+
+//****************************************************************************
+
+ERROR UpdateSurfaceCopy(objSurface *Self, SurfaceList *Copy)
+{
+   parasol::Log log(__FUNCTION__);
+   WORD i, j, level;
+
+   if (!Self) return log.warning(ERR_NullArgs);
+   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_Okay;
+
+   SurfaceControl *ctl;
+   if ((ctl = gfxAccessList(ARF_UPDATE))) {
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+
+      // Calculate absolute coordinates by looking for the parent of this object.  Then simply add the parent's
+      // absolute X,Y coordinates to our X and Y fields.
+
+      LONG absx, absy;
+      if (Self->ParentID) {
+         if ((i = find_parent_index(ctl, Self)) != -1) {
+            absx = list[i].Left + Self->X;
+            absy = list[i].Top + Self->Y;
+            i = find_own_index(ctl, Self);
+         }
+         else {
+            absx = 0;
+            absy = 0;
+         }
+      }
+      else {
+         absx = Self->X;
+         absy = Self->Y;
+         i = find_own_index(ctl, Self);
+      }
+
+      if (i != -1) {
+         list[i].ParentID      = Self->ParentID;
+         //list[i].SurfaceID    = Self->Head.UID; Never changes
+         list[i].BitmapID      = Self->BufferID;
+         list[i].DisplayID     = Self->DisplayID;
+         //list[i].TaskID      = Self->Head.TaskID; Never changes
+         list[i].PopOverID     = Self->PopOverID;
+         list[i].X             = Self->X;
+         list[i].Y             = Self->Y;
+         list[i].Left          = absx;        // Synonym: Left
+         list[i].Top           = absy;        // Synonym: Top
+         list[i].Width         = Self->Width;
+         list[i].Height        = Self->Height;
+         list[i].Right         = absx + Self->Width;
+         list[i].Bottom        = absy + Self->Height;
+         list[i].Flags         = Self->Flags;
+         list[i].Opacity       = Self->Opacity;
+         list[i].BitsPerPixel  = Self->BitsPerPixel;
+         list[i].BytesPerPixel = Self->BytesPerPixel;
+         list[i].LineWidth     = Self->LineWidth;
+         list[i].DataMID       = Self->DataMID;
+         list[i].Cursor        = Self->Cursor;
+         list[i].RootID        = Self->RootID;
+
+         if (Copy) CopyMemory(list+i, Copy+i, sizeof(SurfaceList));
+
+         // Rebuild absolute coordinates of child objects
+
+         level = list[i].Level;
+         WORD c = i+1;
+         while ((c < ctl->Total) and (list[c].Level > level)) {
+            for (j=c-1; j >= 0; j--) {
+               if (list[j].SurfaceID IS list[c].ParentID) {
+                  list[c].Left   = list[j].Left + list[c].X;
+                  list[c].Top    = list[j].Top  + list[c].Y;
+                  list[c].Right  = list[c].Left + list[c].Width;
+                  list[c].Bottom = list[c].Top  + list[c].Height;
+                  if (Copy) {
+                     Copy[c].Left   = list[c].Left;
+                     Copy[c].Top    = list[c].Top;
+                     Copy[c].Right  = list[c].Right;
+                     Copy[c].Bottom = list[c].Bottom;
+                  }
+                  break;
+               }
+            }
+            c++;
+         }
+      }
+
+      gfxReleaseList(ARF_UPDATE);
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_AccessMemory);
+}
+
+//****************************************************************************
+
+// TODO: This function is broken.  It needs to be tested in a dedicated test app to get the bugs out.
+
+void move_layer_pos(SurfaceControl *ctl, LONG SrcIndex, LONG DestIndex)
+{
+   if (SrcIndex IS DestIndex) return;
+
+   auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+
+   LONG children, target_index;
+   for (children=SrcIndex+1; (children < ctl->Total) and (list[children].Level > list[SrcIndex].Level); children++);
+   children -= SrcIndex;
+
+   if ((DestIndex >= SrcIndex) and (DestIndex <= SrcIndex + children)) return;
+
+   SurfaceList tmp[children];
+//src = 4
+//dest = 8
+//children = 3
+   // Copy the source entry into a buffer
+   CopyMemory(list + SrcIndex, &tmp, sizeof(SurfaceList) * children);
+
+   // Shrink the list
+   CopyMemory(list + SrcIndex + children, list + SrcIndex, sizeof(SurfaceList) * (ctl->Total - (SrcIndex + children)));
+
+   if (DestIndex > SrcIndex) target_index = DestIndex - children;
+   else target_index = DestIndex;
+
+//target = 8 - 3 = 5
+   // Expand the list at the destination index
+//   target_index++;
+   CopyMemory(list + target_index, list + target_index + children, sizeof(SurfaceList) * (ctl->Total - children - target_index));
+
+   // Insert the saved content
+   CopyMemory(&tmp, list + target_index, sizeof(SurfaceList) * children);
+}
+/*
+0
+1
+2
+3
+ 4   x from 4
+  5  x
+  6  x
+ 7
+ 8   z to 8
+9
+10-NULL
+
+---
+0
+1
+2
+3
+ 7  (4)
+ 8  (5) <!-- Insert here
+9   (6)
+10  (7)
+---
+0
+1
+2
+3
+ 7
+ 4
+  5
+  6
+ 8
+9
+10-NULL
+*/
+/*****************************************************************************
+** Internal: check_volatile()
+** Used By:  MoveToBack(), move_layer()
+**
+** This is the best way to figure out if a surface object or its children causes it to be volatile.  Use this function
+** if you don't want to do any deep scanning to determine who is volatile or not.
+**
+** Volatile flags are PRECOPY, AFTER_COPY and CURSOR.
+**
+** NOTE: Surfaces marked as COMPOSITE or TRANSPARENT are not considered volatile as they do not require redraws.  It's
+** up to the caller to make a decision as to whether COMPOSITE's are volatile or not.
+*/
+
+UBYTE check_volatile(SurfaceList *list, WORD index)
+{
+   if (list[index].Flags & RNF_VOLATILE) return TRUE;
+
+   // If there are children with custom root layers or are volatile, that will force volatility
+
+   WORD j;
+   for (WORD i=index+1; list[i].Level > list[index].Level; i++) {
+      if (!(list[i].Flags & RNF_VISIBLE)) {
+         j = list[i].Level;
+         while (list[i+1].Level > j) i++;
+         continue;
+      }
+
+      if (list[i].Flags & RNF_VOLATILE) {
+         // If a child surface is marked as volatile and is a member of our bitmap space, then effectively all members of the bitmap are volatile.
+
+         if (list[index].BitmapID IS list[i].BitmapID) return TRUE;
+
+         // If this is a custom root layer, check if it refers to a surface that is going to affect our own volatility.
+
+         if (list[i].RootID != list[i].SurfaceID) {
+            for (j=i; j > index; j--) {
+               if (list[i].RootID IS list[j].SurfaceID) break;
+            }
+
+            if (j <= index) return TRUE; // Custom root of a child is outside of bounds - that makes us volatile
+         }
+      }
+   }
+
+   return FALSE;
+}
+
+//****************************************************************************
+// Checks if an object is visible, according to its visibility and its parents visibility.
+
+UBYTE CheckVisibility(SurfaceList *list, WORD index)
+{
+   OBJECTID scan = list[index].SurfaceID;
+   for (WORD i=index; i >= 0; i--) {
+      if (list[i].SurfaceID IS scan) {
+         if (!(list[i].Flags & RNF_VISIBLE)) return FALSE;
+         if (!(scan = list[i].ParentID)) return TRUE;
+      }
+   }
+
+   return TRUE;
+}
+
+void check_bmp_buffer_depth(objSurface *Self, objBitmap *Bitmap)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (Bitmap->Flags & BMF_FIXED_DEPTH) return;  // Don't change bitmaps marked as fixed-depth
+
+   DISPLAYINFO *info;
+   if (!gfxGetDisplayInfo(Self->DisplayID, &info)) {
+      if (info->BitsPerPixel != Bitmap->BitsPerPixel) {
+         log.msg("[%d] Updating buffer Bitmap %dx%dx%d to match new display depth of %dbpp.", Bitmap->Head.UID, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel, info->BitsPerPixel);
+         acResize(Bitmap, Bitmap->Width, Bitmap->Height, info->BitsPerPixel);
+         Self->LineWidth     = Bitmap->LineWidth;
+         Self->BytesPerPixel = Bitmap->BytesPerPixel;
+         Self->BitsPerPixel  = Bitmap->BitsPerPixel;
+         Self->DataMID       = Bitmap->DataMID;
+         UpdateSurfaceList(Self);
+      }
+   }
+}
+
+//****************************************************************************
+
+ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **Bitmap)
+{
+   if (!AccessObject(DisplayID, 5000, Display)) {
+      APTR winhandle;
+
+      if (!GetPointer(Display[0], FID_WindowHandle, &winhandle)) {
+         #ifdef _WIN32
+            SetPointer(Display[0]->Bitmap, FID_Handle, winGetDC(winhandle));
+         #else
+            SetPointer(Display[0]->Bitmap, FID_Handle, winhandle);
+         #endif
+      }
+
+      if (Bitmap) *Bitmap = Display[0]->Bitmap;
+      return ERR_Okay;
+   }
+   else return ERR_AccessObject;
+}
+
+//****************************************************************************
+
+void release_video(objDisplay *Display)
+{
+   #ifdef _WIN32
+      APTR surface;
+      GetPointer(Display->Bitmap, FID_Handle, &surface);
+
+      APTR winhandle;
+      if (!GetPointer(Display, FID_WindowHandle, &winhandle)) {
+         winReleaseDC(winhandle, surface);
+      }
+
+      SetPointer(Display->Bitmap, FID_Handle, NULL);
+   #endif
+
+   acFlush(Display);
+
+   ReleaseObject(Display);
+}
+
+//****************************************************************************
+
+BYTE check_surface_list(void)
+{
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Validating the surface list...");
+
+   SurfaceControl *ctl;
+   if ((ctl = gfxAccessList(ARF_WRITE))) {
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+      BYTE bad = FALSE;
+      for (LONG i=0; i < ctl->Total; i++) {
+         if ((CheckObjectExists(list[i].SurfaceID, NULL) != ERR_Okay)) {
+            log.trace("Surface %d, index %d is dead.", list[i].SurfaceID, i);
+            untrack_layer(list[i].SurfaceID);
+            bad = TRUE;
+            i--; // stay at the same index level
+         }
+      }
+
+      gfxReleaseList(ARF_WRITE);
+      return bad;
+   }
+   else return FALSE;
+}
+
+//****************************************************************************
+
+void process_surface_callbacks(objSurface *Self, objBitmap *Bitmap)
+{
+   parasol::Log log(__FUNCTION__);
+
+   #ifdef DBG_DRAW_ROUTINES
+      log.traceBranch("Bitmap: %d, Count: %d", Bitmap->Head.UID, Self->CallbackCount);
+   #endif
+
+   for (LONG i=0; i < Self->CallbackCount; i++) {
+      Bitmap->Opacity = 255;
+      if (Self->Callback[i].Function.Type IS CALL_STDC) {
+         auto routine = (void (*)(APTR, objSurface *, objBitmap *))Self->Callback[i].Function.StdC.Routine;
+
+         #ifdef DBG_DRAW_ROUTINES
+            parasol::Log log(__FUNCTION__);
+            log.branch("%d/%d: Routine: %p, Object: %p, Context: %p", i, Self->CallbackCount, routine, Self->Callback[i].Object, Self->Callback[i].Function.StdC.Context);
+         #endif
+
+         if (Self->Callback[i].Function.StdC.Context) {
+            parasol::SwitchContext context(Self->Callback[i].Function.StdC.Context);
+            routine(Self->Callback[i].Function.StdC.Context, Self, Bitmap);
+         }
+         else routine(Self->Callback[i].Object, Self, Bitmap);
+      }
+      else if (Self->Callback[i].Function.Type IS CALL_SCRIPT) {
+         OBJECTPTR script;
+         if ((script = Self->Callback[i].Function.Script.Script)) {
+            const ScriptArg args[] = {
+               { "Surface", FD_OBJECTPTR, { .Address = Self } },
+               { "Bitmap",  FD_OBJECTPTR, { .Address = Bitmap } }
+            };
+            scCallback(script, Self->Callback[i].Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         }
+      }
+   }
+
+   Bitmap->Opacity = 255;
+}
+
+/*****************************************************************************
+** This routine will modify a clip region to match the visible area, as governed by parent surfaces within the same
+** bitmap space (if MatchBitmap is TRUE).  It also scans the whole parent tree to ensure that all parents are visible,
+** returning TRUE or FALSE accordingly.  If the region is completely obscured regardless of visibility settings, -1 is
+** returned.
+*/
+
+BYTE restrict_region_to_parents(SurfaceList *List, LONG Index, ClipRectangle *Clip, BYTE MatchBitmap)
+{
+   UBYTE visible = TRUE;
+   OBJECTID id = List[Index].SurfaceID;
+   for (LONG j=Index; (j >= 0) and (id); j--) {
+      if (List[j].SurfaceID IS id) {
+         if (!(List[j].Flags & RNF_VISIBLE)) visible = FALSE;
+
+         id = List[j].ParentID;
+
+         if ((MatchBitmap IS FALSE) or (List[j].BitmapID IS List[Index].BitmapID)) {
+            if (Clip->Left   < List[j].Left)   Clip->Left   = List[j].Left;
+            if (Clip->Top    < List[j].Top)    Clip->Top    = List[j].Top;
+            if (Clip->Right  > List[j].Right)  Clip->Right  = List[j].Right;
+            if (Clip->Bottom > List[j].Bottom) Clip->Bottom = List[j].Bottom;
+         }
+      }
+   }
+
+   if ((Clip->Right <= Clip->Left) or (Clip->Bottom <= Clip->Top)) {
+      Clip->Right = Clip->Left;
+      Clip->Bottom = Clip->Top;
+      return -1;
+   }
+
+   return visible;
+}
+
+/*****************************************************************************
+** Loads the default style information and then applies the user's preferred values.  This function can be called at
+** any time to refresh the style values in memory.
+*/
+
+ERROR load_style_values(void)
+{
+   parasol::Log log(__FUNCTION__);
+
+   log.branch();
+
+   CSTRING style_path = "style:values.xml";
+   if (AnalysePath(style_path, NULL) != ERR_Okay) {
+      style_path = "environment:config/values.xml";
+      if (AnalysePath(style_path, NULL) != ERR_Okay) {
+         style_path = "styles:default/values.xml";
+      }
+   }
+
+   objXML *user, *style;
+   ERROR error;
+   if (!(error = CreateObject(ID_XML, 0, &style, FID_Name|TSTR, "glStyle", FID_Path|TSTR, style_path, TAGEND))) {
+      // Now check for the user's preferred values.  These are copied over the defaults.
+
+      if (!AnalysePath("user:config/style_values.xml", 0)) {
+         if (!CreateObject(ID_XML, 0, &user, FID_Path|TSTR, "user:config/style_values.xml", TAGEND)) {
+            auto tags = user->Tags[0];
+            while (tags) {
+               LONG target;
+               if (!StrMatch("fonts", tags->Attrib->Name)) {
+                  auto src = tags->Child;
+                  CSTRING fontname;
+                  if ((fontname = XMLATTRIB(src, "name"))) {
+                     char xpath[80];
+                     StrFormat(xpath, sizeof(xpath), "/fonts/font[@name='%s']", fontname);
+                     if (!xmlFindTag(style, xpath, NULL, &target)) {
+                        for (LONG a=1; a < src->TotalAttrib; a++) {
+                           xmlSetAttrib(style, target, XMS_UPDATE, src->Attrib[a].Name, src->Attrib[a].Value);
+                        }
+                     }
+                  }
+               }
+               else if (!StrMatch("colours", tags->Attrib->Name)) {
+                  if (!xmlFindTag(style, "/colours", NULL, &target)) {
+                     for (LONG a=1; a < tags->TotalAttrib; a++) {
+                        xmlSetAttrib(style, target, XMS_UPDATE, tags->Attrib[a].Name, tags->Attrib[a].Value);
+                     }
+                  }
+               }
+               else if (!StrMatch("interface", tags->Attrib->Name)) {
+                  if (!xmlFindTag(style, "/interface", NULL, &target)) {
+                     for (LONG a=1; a < tags->TotalAttrib; a++) {
+                        xmlSetAttrib(style, target, XMS_UPDATE, tags->Attrib[a].Name, tags->Attrib[a].Value);
+                     }
+                  }
+               }
+               tags = tags->Next;
+            }
+            acFree(user);
+         }
+      }
+
+      if (glStyle) acFree(glStyle);
+      glStyle = style;
+   }
+
+   return error;
+}
+
+/*****************************************************************************
+** This call is used to refresh the pointer image when at least one layer has been rearranged.  The timer is used to
+** delay the refresh - useful if multiple surfaces are being rearranged when we only need to do the refresh once.
+** The delay also prevents clashes with read/write access to the surface list.
+*/
+
+ERROR refresh_pointer_timer(OBJECTPTR Task, LARGE Elapsed, LARGE CurrentTime)
+{
+   objPointer *pointer;
+   if ((pointer = gfxAccessPointer())) {
+      Action(AC_Refresh, pointer, NULL);
+      ReleaseObject(pointer);
+   }
+   glRefreshPointerTimer = 0;
+   return ERR_Terminate; // Timer is only called once
+}
+
+void refresh_pointer(objSurface *Self)
+{
+   if (!glRefreshPointerTimer) {
+      parasol::SwitchContext context(glModule);
+      FUNCTION call;
+      SET_FUNCTION_STDC(call, (APTR)&refresh_pointer_timer);
+      SubscribeTimer(0.02, &call, &glRefreshPointerTimer);
+   }
 }
 
 //****************************************************************************
@@ -743,9 +2142,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
    }
 }
 
-/*****************************************************************************
-** Command: Init()
-*/
+//****************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -759,6 +2156,18 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    CoreBase = argCoreBase;
 
    GetPointer(argModule, FID_Master, &glModule);
+
+   if (GetResource(RES_GLOBAL_INSTANCE)) glClassFlags = CLF_SHARED_ONLY|CLF_PUBLIC_OBJECTS;
+   else glClassFlags = 0; // When operating stand-alone, do not share surfaces by default.
+
+   if (GetSystemState()->Stage < 0) { // An early load indicates that classes are being probed, so just return them.
+      create_pointer_class();
+      create_display_class();
+      create_bitmap_class();
+      create_clipboard_class();
+      create_surface_class();
+      return ERR_Okay;
+   }
 
    CSTRING driver_name;
    if ((driver_name = (CSTRING)GetResourcePtr(RES_DISPLAY_DRIVER))) {
@@ -775,6 +2184,27 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Register a fake FD as input_event_loop() so that we can process input events on every ProcessMessages() cycle.
 
    RegisterFD((HOSTHANDLE)-2, RFD_ALWAYS_CALL, input_event_loop, NULL);
+
+   // Add a message handler to the system for responding to interface messages
+
+   auto call = make_function_stdc(msg_handler);
+   if (AddMsgHandler(NULL, MSGID_EXPOSE, &call, &glExposeHandler) != ERR_Okay) {
+      return log.warning(ERR_Failed);
+   }
+
+   // Allocate the FocusList memory block
+
+   MEMORYID mem_id = RPM_FocusList;
+   error = AllocMemory((SIZE_FOCUSLIST) * sizeof(OBJECTID), MEM_UNTRACKED|MEM_RESERVED|MEM_PUBLIC, NULL, &mem_id);
+   if ((error != ERR_Okay) and (error != ERR_ResourceExists)) {
+      return log.warning(ERR_AllocMemory);
+   }
+
+   // The SurfaceList mutex controls any attempt to update the glSharedControl->SurfacesMID field.
+
+   if (AllocSharedMutex("SurfaceList", &glSurfaceMutex)) {
+      return log.warning(ERR_AllocMutex);
+   }
 
    #ifdef _GLES_
       pthread_mutexattr_t attr;
@@ -985,6 +2415,37 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       return ERR_AddClass;
    }
 
+   if (create_surface_class() != ERR_Okay) {
+      log.warning("Failed to create Surface class.");
+      return ERR_AddClass;
+   }
+
+   // Allocate the SurfaceList memory block and its associated mutex.  Note that MEM_TMP_LOCK is used as a safety
+   // measure to prevent any task from being put to sleep when it has a SurfaceControl lock (due to the potential for
+   // deadlocks).
+
+   if (!LockSharedMutex(glSurfaceMutex, 5000)) {
+      if (!glSharedControl->SurfacesMID) {
+         SurfaceControl *ctl;
+         const LONG listsize = 200;
+         if (!(error = AllocMemory(sizeof(SurfaceControl) + (listsize * sizeof(UWORD)) + (listsize * sizeof(SurfaceList)),
+               MEM_UNTRACKED|MEM_PUBLIC|MEM_NO_CLEAR|MEM_TMP_LOCK, &ctl, &glSharedControl->SurfacesMID))) {
+            ctl->ListIndex  = sizeof(SurfaceControl);
+            ctl->ArrayIndex = sizeof(SurfaceControl) + (listsize * sizeof(UWORD));
+            ctl->EntrySize  = sizeof(SurfaceList);
+            ctl->Total      = 0;
+            ctl->ArraySize  = listsize;
+            ReleaseMemory(ctl);
+         }
+         else {
+            UnlockSharedMutex(glSurfaceMutex);
+            return log.warning(ERR_AllocMemory);
+         }
+      }
+      UnlockSharedMutex(glSurfaceMutex);
+   }
+   else return log.warning(ERR_AccessMemory);
+
    // Initialise 64K alpha blending table, for cutting down on multiplications.  This memory block is shared, so one
    // table serves all processes.
 
@@ -1008,6 +2469,60 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
    }
    else return ERR_AllocMemory;
+
+   // Find system objects
+
+   glDisplayType = gfxGetDisplayType();
+
+#ifdef __ANDROID__
+      glpFullScreen = TRUE;
+      glpDisplayDepth = 16;
+
+      DISPLAYINFO *info;
+      if (!gfxGetDisplayInfo(0, &info)) {
+         glpDisplayWidth  = info.Width;
+         glpDisplayHeight = info.Height;
+         glpDisplayDepth  = info.BitsPerPixel;
+      }
+#else
+   OBJECTPTR config;
+   if (!CreateObject(ID_CONFIG, NULL, &config, FID_Path|TSTRING, "user:config/display.cfg", TAGEND)) {
+      cfgReadInt(config, "DISPLAY", "Maximise", &glpMaximise);
+
+      if ((glDisplayType IS DT_X11) or (glDisplayType IS DT_WINDOWS)) {
+         log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
+         if ((cfgReadInt(config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR_Okay) or (!glpDisplayWidth)) {
+            cfgReadInt(config, "DISPLAY", "Width", &glpDisplayWidth);
+         }
+
+         if ((cfgReadInt(config, "DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR_Okay) or (!glpDisplayHeight)) {
+            cfgReadInt(config, "DISPLAY", "Height", &glpDisplayHeight);
+         }
+
+         cfgReadInt(config, "DISPLAY", "WindowX", &glpDisplayX);
+         cfgReadInt(config, "DISPLAY", "WindowY", &glpDisplayY);
+         cfgReadInt(config, "DISPLAY", "FullScreen", &glpFullScreen);
+      }
+      else {
+         cfgReadInt(config, "DISPLAY", "Width", &glpDisplayWidth);
+         cfgReadInt(config, "DISPLAY", "Height", &glpDisplayHeight);
+         cfgReadInt(config, "DISPLAY", "XCoord", &glpDisplayX);
+         cfgReadInt(config, "DISPLAY", "YCoord", &glpDisplayY);
+         cfgReadInt(config, "DISPLAY", "Depth", &glpDisplayDepth);
+         log.msg("Using default display dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
+      }
+
+      cfgReadFloat(config, "DISPLAY", "RefreshRate", &glpRefreshRate);
+      cfgReadFloat(config, "DISPLAY", "GammaRed", &glpGammaRed);
+      cfgReadFloat(config, "DISPLAY", "GammaGreen", &glpGammaGreen);
+      cfgReadFloat(config, "DISPLAY", "GammaBlue", &glpGammaBlue);
+      CSTRING dpms;
+      if (!(error = cfgReadValue(config, "DISPLAY", "DPMS", &dpms))) {
+         StrCopy(dpms, glpDPMS, sizeof(glpDPMS));
+      }
+      acFree(config);
+   }
+#endif
 
    STRING icon_path;
    if (ResolvePath("iconsource:", 0, &icon_path) != ERR_Okay) { // The client can set iconsource: to redefine the icon origins
@@ -1053,6 +2568,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 #endif
 
+   load_style_values();
+
    return ERR_Okay;
 }
 
@@ -1070,9 +2587,16 @@ static ERROR CMDExpunge(void)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (glCompress)    { acFree(glCompress); glCompress = NULL; }
-   if (glAlphaLookup) { ReleaseMemory(glAlphaLookup); glAlphaLookup = NULL; }
-   if (glDither)      { FreeResource(glDither); glDither = NULL; }
+   if (glCompress)            { acFree(glCompress); glCompress = NULL; }
+   if (glAlphaLookup)         { ReleaseMemory(glAlphaLookup); glAlphaLookup = NULL; }
+   if (glDither)              { FreeResource(glDither); glDither = NULL; }
+   if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
+   if (glStyle)               { acFree(glStyle); glStyle = NULL; }
+   if (glAppStyle)            { acFree(glAppStyle); glAppStyle = NULL; }
+   if (glDesktopStyleScript)  { acFree(glDesktopStyleScript); glDesktopStyleScript = NULL; }
+   if (glDefaultStyleScript)  { acFree(glDefaultStyleScript); glDefaultStyleScript = NULL; }
+   if (glExposeHandler)       { FreeResource(glExposeHandler); glExposeHandler = NULL; }
+   if (glComposite)           { acFree(glComposite); glComposite = NULL; }
 
    DeregisterFD((HOSTHANDLE)-2); // Disable input_event_loop()
 
@@ -1147,13 +2671,13 @@ static ERROR CMDExpunge(void)
 #endif
 
    if (glIconArchive) { acFree(glIconArchive); glIconArchive = NULL; }
-
    if (glInputEvents) { ReleaseMemory(glInputEvents); glInputEvents = NULL; }
    if (glDisplayInfo) { ReleaseMemory(glDisplayInfo); glDisplayInfo = NULL; }
    if (clPointer)     { acFree(clPointer);   clPointer   = NULL; }
    if (clDisplay)     { acFree(clDisplay);   clDisplay   = NULL; }
    if (clBitmap)      { acFree(clBitmap);    clBitmap    = NULL; }
    if (clClipboard)   { acFree(clClipboard); clClipboard = NULL; }
+   if (clSurface)     { acFree(clSurface);   clSurface = NULL; }
 
    #ifdef _GLES_
       free_egl();
@@ -1170,167 +2694,31 @@ static ERROR CMDExpunge(void)
 /*****************************************************************************
 
 -FUNCTION-
-StartCursorDrag: Attaches an item to the cursor for the purpose of drag and drop.
-
-This function starts a drag and drop operation with the mouse cursor.  The user must be holding the primary mouse
-button to initiate the drag and drop operation.
-
-A Source object ID is required that indicates the origin of the item being dragged and will be used to retrieve the
-data on completion of the drag and drop operation. An Item number, which is optional, identifies the item being dragged
-from the Source object.
-
-The type of data represented by the source item and all other supportable data types are specified in the Datatypes
-parameter as a null terminated array.  The array is arranged in order of preference, starting with the item's native
-data type.  Acceptable data type values are listed in the documentation for the DataFeed action.
-
-The Surface argument allows for a composite surface to be dragged by the mouse cursor as a graphical representation of
-the source item.  It is recommended that the graphic be 32x32 pixels in size and no bigger than 64x64 pixels.  The
-Surface will be hidden on completion of the drag and drop operation.
-
-If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  The UserMovement
-and UserClickRelease actions normally reported from the SystemPointer will now include the `JD_DRAGITEM` flag in the
-ButtonFlags parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the
-DragDrop action will be passed to the surface immediately underneath the mouse cursor.  Objects that are monitoring for
-the DragDrop action on that surface can then contact the Source object with a DataFeed DragDropRequest.  The
-resulting data is then passed to the requesting object with a DragDropResult on the DataFeed.
+AccessList: Private. Grants access to the internal SurfaceList array.
 
 -INPUT-
-oid Source:     Refers to an object that is managing the source data.
-int Item:       A custom number that represents the item being dragged from the source.
-cstr Datatypes: A null terminated byte array that lists the datatypes supported by the source item, in order of conversion preference.
-oid Surface:    A 32-bit composite surface that represents the item being dragged.
-
--ERRORS-
-Okay:
-NullArgs:
-AccessObject:
-Failed: The left mouse button is not held by the user.
-InUse: A drag and drop operation has already been started.
-
-*****************************************************************************/
-
-ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.branch("Source: %d, Item: %d, Surface: %d", Source, Item, Surface);
-
-   if (!Source) return log.warning(ERR_NullArgs);
-
-   objPointer *pointer;
-   if ((pointer = gfxAccessPointer())) {
-      if (!pointer->Buttons[0].LastClicked) {
-         gfxReleasePointer(pointer);
-         return log.warning(ERR_Failed);
-      }
-
-      if (pointer->DragSourceID) {
-         gfxReleasePointer(pointer);
-         return ERR_InUse;
-      }
-
-      pointer->DragSurface = Surface;
-      pointer->DragItem    = Item;
-      pointer->DragSourceID = Source;
-      StrCopy(Datatypes, pointer->DragData, sizeof(pointer->DragData));
-
-      // Refer to PTR_Init() on why the surface module is opened dynamically
-
-      if (!modSurface) {
-         parasol::SwitchContext ctx(CurrentTask());
-         if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) {
-            return ERR_InitModule;
-         }
-      }
-
-      SURFACEINFO *info;
-      if (!drwGetSurfaceInfo(Surface, &info)) {
-         pointer->DragParent = info->ParentID;
-      }
-
-      if (Surface) {
-         log.trace("Moving draggable surface %d to %dx%d", Surface, pointer->X, pointer->Y);
-         acMoveToPointID(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF_X|MTF_Y);
-         acShowID(Surface);
-         acMoveToFrontID(Surface);
-      }
-
-      gfxReleasePointer(pointer);
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_AccessObject);
-}
-
-/*****************************************************************************
-
--FUNCTION-
-GetDisplayInfo: Retrieves display information.
-
-The GetDisplayInfo() function returns information about a display, which includes information such as its size and bit
-depth.  If the system is running on a hosted display (e.g. Windows or X11) then GetDisplayInfo() can also be used to
-retrieve information about the default monitor by using a Display of zero.
-
-The resulting `DISPLAYINFO` structure values remain good until the next call to this function, at which point they will
-be overwritten.
-
--INPUT-
-oid Display: Object ID of the display to be analysed.
-&struct(*DisplayInfo) Info: This reference will receive a pointer to a DISPLAYINFO structure.
-
--ERRORS-
-Okay:
-NullArgs:
-AllocMemory:
-
-*****************************************************************************/
-
-ERROR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
-{
-   static THREADVAR DISPLAYINFO *t_info = NULL;
-
-   if (!Result) return ERR_NullArgs;
-
-   if (!t_info) {
-      // Each thread gets an allocation that can't be resource tracked, so MEM_HIDDEN is used in this case.
-      // Note that this could conceivably cause memory leaks if temporary threads were to use this function.
-      if (AllocMemory(sizeof(DISPLAYINFO), MEM_NO_CLEAR|MEM_HIDDEN, &t_info, NULL)) {
-         return ERR_AllocMemory;
-      }
-   }
-
-   ERROR error;
-   if (!(error = get_display_info(DisplayID, t_info, sizeof(DISPLAYINFO)))) {
-      *Result = t_info;
-      return ERR_Okay;
-   }
-   else return error;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-GetDisplayType: Returns the type of display supported.
-
-This function returns the type of display supported by the loaded Display module.  Current return values are:
-
-<types lookup="DT"/>
+int(ARF) Flags: Specify ARF_WRITE if writing to the list, otherwise ARF_READ must be set.  Use ARF_NO_DELAY if you need immediate access to the surfacelist.
 
 -RESULT-
-int(DT): Returns an integer indicating the display type.
+struct(SurfaceControl): Pointer to the SurfaceControl structure.
 
 *****************************************************************************/
 
-LONG gfxGetDisplayType(void)
+SurfaceControl * gfxAccessList(LONG Flags)
 {
-#ifdef _WIN32
-   return DT_WINDOWS;
-#elif __xwindows__
-   return DT_X11;
-#elif _GLES_
-   return DT_GLES;
-#else
-   return DT_NATIVE;
-#endif
+   if (!tlSurfaceList) {
+      ERROR error;
+
+      if (Flags & ARF_NO_DELAY) {
+         error = AccessMemory(glSharedControl->SurfacesMID, MEM_READ_WRITE, 20, &tlSurfaceList);
+      }
+      else error = AccessMemory(glSharedControl->SurfacesMID, MEM_READ_WRITE, 4000, &tlSurfaceList);
+
+      if (!error) tlListCount = 1;
+   }
+   else tlListCount++;
+
+   return tlSurfaceList;
 }
 
 /*****************************************************************************
@@ -1372,1141 +2760,143 @@ objPointer * gfxAccessPointer(void)
    return pointer;
 }
 
-/******************************************************************************
+/*****************************************************************************
 
 -FUNCTION-
-GetCursorInfo: Retrieves graphics information from the active mouse cursor.
+ApplyStyleGraphics: Applies pre-defined graphics to a GUI object.
 
-The GetCursorInfo() function is used to retrieve useful information on the graphics structure of the mouse cursor.  It
-will return the maximum possible dimensions for custom cursor graphics and indicates the optimal bits-per-pixel setting
-for the hardware cursor.
-
-If there is no cursor (e.g. this is likely on touch-screen devices) then all field values will be set to zero.
-
-Note: If the hardware cursor is monochrome, the bits-per-pixel setting will be set to 2 on return.  This does not
-indicate a 4 colour cursor image; rather colour 0 is the mask, 1 is the foreground colour (black), 2 is the background
-colour (white) and 3 is an XOR pixel.  When creating the bitmap, always set the palette to the RGB values that are
-wanted.  The mask colour for the bitmap must refer to colour index 0.
+This is an internal function created for use by classes in the GUI category.  It finds the style definition for the
+target Object and executes the procedure with the Surface as the graphics target.
 
 -INPUT-
-struct(*CursorInfo) Info: Pointer to a CursorInfo structure.
-structsize Size: The byte-size of the Info structure.
+obj Object:  The object that requires styling.
+oid Target: The surface or vector that will receive the style graphics.
+cstr StyleName: Optional.  Reference to a style that is alternative to the default.
+cstr StyleType: Optional.  Name of the type of style decoration to be applied.  Use in conjunction with StyleName.
 
 -ERRORS-
 Okay:
 NullArgs:
-NoSupport: The device does not support a cursor (common for touch screen displays).
-
-******************************************************************************/
-
-ERROR gfxGetCursorInfo(CursorInfo *Info, LONG Size)
-{
-   if (!Info) return ERR_NullArgs;
-
-#ifdef __ANDROID__
-   // TODO: Some Android devices probably do support a mouse or similar input device.
-   ClearMemory(Info, sizeof(CursorInfo));
-   return ERR_NoSupport;
-#else
-   Info->Width  = 32;
-   Info->Height = 32;
-   Info->BitsPerPixel = 1;
-   Info->Flags = 0;
-   return ERR_Okay;
-#endif
-}
-
-/******************************************************************************
-
--FUNCTION-
-GetCursorPos: Returns the coordinates of the UI pointer.
-
-This function is used to retrieve the current coordinates of the user interface pointer.  If the device is touch-screen
-based then the coordinates will reflect the last position that a touch event occurred.
-
--INPUT-
-&double X: 32-bit variable that will store the pointer's horizontal coordinate.
-&double Y: 32-bit variable that will store the pointer's vertical coordinate.
-
--ERRORS-
-Okay
-AccessObject: Failed to access the SystemPointer object.
-
-******************************************************************************/
-
-ERROR gfxGetCursorPos(DOUBLE *X, DOUBLE *Y)
-{
-   objPointer *pointer;
-
-   if ((pointer = gfxAccessPointer())) {
-      if (X) *X = pointer->X;
-      if (Y) *Y = pointer->Y;
-      ReleaseObject(pointer);
-      return ERR_Okay;
-   }
-   else {
-      parasol::Log log(__FUNCTION__);
-      log.warning("Failed to grab the mouse pointer.");
-      return ERR_Failed;
-   }
-}
-
-/******************************************************************************
-
--FUNCTION-
-GetRelativeCursorPos: Returns the coordinates of the pointer cursor, relative to a surface object.
-
-This function is used to retrieve the current coordinates of the pointer cursor. The coordinates are relative to the
-surface object that is specified in the Surface argument.
-
-The X and Y parameters will not be set if a failure occurs.
-
--INPUT-
-oid Surface: Unique ID of the surface that the coordinates need to be relative to.
-&double X: 32-bit variable that will store the pointer's horizontal coordinate.
-&double Y: 32-bit variable that will store the pointer's vertical coordinate.
-
--ERRORS-
-Okay:
-AccessObject: Failed to access the SystemPointer object.
-
-******************************************************************************/
-
-ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
-{
-   parasol::Log log(__FUNCTION__);
-   objPointer *pointer;
-   LONG absx, absy;
-
-   if (GetSurfaceAbs(SurfaceID, &absx, &absy, 0, 0) != ERR_Okay) {
-      log.warning("Failed to get info for surface #%d.", SurfaceID);
-      return ERR_Failed;
-   }
-
-   if ((pointer = gfxAccessPointer())) {
-      if (X) *X = pointer->X - absx;
-      if (Y) *Y = pointer->Y - absy;
-
-      ReleaseObject(pointer);
-      return ERR_Okay;
-   }
-   else {
-      log.warning("Failed to grab the mouse pointer.");
-      return ERR_AccessObject;
-   }
-}
-
-/******************************************************************************
-
--FUNCTION-
-LockCursor: Anchors the cursor so that it cannot move without explicit movement signals.
-
-The LockCursor() function will lock the current pointer position and pass UserMovement signals to the surface
-referenced in the Surface parameter.  The pointer will not move unless the ~SetCursorPos() function is called.
-The anchor is granted on a time-limited basis.  It is necessary to reissue the anchor every time that a UserMovement
-signal is intercepted.  Failure to reissue the anchor will return the pointer to its normal state, typically within 200
-microseconds.
-
-The anchor can be released at any time by calling the ~UnlockCursor() function.
-
--INPUT-
-oid Surface: Refers to the surface object that the pointer should send movement signals to.
-
--ERRORS-
-Okay
-NullArgs
-NoSupport: The pointer cannot be locked due to system limitations.
-AccessObject: Failed to access the pointer object.
-
-******************************************************************************/
-
-ERROR gfxLockCursor(OBJECTID SurfaceID)
-{
-#ifdef __native__
-   parasol::Log log(__FUNCTION__);
-   objPointer *pointer;
-
-   if (!SurfaceID) return log.warning(ERR_NullArgs);
-
-   if ((pointer = gfxAccessPointer())) {
-      // Return if the cursor is currently locked by someone else
-
-      if ((pointer->AnchorID) and (pointer->AnchorID != SurfaceID)) {
-         if (CheckObjectExists(pointer->AnchorID, NULL) != ERR_True);
-         else if ((pointer->AnchorMsgQueue < 0) and (CheckMemoryExists(pointer->AnchorMsgQueue) != ERR_True));
-         else {
-            ReleaseObject(pointer);
-            return ERR_LockFailed; // The pointer is locked by someone else
-         }
-      }
-
-      pointer->AnchorID       = SurfaceID;
-      pointer->AnchorMsgQueue = GetResource(RES_MESSAGE_QUEUE);
-      pointer->AnchorTime     = PreciseTime() / 1000LL;
-
-      ReleaseObject(pointer);
-      return ERR_Okay;
-   }
-   else {
-      log.warning("Failed to access the mouse pointer.");
-      return ERR_AccessObject;
-   }
-#else
-   return ERR_NoSupport;
-#endif
-}
-
-/******************************************************************************
-
--FUNCTION-
-RestoreCursor: Returns the pointer image to its original state.
-
-Use the RestoreCursor() function to undo an earlier call to ~SetCursor().  It is necessary to provide the same OwnerID
-that was used in the original call to ~SetCursor().
-
-To release ownership of the cursor without changing the current cursor image, use a Cursor setting of PTR_NOCHANGE.
-
--INPUT-
-int(PTR) Cursor: The cursor image that the pointer will be restored to (0 for the default).
-oid Owner: The ownership ID that was given in the initial call to SetCursor().
-
--ERRORS-
-Okay
-Args
+BadState: The Object is not initialised.
+NothingDone: No style information is defined for the object's class.
 -END-
-
-******************************************************************************/
-
-ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
-{
-   parasol::Log log(__FUNCTION__);
-   objPointer *pointer;
-
-   if ((pointer = gfxAccessPointer())) {
-/*
-      OBJECTPTR caller;
-      caller = CurrentContext();
-      log.function("Cursor: %d, Owner: %d, Current-Owner: %d (Caller: %d / Class %d)", Cursor, OwnerID, pointer->CursorOwnerID, caller->UID, caller->ClassID);
-*/
-      if ((!OwnerID) or (OwnerID IS pointer->CursorOwnerID)) {
-         // Restore the pointer to the given cursor image
-         if (!OwnerID) gfxSetCursor(NULL, CRF_RESTRICT, Cursor, NULL, pointer->CursorOwnerID);
-         else gfxSetCursor(NULL, CRF_RESTRICT, Cursor, NULL, OwnerID);
-
-         pointer->CursorOwnerID   = NULL;
-         pointer->CursorRelease   = NULL;
-         pointer->CursorReleaseID = NULL;
-      }
-
-      // If a cursor change has been buffered, enable it
-
-      if (pointer->BufferOwner) {
-         if (OwnerID != pointer->BufferOwner) {
-            gfxSetCursor(pointer->BufferObject, pointer->BufferFlags, pointer->BufferCursor, NULL, pointer->BufferOwner);
-         }
-         else pointer->BufferOwner = NULL; // Owner and Buffer are identical, so clear due to restored pointer
-      }
-
-      ReleaseObject(pointer);
-      return ERR_Okay;
-   }
-   else {
-      log.warning("Failed to access the mouse pointer.");
-      return ERR_AccessObject;
-   }
-}
-
-/*****************************************************************************
-
--FUNCTION-
-ScanDisplayModes: Private. Returns formatted resolution information from the display database.
-
-For internal use only.
-
-<pre>
-DISPLAYINFO info;
-ClearMemory(&info, sizeof(info));
-while (!scrScanDisplayModes("depth=32", &info, sizeof(info))) {
-   ...
-}
-</pre>
-
--INPUT-
-cstr Filter: The filter to apply to the resolution database.  May be NULL for no filter.
-struct(*DisplayInfo) Info: A pointer to a screenINFO structure must be referenced here.  The structure will be filled with information when the function returns.
-structsize Size: Size of the screenINFO structure.
-
--ERRORS-
-Okay: The resolution information was retrieved.
-Args:
-NoSupport: Native graphics system not available (e.g. hosted on Windows or X11).
-Search: There are no more display modes to return that are a match for the Filter.
 
 *****************************************************************************/
 
-ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
-{
-#ifdef __snap__
-
-   GA_modeInfo modeinfo;
-   UWORD *modes;
-   LONG colours, bytes, i, j, minrefresh, maxrefresh, refresh, display;
-   WORD f_depth, c_depth; // f = filter, c = condition (0 = equal; -1 <, -2 <=; +1 >, +2 >=)
-   WORD f_bytes, c_bytes;
-   WORD f_width, c_width, f_height, c_height;
-   WORD f_refresh, c_refresh;
-   WORD f_minrefresh, c_minrefresh;
-   WORD f_maxrefresh, c_maxrefresh;
-   BYTE interlace, matched;
-
-   if ((!Info) or (Size < sizeof(DisplayInfoV3))) return ERR_Args;
-
-   // Reset all filters
-
-   f_depth   = c_depth   = 0;
-   f_bytes   = c_bytes   = 0;
-   f_width   = c_width   = 0;
-   f_height  = c_height  = 0;
-   f_refresh = c_refresh = 0;
-   f_minrefresh = c_minrefresh = 0;
-   f_maxrefresh = c_maxrefresh = 0;
-
-   if (Filter) {
-      while (*Filter) {
-         while ((*Filter) and (*Filter <= 0x20)) Filter++;
-         while (*Filter IS ',') Filter++;
-         while ((*Filter) and (*Filter <= 0x20)) Filter++;
-
-         if (!StrCompare("depth", Filter, 5, 0))   extract_value(Filter, &f_depth, &c_depth);
-         if (!StrCompare("bytes", Filter, 5, 0))   extract_value(Filter, &f_bytes, &c_bytes);
-         if (!StrCompare("width", Filter, 5, 0))   extract_value(Filter, &f_width, &c_width);
-         if (!StrCompare("height", Filter, 6, 0))  extract_value(Filter, &f_height, &c_height);
-         if (!StrCompare("refresh", Filter, 7, 0)) extract_value(Filter, &f_refresh, &c_refresh);
-         if (!StrCompare("minrefresh", Filter, 10, 0)) extract_value(Filter, &f_minrefresh, &c_minrefresh);
-         if (!StrCompare("maxrefresh", Filter, 10, 0)) extract_value(Filter, &f_maxrefresh, &c_maxrefresh);
-
-         while ((*Filter) and (*Filter != ',')) Filter++;
-      }
-   }
-
-   modes = glSNAPDevice->AvailableModes;
-   display = glSNAP->Init.GetDisplayOutput() & gaOUTPUT_SELECTMASK;
-   for (i=Info->Index; modes[i] != 0xffff; i++) {
-      modeinfo.dwSize = sizeof(modeinfo);
-      if (glSNAP->Init.GetVideoModeInfoExt(modes[i], &modeinfo, display, glSNAP->Init.GetActiveHead())) continue;
-
-      if (modeinfo.AttributesExt & gaIsPanningMode) continue;
-      if (modeinfo.Attributes & gaIsTextMode) continue;
-      if (modeinfo.BitsPerPixel < 8) continue;
-
-      if (modeinfo.BitsPerPixel <= 8) bytes = 1;
-      else if (modeinfo.BitsPerPixel <= 16) bytes = 2;
-      else if (modeinfo.BitsPerPixel <= 24) bytes = 3;
-      else bytes = 4;
-
-      if (modeinfo.BitsPerPixel <= 24) colours = 1<<modeinfo.BitsPerPixel;
-      else colours = 1<<24;
-
-      minrefresh = 0x7fffffff;
-      maxrefresh = 0;
-      for (j=0; modeinfo.RefreshRateList[j] != -1; j++) {
-         if ((refresh = modeinfo.RefreshRateList[j]) < 0) refresh = -refresh;
-         if (refresh > maxrefresh) maxrefresh = refresh;
-         if (refresh < minrefresh) minrefresh = refresh;
-      }
-
-      if (minrefresh IS 0x7fffffff) minrefresh = 0;
-
-      refresh = modeinfo.DefaultRefreshRate;
-      if (refresh < 0) {
-         refresh = -refresh;
-         interlace = TRUE;
-      }
-      else interlace = TRUE;
-
-      // Check if this mode meets the filters, if so then reduce the index
-
-      if (Filter) {
-         matched = TRUE;
-         if ((f_depth)   and (!compare_values(f_depth,   c_depth,   modeinfo.BitsPerPixel))) matched = FALSE;
-         if ((f_bytes)   and (!compare_values(f_bytes,   c_bytes,   bytes))) matched = FALSE;
-         if ((f_width)   and (!compare_values(f_width,   c_width,   modeinfo.XResolution)))  matched = FALSE;
-         if ((f_height)  and (!compare_values(f_height,  c_height,  modeinfo.YResolution)))  matched = FALSE;
-         if ((f_refresh) and (!compare_values(f_refresh, c_refresh, modeinfo.BitsPerPixel))) matched = FALSE;
-         if ((f_minrefresh) and (!compare_values(f_minrefresh, c_minrefresh, minrefresh)))   matched = FALSE;
-         if ((f_maxrefresh) and (!compare_values(f_maxrefresh, c_maxrefresh, maxrefresh)))   matched = FALSE;
-
-         if (matched IS FALSE) continue;
-      }
-
-      // Return information for this mode
-
-      Info->Width         = modeinfo.XResolution;
-      Info->Height        = modeinfo.YResolution;
-      Info->Depth         = modeinfo.BitsPerPixel;
-      Info->BytesPerPixel = bytes;
-      Info->AmtColours    = colours;
-      Info->MinRefresh    = minrefresh;
-      Info->MaxRefresh    = maxrefresh;
-      Info->RefreshRate   = refresh;
-      Info->Index         = i + 1;
-      return ERR_Okay;
-   }
-
-   return ERR_Search;
-
-#else
-
-   return ERR_NoSupport;
-
-#endif
-}
-
-/******************************************************************************
-
--FUNCTION-
-SetCursor: Sets the cursor image and can anchor the pointer to any surface.
-
-Use the SetCursor() function to change the pointer image and/or restrict the movement of the pointer to a surface area.
-
-To change the cursor image, set the Cursor or Name parameters to define the new image.  Valid cursor ID's and their
-equivalent names are listed in the documentation for the Cursor field.  If the ObjectID field is set to a valid surface,
-then the cursor image will switch back to the default setting once the pointer moves outside of its region.  If both
-the Cursor and Name parameters are NULL, the cursor image will remain unchanged from its current image.
-
-The SetCursor() function accepts the following flags in the Flags parameter:
-
-<types lookup="CRF"/>
-
-The Owner parameter is used as a locking mechanism to prevent the cursor from being changed whilst it is locked.  We
-recommend that it is set to an object ID such as the program's task ID.  As the owner, the cursor remains under your
-program's control until ~RestoreCursor() is called.
-
--INPUT-
-oid Surface: Refers to the surface object that the pointer should anchor itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
-int(CRF) Flags:  Optional flags that affect the cursor.
-int(PTR) Cursor: The ID of the cursor image that is to be set.
-cstr Name: The name of the cursor image that is to be set (if Cursor is zero).
-oid Owner: The object nominated as the owner of the anchor, and/or owner of the cursor image setting.
-
--ERRORS-
-Okay
-Args
-NoSupport: The pointer cannot be set due to system limitations.
-OutOfRange: The cursor ID is outside of acceptable range.
-AccessObject: Failed to access the internally maintained image object.
-
-******************************************************************************/
-
-ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, OBJECTID OwnerID)
+ERROR gfxApplyStyleGraphics(OBJECTPTR Object, OBJECTID TargetID, CSTRING StyleName, CSTRING StyleType)
 {
    parasol::Log log(__FUNCTION__);
-   objPointer *pointer;
-   LONG flags;
 
-/*
-   if (!OwnerID) {
-      log.warning("An Owner must be provided to this function.");
-      return ERR_Args;
-   }
-*/
-   // Validate the cursor ID
+   if ((!Object) or (!TargetID)) return log.warning(ERR_NullArgs);
 
-   if ((CursorID < 0) or (CursorID >= PTR_END)) return log.warning(ERR_OutOfRange);
+   log.branch("Object: %d, Target: %d, Style: %s, StyleType: %s", Object->UID, TargetID, StyleName, StyleType);
 
-   if (!(pointer = gfxAccessPointer())) {
-      log.warning("Failed to access the mouse pointer.");
-      return ERR_AccessObject;
-   }
-
-   if (Name) log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, Name);
-   else log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, CursorLookup[CursorID].Name);
-
-   // Extract the cursor ID from the cursor name if no ID was given
-
-   if (!CursorID) {
-      if (Name) {
-         for (LONG i=0; CursorLookup[i].Name; i++) {
-            if (!StrMatch(CursorLookup[i].Name, Name)) {
-               CursorID = CursorLookup[i].Value;
-               break;
-            }
-         }
-      }
-      else CursorID = pointer->CursorID;
-   }
-
-   // Return if the cursor is currently pwn3d by someone
-
-   if ((pointer->CursorOwnerID) and (pointer->CursorOwnerID != OwnerID)) {
-      if ((pointer->CursorOwnerID < 0) and (CheckObjectExists(pointer->CursorOwnerID, NULL) != ERR_True)) pointer->CursorOwnerID = NULL;
-      else if ((pointer->MessageQueue < 0) and (CheckMemoryExists(pointer->MessageQueue) != ERR_True)) pointer->CursorOwnerID = NULL;
-      else if (Flags & CRF_BUFFER) {
-         // If the BUFFER option is used, then we can buffer the change so that it
-         // will be activated as soon as the current holder releases the cursor.
-
-         log.extmsg("Request buffered, pointer owned by #%d.", pointer->CursorOwnerID);
-
-         pointer->BufferCursor = CursorID;
-         pointer->BufferOwner  = OwnerID;
-         pointer->BufferFlags  = Flags;
-         pointer->BufferObject = ObjectID;
-         pointer->BufferQueue  = GetResource(RES_MESSAGE_QUEUE);
-         ReleaseObject(pointer);
-         return ERR_Okay;
-      }
-      else {
-         ReleaseObject(pointer);
-         return ERR_LockFailed; // The pointer is locked by someone else
-      }
-   }
-
-   log.trace("Anchor: %d, Owner: %d, Release: $%x, Cursor: %d", ObjectID, OwnerID, Flags, CursorID);
-
-   // If CRF_NOBUTTONS is used, the cursor can only be set if no mouse buttons are held down at the current time.
-
-   if (Flags & CRF_NO_BUTTONS) {
-      if ((pointer->Buttons[0].LastClicked) or (pointer->Buttons[1].LastClicked) or (pointer->Buttons[2].LastClicked)) {
-         ReleaseObject(pointer);
-         return ERR_NothingDone;
-      }
-   }
-
-   // Reset restrictions/anchoring if the correct flags are set, or if the cursor is having a change of ownership.
-
-   if ((Flags & CRF_RESTRICT) or (OwnerID != pointer->CursorOwnerID)) pointer->RestrictID = NULL;
-
-   if (OwnerID IS pointer->BufferOwner) pointer->BufferOwner = NULL;
-
-   pointer->CursorReleaseID = 0;
-   pointer->CursorOwnerID   = 0;
-   pointer->CursorRelease   = NULL;
-   pointer->MessageQueue    = NULL;
-
-   if (CursorID) {
-      if ((CursorID IS pointer->CursorID) and (CursorID != PTR_CUSTOM)) {
-         // Do nothing
-      }
-      else {
-         // Use this routine if our cursor is hardware based
-
-         log.trace("Adjusting hardware/hosted cursor image.");
-
-         #ifdef __xwindows__
-
-            APTR xwin;
-            objSurface *surface;
-            objDisplay *display;
-            Cursor xcursor;
-
-            if ((pointer->SurfaceID) and (!AccessObject(pointer->SurfaceID, 1000, &surface))) {
-               if ((surface->DisplayID) and (!AccessObject(surface->DisplayID, 1000, &display))) {
-                  if ((GetPointer(display, FID_WindowHandle, &xwin) IS ERR_Okay) and (xwin)) {
-                     xcursor = get_x11_cursor(CursorID);
-                     XDefineCursor(XDisplay, (Window)xwin, xcursor);
-                     XFlush(XDisplay);
-                     pointer->CursorID = CursorID;
-                  }
-                  else log.warning("Failed to acquire window handle for surface #%d.", pointer->SurfaceID);
-                  ReleaseObject(display);
-               }
-               else log.warning("Display of surface #%d undefined or inaccessible.", pointer->SurfaceID);
-               ReleaseObject(surface);
-            }
-            else log.warning("Pointer surface undefined or inaccessible.");
-
-         #elif _WIN32
-
-            if (pointer->Head.TaskID IS CurrentTask()->UID) {
-               winSetCursor(GetWinCursor(CursorID));
-               pointer->CursorID = CursorID;
-            }
-            else {
-               struct ptrSetWinCursor set;
-               set.Cursor = CursorID;
-               DelayMsg(MT_PtrSetWinCursor, pointer->Head.UID, &set);
-            }
-
-         #endif
-      }
-
-      if ((ObjectID < 0) and (GetClassID(ObjectID) IS ID_SURFACE) and (!(Flags & CRF_RESTRICT))) {
-         pointer->CursorReleaseID = ObjectID; // Release the cursor image if it goes outside of the given surface object
-      }
-   }
-
-   pointer->CursorOwnerID = OwnerID;
-
-   // Manage button release flag options (useful when the RESTRICT or ANCHOR options are used).
-
-   flags = Flags;
-   if (flags & (CRF_LMB|CRF_MMB|CRF_RMB)) {
-      if (flags & CRF_LMB) {
-         if (pointer->Buttons[0].LastClicked) pointer->CursorRelease |= 0x01;
-         else flags &= ~(CRF_RESTRICT); // The LMB has already been released by the user, so do not allow restrict/anchoring
-      }
-      else if (flags & CRF_RMB) {
-         if (pointer->Buttons[1].LastClicked) pointer->CursorRelease |= 0x02;
-         else flags &= ~(CRF_RESTRICT); // The MMB has already been released by the user, so do not allow restrict/anchoring
-      }
-      else if (flags & CRF_MMB) {
-         if (pointer->Buttons[2].LastClicked) pointer->CursorRelease |= 0x04;
-         else flags &= ~(CRF_RESTRICT); // The MMB has already been released by the user, so do not allow restrict/anchoring
-      }
-   }
-
-   if ((flags & CRF_RESTRICT) and (ObjectID)) {
-      if ((ObjectID < 0) and (GetClassID(ObjectID) IS ID_SURFACE)) { // Must be a public surface object
-         // Restrict the pointer to the specified surface
-         pointer->RestrictID = ObjectID;
-
-         #ifdef __xwindows__
-            // Pointer grabbing has been turned off for X11 because LBreakout2 was not receiving
-            // movement events when run from the desktop.  The reason for this
-            // is that only the desktop (which does the X11 input handling) is allowed
-            // to grab the pointer.
-
-            //DelayMsg(MT_GrabX11Pointer, pointer->Head.UID, NULL);
-         #endif
-      }
-      else log.warning("The pointer may only be restricted to public surfaces.");
-   }
-
-   pointer->MessageQueue = GetResource(RES_MESSAGE_QUEUE);
-
-   ReleaseObject(pointer);
-   return ERR_Okay;
-}
-
-/******************************************************************************
-
--FUNCTION-
-SetCustomCursor: Sets the cursor to a customised bitmap image.
-
-Use the SetCustomCursor() function to change the pointer image and/or anchor the position of the pointer so that it
-cannot move without permission.  The functionality provided is identical to that of the SetCursor() function with some
-minor adjustments to allow custom images to be set.
-
-The Bitmap that is provided should be within the width, height and bits-per-pixel settings that are returned by the
-GetCursorInfo() function.  If the basic settings are outside the allowable parameters, the Bitmap will be trimmed or
-resampled appropriately when the cursor is downloaded to the video card.
-
-It may be possible to speed up the creation of custom cursors by drawing directly to the pointer's internal bitmap
-buffer rather than supplying a fresh bitmap.  To do this, the Bitmap parameter must be NULL and it is necessary to draw
-to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap is always returned as a 32-bit,
-alpha-enabled graphics area.  The following code illustrates this process:
-
-<pre>
-objPointer *pointer;
-objBitmap *bitmap;
-
-if ((pointer = gfxAccessPointer())) {
-   if (!AccessObject(pointer->BitmapID, 3000, &bitmap)) {
-      // Adjust clipping to match the cursor size.
-      buffer->Clip.Right  = CursorWidth;
-      buffer->Clip.Bottom = CursorHeight;
-      if (buffer->Clip.Right > buffer->Width) buffer->Clip.Right = buffer->Width;
-      if (buffer->Clip.Bottom > buffer->Height) buffer->Clip.Bottom = buffer->Height;
-
-      // Draw to the bitmap here.
-      ...
-
-      gfxSetCustomCursor(ObjectID, NULL, NULL, 1, 1, glTaskID, NULL);
-      ReleaseObject(bitmap);
-   }
-   gfxReleasePointer(pointer);
-}
-</pre>
-
--INPUT-
-oid Surface: Refers to the surface object that the pointer should restrict itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
-int(CRF) Flags: Optional flags affecting the cursor are set here.
-obj(Bitmap) Bitmap: The bitmap to set for the mouse cursor.
-int HotX: The horizontal position of the cursor hot-spot.
-int HotY: The vertical position of the cursor hot-spot.
-oid Owner: The object nominated as the owner of the anchor.
-
--ERRORS-
-Okay:
-Args:
-NoSupport:
-AccessObject: Failed to access the internally maintained image object.
-
-******************************************************************************/
-
-ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
-{
-#ifdef __snap__
-   parasol::Log log(__FUNCTION__);
-   objPointer *pointer;
-   objBitmap *buffer;
    ERROR error;
+   if ((error = load_styles())) return error;
 
-   if (Bitmap) log.extmsg("Object: %d, Bitmap: %p, Size: %dx%d, BPP: %d", ObjectID, Bitmap, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel);
-   else log.extmsg("Object: %d, Bitmap Preset", ObjectID);
-
-   if ((pointer = gfxAccessPointer())) {
-      if (!AccessObject(pointer->BitmapID, 0, &buffer)) {
-         if (Bitmap) {
-            // Adjust the clipping area of our custom bitmap to match the incoming dimensions of the new cursor image.
-
-            buffer->Clip.Right = Bitmap->Width;
-            buffer->Clip.Bottom = Bitmap->Height;
-            if (buffer->Clip.Right > buffer->Width) buffer->Clip.Right = buffer->Width;
-            if (buffer->Clip.Bottom > buffer->Height) buffer->Clip.Bottom = buffer->Height;
-
-            if (Bitmap->BitsPerPixel IS 2) {
-               ULONG mask;
-
-               // Monochrome: 0 = mask, 1 = black (fg), 2 = white (bg), 3 = XOR
-
-               if (buffer->Flags & BMF_INVERSEALPHA) mask = PackPixelA(buffer, 0, 0, 0, 255);
-               else mask = PackPixelA(buffer, 0, 0, 0, 0);
-
-               ULONG foreground = PackPixel(buffer, Bitmap->Palette->Col[1].Red, Bitmap->Palette->Col[1].Green, Bitmap->Palette->Col[1].Blue);
-               ULONG background = PackPixel(buffer, Bitmap->Palette->Col[2].Red, Bitmap->Palette->Col[2].Green, Bitmap->Palette->Col[2].Blue);
-               for (LONG y=0; y < Bitmap->Clip.Bottom; y++) {
-                  for (LONG x=0; x < Bitmap->Clip.Right; x++) {
-                     switch (Bitmap->ReadUCPixel(Bitmap, x, y)) {
-                        case 0: buffer->DrawUCPixel(buffer, x, y, mask); break;
-                        case 1: buffer->DrawUCPixel(buffer, x, y, foreground); break;
-                        case 2: buffer->DrawUCPixel(buffer, x, y, background); break;
-                        case 3: buffer->DrawUCPixel(buffer, x, y, foreground); break;
-                     }
-                  }
-               }
-            }
-            else mtCopyArea(Bitmap, buffer, NULL, 0, 0, Bitmap->Width, Bitmap->Height, 0, 0);
-         }
-
-         pointer->Cursors[PTR_CUSTOM].HotX = HotX;
-         pointer->Cursors[PTR_CUSTOM].HotY = HotY;
-         error = gfxSetCursor(ObjectID, Flags, PTR_CUSTOM, NULL, OwnerID);
-         ReleaseObject(buffer);
+   // Try the app's style preference first.
+/*
+   OBJECTPTR script = glAppStyle;
+   if (glAppStyle) {
+      if (!xmlFindTag(xml, xpath, NULL, NULL)) {
+         SetString(script, FID_Procedure, xpath);
+         SetLong(script, FID_Target, TargetID);
+         if (!acActivate(script)) return ERR_Okay;
       }
-      else error = ERR_AccessObject;
-
-      ReleaseObject(pointer);
-      return error;
    }
-   else {
-      log.warning("Failed to access the mouse pointer.");
-      return ERR_AccessObject;
+*/
+   // Now try the desktop preference.
+
+   if (glDesktopStyleScript) {
+      const ScriptArg args[] = {
+         { "Class",     FDF_STRING,   { .Address = StyleName ? (APTR)StyleName : (APTR)Object->Class->ClassName } },
+         { "Object",    FDF_OBJECT,   { .Address = Object } },
+         { "Target",    FDF_OBJECTID, { .Long = TargetID } },
+         { "StyleType", FDF_STRING,   { .Address = (APTR)StyleType } }
+      };
+
+      struct scExec exec = {
+         .Procedure = "applyDecoration",
+         .Args      = args,
+         .TotalArgs = ARRAYSIZE(args)
+      };
+
+      Action(MT_ScExec, glDesktopStyleScript, &exec);
+      GetLong(glDesktopStyleScript, FID_Error, &error);
+      if (!error) return ERR_Okay;
    }
-#else
-   return gfxSetCursor(ObjectID, Flags, PTR_DEFAULT, NULL, OwnerID);
-#endif
-}
 
-/******************************************************************************
+   // Still no luck.  Try the default.
 
--FUNCTION-
-SetCursorPos: Changes the position of the pointer cursor.
+   if (glDefaultStyleScript) {
+      const ScriptArg args[] = {
+         { "Class",   FDF_STRING,   { .Address = StyleName ? (APTR)StyleName : (APTR)Object->Class->ClassName } },
+         { "Object",  FDF_OBJECT,   { .Address = Object } },
+         { "Target",  FDF_OBJECTID, { .Long = TargetID } },
+         { "StyleType", FDF_STRING, { .Address = (APTR)StyleType } }
+      };
 
-Changes the position of the pointer cursor using coordinates relative to the entire display.
+      struct scExec exec = {
+         .Procedure = "applyDecoration",
+         .Args      = args,
+         .TotalArgs = ARRAYSIZE(args)
+      };
 
--INPUT-
-double X: The new horizontal coordinate for the pointer.
-double Y: The new vertical coordinate for the pointer.
-
--ERRORS-
-Okay:
-AccessObject: Failed to access the SystemPointer object.
-
-******************************************************************************/
-
-ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
-{
-   objPointer *pointer;
-
-   struct acMoveToPoint move = { X, Y, 0, MTF_X|MTF_Y };
-   if ((pointer = gfxAccessPointer())) {
-      Action(AC_MoveToPoint, pointer, &move);
-      ReleaseObject(pointer);
+      Action(MT_ScExec, glDefaultStyleScript, &exec);
+      GetLong(glDefaultStyleScript, FID_Error, &error);
+      if (!error) return ERR_Okay;
    }
-   else ActionMsg(AC_MoveToPoint, glPointerID, &move);
 
-   return ERR_Okay;
+   return ERR_NothingDone;
 }
 
 /*****************************************************************************
 
 -FUNCTION-
-SetHostOption: Alter options associated with the host display system.
+ApplyStyleValues: Applies default values to a GUI object before initialisation.
 
-For internal usage only.
+The ApplyStyleValues() function is reserved for the use of GUI classes that need to pre-initialise their objects with
+default values.
+
+Styles are defined in the order of the application's preference, the desktop preference, and then the default if no
+preference has been specified or a failure occurred.
+
+An application can define its preferred style by calling ~SetCurrentStyle() with the path of the XML style
+file.  This function can be called at any time, allowing the style to be changed on the fly.
+
+A desktop can set its preferred style by storing style information at `environment:config/style.xml`.
 
 -INPUT-
-int(HOST) Option: One of HOST_TRAY_ICON, HOST_TASKBAR or HOST_STICK_TO_FRONT.
-large Value: The value to be applied to the option.
+obj Object: The object that will receive the default values.
+cstr Name:  Optional.  Reference to an alternative style to be applied.
 
 -ERRORS-
-Okay
+Okay: Values have been preset successfully.
+-END-
 
 *****************************************************************************/
 
-ERROR gfxSetHostOption(LONG Option, LARGE Value)
-{
-#if defined(_WIN32) || defined(__xwindows__)
-   parasol::Log log(__FUNCTION__);
-
-   switch (Option) {
-      case HOST_TRAY_ICON:
-         glTrayIcon += Value;
-         if (glTrayIcon) glTaskBar = 0;
-         break;
-
-      case HOST_TASKBAR:
-         glTaskBar = Value;
-         if (glTaskBar) glTrayIcon = 0;
-         break;
-
-      case HOST_STICK_TO_FRONT:
-         glStickToFront += Value;
-         break;
-
-      default:
-         log.warning("Invalid option %d, Data " PF64(), Option, Value);
-   }
-#endif
-
-   return ERR_Okay;
-}
-
-/******************************************************************************
-
--FUNCTION-
-UnlockCursor: Undoes an earlier call to LockCursor()
-
-Call this function to undo any earlier calls to LockCursor() and return the mouse pointer to its regular state.
-
--INPUT-
-oid Surface: Refers to the surface object used for calling LockCursor().
-
--ERRORS-
-Okay:
-NullArgs:
-AccessObject: Failed to access the pointer object.
-NotLocked: A lock is not present, or the lock belongs to another surface.
--END-
-
-******************************************************************************/
-
-ERROR gfxUnlockCursor(OBJECTID SurfaceID)
+ERROR gfxApplyStyleValues(OBJECTPTR Object, CSTRING StyleName)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (!SurfaceID) return log.warning(ERR_NullArgs);
+   if (!Object) return log.warning(ERR_NullArgs);
 
-   objPointer *pointer;
-   if ((pointer = gfxAccessPointer())) {
-      if (pointer->AnchorID IS SurfaceID) {
-         pointer->AnchorID = NULL;
-         pointer->AnchorMsgQueue = NULL;
-         ReleaseObject(pointer);
-         return ERR_Okay;
-      }
-      else {
-         ReleaseObject(pointer);
-         return ERR_NotLocked;
-      }
-   }
-   else {
-      log.warning("Failed to access the mouse pointer.");
-      return ERR_AccessObject;
-   }
-}
+   log.branch("#%d, Style: %s", Object->UID, StyleName);
 
-//****************************************************************************
+   ERROR error;
+   if ((error = load_styles())) return error;
+   if (Object->Flags & NF_INITIALISED) return log.warning(ERR_BadState);
+   if (glDefaultStyleScript) apply_style(Object, glDefaultStyleScript, StyleName);
 
-#ifdef __xwindows__
-Cursor create_blank_cursor(void)
-{
-   parasol::Log log(__FUNCTION__);
-   Pixmap data_pixmap, mask_pixmap;
-   XColor black = { 0, 0, 0, 0 };
-   Window rootwindow;
-   Cursor cursor;
-
-   log.function("Creating blank cursor for X11.");
-
-   rootwindow = DefaultRootWindow(XDisplay);
-
-   data_pixmap = XCreatePixmap(XDisplay, rootwindow, 1, 1, 1);
-   mask_pixmap = XCreatePixmap(XDisplay, rootwindow, 1, 1, 1);
-
-   //XSetWindowBackground(XDisplay, data_pixmap, 0);
-   //XSetWindowBackground(XDisplay, mask_pixmap, 0);
-   //XClearArea(XDisplay, data_pixmap, 0, 0, 1, 1, False);
-   //XClearArea(XDisplay, mask_pixmap, 0, 0, 1, 1, False);
-
-   cursor = XCreatePixmapCursor(XDisplay, data_pixmap, mask_pixmap, &black, &black, 0, 0);
-
-   XFreePixmap(XDisplay, data_pixmap); // According to XFree documentation, it is OK to free the pixmaps
-   XFreePixmap(XDisplay, mask_pixmap);
-
-   XSync(XDisplay, False);
-   return cursor;
-}
-#endif
-
-//*****************************************************************************
-
-#ifdef __xwindows__
-
-Cursor get_x11_cursor(LONG CursorID)
-{
-   parasol::Log log(__FUNCTION__);
-
-   for (WORD i=0; i < ARRAYSIZE(XCursors); i++) {
-      if (XCursors[i].CursorID IS CursorID) return XCursors[i].XCursor;
+   if (glAppStyle) {
+      //if (!apply_style(Object, glAppStyle, StyleName)) return ERR_Okay;
    }
 
-   log.warning("Cursor #%d is not a recognised cursor ID.", CursorID);
-   return XCursors[0].XCursor;
-}
-#endif
-
-#ifdef _WIN32
-
-APTR GetWinCursor(LONG CursorID)
-{
-   for (WORD i=0; i < ARRAYSIZE(winCursors); i++) {
-      if (winCursors[i].CursorID IS CursorID) return winCursors[i].WinCursor;
-   }
-
-   parasol::Log log;
-   log.warning("Cursor #%d is not a recognised cursor ID.", CursorID);
-   return winCursors[0].WinCursor;
-}
-#endif
-
-//*****************************************************************************
-
-void update_displayinfo(objDisplay *Self)
-{
-   if (StrMatch("SystemDisplay", GetName(Self)) != ERR_Okay) return;
-
-   glDisplayInfo->DisplayID = 0;
-   get_display_info(Self->Head.UID, glDisplayInfo, sizeof(DISPLAYINFO));
-}
-
-/*****************************************************************************
-** Surface locking routines.  These should only be called on occasions where you need to use the CPU to access graphics
-** memory.  These functions are internal, if the user wants to lock a bitmap surface then the Lock() action must be
-** called on the bitmap.
-**
-** Please note: Regarding SURFACE_READ, using this flag will cause the video content to be copied to the bitmap buffer.
-** If you do not need this overhead because the bitmap content is going to be refreshed, then specify SURFACE_WRITE
-** only.  You will still be able to read the bitmap content with the CPU, it just avoids the copy overhead.
-*/
-
-#ifdef _WIN32
-
-ERROR LockSurface(objBitmap *Bitmap, WORD Access)
-{
-   if (!Bitmap->Data) {
-      parasol::Log log(__FUNCTION__);
-      log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->Head.UID);
-      return ERR_FieldNotSet;
-   }
+   if (glDesktopStyleScript) apply_style(Object, glDesktopStyleScript, StyleName);
 
    return ERR_Okay;
 }
-
-ERROR UnlockSurface(objBitmap *Bitmap)
-{
-   return ERR_Okay;
-}
-
-#elif __xwindows__
-
-ERROR LockSurface(objBitmap *Bitmap, WORD Access)
-{
-   LONG size;
-   WORD alignment;
-
-   if ((Bitmap->Flags & BMF_X11_DGA) and (glDGAAvailable)) {
-      return ERR_Okay;
-   }
-   else if ((Bitmap->x11.drawable) and (Access & SURFACE_READ)) {
-      // If there is an existing readable area, try to reuse it if possible
-      if (Bitmap->x11.readable) {
-         if ((Bitmap->x11.readable->width >= Bitmap->Width) and (Bitmap->x11.readable->height >= Bitmap->Height)) {
-            if (Access & SURFACE_READ) {
-               XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
-                  Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
-                  Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
-                  Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
-            }
-            return ERR_Okay;
-         }
-         else XDestroyImage(Bitmap->x11.readable);
-      }
-
-      // Generate a fresh XImage from the current drawable
-
-      if (Bitmap->LineWidth & 0x0001) alignment = 8;
-      else if (Bitmap->LineWidth & 0x0002) alignment = 16;
-      else alignment = 32;
-
-      if (Bitmap->Type IS BMP_PLANAR) {
-         size = Bitmap->LineWidth * Bitmap->Height * Bitmap->BitsPerPixel;
-      }
-      else size = Bitmap->LineWidth * Bitmap->Height;
-
-      Bitmap->Data = (UBYTE *)malloc(size);
-
-      if ((Bitmap->x11.readable = XCreateImage(XDisplay, CopyFromParent, Bitmap->BitsPerPixel,
-           ZPixmap, 0, (char *)Bitmap->Data, Bitmap->Width, Bitmap->Height, alignment, Bitmap->LineWidth))) {
-         if (Access & SURFACE_READ) {
-            XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
-               Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
-               Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
-               Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
-         }
-         return ERR_Okay;
-      }
-      else return ERR_Failed;
-   }
-   return ERR_Okay;
-}
-
-ERROR UnlockSurface(objBitmap *Bitmap)
-{
-   return ERR_Okay;
-}
-
-#elif _GLES_
-
-ERROR LockSurface(objBitmap *Bitmap, WORD Access)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if (Bitmap->DataFlags & MEM_VIDEO) {
-      // MEM_VIDEO represents the video display in OpenGL.  Read/write CPU access is not available to this area but
-      // we can use glReadPixels() to get a copy of the framebuffer and then write changes back.  Because this is
-      // extremely bad practice (slow), a debug message is printed to warn the developer to use a different code path.
-      //
-      // Practically the only reason why we allow this is for unusual measures like taking screenshots, grabbing the display for debugging, development testing etc.
-
-      log.warning("Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->Head.UID, Bitmap->DataFlags);
-
-      if (!Bitmap->Data) {
-         if (AllocMemory(Bitmap->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Bitmap->Head.MemFlags|Bitmap->DataFlags, &Bitmap->Data, &Bitmap->DataMID) != ERR_Okay) {
-            return log.warning(ERR_AllocMemory);
-         }
-         Bitmap->prvAFlags |= BF_DATA;
-      }
-
-      if (!lock_graphics_active(__func__)) {
-         if (Access & SURFACE_READ) {
-            //glPixelStorei(GL_PACK_ALIGNMENT, 1); Might be required if width is not 32-bit aligned (i.e. 16 bit uneven width?)
-            glReadPixels(0, 0, Bitmap->Width, Bitmap->Height, Bitmap->prvGLPixel, Bitmap->prvGLFormat, Bitmap->Data);
-         }
-
-         if (Access & SURFACE_WRITE) Bitmap->prvWriteBackBuffer = TRUE;
-         else Bitmap->prvWriteBackBuffer = FALSE;
-
-         unlock_graphics();
-      }
-
-      return ERR_Okay;
-   }
-   else if (Bitmap->DataFlags & MEM_TEXTURE) {
-      // Using the CPU on BLIT bitmaps is banned - it is considered to be poor programming.  Instead,
-      // MEM_DATA bitmaps should be used when R/W CPU access is desired to a bitmap.
-
-      return log.warning(ERR_NoSupport);
-   }
-
-   if (!Bitmap->Data) {
-      log.warning("[Bitmap:%d] Bitmap is missing the Data field.  Memory flags: $%.8x", Bitmap->Head.UID, Bitmap->DataFlags);
-      return ERR_FieldNotSet;
-   }
-
-   return ERR_Okay;
-}
-
-ERROR UnlockSurface(objBitmap *Bitmap)
-{
-   if ((Bitmap->DataFlags & MEM_VIDEO) and (Bitmap->prvWriteBackBuffer)) {
-      if (!lock_graphics_active(__func__)) {
-         #ifdef GL_DRAW_PIXELS
-            glDrawPixels(Bitmap->Width, Bitmap->Height, pixel_type, format, Bitmap->Data);
-         #else
-            GLenum glerror;
-            GLuint texture_id;
-            if ((glerror = alloc_texture(Bitmap->Width, Bitmap->Height, &texture_id)) IS GL_NO_ERROR) { // Create a new texture space and bind it.
-               //(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *pixels);
-               glTexImage2D(GL_TEXTURE_2D, 0, Bitmap->prvGLPixel, Bitmap->Width, Bitmap->Height, 0, Bitmap->prvGLPixel, Bitmap->prvGLFormat, Bitmap->Data); // Copy the bitmap content to the texture. (Target, Level, Bitmap, Border)
-               if ((glerror = glGetError()) IS GL_NO_ERROR) {
-                  // Copy graphics to the frame buffer.
-
-                  glClearColor(0, 0, 0, 1.0);
-                  glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-                  glColor4f(1.0f, 1.0f, 1.0f, 1.0f);    // Ensure colour is reset.
-                  glDrawTexiOES(0, 0, 1, Bitmap->Width, Bitmap->Height);
-                  glBindTexture(GL_TEXTURE_2D, 0);
-                  eglSwapBuffers(glEGLDisplay, glEGLSurface);
-               }
-               else log.warning(ERR_OpenGL);
-
-               glDeleteTextures(1, &texture_id);
-            }
-            else log.warning(ERR_OpenGL);
-         #endif
-
-         unlock_graphics();
-      }
-
-      Bitmap->prvWriteBackBuffer = FALSE;
-   }
-
-   return ERR_Okay;
-}
-
-#else
-
-#error Platform not supported.
-
-#define LockSurface(a,b)
-#define UnlockSurface(a)
-
-#endif
-
-/*****************************************************************************
-** Use this function to allocate simple 2D OpenGL textures.  It configures the texture so that it is suitable for basic
-** rendering operations.  Note that the texture will still be bound on returning.
-*/
-
-#ifdef _GLES_
-GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID)
-{
-   GLenum glerror;
-
-   glGenTextures(1, TextureID); // Generate a new texture ID
-   glBindTexture(GL_TEXTURE_2D, TextureID[0]); // Target the new texture bank
-
-   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filter for minification, GL_LINEAR is smoother than GL_NEAREST
-   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filter for magnification
-   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // Texture wrap behaviour
-   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Texture wrap behaviour
-
-   glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
-   if ((glerror = glGetError()) IS GL_NO_ERROR) {
-      GLint crop[4] = { 0, Height, Width, -Height };
-      glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_CROP_RECT_OES, crop); // This is for glDrawTex*OES
-
-      glerror = glGetError();
-      if (glerror != GL_NO_ERROR) log.warning("glTexParameteriv() error: %d", glerror);
-   }
-   else log.warning("glTexEnvf() error: %d", glerror);
-
-   return glerror;
-}
-#endif
 
 /*****************************************************************************
 
@@ -2540,6 +2930,7 @@ int YDest:  The vertical position to copy the area to.
 Okay:
 NullArgs: The DestBitmap argument was not specified.
 Mismatch: The destination bitmap is not a close enough match to the source bitmap in order to perform the blit.
+-END-
 
 *****************************************************************************/
 
@@ -3349,7 +3740,452 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
 /*****************************************************************************
 
 -FUNCTION-
-CopySurface: Copies graphics data from an arbitrary surface to a bitmap.
+CheckIfChild: Checks if a surface is a child of another particular surface.
+
+This function checks if a surface identified by the Child value is the child of the surface identified by the Parent
+value.  ERR_True is returned if the surface is confirmed as being a child of the parent, or if the Child and Parent
+values are equal.  All other return codes indicate false or failure.
+
+-INPUT-
+oid Parent: The surface that is assumed to be the parent.
+oid Child: The child surface to check.
+
+-ERRORS-
+True: The Child surface belongs to the Parent.
+False: The Child surface is not a child of Parent.
+Args: Invalid arguments were specified.
+AccessMemory: Failed to access the internal surface list.
+
+*****************************************************************************/
+
+ERROR gfxCheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
+{
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Parent: %d, Child: %d", ParentID, ChildID);
+
+   if ((!ParentID) or (!ChildID)) return ERR_NullArgs;
+
+   SurfaceControl *ctl;
+   if ((ctl = gfxAccessList(ARF_READ))) {
+      // Find the parent surface, then examine its children to find a match for child ID.
+
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+      LONG i;
+      if ((i = find_surface_index(ctl, ParentID)) != -1) {
+         LONG level = list[i].Level;
+         for (++i; (i < ctl->Total) and (list[i].Level > level); i++) {
+            if (list[i].SurfaceID IS ChildID) {
+               log.trace("Child confirmed.");
+               gfxReleaseList(ARF_READ);
+               return ERR_True;
+            }
+         }
+      }
+
+      gfxReleaseList(ARF_READ);
+      return ERR_False;
+   }
+   else return log.warning(ERR_AccessMemory);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+Compress: Compresses bitmap data to save memory.
+
+A bitmap can be compressed with the Compress() function to save memory when the bitmap is not in use.  This is useful
+if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.
+
+Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap image data will likely
+result in a memory access fault.  The image data will remain invalid until the ~Decompress() function is
+called to restore the bitmap to its original state.
+
+The BMF_COMPRESSED bit will be set in the Flags field after a successful call to this function to indicate that the
+bitmap is compressed.
+
+-INPUT-
+obj(Bitmap) Bitmap: Pointer to the @Bitmap that will be compressed.
+int Level: Level of compression.  Zero uses a default setting (recommended), the maximum is 10.
+
+-ERRORS-
+Okay
+Args
+AllocMemory
+ReallocMemory
+CreateObject: A Compression object could not be created.
+
+*****************************************************************************/
+
+ERROR gfxCompress(objBitmap *Bitmap, LONG Level)
+{
+   return ActionTags(MT_BmpCompress, Bitmap, Level);
+}
+
+/****************************************************************************
+
+-FUNCTION-
+CopySurface: Copies surface graphics data into any bitmap object
+
+This function will copy the graphics data from any surface object into a @Bitmap of your choosing.  This is
+the fastest and most convenient way to get graphics information out of any surface.  As surfaces are buffered, it is
+guaranteed that the result will not be obscured by any overlapping surfaces that are on the display.
+
+In the event that the owner of the surface is drawing to the graphics buffer at the time that you call this function,
+the results could be out of sync.  If this could be a problem, set the BDF_SYNC option in the Flags parameter.  Keep in
+mind that syncing has the negative side effect of having to wait for the other task to complete its draw process, which
+can potentially result in time lags.
+
+-INPUT-
+oid Surface: The ID of the surface object to copy from.
+obj(Bitmap) Bitmap: Must reference a target Bitmap object.
+int(BDF) Flags:  Optional flags.
+int X:      The horizontal source coordinate.
+int Y:      The vertical source coordinate.
+int Width:  The width of the graphic that will be copied.
+int Height: The height of the graphic that will be copied.
+int XDest:  The horizontal target coordinate.
+int YDest:  The vertical target coordinate.
+
+-ERRORS-
+Okay
+NullArgs
+Search: The supplied SurfaceID did not refer to a recognised surface object
+AccessMemory: Failed to access the internal surfacelist memory structure
+
+****************************************************************************/
+
+ERROR gfxCopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, LONG Flags,
+          LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR_NullArgs);
+
+   log.traceBranch("%dx%d,%dx%d TO %dx%d, Flags $%.8x", X, Y, Width, Height, XDest, YDest, Flags);
+
+   SurfaceControl *ctl;
+   if ((ctl = gfxAccessList(ARF_READ))) {
+      BITMAPSURFACE surface;
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+      for (WORD i=0; i < ctl->Total; i++) {
+         if (list[i].SurfaceID IS SurfaceID) {
+            if (X < 0) { XDest -= X; Width  += X; X = 0; }
+            if (Y < 0) { YDest -= Y; Height += Y; Y = 0; }
+            if (X+Width  > list[i].Width)  Width  = list[i].Width-X;
+            if (Y+Height > list[i].Height) Height = list[i].Height-Y;
+
+            // Find the bitmap root
+
+            WORD root = FindBitmapOwner(list, i);
+
+            SurfaceList list_i = list[i];
+            SurfaceList list_root = list[root];
+            gfxReleaseList(ARF_READ);
+
+            if (Flags & BDF_REDRAW) {
+               BYTE state = tlNoDrawing;
+               tlNoDrawing = 0;
+               gfxRedrawSurface(SurfaceID, list_i.Left+X, list_i.Top+Y, list_i.Left+X+Width, list_i.Top+Y+Height, IRF_FORCE_DRAW);
+               tlNoDrawing = state;
+            }
+
+            if ((Flags & (BDF_SYNC|BDF_DITHER)) or (!list_root.DataMID)) {
+               objBitmap *src;
+               if (!AccessObject(list_root.BitmapID, 4000, &src)) {
+                  src->XOffset    = list_i.Left - list_root.Left;
+                  src->YOffset    = list_i.Top - list_root.Top;
+                  src->Clip.Left   = 0;
+                  src->Clip.Top    = 0;
+                  src->Clip.Right  = list_i.Width;
+                  src->Clip.Bottom = list_i.Height;
+
+                  bool composite;
+                  if (list_i.Flags & RNF_COMPOSITE) composite = true;
+                  else composite = false;
+
+                  if (composite) {
+                     gfxCopyArea(src, Bitmap, BAF_BLEND|((Flags & BDF_DITHER) ? BAF_DITHER : 0), X, Y, Width, Height, XDest, YDest);
+                  }
+                  else gfxCopyArea(src, Bitmap, (Flags & BDF_DITHER) ? BAF_DITHER : 0, X, Y, Width, Height, XDest, YDest);
+
+                  ReleaseObject(src);
+                  return ERR_Okay;
+               }
+               else return log.warning(ERR_AccessObject);
+            }
+            else if (!AccessMemory(list_root.DataMID, MEM_READ, 2000, &surface.Data)) {
+               surface.XOffset       = list_i.Left - list_root.Left;
+               surface.YOffset       = list_i.Top - list_root.Top;
+               surface.LineWidth     = list_root.LineWidth;
+               surface.Height        = list_i.Height;
+               surface.BitsPerPixel  = list_root.BitsPerPixel;
+               surface.BytesPerPixel = list_root.BytesPerPixel;
+
+               bool composite;
+               if (list_i.Flags & RNF_COMPOSITE) composite = true;
+               else composite = false;
+
+               if (composite) gfxCopyBitmapSurface(&surface, Bitmap, CSRF_DEFAULT_FORMAT|CSRF_OFFSET|CSRF_ALPHA, X, Y, Width, Height, XDest, YDest);
+               else gfxCopyBitmapSurface(&surface, Bitmap, CSRF_DEFAULT_FORMAT|CSRF_OFFSET, X, Y, Width, Height, XDest, YDest);
+
+               ReleaseMemory(surface.Data);
+               return ERR_Okay;
+            }
+            else return log.warning(ERR_AccessMemory);
+         }
+      }
+
+      gfxReleaseList(ARF_READ);
+      return ERR_Search;
+   }
+   else return log.warning(ERR_AccessMemory);
+}
+
+/****************************************************************************
+
+-FUNCTION-
+ExposeSurface: Exposes the content of a surface to the display.
+
+This expose routine will expose all content within a defined surface area, copying it to the display.  This will
+include all child surfaces that intersect with the region being exposed if you set the EXF_CHILDREN flag.
+
+-INPUT-
+oid Surface: The ID of the surface object that will be exposed.
+int X:       The horizontal coordinate of the area to expose.
+int Y:       The vertical coordinate of the area to expose.
+int Width:   The width of the expose area.
+int Height:  The height of the expose area.
+int(EXF) Flags: Optional flags - EXF_CHILDREN will expose all intersecting child regions.
+
+-ERRORS-
+Okay
+NullArgs
+Search: The SurfaceID does not refer to an existing surface object
+AccessMemory: The internal surfacelist could not be accessed
+
+****************************************************************************/
+
+ERROR gfxExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (tlNoDrawing) return ERR_Okay;
+   if (!SurfaceID) return ERR_NullArgs;
+   if ((Width < 1) or (Height < 1)) return ERR_Okay;
+
+   SurfaceControl *ctl;
+   if (!(ctl = gfxAccessList(ARF_READ))) return log.warning(ERR_AccessMemory);
+
+   LONG total = ctl->Total;
+   SurfaceList list[total];
+   CopyMemory((BYTE *)ctl + ctl->ArrayIndex, list, sizeof(list[0]) * ctl->Total);
+   gfxReleaseList(ARF_READ);
+
+   WORD index;
+   if ((index = find_surface_list(list, total, SurfaceID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
+      log.traceWarning("Surface %d is not in the surfacelist.", SurfaceID);
+      return ERR_Search;
+   }
+
+   return _expose_surface(SurfaceID, list, index, total, X, Y, Width, Height, Flags);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+Decompress: Decompresses a compressed bitmap.
+
+The Decompress() function is used to restore a compressed bitmap to its original state.  If the bitmap is not
+compressed, this function does nothing.
+
+By default the original compression data will be terminated, however it can be retained by setting the RetainData
+argument to TRUE.  Retaining the data will allow it to be decompressed on consecutive occasions.  Because both the raw
+and compressed image data will be held in memory, it is recommended that CompressBitmap is called as soon as possible
+with the Altered argument set to FALSE.  This will remove the raw image data from memory while retaining the original
+compressed data without starting a recompression process.
+
+-INPUT-
+obj(Bitmap) Bitmap: Pointer to the @Bitmap that will be decompressed.
+int RetainData:     Retains the compression data if TRUE.
+
+-ERRORS-
+Okay
+AllocMemory
+
+*****************************************************************************/
+
+ERROR gfxDecompress(objBitmap *Bitmap, LONG RetainData)
+{
+   return ActionTags(MT_BmpDecompress, Bitmap, RetainData);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+DrawLine: Draws a line to a bitmap.
+
+This function will draw a line using a bitmap colour value.  The line will start from the position determined by
+(X, Y) and end at (EndX, EndY) inclusive.  Hardware acceleration will be used to draw the line if available.
+
+The opacity of the line is determined by the value in the Opacity field of the target bitmap.
+
+-INPUT-
+obj(Bitmap) Bitmap: The target bitmap.
+int X: X-axis starting position.
+int Y: Y-axis starting position.
+int XEnd: X-axis end position.
+int YEnd: Y-axis end position.
+uint Colour: The pixel colour for drawing the line.
+
+*****************************************************************************/
+
+void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY, ULONG Colour)
+{
+   RGB8 pixel, rgb;
+   LONG i, dx, dy, l, m, x_inc, y_inc;
+   LONG err_1, dx2, dy2;
+   LONG drawx, drawy, clipleft, clipright, clipbottom, cliptop;
+   ULONG colour;
+
+   if (Bitmap->Opacity < 1) return;
+
+   #ifdef __xwindows__
+      if ((Bitmap->DataFlags & (MEM_VIDEO|MEM_TEXTURE)) and (Bitmap->Opacity >= 255)) {
+         XRectangle rectangles;
+         rectangles.x      = Bitmap->Clip.Left + Bitmap->XOffset;
+         rectangles.y      = Bitmap->Clip.Top + Bitmap->YOffset;
+         rectangles.width  = Bitmap->Clip.Right + Bitmap->XOffset - rectangles.x;
+         rectangles.height = Bitmap->Clip.Bottom + Bitmap->YOffset - rectangles.y;
+         XSetClipRectangles(XDisplay, glClipXGC, 0, 0, &rectangles, 1, YXSorted);
+
+         XSetForeground(XDisplay, glClipXGC, Colour);
+         XDrawLine(XDisplay, Bitmap->x11.drawable, glClipXGC, X + Bitmap->XOffset, Y + Bitmap->YOffset, EndX + Bitmap->XOffset, EndY + Bitmap->YOffset);
+         return;
+      }
+   #endif
+
+   rgb.Red   = UnpackRed(Bitmap, Colour);
+   rgb.Green = UnpackGreen(Bitmap, Colour);
+   rgb.Blue  = UnpackBlue(Bitmap, Colour);
+
+   #ifdef _WIN32
+
+      if ((Bitmap->prvAFlags & BF_WINVIDEO) and (Bitmap->Opacity >= 255)) {
+         winSetClipping(Bitmap->win.Drawable, Bitmap->Clip.Left + Bitmap->XOffset, Bitmap->Clip.Top + Bitmap->YOffset,
+            Bitmap->Clip.Right + Bitmap->XOffset, Bitmap->Clip.Bottom + Bitmap->YOffset);
+         winDrawLine(Bitmap->win.Drawable, X + Bitmap->XOffset, Y + Bitmap->YOffset,
+            EndX + Bitmap->XOffset, EndY + Bitmap->YOffset, &rgb.Red);
+         winSetClipping(Bitmap->win.Drawable, 0, 0, 0, 0);
+
+         return;
+      }
+
+   #endif
+
+   if (LockSurface(Bitmap, SURFACE_READWRITE) != ERR_Okay) return;
+
+   drawx = X + Bitmap->XOffset;
+   drawy = Y + Bitmap->YOffset;
+   dx    = ((EndX + Bitmap->XOffset) - (X + Bitmap->XOffset));
+   dy    = ((EndY + Bitmap->YOffset) - (Y + Bitmap->YOffset));
+   x_inc = (dx < 0) ? -1 : 1;
+   if (dx < 0) l = -dx;
+   else l = dx;
+   y_inc = (dy < 0) ? -1 : 1;
+   if (dy < 0) m = -dy;
+   else m = dy;
+   dx2   = l << 1;
+   dy2   = m << 1;
+
+   cliptop    = Bitmap->Clip.Top    + Bitmap->YOffset;
+   clipbottom = Bitmap->Clip.Bottom + Bitmap->YOffset;
+   clipleft   = Bitmap->Clip.Left   + Bitmap->XOffset;
+   clipright  = Bitmap->Clip.Right  + Bitmap->XOffset;
+
+   if (Bitmap->Opacity < 255) {
+      // Translucent routine
+
+      if ((l >= m)) {
+         err_1 = dy2 - l;
+         for (i = 0; i < l; i++) {
+            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
+               Bitmap->ReadUCRPixel(Bitmap, drawx, drawy, &pixel);
+               pixel.Red   = rgb.Red   + (((pixel.Red   - rgb.Red)   * (255 - Bitmap->Opacity))>>8);
+               pixel.Green = rgb.Green + (((pixel.Green - rgb.Green) * (255 - Bitmap->Opacity))>>8);
+               pixel.Blue  = rgb.Blue  + (((pixel.Blue  - rgb.Blue)  * (255 - Bitmap->Opacity))>>8);
+               pixel.Alpha = 255;
+               Bitmap->DrawUCRPixel(Bitmap, drawx, drawy, &pixel);
+            }
+            if (err_1 > 0) { drawy += y_inc; err_1 -= dx2; }
+            err_1 += dy2;
+            drawx += x_inc;
+         }
+      }
+      else {
+         err_1 = dx2 - m;
+         for (i = 0; i < m; i++) {
+            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
+               Bitmap->ReadUCRPixel(Bitmap, drawx, drawy, &pixel);
+               pixel.Red   = rgb.Red   + (((pixel.Red   - rgb.Red)   * (255 - Bitmap->Opacity))>>8);
+               pixel.Green = rgb.Green + (((pixel.Green - rgb.Green) * (255 - Bitmap->Opacity))>>8);
+               pixel.Blue  = rgb.Blue  + (((pixel.Blue  - rgb.Blue)  * (255 - Bitmap->Opacity))>>8);
+               pixel.Alpha = 255;
+               Bitmap->DrawUCRPixel(Bitmap, drawx, drawy, &pixel);
+            }
+            if (err_1 > 0) { drawx += x_inc; err_1 -= dy2; }
+            err_1 += dx2;
+            drawy += y_inc;
+         }
+      }
+
+      if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
+         Bitmap->ReadUCRPixel(Bitmap, drawx, drawy, &pixel);
+         pixel.Red   = rgb.Red   + (((pixel.Red   - rgb.Red) * (255 - Bitmap->Opacity))>>8);
+         pixel.Green = rgb.Green + (((pixel.Green - rgb.Green) * (255 - Bitmap->Opacity))>>8);
+         pixel.Blue  = rgb.Blue  + (((pixel.Blue  - rgb.Blue) * (255 - Bitmap->Opacity))>>8);
+         pixel.Alpha = 255;
+         Bitmap->DrawUCRPixel(Bitmap, drawx, drawy, &pixel);
+      }
+   }
+   else {
+      colour = Colour;
+
+      if (l >= m) {
+         err_1 = dy2 - l;
+         for (i = 0; i < l; i++) {
+            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
+               Bitmap->DrawUCPixel(Bitmap, drawx, drawy, colour);
+            }
+            if (err_1 > 0) { drawy += y_inc; err_1 -= dx2; }
+            err_1 += dy2;
+            drawx += x_inc;
+         }
+      }
+      else {
+         err_1 = dx2 - m;
+         for (i = 0; i < m; i++) {
+            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
+               Bitmap->DrawUCPixel(Bitmap, drawx, drawy, colour);
+            }
+            if (err_1 > 0) { drawx += x_inc; err_1 -= dy2; }
+            err_1 += dx2;
+            drawy += y_inc;
+         }
+      }
+
+      if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
+         Bitmap->DrawUCPixel(Bitmap, drawx, drawy, colour);
+      }
+   }
+
+   UnlockSurface(Bitmap);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+CopyBitmapSurface: Copies graphics data from an arbitrary surface to a bitmap.
 
 This function will copy data from a described surface to a destination bitmap object.  You are required to provide the
 function with a full description of the source in a BitmapSurface structure.
@@ -3409,7 +4245,7 @@ static ULONG read_surface32(BITMAPSURFACE *Surface, WORD X, WORD Y)
    return ((ULONG *)((UBYTE *)Surface->Data + (Surface->LineWidth * Y) + (X<<2)))[0];
 }
 
-ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
+ERROR gfxCopyBitmapSurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
           LONG Flags, LONG X, LONG Y, LONG Width, LONG Height,
           LONG XDest, LONG YDest)
 {
@@ -3787,64 +4623,2307 @@ ERROR gfxCopySurface(BITMAPSURFACE *Surface, objBitmap *Bitmap,
 /*****************************************************************************
 
 -FUNCTION-
-Compress: Compresses bitmap data to save memory.
+DrawRectangle: Draws rectangles, both filled and unfilled.
 
-A bitmap can be compressed with the Compress() function to save memory when the bitmap is not in use.  This is useful
-if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.
-
-Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap image data will likely
-result in a memory access fault.  The image data will remain invalid until the ~Decompress() function is
-called to restore the bitmap to its original state.
-
-The BMF_COMPRESSED bit will be set in the Flags field after a successful call to this function to indicate that the
-bitmap is compressed.
+This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position
+(X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines `BAF_FILL` then
+the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by
+the pixel value in the Colour argument.  Blending is not enabled unless the `BAF_BLEND` flag is defined and an alpha
+value is present in the Colour.
 
 -INPUT-
-obj(Bitmap) Bitmap: Pointer to the @Bitmap that will be compressed.
-int Level: Level of compression.  Zero uses a default setting (recommended), the maximum is 10.
-
--ERRORS-
-Okay
-Args
-AllocMemory
-ReallocMemory
-CreateObject: A Compression object could not be created.
+obj(Bitmap) Bitmap: Pointer to the target @Bitmap.
+int X:       The left-most coordinate of the rectangle.
+int Y:       The top-most coordinate of the rectangle.
+int Width:   The width of the rectangle.
+int Height:  The height of the rectangle.
+uint Colour: The colour value to use for the rectangle.
+int(BAF) Flags: Use BAF_FILL to fill the rectangle.  Use of BAF_BLEND will enable blending.
 
 *****************************************************************************/
 
-ERROR gfxCompress(objBitmap *Bitmap, LONG Level)
+void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)
 {
-   return ActionTags(MT_BmpCompress, Bitmap, Level);
+   parasol::Log log(__FUNCTION__);
+   RGB8 pixel;
+   UBYTE *data;
+   UWORD *word;
+   ULONG *longdata;
+   LONG xend, x, EX, EY, i;
+
+   if (!Bitmap) return;
+
+   // If we are not going to fill the rectangle, use this routine to draw an outline.
+
+   if ((!(Flags & BAF_FILL)) and (Width > 1) and (Height > 1)) {
+      EX = X + Width - 1;
+      EY = Y + Height - 1;
+      if (X >= Bitmap->Clip.Left) gfxDrawRectangle(Bitmap, X, Y, 1, Height, Colour, Flags|BAF_FILL); // Left
+      if (Y >= Bitmap->Clip.Top)  gfxDrawRectangle(Bitmap, X, Y, Width, 1, Colour, Flags|BAF_FILL); // Top
+      if (Y + Height <= Bitmap->Clip.Bottom) gfxDrawRectangle(Bitmap, X, EY, Width, 1, Colour, Flags|BAF_FILL); // Bottom
+      if (X + Width <= Bitmap->Clip.Right)   gfxDrawRectangle(Bitmap, X+Width-1, Y, 1, Height, Colour, Flags|BAF_FILL);
+      return;
+   }
+
+   if (!(Bitmap->Head.Flags & NF_INITIALISED)) { log.warning(ERR_NotInitialised); return; }
+
+   X += Bitmap->XOffset;
+   Y += Bitmap->YOffset;
+
+   if (X >= Bitmap->Clip.Right + Bitmap->XOffset) return;
+   if (Y >= Bitmap->Clip.Bottom + Bitmap->YOffset) return;
+   if (X + Width <= Bitmap->Clip.Left + Bitmap->XOffset) return;
+   if (Y + Height <= Bitmap->Clip.Top + Bitmap->YOffset) return;
+
+   if (X < Bitmap->Clip.Left + Bitmap->XOffset) {
+      Width -= Bitmap->Clip.Left + Bitmap->XOffset - X;
+      X = Bitmap->Clip.Left + Bitmap->XOffset;
+   }
+
+   if (Y < Bitmap->Clip.Top + Bitmap->YOffset) {
+      Height -= Bitmap->Clip.Top + Bitmap->YOffset - Y;
+      Y = Bitmap->Clip.Top + Bitmap->YOffset;
+   }
+
+   if ((X + Width) >= Bitmap->Clip.Right + Bitmap->XOffset)   Width = Bitmap->Clip.Right + Bitmap->XOffset - X;
+   if ((Y + Height) >= Bitmap->Clip.Bottom + Bitmap->YOffset) Height = Bitmap->Clip.Bottom + Bitmap->YOffset - Y;
+
+   UWORD red   = UnpackRed(Bitmap, Colour);
+   UWORD green = UnpackGreen(Bitmap, Colour);
+   UWORD blue  = UnpackBlue(Bitmap, Colour);
+
+   // Translucent rectangle support
+
+   UBYTE opacity = 255;
+   if (Flags & BAF_BLEND) {
+      opacity = UnpackAlpha(Bitmap, Colour);
+   }
+   else opacity = Bitmap->Opacity; // Pulling the opacity from the bitmap is deprecated, used BAF_BLEND instead.
+
+   if (opacity < 255) {
+      if (!LockSurface(Bitmap, SURFACE_READWRITE)) {
+         UWORD wordpixel;
+
+         if (Bitmap->BitsPerPixel IS 32) {
+            ULONG cmb_alpha;
+            longdata = (ULONG *)(Bitmap->Data + (Bitmap->LineWidth * Y));
+            xend = X + Width;
+            cmb_alpha = 255 << Bitmap->prvColourFormat.AlphaPos;
+            while (Height > 0) {
+               i = X;
+               while (i < xend) {
+                  UBYTE sr = longdata[i]>>Bitmap->prvColourFormat.RedPos;
+                  UBYTE sg = longdata[i]>>Bitmap->prvColourFormat.GreenPos;
+                  UBYTE sb = longdata[i]>>Bitmap->prvColourFormat.BluePos;
+
+                  longdata[i] = (((((red   - sr)*opacity)>>8)+sr) << Bitmap->prvColourFormat.RedPos) |
+                                (((((green - sg)*opacity)>>8)+sg) << Bitmap->prvColourFormat.GreenPos) |
+                                (((((blue  - sb)*opacity)>>8)+sb) << Bitmap->prvColourFormat.BluePos) |
+                                cmb_alpha;
+                  i++;
+               }
+               longdata = (ULONG *)(((BYTE *)longdata) + Bitmap->LineWidth);
+               Height--;
+            }
+         }
+         else if (Bitmap->BitsPerPixel IS 24) {
+            data = Bitmap->Data + (Bitmap->LineWidth * Y);
+            X    = X * Bitmap->BytesPerPixel;
+            xend = X + (Width * Bitmap->BytesPerPixel);
+            while (Height > 0) {
+               i = X;
+               while (i < xend) {
+                  data[i] = (((blue - data[i])*opacity)>>8)+data[i]; i++;
+                  data[i] = (((green - data[i])*opacity)>>8)+data[i]; i++;
+                  data[i] = (((red - data[i])*opacity)>>8)+data[i]; i++;
+               }
+               data += Bitmap->LineWidth;
+               Height--;
+            }
+         }
+         else if (Bitmap->BitsPerPixel IS 16) {
+            word = (UWORD *)(Bitmap->Data + (Bitmap->LineWidth * Y));
+            xend = X + Width;
+            while (Height > 0) {
+               i = X;
+               while (i < xend) {
+                  UBYTE sr = (word[i] & 0x001f)<<3;
+                  UBYTE sg = (word[i] & 0x07e0)>>3;
+                  UBYTE sb = (word[i] & 0xf800)>>8;
+                  sr = (((red   - sr)*opacity)>>8) + sr;
+                  sg = (((green - sg)*opacity)>>8) + sg;
+                  sb = (((blue  - sb)*opacity)>>8) + sb;
+                  wordpixel =  (sb>>3) & 0x001f;
+                  wordpixel |= (sg<<3) & 0x07e0;
+                  wordpixel |= (sr<<8) & 0xf800;
+                  word[i] = wordpixel;
+                  i++;
+               }
+               word = (UWORD *)(((UBYTE *)word) + Bitmap->LineWidth);
+               Height--;
+            }
+         }
+         else if (Bitmap->BitsPerPixel IS 15) {
+            word = (UWORD *)(Bitmap->Data + (Bitmap->LineWidth * Y));
+            xend = X + Width;
+            while (Height > 0) {
+               i = X;
+               while (i < xend) {
+                  UBYTE sr = (word[i] & 0x001f)<<3;
+                  UBYTE sg = (word[i] & 0x03e0)>>2;
+                  UBYTE sb = (word[i] & 0x7c00)>>7;
+                  sr = (((red   - sr)*opacity)>>8) + sr;
+                  sg = (((green - sg)*opacity)>>8) + sg;
+                  sb = (((blue  - sb)*opacity)>>8) + sb;
+                  wordpixel =  (sb>>3) & 0x001f;
+                  wordpixel |= (sg<<2) & 0x03e0;
+                  wordpixel |= (sr<<7) & 0x7c00;
+                  word[i] = wordpixel;
+                  i++;
+               }
+               word = (UWORD *)(((UBYTE *)word) + Bitmap->LineWidth);
+               Height--;
+            }
+         }
+         else {
+            while (Height > 0) {
+               for (i=X; i < X + Width; i++) {
+                  Bitmap->ReadUCRPixel(Bitmap, i, Y, &pixel);
+                  pixel.Red   = (((red - pixel.Red)*opacity)>>8) + pixel.Red;
+                  pixel.Green = (((green - pixel.Green)*opacity)>>8) + pixel.Green;
+                  pixel.Blue  = (((blue - pixel.Blue)*opacity)>>8) + pixel.Blue;
+                  pixel.Alpha = 255;
+                  Bitmap->DrawUCRPixel(Bitmap, i, Y, &pixel);
+               }
+               Y++;
+               Height--;
+            }
+         }
+
+         UnlockSurface(Bitmap);
+      }
+
+      return;
+   }
+
+   // Standard rectangle (no translucency) video support
+
+   #ifdef _GLES_
+      if (Bitmap->DataFlags & MEM_VIDEO) {
+      log.warning("TODO: Draw rectangles to opengl");
+         glClearColor(0.5, 0.5, 0.5, 1.0);
+         glClear(GL_COLOR_BUFFER_BIT);
+         return;
+      }
+   #endif
+
+   #ifdef _WIN32
+      if (Bitmap->win.Drawable) {
+         winDrawRectangle(Bitmap->win.Drawable, X, Y, Width, Height, red, green, blue);
+         return;
+      }
+   #endif
+
+   #ifdef __xwindows__
+      if (Bitmap->DataFlags & (MEM_VIDEO|MEM_TEXTURE)) {
+         XSetForeground(XDisplay, glXGC, Colour);
+         XFillRectangle(XDisplay, Bitmap->x11.drawable, glXGC, X, Y, Width, Height);
+         return;
+      }
+   #endif
+
+   // Standard rectangle data support
+
+   if (!LockSurface(Bitmap, SURFACE_WRITE)) {
+      if (!Bitmap->Data) {
+         UnlockSurface(Bitmap);
+         return;
+      }
+
+      if (Bitmap->Type IS BMP_CHUNKY) {
+         if (Bitmap->BitsPerPixel IS 32) {
+            longdata = (ULONG *)(Bitmap->Data + (Bitmap->LineWidth * Y));
+            while (Height > 0) {
+               for (x=X; x < (X+Width); x++) longdata[x] = Colour;
+               longdata = (ULONG *)(((UBYTE *)longdata) + Bitmap->LineWidth);
+               Height--;
+            }
+         }
+         else if (Bitmap->BitsPerPixel IS 24) {
+            data = Bitmap->Data + (Bitmap->LineWidth * Y);
+            X = X + X + X;
+            xend = X + Width + Width + Width;
+            while (Height > 0) {
+               for (x=X; x < xend;) {
+                  data[x++] = blue; data[x++] = green; data[x++] = red;
+               }
+               data += Bitmap->LineWidth;
+               Height--;
+            }
+         }
+         else if ((Bitmap->BitsPerPixel IS 16) or (Bitmap->BitsPerPixel IS 15)) {
+            word = (UWORD *)(Bitmap->Data + (Bitmap->LineWidth * Y));
+            xend = X + Width;
+            while (Height > 0) {
+               for (x=X; x < xend; x++) word[x] = (UWORD)Colour;
+               word = (UWORD *)(((BYTE *)word) + Bitmap->LineWidth);
+               Height--;
+            }
+         }
+         else if (Bitmap->BitsPerPixel IS 8) {
+            data = Bitmap->Data + (Bitmap->LineWidth * Y);
+            xend = X + Width;
+            while (Height > 0) {
+               for (x=X; x < xend;) data[x++] = Colour;
+               data += Bitmap->LineWidth;
+               Height--;
+            }
+         }
+         else while (Height > 0) {
+            for (i=X; i < X + Width; i++) Bitmap->DrawUCPixel(Bitmap, i, Y, Colour);
+            Y++;
+            Height--;
+         }
+      }
+      else while (Height > 0) {
+         for (i=X; i < X + Width; i++) Bitmap->DrawUCPixel(Bitmap, i, Y, Colour);
+         Y++;
+         Height--;
+      }
+
+      UnlockSurface(Bitmap);
+   }
+
+   return;
 }
 
 /*****************************************************************************
 
 -FUNCTION-
-Decompress: Decompresses a compressed bitmap.
+DrawRGBPixel: Draws a 24 bit pixel to a bitmap.
 
-The Decompress() function is used to restore a compressed bitmap to its original state.  If the bitmap is not
-compressed, this function does nothing.
-
-By default the original compression data will be terminated, however it can be retained by setting the RetainData
-argument to TRUE.  Retaining the data will allow it to be decompressed on consecutive occasions.  Because both the raw
-and compressed image data will be held in memory, it is recommended that CompressBitmap is called as soon as possible
-with the Altered argument set to FALSE.  This will remove the raw image data from memory while retaining the original
-compressed data without starting a recompression process.
+This function draws an RGB colour to the (X, Y) position of a target bitmap.  The function will check the given
+coordinates to ensure that the pixel is inside the bitmap's clipping area.
 
 -INPUT-
-obj(Bitmap) Bitmap: Pointer to the @Bitmap that will be decompressed.
-int RetainData:     Retains the compression data if TRUE.
-
--ERRORS-
-Okay
-AllocMemory
+obj(Bitmap) Bitmap: The target bitmap object.
+int X: Horizontal coordinate of the pixel.
+int Y: Vertical coordinate of the pixel.
+struct(*RGB8) RGB: The colour to be drawn, in RGB format.
 
 *****************************************************************************/
 
-ERROR gfxDecompress(objBitmap *Bitmap, LONG RetainData)
+void gfxDrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *Pixel)
 {
-   return ActionTags(MT_BmpDecompress, Bitmap, RetainData);
+   if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
+   if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
+   Bitmap->DrawUCRPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Pixel);
 }
+
+/*****************************************************************************
+
+-FUNCTION-
+DrawPixel: Draws a single pixel to a bitmap.
+
+This function draws a pixel to the coordinates X, Y on a bitmap with a colour determined by the Colour index.
+This function will check the given coordinates to make sure that the pixel is inside the bitmap's clipping area.
+
+-INPUT-
+obj(Bitmap) Bitmap: The target bitmap object.
+int X: The horizontal coordinate of the pixel.
+int Y: The vertical coordinate of the pixel.
+uint Colour: The colour value to use for the pixel.
+
+*****************************************************************************/
+
+void gfxDrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
+{
+   if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
+   if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
+   Bitmap->DrawUCPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Colour);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+GetDisplayInfo: Retrieves display information.
+
+The GetDisplayInfo() function returns information about a display, which includes information such as its size and bit
+depth.  If the system is running on a hosted display (e.g. Windows or X11) then GetDisplayInfo() can also be used to
+retrieve information about the default monitor by using a Display of zero.
+
+The resulting `DISPLAYINFO` structure values remain good until the next call to this function, at which point they will
+be overwritten.
+
+-INPUT-
+oid Display: Object ID of the display to be analysed.
+&struct(*DisplayInfo) Info: This reference will receive a pointer to a DISPLAYINFO structure.
+
+-ERRORS-
+Okay:
+NullArgs:
+AllocMemory:
+
+*****************************************************************************/
+
+ERROR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
+{
+   static THREADVAR DISPLAYINFO *t_info = NULL;
+
+   if (!Result) return ERR_NullArgs;
+
+   if (!t_info) {
+      // Each thread gets an allocation that can't be resource tracked, so MEM_HIDDEN is used in this case.
+      // Note that this could conceivably cause memory leaks if temporary threads were to use this function.
+      if (AllocMemory(sizeof(DISPLAYINFO), MEM_NO_CLEAR|MEM_HIDDEN, &t_info, NULL)) {
+         return ERR_AllocMemory;
+      }
+   }
+
+   ERROR error;
+   if (!(error = get_display_info(DisplayID, t_info, sizeof(DISPLAYINFO)))) {
+      *Result = t_info;
+      return ERR_Okay;
+   }
+   else return error;
+}
+
+/******************************************************************************
+
+-FUNCTION-
+GetCursorInfo: Retrieves graphics information from the active mouse cursor.
+
+The GetCursorInfo() function is used to retrieve useful information on the graphics structure of the mouse cursor.  It
+will return the maximum possible dimensions for custom cursor graphics and indicates the optimal bits-per-pixel setting
+for the hardware cursor.
+
+If there is no cursor (e.g. this is likely on touch-screen devices) then all field values will be set to zero.
+
+Note: If the hardware cursor is monochrome, the bits-per-pixel setting will be set to 2 on return.  This does not
+indicate a 4 colour cursor image; rather colour 0 is the mask, 1 is the foreground colour (black), 2 is the background
+colour (white) and 3 is an XOR pixel.  When creating the bitmap, always set the palette to the RGB values that are
+wanted.  The mask colour for the bitmap must refer to colour index 0.
+
+-INPUT-
+struct(*CursorInfo) Info: Pointer to a CursorInfo structure.
+structsize Size: The byte-size of the Info structure.
+
+-ERRORS-
+Okay:
+NullArgs:
+NoSupport: The device does not support a cursor (common for touch screen displays).
+
+******************************************************************************/
+
+ERROR gfxGetCursorInfo(CursorInfo *Info, LONG Size)
+{
+   if (!Info) return ERR_NullArgs;
+
+#ifdef __ANDROID__
+   // TODO: Some Android devices probably do support a mouse or similar input device.
+   ClearMemory(Info, sizeof(CursorInfo));
+   return ERR_NoSupport;
+#else
+   Info->Width  = 32;
+   Info->Height = 32;
+   Info->BitsPerPixel = 1;
+   Info->Flags = 0;
+   return ERR_Okay;
+#endif
+}
+
+/******************************************************************************
+
+-FUNCTION-
+GetCursorPos: Returns the coordinates of the UI pointer.
+
+This function is used to retrieve the current coordinates of the user interface pointer.  If the device is touch-screen
+based then the coordinates will reflect the last position that a touch event occurred.
+
+-INPUT-
+&double X: 32-bit variable that will store the pointer's horizontal coordinate.
+&double Y: 32-bit variable that will store the pointer's vertical coordinate.
+
+-ERRORS-
+Okay
+AccessObject: Failed to access the SystemPointer object.
+
+******************************************************************************/
+
+ERROR gfxGetCursorPos(DOUBLE *X, DOUBLE *Y)
+{
+   objPointer *pointer;
+
+   if ((pointer = gfxAccessPointer())) {
+      if (X) *X = pointer->X;
+      if (Y) *Y = pointer->Y;
+      ReleaseObject(pointer);
+      return ERR_Okay;
+   }
+   else {
+      parasol::Log log(__FUNCTION__);
+      log.warning("Failed to grab the mouse pointer.");
+      return ERR_Failed;
+   }
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+GetDisplayType: Returns the type of display supported.
+
+This function returns the type of display supported by the loaded Display module.  Current return values are:
+
+<types lookup="DT"/>
+
+-RESULT-
+int(DT): Returns an integer indicating the display type.
+
+*****************************************************************************/
+
+LONG gfxGetDisplayType(void)
+{
+#ifdef _WIN32
+   return DT_WINDOWS;
+#elif __xwindows__
+   return DT_X11;
+#elif _GLES_
+   return DT_GLES;
+#else
+   return DT_NATIVE;
+#endif
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+GetModalSurface: Returns the current modal surface (if defined) for a task.
+
+This function returns the modal surface that is set for a specific task.  If no modal surface has been assigned to the
+task, zero is returned.
+
+-INPUT-
+oid Task: The task from which to retrieve the modal surface ID.  If zero, the modal surface for the current task is returned.
+
+-RESULT-
+oid: The modal surface for the indicated task is returned.
+
+*****************************************************************************/
+
+OBJECTID gfxGetModalSurface(OBJECTID TaskID)
+{
+   if (!TaskID) TaskID = CurrentTaskID();
+
+   if (!SysLock(PL_PROCESSES, 3000)) {
+      OBJECTID result;
+      TaskList *tasks;
+      LONG maxtasks = GetResource(RES_MAX_PROCESSES);
+      if ((tasks = (TaskList *)GetResourcePtr(RES_TASK_LIST))) {
+         LONG i;
+         for (i=0; i < maxtasks; i++) {
+            if (tasks[i].TaskID IS TaskID) break;
+         }
+
+         if (i < maxtasks) {
+            result = tasks[i].ModalID;
+
+            // Safety check: Confirm that the object still exists
+            if ((result) and (CheckObjectExists(result, NULL) != ERR_True)) {
+               tasks[i].ModalID = 0;
+               result = 0;
+            }
+         }
+         else result = 0;
+      }
+      else result = 0;
+
+      SysUnlock(PL_PROCESSES);
+      return result;
+   }
+   else return 0;
+}
+
+/******************************************************************************
+
+-FUNCTION-
+GetRelativeCursorPos: Returns the coordinates of the pointer cursor, relative to a surface object.
+
+This function is used to retrieve the current coordinates of the pointer cursor. The coordinates are relative to the
+surface object that is specified in the Surface argument.
+
+The X and Y parameters will not be set if a failure occurs.
+
+-INPUT-
+oid Surface: Unique ID of the surface that the coordinates need to be relative to.
+&double X: 32-bit variable that will store the pointer's horizontal coordinate.
+&double Y: 32-bit variable that will store the pointer's vertical coordinate.
+
+-ERRORS-
+Okay:
+AccessObject: Failed to access the SystemPointer object.
+
+******************************************************************************/
+
+ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
+{
+   parasol::Log log(__FUNCTION__);
+   objPointer *pointer;
+   LONG absx, absy;
+
+   if (GetSurfaceAbs(SurfaceID, &absx, &absy, 0, 0) != ERR_Okay) {
+      log.warning("Failed to get info for surface #%d.", SurfaceID);
+      return ERR_Failed;
+   }
+
+   if ((pointer = gfxAccessPointer())) {
+      if (X) *X = pointer->X - absx;
+      if (Y) *Y = pointer->Y - absy;
+
+      ReleaseObject(pointer);
+      return ERR_Okay;
+   }
+   else {
+      log.warning("Failed to grab the mouse pointer.");
+      return ERR_AccessObject;
+   }
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+GetSurfaceCoords: Returns the dimensions of a surface.
+
+GetSurfaceCoords() retrieves the dimensions that describe a surface object's area as X, Y, Width and Height.  This is
+the fastest way to retrieve surface dimensions when access to the object structure is not already available.
+
+-INPUT-
+oid Surface: The surface to query.  If zero, the top-level display is queried.
+&int X: The X coordinate of the surface is returned here.
+&int Y: The Y coordinate of the surface is returned here.
+&int AbsX: The absolute X coordinate of the surface is returned here.
+&int AbsY: The absolute Y coordinate of the surface is returned here.
+&int Width: The width of the surface is returned here.
+&int Height: The height of the surface is returned here.
+
+-ERRORS-
+Okay
+Search: The supplied SurfaceID did not refer to a recognised surface object.
+AccessMemory: Failed to access the internal surfacelist memory structure.
+
+*****************************************************************************/
+
+ERROR gfxGetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!SurfaceID) {
+      DISPLAYINFO *display;
+      if (!gfxGetDisplayInfo(0, &display)) {
+         if (X) *X = 0;
+         if (Y) *Y = 0;
+         if (AbsX)   *AbsX = 0;
+         if (AbsY)   *AbsY = 0;
+         if (Width)  *Width  = display->Width;
+         if (Height) *Height = display->Height;
+         return ERR_Okay;
+      }
+      else return ERR_Failed;
+   }
+
+   SurfaceControl *ctl;
+   WORD i;
+
+   if ((ctl = gfxAccessList(ARF_READ))) {
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+      if ((i = find_surface_index(ctl, SurfaceID)) IS -1) {
+         gfxReleaseList(ARF_READ);
+         return ERR_Search;
+      }
+
+      if (X)      *X = list[i].X;
+      if (Y)      *Y = list[i].Y;
+      if (Width)  *Width  = list[i].Width;
+      if (Height) *Height = list[i].Height;
+      if (AbsX)   *AbsX   = list[i].Left;
+      if (AbsY)   *AbsY   = list[i].Top;
+
+     gfxReleaseList(ARF_READ);
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_AccessMemory);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+GetSurfaceFlags: Retrieves the Flags field from a surface.
+
+This function returns the current Flags field from a surface.  It provides the same result as reading the field
+directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a
+read operation is undesirable.
+
+For information on the available flags, please refer to the Flags field of the @Surface class.
+
+-INPUT-
+oid Surface: The surface to query.  If zero, the top-level surface is queried.
+&int Flags: The flags value is returned here.
+
+-ERRORS-
+Okay
+NullArgs
+AccessMemory
+
+*****************************************************************************/
+
+ERROR gfxGetSurfaceFlags(OBJECTID SurfaceID, LONG *Flags)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (Flags) *Flags = 0;
+   else return log.warning(ERR_NullArgs);
+
+   if (!SurfaceID) return log.warning(ERR_NullArgs);
+
+   SurfaceControl *ctl;
+   if ((ctl = gfxAccessList(ARF_READ))) {
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+
+      LONG i;
+      if ((i = find_surface_index(ctl, SurfaceID)) IS -1) {
+         gfxReleaseList(ARF_READ);
+         return ERR_Search;
+      }
+
+      *Flags = list[i].Flags;
+
+      gfxReleaseList(ARF_READ);
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_AccessMemory);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+GetSurfaceInfo: Retrieves display information for any surface object without having to access it directly.
+
+GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the
+AccessObject() function.  The resulting structure values are good only up until the next call to this function,
+at which point those values will be overwritten.
+
+-INPUT-
+oid Surface: The unique ID of a surface to query.  If zero, the root surface is returned.
+&struct(SurfaceInfo) Info: This parameter will receive a SurfaceInfo pointer that describes the Surface object.
+
+-ERRORS-
+Okay:
+Args:
+Search: The supplied SurfaceID did not refer to a recognised surface object.
+AccessMemory: Failed to access the internal surfacelist memory structure.
+
+*****************************************************************************/
+
+ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
+{
+   parasol::Log log(__FUNCTION__);
+   static THREADVAR SURFACEINFO info;
+
+   // Note that a SurfaceID of zero is fine (returns the root surface).
+
+   if (!Info) return log.warning(ERR_NullArgs);
+
+   SurfaceControl *ctl;
+   if ((ctl = gfxAccessList(ARF_READ))) {
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+      WORD i, root;
+      if (!SurfaceID) {
+         i = 0;
+         root = 0;
+      }
+      else {
+         if ((i = find_surface_index(ctl, SurfaceID)) IS -1) {
+            gfxReleaseList(ARF_READ);
+            return ERR_Search;
+         }
+         root = FindBitmapOwner(list, i);
+      }
+
+      info.ParentID  = list[i].ParentID;
+      info.BitmapID  = list[i].BitmapID;
+      info.DisplayID = list[i].DisplayID;
+      info.DataMID   = list[root].DataMID;
+      info.Flags     = list[i].Flags;
+      info.X         = list[i].X;
+      info.Y         = list[i].Y;
+      info.Width     = list[i].Width;
+      info.Height    = list[i].Height;
+      info.AbsX      = list[i].Left;
+      info.AbsY      = list[i].Top;
+      info.Level     = list[i].Level;
+      info.BytesPerPixel = list[root].BytesPerPixel;
+      info.BitsPerPixel  = list[root].BitsPerPixel;
+      info.LineWidth     = list[root].LineWidth;
+      *Info = &info;
+
+      gfxReleaseList(ARF_READ);
+      return ERR_Okay;
+   }
+   else {
+      *Info = NULL;
+      return log.warning(ERR_AccessMemory);
+   }
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+GetUserFocus: Returns the ID of the surface that currently has the user's focus.
+
+This function returns the unique ID of the surface that has the user's focus.
+
+-RESULT-
+oid: Returns the ID of the surface object that has the user focus, or zero on failure.
+
+*****************************************************************************/
+
+OBJECTID gfxGetUserFocus(void)
+{
+   OBJECTID *focuslist, objectid;
+
+   if (!AccessMemory(RPM_FocusList, MEM_READ, 1000, &focuslist)) {
+      objectid = focuslist[0];
+      ReleaseMemory(focuslist);
+      return objectid;
+   }
+   else return NULL;
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+GetVisibleArea: Returns the visible region of a surface.
+
+The GetVisibleArea() function returns the visible area of a surface, which is based on its position within its parent
+surfaces. The resulting coordinates are relative to point 0,0 of the queried surface. If the surface is not obscured,
+then the resulting coordinates will be (0,0),(Width,Height).
+
+-INPUT-
+oid Surface: The surface to query.  If zero, the top-level display will be queried.
+&int X: The X coordinate of the visible area.
+&int Y: The Y coordinate of the visible area.
+&int AbsX: The absolute X coordinate of the visible area.
+&int AbsY: The absolute Y coordinate of the visible area.
+&int Width: The visible width of the surface.
+&int Height: The visible height of the surface.
+
+-ERRORS-
+Okay
+Search: The supplied SurfaceID did not refer to a recognised surface object.
+AccessMemory: Failed to access the internal surfacelist memory structure.
+
+*****************************************************************************/
+
+ERROR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!SurfaceID) {
+      DISPLAYINFO *display;
+      if (!gfxGetDisplayInfo(0, &display)) {
+         if (X) *X = 0;
+         if (Y) *Y = 0;
+         if (Width)  *Width = display->Width;
+         if (Height) *Height = display->Height;
+         if (AbsX)   *AbsX = 0;
+         if (AbsY)   *AbsY = 0;
+         return ERR_Okay;
+      }
+      else return ERR_Failed;
+   }
+
+   SurfaceControl *ctl;
+   if ((ctl = gfxAccessList(ARF_READ))) {
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+
+      WORD i;
+      if ((i = find_surface_index(ctl, SurfaceID)) IS -1) {
+         gfxReleaseList(ARF_READ);
+         return ERR_Search;
+      }
+
+      ClipRectangle clip = {
+         .Left   = list[i].Left,
+         .Right  = list[i].Right,
+         .Bottom = list[i].Bottom,
+         .Top    = list[i].Top
+      };
+      restrict_region_to_parents(list, i, &clip, FALSE);
+
+      if (X)      *X      = clip.Left - list[i].Left;
+      if (Y)      *Y      = clip.Top - list[i].Top;
+      if (Width)  *Width  = clip.Right - clip.Left;
+      if (Height) *Height = clip.Bottom - clip.Top;
+      if (AbsX)   *AbsX   = clip.Left;
+      if (AbsY)   *AbsY   = clip.Top;
+
+      gfxReleaseList(ARF_READ);
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_AccessMemory);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+LockBitmap: Returns a bitmap that represents the video area covered by the surface object.
+
+Use the LockBitmap() function to gain direct access to the bitmap information of a surface object.
+Because the layering buffer will be inaccessible to the UI whilst you retain the lock, you must keep your access time
+to an absolute minimum or desktop performance may suffer.
+
+Repeated calls to this function will nest.  To release a surface bitmap, call the ~UnlockBitmap() function.
+
+-INPUT-
+oid Surface:         Object ID of the surface object that you want to lock.
+&obj(Bitmap) Bitmap: The resulting bitmap will be returned in this parameter.
+&int(LVF) Info:      Special flags may be returned in this parameter.  If LVF_EXPOSE_CHANGES is returned, any changes must be exposed in order for them to be displayed to the user.
+
+-ERRORS-
+Okay
+Args
+
+*****************************************************************************/
+
+ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
+{
+   parasol::Log log(__FUNCTION__);
+#if 0
+   // This technique that we're using to acquire the bitmap is designed to prevent deadlocking.
+   //
+   // COMMENTED OUT: May be causing problems with X11?
+
+   LONG i;
+
+   if (Info) *Info = 0;
+
+   if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR_NullArgs);
+
+   *Bitmap = 0;
+
+   objSurface *surface;
+   if (!AccessObject(SurfaceID, 5000, &surface)) {
+      objBitmap *bitmap;
+      if (AccessObject(surface->BufferID, 5000, &bitmap) != ERR_Okay) {
+         ReleaseObject(surface);
+         return log.warning(ERR_AccessObject);
+      }
+
+      ReleaseObject(surface);
+
+      SurfaceControl *ctl;
+      if ((ctl = gfxAccessList(ARF_READ))) {
+         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+
+         WORD i;
+         if ((i = find_surface_index(ctl, SurfaceID)) IS -1) {
+            ReleaseObject(bitmap);
+            gfxReleaseList(ARF_READ);
+            return ERR_Search;
+         }
+
+         LONG root = FindBitmapOwner(list, i);
+
+         bitmap->XOffset     = list[i].Left - list[root].Left;
+         bitmap->YOffset     = list[i].Top - list[root].Top;
+         bitmap->Clip.Left   = 0;
+         bitmap->Clip.Top    = 0;
+         bitmap->Clip.Right  = list[i].Width;
+         bitmap->Clip.Bottom = list[i].Height;
+
+         if (Info) {
+            // The developer will have to send an expose signal - unless the exposure can be gained for 'free'
+            // (possible if the Draw action has been called on the Surface object).
+
+            if (tlFreeExpose IS list[i].BitmapID);
+            else *Info |= LVF_EXPOSE_CHANGES;
+         }
+
+         gfxReleaseList(ARF_READ);
+
+         if (bitmap->Clip.Right + bitmap->XOffset > bitmap->Width){
+            bitmap->Clip.Right = bitmap->Width - bitmap->XOffset;
+            if (bitmap->Clip.Right < 0) {
+               ReleaseObject(bitmap);
+               return ERR_Failed;
+            }
+         }
+
+         if (bitmap->Clip.Bottom + bitmap->YOffset > bitmap->Height) {
+            bitmap->Clip.Bottom = bitmap->Height - bitmap->YOffset;
+            if (bitmap->ClipBottom < 0) {
+               ReleaseObject(bitmap);
+               return ERR_Failed;
+            }
+         }
+
+         *Bitmap = bitmap;
+         return ERR_Okay;
+      }
+      else {
+         ReleaseObject(bitmap);
+         return log.warning(ERR_AccessMemory);
+      }
+   }
+   else return log.warning(ERR_AccessObject);
+
+#else
+
+   if (Info) *Info = NULL;
+
+   if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR_NullArgs);
+
+   SurfaceControl *ctl;
+   if ((ctl = gfxAccessList(ARF_READ))) {
+      WORD i;
+      if ((i = find_surface_index(ctl, SurfaceID)) IS -1) {
+         gfxReleaseList(ARF_READ);
+         return ERR_Search;
+      }
+
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+      LONG root = FindBitmapOwner(list, i);
+
+      SurfaceList list_root = list[root];
+      SurfaceList list_zero = list[0];
+      OBJECTID bitmap_id = list[i].BitmapID;
+
+      ClipRectangle expose = {
+         .Left   = list_root.Left,
+         .Right  = list_root.Right,
+         .Bottom = list_root.Bottom,
+         .Top    = list_root.Top
+      };
+
+      if (restrict_region_to_parents(list, i, &expose, TRUE) IS -1) {
+         // The surface is not within a visible area of the available bitmap space
+         gfxReleaseList(ARF_READ);
+         return ERR_OutOfBounds;
+      }
+
+      gfxReleaseList(ARF_READ);
+
+      if (!list_root.BitmapID) return log.warning(ERR_Failed);
+
+      // Gain access to the bitmap buffer and set the clipping and offsets to the correct values.
+
+      objBitmap *bmp;
+      if (!AccessObject(list_root.BitmapID, 5000, &bmp)) {
+         bmp->XOffset = expose.Left - list_root.Left; // The offset is the position of the surface within the root bitmap
+         bmp->YOffset = expose.Top - list_root.Top;
+
+         expose.Left   -= list_zero.Left; // This adjustment is necessary for displays on hosted platforms (win32, X11)
+         expose.Top    -= list_zero.Top;
+         expose.Right  -= list_zero.Left;
+         expose.Bottom -= list_zero.Top;
+
+         bmp->Clip.Left   = expose.Left   - bmp->XOffset - (list_root.Left - list_zero.Left);
+         bmp->Clip.Top    = expose.Top    - bmp->YOffset - (list_root.Top  - list_zero.Top);
+         bmp->Clip.Right  = expose.Right  - bmp->XOffset - (list_root.Left - list_zero.Left);
+         bmp->Clip.Bottom = expose.Bottom - bmp->YOffset - (list_root.Top  - list_zero.Top);
+
+         if (Info) {
+            // The developer will have to send an expose signal - unless the exposure can be gained for 'free'
+            // (possible if the Draw action has been called on the Surface object).
+
+            if (tlFreeExpose IS bitmap_id);
+            else *Info |= LVF_EXPOSE_CHANGES;
+         }
+
+         *Bitmap = bmp;
+         return ERR_Okay;
+      }
+      else return log.warning(ERR_AccessObject);
+   }
+   else return log.warning(ERR_AccessMemory);
+
+#endif
+}
+
+/******************************************************************************
+
+-FUNCTION-
+LockCursor: Anchors the cursor so that it cannot move without explicit movement signals.
+
+The LockCursor() function will lock the current pointer position and pass UserMovement signals to the surface
+referenced in the Surface parameter.  The pointer will not move unless the ~SetCursorPos() function is called.
+The anchor is granted on a time-limited basis.  It is necessary to reissue the anchor every time that a UserMovement
+signal is intercepted.  Failure to reissue the anchor will return the pointer to its normal state, typically within 200
+microseconds.
+
+The anchor can be released at any time by calling the ~UnlockCursor() function.
+
+-INPUT-
+oid Surface: Refers to the surface object that the pointer should send movement signals to.
+
+-ERRORS-
+Okay
+NullArgs
+NoSupport: The pointer cannot be locked due to system limitations.
+AccessObject: Failed to access the pointer object.
+
+******************************************************************************/
+
+ERROR gfxLockCursor(OBJECTID SurfaceID)
+{
+#ifdef __native__
+   parasol::Log log(__FUNCTION__);
+   objPointer *pointer;
+
+   if (!SurfaceID) return log.warning(ERR_NullArgs);
+
+   if ((pointer = gfxAccessPointer())) {
+      // Return if the cursor is currently locked by someone else
+
+      if ((pointer->AnchorID) and (pointer->AnchorID != SurfaceID)) {
+         if (CheckObjectExists(pointer->AnchorID, NULL) != ERR_True);
+         else if ((pointer->AnchorMsgQueue < 0) and (CheckMemoryExists(pointer->AnchorMsgQueue) != ERR_True));
+         else {
+            ReleaseObject(pointer);
+            return ERR_LockFailed; // The pointer is locked by someone else
+         }
+      }
+
+      pointer->AnchorID       = SurfaceID;
+      pointer->AnchorMsgQueue = GetResource(RES_MESSAGE_QUEUE);
+      pointer->AnchorTime     = PreciseTime() / 1000LL;
+
+      ReleaseObject(pointer);
+      return ERR_Okay;
+   }
+   else {
+      log.warning("Failed to access the mouse pointer.");
+      return ERR_AccessObject;
+   }
+#else
+   return ERR_NoSupport;
+#endif
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+ReleaseList: Private. Releases access to the internal surfacelist array.
+
+-INPUT-
+int(ARF) Flags: Use the same flags as in in the previous call to gfxAccessList().
+
+*****************************************************************************/
+
+void gfxReleaseList(LONG Flags)
+{
+   if (tlListCount > 0) {
+      tlListCount--;
+      if (!tlListCount) {
+         ReleaseMemory(tlSurfaceList);
+         tlSurfaceList = NULL;
+      }
+   }
+   else {
+      parasol::Log log(__FUNCTION__);
+      log.warning("drwReleaseList() called without an existing lock.");
+   }
+}
+
+/******************************************************************************
+
+-FUNCTION-
+RestoreCursor: Returns the pointer image to its original state.
+
+Use the RestoreCursor() function to undo an earlier call to ~SetCursor().  It is necessary to provide the same OwnerID
+that was used in the original call to ~SetCursor().
+
+To release ownership of the cursor without changing the current cursor image, use a Cursor setting of PTR_NOCHANGE.
+
+-INPUT-
+int(PTR) Cursor: The cursor image that the pointer will be restored to (0 for the default).
+oid Owner: The ownership ID that was given in the initial call to SetCursor().
+
+-ERRORS-
+Okay
+Args
+-END-
+
+******************************************************************************/
+
+ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
+{
+   parasol::Log log(__FUNCTION__);
+   objPointer *pointer;
+
+   if ((pointer = gfxAccessPointer())) {
+/*
+      OBJECTPTR caller;
+      caller = CurrentContext();
+      log.function("Cursor: %d, Owner: %d, Current-Owner: %d (Caller: %d / Class %d)", Cursor, OwnerID, pointer->CursorOwnerID, caller->UID, caller->ClassID);
+*/
+      if ((!OwnerID) or (OwnerID IS pointer->CursorOwnerID)) {
+         // Restore the pointer to the given cursor image
+         if (!OwnerID) gfxSetCursor(NULL, CRF_RESTRICT, Cursor, NULL, pointer->CursorOwnerID);
+         else gfxSetCursor(NULL, CRF_RESTRICT, Cursor, NULL, OwnerID);
+
+         pointer->CursorOwnerID   = NULL;
+         pointer->CursorRelease   = NULL;
+         pointer->CursorReleaseID = NULL;
+      }
+
+      // If a cursor change has been buffered, enable it
+
+      if (pointer->BufferOwner) {
+         if (OwnerID != pointer->BufferOwner) {
+            gfxSetCursor(pointer->BufferObject, pointer->BufferFlags, pointer->BufferCursor, NULL, pointer->BufferOwner);
+         }
+         else pointer->BufferOwner = NULL; // Owner and Buffer are identical, so clear due to restored pointer
+      }
+
+      ReleaseObject(pointer);
+      return ERR_Okay;
+   }
+   else {
+      log.warning("Failed to access the mouse pointer.");
+      return ERR_AccessObject;
+   }
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+ScanDisplayModes: Private. Returns formatted resolution information from the display database.
+
+For internal use only.
+
+<pre>
+DISPLAYINFO info;
+ClearMemory(&info, sizeof(info));
+while (!scrScanDisplayModes("depth=32", &info, sizeof(info))) {
+   ...
+}
+</pre>
+
+-INPUT-
+cstr Filter: The filter to apply to the resolution database.  May be NULL for no filter.
+struct(*DisplayInfo) Info: A pointer to a screenINFO structure must be referenced here.  The structure will be filled with information when the function returns.
+structsize Size: Size of the screenINFO structure.
+
+-ERRORS-
+Okay: The resolution information was retrieved.
+Args:
+NoSupport: Native graphics system not available (e.g. hosted on Windows or X11).
+Search: There are no more display modes to return that are a match for the Filter.
+
+*****************************************************************************/
+
+ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
+{
+#ifdef __snap__
+
+   GA_modeInfo modeinfo;
+   UWORD *modes;
+   LONG colours, bytes, i, j, minrefresh, maxrefresh, refresh, display;
+   WORD f_depth, c_depth; // f = filter, c = condition (0 = equal; -1 <, -2 <=; +1 >, +2 >=)
+   WORD f_bytes, c_bytes;
+   WORD f_width, c_width, f_height, c_height;
+   WORD f_refresh, c_refresh;
+   WORD f_minrefresh, c_minrefresh;
+   WORD f_maxrefresh, c_maxrefresh;
+   BYTE interlace, matched;
+
+   if ((!Info) or (Size < sizeof(DisplayInfoV3))) return ERR_Args;
+
+   // Reset all filters
+
+   f_depth   = c_depth   = 0;
+   f_bytes   = c_bytes   = 0;
+   f_width   = c_width   = 0;
+   f_height  = c_height  = 0;
+   f_refresh = c_refresh = 0;
+   f_minrefresh = c_minrefresh = 0;
+   f_maxrefresh = c_maxrefresh = 0;
+
+   if (Filter) {
+      while (*Filter) {
+         while ((*Filter) and (*Filter <= 0x20)) Filter++;
+         while (*Filter IS ',') Filter++;
+         while ((*Filter) and (*Filter <= 0x20)) Filter++;
+
+         if (!StrCompare("depth", Filter, 5, 0))   extract_value(Filter, &f_depth, &c_depth);
+         if (!StrCompare("bytes", Filter, 5, 0))   extract_value(Filter, &f_bytes, &c_bytes);
+         if (!StrCompare("width", Filter, 5, 0))   extract_value(Filter, &f_width, &c_width);
+         if (!StrCompare("height", Filter, 6, 0))  extract_value(Filter, &f_height, &c_height);
+         if (!StrCompare("refresh", Filter, 7, 0)) extract_value(Filter, &f_refresh, &c_refresh);
+         if (!StrCompare("minrefresh", Filter, 10, 0)) extract_value(Filter, &f_minrefresh, &c_minrefresh);
+         if (!StrCompare("maxrefresh", Filter, 10, 0)) extract_value(Filter, &f_maxrefresh, &c_maxrefresh);
+
+         while ((*Filter) and (*Filter != ',')) Filter++;
+      }
+   }
+
+   modes = glSNAPDevice->AvailableModes;
+   display = glSNAP->Init.GetDisplayOutput() & gaOUTPUT_SELECTMASK;
+   for (i=Info->Index; modes[i] != 0xffff; i++) {
+      modeinfo.dwSize = sizeof(modeinfo);
+      if (glSNAP->Init.GetVideoModeInfoExt(modes[i], &modeinfo, display, glSNAP->Init.GetActiveHead())) continue;
+
+      if (modeinfo.AttributesExt & gaIsPanningMode) continue;
+      if (modeinfo.Attributes & gaIsTextMode) continue;
+      if (modeinfo.BitsPerPixel < 8) continue;
+
+      if (modeinfo.BitsPerPixel <= 8) bytes = 1;
+      else if (modeinfo.BitsPerPixel <= 16) bytes = 2;
+      else if (modeinfo.BitsPerPixel <= 24) bytes = 3;
+      else bytes = 4;
+
+      if (modeinfo.BitsPerPixel <= 24) colours = 1<<modeinfo.BitsPerPixel;
+      else colours = 1<<24;
+
+      minrefresh = 0x7fffffff;
+      maxrefresh = 0;
+      for (j=0; modeinfo.RefreshRateList[j] != -1; j++) {
+         if ((refresh = modeinfo.RefreshRateList[j]) < 0) refresh = -refresh;
+         if (refresh > maxrefresh) maxrefresh = refresh;
+         if (refresh < minrefresh) minrefresh = refresh;
+      }
+
+      if (minrefresh IS 0x7fffffff) minrefresh = 0;
+
+      refresh = modeinfo.DefaultRefreshRate;
+      if (refresh < 0) {
+         refresh = -refresh;
+         interlace = TRUE;
+      }
+      else interlace = TRUE;
+
+      // Check if this mode meets the filters, if so then reduce the index
+
+      if (Filter) {
+         matched = TRUE;
+         if ((f_depth)   and (!compare_values(f_depth,   c_depth,   modeinfo.BitsPerPixel))) matched = FALSE;
+         if ((f_bytes)   and (!compare_values(f_bytes,   c_bytes,   bytes))) matched = FALSE;
+         if ((f_width)   and (!compare_values(f_width,   c_width,   modeinfo.XResolution)))  matched = FALSE;
+         if ((f_height)  and (!compare_values(f_height,  c_height,  modeinfo.YResolution)))  matched = FALSE;
+         if ((f_refresh) and (!compare_values(f_refresh, c_refresh, modeinfo.BitsPerPixel))) matched = FALSE;
+         if ((f_minrefresh) and (!compare_values(f_minrefresh, c_minrefresh, minrefresh)))   matched = FALSE;
+         if ((f_maxrefresh) and (!compare_values(f_maxrefresh, c_maxrefresh, maxrefresh)))   matched = FALSE;
+
+         if (matched IS FALSE) continue;
+      }
+
+      // Return information for this mode
+
+      Info->Width         = modeinfo.XResolution;
+      Info->Height        = modeinfo.YResolution;
+      Info->Depth         = modeinfo.BitsPerPixel;
+      Info->BytesPerPixel = bytes;
+      Info->AmtColours    = colours;
+      Info->MinRefresh    = minrefresh;
+      Info->MaxRefresh    = maxrefresh;
+      Info->RefreshRate   = refresh;
+      Info->Index         = i + 1;
+      return ERR_Okay;
+   }
+
+   return ERR_Search;
+
+#else
+
+   return ERR_NoSupport;
+
+#endif
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+SetCurrentStyle: Sets the current style script for the application.
+
+This function changes the current style script for the application.  A path to the location of the script is required.
+
+The script does not need to provide definitions for all GUI components.  Any component not represented in the script
+will receive the default style settings.
+
+The style definition does not affect default style values (i.e. fonts, colours and interface).  Style values can be set
+by accessing the glStyle XML object directly and updating the values (do this as early as possible in the startup
+process).
+
+-INPUT-
+cstr Path: Location of the style script.
+
+-ERRORS-
+Okay:
+NullArgs:
+EmptyString: The Path string is empty.
+CreateObject: Failed to load the script.
+-END-
+
+*****************************************************************************/
+
+ERROR gfxSetCurrentStyle(CSTRING Path)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!Path) return log.warning(ERR_NullArgs);
+   if (!Path[0]) return log.warning(ERR_EmptyString);
+
+   if (glAppStyle) { acFree(glAppStyle); glAppStyle = NULL; }
+
+   parasol::SwitchContext context(glModule);
+   ERROR error = CreateObject(ID_SCRIPT, 0, &glAppStyle, FID_Path|TSTR, Path, TAGEND);
+   if (error) return ERR_CreateObject;
+   return ERR_Okay;
+}
+
+/******************************************************************************
+
+-FUNCTION-
+SetCursor: Sets the cursor image and can anchor the pointer to any surface.
+
+Use the SetCursor() function to change the pointer image and/or restrict the movement of the pointer to a surface area.
+
+To change the cursor image, set the Cursor or Name parameters to define the new image.  Valid cursor ID's and their
+equivalent names are listed in the documentation for the Cursor field.  If the ObjectID field is set to a valid surface,
+then the cursor image will switch back to the default setting once the pointer moves outside of its region.  If both
+the Cursor and Name parameters are NULL, the cursor image will remain unchanged from its current image.
+
+The SetCursor() function accepts the following flags in the Flags parameter:
+
+<types lookup="CRF"/>
+
+The Owner parameter is used as a locking mechanism to prevent the cursor from being changed whilst it is locked.  We
+recommend that it is set to an object ID such as the program's task ID.  As the owner, the cursor remains under your
+program's control until ~RestoreCursor() is called.
+
+-INPUT-
+oid Surface: Refers to the surface object that the pointer should anchor itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
+int(CRF) Flags:  Optional flags that affect the cursor.
+int(PTR) Cursor: The ID of the cursor image that is to be set.
+cstr Name: The name of the cursor image that is to be set (if Cursor is zero).
+oid Owner: The object nominated as the owner of the anchor, and/or owner of the cursor image setting.
+
+-ERRORS-
+Okay
+Args
+NoSupport: The pointer cannot be set due to system limitations.
+OutOfRange: The cursor ID is outside of acceptable range.
+AccessObject: Failed to access the internally maintained image object.
+
+******************************************************************************/
+
+ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, OBJECTID OwnerID)
+{
+   parasol::Log log(__FUNCTION__);
+   objPointer *pointer;
+   LONG flags;
+
+/*
+   if (!OwnerID) {
+      log.warning("An Owner must be provided to this function.");
+      return ERR_Args;
+   }
+*/
+   // Validate the cursor ID
+
+   if ((CursorID < 0) or (CursorID >= PTR_END)) return log.warning(ERR_OutOfRange);
+
+   if (!(pointer = gfxAccessPointer())) {
+      log.warning("Failed to access the mouse pointer.");
+      return ERR_AccessObject;
+   }
+
+   if (Name) log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, Name);
+   else log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, CursorLookup[CursorID].Name);
+
+   // Extract the cursor ID from the cursor name if no ID was given
+
+   if (!CursorID) {
+      if (Name) {
+         for (LONG i=0; CursorLookup[i].Name; i++) {
+            if (!StrMatch(CursorLookup[i].Name, Name)) {
+               CursorID = CursorLookup[i].Value;
+               break;
+            }
+         }
+      }
+      else CursorID = pointer->CursorID;
+   }
+
+   // Return if the cursor is currently pwn3d by someone
+
+   if ((pointer->CursorOwnerID) and (pointer->CursorOwnerID != OwnerID)) {
+      if ((pointer->CursorOwnerID < 0) and (CheckObjectExists(pointer->CursorOwnerID, NULL) != ERR_True)) pointer->CursorOwnerID = NULL;
+      else if ((pointer->MessageQueue < 0) and (CheckMemoryExists(pointer->MessageQueue) != ERR_True)) pointer->CursorOwnerID = NULL;
+      else if (Flags & CRF_BUFFER) {
+         // If the BUFFER option is used, then we can buffer the change so that it
+         // will be activated as soon as the current holder releases the cursor.
+
+         log.extmsg("Request buffered, pointer owned by #%d.", pointer->CursorOwnerID);
+
+         pointer->BufferCursor = CursorID;
+         pointer->BufferOwner  = OwnerID;
+         pointer->BufferFlags  = Flags;
+         pointer->BufferObject = ObjectID;
+         pointer->BufferQueue  = GetResource(RES_MESSAGE_QUEUE);
+         ReleaseObject(pointer);
+         return ERR_Okay;
+      }
+      else {
+         ReleaseObject(pointer);
+         return ERR_LockFailed; // The pointer is locked by someone else
+      }
+   }
+
+   log.trace("Anchor: %d, Owner: %d, Release: $%x, Cursor: %d", ObjectID, OwnerID, Flags, CursorID);
+
+   // If CRF_NOBUTTONS is used, the cursor can only be set if no mouse buttons are held down at the current time.
+
+   if (Flags & CRF_NO_BUTTONS) {
+      if ((pointer->Buttons[0].LastClicked) or (pointer->Buttons[1].LastClicked) or (pointer->Buttons[2].LastClicked)) {
+         ReleaseObject(pointer);
+         return ERR_NothingDone;
+      }
+   }
+
+   // Reset restrictions/anchoring if the correct flags are set, or if the cursor is having a change of ownership.
+
+   if ((Flags & CRF_RESTRICT) or (OwnerID != pointer->CursorOwnerID)) pointer->RestrictID = NULL;
+
+   if (OwnerID IS pointer->BufferOwner) pointer->BufferOwner = NULL;
+
+   pointer->CursorReleaseID = 0;
+   pointer->CursorOwnerID   = 0;
+   pointer->CursorRelease   = NULL;
+   pointer->MessageQueue    = NULL;
+
+   if (CursorID) {
+      if ((CursorID IS pointer->CursorID) and (CursorID != PTR_CUSTOM)) {
+         // Do nothing
+      }
+      else {
+         // Use this routine if our cursor is hardware based
+
+         log.trace("Adjusting hardware/hosted cursor image.");
+
+         #ifdef __xwindows__
+
+            APTR xwin;
+            objSurface *surface;
+            objDisplay *display;
+            Cursor xcursor;
+
+            if ((pointer->SurfaceID) and (!AccessObject(pointer->SurfaceID, 1000, &surface))) {
+               if ((surface->DisplayID) and (!AccessObject(surface->DisplayID, 1000, &display))) {
+                  if ((GetPointer(display, FID_WindowHandle, &xwin) IS ERR_Okay) and (xwin)) {
+                     xcursor = get_x11_cursor(CursorID);
+                     XDefineCursor(XDisplay, (Window)xwin, xcursor);
+                     XFlush(XDisplay);
+                     pointer->CursorID = CursorID;
+                  }
+                  else log.warning("Failed to acquire window handle for surface #%d.", pointer->SurfaceID);
+                  ReleaseObject(display);
+               }
+               else log.warning("Display of surface #%d undefined or inaccessible.", pointer->SurfaceID);
+               ReleaseObject(surface);
+            }
+            else log.warning("Pointer surface undefined or inaccessible.");
+
+         #elif _WIN32
+
+            if (pointer->Head.TaskID IS CurrentTask()->UID) {
+               winSetCursor(GetWinCursor(CursorID));
+               pointer->CursorID = CursorID;
+            }
+            else {
+               struct ptrSetWinCursor set;
+               set.Cursor = CursorID;
+               DelayMsg(MT_PtrSetWinCursor, pointer->Head.UID, &set);
+            }
+
+         #endif
+      }
+
+      if ((ObjectID < 0) and (GetClassID(ObjectID) IS ID_SURFACE) and (!(Flags & CRF_RESTRICT))) {
+         pointer->CursorReleaseID = ObjectID; // Release the cursor image if it goes outside of the given surface object
+      }
+   }
+
+   pointer->CursorOwnerID = OwnerID;
+
+   // Manage button release flag options (useful when the RESTRICT or ANCHOR options are used).
+
+   flags = Flags;
+   if (flags & (CRF_LMB|CRF_MMB|CRF_RMB)) {
+      if (flags & CRF_LMB) {
+         if (pointer->Buttons[0].LastClicked) pointer->CursorRelease |= 0x01;
+         else flags &= ~(CRF_RESTRICT); // The LMB has already been released by the user, so do not allow restrict/anchoring
+      }
+      else if (flags & CRF_RMB) {
+         if (pointer->Buttons[1].LastClicked) pointer->CursorRelease |= 0x02;
+         else flags &= ~(CRF_RESTRICT); // The MMB has already been released by the user, so do not allow restrict/anchoring
+      }
+      else if (flags & CRF_MMB) {
+         if (pointer->Buttons[2].LastClicked) pointer->CursorRelease |= 0x04;
+         else flags &= ~(CRF_RESTRICT); // The MMB has already been released by the user, so do not allow restrict/anchoring
+      }
+   }
+
+   if ((flags & CRF_RESTRICT) and (ObjectID)) {
+      if ((ObjectID < 0) and (GetClassID(ObjectID) IS ID_SURFACE)) { // Must be a public surface object
+         // Restrict the pointer to the specified surface
+         pointer->RestrictID = ObjectID;
+
+         #ifdef __xwindows__
+            // Pointer grabbing has been turned off for X11 because LBreakout2 was not receiving
+            // movement events when run from the desktop.  The reason for this
+            // is that only the desktop (which does the X11 input handling) is allowed
+            // to grab the pointer.
+
+            //DelayMsg(MT_GrabX11Pointer, pointer->Head.UID, NULL);
+         #endif
+      }
+      else log.warning("The pointer may only be restricted to public surfaces.");
+   }
+
+   pointer->MessageQueue = GetResource(RES_MESSAGE_QUEUE);
+
+   ReleaseObject(pointer);
+   return ERR_Okay;
+}
+
+/******************************************************************************
+
+-FUNCTION-
+SetCustomCursor: Sets the cursor to a customised bitmap image.
+
+Use the SetCustomCursor() function to change the pointer image and/or anchor the position of the pointer so that it
+cannot move without permission.  The functionality provided is identical to that of the SetCursor() function with some
+minor adjustments to allow custom images to be set.
+
+The Bitmap that is provided should be within the width, height and bits-per-pixel settings that are returned by the
+GetCursorInfo() function.  If the basic settings are outside the allowable parameters, the Bitmap will be trimmed or
+resampled appropriately when the cursor is downloaded to the video card.
+
+It may be possible to speed up the creation of custom cursors by drawing directly to the pointer's internal bitmap
+buffer rather than supplying a fresh bitmap.  To do this, the Bitmap parameter must be NULL and it is necessary to draw
+to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap is always returned as a 32-bit,
+alpha-enabled graphics area.  The following code illustrates this process:
+
+<pre>
+objPointer *pointer;
+objBitmap *bitmap;
+
+if ((pointer = gfxAccessPointer())) {
+   if (!AccessObject(pointer->BitmapID, 3000, &bitmap)) {
+      // Adjust clipping to match the cursor size.
+      buffer->Clip.Right  = CursorWidth;
+      buffer->Clip.Bottom = CursorHeight;
+      if (buffer->Clip.Right > buffer->Width) buffer->Clip.Right = buffer->Width;
+      if (buffer->Clip.Bottom > buffer->Height) buffer->Clip.Bottom = buffer->Height;
+
+      // Draw to the bitmap here.
+      ...
+
+      gfxSetCustomCursor(ObjectID, NULL, NULL, 1, 1, glTaskID, NULL);
+      ReleaseObject(bitmap);
+   }
+   gfxReleasePointer(pointer);
+}
+</pre>
+
+-INPUT-
+oid Surface: Refers to the surface object that the pointer should restrict itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
+int(CRF) Flags: Optional flags affecting the cursor are set here.
+obj(Bitmap) Bitmap: The bitmap to set for the mouse cursor.
+int HotX: The horizontal position of the cursor hot-spot.
+int HotY: The vertical position of the cursor hot-spot.
+oid Owner: The object nominated as the owner of the anchor.
+
+-ERRORS-
+Okay:
+Args:
+NoSupport:
+AccessObject: Failed to access the internally maintained image object.
+
+******************************************************************************/
+
+ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
+{
+#ifdef __snap__
+   parasol::Log log(__FUNCTION__);
+   objPointer *pointer;
+   objBitmap *buffer;
+   ERROR error;
+
+   if (Bitmap) log.extmsg("Object: %d, Bitmap: %p, Size: %dx%d, BPP: %d", ObjectID, Bitmap, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel);
+   else log.extmsg("Object: %d, Bitmap Preset", ObjectID);
+
+   if ((pointer = gfxAccessPointer())) {
+      if (!AccessObject(pointer->BitmapID, 0, &buffer)) {
+         if (Bitmap) {
+            // Adjust the clipping area of our custom bitmap to match the incoming dimensions of the new cursor image.
+
+            buffer->Clip.Right = Bitmap->Width;
+            buffer->Clip.Bottom = Bitmap->Height;
+            if (buffer->Clip.Right > buffer->Width) buffer->Clip.Right = buffer->Width;
+            if (buffer->Clip.Bottom > buffer->Height) buffer->Clip.Bottom = buffer->Height;
+
+            if (Bitmap->BitsPerPixel IS 2) {
+               ULONG mask;
+
+               // Monochrome: 0 = mask, 1 = black (fg), 2 = white (bg), 3 = XOR
+
+               if (buffer->Flags & BMF_INVERSEALPHA) mask = PackPixelA(buffer, 0, 0, 0, 255);
+               else mask = PackPixelA(buffer, 0, 0, 0, 0);
+
+               ULONG foreground = PackPixel(buffer, Bitmap->Palette->Col[1].Red, Bitmap->Palette->Col[1].Green, Bitmap->Palette->Col[1].Blue);
+               ULONG background = PackPixel(buffer, Bitmap->Palette->Col[2].Red, Bitmap->Palette->Col[2].Green, Bitmap->Palette->Col[2].Blue);
+               for (LONG y=0; y < Bitmap->Clip.Bottom; y++) {
+                  for (LONG x=0; x < Bitmap->Clip.Right; x++) {
+                     switch (Bitmap->ReadUCPixel(Bitmap, x, y)) {
+                        case 0: buffer->DrawUCPixel(buffer, x, y, mask); break;
+                        case 1: buffer->DrawUCPixel(buffer, x, y, foreground); break;
+                        case 2: buffer->DrawUCPixel(buffer, x, y, background); break;
+                        case 3: buffer->DrawUCPixel(buffer, x, y, foreground); break;
+                     }
+                  }
+               }
+            }
+            else mtCopyArea(Bitmap, buffer, NULL, 0, 0, Bitmap->Width, Bitmap->Height, 0, 0);
+         }
+
+         pointer->Cursors[PTR_CUSTOM].HotX = HotX;
+         pointer->Cursors[PTR_CUSTOM].HotY = HotY;
+         error = gfxSetCursor(ObjectID, Flags, PTR_CUSTOM, NULL, OwnerID);
+         ReleaseObject(buffer);
+      }
+      else error = ERR_AccessObject;
+
+      ReleaseObject(pointer);
+      return error;
+   }
+   else {
+      log.warning("Failed to access the mouse pointer.");
+      return ERR_AccessObject;
+   }
+#else
+   return gfxSetCursor(ObjectID, Flags, PTR_DEFAULT, NULL, OwnerID);
+#endif
+}
+
+/******************************************************************************
+
+-FUNCTION-
+SetCursorPos: Changes the position of the pointer cursor.
+
+Changes the position of the pointer cursor using coordinates relative to the entire display.
+
+-INPUT-
+double X: The new horizontal coordinate for the pointer.
+double Y: The new vertical coordinate for the pointer.
+
+-ERRORS-
+Okay:
+AccessObject: Failed to access the SystemPointer object.
+
+******************************************************************************/
+
+ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
+{
+   objPointer *pointer;
+
+   struct acMoveToPoint move = { X, Y, 0, MTF_X|MTF_Y };
+   if ((pointer = gfxAccessPointer())) {
+      Action(AC_MoveToPoint, pointer, &move);
+      ReleaseObject(pointer);
+   }
+   else ActionMsg(AC_MoveToPoint, glPointerID, &move);
+
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+SetHostOption: Alter options associated with the host display system.
+
+For internal usage only.
+
+-INPUT-
+int(HOST) Option: One of HOST_TRAY_ICON, HOST_TASKBAR or HOST_STICK_TO_FRONT.
+large Value: The value to be applied to the option.
+
+-ERRORS-
+Okay
+
+*****************************************************************************/
+
+ERROR gfxSetHostOption(LONG Option, LARGE Value)
+{
+#if defined(_WIN32) || defined(__xwindows__)
+   parasol::Log log(__FUNCTION__);
+
+   switch (Option) {
+      case HOST_TRAY_ICON:
+         glTrayIcon += Value;
+         if (glTrayIcon) glTaskBar = 0;
+         break;
+
+      case HOST_TASKBAR:
+         glTaskBar = Value;
+         if (glTaskBar) glTrayIcon = 0;
+         break;
+
+      case HOST_STICK_TO_FRONT:
+         glStickToFront += Value;
+         break;
+
+      default:
+         log.warning("Invalid option %d, Data " PF64(), Option, Value);
+   }
+#endif
+
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+SetModalSurface: Enables a modal surface for the current task.
+
+Any surface that is created by a task can be enabled as a modal surface.  A surface that has been enabled as modal
+becomes the central point for all GUI interaction with the task.  All other I/O between the user and surfaces
+maintained by the task will be ignored for as long as the target surface remains modal.
+
+A task can switch off the current modal surface by calling this function with a Surface parameter of zero.
+
+If a surface is modal at the time that this function is called, it is not possible to switch to a new modal surface
+until the current modal state is dropped.
+
+-INPUT-
+oid Surface: The surface to enable as modal.
+
+-RESULT-
+oid: The object ID of the previous modal surface is returned (zero if there was no currently modal surface).
+
+*****************************************************************************/
+
+OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (GetClassID(SurfaceID) != ID_SURFACE) return 0;
+
+   log.branch("#%d, CurrentFocus: %d", SurfaceID, gfxGetUserFocus());
+
+   OBJECTID old_modal = 0;
+
+   // Check if the surface is invisible, in which case the mode has to be diverted to the modal that was previously
+   // targetted or turned off altogether if there was no previously modal surface.
+
+   if (SurfaceID) {
+      objSurface *surface;
+      OBJECTID divert = 0;
+      if (!AccessObject(SurfaceID, 3000, &surface)) {
+         if (!(surface->Flags & RNF_VISIBLE)) {
+            divert = surface->PrevModalID;
+            if (!divert) SurfaceID = 0;
+         }
+         ReleaseObject(surface);
+      }
+      if (divert) return gfxSetModalSurface(divert);
+   }
+
+   if (!SysLock(PL_PROCESSES, 3000)) {
+      LONG maxtasks = GetResource(RES_MAX_PROCESSES);
+      OBJECTID focus = 0;
+      TaskList *tasks;
+      if ((tasks = (TaskList *)GetResourcePtr(RES_TASK_LIST))) {
+         LONG i;
+         for (i=0; i < maxtasks; i++) {
+            if (tasks[i].TaskID IS CurrentTaskID()) break;
+         }
+
+         if (i < maxtasks) {
+            old_modal = tasks[i].ModalID;
+            if (SurfaceID IS -1) { // Return the current modal surface, don't do anything else
+            }
+            else if (!SurfaceID) { // Turn off modal surface mode for the current task
+               tasks[i].ModalID = 0;
+            }
+            else { // We are the new modal surface
+               tasks[i].ModalID = SurfaceID;
+               focus = SurfaceID;
+            }
+         }
+      }
+
+      SysUnlock(PL_PROCESSES);
+
+      if (focus) {
+         acMoveToFrontID(SurfaceID);
+
+         // Do not change the primary focus if the targetted surface already has it (this ensures that if any children have the focus, they will keep it).
+
+         LONG flags;
+         if ((!gfxGetSurfaceFlags(SurfaceID, &flags)) and (!(flags & RNF_HAS_FOCUS))) {
+            acFocusID(SurfaceID);
+         }
+      }
+   }
+
+   return old_modal;
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+StartCursorDrag: Attaches an item to the cursor for the purpose of drag and drop.
+
+This function starts a drag and drop operation with the mouse cursor.  The user must be holding the primary mouse
+button to initiate the drag and drop operation.
+
+A Source object ID is required that indicates the origin of the item being dragged and will be used to retrieve the
+data on completion of the drag and drop operation. An Item number, which is optional, identifies the item being dragged
+from the Source object.
+
+The type of data represented by the source item and all other supportable data types are specified in the Datatypes
+parameter as a null terminated array.  The array is arranged in order of preference, starting with the item's native
+data type.  Acceptable data type values are listed in the documentation for the DataFeed action.
+
+The Surface argument allows for a composite surface to be dragged by the mouse cursor as a graphical representation of
+the source item.  It is recommended that the graphic be 32x32 pixels in size and no bigger than 64x64 pixels.  The
+Surface will be hidden on completion of the drag and drop operation.
+
+If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  The UserMovement
+and UserClickRelease actions normally reported from the SystemPointer will now include the `JD_DRAGITEM` flag in the
+ButtonFlags parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the
+DragDrop action will be passed to the surface immediately underneath the mouse cursor.  Objects that are monitoring for
+the DragDrop action on that surface can then contact the Source object with a DataFeed DragDropRequest.  The
+resulting data is then passed to the requesting object with a DragDropResult on the DataFeed.
+
+-INPUT-
+oid Source:     Refers to an object that is managing the source data.
+int Item:       A custom number that represents the item being dragged from the source.
+cstr Datatypes: A null terminated byte array that lists the datatypes supported by the source item, in order of conversion preference.
+oid Surface:    A 32-bit composite surface that represents the item being dragged.
+
+-ERRORS-
+Okay:
+NullArgs:
+AccessObject:
+Failed: The left mouse button is not held by the user.
+InUse: A drag and drop operation has already been started.
+
+*****************************************************************************/
+
+ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)
+{
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("Source: %d, Item: %d, Surface: %d", Source, Item, Surface);
+
+   if (!Source) return log.warning(ERR_NullArgs);
+
+   objPointer *pointer;
+   if ((pointer = gfxAccessPointer())) {
+      if (!pointer->Buttons[0].LastClicked) {
+         gfxReleasePointer(pointer);
+         return log.warning(ERR_Failed);
+      }
+
+      if (pointer->DragSourceID) {
+         gfxReleasePointer(pointer);
+         return ERR_InUse;
+      }
+
+      pointer->DragSurface = Surface;
+      pointer->DragItem    = Item;
+      pointer->DragSourceID = Source;
+      StrCopy(Datatypes, pointer->DragData, sizeof(pointer->DragData));
+
+      SURFACEINFO *info;
+      if (!gfxGetSurfaceInfo(Surface, &info)) {
+         pointer->DragParent = info->ParentID;
+      }
+
+      if (Surface) {
+         log.trace("Moving draggable surface %d to %dx%d", Surface, pointer->X, pointer->Y);
+         acMoveToPointID(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF_X|MTF_Y);
+         acShowID(Surface);
+         acMoveToFrontID(Surface);
+      }
+
+      gfxReleasePointer(pointer);
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_AccessObject);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+UnlockBitmap: Unlocks any earlier call to gfxLockBitmap().
+
+Call the UnlockBitmap() function to release a surface object from earlier calls to ~LockBitmap().
+
+-INPUT-
+oid Surface:        The ID of the surface object that you are releasing.
+obj(Bitmap) Bitmap: Pointer to the bitmap structure returned earlier by LockBitmap().
+
+-ERRORS-
+Okay: The bitmap has been unlocked successfully.
+NullArgs:
+
+*****************************************************************************/
+
+ERROR gfxUnlockBitmap(OBJECTID SurfaceID, objBitmap *Bitmap)
+{
+   if ((!SurfaceID) or (!Bitmap)) return ERR_NullArgs;
+   ReleaseObject(Bitmap);
+   return ERR_Okay;
+}
+
+/******************************************************************************
+
+-FUNCTION-
+UnlockCursor: Undoes an earlier call to LockCursor()
+
+Call this function to undo any earlier calls to LockCursor() and return the mouse pointer to its regular state.
+
+-INPUT-
+oid Surface: Refers to the surface object used for calling LockCursor().
+
+-ERRORS-
+Okay:
+NullArgs:
+AccessObject: Failed to access the pointer object.
+NotLocked: A lock is not present, or the lock belongs to another surface.
+-END-
+
+******************************************************************************/
+
+ERROR gfxUnlockCursor(OBJECTID SurfaceID)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!SurfaceID) return log.warning(ERR_NullArgs);
+
+   objPointer *pointer;
+   if ((pointer = gfxAccessPointer())) {
+      if (pointer->AnchorID IS SurfaceID) {
+         pointer->AnchorID = NULL;
+         pointer->AnchorMsgQueue = NULL;
+         ReleaseObject(pointer);
+         return ERR_Okay;
+      }
+      else {
+         ReleaseObject(pointer);
+         return ERR_NotLocked;
+      }
+   }
+   else {
+      log.warning("Failed to access the mouse pointer.");
+      return ERR_AccessObject;
+   }
+}
+
+//****************************************************************************
+
+#ifdef __xwindows__
+Cursor create_blank_cursor(void)
+{
+   parasol::Log log(__FUNCTION__);
+   Pixmap data_pixmap, mask_pixmap;
+   XColor black = { 0, 0, 0, 0 };
+   Window rootwindow;
+   Cursor cursor;
+
+   log.function("Creating blank cursor for X11.");
+
+   rootwindow = DefaultRootWindow(XDisplay);
+
+   data_pixmap = XCreatePixmap(XDisplay, rootwindow, 1, 1, 1);
+   mask_pixmap = XCreatePixmap(XDisplay, rootwindow, 1, 1, 1);
+
+   //XSetWindowBackground(XDisplay, data_pixmap, 0);
+   //XSetWindowBackground(XDisplay, mask_pixmap, 0);
+   //XClearArea(XDisplay, data_pixmap, 0, 0, 1, 1, False);
+   //XClearArea(XDisplay, mask_pixmap, 0, 0, 1, 1, False);
+
+   cursor = XCreatePixmapCursor(XDisplay, data_pixmap, mask_pixmap, &black, &black, 0, 0);
+
+   XFreePixmap(XDisplay, data_pixmap); // According to XFree documentation, it is OK to free the pixmaps
+   XFreePixmap(XDisplay, mask_pixmap);
+
+   XSync(XDisplay, False);
+   return cursor;
+}
+#endif
+
+//*****************************************************************************
+
+#ifdef __xwindows__
+
+Cursor get_x11_cursor(LONG CursorID)
+{
+   parasol::Log log(__FUNCTION__);
+
+   for (WORD i=0; i < ARRAYSIZE(XCursors); i++) {
+      if (XCursors[i].CursorID IS CursorID) return XCursors[i].XCursor;
+   }
+
+   log.warning("Cursor #%d is not a recognised cursor ID.", CursorID);
+   return XCursors[0].XCursor;
+}
+#endif
+
+#ifdef _WIN32
+
+APTR GetWinCursor(LONG CursorID)
+{
+   for (WORD i=0; i < ARRAYSIZE(winCursors); i++) {
+      if (winCursors[i].CursorID IS CursorID) return winCursors[i].WinCursor;
+   }
+
+   parasol::Log log;
+   log.warning("Cursor #%d is not a recognised cursor ID.", CursorID);
+   return winCursors[0].WinCursor;
+}
+#endif
+
+//*****************************************************************************
+
+void update_displayinfo(objDisplay *Self)
+{
+   if (StrMatch("SystemDisplay", GetName(Self)) != ERR_Okay) return;
+
+   glDisplayInfo->DisplayID = 0;
+   get_display_info(Self->Head.UID, glDisplayInfo, sizeof(DISPLAYINFO));
+}
+
+/*****************************************************************************
+** Surface locking routines.  These should only be called on occasions where you need to use the CPU to access graphics
+** memory.  These functions are internal, if the user wants to lock a bitmap surface then the Lock() action must be
+** called on the bitmap.
+**
+** Please note: Regarding SURFACE_READ, using this flag will cause the video content to be copied to the bitmap buffer.
+** If you do not need this overhead because the bitmap content is going to be refreshed, then specify SURFACE_WRITE
+** only.  You will still be able to read the bitmap content with the CPU, it just avoids the copy overhead.
+*/
+
+#ifdef _WIN32
+
+ERROR LockSurface(objBitmap *Bitmap, WORD Access)
+{
+   if (!Bitmap->Data) {
+      parasol::Log log(__FUNCTION__);
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->Head.UID);
+      return ERR_FieldNotSet;
+   }
+
+   return ERR_Okay;
+}
+
+ERROR UnlockSurface(objBitmap *Bitmap)
+{
+   return ERR_Okay;
+}
+
+#elif __xwindows__
+
+ERROR LockSurface(objBitmap *Bitmap, WORD Access)
+{
+   LONG size;
+   WORD alignment;
+
+   if ((Bitmap->Flags & BMF_X11_DGA) and (glDGAAvailable)) {
+      return ERR_Okay;
+   }
+   else if ((Bitmap->x11.drawable) and (Access & SURFACE_READ)) {
+      // If there is an existing readable area, try to reuse it if possible
+      if (Bitmap->x11.readable) {
+         if ((Bitmap->x11.readable->width >= Bitmap->Width) and (Bitmap->x11.readable->height >= Bitmap->Height)) {
+            if (Access & SURFACE_READ) {
+               XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
+                  Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
+                  Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
+                  Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
+            }
+            return ERR_Okay;
+         }
+         else XDestroyImage(Bitmap->x11.readable);
+      }
+
+      // Generate a fresh XImage from the current drawable
+
+      if (Bitmap->LineWidth & 0x0001) alignment = 8;
+      else if (Bitmap->LineWidth & 0x0002) alignment = 16;
+      else alignment = 32;
+
+      if (Bitmap->Type IS BMP_PLANAR) {
+         size = Bitmap->LineWidth * Bitmap->Height * Bitmap->BitsPerPixel;
+      }
+      else size = Bitmap->LineWidth * Bitmap->Height;
+
+      Bitmap->Data = (UBYTE *)malloc(size);
+
+      if ((Bitmap->x11.readable = XCreateImage(XDisplay, CopyFromParent, Bitmap->BitsPerPixel,
+           ZPixmap, 0, (char *)Bitmap->Data, Bitmap->Width, Bitmap->Height, alignment, Bitmap->LineWidth))) {
+         if (Access & SURFACE_READ) {
+            XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
+               Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
+               Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
+               Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
+         }
+         return ERR_Okay;
+      }
+      else return ERR_Failed;
+   }
+   return ERR_Okay;
+}
+
+ERROR UnlockSurface(objBitmap *Bitmap)
+{
+   return ERR_Okay;
+}
+
+#elif _GLES_
+
+ERROR LockSurface(objBitmap *Bitmap, WORD Access)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (Bitmap->DataFlags & MEM_VIDEO) {
+      // MEM_VIDEO represents the video display in OpenGL.  Read/write CPU access is not available to this area but
+      // we can use glReadPixels() to get a copy of the framebuffer and then write changes back.  Because this is
+      // extremely bad practice (slow), a debug message is printed to warn the developer to use a different code path.
+      //
+      // Practically the only reason why we allow this is for unusual measures like taking screenshots, grabbing the display for debugging, development testing etc.
+
+      log.warning("Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->Head.UID, Bitmap->DataFlags);
+
+      if (!Bitmap->Data) {
+         if (AllocMemory(Bitmap->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Bitmap->Head.MemFlags|Bitmap->DataFlags, &Bitmap->Data, &Bitmap->DataMID) != ERR_Okay) {
+            return log.warning(ERR_AllocMemory);
+         }
+         Bitmap->prvAFlags |= BF_DATA;
+      }
+
+      if (!lock_graphics_active(__func__)) {
+         if (Access & SURFACE_READ) {
+            //glPixelStorei(GL_PACK_ALIGNMENT, 1); Might be required if width is not 32-bit aligned (i.e. 16 bit uneven width?)
+            glReadPixels(0, 0, Bitmap->Width, Bitmap->Height, Bitmap->prvGLPixel, Bitmap->prvGLFormat, Bitmap->Data);
+         }
+
+         if (Access & SURFACE_WRITE) Bitmap->prvWriteBackBuffer = TRUE;
+         else Bitmap->prvWriteBackBuffer = FALSE;
+
+         unlock_graphics();
+      }
+
+      return ERR_Okay;
+   }
+   else if (Bitmap->DataFlags & MEM_TEXTURE) {
+      // Using the CPU on BLIT bitmaps is banned - it is considered to be poor programming.  Instead,
+      // MEM_DATA bitmaps should be used when R/W CPU access is desired to a bitmap.
+
+      return log.warning(ERR_NoSupport);
+   }
+
+   if (!Bitmap->Data) {
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.  Memory flags: $%.8x", Bitmap->Head.UID, Bitmap->DataFlags);
+      return ERR_FieldNotSet;
+   }
+
+   return ERR_Okay;
+}
+
+ERROR UnlockSurface(objBitmap *Bitmap)
+{
+   if ((Bitmap->DataFlags & MEM_VIDEO) and (Bitmap->prvWriteBackBuffer)) {
+      if (!lock_graphics_active(__func__)) {
+         #ifdef GL_DRAW_PIXELS
+            glDrawPixels(Bitmap->Width, Bitmap->Height, pixel_type, format, Bitmap->Data);
+         #else
+            GLenum glerror;
+            GLuint texture_id;
+            if ((glerror = alloc_texture(Bitmap->Width, Bitmap->Height, &texture_id)) IS GL_NO_ERROR) { // Create a new texture space and bind it.
+               //(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *pixels);
+               glTexImage2D(GL_TEXTURE_2D, 0, Bitmap->prvGLPixel, Bitmap->Width, Bitmap->Height, 0, Bitmap->prvGLPixel, Bitmap->prvGLFormat, Bitmap->Data); // Copy the bitmap content to the texture. (Target, Level, Bitmap, Border)
+               if ((glerror = glGetError()) IS GL_NO_ERROR) {
+                  // Copy graphics to the frame buffer.
+
+                  glClearColor(0, 0, 0, 1.0);
+                  glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+                  glColor4f(1.0f, 1.0f, 1.0f, 1.0f);    // Ensure colour is reset.
+                  glDrawTexiOES(0, 0, 1, Bitmap->Width, Bitmap->Height);
+                  glBindTexture(GL_TEXTURE_2D, 0);
+                  eglSwapBuffers(glEGLDisplay, glEGLSurface);
+               }
+               else log.warning(ERR_OpenGL);
+
+               glDeleteTextures(1, &texture_id);
+            }
+            else log.warning(ERR_OpenGL);
+         #endif
+
+         unlock_graphics();
+      }
+
+      Bitmap->prvWriteBackBuffer = FALSE;
+   }
+
+   return ERR_Okay;
+}
+
+#else
+
+#error Platform not supported.
+
+#define LockSurface(a,b)
+#define UnlockSurface(a)
+
+#endif
+
+/*****************************************************************************
+** Use this function to allocate simple 2D OpenGL textures.  It configures the texture so that it is suitable for basic
+** rendering operations.  Note that the texture will still be bound on returning.
+*/
+
+#ifdef _GLES_
+GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID)
+{
+   GLenum glerror;
+
+   glGenTextures(1, TextureID); // Generate a new texture ID
+   glBindTexture(GL_TEXTURE_2D, TextureID[0]); // Target the new texture bank
+
+   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filter for minification, GL_LINEAR is smoother than GL_NEAREST
+   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filter for magnification
+   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // Texture wrap behaviour
+   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Texture wrap behaviour
+
+   glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+   if ((glerror = glGetError()) IS GL_NO_ERROR) {
+      GLint crop[4] = { 0, Height, Width, -Height };
+      glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_CROP_RECT_OES, crop); // This is for glDrawTex*OES
+
+      glerror = glGetError();
+      if (glerror != GL_NO_ERROR) log.warning("glTexParameteriv() error: %d", glerror);
+   }
+   else log.warning("glTexEnvf() error: %d", glerror);
+
+   return glerror;
+}
+#endif
 
 /*****************************************************************************
 
@@ -4249,491 +7328,6 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
    }
 
    current_index = glInputEvents->IndexCounter;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-DrawLine: Draws a line to a bitmap.
-
-This function will draw a line using a bitmap colour value.  The line will start from the position determined by
-(X, Y) and end at (EndX, EndY) inclusive.  Hardware acceleration will be used to draw the line if available.
-
-The opacity of the line is determined by the value in the Opacity field of the target bitmap.
-
--INPUT-
-obj(Bitmap) Bitmap: The target bitmap.
-int X: X-axis starting position.
-int Y: Y-axis starting position.
-int XEnd: X-axis end position.
-int YEnd: Y-axis end position.
-uint Colour: The pixel colour for drawing the line.
-
-*****************************************************************************/
-
-void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY, ULONG Colour)
-{
-   RGB8 pixel, rgb;
-   LONG i, dx, dy, l, m, x_inc, y_inc;
-   LONG err_1, dx2, dy2;
-   LONG drawx, drawy, clipleft, clipright, clipbottom, cliptop;
-   ULONG colour;
-
-   if (Bitmap->Opacity < 1) return;
-
-   #ifdef __xwindows__
-      if ((Bitmap->DataFlags & (MEM_VIDEO|MEM_TEXTURE)) and (Bitmap->Opacity >= 255)) {
-         XRectangle rectangles;
-         rectangles.x      = Bitmap->Clip.Left + Bitmap->XOffset;
-         rectangles.y      = Bitmap->Clip.Top + Bitmap->YOffset;
-         rectangles.width  = Bitmap->Clip.Right + Bitmap->XOffset - rectangles.x;
-         rectangles.height = Bitmap->Clip.Bottom + Bitmap->YOffset - rectangles.y;
-         XSetClipRectangles(XDisplay, glClipXGC, 0, 0, &rectangles, 1, YXSorted);
-
-         XSetForeground(XDisplay, glClipXGC, Colour);
-         XDrawLine(XDisplay, Bitmap->x11.drawable, glClipXGC, X + Bitmap->XOffset, Y + Bitmap->YOffset, EndX + Bitmap->XOffset, EndY + Bitmap->YOffset);
-         return;
-      }
-   #endif
-
-   rgb.Red   = UnpackRed(Bitmap, Colour);
-   rgb.Green = UnpackGreen(Bitmap, Colour);
-   rgb.Blue  = UnpackBlue(Bitmap, Colour);
-
-   #ifdef _WIN32
-
-      if ((Bitmap->prvAFlags & BF_WINVIDEO) and (Bitmap->Opacity >= 255)) {
-         winSetClipping(Bitmap->win.Drawable, Bitmap->Clip.Left + Bitmap->XOffset, Bitmap->Clip.Top + Bitmap->YOffset,
-            Bitmap->Clip.Right + Bitmap->XOffset, Bitmap->Clip.Bottom + Bitmap->YOffset);
-         winDrawLine(Bitmap->win.Drawable, X + Bitmap->XOffset, Y + Bitmap->YOffset,
-            EndX + Bitmap->XOffset, EndY + Bitmap->YOffset, &rgb.Red);
-         winSetClipping(Bitmap->win.Drawable, 0, 0, 0, 0);
-
-         return;
-      }
-
-   #endif
-
-   if (LockSurface(Bitmap, SURFACE_READWRITE) != ERR_Okay) return;
-
-   drawx = X + Bitmap->XOffset;
-   drawy = Y + Bitmap->YOffset;
-   dx    = ((EndX + Bitmap->XOffset) - (X + Bitmap->XOffset));
-   dy    = ((EndY + Bitmap->YOffset) - (Y + Bitmap->YOffset));
-   x_inc = (dx < 0) ? -1 : 1;
-   if (dx < 0) l = -dx;
-   else l = dx;
-   y_inc = (dy < 0) ? -1 : 1;
-   if (dy < 0) m = -dy;
-   else m = dy;
-   dx2   = l << 1;
-   dy2   = m << 1;
-
-   cliptop    = Bitmap->Clip.Top    + Bitmap->YOffset;
-   clipbottom = Bitmap->Clip.Bottom + Bitmap->YOffset;
-   clipleft   = Bitmap->Clip.Left   + Bitmap->XOffset;
-   clipright  = Bitmap->Clip.Right  + Bitmap->XOffset;
-
-   if (Bitmap->Opacity < 255) {
-      // Translucent routine
-
-      if ((l >= m)) {
-         err_1 = dy2 - l;
-         for (i = 0; i < l; i++) {
-            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
-               Bitmap->ReadUCRPixel(Bitmap, drawx, drawy, &pixel);
-               pixel.Red   = rgb.Red   + (((pixel.Red   - rgb.Red)   * (255 - Bitmap->Opacity))>>8);
-               pixel.Green = rgb.Green + (((pixel.Green - rgb.Green) * (255 - Bitmap->Opacity))>>8);
-               pixel.Blue  = rgb.Blue  + (((pixel.Blue  - rgb.Blue)  * (255 - Bitmap->Opacity))>>8);
-               pixel.Alpha = 255;
-               Bitmap->DrawUCRPixel(Bitmap, drawx, drawy, &pixel);
-            }
-            if (err_1 > 0) { drawy += y_inc; err_1 -= dx2; }
-            err_1 += dy2;
-            drawx += x_inc;
-         }
-      }
-      else {
-         err_1 = dx2 - m;
-         for (i = 0; i < m; i++) {
-            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
-               Bitmap->ReadUCRPixel(Bitmap, drawx, drawy, &pixel);
-               pixel.Red   = rgb.Red   + (((pixel.Red   - rgb.Red)   * (255 - Bitmap->Opacity))>>8);
-               pixel.Green = rgb.Green + (((pixel.Green - rgb.Green) * (255 - Bitmap->Opacity))>>8);
-               pixel.Blue  = rgb.Blue  + (((pixel.Blue  - rgb.Blue)  * (255 - Bitmap->Opacity))>>8);
-               pixel.Alpha = 255;
-               Bitmap->DrawUCRPixel(Bitmap, drawx, drawy, &pixel);
-            }
-            if (err_1 > 0) { drawx += x_inc; err_1 -= dy2; }
-            err_1 += dx2;
-            drawy += y_inc;
-         }
-      }
-
-      if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
-         Bitmap->ReadUCRPixel(Bitmap, drawx, drawy, &pixel);
-         pixel.Red   = rgb.Red   + (((pixel.Red   - rgb.Red) * (255 - Bitmap->Opacity))>>8);
-         pixel.Green = rgb.Green + (((pixel.Green - rgb.Green) * (255 - Bitmap->Opacity))>>8);
-         pixel.Blue  = rgb.Blue  + (((pixel.Blue  - rgb.Blue) * (255 - Bitmap->Opacity))>>8);
-         pixel.Alpha = 255;
-         Bitmap->DrawUCRPixel(Bitmap, drawx, drawy, &pixel);
-      }
-   }
-   else {
-      colour = Colour;
-
-      if (l >= m) {
-         err_1 = dy2 - l;
-         for (i = 0; i < l; i++) {
-            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
-               Bitmap->DrawUCPixel(Bitmap, drawx, drawy, colour);
-            }
-            if (err_1 > 0) { drawy += y_inc; err_1 -= dx2; }
-            err_1 += dy2;
-            drawx += x_inc;
-         }
-      }
-      else {
-         err_1 = dx2 - m;
-         for (i = 0; i < m; i++) {
-            if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
-               Bitmap->DrawUCPixel(Bitmap, drawx, drawy, colour);
-            }
-            if (err_1 > 0) { drawx += x_inc; err_1 -= dy2; }
-            err_1 += dx2;
-            drawy += y_inc;
-         }
-      }
-
-      if ((drawx >= clipleft) and (drawx < clipright) and (drawy >= cliptop) and (drawy < clipbottom))  {
-         Bitmap->DrawUCPixel(Bitmap, drawx, drawy, colour);
-      }
-   }
-
-   UnlockSurface(Bitmap);
-}
-
-/*****************************************************************************
-
--FUNCTION-
-DrawRGBPixel: Draws a 24 bit pixel to a bitmap.
-
-This function draws an RGB colour to the (X, Y) position of a target bitmap.  The function will check the given
-coordinates to ensure that the pixel is inside the bitmap's clipping area.
-
--INPUT-
-obj(Bitmap) Bitmap: The target bitmap object.
-int X: Horizontal coordinate of the pixel.
-int Y: Vertical coordinate of the pixel.
-struct(*RGB8) RGB: The colour to be drawn, in RGB format.
-
-*****************************************************************************/
-
-void gfxDrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *Pixel)
-{
-   if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
-   if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
-   Bitmap->DrawUCRPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Pixel);
-}
-
-/*****************************************************************************
-
--FUNCTION-
-DrawPixel: Draws a single pixel to a bitmap.
-
-This function draws a pixel to the coordinates X, Y on a bitmap with a colour determined by the Colour index.
-This function will check the given coordinates to make sure that the pixel is inside the bitmap's clipping area.
-
--INPUT-
-obj(Bitmap) Bitmap: The target bitmap object.
-int X: The horizontal coordinate of the pixel.
-int Y: The vertical coordinate of the pixel.
-uint Colour: The colour value to use for the pixel.
-
-*****************************************************************************/
-
-void gfxDrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
-{
-   if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
-   if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
-   Bitmap->DrawUCPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Colour);
-}
-
-/*****************************************************************************
-
--FUNCTION-
-DrawRectangle: Draws rectangles, both filled and unfilled.
-
-This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position
-(X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines `BAF_FILL` then
-the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by
-the pixel value in the Colour argument.  Blending is not enabled unless the `BAF_BLEND` flag is defined and an alpha
-value is present in the Colour.
-
--INPUT-
-obj(Bitmap) Bitmap: Pointer to the target @Bitmap.
-int X:       The left-most coordinate of the rectangle.
-int Y:       The top-most coordinate of the rectangle.
-int Width:   The width of the rectangle.
-int Height:  The height of the rectangle.
-uint Colour: The colour value to use for the rectangle.
-int(BAF) Flags: Use BAF_FILL to fill the rectangle.  Use of BAF_BLEND will enable blending.
-
-*****************************************************************************/
-
-void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)
-{
-   parasol::Log log(__FUNCTION__);
-   RGB8 pixel;
-   UBYTE *data;
-   UWORD *word;
-   ULONG *longdata;
-   LONG xend, x, EX, EY, i;
-
-   if (!Bitmap) return;
-
-   // If we are not going to fill the rectangle, use this routine to draw an outline.
-
-   if ((!(Flags & BAF_FILL)) and (Width > 1) and (Height > 1)) {
-      EX = X + Width - 1;
-      EY = Y + Height - 1;
-      if (X >= Bitmap->Clip.Left) gfxDrawRectangle(Bitmap, X, Y, 1, Height, Colour, Flags|BAF_FILL); // Left
-      if (Y >= Bitmap->Clip.Top)  gfxDrawRectangle(Bitmap, X, Y, Width, 1, Colour, Flags|BAF_FILL); // Top
-      if (Y + Height <= Bitmap->Clip.Bottom) gfxDrawRectangle(Bitmap, X, EY, Width, 1, Colour, Flags|BAF_FILL); // Bottom
-      if (X + Width <= Bitmap->Clip.Right)   gfxDrawRectangle(Bitmap, X+Width-1, Y, 1, Height, Colour, Flags|BAF_FILL);
-      return;
-   }
-
-   if (!(Bitmap->Head.Flags & NF_INITIALISED)) { log.warning(ERR_NotInitialised); return; }
-
-   X += Bitmap->XOffset;
-   Y += Bitmap->YOffset;
-
-   if (X >= Bitmap->Clip.Right + Bitmap->XOffset) return;
-   if (Y >= Bitmap->Clip.Bottom + Bitmap->YOffset) return;
-   if (X + Width <= Bitmap->Clip.Left + Bitmap->XOffset) return;
-   if (Y + Height <= Bitmap->Clip.Top + Bitmap->YOffset) return;
-
-   if (X < Bitmap->Clip.Left + Bitmap->XOffset) {
-      Width -= Bitmap->Clip.Left + Bitmap->XOffset - X;
-      X = Bitmap->Clip.Left + Bitmap->XOffset;
-   }
-
-   if (Y < Bitmap->Clip.Top + Bitmap->YOffset) {
-      Height -= Bitmap->Clip.Top + Bitmap->YOffset - Y;
-      Y = Bitmap->Clip.Top + Bitmap->YOffset;
-   }
-
-   if ((X + Width) >= Bitmap->Clip.Right + Bitmap->XOffset)   Width = Bitmap->Clip.Right + Bitmap->XOffset - X;
-   if ((Y + Height) >= Bitmap->Clip.Bottom + Bitmap->YOffset) Height = Bitmap->Clip.Bottom + Bitmap->YOffset - Y;
-
-   UWORD red   = UnpackRed(Bitmap, Colour);
-   UWORD green = UnpackGreen(Bitmap, Colour);
-   UWORD blue  = UnpackBlue(Bitmap, Colour);
-
-   // Translucent rectangle support
-
-   UBYTE opacity = 255;
-   if (Flags & BAF_BLEND) {
-      opacity = UnpackAlpha(Bitmap, Colour);
-   }
-   else opacity = Bitmap->Opacity; // Pulling the opacity from the bitmap is deprecated, used BAF_BLEND instead.
-
-   if (opacity < 255) {
-      if (!LockSurface(Bitmap, SURFACE_READWRITE)) {
-         UWORD wordpixel;
-
-         if (Bitmap->BitsPerPixel IS 32) {
-            ULONG cmb_alpha;
-            longdata = (ULONG *)(Bitmap->Data + (Bitmap->LineWidth * Y));
-            xend = X + Width;
-            cmb_alpha = 255 << Bitmap->prvColourFormat.AlphaPos;
-            while (Height > 0) {
-               i = X;
-               while (i < xend) {
-                  UBYTE sr = longdata[i]>>Bitmap->prvColourFormat.RedPos;
-                  UBYTE sg = longdata[i]>>Bitmap->prvColourFormat.GreenPos;
-                  UBYTE sb = longdata[i]>>Bitmap->prvColourFormat.BluePos;
-
-                  longdata[i] = (((((red   - sr)*opacity)>>8)+sr) << Bitmap->prvColourFormat.RedPos) |
-                                (((((green - sg)*opacity)>>8)+sg) << Bitmap->prvColourFormat.GreenPos) |
-                                (((((blue  - sb)*opacity)>>8)+sb) << Bitmap->prvColourFormat.BluePos) |
-                                cmb_alpha;
-                  i++;
-               }
-               longdata = (ULONG *)(((BYTE *)longdata) + Bitmap->LineWidth);
-               Height--;
-            }
-         }
-         else if (Bitmap->BitsPerPixel IS 24) {
-            data = Bitmap->Data + (Bitmap->LineWidth * Y);
-            X    = X * Bitmap->BytesPerPixel;
-            xend = X + (Width * Bitmap->BytesPerPixel);
-            while (Height > 0) {
-               i = X;
-               while (i < xend) {
-                  data[i] = (((blue - data[i])*opacity)>>8)+data[i]; i++;
-                  data[i] = (((green - data[i])*opacity)>>8)+data[i]; i++;
-                  data[i] = (((red - data[i])*opacity)>>8)+data[i]; i++;
-               }
-               data += Bitmap->LineWidth;
-               Height--;
-            }
-         }
-         else if (Bitmap->BitsPerPixel IS 16) {
-            word = (UWORD *)(Bitmap->Data + (Bitmap->LineWidth * Y));
-            xend = X + Width;
-            while (Height > 0) {
-               i = X;
-               while (i < xend) {
-                  UBYTE sr = (word[i] & 0x001f)<<3;
-                  UBYTE sg = (word[i] & 0x07e0)>>3;
-                  UBYTE sb = (word[i] & 0xf800)>>8;
-                  sr = (((red   - sr)*opacity)>>8) + sr;
-                  sg = (((green - sg)*opacity)>>8) + sg;
-                  sb = (((blue  - sb)*opacity)>>8) + sb;
-                  wordpixel =  (sb>>3) & 0x001f;
-                  wordpixel |= (sg<<3) & 0x07e0;
-                  wordpixel |= (sr<<8) & 0xf800;
-                  word[i] = wordpixel;
-                  i++;
-               }
-               word = (UWORD *)(((UBYTE *)word) + Bitmap->LineWidth);
-               Height--;
-            }
-         }
-         else if (Bitmap->BitsPerPixel IS 15) {
-            word = (UWORD *)(Bitmap->Data + (Bitmap->LineWidth * Y));
-            xend = X + Width;
-            while (Height > 0) {
-               i = X;
-               while (i < xend) {
-                  UBYTE sr = (word[i] & 0x001f)<<3;
-                  UBYTE sg = (word[i] & 0x03e0)>>2;
-                  UBYTE sb = (word[i] & 0x7c00)>>7;
-                  sr = (((red   - sr)*opacity)>>8) + sr;
-                  sg = (((green - sg)*opacity)>>8) + sg;
-                  sb = (((blue  - sb)*opacity)>>8) + sb;
-                  wordpixel =  (sb>>3) & 0x001f;
-                  wordpixel |= (sg<<2) & 0x03e0;
-                  wordpixel |= (sr<<7) & 0x7c00;
-                  word[i] = wordpixel;
-                  i++;
-               }
-               word = (UWORD *)(((UBYTE *)word) + Bitmap->LineWidth);
-               Height--;
-            }
-         }
-         else {
-            while (Height > 0) {
-               for (i=X; i < X + Width; i++) {
-                  Bitmap->ReadUCRPixel(Bitmap, i, Y, &pixel);
-                  pixel.Red   = (((red - pixel.Red)*opacity)>>8) + pixel.Red;
-                  pixel.Green = (((green - pixel.Green)*opacity)>>8) + pixel.Green;
-                  pixel.Blue  = (((blue - pixel.Blue)*opacity)>>8) + pixel.Blue;
-                  pixel.Alpha = 255;
-                  Bitmap->DrawUCRPixel(Bitmap, i, Y, &pixel);
-               }
-               Y++;
-               Height--;
-            }
-         }
-
-         UnlockSurface(Bitmap);
-      }
-
-      return;
-   }
-
-   // Standard rectangle (no translucency) video support
-
-   #ifdef _GLES_
-      if (Bitmap->DataFlags & MEM_VIDEO) {
-      log.warning("TODO: Draw rectangles to opengl");
-         glClearColor(0.5, 0.5, 0.5, 1.0);
-         glClear(GL_COLOR_BUFFER_BIT);
-         return;
-      }
-   #endif
-
-   #ifdef _WIN32
-      if (Bitmap->win.Drawable) {
-         winDrawRectangle(Bitmap->win.Drawable, X, Y, Width, Height, red, green, blue);
-         return;
-      }
-   #endif
-
-   #ifdef __xwindows__
-      if (Bitmap->DataFlags & (MEM_VIDEO|MEM_TEXTURE)) {
-         XSetForeground(XDisplay, glXGC, Colour);
-         XFillRectangle(XDisplay, Bitmap->x11.drawable, glXGC, X, Y, Width, Height);
-         return;
-      }
-   #endif
-
-   // Standard rectangle data support
-
-   if (!LockSurface(Bitmap, SURFACE_WRITE)) {
-      if (!Bitmap->Data) {
-         UnlockSurface(Bitmap);
-         return;
-      }
-
-      if (Bitmap->Type IS BMP_CHUNKY) {
-         if (Bitmap->BitsPerPixel IS 32) {
-            longdata = (ULONG *)(Bitmap->Data + (Bitmap->LineWidth * Y));
-            while (Height > 0) {
-               for (x=X; x < (X+Width); x++) longdata[x] = Colour;
-               longdata = (ULONG *)(((UBYTE *)longdata) + Bitmap->LineWidth);
-               Height--;
-            }
-         }
-         else if (Bitmap->BitsPerPixel IS 24) {
-            data = Bitmap->Data + (Bitmap->LineWidth * Y);
-            X = X + X + X;
-            xend = X + Width + Width + Width;
-            while (Height > 0) {
-               for (x=X; x < xend;) {
-                  data[x++] = blue; data[x++] = green; data[x++] = red;
-               }
-               data += Bitmap->LineWidth;
-               Height--;
-            }
-         }
-         else if ((Bitmap->BitsPerPixel IS 16) or (Bitmap->BitsPerPixel IS 15)) {
-            word = (UWORD *)(Bitmap->Data + (Bitmap->LineWidth * Y));
-            xend = X + Width;
-            while (Height > 0) {
-               for (x=X; x < xend; x++) word[x] = (UWORD)Colour;
-               word = (UWORD *)(((BYTE *)word) + Bitmap->LineWidth);
-               Height--;
-            }
-         }
-         else if (Bitmap->BitsPerPixel IS 8) {
-            data = Bitmap->Data + (Bitmap->LineWidth * Y);
-            xend = X + Width;
-            while (Height > 0) {
-               for (x=X; x < xend;) data[x++] = Colour;
-               data += Bitmap->LineWidth;
-               Height--;
-            }
-         }
-         else while (Height > 0) {
-            for (i=X; i < X + Width; i++) Bitmap->DrawUCPixel(Bitmap, i, Y, Colour);
-            Y++;
-            Height--;
-         }
-      }
-      else while (Height > 0) {
-         for (i=X; i < X + Width; i++) Bitmap->DrawUCPixel(Bitmap, i, Y, Colour);
-         Y++;
-         Height--;
-      }
-
-      UnlockSurface(Bitmap);
-   }
-
-   return;
 }
 
 /*****************************************************************************
@@ -5146,12 +7740,12 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
       // Pass AC_DragDrop to the surface underneath the mouse cursor.  If a surface subscriber accepts the data, it
       // will send a DATA_REQUEST to the relevant display object.  See DISPLAY_DataFeed() and winGetData().
 
-      modal_id = drwGetModalSurface(glOverTaskID);
+      modal_id = gfxGetModalSurface(glOverTaskID);
       if (modal_id IS SurfaceID) modal_id = 0;
 
       if (!modal_id) {
          SURFACEINFO *info;
-         if (!drwGetSurfaceInfo(pointer->OverObjectID, &info)) {
+         if (!gfxGetSurfaceInfo(pointer->OverObjectID, &info)) {
             acDragDropID(pointer->OverObjectID, info->DisplayID, -1, Datatypes);
          }
          else log.warning(ERR_GetSurfaceInfo);

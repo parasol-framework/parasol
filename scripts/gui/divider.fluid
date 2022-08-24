@@ -33,7 +33,6 @@ Valid options to use when creating the divider are as follows:
    require 'gui'
 
 gui.divider = function(Options)
-   local mSurface = mod.load('surface')
    local mGfx = mod.load('display')
 
    local self = { // Public variables
@@ -59,7 +58,7 @@ gui.divider = function(Options)
 
    local function validateArray(Array)
       for k,surface in ipairs(Array) do
-         local err, info = mSurface.GetSurfaceInfo(surface)
+         local err, info = mGfx.GetSurfaceInfo(surface)
          if (err != ERR_Okay) then error('Failed to analyse surface: ' .. mSys.GetErrorMsg(err)) end
          if (info.parentID != lSurface.id) then
             error('Surface #' .. surface.id .. ' is not contained by divider surface #' .. lSurface.id .. ' got #' .. info.parentID)
@@ -156,7 +155,7 @@ gui.divider = function(Options)
       local count = 0
       local max = { left=0, right=0, top=0, bottom=0 }
       for _, surface in ipairs(List) do
-         local err, x, y, absx, absy, width, height = mSurface.GetSurfaceCoords(surface)
+         local err, x, y, absx, absy, width, height = mGfx.GetSurfaceCoords(surface)
          if (err == ERR_Okay) then
             if (count == 0) then
                max.left   = x
@@ -266,8 +265,6 @@ gui.divider = function(Options)
    // everything on the other side of the divider.
 
    arrangeAll = function(OverX, OverY) // OverX and OverY are absolute coordinates.
-      mSurface.ForbidDrawing()
-
          if (lDirection == 'h') then // Arrange the width of everything on the left side of the divider
             local x_change = OverX - (lSplit.x + (lGap / 2))
             for _, surface in ipairs(lLeft) do
@@ -309,8 +306,6 @@ gui.divider = function(Options)
          // Arrange everything on the other side of the surface
 
          local area = arrangeOppositeSurfaces()
-
-      mSurface.PermitDrawing()
 
       lSurface.mtInvalidateRegion(area.left, area.top, area.right - area.left, area.bottom - area.top)
 

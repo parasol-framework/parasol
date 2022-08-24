@@ -17,15 +17,15 @@ static ERROR GET_AbsX(objSurface *Self, LONG *Value)
    SurfaceControl *ctl;
    LONG i;
 
-   if ((ctl = drwAccessList(ARF_READ))) {
+   if ((ctl = gfxAccessList(ARF_READ))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       if ((i = find_own_index(ctl, Self)) != -1) {
          *Value = list[i].Left;
-         drwReleaseList(ARF_READ);
+         gfxReleaseList(ARF_READ);
          return ERR_Okay;
       }
       else {
-         drwReleaseList(ARF_READ);
+         gfxReleaseList(ARF_READ);
          return log.warning(ERR_Search);
       }
    }
@@ -39,16 +39,16 @@ static ERROR SET_AbsX(objSurface *Self, LONG Value)
 
    if (Self->Head.Flags & NF_INITIALISED) {
       SurfaceControl *ctl;
-      if ((ctl = drwAccessList(ARF_READ))) {
+      if ((ctl = gfxAccessList(ARF_READ))) {
          auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
          if ((parent = find_parent_index(ctl, Self)) != -1) {
             x = Value - list[parent].Left;
-            drwReleaseList(ARF_READ);
+            gfxReleaseList(ARF_READ);
             move_layer(Self, x, Self->Y);
             return ERR_Okay;
          }
          else {
-            drwReleaseList(ARF_READ);
+            gfxReleaseList(ARF_READ);
             return log.warning(ERR_Search);
          }
       }
@@ -75,15 +75,15 @@ static ERROR GET_AbsY(objSurface *Self, LONG *Value)
    SurfaceControl *ctl;
    LONG i;
 
-   if ((ctl = drwAccessList(ARF_READ))) {
+   if ((ctl = gfxAccessList(ARF_READ))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       if ((i = find_own_index(ctl, Self)) != -1) {
          *Value = list[i].Top;
-         drwReleaseList(ARF_READ);
+         gfxReleaseList(ARF_READ);
          return ERR_Okay;
       }
       else {
-         drwReleaseList(ARF_READ);
+         gfxReleaseList(ARF_READ);
          return log.warning(ERR_Search);
       }
    }
@@ -97,16 +97,16 @@ static ERROR SET_AbsY(objSurface *Self, LONG Value)
 
    if (Self->Head.Flags & NF_INITIALISED) {
       SurfaceControl *ctl;
-      if ((ctl = drwAccessList(ARF_READ))) {
+      if ((ctl = gfxAccessList(ARF_READ))) {
          auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
          if ((parent = find_parent_index(ctl, Self)) != -1) {
             y = Value - list[parent].Top;
-            drwReleaseList(ARF_READ);
+            gfxReleaseList(ARF_READ);
             move_layer(Self, Self->X, y);
             return ERR_Okay;
          }
 
-         drwReleaseList(ARF_READ);
+         gfxReleaseList(ARF_READ);
          return log.warning(ERR_Search);
       }
       else return log.warning(ERR_AccessMemory);
@@ -197,7 +197,7 @@ static ERROR SET_Dimensions(objSurface *Self, LONG Value)
    parasol::Log log;
    SURFACEINFO *parent;
 
-   if (!drwGetSurfaceInfo(Self->ParentID, &parent)) {
+   if (!gfxGetSurfaceInfo(Self->ParentID, &parent)) {
       if (Value & DMF_Y) {
          if ((Value & DMF_HEIGHT) or (Value & DMF_Y_OFFSET)) {
             Self->Dimensions &= ~DMF_VERTICAL_FLAGS;
@@ -672,10 +672,10 @@ static ERROR GET_VisibleHeight(objSurface *Self, LONG *Value)
       *Value = Self->Height;
       return ERR_Okay;
    }
-   else if ((ctl = drwAccessList(ARF_READ))) {
+   else if ((ctl = gfxAccessList(ARF_READ))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       if ((i = find_own_index(ctl, Self)) IS -1) {
-         drwReleaseList(ARF_READ);
+         gfxReleaseList(ARF_READ);
          return ERR_Search;
       }
 
@@ -687,7 +687,7 @@ static ERROR GET_VisibleHeight(objSurface *Self, LONG *Value)
 
       *Value = clip.Bottom - clip.Top;
 
-      drwReleaseList(ARF_READ);
+      gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
    else return log.warning(ERR_AccessMemory);
@@ -719,10 +719,10 @@ static ERROR GET_VisibleWidth(objSurface *Self, LONG *Value)
       *Value = Self->Height;
       return ERR_Okay;
    }
-   else if ((ctl = drwAccessList(ARF_READ))) {
+   else if ((ctl = gfxAccessList(ARF_READ))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       if ((i = find_own_index(ctl, Self)) IS -1) {
-         drwReleaseList(ARF_READ);
+         gfxReleaseList(ARF_READ);
          return ERR_Search;
       }
 
@@ -734,7 +734,7 @@ static ERROR GET_VisibleWidth(objSurface *Self, LONG *Value)
 
       *Value = clip.Right - clip.Left;
 
-      drwReleaseList(ARF_READ);
+      gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
    else return log.warning(ERR_AccessMemory);
@@ -766,10 +766,10 @@ static ERROR GET_VisibleX(objSurface *Self, LONG *Value)
       *Value = Self->Height;
       return ERR_Okay;
    }
-   else if ((ctl = drwAccessList(ARF_READ))) {
+   else if ((ctl = gfxAccessList(ARF_READ))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       if ((i = find_own_index(ctl, Self)) IS -1) {
-         drwReleaseList(ARF_READ);
+         gfxReleaseList(ARF_READ);
          return ERR_Search;
       }
 
@@ -781,7 +781,7 @@ static ERROR GET_VisibleX(objSurface *Self, LONG *Value)
 
       *Value = clip.Left - list[i].Left;
 
-      drwReleaseList(ARF_READ);
+      gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
    else return log.warning(ERR_AccessMemory);
@@ -811,11 +811,11 @@ static ERROR GET_VisibleY(objSurface *Self, LONG *Value)
       *Value = Self->Height;
       return ERR_Okay;
    }
-   else if ((ctl = drwAccessList(ARF_READ))) {
+   else if ((ctl = gfxAccessList(ARF_READ))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       WORD i;
       if ((i = find_own_index(ctl, Self)) IS -1) {
-         drwReleaseList(ARF_READ);
+         gfxReleaseList(ARF_READ);
          return ERR_Search;
       }
 
@@ -828,7 +828,7 @@ static ERROR GET_VisibleY(objSurface *Self, LONG *Value)
 
       *Value = clip.Top - list[i].Top;
 
-      drwReleaseList(ARF_READ);
+      gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
    else return log.warning(ERR_AccessMemory);

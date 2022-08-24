@@ -1,4 +1,5 @@
 
+#define __system__
 //#define DEBUG
 #define PRIVATE_DISPLAY
 #define PRV_DISPLAY_MODULE
@@ -6,6 +7,15 @@
 #define PRV_DISPLAY
 #define PRV_POINTER
 #define PRV_CLIPBOARD
+#define PRV_SURFACE
+//#define DBG_DRAW_ROUTINES // Use this if you want to debug any external code that is subscribed to surface drawing routines
+//#define FASTACCESS
+//#define DBG_LAYERS
+#define FOCUSMSG(...) //LogF(NULL, __VA_ARGS__)
+
+#ifdef DBG_LAYERS
+#include <stdio.h>
+#endif
 
 #include <unordered_set>
 
@@ -60,6 +70,7 @@
 
 #define USE_XIMAGE TRUE
 
+#define SIZE_FOCUSLIST   30
 #define DEFAULT_WHEELSPEED 500
 #define TIME_DBLCLICK      40
 #define REPEAT_BUTTONS     TRUE
@@ -75,15 +86,55 @@
 #define SURFACE_WRITE     (0x0002)   // Write access
 #define SURFACE_READWRITE (SURFACE_READ|SURFACE_WRITE)
 
-#define __system__
 #include <parasol/modules/display.h>
 #include <parasol/modules/window.h>
 #include <parasol/modules/xml.h>
-#include <parasol/modules/surface.h>
+
+#define URF_HATE_CHILDREN     0x00000001
+
+#define UpdateSurfaceField(a,b) { \
+   SurfaceList *list; SurfaceControl *ctl; WORD i; \
+   if (Self->Head.Flags & NF_INITIALISED) { \
+   if ((ctl = gfxAccessList(ARF_UPDATE))) { \
+      list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
+      for (i=0; i < ctl->Total; i++) { \
+         if (list[i].SurfaceID IS (a)->Head.UID) { \
+            list[i].b = (a)->b; \
+            break; \
+         } \
+      } \
+      gfxReleaseList(ARF_UPDATE); \
+   } \
+   } \
+}
+
+#define UpdateSurfaceField2(a,b,c) { \
+   SurfaceList *list; SurfaceControl *ctl; WORD i; \
+   if (Self->Head.Flags & NF_INITIALISED) { \
+      if ((ctl = gfxAccessList(ARF_UPDATE))) { \
+         list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
+         for (i=0; i < ctl->Total; i++) { \
+            if (list[i].SurfaceID IS (a)->Head.UID) { \
+               list[i].b = (a)->c; \
+               break; \
+            } \
+         } \
+         gfxReleaseList(ARF_UPDATE); \
+      } \
+   } \
+}
+
+#define UpdateSurfaceList(a) UpdateSurfaceCopy((a), 0)
 
 struct dcDisplayInputReady { // This is an internal structure used by the display module to replace dcInputReady
    LARGE NextIndex;    // Next message index for the subscriber to look at
    LONG  SubIndex;     // Index into the InputSubscription list
+};
+
+enum {
+   STAGE_PRECOPY=1,
+   STAGE_AFTERCOPY,
+   STAGE_COMPOSITE
 };
 
 #define MT_PtrSetWinCursor -1
@@ -205,12 +256,52 @@ extern ERROR get_display_info(OBJECTID, DISPLAYINFO *, LONG);
 extern void update_displayinfo(objDisplay *);
 extern void resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
 
+extern void forbidDrawing(void);
+extern void forbidExpose(void);
+extern void permitDrawing(void);
+extern void permitExpose(void);
+extern ERROR access_video(OBJECTID DisplayID, objDisplay **, objBitmap **);
+extern ERROR apply_style(OBJECTPTR, OBJECTPTR, CSTRING);
+extern ERROR load_styles(void);
+extern BYTE  check_surface_list(void);
+extern UBYTE CheckVisibility(SurfaceList *, WORD);
+extern UBYTE check_volatile(SurfaceList *, WORD);
+extern ERROR create_surface_class(void);
+extern void expose_buffer(SurfaceList *, WORD Total, WORD Index, WORD ScanIndex, LONG Left, LONG Top, LONG Right, LONG Bottom, OBJECTID VideoID, objBitmap *);
+extern WORD  FindBitmapOwner(SurfaceList *, WORD);
+extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
+extern void  invalidate_overlap(objSurface *, SurfaceList *, WORD, LONG, LONG, LONG, LONG, LONG, LONG, objBitmap *);
+extern void  move_layer(objSurface *, LONG, LONG);
+extern void  move_layer_pos(SurfaceControl *, LONG, LONG);
+extern LONG  msg_handler(APTR, LONG, LONG, APTR, LONG);
+extern void  prepare_background(objSurface *, SurfaceList *, WORD, WORD, objBitmap *, ClipRectangle *, BYTE);
+extern void  process_surface_callbacks(objSurface *, objBitmap *);
+extern void  redraw_nonintersect(OBJECTID, SurfaceList *, WORD, WORD, ClipRectangle *, ClipRectangle *, LONG, LONG);
+extern void  release_video(objDisplay *);
+extern ERROR track_layer(objSurface *);
+extern void  untrack_layer(OBJECTID);
+extern void  check_bmp_buffer_depth(objSurface *, objBitmap *);
+extern BYTE  restrict_region_to_parents(SurfaceList *, LONG, ClipRectangle *, BYTE);
+extern ERROR load_style_values(void);
+extern ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD total, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags);
+extern ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD Index, WORD Total, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags);
+extern void  _redraw_surface_do(objSurface *, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, objBitmap *, LONG);
+extern void check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
+extern ERROR resize_layer(objSurface *, LONG, LONG, LONG, LONG, LONG, LONG, LONG, DOUBLE, LONG);
+extern ERROR UpdateSurfaceCopy(objSurface *Self, SurfaceList *Copy);
+extern LONG find_surface_list(SurfaceList *list, LONG Total, OBJECTID SurfaceID);
+extern LONG find_parent_list(SurfaceList *list, WORD Total, objSurface *Self);
+
+#ifdef DBG_LAYERS
+extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
+#endif
+
 extern std::unordered_map<LONG, InputCallback> glInputCallbacks;
 extern SharedControl *glSharedControl;
 extern LONG glSixBitDisplay;
 extern OBJECTPTR glModule;
 extern OBJECTPTR modSurface;
-extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard;
+extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface;
 extern OBJECTID glPointerID;
 extern DISPLAYINFO *glDisplayInfo;
 extern APTR glDither;
@@ -223,6 +314,31 @@ extern ColourFormat glColourFormat;
 extern BYTE glHeadless;
 extern FieldDef CursorLookup[];
 
+extern TIMER glRefreshPointerTimer;
+extern objBitmap *glComposite;
+extern BYTE glDisplayType;
+extern DOUBLE glpRefreshRate, glpGammaRed, glpGammaGreen, glpGammaBlue;
+extern LONG glpDisplayWidth, glpDisplayHeight, glpDisplayX, glpDisplayY;
+extern LONG glpDisplayDepth; // If zero, the display depth will be based on the hosted desktop's bit depth.
+extern LONG glpMaximise, glpFullScreen;
+extern LONG glpWindowType;
+extern char glpDPMS[20];
+extern LONG glClassFlags; // Set on CMDInit()
+extern objXML *glStyle;
+extern OBJECTPTR glAppStyle;
+extern OBJECTPTR glDesktopStyleScript;
+extern OBJECTPTR glDefaultStyleScript;
+extern MsgHandler *glExposeHandler;
+
+// Thread-specific variables.
+
+extern THREADVAR APTR glSurfaceMutex;
+extern THREADVAR WORD tlNoDrawing, tlNoExpose, tlVolatileIndex;
+extern THREADVAR UBYTE tlListCount; // For drwAccesslist()
+extern THREADVAR OBJECTID tlFreeExpose;
+extern THREADVAR SurfaceControl *tlSurfaceList;
+extern THREADVAR LONG glRecentSurfaceIndex;
+
 struct InputType {
    LONG Flags;  // As many flags as necessary to describe the input type
    LONG Mask;   // Limited flags to declare the mask that must be used to receive that type
@@ -230,6 +346,10 @@ struct InputType {
 
 extern const std::array<struct InputType, JET_END> glInputType;
 extern const std::array<std::string, JET_END> glInputNames;
+
+#define find_surface_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
+#define find_own_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->Head.UID)
+#define find_parent_index(a,b) find_parent_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
 
 //****************************************************************************
 
@@ -259,13 +379,15 @@ DLLCALL LONG WINAPI SetPixelV(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI SetPixel(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
 
-extern int winAddClip(int Datatype, void * Data, int Size, int Cut);
-extern void winClearClipboard(void);
-extern void winCopyClipboard(void);
-extern int winExtractFile(void *pida, int Index, char *Result, int Size);
-extern void winGetClip(int Datatype);
-extern void winTerminate(void);
-
+int winAddClip(int Datatype, void * Data, int Size, int Cut);
+void winClearClipboard(void);
+void winCopyClipboard(void);
+int winExtractFile(void *pida, int Index, char *Result, int Size);
+void winGetClip(int Datatype);
+void winTerminate(void);
+APTR winGetDC(APTR);
+void winReleaseDC(APTR, APTR);
+void winSetSurfaceID(APTR, LONG);
 APTR GetWinCursor(LONG);
 LONG winBlit(APTR, LONG, LONG, LONG, LONG, APTR, LONG, LONG);
 void winGetError(LONG, STRING, LONG);
@@ -323,3 +445,11 @@ extern APTR glDGAVideo;
 #endif
 
 #include "prototypes.h"
+
+INLINE void clip_rectangle(ClipRectangle *rect, ClipRectangle *clip)
+{
+   if (rect->Left   < clip->Left)   rect->Left   = clip->Left;
+   if (rect->Top    < clip->Top)    rect->Top    = clip->Top;
+   if (rect->Right  > clip->Right)  rect->Right  = clip->Right;
+   if (rect->Bottom > clip->Bottom) rect->Bottom = clip->Bottom;
+}

@@ -12,7 +12,7 @@ the display and as such is not recommended.
 static ERROR GET_BitsPerPixel(objSurface *Self, LONG *Value)
 {
    SURFACEINFO *info;
-   if (!drwGetSurfaceInfo(Self->Head.UID, &info)) {
+   if (!gfxGetSurfaceInfo(Self->Head.UID, &info)) {
       *Value = info->BitsPerPixel;
    }
    else *Value = 0;
@@ -173,7 +173,7 @@ static ERROR SET_Modal(objSurface *Self, LONG Modal)
    if ((!Modal) and (Self-Modal)) {
       TaskList *task;
       if (Self->PrevModalID) {
-         drwSetModalSurface(Self->PrevModalID);
+         gfxSetModalSurface(Self->PrevModalID);
          Self->PrevModalID = 0;
       }
       else if ((task = (TaskList *)GetResourcePtr(RES_TASK_CONTROL))) {
@@ -285,7 +285,7 @@ static ERROR SET_Parent(objSurface *Self, LONG Value)
       Self->ParentDefined = TRUE;
 
       SurfaceControl *ctl;
-      if ((ctl = drwAccessList(ARF_WRITE))) {
+      if ((ctl = gfxAccessList(ARF_WRITE))) {
          auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
          LONG index, parent;
          if ((index = find_own_index(ctl, Self)) != -1) {
@@ -298,7 +298,7 @@ static ERROR SET_Parent(objSurface *Self, LONG Value)
 
 
          }
-         drwReleaseList(ARF_WRITE);
+         gfxReleaseList(ARF_WRITE);
       }
 
       acShow(Self);

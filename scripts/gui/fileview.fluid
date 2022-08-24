@@ -61,8 +61,6 @@ Available methods:
    require 'json'
    include 'vector'
 
-   if not mSurface then mSurface = mod.load('surface') end
-
 local lSys = mSys.GetSystemState()
 
 local copy_list = [[

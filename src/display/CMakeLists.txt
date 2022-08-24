@@ -9,13 +9,15 @@ set (CLASSES
    "${CMAKE_CURRENT_SOURCE_DIR}/class_bitmap.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_display.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_clipboard.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_pointer.cpp")
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_pointer.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_surface/class_surface.cpp")
 
 set (DISPLAY_DEFS # Full paths are required for add_custom_command() dependencies to work correctly
    "${CMAKE_CURRENT_SOURCE_DIR}/class_bitmap_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_clipboard_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_display_def.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_pointer_def.c")
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_pointer_def.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_surface_def.c")
 
 if (BUILD_DEFS)
    add_custom_command (OUTPUT
@@ -24,8 +26,10 @@ if (BUILD_DEFS)
       "${DOCS}/modules/classes/clipboard.xml"
       "${DOCS}/modules/classes/display.xml"
       "${DOCS}/modules/classes/pointer.xml"
+      "${DOCS}/modules/classes/surface.xml"
       PRE_BUILD
       COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--sdk=${PROJECT_SOURCE_DIR}" "--output-proto=prototypes.h" "--output-defs=module_def.c" "--files={" ${FUNCTIONS} "}"
+      COMMAND ${FLUID_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c"
       DEPENDS
          "${MOD}.fdl"
          ${FUNCTIONS}

@@ -151,7 +151,7 @@ Failed
 
 *****************************************************************************/
 
-static ERROR SURFACE_SetDisplay(objSurface *Self, struct drwSetDisplay *Args)
+static ERROR SURFACE_SetDisplay(objSurface *Self, struct gfxSetDisplay *Args)
 {
    parasol::Log log;
 
@@ -185,7 +185,7 @@ static ERROR SURFACE_SetDisplay(objSurface *Self, struct drwSetDisplay *Args)
 //
 // This function is also useful for skipping the dimension limits normally imposed when resizing.
 
-static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth,
+ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth,
    LONG InsideHeight, LONG BPP, DOUBLE RefreshRate, LONG DeviceFlags)
 {
    if (!Width)  Width = Self->Width;
@@ -264,12 +264,12 @@ static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Hei
    // to the new dimensions.  Surface objects are not permitted to redraw themselves when they receive the Redimension
    // notification - we will send a delayed draw message later in this routine.
 
-   drwForbidDrawing();
+   forbidDrawing();
 
    struct acRedimension redimension = { (DOUBLE)X, (DOUBLE)Y, 0, (DOUBLE)Width, (DOUBLE)Height, (DOUBLE)BPP };
    NotifySubscribers(Self, AC_Redimension, &redimension, NULL, ERR_Okay);
 
-   drwPermitDrawing();
+   permitDrawing();
 
    if (!(Self->Flags & RNF_VISIBLE)) return ERR_Okay;
 
@@ -278,12 +278,12 @@ static ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Hei
       // contain children that belong to foreign tasks.
 
       SurfaceControl *ctl;
-      if (!(ctl = drwAccessList(ARF_READ))) return ERR_AccessMemory;
+      if (!(ctl = gfxAccessList(ARF_READ))) return ERR_AccessMemory;
 
       LONG total = ctl->Total;
       SurfaceList cplist[total];
       CopyMemory((BYTE *)ctl + ctl->ArrayIndex, cplist, sizeof(cplist[0]) * total);
-      drwReleaseList(ARF_READ);
+      gfxReleaseList(ARF_READ);
 
       WORD index;
       if ((index = find_surface_list(cplist, total, Self->Head.UID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.

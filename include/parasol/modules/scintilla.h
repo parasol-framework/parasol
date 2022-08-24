@@ -19,10 +19,6 @@
 #include <parasol/modules/font.h>
 #endif
 
-#ifndef MODULES_SURFACE_H
-#include <parasol/modules/surface.h>
-#endif
-
 // Scintilla Lexers.  These codes originate from the Scintilla library.
 
 #define SCLEX_ERRORLIST 10
@@ -126,7 +122,7 @@ typedef struct rkScintilla {
    UWORD  HoldModify:1;
    UWORD  AllowTabs:1;
    UBYTE  ScrollLocked;
-  
+
 #endif
 } objScintilla;
 

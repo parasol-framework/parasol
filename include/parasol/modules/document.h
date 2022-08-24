@@ -23,10 +23,6 @@
 #include <parasol/modules/font.h>
 #endif
 
-#ifndef MODULES_SURFACE_H
-#include <parasol/modules/surface.h>
-#endif
-
 // Official version number (date format).  Any changes to the handling of document content require that this number be updated.
 
 #define RIPPLE_VERSION "20160601"
@@ -106,7 +102,7 @@ struct escFont {
 };
 
 typedef struct escFont escFont;
-  
+
 struct SurfaceClip {
    struct SurfaceClip * Next;
    LONG Left;
@@ -297,7 +293,7 @@ typedef struct rkDocument {
    UBYTE  DrawIntercept;
    UBYTE  InTemplate;
    UBYTE  BkgdGfx;
-  
+
 #endif
 } objDocument;
 

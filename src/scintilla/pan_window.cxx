@@ -37,7 +37,7 @@ bool Scintilla::Window::HasFocus()
 
    LogF("Window::HasFocus()","");
 
-   if (!drwGetSurfaceInfo(getSurfaceID(this), &info)) {
+   if (!gfxGetSurfaceInfo(getSurfaceID(this), &info)) {
       if (info->Flags & RNF_HAS_FOCUS) return 1;
    }
 
@@ -55,7 +55,7 @@ Scintilla::PRectangle Scintilla::Window::GetPosition()
    // Before any size allocated pretend its 1000 wide so not scrolled
    Scintilla::PRectangle rc(0, 0, 1000, 1000);
 
-   if (!drwGetSurfaceInfo(getSurfaceID(this), &info)) {
+   if (!gfxGetSurfaceInfo(getSurfaceID(this), &info)) {
       rc.left   = info->AbsX;
       rc.top    = info->AbsY;
       rc.right  = info->AbsX + info->Width;
@@ -90,7 +90,7 @@ void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla:
 
    // Get the position of the other window
 
-   if (!drwGetSurfaceInfo(getSurfaceID(&relativeTo), &info)) {
+   if (!gfxGetSurfaceInfo(getSurfaceID(&relativeTo), &info)) {
       rc.left -= info->X;
       rc.top  -= info->Y;
    }

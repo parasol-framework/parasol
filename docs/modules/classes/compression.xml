@@ -448,7 +448,7 @@ if (!error) {
       <type>OBJECTID</type>
       <description>
 <p>If this field is set to a valid ObjectID, text messages will be sent to that object when the compression object is used.  This can be helpful for notifying the user of the results of compression, decompression and removal of files.</p>
-<p>The object receiving the message must be capable of understanding text sent via data channels.  In most cases it is recommended that a <class name="Text">Text</class> object is used for this purpose.</p>
+<p>The object receiving the message must be capable of understanding text sent via data channels.  In most cases it is recommended that a @Text object is used for this purpose.</p>
       </description>
     </field>
 

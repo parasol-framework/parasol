@@ -260,6 +260,18 @@ void winGetCoords(HWND Window, int *WinX, int *WinY, int *WinWidth, int *WinHeig
 }
 
 //****************************************************************************
+
+HDC winGetDC(HWND Window)
+{
+   return GetDC(Window);
+}
+
+void winReleaseDC(HWND Window, HDC DC)
+{
+   ReleaseDC(Window, DC);
+}
+
+//****************************************************************************
 // If an error occurs, the DPI values are not updated.
 
 void winGetDPI(LONG *HDPI, LONG *VDPI)
