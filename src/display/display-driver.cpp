@@ -1753,33 +1753,6 @@ ERROR load_style_values(void)
    return error;
 }
 
-/*****************************************************************************
-** This call is used to refresh the pointer image when at least one layer has been rearranged.  The timer is used to
-** delay the refresh - useful if multiple surfaces are being rearranged when we only need to do the refresh once.
-** The delay also prevents clashes with read/write access to the surface list.
-*/
-
-ERROR refresh_pointer_timer(OBJECTPTR Task, LARGE Elapsed, LARGE CurrentTime)
-{
-   objPointer *pointer;
-   if ((pointer = gfxAccessPointer())) {
-      Action(AC_Refresh, pointer, NULL);
-      ReleaseObject(pointer);
-   }
-   glRefreshPointerTimer = 0;
-   return ERR_Terminate; // Timer is only called once
-}
-
-void refresh_pointer(objSurface *Self)
-{
-   if (!glRefreshPointerTimer) {
-      parasol::SwitchContext context(glModule);
-      FUNCTION call;
-      SET_FUNCTION_STDC(call, (APTR)&refresh_pointer_timer);
-      SubscribeTimer(0.02, &call, &glRefreshPointerTimer);
-   }
-}
-
 //****************************************************************************
 
 #ifdef __xwindows__

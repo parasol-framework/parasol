@@ -42,6 +42,7 @@ having to communicate with each other directly.
 
 *****************************************************************************/
 
+#undef __xwindows__
 #include "../defs.h"
 
 static ERROR SET_Opacity(objSurface *, DOUBLE);

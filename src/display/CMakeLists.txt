@@ -55,12 +55,12 @@ target_include_directories (${MOD} PRIVATE
 if (WIN32)
    target_link_libraries (${MOD} PRIVATE ole32 gdi32 uuid m)
    target_sources (${MOD} PRIVATE "display-driver.cpp" "win32/windows.c" ${CLASSES})
-   add_definitions ("-DWIN_DRAGDROP")
+   add_compile_definitions ("WIN_DRAGDROP")
 elseif (ANDROID)
    # Android uses OpenGL.  A separate driver library is compiled for this purpose.
    add_library (display-gles1 SHARED)
    target_sources (display-gles1 PRIVATE "display-driver.cpp" "android/android.cpp" ${CLASSES})
-   add_definitions ("-D_GLES_" "-D_GLES1_")
+   add_compile_definitions ("_GLES_" "_GLES1_")
    target_link_libraries (display-gles1 PRIVATE m android EGL GLESv1_CM)
    # GL2 Link: -ljnigraphics -lEGL -lGLESv2 -DGLES2
    # GL3 Link: -ljnigraphics -lEGL -lGLESv3 -DGLES3
@@ -71,5 +71,5 @@ else ()
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
    target_sources (${MOD} PRIVATE "display-driver.cpp" ${CLASSES})
    target_link_libraries (${MOD} PRIVATE m Xext X11) # x11/libXxf86dga.a
-   add_definitions ("-D__X11DGA__" "-D__xwindows__")
+   add_compile_definitions ("__X11DGA__" "__xwindows__")
 endif ()

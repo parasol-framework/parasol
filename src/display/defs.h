@@ -22,16 +22,16 @@
 #include <math.h>
 
 #ifdef __linux__
-#include <dlfcn.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/utsname.h>
-#include <sys/wait.h>
-#include <sys/mman.h>
-#include <errno.h>
+ #include <dlfcn.h>
+ #include <stdlib.h>
+ #include <signal.h>
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <sys/types.h>
+ #include <sys/utsname.h>
+ #include <sys/wait.h>
+ #include <sys/mman.h>
+ #include <errno.h>
 #endif
 
 #ifdef __xwindows__
@@ -51,6 +51,7 @@
  #include <X11/Xutil.h>
  #include <sys/shm.h>
  #include <stdio.h>
+ #include <parasol/modules/xrandr.h>
 #endif
 
 #ifdef _GLES_
@@ -160,10 +161,6 @@ INLINE ERROR ptrGrabX11Pointer(APTR Ob, OBJECTID SurfaceID) {
 
 #ifdef __ANDROID__
 #include <parasol/modules/android.h>
-#endif
-
-#ifdef __xwindows__
- #include <parasol/modules/xrandr.h>
 #endif
 
 #undef NULL
