@@ -260,7 +260,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
 
       if (Self->Buttons[bi].LastClicked) {
          LONG absx, absy;
-         if (!GetSurfaceAbs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
+         if (!get_surface_abs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
             uiflags |= Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
 
             if ((ABS(Self->X - Self->LastReleaseX) > Self->ClickSlop) or
@@ -287,7 +287,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
    // surface, or if no modal surface is defined.
 
    if (glOverTaskID) {
-      modal_id = drwGetModalSurface(glOverTaskID);
+      modal_id = gfxGetModalSurface(glOverTaskID);
 
       if (modal_id) {
          if (modal_id IS Self->OverObjectID) {
@@ -297,7 +297,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
             // Check if the OverObject is one of the children of modal_id.
 
             ERROR error;
-            error = drwCheckIfChild(modal_id, Self->OverObjectID);
+            error = gfxCheckIfChild(modal_id, Self->OverObjectID);
             if ((error IS ERR_True) or (error IS ERR_LimitedSuccess)) modal_id = 0;
          }
       }
@@ -481,7 +481,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
 
             // Pointer cannot leave the surface that it is restricted to
 
-            if (!GetSurfaceAbs(Self->RestrictID, &absx, &absy, &width, &height)) {
+            if (!get_surface_abs(Self->RestrictID, &absx, &absy, &width, &height)) {
                if (current_x < absx) current_x = absx;
                if (current_y < absy) current_y = absy;
                if (current_x > (absx + width - 1))  current_x = absx + width - 1;
@@ -545,7 +545,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
             DOUBLE sy = Self->Y + DRAG_YOFFSET;
             if (Self->DragParent) {
                LONG absx, absy;
-               if (!drwGetSurfaceCoords(Self->DragParent, NULL, NULL, &absx, &absy, NULL, NULL)) {
+               if (!gfxGetSurfaceCoords(Self->DragParent, NULL, NULL, &absx, &absy, NULL, NULL)) {
                   sx -= absx;
                   sy -= absy;
                }
@@ -555,7 +555,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
          }
 
          LONG absx, absy;
-         if (!GetSurfaceAbs(Self->Buttons[0].LastClicked, &absx, &absy, 0, 0)) {
+         if (!get_surface_abs(Self->Buttons[0].LastClicked, &absx, &absy, 0, 0)) {
             LONG uiflags = Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
 
             // Send the movement message to the last clicked object
@@ -672,18 +672,6 @@ static ERROR PTR_Init(objPointer *Self, APTR Void)
 {
    parasol::Log log;
    objBitmap *bitmap;
-
-   if (!modSurface) {
-      // The Surface module has to be tracked back to our task because it will open the display module (this causes a
-      // resource deadlock as the system can't establish which module to destroy first during expunge).  Also note that
-      // the module is terminated through resource tracking, we don't free it during our CMDExpunge() sequence for
-      // system integrity reasons.
-
-      parasol::SwitchContext ctx(CurrentTask());
-      if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) {
-         return ERR_InitModule;
-      }
-   }
 
    // Find the Surface object that we are associated with.  Note that it is okay if no surface is available at this
    // stage, but the host system must have a mechanism for setting the Surface field at a later stage or else
@@ -1295,7 +1283,7 @@ static BYTE get_over_object(objPointer *Self)
    if (!glSharedControl->SurfacesMID) return FALSE;
 
    ERROR error = AccessMemory(glSharedControl->SurfacesMID, MEM_READ, 20, &ctl);
-   //list = drwAccessList(ARF_READ|ARF_NO_DELAY, &size);
+   //list = gfxAccessList(ARF_READ|ARF_NO_DELAY, &size);
 
    BYTE changed = FALSE;
    if (!error) {
@@ -1422,7 +1410,7 @@ static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
                   input.X = Self->OverX;
                   input.Y = Self->OverY;
                }
-               else if (!GetSurfaceAbs(Self->Buttons[i].LastClicked, &surface_x, &surface_y, 0, 0)) {
+               else if (!get_surface_abs(Self->Buttons[i].LastClicked, &surface_x, &surface_y, 0, 0)) {
                   input.X = Self->X - surface_x;
                   input.Y = Self->Y - surface_y;
                }
@@ -1572,7 +1560,7 @@ static ERROR init_mouse_driver(void)
          FID_Flags|TLONG,  RNF_CURSOR|RNF_PRECOPY|RNF_COMPOSITE,
          TAGEND);
       if (!acInit(surface)) {
-         drwAddCallback(surface, &DrawPointer);
+         gfxAddCallback(surface, &DrawPointer);
       }
       else { acFree(surface); Self->CursorSurfaceID = 0; }
 

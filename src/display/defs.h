@@ -1,4 +1,5 @@
 
+#define __system__
 //#define DEBUG
 #define PRIVATE_DISPLAY
 #define PRV_DISPLAY_MODULE
@@ -6,22 +7,31 @@
 #define PRV_DISPLAY
 #define PRV_POINTER
 #define PRV_CLIPBOARD
+#define PRV_SURFACE
+//#define DBG_DRAW_ROUTINES // Use this if you want to debug any external code that is subscribed to surface drawing routines
+//#define FASTACCESS
+//#define DBG_LAYERS
+#define FOCUSMSG(...) //LogF(NULL, __VA_ARGS__)
+
+#ifdef DBG_LAYERS
+#include <stdio.h>
+#endif
 
 #include <unordered_set>
 
 #include <math.h>
 
 #ifdef __linux__
-#include <dlfcn.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/utsname.h>
-#include <sys/wait.h>
-#include <sys/mman.h>
-#include <errno.h>
+ #include <dlfcn.h>
+ #include <stdlib.h>
+ #include <signal.h>
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <sys/types.h>
+ #include <sys/utsname.h>
+ #include <sys/wait.h>
+ #include <sys/mman.h>
+ #include <errno.h>
 #endif
 
 #ifdef __xwindows__
@@ -41,6 +51,7 @@
  #include <X11/Xutil.h>
  #include <sys/shm.h>
  #include <stdio.h>
+ #include <parasol/modules/xrandr.h>
 #endif
 
 #ifdef _GLES_
@@ -58,8 +69,8 @@
 #include <android/configuration.h>
 #endif
 
-#define USE_XIMAGE TRUE
-
+#define USE_XIMAGE         TRUE
+#define SIZE_FOCUSLIST     30
 #define DEFAULT_WHEELSPEED 500
 #define TIME_DBLCLICK      40
 #define REPEAT_BUTTONS     TRUE
@@ -71,19 +82,71 @@
 #define BF_DATA     0x01
 #define BF_WINVIDEO 0x02
 
+#define BLEND_MAX_THRESHOLD 255
+#define BLEND_MIN_THRESHOLD 1
+
+#ifndef PI
+#define PI (3.141592653589793238462643383279f)
+#endif
+
 #define SURFACE_READ      (0x0001)   // Read access
 #define SURFACE_WRITE     (0x0002)   // Write access
 #define SURFACE_READWRITE (SURFACE_READ|SURFACE_WRITE)
 
-#define __system__
+#define MAX_CLIPS 10     // Maximum number of clips stored in the historical buffer
+
+#define MAX_INPUTMSG 2048 // Must be a value to the power of two
+#define INPUT_MASK        (MAX_INPUTMSG-1) // All bits will be set if MAX_INPUTMSG is a power of two
+
 #include <parasol/modules/display.h>
 #include <parasol/modules/window.h>
 #include <parasol/modules/xml.h>
-#include <parasol/modules/surface.h>
+
+#define URF_REDRAWS_CHILDREN     0x00000001
+
+#define UpdateSurfaceField(a,b) { \
+   SurfaceList *list; SurfaceControl *ctl; WORD i; \
+   if (Self->Head.Flags & NF_INITIALISED) { \
+   if ((ctl = gfxAccessList(ARF_UPDATE))) { \
+      list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
+      for (i=0; i < ctl->Total; i++) { \
+         if (list[i].SurfaceID IS (a)->Head.UID) { \
+            list[i].b = (a)->b; \
+            break; \
+         } \
+      } \
+      gfxReleaseList(ARF_UPDATE); \
+   } \
+   } \
+}
+
+#define UpdateSurfaceField2(a,b,c) { \
+   SurfaceList *list; SurfaceControl *ctl; WORD i; \
+   if (Self->Head.Flags & NF_INITIALISED) { \
+      if ((ctl = gfxAccessList(ARF_UPDATE))) { \
+         list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
+         for (i=0; i < ctl->Total; i++) { \
+            if (list[i].SurfaceID IS (a)->Head.UID) { \
+               list[i].b = (a)->c; \
+               break; \
+            } \
+         } \
+         gfxReleaseList(ARF_UPDATE); \
+      } \
+   } \
+}
+
+#define UpdateSurfaceList(a) update_surface_copy((a), 0)
 
 struct dcDisplayInputReady { // This is an internal structure used by the display module to replace dcInputReady
    LARGE NextIndex;    // Next message index for the subscriber to look at
    LONG  SubIndex;     // Index into the InputSubscription list
+};
+
+enum {
+   STAGE_PRECOPY=1,
+   STAGE_AFTERCOPY,
+   STAGE_COMPOSITE
 };
 
 #define MT_PtrSetWinCursor -1
@@ -111,10 +174,6 @@ INLINE ERROR ptrGrabX11Pointer(APTR Ob, OBJECTID SurfaceID) {
 #include <parasol/modules/android.h>
 #endif
 
-#ifdef __xwindows__
- #include <parasol/modules/xrandr.h>
-#endif
-
 #undef NULL
 #define NULL 0
 
@@ -124,8 +183,6 @@ struct resolution {
    WORD bpp;
 };
 
-#define MAX_INPUTMSG 2048 // Must be a value to the power of two
-
 // glInputEvents is allocated in shared memory for all processes consuming input events.
 
 struct InputEventMgr {
@@ -134,8 +191,6 @@ struct InputEventMgr {
 };
 
 extern InputEventMgr *glInputEvents;
-
-#define INPUT_MASK        (MAX_INPUTMSG-1) // All bits will be set if MAX_INPUTMSG is a power of two
 
 // InputSubscription is allocated as an array of items for glSharedControl->InputMID
 
@@ -170,8 +225,6 @@ namespace std {
    };
 }
 
-#define MAX_CLIPS 10     // Maximum number of clips stored in the historical buffer
-
 struct ClipHeader {
    LONG Counter;
 #ifdef _WIN32
@@ -190,38 +243,84 @@ struct ClipEntry {
    WORD     TotalItems;  // Total number of items in the clip-set
 };
 
-extern ERROR create_clipboard_class(void);
-extern ERROR create_pointer_class(void);
-extern ERROR create_display_class(void);
-extern ERROR GetSurfaceAbs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
-extern ULONG ConvertRGBToPackedPixel(objBitmap *, RGB8 *) __attribute__ ((unused));
-extern void input_event_loop(HOSTHANDLE, APTR);
-extern ERROR LockSurface(objBitmap *, WORD);
-extern ERROR UnlockSurface(objBitmap *);
-extern resolution * get_resolutions(objDisplay *);
 extern ERROR create_bitmap_class(void);
-extern ERROR dither(objBitmap *, objBitmap *, ColourFormat *, LONG, LONG, LONG, LONG, LONG, LONG);
+extern ERROR create_clipboard_class(void);
+extern ERROR create_display_class(void);
+extern ERROR create_pointer_class(void);
+extern ERROR create_surface_class(void);
+extern ERROR get_surface_abs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
+extern void  input_event_loop(HOSTHANDLE, APTR);
+extern ERROR lock_surface(objBitmap *, WORD);
+extern ERROR unlock_surface(objBitmap *);
 extern ERROR get_display_info(OBJECTID, DISPLAYINFO *, LONG);
-extern void update_displayinfo(objDisplay *);
-extern void resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
+extern void  resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
+extern void  forbidDrawing(void);
+extern void  forbidExpose(void);
+extern void  permitDrawing(void);
+extern void  permitExpose(void);
+extern ERROR apply_style(OBJECTPTR, OBJECTPTR, CSTRING);
+extern ERROR load_styles(void);
+extern WORD  find_bitmap_owner(SurfaceList *, WORD);
+extern void  move_layer(objSurface *, LONG, LONG);
+extern void  move_layer_pos(SurfaceControl *, LONG, LONG);
+extern void  prepare_background(objSurface *, SurfaceList *, WORD, WORD, objBitmap *, ClipRectangle *, BYTE);
+extern void  process_surface_callbacks(objSurface *, objBitmap *);
+extern void  refresh_pointer(objSurface *Self);
+extern ERROR track_layer(objSurface *);
+extern void  untrack_layer(OBJECTID);
+extern BYTE  restrict_region_to_parents(SurfaceList *, LONG, ClipRectangle *, BYTE);
+extern ERROR load_style_values(void);
+extern ERROR resize_layer(objSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
+extern void  redraw_nonintersect(OBJECTID, SurfaceList *, WORD, WORD, ClipRectangle *, ClipRectangle *, LONG, LONG);
+extern ERROR _expose_surface(OBJECTID, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, LONG);
+extern ERROR _redraw_surface(OBJECTID, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, LONG);
+extern void  _redraw_surface_do(objSurface *, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, objBitmap *, LONG);
+extern void  check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
+extern ERROR update_surface_copy(objSurface *, SurfaceList *);
+extern LONG  find_surface_list(SurfaceList *, LONG, OBJECTID);
+extern LONG  find_parent_list(SurfaceList *, WORD, objSurface *);
+
+extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
+
+#ifdef DBG_LAYERS
+extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
+#endif
 
 extern std::unordered_map<LONG, InputCallback> glInputCallbacks;
 extern SharedControl *glSharedControl;
-extern LONG glSixBitDisplay;
+extern bool glSixBitDisplay;
 extern OBJECTPTR glModule;
-extern OBJECTPTR modSurface;
-extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard;
+extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface;
 extern OBJECTID glPointerID;
 extern DISPLAYINFO *glDisplayInfo;
 extern APTR glDither;
-extern LONG glDitherSize;
 extern OBJECTPTR glCompress;
-extern objCompression *glIconArchive;
 extern struct CoreBase *CoreBase;
-extern struct SurfaceBase *SurfaceBase;
 extern ColourFormat glColourFormat;
-extern BYTE glHeadless;
+extern bool glHeadless;
 extern FieldDef CursorLookup[];
+extern UBYTE *glAlphaLookup;
+extern TIMER glRefreshPointerTimer;
+extern objBitmap *glComposite;
+extern DOUBLE glpRefreshRate, glpGammaRed, glpGammaGreen, glpGammaBlue;
+extern LONG glpDisplayWidth, glpDisplayHeight, glpDisplayX, glpDisplayY;
+extern LONG glpDisplayDepth; // If zero, the display depth will be based on the hosted desktop's bit depth.
+extern LONG glpMaximise, glpFullScreen;
+extern LONG glpWindowType;
+extern char glpDPMS[20];
+extern objXML *glStyle;
+extern OBJECTPTR glAppStyle;
+extern OBJECTPTR glDesktopStyleScript;
+extern OBJECTPTR glDefaultStyleScript;
+
+// Thread-specific variables.
+
+extern THREADVAR APTR glSurfaceMutex;
+extern THREADVAR WORD tlNoDrawing, tlNoExpose, tlVolatileIndex;
+extern THREADVAR UBYTE tlListCount; // For drwAccesslist()
+extern THREADVAR OBJECTID tlFreeExpose;
+extern THREADVAR SurfaceControl *tlSurfaceList;
+extern THREADVAR LONG glRecentSurfaceIndex;
 
 struct InputType {
    LONG Flags;  // As many flags as necessary to describe the input type
@@ -231,14 +330,11 @@ struct InputType {
 extern const std::array<struct InputType, JET_END> glInputType;
 extern const std::array<std::string, JET_END> glInputNames;
 
+#define find_surface_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
+#define find_own_index(a,b)     find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->Head.UID)
+#define find_parent_index(a,b)  find_parent_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
+
 //****************************************************************************
-
-#define BLEND_MAX_THRESHOLD 255
-#define BLEND_MIN_THRESHOLD 1
-
-#ifndef PI
-#define PI (3.141592653589793238462643383279f)
-#endif
 
 #ifdef _GLES_ // OpenGL related prototypes
 GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID);
@@ -259,13 +355,15 @@ DLLCALL LONG WINAPI SetPixelV(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI SetPixel(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
 
-extern int winAddClip(int Datatype, void * Data, int Size, int Cut);
-extern void winClearClipboard(void);
-extern void winCopyClipboard(void);
-extern int winExtractFile(void *pida, int Index, char *Result, int Size);
-extern void winGetClip(int Datatype);
-extern void winTerminate(void);
-
+int winAddClip(int Datatype, void * Data, int Size, int Cut);
+void winClearClipboard(void);
+void winCopyClipboard(void);
+int winExtractFile(void *pida, int Index, char *Result, int Size);
+void winGetClip(int Datatype);
+void winTerminate(void);
+APTR winGetDC(APTR);
+void winReleaseDC(APTR, APTR);
+void winSetSurfaceID(APTR, LONG);
 APTR GetWinCursor(LONG);
 LONG winBlit(APTR, LONG, LONG, LONG, LONG, APTR, LONG, LONG);
 void winGetError(LONG, STRING, LONG);
@@ -284,12 +382,12 @@ void winSetDIBitsToDevice(APTR, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, 
 
 #include "win32/windows.h"
 
+extern WinCursor winCursors[24];
+
 #endif // _WIN32
 
 #ifdef __xwindows__
 
-extern Cursor create_blank_cursor(void);
-extern Cursor get_x11_cursor(LONG CursorID);
 extern void X11ManagerLoop(HOSTHANDLE, APTR);
 extern void handle_button_press(XEvent *);
 extern void handle_button_release(XEvent *);
@@ -301,6 +399,8 @@ extern void handle_key_release(XEvent *);
 extern void handle_motion_notify(XMotionEvent *);
 extern void handle_stack_change(XCirculateEvent *);
 extern LONG x11WindowManager(void);
+extern void init_xcursors(void);
+extern void free_xcursors(void);
 
 extern WORD glDGAAvailable;
 extern APTR glDGAMemory;
@@ -323,3 +423,11 @@ extern APTR glDGAVideo;
 #endif
 
 #include "prototypes.h"
+
+INLINE void clip_rectangle(ClipRectangle *rect, ClipRectangle *clip)
+{
+   if (rect->Left   < clip->Left)   rect->Left   = clip->Left;
+   if (rect->Top    < clip->Top)    rect->Top    = clip->Top;
+   if (rect->Right  > clip->Right)  rect->Right  = clip->Right;
+   if (rect->Bottom > clip->Bottom) rect->Bottom = clip->Bottom;
+}

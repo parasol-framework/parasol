@@ -337,7 +337,7 @@
       <description>
 <p>To display a menu bar in the window, set this field with the location of a menu file.  The file must be in XML format and contain at least one menu tag.  Each menu tag that is specified will create a new option in the menu bar.  Non-menu tags will be ignored.</p>
 <p>Any unlisted arguments that were have specified for the window will be passed on to each created menu.</p>
-<p>For information on the specifics of menu customisation, please refer to the <class name="Menu">Menu</class> class.</p>
+<p>For information on the specifics of menu customisation, please refer to the @Menu class.</p>
       </description>
     </field>
 

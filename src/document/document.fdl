@@ -5,8 +5,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2022", version=1.0 }, f
     loadFile(glPath .. 'common-graphics.fdl')
   end)
 
-  c_include("<parasol/modules/display.h>", "<parasol/modules/xml.h>", "<parasol/modules/font.h>",
-    "<parasol/modules/surface.h>")
+  c_include("<parasol/modules/display.h>", "<parasol/modules/xml.h>", "<parasol/modules/font.h>")
 
   const("RIPPLE", { comment="Official version number (date format).  Any changes to the handling of document content require that this number be updated." }, {
     VERSION = "\"20160601\""

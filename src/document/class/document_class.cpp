@@ -76,7 +76,7 @@ static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Arg
       struct acRedimension *redimension;
 
       if ((redimension = (struct acRedimension *)Args->Args)) {
-         drwGetSurfaceCoords(Self->SurfaceID, NULL, NULL, NULL, NULL, &Self->SurfaceWidth, &Self->SurfaceHeight);
+         gfxGetSurfaceCoords(Self->SurfaceID, NULL, NULL, NULL, NULL, &Self->SurfaceWidth, &Self->SurfaceHeight);
 
          log.traceBranch("Redimension: %dx%d", Self->SurfaceWidth, Self->SurfaceHeight);
 
@@ -945,8 +945,6 @@ static ERROR DOCUMENT_HideIndex(objDocument *Self, struct docHideIndex *Args)
 
                index->Visible = FALSE;
 
-               drwForbidDrawing();
-
                   AdjustLogLevel(2);
                   Self->UpdateLayout = TRUE;
                   layout_doc(Self);
@@ -984,7 +982,6 @@ static ERROR DOCUMENT_HideIndex(objDocument *Self, struct docHideIndex *Args)
                      NEXT_CHAR(stream, i);
                   }
 
-               drwPermitDrawing();
                DRAW_PAGE(Self);
                return ERR_Okay;
             }
@@ -1601,8 +1598,6 @@ static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
                if (index->ParentVisible) { // We are visible, but parents must also be visible to show content
                   // Show all objects and manage the ParentVisible status of any child indexes
 
-                  drwForbidDrawing();
-
                      AdjustLogLevel(2);
                      Self->UpdateLayout = TRUE;
                      layout_doc(Self);
@@ -1663,8 +1658,6 @@ static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
 
                         NEXT_CHAR(stream, i);
                      } // while
-
-                  drwPermitDrawing();
 
                   DRAW_PAGE(Self);
                }

@@ -3652,7 +3652,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
          if ((Self->CursorIndex >= segment->Index) and (Self->CursorIndex <= segment->Stop)) {
             if ((Self->CursorIndex IS segment->Stop) and (Self->Stream[Self->CursorIndex-1] IS '\n')); // The -1 looks naughty, but it works as CTRL_CODE != \n, so use of PREV_CHAR() is unnecessary
             else {
-               if (drwGetUserFocus() IS Self->PageID) { // Standard text cursor
+               if (gfxGetUserFocus() IS Self->PageID) { // Standard text cursor
                   gfxDrawRectangle(Bitmap, segment->X + Self->CursorCharX, segment->Y, 2, segment->BaseLine,
                      PackPixel(Bitmap, 255, 0, 0), BAF_FILL);
                   cursor_drawn = TRUE;
@@ -4010,7 +4010,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
 
    log.function("Value: %d, Flags: $%.8x, ActiveEdit: %p", Value, Flags, Self->ActiveEditDef);
 
-   if ((Self->ActiveEditDef) and (drwGetUserFocus() != Self->PageID)) {
+   if ((Self->ActiveEditDef) and (gfxGetUserFocus() != Self->PageID)) {
       deactivate_edit(Self, TRUE);
    }
 
@@ -4680,7 +4680,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
       Self->BufferIndex  = 0;
       Self->Error        = ERR_Okay;
 
-      drwForbidDrawing(); // We do this to prevent objects from posting draw messages on their creation
+      //drwForbidDrawing(); // We do this to prevent objects from posting draw messages on their creation
 
       // Process tags at the root level, but only those that we allow up to the first <page> entry.
 
@@ -4780,7 +4780,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
          insert_xml(Self, xml, Self->FooterTag, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
       }
 
-      drwPermitDrawing();
+      //drwPermitDrawing();
 
       #ifdef DBG_STREAM
          print_stream(Self, Self->Stream);
@@ -4905,7 +4905,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
       print_stream(Self, Self->Stream);
    #endif
 
-   drwForbidDrawing();
+   //drwForbidDrawing();
 
    log.trace("Resetting variables.");
 
@@ -5116,7 +5116,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
 
    if (Self->PageID) acMoveToPointID(Self->PageID, 0, 0, 0, MTF_X|MTF_Y);
 
-   drwPermitDrawing();
+   //drwPermitDrawing();
 
    Self->UpdateLayout = TRUE;
    Self->GeneratedID = AllocateID(IDTYPE_GLOBAL);
@@ -5137,13 +5137,13 @@ static void redraw(objDocument *Self, BYTE Focus)
 
    log.traceBranch("");
 
-   drwForbidDrawing();
+   //drwForbidDrawing();
 
       AdjustLogLevel(3);
       layout_doc(Self);
       AdjustLogLevel(-3);
 
-   drwPermitDrawing();
+   //drwPermitDrawing();
 
    DRAW_PAGE(Self);
 
@@ -7322,7 +7322,7 @@ static void advance_tabfocus(objDocument *Self, BYTE Direction)
 
    // Check that the FocusIndex is accurate (it may have changed if the user clicked on a gadget).
 
-   OBJECTID currentfocus = drwGetUserFocus();
+   OBJECTID currentfocus = gfxGetUserFocus();
    for (i=0; i < Self->TabIndex; i++) {
       if (Self->Tabs[i].XRef IS currentfocus) {
          Self->FocusIndex = i;
@@ -7358,7 +7358,7 @@ static void advance_tabfocus(objDocument *Self, BYTE Direction)
 
       if ((Self->Tabs[Self->FocusIndex].Type IS TT_OBJECT) and (Self->Tabs[Self->FocusIndex].XRef)) {
          SURFACEINFO *info;
-         if (!drwGetSurfaceInfo(Self->Tabs[Self->FocusIndex].XRef, &info)) {
+         if (!gfxGetSurfaceInfo(Self->Tabs[Self->FocusIndex].XRef, &info)) {
             if (info->Flags & RNF_DISABLED) continue;
          }
       }

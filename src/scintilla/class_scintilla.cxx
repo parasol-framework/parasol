@@ -99,7 +99,6 @@ capabilities.
 #include <parasol/modules/xml.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/display.h>
-#include <parasol/modules/surface.h>
 #include <parasol/modules/font.h>
 
 #include "scintillaparasol.h"
@@ -108,13 +107,11 @@ capabilities.
 #include "module_def.c"
 
 MODULE_COREBASE;
-static struct SurfaceBase *SurfaceBase;
 static struct DisplayBase *DisplayBase;
 static struct FontBase *FontBase;
 
 static OBJECTPTR clScintilla = NULL;
-static OBJECTPTR modSurface = NULL, modDisplay = NULL;
-static OBJECTPTR modFont = NULL;
+static OBJECTPTR modDisplay = NULL, modFont = NULL;
 //static OBJECTID glInputID = 0;
 static RGB8 glHighlight = { 220, 220, 255 };
 extern OBJECTPTR clScintillaSearch;
@@ -224,7 +221,6 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (LoadModule((STRING)"surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule((STRING)"display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule((STRING)"font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
 
@@ -248,7 +244,6 @@ ERROR CMDExpunge(void)
 {
    if (modDisplay)  { acFree(modDisplay);  modDisplay = NULL; }
    if (modFont)     { acFree(modFont);     modFont = NULL; }
-   if (modSurface)  { acFree(modSurface);  modSurface  = NULL; }
    if (clScintilla) { acFree(clScintilla); clScintilla = NULL; }
    if (clScintillaSearch) { acFree(clScintillaSearch); clScintillaSearch = NULL; }
    return ERR_Okay;

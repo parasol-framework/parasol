@@ -11,10 +11,6 @@
 
 #define MODVERSION_WINDOW (1)
 
-#ifndef MODULES_SURFACE_H
-#include <parasol/modules/surface.h>
-#endif
-
 // Window flags.
 
 #define WNF_DISABLED 0x00000001
@@ -67,7 +63,7 @@ typedef struct rkWindow {
    LONG     ClientBottom;
 
 #ifdef PRV_WINDOW
- PRV_WINDOW_FIELDS 
+ PRV_WINDOW_FIELDS
 #endif
 } objWindow;
 

@@ -1,7 +1,7 @@
 --$FLUID:Include
 
 module({ name="Window", copyright="Paul Manias © 2003-2022", version=1.0 }, function()
-  c_include("<parasol/modules/surface.h>")
+  c_include("<parasol/modules/display.h>")
 
   restrict(function()
     loadFile(glPath .. 'common-graphics.fdl')
