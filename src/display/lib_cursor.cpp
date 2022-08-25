@@ -78,7 +78,7 @@ static Cursor get_x11_cursor(LONG CursorID)
 
 void init_xcursors(void)
 {
-   for (LONG i=0; i < ARRAYSIZE(XCursors); i++) {
+   for (WORD i=0; i < ARRAYSIZE(XCursors); i++) {
       if (XCursors[i].CursorID IS PTR_INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
       else XCursors[i].XCursor = XCreateFontCursor(XDisplay, XCursors[i].XCursorID);
    }
@@ -86,7 +86,7 @@ void init_xcursors(void)
 
 void free_xcursors(void)
 {
-   for (i=0; i < ARRAYSIZE(XCursors); i++) {
+   for (WORD i=0; i < ARRAYSIZE(XCursors); i++) {
       if (XCursors[i].XCursor) XFreeCursor(XDisplay, XCursors[i].XCursor);
    }
 }
