@@ -80,7 +80,8 @@ void winSetWindowTitle(HWND, const char *);
 int winShowWindow(HWND, int);
 void winUpdateWindow(HWND);
 void winTerminate(void);
-
+HDC winGetDC(HWND);
+void winReleaseDC(HWND, HDC);
 void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes);
 int winGetData(char *Preference, struct WinDT **OutData, int *OutTotal);
 

@@ -26,10 +26,10 @@ Valid options to use when creating the menu are as follows:
 
    require 'common'
    require 'gui'
+   include 'display'
 
-   if (not mFont)    then mFont = mod.load('font') end
-   if (not mSurface) then mSurface = mod.load('surface') end
-   if (not mGfx)     then mGfx = mod.load('display') end
+   if (not mFont) then mFont = mod.load('font') end
+   if (not mGfx)  then mGfx = mod.load('display') end
 
 local FONT_FACE = 'Open Sans'
 local FONT_SIZE = 11
@@ -266,7 +266,7 @@ gui.menu = function(Options)
          if (err == ERR_Okay) then
             local parent = { }
 
-            local err, parentInfo = mSurface.GetSurfaceInfo(surface.parentID)
+            local err, parentInfo = mGfx.GetSurfaceInfo(surface.parentID)
             if (err != ERR_Okay) then error('Failed to analyse parent surface: ' .. mSys.GetErrorMsg(err)) end
 
             if (surface.parentID) and (err == ERR_Okay) then
@@ -321,7 +321,7 @@ gui.menu = function(Options)
          local parent = { x=0, y = 0, width = 0 }
          local parent = self.parentMenu
          if (parent.menuSurfaceID) then
-            local err, info = mSurface.GetSurfaceInfo(parent.MenuSurfaceID)
+            local err, info = mGfx.GetSurfaceInfo(parent.MenuSurfaceID)
             if err == ERR_Okay then
                parent.x = info.x
                parent.y = info.y
@@ -339,7 +339,7 @@ gui.menu = function(Options)
             end
          else
             SURFACEINFO *target
-            if (Options.target) and (!mSurface.GetSurfaceInfo(Options.target, &target)) then
+            if (Options.target) and (!mGfx.GetSurfaceInfo(Options.target, &target)) then
                -- A specific target surface is hosting the menu layer adjust the coordinate if necessary to keep
                -- it from being partially hidden.
                if x + surface.width >= target.width then
@@ -356,13 +356,13 @@ gui.menu = function(Options)
       elseif self.relative then
          -- Correct the position of the menu according to the relative object that it is offset from.
 
-         local err, target = mSurface.GetSurfaceInfo(self.relative)
+         local err, target = mGfx.GetSurfaceInfo(self.relative)
          if err == ERR_Okay then
             local rel = { absX = target.absX, absY = target.absY }
             local target = { absX = 0, absY = 0, height = 4096 }
 
             if Options.target then
-               local err, target = mSurface.GetSurfaceInfo(Options.target)
+               local err, target = mGfx.GetSurfaceInfo(Options.target)
                if (err == ERR_Okay) then
                   target.absX   = target.absX
                   target.absY   = target.absY

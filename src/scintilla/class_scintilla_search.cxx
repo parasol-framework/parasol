@@ -46,7 +46,7 @@ ScintillaSearch: Provides search functionality for use on Scintilla objects.
 #include "ScintillaBase.h"
 
 #include <parasol/main.h>
-#include <parasol/modules/surface.h>
+#include <parasol/modules/display.h>
 
 #include "scintillaparasol.h"
 #include <parasol/modules/scintilla.h>

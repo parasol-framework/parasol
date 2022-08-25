@@ -31,7 +31,7 @@ if (gui == nil) then
    end
 
    do
-      local mSurface = mod.load('surface') // Temporarily load to ensure glStyle is available.
+      local mDisplay = mod.load('display') // Temporarily load to ensure glStyle is available.
       local xml = obj.find('glStyle')
 
       if (xml != nil) then
@@ -115,7 +115,7 @@ if (gui == nil) then
          error('Failed to retrieve style information.')
       end
 
-      mSurface = nil
+      mDisplay = nil
    end
 end
 

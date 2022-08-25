@@ -179,16 +179,14 @@ thickness, or text inside the cell will mix with the border.
 #include <parasol/modules/document.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/display.h>
-#include <parasol/modules/surface.h>
 
 #include "hashes.h"
 
 struct CoreBase  *CoreBase;
-static struct SurfaceBase *SurfaceBase;
 static struct FontBase    *FontBase;
 static struct DisplayBase *DisplayBase;
 static OBJECTPTR clDocument = NULL;
-static OBJECTPTR modDisplay = NULL, modSurface = NULL, modFont = NULL, modDocument = NULL;
+static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL;
 static RGB8 glHighlight = { 220, 220, 255, 255 };
 static LONG glTranslateBufferSize = 0;
 static STRING glTranslateBuffer = NULL;
@@ -697,7 +695,6 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    GetPointer(argModule, FID_Master, &modDocument);
 
-   if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule("font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
 
@@ -727,7 +724,6 @@ ERROR CMDExpunge(void)
    if (glTranslateBuffer) { FreeResource(glTranslateBuffer); glTranslateBuffer = NULL; }
 
    if (modDisplay) { acFree(modDisplay);  modDisplay = NULL; }
-   if (modSurface) { acFree(modSurface);  modSurface = NULL; }
    if (modFont)    { acFree(modFont);     modFont = NULL; }
 
    if (clDocument) { acFree(clDocument);  clDocument = NULL; }
@@ -809,11 +805,9 @@ INLINE DocEdit * find_editdef(objDocument *Self, ULONG Hash)
 
 INLINE void layout_doc_fast(objDocument *Self)
 {
-   drwForbidDrawing();
-      AdjustLogLevel(2);
-      layout_doc(Self);
-      AdjustLogLevel(-2);
-   drwPermitDrawing();
+   AdjustLogLevel(2);
+   layout_doc(Self);
+   AdjustLogLevel(-2);
 }
 
 #include "tags.cpp"

@@ -14,7 +14,6 @@ Please refer to it for further information on licensing.
 #include <parasol/modules/xml.h>
 #include <parasol/modules/vector.h>
 #include <parasol/modules/display.h>
-#include <parasol/modules/surface.h>
 #include "svg_def.c"
 #include "animation.h"
 #include <katana.h>
@@ -22,9 +21,8 @@ Please refer to it for further information on licensing.
 
 MODULE_COREBASE;
 static struct DisplayBase *DisplayBase;
-static struct SurfaceBase *SurfaceBase;
 static struct VectorBase *VectorBase;
-static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modSurface = NULL, modVector = NULL;
+static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL;
 
 struct prvSVG {
    OBJECTPTR SVG;
@@ -92,7 +90,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
 
@@ -103,7 +100,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 ERROR CMDExpunge(void)
 {
-   if (modSurface) { acFree(modSurface); modSurface = NULL; }
    if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
    if (modVector)  { acFree(modVector);  modVector = NULL; }
 

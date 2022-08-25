@@ -29,7 +29,6 @@ For drag and drop operations, data can be requested from a source as follows:
 #define PRV_FLUID
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
-#include <parasol/modules/surface.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
 #include <inttypes.h>

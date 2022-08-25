@@ -65,7 +65,6 @@ Please refer to it for further information on licensing.
 #include <parasol/modules/display.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/vector.h>
-#include <parasol/modules/surface.h>
 
 #include <math.h>
 #define __STDC_FORMAT_MACROS

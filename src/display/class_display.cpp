@@ -102,6 +102,84 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 #endif
 
 //****************************************************************************
+// Build a list of valid resolutions.
+
+static resolution * get_resolutions(objDisplay *Self)
+{
+#ifdef __xwindows__
+
+   parasol::Log log(__FUNCTION__);
+
+   if (XRandRBase) {
+      static resolution resolutions[30];
+      struct xrMode *mode;
+
+      if (Self->TotalResolutions) return resolutions;
+
+      Self->TotalResolutions = xrGetDisplayTotal();
+
+      if (Self->TotalResolutions > ARRAYSIZE(resolutions) - 1) {
+         Self->TotalResolutions = ARRAYSIZE(resolutions) - 1;
+      }
+
+      LONG i;
+      for (i=0; i < Self->TotalResolutions; i++) {
+         if ((mode = (xrMode *)xrGetDisplayMode(i))) {
+            resolutions[i].width  = mode->Width;
+            resolutions[i].height = mode->Height;
+            resolutions[i].bpp    = mode->Depth;
+         }
+      }
+      resolutions[i].width  = 0;
+      resolutions[i].height = 0;
+      resolutions[i].bpp    = 0;
+
+      return resolutions;
+   }
+   else {
+      static resolution resolutions[2] = {
+         { 1024, 768, 32 },
+         { 0, 0, 0 }
+      };
+
+      log.msg("RandR extension not available.");
+
+      resolutions[0].width  = glRootWindow.width;
+      resolutions[0].height = glRootWindow.height;
+      resolutions[0].bpp    = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
+
+      Self->TotalResolutions = 1;
+      return resolutions;
+   }
+
+#else
+
+   static resolution resolutions[] = {
+      { 640, 480, 32 },
+      { 800, 600, 32 },
+      { 1024, 768, 32 },
+      { 1152, 864, 32 },
+      { 1280, 960, 32 },
+      { 0, 0, 0 }
+   };
+
+   Self->TotalResolutions = ARRAYSIZE(resolutions);
+   return resolutions;
+
+#endif
+}
+
+//*****************************************************************************
+
+static void update_displayinfo(objDisplay *Self)
+{
+   if (StrMatch("SystemDisplay", GetName(Self)) != ERR_Okay) return;
+
+   glDisplayInfo->DisplayID = 0;
+   get_display_info(Self->Head.UID, glDisplayInfo, sizeof(DISPLAYINFO));
+}
+
+//****************************************************************************
 
 void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
 {
@@ -3084,74 +3162,6 @@ static ERROR SET_Y(objDisplay *Self, LONG Value)
       return ERR_Okay;
    }
    else return acMoveToPoint(Self, 0, Value, 0, MTF_Y);
-}
-
-//****************************************************************************
-// Build a list of valid resolutions.
-
-resolution * get_resolutions(objDisplay *Self)
-{
-#ifdef __xwindows__
-
-   parasol::Log log(__FUNCTION__);
-
-   if (XRandRBase) {
-      static resolution resolutions[30];
-      struct xrMode *mode;
-
-      if (Self->TotalResolutions) return resolutions;
-
-      Self->TotalResolutions = xrGetDisplayTotal();
-
-      if (Self->TotalResolutions > ARRAYSIZE(resolutions) - 1) {
-         Self->TotalResolutions = ARRAYSIZE(resolutions) - 1;
-      }
-
-      LONG i;
-      for (i=0; i < Self->TotalResolutions; i++) {
-         if ((mode = (xrMode *)xrGetDisplayMode(i))) {
-            resolutions[i].width  = mode->Width;
-            resolutions[i].height = mode->Height;
-            resolutions[i].bpp    = mode->Depth;
-         }
-      }
-      resolutions[i].width  = 0;
-      resolutions[i].height = 0;
-      resolutions[i].bpp    = 0;
-
-      return resolutions;
-   }
-   else {
-      static resolution resolutions[2] = {
-         { 1024, 768, 32 },
-         { 0, 0, 0 }
-      };
-
-      log.msg("RandR extension not available.");
-
-      resolutions[0].width  = glRootWindow.width;
-      resolutions[0].height = glRootWindow.height;
-      resolutions[0].bpp    = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
-
-      Self->TotalResolutions = 1;
-      return resolutions;
-   }
-
-#else
-
-   static resolution resolutions[] = {
-      { 640, 480, 32 },
-      { 800, 600, 32 },
-      { 1024, 768, 32 },
-      { 1152, 864, 32 },
-      { 1280, 960, 32 },
-      { 0, 0, 0 }
-   };
-
-   Self->TotalResolutions = ARRAYSIZE(resolutions);
-   return resolutions;
-
-#endif
 }
 
 //****************************************************************************
