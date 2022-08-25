@@ -11,7 +11,7 @@ FDEF argsApplyStyleValues[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OB
 FDEF argsCheckIfChild[] = { { "Error", FD_LONG|FD_ERROR }, { "Parent", FD_OBJECTID }, { "Child", FD_OBJECTID }, { 0, 0 } };
 FDEF argsCompress[] = { { "Error", FD_LONG|FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Level", FD_LONG }, { 0, 0 } };
 FDEF argsCopyArea[] = { { "Error", FD_LONG|FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Dest", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
-FDEF argsCopyBitmapSurface[] = { { "Error", FD_LONG|FD_ERROR }, { "BitmapSurface:Surface", FD_PTR|FD_STRUCT }, { "Bitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
+FDEF argsCopyRawBitmap[] = { { "Error", FD_LONG|FD_ERROR }, { "BitmapSurface:Surface", FD_PTR|FD_STRUCT }, { "Bitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
 FDEF argsCopySurface[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { "Bitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
 FDEF argsDecompress[] = { { "Error", FD_LONG|FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "RetainData", FD_LONG }, { 0, 0 } };
 FDEF argsDrawLine[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "XEnd", FD_LONG }, { "YEnd", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
@@ -64,7 +64,7 @@ const struct Function glFunctions[] = {
    { (APTR)gfxCheckIfChild, "CheckIfChild", argsCheckIfChild },
    { (APTR)gfxCompress, "Compress", argsCompress },
    { (APTR)gfxCopyArea, "CopyArea", argsCopyArea },
-   { (APTR)gfxCopyBitmapSurface, "CopyBitmapSurface", argsCopyBitmapSurface },
+   { (APTR)gfxCopyRawBitmap, "CopyRawBitmap", argsCopyRawBitmap },
    { (APTR)gfxCopySurface, "CopySurface", argsCopySurface },
    { (APTR)gfxDecompress, "Decompress", argsDecompress },
    { (APTR)gfxDrawLine, "DrawLine", argsDrawLine },

@@ -99,7 +99,7 @@
     <description>
 <p>A bitmap can be compressed with the Compress() function to save memory when the bitmap is not in use.  This is useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.</p>
 <p>Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap image data will likely result in a memory access fault.  The image data will remain invalid until the <function module="Display">Decompress</function> function is called to restore the bitmap to its original state.</p>
-<p>The BMF_COMPRESSED bit will be set in the Flags field after a successful call to this function to indicate that the bitmap is compressed.</p>
+<p>The <code>BMF_COMPRESSED</code> bit will be set in the Flags field after a successful call to this function to indicate that the bitmap is compressed.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -138,9 +138,9 @@
   </function>
 
   <function>
-    <name>CopyBitmapSurface</name>
+    <name>CopyRawBitmap</name>
     <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
-    <prototype>ERROR gfxCopyBitmapSurface(struct BitmapSurfaceV2 * Surface, struct rkBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, struct rkBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="struct BitmapSurfaceV2 *" name="Surface">Description of the surface source.</param>
       <param type="struct rkBitmap *" name="Bitmap">Destination bitmap.</param>
@@ -153,7 +153,7 @@
       <param type="LONG" name="YDest">Vertical destination coordinate.</param>
     </input>
     <description>
-<p>This function will copy data from a described surface to a destination bitmap object.  You are required to provide the function with a full description of the source in a BitmapSurface structure.</p>
+<p>This function will copy data from a described surface to a destination bitmap object.  You are required to provide the function with a full description of the source in a <code>BitmapSurface</code> structure.</p>
 <p>The X, Y, Width and Height parameters define the area from the source that you wish to copy.  The XDest and YDest parameters define the top left corner that you will blit the graphics to in the destination.</p>
     </description>
     <result type="ERROR">
@@ -323,7 +323,7 @@
       <param type="LONG" name="AlphaMask">Alpha component bit mask value.</param>
     </input>
     <description>
-<p>This function will generate the values for a ColourFormat structure, for either a given bit depth or customised colour bit values.  The ColourFormat structure is used by internal bitmap routines to pack and unpack bit values to and from bitmap memory.</p>
+<p>This function will generate the values for a <code>ColourFormat</code> structure, for either a given bit depth or customised colour bit values.  The <code>ColourFormat</code> structure is used by internal bitmap routines to pack and unpack bit values to and from bitmap memory.</p>
 <pre>struct ColourFormat {
    UBYTE  RedShift;    // Right shift value (applies only to 15/16 bit formats for eliminating redundant bits)
    UBYTE  BlueShift;
@@ -339,7 +339,7 @@
    UBYTE  AlphaPos;
 };
 </pre>
-<p>The ColourFormat structure is supported by the following macros for packing and unpacking colour bit values:</p>
+<p>The <code>ColourFormat</code> structure is supported by the following macros for packing and unpacking colour bit values:</p>
 <pre>Colour = CFPackPixel(Format,Red,Green,Blue)
 Colour = CFPackPixelA(Format,Red,Green,Blue,Alpha)
 Colour = CFPackAlpha(Format,Alpha)

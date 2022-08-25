@@ -3,7 +3,13 @@
 set (MOD "display")
 
 set (FUNCTIONS # Full paths are required for add_custom_command() dependencies to work correctly
-   "${CMAKE_CURRENT_SOURCE_DIR}/display-driver.cpp")
+   "${CMAKE_CURRENT_SOURCE_DIR}/display-driver.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/lib_bitmap.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/lib_display.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/lib_surfaces.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/lib_cursor.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/lib_input.cpp"
+   )
 
 set (CLASSES
    "${CMAKE_CURRENT_SOURCE_DIR}/class_bitmap.cpp"
@@ -17,9 +23,9 @@ set (DISPLAY_DEFS # Full paths are required for add_custom_command() dependencie
    "${CMAKE_CURRENT_SOURCE_DIR}/class_clipboard_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_display_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_pointer_def.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/class_surface_def.c")
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_surface/surface_def.c")
 
-if (BUILD_DEFS)
+if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output from the FDL file
    add_custom_command (OUTPUT
       ${DISPLAY_DEFS}
       "${DOCS}/modules/classes/bitmap.xml"
@@ -38,7 +44,9 @@ if (BUILD_DEFS)
       VERBATIM)
 
    add_custom_target (display_defs DEPENDS ${DISPLAY_DEFS}
-      "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
+      "${INCLUDE_OUTPUT}/modules/display.h"
+      "${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
+      "${CMAKE_CURRENT_SOURCE_DIR}/display.fdl")
 
    add_dependencies (build_headers display_defs)
 endif ()
@@ -54,12 +62,12 @@ target_include_directories (${MOD} PRIVATE
 
 if (WIN32)
    target_link_libraries (${MOD} PRIVATE ole32 gdi32 uuid m)
-   target_sources (${MOD} PRIVATE "display-driver.cpp" "win32/windows.c" ${CLASSES})
+   target_sources (${MOD} PRIVATE ${FUNCTIONS} "win32/windows.c" ${CLASSES})
    add_compile_definitions ("WIN_DRAGDROP")
 elseif (ANDROID)
    # Android uses OpenGL.  A separate driver library is compiled for this purpose.
    add_library (display-gles1 SHARED)
-   target_sources (display-gles1 PRIVATE "display-driver.cpp" "android/android.cpp" ${CLASSES})
+   target_sources (display-gles1 PRIVATE ${FUNCTIONS} "android/android.cpp" ${CLASSES})
    add_compile_definitions ("_GLES_" "_GLES1_")
    target_link_libraries (display-gles1 PRIVATE m android EGL GLESv1_CM)
    # GL2 Link: -ljnigraphics -lEGL -lGLESv2 -DGLES2
@@ -69,7 +77,7 @@ else ()
    # Apt package requirements: libxrandr-dev libxxf86vm-dev libxxf86dga-dev
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-strict-overflow")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
-   target_sources (${MOD} PRIVATE "display-driver.cpp" ${CLASSES})
+   target_sources (${MOD} PRIVATE ${FUNCTIONS} ${CLASSES})
    target_link_libraries (${MOD} PRIVATE m Xext X11) # x11/libXxf86dga.a
    add_compile_definitions ("__X11DGA__" "__xwindows__")
 endif ()

@@ -928,7 +928,7 @@ struct DisplayBase {
    ERROR (*_CheckIfChild)(OBJECTID, OBJECTID);
    ERROR (*_Compress)(struct rkBitmap *, LONG);
    ERROR (*_CopyArea)(struct rkBitmap *, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
-   ERROR (*_CopyBitmapSurface)(struct BitmapSurfaceV2 *, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
+   ERROR (*_CopyRawBitmap)(struct BitmapSurfaceV2 *, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
    ERROR (*_CopySurface)(OBJECTID, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
    ERROR (*_Decompress)(struct rkBitmap *, LONG);
    void (*_DrawLine)(struct rkBitmap *, LONG, LONG, LONG, LONG, ULONG);
@@ -982,7 +982,7 @@ struct DisplayBase {
 #define gfxCheckIfChild(...) (DisplayBase->_CheckIfChild)(__VA_ARGS__)
 #define gfxCompress(...) (DisplayBase->_Compress)(__VA_ARGS__)
 #define gfxCopyArea(...) (DisplayBase->_CopyArea)(__VA_ARGS__)
-#define gfxCopyBitmapSurface(...) (DisplayBase->_CopyBitmapSurface)(__VA_ARGS__)
+#define gfxCopyRawBitmap(...) (DisplayBase->_CopyRawBitmap)(__VA_ARGS__)
 #define gfxCopySurface(...) (DisplayBase->_CopySurface)(__VA_ARGS__)
 #define gfxDecompress(...) (DisplayBase->_Decompress)(__VA_ARGS__)
 #define gfxDrawLine(...) (DisplayBase->_DrawLine)(__VA_ARGS__)

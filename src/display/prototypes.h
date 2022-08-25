@@ -11,7 +11,7 @@ ERROR gfxApplyStyleValues(OBJECTPTR Object, CSTRING Name);
 ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child);
 ERROR gfxCompress(struct rkBitmap * Bitmap, LONG Level);
 ERROR gfxCopyArea(struct rkBitmap * Bitmap, struct rkBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-ERROR gfxCopyBitmapSurface(struct BitmapSurfaceV2 * Surface, struct rkBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, struct rkBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
 ERROR gfxCopySurface(OBJECTID Surface, struct rkBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
 ERROR gfxDecompress(struct rkBitmap * Bitmap, LONG RetainData);
 void gfxDrawLine(struct rkBitmap * Bitmap, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Colour);
