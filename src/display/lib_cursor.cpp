@@ -1,10 +1,41 @@
 
 #include "defs.h"
 
-//****************************************************************************
-
 #ifdef __xwindows__
-Cursor create_blank_cursor(void)
+
+struct XCursor {
+   Cursor XCursor;
+   LONG CursorID;
+   LONG XCursorID;
+};
+
+static XCursor XCursors[] = {
+   { 0, PTR_DEFAULT,           XC_left_ptr },
+   { 0, PTR_SIZE_BOTTOM_LEFT,  XC_bottom_left_corner },
+   { 0, PTR_SIZE_BOTTOM_RIGHT, XC_bottom_right_corner },
+   { 0, PTR_SIZE_TOP_LEFT,     XC_top_left_corner },
+   { 0, PTR_SIZE_TOP_RIGHT,    XC_top_right_corner },
+   { 0, PTR_SIZE_LEFT,         XC_left_side },
+   { 0, PTR_SIZE_RIGHT,        XC_right_side },
+   { 0, PTR_SIZE_TOP,          XC_top_side },
+   { 0, PTR_SIZE_BOTTOM,       XC_bottom_side },
+   { 0, PTR_CROSSHAIR,         XC_crosshair },
+   { 0, PTR_SLEEP,             XC_clock },
+   { 0, PTR_SIZING,            XC_sizing },
+   { 0, PTR_SPLIT_VERTICAL,    XC_sb_v_double_arrow },
+   { 0, PTR_SPLIT_HORIZONTAL,  XC_sb_h_double_arrow },
+   { 0, PTR_MAGNIFIER,         XC_hand2 },
+   { 0, PTR_HAND,              XC_hand2 },
+   { 0, PTR_HAND_LEFT,         XC_hand1 },
+   { 0, PTR_HAND_RIGHT,        XC_hand1 },
+   { 0, PTR_TEXT,              XC_xterm },
+   { 0, PTR_PAINTBRUSH,        XC_pencil },
+   { 0, PTR_STOP,              XC_left_ptr },
+   { 0, PTR_INVISIBLE,         XC_dot },
+   { 0, PTR_DRAGGABLE,         XC_sizing }
+};
+
+static Cursor create_blank_cursor(void)
 {
    parasol::Log log(__FUNCTION__);
    Pixmap data_pixmap, mask_pixmap;
@@ -32,13 +63,8 @@ Cursor create_blank_cursor(void)
    XSync(XDisplay, False);
    return cursor;
 }
-#endif
 
-//*****************************************************************************
-
-#ifdef __xwindows__
-
-Cursor get_x11_cursor(LONG CursorID)
+static Cursor get_x11_cursor(LONG CursorID)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -49,7 +75,24 @@ Cursor get_x11_cursor(LONG CursorID)
    log.warning("Cursor #%d is not a recognised cursor ID.", CursorID);
    return XCursors[0].XCursor;
 }
+
+void init_xcursors(void)
+{
+   for (LONG i=0; i < ARRAYSIZE(XCursors); i++) {
+      if (XCursors[i].CursorID IS PTR_INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
+      else XCursors[i].XCursor = XCreateFontCursor(XDisplay, XCursors[i].XCursorID);
+   }
+}
+
+void free_xcursors(void)
+{
+   for (i=0; i < ARRAYSIZE(XCursors); i++) {
+      if (XCursors[i].XCursor) XFreeCursor(XDisplay, XCursors[i].XCursor);
+   }
+}
 #endif
+
+//****************************************************************************
 
 #ifdef _WIN32
 
@@ -260,7 +303,7 @@ ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
    objPointer *pointer;
    LONG absx, absy;
 
-   if (GetSurfaceAbs(SurfaceID, &absx, &absy, 0, 0) != ERR_Okay) {
+   if (get_surface_abs(SurfaceID, &absx, &absy, 0, 0) != ERR_Okay) {
       log.warning("Failed to get info for surface #%d.", SurfaceID);
       return ERR_Failed;
    }
@@ -431,6 +474,7 @@ Args
 NoSupport: The pointer cannot be set due to system limitations.
 OutOfRange: The cursor ID is outside of acceptable range.
 AccessObject: Failed to access the internally maintained image object.
+-END-
 
 ******************************************************************************/
 
@@ -667,6 +711,7 @@ Okay:
 Args:
 NoSupport:
 AccessObject: Failed to access the internally maintained image object.
+-END-
 
 ******************************************************************************/
 

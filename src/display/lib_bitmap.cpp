@@ -1,6 +1,8 @@
 
 #include "defs.h"
 
+static size_t glDitherSize = 0;
+
 //****************************************************************************
 // NOTE: Please ensure that the Width and Height are already clipped to meet the restrictions of BOTH the source and
 // destination bitmaps.
@@ -24,7 +26,7 @@
       }                                  \
    }
 
-ERROR dither(objBitmap *Bitmap, objBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
+static ERROR dither(objBitmap *Bitmap, objBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
    LONG SrcX, LONG SrcY, LONG DestX, LONG DestY)
 {
    parasol::Log log(__FUNCTION__);
@@ -60,12 +62,13 @@ ERROR dither(objBitmap *Bitmap, objBitmap *Dest, ColourFormat *Format, LONG Widt
 
    // Allocate buffer for dithering
 
-   if (Width * (LONG)sizeof(RGB16) * 2 > glDitherSize) {
+   if (Width * sizeof(RGB16) * 2 > glDitherSize) {
       if (glDither) { FreeResource(glDither); glDither = NULL; }
 
       if (AllocMemory(Width * sizeof(RGB16) * 2, MEM_NO_CLEAR|MEM_UNTRACKED, &glDither, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
+      glDitherSize = Width * sizeof(RGB16) * 2;
    }
 
    buf1 = (RGB16 *)glDither;
@@ -578,7 +581,7 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
             dest->Clip.Right  = DestX + Width - dest->XOffset;
             dest->Clip.Top    = DestY - dest->YOffset;
             dest->Clip.Bottom = DestY + Height - dest->YOffset;
-            if (!LockSurface(dest, SURFACE_READ|SURFACE_WRITE)) {
+            if (!lock_surface(dest, SURFACE_READ|SURFACE_WRITE)) {
                srcdata = (ULONG *)(Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2));
 
                while (Height > 0) {
@@ -603,7 +606,7 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                   DestY++;
                   Height--;
                }
-               UnlockSurface(dest);
+               unlock_surface(dest);
             }
             dest->Clip.Left   = cl;
             dest->Clip.Right  = cr;
@@ -712,8 +715,8 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
    if ((Flags & BAF_BLEND) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
       // 32-bit alpha blending support
 
-      if (!LockSurface(Bitmap, SURFACE_READ)) {
-         if (!LockSurface(dest, SURFACE_WRITE)) {
+      if (!lock_surface(Bitmap, SURFACE_READ)) {
+         if (!lock_surface(dest, SURFACE_WRITE)) {
             UBYTE red, green, blue, *dest_lookup;
             UWORD alpha;
 
@@ -858,9 +861,9 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                }
             }
 
-            UnlockSurface(dest);
+            unlock_surface(dest);
          }
-         UnlockSurface(Bitmap);
+         unlock_surface(Bitmap);
       }
 
       return ERR_Okay;
@@ -868,8 +871,8 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
    else if (Bitmap->Flags & BMF_TRANSPARENT) {
       // Transparent colour copying.  In this mode, the alpha component of individual source pixels is ignored
 
-      if (!LockSurface(Bitmap, SURFACE_READ)) {
-         if (!LockSurface(dest, SURFACE_WRITE)) {
+      if (!lock_surface(Bitmap, SURFACE_READ)) {
+         if (!lock_surface(dest, SURFACE_WRITE)) {
             if (Bitmap->Opacity < 255) { // Transparent mask with translucent pixels (consistent blend level)
                srctable  = glAlphaLookup + (Bitmap->Opacity<<8);
                desttable = glAlphaLookup + ((255-Bitmap->Opacity)<<8);
@@ -951,16 +954,16 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                Height--;
             }
 
-            UnlockSurface(dest);
+            unlock_surface(dest);
          }
-         UnlockSurface(Bitmap);
+         unlock_surface(Bitmap);
       }
 
       return ERR_Okay;
    }
    else { // Straight copy operation
-      if (!LockSurface(Bitmap, SURFACE_READ)) {
-         if (!LockSurface(dest, SURFACE_WRITE)) {
+      if (!lock_surface(Bitmap, SURFACE_READ)) {
+         if (!lock_surface(dest, SURFACE_WRITE)) {
             if (Bitmap->Opacity < 255) { // Translucent draw
                srctable  = glAlphaLookup + (Bitmap->Opacity<<8);
                desttable = glAlphaLookup + ((255-Bitmap->Opacity)<<8);
@@ -1089,9 +1092,9 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                }
             }
 
-            UnlockSurface(dest);
+            unlock_surface(dest);
          }
-         UnlockSurface(Bitmap);
+         unlock_surface(Bitmap);
       }
 
       return ERR_Okay;
@@ -1292,7 +1295,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap,
 
 #endif // __xwindows__
 
-   if (LockSurface(Bitmap, SURFACE_WRITE) IS ERR_Okay) {
+   if (lock_surface(Bitmap, SURFACE_WRITE) IS ERR_Okay) {
       if ((Flags & CSRF_ALPHA) and (Surface->BitsPerPixel IS 32)) { // 32-bit alpha blending support
          ULONG *sdata = (ULONG *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
 
@@ -1530,7 +1533,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap,
          }
       }
 
-      UnlockSurface(Bitmap);
+      unlock_surface(Bitmap);
    }
 
    return ERR_Okay;
@@ -1599,7 +1602,7 @@ void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY, ULONG 
 
    #endif
 
-   if (LockSurface(Bitmap, SURFACE_READWRITE) != ERR_Okay) return;
+   if (lock_surface(Bitmap, SURFACE_READWRITE) != ERR_Okay) return;
 
    drawx = X + Bitmap->XOffset;
    drawy = Y + Bitmap->YOffset;
@@ -1695,7 +1698,7 @@ void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY, ULONG 
       }
    }
 
-   UnlockSurface(Bitmap);
+   unlock_surface(Bitmap);
 }
 
 /*****************************************************************************
@@ -1779,7 +1782,7 @@ void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
    else opacity = Bitmap->Opacity; // Pulling the opacity from the bitmap is deprecated, used BAF_BLEND instead.
 
    if (opacity < 255) {
-      if (!LockSurface(Bitmap, SURFACE_READWRITE)) {
+      if (!lock_surface(Bitmap, SURFACE_READWRITE)) {
          UWORD wordpixel;
 
          if (Bitmap->BitsPerPixel IS 32) {
@@ -1878,7 +1881,7 @@ void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
             }
          }
 
-         UnlockSurface(Bitmap);
+         unlock_surface(Bitmap);
       }
 
       return;
@@ -1912,9 +1915,9 @@ void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
 
    // Standard rectangle data support
 
-   if (!LockSurface(Bitmap, SURFACE_WRITE)) {
+   if (!lock_surface(Bitmap, SURFACE_WRITE)) {
       if (!Bitmap->Data) {
-         UnlockSurface(Bitmap);
+         unlock_surface(Bitmap);
          return;
       }
 
@@ -1969,7 +1972,7 @@ void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
          Height--;
       }
 
-      UnlockSurface(Bitmap);
+      unlock_surface(Bitmap);
    }
 
    return;

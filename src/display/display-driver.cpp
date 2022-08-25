@@ -18,40 +18,6 @@ ERROR GET_VDensity(objDisplay *Self, LONG *Value);
 #define MAX_KEYCODES 256
 #define TIME_X11DBLCLICK 600
 
-struct XCursor {
-   Cursor XCursor;
-   LONG CursorID;
-   LONG XCursorID;
-};
-
-static XCursor XCursors[] = {
-   { 0, PTR_DEFAULT,           XC_left_ptr },
-   { 0, PTR_SIZE_BOTTOM_LEFT,  XC_bottom_left_corner },
-   { 0, PTR_SIZE_BOTTOM_RIGHT, XC_bottom_right_corner },
-   { 0, PTR_SIZE_TOP_LEFT,     XC_top_left_corner },
-   { 0, PTR_SIZE_TOP_RIGHT,    XC_top_right_corner },
-   { 0, PTR_SIZE_LEFT,         XC_left_side },
-   { 0, PTR_SIZE_RIGHT,        XC_right_side },
-   { 0, PTR_SIZE_TOP,          XC_top_side },
-   { 0, PTR_SIZE_BOTTOM,       XC_bottom_side },
-   { 0, PTR_CROSSHAIR,         XC_crosshair },
-   { 0, PTR_SLEEP,             XC_clock },
-   { 0, PTR_SIZING,            XC_sizing },
-   { 0, PTR_SPLIT_VERTICAL,    XC_sb_v_double_arrow },
-   { 0, PTR_SPLIT_HORIZONTAL,  XC_sb_h_double_arrow },
-   { 0, PTR_MAGNIFIER,         XC_hand2 },
-   { 0, PTR_HAND,              XC_hand2 },
-   { 0, PTR_HAND_LEFT,         XC_hand1 },
-   { 0, PTR_HAND_RIGHT,        XC_hand1 },
-   { 0, PTR_TEXT,              XC_xterm },
-   { 0, PTR_PAINTBRUSH,        XC_pencil },
-   { 0, PTR_STOP,              XC_left_ptr },
-   { 0, PTR_INVISIBLE,         XC_dot },
-   { 0, PTR_DRAGGABLE,         XC_sizing }
-};
-
-Cursor create_blank_cursor(void);
-Cursor get_x11_cursor(LONG CursorID);
 void X11ManagerLoop(HOSTHANDLE, APTR);
 void handle_button_press(XEvent *);
 void handle_button_release(XEvent *);
@@ -228,30 +194,28 @@ static OBJECTID glActiveDisplayID = 0;
 
 struct InputEventMgr *glInputEvents = NULL;
 OBJECTPTR glCompress = NULL;
-objCompression *glIconArchive = NULL;
+static objCompression *glIconArchive = NULL;
 struct CoreBase *CoreBase;
 ColourFormat glColourFormat;
-BYTE glHeadless = FALSE;
+bool glHeadless = false;
 OBJECTPTR glModule = NULL;
 OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL;
 OBJECTID glPointerID = 0;
 DISPLAYINFO *glDisplayInfo;
 APTR glDither = NULL;
-LONG glDitherSize = 0;
 SharedControl *glSharedControl = NULL;
-LONG glSixBitDisplay = FALSE;
+bool glSixBitDisplay = false;
 std::unordered_map<LONG, InputCallback> glInputCallbacks;
-MsgHandler *glExposeHandler = NULL;
+static MsgHandler *glExposeHandler = NULL;
 TIMER glRefreshPointerTimer = 0;
 objBitmap *glComposite = NULL;
-BYTE glDisplayType = DT_NATIVE;
+static BYTE glDisplayType = DT_NATIVE;
 DOUBLE glpRefreshRate = -1, glpGammaRed = 1, glpGammaGreen = 1, glpGammaBlue = 1;
 LONG glpDisplayWidth = 1024, glpDisplayHeight = 768, glpDisplayX = 0, glpDisplayY = 0;
 LONG glpDisplayDepth = 0; // If zero, the display depth will be based on the hosted desktop's bit depth.
 LONG glpMaximise = FALSE, glpFullScreen = FALSE;
 LONG glpWindowType = SWIN_HOST;
 char glpDPMS[20] = "Standby";
-LONG glClassFlags = CLF_SHARED_ONLY|CLF_PUBLIC_OBJECTS; // Set on CMDInit()
 objXML *glStyle = NULL;
 OBJECTPTR glAppStyle = NULL;
 OBJECTPTR glDesktopStyleScript = NULL;
@@ -376,6 +340,19 @@ void unlock_graphics(void)
 #endif
 
 //****************************************************************************
+// Handles incoming interface messages.
+
+static ERROR msg_handler(APTR Custom, LONG UniqueID, LONG Type, APTR Data, LONG Size)
+{
+   if ((Data) and ((size_t)Size >= sizeof(ExposeMessage))) {
+      auto expose = (ExposeMessage *)Data;
+      gfxExposeSurface(expose->ObjectID, expose->X, expose->Y, expose->Width, expose->Height, expose->Flags);
+   }
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
 // Reloads a style script if the time stamp has changed.  This should be done only when an environment change occurs.
 
 void check_styles(STRING Path, OBJECTPTR *Script)
@@ -469,48 +446,6 @@ ERROR load_styles(void)
    // Note that there's no auto-loading for glAppStyle, as that has to be provided by calling SetCurrentStyle()
 
    return ERR_Okay;
-}
-
-//****************************************************************************
-
-ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **Bitmap)
-{
-   if (!AccessObject(DisplayID, 5000, Display)) {
-      APTR winhandle;
-
-      if (!GetPointer(Display[0], FID_WindowHandle, &winhandle)) {
-         #ifdef _WIN32
-            SetPointer(Display[0]->Bitmap, FID_Handle, winGetDC(winhandle));
-         #else
-            SetPointer(Display[0]->Bitmap, FID_Handle, winhandle);
-         #endif
-      }
-
-      if (Bitmap) *Bitmap = Display[0]->Bitmap;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-}
-
-//****************************************************************************
-
-void release_video(objDisplay *Display)
-{
-   #ifdef _WIN32
-      APTR surface;
-      GetPointer(Display->Bitmap, FID_Handle, &surface);
-
-      APTR winhandle;
-      if (!GetPointer(Display, FID_WindowHandle, &winhandle)) {
-         winReleaseDC(winhandle, surface);
-      }
-
-      SetPointer(Display->Bitmap, FID_Handle, NULL);
-   #endif
-
-   acFlush(Display);
-
-   ReleaseObject(Display);
 }
 
 /*****************************************************************************
@@ -959,9 +894,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    GetPointer(argModule, FID_Master, &glModule);
 
-   if (GetResource(RES_GLOBAL_INSTANCE)) glClassFlags = CLF_SHARED_ONLY|CLF_PUBLIC_OBJECTS;
-   else glClassFlags = 0; // When operating stand-alone, do not share surfaces by default.
-
    if (GetSystemState()->Stage < 0) { // An early load indicates that classes are being probed, so just return them.
       create_pointer_class();
       create_display_class();
@@ -1166,12 +1098,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       seteuid(getuid());
 
-      log.trace("Loading X11 cursor graphics.");
-
-      for (LONG i=0; i < ARRAYSIZE(XCursors); i++) {
-         if (XCursors[i].CursorID IS PTR_INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
-         else XCursors[i].XCursor = XCreateFontCursor(XDisplay, XCursors[i].XCursorID);
-      }
+      init_xcursors();
 
       // Set the DISPLAY variable for clients to :10, which is the default X11 display for the rootless X Server.
 
@@ -1416,9 +1343,7 @@ static ERROR CMDExpunge(void)
       XSetIOErrorHandler(NULL);
 
       if (XDisplay) {
-         for (i=0; i < ARRAYSIZE(XCursors); i++) {
-            if (XCursors[i].XCursor) XFreeCursor(XDisplay, XCursors[i].XCursor);
-         }
+         free_xcursors();
 
          if (glXGC) { XFreeGC(XDisplay, glXGC); glXGC = 0; }
          if (glClipXGC) { XFreeGC(XDisplay, glClipXGC); glClipXGC = 0; }
@@ -1481,16 +1406,6 @@ static ERROR CMDExpunge(void)
    #endif
 
    return error;
-}
-
-//*****************************************************************************
-
-void update_displayinfo(objDisplay *Self)
-{
-   if (StrMatch("SystemDisplay", GetName(Self)) != ERR_Okay) return;
-
-   glDisplayInfo->DisplayID = 0;
-   get_display_info(Self->Head.UID, glDisplayInfo, sizeof(DISPLAYINFO));
 }
 
 /*****************************************************************************

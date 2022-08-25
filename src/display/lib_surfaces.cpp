@@ -50,7 +50,7 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 
 #ifdef _WIN32
 
-ERROR LockSurface(objBitmap *Bitmap, WORD Access)
+ERROR lock_surface(objBitmap *Bitmap, WORD Access)
 {
    if (!Bitmap->Data) {
       parasol::Log log(__FUNCTION__);
@@ -61,14 +61,14 @@ ERROR LockSurface(objBitmap *Bitmap, WORD Access)
    return ERR_Okay;
 }
 
-ERROR UnlockSurface(objBitmap *Bitmap)
+ERROR unlock_surface(objBitmap *Bitmap)
 {
    return ERR_Okay;
 }
 
 #elif __xwindows__
 
-ERROR LockSurface(objBitmap *Bitmap, WORD Access)
+ERROR lock_surface(objBitmap *Bitmap, WORD Access)
 {
    LONG size;
    WORD alignment;
@@ -119,14 +119,14 @@ ERROR LockSurface(objBitmap *Bitmap, WORD Access)
    return ERR_Okay;
 }
 
-ERROR UnlockSurface(objBitmap *Bitmap)
+ERROR unlock_surface(objBitmap *Bitmap)
 {
    return ERR_Okay;
 }
 
 #elif _GLES_
 
-ERROR LockSurface(objBitmap *Bitmap, WORD Access)
+ERROR lock_surface(objBitmap *Bitmap, WORD Access)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -175,7 +175,7 @@ ERROR LockSurface(objBitmap *Bitmap, WORD Access)
    return ERR_Okay;
 }
 
-ERROR UnlockSurface(objBitmap *Bitmap)
+ERROR unlock_surface(objBitmap *Bitmap)
 {
    if ((Bitmap->DataFlags & MEM_VIDEO) and (Bitmap->prvWriteBackBuffer)) {
       if (!lock_graphics_active(__func__)) {
@@ -217,14 +217,14 @@ ERROR UnlockSurface(objBitmap *Bitmap)
 
 #error Platform not supported.
 
-#define LockSurface(a,b)
-#define UnlockSurface(a)
+#define lock_surface(a,b)
+#define unlock_surface(a)
 
 #endif
 
 //****************************************************************************
 
-ERROR GetSurfaceAbs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
+ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
    SurfaceControl *ctl;
 
@@ -247,23 +247,61 @@ ERROR GetSurfaceAbs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LON
    else return ERR_AccessMemory;
 }
 
-//****************************************************************************
-// Handles incoming interface messages.
+/*****************************************************************************
+** Redraw everything in RegionB that does not intersect with RegionA.
+*/
 
-ERROR msg_handler(APTR Custom, LONG UniqueID, LONG Type, APTR Data, LONG Size)
+void redraw_nonintersect(OBJECTID SurfaceID, SurfaceList *List, WORD Index, WORD Total,
+   ClipRectangle *Region, ClipRectangle *RegionB, LONG RedrawFlags, LONG ExposeFlags)
 {
-   if ((Data) and ((size_t)Size >= sizeof(ExposeMessage))) {
-      auto expose = (ExposeMessage *)Data;
-      gfxExposeSurface(expose->ObjectID, expose->X, expose->Y, expose->Width, expose->Height, expose->Flags);
+   parasol::Log log(__FUNCTION__);
+
+   if (!SurfaceID) { // Implemented this check because an invalid SurfaceID has happened before.
+      log.warning("SurfaceID == 0");
+      return;
    }
 
-   return ERR_Okay;
+   log.traceBranch("redraw_nonintersect: (A) %dx%d,%dx%d Vs (B) %dx%d,%dx%d", Region->Left, Region->Top, Region->Right, Region->Bottom, RegionB->Left, RegionB->Top, RegionB->Right, RegionB->Bottom);
+
+   ExposeFlags |= EXF_ABSOLUTE;
+
+   struct { LONG left, top, right, bottom; } rect = { RegionB->Left, RegionB->Top, RegionB->Right, RegionB->Bottom };
+
+   if (rect.right > Region->Right) { // Right
+      log.trace("redraw_nonrect: Right exposure");
+
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, ExposeFlags);
+      rect.right = Region->Right;
+      if (rect.left >= rect.right) return;
+   }
+
+   if (rect.bottom > Region->Bottom) { // Bottom
+      log.trace("redraw_nonrect: Bottom exposure");
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, ExposeFlags);
+      rect.bottom = Region->Bottom;
+      if (rect.top >= rect.bottom) return;
+   }
+
+   if (rect.top < Region->Top) { // Top
+      log.trace("redraw_nonrect: Top exposure");
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, ExposeFlags);
+      rect.top = Region->Top;
+   }
+
+   if (rect.left < Region->Left) { // Left
+      log.trace("redraw_nonrect: Left exposure");
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, ExposeFlags);
+   }
 }
 
 //****************************************************************************
 // Scans the surfacelist for the 'true owner' of a given bitmap.
 
-WORD FindBitmapOwner(SurfaceList *List, WORD Index)
+WORD find_bitmap_owner(SurfaceList *List, WORD Index)
 {
    WORD owner = Index;
    for (LONG i=Index; i >= 0; i--) {
@@ -470,7 +508,7 @@ void untrack_layer(OBJECTID ObjectID)
 
 //****************************************************************************
 
-ERROR UpdateSurfaceCopy(objSurface *Self, SurfaceList *Copy)
+ERROR update_surface_copy(objSurface *Self, SurfaceList *Copy)
 {
    parasol::Log log(__FUNCTION__);
    WORD i, j, level;
@@ -631,57 +669,170 @@ void move_layer_pos(SurfaceControl *ctl, LONG SrcIndex, LONG DestIndex)
 9
 10-NULL
 */
-/*****************************************************************************
-** Internal: check_volatile()
-** Used By:  MoveToBack(), move_layer()
-**
-** This is the best way to figure out if a surface object or its children causes it to be volatile.  Use this function
-** if you don't want to do any deep scanning to determine who is volatile or not.
-**
-** Volatile flags are PRECOPY, AFTER_COPY and CURSOR.
-**
-** NOTE: Surfaces marked as COMPOSITE or TRANSPARENT are not considered volatile as they do not require redraws.  It's
-** up to the caller to make a decision as to whether COMPOSITE's are volatile or not.
-*/
 
-UBYTE check_volatile(SurfaceList *list, WORD index)
+//****************************************************************************
+// This function is responsible for managing the resizing of top-most surface objects and is also used by some of the
+// field management functions for Width/Height adjustments.
+//
+// This function is also useful for skipping the dimension limits normally imposed when resizing.
+
+ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth,
+   LONG InsideHeight, LONG BPP, DOUBLE RefreshRate, LONG DeviceFlags)
 {
-   if (list[index].Flags & RNF_VOLATILE) return TRUE;
+   if (!Width)  Width = Self->Width;
+   if (!Height) Height = Self->Height;
 
-   // If there are children with custom root layers or are volatile, that will force volatility
+   if (!(Self->Head.Flags & NF_INITIALISED)) {
+      Self->X = X;
+      Self->Y = Y;
+      Self->Width  = Width;
+      Self->Height = Height;
+      return ERR_Okay;
+   }
 
-   WORD j;
-   for (WORD i=index+1; list[i].Level > list[index].Level; i++) {
-      if (!(list[i].Flags & RNF_VISIBLE)) {
-         j = list[i].Level;
-         while (list[i+1].Level > j) i++;
-         continue;
+   if ((Self->X IS X) and (Self->Y IS Y) and (Self->Width IS Width) and (Self->Height IS Height) and
+       (Self->ParentID)) {
+      return ERR_Okay;
+   }
+
+   parasol::Log log;
+
+   log.traceBranch("resize_layer() %dx%d,%dx%d TO %dx%d,%dx%dx%d", Self->X, Self->Y, Self->Width, Self->Height, X, Y, Width, Height, BPP);
+
+   if (Self->BitmapOwnerID IS Self->Head.UID) {
+      objBitmap *bitmap;
+      if (!AccessObject(Self->BufferID, 5000, &bitmap)) {
+         if (!acResize(bitmap, Width, Height, BPP)) {
+            Self->LineWidth     = bitmap->LineWidth;
+            Self->BytesPerPixel = bitmap->BytesPerPixel;
+            Self->BitsPerPixel  = bitmap->BitsPerPixel;
+            Self->DataMID       = bitmap->DataMID;
+            UpdateSurfaceList(Self);
+         }
+         else {
+            ReleaseObject(bitmap);
+            return log.warning(ERR_Resize);
+         }
+
+         ReleaseObject(bitmap);
+      }
+      else return log.warning(ERR_AccessObject);
+   }
+
+   if (!Self->ParentID) {
+      if (Width  > Self->MaxWidth  + Self->LeftMargin + Self->RightMargin)  Width  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;
+      if (Height > Self->MaxHeight + Self->TopMargin  + Self->BottomMargin) Height = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin;
+      if (InsideWidth < Width) InsideWidth = Width;
+      if (InsideHeight < Height) InsideHeight = Height;
+
+      OBJECTPTR display;
+      if (!AccessObject(Self->DisplayID, 5000, &display)) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
+         if (gfxSetDisplay(display, X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags)) {
+            ReleaseObject(display);
+            return log.warning(ERR_Redimension);
+         }
+
+         GetFields(display, FID_Width|TLONG, &Width, FID_Height|TLONG, &Height, TAGEND);
+         ReleaseObject(display);
+      }
+      else return log.warning(ERR_AccessObject);
+   }
+
+   LONG oldx = Self->X;
+   LONG oldy = Self->Y;
+   LONG oldw = Self->Width;
+   LONG oldh = Self->Height;
+
+   Self->X = X;
+   Self->Y = Y;
+   Self->Width  = Width;
+   Self->Height = Height;
+   UpdateSurfaceList(Self);
+
+   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_Okay;
+
+   // Send a Resize notification to our subscribers.  Basically, this informs our surface children to resize themselves
+   // to the new dimensions.  Surface objects are not permitted to redraw themselves when they receive the Redimension
+   // notification - we will send a delayed draw message later in this routine.
+
+   forbidDrawing();
+
+   struct acRedimension redimension = { (DOUBLE)X, (DOUBLE)Y, 0, (DOUBLE)Width, (DOUBLE)Height, (DOUBLE)BPP };
+   NotifySubscribers(Self, AC_Redimension, &redimension, NULL, ERR_Okay);
+
+   permitDrawing();
+
+   if (!(Self->Flags & RNF_VISIBLE)) return ERR_Okay;
+
+   if (!tlNoDrawing) {
+      // Post the drawing update.  This method is the only reliable way to generate updates when our surface may
+      // contain children that belong to foreign tasks.
+
+      SurfaceControl *ctl;
+      if (!(ctl = gfxAccessList(ARF_READ))) return ERR_AccessMemory;
+
+      LONG total = ctl->Total;
+      SurfaceList cplist[total];
+      CopyMemory((BYTE *)ctl + ctl->ArrayIndex, cplist, sizeof(cplist[0]) * total);
+      gfxReleaseList(ARF_READ);
+
+      WORD index;
+      if ((index = find_surface_list(cplist, total, Self->Head.UID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
+         return ERR_Search;
       }
 
-      if (list[i].Flags & RNF_VOLATILE) {
-         // If a child surface is marked as volatile and is a member of our bitmap space, then effectively all members of the bitmap are volatile.
+      parasol::Log log;
+      log.traceBranch("Redrawing the resized surface.");
 
-         if (list[index].BitmapID IS list[i].BitmapID) return TRUE;
+      _redraw_surface(Self->Head.UID, cplist, index, total, cplist[index].Left, cplist[index].Top, cplist[index].Right, cplist[index].Bottom, 0);
+      _expose_surface(Self->Head.UID, cplist, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
 
-         // If this is a custom root layer, check if it refers to a surface that is going to affect our own volatility.
+      if (Self->ParentID) {
+         // Update external regions on all four sides that have been exposed by the resize, for example due to a decrease in area or a coordinate shift.
+         //
+         // Note: tlVolatileIndex determines the point at which volatile exposes will start.  We want volatile exposes to start just after our target surface, and not
+         // anything that sits behind us in the containing parent.
 
-         if (list[i].RootID != list[i].SurfaceID) {
-            for (j=i; j > index; j--) {
-               if (list[i].RootID IS list[j].SurfaceID) break;
-            }
+         WORD vindex;
+         for (vindex=index+1; (vindex < total) and (cplist[vindex].Level > cplist[index].Level); vindex++);
+         tlVolatileIndex = vindex;
 
-            if (j <= index) return TRUE; // Custom root of a child is outside of bounds - that makes us volatile
+         LONG parent_index;
+         for (parent_index=index-1; parent_index >= 0; parent_index--) {
+            if (cplist[parent_index].SurfaceID IS Self->ParentID) break;
          }
+
+         struct ClipRectangle region_b = {
+            .Left   = cplist[parent_index].Left + oldx,
+            .Right  = (cplist[parent_index].Left + oldx) + oldw,
+            .Bottom = (cplist[parent_index].Top + oldy) + oldh,
+            .Top    = cplist[parent_index].Top + oldy
+         };
+
+         struct ClipRectangle region_a = {
+            .Left   = cplist[index].Left,
+            .Right  = cplist[index].Right,
+            .Bottom = cplist[index].Bottom,
+            .Top    = cplist[index].Top
+         };
+
+         if (Self->BitmapOwnerID IS Self->Head.UID) {
+            redraw_nonintersect(Self->ParentID, cplist, parent_index, total, &region_a, &region_b, -1, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
+         }
+         else redraw_nonintersect(Self->ParentID, cplist, parent_index, total, &region_a, &region_b, 0, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
+
+         tlVolatileIndex = 0;
       }
    }
 
-   return FALSE;
+   refresh_pointer(Self);
+   return ERR_Okay;
 }
 
 //****************************************************************************
 // Checks if an object is visible, according to its visibility and its parents visibility.
 
-UBYTE CheckVisibility(SurfaceList *list, WORD index)
+static UBYTE check_visibility(SurfaceList *list, WORD index)
 {
    OBJECTID scan = list[index].SurfaceID;
    for (WORD i=index; i >= 0; i--) {
@@ -694,7 +845,7 @@ UBYTE CheckVisibility(SurfaceList *list, WORD index)
    return TRUE;
 }
 
-void check_bmp_buffer_depth(objSurface *Self, objBitmap *Bitmap)
+static void check_bmp_buffer_depth(objSurface *Self, objBitmap *Bitmap)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -712,33 +863,6 @@ void check_bmp_buffer_depth(objSurface *Self, objBitmap *Bitmap)
          UpdateSurfaceList(Self);
       }
    }
-}
-
-//****************************************************************************
-
-BYTE check_surface_list(void)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.traceBranch("Validating the surface list...");
-
-   SurfaceControl *ctl;
-   if ((ctl = gfxAccessList(ARF_WRITE))) {
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      BYTE bad = FALSE;
-      for (LONG i=0; i < ctl->Total; i++) {
-         if ((CheckObjectExists(list[i].SurfaceID, NULL) != ERR_Okay)) {
-            log.trace("Surface %d, index %d is dead.", list[i].SurfaceID, i);
-            untrack_layer(list[i].SurfaceID);
-            bad = TRUE;
-            i--; // stay at the same index level
-         }
-      }
-
-      gfxReleaseList(ARF_WRITE);
-      return bad;
-   }
-   else return FALSE;
 }
 
 //****************************************************************************
@@ -1061,7 +1185,7 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, LONG Flags,
 
             // Find the bitmap root
 
-            WORD root = FindBitmapOwner(list, i);
+            WORD root = find_bitmap_owner(list, i);
 
             SurfaceList list_i = list[i];
             SurfaceList list_root = list[root];
@@ -1332,7 +1456,7 @@ ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
             gfxReleaseList(ARF_READ);
             return ERR_Search;
          }
-         root = FindBitmapOwner(list, i);
+         root = find_bitmap_owner(list, i);
       }
 
       info.ParentID  = list[i].ParentID;
@@ -1565,7 +1689,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD To
    // Check if any of the parent surfaces are invisible
 
    if (!(Flags & IRF_FORCE_DRAW)) {
-      if ((!(list[index].Flags & RNF_VISIBLE)) or (CheckVisibility(list, index) IS FALSE)) {
+      if ((!(list[index].Flags & RNF_VISIBLE)) or (check_visibility(list, index) IS FALSE)) {
          log.trace("Surface is not visible.");
          return ERR_Okay;
       }
@@ -2073,7 +2197,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
             return ERR_Search;
          }
 
-         LONG root = FindBitmapOwner(list, i);
+         LONG root = find_bitmap_owner(list, i);
 
          bitmap->XOffset     = list[i].Left - list[root].Left;
          bitmap->YOffset     = list[i].Top - list[root].Top;
@@ -2133,7 +2257,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
       }
 
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      LONG root = FindBitmapOwner(list, i);
+      LONG root = find_bitmap_owner(list, i);
 
       SurfaceList list_root = list[root];
       SurfaceList list_zero = list[0];

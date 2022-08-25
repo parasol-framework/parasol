@@ -613,7 +613,7 @@ static ERROR BITMAP_Flip(objBitmap *Self, struct bmpFlip *Args)
    // temporary memory area to hold the information.
 
    if (Args->Orientation IS FLIP_HORIZONTAL) {
-      if (!LockSurface(Self, SURFACE_READWRITE)) {
+      if (!lock_surface(Self, SURFACE_READWRITE)) {
          for (LONG y=0; y < Self->Height/2; y++) {
             for (LONG x=0; x < Self->Width; x++) {
                LONG c1 = Self->ReadUCPixel(Self, x, Self->Height - y - 1);
@@ -622,11 +622,11 @@ static ERROR BITMAP_Flip(objBitmap *Self, struct bmpFlip *Args)
                Self->DrawUCPixel(Self, x, Self->Height - y - 1, c2);
             }
          }
-         UnlockSurface(Self);
+         unlock_surface(Self);
       }
    }
    else if (Args->Orientation IS FLIP_VERTICAL) {
-      if (!LockSurface(Self, SURFACE_READWRITE)) {
+      if (!lock_surface(Self, SURFACE_READWRITE)) {
          // Palette based Bitmap
          for (LONG x=0; x < Self->Width/2; x++) {
             for (LONG y=0; y < Self->Height; y++) {
@@ -636,7 +636,7 @@ static ERROR BITMAP_Flip(objBitmap *Self, struct bmpFlip *Args)
                Self->DrawUCPixel(Self, x, y, c1);
             }
          }
-         UnlockSurface(Self);
+         unlock_surface(Self);
       }
    }
    else return log.warning(ERR_Args);
@@ -1093,7 +1093,7 @@ static ERROR BITMAP_Lock(objBitmap *Self, APTR Void)
 
 #else
 
-   return LockSurface(Self, SURFACE_READWRITE);
+   return lock_surface(Self, SURFACE_READWRITE);
 
 #endif
 }
@@ -1823,7 +1823,7 @@ Unlock: Unlocks the bitmap surface once direct access is no longer required.
 static ERROR BITMAP_Unlock(objBitmap *Self, APTR Void)
 {
 #ifndef __xwindows__
-   UnlockSurface(Self);
+   unlock_surface(Self);
 #endif
    return ERR_Okay;
 }

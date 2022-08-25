@@ -69,9 +69,8 @@
 #include <android/configuration.h>
 #endif
 
-#define USE_XIMAGE TRUE
-
-#define SIZE_FOCUSLIST   30
+#define USE_XIMAGE         TRUE
+#define SIZE_FOCUSLIST     30
 #define DEFAULT_WHEELSPEED 500
 #define TIME_DBLCLICK      40
 #define REPEAT_BUTTONS     TRUE
@@ -137,7 +136,7 @@
    } \
 }
 
-#define UpdateSurfaceList(a) UpdateSurfaceCopy((a), 0)
+#define UpdateSurfaceList(a) update_surface_copy((a), 0)
 
 struct dcDisplayInputReady { // This is an internal structure used by the display module to replace dcInputReady
    LARGE NextIndex;    // Next message index for the subscriber to look at
@@ -244,55 +243,44 @@ struct ClipEntry {
    WORD     TotalItems;  // Total number of items in the clip-set
 };
 
-extern ERROR create_clipboard_class(void);
-extern ERROR create_pointer_class(void);
-extern ERROR create_display_class(void);
-extern ERROR GetSurfaceAbs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
-extern ULONG ConvertRGBToPackedPixel(objBitmap *, RGB8 *) __attribute__ ((unused));
-extern void  input_event_loop(HOSTHANDLE, APTR);
-extern ERROR LockSurface(objBitmap *, WORD);
-extern ERROR UnlockSurface(objBitmap *);
-extern resolution * get_resolutions(objDisplay *);
 extern ERROR create_bitmap_class(void);
-extern ERROR dither(objBitmap *, objBitmap *, ColourFormat *, LONG, LONG, LONG, LONG, LONG, LONG);
+extern ERROR create_clipboard_class(void);
+extern ERROR create_display_class(void);
+extern ERROR create_pointer_class(void);
+extern ERROR create_surface_class(void);
+extern ERROR get_surface_abs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
+extern void  input_event_loop(HOSTHANDLE, APTR);
+extern ERROR lock_surface(objBitmap *, WORD);
+extern ERROR unlock_surface(objBitmap *);
 extern ERROR get_display_info(OBJECTID, DISPLAYINFO *, LONG);
-extern void  update_displayinfo(objDisplay *);
 extern void  resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
 extern void  forbidDrawing(void);
 extern void  forbidExpose(void);
 extern void  permitDrawing(void);
 extern void  permitExpose(void);
-extern ERROR access_video(OBJECTID DisplayID, objDisplay **, objBitmap **);
 extern ERROR apply_style(OBJECTPTR, OBJECTPTR, CSTRING);
 extern ERROR load_styles(void);
-extern BYTE  check_surface_list(void);
-extern UBYTE CheckVisibility(SurfaceList *, WORD);
-extern UBYTE check_volatile(SurfaceList *, WORD);
-extern ERROR create_surface_class(void);
-extern void  expose_buffer(SurfaceList *, WORD Total, WORD Index, WORD ScanIndex, LONG Left, LONG Top, LONG Right, LONG Bottom, OBJECTID VideoID, objBitmap *);
-extern WORD  FindBitmapOwner(SurfaceList *, WORD);
-extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
-extern void  invalidate_overlap(objSurface *, SurfaceList *, WORD, LONG, LONG, LONG, LONG, LONG, LONG, objBitmap *);
+extern WORD  find_bitmap_owner(SurfaceList *, WORD);
 extern void  move_layer(objSurface *, LONG, LONG);
 extern void  move_layer_pos(SurfaceControl *, LONG, LONG);
-extern LONG  msg_handler(APTR, LONG, LONG, APTR, LONG);
 extern void  prepare_background(objSurface *, SurfaceList *, WORD, WORD, objBitmap *, ClipRectangle *, BYTE);
 extern void  process_surface_callbacks(objSurface *, objBitmap *);
-extern void  redraw_nonintersect(OBJECTID, SurfaceList *, WORD, WORD, ClipRectangle *, ClipRectangle *, LONG, LONG);
-extern void  release_video(objDisplay *);
+extern void  refresh_pointer(objSurface *Self);
 extern ERROR track_layer(objSurface *);
 extern void  untrack_layer(OBJECTID);
-extern void  check_bmp_buffer_depth(objSurface *, objBitmap *);
 extern BYTE  restrict_region_to_parents(SurfaceList *, LONG, ClipRectangle *, BYTE);
 extern ERROR load_style_values(void);
-extern ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD total, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags);
-extern ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD Index, WORD Total, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags);
+extern ERROR resize_layer(objSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
+extern void  redraw_nonintersect(OBJECTID, SurfaceList *, WORD, WORD, ClipRectangle *, ClipRectangle *, LONG, LONG);
+extern ERROR _expose_surface(OBJECTID, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, LONG);
+extern ERROR _redraw_surface(OBJECTID, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, LONG);
 extern void  _redraw_surface_do(objSurface *, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, objBitmap *, LONG);
 extern void  check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
-extern ERROR resize_layer(objSurface *, LONG, LONG, LONG, LONG, LONG, LONG, LONG, DOUBLE, LONG);
-extern ERROR UpdateSurfaceCopy(objSurface *Self, SurfaceList *Copy);
-extern LONG  find_surface_list(SurfaceList *list, LONG Total, OBJECTID SurfaceID);
-extern LONG  find_parent_list(SurfaceList *list, WORD Total, objSurface *Self);
+extern ERROR update_surface_copy(objSurface *, SurfaceList *);
+extern LONG  find_surface_list(SurfaceList *, LONG, OBJECTID);
+extern LONG  find_parent_list(SurfaceList *, WORD, objSurface *);
+
+extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
 
 #ifdef DBG_LAYERS
 extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
@@ -300,35 +288,30 @@ extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
 
 extern std::unordered_map<LONG, InputCallback> glInputCallbacks;
 extern SharedControl *glSharedControl;
-extern LONG glSixBitDisplay;
+extern bool glSixBitDisplay;
 extern OBJECTPTR glModule;
 extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface;
 extern OBJECTID glPointerID;
 extern DISPLAYINFO *glDisplayInfo;
 extern APTR glDither;
-extern LONG glDitherSize;
 extern OBJECTPTR glCompress;
-extern objCompression *glIconArchive;
 extern struct CoreBase *CoreBase;
 extern ColourFormat glColourFormat;
-extern BYTE glHeadless;
+extern bool glHeadless;
 extern FieldDef CursorLookup[];
 extern UBYTE *glAlphaLookup;
 extern TIMER glRefreshPointerTimer;
 extern objBitmap *glComposite;
-extern BYTE glDisplayType;
 extern DOUBLE glpRefreshRate, glpGammaRed, glpGammaGreen, glpGammaBlue;
 extern LONG glpDisplayWidth, glpDisplayHeight, glpDisplayX, glpDisplayY;
 extern LONG glpDisplayDepth; // If zero, the display depth will be based on the hosted desktop's bit depth.
 extern LONG glpMaximise, glpFullScreen;
 extern LONG glpWindowType;
 extern char glpDPMS[20];
-extern LONG glClassFlags; // Set on CMDInit()
 extern objXML *glStyle;
 extern OBJECTPTR glAppStyle;
 extern OBJECTPTR glDesktopStyleScript;
 extern OBJECTPTR glDefaultStyleScript;
-extern MsgHandler *glExposeHandler;
 
 // Thread-specific variables.
 
@@ -405,8 +388,6 @@ extern WinCursor winCursors[24];
 
 #ifdef __xwindows__
 
-extern Cursor create_blank_cursor(void);
-extern Cursor get_x11_cursor(LONG CursorID);
 extern void X11ManagerLoop(HOSTHANDLE, APTR);
 extern void handle_button_press(XEvent *);
 extern void handle_button_release(XEvent *);
@@ -418,6 +399,8 @@ extern void handle_key_release(XEvent *);
 extern void handle_motion_notify(XMotionEvent *);
 extern void handle_stack_change(XCirculateEvent *);
 extern LONG x11WindowManager(void);
+extern void init_xcursors(void);
+extern void free_xcursors(void);
 
 extern WORD glDGAAvailable;
 extern APTR glDGAMemory;

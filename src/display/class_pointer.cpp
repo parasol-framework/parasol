@@ -260,7 +260,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
 
       if (Self->Buttons[bi].LastClicked) {
          LONG absx, absy;
-         if (!GetSurfaceAbs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
+         if (!get_surface_abs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
             uiflags |= Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
 
             if ((ABS(Self->X - Self->LastReleaseX) > Self->ClickSlop) or
@@ -481,7 +481,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
 
             // Pointer cannot leave the surface that it is restricted to
 
-            if (!GetSurfaceAbs(Self->RestrictID, &absx, &absy, &width, &height)) {
+            if (!get_surface_abs(Self->RestrictID, &absx, &absy, &width, &height)) {
                if (current_x < absx) current_x = absx;
                if (current_y < absy) current_y = absy;
                if (current_x > (absx + width - 1))  current_x = absx + width - 1;
@@ -555,7 +555,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
          }
 
          LONG absx, absy;
-         if (!GetSurfaceAbs(Self->Buttons[0].LastClicked, &absx, &absy, 0, 0)) {
+         if (!get_surface_abs(Self->Buttons[0].LastClicked, &absx, &absy, 0, 0)) {
             LONG uiflags = Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
 
             // Send the movement message to the last clicked object
@@ -1410,7 +1410,7 @@ static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
                   input.X = Self->OverX;
                   input.Y = Self->OverY;
                }
-               else if (!GetSurfaceAbs(Self->Buttons[i].LastClicked, &surface_x, &surface_y, 0, 0)) {
+               else if (!get_surface_abs(Self->Buttons[i].LastClicked, &surface_x, &surface_y, 0, 0)) {
                   input.X = Self->X - surface_x;
                   input.Y = Self->Y - surface_y;
                }

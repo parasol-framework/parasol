@@ -102,7 +102,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD To
 
    if (Flags & EXF_CHILDREN) {
       // Change the index to the root bitmap of the exposed object
-      index = FindBitmapOwner(list, index);
+      index = find_bitmap_owner(list, index);
       for (i=index; (i < Total-1) and (list[i+1].Level > list[index].Level); i++); // Go all the way to the end of the list
    }
    else i = index;
@@ -266,231 +266,6 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD To
    }
 
    return ERR_Okay;
-}
-
-//****************************************************************************
-
-void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIndex, LONG Left, LONG Top,
-                   LONG Right, LONG Bottom, OBJECTID DisplayID, objBitmap *Bitmap)
-{
-   parasol::Log log(__FUNCTION__);
-
-   // Scan for overlapping parent/sibling regions and avoid them
-
-   LONG i, j;
-   for (i=ScanIndex+1; (i < Total) and (list[i].Level > 1); i++) {
-      if (!(list[i].Flags & RNF_VISIBLE)) { // Skip past non-visible areas and their content
-         j = list[i].Level;
-         while ((i+1 < Total) and (list[i+1].Level > j)) i++;
-         continue;
-      }
-      else if (list[i].Flags & (RNF_REGION|RNF_CURSOR)); // Skip regions and the cursor
-      else {
-         ClipRectangle listclip = {
-            .Left   = list[i].Left,
-            .Right  = list[i].Right,
-            .Bottom = list[i].Bottom,
-            .Top    = list[i].Top
-         };
-
-         if (restrict_region_to_parents(list, i, &listclip, FALSE) IS -1); // Skip
-         else if ((listclip.Left < Right) and (listclip.Top < Bottom) and (listclip.Right > Left) and (listclip.Bottom > Top)) {
-            if (list[i].BitmapID IS list[Index].BitmapID) continue; // Ignore any children that overlap & form part of our bitmap space.  Children that do not overlap are skipped.
-
-            if (listclip.Left <= Left) listclip.Left = Left;
-            else expose_buffer(list, Total, Index, ScanIndex, Left, Top, listclip.Left, Bottom, DisplayID, Bitmap); // left
-
-            if (listclip.Right >= Right) listclip.Right = Right;
-            else expose_buffer(list, Total, Index, ScanIndex, listclip.Right, Top, Right, Bottom, DisplayID, Bitmap); // right
-
-            if (listclip.Top <= Top) listclip.Top = Top;
-            else expose_buffer(list, Total, Index, ScanIndex, listclip.Left, Top, listclip.Right, listclip.Top, DisplayID, Bitmap); // top
-
-            if (listclip.Bottom < Bottom) expose_buffer(list, Total, Index, ScanIndex, listclip.Left, listclip.Bottom, listclip.Right, Bottom, DisplayID, Bitmap); // bottom
-
-            if (list[i].Flags & RNF_TRANSPARENT) {
-               // In the case of invisible regions, we will have split the expose process as normal.  However,
-               // we also need to look deeper into the invisible region to discover if there is more that
-               // we can draw, depending on the content of the invisible region.
-
-               listclip.Left   = list[i].Left;
-               listclip.Top    = list[i].Top;
-               listclip.Right  = list[i].Right;
-               listclip.Bottom = list[i].Bottom;
-
-               if (Left > listclip.Left)     listclip.Left   = Left;
-               if (Top > listclip.Top)       listclip.Top    = Top;
-               if (Right < listclip.Right)   listclip.Right  = Right;
-               if (Bottom < listclip.Bottom) listclip.Bottom = Bottom;
-
-               expose_buffer(list, Total, Index, i, listclip.Left, listclip.Top, listclip.Right, listclip.Bottom, DisplayID, Bitmap);
-            }
-
-            return;
-         }
-      }
-
-      // Skip past any children of the non-overlapping object.  This ensures that we only look at immediate parents and siblings that are in our way.
-
-      j = i + 1;
-      while ((j < Total) and (list[j].Level > list[i].Level)) j++;
-      i = j - 1;
-   }
-
-   log.traceBranch("[%d] %dx%d,%dx%d Bmp: %d, Idx: %d/%d", list[Index].SurfaceID, Left, Top, Right - Left, Bottom - Top, list[Index].BitmapID, Index, ScanIndex);
-
-   // The region is not obscured, so perform the redraw
-
-   LONG owner = FindBitmapOwner(list, Index);
-
-   // Turn off offsets and set the clipping to match the source bitmap exactly (i.e. nothing fancy happening here).
-   // The real clipping occurs in the display clip.
-
-   Bitmap->XOffset = 0;
-   Bitmap->YOffset = 0;
-
-   Bitmap->Clip.Left   = list[Index].Left - list[owner].Left;
-   Bitmap->Clip.Top    = list[Index].Top - list[owner].Top;
-   Bitmap->Clip.Right  = list[Index].Right - list[owner].Left;
-   Bitmap->Clip.Bottom = list[Index].Bottom - list[owner].Top;
-   if (Bitmap->Clip.Right  > Bitmap->Width)  Bitmap->Clip.Right  = Bitmap->Width;
-   if (Bitmap->Clip.Bottom > Bitmap->Height) Bitmap->Clip.Bottom = Bitmap->Height;
-
-   // Set the clipping so that we are only drawing to the display area that has been exposed
-
-   LONG iscr = Index;
-   while ((iscr > 0) and (list[iscr].ParentID)) iscr--; // Find the top-level display entry
-
-   // If COMPOSITE is in use, this means we have to do compositing on the fly.  This involves copying the background
-   // graphics into a temporary buffer, then blitting the composite buffer to the display.
-
-   // Note: On hosted displays in Windows or Linux, compositing is handled by the host's graphics system if the surface
-   // is at the root level (no ParentID).
-
-   LONG sx, sy;
-   if ((list[Index].Flags & RNF_COMPOSITE) and
-       ((list[Index].ParentID) or (list[Index].Flags & RNF_CURSOR))) {
-      ClipRectangle clip;
-      if (glComposite) {
-         if (glComposite->BitsPerPixel != list[Index].BitsPerPixel) {
-            acFree(glComposite);
-            glComposite = NULL;
-         }
-         else {
-            if ((glComposite->Width < list[Index].Width) or (glComposite->Height < list[Index].Height)) {
-               acResize(glComposite, (list[Index].Width > glComposite->Width) ? list[Index].Width : glComposite->Width,
-                                     (list[Index].Height > glComposite->Height) ? list[Index].Height : glComposite->Height,
-                                     0);
-            }
-         }
-      }
-
-      if (!glComposite) {
-         if (CreateObject(ID_BITMAP, NF_UNTRACKED, &glComposite,
-               FID_Width|TLONG,  list[Index].Width,
-               FID_Height|TLONG, list[Index].Height,
-               TAGEND) != ERR_Okay) {
-            return;
-         }
-
-         SetOwner(glComposite, glModule);
-      }
-
-      // Build the background in our buffer
-
-      clip.Left   = Left;
-      clip.Top    = Top;
-      clip.Right  = Right;
-      clip.Bottom = Bottom;
-      prepare_background(NULL, list, Total, Index, glComposite, &clip, STAGE_COMPOSITE);
-
-      // Blend the surface's graphics into the composited buffer
-      // NOTE: THE FOLLOWING IS NOT OPTIMISED WITH RESPECT TO CLIPPING
-
-      gfxCopyArea(Bitmap, glComposite, BAF_BLEND, 0, 0, list[Index].Width, list[Index].Height, 0, 0);
-
-      Bitmap = glComposite;
-      sx = 0;  // Always zero as composites own their bitmap
-      sy = 0;
-   }
-   else {
-      sx = list[Index].Left - list[owner].Left;
-      sy = list[Index].Top - list[owner].Top;
-   }
-
-   objDisplay *display;
-   objBitmap *video_bmp;
-   if (!access_video(DisplayID, &display, &video_bmp)) {
-      video_bmp->XOffset = 0;
-      video_bmp->YOffset = 0;
-
-      video_bmp->Clip.Left   = Left - list[iscr].Left; // Ensure that the coords are relative to the display bitmap (important for Windows, X11)
-      video_bmp->Clip.Top    = Top - list[iscr].Top;
-      video_bmp->Clip.Right  = Right - list[iscr].Left;
-      video_bmp->Clip.Bottom = Bottom - list[iscr].Top;
-      if (video_bmp->Clip.Left < 0) video_bmp->Clip.Left = 0;
-      if (video_bmp->Clip.Top  < 0) video_bmp->Clip.Top  = 0;
-      if (video_bmp->Clip.Right  > video_bmp->Width) video_bmp->Clip.Right   = video_bmp->Width;
-      if (video_bmp->Clip.Bottom > video_bmp->Height) video_bmp->Clip.Bottom = video_bmp->Height;
-
-      gfxUpdateDisplay(display, Bitmap, sx, sy, // Src X/Y (bitmap relative)
-         list[Index].Width, list[Index].Height,
-         list[Index].Left - list[iscr].Left, list[Index].Top - list[iscr].Top); // Dest X/Y (absolute display position)
-
-      release_video(display);
-   }
-   else log.warning("Unable to access display #%d.", DisplayID);
-}
-
-/*****************************************************************************
-** Redraw everything in RegionB that does not intersect with RegionA.
-*/
-
-void redraw_nonintersect(OBJECTID SurfaceID, SurfaceList *List, WORD Index, WORD Total,
-   ClipRectangle *Region, ClipRectangle *RegionB, LONG RedrawFlags, LONG ExposeFlags)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if (!SurfaceID) { // Implemented this check because an invalid SurfaceID has happened before.
-      log.warning("SurfaceID == 0");
-      return;
-   }
-
-   log.traceBranch("redraw_nonintersect: (A) %dx%d,%dx%d Vs (B) %dx%d,%dx%d", Region->Left, Region->Top, Region->Right, Region->Bottom, RegionB->Left, RegionB->Top, RegionB->Right, RegionB->Bottom);
-
-   ExposeFlags |= EXF_ABSOLUTE;
-
-   struct { LONG left, top, right, bottom; } rect = { RegionB->Left, RegionB->Top, RegionB->Right, RegionB->Bottom };
-
-   if (rect.right > Region->Right) { // Right
-      log.trace("redraw_nonrect: Right exposure");
-
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, ExposeFlags);
-      rect.right = Region->Right;
-      if (rect.left >= rect.right) return;
-   }
-
-   if (rect.bottom > Region->Bottom) { // Bottom
-      log.trace("redraw_nonrect: Bottom exposure");
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, ExposeFlags);
-      rect.bottom = Region->Bottom;
-      if (rect.top >= rect.bottom) return;
-   }
-
-   if (rect.top < Region->Top) { // Top
-      log.trace("redraw_nonrect: Top exposure");
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, ExposeFlags);
-      rect.top = Region->Top;
-   }
-
-   if (rect.left < Region->Left) { // Left
-      log.trace("redraw_nonrect: Left exposure");
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, Total, rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, Total, rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, ExposeFlags);
-   }
 }
 
 /*****************************************************************************
@@ -866,7 +641,7 @@ void move_layer(objSurface *Self, LONG X, LONG Y)
 
       Self->X = X;
       Self->Y = Y;
-      UpdateSurfaceCopy(Self, list);
+      update_surface_copy(Self, list);
 
       abs = old;
 
@@ -908,7 +683,7 @@ void move_layer(objSurface *Self, LONG X, LONG Y)
       Self->Y = Y;
       list[index].X = X;
       list[index].Y = Y;
-      UpdateSurfaceCopy(Self, list);
+      update_surface_copy(Self, list);
 
       if (Self->Flags & RNF_TRANSPARENT) { // Transparent surfaces are treated as volatile if they contain graphics
          if (Self->CallbackCount > 0) redraw = TRUE;
@@ -974,7 +749,7 @@ void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD In
       }
    }
 
-   end = FindBitmapOwner(list, end);
+   end = find_bitmap_owner(list, end);
 
    // Find the parent that owns this surface (we will use this as the starting point for our copy operation).
    // Everything that gets in the way between the parent and the location of our surface is what will be copied across.
@@ -1098,7 +873,7 @@ void copy_bkgd(SurfaceList *list, WORD Index, WORD End, WORD Master, WORD Left, 
 
    // The region is not obscured, so perform the redraw
 
-   LONG owner = FindBitmapOwner(list, Index);
+   LONG owner = find_bitmap_owner(list, Index);
 
    SrcBitmap->XOffset = 0;
    SrcBitmap->YOffset = 0;

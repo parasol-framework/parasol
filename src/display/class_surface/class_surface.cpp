@@ -73,7 +73,7 @@ static ERROR refresh_pointer_timer(OBJECTPTR Task, LARGE Elapsed, LARGE CurrentT
    return ERR_Terminate; // Timer is only called once
 }
 
-static void refresh_pointer(objSurface *Self)
+void refresh_pointer(objSurface *Self)
 {
    if (!glRefreshPointerTimer) {
       parasol::SwitchContext context(glModule);
@@ -81,6 +81,366 @@ static void refresh_pointer(objSurface *Self)
       SET_FUNCTION_STDC(call, (APTR)&refresh_pointer_timer);
       SubscribeTimer(0.02, &call, &glRefreshPointerTimer);
    }
+}
+
+//****************************************************************************
+
+static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **Bitmap)
+{
+   if (!AccessObject(DisplayID, 5000, Display)) {
+      APTR winhandle;
+
+      if (!GetPointer(Display[0], FID_WindowHandle, &winhandle)) {
+         #ifdef _WIN32
+            SetPointer(Display[0]->Bitmap, FID_Handle, winGetDC(winhandle));
+         #else
+            SetPointer(Display[0]->Bitmap, FID_Handle, winhandle);
+         #endif
+      }
+
+      if (Bitmap) *Bitmap = Display[0]->Bitmap;
+      return ERR_Okay;
+   }
+   else return ERR_AccessObject;
+}
+
+//****************************************************************************
+
+static void release_video(objDisplay *Display)
+{
+   #ifdef _WIN32
+      APTR surface;
+      GetPointer(Display->Bitmap, FID_Handle, &surface);
+
+      APTR winhandle;
+      if (!GetPointer(Display, FID_WindowHandle, &winhandle)) {
+         winReleaseDC(winhandle, surface);
+      }
+
+      SetPointer(Display->Bitmap, FID_Handle, NULL);
+   #endif
+
+   acFlush(Display);
+
+   ReleaseObject(Display);
+}
+
+/*****************************************************************************
+** Used By:  MoveToBack(), move_layer()
+**
+** This is the best way to figure out if a surface object or its children causes it to be volatile.  Use this function
+** if you don't want to do any deep scanning to determine who is volatile or not.
+**
+** Volatile flags are PRECOPY, AFTER_COPY and CURSOR.
+**
+** NOTE: Surfaces marked as COMPOSITE or TRANSPARENT are not considered volatile as they do not require redraws.  It's
+** up to the caller to make a decision as to whether COMPOSITE's are volatile or not.
+*/
+
+static UBYTE check_volatile(SurfaceList *list, WORD index)
+{
+   if (list[index].Flags & RNF_VOLATILE) return TRUE;
+
+   // If there are children with custom root layers or are volatile, that will force volatility
+
+   WORD j;
+   for (WORD i=index+1; list[i].Level > list[index].Level; i++) {
+      if (!(list[i].Flags & RNF_VISIBLE)) {
+         j = list[i].Level;
+         while (list[i+1].Level > j) i++;
+         continue;
+      }
+
+      if (list[i].Flags & RNF_VOLATILE) {
+         // If a child surface is marked as volatile and is a member of our bitmap space, then effectively all members of the bitmap are volatile.
+
+         if (list[index].BitmapID IS list[i].BitmapID) return TRUE;
+
+         // If this is a custom root layer, check if it refers to a surface that is going to affect our own volatility.
+
+         if (list[i].RootID != list[i].SurfaceID) {
+            for (j=i; j > index; j--) {
+               if (list[i].RootID IS list[j].SurfaceID) break;
+            }
+
+            if (j <= index) return TRUE; // Custom root of a child is outside of bounds - that makes us volatile
+         }
+      }
+   }
+
+   return FALSE;
+}
+
+//****************************************************************************
+
+static void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIndex, LONG Left, LONG Top,
+                   LONG Right, LONG Bottom, OBJECTID DisplayID, objBitmap *Bitmap)
+{
+   parasol::Log log(__FUNCTION__);
+
+   // Scan for overlapping parent/sibling regions and avoid them
+
+   LONG i, j;
+   for (i=ScanIndex+1; (i < Total) and (list[i].Level > 1); i++) {
+      if (!(list[i].Flags & RNF_VISIBLE)) { // Skip past non-visible areas and their content
+         j = list[i].Level;
+         while ((i+1 < Total) and (list[i+1].Level > j)) i++;
+         continue;
+      }
+      else if (list[i].Flags & (RNF_REGION|RNF_CURSOR)); // Skip regions and the cursor
+      else {
+         ClipRectangle listclip = {
+            .Left   = list[i].Left,
+            .Right  = list[i].Right,
+            .Bottom = list[i].Bottom,
+            .Top    = list[i].Top
+         };
+
+         if (restrict_region_to_parents(list, i, &listclip, FALSE) IS -1); // Skip
+         else if ((listclip.Left < Right) and (listclip.Top < Bottom) and (listclip.Right > Left) and (listclip.Bottom > Top)) {
+            if (list[i].BitmapID IS list[Index].BitmapID) continue; // Ignore any children that overlap & form part of our bitmap space.  Children that do not overlap are skipped.
+
+            if (listclip.Left <= Left) listclip.Left = Left;
+            else expose_buffer(list, Total, Index, ScanIndex, Left, Top, listclip.Left, Bottom, DisplayID, Bitmap); // left
+
+            if (listclip.Right >= Right) listclip.Right = Right;
+            else expose_buffer(list, Total, Index, ScanIndex, listclip.Right, Top, Right, Bottom, DisplayID, Bitmap); // right
+
+            if (listclip.Top <= Top) listclip.Top = Top;
+            else expose_buffer(list, Total, Index, ScanIndex, listclip.Left, Top, listclip.Right, listclip.Top, DisplayID, Bitmap); // top
+
+            if (listclip.Bottom < Bottom) expose_buffer(list, Total, Index, ScanIndex, listclip.Left, listclip.Bottom, listclip.Right, Bottom, DisplayID, Bitmap); // bottom
+
+            if (list[i].Flags & RNF_TRANSPARENT) {
+               // In the case of invisible regions, we will have split the expose process as normal.  However,
+               // we also need to look deeper into the invisible region to discover if there is more that
+               // we can draw, depending on the content of the invisible region.
+
+               listclip.Left   = list[i].Left;
+               listclip.Top    = list[i].Top;
+               listclip.Right  = list[i].Right;
+               listclip.Bottom = list[i].Bottom;
+
+               if (Left > listclip.Left)     listclip.Left   = Left;
+               if (Top > listclip.Top)       listclip.Top    = Top;
+               if (Right < listclip.Right)   listclip.Right  = Right;
+               if (Bottom < listclip.Bottom) listclip.Bottom = Bottom;
+
+               expose_buffer(list, Total, Index, i, listclip.Left, listclip.Top, listclip.Right, listclip.Bottom, DisplayID, Bitmap);
+            }
+
+            return;
+         }
+      }
+
+      // Skip past any children of the non-overlapping object.  This ensures that we only look at immediate parents and siblings that are in our way.
+
+      j = i + 1;
+      while ((j < Total) and (list[j].Level > list[i].Level)) j++;
+      i = j - 1;
+   }
+
+   log.traceBranch("[%d] %dx%d,%dx%d Bmp: %d, Idx: %d/%d", list[Index].SurfaceID, Left, Top, Right - Left, Bottom - Top, list[Index].BitmapID, Index, ScanIndex);
+
+   // The region is not obscured, so perform the redraw
+
+   LONG owner = find_bitmap_owner(list, Index);
+
+   // Turn off offsets and set the clipping to match the source bitmap exactly (i.e. nothing fancy happening here).
+   // The real clipping occurs in the display clip.
+
+   Bitmap->XOffset = 0;
+   Bitmap->YOffset = 0;
+
+   Bitmap->Clip.Left   = list[Index].Left - list[owner].Left;
+   Bitmap->Clip.Top    = list[Index].Top - list[owner].Top;
+   Bitmap->Clip.Right  = list[Index].Right - list[owner].Left;
+   Bitmap->Clip.Bottom = list[Index].Bottom - list[owner].Top;
+   if (Bitmap->Clip.Right  > Bitmap->Width)  Bitmap->Clip.Right  = Bitmap->Width;
+   if (Bitmap->Clip.Bottom > Bitmap->Height) Bitmap->Clip.Bottom = Bitmap->Height;
+
+   // Set the clipping so that we are only drawing to the display area that has been exposed
+
+   LONG iscr = Index;
+   while ((iscr > 0) and (list[iscr].ParentID)) iscr--; // Find the top-level display entry
+
+   // If COMPOSITE is in use, this means we have to do compositing on the fly.  This involves copying the background
+   // graphics into a temporary buffer, then blitting the composite buffer to the display.
+
+   // Note: On hosted displays in Windows or Linux, compositing is handled by the host's graphics system if the surface
+   // is at the root level (no ParentID).
+
+   LONG sx, sy;
+   if ((list[Index].Flags & RNF_COMPOSITE) and
+       ((list[Index].ParentID) or (list[Index].Flags & RNF_CURSOR))) {
+      ClipRectangle clip;
+      if (glComposite) {
+         if (glComposite->BitsPerPixel != list[Index].BitsPerPixel) {
+            acFree(glComposite);
+            glComposite = NULL;
+         }
+         else {
+            if ((glComposite->Width < list[Index].Width) or (glComposite->Height < list[Index].Height)) {
+               acResize(glComposite, (list[Index].Width > glComposite->Width) ? list[Index].Width : glComposite->Width,
+                                     (list[Index].Height > glComposite->Height) ? list[Index].Height : glComposite->Height,
+                                     0);
+            }
+         }
+      }
+
+      if (!glComposite) {
+         if (CreateObject(ID_BITMAP, NF_UNTRACKED, &glComposite,
+               FID_Width|TLONG,  list[Index].Width,
+               FID_Height|TLONG, list[Index].Height,
+               TAGEND) != ERR_Okay) {
+            return;
+         }
+
+         SetOwner(glComposite, glModule);
+      }
+
+      // Build the background in our buffer
+
+      clip.Left   = Left;
+      clip.Top    = Top;
+      clip.Right  = Right;
+      clip.Bottom = Bottom;
+      prepare_background(NULL, list, Total, Index, glComposite, &clip, STAGE_COMPOSITE);
+
+      // Blend the surface's graphics into the composited buffer
+      // NOTE: THE FOLLOWING IS NOT OPTIMISED WITH RESPECT TO CLIPPING
+
+      gfxCopyArea(Bitmap, glComposite, BAF_BLEND, 0, 0, list[Index].Width, list[Index].Height, 0, 0);
+
+      Bitmap = glComposite;
+      sx = 0;  // Always zero as composites own their bitmap
+      sy = 0;
+   }
+   else {
+      sx = list[Index].Left - list[owner].Left;
+      sy = list[Index].Top - list[owner].Top;
+   }
+
+   objDisplay *display;
+   objBitmap *video_bmp;
+   if (!access_video(DisplayID, &display, &video_bmp)) {
+      video_bmp->XOffset = 0;
+      video_bmp->YOffset = 0;
+
+      video_bmp->Clip.Left   = Left - list[iscr].Left; // Ensure that the coords are relative to the display bitmap (important for Windows, X11)
+      video_bmp->Clip.Top    = Top - list[iscr].Top;
+      video_bmp->Clip.Right  = Right - list[iscr].Left;
+      video_bmp->Clip.Bottom = Bottom - list[iscr].Top;
+      if (video_bmp->Clip.Left < 0) video_bmp->Clip.Left = 0;
+      if (video_bmp->Clip.Top  < 0) video_bmp->Clip.Top  = 0;
+      if (video_bmp->Clip.Right  > video_bmp->Width) video_bmp->Clip.Right   = video_bmp->Width;
+      if (video_bmp->Clip.Bottom > video_bmp->Height) video_bmp->Clip.Bottom = video_bmp->Height;
+
+      gfxUpdateDisplay(display, Bitmap, sx, sy, // Src X/Y (bitmap relative)
+         list[Index].Width, list[Index].Height,
+         list[Index].Left - list[iscr].Left, list[Index].Top - list[iscr].Top); // Dest X/Y (absolute display position)
+
+      release_video(display);
+   }
+   else log.warning("Unable to access display #%d.", DisplayID);
+}
+
+/*****************************************************************************
+** Used by MoveToFront()
+**
+** This function will expose areas that are uncovered when a surface changes its position in the surface tree (e.g.
+** moving towards the front).
+**
+** This function is only interested in siblings of the surface that we've moved.  Also, any intersecting surfaces need
+** to share the same bitmap surface.
+**
+** All coordinates are expressed in absolute format.
+*/
+
+static void invalidate_overlap(objSurface *Self, SurfaceList *list, WORD Total, LONG OldIndex, LONG Index,
+   LONG Left, LONG Top, LONG Right, LONG Bottom, objBitmap *Bitmap)
+{
+   parasol::Log log(__FUNCTION__);
+   LONG j;
+
+   log.traceBranch("%dx%d %dx%d, Between %d to %d", Left, Top, Right-Left, Bottom-Top, OldIndex, Index);
+
+   if ((list[Index].Flags & (RNF_REGION|RNF_TRANSPARENT)) or (!(list[Index].Flags & RNF_VISIBLE))) {
+      return;
+   }
+
+   for (auto i=OldIndex; i < Index; i++) {
+      // A redraw is required for:
+      //   Any volatile regions that were in front of our surface prior to the move-to-front (by moving to the front, their background has been changed).
+      //   Areas of our surface that were obscured by surfaces that also shared our bitmap space.
+
+      if (!(list[i].Flags & RNF_VISIBLE)) goto skipcontent;
+      if (list[i].Flags & RNF_REGION) goto skipcontent;
+      if (list[i].Flags & RNF_TRANSPARENT) continue;
+
+      if (list[i].BitmapID != list[Index].BitmapID) {
+         // We're not using the deep scanning technique, so use check_volatile() to thoroughly determine if the surface is volatile or not.
+
+         if (check_volatile(list, i)) {
+            // The surface is volatile and on a different bitmap - it will have to be redrawn
+            // because its background has changed.  It will not have to be exposed because our
+            // surface is sitting on top of it.
+
+            _redraw_surface(list[i].SurfaceID, list, i, Total, Left, Top, Right, Bottom, NULL);
+         }
+         else goto skipcontent;
+      }
+
+      if ((list[i].Left < Right) and (list[i].Top < Bottom) and (list[i].Right > Left) and (list[i].Bottom > Top)) {
+         // Intersecting surface discovered.  What we do now is keep scanning for other overlapping siblings to restrict our
+         // exposure space (so that we don't repeat expose drawing for overlapping areas).  Then we call RedrawSurface() to draw the exposed area.
+
+         LONG listx      = list[i].Left;
+         LONG listy      = list[i].Top;
+         LONG listright  = list[i].Right;
+         LONG listbottom = list[i].Bottom;
+
+         if (Left > listx)        listx      = Left;
+         if (Top > listy)         listy      = Top;
+         if (Bottom < listbottom) listbottom = Bottom;
+         if (Right < listright)   listright  = Right;
+
+         _redraw_surface(Self->Head.UID, list, i, Total, listx, listy, listright, listbottom, NULL);
+      }
+
+skipcontent:
+      // Skip past any children of the overlapping object
+
+      for (j=i+1; list[j].Level > list[i].Level; j++);
+      i = j - 1;
+   }
+}
+
+//****************************************************************************
+
+static BYTE check_surface_list(void)
+{
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Validating the surface list...");
+
+   SurfaceControl *ctl;
+   if ((ctl = gfxAccessList(ARF_WRITE))) {
+      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+      BYTE bad = FALSE;
+      for (LONG i=0; i < ctl->Total; i++) {
+         if ((CheckObjectExists(list[i].SurfaceID, NULL) != ERR_Okay)) {
+            log.trace("Surface %d, index %d is dead.", list[i].SurfaceID, i);
+            untrack_layer(list[i].SurfaceID);
+            bad = TRUE;
+            i--; // stay at the same index level
+         }
+      }
+
+      gfxReleaseList(ARF_WRITE);
+      return bad;
+   }
+   else return FALSE;
 }
 
 //****************************************************************************
@@ -2604,77 +2964,6 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
    }
 
    return ERR_Okay;
-}
-
-/*****************************************************************************
-** Used by MoveToFront()
-**
-** This function will expose areas that are uncovered when a surface changes its position in the surface tree (e.g.
-** moving towards the front).
-**
-** This function is only interested in siblings of the surface that we've moved.  Also, any intersecting surfaces need
-** to share the same bitmap surface.
-**
-** All coordinates are expressed in absolute format.
-*/
-
-void invalidate_overlap(objSurface *Self, SurfaceList *list, WORD Total, LONG OldIndex, LONG Index,
-   LONG Left, LONG Top, LONG Right, LONG Bottom, objBitmap *Bitmap)
-{
-   parasol::Log log(__FUNCTION__);
-   LONG j;
-
-   log.traceBranch("%dx%d %dx%d, Between %d to %d", Left, Top, Right-Left, Bottom-Top, OldIndex, Index);
-
-   if ((list[Index].Flags & (RNF_REGION|RNF_TRANSPARENT)) or (!(list[Index].Flags & RNF_VISIBLE))) {
-      return;
-   }
-
-   for (auto i=OldIndex; i < Index; i++) {
-      // A redraw is required for:
-      //   Any volatile regions that were in front of our surface prior to the move-to-front (by moving to the front, their background has been changed).
-      //   Areas of our surface that were obscured by surfaces that also shared our bitmap space.
-
-      if (!(list[i].Flags & RNF_VISIBLE)) goto skipcontent;
-      if (list[i].Flags & RNF_REGION) goto skipcontent;
-      if (list[i].Flags & RNF_TRANSPARENT) continue;
-
-      if (list[i].BitmapID != list[Index].BitmapID) {
-         // We're not using the deep scanning technique, so use check_volatile() to thoroughly determine if the surface is volatile or not.
-
-         if (check_volatile(list, i)) {
-            // The surface is volatile and on a different bitmap - it will have to be redrawn
-            // because its background has changed.  It will not have to be exposed because our
-            // surface is sitting on top of it.
-
-            _redraw_surface(list[i].SurfaceID, list, i, Total, Left, Top, Right, Bottom, NULL);
-         }
-         else goto skipcontent;
-      }
-
-      if ((list[i].Left < Right) and (list[i].Top < Bottom) and (list[i].Right > Left) and (list[i].Bottom > Top)) {
-         // Intersecting surface discovered.  What we do now is keep scanning for other overlapping siblings to restrict our
-         // exposure space (so that we don't repeat expose drawing for overlapping areas).  Then we call RedrawSurface() to draw the exposed area.
-
-         LONG listx      = list[i].Left;
-         LONG listy      = list[i].Top;
-         LONG listright  = list[i].Right;
-         LONG listbottom = list[i].Bottom;
-
-         if (Left > listx)        listx      = Left;
-         if (Top > listy)         listy      = Top;
-         if (Bottom < listbottom) listbottom = Bottom;
-         if (Right < listright)   listright  = Right;
-
-         _redraw_surface(Self->Head.UID, list, i, Total, listx, listy, listright, listbottom, NULL);
-      }
-
-skipcontent:
-      // Skip past any children of the overlapping object
-
-      for (j=i+1; list[j].Level > list[i].Level; j++);
-      i = j - 1;
-   }
 }
 
 //****************************************************************************

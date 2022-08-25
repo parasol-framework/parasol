@@ -1,21 +1,6 @@
 // This source file manages basic pixel drawing routines.  For more pixel routines, see the other pixel
 // files in the machine specific directories.
 
-/****************************************************************************
-** Function: ConvertRGBToPackedPixel()
-** Synopsis: ULONG ConvertRGBToPackedPixel(*Bitmap, *RGB)
-**
-** This routine is used to convert Red-Green-Blue structures to packed pixel formats (e.g. 16 bit, 24 bit, 15 bit).
-*/
-
-ULONG ConvertRGBToPackedPixel(objBitmap *Bitmap, struct RGB8 *RGB)
-{
-   if (Bitmap->BitsPerPixel <= 8) {
-      return RGBToValue(RGB, Bitmap->Palette);
-   }
-   else return PackPixelA(Bitmap, RGB->Red, RGB->Green, RGB->Blue, RGB->Alpha);
-}
-
 //****************************************************************************
 // CHUNKY32
 
