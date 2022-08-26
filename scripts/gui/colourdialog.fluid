@@ -167,7 +167,7 @@ local function buildLayout(self, Options)
    self._links = { }
 
    local dx = WIDGET_GAP
-   local dy = WIDGET_GAP
+   local dy = 0
 
    self.txtBasicColours = self.viewport.new('VectorText', {
       x        = dx,
@@ -290,7 +290,7 @@ local function buildLayout(self, Options)
                         type    = 'error',
                         buttons = 'okay',
                         title   = 'Out of Palette Space',
-                        popover = self._window,
+                        popover = self._window.surface,
                         string  = 'You have run out of space for adding new colours to your personal palette.  Please delete some of your existing colours before adding new ones.',
                      })
                   end
@@ -324,7 +324,7 @@ local function buildLayout(self, Options)
    -- Configure the palette selection area
 
    dx = dx + ((BTNSIZE + BTNGAP) * 8) + 10
-   dy = WIDGET_GAP
+   dy = 0
 
    self.txtRainbowPalette = self.viewport.new('VectorText', {
       x        = dx,
@@ -571,7 +571,7 @@ gui.dialog.colour = function(Options)
 
    loadColours(self)
 
-   self._window = obj.new('window', {
+   self._window = gui.window({
       insideWidth  = 600,
       insideHeight = 400,
       minWidth     = 200,
@@ -584,22 +584,21 @@ gui.dialog.colour = function(Options)
       parent       = Options.target,
       icon         = 'tools/palette',
       title        = nz(Options.title, 'Select a colour'),
-      modal        = nz(Options.modal, false)
+      modal        = nz(Options.modal, false),
+      events = {
+         close = function(Window)
+            saveColours(self)
+            if (self.feedback != nil) then
+               self.feedback(nil)
+            end
+            table.clear(self)
+         end
+      }
    })
 
-   self._window.subscribe('close', function(WindowID, Args, Reference)
-      saveColours(self)
-      if (self.feedback != nil) then
-         self.feedback(nil)
-      end
-      table.clear(self)
-   end)
+   self.scene = self._window.scene
 
-   self.windowID = self._window.id
-
-   self.scene = obj.new('VectorScene', { surface = self._window.surface })
-
-   self.viewport = self.scene.new('VectorViewport', {
+   self.viewport = self._window:clientViewport({
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
          arrangeLayout(self)
       end
@@ -612,15 +611,18 @@ gui.dialog.colour = function(Options)
    check(self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), inputFeedback))
 
    -- Manage the aspect ratio.  The current width will determine the height
+
+   local client = self._window:getClientSize()
    local scale = self.viewport.viewHeight / self.viewport.viewWidth
-   self._window.insideHeight = self._window.insideWidth * scale
-   self._window.minWidth     = self._window.insideWidth * 0.25
-   self._window.minHeight    = self._window.insideHeight * 0.25
+
+   self._window:resizeClientArea(client.width, math.floor(client.width * scale))
+   self._window.surface.minWidth  = math.floor(client.width * 0.25)
+   self._window.surface.minHeight = math.floor(client.width * scale * 0.25)
 
    updateRGB(self, gui.strToRGB(nz(Options.colour, '200,200,200')))
 
-   self._window.acMoveToFront()
-   self._window.acShow()
+   self._window:moveToFront()
+   self._window:show()
 
    arrangeLayout(self)
 

@@ -155,6 +155,7 @@ static UINT fmtShellIDList = 0;
 static UINT fmtPasteSucceeded = 0;
 static UINT fmtPerformedDropEffect = 0;
 static UINT fmtPreferredDropEffect = 0;
+static UINT fmtParasolClip = 0;
 
 #ifdef DBGMSG
 static struct {
@@ -813,9 +814,14 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 #endif
 
    switch (msgcode) {
-      case WM_CLIPBOARDUPDATE : // Clipboard content has changed
-         if (GetTickCount() - glIgnoreClip < 500) {
-            glIgnoreClip = 0; // Ignore anything that we've put on the Windows clipboard ourselves
+      case WM_CLIPBOARDUPDATE:
+         // Clipboard content has changed by some other application.  NOTE: It is common for some
+         // applications to open and close the clipboard multiple times in succession, and this
+         // causes multiple event triggers.  This problem is combated using intervals.
+
+         // TODO: A better methodology would be to use a 1 second timer delay to process the clipboard
+
+         if (GetTickCount() - glIgnoreClip < 2000) {
             return 1;
          }
          else {
@@ -1146,6 +1152,7 @@ int winCreateScreenClass(void)
    if (!fmtPasteSucceeded) fmtPasteSucceeded = RegisterClipboardFormat(CFSTR_PASTESUCCEEDED);
    if (!fmtPerformedDropEffect) fmtPerformedDropEffect = RegisterClipboardFormat(CFSTR_PERFORMEDDROPEFFECT);
    if (!fmtPreferredDropEffect) fmtPreferredDropEffect = RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT);
+   if (!fmtParasolClip) fmtParasolClip = RegisterClipboardFormat("Parasol");
 
    if (!glCancelAutoPlayMsg) {
       glCancelAutoPlayMsg = RegisterWindowMessage(TEXT("QueryCancelAutoPlay"));
@@ -2487,6 +2494,7 @@ void winGetClip(int Datatype)
 }
 
 //*****************************************************************************
+// Data is incoming from the clipboard, either from other apps or our own.
 
 void winCopyClipboard(void)
 {

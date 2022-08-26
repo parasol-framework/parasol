@@ -988,6 +988,10 @@ the surface area first).</li>
       <const name="TASKBAR">Create a borderless (custom) window with taskbar representation.</const>
     </constants>
 
+    <constants lookup="WH" comment="Events for WindowHook()">
+      <const name="CLOSE"/>
+    </constants>
+
   </types>
   <structs>
     <struct name="BitmapSurface" typeName="BITMAPSURFACE">

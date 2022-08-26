@@ -2363,3 +2363,33 @@ ERROR gfxUnlockBitmap(OBJECTID SurfaceID, objBitmap *Bitmap)
    ReleaseObject(Bitmap);
    return ERR_Okay;
 }
+
+/*****************************************************************************
+
+-FUNCTION-
+WindowHook: Adds a function hook for receiving window messages from a host desktop.
+
+Adds a function hook for receiving window events from a host desktop.
+
+-INPUT-
+oid SurfaceID: A hosted surface to be monitored.
+int(WH) Event: A window hook event.
+ptr(func) Callback: A function to callback when the event is triggered.
+
+-ERRORS-
+Okay
+NullArgs
+
+-END-
+
+*****************************************************************************/
+
+ERROR gfxWindowHook(OBJECTID SurfaceID, LONG Event, FUNCTION *Callback)
+{
+   if ((!SurfaceID) or (!Event) or (!Callback)) return ERR_NullArgs;
+
+   const WindowHook hook(SurfaceID, Event);
+   glWindowHooks[hook] = *Callback;
+   return ERR_Okay;
+}
+

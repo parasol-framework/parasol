@@ -165,7 +165,7 @@ gui.menu = function(Options)
 
             if showIcons and item['icon'] then
                catch(function()
-                  local svgGroup = self.vp.new('VectorViewport', { x=8, y=y, width=icon_size, height=icon_size })
+                  local svgGroup = self.viewport.new('VectorViewport', { x=8, y=y, width=icon_size, height=icon_size })
                   local svg = obj.new('svg', { target=svgGroup, path='icons:' .. item['icon'] .. '.svg' })
                   applyFill(svgGroup, 'rgb(80,80,120,255)')
                   mi.svgIcon = svgGroup
@@ -410,7 +410,7 @@ gui.menu = function(Options)
 
       if self.hItem then  -- Redraw the previously highlighted item
          self.hItem.text.fill = 'rgb(0,0,0)'
-         self.vp.acDraw()
+         self.viewport.acDraw()
          self.hItem = nil
       end
 
@@ -418,7 +418,7 @@ gui.menu = function(Options)
 
       if Item then -- Draw the newly highlighted area
          Item.text.fill = 'rgb(180,0,0)'
-         self.vp.acDraw()
+         self.viewport.acDraw()
       end
    end
 
@@ -445,8 +445,8 @@ gui.menu = function(Options)
    if (self.surface.acInit() != ERR_Okay) then error('Failed to initialise surface.') end
 
    self.scene = obj.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
-   self.vp = self.scene.new('VectorViewport', { })
-   self.vg = self.vp.new('VectorGroup', { })
+   self.viewport = self.scene.new('VectorViewport', { })
+   self.vg = self.viewport.new('VectorGroup', { })
 
    self.surface.subscribe('free', function(Surface, Args)
       if self.focusTimer then mSys.UpdateTimer(self.focusTimer, 0) end
@@ -487,7 +487,7 @@ gui.menu = function(Options)
       self.timeShow = mSys.preciseTime()
    end)
 
-   self.vp.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
+   self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
       local ev = Events
       while ev do
          if (ev.type == JET_BUTTON_1) then

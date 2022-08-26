@@ -93,7 +93,6 @@ end
 
 gui.dialog.message = function(Options)
    local self = { // Public variables
-      windowID = nil,
       document = nil,
       options  = Options.options,
       type     = Options.type,
@@ -127,12 +126,12 @@ gui.dialog.message = function(Options)
       local page_width  = Document.pageWidth
       local page_height = Document.pageHeight
 
-      Window.maxHeight    = page_height
-      Window.minHeight    = page_height
-      Window.insideHeight = page_height
-      Window.maxWidth     = page_width
-      Window.minWidth     = page_width
-      Window.insideWidth  = page_width
+      Window.surface.maxHeight    = page_height
+      Window.surface.minHeight    = page_height
+      Window.surface.insideHeight = page_height
+      Window.surface.maxWidth     = page_width
+      Window.surface.minWidth     = page_width
+      Window.surface.insideWidth  = page_width
    end
 
    local function docEvent(Document, EventFlag, Parameters)
@@ -282,7 +281,7 @@ gui.dialog.message = function(Options)
       end
    end
 
-   self.window = obj.new('window', {
+   self.window = gui.window({
       insideWidth  = dlg_width,
       insideHeight = 102,
       minWidth     = 190,
@@ -295,56 +294,42 @@ gui.dialog.message = function(Options)
       title        = nz(Options.title, 'Confirmation Required'),
       modal        = nz(Options.modal, false),
       flags        = 'NoMargins',
-      closeFeedback = function(Window)
-         if (self.feedback != nil) then
-            self.feedback(self, nil, nil)
-         end
+      events = {
+         close = function(Window)
+            if (self.feedback != nil) then
+               self.feedback(self, nil, nil)
+            end
 
-         table.clear(self)
-      end
+            table.clear(self)
+         end
+      }
    })
 
-   self.window.lock(function()
-      lDocSurface = self.window.new('surface', {
-         name    = 'docSurface',
-         x       = self.window.leftMargin,
-         y       = self.window.topMargin,
-         xOffset = self.window.rightMargin,
-         yOffset = self.window.bottomMargin,
-         flags   = 'GrabFocus'
-      })
+   lDoc = self.window:clientViewport().new('document', {
+      eventMask     = 'LinkActivated',
+      eventCallback = docEvent,
+      path          = '#Index',
+      flags         = 'Unrestricted|NoScrollbars',
+      defaultScript = obj.find('self')
+   })
 
-      lDocSurface.lock(function()
-         lDocSurface.acShow()
+   lDoc.acDataFeed(0, DATA_XML, buildDocument())
 
-         lDoc = lDocSurface.new('document', {
-            eventMask     = 'LinkActivated',
-            eventCallback = docEvent,
-            path          = '#Index',
-            flags         = 'Unrestricted|NoScrollbars',
-            defaultScript = obj.find('self')
-         })
+   self.input = obj.find('inDialog')
+   self.checkbox = obj.find('dlgCheckbox')
 
-         lDoc.acDataFeed(0, DATA_XML, buildDocument())
+   if self.input then
+      self.input.textinput.mtSelectArea(0, 0, 20000, 20000)
+   end
 
-         self.input = obj.find('inDialog')
-         self.checkbox = obj.find('dlgCheckbox')
+   matchWindowToDocSize(self.window, lDoc)
 
-         if self.input then
-            self.input.textinput.mtSelectArea(0, 0, 20000, 20000)
-         end
+   self.window.userFocus = lDocSurface.id
 
-         matchWindowToDocSize(self.window, lDoc)
+   self.window:moveToFront()
+   self.window:show()
+   lDocSurface.acFocus()
 
-         self.window.userFocus = lDocSurface.id
-
-         self.window.acMoveToFront()
-         self.window.acShow()
-         lDocSurface.acFocus()
-      end)
-   end)
-
-   self.windowID = self.window.id
    self.document = lDoc
 
    return self
