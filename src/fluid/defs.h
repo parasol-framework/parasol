@@ -268,6 +268,7 @@ ERROR struct_to_table(lua_State *, struct references *, struct structentry *, CP
 int fcmd_arg(lua_State *);
 int fcmd_catch(lua_State *);
 int fcmd_check(lua_State *);
+int fcmd_raise(lua_State *);
 int fcmd_get_execution_state(lua_State *);
 int fcmd_msg(lua_State *);
 int fcmd_print(lua_State *);

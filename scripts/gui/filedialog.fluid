@@ -111,7 +111,7 @@ gui.dialog.file = function(Options)
       return true
    end
 
-   self.window = obj.new('window', {
+   self.window = gui.window({
       insideWidth  = 500,
       insideHeight = 550,
       minWidth     = 250,
@@ -123,21 +123,21 @@ gui.dialog.file = function(Options)
       icon         = nz(Options.icon, 'icons:folders/folder'),
       title        = nz(Options.title, 'Select a file'),
       modal        = nz(Options.modal, false),
-      closeFeedback = function(Window)
-         if (Options.feedback != nil) then
-            Options.feedback(self, nil)
-         end
+      events = {
+         close = function(Window)
+            if (Options.feedback != nil) then
+               Options.feedback(self, nil)
+            end
 
-         table.clear(self)
-         collectgarbage()
-      end
+            table.clear(self)
+            collectgarbage()
+         end
+      }
    })
 
-   self.windowID = self.window.id
+   self.scene = self.window.scene
 
-   self.scene = obj.new('VectorScene', { surface = self.window.surface })
-
-   self.viewport = self.scene.new('VectorViewport', { })
+   self.viewport = self.window:clientViewport({ })
 
    self.toolbar = gui.toolbar(self.viewport, {
       x       = 0,
@@ -210,7 +210,7 @@ gui.dialog.file = function(Options)
 
    -- Okay and cancel buttons
 
-   local footer = self.window.bottomMargin
+   local footer = self.window.margins.bottom
 
    lCancelButton = gui.button({
       target  = self.viewport,
@@ -255,8 +255,8 @@ gui.dialog.file = function(Options)
       self.filter = gui.combobox({
          target      = self.viewport,
          label       = 'Filter:',
-         x           = self.window.leftMargin,
-         xOffset     = self.window.rightMargin,
+         x           = self.window.margins.left,
+         xOffset     = self.window.margins.right,
          yOffset     = footer,
          allowCustom = userInput,
          items       = items,
@@ -278,8 +278,8 @@ gui.dialog.file = function(Options)
       target     = self.viewport,
       labelWidth = label_width,
       label      = 'File:',
-      x          = self.window.leftMargin,
-      xOffset    = self.window.rightMargin,
+      x          = self.window.margins.left,
+      xOffset    = self.window.margins.right,
       yOffset    = footer,
       events = {
          activate = function(Input, Event)
@@ -350,8 +350,8 @@ gui.dialog.file = function(Options)
 
    self.currentPath = self.fileview.path
 
-   self.window.acMoveToFront()
-   self.window.acShow()
+   self.window:moveToFront()
+   self.window:show()
 
    return self
 end

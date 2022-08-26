@@ -12,7 +12,7 @@ CSTRING glMessages[ERR_END] = {
  "Please terminate future calls.",
  "Not enough memory available.",
  "Required pointer not present.",
- "Previous allocations have not been freed.",
+ "Resource is in use.",
  "General failure.",
  "File error, e.g. file not found.",
  "There is an error in the given data.",

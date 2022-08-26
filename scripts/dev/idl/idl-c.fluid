@@ -2037,7 +2037,13 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       end
    end
 
-   if (func == nil) then error("Function '" .. Name .. "' is not declared in the FDL.") end
+   if (func == nil) then
+      local list = ''
+      for k, f in ipairs(glFunctions) do
+         list = list .. f.name .. '\n'
+      end
+      error("Function '" .. Name .. "' is not declared in the FDL.  Known functions are:\n" .. list)
+   end
 
    func.status      = Status
    func.comment     = Comment

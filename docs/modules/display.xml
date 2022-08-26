@@ -30,46 +30,6 @@
   </function>
 
   <function>
-    <name>ApplyStyleGraphics</name>
-    <comment>Applies pre-defined graphics to a GUI object.</comment>
-    <prototype>ERROR gfxApplyStyleGraphics(OBJECTPTR Object, OBJECTID Target, CSTRING StyleName, CSTRING StyleType)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">The object that requires styling.</param>
-      <param type="OBJECTID" name="Target">The surface or vector that will receive the style graphics.</param>
-      <param type="CSTRING" name="StyleName">Optional.  Reference to a style that is alternative to the default.</param>
-      <param type="CSTRING" name="StyleType">Optional.  Name of the type of style decoration to be applied.  Use in conjunction with StyleName.</param>
-    </input>
-    <description>
-<p>This is an internal function created for use by classes in the GUI category.  It finds the style definition for the target Object and executes the procedure with the Surface as the graphics target.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NothingDone">There is nothing to process.</error>
-      <error code="BadState">Object was in an incorrect state for the operation.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>ApplyStyleValues</name>
-    <comment>Applies default values to a GUI object before initialisation.</comment>
-    <prototype>ERROR gfxApplyStyleValues(OBJECTPTR Object, CSTRING Name)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">The object that will receive the default values.</param>
-      <param type="CSTRING" name="Name">Optional.  Reference to an alternative style to be applied.</param>
-    </input>
-    <description>
-<p>The ApplyStyleValues() function is reserved for the use of GUI classes that need to pre-initialise their objects with default values.</p>
-<p>Styles are defined in the order of the application's preference, the desktop preference, and then the default if no preference has been specified or a failure occurred.</p>
-<p>An application can define its preferred style by calling <function module="Display">SetCurrentStyle</function> with the path of the XML style file.  This function can be called at any time, allowing the style to be changed on the fly.</p>
-<p>A desktop can set its preferred style by storing style information at <code>environment:config/style.xml</code>.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-    </result>
-  </function>
-
-  <function>
     <name>CheckIfChild</name>
     <comment>Checks if a surface is a child of another particular surface.</comment>
     <prototype>ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child)</prototype>
@@ -697,26 +657,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   </function>
 
   <function>
-    <name>SetCurrentStyle</name>
-    <comment>Sets the current style script for the application.</comment>
-    <prototype>ERROR gfxSetCurrentStyle(CSTRING Path)</prototype>
-    <input>
-      <param type="CSTRING" name="Path">Location of the style script.</param>
-    </input>
-    <description>
-<p>This function changes the current style script for the application.  A path to the location of the script is required.</p>
-<p>The script does not need to provide definitions for all GUI components.  Any component not represented in the script will receive the default style settings.</p>
-<p>The style definition does not affect default style values (i.e. fonts, colours and interface).  Style values can be set by accessing the glStyle XML object directly and updating the values (do this as early as possible in the startup process).</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="CreateObject">A call to CreateObject() failed.</error>
-      <error code="EmptyString">A required string value contains no characters.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>SetCursor</name>
     <comment>Sets the cursor image and can anchor the pointer to any surface.</comment>
     <prototype>ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, LONG Cursor, CSTRING Name, OBJECTID Owner)</prototype>
@@ -855,7 +795,7 @@ if ((pointer = gfxAccessPointer())) {
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="InUse">Previous allocations have not been freed.</error>
+      <error code="InUse">Resource is in use.</error>
       <error code="Failed">General failure.</error>
       <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -975,6 +915,24 @@ if ((pointer = gfxAccessPointer())) {
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="NotFound">A search routine in this function failed.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>WindowHook</name>
+    <comment>Adds a function hook for receiving window messages from a host desktop.</comment>
+    <prototype>ERROR gfxWindowHook(OBJECTID SurfaceID, LONG Event, FUNCTION * Callback)</prototype>
+    <input>
+      <param type="OBJECTID" name="SurfaceID">A hosted surface to be monitored.</param>
+      <param type="LONG" name="Event" lookup="WH">A window hook event.</param>
+      <param type="FUNCTION *" name="Callback">A function to callback when the event is triggered.</param>
+    </input>
+    <description>
+<p>Adds a function hook for receiving window events from a host desktop.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1180,7 +1138,7 @@ if ((pointer = gfxAccessPointer())) {
     </constants>
 
     <constants lookup="RT">
-      <const name="ROOT"/>
+      <const name="ROOT">Can be used by window surfaces to identify themselves as a root layer.</const>
     </constants>
 
     <constants lookup="SCR" comment="Display flags.">
@@ -1214,6 +1172,10 @@ if ((pointer = gfxAccessPointer())) {
       <const name="ICON_TRAY">Create a borderless (custom) window with icon tray representation.</const>
       <const name="NONE">Create a borderless (custom) window with no UI representation.</const>
       <const name="TASKBAR">Create a borderless (custom) window with taskbar representation.</const>
+    </constants>
+
+    <constants lookup="WH" comment="Events for WindowHook()">
+      <const name="CLOSE"/>
     </constants>
 
   </types>
