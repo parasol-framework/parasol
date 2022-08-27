@@ -1157,8 +1157,6 @@ static ERROR CMDExpunge(void)
 
 #ifdef __xwindows__
 
-   WORD i;
-
    if (!glHeadless) {
       if (modXRR) { acFree(modXRR); modXRR = NULL; }
 
