@@ -20,6 +20,9 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     "ANCHOR: The surface is being dragged and the mouse pointer is anchored to the surface.",
     "NORMAL: The surface is being dragged.")
 
+  enum("WH", { start=1, comment="Events for WindowHook()" },
+    "CLOSE")
+
   flags("EXF", { comment="Optional flags for the ExposeSurface() function." },
     "CHILDREN: If set, all child surfaces that intersect with exposed region will be included in the expose operation.",
     "REDRAW_VOLATILE: Redraw every volatile object that intersects with the expose region, including internal volatile children.",
@@ -28,7 +31,7 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     "CURSOR_SPLIT: Internal flag used to reduce screen flickering when a software cursor is in use.")
 
   flags("RT", { },
-     "ROOT")
+     "ROOT: Can be used by window surfaces to identify themselves as a root layer.")
 
   flags("LVF", { comment="drwLockBitmap() result flags" },
      "EXPOSE_CHANGES")
@@ -689,8 +692,6 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
   functionNames("gfx",
     "AccessList",
     "AccessPointer",
-    "ApplyStyleGraphics",
-    "ApplyStyleValues",
     "CheckIfChild",
     "Compress",
     "CopyArea",
@@ -726,7 +727,6 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     "ScaleToDPI",
     "ScanDisplayModes",
     "SetClipRegion",
-    "SetCurrentStyle",
     "SetCursor",
     "SetCursorPos",
     "SetCustomCursor",
@@ -737,7 +737,8 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     "Sync",
     "UnlockBitmap",
     "UnlockCursor",
-    "UnsubscribeInput")
+    "UnsubscribeInput",
+    "WindowHook")
 
   c_insert([[
 // Standard pack pixel for all formats

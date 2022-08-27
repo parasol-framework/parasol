@@ -286,17 +286,35 @@ void MsgTimer(void)
 
 void MsgWindowClose(OBJECTID SurfaceID)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (SurfaceID) {
-      OBJECTID owner_id;
-      if ((owner_id = GetOwnerID(SurfaceID))) {
-         if (GetClassID(owner_id) IS ID_WINDOW) {
-            ActionMsg(MT_WinClose, owner_id, NULL);
+      const WindowHook hook(SurfaceID, WH_CLOSE);
+
+      if (glWindowHooks.contains(hook)) {
+         auto func = &glWindowHooks[hook];
+         ERROR result;
+
+         if (func->Type IS CALL_STDC) {
+            parasol::SwitchContext ctx(func->StdC.Context);
+            auto callback = (ERROR (*)(OBJECTID SurfaceID))func->StdC.Routine;
+            result = callback(SurfaceID);
+         }
+         else if (func->Type IS CALL_SCRIPT) {
+            ScriptArg args[] = {
+               { "SurfaceID", FDF_OBJECTID, { .Long = SurfaceID } }
+            };
+            scCallback(func->Script.Script, func->Script.ProcedureID, args, ARRAYSIZE(args), &result);
+         }
+         else result = ERR_Okay;
+
+         if (result IS ERR_Terminate) glWindowHooks.erase(hook);
+         else if (result IS ERR_Cancelled) {
+            log.msg("Window closure cancelled by client.");
             return;
          }
       }
 
-      parasol::Log log("WinMgr");
-      log.branch("Freeing window surface #%d.", SurfaceID);
       acFreeID(SurfaceID);
    }
 }

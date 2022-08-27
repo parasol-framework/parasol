@@ -1156,6 +1156,13 @@ static ERROR SURFACE_Free(objSurface *Self, APTR Void)
 
    if (Self->InputHandle) gfxUnsubscribeInput(Self->InputHandle);
 
+   for (auto it = glWindowHooks.begin(); it != glWindowHooks.end();) {
+      if (it->first.SurfaceID IS Self->Head.UID) {
+         it = glWindowHooks.erase(it);
+      }
+      else it++;
+   }
+
    return ERR_Okay;
 }
 
@@ -1445,14 +1452,9 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
 
       LONG scrflags = 0;
 
-      if (GetClassID(Self->Head.OwnerID) IS ID_WINDOW) {
-         objWindow *window;
+      if (Self->Type & RT_ROOT) {
          gfxSetHostOption(HOST_TASKBAR, 1);
          gfxSetHostOption(HOST_TRAY_ICON, 0);
-         if (!AccessObject(Self->Head.OwnerID, 4000, &window)) {
-            if (window->Flags & WNF_BORDERLESS) scrflags |= SCR_BORDERLESS; // Stop the display from creating a window on host displays
-            ReleaseObject(window);
-         }
       }
       else switch(Self->WindowType) {
          default: // SWIN_HOST
@@ -1468,7 +1470,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
             break;
 
          case SWIN_ICON_TRAY:
-            log.trace("Enabling borderless icontray based surface.");
+            log.trace("Enabling borderless icon-tray based surface.");
             scrflags |= SCR_BORDERLESS; // Stop the display from creating a host window for the surface
             if (Self->Flags & RNF_HOST) scrflags |= SCR_MAXIMISE;
             gfxSetHostOption(HOST_TRAY_ICON, 1);

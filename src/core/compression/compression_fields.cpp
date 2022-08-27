@@ -46,12 +46,12 @@ static ERROR SET_CompressionLevel(objCompression *Self, LONG Value)
 Feedback: Provides feedback during the de/compression process.
 
 To receive feedback during any de/compression process, set a callback routine in this field. The format for the
-callback routine is `ERROR Function(*Compression, struct CompressionFeedback *)`.
+callback routine is `ERROR Function(*Compression, *CompressionFeedback)`.
 
 For object classes, the object that initiated the de/compression process can be learned by calling the Core's
 ~Core.CurrentContext() function.
 
-During the processing of multiple files, any individual file can be skipped by returning ERR_Skip and the entire
+During the processing of multiple files, any individual file can be skipped by returning `ERR_Skip` and the entire
 process can be cancelled by returning ERR_Terminate.  All other error codes are ignored.
 
 The &CompressionFeedback structure consists of the following fields:
@@ -163,8 +163,7 @@ Output: Resulting messages will be sent to the object referred to in this field.
 If this field is set to a valid ObjectID, text messages will be sent to that object when the compression object is
 used.  This can be helpful for notifying the user of the results of compression, decompression and removal of files.
 
-The object receiving the message must be capable of understanding text sent via data channels.  In most cases it is
-recommended that a @Text object is used for this purpose.
+The target object must be capable of processing incoming text from data channels.
 
 -FIELD-
 Password: Required if an archive needs an encryption password for access.

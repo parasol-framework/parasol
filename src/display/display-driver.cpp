@@ -216,10 +216,6 @@ LONG glpDisplayDepth = 0; // If zero, the display depth will be based on the hos
 LONG glpMaximise = FALSE, glpFullScreen = FALSE;
 LONG glpWindowType = SWIN_HOST;
 char glpDPMS[20] = "Standby";
-objXML *glStyle = NULL;
-OBJECTPTR glAppStyle = NULL;
-OBJECTPTR glDesktopStyleScript = NULL;
-OBJECTPTR glDefaultStyleScript = NULL;
 
 THREADVAR APTR glSurfaceMutex = NULL;
 THREADVAR WORD tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;
@@ -350,171 +346,6 @@ static ERROR msg_handler(APTR Custom, LONG UniqueID, LONG Type, APTR Data, LONG 
    }
 
    return ERR_Okay;
-}
-
-//****************************************************************************
-// Reloads a style script if the time stamp has changed.  This should be done only when an environment change occurs.
-
-void check_styles(STRING Path, OBJECTPTR *Script)
-{
-   objFile *file;
-   if (!CreateObject(ID_FILE, NF_INTEGRAL, &file, FID_Path|TSTR, Path, TAGEND)) {
-      LARGE script_timestamp, script_filesize, size, ts;
-
-      GetFields(*Script, FID_TimeStamp|TLARGE, &script_timestamp,
-                         FID_FileSize|TLARGE,  &script_filesize,
-                         TAGEND);
-
-      GetFields(file, FID_Size|TLARGE, &size,
-                      FID_TimeStamp|TLARGE, &ts,
-                      TAGEND);
-
-      acFree(file);
-
-      if ((ts != script_timestamp) or (size != script_filesize)) {
-         OBJECTPTR newscript;
-         if (!CreateObject(ID_SCRIPT, NF_INTEGRAL, &newscript, FID_Path|TSTR, Path, TAGEND)) {
-            SetOwner(newscript, glModule);
-            acFree(*Script);
-            *Script = newscript;
-         }
-      }
-   }
-}
-
-//****************************************************************************
-
-ERROR apply_style(OBJECTPTR Object, OBJECTPTR Script, CSTRING StyleName)
-{
-   const ScriptArg args[] = {
-      { "Class",  FDF_STRING, { .Address = StyleName ? (APTR)StyleName : (APTR)Object->Class->ClassName } },
-      { "Object", FDF_OBJECT, { .Address = Object } }
-   };
-
-   struct scExec exec = {
-      .Procedure = "applyStyle",
-      .Args      = args,
-      .TotalArgs = ARRAYSIZE(args)
-   };
-
-   Action(MT_ScExec, Script, &exec);
-   return ERR_Okay; // Return Okay only in the event that we did something.
-}
-
-//****************************************************************************
-
-ERROR load_styles(void)
-{
-   static bool desktop_attempted = false;
-   static bool default_attempted = false;
-
-   if ((!glDefaultStyleScript) and (!default_attempted)) {
-      parasol::Log log(__FUNCTION__);
-      log.branch("Loading default style information.");
-      parasol::SwitchContext context(glModule);
-
-      default_attempted = true;
-
-      // The app can set a style path that we have to honour if present.  This is typically used for emulating other
-      // system styles, like mobile.
-
-      if (!AnalysePath("style:", NULL)) {
-         CreateObject(ID_FLUID, 0, &glDefaultStyleScript, FID_Path|TSTR, "style:style.fluid", TAGEND);
-      }
-
-      if (!glDefaultStyleScript) {
-         CreateObject(ID_FLUID, 0, &glDefaultStyleScript, FID_Path|TSTR, "styles:default/style.fluid", TAGEND);
-      }
-
-      if (!glDefaultStyleScript) return ERR_CreateObject;
-   }
-
-   if ((!glDesktopStyleScript) and (!desktop_attempted)) {
-      parasol::Log log(__FUNCTION__);
-
-      desktop_attempted = true;
-      if (!AnalysePath("environment:config/style.xml", NULL)) {
-         log.branch("Loading desktop style information.");
-
-         parasol::SwitchContext context(glModule);
-         CreateObject(ID_FLUID, 0, &glDesktopStyleScript,
-            FID_Path|TSTR, "environment:config/style.fluid",
-            TAGEND);
-      }
-   }
-
-   // Note that there's no auto-loading for glAppStyle, as that has to be provided by calling SetCurrentStyle()
-
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-** Loads the default style information and then applies the user's preferred values.  This function can be called at
-** any time to refresh the style values in memory.
-*/
-
-ERROR load_style_values(void)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.branch();
-
-   CSTRING style_path = "style:values.xml";
-   if (AnalysePath(style_path, NULL) != ERR_Okay) {
-      style_path = "environment:config/values.xml";
-      if (AnalysePath(style_path, NULL) != ERR_Okay) {
-         style_path = "styles:default/values.xml";
-      }
-   }
-
-   objXML *user, *style;
-   ERROR error;
-   if (!(error = CreateObject(ID_XML, 0, &style, FID_Name|TSTR, "glStyle", FID_Path|TSTR, style_path, TAGEND))) {
-      // Now check for the user's preferred values.  These are copied over the defaults.
-
-      if (!AnalysePath("user:config/style_values.xml", 0)) {
-         if (!CreateObject(ID_XML, 0, &user, FID_Path|TSTR, "user:config/style_values.xml", TAGEND)) {
-            auto tags = user->Tags[0];
-            while (tags) {
-               LONG target;
-               if (!StrMatch("fonts", tags->Attrib->Name)) {
-                  auto src = tags->Child;
-                  CSTRING fontname;
-                  if ((fontname = XMLATTRIB(src, "name"))) {
-                     char xpath[80];
-                     StrFormat(xpath, sizeof(xpath), "/fonts/font[@name='%s']", fontname);
-                     if (!xmlFindTag(style, xpath, NULL, &target)) {
-                        for (LONG a=1; a < src->TotalAttrib; a++) {
-                           xmlSetAttrib(style, target, XMS_UPDATE, src->Attrib[a].Name, src->Attrib[a].Value);
-                        }
-                     }
-                  }
-               }
-               else if (!StrMatch("colours", tags->Attrib->Name)) {
-                  if (!xmlFindTag(style, "/colours", NULL, &target)) {
-                     for (LONG a=1; a < tags->TotalAttrib; a++) {
-                        xmlSetAttrib(style, target, XMS_UPDATE, tags->Attrib[a].Name, tags->Attrib[a].Value);
-                     }
-                  }
-               }
-               else if (!StrMatch("interface", tags->Attrib->Name)) {
-                  if (!xmlFindTag(style, "/interface", NULL, &target)) {
-                     for (LONG a=1; a < tags->TotalAttrib; a++) {
-                        xmlSetAttrib(style, target, XMS_UPDATE, tags->Attrib[a].Name, tags->Attrib[a].Value);
-                     }
-                  }
-               }
-               tags = tags->Next;
-            }
-            acFree(user);
-         }
-      }
-
-      if (glStyle) acFree(glStyle);
-      glStyle = style;
-   }
-
-   return error;
 }
 
 //****************************************************************************
@@ -1293,8 +1124,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 #endif
 
-   load_style_values();
-
    return ERR_Okay;
 }
 
@@ -1317,10 +1146,6 @@ static ERROR CMDExpunge(void)
    if (glDither)              { FreeResource(glDither); glDither = NULL; }
    if (glExposeHandler)       { FreeResource(glExposeHandler); glExposeHandler = NULL; }
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
-   if (glStyle)               { acFree(glStyle); glStyle = NULL; }
-   if (glAppStyle)            { acFree(glAppStyle); glAppStyle = NULL; }
-   if (glDesktopStyleScript)  { acFree(glDesktopStyleScript); glDesktopStyleScript = NULL; }
-   if (glDefaultStyleScript)  { acFree(glDefaultStyleScript); glDefaultStyleScript = NULL; }
    if (glComposite)           { acFree(glComposite); glComposite = NULL; }
    if (glCompress)            { acFree(glCompress); glCompress = NULL; }
 
@@ -1331,8 +1156,6 @@ static ERROR CMDExpunge(void)
    }
 
 #ifdef __xwindows__
-
-   WORD i;
 
    if (!glHeadless) {
       if (modXRR) { acFree(modXRR); modXRR = NULL; }

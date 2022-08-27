@@ -6,8 +6,6 @@
 
 FDEF argsAccessList[] = { { "SurfaceControl", FD_PTR|FD_STRUCT }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsAccessPointer[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
-FDEF argsApplyStyleGraphics[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Target", FD_OBJECTID }, { "StyleName", FD_STR }, { "StyleType", FD_STR }, { 0, 0 } };
-FDEF argsApplyStyleValues[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsCheckIfChild[] = { { "Error", FD_LONG|FD_ERROR }, { "Parent", FD_OBJECTID }, { "Child", FD_OBJECTID }, { 0, 0 } };
 FDEF argsCompress[] = { { "Error", FD_LONG|FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Level", FD_LONG }, { 0, 0 } };
 FDEF argsCopyArea[] = { { "Error", FD_LONG|FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Dest", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
@@ -43,7 +41,6 @@ FDEF argsRestoreCursor[] = { { "Error", FD_LONG|FD_ERROR }, { "Cursor", FD_LONG 
 FDEF argsScaleToDPI[] = { { "Result", FD_DOUBLE }, { "Value", FD_DOUBLE }, { 0, 0 } };
 FDEF argsScanDisplayModes[] = { { "Error", FD_LONG|FD_ERROR }, { "Filter", FD_STR }, { "DisplayInfo:Info", FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsSetClipRegion[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "Number", FD_LONG }, { "Left", FD_LONG }, { "Top", FD_LONG }, { "Right", FD_LONG }, { "Bottom", FD_LONG }, { "Terminate", FD_LONG }, { 0, 0 } };
-FDEF argsSetCurrentStyle[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { 0, 0 } };
 FDEF argsSetCursor[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { "Flags", FD_LONG }, { "Cursor", FD_LONG }, { "Name", FD_STR }, { "Owner", FD_OBJECTID }, { 0, 0 } };
 FDEF argsSetCursorPos[] = { { "Error", FD_LONG|FD_ERROR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsSetCustomCursor[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { "Flags", FD_LONG }, { "Bitmap", FD_OBJECTPTR }, { "HotX", FD_LONG }, { "HotY", FD_LONG }, { "Owner", FD_OBJECTID }, { 0, 0 } };
@@ -55,12 +52,11 @@ FDEF argsSync[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsUnlockBitmap[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { "Bitmap", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsUnlockCursor[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { 0, 0 } };
 FDEF argsUnsubscribeInput[] = { { "Error", FD_LONG|FD_ERROR }, { "Handle", FD_LONG }, { 0, 0 } };
+FDEF argsWindowHook[] = { { "Error", FD_LONG|FD_ERROR }, { "SurfaceID", FD_OBJECTID }, { "Event", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
    { (APTR)gfxAccessList, "AccessList", argsAccessList },
    { (APTR)gfxAccessPointer, "AccessPointer", argsAccessPointer },
-   { (APTR)gfxApplyStyleGraphics, "ApplyStyleGraphics", argsApplyStyleGraphics },
-   { (APTR)gfxApplyStyleValues, "ApplyStyleValues", argsApplyStyleValues },
    { (APTR)gfxCheckIfChild, "CheckIfChild", argsCheckIfChild },
    { (APTR)gfxCompress, "Compress", argsCompress },
    { (APTR)gfxCopyArea, "CopyArea", argsCopyArea },
@@ -96,7 +92,6 @@ const struct Function glFunctions[] = {
    { (APTR)gfxScaleToDPI, "ScaleToDPI", argsScaleToDPI },
    { (APTR)gfxScanDisplayModes, "ScanDisplayModes", argsScanDisplayModes },
    { (APTR)gfxSetClipRegion, "SetClipRegion", argsSetClipRegion },
-   { (APTR)gfxSetCurrentStyle, "SetCurrentStyle", argsSetCurrentStyle },
    { (APTR)gfxSetCursor, "SetCursor", argsSetCursor },
    { (APTR)gfxSetCursorPos, "SetCursorPos", argsSetCursorPos },
    { (APTR)gfxSetCustomCursor, "SetCustomCursor", argsSetCustomCursor },
@@ -108,6 +103,7 @@ const struct Function glFunctions[] = {
    { (APTR)gfxUnlockBitmap, "UnlockBitmap", argsUnlockBitmap },
    { (APTR)gfxUnlockCursor, "UnlockCursor", argsUnlockCursor },
    { (APTR)gfxUnsubscribeInput, "UnsubscribeInput", argsUnsubscribeInput },
+   { (APTR)gfxWindowHook, "WindowHook", argsWindowHook },
    { NULL, NULL, NULL }
 };
 

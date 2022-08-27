@@ -25,6 +25,10 @@
 #define DRAG_ANCHOR 1
 #define DRAG_NORMAL 2
 
+// Events for WindowHook()
+
+#define WH_CLOSE 1
+
 // Optional flags for the ExposeSurface() function.
 
 #define EXF_CHILDREN 0x00000001
@@ -923,8 +927,6 @@ INLINE ERROR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOU
 struct DisplayBase {
    struct SurfaceControl * (*_AccessList)(LONG);
    struct rkPointer * (*_AccessPointer)(void);
-   ERROR (*_ApplyStyleGraphics)(APTR, OBJECTID, CSTRING, CSTRING);
-   ERROR (*_ApplyStyleValues)(APTR, CSTRING);
    ERROR (*_CheckIfChild)(OBJECTID, OBJECTID);
    ERROR (*_Compress)(struct rkBitmap *, LONG);
    ERROR (*_CopyArea)(struct rkBitmap *, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
@@ -960,7 +962,6 @@ struct DisplayBase {
    DOUBLE (*_ScaleToDPI)(DOUBLE);
    ERROR (*_ScanDisplayModes)(CSTRING, struct DisplayInfoV3 *, LONG);
    void (*_SetClipRegion)(struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG);
-   ERROR (*_SetCurrentStyle)(CSTRING);
    ERROR (*_SetCursor)(OBJECTID, LONG, LONG, CSTRING, OBJECTID);
    ERROR (*_SetCursorPos)(DOUBLE, DOUBLE);
    ERROR (*_SetCustomCursor)(OBJECTID, LONG, struct rkBitmap *, LONG, LONG, OBJECTID);
@@ -972,13 +973,12 @@ struct DisplayBase {
    ERROR (*_UnlockBitmap)(OBJECTID, struct rkBitmap *);
    ERROR (*_UnlockCursor)(OBJECTID);
    ERROR (*_UnsubscribeInput)(LONG);
+   ERROR (*_WindowHook)(OBJECTID, LONG, FUNCTION *);
 };
 
 #ifndef PRV_DISPLAY_MODULE
 #define gfxAccessList(...) (DisplayBase->_AccessList)(__VA_ARGS__)
 #define gfxAccessPointer(...) (DisplayBase->_AccessPointer)(__VA_ARGS__)
-#define gfxApplyStyleGraphics(...) (DisplayBase->_ApplyStyleGraphics)(__VA_ARGS__)
-#define gfxApplyStyleValues(...) (DisplayBase->_ApplyStyleValues)(__VA_ARGS__)
 #define gfxCheckIfChild(...) (DisplayBase->_CheckIfChild)(__VA_ARGS__)
 #define gfxCompress(...) (DisplayBase->_Compress)(__VA_ARGS__)
 #define gfxCopyArea(...) (DisplayBase->_CopyArea)(__VA_ARGS__)
@@ -1014,7 +1014,6 @@ struct DisplayBase {
 #define gfxScaleToDPI(...) (DisplayBase->_ScaleToDPI)(__VA_ARGS__)
 #define gfxScanDisplayModes(a,b) (DisplayBase->_ScanDisplayModes)(a,b,sizeof(*b))
 #define gfxSetClipRegion(...) (DisplayBase->_SetClipRegion)(__VA_ARGS__)
-#define gfxSetCurrentStyle(...) (DisplayBase->_SetCurrentStyle)(__VA_ARGS__)
 #define gfxSetCursor(...) (DisplayBase->_SetCursor)(__VA_ARGS__)
 #define gfxSetCursorPos(...) (DisplayBase->_SetCursorPos)(__VA_ARGS__)
 #define gfxSetCustomCursor(...) (DisplayBase->_SetCustomCursor)(__VA_ARGS__)
@@ -1026,6 +1025,7 @@ struct DisplayBase {
 #define gfxUnlockBitmap(...) (DisplayBase->_UnlockBitmap)(__VA_ARGS__)
 #define gfxUnlockCursor(...) (DisplayBase->_UnlockCursor)(__VA_ARGS__)
 #define gfxUnsubscribeInput(...) (DisplayBase->_UnsubscribeInput)(__VA_ARGS__)
+#define gfxWindowHook(...) (DisplayBase->_WindowHook)(__VA_ARGS__)
 #endif
 
 // Standard pack pixel for all formats

@@ -6,8 +6,6 @@ extern "C" {
 
 struct SurfaceControl * gfxAccessList(LONG Flags);
 struct rkPointer * gfxAccessPointer();
-ERROR gfxApplyStyleGraphics(OBJECTPTR Object, OBJECTID Target, CSTRING StyleName, CSTRING StyleType);
-ERROR gfxApplyStyleValues(OBJECTPTR Object, CSTRING Name);
 ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child);
 ERROR gfxCompress(struct rkBitmap * Bitmap, LONG Level);
 ERROR gfxCopyArea(struct rkBitmap * Bitmap, struct rkBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
@@ -43,7 +41,6 @@ ERROR gfxRestoreCursor(LONG Cursor, OBJECTID Owner);
 DOUBLE gfxScaleToDPI(DOUBLE Value);
 ERROR gfxScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size);
 void gfxSetClipRegion(struct rkBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate);
-ERROR gfxSetCurrentStyle(CSTRING Path);
 ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, LONG Cursor, CSTRING Name, OBJECTID Owner);
 ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y);
 ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, struct rkBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
@@ -55,6 +52,7 @@ void gfxSync(struct rkBitmap * Bitmap);
 ERROR gfxUnlockBitmap(OBJECTID Surface, struct rkBitmap * Bitmap);
 ERROR gfxUnlockCursor(OBJECTID Surface);
 ERROR gfxUnsubscribeInput(LONG Handle);
+ERROR gfxWindowHook(OBJECTID SurfaceID, LONG Event, FUNCTION * Callback);
 
 #ifdef  __cplusplus
 }
