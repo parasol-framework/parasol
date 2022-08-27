@@ -99,7 +99,6 @@
 #define INPUT_MASK        (MAX_INPUTMSG-1) // All bits will be set if MAX_INPUTMSG is a power of two
 
 #include <parasol/modules/display.h>
-#include <parasol/modules/window.h>
 #include <parasol/modules/xml.h>
 
 #define URF_REDRAWS_CHILDREN     0x00000001
@@ -142,6 +141,32 @@ struct dcDisplayInputReady { // This is an internal structure used by the displa
    LARGE NextIndex;    // Next message index for the subscriber to look at
    LONG  SubIndex;     // Index into the InputSubscription list
 };
+
+class WindowHook {
+public:
+   OBJECTID SurfaceID;
+   UBYTE Event;
+
+   WindowHook(OBJECTID aSurfaceID, UBYTE aEvent) : SurfaceID(aSurfaceID), Event(aEvent) { };
+
+   bool operator== (const WindowHook &rhs) const {
+      return (SurfaceID == rhs.SurfaceID) and (Event == rhs.Event);
+   }
+
+   bool operator() (const WindowHook &lhs, const WindowHook &rhs) const {
+       if (lhs.SurfaceID == rhs.SurfaceID) return lhs.Event < rhs.Event;
+       else return lhs.SurfaceID < rhs.SurfaceID;
+   }
+};
+
+namespace std {
+   template <> struct hash<WindowHook> {
+      std::size_t operator()(const WindowHook &k) const {
+         return ((std::hash<OBJECTID>()(k.SurfaceID)
+            ^ (std::hash<UBYTE>()(k.Event) << 1)) >> 1);
+      }
+   };
+}
 
 enum {
    STAGE_PRECOPY=1,
@@ -308,10 +333,7 @@ extern LONG glpDisplayDepth; // If zero, the display depth will be based on the 
 extern LONG glpMaximise, glpFullScreen;
 extern LONG glpWindowType;
 extern char glpDPMS[20];
-extern objXML *glStyle;
-extern OBJECTPTR glAppStyle;
-extern OBJECTPTR glDesktopStyleScript;
-extern OBJECTPTR glDefaultStyleScript;
+extern std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
 
 // Thread-specific variables.
 

@@ -143,7 +143,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       })
 
       collectgarbage()
-      lWindow.acDraw()
+      self.viewport.acDraw()
    end
 
    -- Retrieve the system list of known installed fonts and convert it to a Lua table.
@@ -206,228 +206,226 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       end)
    end
 
-   catch(function()
-      getFonts()
+   getFonts()
 
-      -- Disassemble any compact font face definition.
+   -- Disassemble any compact font face definition.
 
-      if (lOptions.face) then
-         local s = string.split(face, ':') -- FaceName, Size, Style, Colour
-         if (s[1]) then lOptions.face = s[1] end
-         if (s[2]) then lOptions.size = s[2] end
-         if (s[3]) then lOptions.style = s[3] end
-         if (s[4]) then lOptions.colour = s[4] end
-      end
+   if (lOptions.face) then
+      local s = string.split(face, ':') -- FaceName, Size, Style, Colour
+      if (s[1]) then lOptions.face = s[1] end
+      if (s[2]) then lOptions.size = s[2] end
+      if (s[3]) then lOptions.style = s[3] end
+      if (s[4]) then lOptions.colour = s[4] end
+   end
 
-      lWindow = obj.new('window', {
-         insideWidth  = 700,
-         insideHeight = 600,
-         minWidth     = 500,
-         minHeight    = 400,
-         maxWidth     = 1024,
-         maxHeight    = 800,
-         quit         = false,
-         center       = true,
-         popover      = lOptions.popover,
-         parent       = lOptions.target,
-         icon         = 'items/font',
-         title        = nz(lOptions.title, 'Select a font'),
-         modal        = nz(lOptions.modal, false)
-      })
-
-      lWindow.subscribe('close', function(WindowID, Args, Reference)
-         if (lOptions.feedback != nil) then
-            lOptions.feedback(self, nil)
+   lWindow = gui.window({
+      insideWidth  = 700,
+      insideHeight = 600,
+      minWidth     = 500,
+      minHeight    = 400,
+      maxWidth     = 1024,
+      maxHeight    = 800,
+      quit         = false,
+      center       = true,
+      popover      = lOptions.popover,
+      parent       = lOptions.target,
+      icon         = 'items/font',
+      title        = nz(lOptions.title, 'Select a font'),
+      modal        = nz(lOptions.modal, false),
+      events = {
+         close = function(Window)
+            if (lOptions.feedback != nil) then
+               lOptions.feedback(self, nil)
+            end
+            lWindow = nil
          end
-         lWindow = nil
-      end)
+      }
+   })
 
-      self.windowID = lWindow.id
-      self.scene = obj.new('VectorScene', { surface = lWindow.surface })
-      self.viewport = self.scene.new('VectorViewport', { })
+   self.viewport = lWindow:clientViewport({
+      resizeEvent = function(Window)
+         refreshGuidelines()
+      end
+   })
 
-      -- Okay and cancel buttons
+   -- Okay and cancel buttons
 
-      local footer = lWindow.bottomMargin
+   local footer = lWindow.margins.bottom
 
-      lCancelButton = gui.button({
-         target  = self.viewport,
-         text    = nz(lOptions.cancelText, 'Cancel'),
-         xOffset = WIDGET_GAP,
-         yOffset = footer,
-         icon    = 'items/cancel',
-         feedback = function(Button)
+   lCancelButton = gui.button({
+      target  = self.viewport,
+      text    = nz(lOptions.cancelText, 'Cancel'),
+      xOffset = WIDGET_GAP,
+      yOffset = footer,
+      icon    = 'items/cancel',
+      events = {
+         activate = function(Button)
             sendFeedback(false)
          end
-      })
+      }
+   })
 
-      lOkayButton = gui.button({
-         target  = self.viewport,
-         text    = nz(lOptions.okText, 'OK'),
-         xOffset = lCancelButton.viewport.width + (WIDGET_GAP * 2),
-         yOffset = footer,
-         icon    = 'items/checkmark',
-         feedback = function(Button)
+   lOkayButton = gui.button({
+      target  = self.viewport,
+      text    = nz(lOptions.okText, 'OK'),
+      xOffset = lCancelButton.viewport.width + (WIDGET_GAP * 2),
+      yOffset = footer,
+      icon    = 'items/checkmark',
+      events = {
+         activate = function(Button)
             sendFeedback(true)
          end
-      })
+      }
+   })
 
-      footer = footer + lOkayButton.viewport.height + WIDGET_GAP
+   footer = footer + lOkayButton.viewport.height + WIDGET_GAP
 
-      -- Font example area
+   -- Font example area
 
-      self.exampleVP = self.viewport.new('VectorViewport', {
-         x       = 210,
-         y       = lWindow.topMargin,
-         xOffset = lWindow.rightMargin,
-         yOffset = footer
-      })
+   self.exampleVP = self.viewport.new('VectorViewport', {
+      x       = 210,
+      y       = lWindow.margins.top,
+      xOffset = lWindow.margins.right,
+      yOffset = footer
+   })
 
-      self.exampleBkgd = self.exampleVP.new('VectorRectangle', {
-         fill   = 'rgb(253,255,246)',
-         stroke = 'rgb(0,0,0,64)',
-         strokeWidth = 2,
-         x      = 0,
-         y      = 0,
-         width  = '100%',
-         height = '100%'
-      })
+   self.exampleBkgd = self.exampleVP.new('VectorRectangle', {
+      fill   = 'rgb(253,255,246)',
+      stroke = 'rgb(0,0,0,64)',
+      strokeWidth = 2,
+      x      = 0,
+      y      = 0,
+      width  = '100%',
+      height = '100%'
+   })
 
-      self.exampleView = self.exampleVP.new('VectorViewport', {
-         x = 4, y = 4, xOffset = 4, yOffset = 4, overflow = VOF_HIDDEN
-      })
+   self.exampleView = self.exampleVP.new('VectorViewport', {
+      x = 4, y = 4, xOffset = 4, yOffset = 4, overflow = VOF_HIDDEN
+   })
 
-      self.examplePage = self.exampleView.new('VectorViewport', {
-         name='view_page', width='100%', height='100%'
-      })
+   self.examplePage = self.exampleView.new('VectorViewport', {
+      name='view_page', width='100%', height='100%'
+   })
 
-      refreshExample()
+   refreshExample()
 
-      -- Font size selection
+   -- Font size selection
 
-      vwSize = gui.listView({
-         x          = self.exampleVP.x - WIDGET_GAP - 60,
-         yOffset    = footer,
-         height     = 140,
-         width      = 60,
-         target     = self.viewport,
-         style      = 'LongList',
-         sensitive  = true,
-         noIcons    = true,
-         textAttrib = 'name',
-         itemSelected = function(View, Reason, Item)
-            local selection = Item.name
-            self.size = tonumber(selection)
-            if (self.size < 4) then
-               self.size = 4
-            elseif (self.size > 400) then
-               self.size = 400
-            end
-            collectgarbage()
-            refreshExample()
+   vwSize = gui.listView({
+      x          = self.exampleVP.x - WIDGET_GAP - 60,
+      yOffset    = footer,
+      height     = 140,
+      width      = 60,
+      target     = self.viewport,
+      style      = 'LongList',
+      sensitive  = true,
+      noIcons    = true,
+      textAttrib = 'name',
+      itemSelected = function(View, Reason, Item)
+         local selection = Item.name
+         self.size = tonumber(selection)
+         if (self.size < 4) then
+            self.size = 4
+         elseif (self.size > 400) then
+            self.size = 400
          end
-      })
-
-      showFontSizes(lSizes)
-
-      -- Font style selection
-
-      vwStyle = gui.listView({
-         x            = lWindow.leftMargin,
-         yOffset      = footer,
-         height       = 140,
-         width        = vwSize.viewport.x - WIDGET_GAP - lWindow.leftMargin,
-         target       = self.viewport,
-         sensitive    = true,
-         noIcons      = true,
-         textAttrib   = 'name',
-         itemSelected = function(View, Reason, Item)
-            self.style = Item.name
-            collectgarbage()
-            refreshExample()
-         end
-      })
-
-      footer = footer + vwStyle.viewport.height + WIDGET_GAP
-
-      -- Available font faces
-
-      vwFace = gui.listView({
-         x            = lWindow.leftMargin,
-         y            = lWindow.topMargin,
-         width        = self.exampleVP.x - WIDGET_GAP - lWindow.leftMargin,
-         yOffset      = footer,
-         target       = self.viewport,
-         sensitive    = true,
-         textAttrib   = 'name',
-         itemSelected = function(View, Reason, Item)
-            if (lFonts[Item.name] == nil) then
-               error('Font "' .. nz(Item.name,'NIL') .. '" not recognised.')
-            end
-
-            self.face = Item.name
-
-            showStyles(Item.name)
-
-            -- Highlight the correct style, trying to keep the current setting if possible.
-
-            if not self.style then
-               self.style = 'Regular'
-            end
-
-            vwStyle.selectItems(function(Item)
-               if (Item.id == self.style) then return true end
-            end)
-
-            local sizes = lFonts[Item.name].sizes
-            if (lFonts[Item.name].scalable) or (sizes == nil) or (#sizes == 0) then
-               sizes = lSizes
-            end
-
-            showFontSizes(sizes)
-
-            if (sizes[1] > self.size) then self.size = sizes[1] end
-            highlightSize(self.size)
-
-            refreshExample()
-         end
-      })
-
-      lWindow.surface.subscribe('redimension', function(Window, Args, State)
-         refreshGuidelines()
-      end, self)
-
-      local faces = { }
-      for _, font in ipairs(lFontsSorted) do
-         local new_font = { id=font.name, name=font.name }
-         if (font.scalable) then
-            new_font.icon = 'items/font'
-         else
-            new_font.icon = 'layout/text_sans'
-         end
-         table.insert(faces, new_font)
+         collectgarbage()
+         refreshExample()
       end
-      vwFace.loadItems(faces)
+   })
 
-      -- Preselect list items based on the preferences supplied by the client.
+   showFontSizes(lSizes)
 
-      vwFace.selectItems(function(Item)
-         if Item.id == nz(lOptions.face, 'Open Sans') then return true end
-      end)
+   -- Font style selection
 
-      vwStyle.selectItems(function(Item)
-         if Item.id == nz(lOptions.style, 'Regular') then return true end
-      end)
+   vwStyle = gui.listView({
+      x            = lWindow.margins.left,
+      yOffset      = footer,
+      height       = 140,
+      width        = vwSize.viewport.x - WIDGET_GAP - lWindow.margins.left,
+      target       = self.viewport,
+      sensitive    = true,
+      noIcons      = true,
+      textAttrib   = 'name',
+      itemSelected = function(View, Reason, Item)
+         self.style = Item.name
+         collectgarbage()
+         refreshExample()
+      end
+   })
 
-      highlightSize(self.size)
+   footer = footer + vwStyle.viewport.height + WIDGET_GAP
 
-      lWindow.acMoveToFront()
-      lWindow.acShow()
-      --vwFace.acFocus()
-   end,
-   function(Exception)
-      error('Failed to initialise font dialog: ' .. Exception.message)
+   -- Available font faces
+
+   vwFace = gui.listView({
+      x            = lWindow.margins.left,
+      y            = lWindow.margins.top,
+      width        = self.exampleVP.x - WIDGET_GAP - lWindow.margins.left,
+      yOffset      = footer,
+      target       = self.viewport,
+      sensitive    = true,
+      textAttrib   = 'name',
+      itemSelected = function(View, Reason, Item)
+         if (lFonts[Item.name] == nil) then
+            error('Font "' .. nz(Item.name,'NIL') .. '" not recognised.')
+         end
+
+         self.face = Item.name
+
+         showStyles(Item.name)
+
+         -- Highlight the correct style, trying to keep the current setting if possible.
+
+         if not self.style then
+            self.style = 'Regular'
+         end
+
+         vwStyle.selectItems(function(Item)
+            if (Item.id == self.style) then return true end
+         end)
+
+         local sizes = lFonts[Item.name].sizes
+         if (lFonts[Item.name].scalable) or (sizes == nil) or (#sizes == 0) then
+            sizes = lSizes
+         end
+
+         showFontSizes(sizes)
+
+         if (sizes[1] > self.size) then self.size = sizes[1] end
+         highlightSize(self.size)
+
+         refreshExample()
+      end
+   })
+
+   local faces = { }
+   for _, font in ipairs(lFontsSorted) do
+      local new_font = { id=font.name, name=font.name }
+      if (font.scalable) then
+         new_font.icon = 'items/font'
+      else
+         new_font.icon = 'layout/text_sans'
+      end
+      table.insert(faces, new_font)
+   end
+   vwFace.loadItems(faces)
+
+   -- Preselect list items based on the preferences supplied by the client.
+
+   vwFace.selectItems(function(Item)
+      if Item.id == nz(lOptions.face, 'Open Sans') then return true end
    end)
+
+   vwStyle.selectItems(function(Item)
+      if Item.id == nz(lOptions.style, 'Regular') then return true end
+   end)
+
+   highlightSize(self.size)
+
+   lWindow:moveToFront()
+   lWindow:show()
+   --vwFace.acFocus()
 
    return self
 end

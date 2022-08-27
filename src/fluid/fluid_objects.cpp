@@ -720,7 +720,9 @@ static int object_exists(lua_State *Lua)
 /*****************************************************************************
 ** Usage: obj.subscribe(ActionName, Function, Reference)
 **
-** Subscribe a function to an action or method.  Throws an exception on failure.
+** Subscribe a function to an action or method.  Throws an exception on failure.  The client feedback prototype is:
+**
+**    function(Object, Args, Reference)
 */
 
 static int object_subscribe(lua_State *Lua)

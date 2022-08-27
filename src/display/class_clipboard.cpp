@@ -1093,7 +1093,7 @@ void report_windows_clip_text(CSTRING String)
    parasol::Log log("Clipboard");
    objClipboard *clipboard;
 
-   log.branch("Windows has received text on the clipboard.");
+   log.branch("Application has detected text on the clipboard.");
 
    if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, FID_Flags|TLONG, CLF_HOST, TAGEND)) {
       clipAddText(clipboard, String);
@@ -1111,7 +1111,7 @@ extern "C" void report_windows_files(APTR Data, LONG CutOperation)
 {
    parasol::Log log("Clipboard");
 
-   log.branch("Windows has received files on the clipboard.  Cut: %d", CutOperation);
+   log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
    APTR lock;
    if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
@@ -1131,7 +1131,7 @@ extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
 {
    parasol::Log log("Clipboard");
 
-   log.branch("Windows has received files on the clipboard.  Cut: %d", CutOperation);
+   log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
    APTR lock;
    if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
@@ -1153,7 +1153,7 @@ extern "C" void report_windows_clip_utf16(UWORD *String)
 {
    parasol::Log log("Clipboard");
 
-   log.branch("Windows has received unicode text on the clipboard.");
+   log.branch("Application has detected unicode text on the clipboard.");
 
    objClipboard *clipboard;
    if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, FID_Flags|TLONG, CLF_HOST, TAGEND)) {

@@ -1,8 +1,9 @@
 # Parasol Core Build File
 #
-# Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -G"MinGW Makefiles"
-# Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles"
-#                  For a local folder, add -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+# Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
+# Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug
+#                  For Windows, add -G"MinGW Makefiles"
+#                  To target a local folder, add -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
 #
 # Build:   cmake --build release -j 8 -- -O
 # Install: sudo cmake --install release
@@ -26,7 +27,7 @@ endif()
 
 project (Parasol LANGUAGES C CXX)
 
-set (VERSION "2022.2")
+set (VERSION "2022.8")
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
 
 # To switch on a custom option use -D, e.g. -DPARASOL_VLOG=ON
@@ -389,7 +390,6 @@ add_subdirectory (src/picture_jpeg)
 add_subdirectory (src/scintilla)
 add_subdirectory (src/svg)
 add_subdirectory (src/vector)
-add_subdirectory (src/window)
 add_subdirectory (src/xml)
 if (X11_Xrandr_FOUND)
    add_subdirectory (src/xrandr)

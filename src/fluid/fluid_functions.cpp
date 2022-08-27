@@ -87,6 +87,21 @@ int fcmd_check(lua_State *Lua)
 }
 
 //****************************************************************************
+// raise() will raise an error immediately from an error code.  Unlike check(), all codes have coverage, including
+// minor codes.  The error code will also be propagated to the Script object's Error field.
+
+int fcmd_raise(lua_State *Lua)
+{
+   if (lua_type(Lua, 1) IS LUA_TNUMBER) {
+      ERROR error = lua_tonumber(Lua, 1);
+      auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+      prv->CaughtError = error;
+      luaL_error(prv->Lua, GetErrorMsg(error));
+   }
+   return 0;
+}
+
+//****************************************************************************
 // Use catch() to switch on exception handling for functions that return an error code other than ERR_Okay, as well as
 // normal exceptions that would otherwise be caught by pcall().  Areas affected include obj.new(); any module function
 // that returns an ERROR; any method or action called on an object.

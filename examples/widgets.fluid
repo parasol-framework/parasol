@@ -13,9 +13,10 @@ A demonstration of standard widgets
    require 'gui/button'
    require 'gui/checkbox'
    require 'gui/combobox'
+   require 'gui/window'
    require 'vfx'
 
-   local win  = obj.new('window', { title='Widget Examples', insideWidth=600, insideHeight=400 })
+   local win  = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400, center=true })
    local scene = win.surface.new('VectorScene', { flags=VPF_RESIZE, surface=win.surface })
    local viewport = scene.new('VectorViewport', { aspectRatio = ARF_MEET })
 
@@ -126,7 +127,7 @@ end
    end)
 
    local text = viewport.new('vectortext', {
-      x=win.leftMargin, y=y, string='Text Widget', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
+      x=win.margins.left, y=y, string='Text Widget', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
    })
    text.y = y + text.font.height
    y = y + text.font.height + 8
@@ -134,7 +135,7 @@ end
    local msgButton = gui.button({
       target = viewport,
       text   = 'Message Box',
-      x      = win.leftMargin,
+      x      = win.margins.left,
       y      = y,
       icon   = 'items/question',
       events = {
@@ -257,7 +258,7 @@ end
       target = viewport,
       label  = 'Checkbox',
       align = 'left',
-      x = win.leftMargin,
+      x = win.margins.left,
       y = y,
       events = {
          activate = function(Widget)
@@ -271,7 +272,7 @@ end
       target = viewport,
       label  = 'Combobox:',
       string = 'Your text here',
-      x = win.leftMargin, y = y,
+      x = win.margins.left, y = y,
       allowCustom = true,
       items = {
          { group='Office' },
@@ -293,7 +294,7 @@ end
 
    local input = gui.input({
       target = viewport,
-      x      = win.leftMargin,
+      x      = win.margins.left,
       y      = y,
       width  = 260,
       label  = 'Inputbox: ',
@@ -352,7 +353,6 @@ end
       }
    })
 
-   win.acShow()
-
+   win:show()
    processing.sleep() -- Will sleep until the window sends MSGID_QUIT
 

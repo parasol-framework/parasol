@@ -1,0 +1,587 @@
+--[[
+The gui.window API creates and manages windows in the user interface.
+
+Basic template for creating a new window:
+
+   require 'gui/window'
+   my_window = gui.window({ Options... })
+
+Valid options to use when creating the window are as follows:
+
+  target:      Optional reference to a Viewport or Surface that will contain the window.
+  icon:        An optional icon to display alongside the text.
+  title:       A label to display in the window titlebar.
+  events:      A table of event triggers.  Supported events: show, focus, lostFocus, close, minimise, maximise
+  width:       Width of the window.
+  x:           The x coordinate of the window.
+  y:           The y coordinate of the window.
+  center:      Centers the window on screen if true.
+  minimise:    Enables the minimise widget if true (default).
+  maximise:    Enables the maximise widget if true (default).
+  moveToBack:  Enables the move-to-back widget if true (default).
+  minWidth:    The minimum acceptable width of the client area.
+  minHeight:   The minimum acceptable height of the client area.
+  close:       Enables the close widget if true (default).
+  quit:        If true, sends a quit message to the client application when the window closes.
+  focus:       If false, the window does not automatically receive the focus when displayed.
+  orientation:  Set to 'portrait' or 'landspace' to indicate orientation when fullscreen.
+  client:       Readable, defines the client boundaries around the frame.
+  aspectRatio:  If true, enforces the aspect ratio defined by the minWidth and minHeight values.
+  icon:         An icon to display in the titlebar.
+  menubar:      Optional configuration for a menubar.
+  insideWidth:  Alternative to width; defines the internal width of the window.
+  insideHeight: Alternative to height; defines the internal height of the window.
+  stickToFront: If true, keep the window at the front of the display at all times.
+  title:        A text label to display in the titlebar.
+
+  :show()
+    Present the window to the user.
+  :getClientSize()
+    Returns the size of the client area as { x, y, width, height }
+  :getSize()
+    Returns the size of the window as { x, y, width, height }
+  :hide()
+    Hide the window and move the user focus to the next active window
+  :reposition(X, Y, Width, Height)
+    Alter the window dimensions.  Values can be set to nil to leave them unchanged.
+  :minimise()
+    Manually minimise the window.
+  :maximise()
+    Manually maximise the window.
+  :moveToBack()
+  :moveToFront()
+  :parentSize() = Width, Height
+    Return the width and height of the space hosting the window.
+
+--]]
+
+   require 'common'
+   require 'gui'
+   include 'display'
+
+   if not mGfx then mGfx = mod.load('display') end
+
+local DEFAULT_WIDTH  = 600
+local DEFAULT_HEIGHT = 400
+
+local lStyle = (function()
+   if (mSys.AnalysePath('style:window.fluid') == ERR_Okay) then
+      return loadFile('style:window.fluid')
+   else
+      return loadFile('styles:default/window.fluid')
+   end
+end)()
+
+local function hosted(self)
+   if self.hosted == nil then
+      if self.surface and self.surface.parent then
+         self.hosted = false
+      else
+         self.hosted = true
+      end
+   end
+   return self.hosted
+end
+
+local function iconTheme()
+   if (gui.rgbValue(gui.strToRGB(gui.colours['widgetText'])) > 127) then
+      return 'pearl'
+   else
+      return 'default' -- The default theme is dark
+   end
+end
+
+gui.window = function(Options)
+   local self = { -- Public variables
+      events       = nz(Options.events, { }),
+      aspectRatio  = nz(Options.aspectRatio, false),
+      minimiseEnabled = nz(Options.minimise, true),
+      maximiseEnabled = nz(Options.maximise, true),
+      moveToBackEnabled = nz(Options.moveToBack, true),
+      closeEnabled = nz(Options.close, true),
+      focus        = nz(Options.focus, true),
+      quit         = nz(Options.quit, true),
+      title        = nz(Options.title, 'Window'),
+      icon         = nz(Options.icon, 'devices/monitor'),
+      restore      = nil, -- { x, y, width, height }
+      orientation  = nz(Options.orientation, 'landscape'),
+      client       = { }, -- Client margins
+      menubar      = Options.menubar, -- Menubar configuration
+      margins      = { left, right, top, bottom },
+      surface      = nil, -- Client access to the surface is permitted
+      viewport     = nil -- The window's top-level viewport
+   }
+
+   self.clientViewport = function(self, Options)
+      if self._clientViewport then return self._clientViewport end
+      if not Options then Options = { } end
+
+      if hosted(self) then
+         Options.x = 0
+         Options.y = 0
+         Options.xOffset = 0
+         Options.yOffset = 0
+      else
+         Options.x = self.margins.left
+         Options.y = self.margins.top
+         Options.xOffset = self.margins.right
+         Options.yOffset = self.margins.bottom
+      end
+
+      self._clientViewport = self.viewport.new('VectorViewport', Options)
+
+      return self._clientViewport
+   end
+
+   self.getSize = function(self)
+      if hosted(self) then
+         return {
+            x      = self.surface.x - self.client.left,
+            y      = self.surface.y - self.client.top,
+            width  = self.surface.width + self.client.left + self.client.right,
+            height =  self.surface.height + self.client.top + self.client.bottom
+         }
+      else
+         return {
+            x = self.surface.x, y = self.surface.y, width = self.surface.width, height = self.surface.height
+         }
+      end
+   end
+
+   -- Returns the size of the client area.  The (x,y) values
+
+   self.getClientSize = function(self)
+      if hosted(self) then
+         return {
+            x = self.surface.x, y = self.surface.y, width = self.surface.width, height = self.surface.height
+         }
+      else
+         return {
+            x = self.surface.x + self.client.left, y = self.surface.y + self.client.top,
+            width = self.surface.width - self.client.left - self.client.right,
+            height = self.surface.height - self.client.top - self.client.bottom
+         }
+      end
+   end
+
+   -- Resize the window via the client area
+
+   self.resizeClientArea = function(self, ClientWidth, ClientHeight)
+      if not ClientWidth then
+         ClientWidth = self.surface.width
+         if not hosted(self) then ClientWidth = ClientWidth - self.client.left - self.client.right end
+      end
+
+      if not ClientHeight then
+         ClientHeight = self.surface.height
+         if not hosted(self) then ClientHeight = ClientHeight - self.client.top - self.client.bottom end
+      end
+
+      if hosted(self) then
+         self.surface.acResize(ClientWidth, ClientHeight, 0)
+      else
+         self.surface.acResize(ClientWidth + self.client.left + self.client.right, ClientHeight + self.client.top + self.client.bottom, 0)
+      end
+   end
+
+   -- Changes the size of the position of the window in relation to its parent.
+
+   self.resize = function(self, X, Y, Width, Height)
+      if not X then X = self.surface.x end
+      if not Y then Y = self.surface.y end
+      if not Width then Width = self.surface.width end
+      if not Height then Height = self.surface.height end
+
+      if hosted(self) then
+         self.surface.acRedimension(X + self.client.left, Y + self.client.top, 0, Width - self.client.left - self.client.right, Height - self.client.top - self.client.bottom, 0)
+      else
+         if (X) or (Y) then
+            self.surface.acRedimension(X, Y, 0, Width, Height, 0)
+         else
+            self.surface.acResize(Width, Height, 0)
+         end
+      end
+   end
+
+   -- Smart limits are used to prevent the window from moving completely outside of the visible display area.
+
+   self.applySmartLimits = function(self)
+      self.smartLimitsEnabled = true
+      if not hosted(self) then
+         local err, info = mGfx.GetSurfaceInfo(self.surface.parent)
+         if (err == ERR_Okay) then
+            self.surface.topLimit    = 0
+            self.surface.bottomLimit = -self.surface.height + self.surface.topMargin
+            self.surface.leftLimit   = -(self.surface.width * 0.75)
+            self.surface.rightLimit  = -(self.surface.width * 0.75)
+         end
+      end
+   end
+
+   -- Run the minimise procedure for the window (environment dependent).
+
+   self.minimise = function(self)
+      if (self.MinimiseEnabled) then
+         if (self.events.minimise) then
+            self.events.minimise(self)
+         end
+      end
+   end
+
+   -- Run the maximise procedure for the window.  The process will take into account the hints provided by the margin
+   -- settings of the parent surface (so if the margins are all set to 10, the window will be maximised to the size of
+   -- the container minus 10 pixels from its edge).
+   --
+   -- If Toggle is true, the window is restored to its original position if the window is already maximised.
+
+   self.maximise = function(self, Toggle)
+      if not self.maximiseEnabled then
+         msg("Maximisation for this window is turned off.")
+         return
+      end
+
+      if (self.events.maximise) then
+         self.events.maximise(self)
+      end
+
+      if hosted(self) then -- Send the maximisation request to the display
+         local display = obj.find(self.surface.display)
+         display.flags = bit.bor(display.flags, SCR_MAXIMISE)
+         return
+      end
+--[[
+      local margins = { }
+      local parent = self.surface.parent
+      if (!AccessObject(self.Surface->ParentID, 5000, &parent)) then
+         if ((margins.Left = parent->LeftMargin) < 0) margins.Left = 0
+         if ((margins.Top = parent->TopMargin) < 0) margins.Top = 0
+         margins.Right  = parent->Width - parent->RightMargin
+         margins.Bottom = parent->Height - parent->BottomMargin
+
+         ReleaseObject(parent)
+
+         local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
+
+         local x = vx
+         local y = vy
+         local x2 = vx + vwidth
+         local y2 = vy + vheight
+
+         if (margins.left > x)    then x = margins.left end
+         if (margins.top > y)     then y = margins.top end
+         if (margins.right < x2)  then x2 = margins.right end
+         if (margins.bottom < y2) then y2 = margins.bottom end
+
+         if (Toggle) then
+            if ((self.restore.width) and (self.restore.height)) then
+               if ((self.surface.x == x) and (self.surface.y == y) and
+                   (self.surface.width == (x2-x)) and (self.surface.height == (y2-y))) then
+                  self.surface.acRedimension(self.restore.x, self.restore.y, 0.0, self.restore.width, self.restore.height, 0.0)
+                  return
+               end
+            end
+         end
+
+         if (((x2-x) == self.surface.width) and ((y2-y) == self.surface.height)) then
+            self.surface.acMoveToPoint(x, y, 0.0, bit.bor(MTF_X, MTF_Y))
+         else
+            self.restore = {
+               x = self.surface.x
+               y = self.surface.y
+               width  = self.surface.width
+               height = self.surface.height
+            }
+
+            self.surface.acRedimension(x, y, 0.0, x2-x, y2-y, 0.0)
+         end
+      end
+--]]
+   end
+
+   self.moveToBack = function(self)
+      self.surface.acMoveToBack()
+   end
+
+   self.moveToFront = function(self)
+      self.surface.acMoveToFront()
+   end
+
+   self.parentSize = function(self)
+      if hosted(self) then
+         local err, info = mGfx.getDisplayInfo(0)
+         return info.width, info.height
+      else
+         local x, y, width, height = mGfx.getSurfaceCoords(self.surface.parent)
+         return width, height
+      end
+   end
+
+   self.show = function(self)
+      self.visible = true
+      self.surface.acShow()
+      if bit.band(self.surface.flags, RNF_HAS_FOCUS) != 0 then
+         self.surface.acFocus()
+      end
+
+      if self.events.show then self.events.show(self) end
+   end
+
+   self.hide = function(self)
+      self.visible = false
+      self.surface.acHide()
+
+      -- Find the top-most window in our container and change the focus to it
+--[[
+      local parent_id, window_id
+      if ((parent_id = self.Surface->ParentID)) then
+         SurfaceControl *ctl
+         if ((ctl = mGfx.AccessList(ARF_READ))) then
+            auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex + ((ctl->Total-1) * ctl->EntrySize))
+            if (list->ParentID) then
+               for (auto i=ctl->Total-1 i >= 0 i--, list=(SurfaceList *)((BYTE *)list - ctl->EntrySize)) do
+                  if ((list->ParentID IS parent_id) and (list->SurfaceID != self.Surface->Head.UID)) then
+                     if (list->Flags & RNF_VISIBLE) then
+                        if ((window_id = GetOwnerID(list->SurfaceID))) then
+                           if (GetClassID(window_id) IS ID_WINDOW) then
+                              acFocusID(window_id)
+                              break
+                           end
+                        end
+                     end
+                  end
+               end
+            end
+
+            mGfx.ReleaseList(ARF_READ)
+         end
+      end
+      -- If there are no other windows in our container - it's highly likely that we're in a hosted environment.
+--]]
+
+      if self.events.hide then self.events.hide(self) end
+   end
+
+   self.setTitle = function(self, Title)
+      if hosted(self) then
+         self.surface.display.title = Title
+      end
+      self.title = Title
+   end
+
+   -- Main entry point --
+
+   self._desktop = obj.find("desktop")
+
+   self.surface = obj.new('surface', {
+      name      = "winsurface",
+      parent    = self._desktop,
+      width     = nz(Options.width, DEFAULT_WIDTH),
+      height    = nz(Options.height, DEFAULT_HEIGHT),
+      minWidth  = Options.minWidth,
+      minHeight = Options.minHeight,
+      maxWidth  = nz(Options.maxWidth, 4096),
+      maxHeight = nz(Options.maxHeight, 4096),
+      type      = RT_ROOT,
+      flags = (function()
+         local flags = 0
+
+         if not hosted(self) then
+            if Options.enableVideo then -- Allow video surface buffers when in full screen mode
+               flags = bit.bor(flags, RNF_VIDEO)
+            end
+
+            flags = bit.bor(flags, RNF_PERVASIVE_COPY)
+         end
+
+         if Options.aspectRatio then
+            flags = bit.bor(flags, RNF_ASPECT_RATIO)
+         end
+
+         return flags
+      end)()
+   })
+
+   if Options.x then
+      self.surface.x = Options.x
+   else
+      self.surface.x = 20
+   end
+
+   if Options.y then
+      self.surface.y = Options.y
+   else
+      self.surface.y = 20
+   end
+
+   if self.surface.minWidth == self.surface.maxWidth and self.surface.minHeight == self.surface.maxHeight then
+      self.maximiseEnabled = false
+   end
+
+   -- The margins are the recommended gap in addition to the client area.  The client
+   -- area denotes the space afforded by the window frame.
+
+   if hosted(self) then -- When in hosted mode (Windows, X11), force default window margins
+      self.margins = { left = 6, top = 6, right = 6, bottom = 6 }
+      self.client = { -- Retrieve the available client area from the host
+         left   = self.surface.display.leftMargin,
+         top    = self.surface.display.topMargin,
+         right  = self.surface.display.rightMargin,
+         bottom = self.surface.display.bottomMargin
+      }
+   elseif Options.noMargins or Options.borderless then
+      self.margins = { left = 0, top = 0, right = 0, bottom = 0 }
+   else
+      self.margins = { left = 6, top = 6, right = 6, bottom = 6 }
+   end
+
+   self.surface.leftMargin   = self.margins.left
+   self.surface.rightMargin  = self.margins.right
+   self.surface.topMargin    = self.margins.top
+   self.surface.bottomMargin = self.margins.bottom
+
+   self.scene = self.surface.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
+
+   self.viewport = self.scene.new('VectorViewport', {
+      x       = 0,
+      y       = 0,
+      width   = '100%',
+      height  = '100%'
+   })
+
+   if hosted(self) then
+      self.bkgd = self.viewport.new('VectorRectangle', {
+         fill   = gui.colours.rgb('window'),
+         x      = 0,
+         y      = 0,
+         width  = '100%',
+         height = '100%'
+      })
+   else
+      if mGfx.GetDisplayType() == DT_NATIVE then
+         -- Full-screen mode (for video playback or gaming), do nothing.
+      else
+         lStyle.initialise(self)
+         lStyle.frame(self)
+         lStyle.titlebar(self)
+      end
+   end
+
+   self:setTitle(self.title)
+
+   if Options.insideWidth then
+      if hosted(self) then
+         self.surface.width = Options.insideWidth
+      else
+         self.surface.width = Options.insideWidth + self.client.left + self.client.right
+      end
+   end
+
+   if Options.insideHeight then
+      if hosted(self) then
+         self.surface.height = Options.insideHeight
+      else
+         self.surface.height = Options.insideHeight + self.client.top + self.client.bottom
+      end
+   end
+
+   if self.surface.popover != 0 then
+      -- If the surface that we're popping over has the stick-to-front flag set, then we also need to be stick-to-front
+      -- or else we'll end up being situated behind the window.
+
+      local info = struct.new('SurfaceInfo')
+      if (mGfx.GetSurfaceInfo(self.surface.popover, info) == ERR_Okay) then
+         if (bit.band(info.flags, RNF_STICK_TO_FRONT) != 0) then
+            self.surface.flags = bit.bor(self.surface.flags, RNF_STICK_TO_FRONT)
+         end
+      end
+   end
+
+   if Options.center then
+      local x, y = (function()
+         if (self.surface.popover) then
+            local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popover)
+            if (err == ERR_Okay) then
+               x = x + ((powidth - self.surface.width) / 2)
+               y = y + ((poheight - self.surface.height) / 2)
+               local err, _, _, px, py, _, _ = mGfx.GetSurfaceCoords(self.surface.parent)
+               if (err == ERR_Okay) then
+                  return x - px, y - py
+               end
+            end
+         elseif (self.surface.parent) then
+            local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
+            if (err == ERR_Okay) then
+               x = vx + ((vwidth - self.surface.width) / 2)
+               y = vy + ((vheight - self.surface.height) / 2)
+               --check_overlap(self, x, y, 0, 0)
+               return x, y
+            end
+         else
+            local err, display = mGfx.GetDisplayInfo(0)
+            if (err == ERR_Okay) then
+               return (display.width - self.surface.width) / 2, (display.height - self.surface.height) / 2
+            end
+         end
+      end)()
+
+      if x and y then
+         self.surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
+      end
+   end
+
+   self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
+      if (Event == FM_LOST_FOCUS) then
+         if self.events.lostFocus then self.events.lostFocus(self) end
+      else
+         if self.disabled then
+         else
+            if self.events.focus then self.events.focus(self) end
+         end
+      end
+
+      Viewport.acDraw()
+   end)
+
+   mGfx.windowHook(self.surface.id, WH_CLOSE, function()
+      if not self.closeEnabled then return end
+
+      if self.events.close then
+         local result = self.events.close(self)
+         if result != nil then -- If client returns something, the window stays open
+            msg('Client requested that the window stay open.')
+            raise(ERR_Cancelled)
+         end
+      end
+   end)
+
+   self.surface.subscribe('focus', function(Surface, Args, self)
+      Surface.acMoveToFront()
+      if self.visible and bit.band(Surface.flags, RNF_VISIBLE) == 0 then
+         Surface.acShow()
+      end
+
+      if self.events.focus then self.events.focus(self) end
+   end, self)
+
+   self.surface.subscribe('lostfocus', function(Surface, Args, self)
+      if self.events and self.events.lostFocus then self.events.lostFocus(self) end
+   end, self)
+
+   self.surface.subscribe('free', function(Surface, Args, self)
+      if self.quit then
+         mSys.SendMessage(nil, MSGID_QUIT, nil, nil, nil);
+      end
+      table.clear(self)
+   end, self)
+
+   self.surface.detach() -- Keeps the surface unlocked so that window management code can terminate it.
+
+   local proxy = newproxy(true)
+   local m = getmetatable(proxy)
+
+   m.__index = function(t, k) return self[k] end
+   m.__newindex = function(t, k, v) self[k] = v end
+   m.__gc = function() if self.surface then self.surface.acFree() end end
+
+   return proxy
+end

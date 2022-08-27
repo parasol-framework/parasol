@@ -31,8 +31,15 @@ if (gui == nil) then
    end
 
    do
-      local mDisplay = mod.load('display') // Temporarily load to ensure glStyle is available.
-      local xml = obj.find('glStyle')
+      local path = 'style:values.xml'
+      if mSys.AnalysePath(path) != ERR_Okay then
+         path = 'environment:config/values.xml'
+         if mSys.AnalysePath(path) != ERR_Okay then
+            path = 'styles:default/values.xml'
+         end
+      end
+
+      local xml = obj.new('xml', { path=path })
 
       if (xml != nil) then
          local total = 0
@@ -102,7 +109,7 @@ if (gui == nil) then
             err, gui.interface['iconTheme']      = xml.mtGetAttrib(index, 'iconTheme')
             err, gui.interface['iconSize']       = xml.mtGetAttrib(index, 'iconSize')
             for k, v in pairs(gui.interface) do
-               if string.match(v, "^%-?%d+$") then
+               if string.match(v, '^%-?%d+$') then
                   gui.interface[k] = tonumber(v)
                end
             end
@@ -114,8 +121,6 @@ if (gui == nil) then
       else
          error('Failed to retrieve style information.')
       end
-
-      mDisplay = nil
    end
 end
 
