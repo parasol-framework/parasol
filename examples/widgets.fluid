@@ -17,8 +17,7 @@ A demonstration of standard widgets
    require 'vfx'
 
    local win  = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400, center=true })
-   local scene = win.surface.new('VectorScene', { flags=VPF_RESIZE, surface=win.surface })
-   local viewport = scene.new('VectorViewport', { aspectRatio = ARF_MEET })
+   local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
 function itemCallback(ID, Name)
    print('Callback: ' .. ID .. ', ' .. Name)
