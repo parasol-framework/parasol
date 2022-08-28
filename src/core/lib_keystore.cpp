@@ -70,7 +70,7 @@ static void KeyStore_free(APTR Address)
       store->Data = NULL;
    }
 
-   if ((store->Flags & KSF_THREAD_SAFE) AND (store->Mutex)) {
+   if ((store->Flags & KSF_THREAD_SAFE) and (store->Mutex)) {
       FreeMutex(store->Mutex);
       store->Mutex = NULL;
    }
@@ -271,7 +271,7 @@ ERROR VarCopy(KeyStore *Source, KeyStore *Dest)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Source) OR (!Dest)) return ERR_NullArgs;
+   if ((!Source) or (!Dest)) return ERR_NullArgs;
 
    if (!Source->Total) return ERR_Okay; // Nothing to be merged
 
@@ -335,6 +335,8 @@ a direct pointer to its associated data is returned.
 
 In addition to values set with ~VarSet(), this function also works with those set by ~VarSet().
 
+This function is the fastest means of testing for the existence of a key if Data and Size are set to NULL.
+
 -INPUT-
 resource(KeyStore) Store: Must refer to a variable storage structure.
 cstr Name: The name of the variable to lookup.
@@ -352,7 +354,7 @@ ERROR VarGet(KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Name) OR (!*Name) OR (!Store) OR (!Data)) return ERR_NullArgs;
+   if ((!Name) or (!*Name) or (!Store)) return ERR_NullArgs;
 
    log.traceBranch("%s", Name);
 
@@ -365,7 +367,7 @@ ERROR VarGet(KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
          return ERR_DoesNotExist;
       }
 
-      *Data = (APTR)GET_KEY_VALUE(Store->Data[ki]);
+      if (Data) *Data = (APTR)GET_KEY_VALUE(Store->Data[ki]);
       if (Size) *Size = Store->Data[ki]->ValueLength;
 
       if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
@@ -395,7 +397,7 @@ cstr: The value for the given key is returned.  If no match is possible then a N
 
 CSTRING VarGetString(KeyStore *Store, CSTRING Key)
 {
-   if ((!Key) OR (!*Key) OR (!Store)) return NULL;
+   if ((!Key) or (!*Key) or (!Store)) return NULL;
 
    if (Store->Flags & KSF_THREAD_SAFE) LockMutex(Store->Mutex, 0x7fffffff);
 
@@ -486,7 +488,7 @@ ERROR VarIterate(KeyStore *Store, CSTRING Index, CSTRING *Key, APTR *Data, LONG 
    else ki = -1;
 
    for (i=ki+1; i < Store->TableSize; i++) {
-      if ((!Store->Data[i]) OR (CHECK_DEAD_KEY(Store->Data[i])) OR (Store->Data[i]->Flags & KPF_PREHASHED)) continue;
+      if ((!Store->Data[i]) or (CHECK_DEAD_KEY(Store->Data[i])) or (Store->Data[i]->Flags & KPF_PREHASHED)) continue;
 
       if (Key)  *Key = GET_KEY_NAME(Store->Data[i]);
       if (Data) *Data = (APTR)GET_KEY_VALUE(Store->Data[i]);
@@ -626,7 +628,7 @@ ERROR VarSetString(KeyStore *Store, CSTRING Key, CSTRING Value)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Key) OR (!Store)) return ERR_NullArgs;
+   if ((!Key) or (!Store)) return ERR_NullArgs;
 
    log.traceBranch("%p: %s = %.60s", Store, Key, Value);
 
@@ -659,7 +661,7 @@ ERROR VarSetString(KeyStore *Store, CSTRING Key, CSTRING Value)
    }
    else { // Brand new key
       KeyPair *kp = build_key_pair(Store, Key, Value, StrLength(Value) + 1);
-      if ((kp) AND ((ki = hm_put(Store, kp)) >= 0)) {
+      if ((kp) and ((ki = hm_put(Store, kp)) >= 0)) {
          kp->Flags |= KPF_STRING;
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
          return ERR_Okay;
@@ -703,7 +705,7 @@ APTR VarSet(KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Key) OR (!Store)) return NULL;
+   if ((!Key) or (!Store)) return NULL;
 
    log.traceBranch("%p: %s = %p", Store, Key, Data);
 
@@ -733,7 +735,7 @@ APTR VarSet(KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
    }
    else { // Brand new key
       KeyPair *kp = build_key_pair(Store, Key, Data, Size);
-      if ((kp) AND ((ki = hm_put(Store, kp)) >= 0)) {
+      if ((kp) and ((ki = hm_put(Store, kp)) >= 0)) {
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
          return (APTR)GET_KEY_VALUE(kp);
       }
@@ -774,7 +776,7 @@ ERROR VarSetSized(KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LONG *Dat
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Key) OR (!Store) OR (!Size) OR (!Data)) return ERR_NullArgs;
+   if ((!Key) or (!Store) or (!Size) or (!Data)) return ERR_NullArgs;
 
    log.traceBranch("%p: %s, Size: %d", Store, Key, Size);
 
@@ -796,7 +798,7 @@ ERROR VarSetSized(KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LONG *Dat
    }
    else { // Brand new key
       KeyPair *kp = build_key_pair(Store, Key, NULL, Size);
-      if ((kp) AND ((ki = hm_put(Store, kp)) >= 0)) {
+      if ((kp) and ((ki = hm_put(Store, kp)) >= 0)) {
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
          *Data = (APTR)GET_KEY_VALUE(kp);
          if (DataSize) *DataSize = Size;
@@ -822,7 +824,7 @@ resource(KeyStore) Store: The key store to lock.
 
 void VarUnlock(KeyStore *Store)
 {
-   if ((!Store) OR (!Store->Mutex)) return;
+   if ((!Store) or (!Store->Mutex)) return;
    UnlockMutex(Store->Mutex);
 }
 
@@ -849,7 +851,7 @@ DoesNotExist
 
 ERROR KeyGet(KeyStore *Store, ULONG Key, APTR *Data, LONG *Size)
 {
-   if ((!Store) OR (!Data)) return ERR_NullArgs;
+   if ((!Store) or (!Data)) return ERR_NullArgs;
 
    if (Store->Flags & KSF_THREAD_SAFE) LockMutex(Store->Mutex, 0x7fffffff);
 
@@ -936,7 +938,7 @@ ERROR KeyIterate(KeyStore *Store, ULONG Index, ULONG *Key, APTR *Data, LONG *Siz
    else ki = -1;
 
    for (i=ki+1; i < Store->TableSize; i++) {
-      if ((!Store->Data[i]) OR (CHECK_DEAD_KEY(Store->Data[i]))) continue;
+      if ((!Store->Data[i]) or (CHECK_DEAD_KEY(Store->Data[i]))) continue;
 
       if (Key)  *Key = Store->Data[i]->KeyHash;
       if (Data) *Data = (APTR)GET_KEY_VALUE(Store->Data[i]);
@@ -1015,13 +1017,13 @@ ERROR KeySet(KeyStore *Store, ULONG Key, const void *Data, LONG Size)
       return ERR_Okay;
    }
    else { // Brand new key
-      if ((Size > 64 * 1024) OR (Size < 0)) {
+      if ((Size > 64 * 1024) or (Size < 0)) {
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
          return ERR_DataSize;
       }
 
       KeyPair *kp = build_hashed_key_pair(Store, Key, Data, Size);
-      if ((kp) AND ((ki = hm_put(Store, kp)) >= 0)) {
+      if ((kp) and ((ki = hm_put(Store, kp)) >= 0)) {
          if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
          return ERR_Okay;
       }

@@ -121,7 +121,7 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
       return ERR_UnsupportedOwner;
    }
 
-   // TO DO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
+   // TODO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
 
    log.debug("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
 
@@ -1061,7 +1061,7 @@ static const FieldArray clSceneFields[] = {
    { "Gamma",        FDF_DOUBLE|FDF_RW,          0, NULL, NULL },
    { "Viewport",     FDF_OBJECT|FD_R,            ID_VECTORVIEWPORT, NULL, NULL },
    { "Bitmap",       FDF_OBJECT|FDF_RW,          ID_BITMAP, NULL, (APTR)SET_Bitmap },
-   { "Defs",         FDF_STRUCT|FDF_PTR|FDF_SYSTEM|FDF_R, (MAXINT)"KeyStore", NULL, NULL },
+   { "Defs",         FDF_STRUCT|FDF_PTR|FDF_SYSTEM|FDF_RESOURCE|FDF_R, (MAXINT)"KeyStore", NULL, NULL },
    { "Surface",      FDF_OBJECTID|FDF_RI,        ID_SURFACE, NULL, (APTR)SET_Surface },
    { "Flags",        FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clVectorSceneFlags, NULL, NULL },
    { "PageWidth",    FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_PageWidth },
