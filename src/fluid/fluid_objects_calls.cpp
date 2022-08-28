@@ -436,7 +436,7 @@ static LONG get_results(lua_State *Lua, const FunctionField *args, const BYTE *A
             RMSG("Result-Arg: %s, Struct: %p", args[i].Name, ptr_struct);
             if (ptr_struct) {
                if (type & FD_RESOURCE) {
-                  push_struct(Lua->Script, ptr_struct, args[i].Name, (type & FD_ALLOC) ? TRUE : FALSE, TRUE);
+                  push_struct(Lua->Script, ptr_struct, args[i].Name, (type & FD_ALLOC) ? TRUE : FALSE, FALSE);
                }
                else {
                   if (named_struct_to_table(Lua, args[i].Name, ptr_struct) != ERR_Okay) {

@@ -235,7 +235,13 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
          APTR result;
          if (field->Arg) {
             if (!(error = GetPointer(src, field->FieldID, &result))) {
-               named_struct_to_table(Lua, (CSTRING)field->Arg, result);
+               if (result) {
+                  if (field->Flags & FD_RESOURCE) {
+                      push_struct(Lua->Script, result, (CSTRING)field->Arg, (field->Flags & FD_ALLOC) ? TRUE : FALSE, TRUE);
+                  }
+                  else named_struct_to_table(Lua, (CSTRING)field->Arg, result);
+               }
+               else lua_pushnil(Lua);
             }
          }
          else {
