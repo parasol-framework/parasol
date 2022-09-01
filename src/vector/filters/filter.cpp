@@ -535,7 +535,7 @@ static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
          agg::trans_affine transform;
          transform.tx += fx;
          transform.ty += fy;
-         compile_transforms(*child, transform);
+         apply_transforms(*child, transform);
          rect.transform(transform);
 
          bounding_rect_single(rect, 0, &fx, &fy, &fw, &fh);

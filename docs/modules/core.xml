@@ -1402,7 +1402,7 @@ GetFields(screen,
     <input>
       <param type="struct KeyStore *" name="Store">Must refer to a KeyStore resource.</param>
       <param type="ULONG" name="Key">A unique identifier to access.</param>
-      <param type="APTR *" name="Data">A pointer to the data associated with Key is returned in this parameter.</param>
+      <param type="APTR *" name="Data">A pointer to the data associated with Key is returned in this parameter, or set to NULL if testing that a key exists.</param>
       <param type="LONG *" name="Size">Optional.  The size of the Data area is returned in this parameter.</param>
     </input>
     <description>
@@ -3730,6 +3730,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <description>
 <p>Named variables can be retrieved from variable stores by calling VarGet().  If a matching Name is discovered, a direct pointer to its associated data is returned.</p>
 <p>In addition to values set with <function module="Core">VarSet</function>, this function also works with those set by <function module="Core">VarSet</function>.</p>
+<p>This function is the fastest means of testing for the existence of a named key if Data and Size are set to NULL.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

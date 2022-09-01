@@ -162,7 +162,7 @@ gui.listView = function(Options)
          local vp = item._vectors.viewport
 
          if item.icon then
-            catch(function()
+            pcall(function()
                if not View.icons then View.icons = { } end
 
                if not View.icons[item.icon] then
@@ -178,9 +178,6 @@ gui.listView = function(Options)
                      height = lIconSize
                   })
                end
-            end,
-            function(Exception)
-               msg('Failed to process icon ' .. item.icon .. ', error ' .. Exception.message)
             end)
          end
 

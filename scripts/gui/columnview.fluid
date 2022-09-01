@@ -550,7 +550,7 @@ gui.columnView = function(Options)
             if not item._col[attrib] then item._col[attrib] = { } end
 
             if col.showIcons and item.icon then
-               catch(function()
+               pcall(function()
                   local uid = item.icon
                   if item.iconColour then
                      uid = uid .. '+' .. item.iconColour
@@ -569,9 +569,6 @@ gui.columnView = function(Options)
                         height = ICON_SIZE
                      })
                   end
-               end,
-               function(Exception)
-                  msg('Failed to process icon ' .. item.icon .. ', error ' .. Exception.message)
                end)
             elseif (col.checkBoxes) then
                -- Checkbox mode leverages the icon mechanisms that are already in place.

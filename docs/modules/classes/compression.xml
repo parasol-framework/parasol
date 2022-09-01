@@ -401,9 +401,9 @@ if (!error) {
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>To receive feedback during any de/compression process, set a callback routine in this field. The format for the callback routine is <code>ERROR Function(*Compression, struct CompressionFeedback *)</code>.</p>
+<p>To receive feedback during any de/compression process, set a callback routine in this field. The format for the callback routine is <code>ERROR Function(*Compression, *CompressionFeedback)</code>.</p>
 <p>For object classes, the object that initiated the de/compression process can be learned by calling the Core's <function module="Core">CurrentContext</function> function.</p>
-<p>During the processing of multiple files, any individual file can be skipped by returning ERR_Skip and the entire process can be cancelled by returning ERR_Terminate.  All other error codes are ignored.</p>
+<p>During the processing of multiple files, any individual file can be skipped by returning <code>ERR_Skip</code> and the entire process can be cancelled by returning ERR_Terminate.  All other error codes are ignored.</p>
 <p>The <struct>CompressionFeedback</struct> structure consists of the following fields:</p>
 <struct lookup="CompressionFeedback"/>
 <p>Scripts should read the <field>FeedbackInfo</field> field to get the structure content.  Do not attempt to convert the CompressionFeedback pointer to a readable structure.</p>
@@ -448,7 +448,7 @@ if (!error) {
       <type>OBJECTID</type>
       <description>
 <p>If this field is set to a valid ObjectID, text messages will be sent to that object when the compression object is used.  This can be helpful for notifying the user of the results of compression, decompression and removal of files.</p>
-<p>The object receiving the message must be capable of understanding text sent via data channels.  In most cases it is recommended that a @Text object is used for this purpose.</p>
+<p>The target object must be capable of processing incoming text from data channels.</p>
       </description>
     </field>
 

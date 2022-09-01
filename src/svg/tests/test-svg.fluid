@@ -61,7 +61,7 @@ function testDiamonds()  hashTestSVG('patterns/diamonds.svg', 0) end
 function testDimple()    hashTestSVG('patterns/dimple.svg', 0x1806e6a0) end
 function testDot()       hashTestSVG('patterns/dot.svg', 0x13252bb4) end
 function testHoneycomb() hashTestSVG('patterns/honeycomb.svg', 0x3654fdd0) end
-function testSnake()     hashTestSVG('patterns/snake.svg', 0) end
+function testSnake()     hashTestSVG('patterns/snake.svg', 0xd8200b23) end
 function testVStripes()  hashTestSVG('patterns/vstripes.svg', 0xc8ab997e) end
 
 function testComposite()    hashTestSVG('filters/composite.svg', 0) end
@@ -80,7 +80,7 @@ function testW3Viewbox()        hashTestSVG('transforms/w3-viewbox.svg', 0x6efb0
 function testCSS()          hashTestSVG('misc/css.svg', 0xab6e2a08) end
 function testBrushStrokes() hashTestSVG('misc/brush-strokes.svg', 0xf9f469c3) end
 
-function testClock()  hashTestSVG('images/clock.svg', 0x5cd95107) end
+function testClock()  hashTestSVG('images/clock.svg', 0xaf8d39d8) end
 function testTiger()  hashTestSVG('images/tiger.svg', 0x3f0e95a6) end
 
 -----------------------------------------------------------------------------------------------------------------------

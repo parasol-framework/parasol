@@ -140,6 +140,58 @@ static ERROR PATTERN_SET_Inherit(objVectorPattern *Self, objVectorPattern *Value
 }
 
 /*****************************************************************************
+-FIELD-
+Matrices: A linked list of transform matrices that have been applied to the pattern.
+
+All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is
+represented by a VectorMatrix structure, and are linked in the order in which they were applied to the pattern.
+
+&VectorMatrix
+
+*****************************************************************************/
+
+static ERROR VECTORPATTERN_GET_Matrices(objVectorPattern *Self, VectorMatrix **Value)
+{
+   *Value = Self->Matrices;
+   return ERR_Okay;
+}
+
+static ERROR VECTORPATTERN_SET_Matrices(objVectorPattern *Self, VectorMatrix *Value)
+{
+   if (!Value) {
+      auto hook = &Self->Matrices;
+      while (Value) {
+         VectorMatrix *matrix;
+         if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix, NULL)) {
+            matrix->Vector = NULL;
+            matrix->Next   = NULL;
+            matrix->ScaleX = Value->ScaleX;
+            matrix->ScaleY = Value->ScaleY;
+            matrix->ShearX = Value->ShearX;
+            matrix->ShearY = Value->ShearY;
+            matrix->TranslateX = Value->TranslateX;
+            matrix->TranslateY = Value->TranslateY;
+            *hook = matrix;
+            hook = &matrix->Next;
+         }
+         else return ERR_AllocMemory;
+
+         Value = Value->Next;
+      }
+   }
+   else {
+      VectorMatrix *next;
+      for (auto scan=Self->Matrices; scan; scan=next) {
+         next = scan->Next;
+         FreeResource(scan);
+      }
+      Self->Matrices = NULL;
+   }
+
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 
 -FIELD-
 Opacity: The opacity of the pattern.
@@ -189,8 +241,20 @@ static ERROR PATTERN_SET_Transform(objVectorPattern *Self, CSTRING Commands)
 
    if (!Self->Matrices) {
       VectorMatrix *matrix;
-      if (!vecNewMatrix(Self, &matrix)) return vecParseTransform(matrix, Commands);
-      else return ERR_CreateResource;
+      if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix, NULL)) {
+         matrix->Vector = NULL;
+         matrix->Next   = Self->Matrices;
+         matrix->ScaleX = 1.0;
+         matrix->ScaleY = 1.0;
+         matrix->ShearX = 0;
+         matrix->ShearY = 0;
+         matrix->TranslateX = 0;
+         matrix->TranslateY = 0;
+
+         Self->Matrices = matrix;
+         return vecParseTransform(Self->Matrices, Commands);
+      }
+      else return ERR_AllocMemory;
    }
    else {
       vecResetMatrix(Self->Matrices);
@@ -331,6 +395,7 @@ static const FieldArray clPatternFields[] = {
    { "Dimensions",   FDF_LONGFLAGS|FDF_R,        (MAXINT)&clPatternDimensions, NULL, NULL },
    //{ "AspectRatio", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clAspectRatio, (APTR)PATTERN_GET_AspectRatio, (APTR)PATTERN_SET_AspectRatio },
    // Virtual fields
+   { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"VectorMatrix", (APTR)VECTORPATTERN_GET_Matrices, (APTR)VECTORPATTERN_SET_Matrices },
    { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)PATTERN_SET_Transform },
    END_FIELD
 };

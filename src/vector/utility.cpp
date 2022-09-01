@@ -76,7 +76,7 @@ static FIELD FID_FreetypeFace;
 // These functions expect to be called during path generation via gen_vector_path().  If this is not the case, ensure
 // that Dirty field markers are cleared beforehand.
 
-template <class T> inline static DOUBLE get_parent_width(T *Vector)
+template <class T> inline static DOUBLE get_parent_width(const T *Vector)
 {
    if (Vector->ParentView) {
       if ((Vector->ParentView->vpDimensions & DMF_WIDTH) or
@@ -90,7 +90,7 @@ template <class T> inline static DOUBLE get_parent_width(T *Vector)
    else return 0;
 }
 
-template <class T> inline static DOUBLE get_parent_height(T *Vector)
+template <class T> inline static DOUBLE get_parent_height(const T *Vector)
 {
    if (Vector->ParentView) {
       if ((Vector->ParentView->vpDimensions & DMF_HEIGHT) or
@@ -166,7 +166,7 @@ inline static void reset_final_path(T *Vector)
 //********************************************************************************************************************
 
 template <class T>
-inline static void compile_transforms(const T &Vector, agg::trans_affine &AGGTransform)
+inline static void apply_transforms(const T &Vector, agg::trans_affine &AGGTransform)
 {
    for (auto t=Vector.Matrices; t; t=t->Next) {
       AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
@@ -345,7 +345,7 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 //********************************************************************************************************************
 // Find the first parent of the targeted vector.  Returns NULL if no valid parent is found.
 
-inline static objVector * get_parent(objVector *Vector)
+inline static objVector * get_parent(const objVector *Vector)
 {
    if (Vector->Head.ClassID != ID_VECTOR) return NULL;
    while (Vector) {

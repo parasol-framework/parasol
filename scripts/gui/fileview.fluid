@@ -1269,49 +1269,48 @@ gui.fileview = function(View, Options)
       end
    end)
 
-   catch(function()
-      self.view.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
-         if (Event == FM_HAS_FOCUS) then
-            self.hasFocus = true
-         elseif (Event == FM_LOST_FOCUS) then
-            self.hasFocus = false
+   self.view.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
+      if (Event == FM_HAS_FOCUS) then
+         self.hasFocus = true
+      elseif (Event == FM_LOST_FOCUS) then
+         self.hasFocus = false
+      end
+   end)
+
+   -- Drag and drop support is implemented with help from the Clipboard class.  It allows items to be
+   -- requested from the FileView.
+
+   local drag_clipboard = obj.new('clipboard', {
+      name  = 'fvDragClipboard',
+      flags = '!DragDrop',
+      requestHandler = function(Clipboard, Requester, Item, Datatypes)
+         if not nz(self.path) then -- Do nothing if we are at the root level
+            gui.dialog.error('Drag and Drop Failure', 'Drag and drop from volumes is not supported.', self.window);
+            return
          end
-      end)
 
-      -- Drag and drop support is implemented with help from the Clipboard class.  It allows items to be
-      -- requested from the FileView.
-
-      local drag_clipboard = obj.new('clipboard', {
-         name  = 'fvDragClipboard',
-         flags = '!DragDrop',
-         requestHandler = function(Clipboard, Requester, Item, Datatypes)
-            if not nz(self.path) then -- Do nothing if we are at the root level
-               gui.dialog.error('Drag and Drop Failure', 'Drag and drop from volumes is not supported.', self.window);
-               return
-            end
-
-            if (Datatypes[1] == DATA_FILE) then
-               local items = self.view.dragItems
-               if #items > 0 then
-                  local files = { }
-                  for i=1,#items do
-                     table.insert(files, { file = { path=self.path .. items[i].name.value } })
-                  end
-
-                  local xml = {
-                     receipt = {
-                        totalitems = #items,
-                        id = Item,
-                        files
-                     }
-                  }
-                  Requester.acDataFeed(Clipboard, DATA_RECEIPT, table.toXML(xml))
+         if (Datatypes[1] == DATA_FILE) then
+            local items = self.view.dragItems
+            if #items > 0 then
+               local files = { }
+               for i=1,#items do
+                  table.insert(files, { file = { path=self.path .. items[i].name.value } })
                end
+
+               local xml = {
+                  receipt = {
+                     totalitems = #items,
+                     id = Item,
+                     files
+                  }
+               }
+               Requester.acDataFeed(Clipboard, DATA_RECEIPT, table.toXML(xml))
             end
          end
-      })
+      end
+   })
 
-      drag_clipboard.detach()
+   drag_clipboard.detach()
 --[[
       self.view.dragSource = drag_clipboard
 
@@ -1370,58 +1369,54 @@ gui.fileview = function(View, Options)
          end)
       end)
 --]]
-      self.view.itemActivated = function(View, Reason, Item)
-         -- Browse the currently selected file or folder.
+   self.view.itemActivated = function(View, Reason, Item)
+      -- Browse the currently selected file or folder.
 
-         if (string.find(Item.filename, '^.+[:/\\]$') != nil) then -- Inspect folder
-            self.browse(nz(self.path,'') .. Item.filename)
-         elseif (Item.type == 'parent') then -- Parent
-            self.parentFolder()
-         else -- Activate file
-            if lOptions.autoMode then
-               local tags = { Item, -1 }
+      if (string.find(Item.filename, '^.+[:/\\]$') != nil) then -- Inspect folder
+         self.browse(nz(self.path,'') .. Item.filename)
+      elseif (Item.type == 'parent') then -- Parent
+         self.parentFolder()
+      else -- Activate file
+         if lOptions.autoMode then
+            local tags = { Item, -1 }
 
-               if (tags[1] != -1) then
-                  if (lOptions.autoMode == 'open') then
-                     openFiles(tags, 'Open')
-                  elseif (lOptions.autoMode == 'edit') then
-                     openFiles(tags, 'Edit')
-                  elseif (lOptions.autoMode == 'view') then
-                     openFiles(tags, 'View')
-                  end
+            if (tags[1] != -1) then
+               if (lOptions.autoMode == 'open') then
+                  openFiles(tags, 'Open')
+               elseif (lOptions.autoMode == 'edit') then
+                  openFiles(tags, 'Edit')
+               elseif (lOptions.autoMode == 'view') then
+                  openFiles(tags, 'View')
                end
             end
+         end
 
-            if lOptions.fileSelected then
-               lOptions.fileSelected(self)
-            end
+         if lOptions.fileSelected then
+            lOptions.fileSelected(self)
          end
       end
+   end
 
-      local err
-      err, self.evVolumeCreated = subscribeEvent('filesystem.volume.created', eventVolumeCreated)
-      err, self.evVolumeDeleted = subscribeEvent('filesystem.volume.deleted', eventVolumeDeleted)
+   local err
+   err, self.evVolumeCreated = subscribeEvent('filesystem.volume.created', eventVolumeCreated)
+   err, self.evVolumeDeleted = subscribeEvent('filesystem.volume.deleted', eventVolumeDeleted)
 
-      checkDocView()
+   checkDocView()
 
-      self.refresh()
+   self.refresh()
 
-      if (not self.watch) and nz(self.path) then
-         catch(function()
-            self.watch = obj.new('file', { path = self.path })
-            self.watch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE, MFF_DELETE, MFF_ATTRIB, MFF_CLOSED, MFF_MOVED))
-         end,
-         function(Exception) -- Some systems don't support path watching
-            self.watch = nil
-            err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
-         end)
-      end
+   if (not self.watch) and nz(self.path) then
+      catch(function()
+         self.watch = obj.new('file', { path = self.path })
+         self.watch.mtWatch(pathWatch, 0, bit.bor(MFF_CREATE, MFF_DELETE, MFF_ATTRIB, MFF_CLOSED, MFF_MOVED))
+      end,
+      function(Exception) -- Some systems don't support path watching
+         self.watch = nil
+         err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
+      end)
+   end
 
-      self.window = parentWindow(self.view.viewport.scene.surface)
-   end,
-   function(Exception)
-      error('Failed to initialise FileView: ' .. Exception.message)
-   end)
+   self.window = parentWindow(self.view.viewport.scene.surface)
 
    return self
 end
