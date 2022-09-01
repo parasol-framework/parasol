@@ -405,9 +405,15 @@ end
 
 gui.createIcon = function(Scene, Path, Size, Theme, Name)
    if not Size then Size = 16 end
+   if not Path then error('No Path specified.') end
    if not Name then Name = Path end
    local lGradient = gui.iconThemes.default
-   local icon = { }
+   local icon = { size=Size }
+
+   local defs = Scene.defs
+   if defs then -- Return if the icon pattern is already registered
+      if (mSys.VarGet(defs, Name) == ERR_Okay) then return end
+   end
 
    if type(Theme) == 'table' then
       lGradient = Theme

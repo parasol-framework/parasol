@@ -169,6 +169,11 @@ static ERROR VECTORGRADIENT_Init(objVectorGradient *Self, APTR Void)
       return ERR_OutOfRange;
    }
 
+   if ((Self->Type IS VGT_CONTOUR) and (Self->Units IS VUNIT_USERSPACE)) {
+      log.warning("Contour gradients are not compatible with Units.USERSPACE.");
+      Self->Units = VUNIT_BOUNDING_BOX;
+   }
+
    return ERR_Okay;
 }
 
@@ -389,6 +394,58 @@ static ERROR VECTORGRADIENT_SET_Inherit(objVectorGradient *Self, objVectorGradie
 }
 
 /*****************************************************************************
+-FIELD-
+Matrices: A linked list of transform matrices that have been applied to the gradient.
+
+All transforms that have been applied to the gradient can be read from the Matrices field.  Each transform is
+represented by a VectorMatrix structure, and are linked in the order in which they were applied to the gradient.
+
+&VectorMatrix
+
+*****************************************************************************/
+
+static ERROR VECTORGRADIENT_GET_Matrices(objVectorGradient *Self, VectorMatrix **Value)
+{
+   *Value = Self->Matrices;
+   return ERR_Okay;
+}
+
+static ERROR VECTORGRADIENT_SET_Matrices(objVectorGradient *Self, VectorMatrix *Value)
+{
+   if (!Value) {
+      auto hook = &Self->Matrices;
+      while (Value) {
+         VectorMatrix *matrix;
+         if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix, NULL)) {
+            matrix->Vector = NULL;
+            matrix->Next   = NULL;
+            matrix->ScaleX = Value->ScaleX;
+            matrix->ScaleY = Value->ScaleY;
+            matrix->ShearX = Value->ShearX;
+            matrix->ShearY = Value->ShearY;
+            matrix->TranslateX = Value->TranslateX;
+            matrix->TranslateY = Value->TranslateY;
+            *hook = matrix;
+            hook = &matrix->Next;
+         }
+         else return ERR_AllocMemory;
+
+         Value = Value->Next;
+      }
+   }
+   else {
+      VectorMatrix *next;
+      for (auto scan=Self->Matrices; scan; scan=next) {
+         next = scan->Next;
+         FreeResource(scan);
+      }
+      Self->Matrices = NULL;
+   }
+
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 
 -FIELD-
 NumericID: A unique identifier for the vector.
@@ -521,30 +578,25 @@ static ERROR VECTORGRADIENT_SET_Transform(objVectorGradient *Self, CSTRING Comma
 
    if (!Self->Matrices) {
       VectorMatrix *matrix;
-      if (!vecNewMatrix(Self, &matrix)) return vecParseTransform(matrix, Commands);
-      else return ERR_CreateResource;
+      if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix, NULL)) {
+         matrix->Vector = NULL;
+         matrix->Next   = Self->Matrices;
+         matrix->ScaleX = 1.0;
+         matrix->ScaleY = 1.0;
+         matrix->ShearX = 0;
+         matrix->ShearY = 0;
+         matrix->TranslateX = 0;
+         matrix->TranslateY = 0;
+
+         Self->Matrices = matrix;
+         return vecParseTransform(Self->Matrices, Commands);
+      }
+      else return ERR_AllocMemory;
    }
    else {
       vecResetMatrix(Self->Matrices);
       return vecParseTransform(Self->Matrices, Commands);
    }
-}
-
-/*****************************************************************************
--FIELD-
-Matrices: A linked list of transform matrices that have been applied to the gradient.
-
-All transforms that have been applied to the gradient can be read from the Matrices field.  Each transform is
-represented by the VectorMatrix structure, and are linked in the order in which they were applied to the gradient.
-
-&VectorMatrix
-
-*****************************************************************************/
-
-static ERROR VECTORGRADIENT_GET_Matrices(objVectorGradient *Self, VectorMatrix **Value)
-{
-   *Value = Self->Matrices;
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -721,16 +773,16 @@ static const FieldArray clGradientFields[] = {
    { "Radius",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTORGRADIENT_GET_Radius, (APTR)VECTORGRADIENT_SET_Radius },
    { "Inherit",      FDF_OBJECT|FDF_RW,           0, NULL, (APTR)VECTORGRADIENT_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW,  (MAXINT)&clVectorGradientSpreadMethod, NULL, NULL },
-   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW,  (MAXINT)&clVectorGradientUnits, NULL, NULL },
-   { "Type",         FDF_LONG|FDF_LOOKUP|FDF_RW,  (MAXINT)&clVectorGradientType, NULL, NULL },
+   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RI,  (MAXINT)&clVectorGradientUnits, NULL, NULL },
+   { "Type",         FDF_LONG|FDF_LOOKUP|FDF_RI,  (MAXINT)&clVectorGradientType, NULL, NULL },
    { "Flags",        FDF_LONGFLAGS|FDF_RW,        (MAXINT)&clVectorGradientFlags, NULL, NULL },
    { "TotalStops",   FDF_LONG|FDF_R,              0, NULL, NULL },
    // Virtual fields
+   { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"VectorMatrix", (APTR)VECTORGRADIENT_GET_Matrices, (APTR)VECTORGRADIENT_SET_Matrices },
    { "NumericID",    FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, (APTR)VECTORGRADIENT_GET_NumericID, (APTR)VECTORGRADIENT_SET_NumericID },
    { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)VECTORGRADIENT_GET_ID, (APTR)VECTORGRADIENT_SET_ID },
    { "Stops",        FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW, (MAXINT)"GradientStop", (APTR)VECTORGRADIENT_GET_Stops, (APTR)VECTORGRADIENT_SET_Stops },
    { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)VECTORGRADIENT_SET_Transform },
-   { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorMatrix", (APTR)VECTORGRADIENT_GET_Matrices, NULL },
    END_FIELD
 };
 
