@@ -795,7 +795,7 @@ if ((pointer = gfxAccessPointer())) {
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="InUse">Resource is in use.</error>
+      <error code="InUse">Previous allocations have not been freed.</error>
       <error code="Failed">General failure.</error>
       <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
