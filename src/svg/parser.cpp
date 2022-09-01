@@ -911,6 +911,7 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
 
    for (LONG a=1; (a < Tag->TotalAttrib) and (!ref); a++) {
       switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
+         case SVF_HREF: // SVG2
          case SVF_XLINK_HREF: ref = Tag->Attrib[a].Value; break;
       }
    }
@@ -939,7 +940,7 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
       // are no attributes to apply to the group then there is no sense in creating an empty one.
 
       OBJECTPTR group;
-      UBYTE need_group = FALSE;
+      bool need_group = false;
       for (LONG a=1; (a < Tag->TotalAttrib) and (!need_group); a++) {
          switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
             case SVF_X: case SVF_Y: case SVF_WIDTH: case SVF_HEIGHT: break;
@@ -954,10 +955,6 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
             acInit(group);
          }
       }
-
-
-
-
 
       if (NewObject(ID_VECTORVIEWPORT, 0, &vector)) return;
       SetOwner(vector, Parent);
@@ -1020,8 +1017,9 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
       }
       else log.trace("Element TagIndex %d is out of range.", id->TagIndex);
    }
-   else { // SVG requires that the 'use' element is converted to a 'g' and that the 'use' attributes are applied to it.
-      if (!NewObject(ID_VECTORGROUP, 0, &vector)) {
+   else {
+      // Rather than creating a vanilla group with a child viewport, this optimal approach creates the viewport only.
+      if (!NewObject(ID_VECTORVIEWPORT, 0, &vector)) {
          SetOwner(vector, Parent);
          apply_state(&state, vector);
          process_attrib(Self, XML, Tag, vector); // Apply 'use' attributes to the group.
@@ -1055,10 +1053,7 @@ static void xtag_group(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, 
    OBJECTPTR sibling = NULL;
    for (auto child = Tag->Child; child; child=child->Next) {
       if (child->Attrib->Name) {
-         ULONG hash = StrHash(child->Attrib->Name, FALSE);
-         switch(hash) {
-            default: xtag_default(Self, hash, XML, &state, child, group, &sibling);  break;
-         }
+         xtag_default(Self, StrHash(child->Attrib->Name, FALSE), XML, &state, child, group, &sibling);
       }
    }
 
@@ -1122,8 +1117,16 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
 
          case SVF_X: set_double(viewport, FID_X, val); break;
          case SVF_Y: set_double(viewport, FID_Y, val); break;
-         case SVF_WIDTH: set_double(viewport, FID_Width, val); break;
-         case SVF_HEIGHT: set_double(viewport, FID_Height, val); break;
+
+         case SVF_WIDTH:
+            set_double(viewport, FID_Width, val);
+            SetLong(viewport, FID_OverflowX, VOF_HIDDEN);
+            break;
+
+         case SVF_HEIGHT:
+            set_double(viewport, FID_Height, val);
+            SetLong(viewport, FID_OverflowY, VOF_HIDDEN);
+            break;
 
          case SVF_PRESERVEASPECTRATIO:
             SetLong(viewport, FID_AspectRatio, parse_aspect_ratio(val));

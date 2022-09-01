@@ -55,7 +55,7 @@ function testSuperSpiral() hashTestSVG('paths/superspiral.svg', 0x27599bd6) end
 function testTransitions() hashTestSVG('paths/transitions.svg', 0x919e10de) end
 function testWave()        hashTestSVG('paths/wave.svg', 0x65b74450) end
 
-function testChevrons()  hashTestSVG('patterns/chevrons.svg', 0) end
+function testChevrons()  hashTestSVG('patterns/chevrons.svg', 0x0e9e5bed) end
 function testComplex()   hashTestSVG('patterns/complex.svg', 0) end
 function testDiamonds()  hashTestSVG('patterns/diamonds.svg', 0) end
 function testDimple()    hashTestSVG('patterns/dimple.svg', 0x1806e6a0) end
@@ -73,9 +73,9 @@ function testW3Morphology() hashTestSVG('filters/w3-morphology.svg', 0xa34245c2)
 function testW3Turbulence() hashTestSVG('filters/w3-turbulence.svg', 0x2b1f4122) end
 
 function testTransformations()  hashTestSVG('transforms/transformations.svg', 0xcc933198) end
-function testW3AspectRatio()    hashTestSVG('transforms/w3-aspectratio.svg', 0x2c86d72e) end
+function testW3AspectRatio()    hashTestSVG('transforms/w3-aspectratio.svg', 0x5d2fd30a) end
 function testW3SkewText()       hashTestSVG('transforms/w3-skew-text.svg', 0xe8984527) end
-function testW3Viewbox()        hashTestSVG('transforms/w3-viewbox.svg', 0x6efb0f07) end
+function testW3Viewbox()        hashTestSVG('transforms/w3-viewbox.svg', 0xc3159d79) end
 
 function testCSS()          hashTestSVG('misc/css.svg', 0xab6e2a08) end
 function testBrushStrokes() hashTestSVG('misc/brush-strokes.svg', 0xf9f469c3) end
