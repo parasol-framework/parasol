@@ -79,16 +79,17 @@ static bool check_dirty(objVector *Shape) {
 
 static const agg::trans_affine build_fill_transform(objVector &Vector, bool Userspace,  VectorState &State)
 {
-   if (Userspace) { // Userspace: Ignores the vector, but inherits parent transforms
-      agg::trans_affine parents;
-      apply_parent_transforms((objVector *)get_parent(&Vector), parents);
-      return parents;
+   if (Userspace) { // Userspace: The vector's (x,y) position is ignored, but its transforms and all parent transforms will apply.
+      agg::trans_affine transform;
+      apply_transforms(Vector, transform);
+      apply_parent_transforms((objVector *)get_parent(&Vector), transform);
+      return transform;
    }
    else if (State.mApplyTransform) { // BoundingBox with a real-time transform
       agg::trans_affine transform = Vector.Transform * State.mTransform;
       return transform;
    }
-   else return Vector.Transform; // Default BoundingBox: The vector and its parent transforms apply.
+   else return Vector.Transform; // Default BoundingBox: The vector's position, transforms, and parent transforms apply.
 }
 
 //****************************************************************************
@@ -609,7 +610,7 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
          }
 
          if (length < 255) {   // Blending works best if the gradient span is at least 255 colours wide, so adjust it here.
-            transform.scale(length / 255.0);
+            transform.scale(length * (1.0 / 255.0));
             length = 255;
          }
 
