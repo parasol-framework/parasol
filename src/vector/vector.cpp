@@ -134,8 +134,8 @@ static void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *X, DOUBLE
 static void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *);
 static void gen_vector_path(objVector *);
 static void gen_vector_tree(objVector *);
-template <class T> inline static DOUBLE get_parent_height(T *);
-template <class T> inline static DOUBLE get_parent_width(T *);
+template <class T> inline static DOUBLE get_parent_height(const T *);
+template <class T> inline static DOUBLE get_parent_width(const T *);
 template <class T> inline static void get_parent_size(T *, DOUBLE &, DOUBLE &);
 static GRADIENT_TABLE * get_fill_gradient_table(objVector &, DOUBLE);
 static GRADIENT_TABLE * get_stroke_gradient_table(objVector &);

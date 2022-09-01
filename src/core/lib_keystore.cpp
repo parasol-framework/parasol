@@ -335,7 +335,7 @@ a direct pointer to its associated data is returned.
 
 In addition to values set with ~VarSet(), this function also works with those set by ~VarSet().
 
-This function is the fastest means of testing for the existence of a key if Data and Size are set to NULL.
+This function is the fastest means of testing for the existence of a named key if Data and Size are set to NULL.
 
 -INPUT-
 resource(KeyStore) Store: Must refer to a variable storage structure.
@@ -839,7 +839,7 @@ found, a direct pointer to its data is returned.
 -INPUT-
 resource(KeyStore) Store: Must refer to a KeyStore resource.
 uint Key: A unique identifier to access.
-&ptr Data: A pointer to the data associated with Key is returned in this parameter.
+&ptr Data: A pointer to the data associated with Key is returned in this parameter, or set to NULL if testing that a key exists.
 &bufsize Size: Optional.  The size of the Data area is returned in this parameter.
 
 -ERRORS-
@@ -851,7 +851,7 @@ DoesNotExist
 
 ERROR KeyGet(KeyStore *Store, ULONG Key, APTR *Data, LONG *Size)
 {
-   if ((!Store) or (!Data)) return ERR_NullArgs;
+   if (!Store) return ERR_NullArgs;
 
    if (Store->Flags & KSF_THREAD_SAFE) LockMutex(Store->Mutex, 0x7fffffff);
 
@@ -862,7 +862,7 @@ ERROR KeyGet(KeyStore *Store, ULONG Key, APTR *Data, LONG *Size)
          return ERR_DoesNotExist;
       }
 
-      *Data = (APTR)GET_KEY_VALUE(Store->Data[ki]);
+      if (Data) *Data = (APTR)GET_KEY_VALUE(Store->Data[ki]);
       if (Size) *Size = Store->Data[ki]->ValueLength;
       if (Store->Flags & KSF_THREAD_SAFE) UnlockMutex(Store->Mutex);
       return ERR_Okay;
