@@ -28,7 +28,7 @@
       <name>Draw</name>
       <comment>Renders the scene to a bitmap.</comment>
       <description>
-<p>The Draw action will render the scene to the target <field>Bitmap</field>.  If <field>Bitmap</field> is NULL, an error will be returned.</p>
+<p>The Draw action will render the scene to the target <field>Bitmap</field> immediately.  If <field>Bitmap</field> is NULL, an error will be returned.</p>
 <p>In addition, the <field>RenderTime</field> field will be updated if the <code>RENDER_TIME</code> flag is defined.</p>
       </description>
       <result>

@@ -45,6 +45,17 @@
     </field>
 
     <field>
+      <name>Matrices</name>
+      <comment>A linked list of transform matrices that have been applied to the pattern.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>APTR</type>
+      <description>
+<p>All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is represented by a VectorMatrix structure, and are linked in the order in which they were applied to the pattern.</p>
+<struct lookup="VectorMatrix"/>
+      </description>
+    </field>
+
+    <field>
       <name>Opacity</name>
       <comment>The opacity of the pattern.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -147,5 +158,16 @@
 
   </types>
   <structs>
+    <struct name="VectorMatrix" comment="Vector transformation matrix.">
+      <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
+      <field name="Vector" type="struct rkVector *">The vector associated with the transform.</field>
+      <field name="ScaleX" type="DOUBLE">Matrix value A</field>
+      <field name="ShearY" type="DOUBLE">Matrix value B</field>
+      <field name="ShearX" type="DOUBLE">Matrix value C</field>
+      <field name="ScaleY" type="DOUBLE">Matrix value D</field>
+      <field name="TranslateX" type="DOUBLE">Matrix value E</field>
+      <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+    </struct>
+
   </structs>
 </book>
