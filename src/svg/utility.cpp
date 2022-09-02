@@ -46,7 +46,7 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 
 //****************************************************************************
 
-static LONG count_stops(objSVG *Self, XMLTag *Tag)
+static LONG count_stops(objSVG *Self, const XMLTag *Tag)
 {
    LONG stopcount = 0;
    for (auto scan=Tag->Child; scan; scan=scan->Next) {
@@ -59,7 +59,7 @@ static LONG count_stops(objSVG *Self, XMLTag *Tag)
 //****************************************************************************
 // Note that all offsets are percentages.
 
-static ERROR process_transition_stops(objSVG *Self, XMLTag *Tag, Transition *Stops)
+static ERROR process_transition_stops(objSVG *Self, const XMLTag *Tag, Transition *Stops)
 {
    parasol::Log log("process_stops");
 
@@ -104,7 +104,7 @@ static ERROR process_transition_stops(objSVG *Self, XMLTag *Tag, Transition *Sto
 //****************************************************************************
 // Save an id reference for an SVG element.  The element can be then be found at any time with find_href().
 
-static void add_id(objSVG *Self, XMLTag *Tag, CSTRING Name)
+static void add_id(objSVG *Self, const XMLTag *Tag, CSTRING Name)
 {
    parasol::Log log(__FUNCTION__);
    svgID *id;

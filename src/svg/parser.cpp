@@ -49,7 +49,7 @@ static void apply_state(svgState *State, OBJECTPTR Vector)
 //****************************************************************************
 // Copy a tag's attributes to the current state.
 
-static void set_state(svgState *State, XMLTag *Tag)
+static void set_state(svgState *State, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -75,7 +75,7 @@ static void set_state(svgState *State, XMLTag *Tag)
 //****************************************************************************
 // Process all child elements that belong to the target Tag.
 
-static void process_children(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Vector)
+static void process_children(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Vector)
 {
    OBJECTPTR sibling = NULL;
    for (auto child=Tag; child; child=child->Next) {
@@ -88,7 +88,7 @@ static void process_children(objSVG *Self, objXML *XML, svgState *State, XMLTag 
 
 //****************************************************************************
 
-static void xtag_pathtransition(objSVG *Self, objXML *XML, XMLTag *Tag)
+static void xtag_pathtransition(objSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -133,7 +133,7 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, XMLTag *Tag)
 
 //****************************************************************************
 
-static void xtag_clippath(objSVG *Self, objXML *XML, XMLTag *Tag)
+static void xtag_clippath(objSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -182,7 +182,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, XMLTag *Tag)
 
 //****************************************************************************
 
-static void xtag_filter(objSVG *Self, objXML *XML, XMLTag *Tag)
+static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -269,7 +269,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, XMLTag *Tag)
 
 //****************************************************************************
 
-static void process_pattern(objSVG *Self, objXML *XML, XMLTag *Tag)
+static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorPattern *pattern;
@@ -357,7 +357,7 @@ static void process_pattern(objSVG *Self, objXML *XML, XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState *State, XMLTag *Tag,
+static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState *State, const XMLTag *Tag,
    OBJECTPTR Parent, OBJECTPTR *Result)
 {
    parasol::Log log(__FUNCTION__);
@@ -416,7 +416,7 @@ static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState
 
 //****************************************************************************
 
-static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -568,7 +568,7 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
 //****************************************************************************
 // Definition images are stored once, allowing them to be used multiple times via Fill and Stroke references.
 
-static void def_image(objSVG *Self, XMLTag *Tag)
+static void def_image(objSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorImage *image;
@@ -633,7 +633,7 @@ static void def_image(objSVG *Self, XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
    LONG ratio = 0;
@@ -695,7 +695,7 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag,
 
 //****************************************************************************
 
-static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -731,7 +731,7 @@ static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, 
 
 //****************************************************************************
 
-static ERROR xtag_style(objSVG *Self, objXML *XML, XMLTag *Tag)
+static ERROR xtag_style(objSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    ERROR error = ERR_Okay;
@@ -790,7 +790,7 @@ static ERROR xtag_style(objSVG *Self, objXML *XML, XMLTag *Tag)
 // When a use element is encountered, it looks for the associated symbol ID and then processes the XML child tags that
 // belong to it.
 
-static void xtag_symbol(objSVG *Self, objXML *XML, XMLTag *Tag)
+static void xtag_symbol(objSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    log.traceBranch("Tag: %p", Tag);
@@ -804,7 +804,7 @@ static void xtag_symbol(objSVG *Self, objXML *XML, XMLTag *Tag)
 ** Most vector shapes can be morphed to the path of another vector.
 */
 
-static void xtag_morph(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
+static void xtag_morph(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -904,7 +904,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
 // non-exposed DOM tree which had the 'use' element as its parent and all of the 'use' element's ancestors as its
 // higher-level ancestors.
 
-static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent)
+static void xtag_use(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
    CSTRING ref = NULL;
@@ -1034,7 +1034,7 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
 
 //****************************************************************************
 
-static void xtag_group(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static void xtag_group(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1066,7 +1066,7 @@ static void xtag_group(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, 
 ** Refer to section 7.9 of the SVG Specification for more information.
 */
 
-static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
    LONG a;
@@ -1193,7 +1193,7 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
 // <animateTransform attributeType="XML" attributeName="transform" type="rotate" from="0,150,150" to="360,150,150"
 //   begin="0s" dur="5s" repeatCount="indefinite"/>
 
-static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
    svgAnimation anim;
@@ -1348,7 +1348,7 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, XMLTag *Tag, OBJEC
 //****************************************************************************
 // <animateMotion from="0,0" to="100,100" dur="4s" fill="freeze"/>
 
-static ERROR xtag_animatemotion(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_animatemotion(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
 {
    Self->Animated = TRUE;
 
@@ -1379,7 +1379,7 @@ static ERROR xtag_animatemotion(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPT
 
 //****************************************************************************
 
-static void process_attrib(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Vector)
+static void process_attrib(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1409,7 +1409,7 @@ static void process_attrib(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Vec
 //****************************************************************************
 // Apply all attributes in a rule to a target tag.
 
-static void apply_rule(objSVG *Self, objXML *XML, KatanaArray *Properties, XMLTag *Tag)
+static void apply_rule(objSVG *Self, objXML *XML, KatanaArray *Properties, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1578,7 +1578,7 @@ static void process_rule(objSVG *Self, objXML *XML, KatanaRule *Rule)
 
 //****************************************************************************
 
-static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XML, XMLTag *Tag, CSTRING StrValue)
+static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XML, const XMLTag *Tag, CSTRING StrValue)
 {
    parasol::Log log(__FUNCTION__);
    DOUBLE num;
