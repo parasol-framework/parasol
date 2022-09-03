@@ -281,6 +281,7 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
          FID_Name|TSTR,          "SVGPattern",
          FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
          FID_SpreadMethod|TLONG, VSPREAD_REPEAT,
+         FID_HostScene|TPTR,     Self->Scene,
          TAGEND);
 
       for (LONG a=1; a < Tag->TotalAttrib; a++) {

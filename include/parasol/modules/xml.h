@@ -256,7 +256,7 @@ INLINE ERROR xmlGetTag(APTR Ob, LONG Index, struct XMLTag ** Result) {
 }
 
 
-INLINE STRING XMLATTRIB(struct XMLTag *Tag, CSTRING Attrib) {
+INLINE STRING XMLATTRIB(const XMLTag *Tag, CSTRING Attrib) {
    LONG i;
    for (i=0; i < Tag->TotalAttrib; i++) {
       if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
@@ -267,7 +267,7 @@ INLINE STRING XMLATTRIB(struct XMLTag *Tag, CSTRING Attrib) {
    return NULL;
 }
 
-INLINE BYTE XMLATTRIBCHECK(struct XMLTag *Tag, CSTRING Attrib) {
+INLINE BYTE XMLATTRIBCHECK(const XMLTag *Tag, CSTRING Attrib) {
    LONG i;
    for (i=0; i < Tag->TotalAttrib; i++) {
       if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
@@ -277,7 +277,7 @@ INLINE BYTE XMLATTRIBCHECK(struct XMLTag *Tag, CSTRING Attrib) {
    return FALSE;
 }
 
-INLINE struct XMLTag * XMLFIND(struct XMLTag **List, CSTRING Name) {
+INLINE const XMLTag * XMLFIND(const XMLTag **List, CSTRING Name) {
    while (*List) {
       if (!StrMatch((CSSTRING)Name, (CSSTRING)List[0]->Attrib->Name)) return List[0];
       List++;

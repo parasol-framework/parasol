@@ -57,7 +57,7 @@ function testWave()        hashTestSVG('paths/wave.svg', 0x65b74450) end
 
 function testChevrons()  hashTestSVG('patterns/chevrons.svg', 0x0e9e5bed) end
 function testComplex()   hashTestSVG('patterns/complex.svg', 0) end
-function testDiamonds()  hashTestSVG('patterns/diamonds.svg', 0) end
+function testDiamonds()  hashTestSVG('patterns/diamonds.svg', 0xe14ac1e8) end
 function testDimple()    hashTestSVG('patterns/dimple.svg', 0x1806e6a0) end
 function testDot()       hashTestSVG('patterns/dot.svg', 0x13252bb4) end
 function testHoneycomb() hashTestSVG('patterns/honeycomb.svg', 0x3654fdd0) end

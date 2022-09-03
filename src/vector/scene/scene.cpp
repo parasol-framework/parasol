@@ -99,6 +99,10 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
 
    if ((!Args) or (!Args->Name) or (!Args->Def)) return log.warning(ERR_NullArgs);
 
+   if (Self->HostScene) { // Defer all definitions if a hosting scene is active.
+      return Action(MT_ScAddDef, Self->HostScene, Args);
+   }
+
    OBJECTPTR def = (OBJECTPTR)Args->Def;
 
    if ((def->ClassID IS ID_VECTORSCENE) or
@@ -230,6 +234,8 @@ static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
    parasol::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+
+   if (Self->HostScene) return Action(MT_ScFindDef, Self->HostScene, Args);
 
    CSTRING name = Args->Name;
 
@@ -476,6 +482,15 @@ Flags: Optional flags.
 
 -FIELD-
 Gamma: Private. Not currently implemented.
+
+-FIELD-
+HostScene: Refers to a top-level VectorScene object, if applicable.
+
+Set HostScene to another VectorScene object if it is intended that this scene is a child of the other.  This allows
+some traits such as vector definitions to be automatically inherited from the host scene.
+
+This feature is useful in circumstances where a hidden group of vectors need to be managed separately, while retaining
+access to established definitions and vectors in the main.
 
 -FIELD-
 PageHeight: The height of the page that contains the vector.
@@ -1059,6 +1074,7 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 static const FieldArray clSceneFields[] = {
    { "RenderTime",   FDF_LARGE|FDF_R,            0, (APTR)GET_RenderTime, NULL },
    { "Gamma",        FDF_DOUBLE|FDF_RW,          0, NULL, NULL },
+   { "HostScene",    FDF_OBJECT|FDF_RI,          ID_VECTORSCENE, NULL, NULL },
    { "Viewport",     FDF_OBJECT|FD_R,            ID_VECTORVIEWPORT, NULL, NULL },
    { "Bitmap",       FDF_OBJECT|FDF_RW,          ID_BITMAP, NULL, (APTR)SET_Bitmap },
    { "Defs",         FDF_STRUCT|FDF_PTR|FDF_SYSTEM|FDF_RESOURCE|FDF_R, (MAXINT)"KeyStore", NULL, NULL },

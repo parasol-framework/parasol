@@ -405,8 +405,10 @@ static DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
 }
 
 //********************************************************************************************************************
-// The parser will break once the string value terminates, or an invalid character is encountered.  Parsed characters
-// include: 0 - 9 , ( ) - + SPACE
+// The parser will break once the string value terminates, or an invalid character is encountered.  All unparseable
+// result values will be set to zero.
+//
+// Parsed characters include: 0 - 9 , ( ) - + SPACE
 
 static CSTRING read_numseq(CSTRING Value, ...)
 {
@@ -432,7 +434,9 @@ static CSTRING read_numseq(CSTRING Value, ...)
       else if (((*Value >= '0') and (*Value <= '9'))) {
          *result = StrToFloat(Value);
       }
-      else break;
+      else { // Invalid character or end-of-stream.
+         break;
+      }
 
       while ((*Value >= '0') and (*Value <= '9')) Value++;
 

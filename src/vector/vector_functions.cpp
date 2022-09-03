@@ -622,51 +622,55 @@ static ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    }
 
    enum { M_MUL, M_TRANSLATE, M_ROTATE, M_SCALE, M_SKEW };
-   struct cmd {
+   class cmd {
+      public:
       BYTE type;
       DOUBLE sx, sy, shx, shy, tx, ty;
       DOUBLE angle;
-      cmd(BYTE pType) : type(pType) {};
+      cmd(BYTE pType) : type(pType), sx(0), sy(0), shx(0), shy(0), tx(0), ty(0), angle(0) {};
    };
 
    std::vector<cmd> list;
 
    auto str = Commands;
    while (*str) {
-      if (!StrCompare(str, "matrix", 6, 0)) {
-         cmd m(M_MUL);
-         str = read_numseq(str+6, &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty, TAGEND);
-         list.push_back(std::move(m));
-      }
-      else if (!StrCompare(str, "translate", 9, 0)) {
-         cmd m(M_TRANSLATE);
-         str = read_numseq(str+9, &m.tx, &m.ty, TAGEND);
-         list.push_back(std::move(m));
-      }
-      else if (!StrCompare(str, "rotate", 6, 0)) {
-         cmd m(M_ROTATE);
-         str = read_numseq(str+6, &m.angle, &m.tx, &m.ty, TAGEND);
-         list.push_back(std::move(m));
-      }
-      else if (!StrCompare(str, "scale", 5, 0)) {
-         cmd m(M_SCALE);
-         m.tx = 1.0;
-         m.ty = DBL_EPSILON;
-         str = read_numseq(str+5, &m.tx, &m.ty, TAGEND);
-         if (m.ty IS DBL_EPSILON) m.ty = m.tx;
-         list.push_back(std::move(m));
-      }
-      else if (!StrCompare(str, "skewX", 5, 0)) {
-         cmd m(M_SKEW);
-         m.ty = 0;
-         str = read_numseq(str+5, &m.tx, TAGEND);
-         list.push_back(std::move(m));
-      }
-      else if (!StrCompare(str, "skewY", 5, 0)) {
-         cmd m(M_SKEW);
-         m.tx = 0;
-         str = read_numseq(str+5, &m.ty, TAGEND);
-         list.push_back(std::move(m));
+      if ((*str >= 'a') and (*str <= 'z')) {
+         if (!StrCompare(str, "matrix", 6, 0)) {
+            cmd m(M_MUL);
+            str = read_numseq(str+6, &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "translate", 9, 0)) {
+            cmd m(M_TRANSLATE);
+            str = read_numseq(str+9, &m.tx, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "rotate", 6, 0)) {
+            cmd m(M_ROTATE);
+            str = read_numseq(str+6, &m.angle, &m.tx, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "scale", 5, 0)) {
+            cmd m(M_SCALE);
+            m.tx = 1.0;
+            m.ty = DBL_EPSILON;
+            str = read_numseq(str+5, &m.tx, &m.ty, TAGEND);
+            if (m.ty IS DBL_EPSILON) m.ty = m.tx;
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "skewX", 5, 0)) {
+            cmd m(M_SKEW);
+            m.ty = 0;
+            str = read_numseq(str+5, &m.tx, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "skewY", 5, 0)) {
+            cmd m(M_SKEW);
+            m.tx = 0;
+            str = read_numseq(str+5, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else str++;
       }
       else str++;
    }
@@ -781,6 +785,8 @@ next:
          log.warning("The referenced Vector is invalid.");
          return;
       }
+
+      if (scene->HostScene) scene = scene->HostScene;
 
       IRI += 4;
       if (*IRI IS '#') {

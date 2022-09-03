@@ -138,6 +138,17 @@
     </field>
 
     <field>
+      <name>HostScene</name>
+      <comment>Refers to a top-level VectorScene object, if applicable.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type class="VectorScene">*VectorScene</type>
+      <description>
+<p>Set HostScene to another VectorScene object if it is intended that this scene is a child of the other.  This allows some traits such as vector definitions to be automatically inherited from the host scene.</p>
+<p>This feature is useful in circumstances where a hidden group of vectors need to be managed separately, while retaining access to established definitions and vectors in the main.</p>
+      </description>
+    </field>
+
+    <field>
       <name>PageHeight</name>
       <comment>The height of the page that contains the vector.</comment>
       <access read="R" write="S">Read/Set</access>

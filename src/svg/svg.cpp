@@ -20,8 +20,8 @@ Please refer to it for further information on licensing.
 #include <math.h>
 
 MODULE_COREBASE;
-static struct DisplayBase *DisplayBase;
-static struct VectorBase *VectorBase;
+static DisplayBase *DisplayBase;
+static VectorBase *VectorBase;
 static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL;
 
 struct prvSVG {

@@ -972,5 +972,6 @@
 #define FID_Overflow 0x5b785259LL
 #define FID_OverflowX 0xca829df1LL
 #define FID_OverflowY 0xca829df2LL
+#define FID_HostScene 0x608e7bf1LL
 
 #endif

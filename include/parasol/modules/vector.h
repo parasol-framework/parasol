@@ -374,16 +374,17 @@ struct OrderedVector {
 
 typedef struct rkVectorScene {
    OBJECT_HEADER
-   LARGE    RenderTime;           // Microseconds elapsed during the last rendering operation.
-   DOUBLE   Gamma;                // Not currently implemented.
-   struct rkVector * Viewport;    // Reference to the VectorViewport that contains the VectorScene.
-   struct rkBitmap * Bitmap;      // Target bitmap.
-   struct KeyStore * Defs;        // Stores references to gradients, images, patterns etc
-   OBJECTID SurfaceID;            // Target surface for automated rendering
-   LONG     Flags;                // Optional flags.
-   LONG     PageWidth;            // Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
-   LONG     PageHeight;           // Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
-   LONG     SampleMethod;         // VSM: Method to use for resampling images and patterns.
+   LARGE    RenderTime;                 // Microseconds elapsed during the last rendering operation.
+   DOUBLE   Gamma;                      // Not currently implemented.
+   struct rkVectorScene * HostScene;    // Reference to a controlling VectorScene at the top of the hierarchy, if applicable.
+   struct rkVector * Viewport;          // Reference to the VectorViewport that contains the VectorScene.
+   struct rkBitmap * Bitmap;            // Target bitmap.
+   struct KeyStore * Defs;              // Stores references to gradients, images, patterns etc
+   OBJECTID SurfaceID;                  // Target surface for automated rendering
+   LONG     Flags;                      // Optional flags.
+   LONG     PageWidth;                  // Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
+   LONG     PageHeight;                 // Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
+   LONG     SampleMethod;               // VSM: Method to use for resampling images and patterns.
 
 #ifdef PRV_VECTORSCENE
    DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
