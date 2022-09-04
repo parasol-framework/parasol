@@ -121,13 +121,20 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
    // If the resource does not belong to the Scene object, this can lead to invalid pointer references
 
    if (def->OwnerID != Self->Head.UID) {
-      log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->Head.UID, def->OwnerID);
-      return ERR_UnsupportedOwner;
+      OBJECTID owner_id = def->OwnerID;
+      while ((owner_id) and (owner_id != Self->Head.UID)) {
+         owner_id = GetOwnerID(owner_id);
+      }
+
+      if (!owner_id) {
+         log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->Head.UID, def->OwnerID);
+         return ERR_UnsupportedOwner;
+      }
    }
 
    // TODO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
 
-   log.debug("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
+   log.extmsg("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
 
    APTR data;
    if (!Self->Defs) {
