@@ -104,42 +104,50 @@ static ERROR process_transition_stops(objSVG *Self, const XMLTag *Tag, Transitio
 //****************************************************************************
 // Save an id reference for an SVG element.  The element can be then be found at any time with find_href().
 
-static void add_id(objSVG *Self, const XMLTag *Tag, CSTRING Name)
+INLINE bool add_id(objSVG *Self, const XMLTag *Tag, CSTRING Name)
 {
-   parasol::Log log(__FUNCTION__);
-   svgID *id;
+   if (Self->IDs.contains(std::string(Name))) return false;
+   Self->IDs.emplace(std::string(Name), Tag->Index);
+   return true;
+}
 
-   if (!AllocMemory(sizeof(svgID), MEM_DATA, &id, NULL)) {
-      id->TagIndex = Tag->Index;
-      id->ID       = StrClone(Name);
-      id->IDHash   = StrHash(id->ID, TRUE);
-      if (Self->IDs) id->Next = Self->IDs;
-      Self->IDs = id;
-      log.trace("Name: %s = $%.8x", id->ID, id->IDHash);
-   }
+INLINE bool add_id(objSVG *Self, const XMLTag *Tag, const std::string Name)
+{
+   if (Self->IDs.contains(Name)) return false;
+   Self->IDs.emplace(Name, Tag->Index);
+   return true;
 }
 
 //****************************************************************************
 
-static svgID * find_href(objSVG *Self, CSTRING Ref)
+static const std::string uri_name(CSTRING Ref)
 {
-   while ((*Ref) AND (*Ref <= 0x20)) Ref++;
-   ULONG hash;
-   if (*Ref IS '#') hash = StrHash(Ref+1, TRUE);
+   while ((*Ref) and (*Ref <= 0x20)) Ref++;
+
+   if (*Ref IS '#') {
+      return std::string(Ref+1);
+   }
    else if (!StrCompare("url(#", Ref, 5, 0)) {
-      char name[80];
       WORD i;
       Ref += 5;
-      for (i=0; (Ref[i] != ')') AND (Ref[i]) AND ((size_t)i < sizeof(name)-1); i++) name[i] = Ref[i];
-      name[i] = 0;
-      hash = StrHash(name, TRUE);
+      for (i=0; (Ref[i] != ')') and (Ref[i]); i++);
+      return std::string(Ref, i);
    }
-   else hash = StrHash(Ref, TRUE);
+   else return std::string(Ref);
 
-   for (auto id=Self->IDs; id; id=id->Next) {
-      if (id->IDHash IS hash) return id;
+   return std::string("");
+}
+
+//****************************************************************************
+
+static LONG find_href_tag(objSVG *Self, CSTRING Ref)
+{
+   while ((*Ref) and (*Ref <= 0x20)) Ref++;
+   auto ref = uri_name(Ref);
+   if ((!ref.empty()) and (Self->IDs.contains(ref))) {
+      return Self->IDs[ref].TagIndex;
    }
-   return NULL;
+   return -1;
 }
 
 /*****************************************************************************
@@ -159,31 +167,31 @@ static DOUBLE read_time(CSTRING Value)
 {
    DOUBLE units[3];
 
-   while ((*Value) AND (*Value <= 0x20)) Value++;
-   if ((*Value >= '0') AND (*Value <= '9')) {
+   while ((*Value) and (*Value <= 0x20)) Value++;
+   if ((*Value >= '0') and (*Value <= '9')) {
       units[0] = StrToFloat(Value);
-      while ((*Value >= '0') AND (*Value <= '9')) Value++;
+      while ((*Value >= '0') and (*Value <= '9')) Value++;
       if (*Value IS '.') {
          Value++;
-         while ((*Value >= '0') AND (*Value <= '9')) Value++;
+         while ((*Value >= '0') and (*Value <= '9')) Value++;
       }
 
       if (*Value IS ':') {
          Value++;
          units[1] = StrToFloat(Value);
-         while ((*Value >= '0') AND (*Value <= '9')) Value++;
+         while ((*Value >= '0') and (*Value <= '9')) Value++;
          if (*Value IS '.') {
             Value++;
-            while ((*Value >= '0') AND (*Value <= '9')) Value++;
+            while ((*Value >= '0') and (*Value <= '9')) Value++;
          }
 
          if (*Value IS ':') {
             Value++;
             units[2] = StrToFloat(Value);
-            while ((*Value >= '0') AND (*Value <= '9')) Value++;
+            while ((*Value >= '0') and (*Value <= '9')) Value++;
             if (*Value IS '.') {
                Value++;
-               while ((*Value >= '0') AND (*Value <= '9')) Value++;
+               while ((*Value >= '0') and (*Value <= '9')) Value++;
             }
 
             // hh:nn:ss
@@ -193,16 +201,16 @@ static DOUBLE read_time(CSTRING Value)
             return (units[0] * 60 * 60) + (units[1] * 60);
          }
       }
-      else if ((Value[0] IS 'h') AND (Value[1] <= 0x20)) {
+      else if ((Value[0] IS 'h') and (Value[1] <= 0x20)) {
          return units[0] * 60 * 60;
       }
-      else if ((Value[0] IS 's') AND (Value[1] <= 0x20)) {
+      else if ((Value[0] IS 's') and (Value[1] <= 0x20)) {
          return units[0];
       }
-      else if ((Value[0] IS 'm') AND (Value[1] IS 'i') AND (Value[2] IS 'n') AND (Value[3] IS 0)) {
+      else if ((Value[0] IS 'm') and (Value[1] IS 'i') and (Value[2] IS 'n') and (Value[3] IS 0)) {
          return units[0] * 60;
       }
-      else if ((Value[0] IS 'm') AND (Value[1] IS 's') AND (Value[2] <= 0x20)) {
+      else if ((Value[0] IS 'm') and (Value[1] IS 's') and (Value[2] <= 0x20)) {
          return units[0] / 1000.0;
       }
       else if (Value[0] <= 0x20) return units[0];
@@ -220,18 +228,18 @@ static DOUBLE read_unit(CSTRING Value, LARGE *FieldID)
 
    *FieldID |= TDOUBLE;
 
-   while ((*Value) AND (*Value <= 0x20)) Value++;
+   while ((*Value) and (*Value <= 0x20)) Value++;
 
    CSTRING str = Value;
    if (*str IS '-') str++;
 
-   if ((((*str >= '0') AND (*str <= '9')))) {
-      while ((*str >= '0') AND (*str <= '9')) str++;
+   if ((((*str >= '0') and (*str <= '9')))) {
+      while ((*str >= '0') and (*str <= '9')) str++;
 
       if (*str IS '.') {
          str++;
-         if ((*str >= '0') AND (*str <= '9')) {
-            while ((*str >= '0') AND (*str <= '9')) str++;
+         if ((*str >= '0') and (*str <= '9')) {
+            while ((*str >= '0') and (*str <= '9')) str++;
          }
          else isnumber = FALSE;
       }
@@ -243,14 +251,14 @@ static DOUBLE read_unit(CSTRING Value, LARGE *FieldID)
          *FieldID |= TPERCENT;
          str++;
       }
-      else if ((str[0] IS 'p') AND (str[1] IS 'x')); // Pixel.  This is the default type
-      else if ((str[0] IS 'e') AND (str[1] IS 'm')) multiplier = 12.0 * (4.0 / 3.0); // Multiply the current font's pixel height by the provided em value
-      else if ((str[0] IS 'e') AND (str[1] IS 'x')) multiplier = 6.0 * (4.0 / 3.0); // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
-      else if ((str[0] IS 'i') AND (str[1] IS 'n')) multiplier = dpi; // Inches
-      else if ((str[0] IS 'c') AND (str[1] IS 'm')) multiplier = (1.0 / 2.56) * dpi; // Centimetres
-      else if ((str[0] IS 'm') AND (str[1] IS 'm')) multiplier = (1.0 / 20.56) * dpi; // Millimetres
-      else if ((str[0] IS 'p') AND (str[1] IS 't')) multiplier = (4.0 / 3.0); // Points.  A point is 4/3 of a pixel
-      else if ((str[0] IS 'p') AND (str[1] IS 'c')) multiplier = (4.0 / 3.0) * 12.0; // Pica.  1 Pica is equal to 12 Points
+      else if ((str[0] IS 'p') and (str[1] IS 'x')); // Pixel.  This is the default type
+      else if ((str[0] IS 'e') and (str[1] IS 'm')) multiplier = 12.0 * (4.0 / 3.0); // Multiply the current font's pixel height by the provided em value
+      else if ((str[0] IS 'e') and (str[1] IS 'x')) multiplier = 6.0 * (4.0 / 3.0); // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
+      else if ((str[0] IS 'i') and (str[1] IS 'n')) multiplier = dpi; // Inches
+      else if ((str[0] IS 'c') and (str[1] IS 'm')) multiplier = (1.0 / 2.56) * dpi; // Centimetres
+      else if ((str[0] IS 'm') and (str[1] IS 'm')) multiplier = (1.0 / 20.56) * dpi; // Millimetres
+      else if ((str[0] IS 'p') and (str[1] IS 't')) multiplier = (4.0 / 3.0); // Points.  A point is 4/3 of a pixel
+      else if ((str[0] IS 'p') and (str[1] IS 'c')) multiplier = (4.0 / 3.0) * 12.0; // Pica.  1 Pica is equal to 12 Points
 
       return StrToFloat(Value) * multiplier;
    }
@@ -294,30 +302,30 @@ static CSTRING read_numseq(CSTRING Value, ...)
    va_start(list, Value);
 
    while ((result = va_arg(list, DOUBLE *))) {
-      while ((*Value) AND ((*Value <= 0x20) OR (*Value IS ',') OR (*Value IS '(') OR (*Value IS ')'))) Value++;
+      while ((*Value) and ((*Value <= 0x20) or (*Value IS ',') or (*Value IS '(') or (*Value IS ')'))) Value++;
 
-      if ((*Value IS '-') AND (Value[1] >= '0') AND (Value[1] <= '9')) {
+      if ((*Value IS '-') and (Value[1] >= '0') and (Value[1] <= '9')) {
          *result = StrToFloat(Value);
          Value++;
       }
-      else if ((*Value IS '+') AND (Value[1] >= '0') AND (Value[1] <= '9')) {
+      else if ((*Value IS '+') and (Value[1] >= '0') and (Value[1] <= '9')) {
          *result = StrToFloat(Value);
          Value++;
       }
-      else if (((*Value >= '0') AND (*Value <= '9'))) {
+      else if (((*Value >= '0') and (*Value <= '9'))) {
          *result = StrToFloat(Value);
       }
-      else if ((*Value IS '.') AND (Value[1] >= '0') AND (Value[1] <= '9')) {
+      else if ((*Value IS '.') and (Value[1] >= '0') and (Value[1] <= '9')) {
          *result = StrToFloat(Value);
       }
       else break;
 
-      while ((*Value >= '0') AND (*Value <= '9')) Value++;
+      while ((*Value >= '0') and (*Value <= '9')) Value++;
 
       if (*Value IS '.') {
          Value++;
-         if ((*Value >= '0') AND (*Value <= '9')) {
-            while ((*Value >= '0') AND (*Value <= '9')) Value++;
+         if ((*Value >= '0') and (*Value <= '9')) {
+            while ((*Value >= '0') and (*Value <= '9')) Value++;
          }
       }
    }
@@ -337,7 +345,7 @@ static void add_inherit(objSVG *Self, OBJECTPTR Object, CSTRING ID)
    if (!AllocMemory(sizeof(svgInherit), MEM_DATA|MEM_NO_CLEAR, &inherit, NULL)) {
       inherit->Object = Object;
       inherit->Next = Self->Inherit;
-      while ((*ID) AND (*ID IS '#')) ID++;
+      while ((*ID) and (*ID IS '#')) ID++;
       StrCopy(ID, inherit->ID, sizeof(inherit->ID));
       Self->Inherit = inherit;
    }
@@ -411,9 +419,9 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
 
          char folder[512];
          WORD last = 0;
-         for (LONG i=0; (Path[i]) AND ((size_t)i < sizeof(folder)-1); i++) {
+         for (LONG i=0; (Path[i]) and ((size_t)i < sizeof(folder)-1); i++) {
             folder[i] = Path[i];
-            if ((Path[i] IS '/') OR (Path[i] IS '\\') OR (Path[i] IS ':')) last = i+1;
+            if ((Path[i] IS '/') or (Path[i] IS '\\') or (Path[i] IS ':')) last = i+1;
          }
          folder[last] = 0;
          if (last) SetString(task, FID_Path, folder);
@@ -451,7 +459,7 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
             // If auto-scale is enabled, access the top-level viewport and set the Width and Height to 100%
 
             objVector *view = Self->Scene->Viewport;
-            while ((view) AND (view->Head.SubID != ID_VECTORVIEWPORT)) view = view->Next;
+            while ((view) and (view->Head.SubID != ID_VECTORVIEWPORT)) view = view->Next;
             if (view) SetFields(view, FID_Width|TDOUBLE|TPERCENT, 100.0, FID_Height|TDOUBLE|TPERCENT, 100.0, TAGEND);
          }
       }
@@ -490,17 +498,17 @@ static void convert_styles(objXML *XML)
             StrCopy(tag->Attrib[a].Value, value, sizeof(value));
             LONG v = 0;
             while (value[v]) {
-               while ((value[v]) AND (value[v] <= 0x20)) v++;
+               while ((value[v]) and (value[v] <= 0x20)) v++;
 
                LONG ni = v;
                char c;
-               while ((c = value[v]) AND (c != ':')) v++;
+               while ((c = value[v]) and (c != ':')) v++;
 
                if (c IS ':') {
                   value[v++] = 0;
-                  while ((value[v]) AND (value[v] <= 0x20)) v++;
+                  while ((value[v]) and (value[v] <= 0x20)) v++;
                   LONG vi = v;
-                  while ((value[v]) AND (value[v] != ';')) v++;
+                  while ((value[v]) and (value[v] != ';')) v++;
                   if (value[v] IS ';') value[v++] = 0;
                   if (v > vi) xmlSetAttrib(XML, tagindex, XMS_NEW, value+ni, value+vi);
                }

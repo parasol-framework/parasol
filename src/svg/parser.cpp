@@ -212,10 +212,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
                else if (!StrMatch("objectBoundingBox", val)) filter->Units = VUNIT_BOUNDING_BOX;
                break;
 
-            case SVF_ID:
-               id = val;
-               add_id(Self, Tag, val);
-               break;
+            case SVF_ID:      if (add_id(Self, Tag, val)) id = val; break;
             case SVF_X:       set_double(filter, FID_X, val); break;
             case SVF_Y:       set_double(filter, FID_Y, val); break;
             case SVF_WIDTH:   set_double(filter, FID_Width, val); break;
@@ -346,8 +343,7 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
          svgState state;
          reset_state(&state);
          process_children(Self, XML, &state, Tag->Child, (OBJECTPTR)pattern->Viewport);
-         scAddDef(Self->Scene, id, (OBJECTPTR)pattern);
-         add_id(Self, Tag, id);
+         if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, (OBJECTPTR)pattern);
       }
       else {
          acFree(pattern);
@@ -612,8 +608,7 @@ static void def_image(objSVG *Self, const XMLTag *Tag)
          if (pic) {
             SetPointer(image, FID_Picture, pic);
             if (!acInit(image)) {
-               add_id(Self, Tag, id);
-               scAddDef(Self->Scene, id, (OBJECTPTR)image);
+               if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, (OBJECTPTR)image);
             }
             else {
                acFree(image);
@@ -851,8 +846,13 @@ static void xtag_morph(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR P
 
    // Find the matching element with matching ID
 
-   svgID *id = find_href(Self, ref);
-   if (!id) {
+   auto uri = uri_name(ref);
+   if (uri.empty()) {
+      log.warning("Invalid URI string '%s' at line %d", ref, Tag->LineNo);
+      return;
+   }
+
+   if (!Self->IDs.contains(uri)) {
       log.warning("Unable to find element '%s' referenced at line %d", ref, Tag->LineNo);
       return;
    }
@@ -865,7 +865,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR P
       }
    }
 
-   XMLTag *tagref = XML->Tags[id->TagIndex];
+   XMLTag *tagref = XML->Tags[Self->IDs[uri].TagIndex];
 
    CLASSID class_id = 0;
    switch (StrHash(tagref->Attrib[0].Name, FALSE)) {
@@ -894,7 +894,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR P
       SetPointer(Parent, FID_Morph, shape);
       if (transvector) SetPointer(Parent, FID_Transition, transvector);
       SetLong(Parent, FID_MorphFlags, flags);
-      scAddDef(Self->Scene, id->ID, shape);
+      scAddDef(Self->Scene, uri.c_str(), shape);
    }
 }
 
@@ -924,14 +924,14 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, const XMLTag *T
 
    // Find the matching element with matching ID
 
-   svgID *id = find_href(Self, ref);
-   if (!id) {
+   auto ti = find_href_tag(Self, ref);
+   if (ti IS -1) {
       log.warning("Unable to find element '%s'", ref);
       return;
    }
 
    OBJECTPTR vector = NULL;
-   XMLTag *tagref = XML->Tags[id->TagIndex];
+   XMLTag *tagref = XML->Tags[ti];
 
    svgState state = *State;
    set_state(&state, Tag); // Apply all attribute values to the current state.
@@ -1012,11 +1012,11 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, const XMLTag *T
 
       // Add all child elements in <symbol> to the viewport.
 
-      if ((id->TagIndex >= 0) and (id->TagIndex < XML->TagCount)) {
+      if ((ti >= 0) and (ti < XML->TagCount)) {
          log.traceBranch("Processing all child elements within %s", ref);
-         process_children(Self, XML, &state, XML->Tags[id->TagIndex]->Child, vector);
+         process_children(Self, XML, &state, XML->Tags[ti]->Child, vector);
       }
-      else log.trace("Element TagIndex %d is out of range.", id->TagIndex);
+      else log.trace("Element TagIndex %d is out of range.", ti);
    }
    else {
       // Rather than creating a vanilla group with a child viewport, this optimal approach creates the viewport only.
@@ -1585,7 +1585,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
    DOUBLE num;
 
    // Ignore stylesheet attributes
-   if ((Hash IS SVF_CLASS) or (Hash IS SVF_ID)) return ERR_Okay;
+   if (Hash IS SVF_CLASS) return ERR_Okay;
 
    switch(Vector->SubID) {
       case ID_VECTORVIEWPORT: {
@@ -1950,7 +1950,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
 
       case SVF_ID:
          SetString(Vector, FID_ID, StrValue);
-         add_id(Self, Tag, StrValue);
+         if (add_id(Self, Tag, StrValue)) scAddDef(Self->Scene, StrValue, (OBJECTPTR)Vector);
          break;
 
       case SVF_NUMERIC_ID:       SetString(Vector, FID_NumericID, StrValue); break;
@@ -1988,13 +1988,13 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_STROKE_DASHOFFSET:       field_id = FID_DashOffset; break;
 
       case SVF_MASK: {
-         svgID *id = find_href(Self, StrValue);
-         if (!id) {
+         auto ti = find_href_tag(Self, StrValue);
+         if (ti IS -1) {
             log.warning("Unable to find mask '%s'", StrValue);
             return ERR_Search;
          }
 
-         // We need to add code that converts the content of a <mask> tag into a VectorFilter, because masking can be
+         // TODO: We need to add code that converts the content of a <mask> tag into a VectorFilter, because masking can be
          // achieved through filters.  There is no need for a dedicated masking class for this task.
          break;
       }

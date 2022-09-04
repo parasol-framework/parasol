@@ -8,6 +8,8 @@ Please refer to it for further information on licensing.
 
 //#define DEBUG
 #define PRV_SVG
+#include <unordered_map>
+#include <string>
 #include "../picture/picture.h"
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
@@ -34,11 +36,15 @@ typedef struct svgInherit {
    char ID[60];
 } svgInherit;
 
-typedef struct svgID { // All elements using the 'id' attribute will be registered with one of these structures.
-   struct svgID *Next;
-   CSTRING ID;
-   ULONG IDHash;
+typedef class svgID { // All elements using the 'id' attribute will be registered with one of these structures.
+   public:
    LONG TagIndex;
+
+   svgID(const LONG pTagIndex) {
+      TagIndex = pTagIndex;
+   }
+
+   svgID() { TagIndex = -1; }
 } svgID;
 
 typedef struct svgState {
@@ -103,8 +109,8 @@ ERROR CMDExpunge(void)
    if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
    if (modVector)  { acFree(modVector);  modVector = NULL; }
 
-   if (clSVG)      { acFree(clSVG);      clSVG = NULL; }
-   if (clRSVG)     { acFree(clRSVG);     clRSVG = NULL; }
+   if (clSVG)  { acFree(clSVG);  clSVG = NULL; }
+   if (clRSVG) { acFree(clRSVG); clRSVG = NULL; }
    return ERR_Okay;
 }
 

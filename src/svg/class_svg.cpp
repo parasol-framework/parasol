@@ -70,6 +70,8 @@ static ERROR SVG_DataFeed(objSVG *Self, struct acDataFeed *Args)
 
 static ERROR SVG_Free(objSVG *Self, APTR Void)
 {
+   Self->~objSVG();
+
    if (Self->AnimationTimer) {
       UpdateTimer(Self->AnimationTimer, 0);
       Self->AnimationTimer = 0;
@@ -91,15 +93,6 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
       anim = next;
    }
    Self->Animations = NULL;
-
-   svgID *symbol = Self->IDs;
-   while (symbol) {
-      auto next = symbol->Next;
-      if (symbol->ID) { FreeResource(symbol->ID); symbol->ID = NULL; }
-      FreeResource(symbol);
-      symbol = next;
-   }
-   Self->IDs = NULL;
 
    svgInherit *inherit = Self->Inherit;
    while (inherit) {
@@ -146,6 +139,7 @@ static ERROR SVG_NewObject(objSVG *Self, APTR Void)
    #else
       Self->FrameRate = 60;
    #endif
+   new (Self) objSVG;
    return ERR_Okay;
 }
 
