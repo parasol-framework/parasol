@@ -312,6 +312,9 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
             case SVF_Y:      set_double(pattern, FID_Y, val); break;
             case SVF_WIDTH:  set_double(pattern->Scene, FID_PageWidth, val); break;
             case SVF_HEIGHT: set_double(pattern->Scene, FID_PageHeight, val); break;
+            case SVF_OVERFLOW:
+               SetString(pattern->Viewport, FID_Overflow, val);
+               break;
 
             case SVF_OPACITY: set_double(pattern, FID_Opacity, val); break;
 
@@ -441,6 +444,7 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
       case SVF_DEFS:             xtag_defs(Self, XML, State, Tag, Parent); break;
       case SVF_CLIPPATH:         xtag_clippath(Self, XML, Tag); break;
       case SVF_STYLE:            xtag_style(Self, XML, Tag); break;
+      case SVF_PATTERN:          process_pattern(Self, XML, Tag); break;
 
       case SVF_TITLE:
          if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
