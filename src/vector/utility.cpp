@@ -369,7 +369,7 @@ static DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
    while ((*Value) and (*Value <= 0x20)) Value++;
 
    CSTRING str = Value;
-   if (*str IS '-') str++;
+   if ((*str IS '-') or (*str IS '+')) str++;
 
    if ((((*str >= '0') and (*str <= '9')))) {
       while ((*str >= '0') and (*str <= '9')) str++;
