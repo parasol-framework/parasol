@@ -233,7 +233,7 @@ static DOUBLE read_unit(CSTRING Value, LARGE *FieldID)
    CSTRING str = Value;
    if ((*str IS '-') or (*str IS '+')) str++;
 
-   if ((((*str >= '0') and (*str <= '9')))) {
+   if (((*str >= '0') and (*str <= '9')) or (*str IS '.')) {
       while ((*str >= '0') and (*str <= '9')) str++;
 
       if (*str IS '.') {
