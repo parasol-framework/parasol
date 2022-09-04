@@ -102,7 +102,7 @@ struct escFont {
 };
 
 typedef struct escFont escFont;
-
+  
 struct SurfaceClip {
    struct SurfaceClip * Next;
    LONG Left;
@@ -293,7 +293,7 @@ typedef struct rkDocument {
    UBYTE  DrawIntercept;
    UBYTE  InTemplate;
    UBYTE  BkgdGfx;
-
+  
 #endif
 } objDocument;
 
