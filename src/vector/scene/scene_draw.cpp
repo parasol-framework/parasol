@@ -216,24 +216,20 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
 }
 
 //********************************************************************************************************************
-// Patterns are rendered internally as an independent bitmap.  That bitmap is then copied to the target bitmap with
-// the necessary transforms applied.  One of the primary advantages of patterns is that once rendered, they remain
-// cached until changed.
+// Fixed-size patterns can be rendered internally as a separate bitmap for tiling.  That bitmap is copied to the
+// target bitmap with the necessary transforms applied.  USERSPACE patterns are suitable for this method.
+//
+// Patterns rendered with BOUNDINGBOX require more real-time calculations as they have a dependency on the target
+// vector's dimensions.
 
 static void draw_pattern(objVector *Vector, agg::path_storage *Path,
    LONG SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
    struct rkVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
-   if (Pattern.Scene) {  // Redraw the pattern source if any part of the definition is marked as dirty.
-      if ((check_dirty(Pattern.Scene->Viewport)) or (!Pattern.Bitmap)) {
-         acDraw(&Pattern);
-      }
-   }
+   DOUBLE dx, dy, dwidth, dheight;
 
-   DOUBLE dx, dy;
-
-   if (Pattern.Units & VUNIT_USERSPACE) { // Use fixed coordinates specified in the pattern.
+   if (Pattern.Units IS VUNIT_USERSPACE) { // Use fixed coordinates specified in the pattern.
       if (Pattern.Dimensions & DMF_RELATIVE_X) dx = ViewWidth * Pattern.X;
       else if (Pattern.Dimensions & DMF_FIXED_X) dx = Pattern.X;
       else dx = 0;
@@ -241,15 +237,50 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
       if (Pattern.Dimensions & DMF_RELATIVE_Y) dy = ViewHeight * Pattern.Y;
       else if (Pattern.Dimensions & DMF_FIXED_Y) dy = Pattern.Y;
       else dy = 0;
+
+      if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = ViewWidth * Pattern.Width;
+      else if (Pattern.Dimensions & DMF_FIXED_WIDTH) dwidth = Pattern.Width;
+      else dwidth = 1;
+
+      if (Pattern.Dimensions & DMF_RELATIVE_HEIGHT) dheight = ViewHeight * Pattern.Height;
+      else if (Pattern.Dimensions & DMF_FIXED_HEIGHT) dheight = Pattern.Height;
+      else dheight = 1;
+
+      if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
+         Pattern.Scene->PageWidth = dwidth;
+         Pattern.Scene->PageHeight = dheight;
+         mark_dirty(Pattern.Scene->Viewport, RC_ALL);
+      }
    }
    else {
-      // VUNIT_BOUNDING_BOX (align to vector).  In this mode the pattern (x,y) is an optional offset applied
-      // to the base position, which is taken from the vector's path.
+      // BOUNDING_BOX.  The pattern (x,y) is an optional offset applied to the base position of the vector's
+      // path and the size is relative to the vector's bounds.
 
       DOUBLE bx1, by1, bx2, by2;
       bounding_rect_single(*Path, 0, &bx1, &by1, &bx2, &by2); // Get the boundary of the original path without transforms.
       const DOUBLE width = bx2 - bx1;
       const DOUBLE height = by2 - by1;
+
+      DOUBLE vpwidth = Pattern.Viewport->vpViewWidth;
+      DOUBLE vpheight = Pattern.Viewport->vpViewHeight;
+
+      if (!vpwidth) vpwidth = 1;
+      if (!vpheight) vpheight = 1;
+
+      if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = width * Pattern.Width;
+      else if (Pattern.Dimensions & DMF_FIXED_WIDTH) dwidth = (Pattern.Width / vpwidth) * width;
+      else dwidth = 1;
+
+      if (Pattern.Dimensions & DMF_RELATIVE_HEIGHT) dheight = height * Pattern.Height;
+      else if (Pattern.Dimensions & DMF_FIXED_HEIGHT) dheight = (Pattern.Height / vpheight) * height;
+      else dheight = 1;
+
+      if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
+         Pattern.Scene->PageWidth  = dwidth;
+         Pattern.Scene->PageHeight = dheight;
+         mark_dirty(Pattern.Scene->Viewport, RC_ALL);
+      }
+
       dx = 0;
       dy = 0;
       if (Pattern.Dimensions & DMF_RELATIVE_X) dx += (width * Pattern.X);
@@ -257,6 +288,11 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
 
       if (Pattern.Dimensions & DMF_RELATIVE_Y) dy += (height * Pattern.Y);
       else if (Pattern.Dimensions & DMF_FIXED_Y) dy += Pattern.Y;
+   }
+
+   // Redraw the pattern source if any part of the definition is marked as dirty.
+   if ((check_dirty(Pattern.Scene->Viewport)) or (!Pattern.Bitmap)) {
+      if (acDraw(&Pattern) != ERR_Okay) return;
    }
 
    agg::trans_affine transform;
@@ -267,7 +303,7 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
    }
    else transform.translate(dx, dy);
 
-   if (!(Pattern.Units & VUNIT_USERSPACE)) transform *= Transform;
+   if (Pattern.Units != VUNIT_USERSPACE) transform *= Transform;
 
    transform.invert(); // Required
 
@@ -429,7 +465,7 @@ static void draw_image(objVector *Vector, agg::path_storage &Path, LONG SampleMe
    DOUBLE dx, dy, bx1, by1, bx2, by2;
    agg::trans_affine transform;
 
-   if (Image.Units & VUNIT_USERSPACE) { // Align to the provided x/y coordinate in rkVectorImage.
+   if (Image.Units IS VUNIT_USERSPACE) { // Align to the provided x/y coordinate in rkVectorImage.
       if (Image.Dimensions & DMF_RELATIVE_X) dx = ViewWidth * Image.X;
       else dx = Image.X;
 
@@ -493,7 +529,7 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
    if (Gradient.Type IS VGT_LINEAR) {
       DOUBLE ax1, ay1, ax2, ay2;
 
-      if (Gradient.Units & VUNIT_USERSPACE) { // Absolute positioning, ignores the vector path/transform.
+      if (Gradient.Units IS VUNIT_USERSPACE) { // Absolute positioning, ignores the vector path/transform.
          if (Gradient.Flags & VGF_RELATIVE_X1) ax1 = (ViewWidth * Gradient.X1);
          else ax1 = Gradient.X1;
 
@@ -551,7 +587,7 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
       const DOUBLE width = bx2 - bx1;
       const DOUBLE height = by2 - by1;
 
-      if (Gradient.Units & VUNIT_USERSPACE) {
+      if (Gradient.Units IS VUNIT_USERSPACE) {
          if (Gradient.Flags & VGF_RELATIVE_CX) cx = ViewWidth * Gradient.CenterX;
          else cx = Gradient.CenterX;
 
@@ -586,7 +622,7 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
          // Standard radial gradient, where the focal point is the same as the gradient center
 
          DOUBLE length = Gradient.Radius;
-         if (Gradient.Units & VUNIT_USERSPACE) { // Coordinates are relative to the viewport
+         if (Gradient.Units IS VUNIT_USERSPACE) { // Coordinates are relative to the viewport
             if (Gradient.Flags & VGF_RELATIVE_RADIUS) { // Gradient is a ratio of the viewport's dimensions
                length = (ViewWidth + ViewHeight) * Gradient.Radius * 0.5;
             }
@@ -638,7 +674,7 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
          if (Gradient.Flags & VGF_RELATIVE_RADIUS) fix_radius *= (width + height) * 0.5; // Use the average radius of the ellipse.
          DOUBLE length = fix_radius;
 
-         if (Gradient.Units & VUNIT_USERSPACE) {
+         if (Gradient.Units IS VUNIT_USERSPACE) {
             if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
                DOUBLE scale = length * Gradient.Radius;
                transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
@@ -682,7 +718,7 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
       const DOUBLE width = bx2 - bx1;
       const DOUBLE height = by2 - by1;
 
-      if (Gradient.Units & VUNIT_USERSPACE) {
+      if (Gradient.Units IS VUNIT_USERSPACE) {
          if (Gradient.Flags & VGF_RELATIVE_CX) cx = ViewWidth * Gradient.CenterX;
          else cx = Gradient.CenterX;
 
@@ -700,7 +736,7 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
       // Standard diamond gradient, where the focal point is the same as the gradient center
 
       const DOUBLE length = 255;
-      if (Gradient.Units & VUNIT_USERSPACE) {
+      if (Gradient.Units IS VUNIT_USERSPACE) {
          if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
             DOUBLE scale = length * Gradient.Radius;
             transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
@@ -742,7 +778,7 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
       const DOUBLE width = bx2 - bx1;
       const DOUBLE height = by2 - by1;
 
-      if (Gradient.Units & VUNIT_USERSPACE) {
+      if (Gradient.Units IS VUNIT_USERSPACE) {
          if (Gradient.Flags & VGF_RELATIVE_CX) cx = ViewWidth * Gradient.CenterX;
          else cx = Gradient.CenterX;
 
@@ -760,7 +796,7 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
       // Standard conic gradient, where the focal point is the same as the gradient center
 
       const DOUBLE length = 255;
-      if (Gradient.Units & VUNIT_USERSPACE) {
+      if (Gradient.Units IS VUNIT_USERSPACE) {
          if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
             DOUBLE scale = length * Gradient.Radius;
             transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
@@ -897,19 +933,19 @@ private:
       }
 
       if (Vector.FillImage) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
-         draw_image(&Vector, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillImage->Units & VUNIT_USERSPACE, State),
+         draw_image(&Vector, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillImage->Units IS VUNIT_USERSPACE, State),
             view_width(), view_height(), *Vector.FillImage, mRenderBase, Raster, 0, Vector.FillOpacity * State.mOpacity);
       }
 
       if (Vector.FillGradient) {
          if (auto table = get_fill_gradient_table(Vector, State.mOpacity * Vector.FillOpacity)) {
-            draw_gradient(&Vector, &Vector.BasePath, build_fill_transform(Vector, Vector.FillGradient->Units & VUNIT_USERSPACE, State),
+            draw_gradient(&Vector, &Vector.BasePath, build_fill_transform(Vector, Vector.FillGradient->Units IS VUNIT_USERSPACE, State),
                view_width(), view_height(), *Vector.FillGradient, table, mRenderBase, Raster, 0);
          }
       }
 
       if (Vector.FillPattern) {
-         draw_pattern(&Vector, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillPattern->Units & VUNIT_USERSPACE, State),
+         draw_pattern(&Vector, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillPattern->Units IS VUNIT_USERSPACE, State),
             view_width(), view_height(), *Vector.FillPattern, mRenderBase, Raster);
       }
    }
@@ -922,12 +958,12 @@ private:
 
       if (Vector.StrokeGradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
-            draw_gradient(&Vector, &Vector.BasePath, build_fill_transform(Vector, Vector.StrokeGradient->Units & VUNIT_USERSPACE, State),
+            draw_gradient(&Vector, &Vector.BasePath, build_fill_transform(Vector, Vector.StrokeGradient->Units IS VUNIT_USERSPACE, State),
                view_width(), view_height(), *Vector.StrokeGradient, table, mRenderBase, Raster, Vector.fixed_stroke_width());
          }
       }
       else if (Vector.StrokePattern) {
-         draw_pattern(&Vector, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.StrokePattern->Units & VUNIT_USERSPACE, State),
+         draw_pattern(&Vector, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.StrokePattern->Units IS VUNIT_USERSPACE, State),
             view_width(), view_height(), *Vector.StrokePattern, mRenderBase, Raster);
       }
       else if (Vector.StrokeImage) {

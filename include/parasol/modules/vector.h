@@ -459,11 +459,13 @@ typedef struct rkVectorPattern {
    OBJECT_HEADER
    DOUBLE X;                              // Starting horizontal coordinate
    DOUBLE Y;                              // Starting vertical coordinate
+   DOUBLE Width;                          // Width of the canvas
+   DOUBLE Height;                         // Height of the canvas
    DOUBLE Opacity;                        // Level of opacity from 0 - 1.0
    struct rkVectorScene * Scene;          // Internal scene
    struct rkVectorViewport * Viewport;    // Internal viewport
    struct rkVectorPattern * Inherit;      // Reference to another pattern from which to inherit attributes
-   LONG   SpreadMethod;
+   LONG   SpreadMethod;                   // Behaviour to use when pattern bounds do not match the vector path.
    LONG   Units;                          // VUNIT constant
    LONG   ContentUnits;                   // VUNIT constant
    LONG   Dimensions;

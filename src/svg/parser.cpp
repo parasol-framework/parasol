@@ -265,6 +265,8 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
 }
 
 //****************************************************************************
+// NB: In bounding-box mode, the default view-box is 0 0 1 1, where 1 is equivalent to 100% of the target space.
+// If the client sets a custom view-box then the dimensions are fixed, and no scaling will apply.
 
 static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
 {
@@ -281,6 +283,7 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
          FID_HostScene|TPTR,     Self->Scene,
          TAGEND);
 
+      bool client_set_viewbox = false;
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
          if (!val) continue;
@@ -307,25 +310,25 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
             case SVF_PATTERNTRANSFORM: SetString(pattern, FID_Transform, val); break;
 
-            case SVF_ID:     id = val; break;
-            case SVF_X:      set_double(pattern, FID_X, val); break;
-            case SVF_Y:      set_double(pattern, FID_Y, val); break;
-            case SVF_WIDTH:  set_double(pattern->Scene, FID_PageWidth, val); break;
-            case SVF_HEIGHT: set_double(pattern->Scene, FID_PageHeight, val); break;
-            case SVF_OVERFLOW:
-               SetString(pattern->Viewport, FID_Overflow, val);
-               break;
+            case SVF_ID:       id = val; break;
+            case SVF_OVERFLOW: SetString(pattern->Viewport, FID_Overflow, val); break;
+            case SVF_OPACITY:  set_double(pattern, FID_Opacity, val); break;
 
-            case SVF_OPACITY: set_double(pattern, FID_Opacity, val); break;
+            case SVF_X:        set_double(pattern, FID_X, val); break;
+            case SVF_Y:        set_double(pattern, FID_Y, val); break;
+            case SVF_WIDTH:    set_double(pattern, FID_Width, val); break;
+            case SVF_HEIGHT:   set_double(pattern, FID_Height, val); break;
 
             case SVF_VIEWBOX: {
-               DOUBLE x=0, y=0, width=0, height=0;
-               read_numseq(val, &x, &y, &width, &height, TAGEND);
+               DOUBLE vx=0, vy=0, vwidth=1, vheight=1; // Default view-box for bounding-box mode
+               client_set_viewbox = true;
+               pattern->ContentUnits = VUNIT_USERSPACE;
+               read_numseq(val, &vx, &vy, &vwidth, &vheight, TAGEND);
                SetFields(pattern->Viewport,
-                  FID_ViewX|TDOUBLE,      x,
-                  FID_ViewY|TDOUBLE,      y,
-                  FID_ViewWidth|TDOUBLE,  width,
-                  FID_ViewHeight|TDOUBLE, height,
+                  FID_ViewX|TDOUBLE,      vx,
+                  FID_ViewY|TDOUBLE,      vy,
+                  FID_ViewWidth|TDOUBLE,  vwidth,
+                  FID_ViewHeight|TDOUBLE, vheight,
                   TAGEND);
                break;
             }
@@ -340,6 +343,15 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
          acFree(pattern);
          log.trace("Failed to create a valid definition.");
       }
+
+      /*if (!client_set_viewbox) {
+         SetFields(pattern->Viewport,
+            FID_ViewX|TDOUBLE,   0,
+            FID_ViewY|TDOUBLE,   0,
+            FID_ViewWidth|TDOUBLE,  vwidth,
+            FID_ViewHeight|TDOUBLE, vheight,
+            TAGEND);
+      }*/
 
       if (!acInit(pattern)) {
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
