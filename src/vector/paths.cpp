@@ -3,7 +3,7 @@
 
 //********************************************************************************************************************
 
-static objVectorViewport * get_parent_view(objVector *Vector)
+objVectorViewport * get_parent_view(objVector *Vector)
 {
    if (Vector->ParentView) return Vector->ParentView;
    else {
@@ -24,7 +24,7 @@ static objVectorViewport * get_parent_view(objVector *Vector)
 // This 'safe' version of gen_vector_path() checks that all parent vectors have been refreshed if they are marked
 // as dirty.  Generation of the paths is top-down.
 
-static void gen_vector_tree(objVector *Vector)
+void gen_vector_tree(objVector *Vector)
 {
    if (!(Vector->Head.Flags & NF_INITIALISED)) return;
 
@@ -51,7 +51,7 @@ static void gen_vector_tree(objVector *Vector)
 // computed from old information and likely to produce the wrong result.  Use gen_vector_tree() to avoid
 // such problems.
 
-static void gen_vector_path(objVector *Vector)
+void gen_vector_path(objVector *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -398,7 +398,7 @@ static void gen_vector_path(objVector *Vector)
 // Apply all transforms in the correct SVG order to a target agg::trans_affine object.  The process starts with the
 // vector passed in to the function, and proceeds upwards through the parent nodes.
 
-static void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform)
+void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform)
 {
    parasol::Log log(__FUNCTION__);
 

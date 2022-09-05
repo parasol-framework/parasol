@@ -24,10 +24,38 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 
 *********************************************************************************************************************/
 
+#include "agg_rasterizer_outline_aa.h"
+#include "agg_curves.h"
+#include "agg_image_accessors.h"
+#include "agg_renderer_base.h"
+#include "agg_renderer_outline_aa.h"
+#include "agg_span_interpolator_linear.h"
+#include "agg_renderer_outline_image.h"
+#include "agg_conv_smooth_poly1.h"
+#include "agg_span_gradient.h"
+#include "agg_conv_contour.h"
+
+#include "../vector.h"
+
+#include "scene_draw.cpp"
+
 static ERROR VECTORSCENE_Reset(objVectorScene *, APTR);
 
 static void scene_key_event(objVectorScene *, evKey *, LONG);
 static void process_resize_msgs(objVectorScene *);
+
+static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
+{
+   Self->Bitmap = Bitmap;
+
+   if ((!Self->PageWidth) or (!Self->PageHeight)) {
+      if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+   }
+
+   acDraw(Self);
+
+   Self->Bitmap = NULL;
+}
 
 //********************************************************************************************************************
 
@@ -599,19 +627,6 @@ VectorViewport object is initialised.
 
 *********************************************************************************************************************/
 
-static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   Self->Bitmap = Bitmap;
-
-   if ((!Self->PageWidth) or (!Self->PageHeight)) {
-      if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
-   }
-
-   acDraw(Self);
-
-   Self->Bitmap = NULL;
-}
-
 //********************************************************************************************************************
 // Apply focus to a vector and all other vectors within that tree branch (not necessarily just the viewports).
 // Also sends LostFocus notifications to vectors that previously had the focus.
@@ -770,6 +785,37 @@ static void process_resize_msgs(objVectorScene *Self)
 }
 
 //********************************************************************************************************************
+// Receiver for keyboard events
+
+static ERROR vector_keyboard_events(objVector *Vector, const evKey *Event)
+{
+   for (auto it=Vector->KeyboardSubscriptions->begin(); it != Vector->KeyboardSubscriptions->end(); ) {
+      ERROR result;
+      auto &sub = *it;
+      if (sub.Callback.Type IS CALL_STDC) {
+         parasol::SwitchContext ctx(sub.Callback.StdC.Context);
+         auto callback = (ERROR (*)(objVector *, LONG, LONG, LONG))sub.Callback.StdC.Routine;
+         result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode);
+      }
+      else if (sub.Callback.Type IS CALL_SCRIPT) {
+         // In this implementation the script function will receive all the events chained via the Next field
+         ScriptArg args[] = {
+            { "Vector",     FDF_OBJECT, { .Address = Vector } },
+            { "Qualifiers", FDF_LONG,   { .Long = Event->Qualifiers } },
+            { "Code",       FDF_LONG,   { .Long = Event->Code } },
+            { "Unicode",    FDF_LONG,   { .Long = Event->Unicode } }
+         };
+         scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+      }
+
+      if (result IS ERR_Terminate) Vector->KeyboardSubscriptions->erase(it);
+      else it++;
+   }
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
 // Distribute input events to any vectors that have subscribed and have the focus
 
 static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
@@ -924,7 +970,7 @@ static void send_wheel_event(objVectorScene *Scene, objVector *Vector, const Inp
 //********************************************************************************************************************
 // Incoming input events from the Surface hosting the scene are distributed within the scene graph.
 
-static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
+ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1093,7 +1139,7 @@ static const FieldArray clSceneFields[] = {
    END_FIELD
 };
 
-static ERROR init_vectorscene(void)
+ERROR init_vectorscene(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorScene,
       FID_ClassVersion|TFLOAT, VER_VECTORSCENE,

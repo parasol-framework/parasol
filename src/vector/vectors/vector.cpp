@@ -2174,7 +2174,7 @@ Visibility: Controls the visibility of a vector and its children.
 //********************************************************************************************************************
 // For sending events to the client
 
-static void send_feedback(objVector *Vector, LONG Event)
+void send_feedback(objVector *Vector, LONG Event)
 {
    if (!(Vector->Head.Flags & NF_INITIALISED)) return;
    if (!Vector->FeedbackSubscriptions) return;
@@ -2206,37 +2206,6 @@ static void send_feedback(objVector *Vector, LONG Event)
       }
       else it++;
    }
-}
-
-//********************************************************************************************************************
-// Receiver for keyboard events
-
-static ERROR vector_keyboard_events(objVector *Vector, const evKey *Event)
-{
-   for (auto it=Vector->KeyboardSubscriptions->begin(); it != Vector->KeyboardSubscriptions->end(); ) {
-      ERROR result;
-      auto &sub = *it;
-      if (sub.Callback.Type IS CALL_STDC) {
-         parasol::SwitchContext ctx(sub.Callback.StdC.Context);
-         auto callback = (ERROR (*)(objVector *, LONG, LONG, LONG))sub.Callback.StdC.Routine;
-         result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode);
-      }
-      else if (sub.Callback.Type IS CALL_SCRIPT) {
-         // In this implementation the script function will receive all the events chained via the Next field
-         ScriptArg args[] = {
-            { "Vector",     FDF_OBJECT, { .Address = Vector } },
-            { "Qualifiers", FDF_LONG,   { .Long = Event->Qualifiers } },
-            { "Code",       FDF_LONG,   { .Long = Event->Code } },
-            { "Unicode",    FDF_LONG,   { .Long = Event->Unicode } }
-         };
-         scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
-      }
-
-      if (result IS ERR_Terminate) Vector->KeyboardSubscriptions->erase(it);
-      else it++;
-   }
-
-   return ERR_Okay;
 }
 
 //********************************************************************************************************************

@@ -485,7 +485,7 @@ static const FieldArray clPatternFields[] = {
    END_FIELD
 };
 
-static ERROR init_pattern(void) // The pattern is a definition type for creating patterns and not drawing.
+ERROR init_pattern(void) // The pattern is a definition type for creating patterns and not drawing.
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorPattern,
       FID_BaseClassID|TLONG, ID_VECTORPATTERN,

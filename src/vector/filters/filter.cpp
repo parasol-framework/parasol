@@ -20,6 +20,8 @@ in cached bitmaps.
 
 *****************************************************************************/
 
+#include "../vector.h"
+
 static void demultiply_bitmap(objBitmap *);
 static ERROR fe_default(objVectorFilter *, VectorEffect *, ULONG, CSTRING);
 static VectorEffect * find_effect(objVectorFilter *, CSTRING);
@@ -1020,7 +1022,7 @@ static const FieldArray clFilterFields[] = {
    END_FIELD
 };
 
-static ERROR init_filter(void)
+ERROR init_filter(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorFilter,
       FID_BaseClassID|TLONG, ID_VECTORFILTER,

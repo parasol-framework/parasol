@@ -5,6 +5,8 @@
 // This class holds the current state as the vector scene is parsed for drawing.  It is most useful for managing use of
 // the 'inherit' attribute values.
 
+#include "agg_span_gradient_contour.h"
+
 class VectorState
 {
 public:
@@ -39,25 +41,206 @@ public:
 };
 
 //****************************************************************************
-// This class is used for rendering images with a pre-defined opacity.
 
-class spanconv_image
+namespace agg {
+class span_reflect_y
 {
+private:
+   span_reflect_y();
 public:
-   spanconv_image(DOUBLE Alpha) : alpha(Alpha) { }
+   typedef typename agg::rgba8::value_type value_type;
+   typedef agg::rgba8 color_type;
 
-   void prepare() { }
+   span_reflect_y(agg::pixfmt_rkl & pixf, unsigned offset_x, unsigned offset_y) :
+       m_src(&pixf),
+       m_wrap_x(pixf.mBitmap->Width),
+       m_wrap_y(pixf.mBitmap->Height),
+       m_offset_x(offset_x),
+       m_offset_y(offset_y)
+   {
+      m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
+   }
 
-   void generate(agg::rgba8 * span, int x, int y, unsigned len) const {
+   void prepare() {}
+
+   void generate(agg::rgba8 *s, int x, int y, unsigned len) {
+      x += m_offset_x;
+      y += m_offset_y;
+      const value_type* p = (const value_type*)span(x, y, len);
       do {
-         span->a = span->a * alpha;
-         ++span;
+         s->r = p[m_src->oR];
+         s->g = p[m_src->oG];
+         s->b = p[m_src->oB];
+         s->a = p[m_src->oA];
+         p = (const value_type*)next_x();
+         ++s;
       } while(--len);
    }
 
+   int8u* span(int x, int y, unsigned) {
+       m_x = x;
+       m_row_ptr = m_src->row_ptr(m_wrap_y(y));
+       return m_row_ptr + m_wrap_x(x) * 4;
+   }
+
+   int8u* next_x() {
+       int x = ++m_wrap_x;
+       return m_row_ptr + x * 4;
+   }
+
+   int8u* next_y() {
+       m_row_ptr = m_src->row_ptr(++m_wrap_y);
+       return m_row_ptr + m_wrap_x(m_x) * 4;
+   }
+
+   agg::pixfmt_rkl *m_src;
+
 private:
-   DOUBLE alpha;
+   wrap_mode_repeat_auto_pow2 m_wrap_x;
+   wrap_mode_reflect_auto_pow2 m_wrap_y;
+   UBYTE *m_row_ptr;
+   unsigned m_offset_x;
+   unsigned m_offset_y;
+   UBYTE m_bk_buf[4];
+   int m_x;
 };
+
+//****************************************************************************
+
+class span_reflect_x
+{
+private:
+   span_reflect_x();
+public:
+   typedef typename agg::rgba8::value_type value_type;
+   typedef agg::rgba8 color_type;
+
+   span_reflect_x(agg::pixfmt_rkl & pixf, unsigned offset_x, unsigned offset_y) :
+       m_src(&pixf),
+       m_wrap_x(pixf.mBitmap->Width),
+       m_wrap_y(pixf.mBitmap->Height),
+       m_offset_x(offset_x),
+       m_offset_y(offset_y)
+   {
+      m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
+   }
+
+   void prepare() {}
+
+   void generate(agg::rgba8 *s, int x, int y, unsigned len)
+   {
+      x += m_offset_x;
+      y += m_offset_y;
+      const value_type* p = (const value_type*)span(x, y, len);
+      do {
+         s->r = p[m_src->oR];
+         s->g = p[m_src->oG];
+         s->b = p[m_src->oB];
+         s->a = p[m_src->oA];
+         p = (const value_type*)next_x();
+         ++s;
+      } while(--len);
+   }
+
+  int8u* span(int x, int y, unsigned)
+  {
+      m_x = x;
+      m_row_ptr = m_src->row_ptr(m_wrap_y(y));
+      return m_row_ptr + m_wrap_x(x) * 4;
+  }
+
+  int8u* next_x()
+  {
+      int x = ++m_wrap_x;
+      return m_row_ptr + x * 4;
+  }
+
+  int8u* next_y()
+  {
+      m_row_ptr = m_src->row_ptr(++m_wrap_y);
+      return m_row_ptr + m_wrap_x(m_x) * 4;
+  }
+
+   agg::pixfmt_rkl *m_src;
+
+private:
+   wrap_mode_reflect_auto_pow2 m_wrap_x;
+   wrap_mode_repeat_auto_pow2 m_wrap_y;
+   UBYTE *m_row_ptr;
+   unsigned m_offset_x;
+   unsigned m_offset_y;
+   UBYTE m_bk_buf[4];
+   int m_x;
+};
+
+//****************************************************************************
+
+class span_repeat_rkl
+{
+private:
+   span_repeat_rkl();
+public:
+   typedef typename agg::rgba8::value_type value_type;
+   typedef agg::rgba8 color_type;
+
+   span_repeat_rkl(agg::pixfmt_rkl & pixf, unsigned offset_x, unsigned offset_y) :
+       m_src(&pixf),
+       m_wrap_x(pixf.mBitmap->Width),
+       m_wrap_y(pixf.mBitmap->Height),
+       m_offset_x(offset_x),
+       m_offset_y(offset_y)
+   {
+      m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
+   }
+
+   void prepare() {}
+
+   void generate(agg::rgba8 *s, int x, int y, unsigned len)
+   {
+      x += m_offset_x;
+      y += m_offset_y;
+      const value_type* p = (const value_type*)span(x, y, len);
+      do {
+         s->r = p[m_src->oR];
+         s->g = p[m_src->oG];
+         s->b = p[m_src->oB];
+         s->a = p[m_src->oA];
+         p = (const value_type*)next_x();
+         ++s;
+      } while(--len);
+   }
+
+  int8u* span(int x, int y, unsigned)
+  {
+      m_x = x;
+      m_row_ptr = m_src->row_ptr(m_wrap_y(y));
+      return m_row_ptr + m_wrap_x(x) * 4;
+  }
+
+  int8u* next_x()
+  {
+      int x = ++m_wrap_x;
+      return m_row_ptr + x * 4;
+  }
+
+  int8u* next_y()
+  {
+      m_row_ptr = m_src->row_ptr(++m_wrap_y);
+      return m_row_ptr + m_wrap_x(m_x) * 4;
+  }
+
+  agg::pixfmt_rkl *m_src;
+
+private:
+   wrap_mode_repeat_auto_pow2 m_wrap_x;
+   wrap_mode_repeat_auto_pow2 m_wrap_y;
+   UBYTE *m_row_ptr;
+   unsigned m_offset_x;
+   unsigned m_offset_y;
+   UBYTE m_bk_buf[4];
+   int m_x;
+};
+} // namespace
 
 //****************************************************************************
 
@@ -94,22 +277,7 @@ static const agg::trans_affine build_fill_transform(objVector &Vector, bool User
 
 //****************************************************************************
 
-template <class T> static void drawBitmapRender(agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
-   agg::rasterizer_scanline_aa<> &Raster, T &spangen, DOUBLE Opacity)
-{
-   agg::span_allocator<agg::rgba8> spanalloc;
-   agg::scanline_u8 scanline;
-   if (Opacity < 1.0) {
-      spanconv_image sci(Opacity);
-      agg::span_converter<T, spanconv_image> sc(spangen, sci);
-      agg::render_scanlines_aa(Raster, scanline, RenderBase, spanalloc, sc);
-   }
-   else agg::render_scanlines_aa(Raster, scanline, RenderBase, spanalloc, spangen);
-}
-
-//****************************************************************************
-
-static void setRasterClip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG Width, LONG Height)
+void setRasterClip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG Width, LONG Height)
 {
    agg::path_storage clip;
    clip.move_to(X, Y);
@@ -123,7 +291,7 @@ static void setRasterClip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y,
 
 //****************************************************************************
 
-static void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
+void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
 {
    switch(Method) {
       case VSM_AUTO:
@@ -858,8 +1026,6 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
 
 //********************************************************************************************************************
 
-//********************************************************************************************************************
-
 class VMAdaptor
 {
 private:
@@ -1016,7 +1182,7 @@ private:
             else if (shape->Visibility != VIS_VISIBLE) visible = false;
 
             if (!visible) {
-               log.trace("%s: #%d, Not Visible", get_name(shape), shape->Head.UID);
+               log.trace("%s: #%d, Not Visible", get_name(&shape->Head), shape->Head.UID);
                continue;
             }
          }
@@ -1353,5 +1519,87 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          agg::render_scanlines(mRaster, scanline, solid);
       }
       else log.warning("The StrokeStyle is not supported.");
+   }
+}
+
+void agg::pixfmt_rkl::setBitmap(struct rkBitmap &Bitmap)
+{
+   mBitmap = &Bitmap;
+
+   mData = Bitmap.Data + (Bitmap.XOffset * Bitmap.BytesPerPixel) + (Bitmap.YOffset * Bitmap.LineWidth);
+
+   if (Bitmap.BitsPerPixel IS 32) {
+      fBlendHLine      = &blendHLine32;
+      fBlendSolidHSpan = &blendSolidHSpan32;
+      fBlendColorHSpan = &blendColorHSpan32;
+      fCopyColorHSpan  = &copyColorHSpan32;
+
+      if (Bitmap.ColourFormat->AlphaPos IS 24) {
+         if (Bitmap.ColourFormat->BluePos IS 0) {
+            pixel_order(2, 1, 0, 3); // BGRA
+            fBlendPix = &blend32BGRA;
+            fCopyPix  = &copy32BGRA;
+            fCoverPix = &cover32BGRA;
+         }
+         else {
+            pixel_order(0, 1, 2, 3); // RGBA
+            fBlendPix = &blend32RGBA;
+            fCopyPix  = &copy32RGBA;
+            fCoverPix = &cover32RGBA;
+         }
+      }
+      else if (Bitmap.ColourFormat->RedPos IS 24) {
+         pixel_order(3, 1, 2, 0); // AGBR
+         fBlendPix = &blend32AGBR;
+         fCopyPix  = &copy32AGBR;
+         fCoverPix = &cover32AGBR;
+      }
+      else {
+         pixel_order(1, 2, 3, 0); // ARGB
+         fBlendPix = &blend32ARGB;
+         fCopyPix  = &copy32ARGB;
+         fCoverPix = &cover32ARGB;
+      }
+   }
+   else if (Bitmap.BitsPerPixel IS 24) {
+      fBlendHLine      = &blendHLine24;
+      fBlendSolidHSpan = &blendSolidHSpan24;
+      fBlendColorHSpan = &blendColorHSpan24;
+      fCopyColorHSpan  = &copyColorHSpan24;
+
+      if (Bitmap.ColourFormat->BluePos IS 0) {
+         pixel_order(2, 1, 0, 0); // BGR
+         fBlendPix = &blend24BGR;
+         fCopyPix  = &copy24BGR;
+         fCoverPix = &cover24BGR;
+      }
+      else {
+         pixel_order(0, 1, 2, 0); // RGB
+         fBlendPix = &blend24RGB;
+         fCopyPix  = &copy24RGB;
+         fCoverPix = &cover24RGB;
+      }
+   }
+   else if (Bitmap.BitsPerPixel IS 16) {
+      fBlendHLine      = &blendHLine16;
+      fBlendSolidHSpan = &blendSolidHSpan16;
+      fBlendColorHSpan = &blendColorHSpan16;
+      fCopyColorHSpan  = &copyColorHSpan16;
+
+      if ((Bitmap.ColourFormat->BluePos IS 0) and (Bitmap.ColourFormat->RedPos IS 11)) { // BGR
+         fBlendPix = &blend16bgr;
+         fCopyPix  = &copy16bgr;
+         fCoverPix = &cover16bgr;
+      }
+      else if ((Bitmap.ColourFormat->RedPos IS 0) and (Bitmap.ColourFormat->BluePos IS 11)) { // RGB
+         fBlendPix = &blend16rgb;
+         fCopyPix  = &copy16rgb;
+         fCoverPix = &cover16rgb;
+      }
+      else { // RGB
+         fBlendPix = &blend16;
+         fCopyPix  = &copy16;
+         fCoverPix = &cover16;
+      }
    }
 }

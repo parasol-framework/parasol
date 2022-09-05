@@ -43,7 +43,160 @@ where large glyphs were oriented around sharp corners.  The process would look s
 #include "agg_gsv_text.h"
 #include "agg_path_length.h"
 
+#include <ft2build.h>
+#include <freetype/freetype.h>
+
 #define DEFAULT_WEIGHT 400
+
+FT_Error (*EFT_Set_Pixel_Sizes)(FT_Face, FT_UInt pixel_width, FT_UInt pixel_height );
+FT_Error (*EFT_Set_Char_Size)(FT_Face, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt horz_resolution, FT_UInt vert_resolution );
+FT_Error (*EFT_Get_Kerning)(FT_Face, FT_UInt left_glyph, FT_UInt right_glyph, FT_UInt kern_mode, FT_Vector *akerning);
+FT_Error (*EFT_Get_Char_Index)(FT_Face, FT_ULong charcode);
+FT_Error (*EFT_Load_Glyph)(FT_Face, FT_UInt glyph_index, FT_Int32  load_flags);
+FT_Error (*EFT_Activate_Size)(FT_Size);
+FT_Error (*EFT_New_Size)(FT_Face, FT_Size *);
+
+static FIELD FID_FreetypeFace;
+
+//****************************************************************************
+
+class TextCursor {
+private:
+   LONG  mColumn, mRow; // The column is the character position after taking UTF8 sequences into account.
+
+public:
+   APTR  timer;
+   objVectorPoly *vector;
+   LONG  flash;
+   LONG  savePos;
+   LONG  endColumn, endRow; // For area selections
+   LONG  selectColumn, selectRow;
+
+   TextCursor() :
+      mColumn(0), mRow(0),
+      timer(NULL), vector(NULL), flash(0), savePos(0),
+      endColumn(0), endRow(0),
+      selectColumn(0), selectRow(0) { }
+
+   ~TextCursor() {
+      if (vector) { acFree(vector); vector = NULL; }
+      if (timer) { UpdateTimer(timer, 0); timer = 0; }
+   }
+
+   LONG column() { return mColumn; }
+   LONG row() { return mRow; }
+
+   void resetFlash() { flash = 0; }
+
+   void selectedArea(struct rkVectorText *Self, LONG *Row, LONG *Column, LONG *EndRow, LONG *EndColumn) {
+      if (selectRow < mRow) {
+         *Row       = selectRow;
+         *EndRow    = mRow;
+         *Column    = selectColumn;
+         *EndColumn = mColumn;
+      }
+      else if (selectRow IS mRow) {
+         *Row       = selectRow;
+         *EndRow    = mRow;
+         if (selectColumn < mColumn) {
+            *Column    = selectColumn;
+            *EndColumn = mColumn;
+         }
+         else {
+            *Column    = mColumn;
+            *EndColumn = selectColumn;
+         }
+      }
+      else {
+         *Row       = mRow;
+         *EndRow    = selectRow;
+         *Column    = mColumn;
+         *EndColumn = selectColumn;
+      }
+   }
+
+   void move(struct rkVectorText *, LONG, LONG, bool ValidateWidth = false);
+   void resetVector(struct rkVectorText *);
+   void validatePosition(struct rkVectorText *);
+};
+
+class CharPos {
+public:
+   DOUBLE x1, y1, x2, y2;
+   CharPos(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2) : x1(X1), y1(Y1), x2(X2), y2(Y2) { }
+};
+
+class TextLine : public std::string {
+public:
+   TextLine() : std::string { } { }
+   TextLine(const char *Value) : std::string{ Value } { }
+   TextLine(const char *Value, int Total) : std::string{ Value, Total } { }
+   TextLine(std::string Value) : std::string{ Value } { }
+
+   std::vector<CharPos> chars;
+
+   LONG charLength(ULONG Offset = 0) { // Total number of bytes used by the char at Offset
+      return UTF8CharLength(c_str() + Offset);
+   }
+
+   LONG utf8CharOffset(ULONG Char) { // Convert a character index to its byte offset
+      return UTF8CharOffset(c_str(), Char);
+   }
+
+   LONG utf8Length() { // Total number of unicode characters in the string
+      return UTF8Length(c_str());
+   }
+
+   LONG lastChar() { // Return a direct offset to the start of the last character.
+      return length() - UTF8PrevLength(c_str(), length());
+   }
+
+   LONG prevChar(ULONG Offset) { // Return the direct offset to a previous character.
+      return Offset - UTF8PrevLength(c_str(), Offset);
+   }
+};
+
+typedef struct rkVectorText {
+   OBJECT_HEADER
+   SHAPE_PUBLIC
+
+   SHAPE_PRIVATE
+   FUNCTION txValidateInput;
+   DOUBLE txInlineSize; // Enables word-wrapping
+   DOUBLE txX, txY;
+   DOUBLE txTextLength;
+   DOUBLE txFontSize;  // Font size measured in pixels.  Multiply by 3/4 to convert to point size.
+   DOUBLE txKerning;
+   DOUBLE txLetterSpacing;
+   DOUBLE txWidth; // Width of the text computed by path generation.  Not for client use as GetBoundary() can be used for that.
+   DOUBLE txStartOffset;
+   DOUBLE txSpacing;
+   DOUBLE *txDX, *txDY; // A series of spacing adjustments that apply on a per-character level.
+   DOUBLE *txRotate;  // A series of angles that will rotate each individual character.
+   DOUBLE txXOffset, txYOffset; // X,Y adjustment for ensuring that the cursor is visible.
+   struct rkFont *txFont;
+   objBitmap *txAlphaBitmap; // Host for the bitmap font texture
+   struct rkVectorImage *txBitmapImage;
+   FT_Size FreetypeSize;
+   std::vector<TextLine> txLines;
+   TextCursor txCursor;
+   CSTRING txFamily;
+   APTR    txKeyEvent;
+   OBJECTID txFocusID;
+   OBJECTID txShapeInsideID;   // Enable word-wrapping within this shape
+   OBJECTID txShapeSubtractID; // Subtract this shape from the path defined by shape-inside
+   LONG  txTotalLines;
+   LONG  txLineLimit, txCharLimit;
+   LONG  txTotalRotate, txTotalDX, txTotalDY;
+   LONG  txWeight; // 100 - 300 (Light), 400 (Normal), 700 (Bold), 900 (Boldest)
+   LONG  txAlignFlags;
+   LONG  txFlags; // VTF flags
+   char  txFontStyle[20];
+   UBYTE txRelativeFontSize;
+   bool txXRelative:1;
+   bool txYRelative:1;
+// bool txSpacingAndGlyphs:1;
+} objVectorText;
 
 static void add_line(objVectorText *, std::string, LONG Offset, LONG Length, LONG Line = -1);
 static ERROR cursor_timer(objVectorText *, LARGE, LARGE);
@@ -57,7 +210,11 @@ static void reset_font(objVectorText *);
 static ERROR text_input_events(objVector *, const InputEvent *);
 static ERROR text_focus_event(objVector *, LONG);
 
+//****************************************************************************
+
 enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
+
+//****************************************************************************
 
 INLINE DOUBLE int26p6_to_dbl(LONG p)
 {
@@ -2253,6 +2410,16 @@ static const FieldArray clTextFields[] = {
 
 static ERROR init_text(void)
 {
+   if (modResolveSymbol(modFont, "FT_Set_Pixel_Sizes", (APTR *)&EFT_Set_Pixel_Sizes)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_Set_Char_Size", (APTR *)&EFT_Set_Char_Size)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_Get_Kerning", (APTR *)&EFT_Get_Kerning)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_Get_Char_Index", (APTR *)&EFT_Get_Char_Index)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_Load_Glyph", (APTR *)&EFT_Load_Glyph)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_New_Size", (APTR *)&EFT_New_Size)) return ERR_ResolveSymbol;
+   if (modResolveSymbol(modFont, "FT_Activate_Size", (APTR *)&EFT_Activate_Size)) return ERR_ResolveSymbol;
+
+   FID_FreetypeFace = StrHash("FreetypeFace", FALSE);
+
    return(CreateObject(ID_METACLASS, 0, &clVectorText,
       FID_BaseClassID|TLONG, ID_VECTOR,
       FID_SubClassID|TLONG,  ID_VECTORTEXT,
