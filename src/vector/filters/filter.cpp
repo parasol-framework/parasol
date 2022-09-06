@@ -20,7 +20,7 @@ in cached bitmaps.
 
 *****************************************************************************/
 
-#include "../vector.h"
+//#include "../vector.h"
 
 static void demultiply_bitmap(objBitmap *);
 static ERROR fe_default(objVectorFilter *, VectorEffect *, ULONG, CSTRING);
