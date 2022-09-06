@@ -35,7 +35,7 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 #include "agg_span_gradient.h"
 #include "agg_conv_contour.h"
 
-#include "../vector.h"
+//#include "../vector.h"
 
 #include "scene_draw.cpp"
 

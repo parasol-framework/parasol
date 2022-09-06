@@ -1,5 +1,5 @@
 
-#include "../vector.h"
+//#include "../vector.h"
 
 #include "colour.cpp"
 #include "gradient.cpp"

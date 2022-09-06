@@ -16,7 +16,7 @@ functions for creating paths and rendering them to bitmaps.
 
 *****************************************************************************/
 
-#include "vector.h"
+//#include "vector.h"
 #include "colours.cpp"
 
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
