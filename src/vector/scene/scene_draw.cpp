@@ -1187,18 +1187,8 @@ private:
             }
          }
 
-         objVectorFilter *filter;
-         if ((filter = shape->Filter)) {
-            #ifdef DBG_DRAW
-               log.traceBranch("Processing filter.");
-            #endif
-
-            if (!SetPointer(filter, FID_Vector, shape)) { // Divert rendering of this vector through the filter.
-               filter->BkgdBitmap = mBitmap;
-               acDraw(filter);
-            }
-            else log.trace("Failed to set Vector reference on Filter.");
-
+         if (shape->Filter) {
+            render_filter(shape->Filter, shape, mBitmap);
             continue;
          }
 

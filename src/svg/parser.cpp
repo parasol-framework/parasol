@@ -225,7 +225,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
                else if (!StrMatch("inherit", val)) SetLong(filter, FID_ColourSpace, CS_INHERIT);
                break;
             case SVF_PRIMITIVEUNITS:
-               if (!StrMatch("userSpaceOnUse", val)) filter->PrimitiveUnits = VUNIT_USERSPACE;
+               if (!StrMatch("userSpaceOnUse", val)) filter->PrimitiveUnits = VUNIT_USERSPACE; // Default
                else if (!StrMatch("objectBoundingBox", val)) filter->PrimitiveUnits = VUNIT_BOUNDING_BOX;
                break;
 

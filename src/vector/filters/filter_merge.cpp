@@ -12,13 +12,18 @@ class MergeEffect : public VectorEffect {
    std::vector<MergeSource> List;
    objBitmap *MergeBitmap;
 
+   void xml(std::stringstream &Stream) {
+      Stream << "feMerge";
+   }
+
 public:
    MergeEffect(objVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
       parasol::Log log(__FUNCTION__);
 
-      Blank = true;
-      Source = VSF_IGNORE;
+      Blank       = true;
+      SourceType  = VSF_IGNORE;
       MergeBitmap = NULL;
+      EffectName  = "feMerge";
 
       for (auto child=Tag->Child; child; child=child->Next) {
          if (!StrMatch("feMergeNode", child->Attrib->Name)) {
@@ -26,10 +31,10 @@ public:
                if (!StrMatch("in", child->Attrib[a].Name)) {
                   switch (StrHash(child->Attrib[a].Value, FALSE)) {
                      case SVF_SOURCEGRAPHIC:
-                        if (Filter->SrcBitmap) List.emplace_back(Filter->SrcBitmap, (VectorEffect *)NULL);
+                        if (auto sg = get_source_graphic(Filter)) List.emplace_back(sg, (VectorEffect *)NULL);
                         break;
                      case SVF_SOURCEALPHA:
-                        if (Filter->SrcBitmap) List.emplace_back(Filter->SrcBitmap, (VectorEffect *)NULL);
+                        if (auto sg = get_source_graphic(Filter)) List.emplace_back(sg, (VectorEffect *)NULL);
                         break;
                      //case SVF_BACKGROUNDIMAGE: List.emplace_back(Filter->BkgdGraphic); break;
                      //case SVF_BACKGROUNDALPHA: List.emplace_back(Filter->BkgdGraphic); break;
@@ -84,7 +89,7 @@ public:
             dy = 0;
          }
          else {
-            bmp = source.Effect->Bitmap;
+            bmp = source.Effect->OutBitmap;
             dx = source.Effect->DestX;
             dy = source.Effect->DestY;
          }

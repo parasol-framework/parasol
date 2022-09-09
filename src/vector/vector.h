@@ -40,6 +40,7 @@
 #include <array>
 #include <memory>
 #include <unordered_set>
+#include <sstream>
 #include <set>
 #include <unordered_map>
 #include <mutex>
@@ -177,12 +178,15 @@ public:
 
 class VectorEffect {
 public:
+   std::string EffectName; // Name of the effect, for debugging purposes
+   std::string Name; // Unique name given by the client.
    ULONG ID;         // Case sensitive hash identifier for the filter, if anything needs to reference it.
-   UBYTE Source;     // VSF_REFERENCE, VSF_GRAPHIC...
+   UBYTE SourceType; // VSF_REFERENCE, VSF_GRAPHIC...
    UBYTE UsageCount; // Total number of other effects utilising this effect to build a pipeline
-   UBYTE Pad;
-   struct rkBitmap *Bitmap;
+   UBYTE MixType;    // VSF...
+   struct rkBitmap *OutBitmap; // Resulting bitmap from processing the effect.
    ULONG InputID; // The effect uses another effect as an input (referenced by hash ID).
+   ULONG MixID;
    LONG XOffset, YOffset; // In SVG only feOffset can use offsets, however in our framework any effect may define an offset when copying from a source.
    LONG DestX, DestY;
    ERROR Error;
@@ -192,6 +196,7 @@ public:
    VectorEffect();
    VectorEffect(struct rkVectorFilter *, XMLTag *);
 
+   virtual void xml(std::stringstream &) = 0;
    virtual void apply(struct rkVectorFilter *) = 0; // Required
    virtual void applyInput(VectorEffect &) { }; // Optional
    virtual ~VectorEffect() = default;
@@ -345,7 +350,7 @@ extern void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTran
 extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
 extern void calc_aspectratio(CSTRING, LONG, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
-extern void calc_full_boundary(objVector *, std::array<DOUBLE, 4> &);
+extern void calc_full_boundary(objVector *, std::array<DOUBLE, 4> &, bool IncludeSiblings = true);
 extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
 extern void gen_vector_path(objVector *);
 extern void gen_vector_tree(objVector *);
@@ -354,6 +359,8 @@ extern void rgb2linear(objBitmap &);
 extern void send_feedback(objVector *Vector, LONG Event);
 extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, UBYTE);
+extern ERROR render_filter(objVectorFilter *, objVector *, objBitmap *);
+extern objBitmap * get_source_graphic(objVectorFilter *);
 
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glFocusLock;

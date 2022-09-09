@@ -7,6 +7,10 @@ class ImageEffect : public VectorEffect {
    UBYTE ResampleMethod;
    UBYTE Units; // VUNIT
 
+   void xml(std::stringstream &Stream) { // TODO: Support exporting attributes
+      Stream << "feImage";
+   }
+
 public:
    ImageEffect(struct rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
       parasol::Log log(__FUNCTION__);
@@ -15,6 +19,7 @@ public:
       AspectRatio    = ARF_X_MID|ARF_Y_MID|ARF_MEET;
       ResampleMethod = VSM_BILINEAR;
       Picture        = NULL;
+      EffectName     = "feImage";
 
       bool image_required = false;
       CSTRING path = NULL;
@@ -152,7 +157,7 @@ public:
    }
 
    void apply(objVectorFilter *Filter) {
-      if (Bitmap->BytesPerPixel != 4) return;
+      if (OutBitmap->BytesPerPixel != 4) return;
       if (!Picture) return;
 
       auto pic = Picture->Bitmap;
@@ -190,19 +195,19 @@ public:
 
          LONG parent_x, parent_y, parent_width, parent_height;
 
-         if (Dimensions & DMF_RELATIVE_X) parent_x = Filter->ViewX + F2I(X * (DOUBLE)Filter->Viewport->vpFixedWidth);
+         if (Dimensions & DMF_RELATIVE_X) parent_x = Filter->ViewX + F2I(X * (DOUBLE)Filter->ViewWidth);
          else if (Dimensions & DMF_FIXED_X) parent_x = Filter->ViewX + X;
          else parent_x = Filter->ViewX;
 
-         if (Dimensions & DMF_RELATIVE_Y) parent_y = Filter->ViewY + F2I(Y * (DOUBLE)Filter->Viewport->vpFixedHeight);
+         if (Dimensions & DMF_RELATIVE_Y) parent_y = Filter->ViewY + F2I(Y * (DOUBLE)Filter->ViewHeight);
          else if (Dimensions & DMF_FIXED_Y) parent_y = Filter->ViewY + Y;
          else parent_y = Filter->ViewY;
 
-         if (Dimensions & DMF_RELATIVE_WIDTH) parent_width = (DOUBLE)Filter->Viewport->vpFixedWidth * Width;
+         if (Dimensions & DMF_RELATIVE_WIDTH) parent_width = (DOUBLE)Filter->ViewWidth * Width;
          else if (Dimensions & DMF_FIXED_WIDTH) parent_width = Width;
          else parent_width = Filter->BoundWidth;
 
-         if (Dimensions & DMF_RELATIVE_HEIGHT) parent_height = (DOUBLE)Filter->Viewport->vpFixedHeight * Height;
+         if (Dimensions & DMF_RELATIVE_HEIGHT) parent_height = (DOUBLE)Filter->ViewHeight * Height;
          else if (Dimensions & DMF_FIXED_HEIGHT) parent_height = Height;
          else parent_height = Filter->BoundHeight;
 
@@ -213,13 +218,11 @@ public:
          y += parent_y;
       }
 
-      gfxDrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, 0x00000000, BAF_FILL);
-
       // Configure destination
       agg::renderer_base<agg::pixfmt_rkl> renderBase;
-      agg::pixfmt_rkl pixDest(*Bitmap);
+      agg::pixfmt_rkl pixDest(*OutBitmap);
       renderBase.attach(pixDest);
-      renderBase.clip_box(Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right-1, Bitmap->Clip.Bottom-1);
+      renderBase.clip_box(OutBitmap->Clip.Left, OutBitmap->Clip.Top, OutBitmap->Clip.Right-1, OutBitmap->Clip.Bottom-1);
 
       // Configure source
 
@@ -237,9 +240,9 @@ public:
       agg::span_pattern_rkl<agg::pixfmt_rkl> source(pixSource, 0, 0);
       agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_rkl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
       agg::rasterizer_scanline_aa<> raster;
-      setRasterClip(raster, Bitmap->Clip.Left, Bitmap->Clip.Top,
-         Bitmap->Clip.Right - Bitmap->Clip.Left,
-         Bitmap->Clip.Bottom - Bitmap->Clip.Top);
+      setRasterClip(raster, OutBitmap->Clip.Left, OutBitmap->Clip.Top,
+         OutBitmap->Clip.Right - OutBitmap->Clip.Left,
+         OutBitmap->Clip.Bottom - OutBitmap->Clip.Top);
       drawBitmapRender(renderBase, raster, spangen, 1.0);
    }
 

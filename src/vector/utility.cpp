@@ -330,7 +330,7 @@ void linear2RGB(objBitmap &Bitmap)
 // NOTE: This function performs a full traversal (siblings and children) and this may extend beyond the
 // viewport's visible boundary.
 
-void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds)
+void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds, bool IncludeSiblings)
 {
    if (!Vector) return;
 
@@ -355,7 +355,9 @@ void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds)
          if (by2 > Bounds[3]) Bounds[3] = by2;
       }
 
-      if (Vector->Child) calc_full_boundary((objVector *)Vector->Child, Bounds);
+      if (Vector->Child) calc_full_boundary((objVector *)Vector->Child, Bounds, true);
+
+      if (!IncludeSiblings) break;
    }
 }
 

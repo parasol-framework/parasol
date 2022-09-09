@@ -42,13 +42,8 @@
 &lt;/feMerge&gt;
 </pre>
 <p>Unsupported or invalid elements will be reported in debug output and then ignored, allowing the parser to process as many instructions as possible.</p>
-<p>The XML object that is used to parse the effects is accessible through the <field>EffectXML</field> field.</p>
+<p>Multiple calls to this action will append to existing effects.  If a reset of existing effects is necessary, call the @Clear action before appending new effects.</p>
       </description>
-    </action>
-
-    <action>
-      <name>Draw</name>
-      <comment>Draws object graphics to drawable areas.</comment>
     </action>
 
   </actions>
@@ -88,9 +83,12 @@
 
     <field>
       <name>EffectXML</name>
-      <comment>The XML object used to parse incoming effects</comment>
-      <access read="R">Read</access>
-      <type class="XML">*XML</type>
+      <comment>Returns a SVG XML string that defines the filter's effects.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+      <description>
+<p>This field value will return a purpose-built string that defines the filter's effects in SVG compliant XML.  The string is allocated and must be freed once no longer in use.</p>
+      </description>
     </field>
 
     <field>
@@ -130,16 +128,6 @@
       <type>STRING</type>
       <description>
 <p>Setting the Path field is recommended if the filter contains sub-classes that make file references, such as a filter image.  Any relative file reference will be prefixed with the path string that is specified here.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Scene</name>
-      <comment>Refers to the internal <class name="VectorScene">VectorScene</class> that will be used for filter processing.</comment>
-      <access read="R">Read</access>
-      <type class="VectorScene">*VectorScene</type>
-      <description>
-<p>The Filter class will allocate a <class name="VectorScene">VectorScene</class> object on initialisation and use it for hosting filter processing.  The dimensions of the scene will match that of the area hosting the filter.  The scene object must not be modified as it is managed entirely by the filter.</p>
       </description>
     </field>
 

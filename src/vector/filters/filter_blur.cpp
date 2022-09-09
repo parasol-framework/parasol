@@ -53,8 +53,14 @@ UBYTE const stack_blur_tables<T>::g_stack_blur8_shr[255] =
 class BlurEffect : public VectorEffect {
    DOUBLE RX, RY;
 
+   void xml(std::stringstream &Stream) { // TODO: Support exporting attributes
+      Stream << "feBlur";
+   }
+
 public:
    BlurEffect(struct rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
+      EffectName = "feBlur";
+
       RX = 0; // SVG default values are zero
       RY = 0;
 
@@ -82,7 +88,7 @@ public:
    // This is the stack blur algorithm originally implemented in AGG.
 
    void apply(struct rkVectorFilter *Filter) {
-      auto bmp = Bitmap;
+      auto bmp = OutBitmap;
       if (bmp->BytesPerPixel != 4) return;
 
       ULONG rx = RX * 2;

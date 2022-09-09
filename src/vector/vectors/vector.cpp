@@ -397,7 +397,7 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
          bounds[3] = by2;
       }
 
-      if (Args->Flags & VBF_INCLUSIVE) calc_full_boundary(Self->Child, bounds);
+      if (Args->Flags & VBF_INCLUSIVE) calc_full_boundary(Self->Child, bounds, true);
 
       Args->X      = bounds[0];
       Args->Y      = bounds[1];
@@ -446,8 +446,7 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
    log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UID : 0,
       Self->Prev ? Self->Prev->Head.UID : 0, Self->Next ? Self->Next->Head.UID : 0, Self);
 
-   OBJECTPTR parent;
-   if ((parent = Self->Parent)) {
+   if (auto parent = Self->Parent) {
       if (parent->ClassID IS ID_VECTOR) {
          auto parent_shape = (objVector *)parent;
          Self->Scene = parent_shape->Scene;
@@ -1013,8 +1012,7 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
       };
       args[0].Long = Self->Head.UID;
 
-      OBJECTPTR script;
-      if ((script = Args->Callback->Script.Script)) {
+      if (auto script = Args->Callback->Script.Script) {
          LONG index = 0;
          do {
            cmd = Self->BasePath.vertex(&x, &y);

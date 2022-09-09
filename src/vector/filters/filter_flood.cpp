@@ -1,22 +1,27 @@
 
 class FloodEffect : public VectorEffect {
-   struct RGB8 Colour;
+   RGB8 Colour;
    DOUBLE X, Y, Width, Height;
    DOUBLE Opacity;
    LONG Dimensions;
 
+   void xml(std::stringstream &Stream) { // TODO: Support exporting attributes
+      Stream << "feFlood";
+   }
+
 public:
-   FloodEffect(struct rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
+   FloodEffect(rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
       parasol::Log log(__FUNCTION__);
 
       // Dimensions are relative to the VectorFilter's Bound* dimensions.
 
+      X          = 0;
+      Y          = 0;
+      Width      = 1.0;
+      Height     = 1.0;
+      Opacity    = 1.0;
+      EffectName = "feFlood";
       Dimensions = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
-      X = 0;
-      Y = 0;
-      Width   = 1.0;
-      Height  = 1.0;
-      Opacity = 1.0;
 
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
@@ -81,7 +86,7 @@ public:
    // This is the stack flood algorithm originally implemented in AGG.
 
    void apply(objVectorFilter *Filter) {
-      if (Bitmap->BytesPerPixel != 4) return;
+      if (OutBitmap->BytesPerPixel != 4) return;
 
       LONG x, y, width, height;
 
@@ -97,8 +102,8 @@ public:
       if (Dimensions & DMF_RELATIVE_HEIGHT) height = F2I(DOUBLE(Filter->BoundHeight) * Height);
       else height = F2I(Height);
 
-      ULONG colour = PackPixelWBA(Bitmap, Colour.Red, Colour.Green, Colour.Blue, Colour.Alpha);
-      gfxDrawRectangle(Bitmap, Bitmap->Clip.Left+x, Bitmap->Clip.Top+y, width, height, colour, BAF_FILL);
+      ULONG colour = PackPixelWBA(OutBitmap, Colour.Red, Colour.Green, Colour.Blue, Colour.Alpha);
+      gfxDrawRectangle(OutBitmap, OutBitmap->Clip.Left+x, OutBitmap->Clip.Top+y, width, height, colour, BAF_FILL);
    }
 
    virtual ~FloodEffect() { }

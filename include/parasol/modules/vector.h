@@ -516,33 +516,32 @@ typedef struct rkVectorGradient {
 
 typedef struct rkVectorFilter {
    OBJECT_HEADER
-   DOUBLE X;                              // Left-most position of filter area
-   DOUBLE Y;                              // Top-most position of filter area
-   DOUBLE Width;                          // Width of filter area
-   DOUBLE Height;                         // Height of filter area
-   DOUBLE Opacity;                        // Level of opacity from 0 - 1.0
-   struct rkVectorScene * Scene;          // Internal scene
-   struct rkVectorViewport * Viewport;    // Internal viewport
-   struct rkVectorFilter * Inherit;       // Reference to another pattern from which to inherit attributes
-   struct rkXML * EffectXML;              // The XML object used to parse incoming effects
-   LONG   Units;                          // VUNIT constant
-   LONG   PrimitiveUnits;                 // VUNIT constant
-   LONG   Dimensions;                     // Flags for detailing area values
+   DOUBLE X;                           // Left-most position of filter area
+   DOUBLE Y;                           // Top-most position of filter area
+   DOUBLE Width;                       // Width of filter area
+   DOUBLE Height;                      // Height of filter area
+   DOUBLE Opacity;                     // Level of opacity from 0 - 1.0
+   struct rkVectorFilter * Inherit;    // Reference to another pattern from which to inherit attributes
+   LONG   Units;                       // VUNIT constant
+   LONG   PrimitiveUnits;              // VUNIT constant
+   LONG   Dimensions;                  // Flags for detailing area values
    LONG   ColourSpace;
 
 #ifdef PRV_VECTORFILTER
-   LARGE DrawStamp; // Timestamp at which this filter was last rendered
+   rkVector *ClientVector; // Client vector or viewport supplied by Scene.acDraw()
+   struct rkVectorScene *Scene; // Internal scene for rendering SourceGraphic
    std::vector<std::unique_ptr<VectorEffect>> Effects;
-   objBitmap *SrcBitmap; // A temporary alpha enabled drawing of the vector that is targeted by the filter.
-   objBitmap *BkgdBitmap; // Defined by Scene.acDraw()
+   ClipRectangle VectorClip; // Clipping region of the vector client
+   objBitmap *SourceGraphic; // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
+   objBitmap *BkgdBitmap; // Target bitmap supplied by Scene.acDraw()
    STRING Path; // Affix this path to file references (e.g. feImage).
    struct {
       objBitmap *Bitmap;
       UBYTE *Data;
       LONG DataSize;
    } Bank[10];
-   LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Calculated pixel boundary for the entire filter and its effects.
-   LONG ViewX, ViewY, ViewWidth, ViewHeight; // Boundary of the target area (for user space coordinate mode)
+   LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Pixel boundary of the client vector.
+   LONG ViewX, ViewY, ViewWidth, ViewHeight; // Boundary of the target area (either the user space area or bounding box area)
    UBYTE BankIndex;
    bool Rendered;
   

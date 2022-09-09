@@ -2,8 +2,14 @@
 // use for applying an effect.
 
 class OffsetEffect : public VectorEffect {
+
+   void xml(std::stringstream &Stream) {
+      Stream << "feOffset";
+   }
+
 public:
    OffsetEffect(struct rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
+      EffectName = "feOffset";
       Blank = true;
 
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -20,7 +26,7 @@ public:
 
    void applyInput(VectorEffect &Effect) {
       // This one-off optimisation is used to inherit the offset coordinates and source type from feOffset effects.
-      Effect.Source   = Source;
+      Effect.SourceType = SourceType;
       Effect.XOffset += XOffset;
       Effect.YOffset += YOffset;
       Effect.InputID  = 0;

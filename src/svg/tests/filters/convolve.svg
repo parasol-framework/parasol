@@ -56,9 +56,4 @@
   <text x="145" y="130" font-family="Open Sans" font-size="14pt" font-weight="bold">feConvolveMatrix</text>
   <text x="58" y="130" font-family="Open Sans" font-size="14pt" font-weight="bold">Original</text>
   <line x1="137" y1="40" x2="137" y2="330" stroke="black" />
-
-<!--
-  <image xlink:href="sdk:modules/gui/svg/tests/ball.png"  width="128" height="128" />
-  <image xlink:href="drive3:suity-avatar.jpg"  width="1000" height="1000" filter="url(#edge)" />
--->
 </svg>
