@@ -97,7 +97,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the filter area is expressed here as a fixed or relative coordinate.</p>
+<p>The height of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
+<p>The coordinate system for the width and height depends on the value for <field>Units</field>.</p>
+<p>If width or height is not specified, the effect is as if a value of 120% were specified.</p>
       </description>
     </field>
 
@@ -148,7 +150,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the filter area is expressed here as a fixed or relative coordinate.</p>
+<p>The width of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
+<p>The coordinate system for the width and height depends on the value for <field>Units</field>.</p>
+<p>If width or height is not specified, the effect is as if a value of 120% were specified.</p>
       </description>
     </field>
 
@@ -158,7 +162,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (X,Y) field values define the starting coordinate for mapping filters.</p>
+<p>The meaning of the (X,Y) field values depend on the value for <field>Units</field>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
+<p>If X or Y is not specified, the effect is as if a value of -10% were specified.</p>
       </description>
     </field>
 
@@ -168,7 +173,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (X,Y) field values define the starting coordinate for mapping filters.</p>
+<p>The meaning of the (X,Y) field values depend on the value for <field>Units</field>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
+<p>If X or Y is not specified, the effect is as if a value of -10% were specified.</p>
       </description>
     </field>
 

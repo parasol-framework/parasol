@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 Please note that this is not an extension of the Vector class.  It is used for the purposes of filter definitions only.
 
@@ -18,7 +18,7 @@ in cached bitmaps.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static void demultiply_bitmap(objBitmap *);
 static ERROR fe_default(objVectorFilter *, VectorEffect *, ULONG, CSTRING);
@@ -27,7 +27,7 @@ static VectorEffect * find_effect(objVectorFilter *, ULONG);
 static ERROR get_source_bitmap(objVectorFilter *, objBitmap **, UBYTE, ULONG, bool);
 static void premultiply_bitmap(objBitmap *);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "filter_blur.cpp"
 #include "filter_merge.cpp"
@@ -40,7 +40,7 @@ static void premultiply_bitmap(objBitmap *);
 #include "filter_turbulence.cpp"
 #include "filter_morphology.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 VectorEffect::VectorEffect()
 {
@@ -53,7 +53,7 @@ VectorEffect::VectorEffect()
    Blank   = false;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Pre-multiplying affects RGB channels where alpha masking is present.  The alpha values are unmodified.
 //
 // It is not necessary to pre-multiply if a processing effect is only utilising the alpha channel as an input.
@@ -87,8 +87,8 @@ static void premultiply_bitmap(objBitmap *bmp)
    }
 }
 
-//****************************************************************************
-// Where possible, demultiplying should be avoided as it requires numeric division.
+//********************************************************************************************************************
+// Where possible, demultiplying should be avoided as it requires numeric division 3x per affected pixel.
 
 static void demultiply_bitmap(objBitmap *bmp)
 {
@@ -122,7 +122,7 @@ static void demultiply_bitmap(objBitmap *bmp)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Return a bitmap from the bank.  In order to save memory, bitmap data is managed internally so that it always
 // reflects the size of the clipping region.
 
@@ -177,7 +177,7 @@ static ERROR get_banked_bitmap(objVectorFilter *Self, objBitmap **BitmapResult)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns a rendered bitmap that represents the source.  Where possible, if a bitmap is being referenced then that
 // reference will be returned.  Otherwise a new bitmap is allocated and rendered with the effect.  The bitmap must
 // not be freed as they are permanently maintained until the VectorFilter is destroyed.
@@ -264,7 +264,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Render the scene to an internal bitmap that can be used for SourceGraphic and SourceAlpha input.
 // If the referenced vector has no content then the result is a bitmap cleared to 0x00000000, as per SVG specs.
 
@@ -297,15 +297,15 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
    }
    else if (Self->Rendered) return Self->SourceGraphic; // Source bitmap already exists and drawn at the correct size.
 
-   if (!Self->Scene) {
-      if (!CreateObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Scene,
+   if (!Self->SourceScene) {
+      if (!CreateObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->SourceScene,
             FID_PageWidth|TLONG,  Self->ViewWidth,
             FID_PageHeight|TLONG, Self->ViewHeight,
             TAGEND)) {
 
          objVectorViewport *viewport;
          if (!CreateObject(ID_VECTORVIEWPORT, 0, &viewport,
-               FID_Owner|TLONG, Self->Scene->Head.UID,
+               FID_Owner|TLONG, Self->SourceScene->Head.UID,
                TAGEND)) {
             viewport->Child = Self->ClientVector;
          }
@@ -320,8 +320,8 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
    vector->Filter = NULL; // Temporarily turning off the filter is required to prevent infinite recursion.
 
    gfxDrawRectangle(Self->SourceGraphic, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0x00000000, BAF_FILL);
-   Self->Scene->Bitmap = Self->SourceGraphic;
-   acDraw(Self->Scene);
+   Self->SourceScene->Bitmap = Self->SourceGraphic;
+   acDraw(Self->SourceScene);
 
    vector->Filter = Self;
    vector->Next = save_vector;
@@ -330,7 +330,7 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
    return Self->SourceGraphic;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Rendering process is as follows:
 //
 // * A VectorScene calls this function with a vector that requested the filter, and a target bitmap.
@@ -338,7 +338,7 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
 // * Each effect is processed in their original order and each can produce a single OutBitmap.
 //   * An effect may request the SourceGraphic, in which case we render the Vector to a separate scene graph and without transforms.
 // * Each effect's OutBitmap is rendered to TargetBitmap.  Transforms may be applied at this stage.
-//   The overall process is similar to that of drawImage() in scene_draw.cpp.
+//   The overall process is similar to that of draw_image() in scene_draw.cpp.
 //
 // SPECIAL CASE: SVG rules dictate that if the Vector is a container (i.e. Viewport) then the filter applies to the
 // contents of the group as a whole.  The group's children do not render to the screen directly; instead, the
@@ -347,7 +347,6 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
 // SourceGraphic or SourceAlpha. Filter effects can be applied to container elements with no content (e.g., an
 // empty ‘g’ element), in which case the SourceGraphic or SourceAlpha consist of a transparent black rectangle
 // that is the size of the filter effects region.
-
 
 ERROR render_filter(objVectorFilter *Self, objVector *Vector, objBitmap *TargetBitmap)
 {
@@ -460,14 +459,10 @@ ERROR render_filter(objVectorFilter *Self, objVector *Vector, objBitmap *TargetB
       Self->ViewHeight = fh;
    }
 
-   ClipRectangle clip = {
-      .Left   = (Self->BoundX < 0) ? 0 : Self->BoundX,
-      .Right  = Self->BoundX + Self->BoundWidth,
-      .Bottom = Self->BoundY + Self->BoundHeight,
-      .Top    = (Self->BoundY < 0) ? 0 : Self->BoundY
-   };
-
-   Self->VectorClip = clip;
+   Self->VectorClip.Left   = (Self->BoundX < 0) ? 0 : Self->BoundX;
+   Self->VectorClip.Right  = Self->BoundX + Self->BoundWidth;
+   Self->VectorClip.Bottom = Self->BoundY + Self->BoundHeight;
+   Self->VectorClip.Top    = (Self->BoundY < 0) ? 0 : Self->BoundY;
 
    // Render each event in sequence.
 
@@ -515,7 +510,7 @@ ERROR render_filter(objVectorFilter *Self, objVector *Vector, objBitmap *TargetB
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Find an effect by name
 
 static VectorEffect * find_effect(objVectorFilter *Self, CSTRING Name)
@@ -530,7 +525,7 @@ static VectorEffect * find_effect(objVectorFilter *Self, CSTRING Name)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Find an effect by UID.
 
 static VectorEffect * find_effect(objVectorFilter *Self, ULONG ID)
@@ -542,7 +537,7 @@ static VectorEffect * find_effect(objVectorFilter *Self, ULONG ID)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Determine the usage count of each effect (i.e. the total number of times the effect is referenced in the pipeline).
 
 static void calc_usage(objVectorFilter *Self)
@@ -564,7 +559,7 @@ static void calc_usage(objVectorFilter *Self)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Parser for common filter attributes.
 
 static ERROR fe_default(objVectorFilter *Filter, VectorEffect *Effect, ULONG AttribID, CSTRING Value)
@@ -621,11 +616,11 @@ static ERROR fe_default(objVectorFilter *Filter, VectorEffect *Effect, ULONG Att
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Clear: Clears all filter instructions from the object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_Clear(objVectorFilter *Self, APTR Void)
 {
@@ -641,7 +636,7 @@ static ERROR VECTORFILTER_Clear(objVectorFilter *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 DataFeed: Filter effects are parsed via the DataFeed action.
@@ -668,7 +663,7 @@ Multiple calls to this action will append to existing effects.  If a reset of ex
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Args)
 {
@@ -725,7 +720,7 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORFILTER_Free(objVectorFilter *Self, APTR Void)
 {
@@ -734,12 +729,12 @@ static ERROR VECTORFILTER_Free(objVectorFilter *Self, APTR Void)
    Self->Effects.~vector();
 
    if (Self->SourceGraphic) { acFree(Self->SourceGraphic); Self->SourceGraphic = NULL; }
-   if (Self->Scene)         { acFree(Self->Scene);         Self->Scene = NULL; }
+   if (Self->SourceScene)   { acFree(Self->SourceScene);   Self->SourceScene = NULL; }
    if (Self->Path)          { FreeResource(Self->Path);    Self->Path = NULL; }
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORFILTER_Init(objVectorFilter *Self, APTR Void)
 {
@@ -753,7 +748,7 @@ static ERROR VECTORFILTER_Init(objVectorFilter *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORFILTER_NewObject(objVectorFilter *Self, APTR Void)
 {
@@ -761,16 +756,16 @@ static ERROR VECTORFILTER_NewObject(objVectorFilter *Self, APTR Void)
    Self->Units          = VUNIT_BOUNDING_BOX;
    Self->PrimitiveUnits = VUNIT_UNDEFINED;
    Self->Opacity        = 1.0;
-   Self->X              = -0.1;
+   Self->X              = -0.1; // -10% default as per SVG requirements
    Self->Y              = -0.1;
-   Self->Width          = 1.2;
+   Self->Width          = 1.2;  // +120% default as per SVG requirements
    Self->Height         = 1.2;
    Self->ColourSpace    = CS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
    Self->Dimensions     = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ColourSpace: The colour space of the filter graphics (SRGB or linear RGB).
@@ -803,9 +798,7 @@ EffectXML: Returns a SVG XML string that defines the filter's effects.
 This field value will return a purpose-built string that defines the filter's effects in SVG compliant XML.  The string
 is allocated and must be freed once no longer in use.
 
--END-
-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_GET_EffectXML(objVectorFilter *Self, CSTRING *Value)
 {
@@ -823,15 +816,19 @@ static ERROR VECTORFILTER_GET_EffectXML(objVectorFilter *Self, CSTRING *Value)
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Height: The height of the filter area.  Can be expressed as a fixed or relative coordinate.
 
-The height of the filter area is expressed here as a fixed or relative coordinate.
--END-
+The height of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively
+restrain the working space for the effect processing, making them an important consideration for efficiency.
 
-*****************************************************************************/
+The coordinate system for the width and height depends on the value for #Units.
+
+If width or height is not specified, the effect is as if a value of 120% were specified.
+
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_GET_Height(objVectorFilter *Self, struct Variable *Value)
 {
@@ -862,14 +859,14 @@ static ERROR VECTORFILTER_SET_Height(objVectorFilter *Self, Variable *Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Inherit: Inherit attributes from a VectorFilter referenced here.
 
 Attributes can be inherited from another filter by referencing that gradient in this field.  This feature is provided
 primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance penalty.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_SET_Inherit(objVectorFilter *Self, objVectorFilter *Value)
 {
@@ -881,14 +878,14 @@ static ERROR VECTORFILTER_SET_Inherit(objVectorFilter *Self, objVectorFilter *Va
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Opacity: The opacity of the filter.
 
 The opacity of the filter is defined as a value between 0.0 and 1.0, with 1.0 being fully opaque.  The default value
 is 1.0.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_SET_Opacity(objVectorFilter *Self, DOUBLE Value)
 {
@@ -898,14 +895,14 @@ static ERROR VECTORFILTER_SET_Opacity(objVectorFilter *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Path: Affix this path to all file references in the filter definition.
 
 Setting the Path field is recommended if the filter contains sub-classes that make file references, such as
 a filter image.  Any relative file reference will be prefixed with the path string that is specified here.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_SET_Path(objVectorFilter *Self, CSTRING Value)
 {
@@ -933,7 +930,7 @@ static ERROR VECTORFILTER_SET_Path(objVectorFilter *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PrimitiveUnits: Private. Not currently implemented.
 
@@ -946,10 +943,14 @@ references it.  The alternative is `USERSPACE`, which positions the filter relat
 -FIELD-
 Width: The width of the filter area.  Can be expressed as a fixed or relative coordinate.
 
-The width of the filter area is expressed here as a fixed or relative coordinate.
--END-
+The width of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively
+restrain the working space for the effect processing, making them an important consideration for efficiency.
 
-*****************************************************************************/
+The coordinate system for the width and height depends on the value for #Units.
+
+If width or height is not specified, the effect is as if a value of 120% were specified.
+
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_GET_Width(objVectorFilter *Self, Variable *Value)
 {
@@ -980,13 +981,17 @@ static ERROR VECTORFILTER_SET_Width(objVectorFilter *Self, Variable *Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 X: X coordinate for the filter.
 
-The (X,Y) field values define the starting coordinate for mapping filters.
--END-
-*****************************************************************************/
+The meaning of the (X,Y) field values depend on the value for #Units.  In userspace mode, the filter position will be
+relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the
+vector's position.  It is important to note that coordinates are measured before any transforms are applied.
+
+If X or Y is not specified, the effect is as if a value of -10% were specified.
+
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_GET_X(objVectorFilter *Self, Variable *Value)
 {
@@ -1014,13 +1019,18 @@ static ERROR VECTORFILTER_SET_X(objVectorFilter *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Y: Y coordinate for the filter.
 
-The (X,Y) field values define the starting coordinate for mapping filters.
+The meaning of the (X,Y) field values depend on the value for #Units.  In userspace mode, the filter position will be
+relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the
+vector's position.  It is important to note that coordinates are measured before any transforms are applied.
+
+If X or Y is not specified, the effect is as if a value of -10% were specified.
+
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_GET_Y(objVectorFilter *Self, Variable *Value)
 {
@@ -1048,7 +1058,7 @@ static ERROR VECTORFILTER_SET_Y(objVectorFilter *Self, Variable *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clFilterDimensions[] = {
    { "FixedX",         DMF_FIXED_X },

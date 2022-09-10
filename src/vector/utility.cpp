@@ -326,8 +326,8 @@ void linear2RGB(objBitmap &Bitmap)
 }
 
 //********************************************************************************************************************
-// Calculate the boundaries for a branch of the tree and return the combined maximum bound values.
-// NOTE: This function performs a full traversal (siblings and children) and this may extend beyond the
+// Calculate the boundaries for a branch of the tree, including transforms, and return the combined maximum bound
+// values.  NOTE: This function performs a full traversal (siblings and children) and this may extend beyond the
 // viewport's visible boundary.
 
 void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds, bool IncludeSiblings)

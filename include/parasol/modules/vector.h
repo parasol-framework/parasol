@@ -529,11 +529,11 @@ typedef struct rkVectorFilter {
 
 #ifdef PRV_VECTORFILTER
    rkVector *ClientVector; // Client vector or viewport supplied by Scene.acDraw()
-   struct rkVectorScene *Scene; // Internal scene for rendering SourceGraphic
-   std::vector<std::unique_ptr<VectorEffect>> Effects;
-   ClipRectangle VectorClip; // Clipping region of the vector client
+   struct rkVectorScene *SourceScene; // Internal scene for rendering SourceGraphic
    objBitmap *SourceGraphic; // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
    objBitmap *BkgdBitmap; // Target bitmap supplied by Scene.acDraw()
+   std::vector<std::unique_ptr<VectorEffect>> Effects;
+   ClipRectangle VectorClip; // Clipping region of the vector client (reflects the vector bounds)
    STRING Path; // Affix this path to file references (e.g. feImage).
    struct {
       objBitmap *Bitmap;
