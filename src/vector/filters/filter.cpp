@@ -368,14 +368,10 @@ ERROR render_filter(objVectorFilter *Self, objVector *Vector, objBitmap *TargetB
 
    parasol::SwitchContext context(Self);
 
-   #ifdef DBG_DRAW
-      log.traceBranch("Rendering filter for %s.", get_name(Vector));
-   #endif
-
    Self->BkgdBitmap   = TargetBitmap;
-   Self->Rendered     = false;
-   Self->BankIndex    = 0;
    Self->ClientVector = Vector;
+   Self->Rendered     = false; // Set to true when SourceGraphic is rendered
+   Self->BankIndex    = 0;
 
    // Calculate the area that will be affected by the filter algorithms.  The area will be reflected in the target
    // Bitmap's clipping coordinates.
@@ -516,7 +512,7 @@ ERROR render_filter(objVectorFilter *Self, objVector *Vector, objBitmap *TargetB
 
    if (Self->ColourSpace IS CS_LINEAR_RGB) linear2RGB(*shared_output);
    shared_output->Opacity = (Self->Opacity < 1.0) ? (255.0 * Self->Opacity) : 255;
-   gfxCopyArea(shared_output, Self->BkgdBitmap, BAF_BLEND|BAF_COPY, 0, 0, shared_output->Width, shared_output->Height, 0, 0);
+   gfxCopyArea(shared_output, TargetBitmap, BAF_BLEND|BAF_COPY, 0, 0, shared_output->Width, shared_output->Height, 0, 0);
 
    return ERR_Okay;
 }
