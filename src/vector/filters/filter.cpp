@@ -124,7 +124,8 @@ static void demultiply_bitmap(objBitmap *bmp)
 
 //********************************************************************************************************************
 // Return a bitmap from the bank.  In order to save memory, bitmap data is managed internally so that it always
-// reflects the size of the clipping region.
+// reflects the size of the clipping region.  The bitmap's size reflects the Filter's (X,Y), (Width,Height) values in
+// accordance with the unit setting.
 
 static ERROR get_banked_bitmap(objVectorFilter *Self, objBitmap **BitmapResult)
 {
@@ -265,8 +266,12 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
 }
 
 //********************************************************************************************************************
-// Render the scene to an internal bitmap that can be used for SourceGraphic and SourceAlpha input.
+// Render the vector client(s) to an internal bitmap that can be used for SourceGraphic and SourceAlpha input.
 // If the referenced vector has no content then the result is a bitmap cleared to 0x00000000, as per SVG specs.
+// Rendering will occur only once to SourceGraphic, so multiple calls to this function in a filter pipeline are OK.
+//
+// TODO: It would be very efficient to hook into the dirty markers of the client vector - it would mean re-rendering
+// occurs only in the event that the client has been modified.
 
 objBitmap * get_source_graphic(objVectorFilter *Self)
 {
@@ -298,6 +303,7 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
    else if (Self->Rendered) return Self->SourceGraphic; // Source bitmap already exists and drawn at the correct size.
 
    if (!Self->SourceScene) {
+      // The size of the scene reflects the filter's Width and Height values, relative to the userspace or bounding-box.
       if (!CreateObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->SourceScene,
             FID_PageWidth|TLONG,  Self->ViewWidth,
             FID_PageHeight|TLONG, Self->ViewHeight,
@@ -334,10 +340,16 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
 // Rendering process is as follows:
 //
 // * A VectorScene calls this function with a vector that requested the filter, and a target bitmap.
-//   The TargetBitmap doubles as the background because it will already contain rendered content.  (NOTE: May require changes to support enable-background and transforms correctly).
-// * Each effect is processed in their original order and each can produce a single OutBitmap.
-//   * An effect may request the SourceGraphic, in which case we render the Vector to a separate scene graph and without transforms.
-// * Each effect's OutBitmap is rendered to TargetBitmap.  Transforms may be applied at this stage.
+//   [ For the time being, the target bitmap doubles as the source background.  We need to change this because we
+//     need the viewport content in raw form (not transformed) ]
+// * The filter's (X,Y) and (Width,Height) define the rendering space available to the effects.  If in userspace mode
+//   then we'll be rendering the vector's parent viewport - this doesn't change much other than that there's more space
+//   available to prevent clipping.
+// * Each effect is processed in their original order.  Linked effects get their own bitmap, everything else goes to a
+//   a shared output bitmap.
+//   * An effect may request the SourceGraphic, in which case we render the client vector to a separate scene graph and
+//     without transforms.
+// * The shared output bitmap is rendered to TargetBitmap.  Final transforms are applied at this stage.
 //   The overall process is similar to that of draw_image() in scene_draw.cpp.
 //
 // SPECIAL CASE: SVG rules dictate that if the Vector is a container (i.e. Viewport) then the filter applies to the
@@ -404,7 +416,7 @@ ERROR render_filter(objVectorFilter *Self, objVector *Vector, objBitmap *TargetB
    else { // USERSPACE
       DOUBLE fx, fy, fw, fh;
 
-      LONG page_width  = Vector->ParentView->vpFixedWidth; // Userspace
+      LONG page_width  = Vector->ParentView->vpFixedWidth;
       LONG page_height = Vector->ParentView->vpFixedHeight;
 
       if ((page_width < 1) or (page_height < 1)) return ERR_Okay;
@@ -450,9 +462,6 @@ ERROR render_filter(objVectorFilter *Self, objVector *Vector, objBitmap *TargetB
       Self->BoundWidth = fw;
       Self->BoundHeight = fh;
 
-      // If the filter is in user-space mode then the target viewport is taken as the provided x,y,width,height values
-      // after transformation.
-
       Self->ViewX = fx;
       Self->ViewY = fy;
       Self->ViewWidth  = fw;
@@ -464,8 +473,11 @@ ERROR render_filter(objVectorFilter *Self, objVector *Vector, objBitmap *TargetB
    Self->VectorClip.Bottom = Self->BoundY + Self->BoundHeight;
    Self->VectorClip.Top    = (Self->BoundY < 0) ? 0 : Self->BoundY;
 
-   // Render each event in sequence.
+   // Render the effect pipeline in sequence.
+   // TODO: Effects that don't have dependencies can be threaded.  Big pipelines could benefit from effects
+   // being rendered to independent bitmaps in threads, then composited at the last stage.
 
+   objBitmap *shared_output = NULL;
    for (auto &ptr : Self->Effects) {
       auto e = ptr.get();
       if (e->Blank) continue; // Ignore effects that don't produce graphics
@@ -482,30 +494,29 @@ ERROR render_filter(objVectorFilter *Self, objVector *Vector, objBitmap *TargetB
          }
       }
 
-      if (auto error = get_banked_bitmap(Self, &e->OutBitmap)) return error;
+      // If an effect is an input to something else, it gets its own independent bitmap.  All other
+      // effects are rendered directly to a shared output bitmap.
 
-      // TODO: Clearing of the output bitmap should be a choice left to the effect.
-      gfxDrawRectangle(e->OutBitmap, 0, 0, e->OutBitmap->Width, e->OutBitmap->Height, 0x00000000, BAF_FILL);
+      if (e->UsageCount > 0) {
+         if (auto error = get_banked_bitmap(Self, &e->OutBitmap)) return error;
+         gfxDrawRectangle(e->OutBitmap, 0, 0, e->OutBitmap->Width, e->OutBitmap->Height, 0x00000000, BAF_FILL);
+      }
+      else {
+         if (!shared_output) {
+            if (auto error = get_banked_bitmap(Self, &shared_output)) return error;
+            gfxDrawRectangle(shared_output, 0, 0, shared_output->Width, shared_output->Height, 0x00000000, BAF_FILL);
+         }
+         e->OutBitmap = shared_output;
+      }
 
       e->apply(Self);
    }
 
    // Render the effect results to the destination bitmap
 
-   for (auto &ptr : Self->Effects) {
-      auto e = ptr.get();
-      if ((e->ID) and (e->UsageCount > 0)) { // Don't render effects that are piped to something else.
-         log.trace("%s effect is a source for %d clients.", e->Name.c_str(), e->UsageCount);
-      }
-      else if (auto bmp = e->OutBitmap) { // Not all effects will generate a bitmap
-         log.trace("Rendering %s effect %s", e->EffectName.c_str(), e->Name.c_str());
-         if (Self->ColourSpace IS CS_LINEAR_RGB) linear2RGB(*bmp);
-         if (Self->Opacity < 1.0) bmp->Opacity = 255.0 * Self->Opacity;
-         gfxCopyArea(bmp, Self->BkgdBitmap, BAF_BLEND|BAF_COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
-         bmp->Opacity = 255;
-      }
-      else log.trace("%s effect has no output bitmap.", e->EffectName.c_str());
-   }
+   if (Self->ColourSpace IS CS_LINEAR_RGB) linear2RGB(*shared_output);
+   shared_output->Opacity = (Self->Opacity < 1.0) ? (255.0 * Self->Opacity) : 255;
+   gfxCopyArea(shared_output, Self->BkgdBitmap, BAF_BLEND|BAF_COPY, 0, 0, shared_output->Width, shared_output->Height, 0, 0);
 
    return ERR_Okay;
 }
