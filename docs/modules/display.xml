@@ -1287,9 +1287,9 @@ if ((pointer = gfxAccessPointer())) {
       <field name="Width" type="LONG">Width</field>
       <field name="Height" type="LONG">Height</field>
       <field name="Left" type="LONG">Absolute X</field>
+      <field name="Top" type="LONG">Absolute Y</field>
       <field name="Right" type="LONG">Absolute right coordinate</field>
       <field name="Bottom" type="LONG">Absolute bottom coordinate</field>
-      <field name="Top" type="LONG">Absolute Y</field>
       <field name="Level" type="WORD">Level number within the hierarchy</field>
       <field name="LineWidth" type="WORD">[applies to the bitmap owner]</field>
       <field name="BytesPerPixel" type="BYTE">[applies to the bitmap owner]</field>

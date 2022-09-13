@@ -268,9 +268,9 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     int Height        # Height
     # Note: The order of the following fields must match 'struct ClipRectangle'
     int Left          # Absolute X
+    int Top           # Absolute Y
     int Right         # Absolute right coordinate
     int Bottom        # Absolute bottom coordinate
-    int Top           # Absolute Y
     short Level       # Level number within the hierarchy
     # For drwCopySurface()
     short LineWidth    # [applies to the bitmap owner]

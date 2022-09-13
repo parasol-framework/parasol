@@ -294,9 +294,9 @@ struct SurfaceList {
    LONG     Width;       // Width
    LONG     Height;      // Height
    LONG     Left;        // Absolute X
+   LONG     Top;         // Absolute Y
    LONG     Right;       // Absolute right coordinate
    LONG     Bottom;      // Absolute bottom coordinate
-   LONG     Top;         // Absolute Y
    WORD     Level;       // Level number within the hierarchy
    WORD     LineWidth;   // [applies to the bitmap owner]
    BYTE     BytesPerPixel; // [applies to the bitmap owner]
