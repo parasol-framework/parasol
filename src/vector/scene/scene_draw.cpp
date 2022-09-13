@@ -279,6 +279,9 @@ static const agg::trans_affine build_fill_transform(objVector &Vector, bool User
 
 void setRasterClip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG Width, LONG Height)
 {
+   if (Width < 0) Width = 0;
+   if (Height < 0) Height = 0;
+
    agg::path_storage clip;
    clip.move_to(X, Y);
    clip.line_to(X+Width, Y);
@@ -1187,8 +1190,95 @@ private:
             }
          }
 
-         if (shape->Filter) {
-            render_filter(shape->Filter, shape, mBitmap);
+         auto filter = shape->Filter;
+         if ((filter) and (!filter->Disabled)) {
+            #ifdef DBG_DRAW
+               log.traceBranch("Rendering filter for %s.", get_name(shape));
+            #endif
+
+            objBitmap *filter_bmp;
+            if (render_filter(shape->Filter, mView, shape, mBitmap, &filter_bmp)) continue;
+
+            agg::trans_affine transform;
+
+            if (state.mApplyTransform) transform *= state.mTransform;
+
+            if ((shape->Head.SubID IS ID_VECTORVIEWPORT) or (shape->Head.SubID IS ID_VECTORGROUP)) {
+               if (shape->Filter->Units IS VUNIT_USERSPACE) transform *= shape->Transform; //apply_transforms(*shape, transform);
+               apply_parent_transforms((objVector *)get_parent(shape), transform);
+            }
+
+            DOUBLE dx1, dx2, dy1, dy2;
+
+            agg::rasterizer_scanline_aa raster;
+            agg::trans_affine shape_transform;
+            if (shape->Head.SubID IS ID_VECTORVIEWPORT) {
+               shape_transform = shape->Transform * state.mTransform;
+               raster.add_path(shape->BasePath);
+               bounding_rect_single(shape->BasePath, 0, &dx1, &dy1, &dx2, &dy2);
+            }
+            else if (shape->Head.SubID IS ID_VECTORGROUP) {
+               // Use the filter's calculated bounds, which will be based on the group's content.
+               agg::path_storage clip;
+               clip.move_to(filter->BoundX, filter->BoundY);
+               clip.line_to(filter->BoundX + filter->BoundWidth, filter->BoundY);
+               clip.line_to(filter->BoundX + filter->BoundWidth, filter->BoundY + filter->BoundHeight);
+               clip.line_to(filter->BoundX, filter->BoundY + filter->BoundHeight);
+               clip.close_polygon();
+               if (filter->Units IS VUNIT_USERSPACE) {
+                  shape_transform = shape->Transform;
+                  if (state.mApplyTransform) shape_transform *= state.mTransform;
+               }
+               else {
+                  if (state.mApplyTransform) shape_transform *= state.mTransform;
+                  apply_parent_transforms((objVector *)get_parent(shape), shape_transform);
+               }
+
+               agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(clip, shape_transform);
+               raster.add_path(final_path);
+               bounding_rect_single(final_path, 0, &dx1, &dy1, &dx2, &dy2);
+            }
+            else { // Single shape
+               if (filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) { // Filter output can be tightly restricted to the invoking shape in this mode.
+                  shape_transform = shape->Transform * state.mTransform;
+                  agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(shape->BasePath, shape_transform);
+                  raster.add_path(final_path);
+                  bounding_rect_single(final_path, 0, &dx1, &dy1, &dx2, &dy2);
+               }
+               else { // Filter output needs to respect the filter's stated clipping region.
+                  agg::path_storage clip;
+                  clip.move_to(filter->BoundX, filter->BoundY);
+                  clip.line_to(filter->BoundX + filter->BoundWidth, filter->BoundY);
+                  clip.line_to(filter->BoundX + filter->BoundWidth, filter->BoundY + filter->BoundHeight);
+                  clip.line_to(filter->BoundX, filter->BoundY + filter->BoundHeight);
+                  clip.close_polygon();
+
+                  shape_transform = shape->Transform * state.mTransform;
+                  agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(clip, transform);
+                  raster.add_path(final_path);
+                  bounding_rect_single(final_path, 0, &dx1, &dy1, &dx2, &dy2);
+               }
+            }
+
+            transform.invert();
+
+            agg::rendering_buffer imgSource;
+            imgSource.attach(filter_bmp->Data + (filter_bmp->Clip.Left * filter_bmp->BytesPerPixel) + (filter_bmp->Clip.Top * filter_bmp->LineWidth), filter_bmp->Clip.Right - filter_bmp->Clip.Left, filter_bmp->Clip.Bottom - filter_bmp->Clip.Top, filter_bmp->LineWidth);
+            agg::pixfmt_rkl pixels(*filter_bmp);
+
+            if ((transform.sx != 1.0) or (transform.sy != 1.0) or (transform.shx != 0.0) or (transform.shy != 0.0)) {
+               agg::span_interpolator_linear interpolator(transform);
+               agg::image_filter_lut ifilter;
+               set_filter(ifilter, Scene->SampleMethod);  // Set the interpolation filter to use.
+
+               agg::span_pattern_rkl<agg::pixfmt_rkl> source(pixels, 0, 0);
+               agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_rkl>, agg::span_interpolator_linear<>> spangen(source, interpolator, ifilter);
+               drawBitmapRender(mRenderBase, raster, spangen, state.mOpacity * filter->Opacity);
+            }
+            else { // 1:1 copy with no transforms that require interpolation
+               agg::span_pattern_rkl<agg::pixfmt_rkl> source(pixels, transform.tx, transform.ty);
+               drawBitmapRender(mRenderBase, raster, source, state.mOpacity * filter->Opacity);
+            }
             continue;
          }
 

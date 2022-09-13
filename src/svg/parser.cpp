@@ -977,7 +977,7 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, const XMLTag *T
       SetOwner(vector, Parent);
       SetFields(vector, FID_Width|TPERCENT|TDOUBLE, 100.0, FID_Height|TPERCENT|TDOUBLE, 100.0, TAGEND); // SVG default
 
-      // Apply attributes from 'use'
+      // Apply attributes from 'use' to the group and/or viewport
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val;
          if (!(val = Tag->Attrib[a].Value)) continue;
@@ -1417,8 +1417,8 @@ static void process_attrib(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTP
 
       // Analyse the value to determine if it is a string or number
 
-      if (set_property(Self, Vector, hash, XML, Tag, Tag->Attrib[t].Value)) {
-         log.warning("Failed to set field '%s' with '%s' of %s", Tag->Attrib[t].Name, Tag->Attrib[t].Value, Vector->Class->ClassName);
+      if (auto error = set_property(Self, Vector, hash, XML, Tag, Tag->Attrib[t].Value)) {
+         log.warning("Failed to set field '%s' with '%s' in %s; Error %s", Tag->Attrib[t].Name, Tag->Attrib[t].Value, Vector->Class->ClassName, GetErrorMsg(error));
       }
    }
 }
@@ -2027,7 +2027,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
          break;
       }
 
-      default: return ERR_Failed;
+      default: return ERR_UnsupportedField;
    }
 
    if (field_id) {

@@ -5,7 +5,6 @@ class ImageEffect : public VectorEffect {
    LONG Dimensions;
    LONG AspectRatio;
    UBYTE ResampleMethod;
-   UBYTE Units; // VUNIT
 
    void xml(std::stringstream &Stream) { // TODO: Support exporting attributes
       Stream << "feImage";
@@ -98,15 +97,6 @@ public:
          }
       }
 
-      // The coordinate system is determined according to SVG rules.  The key thing here is that boundingbox and userspace
-      // systems are chosen depending on whether or not the user specified an x, y, width and/or height.
-
-      if (Filter->PrimitiveUnits != VUNIT_UNDEFINED) Units = Filter->PrimitiveUnits;
-      else {
-         if (Dimensions) Units = VUNIT_USERSPACE;
-         else Units = VUNIT_BOUNDING_BOX;
-      }
-
       if (path) {
          // Check for security risks in the path.
 
@@ -160,63 +150,43 @@ public:
       if (OutBitmap->BytesPerPixel != 4) return;
       if (!Picture) return;
 
-      auto pic = Picture->Bitmap;
+      DOUBLE img_x, img_y, img_width, img_height;
 
-      DOUBLE xScale, yScale, x, y;
-
-      if (Units IS VUNIT_BOUNDING_BOX) {
-         LONG parent_x, parent_y, parent_width, parent_height;
-         if (Dimensions & DMF_RELATIVE_X) parent_x = Filter->ViewX + F2I(X * (DOUBLE)Filter->BoundWidth);
-         else if (Dimensions & DMF_FIXED_X) parent_x = Filter->ViewX + X;
-         else parent_x = Filter->BoundX;
-
-         if (Dimensions & DMF_RELATIVE_Y) parent_y = Filter->ViewY + F2I(Y * (DOUBLE)Filter->BoundHeight);
-         else if (Dimensions & DMF_FIXED_Y) parent_y = Filter->ViewY + Y;
-         else parent_y = Filter->BoundY;
-
-         if (Dimensions & DMF_RELATIVE_WIDTH) parent_width = (DOUBLE)Filter->ViewWidth * Width;
-         else if (Dimensions & DMF_FIXED_WIDTH) parent_width = Filter->ViewWidth;
-         else parent_width = Filter->BoundWidth;
-
-         if (Dimensions & DMF_RELATIVE_HEIGHT) parent_height = (DOUBLE)Filter->ViewHeight * Height;
-         else if (Dimensions & DMF_FIXED_HEIGHT) parent_height = Filter->ViewHeight;
-         else parent_height = Filter->BoundHeight;
-
-         calc_aspectratio("align_image", AspectRatio, parent_width, parent_height, pic->Width, pic->Height,
-            &x, &y, &xScale, &yScale);
-
-         x += parent_x;
-         y += parent_y;
+      if (Filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
+         // In this mode, dimensions are forced to (0,0,100%,100%) of the vector's bounding box.
+         img_x = Filter->VectorX;
+         img_y = Filter->VectorY;
+         img_width  = Filter->VectorWidth;
+         img_height = Filter->VectorHeight;
       }
       else {
-         // UserSpace (relative to parent).  In this mode, all image coordinates will be computed relative to the parent viewport.
-         // Alignment is then calculated as normal relative to the bounding box.  The computed image coordinates are used
-         // as a shift for the final (x,y) values.
+         if (Dimensions & DMF_RELATIVE_X) img_x = (X * (DOUBLE)Filter->BoundWidth);
+         else if (Dimensions & DMF_FIXED_X) img_x = X;
+         else {
+            // If X is undefined then SVG rules that it defaults to the filter's bounds.
+            img_x = Filter->BoundX;
+         }
 
-         LONG parent_x, parent_y, parent_width, parent_height;
+         if (Dimensions & DMF_RELATIVE_Y) img_y = (Y * (DOUBLE)Filter->BoundHeight);
+         else if (Dimensions & DMF_FIXED_Y) img_y = Y;
+         else {
+            // If Y is undefined then SVG rules that it defaults to the filter's bounds.
+            img_y = Filter->BoundY;
+         }
 
-         if (Dimensions & DMF_RELATIVE_X) parent_x = Filter->ViewX + F2I(X * (DOUBLE)Filter->ViewWidth);
-         else if (Dimensions & DMF_FIXED_X) parent_x = Filter->ViewX + X;
-         else parent_x = Filter->ViewX;
+         if (Dimensions & DMF_RELATIVE_WIDTH) img_width = (DOUBLE)Filter->BoundWidth * Width;
+         else if (Dimensions & DMF_FIXED_WIDTH) img_width = Width;
+         else img_width = Filter->BoundWidth; // 100%
 
-         if (Dimensions & DMF_RELATIVE_Y) parent_y = Filter->ViewY + F2I(Y * (DOUBLE)Filter->ViewHeight);
-         else if (Dimensions & DMF_FIXED_Y) parent_y = Filter->ViewY + Y;
-         else parent_y = Filter->ViewY;
-
-         if (Dimensions & DMF_RELATIVE_WIDTH) parent_width = (DOUBLE)Filter->ViewWidth * Width;
-         else if (Dimensions & DMF_FIXED_WIDTH) parent_width = Width;
-         else parent_width = Filter->BoundWidth;
-
-         if (Dimensions & DMF_RELATIVE_HEIGHT) parent_height = (DOUBLE)Filter->ViewHeight * Height;
-         else if (Dimensions & DMF_FIXED_HEIGHT) parent_height = Height;
-         else parent_height = Filter->BoundHeight;
-
-         calc_aspectratio("align_image", AspectRatio, parent_width, parent_height, pic->Width, pic->Height,
-            &x, &y, &xScale, &yScale);
-
-         x += parent_x;
-         y += parent_y;
+         if (Dimensions & DMF_RELATIVE_HEIGHT) img_height = (DOUBLE)Filter->BoundHeight * Height;
+         else if (Dimensions & DMF_FIXED_HEIGHT) img_height = Height;
+         else img_height = Filter->BoundHeight; // 100%
       }
+
+      auto pic = Picture->Bitmap;
+      DOUBLE xScale, yScale, align_x, align_y;
+      calc_aspectratio("align_image", AspectRatio, img_width, img_height, pic->Width, pic->Height,
+         &align_x, &align_y, &xScale, &yScale);
 
       // Configure destination
       agg::renderer_base<agg::pixfmt_rkl> renderBase;
@@ -224,13 +194,16 @@ public:
       renderBase.attach(pixDest);
       renderBase.clip_box(OutBitmap->Clip.Left, OutBitmap->Clip.Top, OutBitmap->Clip.Right-1, OutBitmap->Clip.Bottom-1);
 
+      //parasol::Log log(__FUNCTION__);
+      //log.trace("Image targeting %.2fx%.2f %.2fx%.2f, Alignment %.2fx%.2f", img_x, img_y, img_width, img_height, align_x, align_y);
+
       // Configure source
 
       agg::pixfmt_rkl pixSource(*pic);
 
       agg::trans_affine transform;
       transform.scale(xScale, yScale);
-      transform.translate(x, y);
+      transform.translate(img_x + align_x, img_y + align_y);
       transform.invert();
       agg::span_interpolator_linear<> interpolator(transform);
 

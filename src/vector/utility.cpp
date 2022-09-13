@@ -264,7 +264,7 @@ void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
       else *YScale = 1.0;
    }
 
-   log.trace("Aspect: $%.8x, Target: %.0fx%.0f, View: %.0fx%.0f, AlignXY: %.2fx%.2f, Scale: %.2fx%.2f",
+   log.trace("ARF Aspect: $%.8x, Target: %.0fx%.0f, View: %.0fx%.0f, AlignXY: %.2fx%.2f, Scale: %.2fx%.2f",
       AspectRatio, TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
 }
 
@@ -343,16 +343,19 @@ void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
          if ((Vector->ClipMask) and (Vector->ClipMask->ClipPath)) {
             agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->ClipMask->ClipPath, Vector->Transform);
             bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+            if (bx1 < Bounds[0]) Bounds[0] = bx1;
+            if (by1 < Bounds[1]) Bounds[1] = by1;
+            if (bx2 > Bounds[2]) Bounds[2] = bx2;
+            if (by2 > Bounds[3]) Bounds[3] = by2;
          }
          else if (Vector->BasePath.total_vertices()) {
             agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->BasePath, Vector->Transform);
             bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+            if (bx1 < Bounds[0]) Bounds[0] = bx1;
+            if (by1 < Bounds[1]) Bounds[1] = by1;
+            if (bx2 > Bounds[2]) Bounds[2] = bx2;
+            if (by2 > Bounds[3]) Bounds[3] = by2;
          }
-
-         if (bx1 < Bounds[0]) Bounds[0] = bx1;
-         if (by1 < Bounds[1]) Bounds[1] = by1;
-         if (bx2 > Bounds[2]) Bounds[2] = bx2;
-         if (by2 > Bounds[3]) Bounds[3] = by2;
       }
 
       if (Vector->Child) calc_full_boundary((objVector *)Vector->Child, Bounds, true);

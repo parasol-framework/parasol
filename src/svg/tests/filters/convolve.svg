@@ -45,6 +45,9 @@
 
   <rect width="100%" height="100%" fill="rgb(255,255,255)"/>
 
+  <!-- Note that <use> deeply clones the transform attribute, so it is directly applied to the children
+       as opposed to inheritance from the parent -->
+
   <use xlink:href="#smilie" transform="translate(20,10) scale(2.7)"/>
   <use xlink:href="#smilie" transform="translate(150,10) scale(2.7)" filter="url(#soften)" />
   <use xlink:href="#smilie" transform="translate(250,10) scale(2.7)"  filter="url(#f2)" />

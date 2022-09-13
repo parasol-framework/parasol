@@ -356,10 +356,10 @@ extern void gen_vector_path(objVector *);
 extern void gen_vector_tree(objVector *);
 extern void linear2RGB(objBitmap &);
 extern void rgb2linear(objBitmap &);
-extern void send_feedback(objVector *Vector, LONG Event);
+extern void send_feedback(objVector *, LONG);
 extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, UBYTE);
-extern ERROR render_filter(objVectorFilter *, objVector *, objBitmap *);
+extern ERROR render_filter(objVectorFilter *, objVectorViewport *, objVector *, objBitmap *, objBitmap **);
 extern objBitmap * get_source_graphic(objVectorFilter *);
 
 extern const FieldDef clAspectRatio[];
@@ -663,6 +663,21 @@ inline static DOUBLE dist(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
    if (width > height) std::swap(width, height);
    if ((height / width) <= 1.5) return 5.0 * (width + height) / 7.0; // Fast hypot calculation accurate to within 1% for specific use cases.
    else return std::sqrt((width * width) + (height * height));
+}
+
+//********************************************************************************************************************
+
+inline static save_bitmap(objBitmap *Bitmap, std::string Name)
+{
+   objFile *file;
+   std::string path = "temp:filter_output_" + Name + ".pcx";
+   if (!CreateObject(ID_FILE, 0, &file,
+         FID_Path|TSTR,   path.c_str(),
+         FID_Flags|TLONG, FL_NEW|FL_WRITE,
+         TAGEND)) {
+      acSaveImage(Bitmap, file->Head.UID, 0);
+      acFree(file);
+   }
 }
 
 //********************************************************************************************************************

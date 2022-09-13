@@ -55,7 +55,7 @@ void gen_vector_path(objVector *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Vector->GeneratePath) and (Vector->Head.SubID != ID_VECTORVIEWPORT)) return;
+   if ((!Vector->GeneratePath) and (Vector->Head.SubID != ID_VECTORVIEWPORT) and (Vector->Head.SubID != ID_VECTORGROUP)) return;
 
    parasol::SwitchContext context(Vector);
 
@@ -63,7 +63,12 @@ void gen_vector_path(objVector *Vector)
 
    auto parent_view = get_parent_view(Vector);
 
-   if (Vector->Head.SubID IS ID_VECTORVIEWPORT) {
+   if (Vector->Head.SubID IS ID_VECTORGROUP) {
+      Vector->Transform.reset();
+      apply_parent_transforms(Vector, Vector->Transform);
+      return;
+   }
+   else if (Vector->Head.SubID IS ID_VECTORVIEWPORT) {
       auto view = (objVectorViewport *)Vector;
 
       DOUBLE parent_width, parent_height;
@@ -445,5 +450,7 @@ void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform)
             AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
          }
       }
+
+      if (scan->Filter) break; // Filter hierarchy is computed separately to the rest of the scene graph.
    }
 }

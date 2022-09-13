@@ -529,6 +529,7 @@ typedef struct rkVectorFilter {
 
 #ifdef PRV_VECTORFILTER
    rkVector *ClientVector; // Client vector or viewport supplied by Scene.acDraw()
+   rkVectorViewport *ClientViewport; // The nearest viewport containing the vector.
    struct rkVectorScene *SourceScene; // Internal scene for rendering SourceGraphic
    objBitmap *SourceGraphic; // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
    objBitmap *BkgdBitmap; // Target bitmap supplied by Scene.acDraw()
@@ -540,10 +541,11 @@ typedef struct rkVectorFilter {
       UBYTE *Data;
       LONG DataSize;
    } Bank[10];
-   LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Pixel boundary of the client vector.
-   LONG ViewX, ViewY, ViewWidth, ViewHeight; // Boundary of the target area (either the user space area or bounding box area)
+   LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Pixel boundary of the client vector or viewport.
+   DOUBLE VectorX, VectorY, VectorHeight, VectorWidth; // Boundary of the client vector without applying the filter's clipping coordinate.
    UBYTE BankIndex;
    bool Rendered;
+   bool Disabled;
   
 #endif
 } objVectorFilter;
