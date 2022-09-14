@@ -490,12 +490,9 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
             if (auto error = get_banked_bitmap(Self, &out)) return error;
 
             #ifdef DEBUG_FILTER_BITMAP
-               gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff00ffff, 0);
                auto clip = out->Clip;
-               out->Clip = { .Left = 0, .Right = out->Width, .Bottom = out->Height, .Top = 0 };
+               out->Clip = { .Left = 0, .Top = 0, .Right = out->Width, .Bottom = out->Height,  };
                gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
-               gfxDrawRectangle(out, Self->BoundX, Self->BoundY, Self->BoundWidth, Self->BoundHeight, 0xff0000ff, 0);
-               gfxDrawRectangle(out, Self->VectorX, Self->VectorY, Self->VectorWidth, Self->VectorHeight, 0x0000ffff, 0);
                out->Clip = clip;
             #else
                gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
@@ -506,6 +503,15 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
 
       e->apply(Self);
    }
+
+   #ifdef DEBUG_FILTER_BITMAP
+      gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff00ffff, 0);
+      auto clip = out->Clip;
+      out->Clip = { .Left = 0, .Top = 0, .Right = out->Width, .Bottom = out->Height,  };
+      gfxDrawRectangle(out, Self->BoundX, Self->BoundY, Self->BoundWidth, Self->BoundHeight, 0xff0000ff, 0);
+      gfxDrawRectangle(out, Self->VectorX, Self->VectorY, Self->VectorWidth, Self->VectorHeight, 0x0000ffff, 0);
+      out->Clip = clip;
+   #endif
 
    // Return the result for rendering to the scene graph.
 
