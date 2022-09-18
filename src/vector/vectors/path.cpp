@@ -16,6 +16,7 @@ static void generate_path(objVectorPath *Vector)
    // TODO: We may be able to drop our internal PathCommand type in favour of agg:path_storage (and
    // extend it if necessary).
    convert_to_aggpath(Vector->Commands, &Vector->BasePath);
+   bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
 //****************************************************************************

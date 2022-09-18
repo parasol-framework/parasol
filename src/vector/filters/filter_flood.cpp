@@ -83,8 +83,6 @@ public:
       }
    }
 
-   // This is the stack flood algorithm originally implemented in AGG.
-
    void apply(objVectorFilter *Filter) {
       if (OutBitmap->BytesPerPixel != 4) return;
 

@@ -251,19 +251,9 @@ void gen_vector_path(objVector *Vector)
       }
    }
    else if (Vector->Head.ClassID IS ID_VECTOR) {
-      if ((Vector->Dirty & RC_TRANSFORM) AND (Vector->Head.SubID != ID_VECTORTEXT)) {
-         // First, calculate the FinalX and FinalY field values, without any viewport scaling applied.  Note that
-         // VectorText is excluded at this stage because the final X/Y needs to take alignment of the base path into
-         // account.
-
-         switch (Vector->Head.SubID) {
-            case ID_VECTORELLIPSE:   get_ellipse_xy((rkVectorEllipse *)Vector); break;
-            case ID_VECTORRECTANGLE: get_rectangle_xy((rkVectorRectangle *)Vector); break;
-            case ID_VECTORSPIRAL:    get_spiral_xy((rkVectorSpiral *)Vector); break;
-            case ID_VECTORSHAPE:     get_super_xy((rkVectorShape *)Vector); break;
-            case ID_VECTORWAVE:      get_wave_xy((rkVectorWave *)Vector); break;
-         }
-
+      Vector->FinalX = 0;
+      Vector->FinalY = 0;
+      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->Head.SubID != ID_VECTORTEXT)) {
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);
 
@@ -450,7 +440,5 @@ void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform)
             AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
          }
       }
-
-      if (scan->Filter) break; // Filter hierarchy is computed separately to the rest of the scene graph.
    }
 }

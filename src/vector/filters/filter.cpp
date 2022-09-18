@@ -21,6 +21,7 @@ in cached bitmaps.
 *********************************************************************************************************************/
 
 //#define DEBUG_FILTER_BITMAP
+//#define EXPORT_FILTER_BITMAP
 
 static void demultiply_bitmap(objBitmap *);
 static ERROR fe_default(objVectorFilter *, VectorEffect *, ULONG, CSTRING);
@@ -141,8 +142,8 @@ static ERROR get_banked_bitmap(objVectorFilter *Self, objBitmap **BitmapResult)
       StrFormat(name, sizeof(name), "dummy_fx_bitmap_%d", bi);
       if (CreateObject(ID_BITMAP, NF_INTEGRAL, &bmp,
             FID_Name|TSTR,          name,
-            FID_Width|TDOUBLE,      Self->ClientViewport->vpFixedWidth,
-            FID_Height|TDOUBLE,     Self->ClientViewport->vpFixedHeight,
+            FID_Width|TLONG,        Self->ClientViewport->Scene->PageWidth,
+            FID_Height|TLONG,       Self->ClientViewport->Scene->PageHeight,
             FID_BitsPerPixel|TLONG, 32,
             #ifdef DEBUG_FILTER_BITMAP
             FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
@@ -154,8 +155,8 @@ static ERROR get_banked_bitmap(objVectorFilter *Self, objBitmap **BitmapResult)
    }
    else {
       bmp = Self->Bank[bi].Bitmap;
-      bmp->Width  = Self->ClientViewport->vpFixedWidth;
-      bmp->Height = Self->ClientViewport->vpFixedHeight;
+      bmp->Width  = Self->ClientViewport->Scene->PageWidth;
+      bmp->Height = Self->ClientViewport->Scene->PageHeight;
    }
 
    *BitmapResult = bmp;
@@ -255,7 +256,10 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
    else if ((SourceType IS VSF_REFERENCE) and (EffectID)) {
       if (auto e = find_effect(Self, EffectID)) {
          bmp = e->OutBitmap;
-         if (!bmp) log.warning("Effect %u does not output a bitmap.", EffectID);
+         if (!bmp) {
+            log.warning("Effect %u does not output a bitmap.", EffectID);
+            return ERR_NoData;
+         }
       }
       else log.warning("Unable to find effect %u", EffectID);
    }
@@ -268,7 +272,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
       return ERR_Failed;
    }
 
-   #ifdef DEBUG_FILTER_BITMAP
+   #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
       save_bitmap(bmp, std::to_string(Self->Head.UID) + "_source");
    #endif
 
@@ -298,17 +302,17 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
    if (!Self->SourceGraphic) {
       if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->SourceGraphic,
             FID_Name|TSTR,          "source_graphic",
-            FID_Width|TDOUBLE,      Self->ClientViewport->vpFixedWidth,
-            FID_Height|TDOUBLE,     Self->ClientViewport->vpFixedHeight,
+            FID_Width|TLONG,        Self->ClientViewport->Scene->PageWidth,
+            FID_Height|TLONG,       Self->ClientViewport->Scene->PageHeight,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
             TAGEND)) return NULL;
 
       Self->SourceGraphic->Clip = Self->VectorClip;
    }
-   else if ((Self->ClientViewport->vpFixedWidth > Self->SourceGraphic->Width) or
-            (Self->ClientViewport->vpFixedHeight > Self->SourceGraphic->Height)) {
-      if (acResize(Self->SourceGraphic, Self->ClientViewport->vpFixedWidth, Self->ClientViewport->vpFixedHeight, 32) != ERR_Okay)
+   else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or
+            (Self->ClientViewport->Scene->PageHeight > Self->SourceGraphic->Height)) {
+      if (acResize(Self->SourceGraphic, Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, 32) != ERR_Okay)
          return NULL;
 
       Self->SourceGraphic->Clip = Self->VectorClip;
@@ -317,8 +321,8 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
 
    if (!Self->SourceScene) {
       if (!CreateObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->SourceScene,
-            FID_PageWidth|TDOUBLE,  Self->ClientViewport->vpFixedWidth,
-            FID_PageHeight|TDOUBLE, Self->ClientViewport->vpFixedHeight,
+            FID_PageWidth|TLONG,  Self->ClientViewport->Scene->PageWidth,
+            FID_PageHeight|TLONG, Self->ClientViewport->Scene->PageHeight,
             TAGEND)) {
 
          objVectorViewport *viewport;
@@ -346,7 +350,7 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
 //   [ For the time being, the background bitmap is invalid because it represents the final canvas.  We want the
 //     viewport content in raw form, not transformed ]
 // * The filter's (X,Y) and (Width,Height) define the rendering space (clipping region) available to the effects.  If
-//   in userspace mode then we'll be rendering the vector's parent viewport - this doesn't change much other than that
+//   in userspace mode then we'll be rendering to the vector's parent viewport - this doesn't change much other than that
 //   there's more space available to prevent clipping.  Note that (X,Y) affect clipping only and do not translate.
 // * Each effect is processed in their original order.  Linked effects get their own bitmap, everything else goes to a
 //   a shared output bitmap.
@@ -357,11 +361,7 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
 //
 // SPECIAL CASE: SVG rules dictate that if the Vector is a container (i.e. Viewport) then the filter applies to the
 // contents of the group as a whole.  The group's children do not render to the screen directly; instead, the
-// graphics commands necessary to render the children are stored temporarily. Typically, the graphics commands
-// are executed as part of the processing of the referenced ‘filter’ element via use of the keywords
-// SourceGraphic or SourceAlpha. Filter effects can be applied to container elements with no content (e.g., an
-// empty ‘g’ element), in which case the SourceGraphic or SourceAlpha consist of a transparent black rectangle
-// that is the size of the filter effects region.
+// graphics commands necessary to render the children are stored temporarily.
 
 ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVector *Vector, objBitmap *BkgdBitmap, objBitmap **RenderedOutput)
 {
@@ -390,26 +390,39 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
       return ERR_Okay;
    }
 
+   // NOTE: The bound values include the client vector's transforms.
+
+   std::array<DOUBLE, 4> bounds = { container_width, container_height, 0, 0 };
+   calc_full_boundary((objVector *)Vector, bounds, false, true);
+
+   if ((bounds[2] <= bounds[0]) or (bounds[3] <= bounds[1])) {
+      // No child vector defines a path for a SourceGraphic.  Default back to the viewport.
+      bounds[0] = Viewport->vpBX1;
+      bounds[1] = Viewport->vpBY1;
+      bounds[2] = Viewport->vpBX2;
+      bounds[3] = Viewport->vpBY2;
+   }
+   auto const bound_width  = bounds[2] - bounds[0];
+   auto const bound_height = bounds[3] - bounds[1];
+
+   Self->VectorX      = bounds[0];
+   Self->VectorY      = bounds[1];
+   Self->VectorWidth  = bound_width;
+   Self->VectorHeight = bound_height;
+
+   // Compute the bounding box, which defines the area that we're rendering to.
+
    if (Self->Units IS VUNIT_BOUNDING_BOX) {
       // All coordinates are relative to the client vector, or vectors if we are applied to a group.
+      // The bounds are oriented to the client vector's transforms.
 
-      std::array<DOUBLE, 4> bounds = { container_width, container_height, 0, 0 };
-      calc_full_boundary((objVector *)Vector, bounds, false);
+      if (Self->Dimensions & DMF_FIXED_X) Self->BoundX = trunc(bounds[0]);
+      else if (Self->Dimensions & DMF_RELATIVE_X) Self->BoundX = trunc(bounds[0]) + (Self->X * bound_width);
+      else Self->BoundX = trunc(bounds[0]);
 
-      if ((bounds[2] <= bounds[0]) or (bounds[3] <= bounds[1])) {
-         log.warning("Unable to draw filter as no child vector produces a path.");
-         return ERR_Failed;
-      }
-
-      auto const bound_width = bounds[2] - bounds[0];
-      auto const bound_height = bounds[3] - bounds[1];
-      if (Self->Dimensions & DMF_FIXED_X) Self->BoundX = bounds[0];
-      else if (Self->Dimensions & DMF_RELATIVE_X) Self->BoundX = bounds[0] + (Self->X * bound_width);
-      else Self->BoundX = bounds[0];
-
-      if (Self->Dimensions & DMF_FIXED_Y) Self->BoundY = bounds[1];
-      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->BoundY = bounds[1] + (Self->Y * bound_height);
-      else Self->BoundY = bounds[1];
+      if (Self->Dimensions & DMF_FIXED_Y) Self->BoundY = trunc(bounds[1]);
+      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->BoundY = trunc(bounds[1] + (Self->Y * bound_height));
+      else Self->BoundY = trunc(bounds[1]);
 
       if (Self->Dimensions & DMF_FIXED_WIDTH) Self->BoundWidth = bound_width;
       else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->BoundWidth = Self->Width * bound_width;
@@ -418,19 +431,14 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
       if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->BoundHeight = Self->Height;
       else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->BoundHeight = Self->Height * bound_height;
       else Self->BoundHeight = bound_height;
-
-      Self->VectorX = bounds[0];
-      Self->VectorY = bounds[1];
-      Self->VectorWidth = bound_width;
-      Self->VectorHeight = bound_height;
    }
    else { // USERSPACE
-      if (Self->Dimensions & DMF_FIXED_X) Self->BoundX = Self->X;
-      else if (Self->Dimensions & DMF_RELATIVE_X) Self->BoundX = Self->X * container_width;
+      if (Self->Dimensions & DMF_FIXED_X) Self->BoundX = trunc(Self->X);
+      else if (Self->Dimensions & DMF_RELATIVE_X) Self->BoundX = trunc(Self->X * container_width);
       else Self->BoundX = 0;
 
-      if (Self->Dimensions & DMF_FIXED_Y) Self->BoundY = Self->Y;
-      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->BoundY = Self->Y * container_height;
+      if (Self->Dimensions & DMF_FIXED_Y) Self->BoundY = trunc(Self->Y);
+      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->BoundY = trunc(Self->Y * container_height);
       else Self->BoundY = 0;
 
       if (Self->Dimensions & DMF_FIXED_WIDTH) Self->BoundWidth = Self->Width;
@@ -441,11 +449,21 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
       else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->BoundHeight = Self->Height * container_height;
       else Self->BoundHeight = container_height;
 
-      Self->VectorX = 0;
-      Self->VectorY = 0;
-      Self->VectorWidth = container_width;
-      Self->VectorHeight = container_height;
+      agg::path_storage rect;
+      rect.move_to(Self->BoundX, Self->BoundY);
+      rect.line_to(Self->BoundX + Self->BoundWidth, Self->BoundY);
+      rect.line_to(Self->BoundX + Self->BoundWidth, Self->BoundY + Self->BoundHeight);
+      rect.line_to(Self->BoundX, Self->BoundY + Self->BoundHeight);
+      rect.close_polygon();
+
+      agg::conv_transform<agg::path_storage, agg::trans_affine> path(rect, Vector->Transform);
+      bounding_rect_single(path, 0, &Self->BoundX, &Self->BoundY, &Self->BoundWidth, &Self->BoundHeight);
+      Self->BoundWidth -= Self->BoundX;
+      Self->BoundHeight -= Self->BoundY;
    }
+
+   // NOTE: The point of this clipping region is to reduce the working area so that there's more
+   // efficiency when rendering.  The 'true' clipping area is defined by the filter's BoundX/Y/W/H.
 
    Self->VectorClip.Left   = Self->BoundX;
    Self->VectorClip.Top    = Self->BoundY;
@@ -488,15 +506,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
       else {
          if (!out) {
             if (auto error = get_banked_bitmap(Self, &out)) return error;
-
-            #ifdef DEBUG_FILTER_BITMAP
-               auto clip = out->Clip;
-               out->Clip = { .Left = 0, .Top = 0, .Right = out->Width, .Bottom = out->Height,  };
-               gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
-               out->Clip = clip;
-            #else
-               gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
-            #endif
+            gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
          }
          e->OutBitmap = out;
       }
@@ -504,12 +514,12 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
       e->apply(Self);
    }
 
-   #ifdef DEBUG_FILTER_BITMAP
-      gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff00ffff, 0);
+   #ifdef DEBUG_FILTER_BITMAP // Blue = Clip Region; Green = Bounds; Red = Vector
+      gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff0000ff, 0);
       auto clip = out->Clip;
       out->Clip = { .Left = 0, .Top = 0, .Right = out->Width, .Bottom = out->Height,  };
-      gfxDrawRectangle(out, Self->BoundX, Self->BoundY, Self->BoundWidth, Self->BoundHeight, 0xff0000ff, 0);
-      gfxDrawRectangle(out, Self->VectorX, Self->VectorY, Self->VectorWidth, Self->VectorHeight, 0x0000ffff, 0);
+      gfxDrawRectangle(out, Self->BoundX, Self->BoundY, Self->BoundWidth, Self->BoundHeight, 0xff00ff00, 0);
+      gfxDrawRectangle(out, Self->VectorX, Self->VectorY, Self->VectorWidth, Self->VectorHeight, 0xffff0000, 0);
       out->Clip = clip;
    #endif
 
@@ -523,7 +533,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    Self->Disabled = false;
    Vector->Next   = save_vector;
 
-   #ifdef DEBUG_FILTER_BITMAP
+   #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
       save_bitmap(out, std::to_string(Self->Head.UID));
    #endif
 

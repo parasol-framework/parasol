@@ -330,7 +330,7 @@ void linear2RGB(objBitmap &Bitmap)
 // values.  NOTE: This function performs a full traversal (siblings and children) and this may extend beyond the
 // viewport's visible boundary.
 
-void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds, bool IncludeSiblings)
+void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds, bool IncludeSiblings, bool IncludeTransforms)
 {
    if (!Vector) return;
 
@@ -341,24 +341,46 @@ void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
          DOUBLE bx1, by1, bx2, by2;
 
          if ((Vector->ClipMask) and (Vector->ClipMask->ClipPath)) {
-            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->ClipMask->ClipPath, Vector->Transform);
-            bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+            if (IncludeTransforms) {
+               agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->ClipMask->ClipPath, Vector->Transform);
+               bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+            }
+            else bounding_rect_single(*Vector->ClipMask->ClipPath, 0, &bx1, &by1, &bx2, &by2);
+
             if (bx1 < Bounds[0]) Bounds[0] = bx1;
             if (by1 < Bounds[1]) Bounds[1] = by1;
             if (bx2 > Bounds[2]) Bounds[2] = bx2;
             if (by2 > Bounds[3]) Bounds[3] = by2;
          }
          else if (Vector->BasePath.total_vertices()) {
-            agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->BasePath, Vector->Transform);
-            bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
-            if (bx1 < Bounds[0]) Bounds[0] = bx1;
-            if (by1 < Bounds[1]) Bounds[1] = by1;
-            if (bx2 > Bounds[2]) Bounds[2] = bx2;
-            if (by2 > Bounds[3]) Bounds[3] = by2;
+            if (IncludeTransforms) {
+               if (Vector->Transform.is_complex()) {
+                  auto simple_path = basic_path(Vector->BX1, Vector->BY1, Vector->BX2, Vector->BY2);
+                  agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->BasePath, Vector->Transform);
+                  bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+
+                  if (bx1 < Bounds[0]) Bounds[0] = bx1;
+                  if (by1 < Bounds[1]) Bounds[1] = by1;
+                  if (bx2 > Bounds[2]) Bounds[2] = bx2;
+                  if (by2 > Bounds[3]) Bounds[3] = by2;
+               }
+               else {
+                  if (Vector->BX1 + Vector->Transform.tx < Bounds[0]) Bounds[0] = Vector->BX1 + Vector->Transform.tx;
+                  if (Vector->BY1 + Vector->Transform.ty < Bounds[1]) Bounds[1] = Vector->BY1 + Vector->Transform.ty;
+                  if (Vector->BX2 + Vector->Transform.tx > Bounds[2]) Bounds[2] = Vector->BX2 + Vector->Transform.tx;
+                  if (Vector->BY2 + Vector->Transform.ty > Bounds[3]) Bounds[3] = Vector->BY2 + Vector->Transform.ty;
+               }
+            }
+            else {
+               if (Vector->BX1 < Bounds[0]) Bounds[0] = Vector->BX1;
+               if (Vector->BY1 < Bounds[1]) Bounds[1] = Vector->BY1;
+               if (Vector->BX2 > Bounds[2]) Bounds[2] = Vector->BX2;
+               if (Vector->BY2 > Bounds[3]) Bounds[3] = Vector->BY2;
+            }
          }
       }
 
-      if (Vector->Child) calc_full_boundary((objVector *)Vector->Child, Bounds, true);
+      if (Vector->Child) calc_full_boundary((objVector *)Vector->Child, Bounds, true, IncludeTransforms);
 
       if (!IncludeSiblings) break;
    }

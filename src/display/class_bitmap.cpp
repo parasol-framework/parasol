@@ -1602,13 +1602,15 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
       BYTE BitsPixel;
       WORD XMin, YMin;
       WORD XMax, YMax;
-      WORD XRes, YRes;
+      WORD XDPI, YDPI; // DPI
       UBYTE palette[48];
       BYTE Reserved;
       BYTE NumPlanes;
       WORD BytesLine;
       WORD PalType;
-      UBYTE dummy[58];
+      WORD XRes;
+      WORD YRes;
+      UBYTE dummy[54];
    } pcx;
    RGB8 rgb;
    OBJECTPTR dest;
@@ -1619,6 +1621,9 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
 
    log.branch("Save To #%d", Args->DestID);
 
+   LONG width = Self->Clip.Right - Self->Clip.Left;
+   LONG height = Self->Clip.Bottom - Self->Clip.Top;
+
    // Create PCX Header
 
    ClearMemory(&pcx, sizeof(pcx));
@@ -1628,30 +1633,32 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
    pcx.XMin      = 0;
    pcx.YMin      = 0;
    pcx.BitsPixel = 8;
-   pcx.BytesLine = Self->Width;
-   pcx.XMax      = Self->Width - 1;
-   pcx.YMax      = Self->Height - 1;
-   pcx.XRes      = Self->Width;
-   pcx.YRes      = Self->Height;
+   pcx.BytesLine = width;
+   pcx.XMax      = width - 1;
+   pcx.YMax      = height - 1;
+   pcx.XDPI      = 300;
+   pcx.YDPI      = 300;
    pcx.PalType   = 1;
+   pcx.XRes      = width;
+   pcx.YRes      = height;
    if (Self->AmtColours <= 256) pcx.NumPlanes = 1;
    else pcx.NumPlanes = 3;
 
-   size = Self->Width * Self->Height * pcx.NumPlanes;
+   size = width * height * pcx.NumPlanes;
    if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &buffer, NULL)) {
       if (!AccessObject(Args->DestID, 3000, &dest)) {
          acWrite(dest, &pcx, sizeof(pcx), NULL);
 
          LONG dp = 0;
-         for (i=0; i <= (Self->Height - 1); i++) {
+         for (i=Self->Clip.Top; i < (Self->Clip.Bottom); i++) {
             if (pcx.NumPlanes IS 1) {
                // Save as a 256 colour image
-               lastpixel = Self->ReadUCPixel(Self, 0, i);
+               lastpixel = Self->ReadUCPixel(Self, Self->Clip.Left, i);
                counter = 1;
-               for (j=1; j <= Self->Width;j++) {
+               for (j=Self->Clip.Left+1; j <= width; j++) {
                   newpixel = Self->ReadUCPixel(Self, j, i);
 
-                  if ((newpixel IS lastpixel) and (j != Self->Width - 1) and (counter <= 62)) {
+                  if ((newpixel IS lastpixel) and (j != width - 1) and (counter <= 62)) {
                      counter++;
                   }
                   else {
@@ -1675,7 +1682,7 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
                for (p=0; p < 3; p++) {
                   // No encoding
                   if (pcx.Encoding IS 0) {
-                     for (j=0; j < Self->Width; j++) {
+                     for (j=Self->Clip.Left; j < Self->Clip.Right; j++) {
                         Self->ReadUCRPixel(Self, j, i, &rgb);
                         switch(p) {
                            case 0:  buffer[dp++] = rgb.Red;   break;
@@ -1686,7 +1693,7 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
                   }
                   else {
                      // Encoding on
-                     Self->ReadUCRPixel(Self, 0, i, &rgb);
+                     Self->ReadUCRPixel(Self, Self->Clip.Left, i, &rgb);
                      switch(p) {
                         case 0:  lastpixel = rgb.Red;   break;
                         case 1:  lastpixel = rgb.Green; break;
@@ -1694,7 +1701,7 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
                      }
                      counter = 1;
 
-                     for (j=1; j < Self->Width; j++) {
+                     for (j=Self->Clip.Left+1; j < Self->Clip.Right; j++) {
                         Self->ReadUCRPixel(Self, j, i, &rgb);
                         switch(p) {
                            case 0:  newpixel = rgb.Red;   break;

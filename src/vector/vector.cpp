@@ -38,13 +38,7 @@ static ERROR init_vector(void);
 static ERROR init_viewport(void);
 static ERROR init_wave(void);
 
-static void get_ellipse_xy(struct rkVectorEllipse *);
-static void get_rectangle_xy(struct rkVectorRectangle *);
-static void get_spiral_xy(struct rkVectorSpiral *);
-static void get_super_xy(struct rkVectorShape *);
 static void get_text_xy(struct rkVectorText *);
-static void get_wave_xy(struct rkVectorWave *);
-
 #include "utility.cpp"
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)

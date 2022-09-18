@@ -36,8 +36,11 @@ typedef struct rkVectorWave {
 
 static void generate_wave(objVectorWave *Vector)
 {
+   DOUBLE ox = Vector->wX, oy = Vector->wY;
    DOUBLE width = Vector->wWidth, height = Vector->wHeight;
 
+   if (Vector->wDimensions & DMF_RELATIVE_X) ox *= get_parent_width(Vector);
+   if (Vector->wDimensions & DMF_RELATIVE_Y) oy *= get_parent_height(Vector);
    if (Vector->wDimensions & DMF_RELATIVE_WIDTH) width *= get_parent_width(Vector);
    if (Vector->wDimensions & DMF_RELATIVE_HEIGHT) height *= get_parent_height(Vector);
 
@@ -46,33 +49,31 @@ static void generate_wave(objVectorWave *Vector)
    else if (Vector->wDecay >= 0) decay = 360 * Vector->wDecay;
    else decay = 360 * -Vector->wDecay;
 
-   DOUBLE scale = 1.0;
-   DOUBLE degree = Vector->wDegree;
    const DOUBLE amp = (height * 0.5) * Vector->wAmplitude;
+   const DOUBLE scale = 1.0 / Vector->Transform.scale(); // Essential for smooth curves when scale > 1.0
 
-   scale = 1.0 / Vector->Transform.scale(); // Essential for smooth curves when scale > 1.0
-
-   DOUBLE x = 0, y = sin(DEG2RAD * degree) * amp + (height * 0.5);
+   DOUBLE x = 0, y = sin(DEG2RAD * Vector->wDegree) * amp + (height * 0.5);
    if (Vector->Transition) apply_transition_xy(Vector->Transition, 0, &x, &y);
 
    if ((!Vector->wClose) or (Vector->wThickness > 0)) {
-      Vector->BasePath.move_to(x, y);
+      Vector->BasePath.move_to(ox + x, oy + y);
    }
    else if (Vector->wClose IS WVC_TOP) {
-      Vector->BasePath.move_to(width, 0); // Top right
-      Vector->BasePath.line_to(0, 0); // Top left
-      Vector->BasePath.line_to(x, y);
+      Vector->BasePath.move_to(ox + width, oy); // Top right
+      Vector->BasePath.line_to(ox, oy); // Top left
+      Vector->BasePath.line_to(ox + x, oy + y);
    }
    else if (Vector->wClose IS WVC_BOTTOM) {
-      Vector->BasePath.move_to(width, height); // Bottom right
-      Vector->BasePath.line_to(0, height); // Bottom left
-      Vector->BasePath.line_to(x, y);
+      Vector->BasePath.move_to(ox + width, oy + height); // Bottom right
+      Vector->BasePath.line_to(ox, oy + height); // Bottom left
+      Vector->BasePath.line_to(ox + x, oy + y);
    }
    else return;
 
    // Sine wave generator.  This applies scaling so that the correct number of vertices are generated.  Also, the
    // last vertex is interpolated to end exactly at 360, ensuring that the path terminates accurately.
 
+   DOUBLE degree = Vector->wDegree;
    DOUBLE xscale = width * (1.0 / 360.0);
    DOUBLE freq = Vector->wFrequency * scale;
    DOUBLE angle;
@@ -83,7 +84,7 @@ static void generate_wave(objVectorWave *Vector)
          DOUBLE y = (sin(DEG2RAD * degree) * amp) + (height * 0.5);
          if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
          if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
-            Vector->BasePath.line_to(x, y);
+            Vector->BasePath.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;
          }
@@ -93,14 +94,14 @@ static void generate_wave(objVectorWave *Vector)
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) + (height * 0.5);
       if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
-      Vector->BasePath.line_to(x, y);
+      Vector->BasePath.line_to(ox + x, oy + y);
    }
    else if (Vector->wDecay > 0) {
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
          DOUBLE x = angle * xscale;
          DOUBLE y = (sin(DEG2RAD * degree) * amp) / exp((DOUBLE)angle / decay) + (height * 0.5);
          if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
-            Vector->BasePath.line_to(x, y);
+            Vector->BasePath.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;
          }
@@ -110,7 +111,7 @@ static void generate_wave(objVectorWave *Vector)
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) / exp(360.0 / decay) + (height * 0.5);
       if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
-      Vector->BasePath.line_to(x, y);
+      Vector->BasePath.line_to(ox + x, oy + y);
    }
    else if (Vector->wDecay < 0) {
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
@@ -118,7 +119,7 @@ static void generate_wave(objVectorWave *Vector)
          DOUBLE y = (sin(DEG2RAD * degree) * amp) / log((DOUBLE)angle / decay) + (height * 0.5);
          if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
          if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
-            Vector->BasePath.line_to(x, y);
+            Vector->BasePath.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;
          }
@@ -128,7 +129,7 @@ static void generate_wave(objVectorWave *Vector)
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) / log(360.0 / decay) + (height * 0.5);
       if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
-      Vector->BasePath.line_to(x, y);
+      Vector->BasePath.line_to(ox + x, oy + y);
    }
 
    if (Vector->wThickness > 0) {
@@ -144,17 +145,8 @@ static void generate_wave(objVectorWave *Vector)
    }
 
    if ((Vector->wClose) or (Vector->wThickness > 0)) Vector->BasePath.close_polygon();
-}
 
-//****************************************************************************
-
-static void get_wave_xy(objVectorWave *Vector)
-{
-   DOUBLE x = Vector->wX, y = Vector->wY;
-   if (Vector->wDimensions & DMF_RELATIVE_X) x *= get_parent_width(Vector);
-   if (Vector->wDimensions & DMF_RELATIVE_Y) y *= get_parent_height(Vector);
-   Vector->FinalX = x;
-   Vector->FinalY = y;
+   bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
 /*****************************************************************************
@@ -171,7 +163,7 @@ static ERROR WAVE_Move(objVectorWave *Self, struct acMove *Args)
 
    Self->wX += Args->DeltaX;
    Self->wY += Args->DeltaY;
-   reset_final_path(Self);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -191,7 +183,7 @@ static ERROR WAVE_MoveToPoint(objVectorWave *Self, struct acMoveToPoint *Args)
    if (Args->Flags & MTF_Y) Self->wY = Args->Y;
    if (Args->Flags & MTF_RELATIVE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X | DMF_RELATIVE_Y) & ~(DMF_FIXED_X | DMF_FIXED_Y);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_X | DMF_FIXED_Y) & ~(DMF_RELATIVE_X | DMF_RELATIVE_Y);
-   reset_final_path(Self);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -519,7 +511,7 @@ static ERROR WAVE_SET_X(objVectorWave *Self, Variable *Value)
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->wX = val;
-   reset_final_path(Self);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -554,7 +546,7 @@ static ERROR WAVE_SET_Y(objVectorWave *Self, Variable *Value)
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->wY = val;
-   reset_final_path(Self);
+   reset_path(Self);
    return ERR_Okay;
 }
 

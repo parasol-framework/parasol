@@ -842,7 +842,7 @@ static ERROR TEXT_SET_X(objVectorText *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) Self->txX = Value->Double;
    else if (Value->Type & FD_LARGE) Self->txX = Value->Large;
    else return ERR_FieldTypeMismatch;
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -870,7 +870,7 @@ static ERROR TEXT_SET_Y(objVectorText *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) Self->txY = Value->Double;
    else if (Value->Type & FD_LARGE) Self->txY = Value->Large;
    else return ERR_FieldTypeMismatch;
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -2265,7 +2265,7 @@ void TextCursor::resetVector(objVectorText *Vector)
                Vector->txXOffset = xo;
                Vector->txYOffset = yo;
 
-               mark_dirty(Vector, RC_TRANSFORM);
+               reset_path(Vector);
             }
          }
       }

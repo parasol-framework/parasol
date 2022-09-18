@@ -1,3 +1,26 @@
+/*
+
+TODO: As per the SVG spec...
+
+Because they operate on pixels, matrix convolutions are inherently resolution-dependent. To make
+‘feConvolveMatrix’ produce resolution-independent results, an explicit value should be provided for either
+the ‘filterRes’ attribute on the ‘filter’ element and/or attribute ‘kernelUnitLength’.
+
+‘kernelUnitLength’, in combination with the other attributes, defines an implicit pixel grid in the filter
+effects coordinate system (i.e., the coordinate system established by the ‘primitiveUnits’ attribute).
+If the pixel grid established by ‘kernelUnitLength’ is not scaled to match the pixel grid established by
+attribute ‘filterRes’ (implicitly or explicitly), then the input image will be temporarily rescaled to
+match its pixels with ‘kernelUnitLength’. The convolution happens on the resampled image. After applying
+the convolution, the image is resampled back to the original resolution.
+
+When the image must be resampled to match the coordinate system defined by ‘kernelUnitLength’ prior to
+convolution, or resampled to match the device coordinate system after convolution, it is recommended that
+high quality viewers make use of appropriate interpolation techniques, for example bilinear or bicubic.
+Depending on the speed of the available interpolents, this choice may be affected by the ‘image-rendering’
+property setting. Note that implementations might choose approaches that minimize or eliminate resampling
+when not necessary to produce proper results, such as when the document is zoomed out such that
+‘kernelUnitLength’ is considerably smaller than a device pixel.
+*/
 
 #include <array>
 
@@ -20,28 +43,28 @@ class ConvolveEffect : public VectorEffect {
       Stream << "feConvolve";
    }
 
-   inline UBYTE * getPixel(LONG X, LONG Y) const {
-      if ((X >= OutBitmap->Clip.Left) and (X < OutBitmap->Clip.Right) and
-          (Y >= OutBitmap->Clip.Top) and (Y < OutBitmap->Clip.Bottom)) {
-         return OutBitmap->Data + (Y * OutBitmap->LineWidth) + (X<<2);
+   inline UBYTE * getPixel(objBitmap *Bitmap, LONG X, LONG Y) const {
+      if ((X >= Bitmap->Clip.Left) and (X < Bitmap->Clip.Right) and
+          (Y >= Bitmap->Clip.Top) and (Y < Bitmap->Clip.Bottom)) {
+         return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
       }
 
       switch (EdgeMode) {
          default: return NULL;
 
          case EM_DUPLICATE:
-            if (X < OutBitmap->Clip.Left) X = OutBitmap->Clip.Left;
-            else if (X >= OutBitmap->Clip.Right) X = OutBitmap->Clip.Right - 1;
-            if (Y < OutBitmap->Clip.Top) Y = OutBitmap->Clip.Top;
-            else if (Y >= OutBitmap->Clip.Bottom) Y = OutBitmap->Clip.Bottom - 1;
-            return OutBitmap->Data + (Y * OutBitmap->LineWidth) + (X<<2);
+            if (X < Bitmap->Clip.Left) X = Bitmap->Clip.Left;
+            else if (X >= Bitmap->Clip.Right) X = Bitmap->Clip.Right - 1;
+            if (Y < Bitmap->Clip.Top) Y = Bitmap->Clip.Top;
+            else if (Y >= Bitmap->Clip.Bottom) Y = Bitmap->Clip.Bottom - 1;
+            return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
 
          case EM_WRAP:
-            while (X < OutBitmap->Clip.Left) X += OutBitmap->Clip.Right - OutBitmap->Clip.Left;
-            X %= OutBitmap->Clip.Right - OutBitmap->Clip.Left;
-            while (Y < OutBitmap->Clip.Top) Y += OutBitmap->Clip.Bottom - OutBitmap->Clip.Top;
-            Y %= OutBitmap->Clip.Bottom - OutBitmap->Clip.Top;
-            return OutBitmap->Data + (Y * OutBitmap->LineWidth) + (X<<2);
+            while (X < Bitmap->Clip.Left) X += Bitmap->Clip.Right - Bitmap->Clip.Left;
+            X %= Bitmap->Clip.Right - Bitmap->Clip.Left;
+            while (Y < Bitmap->Clip.Top) Y += Bitmap->Clip.Bottom - Bitmap->Clip.Top;
+            Y %= Bitmap->Clip.Bottom - Bitmap->Clip.Top;
+            return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
       }
    }
 
@@ -65,7 +88,7 @@ class ConvolveEffect : public VectorEffect {
             UBYTE kv = 0;
             for (int fy=y-TargetY; fy < y+FilterHeight-TargetY; fy++) {
                for (int fx=x-TargetX; fx < x+FilterWidth-TargetX; fx++) {
-                  UBYTE *pixel = getPixel(fx, fy);
+                  UBYTE *pixel = getPixel(InputBitmap, fx, fy);
                   if (pixel) {
                      r += pixel[R] * KernelMatrix[kv];
                      g += pixel[G] * KernelMatrix[kv];

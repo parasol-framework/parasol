@@ -1,6 +1,3 @@
-// TODO: Real-time calls to bounding_rect_single() are inefficient.  We should be caching the bounding
-// box with each vector and using the dirty markers to manage updates.
-
 //****************************************************************************
 // This class holds the current state as the vector scene is parsed for drawing.  It is most useful for managing use of
 // the 'inherit' attribute values.
@@ -332,8 +329,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
    imgSource.attach(SrcBitmap->Data, SrcBitmap->Width, SrcBitmap->Height, SrcBitmap->LineWidth);
    agg::pixfmt_rkl pixels(*SrcBitmap);
 
-   if ((Transform) and // Interpolate only if the transform specifies a scale, shear or rotate operation.
-       ((Transform->sx != 1.0) or (Transform->sy != 1.0) or (Transform->shx != 0.0) or (Transform->shy != 0.0))) {
+   if ((Transform) and (Transform->is_complex())) {
       agg::span_interpolator_linear interpolator(*Transform);
       agg::image_filter_lut filter;
       set_filter(filter, SampleMethod);  // Set the interpolation filter to use.
@@ -390,7 +386,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
 // Fixed-size patterns can be rendered internally as a separate bitmap for tiling.  That bitmap is copied to the
 // target bitmap with the necessary transforms applied.  USERSPACE patterns are suitable for this method.
 //
-// Patterns rendered with BOUNDINGBOX require more real-time calculations as they have a dependency on the target
+// Patterns rendered with BOUNDING_BOX require more real-time calculations as they have a dependency on the target
 // vector's dimensions.
 
 static void draw_pattern(objVector *Vector, agg::path_storage *Path,
@@ -398,22 +394,19 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
    struct rkVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
-   DOUBLE dx, dy, dwidth, dheight;
+   DOUBLE dwidth, dheight;
+
+   const DOUBLE c_width  = (Pattern.Units IS VUNIT_USERSPACE) ? ViewWidth : Vector->BX2 - Vector->BX1;
+   const DOUBLE c_height = (Pattern.Units IS VUNIT_USERSPACE) ? ViewHeight : Vector->BY2 - Vector->BY1;
+   const DOUBLE x_offset = (Pattern.Units IS VUNIT_USERSPACE) ? 0 : Vector->BX1;
+   const DOUBLE y_offset = (Pattern.Units IS VUNIT_USERSPACE) ? 0 : Vector->BY1;
 
    if (Pattern.Units IS VUNIT_USERSPACE) { // Use fixed coordinates specified in the pattern.
-      if (Pattern.Dimensions & DMF_RELATIVE_X) dx = ViewWidth * Pattern.X;
-      else if (Pattern.Dimensions & DMF_FIXED_X) dx = Pattern.X;
-      else dx = 0;
-
-      if (Pattern.Dimensions & DMF_RELATIVE_Y) dy = ViewHeight * Pattern.Y;
-      else if (Pattern.Dimensions & DMF_FIXED_Y) dy = Pattern.Y;
-      else dy = 0;
-
-      if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = ViewWidth * Pattern.Width;
+      if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = c_width * Pattern.Width;
       else if (Pattern.Dimensions & DMF_FIXED_WIDTH) dwidth = Pattern.Width;
       else dwidth = 1;
 
-      if (Pattern.Dimensions & DMF_RELATIVE_HEIGHT) dheight = ViewHeight * Pattern.Height;
+      if (Pattern.Dimensions & DMF_RELATIVE_HEIGHT) dheight = c_height * Pattern.Height;
       else if (Pattern.Dimensions & DMF_FIXED_HEIGHT) dheight = Pattern.Height;
       else dheight = 1;
 
@@ -427,23 +420,18 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
       // BOUNDING_BOX.  The pattern (x,y) is an optional offset applied to the base position of the vector's
       // path and the size is relative to the vector's bounds.
 
-      DOUBLE bx1, by1, bx2, by2;
-      bounding_rect_single(*Path, 0, &bx1, &by1, &bx2, &by2); // Get the boundary of the original path without transforms.
-      const DOUBLE width = bx2 - bx1;
-      const DOUBLE height = by2 - by1;
-
-      DOUBLE vpwidth = Pattern.Viewport->vpViewWidth;
+      DOUBLE vpwidth  = Pattern.Viewport->vpViewWidth;
       DOUBLE vpheight = Pattern.Viewport->vpViewHeight;
 
       if (!vpwidth) vpwidth = 1;
       if (!vpheight) vpheight = 1;
 
-      if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = width * Pattern.Width;
-      else if (Pattern.Dimensions & DMF_FIXED_WIDTH) dwidth = (Pattern.Width / vpwidth) * width;
+      if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = c_width * Pattern.Width;
+      else if (Pattern.Dimensions & DMF_FIXED_WIDTH) dwidth = (Pattern.Width / vpwidth) * c_width;
       else dwidth = 1;
 
-      if (Pattern.Dimensions & DMF_RELATIVE_HEIGHT) dheight = height * Pattern.Height;
-      else if (Pattern.Dimensions & DMF_FIXED_HEIGHT) dheight = (Pattern.Height / vpheight) * height;
+      if (Pattern.Dimensions & DMF_RELATIVE_HEIGHT) dheight = c_height * Pattern.Height;
+      else if (Pattern.Dimensions & DMF_FIXED_HEIGHT) dheight = (Pattern.Height / vpheight) * c_height;
       else dheight = 1;
 
       if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
@@ -451,14 +439,6 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
          Pattern.Scene->PageHeight = dheight;
          mark_dirty(Pattern.Scene->Viewport, RC_ALL);
       }
-
-      dx = 0;
-      dy = 0;
-      if (Pattern.Dimensions & DMF_RELATIVE_X) dx += (width * Pattern.X);
-      else if (Pattern.Dimensions & DMF_FIXED_X) dx += Pattern.X;
-
-      if (Pattern.Dimensions & DMF_RELATIVE_Y) dy += (height * Pattern.Y);
-      else if (Pattern.Dimensions & DMF_FIXED_Y) dy += Pattern.Y;
    }
 
    // Redraw the pattern source if any part of the definition is marked as dirty.
@@ -467,6 +447,15 @@ static void draw_pattern(objVector *Vector, agg::path_storage *Path,
    }
 
    agg::trans_affine transform;
+
+   DOUBLE dx, dy;
+   if (Pattern.Dimensions & DMF_RELATIVE_X) dx = x_offset + (c_width * Pattern.X);
+   else if (Pattern.Dimensions & DMF_FIXED_X) dx = x_offset + Pattern.X;
+   else dx = x_offset;
+
+   if (Pattern.Dimensions & DMF_RELATIVE_Y) dy = y_offset + c_height * Pattern.Y;
+   else if (Pattern.Dimensions & DMF_FIXED_Y) dy = y_offset + Pattern.Y;
+   else dy = y_offset;
 
    if (Pattern.Matrices) {
       auto &m = *Pattern.Matrices;
@@ -627,45 +616,25 @@ void draw_brush(const struct rkVectorImage &Image,
 
 //****************************************************************************
 // Image extension
+// Path: The original vector path without transforms.
+// Transform: Transforms to be applied to the path and to align the image.
 
 static void draw_image(objVector *Vector, agg::path_storage &Path, LONG SampleMethod,
    const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
    rkVectorImage &Image, agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, DOUBLE BorderWidth = 0, DOUBLE Alpha = 1.0)
 {
-   DOUBLE dx, dy, bx1, by1, bx2, by2;
+   const DOUBLE c_width  = (Image.Units IS VUNIT_USERSPACE) ? ViewWidth : Vector->BX2 - Vector->BX1;
+   const DOUBLE c_height = (Image.Units IS VUNIT_USERSPACE) ? ViewHeight : Vector->BY2 - Vector->BY1;
+   const DOUBLE dx = Vector->BX1 + ((Image.Dimensions & DMF_RELATIVE_X) ? (c_width * Image.X) : Image.X);
+   const DOUBLE dy = Vector->BY1 + ((Image.Dimensions & DMF_RELATIVE_Y) ? (c_height * Image.Y) : Image.Y);
+
    agg::trans_affine transform;
-
-   if (Image.Units IS VUNIT_USERSPACE) { // Align to the provided x/y coordinate in rkVectorImage.
-      if (Image.Dimensions & DMF_RELATIVE_X) dx = ViewWidth * Image.X;
-      else dx = Image.X;
-
-      if (Image.Dimensions & DMF_RELATIVE_Y) dy = ViewHeight * Image.Y;
-      else dy = Image.Y;
-
-      if (Image.SpreadMethod IS VSPREAD_PAD) { // In pad mode, stretch the image to fit the boundary
-         bounding_rect_single(Path, 0, &bx1, &by1, &bx2, &by2); // Get the boundary of the original path without transforms.
-         transform.scale((bx2-bx1) / Image.Bitmap->Width, (by2-by1) / Image.Bitmap->Height);
-      }
-   }
-   else {
-      // VUNIT_BOUNDING_BOX (align to vector).  In this mode the image's (x,y) is an optional offset applied
-      // to the base position, which is taken from the vector's path.
-
-      bounding_rect_single(Path, 0, &bx1, &by1, &bx2, &by2); // Get the boundary of the original path without transforms.
-      const DOUBLE width = bx2 - bx1;
-      const DOUBLE height = by2 - by1;
-      if (Image.Dimensions & DMF_RELATIVE_X) dx = (width * Image.X);
-      else dx = Image.X;
-
-      if (Image.Dimensions & DMF_RELATIVE_Y) dy = (height * Image.Y);
-      else dy = Image.Y;
-
-      if (Image.SpreadMethod IS VSPREAD_PAD) { // In pad mode, stretch the image to fit the boundary
-         transform.scale(width / Image.Bitmap->Width, height / Image.Bitmap->Height);
-      }
+   if (Image.SpreadMethod IS VSPREAD_PAD) { // In pad mode, stretch the image to fit the boundary
+      transform.scale((Vector->BX2 - Vector->BX1) / Image.Bitmap->Width, (Vector->BY2 - Vector->BY1) / Image.Bitmap->Height);
    }
 
+   transform.translate(dx, dy);
    transform *= Transform;
 
    transform.invert();
@@ -674,7 +643,7 @@ static void draw_image(objVector *Vector, agg::path_storage &Path, LONG SampleMe
 }
 
 //*****************************************************************************
-// Gradient extension
+// Gradient fills
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
 static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg::trans_affine &Transform,
@@ -694,41 +663,25 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
    interpolator_type   span_interpolator(transform);
    span_allocator_type span_allocator;
 
-   DOUBLE bx1, by1, bx2, by2;
-   bounding_rect_single(*Path, 0, &bx1, &by1, &bx2, &by2);
+   const DOUBLE c_width = Gradient.Units IS VUNIT_USERSPACE ? ViewWidth : Vector->BX2 - Vector->BX1;
+   const DOUBLE c_height = Gradient.Units IS VUNIT_USERSPACE ? ViewHeight : Vector->BY2 - Vector->BY1;
+   const DOUBLE x_offset = Gradient.Units IS VUNIT_USERSPACE ? 0 : Vector->BX1;
+   const DOUBLE y_offset = Gradient.Units IS VUNIT_USERSPACE ? 0 : Vector->BY1;
 
    if (Gradient.Type IS VGT_LINEAR) {
       DOUBLE ax1, ay1, ax2, ay2;
 
-      if (Gradient.Units IS VUNIT_USERSPACE) { // Absolute positioning, ignores the vector path/transform.
-         if (Gradient.Flags & VGF_RELATIVE_X1) ax1 = (ViewWidth * Gradient.X1);
-         else ax1 = Gradient.X1;
+      if (Gradient.Flags & VGF_RELATIVE_X1) ax1 = x_offset + (c_width * Gradient.X1);
+      else ax1 = x_offset + Gradient.X1;
 
-         if (Gradient.Flags & VGF_RELATIVE_Y1) ay1 = (ViewHeight * Gradient.Y1);
-         else ay1 = Gradient.Y1;
+      if (Gradient.Flags & VGF_RELATIVE_X2) ax2 = x_offset + (c_width * Gradient.X2);
+      else ax2 = x_offset + Gradient.X2;
 
-         if (Gradient.Flags & VGF_RELATIVE_X2) ax2 = (ViewWidth * Gradient.X2);
-         else ax2 = Gradient.X2;
+      if (Gradient.Flags & VGF_RELATIVE_Y1) ay1 = y_offset + (c_height * Gradient.Y1);
+      else ay1 = y_offset + Gradient.Y1;
 
-         if (Gradient.Flags & VGF_RELATIVE_Y2) ay2 = (ViewHeight * Gradient.Y2);
-         else ay2 = Gradient.Y2;
-      }
-      else { // Align to vector's bounding box
-         const DOUBLE boundwidth = bx2 - bx1;
-         const DOUBLE boundheight = by2 - by1;
-
-         if (Gradient.Flags & VGF_RELATIVE_X1) ax1 = (boundwidth * Gradient.X1);
-         else ax1 = Gradient.X1;
-
-         if (Gradient.Flags & VGF_RELATIVE_X2) ax2 = (boundwidth * Gradient.X2);
-         else ax2 = Gradient.X2;
-
-         if (Gradient.Flags & VGF_RELATIVE_Y1) ay1 = (boundheight * Gradient.Y1);
-         else ay1 = Gradient.Y1;
-
-         if (Gradient.Flags & VGF_RELATIVE_Y2) ay2 = (boundheight * Gradient.Y2);
-         else ay2 = Gradient.Y2;
-      }
+      if (Gradient.Flags & VGF_RELATIVE_Y2) ay2 = y_offset + (c_height * Gradient.Y2);
+      else ay2 = y_offset + Gradient.Y2;
 
       // Calculate the gradient's transition from the point at (x1,y1) to (x2,y2)
 
@@ -755,39 +708,19 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
    else if (Gradient.Type IS VGT_RADIAL) {
       DOUBLE cx, cy, fx, fy;
 
-      const DOUBLE width = bx2 - bx1;
-      const DOUBLE height = by2 - by1;
+      if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
+      else cx = x_offset + Gradient.CenterX;
 
-      if (Gradient.Units IS VUNIT_USERSPACE) {
-         if (Gradient.Flags & VGF_RELATIVE_CX) cx = ViewWidth * Gradient.CenterX;
-         else cx = Gradient.CenterX;
+      if (Gradient.Flags & VGF_RELATIVE_CY) cy = y_offset + (c_height * Gradient.CenterY);
+      else cy = y_offset + Gradient.CenterY;
 
-         if (Gradient.Flags & VGF_RELATIVE_CY) cy = ViewHeight * Gradient.CenterY;
-         else cy = Gradient.CenterY;
+      if (Gradient.Flags & VGF_RELATIVE_FX) fx = x_offset + (c_width * Gradient.FX);
+      else if (Gradient.Flags & VGF_FIXED_FX) fx = x_offset + Gradient.FX;
+      else fx = x_offset + cx;
 
-         if (Gradient.Flags & VGF_RELATIVE_FX) fx = ViewWidth * Gradient.FX;
-         else if (Gradient.Flags & VGF_FIXED_FX) fx = Gradient.FX;
-         else fx = cx;
-
-         if (Gradient.Flags & VGF_RELATIVE_FY) fy = ViewHeight * Gradient.FY;
-         else if (Gradient.Flags & VGF_FIXED_FY) fy = Gradient.FY;
-         else fy = cy;
-      }
-      else {
-         if (Gradient.Flags & VGF_RELATIVE_CX) cx = (width * Gradient.CenterX);
-         else cx = Gradient.CenterX;
-
-         if (Gradient.Flags & VGF_RELATIVE_CY) cy = (height * Gradient.CenterY);
-         else cy = Gradient.CenterY;
-
-         if (Gradient.Flags & VGF_RELATIVE_FX) fx = (width * Gradient.FX);
-         else if (Gradient.Flags & VGF_FIXED_FX) fx = Gradient.FX;
-         else fx = cx;
-
-         if (Gradient.Flags & VGF_RELATIVE_FY) fy = (height * Gradient.FY);
-         else if (Gradient.Flags & VGF_FIXED_FY) fy = Gradient.FY;
-         else fy = cy;
-      }
+      if (Gradient.Flags & VGF_RELATIVE_FY) fy = y_offset + (c_height * Gradient.FY);
+      else if (Gradient.Flags & VGF_FIXED_FY) fy = y_offset + Gradient.FY;
+      else fy = y_offset + cy;
 
       if ((cx IS fx) and (cy IS fy)) {
          // Standard radial gradient, where the focal point is the same as the gradient center
@@ -805,8 +738,8 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
 
                DOUBLE scale_x = Gradient.Radius * (1.0 / 0.707106781); //(width * Gradient.Radius) / (sqrt((width * width) + (width * width)) * 0.5);
                DOUBLE scale_y = Gradient.Radius * (1.0 / 0.707106781); //(height * Gradient.Radius) / (sqrt((height * height) + (height * height)) * 0.5);
-               if (height > width) scale_y *= height / width;
-               else if (width > height) scale_x *= width / height;
+               if (c_height > c_width) scale_y *= c_height / c_width;
+               else if (c_width > c_height) scale_x *= c_width / c_height;
                scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
                scale_y *= 100.0 / length;
                transform.scale(scale_x, scale_y);
@@ -816,7 +749,7 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
             }
          }
 
-         if (length < 255) {   // Blending works best if the gradient span is at least 255 colours wide, so adjust it here.
+         if (length < 255) { // Blending works best if the gradient span is at least 255 colours wide, so adjust it here.
             transform.scale(length * (1.0 / 255.0));
             length = 255;
          }
@@ -839,15 +772,13 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
          // the SVG standard, the focal point had to be within the radius.  Later specifications allowed it to
          // be placed outside of the radius.
 
-         const DOUBLE width = bx2 - bx1;
-         const DOUBLE height = by2 - by1;
          DOUBLE fix_radius = Gradient.Radius;
-         if (Gradient.Flags & VGF_RELATIVE_RADIUS) fix_radius *= (width + height) * 0.5; // Use the average radius of the ellipse.
+         if (Gradient.Flags & VGF_RELATIVE_RADIUS) fix_radius *= (c_width + c_height) * 0.5; // Use the average radius of the ellipse.
          DOUBLE length = fix_radius;
 
          if (Gradient.Units IS VUNIT_USERSPACE) {
             if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
-               DOUBLE scale = length * Gradient.Radius;
+               const DOUBLE scale = length * Gradient.Radius;
                transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
             }
             else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
@@ -859,8 +790,8 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
 
                DOUBLE scale_x = Gradient.Radius * (1.0 / 0.707106781);
                DOUBLE scale_y = Gradient.Radius * (1.0 / 0.707106781);
-               if (height > width) scale_y *= height / width;
-               else if (width > height) scale_x *= width / height;
+               if (c_height > c_width) scale_y *= c_height / c_width;
+               else if (c_width > c_height) scale_x *= c_width / c_height;
                scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
                scale_y *= 100.0 / length;
                transform.scale(scale_x, scale_y);
@@ -886,31 +817,19 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
    else if (Gradient.Type IS VGT_DIAMOND) {
       DOUBLE cx, cy;
 
-      const DOUBLE width = bx2 - bx1;
-      const DOUBLE height = by2 - by1;
+      if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
+      else cx = x_offset + Gradient.CenterX;
 
-      if (Gradient.Units IS VUNIT_USERSPACE) {
-         if (Gradient.Flags & VGF_RELATIVE_CX) cx = ViewWidth * Gradient.CenterX;
-         else cx = Gradient.CenterX;
-
-         if (Gradient.Flags & VGF_RELATIVE_CY) cy = ViewHeight * Gradient.CenterY;
-         else cy = Gradient.CenterY;
-      }
-      else {
-         if (Gradient.Flags & VGF_RELATIVE_CX) cx = (width * Gradient.CenterX);
-         else cx = Gradient.CenterX;
-
-         if (Gradient.Flags & VGF_RELATIVE_CY) cy = (height * Gradient.CenterY);
-         else cy = Gradient.CenterY;
-      }
+      if (Gradient.Flags & VGF_RELATIVE_CY) cy = y_offset + (c_height * Gradient.CenterY);
+      else cy = y_offset + Gradient.CenterY;
 
       // Standard diamond gradient, where the focal point is the same as the gradient center
 
       const DOUBLE length = 255;
       if (Gradient.Units IS VUNIT_USERSPACE) {
          if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
-            DOUBLE scale = length * Gradient.Radius;
-            transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
+            const DOUBLE scale = length * Gradient.Radius;
+            transform *= agg::trans_affine_scaling(sqrt((c_width * c_width) + (c_height * c_height)) / scale);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
@@ -921,8 +840,8 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
 
             DOUBLE scale_x = Gradient.Radius * (1.0 / 0.707106781);
             DOUBLE scale_y = Gradient.Radius * (1.0 / 0.707106781);
-            if (height > width) scale_y *= height / width;
-            else if (width > height) scale_x *= width / height;
+            if (c_height > c_width) scale_y *= c_height / c_width;
+            else if (c_width > c_height) scale_x *= c_width / c_height;
             scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
             scale_y *= 100.0 / length;
             transform.scale(scale_x, scale_y);
@@ -946,31 +865,19 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
    else if (Gradient.Type IS VGT_CONIC) {
       DOUBLE cx, cy;
 
-      const DOUBLE width = bx2 - bx1;
-      const DOUBLE height = by2 - by1;
+      if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
+      else cx = x_offset + Gradient.CenterX;
 
-      if (Gradient.Units IS VUNIT_USERSPACE) {
-         if (Gradient.Flags & VGF_RELATIVE_CX) cx = ViewWidth * Gradient.CenterX;
-         else cx = Gradient.CenterX;
-
-         if (Gradient.Flags & VGF_RELATIVE_CY) cy = ViewHeight * Gradient.CenterY;
-         else cy = Gradient.CenterY;
-      }
-      else {
-         if (Gradient.Flags & VGF_RELATIVE_CX) cx = (width * Gradient.CenterX);
-         else cx = Gradient.CenterX;
-
-         if (Gradient.Flags & VGF_RELATIVE_CY) cy = (height * Gradient.CenterY);
-         else cy = Gradient.CenterY;
-      }
+      if (Gradient.Flags & VGF_RELATIVE_CY) cy = y_offset + (c_height * Gradient.CenterY);
+      else cy = y_offset + Gradient.CenterY;
 
       // Standard conic gradient, where the focal point is the same as the gradient center
 
       const DOUBLE length = 255;
       if (Gradient.Units IS VUNIT_USERSPACE) {
          if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
-            DOUBLE scale = length * Gradient.Radius;
-            transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
+            const DOUBLE scale = length * Gradient.Radius;
+            transform *= agg::trans_affine_scaling(sqrt((c_width * c_width) + (c_height * c_height)) / scale);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
@@ -981,8 +888,8 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
 
             DOUBLE scale_x = Gradient.Radius * (1.0 / 0.707106781);
             DOUBLE scale_y = Gradient.Radius * (1.0 / 0.707106781);
-            if (height > width) scale_y *= height / width;
-            else if (width > height) scale_x *= width / height;
+            if (c_height > c_width) scale_y *= c_height / c_width;
+            else if (c_width > c_height) scale_x *= c_width / c_height;
             scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
             scale_y *= 100.0 / length;
             transform.scale(scale_x, scale_y);
@@ -1004,6 +911,8 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
       agg::render_scanlines(Raster, scanline, solidrender_gradient);
    }
    else if (Gradient.Type IS VGT_CONTOUR) { // NOTE: Contouring requires a bounding box and is thus incompatible with UserSpaceOnUse
+      if (Gradient.Units != VUNIT_BOUNDING_BOX) return;
+
       auto x1 = (Gradient.X1 >= 0) ? Gradient.X1 : 0;
       auto x2 = (Gradient.X2 <= 512) ? Gradient.X2 : 512;
 
@@ -1013,7 +922,7 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
       gradient_func.d2(x2);   // Low values for x2 will increase the amount of repetition seen in the gradient.
       gradient_func.contour_create(Path);
 
-      transform.translate(bx1, by1);
+      transform.translate(x_offset, y_offset);
       apply_transforms(Gradient, transform);
       transform *= Transform;
       transform.invert();
@@ -1199,86 +1108,9 @@ private:
             objBitmap *filter_bmp;
             if (render_filter(shape->Filter, mView, shape, mBitmap, &filter_bmp)) continue;
 
-            agg::trans_affine transform;
-
-            if (state.mApplyTransform) transform *= state.mTransform;
-
-            if ((shape->Head.SubID IS ID_VECTORVIEWPORT) or (shape->Head.SubID IS ID_VECTORGROUP)) {
-               if (shape->Filter->Units IS VUNIT_USERSPACE) transform *= shape->Transform; //apply_transforms(*shape, transform);
-               apply_parent_transforms((objVector *)get_parent(shape), transform);
-            }
-
-            DOUBLE dx1, dx2, dy1, dy2;
-
-            agg::rasterizer_scanline_aa raster;
-            agg::trans_affine shape_transform;
-            if (shape->Head.SubID IS ID_VECTORVIEWPORT) {
-               shape_transform = shape->Transform * state.mTransform;
-               raster.add_path(shape->BasePath);
-               bounding_rect_single(shape->BasePath, 0, &dx1, &dy1, &dx2, &dy2);
-            }
-            else if (shape->Head.SubID IS ID_VECTORGROUP) {
-               // Use the filter's calculated bounds, which will be based on the group's content.
-               agg::path_storage clip;
-               clip.move_to(filter->BoundX, filter->BoundY);
-               clip.line_to(filter->BoundX + filter->BoundWidth, filter->BoundY);
-               clip.line_to(filter->BoundX + filter->BoundWidth, filter->BoundY + filter->BoundHeight);
-               clip.line_to(filter->BoundX, filter->BoundY + filter->BoundHeight);
-               clip.close_polygon();
-               if (filter->Units IS VUNIT_USERSPACE) {
-                  shape_transform = shape->Transform;
-                  if (state.mApplyTransform) shape_transform *= state.mTransform;
-               }
-               else {
-                  if (state.mApplyTransform) shape_transform *= state.mTransform;
-                  apply_parent_transforms((objVector *)get_parent(shape), shape_transform);
-               }
-
-               agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(clip, shape_transform);
-               raster.add_path(final_path);
-               bounding_rect_single(final_path, 0, &dx1, &dy1, &dx2, &dy2);
-            }
-            else { // Single shape
-               if (filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) { // Filter output can be tightly restricted to the invoking shape in this mode.
-                  shape_transform = shape->Transform * state.mTransform;
-                  agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(shape->BasePath, shape_transform);
-                  raster.add_path(final_path);
-                  bounding_rect_single(final_path, 0, &dx1, &dy1, &dx2, &dy2);
-               }
-               else { // Filter output needs to respect the filter's stated clipping region.
-                  agg::path_storage clip;
-                  clip.move_to(filter->BoundX, filter->BoundY);
-                  clip.line_to(filter->BoundX + filter->BoundWidth, filter->BoundY);
-                  clip.line_to(filter->BoundX + filter->BoundWidth, filter->BoundY + filter->BoundHeight);
-                  clip.line_to(filter->BoundX, filter->BoundY + filter->BoundHeight);
-                  clip.close_polygon();
-
-                  shape_transform = shape->Transform * state.mTransform;
-                  agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(clip, transform);
-                  raster.add_path(final_path);
-                  bounding_rect_single(final_path, 0, &dx1, &dy1, &dx2, &dy2);
-               }
-            }
-
-            transform.invert();
-
-            agg::rendering_buffer imgSource;
-            imgSource.attach(filter_bmp->Data + (filter_bmp->Clip.Left * filter_bmp->BytesPerPixel) + (filter_bmp->Clip.Top * filter_bmp->LineWidth), filter_bmp->Clip.Right - filter_bmp->Clip.Left, filter_bmp->Clip.Bottom - filter_bmp->Clip.Top, filter_bmp->LineWidth);
-            agg::pixfmt_rkl pixels(*filter_bmp);
-
-            if ((transform.sx != 1.0) or (transform.sy != 1.0) or (transform.shx != 0.0) or (transform.shy != 0.0)) {
-               agg::span_interpolator_linear interpolator(transform);
-               agg::image_filter_lut ifilter;
-               set_filter(ifilter, Scene->SampleMethod);  // Set the interpolation filter to use.
-
-               agg::span_pattern_rkl<agg::pixfmt_rkl> source(pixels, 0, 0);
-               agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_rkl>, agg::span_interpolator_linear<>> spangen(source, interpolator, ifilter);
-               drawBitmapRender(mRenderBase, raster, spangen, state.mOpacity * filter->Opacity);
-            }
-            else { // 1:1 copy with no transforms that require interpolation
-               agg::span_pattern_rkl<agg::pixfmt_rkl> source(pixels, transform.tx, transform.ty);
-               drawBitmapRender(mRenderBase, raster, source, state.mOpacity * filter->Opacity);
-            }
+            if (filter->Opacity < 1.0) filter_bmp->Opacity = 255.0 * filter->Opacity;
+            gfxCopyArea(filter_bmp, mBitmap, BAF_BLEND|BAF_COPY, 0, 0, filter_bmp->Width, filter_bmp->Height, 0, 0);
+            filter_bmp->Opacity = 255;
             continue;
          }
 
@@ -1479,8 +1311,17 @@ private:
                      bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
                   }
                   else if (shape->BasePath.total_vertices()) {
-                     agg::conv_transform<agg::path_storage, agg::trans_affine> path(shape->BasePath, shape->Transform);
-                     bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+                     if (shape->Transform.is_normal()) {
+                        bx1 = shape->BX1;
+                        by1 = shape->BY1;
+                        bx2 = shape->BX2;
+                        by2 = shape->BY2;
+                     }
+                     else {
+                        auto simple_path = basic_path(shape->BX1, shape->BY1, shape->BX2, shape->BY2);
+                        agg::conv_transform<agg::path_storage, agg::trans_affine> path(simple_path, shape->Transform);
+                        bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+                     }
                   }
                   else {
                      bx1 = -1;

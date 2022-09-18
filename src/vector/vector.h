@@ -129,10 +129,9 @@ public:
    DashedStroke(agg::path_storage &pPath, LONG Elements=2) : path(pPath), stroke(path), values(Elements) { }
 };
 
-//   DOUBLE BX1, BY1, BX2, BY2;  TODO: Cache path boundaries on path generation
-
 #define SHAPE_PRIVATE \
    DOUBLE FinalX, FinalY; \
+   DOUBLE BX1, BY1, BX2, BY2; \
    DOUBLE FillGradientAlpha, StrokeGradientAlpha; \
    DOUBLE StrokeWidth; \
    agg::path_storage BasePath; \
@@ -265,7 +264,6 @@ typedef struct rkVectorPoly {
 
    struct VectorPoint *Points;
    LONG TotalPoints;
-   DOUBLE X1,Y1,X2,Y2; // Read-only, reflects the polygon boundary.
    bool Closed:1;      // Polygons are closed (TRUE) and Polylines are open (FALSE)
 } objVectorPoly;
 
@@ -350,7 +348,7 @@ extern void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTran
 extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
 extern void calc_aspectratio(CSTRING, LONG, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
-extern void calc_full_boundary(objVector *, std::array<DOUBLE, 4> &, bool IncludeSiblings = true);
+extern void calc_full_boundary(objVector *, std::array<DOUBLE, 4> &, bool IncludeSiblings = true, bool IncludeTransforms = true);
 extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
 extern void gen_vector_path(objVector *);
 extern void gen_vector_tree(objVector *);
@@ -380,8 +378,20 @@ inline static void mark_dirty(T *Vector, const UBYTE Flags)
 }
 
 //********************************************************************************************************************
-// Call reset_path() when the shape of the vector requires recalculation.  If the position of the shape has changed,
-// you probably want to mark_dirty() with the RC_TRANSFORM option instead.
+
+inline static agg::path_storage basic_path(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
+{
+   agg::path_storage path;
+   path.move_to(X1, Y1);
+   path.line_to(X2, Y1);
+   path.line_to(X2, Y2);
+   path.line_to(X1, Y2);
+   path.close_polygon();
+   return std::move(path);
+}
+
+//********************************************************************************************************************
+// Call reset_path() when the shape of the vector requires recalculation.
 
 template <class T>
 inline static void reset_path(T *Vector)
@@ -667,7 +677,7 @@ inline static DOUBLE dist(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
 
 //********************************************************************************************************************
 
-inline static save_bitmap(objBitmap *Bitmap, std::string Name)
+inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 {
    objFile *file;
    std::string path = "temp:filter_output_" + Name + ".pcx";
