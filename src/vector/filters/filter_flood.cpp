@@ -83,7 +83,7 @@ public:
       }
    }
 
-   void apply(objVectorFilter *Filter) {
+   void apply(objVectorFilter *Filter, filter_state &State) {
       if (OutBitmap->BytesPerPixel != 4) return;
 
       LONG x, y, width, height;

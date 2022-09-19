@@ -53,7 +53,7 @@ public:
       }
    }
 
-   void apply(objVectorFilter *Filter) {
+   void apply(objVectorFilter *Filter, filter_state &State) {
       if (OutBitmap->BytesPerPixel != 4) return;
 
       const LONG canvasWidth = OutBitmap->Clip.Right - OutBitmap->Clip.Left;

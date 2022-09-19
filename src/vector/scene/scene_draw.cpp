@@ -389,17 +389,17 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
 // Patterns rendered with BOUNDING_BOX require more real-time calculations as they have a dependency on the target
 // vector's dimensions.
 
-static void draw_pattern(objVector *Vector, agg::path_storage *Path,
+static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
    LONG SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
    struct rkVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
    DOUBLE dwidth, dheight;
 
-   const DOUBLE c_width  = (Pattern.Units IS VUNIT_USERSPACE) ? ViewWidth : Vector->BX2 - Vector->BX1;
-   const DOUBLE c_height = (Pattern.Units IS VUNIT_USERSPACE) ? ViewHeight : Vector->BY2 - Vector->BY1;
-   const DOUBLE x_offset = (Pattern.Units IS VUNIT_USERSPACE) ? 0 : Vector->BX1;
-   const DOUBLE y_offset = (Pattern.Units IS VUNIT_USERSPACE) ? 0 : Vector->BY1;
+   const DOUBLE c_width  = (Pattern.Units IS VUNIT_USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
+   const DOUBLE c_height = (Pattern.Units IS VUNIT_USERSPACE) ? ViewHeight : Bounds[3] - Bounds[1];
+   const DOUBLE x_offset = (Pattern.Units IS VUNIT_USERSPACE) ? 0 : Bounds[0];
+   const DOUBLE y_offset = (Pattern.Units IS VUNIT_USERSPACE) ? 0 : Bounds[1];
 
    if (Pattern.Units IS VUNIT_USERSPACE) { // Use fixed coordinates specified in the pattern.
       if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = c_width * Pattern.Width;
@@ -619,19 +619,19 @@ void draw_brush(const struct rkVectorImage &Image,
 // Path: The original vector path without transforms.
 // Transform: Transforms to be applied to the path and to align the image.
 
-static void draw_image(objVector *Vector, agg::path_storage &Path, LONG SampleMethod,
+static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMethod,
    const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
    rkVectorImage &Image, agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, DOUBLE BorderWidth = 0, DOUBLE Alpha = 1.0)
 {
-   const DOUBLE c_width  = (Image.Units IS VUNIT_USERSPACE) ? ViewWidth : Vector->BX2 - Vector->BX1;
-   const DOUBLE c_height = (Image.Units IS VUNIT_USERSPACE) ? ViewHeight : Vector->BY2 - Vector->BY1;
-   const DOUBLE dx = Vector->BX1 + ((Image.Dimensions & DMF_RELATIVE_X) ? (c_width * Image.X) : Image.X);
-   const DOUBLE dy = Vector->BY1 + ((Image.Dimensions & DMF_RELATIVE_Y) ? (c_height * Image.Y) : Image.Y);
+   const DOUBLE c_width  = (Image.Units IS VUNIT_USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
+   const DOUBLE c_height = (Image.Units IS VUNIT_USERSPACE) ? ViewHeight : Bounds[3] - Bounds[1];
+   const DOUBLE dx = Bounds[0] + ((Image.Dimensions & DMF_RELATIVE_X) ? (c_width * Image.X) : Image.X);
+   const DOUBLE dy = Bounds[1] + ((Image.Dimensions & DMF_RELATIVE_Y) ? (c_height * Image.Y) : Image.Y);
 
    agg::trans_affine transform;
    if (Image.SpreadMethod IS VSPREAD_PAD) { // In pad mode, stretch the image to fit the boundary
-      transform.scale((Vector->BX2 - Vector->BX1) / Image.Bitmap->Width, (Vector->BY2 - Vector->BY1) / Image.Bitmap->Height);
+      transform.scale((Bounds[2] - Bounds[0]) / Image.Bitmap->Width, (Bounds[3] - Bounds[1]) / Image.Bitmap->Height);
    }
 
    transform.translate(dx, dy);
@@ -646,7 +646,7 @@ static void draw_image(objVector *Vector, agg::path_storage &Path, LONG SampleMe
 // Gradient fills
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
-static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg::trans_affine &Transform,
+static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::trans_affine &Transform,
    DOUBLE ViewWidth, DOUBLE ViewHeight, const rkVectorGradient &Gradient,
    GRADIENT_TABLE *Table,
    agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
@@ -663,10 +663,10 @@ static void draw_gradient(objVector *Vector, agg::path_storage *Path, const agg:
    interpolator_type   span_interpolator(transform);
    span_allocator_type span_allocator;
 
-   const DOUBLE c_width = Gradient.Units IS VUNIT_USERSPACE ? ViewWidth : Vector->BX2 - Vector->BX1;
-   const DOUBLE c_height = Gradient.Units IS VUNIT_USERSPACE ? ViewHeight : Vector->BY2 - Vector->BY1;
-   const DOUBLE x_offset = Gradient.Units IS VUNIT_USERSPACE ? 0 : Vector->BX1;
-   const DOUBLE y_offset = Gradient.Units IS VUNIT_USERSPACE ? 0 : Vector->BY1;
+   const DOUBLE c_width = Gradient.Units IS VUNIT_USERSPACE ? ViewWidth : Bounds[2] - Bounds[0];
+   const DOUBLE c_height = Gradient.Units IS VUNIT_USERSPACE ? ViewHeight : Bounds[3] - Bounds[1];
+   const DOUBLE x_offset = Gradient.Units IS VUNIT_USERSPACE ? 0 : Bounds[0];
+   const DOUBLE y_offset = Gradient.Units IS VUNIT_USERSPACE ? 0 : Bounds[1];
 
    if (Gradient.Type IS VGT_LINEAR) {
       DOUBLE ax1, ay1, ax2, ay2;
@@ -1011,19 +1011,19 @@ private:
       }
 
       if (Vector.FillImage) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
-         draw_image(&Vector, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillImage->Units IS VUNIT_USERSPACE, State),
+         draw_image((DOUBLE *)&Vector.BX1, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillImage->Units IS VUNIT_USERSPACE, State),
             view_width(), view_height(), *Vector.FillImage, mRenderBase, Raster, 0, Vector.FillOpacity * State.mOpacity);
       }
 
       if (Vector.FillGradient) {
          if (auto table = get_fill_gradient_table(Vector, State.mOpacity * Vector.FillOpacity)) {
-            draw_gradient(&Vector, &Vector.BasePath, build_fill_transform(Vector, Vector.FillGradient->Units IS VUNIT_USERSPACE, State),
+            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Vector.FillGradient->Units IS VUNIT_USERSPACE, State),
                view_width(), view_height(), *Vector.FillGradient, table, mRenderBase, Raster, 0);
          }
       }
 
       if (Vector.FillPattern) {
-         draw_pattern(&Vector, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillPattern->Units IS VUNIT_USERSPACE, State),
+         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillPattern->Units IS VUNIT_USERSPACE, State),
             view_width(), view_height(), *Vector.FillPattern, mRenderBase, Raster);
       }
    }
@@ -1036,12 +1036,12 @@ private:
 
       if (Vector.StrokeGradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
-            draw_gradient(&Vector, &Vector.BasePath, build_fill_transform(Vector, Vector.StrokeGradient->Units IS VUNIT_USERSPACE, State),
+            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Vector.StrokeGradient->Units IS VUNIT_USERSPACE, State),
                view_width(), view_height(), *Vector.StrokeGradient, table, mRenderBase, Raster, Vector.fixed_stroke_width());
          }
       }
       else if (Vector.StrokePattern) {
-         draw_pattern(&Vector, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.StrokePattern->Units IS VUNIT_USERSPACE, State),
+         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.StrokePattern->Units IS VUNIT_USERSPACE, State),
             view_width(), view_height(), *Vector.StrokePattern, mRenderBase, Raster);
       }
       else if (Vector.StrokeImage) {
@@ -1385,6 +1385,9 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
 
    log.traceBranch("Bitmap: %p, Stroke: %p (%s), Fill: %p (%s)", Bitmap, StrokeStyle, get_name(StrokeStyle), FillStyle, get_name(FillStyle));
 
+   DOUBLE bounds[4];
+   bounding_rect_single(mPath, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
+
    if (FillStyle) {
       mRaster.reset();
       mRaster.add_path(mPath);
@@ -1397,14 +1400,14 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       }
       else if (FillStyle->ClassID IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*FillStyle;
-         draw_image(NULL, mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster, 0, 1.0);
+         draw_image(bounds, mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster, 0, 1.0);
       }
       else if (FillStyle->ClassID IS ID_VECTORGRADIENT) {
          objVectorGradient &gradient = (objVectorGradient &)*FillStyle;
-         draw_gradient(NULL, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
+         draw_gradient(bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
       }
       else if (FillStyle->ClassID IS ID_VECTORPATTERN) {
-         draw_pattern(NULL, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (objVectorPattern &)*FillStyle, mRenderer, mRaster);
+         draw_pattern(bounds, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (objVectorPattern &)*FillStyle, mRenderer, mRaster);
       }
       else log.warning("The FillStyle is not supported.");
    }
@@ -1416,13 +1419,13 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          mRaster.add_path(stroke_path);
 
          objVectorGradient &gradient = (objVectorGradient &)*StrokeStyle;
-         draw_gradient(NULL, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
+         draw_gradient(bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
       }
       else if (StrokeStyle->ClassID IS ID_VECTORPATTERN) {
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
          mRaster.reset();
          mRaster.add_path(stroke_path);
-         draw_pattern(NULL, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (objVectorPattern &)*StrokeStyle, mRenderer, mRaster);
+         draw_pattern(bounds, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (objVectorPattern &)*StrokeStyle, mRenderer, mRaster);
       }
       else if (StrokeStyle->ClassID IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*StrokeStyle;

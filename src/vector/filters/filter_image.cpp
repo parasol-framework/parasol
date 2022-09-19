@@ -146,7 +146,7 @@ public:
       // NB: If no image path is referenced, the instruction to load an image can be ignored safely.
    }
 
-   void apply(objVectorFilter *Filter) {
+   void apply(objVectorFilter *Filter, filter_state &State) {
       parasol::Log log(__FUNCTION__);
 
       if (OutBitmap->BytesPerPixel != 4) return;

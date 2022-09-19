@@ -175,6 +175,10 @@ public:
    agg::inner_join_e InnerJoin; \
    DOUBLE fixed_stroke_width();
 
+class filter_state {
+public:
+};
+
 class VectorEffect {
 public:
    std::string EffectName; // Name of the effect, for debugging purposes
@@ -196,7 +200,7 @@ public:
    VectorEffect(struct rkVectorFilter *, XMLTag *);
 
    virtual void xml(std::stringstream &) = 0;
-   virtual void apply(struct rkVectorFilter *) = 0; // Required
+   virtual void apply(struct rkVectorFilter *, filter_state &) = 0; // Required
    virtual void applyInput(VectorEffect &) { }; // Optional
    virtual ~VectorEffect() = default;
 };

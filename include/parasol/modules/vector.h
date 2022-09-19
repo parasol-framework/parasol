@@ -542,7 +542,6 @@ typedef struct rkVectorFilter {
       LONG DataSize;
    } Bank[10];
    LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Pixel boundary of the client vector or viewport.
-   DOUBLE VectorX, VectorY, VectorHeight, VectorWidth; // Boundary of the client vector without applying the filter's clipping coordinate.
    UBYTE BankIndex;
    bool Rendered;
    bool Disabled;

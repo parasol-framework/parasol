@@ -263,7 +263,7 @@ public:
       log.trace("Convolve Size: (%d,%d), Divisor: %.2f, Bias: %.2f", FilterWidth, FilterHeight, Divisor, Bias);
    }
 
-   void apply(objVectorFilter *Filter) {
+   void apply(objVectorFilter *Filter, filter_state &State) {
       if (OutBitmap->BytesPerPixel != 4) return;
 
       const LONG canvasWidth = OutBitmap->Clip.Right - OutBitmap->Clip.Left;

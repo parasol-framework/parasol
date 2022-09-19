@@ -178,28 +178,18 @@ static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
       if (Self->Dirty) gen_vector_tree((objVector *)Self);
-      //if (!Self->BasePath.total_vertices()) return ERR_NoData;
+
 #if 0
       // Retrieve bounding box, post-transformations.
       // TODO: Would need to account for client defined brush stroke widths and stroke scaling.
 
-      DOUBLE bx1, by1, bx2, by2;
-      bounding_rect_single(Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
-
-      if (Self->Head.SubID IS ID_VECTORTEXT) {
-         bx1 += Self->FinalX;
-         by1 += Self->FinalY;
-         bx2 += Self->FinalX;
-         by2 += Self->FinalY;
-      }
-
       const LONG STROKE_WIDTH = 2;
-      bx1 -= STROKE_WIDTH;
-      by1 -= STROKE_WIDTH;
-      bx2 += STROKE_WIDTH;
-      by2 += STROKE_WIDTH;
+      const LONG bx1 = F2T(Self->BX1 - STROKE_WIDTH);
+      const LONG by1 = F2T(Self->BY1 - STROKE_WIDTH);
+      const LONG bx2 = F2T(Self->BX2 + STROKE_WIDTH);
+      const LONG by2 = F2T(Self->BY2 + STROKE_WIDTH);
 
-      struct drwScheduleRedraw area = { .X = F2T(bx1), .Y = F2T(by1), .Width = F2T(bx2 - bx1), .Height = F2T(by2 - by1) };
+      struct drwScheduleRedraw area = { .X = bx1, .Y = by1, .Width = bx2 - bx1, .Height = by2 - by1 };
 #endif
 
       objSurface *surface;
@@ -379,22 +369,17 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
       if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
       std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, -1000000, -1000000 };
-      DOUBLE bx1, by1, bx2, by2;
 
       if (Args->Flags & VBF_NO_TRANSFORM) {
-         bounding_rect_single(Self->BasePath, 0, &bx1, &by1, &bx2, &by2);
-         bounds[0] = bx1 + Self->FinalX;
-         bounds[1] = by1 + Self->FinalY;
-         bounds[2] = bx2 + Self->FinalX;
-         bounds[3] = by2 + Self->FinalY;
+         bounds[0] = Self->BX1 + Self->FinalX;
+         bounds[1] = Self->BY1 + Self->FinalY;
+         bounds[2] = Self->BX2 + Self->FinalX;
+         bounds[3] = Self->BY2 + Self->FinalY;
       }
       else {
-         agg::conv_transform<agg::path_storage, agg::trans_affine> path(Self->BasePath, Self->Transform);
-         bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
-         bounds[0] = bx1;
-         bounds[1] = by1;
-         bounds[2] = bx2;
-         bounds[3] = by2;
+         auto simple_path = basic_path(Self->BX1, Self->BY1, Self->BX2, Self->BY2);
+         agg::conv_transform<agg::path_storage, agg::trans_affine> path(simple_path, Self->Transform);
+         bounding_rect_single(path, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
       }
 
       if (Args->Flags & VBF_INCLUSIVE) calc_full_boundary(Self->Child, bounds, true);
@@ -683,15 +668,16 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
    else {
       // Quick check to see if (X,Y) is within the path's boundary, then follow-up with a hit test.
 
-      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(Self->BasePath, Self->Transform);
+      auto simple_path = basic_path(Self->BX1, Self->BY1, Self->BX2, Self->BY2);
+      agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(simple_path, Self->Transform);
       DOUBLE bx1, by1, bx2, by2;
-      bounding_rect_single(base_path, 0, &bx1, &by1, &bx2, &by2);
+      bounding_rect_single(t_path, 0, &bx1, &by1, &bx2, &by2);
       if ((Args->X >= bx1) and (Args->Y >= by1) and (Args->X < bx2) and (Args->Y < by2)) {
          if (Self->DisableHitTesting) return ERR_Okay;
          else {
             // Do the hit testing.  TODO: There is potential for more sophisticated & optimal hit testing methods.
             agg::rasterizer_scanline_aa<> raster;
-            raster.add_path(base_path);
+            raster.add_path(t_path);
             if (raster.hit_test(Args->X, Args->Y)) return ERR_Okay;
          }
       }
@@ -1885,14 +1871,6 @@ static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
    // All vertex coordinates are stored in absolute format.
 
    agg::path_storage &base = Self->BasePath;
-
-   // TODO: Decide what to do with bounding box information, if anything.
-   DOUBLE bx1, by1, bx2, by2;
-   bounding_rect_single(base, 0, &bx1, &by1, &bx2, &by2);
-   bx1 += Self->FinalX;
-   bx2 += Self->FinalX;
-   by1 += Self->FinalY;
-   by2 += Self->FinalY;
 
    DOUBLE x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
    LONG p = 0;

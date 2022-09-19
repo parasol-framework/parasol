@@ -264,7 +264,7 @@ public:
       else Error = ERR_AllocMemory;
    }
 
-   void apply(objVectorFilter *Filter) {
+   void apply(objVectorFilter *Filter, filter_state &State) {
       if (OutBitmap->BytesPerPixel != 4) return;
 
       const UBYTE A = OutBitmap->ColourFormat->AlphaPos>>3;

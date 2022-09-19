@@ -493,7 +493,7 @@ class CompositeEffect : public VectorEffect {
       }
    }
 
-   void apply(objVectorFilter *Filter) {
+   void apply(objVectorFilter *Filter, struct filter_state &State) {
       if (OutBitmap->BytesPerPixel != 4) return;
 
       objBitmap *inBmp;

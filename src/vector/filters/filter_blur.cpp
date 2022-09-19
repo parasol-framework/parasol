@@ -87,7 +87,7 @@ public:
 
    // This is the stack blur algorithm originally implemented in AGG.
 
-   void apply(struct rkVectorFilter *Filter) {
+   void apply(rkVectorFilter *Filter, filter_state &State) {
       auto bmp = OutBitmap;
       if (bmp->BytesPerPixel != 4) return;
 

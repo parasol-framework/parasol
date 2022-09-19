@@ -8,7 +8,7 @@ class OffsetEffect : public VectorEffect {
    }
 
 public:
-   OffsetEffect(struct rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
+   OffsetEffect(rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
       EffectName = "feOffset";
       Blank = true;
 
@@ -32,7 +32,7 @@ public:
       Effect.InputID  = 0;
    }
 
-   void apply(objVectorFilter *Filter) {
+   void apply(objVectorFilter *Filter, filter_state &State) {
    }
 
    virtual ~OffsetEffect() { }

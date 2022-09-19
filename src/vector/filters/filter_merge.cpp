@@ -57,7 +57,7 @@ public:
 
    // Merging overrides the default drawing process of the VectorFilter Draw action.
 
-   void apply(objVectorFilter *Filter) {
+   void apply(objVectorFilter *Filter, filter_state &State) {
       // 1. Merge everything to the scratch bitmap allocated by the filter.
       // 2. Do the linear2RGB conversion on the result.
       // 3. Copy the result to the target.

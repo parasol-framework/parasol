@@ -406,7 +406,7 @@ public:
       else Matrix = matrix; // Will be deleted in free_effect_resources()
    }
 
-   void apply(objVectorFilter *Filter) {
+   void apply(objVectorFilter *Filter, struct filter_state &State) {
       if (OutBitmap->BytesPerPixel != 4) return;
       if (!Matrix) return;
 

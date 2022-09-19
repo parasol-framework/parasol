@@ -372,6 +372,8 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
 
    parasol::SwitchContext context(Self);
 
+   filter_state state;
+
    Self->BkgdBitmap     = BkgdBitmap;
    Self->ClientViewport = Viewport;
    Self->ClientVector   = Vector;
@@ -405,49 +407,44 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    auto const bound_width  = bounds[2] - bounds[0];
    auto const bound_height = bounds[3] - bounds[1];
 
-   Self->VectorX      = bounds[0];
-   Self->VectorY      = bounds[1];
-   Self->VectorWidth  = bound_width;
-   Self->VectorHeight = bound_height;
-
    // Compute the bounding box, which defines the area that we're rendering to.
 
    if (Self->Units IS VUNIT_BOUNDING_BOX) {
       // All coordinates are relative to the client vector, or vectors if we are applied to a group.
       // The bounds are oriented to the client vector's transforms.
 
-      if (Self->Dimensions & DMF_FIXED_X) Self->BoundX = trunc(bounds[0]);
-      else if (Self->Dimensions & DMF_RELATIVE_X) Self->BoundX = trunc(bounds[0]) + (Self->X * bound_width);
-      else Self->BoundX = trunc(bounds[0]);
+      if (Self->Dimensions & DMF_FIXED_X) Self->BoundX = F2T(bounds[0] + Self->X);
+      else if (Self->Dimensions & DMF_RELATIVE_X) Self->BoundX = F2T(bounds[0]) + (Self->X * bound_width);
+      else Self->BoundX = F2T(bounds[0]);
 
-      if (Self->Dimensions & DMF_FIXED_Y) Self->BoundY = trunc(bounds[1]);
-      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->BoundY = trunc(bounds[1] + (Self->Y * bound_height));
-      else Self->BoundY = trunc(bounds[1]);
+      if (Self->Dimensions & DMF_FIXED_Y) Self->BoundY = F2T(bounds[1] + Self->Y);
+      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->BoundY = F2T(bounds[1] + (Self->Y * bound_height));
+      else Self->BoundY = F2T(bounds[1]);
 
-      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->BoundWidth = bound_width;
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->BoundWidth = Self->Width * bound_width;
-      else Self->BoundWidth = bound_width;
+      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->BoundWidth = F2T(bound_width);
+      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->BoundWidth = F2T(Self->Width * bound_width);
+      else Self->BoundWidth = F2T(bound_width);
 
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->BoundHeight = Self->Height;
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->BoundHeight = Self->Height * bound_height;
-      else Self->BoundHeight = bound_height;
+      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->BoundHeight = F2T(Self->Height);
+      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->BoundHeight = F2T(Self->Height * bound_height);
+      else Self->BoundHeight = F2T(bound_height);
    }
    else { // USERSPACE
-      if (Self->Dimensions & DMF_FIXED_X) Self->BoundX = trunc(Self->X);
-      else if (Self->Dimensions & DMF_RELATIVE_X) Self->BoundX = trunc(Self->X * container_width);
+      if (Self->Dimensions & DMF_FIXED_X) Self->BoundX = F2T(Self->X);
+      else if (Self->Dimensions & DMF_RELATIVE_X) Self->BoundX = F2T(Self->X * container_width);
       else Self->BoundX = 0;
 
-      if (Self->Dimensions & DMF_FIXED_Y) Self->BoundY = trunc(Self->Y);
-      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->BoundY = trunc(Self->Y * container_height);
+      if (Self->Dimensions & DMF_FIXED_Y) Self->BoundY = F2T(Self->Y);
+      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->BoundY = F2T(Self->Y * container_height);
       else Self->BoundY = 0;
 
-      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->BoundWidth = Self->Width;
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->BoundWidth = Self->Width * container_width;
-      else Self->BoundWidth = container_width;
+      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->BoundWidth = F2T(Self->Width);
+      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->BoundWidth = F2T(Self->Width * container_width);
+      else Self->BoundWidth = F2T(container_width);
 
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->BoundHeight = Self->Height;
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->BoundHeight = Self->Height * container_height;
-      else Self->BoundHeight = container_height;
+      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->BoundHeight = F2T(Self->Height);
+      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->BoundHeight = F2T(Self->Height * container_height);
+      else Self->BoundHeight = F2T(container_height);
 
       agg::path_storage rect;
       rect.move_to(Self->BoundX, Self->BoundY);
@@ -458,7 +455,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
 
       agg::conv_transform<agg::path_storage, agg::trans_affine> path(rect, Vector->Transform);
       bounding_rect_single(path, 0, &Self->BoundX, &Self->BoundY, &Self->BoundWidth, &Self->BoundHeight);
-      Self->BoundWidth -= Self->BoundX;
+      Self->BoundWidth  -= Self->BoundX;
       Self->BoundHeight -= Self->BoundY;
    }
 
@@ -471,8 +468,8 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    Self->VectorClip.Bottom = Self->BoundY + Self->BoundHeight;
 
    if (Self->VectorClip.Left < 0) Self->VectorClip.Left = 0;
-   if (Self->VectorClip.Top < 0)  Self->VectorClip.Top = 0;
-   if (Self->VectorClip.Right > container_width) Self->VectorClip.Right = container_width;
+   if (Self->VectorClip.Top < 0)  Self->VectorClip.Top  = 0;
+   if (Self->VectorClip.Right > container_width)   Self->VectorClip.Right  = container_width;
    if (Self->VectorClip.Bottom > container_height) Self->VectorClip.Bottom = container_height;
 
    // Render the effect pipeline in sequence.
@@ -511,7 +508,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
          e->OutBitmap = out;
       }
 
-      e->apply(Self);
+      e->apply(Self, state);
    }
 
    #ifdef DEBUG_FILTER_BITMAP // Blue = Clip Region; Green = Bounds; Red = Vector
@@ -519,7 +516,6 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
       auto clip = out->Clip;
       out->Clip = { .Left = 0, .Top = 0, .Right = out->Width, .Bottom = out->Height,  };
       gfxDrawRectangle(out, Self->BoundX, Self->BoundY, Self->BoundWidth, Self->BoundHeight, 0xff00ff00, 0);
-      gfxDrawRectangle(out, Self->VectorX, Self->VectorY, Self->VectorWidth, Self->VectorHeight, 0xffff0000, 0);
       out->Clip = clip;
    #endif
 
