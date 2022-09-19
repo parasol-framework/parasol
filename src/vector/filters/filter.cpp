@@ -47,13 +47,14 @@ static void premultiply_bitmap(objBitmap *);
 
 VectorEffect::VectorEffect()
 {
+   EffectName = "Unnamed";
    SourceType = VSF_GRAPHIC; // Default is SourceGraphic
-   MixType = 0;
-   OutBitmap = NULL;
-   InputID = 0;
-   MixID   = 0;
-   Error   = ERR_Okay;
-   Blank   = false;
+   MixType    = 0;
+   OutBitmap  = NULL;
+   InputID    = 0;
+   MixID      = 0;
+   Error      = ERR_Okay;
+   Blank      = false;
 }
 
 //********************************************************************************************************************
@@ -132,59 +133,25 @@ static void demultiply_bitmap(objBitmap *bmp)
 
 static ERROR get_banked_bitmap(objVectorFilter *Self, objBitmap **BitmapResult)
 {
-   LONG bi = Self->BankIndex;
-   if (bi >= ARRAYSIZE(Self->Bank)) return ERR_ArrayFull;
+   parasol::Log log(__FUNCTION__);
 
-   objBitmap *bmp;
-   if (!Self->Bank[bi].Bitmap) {
-      // NB: The clip region defines the true size and no data is allocated by the bitmap itself.
-      char name[32];
-      StrFormat(name, sizeof(name), "dummy_fx_bitmap_%d", bi);
-      if (CreateObject(ID_BITMAP, NF_INTEGRAL, &bmp,
-            FID_Name|TSTR,          name,
-            FID_Width|TLONG,        Self->ClientViewport->Scene->PageWidth,
-            FID_Height|TLONG,       Self->ClientViewport->Scene->PageHeight,
-            FID_BitsPerPixel|TLONG, 32,
-            #ifdef DEBUG_FILTER_BITMAP
-            FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
-            #else
-            FID_Flags|TLONG,        BMF_ALPHA_CHANNEL|BMF_NO_DATA,
-            #endif
-            TAGEND)) return ERR_CreateObject;
-      Self->Bank[bi].Bitmap = bmp;
+   auto bi = Self->BankIndex;
+   if (bi >= 256) return log.warning(ERR_ArrayFull);
+
+   if (bi >= Self->Bank.size()) Self->Bank.emplace_back(std::make_unique<filter_bitmap>());
+
+   #ifdef DEBUG_FILTER_BITMAP
+      auto bmp = Self->Bank[bi].get()->get_bitmap(Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, Self->VectorClip, true);
+   #else
+      auto bmp = Self->Bank[bi].get()->get_bitmap(Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, Self->VectorClip, false);
+   #endif
+
+   if (bmp) {
+      *BitmapResult = bmp;
+      Self->BankIndex++;
+      return ERR_Okay;
    }
-   else {
-      bmp = Self->Bank[bi].Bitmap;
-      bmp->Width  = Self->ClientViewport->Scene->PageWidth;
-      bmp->Height = Self->ClientViewport->Scene->PageHeight;
-   }
-
-   *BitmapResult = bmp;
-
-   bmp->Clip = Self->VectorClip; // Filter shares the same clip region as the client vector
-
-#ifndef DEBUG_FILTER_BITMAP
-   const LONG canvas_width  = bmp->Clip.Right - bmp->Clip.Left;
-   const LONG canvas_height = bmp->Clip.Bottom - bmp->Clip.Top;
-   bmp->LineWidth = canvas_width * bmp->BytesPerPixel;
-
-   if ((Self->Bank[bi].Data) and (Self->Bank[bi].DataSize < bmp->LineWidth * canvas_height)) {
-      FreeResource(Self->Bank[bi].Data);
-      Self->Bank[bi].Data = NULL;
-      bmp->Data = NULL;
-   }
-
-   if (!bmp->Data) {
-      if (!AllocMemory(bmp->LineWidth * canvas_height, MEM_DATA|MEM_NO_CLEAR, &Self->Bank[bi].Data, NULL)) {
-         Self->Bank[bi].DataSize = bmp->LineWidth * canvas_height;
-      }
-   }
-
-   bmp->Data = Self->Bank[bi].Data - (bmp->Clip.Left * bmp->BytesPerPixel) - (bmp->Clip.Top * bmp->LineWidth);
-#endif
-
-   Self->BankIndex++;
-   return ERR_Okay;
+   else return log.warning(ERR_CreateObject);
 }
 
 //********************************************************************************************************************
@@ -229,6 +196,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
       // additionally it serves as a marker for graphics to be rendered to a separate bitmap (essential for coping with any transformations in the scene graph).
       //
       // TODO: The code as it exists here is quite basic and needs a fair amount of work in order to meet the above requirements.
+      //       See also the support for enable-background in scene_draw.cpp
 
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if ((Self->BkgdBitmap) and (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
@@ -257,7 +225,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
       if (auto e = find_effect(Self, EffectID)) {
          bmp = e->OutBitmap;
          if (!bmp) {
-            log.warning("Effect %u does not output a bitmap.", EffectID);
+            log.warning("%s has dependency on %s effect %u and does not output a bitmap.", Self->ActiveEffect->EffectName.c_str(), e->EffectName.c_str(), e->ID);
             return ERR_NoData;
          }
       }
@@ -481,6 +449,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
       auto e = ptr.get();
       if (e->Blank) continue; // Ignore effects that don't produce graphics
 
+      Self->ActiveEffect = e;
       e->DestX = e->XOffset;
       e->DestY = e->YOffset;
 
@@ -510,6 +479,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
 
       e->apply(Self, state);
    }
+   Self->ActiveEffect = NULL;
 
    #ifdef DEBUG_FILTER_BITMAP // Blue = Clip Region; Green = Bounds; Red = Vector
       gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff0000ff, 0);
@@ -651,12 +621,7 @@ Clear: Clears all filter instructions from the object.
 static ERROR VECTORFILTER_Clear(objVectorFilter *Self, APTR Void)
 {
    Self->Effects.clear();
-
-   for (LONG i=0; i < ARRAYSIZE(Self->Bank); i++) {
-      if (Self->Bank[i].Bitmap) { acFree(Self->Bank[i].Bitmap); Self->Bank[i].Bitmap = NULL; }
-      if (Self->Bank[i].Data)   { FreeResource(Self->Bank[i].Data); Self->Bank[i].Data = NULL; }
-   }
-
+   Self->Bank.clear();
    Self->BankIndex = 0;
 
    return ERR_Okay;

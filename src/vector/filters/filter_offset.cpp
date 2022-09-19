@@ -25,7 +25,8 @@ public:
    }
 
    void applyInput(VectorEffect &Effect) {
-      // This one-off optimisation is used to inherit the offset coordinates and source type from feOffset effects.
+      // A child effect has a dependency on this offset.  Apply the offset values permanently, pass on the
+      // source type, then disable the dependency.
       Effect.SourceType = SourceType;
       Effect.XOffset += XOffset;
       Effect.YOffset += YOffset;

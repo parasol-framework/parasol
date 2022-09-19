@@ -179,6 +179,62 @@ class filter_state {
 public:
 };
 
+class filter_bitmap {
+public:
+   objBitmap *Bitmap;
+   UBYTE *Data;
+   LONG DataSize;
+
+   filter_bitmap() : Bitmap(NULL), Data(NULL), DataSize(0) { };
+
+   ~filter_bitmap() {
+      if (Bitmap) { acFree(Bitmap); Bitmap = NULL; }
+      if (Data) { FreeResource(Data); Data = NULL; }
+   };
+
+   objBitmap * get_bitmap(LONG Width, LONG Height, ClipRectangle &Clip, bool Debug) {
+      if (Bitmap) {
+         Bitmap->Width = Width;
+         Bitmap->Height = Height;
+      }
+      else {
+         // NB: The clip region defines the true size and no data is allocated by the bitmap itself unless in debug mode.
+         if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Bitmap,
+               FID_Name|TSTR,          "dummy_fx_bitmap",
+               FID_Width|TLONG,        Width,
+               FID_Height|TLONG,       Height,
+               FID_BitsPerPixel|TLONG, 32,
+               FID_Flags|TLONG,        Debug ? BMF_ALPHA_CHANNEL : (BMF_ALPHA_CHANNEL|BMF_NO_DATA),
+               TAGEND) != ERR_Okay) return NULL;
+      }
+
+      Bitmap->Clip = Clip;
+
+      if (!Debug) {
+         const LONG canvas_width  = Clip.Right - Clip.Left;
+         const LONG canvas_height = Clip.Bottom - Clip.Top;
+         Bitmap->LineWidth = canvas_width * Bitmap->BytesPerPixel;
+
+         if ((Data) and (DataSize < Bitmap->LineWidth * canvas_height)) {
+            FreeResource(Data);
+            Data = NULL;
+            Bitmap->Data = NULL;
+         }
+
+         if (!Bitmap->Data) {
+            if (!AllocMemory(Bitmap->LineWidth * canvas_height, MEM_DATA|MEM_NO_CLEAR, &Data, NULL)) {
+               DataSize = Bitmap->LineWidth * canvas_height;
+            }
+         }
+
+         Bitmap->Data = Data - (Clip.Left * Bitmap->BytesPerPixel) - (Clip.Top * Bitmap->LineWidth);
+      }
+
+      return Bitmap;
+   }
+
+};
+
 class VectorEffect {
 public:
    std::string EffectName; // Name of the effect, for debugging purposes
