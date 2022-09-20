@@ -538,7 +538,6 @@ typedef struct rkVectorFilter {
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
    ClipRectangle VectorClip; // Clipping region of the vector client (reflects the vector bounds)
    STRING Path; // Affix this path to file references (e.g. feImage).
-   LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Pixel boundary of the client vector or viewport.
    UBYTE BankIndex;
    bool Rendered;
    bool Disabled;

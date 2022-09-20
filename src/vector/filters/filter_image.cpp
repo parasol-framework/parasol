@@ -248,7 +248,7 @@ public:
       path.move_to(target_x, target_y);
       path.line_to(target_x + target_width, target_y);
       path.line_to(target_x + target_width, target_y + target_height);
-      path.line_to(target_x, target_y + img_height);
+      path.line_to(target_x, target_y + target_height);
       path.close_polygon();
 
       renderBase.attach(pixDest);

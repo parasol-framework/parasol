@@ -238,18 +238,18 @@ public:
 class VectorEffect {
 public:
    std::string EffectName; // Name of the effect, for debugging purposes
-   std::string Name; // Unique name given by the client.
-   ULONG ID;         // Case sensitive hash identifier for the filter, if anything needs to reference it.
-   UBYTE SourceType; // VSF_REFERENCE, VSF_GRAPHIC...
-   UBYTE UsageCount; // Total number of other effects utilising this effect to build a pipeline
-   UBYTE MixType;    // VSF...
+   std::string Name;       // Unique name given by the client.
    struct rkBitmap *OutBitmap; // Resulting bitmap from processing the effect.
-   ULONG InputID; // The effect uses another effect as an input (referenced by hash ID).
-   ULONG MixID;
-   LONG XOffset, YOffset; // In SVG only feOffset can use offsets, however in our framework any effect may define an offset when copying from a source.
-   LONG DestX, DestY;
+   ULONG ID;               // Case sensitive hash identifier for the filter, if anything needs to reference it.
+   ULONG InputID;          // The effect uses another effect as an input (referenced by hash ID).
+   ULONG MixID;            // Reference to an additional effect for mixing, e.g. compositing
+   LONG XOffset, YOffset;  // In SVG only feOffset can use offsets, however in our framework any effect may define an offset when copying from a source.
+   LONG DestX, DestY;      // Target X/Y
    ERROR Error;
-   bool Blank;     // True if no graphics are produced by this effect.
+   UBYTE SourceType;       // VSF_REFERENCE, VSF_GRAPHIC...
+   UBYTE MixType;          // VSF...
+   UBYTE UsageCount;       // Total number of other effects utilising this effect to build a pipeline
+   bool Blank;             // True if no graphics are produced by this effect.
 
    // Defined in filter.cpp
    VectorEffect();

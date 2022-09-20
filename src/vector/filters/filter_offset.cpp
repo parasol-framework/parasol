@@ -27,10 +27,19 @@ public:
    void applyInput(VectorEffect &Effect) {
       // A child effect has a dependency on this offset.  Apply the offset values permanently, pass on the
       // source type, then disable the dependency.
-      Effect.SourceType = SourceType;
+
       Effect.XOffset += XOffset;
       Effect.YOffset += YOffset;
-      Effect.InputID  = 0;
+
+      if (Effect.InputID IS ID) {
+         Effect.SourceType = SourceType;
+         Effect.InputID    = 0;
+      }
+
+      if (Effect.MixID IS ID) {
+         Effect.MixType = SourceType;
+         Effect.MixID   = 0;
+      }
    }
 
    void apply(objVectorFilter *Filter, filter_state &State) {

@@ -7,14 +7,18 @@ VectorFilter: Filters can be applied as post-effects to rendered vectors.
 
 The VectorFilter class allows post-effect filters to be applied to vectors once they have been rendered.  Filter
 support is closely modelled around the SVG standard, and effect results are intended to match that of the standard.
+Once created, a filter can be utilised by vector objects through their Filter field.  By way of example in SVG:
+
+<pre>
+&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(#FOMTest)"/&gt;
+</pre>
 
 Filter instructions are passed to VectorFilter objects via the XML data feed, where they will be parsed into an
 internal list of instructions.  It is not possible to modify the instructions once they have been parsed, but they
 can be cleared and a new set of instructions can be applied.
 
 It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing.
-If this is an issue, it can often be rectified by pre-rendering the filter effects in advance and storing the results
-in cached bitmaps.
+If this is an issue, consider pre-rendering the filter effects in advance and caching the results in memory or files.
 
 -END-
 
@@ -164,7 +168,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
    parasol::Log log(__FUNCTION__);
 
    objBitmap *bmp;
-   log.branch("ID: %u, Type: %d", EffectID, SourceType);
+   log.branch("%s ID: %u, Type: %d", Self->ActiveEffect->EffectName.c_str(), EffectID, SourceType);
 
    if (SourceType IS VSF_GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
@@ -221,15 +225,18 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
          }
       }
    }
-   else if ((SourceType IS VSF_REFERENCE) and (EffectID)) {
-      if (auto e = find_effect(Self, EffectID)) {
-         bmp = e->OutBitmap;
-         if (!bmp) {
-            log.warning("%s has dependency on %s effect %u and does not output a bitmap.", Self->ActiveEffect->EffectName.c_str(), e->EffectName.c_str(), e->ID);
-            return ERR_NoData;
+   else if (SourceType IS VSF_REFERENCE) {
+      if (EffectID) {
+         if (auto e = find_effect(Self, EffectID)) {
+            if (!(bmp = e->OutBitmap)) {
+               log.warning("%s has dependency on %s effect %u and does not output a bitmap.", Self->ActiveEffect->EffectName.c_str(), e->EffectName.c_str(), e->ID);
+            }
          }
+         else log.warning("Unable to find effect %u", EffectID);
       }
-      else log.warning("Unable to find effect %u", EffectID);
+      else log.warning("%s SourceGraphic reference has not provided an effect ID.", Self->ActiveEffect->EffectName.c_str());
+
+      if (!bmp) return ERR_NoData;
    }
    else if (SourceType IS VSF_IGNORE) {
       *BitmapResult = NULL;
@@ -263,7 +270,7 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
    parasol::Log log(__FUNCTION__);
 
    if (!Self->ClientVector) {
-      log.warning("No ClientVector defined.");
+      log.warning("%s No ClientVector defined.", Self->ActiveEffect->EffectName.c_str());
       return NULL;
    }
 
@@ -303,35 +310,111 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
       else return NULL;
    }
 
+   auto const save_vector = Self->ClientVector->Next; // Switch off the Next pointer to prevent processing of siblings.
+   Self->ClientVector->Next = NULL;
+   Self->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
+
    gfxDrawRectangle(Self->SourceGraphic, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0x00000000, BAF_FILL);
    Self->SourceScene->Bitmap = Self->SourceGraphic;
    acDraw(Self->SourceScene);
+
+   Self->Disabled = false;
+   Self->ClientVector->Next = save_vector;
 
    Self->Rendered = true;
    return Self->SourceGraphic;
 }
 
 //********************************************************************************************************************
-// Rendering process is as follows:
-//
-// * A VectorScene calls this function with a vector that requested the filter, and a background bitmap.
-//   [ For the time being, the background bitmap is invalid because it represents the final canvas.  We want the
-//     viewport content in raw form, not transformed ]
-// * The filter's (X,Y) and (Width,Height) define the rendering space (clipping region) available to the effects.  If
-//   in userspace mode then we'll be rendering to the vector's parent viewport - this doesn't change much other than that
-//   there's more space available to prevent clipping.  Note that (X,Y) affect clipping only and do not translate.
-// * Each effect is processed in their original order.  Linked effects get their own bitmap, everything else goes to a
-//   a shared output bitmap.
-//   * An effect may request the SourceGraphic, in which case we render the client vector to a separate scene graph and
-//     without transforms.
-//   * Effects like feImage can use BoundX/Y/Width/Height to compute relative dimensions.
-// * The shared output bitmap is returned for rendering to the scene graph.  Final transforms are applied at this stage.
-//
-// SPECIAL CASE: SVG rules dictate that if the Vector is a container (i.e. Viewport) then the filter applies to the
-// contents of the group as a whole.  The group's children do not render to the screen directly; instead, the
-// graphics commands necessary to render the children are stored temporarily.
 
-ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVector *Vector, objBitmap *BkgdBitmap, objBitmap **RenderedOutput)
+static ERROR set_clip_region(objVectorFilter *Self, objVectorViewport *Viewport, objVector *Vector)
+{
+   parasol::Log log(__FUNCTION__);
+
+   DOUBLE container_width  = Viewport->vpFixedWidth;
+   DOUBLE container_height = Viewport->vpFixedHeight;
+
+   if ((container_width < 1) or (container_height < 1)) {
+      log.warning("Viewport #%d has no size.", Viewport->Head.UID);
+      return ERR_NothingDone;
+   }
+
+   // Compute the vector's clipping region.  This includes the client vector's transforms.
+
+   if (Self->Units IS VUNIT_BOUNDING_BOX) {
+      // All coordinates are relative to the client vector, or vectors if we are applied to a group.
+      // The bounds are oriented to the client vector's transforms.
+
+      std::array<DOUBLE, 4> bounds = { container_width, container_height, 0, 0 };
+      calc_full_boundary((objVector *)Vector, bounds, false, true);
+
+      if ((bounds[2] <= bounds[0]) or (bounds[3] <= bounds[1])) {
+         // No child vector defines a path for a SourceGraphic.  Default back to the viewport.
+         bounds[0] = Viewport->vpBX1;
+         bounds[1] = Viewport->vpBY1;
+         bounds[2] = Viewport->vpBX2;
+         bounds[3] = Viewport->vpBY2;
+      }
+      auto const bound_width  = bounds[2] - bounds[0];
+      auto const bound_height = bounds[3] - bounds[1];
+
+      if (Self->Dimensions & DMF_FIXED_X) Self->VectorClip.Left = F2T(bounds[0] + Self->X);
+      else if (Self->Dimensions & DMF_RELATIVE_X) Self->VectorClip.Left = F2T(bounds[0]) + (Self->X * bound_width);
+      else Self->VectorClip.Left = F2T(bounds[0]);
+
+      if (Self->Dimensions & DMF_FIXED_Y) Self->VectorClip.Top = F2T(bounds[1] + Self->Y);
+      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->VectorClip.Top = F2T(bounds[1] + (Self->Y * bound_height));
+      else Self->VectorClip.Top = F2T(bounds[1]);
+
+      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->VectorClip.Right = Self->VectorClip.Left + F2T(Self->Width * bound_width);
+      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->VectorClip.Right = Self->VectorClip.Left + F2T(Self->Width * bound_width);
+      else Self->VectorClip.Right = Self->VectorClip.Left + F2T(bound_width);
+
+      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(Self->Height * bound_height);
+      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(Self->Height * bound_height);
+      else Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(bound_height);
+   }
+   else { // USERSPACE
+      DOUBLE x, y, w, h;
+      if (Self->Dimensions & DMF_FIXED_X) x = F2T(Self->X);
+      else if (Self->Dimensions & DMF_RELATIVE_X) x = F2T(Self->X * container_width);
+      else x = 0;
+
+      if (Self->Dimensions & DMF_FIXED_Y) y = F2T(Self->Y);
+      else if (Self->Dimensions & DMF_RELATIVE_Y) y = F2T(Self->Y * container_height);
+      else y = 0;
+
+      if (Self->Dimensions & DMF_FIXED_WIDTH) w = F2T(Self->Width);
+      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) w = F2T(Self->Width * container_width);
+      else w = F2T(container_width);
+
+      if (Self->Dimensions & DMF_FIXED_HEIGHT) h = F2T(Self->Height);
+      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) h = F2T(Self->Height * container_height);
+      else h = F2T(container_height);
+
+      agg::path_storage rect;
+      rect.move_to(x, y);
+      rect.line_to(x + w, y);
+      rect.line_to(x + w, y + h);
+      rect.line_to(x, y + h);
+      rect.close_polygon();
+
+      agg::conv_transform<agg::path_storage, agg::trans_affine> path(rect, Vector->Transform);
+      bounding_rect_single(path, 0, &Self->VectorClip.Left, &Self->VectorClip.Top, &Self->VectorClip.Right, &Self->VectorClip.Bottom);
+   }
+
+   if (Self->VectorClip.Left < 0) Self->VectorClip.Left = 0;
+   if (Self->VectorClip.Top < 0)  Self->VectorClip.Top  = 0;
+   if (Self->VectorClip.Right > container_width)   Self->VectorClip.Right  = container_width;
+   if (Self->VectorClip.Bottom > container_height) Self->VectorClip.Bottom = container_height;
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+// Main rendering routine for filter effects.  Called by the scene graph renderer whenever a vector uses a filter.
+
+ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVector *Vector, objBitmap *BkgdBitmap, objBitmap **Output)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -339,8 +422,9 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    if (Self->Disabled) return ERR_NothingDone;
 
    parasol::SwitchContext context(Self);
-
    filter_state state;
+
+   log.branch("Rendering filter content...");
 
    Self->BkgdBitmap     = BkgdBitmap;
    Self->ClientViewport = Viewport;
@@ -348,100 +432,16 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    Self->Rendered       = false; // Set to true when SourceGraphic is rendered
    Self->BankIndex      = 0;
 
-   auto const save_vector = Vector->Next; // Switch off the Next pointer to prevent processing of siblings.
-   Vector->Next   = NULL;
-   Self->Disabled = true; // Temporarily turning off the filter is required to prevent infinite recursion.
+   if (set_clip_region(Self, Viewport, Vector)) return ERR_Okay;
 
-   DOUBLE container_width  = Viewport->vpFixedWidth;
-   DOUBLE container_height = Viewport->vpFixedHeight;
-
-   if ((container_width < 1) or (container_height < 1)) {
-      log.warning("Viewport #%d has no size.", Viewport->Head.UID);
-      return ERR_Okay;
-   }
-
-   // NOTE: The bound values include the client vector's transforms.
-
-   std::array<DOUBLE, 4> bounds = { container_width, container_height, 0, 0 };
-   calc_full_boundary((objVector *)Vector, bounds, false, true);
-
-   if ((bounds[2] <= bounds[0]) or (bounds[3] <= bounds[1])) {
-      // No child vector defines a path for a SourceGraphic.  Default back to the viewport.
-      bounds[0] = Viewport->vpBX1;
-      bounds[1] = Viewport->vpBY1;
-      bounds[2] = Viewport->vpBX2;
-      bounds[3] = Viewport->vpBY2;
-   }
-   auto const bound_width  = bounds[2] - bounds[0];
-   auto const bound_height = bounds[3] - bounds[1];
-
-   // Compute the bounding box, which defines the area that we're rendering to.
-
-   if (Self->Units IS VUNIT_BOUNDING_BOX) {
-      // All coordinates are relative to the client vector, or vectors if we are applied to a group.
-      // The bounds are oriented to the client vector's transforms.
-
-      if (Self->Dimensions & DMF_FIXED_X) Self->BoundX = F2T(bounds[0] + Self->X);
-      else if (Self->Dimensions & DMF_RELATIVE_X) Self->BoundX = F2T(bounds[0]) + (Self->X * bound_width);
-      else Self->BoundX = F2T(bounds[0]);
-
-      if (Self->Dimensions & DMF_FIXED_Y) Self->BoundY = F2T(bounds[1] + Self->Y);
-      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->BoundY = F2T(bounds[1] + (Self->Y * bound_height));
-      else Self->BoundY = F2T(bounds[1]);
-
-      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->BoundWidth = F2T(bound_width);
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->BoundWidth = F2T(Self->Width * bound_width);
-      else Self->BoundWidth = F2T(bound_width);
-
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->BoundHeight = F2T(Self->Height);
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->BoundHeight = F2T(Self->Height * bound_height);
-      else Self->BoundHeight = F2T(bound_height);
-   }
-   else { // USERSPACE
-      if (Self->Dimensions & DMF_FIXED_X) Self->BoundX = F2T(Self->X);
-      else if (Self->Dimensions & DMF_RELATIVE_X) Self->BoundX = F2T(Self->X * container_width);
-      else Self->BoundX = 0;
-
-      if (Self->Dimensions & DMF_FIXED_Y) Self->BoundY = F2T(Self->Y);
-      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->BoundY = F2T(Self->Y * container_height);
-      else Self->BoundY = 0;
-
-      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->BoundWidth = F2T(Self->Width);
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->BoundWidth = F2T(Self->Width * container_width);
-      else Self->BoundWidth = F2T(container_width);
-
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->BoundHeight = F2T(Self->Height);
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->BoundHeight = F2T(Self->Height * container_height);
-      else Self->BoundHeight = F2T(container_height);
-
-      agg::path_storage rect;
-      rect.move_to(Self->BoundX, Self->BoundY);
-      rect.line_to(Self->BoundX + Self->BoundWidth, Self->BoundY);
-      rect.line_to(Self->BoundX + Self->BoundWidth, Self->BoundY + Self->BoundHeight);
-      rect.line_to(Self->BoundX, Self->BoundY + Self->BoundHeight);
-      rect.close_polygon();
-
-      agg::conv_transform<agg::path_storage, agg::trans_affine> path(rect, Vector->Transform);
-      bounding_rect_single(path, 0, &Self->BoundX, &Self->BoundY, &Self->BoundWidth, &Self->BoundHeight);
-      Self->BoundWidth  -= Self->BoundX;
-      Self->BoundHeight -= Self->BoundY;
-   }
-
-   // NOTE: The point of this clipping region is to reduce the working area so that there's more
-   // efficiency when rendering.  The 'true' clipping area is defined by the filter's BoundX/Y/W/H.
-
-   Self->VectorClip.Left   = Self->BoundX;
-   Self->VectorClip.Top    = Self->BoundY;
-   Self->VectorClip.Right  = Self->BoundX + Self->BoundWidth;
-   Self->VectorClip.Bottom = Self->BoundY + Self->BoundHeight;
-
-   if (Self->VectorClip.Left < 0) Self->VectorClip.Left = 0;
-   if (Self->VectorClip.Top < 0)  Self->VectorClip.Top  = 0;
-   if (Self->VectorClip.Right > container_width)   Self->VectorClip.Right  = container_width;
-   if (Self->VectorClip.Bottom > container_height) Self->VectorClip.Bottom = container_height;
-
-   // Render the effect pipeline in sequence.
-   // TODO: Effects that don't have dependencies can be threaded.  Big pipelines could benefit from effects
+   // Render the effect pipeline in sequence.  Linked effects get their own bitmap, everything else goes to a shared
+   // output bitmap.
+   //
+   // * An effect may request the SourceGraphic, in which case we render the client vector to a separate scene graph
+   //   and without transforms.
+   // * The shared output bitmap is returned for direct rendering to the scene graph.
+   //
+   // TODO: Effects that don't have dependencies could be threaded.  Big pipelines could benefit from effects
    // being rendered to independent bitmaps in threads, then composited at the last stage.
 
    objBitmap *out = NULL;
@@ -459,6 +459,15 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
             e->DestY += input->DestY;
 
             input->applyInput(*e); // Applies effect-specific adjustments
+         }
+      }
+
+      if (e->MixID) { // This effect has a dependency on another effect.
+         if (auto input = find_effect(Self, e->MixID)) {
+            e->DestX += input->DestX;
+            e->DestY += input->DestY;
+
+            input->applyInput(*e);
          }
       }
 
@@ -481,28 +490,26 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    }
    Self->ActiveEffect = NULL;
 
-   #ifdef DEBUG_FILTER_BITMAP // Blue = Clip Region; Green = Bounds; Red = Vector
-      gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff0000ff, 0);
-      auto clip = out->Clip;
-      out->Clip = { .Left = 0, .Top = 0, .Right = out->Width, .Bottom = out->Height,  };
-      gfxDrawRectangle(out, Self->BoundX, Self->BoundY, Self->BoundWidth, Self->BoundHeight, 0xff00ff00, 0);
-      out->Clip = clip;
-   #endif
+   if (!out) {
+      log.warning("Effect pipeline did not produce an output bitmap.");
+      if (auto error = get_banked_bitmap(Self, &out)) return error;
+      gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
+   }
 
    // Return the result for rendering to the scene graph.
 
    if (Self->ColourSpace IS CS_LINEAR_RGB) linear2RGB(*out);
    out->Opacity = (Self->Opacity < 1.0) ? (255.0 * Self->Opacity) : 255;
 
-   *RenderedOutput = out;
-
-   Self->Disabled = false;
-   Vector->Next   = save_vector;
-
    #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
       save_bitmap(out, std::to_string(Self->Head.UID));
    #endif
 
+   #ifdef DEBUG_FILTER_BITMAP
+      gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff0000ff, 0);
+   #endif
+
+   *Output = out;
    return ERR_Okay;
 }
 

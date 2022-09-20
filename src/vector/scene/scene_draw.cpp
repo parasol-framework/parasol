@@ -1106,11 +1106,11 @@ private:
             #endif
 
             objBitmap *filter_bmp;
-            if (render_filter(shape->Filter, mView, shape, mBitmap, &filter_bmp)) continue;
-
-            if (filter->Opacity < 1.0) filter_bmp->Opacity = 255.0 * filter->Opacity;
-            gfxCopyArea(filter_bmp, mBitmap, BAF_BLEND|BAF_COPY, 0, 0, filter_bmp->Width, filter_bmp->Height, 0, 0);
-            filter_bmp->Opacity = 255;
+            if (!render_filter(shape->Filter, mView, shape, mBitmap, &filter_bmp)) {
+               if (filter->Opacity < 1.0) filter_bmp->Opacity = 255.0 * filter->Opacity;
+               gfxCopyArea(filter_bmp, mBitmap, BAF_BLEND|BAF_COPY, 0, 0, filter_bmp->Width, filter_bmp->Height, 0, 0);
+               filter_bmp->Opacity = 255;
+            }
             continue;
          }
 
