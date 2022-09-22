@@ -48,7 +48,7 @@ public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_reflect_y(agg::pixfmt_rkl & pixf, unsigned offset_x, unsigned offset_y) :
+   span_reflect_y(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
        m_src(&pixf),
        m_wrap_x(pixf.mBitmap->Width),
        m_wrap_y(pixf.mBitmap->Height),
@@ -90,7 +90,7 @@ public:
        return m_row_ptr + m_wrap_x(m_x) * 4;
    }
 
-   agg::pixfmt_rkl *m_src;
+   agg::pixfmt_psl *m_src;
 
 private:
    wrap_mode_repeat_auto_pow2 m_wrap_x;
@@ -112,7 +112,7 @@ public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_reflect_x(agg::pixfmt_rkl & pixf, unsigned offset_x, unsigned offset_y) :
+   span_reflect_x(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
        m_src(&pixf),
        m_wrap_x(pixf.mBitmap->Width),
        m_wrap_y(pixf.mBitmap->Height),
@@ -158,7 +158,7 @@ public:
       return m_row_ptr + m_wrap_x(m_x) * 4;
   }
 
-   agg::pixfmt_rkl *m_src;
+   agg::pixfmt_psl *m_src;
 
 private:
    wrap_mode_reflect_auto_pow2 m_wrap_x;
@@ -180,7 +180,7 @@ public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_repeat_rkl(agg::pixfmt_rkl & pixf, unsigned offset_x, unsigned offset_y) :
+   span_repeat_rkl(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
        m_src(&pixf),
        m_wrap_x(pixf.mBitmap->Width),
        m_wrap_y(pixf.mBitmap->Height),
@@ -226,7 +226,7 @@ public:
       return m_row_ptr + m_wrap_x(m_x) * 4;
   }
 
-  agg::pixfmt_rkl *m_src;
+  agg::pixfmt_psl *m_src;
 
 private:
    wrap_mode_repeat_auto_pow2 m_wrap_x;
@@ -322,12 +322,12 @@ void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
 //****************************************************************************
 // A generic drawing function for VMImage and VMPattern, this is used to fill vectors with bitmap images.
 
-static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
+static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
    objBitmap *SrcBitmap, LONG SpreadMethod, DOUBLE Opacity, agg::trans_affine *Transform = NULL, DOUBLE XOffset = 0, DOUBLE YOffset = 0)
 {
    agg::rendering_buffer imgSource;
    imgSource.attach(SrcBitmap->Data, SrcBitmap->Width, SrcBitmap->Height, SrcBitmap->LineWidth);
-   agg::pixfmt_rkl pixels(*SrcBitmap);
+   agg::pixfmt_psl pixels(*SrcBitmap);
 
    if ((Transform) and (Transform->is_complex())) {
       agg::span_interpolator_linear interpolator(*Transform);
@@ -350,8 +350,8 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
          drawBitmapRender(RenderBase, Raster, spangen, Opacity);
       }
       else { // Cater for path VSPREAD_PAD and VSPREAD_CLIP modes.
-         agg::span_pattern_rkl<agg::pixfmt_rkl> source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_rkl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_pattern_rkl<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
+         agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
          drawBitmapRender(RenderBase, Raster, spangen, Opacity);
       }
    }
@@ -376,7 +376,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
          drawBitmapRender(RenderBase, Raster, source, Opacity);
       }
       else { // Cater for path VSPREAD_PAD and VSPREAD_CLIP modes.
-         agg::span_pattern_rkl<agg::pixfmt_rkl> source(pixels, XOffset, YOffset);
+         agg::span_pattern_rkl<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
          drawBitmapRender(RenderBase, Raster, source, Opacity);
       }
    }
@@ -391,7 +391,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_rkl> &R
 
 static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
    LONG SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
-   struct rkVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
+   struct rkVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
    DOUBLE dwidth, dheight;
@@ -574,7 +574,7 @@ class pattern_rgb {
 };
 
 void draw_brush(const struct rkVectorImage &Image,
-   agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
+   agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::conv_transform<agg::path_storage, agg::trans_affine> &Path,
    DOUBLE StrokeWidth)
 {
@@ -591,8 +591,8 @@ void draw_brush(const struct rkVectorImage &Image,
    if (isPow2((ULONG)Image.Bitmap->Width)) { // If the image width is a power of 2, use this optimised version
       typedef agg::line_image_pattern_pow2<FILTER_TYPE> pattern_type;
       pattern_type pattern(filter);
-      agg::renderer_outline_image<agg::renderer_base<agg::pixfmt_rkl>, pattern_type> ren_img(RenderBase, pattern);
-      agg::rasterizer_outline_aa<agg::renderer_outline_image<agg::renderer_base<agg::pixfmt_rkl>, pattern_type>> ras_img(ren_img);
+      agg::renderer_outline_image<agg::renderer_base<agg::pixfmt_psl>, pattern_type> ren_img(RenderBase, pattern);
+      agg::rasterizer_outline_aa<agg::renderer_outline_image<agg::renderer_base<agg::pixfmt_psl>, pattern_type>> ras_img(ren_img);
 
       //ren_img.start_x(scale); // Optional offset
 
@@ -603,8 +603,8 @@ void draw_brush(const struct rkVectorImage &Image,
    else { // Slightly slower version for non-power of 2 textures.
       typedef agg::line_image_pattern<FILTER_TYPE> pattern_type;
       pattern_type pattern(filter);
-      agg::renderer_outline_image<agg::renderer_base<agg::pixfmt_rkl>, pattern_type> ren_img(RenderBase, pattern);
-      agg::rasterizer_outline_aa<agg::renderer_outline_image<agg::renderer_base<agg::pixfmt_rkl>, pattern_type>> ras_img(ren_img);
+      agg::renderer_outline_image<agg::renderer_base<agg::pixfmt_psl>, pattern_type> ren_img(RenderBase, pattern);
+      agg::rasterizer_outline_aa<agg::renderer_outline_image<agg::renderer_base<agg::pixfmt_psl>, pattern_type>> ras_img(ren_img);
 
       //ren_img.start_x(scale);
 
@@ -621,7 +621,7 @@ void draw_brush(const struct rkVectorImage &Image,
 
 static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMethod,
    const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
-   rkVectorImage &Image, agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
+   rkVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, DOUBLE BorderWidth = 0, DOUBLE Alpha = 1.0)
 {
    const DOUBLE c_width  = (Image.Units IS VUNIT_USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
@@ -649,14 +649,14 @@ static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMetho
 static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::trans_affine &Transform,
    DOUBLE ViewWidth, DOUBLE ViewHeight, const rkVectorGradient &Gradient,
    GRADIENT_TABLE *Table,
-   agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
+   agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster,
    DOUBLE BorderWidth)
 {
    typedef agg::span_interpolator_linear<> interpolator_type;
    typedef agg::span_allocator<agg::rgba8> span_allocator_type;
    typedef agg::pod_auto_array<agg::rgba8, 256> color_array_type;
-   typedef agg::renderer_base<agg::pixfmt_rkl>  RENDERER_BASE_TYPE;
+   typedef agg::renderer_base<agg::pixfmt_psl>  RENDERER_BASE_TYPE;
 
    agg::scanline_u8    scanline;
    agg::trans_affine   transform;
@@ -941,9 +941,9 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
 class VMAdaptor
 {
 private:
-   agg::renderer_base<agg::pixfmt_rkl> mRenderBase;
-   agg::renderer_scanline_aa_solid< agg::renderer_base<agg::pixfmt_rkl> > mSolidRender;
-   agg::pixfmt_rkl mFormat;
+   agg::renderer_base<agg::pixfmt_psl> mRenderBase;
+   agg::renderer_scanline_aa_solid< agg::renderer_base<agg::pixfmt_psl> > mSolidRender;
+   agg::pixfmt_psl mFormat;
    agg::scanline_u8 mScanLine;  // Use scanline_p for large solid polygons and scanline_u for things like text and gradients
    objVectorViewport *mView; // The current view
    objBitmap *mBitmap;
@@ -1375,7 +1375,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
    parasol::Log log("draw_path");
 
    agg::scanline_u8 scanline;
-   agg::pixfmt_rkl format;
+   agg::pixfmt_psl format;
    agg::trans_affine transform;
 
    format.setBitmap(*Bitmap);
@@ -1394,7 +1394,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
 
       if (FillStyle->ClassID IS ID_VECTORCOLOUR) {
          objVectorColour *colour = (objVectorColour *)FillStyle;
-         agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_rkl>> solid(mRenderer);
+         agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_psl>> solid(mRenderer);
          solid.color(agg::rgba(colour->Red, colour->Green, colour->Blue, colour->Alpha));
          agg::render_scanlines(mRaster, scanline, solid);
       }
@@ -1434,7 +1434,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          draw_brush(image, mRenderer, path, StrokeWidth);
       }
       else if (StrokeStyle->ClassID IS ID_VECTORCOLOUR) {
-         agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_rkl>> solid(mRenderer);
+         agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_psl>> solid(mRenderer);
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
          mRaster.reset();
          mRaster.add_path(stroke_path);
@@ -1446,7 +1446,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
    }
 }
 
-void agg::pixfmt_rkl::setBitmap(struct rkBitmap &Bitmap)
+void agg::pixfmt_psl::setBitmap(struct rkBitmap &Bitmap)
 {
    mBitmap = &Bitmap;
 

@@ -243,13 +243,10 @@ public:
    ULONG ID;               // Case sensitive hash identifier for the filter, if anything needs to reference it.
    ULONG InputID;          // The effect uses another effect as an input (referenced by hash ID).
    ULONG MixID;            // Reference to an additional effect for mixing, e.g. compositing
-   LONG XOffset, YOffset;  // In SVG only feOffset can use offsets, however in our framework any effect may define an offset when copying from a source.
-   LONG DestX, DestY;      // Target X/Y
    ERROR Error;
    UBYTE SourceType;       // VSF_REFERENCE, VSF_GRAPHIC...
    UBYTE MixType;          // VSF...
    UBYTE UsageCount;       // Total number of other effects utilising this effect to build a pipeline
-   bool Blank;             // True if no graphics are produced by this effect.
 
    // Defined in filter.cpp
    VectorEffect();
@@ -257,7 +254,6 @@ public:
 
    virtual void xml(std::stringstream &) = 0;
    virtual void apply(struct rkVectorFilter *, filter_state &) = 0; // Required
-   virtual void applyInput(VectorEffect &) { }; // Optional
    virtual ~VectorEffect() = default;
 };
 
@@ -551,14 +547,14 @@ namespace agg {
 
 //****************************************************************************
 
-template <class T> static void drawBitmapRender(agg::renderer_base<agg::pixfmt_rkl> &RenderBase,
+template <class T> static void drawBitmapRender(agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, T &spangen, DOUBLE Opacity)
 {
    class spanconv_image {
       public:
       spanconv_image(DOUBLE Alpha) : alpha(Alpha) { }
       void prepare() { }
-      void generate(agg::rgba8 * span, int x, int y, unsigned len) const {
+      void generate(agg::rgba8 *span, int x, int y, unsigned len) const {
          do {
             span->a = span->a * alpha;
             ++span;
@@ -666,7 +662,7 @@ private:
 class SimpleVector {
 public:
    agg::path_storage mPath;
-   agg::renderer_base<agg::pixfmt_rkl> mRenderer;
+   agg::renderer_base<agg::pixfmt_psl> mRenderer;
    agg::rasterizer_scanline_aa<> mRaster; // For rendering the scene.  Stores a copy of the path, and other values.
 
    SimpleVector() { }

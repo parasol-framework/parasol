@@ -367,26 +367,6 @@ class CompositeEffect : public VectorEffect {
       Stream << "feComposite";
    }
 
-   template <class DrawOp>
-   void doComposite(objBitmap *SrcBitmap, UBYTE *Dest, UBYTE *Src, LONG Width, LONG Height) {
-      const UBYTE A = OutBitmap->ColourFormat->AlphaPos>>3;
-      const UBYTE R = OutBitmap->ColourFormat->RedPos>>3;
-      const UBYTE G = OutBitmap->ColourFormat->GreenPos>>3;
-      const UBYTE B = OutBitmap->ColourFormat->BluePos>>3;
-
-      for (LONG y=0; y < Height; y++) {
-         auto dp = Dest;
-         auto sp = Src;
-         for (LONG x=0; x < Width; x++) {
-            DrawOp::blend_pix(dp, sp[R], sp[G], sp[B], sp[A], 255);
-            dp += 4;
-            sp += 4;
-         }
-         Dest += OutBitmap->LineWidth;
-         Src  += SrcBitmap->LineWidth;
-      }
-   }
-
    template <class CompositeOp>
    void doMix(objBitmap *InBitmap, objBitmap *MixBitmap, UBYTE *Dest, UBYTE *In, UBYTE *Mix) {
       const UBYTE A = OutBitmap->ColourFormat->AlphaPos>>3;
@@ -502,18 +482,6 @@ class CompositeEffect : public VectorEffect {
       UBYTE *dest = OutBitmap->Data + (OutBitmap->Clip.Left * 4) + (OutBitmap->Clip.Top * OutBitmap->LineWidth);
       UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
 
-      LONG height = OutBitmap->Clip.Bottom - OutBitmap->Clip.Top;
-      LONG width  = OutBitmap->Clip.Right - OutBitmap->Clip.Left;
-      if (inBmp->Clip.Right - inBmp->Clip.Left < width) width = inBmp->Clip.Right - inBmp->Clip.Left;
-      if (inBmp->Clip.Bottom - inBmp->Clip.Top < height) height = inBmp->Clip.Bottom - inBmp->Clip.Top;
-
-      premultiply_bitmap(inBmp);
-
-      const UBYTE A = OutBitmap->ColourFormat->AlphaPos>>3;
-      const UBYTE R = OutBitmap->ColourFormat->RedPos>>3;
-      const UBYTE G = OutBitmap->ColourFormat->GreenPos>>3;
-      const UBYTE B = OutBitmap->ColourFormat->BluePos>>3;
-
       switch (Operator) {
          case OP_NORMAL:
          case OP_OVER: {
@@ -566,6 +534,16 @@ class CompositeEffect : public VectorEffect {
 
          case OP_ARITHMETIC: {
             objBitmap *mixBmp;
+            LONG height = OutBitmap->Clip.Bottom - OutBitmap->Clip.Top;
+            LONG width  = OutBitmap->Clip.Right - OutBitmap->Clip.Left;
+            if (inBmp->Clip.Right - inBmp->Clip.Left < width) width = inBmp->Clip.Right - inBmp->Clip.Left;
+            if (inBmp->Clip.Bottom - inBmp->Clip.Top < height) height = inBmp->Clip.Bottom - inBmp->Clip.Top;
+
+            const UBYTE A = OutBitmap->ColourFormat->AlphaPos>>3;
+            const UBYTE R = OutBitmap->ColourFormat->RedPos>>3;
+            const UBYTE G = OutBitmap->ColourFormat->GreenPos>>3;
+            const UBYTE B = OutBitmap->ColourFormat->BluePos>>3;
+
             if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
                UBYTE *mix  = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                for (LONG y=0; y < height; y++) {

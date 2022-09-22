@@ -2,6 +2,7 @@
 // use for applying an effect.
 
 class OffsetEffect : public VectorEffect {
+   LONG XOffset, YOffset;
 
    void xml(std::stringstream &Stream) {
       Stream << "feOffset";
@@ -10,7 +11,6 @@ class OffsetEffect : public VectorEffect {
 public:
    OffsetEffect(rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
       EffectName = "feOffset";
-      Blank = true;
 
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
@@ -24,25 +24,10 @@ public:
       }
    }
 
-   void applyInput(VectorEffect &Effect) {
-      // A child effect has a dependency on this offset.  Apply the offset values permanently, pass on the
-      // source type, then disable the dependency.
-
-      Effect.XOffset += XOffset;
-      Effect.YOffset += YOffset;
-
-      if (Effect.InputID IS ID) {
-         Effect.SourceType = SourceType;
-         Effect.InputID    = 0;
-      }
-
-      if (Effect.MixID IS ID) {
-         Effect.MixType = SourceType;
-         Effect.MixID   = 0;
-      }
-   }
-
    void apply(objVectorFilter *Filter, filter_state &State) {
+      objBitmap *inBmp;
+      get_source_bitmap(Filter, &inBmp, SourceType, InputID, false);
+      gfxCopyArea(inBmp, OutBitmap, 0, 0, 0, inBmp->Width, inBmp->Height, XOffset, YOffset);
    }
 
    virtual ~OffsetEffect() { }

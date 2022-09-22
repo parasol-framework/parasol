@@ -56,7 +56,7 @@ public:
 
             case SVF_FLOOD_COLOR:
             case SVF_FLOOD_COLOUR: {
-               struct DRGB frgb;
+               DRGB frgb;
                vecReadPainter((OBJECTPTR)NULL, val, &frgb, NULL, NULL, NULL);
                Colour.Red   = F2I(frgb.Red * 255.0);
                Colour.Green = F2I(frgb.Green * 255.0);
@@ -83,25 +83,78 @@ public:
       }
    }
 
+   // Filter flood is implemented in identical fashion to feImage, only difference being that the
+   // image is a block of single colour.
+
    void apply(objVectorFilter *Filter, filter_state &State) {
       if (OutBitmap->BytesPerPixel != 4) return;
 
-      LONG x, y, width, height;
+      std::array<DOUBLE, 4> bounds = { Filter->ClientViewport->vpFixedWidth, Filter->ClientViewport->vpFixedHeight, 0, 0 };
+      calc_full_boundary((objVector *)Filter->ClientVector, bounds, false, false);
+      const DOUBLE b_x = trunc(bounds[0]);
+      const DOUBLE b_y = trunc(bounds[1]);
+      const DOUBLE b_width  = bounds[2] - bounds[0];
+      const DOUBLE b_height = bounds[3] - bounds[1];
 
-      if (Dimensions & DMF_RELATIVE_X) x = F2I(DOUBLE(Filter->BoundWidth) * X);
-      else x = F2I(X);
+      DOUBLE target_x, target_y, target_width, target_height;
+      if (Filter->Units IS VUNIT_BOUNDING_BOX) {
+         if (Filter->Dimensions & DMF_FIXED_X) target_x = b_x;
+         else if (Filter->Dimensions & DMF_RELATIVE_X) target_x = trunc(b_x + (Filter->X * b_width));
+         else target_x = b_x;
 
-      if (Dimensions & DMF_RELATIVE_Y) y = F2I(DOUBLE(Filter->BoundHeight) * Y);
-      else y = F2I(Y);
+         if (Filter->Dimensions & DMF_FIXED_Y) target_y = b_y;
+         else if (Filter->Dimensions & DMF_RELATIVE_Y) target_y = trunc(b_y + (Filter->Y * b_height));
+         else target_y = b_y;
 
-      if (Dimensions & DMF_RELATIVE_WIDTH) width = F2I(DOUBLE(Filter->BoundWidth) * Width);
-      else width = F2I(Width);
+         if (Filter->Dimensions & DMF_FIXED_WIDTH) target_width = Filter->Width * b_width;
+         else if (Filter->Dimensions & DMF_RELATIVE_WIDTH) target_width = Filter->Width * b_width;
+         else target_width = b_width;
 
-      if (Dimensions & DMF_RELATIVE_HEIGHT) height = F2I(DOUBLE(Filter->BoundHeight) * Height);
-      else height = F2I(Height);
+         if (Filter->Dimensions & DMF_FIXED_HEIGHT) target_height = Filter->Height * b_height;
+         else if (Filter->Dimensions & DMF_RELATIVE_HEIGHT) target_height = Filter->Height * b_height;
+         else target_height = b_height;
+      }
+      else { // USERSPACE
+         if (Filter->Dimensions & DMF_FIXED_X) target_x = trunc(Filter->X);
+         else if (Filter->Dimensions & DMF_RELATIVE_X) target_x = trunc(Filter->X * Filter->ClientViewport->vpFixedWidth);
+         else target_x = b_x;
 
-      ULONG colour = PackPixelWBA(OutBitmap, Colour.Red, Colour.Green, Colour.Blue, Colour.Alpha);
-      gfxDrawRectangle(OutBitmap, OutBitmap->Clip.Left+x, OutBitmap->Clip.Top+y, width, height, colour, BAF_FILL);
+         if (Filter->Dimensions & DMF_FIXED_Y) target_y = trunc(Filter->Y);
+         else if (Filter->Dimensions & DMF_RELATIVE_Y) target_y = trunc(Filter->Y * Filter->ClientViewport->vpFixedHeight);
+         else target_y = b_y;
+
+         if (Filter->Dimensions & DMF_FIXED_WIDTH) target_width = Filter->Width;
+         else if (Filter->Dimensions & DMF_RELATIVE_WIDTH) target_width = Filter->Width * Filter->ClientViewport->vpFixedWidth;
+         else target_width = Filter->ClientViewport->vpFixedWidth;
+
+         if (Filter->Dimensions & DMF_FIXED_HEIGHT) target_height = Filter->Height;
+         else if (Filter->Dimensions & DMF_RELATIVE_HEIGHT) target_height = Filter->Height * Filter->ClientViewport->vpFixedHeight;
+         else target_height = Filter->ClientViewport->vpFixedHeight;
+      }
+
+      // Draw to destination.  No anti-aliasing is applied.
+
+
+      agg::rasterizer_scanline_aa<> raster;
+      agg::renderer_base<agg::pixfmt_psl> renderBase;
+      agg::scanline_p8 scanline;
+      agg::pixfmt_psl format(*OutBitmap);
+      renderBase.attach(format);
+
+      agg::path_storage path;
+      path.move_to(target_x, target_y);
+      path.line_to(target_x + target_width, target_y);
+      path.line_to(target_x + target_width, target_y + target_height);
+      path.line_to(target_x, target_y + target_height);
+      path.close_polygon();
+
+      agg::renderer_scanline_bin_solid< agg::renderer_base<agg::pixfmt_psl> > solid_render(renderBase);
+      agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(path, Filter->ClientVector->Transform);
+      raster.add_path(final_path);
+      renderBase.clip_box(OutBitmap->Clip.Left, OutBitmap->Clip.Top, OutBitmap->Clip.Right - 1, OutBitmap->Clip.Bottom - 1);
+      solid_render.color(agg::rgba8(Colour.Red, Colour.Green, Colour.Blue, Colour.Alpha));
+      agg::render_scanlines(raster, scanline, solid_render);
+
    }
 
    virtual ~FloodEffect() { }

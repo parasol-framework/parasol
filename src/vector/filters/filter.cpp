@@ -31,6 +31,7 @@ static void demultiply_bitmap(objBitmap *);
 static ERROR fe_default(objVectorFilter *, VectorEffect *, ULONG, CSTRING);
 static VectorEffect * find_effect(objVectorFilter *, CSTRING);
 static VectorEffect * find_effect(objVectorFilter *, ULONG);
+static VectorEffect * find_output_effect(objVectorFilter *, ULONG);
 static ERROR get_source_bitmap(objVectorFilter *, objBitmap **, UBYTE, ULONG, bool);
 static void premultiply_bitmap(objBitmap *);
 
@@ -52,13 +53,79 @@ static void premultiply_bitmap(objBitmap *);
 VectorEffect::VectorEffect()
 {
    EffectName = "Unnamed";
-   SourceType = VSF_GRAPHIC; // Default is SourceGraphic
+   SourceType = VSF_PREVIOUS; // Use previous effect as input, or SourceGraphic if no previous effect.
    MixType    = 0;
    OutBitmap  = NULL;
    InputID    = 0;
    MixID      = 0;
    Error      = ERR_Okay;
-   Blank      = false;
+}
+
+//********************************************************************************************************************
+// Find an effect by name
+
+static VectorEffect * find_effect(objVectorFilter *Self, CSTRING Name)
+{
+   if (!Name) return NULL;
+
+   ULONG id = StrHash(Name, TRUE);
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
+      if (e->ID IS id) return e;
+   }
+   parasol::Log log(__FUNCTION__);
+   log.warning("Failed to find effect '%s'", Name);
+   return NULL;
+}
+
+//********************************************************************************************************************
+// Find an effect by UID.
+
+static VectorEffect * find_effect(objVectorFilter *Self, ULONG ID)
+{
+   if (!ID) return NULL;
+
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
+      if (e->ID IS ID) return e;
+   }
+   return NULL;
+}
+
+//********************************************************************************************************************
+// Find first effect in the hierarchy that outputs a bitmap.
+
+static VectorEffect * find_output_effect(objVectorFilter *Self, ULONG ID)
+{
+   auto e = find_effect(Self, ID);
+   while (e) {
+      if (e->OutBitmap) return e;
+      e = find_effect(Self, e->InputID);
+   }
+
+   return NULL;
+}
+
+//********************************************************************************************************************
+// Determine the usage count of each effect (i.e. the total number of times the effect is referenced in the pipeline).
+
+static void calc_usage(objVectorFilter *Self)
+{
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
+      e->UsageCount = 0;
+   }
+
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
+      if (e->InputID) {
+         if (auto ref = find_effect(Self, e->InputID)) ref->UsageCount++;
+      }
+
+      if (e->MixID) {
+         if (auto ref = find_effect(Self, e->MixID)) ref->UsageCount++;
+      }
+   }
 }
 
 //********************************************************************************************************************
@@ -167,9 +234,9 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
 {
    parasol::Log log(__FUNCTION__);
 
-   objBitmap *bmp;
-   log.branch("%s ID: %u, Type: %d", Self->ActiveEffect->EffectName.c_str(), EffectID, SourceType);
+   log.branch("%s #%d <- ID: #%u, Type: %d", Self->ActiveEffect->EffectName.c_str(), Self->ActiveEffect->ID, EffectID, SourceType);
 
+   objBitmap *bmp;
    if (SourceType IS VSF_GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if (auto sg = get_source_graphic(Self)) {
@@ -227,12 +294,12 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
    }
    else if (SourceType IS VSF_REFERENCE) {
       if (EffectID) {
-         if (auto e = find_effect(Self, EffectID)) {
+         if (auto e = find_output_effect(Self, EffectID)) {
             if (!(bmp = e->OutBitmap)) {
-               log.warning("%s has dependency on %s effect %u and does not output a bitmap.", Self->ActiveEffect->EffectName.c_str(), e->EffectName.c_str(), e->ID);
+               log.warning("%s has dependency on %s effect #%u and does not output a bitmap.", Self->ActiveEffect->EffectName.c_str(), e->EffectName.c_str(), e->ID);
             }
          }
-         else log.warning("Unable to find effect %u", EffectID);
+         else log.warning("Failed to find effect #%u", EffectID);
       }
       else log.warning("%s SourceGraphic reference has not provided an effect ID.", Self->ActiveEffect->EffectName.c_str());
 
@@ -262,7 +329,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
 // If the referenced vector has no content then the result is a bitmap cleared to 0x00000000, as per SVG specs.
 // Rendering will occur only once to SourceGraphic, so multiple calls to this function in a filter pipeline are OK.
 //
-// TODO: It would be very efficient to hook into the dirty markers of the client vector - it would mean re-rendering
+// TODO: It would be efficient to hook into the dirty markers of the client vector so that re-rendering
 // occurs only in the event that the client has been modified.
 
 objBitmap * get_source_graphic(objVectorFilter *Self)
@@ -331,22 +398,20 @@ static ERROR set_clip_region(objVectorFilter *Self, objVectorViewport *Viewport,
 {
    parasol::Log log(__FUNCTION__);
 
-   DOUBLE container_width  = Viewport->vpFixedWidth;
-   DOUBLE container_height = Viewport->vpFixedHeight;
+   const DOUBLE container_width  = Viewport->vpFixedWidth;
+   const DOUBLE container_height = Viewport->vpFixedHeight;
 
    if ((container_width < 1) or (container_height < 1)) {
       log.warning("Viewport #%d has no size.", Viewport->Head.UID);
       return ERR_NothingDone;
    }
 
-   // Compute the vector's clipping region.  This includes the client vector's transforms.
-
    if (Self->Units IS VUNIT_BOUNDING_BOX) {
       // All coordinates are relative to the client vector, or vectors if we are applied to a group.
       // The bounds are oriented to the client vector's transforms.
 
       std::array<DOUBLE, 4> bounds = { container_width, container_height, 0, 0 };
-      calc_full_boundary((objVector *)Vector, bounds, false, true);
+      calc_full_boundary(Vector, bounds, false, true);
 
       if ((bounds[2] <= bounds[0]) or (bounds[3] <= bounds[1])) {
          // No child vector defines a path for a SourceGraphic.  Default back to the viewport.
@@ -426,20 +491,19 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
 
    log.branch("Rendering filter content...");
 
-   Self->BkgdBitmap     = BkgdBitmap;
    Self->ClientViewport = Viewport;
    Self->ClientVector   = Vector;
+   Self->BkgdBitmap     = BkgdBitmap;
    Self->Rendered       = false; // Set to true when SourceGraphic is rendered
    Self->BankIndex      = 0;
 
    if (set_clip_region(Self, Viewport, Vector)) return ERR_Okay;
 
    // Render the effect pipeline in sequence.  Linked effects get their own bitmap, everything else goes to a shared
-   // output bitmap.
+   // output bitmap.  After all effects are rendered, the shared output bitmap is returned for rendering to the scene graph.
    //
-   // * An effect may request the SourceGraphic, in which case we render the client vector to a separate scene graph
+   // * Effects may request the SourceGraphic, in which case we render the client vector to a separate scene graph
    //   and without transforms.
-   // * The shared output bitmap is returned for direct rendering to the scene graph.
    //
    // TODO: Effects that don't have dependencies could be threaded.  Big pipelines could benefit from effects
    // being rendered to independent bitmaps in threads, then composited at the last stage.
@@ -447,32 +511,8 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    objBitmap *out = NULL;
    for (auto &ptr : Self->Effects) {
       auto e = ptr.get();
-      if (e->Blank) continue; // Ignore effects that don't produce graphics
 
       Self->ActiveEffect = e;
-      e->DestX = e->XOffset;
-      e->DestY = e->YOffset;
-
-      if (e->InputID) { // This effect has a dependency on another effect.
-         if (auto input = find_effect(Self, e->InputID)) { // Offset inheritance from the input
-            e->DestX += input->DestX;
-            e->DestY += input->DestY;
-
-            input->applyInput(*e); // Applies effect-specific adjustments
-         }
-      }
-
-      if (e->MixID) { // This effect has a dependency on another effect.
-         if (auto input = find_effect(Self, e->MixID)) {
-            e->DestX += input->DestX;
-            e->DestY += input->DestY;
-
-            input->applyInput(*e);
-         }
-      }
-
-      // If an effect is an input to something else, it gets its own independent bitmap.  All other
-      // effects are rendered directly to a shared output bitmap.
 
       if (e->UsageCount > 0) {
          if (auto error = get_banked_bitmap(Self, &e->OutBitmap)) return error;
@@ -511,55 +551,6 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
 
    *Output = out;
    return ERR_Okay;
-}
-
-//********************************************************************************************************************
-// Find an effect by name
-
-static VectorEffect * find_effect(objVectorFilter *Self, CSTRING Name)
-{
-   ULONG id = StrHash(Name, TRUE);
-   for (auto &ptr : Self->Effects) {
-      auto e = ptr.get();
-      if (e->ID IS id) return e;
-   }
-   parasol::Log log(__FUNCTION__);
-   log.warning("Failed to find effect '%s'", Name);
-   return NULL;
-}
-
-//********************************************************************************************************************
-// Find an effect by UID.
-
-static VectorEffect * find_effect(objVectorFilter *Self, ULONG ID)
-{
-   for (auto &ptr : Self->Effects) {
-      auto e = ptr.get();
-      if (e->ID IS ID) return e;
-   }
-   return NULL;
-}
-
-//********************************************************************************************************************
-// Determine the usage count of each effect (i.e. the total number of times the effect is referenced in the pipeline).
-
-static void calc_usage(objVectorFilter *Self)
-{
-   for (auto &ptr : Self->Effects) {
-      auto e = ptr.get();
-      e->UsageCount = 0;
-   }
-
-   for (auto &ptr : Self->Effects) {
-      auto e = ptr.get();
-      if (e->InputID) {
-         if (auto ref = find_effect(Self, e->InputID)) ref->UsageCount++;
-      }
-
-      if (e->MixID) {
-         if (auto ref = find_effect(Self, e->MixID)) ref->UsageCount++;
-      }
-   }
 }
 
 //********************************************************************************************************************
@@ -610,7 +601,7 @@ static ERROR fe_default(objVectorFilter *Filter, VectorEffect *Effect, ULONG Att
          break;
       }
 
-      case SVF_RESULT: // Names the filter.  This allows another filter to use the result as 'in' and create a pipeline
+      case SVF_RESULT: // Name the filter.  Allows another filter to use the result as 'in' and create a pipeline
          Effect->Name = Value;
          Effect->ID = StrHash(Value, TRUE); // NB: Case sensitive
          break;
@@ -677,6 +668,8 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
             TAGEND)) {
          for (auto tag = xml->Tags[0]; tag; tag=tag->Next) {
             log.trace("Parsing filter element '%s'", tag->Attrib->Name);
+
+            auto size = Self->Effects.size();
             switch(StrHash(tag->Attrib->Name, FALSE)) {
                case SVF_FEBLUR:           Self->Effects.emplace_back(std::make_unique<BlurEffect>(Self, tag)); break;
                case SVF_FEGAUSSIANBLUR:   Self->Effects.emplace_back(std::make_unique<BlurEffect>(Self, tag)); break;
@@ -706,6 +699,20 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
                default:
                   log.warning("Filter element '%s' not recognised.", tag->Attrib->Name);
                   break;
+            }
+
+            // If the client didn't specify an input for an effect, figure out what to use.
+
+            if (Self->Effects.size() > size) {
+               auto e = Self->Effects.back().get();
+               if (e->SourceType IS VSF_PREVIOUS) {
+                  if (Self->Effects.size() <= 1) e->SourceType = VSF_GRAPHIC;
+                  else {
+                     auto previous = Self->Effects[Self->Effects.size()-2].get();
+                     e->SourceType = VSF_REFERENCE;
+                     e->InputID = previous->ID;
+                  }
+               }
             }
          }
 

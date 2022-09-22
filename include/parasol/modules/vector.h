@@ -168,6 +168,7 @@
 #define VSF_STROKE 6
 #define VSF_REFERENCE 7
 #define VSF_IGNORE 8
+#define VSF_PREVIOUS 9
 
 // Wave options.
 

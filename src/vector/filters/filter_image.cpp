@@ -169,11 +169,11 @@ public:
          else if (Filter->Dimensions & DMF_RELATIVE_Y) target_y = trunc(b_y + (Filter->Y * b_height));
          else target_y = b_y;
 
-         if (Filter->Dimensions & DMF_FIXED_WIDTH) target_width = b_width;
+         if (Filter->Dimensions & DMF_FIXED_WIDTH) target_width = Filter->Width * b_width;
          else if (Filter->Dimensions & DMF_RELATIVE_WIDTH) target_width = Filter->Width * b_width;
          else target_width = b_width;
 
-         if (Filter->Dimensions & DMF_FIXED_HEIGHT) target_height = Filter->Height;
+         if (Filter->Dimensions & DMF_FIXED_HEIGHT) target_height = Filter->Height * b_height;
          else if (Filter->Dimensions & DMF_RELATIVE_HEIGHT) target_height = Filter->Height * b_height;
          else target_height = b_height;
       }
@@ -218,16 +218,16 @@ public:
          if (Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) img_height = Height * container_height;
       }
       else {
-         if (Dimensions & DMF_RELATIVE_X) img_x = target_x + (X * target_width);
+         if (Dimensions & DMF_RELATIVE_X)   img_x = target_x + (X * target_width);
          else if (Dimensions & DMF_FIXED_X) img_x = X;
 
-         if (Dimensions & DMF_RELATIVE_Y) img_y = target_y + (Y * target_height);
+         if (Dimensions & DMF_RELATIVE_Y)   img_y = target_y + (Y * target_height);
          else if (Dimensions & DMF_FIXED_Y) img_y = Y;
 
-         if (Dimensions & DMF_RELATIVE_WIDTH) img_width = target_width * Width;
+         if (Dimensions & DMF_RELATIVE_WIDTH)   img_width = target_width * Width;
          else if (Dimensions & DMF_FIXED_WIDTH) img_width = Width;
 
-         if (Dimensions & DMF_RELATIVE_HEIGHT) img_height = target_height * Height;
+         if (Dimensions & DMF_RELATIVE_HEIGHT)   img_height = target_height * Height;
          else if (Dimensions & DMF_FIXED_HEIGHT) img_height = Height;
       }
 
@@ -240,9 +240,9 @@ public:
       // Draw to destination
 
       agg::rasterizer_scanline_aa<> raster;
-      agg::renderer_base<agg::pixfmt_rkl> renderBase;
-      agg::pixfmt_rkl pixDest(*OutBitmap);
-      agg::pixfmt_rkl pixSource(*Picture->Bitmap);
+      agg::renderer_base<agg::pixfmt_psl> renderBase;
+      agg::pixfmt_psl pixDest(*OutBitmap);
+      agg::pixfmt_psl pixSource(*Picture->Bitmap);
 
       agg::path_storage path;
       path.move_to(target_x, target_y);
@@ -267,8 +267,8 @@ public:
       agg::image_filter_lut filter;
       set_filter(filter, ResampleMethod);
 
-      agg::span_pattern_rkl<agg::pixfmt_rkl> source(pixSource, 0, 0);
-      agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_rkl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+      agg::span_pattern_rkl<agg::pixfmt_psl> source(pixSource, 0, 0);
+      agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
 
       setRasterClip(raster, OutBitmap->Clip.Left, OutBitmap->Clip.Top,
          OutBitmap->Clip.Right - OutBitmap->Clip.Left,

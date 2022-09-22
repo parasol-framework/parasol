@@ -51,23 +51,18 @@ public:
 
    void apply(objVectorFilter *Filter, filter_state &State) {
       objBitmap *bmp;
-      LONG dx, dy;
       LONG copy_flags = 0;
       for (auto source : List) {
          if (source.Effect) {
             if (!(bmp = source.Effect->OutBitmap)) continue;
-            dx = source.Effect->DestX;
-            dy = source.Effect->DestY;
          }
          else {
             if (!(bmp = get_source_graphic(Filter))) continue;
-            dx = 0;
-            dy = 0;
          }
 
          save_bitmap(bmp, "merge_" + std::to_string(bmp->Head.UID));
 
-         gfxCopyArea(bmp, OutBitmap, copy_flags, 0, 0, bmp->Width, bmp->Height, dx, dy);
+         gfxCopyArea(bmp, OutBitmap, copy_flags, 0, 0, bmp->Width, bmp->Height, 0, 0);
 
          copy_flags = BAF_BLEND|BAF_COPY; // Any subsequent copies are to be blended
       }
