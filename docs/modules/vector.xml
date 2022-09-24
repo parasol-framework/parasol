@@ -510,12 +510,6 @@ Z: Close Path
       <const name="Y_MIN">Align to the top.</const>
     </constants>
 
-    <constants lookup="CS" comment="Colour space options.">
-      <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
-      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
-      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
-    </constants>
-
     <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
       <const name="CHILD_HAS_FOCUS">A child of the vector has gained the user focus.</const>
       <const name="HAS_FOCUS">The vector has gained the user focus.</const>
@@ -555,6 +549,12 @@ Z: Close Path
     <constants lookup="VBF" comment="Options for vecGetBoundary().">
       <const name="INCLUSIVE">The result will be inclusive of all paths that belong to children of the queried vector.</const>
       <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
+    </constants>
+
+    <constants lookup="VCS" comment="Colour space options.">
+      <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
+      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
+      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
     </constants>
 
     <constants lookup="VF" comment="Optional flags and indicators for the Vector class.">

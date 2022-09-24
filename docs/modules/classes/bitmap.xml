@@ -27,7 +27,7 @@
   <actions>
     <action>
       <name>Clear</name>
-      <comment>Clears a bitmap's image to a colour of black.</comment>
+      <comment>Clears a bitmap's image to black.</comment>
       <description>
 <p>Clearing a bitmap wipes away its graphical contents by drawing a blank area over its existing graphics.  The colour of the blank area is determined by the <field>BkgdRGB</field> field.  To clear a bitmap to a different colour, use the <method>DrawRectangle</method> method instead.</p>
 <p>If the bitmap supports alpha blending, the alpha blend bits will be reset to 'clear' status.</p>
@@ -451,6 +451,16 @@ UnpackAlpha(Bitmap, Colour)
     </field>
 
     <field>
+      <name>ColourSpace</name>
+      <comment>Defines the colour space for RGB values.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="CS">INT</type>
+      <description>
+<types lookup="CS"/>
+      </description>
+    </field>
+
+    <field>
       <name>Data</name>
       <comment>Pointer to a bitmap's data area.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -717,6 +727,13 @@ UnpackAlpha(Bitmap, Colour)
     <constants lookup="BMP" comment="Bitmap types">
       <const name="CHUNKY">Chunky pixel mode (default).</const>
       <const name="PLANAR">Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.</const>
+    </constants>
+
+    <constants lookup="CS" comment="Colour space options.">
+      <const name="CIE_LAB">Cartesian L*a*b* colour space defined by CIE 15.</const>
+      <const name="CIE_LCH">Polar L*CHab colour space defined by CIE 15.</const>
+      <const name="LINEAR_RGB">Linear RGB is used to improve colour balance in blending operations.</const>
+      <const name="SRGB">The default colour-space is sRGB.</const>
     </constants>
 
     <constants lookup="FLIP" comment="Flags for the bitmap Flip method.">
