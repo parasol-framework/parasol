@@ -3,6 +3,11 @@
 
 <svg width="400px" height="400px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <defs>
+    <pattern id="Pattern" x="0" y="0" width="5" height="5" patternUnits="userSpaceOnUse">
+      <rect width="5" height="5" fill="#fff"/>
+      <rect width="2" height="2" fill="#ccc"/>
+    </pattern>
+
     <filter id="motionright"><feConvolveMatrix order="9" divisor="9" kernelMatrix="0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0"/></filter>
     <filter id="motionleftright"><feConvolveMatrix order="9" divisor="18" kernelMatrix="1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 1"/></filter>
     <filter id="blur55"><feConvolveMatrix order="5" divisor="1" kernelMatrix="0 0 1 0 0 0 1 1 1 0 1 1 1 1 1 0 1 1 1 0 0 0 1 0 0"/></filter>
@@ -43,7 +48,10 @@
     <path d="M 13 26 A 5 3 0 0 0 27 26" stroke="black" fill="none" stroke-width="2" />
   </symbol>
 
-  <rect width="100%" height="100%" fill="rgb(255,255,255)"/>
+  <rect width="100%" height="100%" fill="url(#Pattern)"/>
+
+  <!-- Note that <use> deeply clones the transform attribute, so it is directly applied to the children
+       as opposed to inheritance from the parent -->
 
   <use xlink:href="#smilie" transform="translate(20,10) scale(2.7)"/>
   <use xlink:href="#smilie" transform="translate(150,10) scale(2.7)" filter="url(#soften)" />
@@ -56,9 +64,4 @@
   <text x="145" y="130" font-family="Open Sans" font-size="14pt" font-weight="bold">feConvolveMatrix</text>
   <text x="58" y="130" font-family="Open Sans" font-size="14pt" font-weight="bold">Original</text>
   <line x1="137" y1="40" x2="137" y2="330" stroke="black" />
-
-<!--
-  <image xlink:href="sdk:modules/gui/svg/tests/ball.png"  width="128" height="128" />
-  <image xlink:href="drive3:suity-avatar.jpg"  width="1000" height="1000" filter="url(#edge)" />
--->
 </svg>

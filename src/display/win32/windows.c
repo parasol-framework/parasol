@@ -721,9 +721,9 @@ static void HandleKeyPress(WPARAM value)
          }
          else {
             GetWindowRect(GetDesktopWindow(), &desktop);
-         	 width = desktop.right - desktop.left + (left * 2);
-         	 height = (desktop.bottom - desktop.top) + ((winrect.bottom - winrect.top) - (client.bottom - client.top));
-         	 ShowWindow(glMainScreen, SW_RESTORE);
+            width = desktop.right - desktop.left + (left * 2);
+            height = (desktop.bottom - desktop.top) + ((winrect.bottom - winrect.top) - (client.bottom - client.top));
+            ShowWindow(glMainScreen, SW_RESTORE);
             SetWindowPos(glMainScreen, HWND_TOPMOST, -left, -top, width, height, 0);
          }
       }

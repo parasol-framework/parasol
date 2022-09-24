@@ -29,6 +29,13 @@
 
 #define WH_CLOSE 1
 
+// Colour space options.
+
+#define CS_SRGB 1
+#define CS_LINEAR_RGB 2
+#define CS_CIE_LAB 3
+#define CS_CIE_LCH 4
+
 // Optional flags for the ExposeSurface() function.
 
 #define EXF_CHILDREN 0x00000001
@@ -294,9 +301,9 @@ struct SurfaceList {
    LONG     Width;       // Width
    LONG     Height;      // Height
    LONG     Left;        // Absolute X
+   LONG     Top;         // Absolute Y
    LONG     Right;       // Absolute right coordinate
    LONG     Bottom;      // Absolute bottom coordinate
-   LONG     Top;         // Absolute Y
    WORD     Level;       // Level number within the hierarchy
    WORD     LineWidth;   // [applies to the bitmap owner]
    BYTE     BytesPerPixel; // [applies to the bitmap owner]
@@ -428,6 +435,7 @@ typedef struct rkBitmap {
    struct RGB8 TransRGB;                                                   // The transparent colour of the bitmap, in RGB format.
    struct RGB8 BkgdRGB;                                                    // Background colour (for clearing, resizing)
    LONG     BkgdIndex;                                                     // Colour index or packed colour of the background.
+   LONG     ColourSpace;                                                   // Defines the colour space for RGB values.
 
 #ifdef PRV_BITMAP
    ULONG  *Gradients;

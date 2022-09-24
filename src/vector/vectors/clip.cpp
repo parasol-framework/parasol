@@ -15,6 +15,9 @@ to be shared by multiple vector objects within the same scene.
 
 *****************************************************************************/
 
+//****************************************************************************
+// NB: Considered a shape (can be transformed)
+
 static void draw_clips(objVectorClip *Self, objVector *Branch,
    agg::rasterizer_scanline_aa<> &Rasterizer,
    agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid)

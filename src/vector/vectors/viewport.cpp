@@ -52,8 +52,7 @@ static ERROR drag_callback(objVectorViewport *Viewport, const InputEvent *Events
                routine(Viewport, x, y, glDragOriginX, glDragOriginY);
             }
             else if (Viewport->vpDragCallback.Type IS CALL_SCRIPT) {
-               OBJECTPTR script;
-               if ((script = Viewport->vpDragCallback.Script.Script)) {
+               if (auto script = Viewport->vpDragCallback.Script.Script) {
                   const ScriptArg args[] = {
                      { "Viewport", FD_OBJECTPTR, { .Address = Viewport } },
                      { "X",        FD_DOUBLE, { .Double = x } },

@@ -122,7 +122,7 @@ typedef struct rkScintilla {
    UWORD  HoldModify:1;
    UWORD  AllowTabs:1;
    UBYTE  ScrollLocked;
-
+  
 #endif
 } objScintilla;
 

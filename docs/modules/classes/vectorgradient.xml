@@ -100,10 +100,10 @@
     <field>
       <name>Matrices</name>
       <comment>A linked list of transform matrices that have been applied to the gradient.</comment>
-      <access read="G">Get</access>
+      <access read="G" write="S">Get/Set</access>
       <type>APTR</type>
       <description>
-<p>All transforms that have been applied to the gradient can be read from the Matrices field.  Each transform is represented by the VectorMatrix structure, and are linked in the order in which they were applied to the gradient.</p>
+<p>All transforms that have been applied to the gradient can be read from the Matrices field.  Each transform is represented by a VectorMatrix structure, and are linked in the order in which they were applied to the gradient.</p>
 <struct lookup="VectorMatrix"/>
       </description>
     </field>
@@ -174,7 +174,7 @@
     <field>
       <name>Type</name>
       <comment>Specifies the type of gradient (e.g. RADIAL, LINEAR)</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="I">Read/Init</access>
       <type lookup="VGT">INT</type>
       <description>
 <p>The type of the gradient to be drawn is specified here.</p>
@@ -185,7 +185,7 @@
     <field>
       <name>Units</name>
       <comment>Defines the coordinate system for fields X1, Y1, X2 and Y2.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="I">Read/Init</access>
       <type lookup="VUNIT">INT</type>
       <description>
 <p>The default coordinate system for gradients is <code>BOUNDING_BOX</code>, which positions the gradient around the vector that references it.  The alternative is <code>USERSPACE</code>, which positions the gradient relative to the current viewport.</p>

@@ -3,7 +3,7 @@
 
 //********************************************************************************************************************
 
-static objVectorViewport * get_parent_view(objVector *Vector)
+objVectorViewport * get_parent_view(objVector *Vector)
 {
    if (Vector->ParentView) return Vector->ParentView;
    else {
@@ -24,7 +24,7 @@ static objVectorViewport * get_parent_view(objVector *Vector)
 // This 'safe' version of gen_vector_path() checks that all parent vectors have been refreshed if they are marked
 // as dirty.  Generation of the paths is top-down.
 
-static void gen_vector_tree(objVector *Vector)
+void gen_vector_tree(objVector *Vector)
 {
    if (!(Vector->Head.Flags & NF_INITIALISED)) return;
 
@@ -51,11 +51,11 @@ static void gen_vector_tree(objVector *Vector)
 // computed from old information and likely to produce the wrong result.  Use gen_vector_tree() to avoid
 // such problems.
 
-static void gen_vector_path(objVector *Vector)
+void gen_vector_path(objVector *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Vector->GeneratePath) and (Vector->Head.SubID != ID_VECTORVIEWPORT)) return;
+   if ((!Vector->GeneratePath) and (Vector->Head.SubID != ID_VECTORVIEWPORT) and (Vector->Head.SubID != ID_VECTORGROUP)) return;
 
    parasol::SwitchContext context(Vector);
 
@@ -63,7 +63,12 @@ static void gen_vector_path(objVector *Vector)
 
    auto parent_view = get_parent_view(Vector);
 
-   if (Vector->Head.SubID IS ID_VECTORVIEWPORT) {
+   if (Vector->Head.SubID IS ID_VECTORGROUP) {
+      Vector->Transform.reset();
+      apply_parent_transforms(Vector, Vector->Transform);
+      return;
+   }
+   else if (Vector->Head.SubID IS ID_VECTORVIEWPORT) {
       auto view = (objVectorViewport *)Vector;
 
       DOUBLE parent_width, parent_height;
@@ -246,19 +251,9 @@ static void gen_vector_path(objVector *Vector)
       }
    }
    else if (Vector->Head.ClassID IS ID_VECTOR) {
-      if ((Vector->Dirty & RC_TRANSFORM) AND (Vector->Head.SubID != ID_VECTORTEXT)) {
-         // First, calculate the FinalX and FinalY field values, without any viewport scaling applied.  Note that
-         // VectorText is excluded at this stage because the final X/Y needs to take alignment of the base path into
-         // account.
-
-         switch (Vector->Head.SubID) {
-            case ID_VECTORELLIPSE:   get_ellipse_xy((rkVectorEllipse *)Vector); break;
-            case ID_VECTORRECTANGLE: get_rectangle_xy((rkVectorRectangle *)Vector); break;
-            case ID_VECTORSPIRAL:    get_spiral_xy((rkVectorSpiral *)Vector); break;
-            case ID_VECTORSHAPE:     get_super_xy((rkVectorShape *)Vector); break;
-            case ID_VECTORWAVE:      get_wave_xy((rkVectorWave *)Vector); break;
-         }
-
+      Vector->FinalX = 0;
+      Vector->FinalY = 0;
+      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->Head.SubID != ID_VECTORTEXT)) {
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);
 
@@ -398,7 +393,7 @@ static void gen_vector_path(objVector *Vector)
 // Apply all transforms in the correct SVG order to a target agg::trans_affine object.  The process starts with the
 // vector passed in to the function, and proceeds upwards through the parent nodes.
 
-static void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform)
+void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform)
 {
    parasol::Log log(__FUNCTION__);
 

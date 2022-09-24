@@ -399,9 +399,9 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, Ignor
 end
 
 ------------------------------------------------------------------------------
--- Return an icon styled with the current theme.  The icon is used as a fill, i.e. "url(#Path)".  Use in a
--- VectorRectangle if you want to use the icon as a cached bitmap (fast), or apply to a VectorViewport for live
--- rendering (higher quality transforms).
+-- Build an icon styled with the current theme and register it as a pattern.  The pattern can then be used as a fill,
+-- i.e. "url(#Path)".  Using it in a VectorRectangle is akin to a cached bitmap (fast), or apply to a VectorViewport
+-- for live rendering (higher quality transforms).
 
 gui.createIcon = function(Scene, Path, Size, Theme, Name)
    if not Size then Size = 16 end

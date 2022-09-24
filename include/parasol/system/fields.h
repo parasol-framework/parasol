@@ -969,5 +969,9 @@
 #define FID_PrimitiveUnits 0xf4494b91LL
 #define FID_Degree 0xf880fbf1LL
 #define FID_TotalKeys 0xf691b9c5LL
+#define FID_Overflow 0x5b785259LL
+#define FID_OverflowX 0xca829df1LL
+#define FID_OverflowY 0xca829df2LL
+#define FID_HostScene 0x608e7bf1LL
 
 #endif

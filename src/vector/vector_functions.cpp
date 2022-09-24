@@ -16,21 +16,12 @@ functions for creating paths and rendering them to bitmaps.
 
 *****************************************************************************/
 
-class SimpleVector {
-public:
-   agg::path_storage mPath;
-   agg::renderer_base<agg::pixfmt_rkl> mRenderer;
-   agg::rasterizer_scanline_aa<> mRaster; // For rendering the scene.  Stores a copy of the path, and other values.
-
-   SimpleVector() { }
-
-   // Refer to scene_draw.cpp for DrawPath()
-   void DrawPath(objBitmap *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-};
+//#include "vector.h"
+#include "colours.cpp"
 
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
 
-static void simplevector_free(APTR Address) {
+void simplevector_free(APTR Address) {
 
 }
 
@@ -87,7 +78,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR vecApplyPath(class SimpleVector *Vector, objVectorPath *VectorPath)
+ERROR vecApplyPath(class SimpleVector *Vector, objVectorPath *VectorPath)
 {
    if ((!Vector) or (!VectorPath)) return ERR_NullArgs;
    if (VectorPath->Head.SubID != ID_VECTORPATH) return ERR_Args;
@@ -118,7 +109,7 @@ int(ARC) Flags: Optional flags.
 
 *****************************************************************************/
 
-static void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags)
+void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags)
 {
    Vector->mPath.arc_to(RX, RY, Angle, (Flags & ARC_LARGE) ? 1 : 0, (Flags & ARC_SWEEP) ? 1 : 0, X, Y);
 }
@@ -139,7 +130,7 @@ ptr Path:  The vector path to modify.
 
 *****************************************************************************/
 
-static void vecClosePath(SimpleVector *Vector)
+void vecClosePath(SimpleVector *Vector)
 {
    Vector->mPath.close_polygon();
 }
@@ -161,7 +152,7 @@ double Y: The vertical end point for the curve3 command.
 
 *****************************************************************************/
 
-static void vecCurve3(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
+void vecCurve3(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
 {
    Vector->mPath.curve3(CtrlX, CtrlY, X, Y);
 }
@@ -185,7 +176,7 @@ double Y: The vertical end point for the curve4 command.
 
 *****************************************************************************/
 
-static void vecCurve4(SimpleVector *Vector, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y)
+void vecCurve4(SimpleVector *Vector, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y)
 {
    Vector->mPath.curve4(CtrlX1, CtrlY1, CtrlX2, CtrlY2, X, Y);
 }
@@ -217,7 +208,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
+ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
    OBJECTPTR FillStyle)
 {
    parasol::Log log(__FUNCTION__);
@@ -246,7 +237,7 @@ ptr Path: Pointer to the path to deallocate.
 
 *****************************************************************************/
 
-static void vecFreePath(APTR Path)
+void vecFreePath(APTR Path)
 {
    if (!Path) return;
    // NB: Refer to the deallocator for SimpleVector for anything relating to additional resource deallocation.
@@ -271,7 +262,7 @@ int: The internal command value for the vertex will be returned.
 
 *****************************************************************************/
 
-static LONG vecGetVertex(SimpleVector *Vector, DOUBLE *X, DOUBLE *Y)
+LONG vecGetVertex(SimpleVector *Vector, DOUBLE *X, DOUBLE *Y)
 {
    return Vector->mPath.vertex(X, Y);
 }
@@ -299,7 +290,7 @@ AllocMemory
 
 *****************************************************************************/
 
-static ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
+ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -372,7 +363,7 @@ AllocMemory
 
 *****************************************************************************/
 
-static ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
+ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -435,7 +426,7 @@ AllocMemory
 
 *****************************************************************************/
 
-static ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
+ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
 {
    if (!Path) return ERR_NullArgs;
 
@@ -476,7 +467,7 @@ double Y: The line end point on the vertical plane.
 
 *****************************************************************************/
 
-static void vecLineTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void vecLineTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
    Vector->mPath.line_to(X, Y);
 }
@@ -498,7 +489,7 @@ double Y: The vertical end point for the command.
 
 *****************************************************************************/
 
-static void vecMoveTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void vecMoveTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
    Vector->mPath.move_to(X, Y);
 }
@@ -526,7 +517,7 @@ NullArgs:
 
 *****************************************************************************/
 
-static ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX,
+ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX,
    DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)
 {
    if (!Matrix) {
@@ -567,7 +558,7 @@ NullArgs:
 
 *****************************************************************************/
 
-static ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
+ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
 {
    if ((!Target) or (!Source)) {
       parasol::Log log(__FUNCTION__);
@@ -614,7 +605,7 @@ NullArgs:
 
 *****************************************************************************/
 
-static ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
+ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
 {
    if ((!Matrix) or (!Commands)) {
       parasol::Log log(__FUNCTION__);
@@ -622,51 +613,55 @@ static ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    }
 
    enum { M_MUL, M_TRANSLATE, M_ROTATE, M_SCALE, M_SKEW };
-   struct cmd {
+   class cmd {
+      public:
       BYTE type;
       DOUBLE sx, sy, shx, shy, tx, ty;
       DOUBLE angle;
-      cmd(BYTE pType) : type(pType) {};
+      cmd(BYTE pType) : type(pType), sx(0), sy(0), shx(0), shy(0), tx(0), ty(0), angle(0) {};
    };
 
    std::vector<cmd> list;
 
    auto str = Commands;
    while (*str) {
-      if (!StrCompare(str, "matrix", 6, 0)) {
-         cmd m(M_MUL);
-         str = read_numseq(str+6, &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty, TAGEND);
-         list.push_back(std::move(m));
-      }
-      else if (!StrCompare(str, "translate", 9, 0)) {
-         cmd m(M_TRANSLATE);
-         str = read_numseq(str+9, &m.tx, &m.ty, TAGEND);
-         list.push_back(std::move(m));
-      }
-      else if (!StrCompare(str, "rotate", 6, 0)) {
-         cmd m(M_ROTATE);
-         str = read_numseq(str+6, &m.angle, &m.tx, &m.ty, TAGEND);
-         list.push_back(std::move(m));
-      }
-      else if (!StrCompare(str, "scale", 5, 0)) {
-         cmd m(M_SCALE);
-         m.tx = 1.0;
-         m.ty = DBL_EPSILON;
-         str = read_numseq(str+5, &m.tx, &m.ty, TAGEND);
-         if (m.ty IS DBL_EPSILON) m.ty = m.tx;
-         list.push_back(std::move(m));
-      }
-      else if (!StrCompare(str, "skewX", 5, 0)) {
-         cmd m(M_SKEW);
-         m.ty = 0;
-         str = read_numseq(str+5, &m.tx, TAGEND);
-         list.push_back(std::move(m));
-      }
-      else if (!StrCompare(str, "skewY", 5, 0)) {
-         cmd m(M_SKEW);
-         m.tx = 0;
-         str = read_numseq(str+5, &m.ty, TAGEND);
-         list.push_back(std::move(m));
+      if ((*str >= 'a') and (*str <= 'z')) {
+         if (!StrCompare(str, "matrix", 6, 0)) {
+            cmd m(M_MUL);
+            str = read_numseq(str+6, &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "translate", 9, 0)) {
+            cmd m(M_TRANSLATE);
+            str = read_numseq(str+9, &m.tx, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "rotate", 6, 0)) {
+            cmd m(M_ROTATE);
+            str = read_numseq(str+6, &m.angle, &m.tx, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "scale", 5, 0)) {
+            cmd m(M_SCALE);
+            m.tx = 1.0;
+            m.ty = DBL_EPSILON;
+            str = read_numseq(str+5, &m.tx, &m.ty, TAGEND);
+            if (m.ty IS DBL_EPSILON) m.ty = m.tx;
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "skewX", 5, 0)) {
+            cmd m(M_SKEW);
+            m.ty = 0;
+            str = read_numseq(str+5, &m.tx, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "skewY", 5, 0)) {
+            cmd m(M_SKEW);
+            m.tx = 0;
+            str = read_numseq(str+5, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else str++;
       }
       else str++;
    }
@@ -750,7 +745,7 @@ struct(*DRGB) RGB: A colour will be returned here if specified in the IRI.
 
 *****************************************************************************/
 
-static void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, DRGB *RGB, objVectorGradient **Gradient,
+void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, DRGB *RGB, objVectorGradient **Gradient,
    objVectorImage **Image, objVectorPattern **Pattern)
 {
    parasol::Log log(__FUNCTION__);
@@ -781,6 +776,8 @@ next:
          log.warning("The referenced Vector is invalid.");
          return;
       }
+
+      if (scene->HostScene) scene = scene->HostScene;
 
       IRI += 4;
       if (*IRI IS '#') {
@@ -901,7 +898,7 @@ NullArgs:
 
 *****************************************************************************/
 
-static ERROR vecResetMatrix(VectorMatrix *Matrix)
+ERROR vecResetMatrix(VectorMatrix *Matrix)
 {
    if (!Matrix) {
       parasol::Log log(__FUNCTION__);
@@ -934,7 +931,7 @@ ptr Path: The vector path to rewind.
 
 *****************************************************************************/
 
-static void vecRewindPath(SimpleVector *Vector)
+void vecRewindPath(SimpleVector *Vector)
 {
    if (Vector) Vector->mPath.rewind(0);
 }
@@ -959,7 +956,7 @@ NullArgs:
 
 *****************************************************************************/
 
-static ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)
+ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)
 {
    if (!Matrix) {
       parasol::Log log(__FUNCTION__);
@@ -1014,7 +1011,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
    if (!Matrix) {
       parasol::Log log(__FUNCTION__);
@@ -1053,7 +1050,7 @@ OutOfRange: At least one of the angles is out of the allowable range.
 
 *****************************************************************************/
 
-static ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1099,7 +1096,7 @@ double Y: The vertical end point for the smooth3 command.
 
 *****************************************************************************/
 
-static void vecSmooth3(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void vecSmooth3(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
    if (!Vector) return;
    Vector->mPath.curve3(X, Y);
@@ -1125,7 +1122,7 @@ double Y: The vertical end point for the smooth4 instruction.
 
 *****************************************************************************/
 
-static void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
+void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
 {
    if (!Vector) return;
    Vector->mPath.curve4(CtrlX, CtrlY, X, Y);
@@ -1150,7 +1147,7 @@ NullArgs:
 
 *****************************************************************************/
 
-static ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
    if (!Matrix) {
       parasol::Log log(__FUNCTION__);
@@ -1180,7 +1177,7 @@ double Y: Translate the path vertically by the given value.
 
 *****************************************************************************/
 
-static void vecTranslatePath(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void vecTranslatePath(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
    if (!Vector) return;
    Vector->mPath.translate_all_paths(X, Y);

@@ -24,10 +24,38 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 
 *********************************************************************************************************************/
 
+#include "agg_rasterizer_outline_aa.h"
+#include "agg_curves.h"
+#include "agg_image_accessors.h"
+#include "agg_renderer_base.h"
+#include "agg_renderer_outline_aa.h"
+#include "agg_span_interpolator_linear.h"
+#include "agg_renderer_outline_image.h"
+#include "agg_conv_smooth_poly1.h"
+#include "agg_span_gradient.h"
+#include "agg_conv_contour.h"
+
+//#include "../vector.h"
+
+#include "scene_draw.cpp"
+
 static ERROR VECTORSCENE_Reset(objVectorScene *, APTR);
 
 static void scene_key_event(objVectorScene *, evKey *, LONG);
 static void process_resize_msgs(objVectorScene *);
+
+static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
+{
+   Self->Bitmap = Bitmap;
+
+   if ((!Self->PageWidth) or (!Self->PageHeight)) {
+      if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+   }
+
+   acDraw(Self);
+
+   Self->Bitmap = NULL;
+}
 
 //********************************************************************************************************************
 
@@ -99,6 +127,10 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
 
    if ((!Args) or (!Args->Name) or (!Args->Def)) return log.warning(ERR_NullArgs);
 
+   if (Self->HostScene) { // Defer all definitions if a hosting scene is active.
+      return Action(MT_ScAddDef, Self->HostScene, Args);
+   }
+
    OBJECTPTR def = (OBJECTPTR)Args->Def;
 
    if ((def->ClassID IS ID_VECTORSCENE) or
@@ -117,13 +149,20 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
    // If the resource does not belong to the Scene object, this can lead to invalid pointer references
 
    if (def->OwnerID != Self->Head.UID) {
-      log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->Head.UID, def->OwnerID);
-      return ERR_UnsupportedOwner;
+      OBJECTID owner_id = def->OwnerID;
+      while ((owner_id) and (owner_id != Self->Head.UID)) {
+         owner_id = GetOwnerID(owner_id);
+      }
+
+      if (!owner_id) {
+         log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->Head.UID, def->OwnerID);
+         return ERR_UnsupportedOwner;
+      }
    }
 
    // TODO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
 
-   log.debug("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
+   log.extmsg("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
 
    APTR data;
    if (!Self->Defs) {
@@ -230,6 +269,8 @@ static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
    parasol::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+
+   if (Self->HostScene) return Action(MT_ScFindDef, Self->HostScene, Args);
 
    CSTRING name = Args->Name;
 
@@ -478,6 +519,15 @@ Flags: Optional flags.
 Gamma: Private. Not currently implemented.
 
 -FIELD-
+HostScene: Refers to a top-level VectorScene object, if applicable.
+
+Set HostScene to another VectorScene object if it is intended that this scene is a child of the other.  This allows
+some traits such as vector definitions to be automatically inherited from the host scene.
+
+This feature is useful in circumstances where a hidden group of vectors need to be managed separately, while retaining
+access to established definitions and vectors in the main.
+
+-FIELD-
 PageHeight: The height of the page that contains the vector.
 
 This value defines the pixel height of the page that contains the vector scene graph.  If the `RESIZE` #Flags
@@ -576,19 +626,6 @@ VectorViewport object is initialised.
 -END-
 
 *********************************************************************************************************************/
-
-static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   Self->Bitmap = Bitmap;
-
-   if ((!Self->PageWidth) or (!Self->PageHeight)) {
-      if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
-   }
-
-   acDraw(Self);
-
-   Self->Bitmap = NULL;
-}
 
 //********************************************************************************************************************
 // Apply focus to a vector and all other vectors within that tree branch (not necessarily just the viewports).
@@ -748,6 +785,37 @@ static void process_resize_msgs(objVectorScene *Self)
 }
 
 //********************************************************************************************************************
+// Receiver for keyboard events
+
+static ERROR vector_keyboard_events(objVector *Vector, const evKey *Event)
+{
+   for (auto it=Vector->KeyboardSubscriptions->begin(); it != Vector->KeyboardSubscriptions->end(); ) {
+      ERROR result;
+      auto &sub = *it;
+      if (sub.Callback.Type IS CALL_STDC) {
+         parasol::SwitchContext ctx(sub.Callback.StdC.Context);
+         auto callback = (ERROR (*)(objVector *, LONG, LONG, LONG))sub.Callback.StdC.Routine;
+         result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode);
+      }
+      else if (sub.Callback.Type IS CALL_SCRIPT) {
+         // In this implementation the script function will receive all the events chained via the Next field
+         ScriptArg args[] = {
+            { "Vector",     FDF_OBJECT, { .Address = Vector } },
+            { "Qualifiers", FDF_LONG,   { .Long = Event->Qualifiers } },
+            { "Code",       FDF_LONG,   { .Long = Event->Code } },
+            { "Unicode",    FDF_LONG,   { .Long = Event->Unicode } }
+         };
+         scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+      }
+
+      if (result IS ERR_Terminate) Vector->KeyboardSubscriptions->erase(it);
+      else it++;
+   }
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
 // Distribute input events to any vectors that have subscribed and have the focus
 
 static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
@@ -902,7 +970,7 @@ static void send_wheel_event(objVectorScene *Scene, objVector *Vector, const Inp
 //********************************************************************************************************************
 // Incoming input events from the Surface hosting the scene are distributed within the scene graph.
 
-static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
+ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1059,6 +1127,7 @@ static ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 static const FieldArray clSceneFields[] = {
    { "RenderTime",   FDF_LARGE|FDF_R,            0, (APTR)GET_RenderTime, NULL },
    { "Gamma",        FDF_DOUBLE|FDF_RW,          0, NULL, NULL },
+   { "HostScene",    FDF_OBJECT|FDF_RI,          ID_VECTORSCENE, NULL, NULL },
    { "Viewport",     FDF_OBJECT|FD_R,            ID_VECTORVIEWPORT, NULL, NULL },
    { "Bitmap",       FDF_OBJECT|FDF_RW,          ID_BITMAP, NULL, (APTR)SET_Bitmap },
    { "Defs",         FDF_STRUCT|FDF_PTR|FDF_SYSTEM|FDF_RESOURCE|FDF_R, (MAXINT)"KeyStore", NULL, NULL },
@@ -1070,7 +1139,7 @@ static const FieldArray clSceneFields[] = {
    END_FIELD
 };
 
-static ERROR init_vectorscene(void)
+ERROR init_vectorscene(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorScene,
       FID_ClassVersion|TFLOAT, VER_VECTORSCENE,

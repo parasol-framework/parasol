@@ -19,6 +19,10 @@ target_compile_options (${MOD} PRIVATE
 
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/vector.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/vector_functions.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/filters/filter.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/scene/scene.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/defs/defs.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_arc.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_arrowhead.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_bezier_arc.cpp"
@@ -46,5 +50,10 @@ target_sources (${MOD} PRIVATE
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/include"
    "${CMAKE_CURRENT_SOURCE_DIR}/../font/freetype-2.10.2/include")
+
+# Pre-compiling the main header speeds up compilation and eliminates the need to include it in source files.
+
+target_precompile_headers(${MOD} PRIVATE
+   vector.h)
 
 target_link_libraries (${MOD} PRIVATE "m")

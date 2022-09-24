@@ -35,7 +35,21 @@ typedef struct rkVectorShape {
 
 static void generate_supershape(objVectorShape *Vector)
 {
-   DOUBLE scale = Vector->Radius;
+   DOUBLE cx = Vector->CX, cy = Vector->CY;
+
+   if (Vector->Dimensions & DMF_RELATIVE_CENTER_X) {
+      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) cx *= Vector->ParentView->vpFixedWidth;
+      else if (Vector->ParentView->vpViewWidth > 0) cx *= Vector->ParentView->vpViewWidth;
+      else cx *= Vector->Scene->PageWidth;
+   }
+
+   if (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) {
+      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) cy *= Vector->ParentView->vpFixedHeight;
+      else if (Vector->ParentView->vpViewHeight > 0) cy *= Vector->ParentView->vpViewHeight;
+      else cy *= Vector->Scene->PageHeight;
+   }
+
+   const DOUBLE scale = Vector->Radius;
    DOUBLE rescale = 0;
    DOUBLE tscale = Vector->Transform.scale();
 
@@ -121,37 +135,10 @@ static void generate_supershape(objVectorShape *Vector)
 
    agg::trans_affine transform;
    if (rescale != scale) transform.scale(scale / rescale);
-   transform.translate(Vector->Radius, Vector->Radius);
+   transform.translate(cx, cy);
    Vector->BasePath.transform(transform);
-}
 
-//****************************************************************************
-
-static void get_super_xy(objVectorShape *Vector)
-{
-   DOUBLE cx = Vector->CX, cy = Vector->CY;
-   DOUBLE radius = Vector->Radius;
-
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_X) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) cx *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) cx *= Vector->ParentView->vpViewWidth;
-      else cx *= Vector->Scene->PageWidth;
-   }
-
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) cy *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) cy *= Vector->ParentView->vpViewHeight;
-      else cy *= Vector->Scene->PageHeight;
-   }
-
-   if (Vector->Dimensions & DMF_RELATIVE_RADIUS) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) radius *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) radius *= Vector->ParentView->vpViewWidth;
-      else radius *= Vector->Scene->PageWidth;
-   }
-
-   Vector->FinalX = cx - radius;
-   Vector->FinalY = cy - radius;
+   bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
 //****************************************************************************
@@ -246,7 +233,7 @@ static ERROR SUPER_SET_CenterX(objVectorShape *Self, Variable *Value)
 
    Self->CX = val;
 
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -281,7 +268,7 @@ static ERROR SUPER_SET_CenterY(objVectorShape *Self, Variable *Value)
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
 
    Self->CY = val;
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 

@@ -26,14 +26,13 @@ static void generate_polygon(objVectorPoly *Vector)
    get_parent_size(Vector, view_width, view_height);
 
    if ((Vector->Points) and (Vector->TotalPoints >= 2)) {
-      DOUBLE top = DBL_MAX, bottom = DBL_MIN; // This is for caching the polygon boundary.
-      DOUBLE left = DBL_MAX, right = DBL_MIN;
-
       DOUBLE x = Vector->Points[0].X;
       DOUBLE y = Vector->Points[0].Y;
       if (Vector->Points[0].XRelative) x *= view_width;
       if (Vector->Points[0].YRelative) y *= view_height;
       Vector->BasePath.move_to(x, y);
+
+      DOUBLE min_x = x, max_x = x, min_y = y, max_y = y;
 
       for (LONG i=1; i < Vector->TotalPoints; i++) {
          x = Vector->Points[i].X;
@@ -41,20 +40,25 @@ static void generate_polygon(objVectorPoly *Vector)
          if (Vector->Points[i].XRelative) x *= view_width;
          if (Vector->Points[i].YRelative) y *= view_height;
 
-         if (Vector->Points[i].X < left)   left   = x;
-         if (Vector->Points[i].Y < top)    top    = y;
-         if (Vector->Points[i].X > right)  right  = x;
-         if (Vector->Points[i].Y > bottom) bottom = y;
+         if (x < min_x) min_x = x;
+         if (y < min_y) min_y = y;
+         if (x > max_x) max_x = x;
+         if (y > max_y) max_y = y;
          Vector->BasePath.line_to(x, y);
       }
 
       if ((Vector->TotalPoints > 2) and (Vector->Closed)) Vector->BasePath.close_polygon();
 
-      // Cache the polygon boundary values.
-      Vector->X1 = left;
-      Vector->Y1 = top;
-      Vector->X2 = right;
-      Vector->Y2 = bottom;
+      Vector->BX1 = min_x;
+      Vector->BY1 = min_y;
+      Vector->BX2 = max_x;
+      Vector->BY2 = max_y;
+   }
+   else {
+      Vector->BX1 = 0;
+      Vector->BY1 = 0;
+      Vector->BX2 = 0;
+      Vector->BY2 = 0;
    }
 }
 
@@ -140,12 +144,12 @@ static ERROR POLYGON_Move(objVectorPoly *Self, struct acMove *Args)
       Self->Points[i].Y += Args->DeltaY;
    }
 
-   // Alter the boundary.
-   Self->X1 += Args->DeltaX;
-   Self->Y1 += Args->DeltaY;
-   Self->X2 += Args->DeltaX;
-   Self->Y2 += Args->DeltaY;
-   mark_dirty(Self, RC_TRANSFORM);
+   Self->BX1 += Args->DeltaX;
+   Self->BY1 += Args->DeltaY;
+   Self->BX2 += Args->DeltaX;
+   Self->BY2 += Args->DeltaY;
+
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -175,25 +179,25 @@ static ERROR POLYGON_MoveToPoint(objVectorPoly *Self, struct acMoveToPoint *Args
    // The provided (X,Y) coordinates will be treated as the polygon's new central position.
 
    if (Args->Flags & MTF_X) {
-      DOUBLE center_x = (Self->X2 - Self->X1) * 0.5;
+      DOUBLE center_x = (Self->BX2 - Self->BX1) * 0.5;
       DOUBLE xchange = Args->X - center_x;
       for (i=0; i < Self->TotalPoints; i++) {
          Self->Points[i].X += xchange;
          Self->Points[i].XRelative = (Args->Flags & MTF_RELATIVE) ? TRUE : FALSE;
       }
-      Self->X1 += xchange; // Alter the boundary.
-      Self->X2 += xchange;
+      Self->BX1 += xchange;
+      Self->BX2 += xchange;
    }
 
    if (Args->Flags & MTF_Y) {
-      DOUBLE center_y = (Self->Y2 - Self->Y1) * 0.5;
+      DOUBLE center_y = (Self->BY2 - Self->BY1) * 0.5;
       DOUBLE ychange = Args->Y - center_y;
       for (i=0; i < Self->TotalPoints; i++) Self->Points[i].Y += ychange;
-      Self->Y1 += ychange; // Alter the boundary.
-      Self->Y2 += ychange;
+      Self->BY1 += ychange;
+      Self->BY2 += ychange;
    }
 
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -225,8 +229,8 @@ static ERROR POLYGON_Resize(objVectorPoly *Self, struct acResize *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   DOUBLE current_width = Self->X2 - Self->X1;
-   DOUBLE current_height = Self->Y2 - Self->Y1;
+   DOUBLE current_width = Self->BX2 - Self->BX1;
+   DOUBLE current_height = Self->BY2 - Self->BY1;
    DOUBLE xratio = (Args->Width > 0) ? (current_width / Args->Width) : current_width;
    DOUBLE yratio = (Args->Height > 0) ? (current_height / Args->Height) : current_height;
 

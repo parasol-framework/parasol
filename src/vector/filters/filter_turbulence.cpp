@@ -47,6 +47,10 @@ class TurbulenceEffect : public VectorEffect {
    UBYTE Type;
    bool Stitch;
 
+   void xml(std::stringstream &Stream) { // TODO: Support exporting attributes
+      Stream << "feTurbulence";
+   }
+
    DOUBLE noise2(UBYTE Channel, DOUBLE VX, DOUBLE VY) {
       LONG bx0, bx1, by0, by1, b00, b10, b01, b11;
       DOUBLE rx0, rx1, ry0, ry1, *q, sx, sy, a, b, t, u, v;
@@ -163,6 +167,7 @@ public:
       WrapY        = 0;
       FX           = 0;
       FY           = 0;
+      EffectName   = "feTurbulence";
 
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
@@ -259,22 +264,22 @@ public:
       else Error = ERR_AllocMemory;
    }
 
-   void apply(objVectorFilter *Filter) {
-      if (Bitmap->BytesPerPixel != 4) return;
+   void apply(objVectorFilter *Filter, filter_state &State) {
+      if (OutBitmap->BytesPerPixel != 4) return;
 
-      const UBYTE A = Bitmap->ColourFormat->AlphaPos>>3;
-      const UBYTE R = Bitmap->ColourFormat->RedPos>>3;
-      const UBYTE G = Bitmap->ColourFormat->GreenPos>>3;
-      const UBYTE B = Bitmap->ColourFormat->BluePos>>3;
+      const UBYTE A = OutBitmap->ColourFormat->AlphaPos>>3;
+      const UBYTE R = OutBitmap->ColourFormat->RedPos>>3;
+      const UBYTE G = OutBitmap->ColourFormat->GreenPos>>3;
+      const UBYTE B = OutBitmap->ColourFormat->BluePos>>3;
 
-      UBYTE *data = Bitmap->Data + (Bitmap->Clip.Left<<2) + (Bitmap->Clip.Top * Bitmap->LineWidth);
+      UBYTE *data = OutBitmap->Data + (OutBitmap->Clip.Left<<2) + (OutBitmap->Clip.Top * OutBitmap->LineWidth);
 
-      const LONG height = Bitmap->Clip.Bottom - Bitmap->Clip.Top;
-      const LONG width = Bitmap->Clip.Right - Bitmap->Clip.Left;
+      const LONG height = OutBitmap->Clip.Bottom - OutBitmap->Clip.Top;
+      const LONG width = OutBitmap->Clip.Right - OutBitmap->Clip.Left;
 
       if (Stitch) {
          for (LONG y=0; y < height; y++) {
-            UBYTE *pixel = data + (Bitmap->LineWidth * y);
+            UBYTE *pixel = data + (OutBitmap->LineWidth * y);
             for (LONG x=0; x < width; x++) {
                DOUBLE r = turbulence_stitch(0, x, y);
                DOUBLE g = turbulence_stitch(1, x, y);
@@ -292,7 +297,7 @@ public:
       }
       else {
          for (LONG y=0; y < height; y++) {
-            UBYTE *pixel = data + (Bitmap->LineWidth * y);
+            UBYTE *pixel = data + (OutBitmap->LineWidth * y);
             for (LONG x=0; x < width; x++) {
                DOUBLE r = turbulence(0, x, y);
                DOUBLE g = turbulence(1, x, y);

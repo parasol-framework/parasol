@@ -802,18 +802,18 @@ ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
             if (cplist[parent_index].SurfaceID IS Self->ParentID) break;
          }
 
-         struct ClipRectangle region_b = {
+         ClipRectangle region_b = {
             .Left   = cplist[parent_index].Left + oldx,
+            .Top    = cplist[parent_index].Top + oldy,
             .Right  = (cplist[parent_index].Left + oldx) + oldw,
-            .Bottom = (cplist[parent_index].Top + oldy) + oldh,
-            .Top    = cplist[parent_index].Top + oldy
+            .Bottom = (cplist[parent_index].Top + oldy) + oldh
          };
 
-         struct ClipRectangle region_a = {
+         ClipRectangle region_a = {
             .Left   = cplist[index].Left,
+            .Top    = cplist[index].Top,
             .Right  = cplist[index].Right,
-            .Bottom = cplist[index].Bottom,
-            .Top    = cplist[index].Top
+            .Bottom = cplist[index].Bottom
          };
 
          if (Self->BitmapOwnerID IS Self->Head.UID) {
@@ -1564,9 +1564,9 @@ ERROR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *
 
       ClipRectangle clip = {
          .Left   = list[i].Left,
+         .Top    = list[i].Top,
          .Right  = list[i].Right,
-         .Bottom = list[i].Bottom,
-         .Top    = list[i].Top
+         .Bottom = list[i].Bottom
       };
       restrict_region_to_parents(list, i, &clip, FALSE);
 
@@ -2265,9 +2265,9 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
 
       ClipRectangle expose = {
          .Left   = list_root.Left,
+         .Top    = list_root.Top,
          .Right  = list_root.Right,
-         .Bottom = list_root.Bottom,
-         .Top    = list_root.Top
+         .Bottom = list_root.Bottom
       };
 
       if (restrict_region_to_parents(list, i, &expose, TRUE) IS -1) {

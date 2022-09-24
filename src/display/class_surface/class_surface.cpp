@@ -191,9 +191,9 @@ static void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIn
       else {
          ClipRectangle listclip = {
             .Left   = list[i].Left,
+            .Top    = list[i].Top,
             .Right  = list[i].Right,
-            .Bottom = list[i].Bottom,
-            .Top    = list[i].Top
+            .Bottom = list[i].Bottom
          };
 
          if (restrict_region_to_parents(list, i, &listclip, FALSE) IS -1); // Skip
@@ -2814,7 +2814,7 @@ static void draw_region(objSurface *Self, objSurface *Parent, objBitmap *Bitmap)
 
    // Take a copy of the current clipping and offset values
 
-   struct ClipRectangle clip = Bitmap->Clip;
+   ClipRectangle clip = Bitmap->Clip;
    LONG xoffset = Bitmap->XOffset;
    LONG yoffset = Bitmap->YOffset;
 

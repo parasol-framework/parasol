@@ -23,6 +23,12 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
   enum("WH", { start=1, comment="Events for WindowHook()" },
     "CLOSE")
 
+  enum("CS", { start=1, comment="Colour space options." },
+    "SRGB: The default colour-space is sRGB.",
+    "LINEAR_RGB: Linear RGB is used to improve colour balance in blending operations.",
+    "CIE_LAB: Cartesian L*a*b* colour space defined by CIE 15.",
+    "CIE_LCH: Polar L*CHab colour space defined by CIE 15.")
+
   flags("EXF", { comment="Optional flags for the ExposeSurface() function." },
     "CHILDREN: If set, all child surfaces that intersect with exposed region will be included in the expose operation.",
     "REDRAW_VOLATILE: Redraw every volatile object that intersects with the expose region, including internal volatile children.",
@@ -268,9 +274,9 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     int Height        # Height
     # Note: The order of the following fields must match 'struct ClipRectangle'
     int Left          # Absolute X
+    int Top           # Absolute Y
     int Right         # Absolute right coordinate
     int Bottom        # Absolute bottom coordinate
-    int Top           # Absolute Y
     short Level       # Level number within the hierarchy
     # For drwCopySurface()
     short LineWidth    # [applies to the bitmap owner]
@@ -409,6 +415,7 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     struct(RGB8) TransRGB       # The transparent colour of the bitmap, in RGB format.
     struct(RGB8) BkgdRGB        # Background colour (for clearing, resizing)
     int BkgdIndex               # Colour index or packed colour of the background.
+    int(CS) ColourSpace         # Defines the colour space for RGB values.
   ]],
   [[
    ULONG  *Gradients;
