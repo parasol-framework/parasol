@@ -51,7 +51,7 @@ static const FieldArray clColourFields[] = {
 
 //****************************************************************************
 
-static ERROR init_colour(void)
+ERROR init_colour(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorColour,
       FID_BaseClassID|TLONG, ID_VECTORCOLOUR,

@@ -223,8 +223,7 @@ public:
        });
    }
 
-   void average(DOUBLE r=ONETHIRD, DOUBLE g=ONETHIRD, DOUBLE b=ONETHIRD)
-   {
+   void average(DOUBLE r=ONETHIRD, DOUBLE g=ONETHIRD, DOUBLE b=ONETHIRD) {
        apply(MATRIX {
           r, g, b, 0, 0,
           r, g, b, 0, 0,
@@ -233,8 +232,7 @@ public:
        });
    }
 
-   void invertAlpha()
-   {
+   void invertAlpha() {
       apply(MATRIX {
          1, 0, 0, 0, 0,
          0, 1, 0, 0, 0,
@@ -254,8 +252,7 @@ public:
       rotateColour(degrees, 1, 0);
    }
 
-   void rotateColour(DOUBLE degrees, LONG x, LONG y)
-   {
+   void rotateColour(DOUBLE degrees, LONG x, LONG y) {
       degrees *= DEG2RAD;
       auto mat = IDENTITY;
       mat[x + x * 5] = mat[y + y * 5] = cos(degrees);
@@ -264,18 +261,15 @@ public:
       apply(mat);
    }
 
-   void shearRed(DOUBLE green, DOUBLE blue)
-   {
+   void shearRed(DOUBLE green, DOUBLE blue) {
       shearColour( 0, 1, green, 2, blue );
    }
 
-   void shearGreen(DOUBLE red, DOUBLE blue)
-   {
+   void shearGreen(DOUBLE red, DOUBLE blue) {
       shearColour( 1, 0, red, 2, blue );
    }
 
-   void shearBlue(DOUBLE red, DOUBLE green)
-   {
+   void shearBlue(DOUBLE red, DOUBLE green) {
       shearColour( 2, 0, red, 1, green );
    }
 
@@ -298,8 +292,7 @@ public:
       values[3] = a;
    }
 
-   ERROR initHue()
-   {
+   ERROR initHue() {
       const DOUBLE greenRotation = 39.182655;
       UBYTE init = false;
 
@@ -335,9 +328,15 @@ class ColourEffect : public VectorEffect {
    class ColourMatrix *Matrix;
    UBYTE Mode;
 
+   void xml(std::stringstream &Stream) { // TODO: Support exporting attributes
+      Stream << "feColorMatrix";
+   }
+
 public:
    ColourEffect(struct rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
       parasol::Log log(__FUNCTION__);
+
+      EffectName = "feColorMatrix";
 
       MATRIX m = IDENTITY;
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -358,7 +357,6 @@ public:
                   case SVF_HUE:           Mode = CM_HUE; break;
                   case SVF_COLOURISE:     Mode = CM_COLOURISE; break;
                   case SVF_DESATURATE:    Mode = CM_DESATURATE; break;
-                  // These are special modes that are not included by SVG
                   case SVF_PROTANOPIA:    Mode = CM_MATRIX; m = MATRIX { 0.567,0.433,0,0,0, 0.558,0.442,0,0,0, 0,0.242,0.758,0,0, 0,0,0,1,0 }; break;
                   case SVF_PROTANOMALY:   Mode = CM_MATRIX; m = MATRIX { 0.817,0.183,0,0,0, 0.333,0.667,0,0,0, 0,0.125,0.875,0,0, 0,0,0,1,0 }; break;
                   case SVF_DEUTERANOPIA:  Mode = CM_MATRIX; m = MATRIX { 0.625,0.375,0,0,0, 0.7,0.3,0,0,0, 0,0.3,0.7,0,0, 0,0,0,1,0 }; break;
@@ -408,21 +406,27 @@ public:
       else Matrix = matrix; // Will be deleted in free_effect_resources()
    }
 
-   void apply(objVectorFilter *Filter) {
-      if (Bitmap->BytesPerPixel != 4) return;
+   void apply(objVectorFilter *Filter, struct filter_state &State) {
+      if (OutBitmap->BytesPerPixel != 4) return;
       if (!Matrix) return;
 
-      const UBYTE A = Bitmap->ColourFormat->AlphaPos>>3;
-      const UBYTE R = Bitmap->ColourFormat->RedPos>>3;
-      const UBYTE G = Bitmap->ColourFormat->GreenPos>>3;
-      const UBYTE B = Bitmap->ColourFormat->BluePos>>3;
+      const UBYTE A = OutBitmap->ColourFormat->AlphaPos>>3;
+      const UBYTE R = OutBitmap->ColourFormat->RedPos>>3;
+      const UBYTE G = OutBitmap->ColourFormat->GreenPos>>3;
+      const UBYTE B = OutBitmap->ColourFormat->BluePos>>3;
 
       ColourMatrix &matrix = *Matrix;
 
-      UBYTE *data = Bitmap->Data + (Bitmap->Clip.Left<<2) + (Bitmap->Clip.Top * Bitmap->LineWidth);
-      for (LONG y=0; y < Bitmap->Clip.Bottom - Bitmap->Clip.Top; y++) {
-         UBYTE *pixel = data + (Bitmap->LineWidth * y);
-         for (LONG x=0; x < Bitmap->Clip.Right - Bitmap->Clip.Left; x++) {
+      objBitmap *inBmp;
+      if (get_source_bitmap(Filter, &inBmp, SourceType, InputID, false)) return;
+
+      auto out_line = (UBYTE *)(OutBitmap->Data + (OutBitmap->Clip.Left<<2) + (OutBitmap->Clip.Top * OutBitmap->LineWidth));
+
+      UBYTE *in_line = inBmp->Data + (inBmp->Clip.Left<<2) + (inBmp->Clip.Top * inBmp->LineWidth);
+      for (LONG y=0; y < inBmp->Clip.Bottom - inBmp->Clip.Top; y++) {
+         UBYTE *pixel = in_line;
+         UBYTE *out = out_line;
+         for (LONG x=0; x < inBmp->Clip.Right - inBmp->Clip.Left; x++) {
             DOUBLE a = pixel[A];
             DOUBLE r = pixel[R];
             DOUBLE g = pixel[G];
@@ -433,24 +437,27 @@ public:
             LONG b2 = 0.5 + (r * matrix[10]) + (g * matrix[11]) + (b * matrix[12]) + (a * matrix[13]) + matrix[14];
             LONG a2 = 0.5 + (r * matrix[15]) + (g * matrix[16]) + (b * matrix[17]) + (a * matrix[18]) + matrix[19];
 
-            if (a2 < 0) pixel[A] = 0;
-            else if (a2 > 255) pixel[A] = 255;
-            else pixel[A] = a2;
+            if (a2 < 0) out[A] = 0;
+            else if (a2 > 255) out[A] = 255;
+            else out[A] = a2;
 
-            if (r2 < 0)   pixel[R] = 0;
-            else if (r2 > 255) pixel[R] = 255;
-            else pixel[R] = r2;
+            if (r2 < 0)   out[R] = 0;
+            else if (r2 > 255) out[R] = 255;
+            else out[R] = r2;
 
-            if (g2 < 0) pixel[G] = 0;
-            else if (g2 > 255) pixel[G] = 255;
-            else pixel[G] = g2;
+            if (g2 < 0) out[G] = 0;
+            else if (g2 > 255) out[G] = 255;
+            else out[G] = g2;
 
-            if (b2 < 0) pixel[B] = 0;
-            else if (b2 > 255) pixel[B] = 255;
-            else pixel[B] = b2;
+            if (b2 < 0) out[B] = 0;
+            else if (b2 > 255) out[B] = 255;
+            else out[B] = b2;
 
             pixel += 4;
+            out += 4;
          }
+         out_line += OutBitmap->LineWidth;
+         in_line += inBmp->LineWidth;
       }
    }
 

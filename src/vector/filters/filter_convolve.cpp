@@ -1,3 +1,26 @@
+/*
+
+TODO: As per the SVG spec...
+
+Because they operate on pixels, matrix convolutions are inherently resolution-dependent. To make
+‘feConvolveMatrix’ produce resolution-independent results, an explicit value should be provided for either
+the ‘filterRes’ attribute on the ‘filter’ element and/or attribute ‘kernelUnitLength’.
+
+‘kernelUnitLength’, in combination with the other attributes, defines an implicit pixel grid in the filter
+effects coordinate system (i.e., the coordinate system established by the ‘primitiveUnits’ attribute).
+If the pixel grid established by ‘kernelUnitLength’ is not scaled to match the pixel grid established by
+attribute ‘filterRes’ (implicitly or explicitly), then the input image will be temporarily rescaled to
+match its pixels with ‘kernelUnitLength’. The convolution happens on the resampled image. After applying
+the convolution, the image is resampled back to the original resolution.
+
+When the image must be resampled to match the coordinate system defined by ‘kernelUnitLength’ prior to
+convolution, or resampled to match the device coordinate system after convolution, it is recommended that
+high quality viewers make use of appropriate interpolation techniques, for example bilinear or bicubic.
+Depending on the speed of the available interpolents, this choice may be affected by the ‘image-rendering’
+property setting. Note that implementations might choose approaches that minimize or eliminate resampling
+when not necessary to produce proper results, such as when the document is zoomed out such that
+‘kernelUnitLength’ is considerably smaller than a device pixel.
+*/
 
 #include <array>
 
@@ -16,7 +39,11 @@ class ConvolveEffect : public VectorEffect {
    bool PreserveAlpha;
    std::array<DOUBLE, MAX_DIM * MAX_DIM> KernelMatrix;
 
-   inline UBYTE * getPixel(LONG X, LONG Y) const {
+   void xml(std::stringstream &Stream) { // TODO: Support exporting attributes
+      Stream << "feConvolve";
+   }
+
+   inline UBYTE * getPixel(objBitmap *Bitmap, LONG X, LONG Y) const {
       if ((X >= Bitmap->Clip.Left) and (X < Bitmap->Clip.Right) and
           (Y >= Bitmap->Clip.Top) and (Y < Bitmap->Clip.Bottom)) {
          return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
@@ -41,15 +68,15 @@ class ConvolveEffect : public VectorEffect {
       }
    }
 
-   void processClipped(UBYTE *output, LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) {
-      const UBYTE A = Bitmap->ColourFormat->AlphaPos>>3;
-      const UBYTE R = Bitmap->ColourFormat->RedPos>>3;
-      const UBYTE G = Bitmap->ColourFormat->GreenPos>>3;
-      const UBYTE B = Bitmap->ColourFormat->BluePos>>3;
+   void processClipped(objBitmap *InputBitmap, UBYTE *output, LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) {
+      const UBYTE A = InputBitmap->ColourFormat->AlphaPos>>3;
+      const UBYTE R = InputBitmap->ColourFormat->RedPos>>3;
+      const UBYTE G = InputBitmap->ColourFormat->GreenPos>>3;
+      const UBYTE B = InputBitmap->ColourFormat->BluePos>>3;
 
       const DOUBLE factor = 1.0 / Divisor;
 
-      UBYTE *input = Bitmap->Data + (pTop * Bitmap->LineWidth);
+      UBYTE *input = InputBitmap->Data + (pTop * InputBitmap->LineWidth);
       UBYTE *outline = output;
       for (LONG y=pTop; y < pBottom; y++) {
          UBYTE *out = outline;
@@ -61,7 +88,7 @@ class ConvolveEffect : public VectorEffect {
             UBYTE kv = 0;
             for (int fy=y-TargetY; fy < y+FilterHeight-TargetY; fy++) {
                for (int fx=x-TargetX; fx < x+FilterWidth-TargetX; fx++) {
-                  UBYTE *pixel = getPixel(fx, fy);
+                  UBYTE *pixel = getPixel(InputBitmap, fx, fy);
                   if (pixel) {
                      r += pixel[R] * KernelMatrix[kv];
                      g += pixel[G] * KernelMatrix[kv];
@@ -82,25 +109,25 @@ class ConvolveEffect : public VectorEffect {
             else out[A] = (input + (x<<2))[A];
             out += 4;
          }
-         input   += Bitmap->LineWidth;
-         outline += (Bitmap->Clip.Right - Bitmap->Clip.Left)<<2;
+         input   += InputBitmap->LineWidth;
+         outline += (OutBitmap->Clip.Right - OutBitmap->Clip.Left)<<2;
       }
    }
 
    // This algorithm is unclipped and performs no edge detection, so is unsafe to use near the edge of the bitmap.
 
-   void processFast(UBYTE *output, LONG Left, LONG Top, LONG Right, LONG Bottom) {
-      const UBYTE A = Bitmap->ColourFormat->AlphaPos>>3;
-      const UBYTE R = Bitmap->ColourFormat->RedPos>>3;
-      const UBYTE G = Bitmap->ColourFormat->GreenPos>>3;
-      const UBYTE B = Bitmap->ColourFormat->BluePos>>3;
+   void processFast(objBitmap *InputBitmap, UBYTE *output, LONG Left, LONG Top, LONG Right, LONG Bottom) {
+      const UBYTE A = InputBitmap->ColourFormat->AlphaPos>>3;
+      const UBYTE R = InputBitmap->ColourFormat->RedPos>>3;
+      const UBYTE G = InputBitmap->ColourFormat->GreenPos>>3;
+      const UBYTE B = InputBitmap->ColourFormat->BluePos>>3;
 
       const DOUBLE factor = 1.0 / Divisor;
 
-      UBYTE *input = Bitmap->Data + (Top * Bitmap->LineWidth);
+      UBYTE *input = InputBitmap->Data + (Top * InputBitmap->LineWidth);
       for (LONG y=Top; y < Bottom; y++) {
          UBYTE *out = output;
-         UBYTE *filterEdge = Bitmap->Data + (y-TargetY) * Bitmap->LineWidth;
+         UBYTE *filterEdge = InputBitmap->Data + (y-TargetY) * InputBitmap->LineWidth;
          for (LONG x=Left; x < Right; x++) {
             DOUBLE r = 0.0, g = 0.0, b = 0.0, a = 0.0;
             UBYTE kv = 0;
@@ -117,7 +144,7 @@ class ConvolveEffect : public VectorEffect {
                   pixel += 4;
                   kv++;
                }
-               currentLine += Bitmap->LineWidth;
+               currentLine += InputBitmap->LineWidth;
             }
 
             LONG lr = F2I((factor * r) + Bias);
@@ -130,8 +157,8 @@ class ConvolveEffect : public VectorEffect {
             else out[A] = (input + (x<<2))[A];
             out += 4;
          }
-         input += Bitmap->LineWidth;
-         output += (Bitmap->Clip.Right - Bitmap->Clip.Left)<<2;
+         input  += InputBitmap->LineWidth;
+         output += (InputBitmap->Clip.Right - InputBitmap->Clip.Left)<<2;
       }
    }
 
@@ -148,6 +175,7 @@ public:
       Bias          = 0;
       EdgeMode      = EM_DUPLICATE;
       PreserveAlpha = false;
+      EffectName    = "feConvolve";
 
       LONG m = 0;
       LONG tx = -1;
@@ -195,7 +223,9 @@ public:
                break;
 
             // The modifications will apply to R,G,B only when preserveAlpha is true.
-            case SVF_PRESERVEALPHA: if ((!StrMatch("true", val)) or (!StrMatch("1", val))) PreserveAlpha = true;  break;
+            case SVF_PRESERVEALPHA:
+               PreserveAlpha = (!StrMatch("true", val)) or (!StrMatch("1", val));
+               break;
 
             default: fe_default(Filter, this, hash, val); break;
          }
@@ -233,40 +263,45 @@ public:
       log.trace("Convolve Size: (%d,%d), Divisor: %.2f, Bias: %.2f", FilterWidth, FilterHeight, Divisor, Bias);
    }
 
-   void apply(objVectorFilter *Filter) {
-      if (Bitmap->BytesPerPixel != 4) return;
+   void apply(objVectorFilter *Filter, filter_state &State) {
+      if (OutBitmap->BytesPerPixel != 4) return;
 
-      const LONG canvasWidth = Bitmap->Clip.Right - Bitmap->Clip.Left;
-      const LONG canvasHeight = Bitmap->Clip.Bottom - Bitmap->Clip.Top;
+      const LONG canvasWidth = OutBitmap->Clip.Right - OutBitmap->Clip.Left;
+      const LONG canvasHeight = OutBitmap->Clip.Bottom - OutBitmap->Clip.Top;
 
       if (canvasWidth * canvasHeight > 4096 * 4096) return; // Bail on really large bitmaps.
 
-      UBYTE *output = new (std::nothrow) UBYTE[canvasWidth * canvasHeight * Bitmap->BytesPerPixel];
+      UBYTE *output = new (std::nothrow) UBYTE[canvasWidth * canvasHeight * OutBitmap->BytesPerPixel];
       if (!output) return;
+
+      objBitmap *inBmp;
+      if (get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) return;
 
       if ((canvasWidth > FilterWidth*3) and (canvasHeight > FilterHeight*3)) {
          const LONG ew = FilterWidth>>1;
          const LONG eh = FilterHeight>>1;
-         processClipped(output,                       Bitmap->Clip.Left,     Bitmap->Clip.Top, Bitmap->Clip.Left+ew,  Bitmap->Clip.Bottom); // Left
-         processClipped(output+((canvasWidth-ew)*4),  Bitmap->Clip.Right-ew, Bitmap->Clip.Top, Bitmap->Clip.Right,    Bitmap->Clip.Bottom); // Right
-         processClipped(output+(ew*4),                Bitmap->Clip.Left+ew,  Bitmap->Clip.Top, Bitmap->Clip.Right-ew, Bitmap->Clip.Top+eh); // Top
-         processClipped(output+((canvasHeight-eh)*4*canvasWidth), Bitmap->Clip.Left+ew,  Bitmap->Clip.Bottom-eh, Bitmap->Clip.Right-ew, Bitmap->Clip.Bottom); // Bottom
+         processClipped(inBmp, output,                       OutBitmap->Clip.Left,     OutBitmap->Clip.Top, OutBitmap->Clip.Left+ew,  OutBitmap->Clip.Bottom); // Left
+         processClipped(inBmp, output+((canvasWidth-ew)*4),  OutBitmap->Clip.Right-ew, OutBitmap->Clip.Top, OutBitmap->Clip.Right,    OutBitmap->Clip.Bottom); // Right
+         processClipped(inBmp, output+(ew*4),                OutBitmap->Clip.Left+ew,  OutBitmap->Clip.Top, OutBitmap->Clip.Right-ew, OutBitmap->Clip.Top+eh); // Top
+         processClipped(inBmp, output+((canvasHeight-eh)*4*canvasWidth), OutBitmap->Clip.Left+ew,  OutBitmap->Clip.Bottom-eh, OutBitmap->Clip.Right-ew, OutBitmap->Clip.Bottom); // Bottom
          // Center
-         processFast(output+(ew*4)+(canvasWidth*eh*4), Bitmap->Clip.Left+ew, Bitmap->Clip.Top+eh, Bitmap->Clip.Right-ew, Bitmap->Clip.Bottom-eh);
+         processFast(inBmp, output+(ew*4)+(canvasWidth*eh*4), OutBitmap->Clip.Left+ew, OutBitmap->Clip.Top+eh, OutBitmap->Clip.Right-ew, OutBitmap->Clip.Bottom-eh);
       }
-      else processClipped(output, Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom);
+      else processClipped(inBmp, output, OutBitmap->Clip.Left, OutBitmap->Clip.Top, OutBitmap->Clip.Right, OutBitmap->Clip.Bottom);
 
       // Copy the resulting output back to the bitmap.
 
-      ULONG *pixel = (ULONG *)(Bitmap->Data + (Bitmap->Clip.Left<<2) + (Bitmap->Clip.Top * Bitmap->LineWidth));
+      ULONG *pixel = (ULONG *)(OutBitmap->Data + (OutBitmap->Clip.Left<<2) + (OutBitmap->Clip.Top * OutBitmap->LineWidth));
       ULONG *src   = (ULONG *)output;
       for (LONG y=0; y < canvasHeight; y++) {
-         for (LONG x=0; x < canvasWidth; x++) pixel[x] = src[x];
-         pixel += Bitmap->LineWidth>>2;
+         CopyMemory(src, pixel, 4 * canvasWidth);
+         pixel += OutBitmap->LineWidth>>2;
          src += canvasWidth;
       }
 
       delete [] output;
+
+      demultiply_bitmap(inBmp);
    }
 
    virtual ~ConvolveEffect() { }

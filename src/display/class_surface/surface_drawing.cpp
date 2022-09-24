@@ -777,9 +777,9 @@ void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD In
 
       ClipRectangle expose = {
          .Left   = clip->Left, // Take a copy of the expose coordinates
+         .Top    = clip->Top,
          .Right  = clip->Right,
-         .Bottom = clip->Bottom,
-         .Top    = clip->Top
+         .Bottom = clip->Bottom
       };
 
       // Check the visibility of this layer and its parents
@@ -829,9 +829,9 @@ void copy_bkgd(SurfaceList *list, WORD Index, WORD End, WORD Master, WORD Left, 
       else {
          ClipRectangle listclip = {
             .Left   = list[i].Left,
+            .Top    = list[i].Top,
             .Right  = list[i].Right,
-            .Bottom = list[i].Bottom,
-            .Top    = list[i].Top
+            .Bottom = list[i].Bottom
          };
 
          if ((listclip.Left < Right) and (listclip.Top < Bottom) and (listclip.Right > Left) and (listclip.Bottom > Top)) {
@@ -863,9 +863,9 @@ void copy_bkgd(SurfaceList *list, WORD Index, WORD End, WORD Master, WORD Left, 
 
    ClipRectangle expose = {
       .Left   = Left,
+      .Top    = Top,
       .Right  = Right,
-      .Bottom = Bottom,
-      .Top    = Top
+      .Bottom = Bottom
    };
    if (restrict_region_to_parents(list, Index, &expose, FALSE) IS -1) return;
 

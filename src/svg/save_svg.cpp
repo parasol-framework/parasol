@@ -171,13 +171,10 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
                }
             }
 
-            objXML *effect_xml;
-            if ((!error) and (!GetPointer(filter, FID_EffectXML, &effect_xml))) {
-               STRING effects;
-               if (!GetString(effect_xml, FID_Statement, &effects)) {
-                  error = xmlInsertXML(XML, new_index, XMI_CHILD, effects, NULL);
-                  FreeResource(effects);
-               }
+            STRING effect_xml;
+            if ((!error) and (!GetString(filter, FID_EffectXML, &effect_xml))) {
+               error = xmlInsertXML(XML, new_index, XMI_CHILD, effect_xml, NULL);
+               FreeResource(effect_xml);
             }
          }
          else if (def->ClassID IS ID_VECTORTRANSITION) {

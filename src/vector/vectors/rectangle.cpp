@@ -14,32 +14,6 @@ VectorRectangle extends the @Vector class with the ability to generate rectangul
 static void generate_rectangle(objVectorRectangle *Vector)
 {
    DOUBLE width = Vector->rWidth, height = Vector->rHeight;
-
-   if (Vector->rDimensions & (DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT)) {
-      if (Vector->rDimensions & DMF_RELATIVE_WIDTH) width *= get_parent_width(Vector);
-      if (Vector->rDimensions & DMF_RELATIVE_HEIGHT) height *= get_parent_height(Vector);
-   }
-
-   if ((Vector->rRoundX) or (Vector->rRoundY)) {
-      agg::rounded_rect aggrect(0, 0, width, height, Vector->rRoundX);
-      if (Vector->rRoundX != Vector->rRoundY) aggrect.radius(Vector->rRoundX, Vector->rRoundY);
-      aggrect.normalize_radius(); // Required because???
-
-      Vector->BasePath.concat_path(aggrect);
-   }
-   else {
-      Vector->BasePath.move_to(0, 0);
-      Vector->BasePath.line_to(width, 0);
-      Vector->BasePath.line_to(width, height);
-      Vector->BasePath.line_to(0, height);
-      Vector->BasePath.close_polygon();
-   }
-}
-
-//****************************************************************************
-
-static void get_rectangle_xy(objVectorRectangle *Vector)
-{
    DOUBLE x = Vector->rX, y = Vector->rY;
 
    if (Vector->rDimensions & (DMF_RELATIVE_X|DMF_RELATIVE_Y)) {
@@ -47,8 +21,30 @@ static void get_rectangle_xy(objVectorRectangle *Vector)
       if (Vector->rDimensions & DMF_RELATIVE_Y) y *= get_parent_height(Vector);
    }
 
-   Vector->FinalX = x;
-   Vector->FinalY = y;
+   if (Vector->rDimensions & (DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT)) {
+      if (Vector->rDimensions & DMF_RELATIVE_WIDTH) width *= get_parent_width(Vector);
+      if (Vector->rDimensions & DMF_RELATIVE_HEIGHT) height *= get_parent_height(Vector);
+   }
+
+   if ((Vector->rRoundX) or (Vector->rRoundY)) {
+      agg::rounded_rect aggrect(x, y, x + width, y + height, Vector->rRoundX);
+      if (Vector->rRoundX != Vector->rRoundY) aggrect.radius(Vector->rRoundX, Vector->rRoundY);
+      aggrect.normalize_radius(); // Required because???
+
+      Vector->BasePath.concat_path(aggrect);
+   }
+   else {
+      Vector->BasePath.move_to(x, y);
+      Vector->BasePath.line_to(x+width, y);
+      Vector->BasePath.line_to(x+width, y+height);
+      Vector->BasePath.line_to(x, y+height);
+      Vector->BasePath.close_polygon();
+   }
+
+   Vector->BX1 = x;
+   Vector->BY1 = y;
+   Vector->BX2 = x + width;
+   Vector->BY2 = y + height;
 }
 
 /*****************************************************************************
@@ -65,7 +61,7 @@ static ERROR RECTANGLE_Move(objVectorRectangle *Self, struct acMove *Args)
 
    Self->rX += Args->DeltaX;
    Self->rY += Args->DeltaY;
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -85,7 +81,7 @@ static ERROR RECTANGLE_MoveToPoint(objVectorRectangle *Self, struct acMoveToPoin
    if (Args->Flags & MTF_Y) Self->rY = Args->Y;
    if (Args->Flags & MTF_RELATIVE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_X | DMF_RELATIVE_Y) & ~(DMF_FIXED_X | DMF_FIXED_Y);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_X | DMF_FIXED_Y) & ~(DMF_RELATIVE_X | DMF_RELATIVE_Y);
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -269,7 +265,7 @@ static ERROR RECTANGLE_SET_X(objVectorRectangle *Self, Variable *Value)
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->rX = val;
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -347,7 +343,7 @@ static ERROR RECTANGLE_SET_Y(objVectorRectangle *Self, Variable *Value)
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->rY = val;
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 

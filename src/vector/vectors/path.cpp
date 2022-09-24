@@ -16,11 +16,12 @@ static void generate_path(objVectorPath *Vector)
    // TODO: We may be able to drop our internal PathCommand type in favour of agg:path_storage (and
    // extend it if necessary).
    convert_to_aggpath(Vector->Commands, &Vector->BasePath);
+   bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
 //****************************************************************************
 
-static void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *BasePath)
+void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *BasePath)
 {
    PathCommand dummy = { 0, 0, 0, 0, 0, 0 };
    PathCommand &lp = dummy;
@@ -147,124 +148,6 @@ static void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storag
 
       lp = path;
    }
-}
-
-//****************************************************************************
-// Read a string-based series of vector commands and add them to Path.
-
-static ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
-{
-   parasol::Log log(__FUNCTION__);
-
-   PathCommand path;
-
-   UBYTE cmd = 0;
-   while (*Value) {
-      if ((*Value >= 'a') and (*Value <= 'z')) cmd = *Value++;
-      else if ((*Value >= 'A') and (*Value <= 'Z')) cmd = *Value++;
-      else if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-') or (*Value IS '+')); // Use the previous command
-      else { Value++; continue; }
-
-      ClearMemory(&path, sizeof(path));
-
-      switch (cmd) {
-         case 'M': case 'm': // MoveTo
-            Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'M') {
-               path.Type = PE_Move;
-               cmd = 'L'; // This is because the SVG standard requires that sequential coordinate pairs will be interpreted as line-to commands.
-            }
-            else {
-               path.Type = PE_MoveRel;
-               cmd = 'l';
-            }
-            path.Curved = FALSE;
-            break;
-
-         case 'L': case 'l': // LineTo
-            Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'L') path.Type = PE_Line;
-            else path.Type = PE_LineRel;
-            path.Curved = FALSE;
-            break;
-
-         case 'V': case 'v': // Vertical LineTo
-            Value = read_numseq(Value, &path.Y, TAGEND);
-            if (cmd IS 'V') path.Type = PE_VLine;
-            else path.Type = PE_VLineRel;
-            path.Curved = FALSE;
-            break;
-
-         case 'H': case 'h': // Horizontal LineTo
-            Value = read_numseq(Value, &path.X, TAGEND);
-            if (cmd IS 'H') path.Type = PE_HLine;
-            else path.Type = PE_LineRel;
-            path.Curved = FALSE;
-            break;
-
-         case 'Q': case 'q': // Quadratic Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'Q') path.Type = PE_QuadCurve;
-            else path.Type = PE_QuadCurveRel;
-            path.Curved = TRUE;
-            break;
-
-         case 'T': case 't': // Quadratic Smooth Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'T') path.Type = PE_QuadSmooth;
-            else path.Type = PE_QuadSmoothRel;
-            path.Curved = TRUE;
-           break;
-
-         case 'C': case 'c': // Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X3, &path.Y3, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'C') path.Type = PE_Curve;
-            else path.Type = PE_CurveRel;
-            path.Curved = TRUE;
-            break;
-
-         case 'S': case 's': // Smooth Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'S') path.Type = PE_Smooth;
-            else path.Type = PE_SmoothRel;
-            path.Curved = TRUE;
-            break;
-
-         case 'A': case 'a': { // Arc
-            DOUBLE largearc, sweep;
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y, TAGEND);
-            path.LargeArc = F2T(largearc);
-            path.Sweep = F2T(sweep);
-            if (cmd IS 'A') path.Type = PE_Arc;
-            else path.Type = PE_ArcRel;
-            path.Curved = TRUE;
-            break;
-         }
-
-         // W3C: When a subpath ends in a "closepath," it differs in behaviour from what happens when "manually" closing
-         // a subpath via a "lineto" command in how ‘stroke-linejoin’ and ‘stroke-linecap’ are implemented. With
-         // "closepath", the end of the final segment of the subpath is "joined" with the start of the initial segment
-         // of the subpath using the current value of ‘stroke-linejoin’. If you instead "manually" close the subpath
-         // via a "lineto" command, the start of the first segment and the end of the last segment are not joined but
-         // instead are each capped using the current value of ‘stroke-linecap’. At the end of the command, the new
-         // current point is set to the initial point of the current subpath.
-
-         case 'Z': case 'z': { // Close Path
-            path.Type = PE_ClosePath;
-            path.Curved = FALSE;
-            break;
-         }
-
-         default: {
-            log.warning("Invalid path command '%c'", *Value);
-            return ERR_Failed;
-         }
-      }
-
-      Path.push_back(path);
-   }
-
-   return (Path.size() >= 2) ? ERR_Okay : ERR_Failed;
 }
 
 //****************************************************************************

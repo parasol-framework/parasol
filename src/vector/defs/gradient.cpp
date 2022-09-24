@@ -788,7 +788,7 @@ static const FieldArray clGradientFields[] = {
 
 //****************************************************************************
 
-static ERROR init_gradient(void) // The gradient is a definition type for creating gradients and not drawing.
+ERROR init_gradient(void) // The gradient is a definition type for creating gradients and not drawing.
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorGradient,
       FID_BaseClassID|TLONG, ID_VECTORGRADIENT,

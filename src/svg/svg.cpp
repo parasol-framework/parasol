@@ -8,6 +8,8 @@ Please refer to it for further information on licensing.
 
 //#define DEBUG
 #define PRV_SVG
+#include <unordered_map>
+#include <string>
 #include "../picture/picture.h"
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
@@ -20,8 +22,8 @@ Please refer to it for further information on licensing.
 #include <math.h>
 
 MODULE_COREBASE;
-static struct DisplayBase *DisplayBase;
-static struct VectorBase *VectorBase;
+static DisplayBase *DisplayBase;
+static VectorBase *VectorBase;
 static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL;
 
 struct prvSVG {
@@ -34,11 +36,15 @@ typedef struct svgInherit {
    char ID[60];
 } svgInherit;
 
-typedef struct svgID { // All elements using the 'id' attribute will be registered with one of these structures.
-   struct svgID *Next;
-   CSTRING ID;
-   ULONG IDHash;
+typedef class svgID { // All elements using the 'id' attribute will be registered with one of these structures.
+   public:
    LONG TagIndex;
+
+   svgID(const LONG pTagIndex) {
+      TagIndex = pTagIndex;
+   }
+
+   svgID() { TagIndex = -1; }
 } svgID;
 
 typedef struct svgState {
@@ -59,25 +65,25 @@ static ERROR init_svg(void);
 static ERROR init_rsvg(void);
 static ERROR animation_timer(objSVG *, LARGE, LARGE);
 static void  convert_styles(objXML *);
-static void  process_attrib(objSVG *, objXML *, XMLTag *, OBJECTPTR);
+static void  process_attrib(objSVG *, objXML *, const XMLTag *, OBJECTPTR);
 static void  process_rule(objSVG *, objXML *, KatanaRule *);
-static ERROR process_shape(objSVG *, CLASSID, objXML *, svgState *, XMLTag *, OBJECTPTR, OBJECTPTR *);
+static ERROR process_shape(objSVG *, CLASSID, objXML *, svgState *, const XMLTag *, OBJECTPTR, OBJECTPTR *);
 static ERROR save_svg_scan(objSVG *, objXML *, objVector *, LONG);
 static ERROR save_svg_defs(objSVG *, objXML *, objVectorScene *, LONG);
 static ERROR save_svg_scan_std(objSVG *, objXML *, objVector *, LONG);
 static ERROR save_svg_transform(VectorMatrix *, char *, LONG);
-static ERROR set_property(objSVG *, OBJECTPTR, ULONG Hash, objXML *, XMLTag *, CSTRING);
-static ERROR xtag_animatemotion(objSVG *, objXML *, XMLTag *, OBJECTPTR Parent);
-static ERROR xtag_animatetransform(objSVG *, objXML *, XMLTag *, OBJECTPTR);
-static ERROR xtag_default(objSVG *, ULONG Hash, objXML *, svgState *, XMLTag *, OBJECTPTR, OBJECTPTR *);
-static ERROR xtag_defs(objSVG *, objXML *, svgState *, XMLTag *, OBJECTPTR);
-static void  xtag_group(objSVG *, objXML *, svgState *, XMLTag *, OBJECTPTR, OBJECTPTR *);
-static ERROR xtag_image(objSVG *, objXML *, svgState *, XMLTag *, OBJECTPTR, OBJECTPTR *);
-static void  xtag_morph(objSVG *, objXML *, XMLTag *, OBJECTPTR Parent);
-static void  xtag_svg(objSVG *, objXML *, svgState *, XMLTag *, OBJECTPTR, OBJECTPTR *);
-static void  xtag_use(objSVG *, objXML *, svgState *, XMLTag *, OBJECTPTR);
-static ERROR xtag_style(objSVG *, objXML *, XMLTag *);
-static void  xtag_symbol(objSVG *, objXML *, XMLTag *);
+static ERROR set_property(objSVG *, OBJECTPTR, ULONG, objXML *, const XMLTag *, CSTRING);
+static ERROR xtag_animatemotion(objSVG *, objXML *, const XMLTag *, OBJECTPTR Parent);
+static ERROR xtag_animatetransform(objSVG *, objXML *, const XMLTag *, OBJECTPTR);
+static ERROR xtag_default(objSVG *, ULONG, objXML *, svgState *, const XMLTag *, OBJECTPTR, OBJECTPTR *);
+static ERROR xtag_defs(objSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR);
+static void  xtag_group(objSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR, OBJECTPTR *);
+static ERROR xtag_image(objSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR, OBJECTPTR *);
+static void  xtag_morph(objSVG *, objXML *, const XMLTag *, OBJECTPTR Parent);
+static void  xtag_svg(objSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR, OBJECTPTR *);
+static void  xtag_use(objSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR);
+static ERROR xtag_style(objSVG *, objXML *, const XMLTag *);
+static void  xtag_symbol(objSVG *, objXML *, const XMLTag *);
 
 //****************************************************************************
 
@@ -103,8 +109,8 @@ ERROR CMDExpunge(void)
    if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
    if (modVector)  { acFree(modVector);  modVector = NULL; }
 
-   if (clSVG)      { acFree(clSVG);      clSVG = NULL; }
-   if (clRSVG)     { acFree(clRSVG);     clRSVG = NULL; }
+   if (clSVG)  { acFree(clSVG);  clSVG = NULL; }
+   if (clRSVG) { acFree(clRSVG); clRSVG = NULL; }
    return ERR_Okay;
 }
 

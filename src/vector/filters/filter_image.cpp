@@ -1,20 +1,24 @@
 
 class ImageEffect : public VectorEffect {
-   DOUBLE X, Y, Width, Height;
-   struct rkPicture *Picture;
+   DOUBLE X, Y, Width, Height; // Position & size of the image within the filter's rendering area.
+   objPicture *Picture;
    LONG Dimensions;
    LONG AspectRatio;
    UBYTE ResampleMethod;
-   UBYTE Units; // VUNIT
+
+   void xml(std::stringstream &Stream) { // TODO: Support exporting attributes
+      Stream << "feImage";
+   }
 
 public:
-   ImageEffect(struct rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
+   ImageEffect(objVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
       parasol::Log log(__FUNCTION__);
 
       Dimensions     = 0;
       AspectRatio    = ARF_X_MID|ARF_Y_MID|ARF_MEET;
       ResampleMethod = VSM_BILINEAR;
       Picture        = NULL;
+      EffectName     = "feImage";
 
       bool image_required = false;
       CSTRING path = NULL;
@@ -93,15 +97,6 @@ public:
          }
       }
 
-      // The coordinate system is determined according to SVG rules.  The key thing here is that boundingbox and userspace
-      // systems are chosen depending on whether or not the user specified an x, y, width and/or height.
-
-      if (Filter->PrimitiveUnits != VUNIT_UNDEFINED) Units = Filter->PrimitiveUnits;
-      else {
-         if (Dimensions) Units = VUNIT_USERSPACE;
-         else Units = VUNIT_BOUNDING_BOX;
-      }
-
       if (path) {
          // Check for security risks in the path.
 
@@ -143,7 +138,7 @@ public:
          if ((Error) and (image_required)) Error = ERR_CreateObject;
          else Error = ERR_Okay;
 
-         if ((Filter->ColourSpace IS CS_LINEAR_RGB) and (!Error) and (Picture)) {
+         if ((Filter->ColourSpace IS VCS_LINEAR_RGB) and (!Error) and (Picture)) {
             rgb2linear(*Picture->Bitmap);
          }
       }
@@ -151,95 +146,134 @@ public:
       // NB: If no image path is referenced, the instruction to load an image can be ignored safely.
    }
 
-   void apply(objVectorFilter *Filter) {
-      if (Bitmap->BytesPerPixel != 4) return;
+   void apply(objVectorFilter *Filter, filter_state &State) {
+      parasol::Log log(__FUNCTION__);
+
+      if (OutBitmap->BytesPerPixel != 4) return;
       if (!Picture) return;
 
-      auto pic = Picture->Bitmap;
+      std::array<DOUBLE, 4> bounds = { Filter->ClientViewport->vpFixedWidth, Filter->ClientViewport->vpFixedHeight, 0, 0 };
+      calc_full_boundary((objVector *)Filter->ClientVector, bounds, false, false);
+      const DOUBLE b_x = trunc(bounds[0]);
+      const DOUBLE b_y = trunc(bounds[1]);
+      const DOUBLE b_width  = bounds[2] - bounds[0];
+      const DOUBLE b_height = bounds[3] - bounds[1];
 
-      DOUBLE xScale, yScale, x, y;
+      DOUBLE target_x, target_y, target_width, target_height;
+      if (Filter->Units IS VUNIT_BOUNDING_BOX) {
+         if (Filter->Dimensions & DMF_FIXED_X) target_x = b_x;
+         else if (Filter->Dimensions & DMF_RELATIVE_X) target_x = trunc(b_x + (Filter->X * b_width));
+         else target_x = b_x;
 
-      if (Units IS VUNIT_BOUNDING_BOX) {
-         LONG parent_x, parent_y, parent_width, parent_height;
-         if (Dimensions & DMF_RELATIVE_X) parent_x = Filter->ViewX + F2I(X * (DOUBLE)Filter->BoundWidth);
-         else if (Dimensions & DMF_FIXED_X) parent_x = Filter->ViewX + X;
-         else parent_x = Filter->BoundX;
+         if (Filter->Dimensions & DMF_FIXED_Y) target_y = b_y;
+         else if (Filter->Dimensions & DMF_RELATIVE_Y) target_y = trunc(b_y + (Filter->Y * b_height));
+         else target_y = b_y;
 
-         if (Dimensions & DMF_RELATIVE_Y) parent_y = Filter->ViewY + F2I(Y * (DOUBLE)Filter->BoundHeight);
-         else if (Dimensions & DMF_FIXED_Y) parent_y = Filter->ViewY + Y;
-         else parent_y = Filter->BoundY;
+         if (Filter->Dimensions & DMF_FIXED_WIDTH) target_width = Filter->Width * b_width;
+         else if (Filter->Dimensions & DMF_RELATIVE_WIDTH) target_width = Filter->Width * b_width;
+         else target_width = b_width;
 
-         if (Dimensions & DMF_RELATIVE_WIDTH) parent_width = (DOUBLE)Filter->ViewWidth * Width;
-         else if (Dimensions & DMF_FIXED_WIDTH) parent_width = Filter->ViewWidth;
-         else parent_width = Filter->BoundWidth;
+         if (Filter->Dimensions & DMF_FIXED_HEIGHT) target_height = Filter->Height * b_height;
+         else if (Filter->Dimensions & DMF_RELATIVE_HEIGHT) target_height = Filter->Height * b_height;
+         else target_height = b_height;
+      }
+      else { // USERSPACE
+         if (Filter->Dimensions & DMF_FIXED_X) target_x = trunc(Filter->X);
+         else if (Filter->Dimensions & DMF_RELATIVE_X) target_x = trunc(Filter->X * Filter->ClientViewport->vpFixedWidth);
+         else target_x = b_x;
 
-         if (Dimensions & DMF_RELATIVE_HEIGHT) parent_height = (DOUBLE)Filter->ViewHeight * Height;
-         else if (Dimensions & DMF_FIXED_HEIGHT) parent_height = Filter->ViewHeight;
-         else parent_height = Filter->BoundHeight;
+         if (Filter->Dimensions & DMF_FIXED_Y) target_y = trunc(Filter->Y);
+         else if (Filter->Dimensions & DMF_RELATIVE_Y) target_y = trunc(Filter->Y * Filter->ClientViewport->vpFixedHeight);
+         else target_y = b_y;
 
-         calc_aspectratio("align_image", AspectRatio, parent_width, parent_height, pic->Width, pic->Height,
-            &x, &y, &xScale, &yScale);
+         if (Filter->Dimensions & DMF_FIXED_WIDTH) target_width = Filter->Width;
+         else if (Filter->Dimensions & DMF_RELATIVE_WIDTH) target_width = Filter->Width * Filter->ClientViewport->vpFixedWidth;
+         else target_width = Filter->ClientViewport->vpFixedWidth;
 
-         x += parent_x;
-         y += parent_y;
+         if (Filter->Dimensions & DMF_FIXED_HEIGHT) target_height = Filter->Height;
+         else if (Filter->Dimensions & DMF_RELATIVE_HEIGHT) target_height = Filter->Height * Filter->ClientViewport->vpFixedHeight;
+         else target_height = Filter->ClientViewport->vpFixedHeight;
+      }
+
+      // The image's x,y,width,height default to (0,0,100%,100%) of the target region.
+
+      DOUBLE img_x = target_x;
+      DOUBLE img_y = target_y;
+      DOUBLE img_width = target_width;
+      DOUBLE img_height = target_height;
+
+      if (Filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
+         // In this mode image dimensions typically remain at the default, i.e. (0,0,100%,100%) of the target.
+         // If the user does set the XYWH of the image then 'fixed' coordinates act as multipliers, as if they were relative.
+
+         // W3 spec on whether to use the bounds or the filter target region:
+         // "Any length values within the filter definitions represent fractions or percentages of the bounding box
+         // on the referencing element."
+
+         const DOUBLE container_width = b_width;
+         const DOUBLE container_height = b_height;
+         if (Dimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) img_x = trunc(target_x + (X * container_width));
+         if (Dimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) img_y = trunc(target_y + (Y * container_height));
+         if (Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) img_width = Width * container_width;
+         if (Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) img_height = Height * container_height;
       }
       else {
-         // UserSpace (relative to parent).  In this mode, all image coordinates will be computed relative to the parent viewport.
-         // Alignment is then calculated as normal relative to the bounding box.  The computed image coordinates are used
-         // as a shift for the final (x,y) values.
+         if (Dimensions & DMF_RELATIVE_X)   img_x = target_x + (X * target_width);
+         else if (Dimensions & DMF_FIXED_X) img_x = X;
 
-         LONG parent_x, parent_y, parent_width, parent_height;
+         if (Dimensions & DMF_RELATIVE_Y)   img_y = target_y + (Y * target_height);
+         else if (Dimensions & DMF_FIXED_Y) img_y = Y;
 
-         if (Dimensions & DMF_RELATIVE_X) parent_x = Filter->ViewX + F2I(X * (DOUBLE)Filter->Viewport->vpFixedWidth);
-         else if (Dimensions & DMF_FIXED_X) parent_x = Filter->ViewX + X;
-         else parent_x = Filter->ViewX;
+         if (Dimensions & DMF_RELATIVE_WIDTH)   img_width = target_width * Width;
+         else if (Dimensions & DMF_FIXED_WIDTH) img_width = Width;
 
-         if (Dimensions & DMF_RELATIVE_Y) parent_y = Filter->ViewY + F2I(Y * (DOUBLE)Filter->Viewport->vpFixedHeight);
-         else if (Dimensions & DMF_FIXED_Y) parent_y = Filter->ViewY + Y;
-         else parent_y = Filter->ViewY;
-
-         if (Dimensions & DMF_RELATIVE_WIDTH) parent_width = (DOUBLE)Filter->Viewport->vpFixedWidth * Width;
-         else if (Dimensions & DMF_FIXED_WIDTH) parent_width = Width;
-         else parent_width = Filter->BoundWidth;
-
-         if (Dimensions & DMF_RELATIVE_HEIGHT) parent_height = (DOUBLE)Filter->Viewport->vpFixedHeight * Height;
-         else if (Dimensions & DMF_FIXED_HEIGHT) parent_height = Height;
-         else parent_height = Filter->BoundHeight;
-
-         calc_aspectratio("align_image", AspectRatio, parent_width, parent_height, pic->Width, pic->Height,
-            &x, &y, &xScale, &yScale);
-
-         x += parent_x;
-         y += parent_y;
+         if (Dimensions & DMF_RELATIVE_HEIGHT)   img_height = target_height * Height;
+         else if (Dimensions & DMF_FIXED_HEIGHT) img_height = Height;
       }
 
-      gfxDrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, 0x00000000, BAF_FILL);
+      DOUBLE xScale = 1, yScale = 1, align_x = 0, align_y = 0;
+      calc_aspectratio("align_image", AspectRatio, img_width, img_height, Picture->Bitmap->Width, Picture->Bitmap->Height, &align_x, &align_y, &xScale, &yScale);
 
-      // Configure destination
-      agg::renderer_base<agg::pixfmt_rkl> renderBase;
-      agg::pixfmt_rkl pixDest(*Bitmap);
+      img_x += align_x;
+      img_y += align_y;
+
+      // Draw to destination
+
+      agg::rasterizer_scanline_aa<> raster;
+      agg::renderer_base<agg::pixfmt_psl> renderBase;
+      agg::pixfmt_psl pixDest(*OutBitmap);
+      agg::pixfmt_psl pixSource(*Picture->Bitmap);
+
+      agg::path_storage path;
+      path.move_to(target_x, target_y);
+      path.line_to(target_x + target_width, target_y);
+      path.line_to(target_x + target_width, target_y + target_height);
+      path.line_to(target_x, target_y + target_height);
+      path.close_polygon();
+
       renderBase.attach(pixDest);
-      renderBase.clip_box(Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right-1, Bitmap->Clip.Bottom-1);
+      renderBase.clip_box(OutBitmap->Clip.Left, OutBitmap->Clip.Top, OutBitmap->Clip.Right-1, OutBitmap->Clip.Bottom-1);
 
-      // Configure source
+      agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(path, Filter->ClientVector->Transform);
+      raster.add_path(final_path);
 
-      agg::pixfmt_rkl pixSource(*pic);
-
-      agg::trans_affine transform;
-      transform.scale(xScale, yScale);
-      transform.translate(x, y);
-      transform.invert();
-      agg::span_interpolator_linear<> interpolator(transform);
+      agg::trans_affine img_transform;
+      img_transform.scale(xScale, yScale);
+      img_transform.translate(img_x, img_y);
+      img_transform *= Filter->ClientVector->Transform;
+      img_transform.invert();
+      agg::span_interpolator_linear<> interpolator(img_transform);
 
       agg::image_filter_lut filter;
       set_filter(filter, ResampleMethod);
 
-      agg::span_pattern_rkl<agg::pixfmt_rkl> source(pixSource, 0, 0);
-      agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_rkl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
-      agg::rasterizer_scanline_aa<> raster;
-      setRasterClip(raster, Bitmap->Clip.Left, Bitmap->Clip.Top,
-         Bitmap->Clip.Right - Bitmap->Clip.Left,
-         Bitmap->Clip.Bottom - Bitmap->Clip.Top);
+      agg::span_pattern_rkl<agg::pixfmt_psl> source(pixSource, 0, 0);
+      agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+
+      setRasterClip(raster, OutBitmap->Clip.Left, OutBitmap->Clip.Top,
+         OutBitmap->Clip.Right - OutBitmap->Clip.Left,
+         OutBitmap->Clip.Bottom - OutBitmap->Clip.Top);
+
       drawBitmapRender(renderBase, raster, spangen, 1.0);
    }
 

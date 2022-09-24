@@ -23,7 +23,7 @@
     </filter>
 
     <filter id="compIn" x="0" y="0" width="250" height="250" filterUnits="userSpaceOnUse">
-       <feImage x="0" y="40" width="150" height="150" xlink:href="bird.png" result="img1"/>
+      <feImage x="0" y="40" width="150" height="150" xlink:href="bird.png" result="img1"/>
       <feImage x="30" y="30" width="120" height="120" xlink:href="symbol.png" result="img2"/>
       <feComposite operator="in" in="img1" in2="img2"/>
     </filter>
@@ -58,7 +58,7 @@
 
   <!-- Composition Examples -->
   <g transform="translate(40)">
-    <g filter="url(#compOver)" transform="translate(0)"></g>
+    <g filter="url(#compOver)"></g>
     <g filter="url(#compIn)" transform="translate(200)"></g>
     <g filter="url(#compOut)" transform="translate(400)"></g>
     <g filter="url(#compAtop)" transform="translate(0, 210)"></g>

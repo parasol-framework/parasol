@@ -28,32 +28,34 @@ typedef struct rkVectorSpiral {
 
 static void generate_spiral(objVectorSpiral *Vector)
 {
+   const DOUBLE cx = (Vector->Dimensions & DMF_RELATIVE_CENTER_X) ? Vector->CX * get_parent_width(Vector) : Vector->CX;
+   const DOUBLE cy = (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
+
+   DOUBLE min_x = DBL_MAX, max_x = DBL_MIN, min_y = DBL_MAX, max_y = DBL_MIN;
    DOUBLE angle = 0;
    for (int i=0; i < MAX_SPIRAL_VERTICES; i++) { // The spiral points keep generating until the max number of vertices is reached, or the radius is boundary is hit.
       DOUBLE x = (Vector->Offset + Vector->Scale * angle) * cos(angle);
       DOUBLE y = (Vector->Offset + Vector->Scale * angle) * sin(angle);
+
       if ((ABS(x) > Vector->Radius) or (ABS(y) > Vector->Radius)) break;
 
-      if (!i) Vector->BasePath.move_to(Vector->Radius + x, Vector->Radius + y);
-      else Vector->BasePath.line_to(Vector->Radius + x, Vector->Radius + y);
+      x += cx;
+      y += cy;
+      if (!i) Vector->BasePath.move_to(x, y);
+      else Vector->BasePath.line_to(x, y);
+
+      if (x < min_x) min_x = x;
+      if (y < min_y) min_y = y;
+      if (x > max_x) max_x = x;
+      if (y > max_y) max_y = y;
 
       angle += Vector->Step;
    }
-}
 
-//****************************************************************************
-
-static void get_spiral_xy(objVectorSpiral *Vector)
-{
-   DOUBLE cx = Vector->CX, cy = Vector->CY;
-   DOUBLE radius = Vector->Radius;
-
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_X) cx *= get_parent_width(Vector);
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) cy *= get_parent_height(Vector);
-   if (Vector->Dimensions & DMF_RELATIVE_RADIUS) radius *= get_parent_width(Vector);
-
-   Vector->FinalX = cx - radius;
-   Vector->FinalY = cy - radius;
+   Vector->BX1 = min_x;
+   Vector->BY1 = min_y;
+   Vector->BX2 = max_x;
+   Vector->BY2 = max_y;
 }
 
 //****************************************************************************
@@ -102,7 +104,7 @@ static ERROR SPIRAL_SET_CenterX(objVectorSpiral *Self, Variable *Value)
 
    Self->CX = val;
 
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -139,7 +141,7 @@ static ERROR SPIRAL_SET_CenterY(objVectorSpiral *Self, Variable *Value)
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
 
    Self->CY = val;
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 

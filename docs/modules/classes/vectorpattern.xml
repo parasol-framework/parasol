@@ -35,12 +35,33 @@
     </field>
 
     <field>
+      <name>Height</name>
+      <comment>Height of the pattern tile.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage then the dimension is calculated relative to the nearest bounding box or viewport, according to the <field>Units</field> setting.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Inherit</name>
       <comment>Inherit attributes from a VectorPattern referenced here.</comment>
       <access read="R" write="S">Read/Set</access>
       <type class="VectorPattern">*VectorPattern</type>
       <description>
 <p>Attributes can be inherited from another pattern by referencing it in this field.  This feature is provided primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance penalty.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Matrices</name>
+      <comment>A linked list of transform matrices that have been applied to the pattern.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>APTR</type>
+      <description>
+<p>All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is represented by a VectorMatrix structure, and are linked in the order in which they were applied to the pattern.</p>
+<struct lookup="VectorMatrix"/>
       </description>
     </field>
 
@@ -61,7 +82,6 @@
       <type class="VectorScene">*VectorScene</type>
       <description>
 <p>The VectorPattern class allocates a <class name="VectorScene">VectorScene</class> in this field and inherits its functionality.  In addition, a <class name="VectorViewport">VectorViewport</class> class will be assigned to the scene and is referenced in the <field>Viewport</field> field for managing the vectors that will be rendered.</p>
-<p>The PageWidth and PageHeight fields in the VectorScene object will define the size of the generated pattern.  It is essential that they are set prior to initialisation.</p>
       </description>
     </field>
 
@@ -92,7 +112,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">INT</type>
       <description>
-<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default setting is BOUNDING_BOX.</p>
+<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default setting is <code>BOUNDING_BOX</code>, which means the pattern will be drawn to scale in realtime.  The most efficient method is USERSPACE, which allows the pattern image to be persistently cached.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
@@ -104,6 +124,16 @@
       <type class="VectorViewport">*VectorViewport</type>
       <description>
 <p>The Viewport refers to a <class name="VectorViewport">VectorViewport</class> object that is created to host the vectors for the rendered pattern.  If the Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>Width of the pattern tile.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage then the dimension is calculated relative to the nearest bounding box or viewport, according to the <field>Units</field> setting.</p>
       </description>
     </field>
 
@@ -147,5 +177,16 @@
 
   </types>
   <structs>
+    <struct name="VectorMatrix" comment="Vector transformation matrix.">
+      <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
+      <field name="Vector" type="struct rkVector *">The vector associated with the transform.</field>
+      <field name="ScaleX" type="DOUBLE">Matrix value A</field>
+      <field name="ShearY" type="DOUBLE">Matrix value B</field>
+      <field name="ShearX" type="DOUBLE">Matrix value C</field>
+      <field name="ScaleY" type="DOUBLE">Matrix value D</field>
+      <field name="TranslateX" type="DOUBLE">Matrix value E</field>
+      <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+    </struct>
+
   </structs>
 </book>

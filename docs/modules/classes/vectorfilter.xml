@@ -42,13 +42,8 @@
 &lt;/feMerge&gt;
 </pre>
 <p>Unsupported or invalid elements will be reported in debug output and then ignored, allowing the parser to process as many instructions as possible.</p>
-<p>The XML object that is used to parse the effects is accessible through the <field>EffectXML</field> field.</p>
+<p>Multiple calls to this action will append to existing effects.  If a reset of existing effects is necessary, call the @Clear action before appending new effects.</p>
       </description>
-    </action>
-
-    <action>
-      <name>Draw</name>
-      <comment>Draws object graphics to drawable areas.</comment>
     </action>
 
   </actions>
@@ -88,9 +83,12 @@
 
     <field>
       <name>EffectXML</name>
-      <comment>The XML object used to parse incoming effects</comment>
-      <access read="R">Read</access>
-      <type class="XML">*XML</type>
+      <comment>Returns a SVG XML string that defines the filter's effects.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+      <description>
+<p>This field value will return a purpose-built string that defines the filter's effects in SVG compliant XML.  The string is allocated and must be freed once no longer in use.</p>
+      </description>
     </field>
 
     <field>
@@ -99,7 +97,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the filter area is expressed here as a fixed or relative coordinate.</p>
+<p>The height of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
+<p>The coordinate system for the width and height depends on the value for <field>Units</field>.</p>
+<p>If width or height is not specified, the effect is as if a value of 120% were specified.</p>
       </description>
     </field>
 
@@ -134,12 +134,13 @@
     </field>
 
     <field>
-      <name>Scene</name>
-      <comment>Refers to the internal <class name="VectorScene">VectorScene</class> that will be used for filter processing.</comment>
-      <access read="R">Read</access>
-      <type class="VectorScene">*VectorScene</type>
+      <name>PrimitiveUnits</name>
+      <comment>Alters the behaviour of some effects that support alternative position calculations.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VUNIT">INT</type>
       <description>
-<p>The Filter class will allocate a <class name="VectorScene">VectorScene</class> object on initialisation and use it for hosting filter processing.  The dimensions of the scene will match that of the area hosting the filter.  The scene object must not be modified as it is managed entirely by the filter.</p>
+<p>PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is <code>USERSPACE</code>.  When set to <code>BOUNDING_BOX</code>, the effect may calculate its dimensions strictly based on the client vector using a relative coordinate space of (0,0,100%,100%).</p>
+<types lookup="VUNIT"/>
       </description>
     </field>
 
@@ -149,7 +150,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">INT</type>
       <description>
-<p>The default coordinate system for gradients is <code>BOUNDING_BOX</code>, which positions the filter around the vector that references it.  The alternative is <code>USERSPACE</code>, which positions the filter relative to the current viewport.</p>
+<p>The default coordinate system is <code>BOUNDING_BOX</code>, which positions the filter within the client vector. The alternative is <code>USERSPACE</code>, which positions the filter relative to the client vector's nearest viewport.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
@@ -160,7 +161,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the filter area is expressed here as a fixed or relative coordinate.</p>
+<p>The width of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
+<p>The coordinate system for the width and height depends on the value for <field>Units</field>.</p>
+<p>If width or height is not specified, the effect is as if a value of 120% were specified.</p>
       </description>
     </field>
 
@@ -170,7 +173,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (X,Y) field values define the starting coordinate for mapping filters.</p>
+<p>The meaning of the (X,Y) field values depend on the value for <field>Units</field>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
+<p>If X or Y is not specified, the effect is as if a value of -10% were specified.</p>
       </description>
     </field>
 
@@ -180,7 +184,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (X,Y) field values define the starting coordinate for mapping filters.</p>
+<p>The meaning of the (X,Y) field values depend on the value for <field>Units</field>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
+<p>If X or Y is not specified, the effect is as if a value of -10% were specified.</p>
       </description>
     </field>
 

@@ -159,7 +159,7 @@ static const FieldArray clImageFields[] = {
    END_FIELD
 };
 
-static ERROR init_image(void) // The gradient is a definition type for creating gradients and not drawing.
+ERROR init_image(void) // The gradient is a definition type for creating gradients and not drawing.
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorImage,
       FID_BaseClassID|TLONG, ID_VECTORIMAGE,

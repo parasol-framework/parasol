@@ -107,6 +107,20 @@ namespace agg
           parl_to_parl(src, dst);
       }
 
+      inline bool is_normal() {
+         return sx == 1.0 and shy == 0 and shx == 0 and sy == 1.0 and tx == 0.0 and ty == 0.0;
+      }
+
+      // Returns true if the transform configuration is limited to translating.
+
+      inline bool is_simple() {
+         return sx == 1.0 and shy == 0 and shx == 0 and sy == 1.0;
+      }
+
+      inline bool is_complex() {
+         return (sx != 1.0) or (shy != 0) or (shx != 0) or (sy != 1.0);
+      }
+
       //---------------------------------- Parallelogram transformations
       // transform a parallelogram to another one. Src and dst are
       // pointers to arrays of three points (double[6], x1,y1,...) that
@@ -132,6 +146,8 @@ namespace agg
       const trans_affine& rotate(double a);
       const trans_affine& scale(double s);
       const trans_affine& scale(double x, double y);
+      const trans_affine& scaleX(double x);
+      const trans_affine& scaleY(double y);
 
       // Multiply matrix to another one
       const trans_affine& multiply(const trans_affine& m);
@@ -307,6 +323,20 @@ namespace agg
       shx = t2;
       tx  = t4;
       return *this;
+   }
+
+   inline const trans_affine& trans_affine::scaleX(double x) {
+       sx  *= x;
+       shx *= x;
+       tx  *= x;
+       return *this;
+   }
+
+   inline const trans_affine& trans_affine::scaleY(double y) {
+       sy  *= y;
+       shy *= y;
+       ty  *= y;
+       return *this;
    }
 
    inline const trans_affine& trans_affine::scale(double x, double y) {

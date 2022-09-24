@@ -28,6 +28,11 @@ contains the pattern content.
 
 static ERROR PATTERN_Draw(objVectorPattern *Self, struct acDraw *Args)
 {
+   parasol::Log log;
+
+   if (!Self->Scene->PageWidth) return log.warning(ERR_FieldNotSet);
+   if (!Self->Scene->PageHeight) return log.warning(ERR_FieldNotSet);
+
    if (Self->Bitmap) {
       if ((Self->Scene->PageWidth != Self->Bitmap->Width) or (Self->Scene->PageHeight != Self->Bitmap->Height)) {
          acResize(Self->Bitmap, Self->Scene->PageWidth, Self->Scene->PageHeight, 32);
@@ -80,6 +85,16 @@ static ERROR PATTERN_Init(objVectorPattern *Self, APTR Void)
       return log.warning(ERR_OutOfRange);
    }
 
+   if (!Self->Width) {
+      Self->Width = 1;
+      Self->Dimensions |= DMF_FIXED_WIDTH;
+   }
+
+   if (!Self->Height) {
+      Self->Height = 1;
+      Self->Dimensions |= DMF_FIXED_HEIGHT;
+   }
+
    if (acInit(Self->Scene)) return ERR_Init;
    if (acInit(Self->Viewport)) return ERR_Init;
 
@@ -93,8 +108,6 @@ static ERROR PATTERN_NewObject(objVectorPattern *Self, APTR Void)
    if (!NewObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Scene)) {
       if (!NewObject(ID_VECTORVIEWPORT, 0, &Self->Viewport)) {
          SetOwner(Self->Viewport, Self->Scene);
-         Self->Scene->PageWidth  = 1;
-         Self->Scene->PageHeight = 1;
          Self->SpreadMethod = VSPREAD_REPEAT;
          Self->Units        = VUNIT_BOUNDING_BOX;
          Self->ContentUnits = VUNIT_USERSPACE;
@@ -117,6 +130,42 @@ and Height fields have been defined.  The default setting is USERSPACE.
 
 -FIELD-
 Dimensions: Dimension flags are stored here.
+
+-FIELD-
+Height: Height of the pattern tile.
+
+The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage
+then the dimension is calculated relative to the nearest bounding box or viewport, according to the #Units setting.
+
+*****************************************************************************/
+
+static ERROR PATTERN_GET_Height(objVectorPattern *Self, Variable *Value)
+{
+   DOUBLE val = Self->Height;
+   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_HEIGHT)) val = val * 100.0;
+   if (Value->Type & FD_DOUBLE) Value->Double = val;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   return ERR_Okay;
+}
+
+static ERROR PATTERN_SET_Height(objVectorPattern *Self, Variable *Value)
+{
+   DOUBLE val;
+   if (Value->Type & FD_DOUBLE) val = Value->Double;
+   else if (Value->Type & FD_LARGE) val = Value->Large;
+   else return ERR_FieldTypeMismatch;
+
+   if (Value->Type & FD_PERCENTAGE) {
+      val = val * 0.01;
+      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
+   }
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
+
+   Self->Height = val;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 
 -FIELD-
 Inherit: Inherit attributes from a VectorPattern referenced here.
@@ -218,9 +267,6 @@ The VectorPattern class allocates a @VectorScene in this field and inherits its 
 a @VectorViewport class will be assigned to the scene and is referenced in the #Viewport field for
 managing the vectors that will be rendered.
 
-The PageWidth and PageHeight fields in the VectorScene object will define the size of the generated pattern.  It is
-essential that they are set prior to initialisation.
-
 -FIELD-
 SpreadMethod: The behaviour to use when the pattern bounds do not match the vector path.
 
@@ -268,13 +314,50 @@ static ERROR PATTERN_SET_Transform(objVectorPattern *Self, CSTRING Commands)
 Units:  Defines the coordinate system for fields X, Y, Width and Height.
 
 This field declares the coordinate system that is used for values in the #X and #Y fields.  The default setting is
-BOUNDING_BOX.
+`BOUNDING_BOX`, which means the pattern will be drawn to scale in realtime.  The most efficient method is USERSPACE,
+which allows the pattern image to be persistently cached.
 
 -FIELD-
 Viewport: Refers to the viewport that contains the pattern.
 
 The Viewport refers to a @VectorViewport object that is created to host the vectors for the rendered pattern.  If the
 Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.
+
+-FIELD-
+Width: Width of the pattern tile.
+
+The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage
+then the dimension is calculated relative to the nearest bounding box or viewport, according to the #Units setting.
+
+*****************************************************************************/
+
+static ERROR PATTERN_GET_Width(objVectorPattern *Self, Variable *Value)
+{
+   DOUBLE val = Self->Width;
+   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_WIDTH)) val = val * 100.0;
+   if (Value->Type & FD_DOUBLE) Value->Double = val;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   return ERR_Okay;
+}
+
+static ERROR PATTERN_SET_Width(objVectorPattern *Self, Variable *Value)
+{
+   DOUBLE val;
+   if (Value->Type & FD_DOUBLE) val = Value->Double;
+   else if (Value->Type & FD_LARGE) val = Value->Large;
+   else return ERR_FieldTypeMismatch;
+
+   if (Value->Type & FD_PERCENTAGE) {
+      val = val * 0.01;
+      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
+   }
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
+
+   Self->Width = val;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 
 -FIELD-
 X: X coordinate for the pattern.
@@ -385,6 +468,8 @@ static const FieldDef clPatternSpread[] = {
 static const FieldArray clPatternFields[] = {
    { "X",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_X, (APTR)PATTERN_SET_X },
    { "Y",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Y, (APTR)PATTERN_SET_Y },
+   { "Width",        FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Width, (APTR)PATTERN_SET_Width },
+   { "Height",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Height, (APTR)PATTERN_SET_Height },
    { "Opacity",      FDF_DOUBLE|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Opacity },
    { "Scene",        FDF_INTEGRAL|FDF_R,         0, NULL, NULL },
    { "Viewport",     FDF_OBJECT|FDF_R,           0, NULL, NULL },
@@ -400,7 +485,7 @@ static const FieldArray clPatternFields[] = {
    END_FIELD
 };
 
-static ERROR init_pattern(void) // The pattern is a definition type for creating patterns and not drawing.
+ERROR init_pattern(void) // The pattern is a definition type for creating patterns and not drawing.
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorPattern,
       FID_BaseClassID|TLONG, ID_VECTORPATTERN,

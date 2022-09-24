@@ -33,7 +33,7 @@ Transitions are most effective when used in conjunction with the morph feature i
 
 // Applies the correct transform when given a relative Index position between 0.0 and 1.0
 
-static inline void apply_transition(objVectorTransition *Self, DOUBLE Index, agg::trans_affine &Transform)
+void apply_transition(objVectorTransition *Self, DOUBLE Index, agg::trans_affine &Transform)
 {
    if (Index <= Self->Stops[0].Offset) {
       Transform.multiply(*Self->Stops[0].AGGTransform);
@@ -75,7 +75,7 @@ static inline void apply_transition(objVectorTransition *Self, DOUBLE Index, agg
 //****************************************************************************
 // Accurately interpolate the transform for Index and apply it to the coordinate (X,Y).
 
-static void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOUBLE *Y)
+void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOUBLE *Y)
 {
    if (Index <= Self->Stops[0].Offset) {
       Self->Stops[0].AGGTransform->transform(X, Y);
@@ -222,7 +222,7 @@ static const FieldArray clTransitionFields[] = {
    END_FIELD
 };
 
-static ERROR init_transition(void) // The transition is a definition type for creating transitions and not drawing.
+ERROR init_transition(void) // The transition is a definition type for creating transitions and not drawing.
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorTransition,
       FID_BaseClassID|TLONG, ID_VECTORTRANSITION,

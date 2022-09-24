@@ -23,7 +23,18 @@ typedef struct rkVectorEllipse {
 
 static void generate_ellipse(objVectorEllipse *Vector)
 {
+   DOUBLE cx = Vector->eCX, cy = Vector->eCY;
    DOUBLE rx = Vector->eRadiusX, ry = Vector->eRadiusY;
+
+   if (Vector->eDimensions & (DMF_RELATIVE_CENTER_X|DMF_RELATIVE_CENTER_Y|DMF_RELATIVE_RADIUS_X|DMF_RELATIVE_RADIUS_Y)) {
+      DOUBLE view_width, view_height;
+      get_parent_size(Vector, view_width, view_height);
+
+      if (Vector->eDimensions & DMF_RELATIVE_CENTER_X) cx *= view_width;
+      if (Vector->eDimensions & DMF_RELATIVE_CENTER_Y) cy *= view_height;
+      if (Vector->eDimensions & DMF_RELATIVE_RADIUS_X) rx *= view_width;
+      if (Vector->eDimensions & DMF_RELATIVE_RADIUS_Y) ry *= view_height;
+   }
 
    if (Vector->eDimensions & (DMF_RELATIVE_RADIUS_X|DMF_RELATIVE_RADIUS_Y)) {
       if (Vector->eDimensions & DMF_RELATIVE_RADIUS_X) rx *= get_parent_width(Vector);
@@ -44,33 +55,17 @@ static void generate_ellipse(objVectorEllipse *Vector)
    for (ULONG step=0; step < steps; step++) {
       DOUBLE angle = DOUBLE(step) / DOUBLE(steps) * 2.0 * agg::pi;
       //if (m_cw) angle = 2.0 * agg::pi - angle;
-      DOUBLE x = rx + cos(angle) * rx;
-      DOUBLE y = ry + sin(angle) * ry;
+      DOUBLE x = cx + cos(angle) * rx;
+      DOUBLE y = cy + sin(angle) * ry;
       if (step == 0) Vector->BasePath.move_to(x, y);
       else Vector->BasePath.line_to(x, y);
    }
    Vector->BasePath.close_polygon();
-}
 
-//****************************************************************************
-
-static void get_ellipse_xy(objVectorEllipse *Vector)
-{
-   DOUBLE cx = Vector->eCX, cy = Vector->eCY;
-   DOUBLE rx = Vector->eRadiusX, ry = Vector->eRadiusY;
-
-   if (Vector->eDimensions & (DMF_RELATIVE_CENTER_X|DMF_RELATIVE_CENTER_Y|DMF_RELATIVE_RADIUS_X|DMF_RELATIVE_RADIUS_Y)) {
-      DOUBLE view_width, view_height;
-      get_parent_size(Vector, view_width, view_height);
-
-      if (Vector->eDimensions & DMF_RELATIVE_CENTER_X) cx *= view_width;
-      if (Vector->eDimensions & DMF_RELATIVE_CENTER_Y) cy *= view_height;
-      if (Vector->eDimensions & DMF_RELATIVE_RADIUS_X) rx *= view_width;
-      if (Vector->eDimensions & DMF_RELATIVE_RADIUS_Y) ry *= view_height;
-   }
-
-   Vector->FinalX = cx - rx;
-   Vector->FinalY = cy - ry;
+   Vector->BX1 = cx - rx;
+   Vector->BY1 = cy - ry;
+   Vector->BX2 = cx + rx;
+   Vector->BY2 = cy + ry;
 }
 
 /*****************************************************************************
@@ -85,7 +80,7 @@ static ERROR ELLIPSE_Move(objVectorEllipse *Self, struct acMove *Args)
 
    Self->eCX += Args->DeltaX;
    Self->eCY += Args->DeltaY;
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -103,7 +98,7 @@ static ERROR ELLIPSE_MoveToPoint(objVectorEllipse *Self, struct acMoveToPoint *A
    if (Args->Flags & MTF_Y) Self->eCY = Args->Y;
    if (Args->Flags & MTF_RELATIVE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_X | DMF_RELATIVE_CENTER_Y) & ~(DMF_FIXED_CENTER_X | DMF_FIXED_CENTER_Y);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_X | DMF_FIXED_CENTER_Y) & ~(DMF_RELATIVE_CENTER_X | DMF_RELATIVE_CENTER_Y);
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -208,7 +203,7 @@ static ERROR ELLIPSE_SET_CenterX(objVectorEllipse *Self, Variable *Value)
 
    Self->eCX = val;
 
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -243,7 +238,7 @@ static ERROR ELLIPSE_SET_CenterY(objVectorEllipse *Self, Variable *Value)
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
 
    Self->eCY = val;
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 

@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 Please note that this is not an extension of the Vector class.  It is used for the purposes of filter definitions only.
 
@@ -7,27 +7,35 @@ VectorFilter: Filters can be applied as post-effects to rendered vectors.
 
 The VectorFilter class allows post-effect filters to be applied to vectors once they have been rendered.  Filter
 support is closely modelled around the SVG standard, and effect results are intended to match that of the standard.
+Once created, a filter can be utilised by vector objects through their Filter field.  By way of example in SVG:
+
+<pre>
+&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(#FOMTest)"/&gt;
+</pre>
 
 Filter instructions are passed to VectorFilter objects via the XML data feed, where they will be parsed into an
 internal list of instructions.  It is not possible to modify the instructions once they have been parsed, but they
 can be cleared and a new set of instructions can be applied.
 
 It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing.
-If this is an issue, it can often be rectified by pre-rendering the filter effects in advance and storing the results
-in cached bitmaps.
+If this is an issue, consider pre-rendering the filter effects in advance and caching the results in memory or files.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
+
+//#define DEBUG_FILTER_BITMAP
+//#define EXPORT_FILTER_BITMAP
 
 static void demultiply_bitmap(objBitmap *);
 static ERROR fe_default(objVectorFilter *, VectorEffect *, ULONG, CSTRING);
 static VectorEffect * find_effect(objVectorFilter *, CSTRING);
 static VectorEffect * find_effect(objVectorFilter *, ULONG);
-static ERROR get_bitmap(objVectorFilter *, objBitmap **, UBYTE, ULONG);
+static VectorEffect * find_output_effect(objVectorFilter *, ULONG);
+static ERROR get_source_bitmap(objVectorFilter *, objBitmap **, UBYTE, ULONG, bool);
 static void premultiply_bitmap(objBitmap *);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "filter_blur.cpp"
 #include "filter_merge.cpp"
@@ -40,18 +48,69 @@ static void premultiply_bitmap(objBitmap *);
 #include "filter_turbulence.cpp"
 #include "filter_morphology.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 VectorEffect::VectorEffect()
 {
-   Source  = VSF_GRAPHIC; // Default is SourceGraphic
-   Bitmap  = NULL;
-   InputID = 0;
-   Error   = ERR_Okay;
-   Blank   = false;
+   EffectName = "Unnamed";
+   SourceType = VSF_PREVIOUS; // Use previous effect as input, or SourceGraphic if no previous effect.
+   MixType    = 0;
+   OutBitmap  = NULL;
+   InputID    = 0;
+   MixID      = 0;
+   UsageCount = 0;
+   Error      = ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
+// Find an effect by name
+
+static VectorEffect * find_effect(objVectorFilter *Self, CSTRING Name)
+{
+   if (!Name) return NULL;
+
+   ULONG id = StrHash(Name, TRUE);
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
+      if (e->ID IS id) return e;
+   }
+   parasol::Log log(__FUNCTION__);
+   log.warning("Failed to find effect '%s'", Name);
+   return NULL;
+}
+
+//********************************************************************************************************************
+// Find an effect by UID.
+
+static VectorEffect * find_effect(objVectorFilter *Self, ULONG ID)
+{
+   if (!ID) return NULL;
+
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
+      if (e->ID IS ID) return e;
+   }
+   return NULL;
+}
+
+//********************************************************************************************************************
+// Find first effect in the hierarchy that outputs a bitmap.
+
+static VectorEffect * find_output_effect(objVectorFilter *Self, ULONG ID)
+{
+   auto e = find_effect(Self, ID);
+   while (e) {
+      if (e->OutBitmap) return e;
+      e = find_effect(Self, e->InputID);
+   }
+
+   return NULL;
+}
+
+//********************************************************************************************************************
+// Pre-multiplying affects RGB channels where alpha masking is present.  The alpha values are unmodified.
+//
+// It is not necessary to pre-multiply if a processing effect is only utilising the alpha channel as an input.
 
 static void premultiply_bitmap(objBitmap *bmp)
 {
@@ -82,7 +141,8 @@ static void premultiply_bitmap(objBitmap *bmp)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
+// Where possible, demultiplying should be avoided as it requires numeric division 3x per affected pixel.
 
 static void demultiply_bitmap(objBitmap *bmp)
 {
@@ -116,92 +176,89 @@ static void demultiply_bitmap(objBitmap *bmp)
    }
 }
 
-//****************************************************************************
-// Retrieve a bitmap that is associated with the effect.
+//********************************************************************************************************************
+// Return a bitmap from the bank.  In order to save memory, bitmap data is managed internally so that it always
+// reflects the size of the clipping region.  The bitmap's size reflects the Filter's (X,Y), (Width,Height) values in
+// accordance with the unit setting.
 
-static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE Source, ULONG InputID)
+static ERROR get_banked_bitmap(objVectorFilter *Self, objBitmap **BitmapResult)
 {
    parasol::Log log(__FUNCTION__);
-   //log.trace("Effect: %p, Size: %dx%d", Effect, width, height);
 
-   // Retrieve a bitmap from the bank.  In order to save memory, bitmap data is managed internally so that it always
-   // reflects the size of the clipping region.
+   auto bi = Self->BankIndex;
+   if (bi >= 256) return log.warning(ERR_ArrayFull);
 
-   LONG bi = Self->BankIndex;
-   if (bi >= ARRAYSIZE(Self->Bank)) return ERR_ArrayFull;
+   if (bi >= Self->Bank.size()) Self->Bank.emplace_back(std::make_unique<filter_bitmap>());
+
+   #ifdef DEBUG_FILTER_BITMAP
+      auto bmp = Self->Bank[bi].get()->get_bitmap(Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, Self->VectorClip, true);
+   #else
+      auto bmp = Self->Bank[bi].get()->get_bitmap(Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, Self->VectorClip, false);
+   #endif
+
+   if (bmp) {
+      if (Self->ColourSpace IS VCS_LINEAR_RGB) bmp->ColourSpace = CS_LINEAR_RGB;
+      *BitmapResult = bmp;
+      Self->BankIndex++;
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_CreateObject);
+}
+
+//********************************************************************************************************************
+// Returns a rendered bitmap that represents the source.  Where possible, if a bitmap is being referenced then that
+// reference will be returned.  Otherwise a new bitmap is allocated and rendered with the effect.  The bitmap must
+// not be freed as they are permanently maintained until the VectorFilter is destroyed.
+
+static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE SourceType, ULONG EffectID, bool Premultiply)
+{
+   parasol::Log log(__FUNCTION__);
+
+   log.branch("%s #%d <- ID: #%u, Type: %d", Self->ActiveEffect->EffectName.c_str(), Self->ActiveEffect->ID, EffectID, SourceType);
 
    objBitmap *bmp;
-   if (!Self->Bank[bi].Bitmap) {
-      // NB: Width and Height can be large because the clip region will be defining the true size,
-      // and no data is allocated.
-      if (CreateObject(ID_BITMAP, NF_INTEGRAL, &bmp,
-            FID_Name|TSTR,          "EffectBitmap",
-            FID_Width|TLONG,        10000,
-            FID_Height|TLONG,       10000,
-            FID_BitsPerPixel|TLONG, 32,
-            FID_Flags|TLONG,        BMF_ALPHA_CHANNEL|BMF_NO_DATA,
-            TAGEND)) return ERR_CreateObject;
-      Self->Bank[bi].Bitmap = bmp;
-   }
-   else bmp = Self->Bank[bi].Bitmap;
-
-   *BitmapResult = bmp;
-
-   bmp->Clip = Self->SrcBitmap->Clip; // Filter shares the same clip region as the SourceGraphic
-
-   if (bmp->Clip.Right > bmp->Width) bmp->Clip.Right = bmp->Width;
-   if (bmp->Clip.Bottom > bmp->Height) bmp->Clip.Bottom = bmp->Height;
-
-   const LONG canvas_width  = bmp->Clip.Right - bmp->Clip.Left;
-   const LONG canvas_height = bmp->Clip.Bottom - bmp->Clip.Top;
-   bmp->LineWidth = canvas_width * bmp->BytesPerPixel;
-
-   if ((Self->Bank[bi].Data) and (Self->Bank[bi].DataSize < bmp->LineWidth * canvas_height)) {
-      FreeResource(Self->Bank[bi].Data);
-      Self->Bank[bi].Data = NULL;
-      bmp->Data = NULL;
-   }
-
-   if (!bmp->Data) {
-      if (!AllocMemory(bmp->LineWidth * canvas_height, MEM_DATA|MEM_NO_CLEAR, &Self->Bank[bi].Data, NULL)) {
-         Self->Bank[bi].DataSize = bmp->LineWidth * canvas_height;
+   if (SourceType IS VSF_GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
+      if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
+      if (auto sg = get_source_graphic(Self)) {
+         gfxCopyArea(sg, bmp, 0, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0, 0);
+         if (Self->ColourSpace IS VCS_LINEAR_RGB) rgb2linear(*bmp);
       }
+      else log.warning("get_source_graphic() failed.");
    }
-
-   bmp->Data = Self->Bank[bi].Data - (bmp->Clip.Left * bmp->BytesPerPixel) - (bmp->Clip.Top * bmp->LineWidth);
-
-   Self->BankIndex++;
-
-   // Copy across the referenced content.
-
-   if (Source IS VSF_GRAPHIC) {
-      //bmpDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0x00000000, BAF_FILL);
-      gfxCopyArea(Self->SrcBitmap, bmp, 0, 0, 0, Self->SrcBitmap->Width, Self->SrcBitmap->Height, 0, 0);
-      if (Self->ColourSpace IS CS_LINEAR_RGB) rgb2linear(*bmp);
-   }
-   else if (Source IS VSF_ALPHA) {
-      //bmpDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0x00000000, BAF_FILL);
-      LONG dy = bmp->Clip.Top;
-      for (LONG sy=Self->SrcBitmap->Clip.Top; sy < Self->SrcBitmap->Clip.Bottom; sy++) {
-         ULONG *src = (ULONG *)(Self->SrcBitmap->Data + (sy * Self->SrcBitmap->LineWidth));
-         ULONG *dest = (ULONG *)(bmp->Data + (dy * bmp->LineWidth));
-         LONG dx = bmp->Clip.Left;
-         for (LONG sx=Self->SrcBitmap->Clip.Left; sx < Self->SrcBitmap->Clip.Right; sx++) {
-            dest[dx++] = src[sx] & 0xff000000;
+   else if (SourceType IS VSF_ALPHA) { // SourceAlpha
+      if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
+      if (auto sg = get_source_graphic(Self)) {
+         LONG dy = bmp->Clip.Top;
+         for (LONG sy=sg->Clip.Top; sy < sg->Clip.Bottom; sy++) {
+            ULONG *src = (ULONG *)(sg->Data + (sy * sg->LineWidth));
+            ULONG *dest = (ULONG *)(bmp->Data + (dy * bmp->LineWidth));
+            LONG dx = bmp->Clip.Left;
+            for (LONG sx=sg->Clip.Left; sx < sg->Clip.Right; sx++) {
+               dest[dx++] = src[sx] & 0xff000000;
+            }
+            dy++;
          }
-         dy++;
       }
+      else log.warning("get_source_graphic() failed.");
    }
-   else if (Source IS VSF_BKGD) { // "Represents an image snapshot of the canvas under the filter region at the time that the filter element is invoked."
-      //gfxDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0x00000000, BAF_FILL);
+   else if (SourceType IS VSF_BKGD) {
+      // "Represents an image snapshot of the canvas under the filter region at the time that the filter element is invoked."
+      // NOTE: The client needs to specify 'enable-background' in the nearest container element in order to indicate where the background is coming from;
+      // additionally it serves as a marker for graphics to be rendered to a separate bitmap (essential for coping with any transformations in the scene graph).
+      //
+      // TODO: The code as it exists here is quite basic and needs a fair amount of work in order to meet the above requirements.
+      //       See also the support for enable-background in scene_draw.cpp
+
+      if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if ((Self->BkgdBitmap) and (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
-         gfxCopyArea(Self->BkgdBitmap, bmp, 0, Self->BoundX, Self->BoundY, Self->BoundWidth, Self->BoundHeight,
-           bmp->Clip.Left, bmp->Clip.Top);
-         if (Self->ColourSpace IS CS_LINEAR_RGB) rgb2linear(*bmp);
+         gfxCopyArea(Self->BkgdBitmap, bmp, 0, Self->VectorClip.Left, Self->VectorClip.Top,
+            Self->VectorClip.Right - Self->VectorClip.Left, Self->VectorClip.Bottom - Self->VectorClip.Top,
+            bmp->Clip.Left, bmp->Clip.Top);
+         if (Self->ColourSpace IS VCS_LINEAR_RGB) rgb2linear(*bmp);
       }
    }
-   else if (Source IS VSF_BKGD_ALPHA) {
-      //gfxDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0x00000000, BAF_FILL);
+   else if (SourceType IS VSF_BKGD_ALPHA) {
+      if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if ((Self->BkgdBitmap) and (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
          LONG dy = bmp->Clip.Top;
          for (LONG sy=Self->BkgdBitmap->Clip.Top; sy < Self->BkgdBitmap->Clip.Bottom; sy++) {
@@ -215,91 +272,287 @@ static ERROR get_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE S
          }
       }
    }
-   else if ((Source IS VSF_REFERENCE) and (InputID)) {
-      auto input = find_effect(Self, InputID);
-      if (input) {
-         if (input->Bitmap) {
-            //bmpDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0x00000000, BAF_FILL);
-            gfxCopyArea(input->Bitmap, bmp, 0, 0, 0, input->Bitmap->Width, input->Bitmap->Height, 0, 0);
+   else if (SourceType IS VSF_REFERENCE) {
+      if (EffectID) {
+         if (auto e = find_output_effect(Self, EffectID)) {
+            if (!(bmp = e->OutBitmap)) {
+               log.warning("%s has dependency on %s effect #%u and does not output a bitmap.", Self->ActiveEffect->EffectName.c_str(), e->EffectName.c_str(), e->ID);
+            }
          }
-         else log.warning("Referenced filter has no bitmap.");
+         else log.warning("Failed to find effect #%u", EffectID);
       }
+      else log.warning("%s SourceGraphic reference has not provided an effect ID.", Self->ActiveEffect->EffectName.c_str());
+
+      if (!bmp) return ERR_NoData;
    }
-   else if (Source IS VSF_IGNORE) {
+   else if (SourceType IS VSF_IGNORE) {
       *BitmapResult = NULL;
       return ERR_Continue;
    }
    else {
-      log.warning("Effect source %d is not supported.", Source);
+      log.warning("Effect source %d is not supported.", SourceType);
       return ERR_Failed;
    }
+
+   #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
+      save_bitmap(bmp, std::to_string(Self->Head.UID) + "_source");
+   #endif
+
+   if (Self->ColourSpace IS VCS_LINEAR_RGB) bmp->ColourSpace = CS_LINEAR_RGB;
+   else bmp->ColourSpace = CS_SRGB;
+   if (Premultiply) premultiply_bitmap(bmp);
+
+   *BitmapResult = bmp;
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+// Render the vector client(s) to an internal bitmap that can be used for SourceGraphic and SourceAlpha input.
+// If the referenced vector has no content then the result is a bitmap cleared to 0x00000000, as per SVG specs.
+// Rendering will occur only once to SourceGraphic, so multiple calls to this function in a filter pipeline are OK.
+//
+// TODO: It would be efficient to hook into the dirty markers of the client vector so that re-rendering
+// occurs only in the event that the client has been modified.
+
+objBitmap * get_source_graphic(objVectorFilter *Self)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!Self->ClientVector) {
+      log.warning("%s No ClientVector defined.", Self->ActiveEffect->EffectName.c_str());
+      return NULL;
+   }
+
+   if (!Self->SourceGraphic) {
+      if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->SourceGraphic,
+            FID_Name|TSTR,          "source_graphic",
+            FID_Width|TLONG,        Self->ClientViewport->Scene->PageWidth,
+            FID_Height|TLONG,       Self->ClientViewport->Scene->PageHeight,
+            FID_BitsPerPixel|TLONG, 32,
+            FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
+            TAGEND)) return NULL;
+
+      Self->SourceGraphic->Clip = Self->VectorClip;
+   }
+   else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or
+            (Self->ClientViewport->Scene->PageHeight > Self->SourceGraphic->Height)) {
+      if (acResize(Self->SourceGraphic, Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, 32) != ERR_Okay)
+         return NULL;
+
+      Self->SourceGraphic->Clip = Self->VectorClip;
+   }
+   else if (Self->Rendered) return Self->SourceGraphic; // Source bitmap already exists and drawn at the correct size.
+
+   if (!Self->SourceScene) {
+      if (!CreateObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->SourceScene,
+            FID_PageWidth|TLONG,  Self->ClientViewport->Scene->PageWidth,
+            FID_PageHeight|TLONG, Self->ClientViewport->Scene->PageHeight,
+            TAGEND)) {
+
+         objVectorViewport *viewport;
+         if (!CreateObject(ID_VECTORVIEWPORT, 0, &viewport,
+               FID_Owner|TLONG, Self->SourceScene->Head.UID,
+               TAGEND)) {
+            viewport->Child = Self->ClientVector;
+         }
+      }
+      else return NULL;
+   }
+
+   auto const save_vector = Self->ClientVector->Next; // Switch off the Next pointer to prevent processing of siblings.
+   Self->ClientVector->Next = NULL;
+   Self->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
+
+   gfxDrawRectangle(Self->SourceGraphic, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0x00000000, BAF_FILL);
+   Self->SourceScene->Bitmap = Self->SourceGraphic;
+   acDraw(Self->SourceScene);
+
+   Self->Disabled = false;
+   Self->ClientVector->Next = save_vector;
+
+   Self->Rendered = true;
+   return Self->SourceGraphic;
+}
+
+//********************************************************************************************************************
+
+static ERROR set_clip_region(objVectorFilter *Self, objVectorViewport *Viewport, objVector *Vector)
+{
+   parasol::Log log(__FUNCTION__);
+
+   const DOUBLE container_width  = Viewport->vpFixedWidth;
+   const DOUBLE container_height = Viewport->vpFixedHeight;
+
+   if ((container_width < 1) or (container_height < 1)) {
+      log.warning("Viewport #%d has no size.", Viewport->Head.UID);
+      return ERR_NothingDone;
+   }
+
+   if (Self->Units IS VUNIT_BOUNDING_BOX) {
+      // All coordinates are relative to the client vector, or vectors if we are applied to a group.
+      // The bounds are oriented to the client vector's transforms.
+
+      std::array<DOUBLE, 4> bounds = { container_width, container_height, 0, 0 };
+      calc_full_boundary(Vector, bounds, false, true);
+
+      if ((bounds[2] <= bounds[0]) or (bounds[3] <= bounds[1])) {
+         // No child vector defines a path for a SourceGraphic.  Default back to the viewport.
+         bounds[0] = Viewport->vpBX1;
+         bounds[1] = Viewport->vpBY1;
+         bounds[2] = Viewport->vpBX2;
+         bounds[3] = Viewport->vpBY2;
+      }
+      auto const bound_width  = bounds[2] - bounds[0];
+      auto const bound_height = bounds[3] - bounds[1];
+
+      if (Self->Dimensions & DMF_FIXED_X) Self->VectorClip.Left = F2T(bounds[0] + Self->X);
+      else if (Self->Dimensions & DMF_RELATIVE_X) Self->VectorClip.Left = F2T(bounds[0]) + (Self->X * bound_width);
+      else Self->VectorClip.Left = F2T(bounds[0]);
+
+      if (Self->Dimensions & DMF_FIXED_Y) Self->VectorClip.Top = F2T(bounds[1] + Self->Y);
+      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->VectorClip.Top = F2T(bounds[1] + (Self->Y * bound_height));
+      else Self->VectorClip.Top = F2T(bounds[1]);
+
+      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->VectorClip.Right = Self->VectorClip.Left + F2T(Self->Width * bound_width);
+      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->VectorClip.Right = Self->VectorClip.Left + F2T(Self->Width * bound_width);
+      else Self->VectorClip.Right = Self->VectorClip.Left + F2T(bound_width);
+
+      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(Self->Height * bound_height);
+      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(Self->Height * bound_height);
+      else Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(bound_height);
+   }
+   else { // USERSPACE
+      DOUBLE x, y, w, h;
+      if (Self->Dimensions & DMF_FIXED_X) x = F2T(Self->X);
+      else if (Self->Dimensions & DMF_RELATIVE_X) x = F2T(Self->X * container_width);
+      else x = 0;
+
+      if (Self->Dimensions & DMF_FIXED_Y) y = F2T(Self->Y);
+      else if (Self->Dimensions & DMF_RELATIVE_Y) y = F2T(Self->Y * container_height);
+      else y = 0;
+
+      if (Self->Dimensions & DMF_FIXED_WIDTH) w = F2T(Self->Width);
+      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) w = F2T(Self->Width * container_width);
+      else w = F2T(container_width);
+
+      if (Self->Dimensions & DMF_FIXED_HEIGHT) h = F2T(Self->Height);
+      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) h = F2T(Self->Height * container_height);
+      else h = F2T(container_height);
+
+      agg::path_storage rect;
+      rect.move_to(x, y);
+      rect.line_to(x + w, y);
+      rect.line_to(x + w, y + h);
+      rect.line_to(x, y + h);
+      rect.close_polygon();
+
+      agg::conv_transform<agg::path_storage, agg::trans_affine> path(rect, Vector->Transform);
+      bounding_rect_single(path, 0, &Self->VectorClip.Left, &Self->VectorClip.Top, &Self->VectorClip.Right, &Self->VectorClip.Bottom);
+   }
+
+   if (Self->VectorClip.Left < 0) Self->VectorClip.Left = 0;
+   if (Self->VectorClip.Top < 0)  Self->VectorClip.Top  = 0;
+   if (Self->VectorClip.Right > container_width)   Self->VectorClip.Right  = container_width;
+   if (Self->VectorClip.Bottom > container_height) Self->VectorClip.Bottom = container_height;
 
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
+// Main rendering routine for filter effects.  Called by the scene graph renderer whenever a vector uses a filter.
 
-static VectorEffect * find_effect(objVectorFilter *Self, CSTRING Name)
+ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVector *Vector, objBitmap *BkgdBitmap, objBitmap **Output)
 {
-   ULONG id = StrHash(Name, TRUE);
-   for (auto &ptr : Self->Effects) {
-      auto e = ptr.get();
-      if (e->ID IS id) return e;
-   }
    parasol::Log log(__FUNCTION__);
-   log.warning("Failed to find effect '%s'", Name);
-   return NULL;
-}
 
-//****************************************************************************
+   if (!Vector) return log.warning(ERR_NullArgs);
+   if (Self->Disabled) return ERR_NothingDone;
 
-static VectorEffect * find_effect(objVectorFilter *Self, ULONG ID)
-{
+   parasol::SwitchContext context(Self);
+   filter_state state;
+
+   log.branch("Rendering filter content.  LinearRGB: %c", (Self->ColourSpace IS VCS_LINEAR_RGB) ? 'Y' : 'N');
+
+   Self->ClientViewport = Viewport;
+   Self->ClientVector   = Vector;
+   Self->BkgdBitmap     = BkgdBitmap;
+   Self->Rendered       = false; // Set to true when SourceGraphic is rendered
+   Self->BankIndex      = 0;
+
+   if (set_clip_region(Self, Viewport, Vector)) return ERR_Okay;
+
+   // Render the effect pipeline in sequence.  Linked effects get their own bitmap, everything else goes to a shared
+   // output bitmap.  After all effects are rendered, the shared output bitmap is returned for rendering to the scene graph.
+   //
+   // * Effects may request the SourceGraphic, in which case we render the client vector to a separate scene graph
+   //   and without transforms.
+   //
+   // TODO: Effects that don't have dependencies could be threaded.  Big pipelines could benefit from effects
+   // being rendered to independent bitmaps in threads, then composited at the last stage.
+
+   objBitmap *out = NULL;
    for (auto &ptr : Self->Effects) {
       auto e = ptr.get();
-      if (e->ID IS ID) return e;
-   }
-   return NULL;
-}
+      log.extmsg("Effect: %s #%u, Independent: %c", e->EffectName.c_str(), e->ID, e->UsageCount > 0 ? 'Y' : 'N');
 
-//****************************************************************************
-// Determine the usage count of each effect (i.e. the total number of times the effect is referenced in the pipeline).
+      Self->ActiveEffect = e;
 
-static void calc_usage(objVectorFilter *Self)
-{
-   for (auto &ptr : Self->Effects) {
-      auto e = ptr.get();
-      e->UsageCount = 0;
-   }
-
-   for (auto &ptr : Self->Effects) {
-      auto e = ptr.get();
-      if (e->InputID) {
-         auto ref = find_effect(Self, e->InputID);
-         if (ref) ref->UsageCount++;
+      if (e->UsageCount > 0) {
+         if (auto error = get_banked_bitmap(Self, &e->OutBitmap)) return error;
+         gfxDrawRectangle(e->OutBitmap, 0, 0, e->OutBitmap->Width, e->OutBitmap->Height, 0x00000000, BAF_FILL);
       }
+      else {
+         if (!out) {
+            if (auto error = get_banked_bitmap(Self, &out)) return error;
+            gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
+         }
+         e->OutBitmap = out;
+      }
+
+      e->apply(Self, state);
    }
+   Self->ActiveEffect = NULL;
+
+   if (!out) {
+      log.warning("Effect pipeline did not produce an output bitmap.");
+      if (auto error = get_banked_bitmap(Self, &out)) return error;
+      gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
+   }
+
+   // Return the result for rendering to the scene graph.
+
+   if (Self->ColourSpace IS VCS_LINEAR_RGB) linear2RGB(*out);
+
+   #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
+      save_bitmap(out, std::to_string(Self->Head.UID));
+   #endif
+
+   #ifdef DEBUG_FILTER_BITMAP
+      gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff0000ff, 0);
+   #endif
+
+   *Output = out;
+   return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Parser for common filter attributes.
 
-static ERROR fe_default(objVectorFilter *Filter, VectorEffect *Effect, ULONG ID, CSTRING Value)
+static ERROR fe_default(objVectorFilter *Filter, VectorEffect *Effect, ULONG AttribID, CSTRING Value)
 {
-   switch (ID) {
+   switch (AttribID) {
       case SVF_IN: {
          switch (StrHash(Value, FALSE)) {
-            case SVF_SOURCEGRAPHIC:   Effect->Source = VSF_GRAPHIC; break;
-            case SVF_SOURCEALPHA:     Effect->Source = VSF_ALPHA; break;
-            case SVF_BACKGROUNDIMAGE: Effect->Source = VSF_BKGD; break;
-            case SVF_BACKGROUNDALPHA: Effect->Source = VSF_BKGD_ALPHA; break;
-            case SVF_FILLPAINT:       Effect->Source = VSF_FILL; break;
-            case SVF_STROKEPAINT:     Effect->Source = VSF_STROKE; break;
+            case SVF_SOURCEGRAPHIC:   Effect->SourceType = VSF_GRAPHIC; break;
+            case SVF_SOURCEALPHA:     Effect->SourceType = VSF_ALPHA; break;
+            case SVF_BACKGROUNDIMAGE: Effect->SourceType = VSF_BKGD; break;
+            case SVF_BACKGROUNDALPHA: Effect->SourceType = VSF_BKGD_ALPHA; break;
+            case SVF_FILLPAINT:       Effect->SourceType = VSF_FILL; break;
+            case SVF_STROKEPAINT:     Effect->SourceType = VSF_STROKE; break;
             default:  {
-               VectorEffect *e;
-               if ((e = find_effect(Filter, Value))) {
+               if (auto e = find_effect(Filter, Value)) {
                   if (e != Effect) {
-                     Effect->Source = VSF_REFERENCE;
+                     Effect->SourceType = VSF_REFERENCE;
                      Effect->InputID = e->ID;
                   }
                }
@@ -309,7 +562,29 @@ static ERROR fe_default(objVectorFilter *Filter, VectorEffect *Effect, ULONG ID,
          break;
       }
 
-      case SVF_RESULT: // Name the filter.  This allows another filter to use the result as 'in' and create a pipeline
+      case SVF_IN2: { // 'in2' is the secondary (typically bkgd) that 'in' is copied over or mixed with.
+         switch (StrHash(Value, FALSE)) {
+            case SVF_SOURCEGRAPHIC:   Effect->MixType = VSF_GRAPHIC; break;
+            case SVF_SOURCEALPHA:     Effect->MixType = VSF_ALPHA; break;
+            case SVF_BACKGROUNDIMAGE: Effect->MixType = VSF_BKGD; break;
+            case SVF_BACKGROUNDALPHA: Effect->MixType = VSF_BKGD_ALPHA; break;
+            case SVF_FILLPAINT:       Effect->MixType = VSF_FILL; break;
+            case SVF_STROKEPAINT:     Effect->MixType = VSF_STROKE; break;
+            default:  {
+               if (auto e = find_effect(Filter, Value)) {
+                  if (e != Effect) {
+                     Effect->MixType  = VSF_REFERENCE;
+                     Effect->MixID = e->ID;
+                  }
+               }
+               break;
+            }
+         }
+         break;
+      }
+
+      case SVF_RESULT: // Name the filter.  Allows another filter to use the result as 'in' and create a pipeline
+         Effect->Name = Value;
          Effect->ID = StrHash(Value, TRUE); // NB: Case sensitive
          break;
    }
@@ -317,25 +592,22 @@ static ERROR fe_default(objVectorFilter *Filter, VectorEffect *Effect, ULONG ID,
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Clear: Clears all filter instructions from the object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_Clear(objVectorFilter *Self, APTR Void)
 {
    Self->Effects.clear();
-
-   for (LONG i=0; i < ARRAYSIZE(Self->Bank); i++) {
-      if (Self->Bank[i].Bitmap) { acFree(Self->Bank[i].Bitmap); Self->Bank[i].Bitmap = NULL; }
-      if (Self->Bank[i].Data) { FreeResource(Self->Bank[i].Data); Self->Bank[i].Data = NULL; }
-   }
+   Self->Bank.clear();
+   Self->BankIndex = 0;
 
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 DataFeed: Filter effects are parsed via the DataFeed action.
@@ -357,11 +629,12 @@ The following example illustrates:
 Unsupported or invalid elements will be reported in debug output and then ignored, allowing the parser to process
 as many instructions as possible.
 
-The XML object that is used to parse the effects is accessible through the #EffectXML field.
+Multiple calls to this action will append to existing effects.  If a reset of existing effects is necessary, call the
+@Clear action before appending new effects.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Args)
 {
@@ -371,296 +644,96 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
 
    ERROR error = ERR_Okay;
    if (Args->DataType IS DATA_XML) {
-      if (Self->EffectXML) { acFree(Self->EffectXML); Self->EffectXML = NULL; }
+      objXML *xml;
+      if (!CreateObject(ID_XML, NF_INTEGRAL, &xml,
+            FID_Statement, (CSTRING)Args->Buffer,
+            TAGEND)) {
+         for (auto tag = xml->Tags[0]; tag; tag=tag->Next) {
+            log.trace("Parsing filter element '%s'", tag->Attrib->Name);
 
-      if (!NewObject(ID_XML, NF_INTEGRAL, &Self->EffectXML)) {
-         SetString(Self->EffectXML, FID_Statement, (CSTRING)Args->Buffer);
-         if (!acInit(Self->EffectXML)) {
-            for (auto tag = Self->EffectXML->Tags[0]; tag; tag=tag->Next) {
-               log.trace("Processing filter element '%s'", tag->Attrib->Name);
-               switch(StrHash(tag->Attrib->Name, FALSE)) {
-                  case SVF_FEBLUR:           Self->Effects.emplace_back(std::make_unique<BlurEffect>(Self, tag)); break;
-                  case SVF_FEGAUSSIANBLUR:   Self->Effects.emplace_back(std::make_unique<BlurEffect>(Self, tag)); break;
+            auto size = Self->Effects.size();
+            switch(StrHash(tag->Attrib->Name, FALSE)) {
+               case SVF_FEBLUR:           Self->Effects.emplace_back(std::make_unique<BlurEffect>(Self, tag)); break;
+               case SVF_FEGAUSSIANBLUR:   Self->Effects.emplace_back(std::make_unique<BlurEffect>(Self, tag)); break;
 
-                  case SVF_FEOFFSET:         Self->Effects.emplace_back(std::make_unique<OffsetEffect>(Self, tag)); break;
-                  case SVF_FEMERGE:          Self->Effects.emplace_back(std::make_unique<MergeEffect>(Self, tag)); break;
-                  case SVF_FECOLORMATRIX:    // American spelling
-                  case SVF_FECOLOURMATRIX:   Self->Effects.emplace_back(std::make_unique<ColourEffect>(Self, tag)); break;
-                  case SVF_FECONVOLVEMATRIX: Self->Effects.emplace_back(std::make_unique<ConvolveEffect>(Self, tag)); break;
-                  case SVF_FEBLEND:          // Blend and composite share the same code.
-                  case SVF_FECOMPOSITE:      Self->Effects.emplace_back(std::make_unique<CompositeEffect>(Self, tag)); break;
-                  case SVF_FEFLOOD:          Self->Effects.emplace_back(std::make_unique<FloodEffect>(Self, tag)); break;
-                  case SVF_FETURBULENCE:     Self->Effects.emplace_back(std::make_unique<TurbulenceEffect>(Self, tag)); break;
-                  case SVF_FEMORPHOLOGY:     Self->Effects.emplace_back(std::make_unique<MorphEffect>(Self, tag)); break;
-                  case SVF_FEIMAGE:          Self->Effects.emplace_back(std::make_unique<ImageEffect>(Self, tag)); break;
-                  case SVF_FEDISPLACEMENTMAP:
-                  case SVF_FETILE:
-                  case SVF_FECOMPONENTTRANSFER:
-                  case SVF_FEDIFFUSELIGHTING:
-                  case SVF_FESPECULARLIGHTING:
-                  case SVF_FEDISTANTLIGHT:
-                  case SVF_FEPOINTLIGHT:
-                  case SVF_FESPOTLIGHT:
-                     log.warning("Filter element '%s' is not currently supported.", tag->Attrib->Name);
-                     break;
+               case SVF_FEOFFSET:         Self->Effects.emplace_back(std::make_unique<OffsetEffect>(Self, tag)); break;
+               case SVF_FEMERGE:          Self->Effects.emplace_back(std::make_unique<MergeEffect>(Self, tag)); break;
+               case SVF_FECOLORMATRIX:    // American spelling
+               case SVF_FECOLOURMATRIX:   Self->Effects.emplace_back(std::make_unique<ColourEffect>(Self, tag)); break;
+               case SVF_FECONVOLVEMATRIX: Self->Effects.emplace_back(std::make_unique<ConvolveEffect>(Self, tag)); break;
+               case SVF_FEBLEND:          // Blend and composite share the same code.
+               case SVF_FECOMPOSITE:      Self->Effects.emplace_back(std::make_unique<CompositeEffect>(Self, tag)); break;
+               case SVF_FEFLOOD:          Self->Effects.emplace_back(std::make_unique<FloodEffect>(Self, tag)); break;
+               case SVF_FETURBULENCE:     Self->Effects.emplace_back(std::make_unique<TurbulenceEffect>(Self, tag)); break;
+               case SVF_FEMORPHOLOGY:     Self->Effects.emplace_back(std::make_unique<MorphEffect>(Self, tag)); break;
+               case SVF_FEIMAGE:          Self->Effects.emplace_back(std::make_unique<ImageEffect>(Self, tag)); break;
+               case SVF_FEDISPLACEMENTMAP:
+               case SVF_FETILE:
+               case SVF_FECOMPONENTTRANSFER:
+               case SVF_FEDIFFUSELIGHTING:
+               case SVF_FESPECULARLIGHTING:
+               case SVF_FEDISTANTLIGHT:
+               case SVF_FEPOINTLIGHT:
+               case SVF_FESPOTLIGHT:
+                  log.warning("Filter element '%s' is not currently supported.", tag->Attrib->Name);
+                  break;
 
-                  default:
-                     log.warning("Filter element '%s' not recognised.", tag->Attrib->Name);
-                     break;
-               }
-
-               if (error) log.warning("Failed to process filter element '%s'", tag->Attrib->Name);
+               default:
+                  log.warning("Filter element '%s' not recognised.", tag->Attrib->Name);
+                  break;
             }
 
-            calc_usage(Self);
+            // If the client didn't specify an input for an effect, figure out what to use.
+
+            if (Self->Effects.size() > size) {
+               auto e = Self->Effects.back().get();
+               if (e->SourceType IS VSF_PREVIOUS) {
+                  if (Self->Effects.size() <= 1) e->SourceType = VSF_GRAPHIC;
+                  else {
+                     auto previous = Self->Effects[Self->Effects.size()-2].get();
+                     e->SourceType = VSF_REFERENCE;
+                     e->InputID = previous->ID;
+                  }
+               }
+            }
          }
-         else {
-            acFree(Self->EffectXML);
-            Self->EffectXML = NULL;
-            error = ERR_Init;
+
+         // Determine the usage count of each effect (i.e. total number of times the effect is referenced in the pipeline).
+
+         for (auto &ptr : Self->Effects) {
+            auto e = ptr.get();
+            if (e->InputID) {
+               if (auto ref = find_effect(Self, e->InputID)) ref->UsageCount++;
+            }
+
+            if (e->MixID) {
+               if (auto ref = find_effect(Self, e->MixID)) ref->UsageCount++;
+            }
          }
+
+         acFree(xml);
       }
-      else error = ERR_NewObject;
+      else error = ERR_CreateObject;
    }
 
    return error;
 }
 
-//****************************************************************************
-
-static ERROR VECTORFILTER_Draw(objVectorFilter *Self, struct acDraw *Args)
-{
-   parasol::Log log;
-
-   if ((!Self->Scene) or (!Self->Viewport)) {
-      log.trace("Scene and/or Viewport not defined.");
-      return log.warning(ERR_FieldNotSet);
-   }
-
-   if (!Self->Viewport->Child) { log.warning("Target vector not defined."); return ERR_FieldNotSet; }
-
-   Self->Rendered = false;
-   Self->DrawStamp = PreciseTime();
-
-   // The target bitmap will mirror the size of the vector's nearest viewport.
-
-   auto child = (objVector *)Self->Viewport->Child;
-
-   SetFields(Self->Scene,
-      FID_PageWidth|TDOUBLE,  (DOUBLE)child->ParentView->vpFixedWidth,
-      FID_PageHeight|TDOUBLE, (DOUBLE)child->ParentView->vpFixedHeight,
-      TAGEND);
-
-   // TODO: Although the scene and viewport should be identical, we should still pull these values from the viewport.
-   LONG page_width = Self->Scene->PageWidth;
-   LONG page_height = Self->Scene->PageHeight;
-
-   if ((page_width < 1) or (page_height < 1)) return ERR_Okay;
-   if (page_width > 4096) page_width = 4096;
-   if (page_height > 4096) page_height = 4096;
-
-   // Calculate the area that will be affected by the filter algorithms.  The area will be reflected in the target
-   // Bitmap's clipping coordinates.
-
-   auto save_vector = Self->Viewport->Child->Next; // Switch off the Next pointer to prevent drawing siblings.
-   Self->Viewport->Child->Next = NULL;
-
-   child->Filter = NULL; // Temporarily turning off the filter is required to prevent infinite recursion.
-
-   UBYTE bound = FALSE;
-   if (Self->Units IS VUNIT_BOUNDING_BOX) {
-      // All coordinates are relative to the target vector, or vectors if we are applied to a group.
-
-      std::array<DOUBLE, 4> bounds = { (DOUBLE)Self->Scene->PageWidth, (DOUBLE)Self->Scene->PageHeight, 0, 0 };
-      calc_full_boundary((objVector *)Self->Viewport->Child, bounds);
-
-      if ((bounds[2] <= bounds[0]) or (bounds[3] <= bounds[1])) {
-         log.warning("Unable to draw filter as no child vector produces a path.");
-         return ERR_Failed;
-      }
-
-      if (Self->Dimensions & DMF_FIXED_X) Self->BoundX = bounds[0] + Self->X;
-      else if (Self->Dimensions & DMF_RELATIVE_X) Self->BoundX = bounds[0] + (Self->X * (bounds[2] - bounds[0]));
-      else Self->BoundX = bounds[0];
-
-      if (Self->Dimensions & DMF_FIXED_Y) Self->BoundY = bounds[1] + Self->Y;
-      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->BoundY = bounds[1] + (Self->Y * (bounds[3] - bounds[1]));
-      else Self->BoundY = bounds[1];
-
-      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->BoundWidth = Self->Width;
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->BoundWidth = Self->Width * (bounds[2] - bounds[0]);
-      else Self->BoundWidth = bounds[2] - bounds[0];
-
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->BoundHeight = Self->Height;
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->BoundHeight = Self->Height * (bounds[3] - bounds[1]);
-      else Self->BoundHeight = bounds[3] = bounds[1];
-
-      Self->ViewX = Self->Viewport->FinalX;
-      Self->ViewY = Self->Viewport->FinalY;
-      Self->ViewWidth  = Self->Viewport->vpFixedWidth;
-      Self->ViewHeight = Self->Viewport->vpFixedHeight;
-      bound = TRUE;
-   }
-   else {
-      // Use page relative coordinates.  In this mode we have to allocate a rectangular path that matches the filter's
-      // dimensions, then apply transforms to it if necessary.
-
-      DOUBLE fx, fy, fw, fh;
-
-      if (Self->Dimensions & DMF_FIXED_X) fx = Self->X;
-      else if (Self->Dimensions & DMF_RELATIVE_X) fx = Self->X * (DOUBLE)page_width;
-      else fy = 0;
-
-      if (Self->Dimensions & DMF_FIXED_Y) fy = Self->Y;
-      else if (Self->Dimensions & DMF_RELATIVE_Y) fy = Self->Y * (DOUBLE)page_height;
-      else fx = 0;
-
-      if (Self->Dimensions & DMF_FIXED_WIDTH) fw = Self->Width;
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) fw = Self->Width * (DOUBLE)page_width;
-      else fw = page_width;
-
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) fh = Self->Height;
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) fh = Self->Height * (DOUBLE)page_height;
-      else fh = page_height;
-
-      // Sometimes transforms need to be applied, e.g. <g transform="translate(...)">
-      if (child->Matrices) {
-         agg::path_storage rect;
-         rect.move_to(fx, fy);
-         rect.line_to(fx+fw, fy);
-         rect.line_to(fx+fw, fy+fh);
-         rect.line_to(fx, fy+fh);
-         rect.close_polygon();
-
-         agg::trans_affine transform;
-         transform.tx += fx;
-         transform.ty += fy;
-         apply_transforms(*child, transform);
-         rect.transform(transform);
-
-         bounding_rect_single(rect, 0, &fx, &fy, &fw, &fh);
-         fw -= fx;
-         fh -= fy;
-      }
-
-      Self->BoundX = fx;
-      Self->BoundY = fy;
-      Self->BoundWidth = fw;
-      Self->BoundHeight = fh;
-
-      // If the filter is in user-space mode then the target viewport is taken as the provided x,y,width,height values
-      // after transformation.
-
-      Self->ViewX = fx;
-      Self->ViewY = fy;
-      Self->ViewWidth  = fw;
-      Self->ViewHeight = fh;
-   }
-
-   // Render the vector to an internal bitmap that we will use as SourceGraphic and SourceAlpha input.
-
-   if (!Self->SrcBitmap) {
-      if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->SrcBitmap,
-            FID_Name|TSTR,          "SourceGraphic",
-            FID_Width|TLONG,        Self->BoundX + Self->BoundWidth,
-            FID_Height|TLONG,       Self->BoundY + Self->BoundHeight,
-            FID_BitsPerPixel|TLONG, 32,
-            FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
-            TAGEND)) return ERR_CreateObject;
-      Self->Bank[0].Bitmap = Self->SrcBitmap;
-   }
-   else if ((Self->BoundX + Self->BoundWidth > Self->SrcBitmap->Width) or
-            (Self->BoundY + Self->BoundHeight > Self->SrcBitmap->Height)) {
-      acResize(Self->SrcBitmap, Self->BoundX + Self->BoundWidth, Self->BoundY + Self->BoundHeight, 32);
-   }
-
-   Self->SrcBitmap->Clip.Left   = Self->BoundX;
-   Self->SrcBitmap->Clip.Top    = Self->BoundY;
-   Self->SrcBitmap->Clip.Right  = Self->BoundX + Self->BoundWidth;
-   Self->SrcBitmap->Clip.Bottom = Self->BoundY + Self->BoundHeight;
-   if (Self->SrcBitmap->Clip.Left < 0) Self->SrcBitmap->Clip.Left = 0;
-   if (Self->SrcBitmap->Clip.Top < 0) Self->SrcBitmap->Clip.Top = 0;
-   if (Self->SrcBitmap->Clip.Right > Self->SrcBitmap->Width) Self->SrcBitmap->Clip.Right = Self->SrcBitmap->Width;
-   if (Self->SrcBitmap->Clip.Bottom > Self->SrcBitmap->Height) Self->SrcBitmap->Clip.Bottom = Self->SrcBitmap->Height;
-
-   gfxDrawRectangle(Self->SrcBitmap, 0, 0, Self->SrcBitmap->Width, Self->SrcBitmap->Height, 0x00000000, BAF_FILL);
-
-   Self->BankIndex = 1;
-   Self->Scene->Bitmap = Self->SrcBitmap;
-   acDraw(Self->Scene);
-
-   child->Filter = Self;
-   child->Next = save_vector;
-
-   // Now apply the effects to the rendered scene
-
-   for (auto &ptr : Self->Effects) {
-      auto e = ptr.get();
-      if (e->Blank) continue; // Ignore effects that don't produce graphics
-
-      ERROR error = ERR_Okay;
-      e->DestX = e->XOffset;
-      e->DestY = e->YOffset;
-      e->Bitmap = NULL;
-
-      if (e->InputID) {
-         auto input = find_effect(Self, e->InputID);
-
-         if (input) { // Offset inheritance from the input
-            e->DestX += input->DestX;
-            e->DestY += input->DestY;
-
-            input->applyInput(*e);
-
-            if ((e->Source IS VSF_REFERENCE) and (input->UsageCount IS 1) and (input->Bitmap)) {
-               e->Bitmap = input->Bitmap;
-            }
-         }
-      }
-
-      // If we inherit the bitmap from another effect, try and use it rather than copying a new bitmap from scratch.
-
-      if (!e->Bitmap) error = get_bitmap(Self, &e->Bitmap, e->Source, 0);
-
-      if (!error) e->apply(Self);
-      else if (error != ERR_Continue) log.warning("Failed to configure bitmap for effect.");
-   }
-
-   // Render the filter results to the destination bitmap
-
-   if (!Self->Rendered) {
-      Self->Rendered = true;
-      objBitmap *bmp;
-      for (auto &ptr : Self->Effects) {
-         auto e = ptr.get();
-         if ((e->ID) and (e->UsageCount > 0)) continue; // Don't draw the effect if it's being piped to something else.
-         if ((bmp = e->Bitmap)) { // Note that blank effects don't generate bitmaps
-            if (Self->ColourSpace IS CS_LINEAR_RGB) linear2RGB(*bmp);
-            if (Self->Opacity < 1.0) bmp->Opacity = 255.0 * Self->Opacity;
-            gfxCopyArea(bmp, Self->BkgdBitmap, BAF_BLEND|BAF_COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
-            bmp->Opacity = 255;
-         }
-      }
-   }
-
-   return ERR_Okay;
-}
-
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORFILTER_Free(objVectorFilter *Self, APTR Void)
 {
-   VECTORFILTER_Clear(Self, NULL);
+   VECTORFILTER_Clear(Self, NULL); // Free cache allocations
 
    Self->Effects.~vector();
 
-   if (Self->EffectXML) { acFree(Self->EffectXML);  Self->EffectXML = NULL; }
-   if (Self->Scene)     { acFree(Self->Scene);      Self->Scene = NULL; }
-   if (Self->Path)      { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->SourceGraphic) { acFree(Self->SourceGraphic); Self->SourceGraphic = NULL; }
+   if (Self->SourceScene)   { acFree(Self->SourceScene);   Self->SourceScene = NULL; }
+   if (Self->Path)          { FreeResource(Self->Path);    Self->Path = NULL; }
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORFILTER_Init(objVectorFilter *Self, APTR Void)
 {
@@ -671,38 +744,27 @@ static ERROR VECTORFILTER_Init(objVectorFilter *Self, APTR Void)
       return log.warning(ERR_OutOfRange);
    }
 
-   if (acInit(Self->Scene)) return ERR_Init;
-   if (acInit(Self->Viewport)) return ERR_Init;
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORFILTER_NewObject(objVectorFilter *Self, APTR Void)
 {
-   if (!NewObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Scene)) {
-      if (!NewObject(ID_VECTORVIEWPORT, 0, &Self->Viewport)) {
-         SetOwner(Self->Viewport, Self->Scene);
-         new (&Self->Effects) std::vector<VectorEffect>;
-         Self->Scene->PageWidth  = 1;
-         Self->Scene->PageHeight = 1;
-         Self->Units          = VUNIT_BOUNDING_BOX;
-         Self->PrimitiveUnits = VUNIT_UNDEFINED;
-         Self->Opacity        = 1.0;
-         Self->X              = -0.1;
-         Self->Y              = -0.1;
-         Self->Width          = 1.2;
-         Self->Height         = 1.2;
-         Self->ColourSpace    = CS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
-         Self->Dimensions     = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
-         return ERR_Okay;
-      }
-      else return ERR_NewObject;
-   }
-   else return ERR_NewObject;
+   new (&Self->Effects) std::vector<VectorEffect>;
+   Self->Units          = VUNIT_BOUNDING_BOX;
+   Self->PrimitiveUnits = VUNIT_UNDEFINED;
+   Self->Opacity        = 1.0;
+   Self->X              = -0.1; // -10% default as per SVG requirements
+   Self->Y              = -0.1;
+   Self->Width          = 1.2;  // +120% default as per SVG requirements
+   Self->Height         = 1.2;
+   Self->ColourSpace    = VCS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
+   Self->Dimensions     = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
+   return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ColourSpace: The colour space of the filter graphics (SRGB or linear RGB).
@@ -730,12 +792,42 @@ The following dimension flags are supported:
 </types>
 
 -FIELD-
+EffectXML: Returns a SVG XML string that defines the filter's effects.
+
+This field value will return a purpose-built string that defines the filter's effects in SVG compliant XML.  The string
+is allocated and must be freed once no longer in use.
+
+*********************************************************************************************************************/
+
+static ERROR VECTORFILTER_GET_EffectXML(objVectorFilter *Self, CSTRING *Value)
+{
+   std::stringstream ss;
+
+   for (auto &ptr : Self->Effects) {
+      auto e = ptr.get();
+      ss << "<";
+      e->xml(ss);
+      ss << "/>";
+   }
+
+   auto str = ss.str();
+   if ((*Value = StrClone(str.c_str()))) return ERR_Okay;
+   else return ERR_AllocMemory;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 Height: The height of the filter area.  Can be expressed as a fixed or relative coordinate.
 
-The height of the filter area is expressed here as a fixed or relative coordinate.
--END-
+The height of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively
+restrain the working space for the effect processing, making them an important consideration for efficiency.
 
-*****************************************************************************/
+The coordinate system for the width and height depends on the value for #Units.
+
+If width or height is not specified, the effect is as if a value of 120% were specified.
+
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_GET_Height(objVectorFilter *Self, struct Variable *Value)
 {
@@ -766,14 +858,14 @@ static ERROR VECTORFILTER_SET_Height(objVectorFilter *Self, Variable *Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Inherit: Inherit attributes from a VectorFilter referenced here.
 
 Attributes can be inherited from another filter by referencing that gradient in this field.  This feature is provided
 primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance penalty.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_SET_Inherit(objVectorFilter *Self, objVectorFilter *Value)
 {
@@ -785,14 +877,14 @@ static ERROR VECTORFILTER_SET_Inherit(objVectorFilter *Self, objVectorFilter *Va
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Opacity: The opacity of the filter.
 
 The opacity of the filter is defined as a value between 0.0 and 1.0, with 1.0 being fully opaque.  The default value
 is 1.0.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_SET_Opacity(objVectorFilter *Self, DOUBLE Value)
 {
@@ -802,14 +894,14 @@ static ERROR VECTORFILTER_SET_Opacity(objVectorFilter *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Path: Affix this path to all file references in the filter definition.
 
 Setting the Path field is recommended if the filter contains sub-classes that make file references, such as
 a filter image.  Any relative file reference will be prefixed with the path string that is specified here.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_SET_Path(objVectorFilter *Self, CSTRING Value)
 {
@@ -837,55 +929,31 @@ static ERROR VECTORFILTER_SET_Path(objVectorFilter *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
-PrimitiveUnits: Private. Not currently implemented.
+PrimitiveUnits: Alters the behaviour of some effects that support alternative position calculations.
 
--FIELD-
-Scene: Refers to the internal @VectorScene that will be used for filter processing.
-
-The Filter class will allocate a @VectorScene object on initialisation and use it for hosting filter
-processing.  The dimensions of the scene will match that of the area hosting the filter.  The scene object must
-not be modified as it is managed entirely by the filter.
+PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is
+`USERSPACE`.  When set to `BOUNDING_BOX`, the effect may calculate its dimensions strictly based on the client vector
+using a relative coordinate space of (0,0,100%,100%).
 
 -FIELD-
 Units: Defines the coordinate system for fields X, Y, Width and Height.
 
-The default coordinate system for gradients is `BOUNDING_BOX`, which positions the filter around the vector that
-references it.  The alternative is `USERSPACE`, which positions the filter relative to the current viewport.
-
--FIELD-
-Vector: Private. Must refer to a vector that will be processed through the filter.  Refer to draw_vectors().
--END-
-
-*****************************************************************************/
-
-static ERROR VECTORFILTER_SET_Vector(objVectorFilter *Self, objVector *Value)
-{
-   if (Self->Viewport) {
-      if (Value->Head.ClassID IS ID_VECTOR) {
-         Self->Viewport->Child = Value;
-         return ERR_Okay;
-      }
-      else return ERR_InvalidValue;
-   }
-   else return ERR_NotInitialised;
-}
-
-/*****************************************************************************
-
--FIELD-
-Viewport: Refers to a VectorViewport object allocated during initialisation.
-
-The VectorFilter will allocate a @VectorViewport on initialisation to manage its content.
+The default coordinate system is `BOUNDING_BOX`, which positions the filter within the client vector.
+The alternative is `USERSPACE`, which positions the filter relative to the client vector's nearest viewport.
 
 -FIELD-
 Width: The width of the filter area.  Can be expressed as a fixed or relative coordinate.
 
-The width of the filter area is expressed here as a fixed or relative coordinate.
--END-
+The width of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively
+restrain the working space for the effect processing, making them an important consideration for efficiency.
 
-*****************************************************************************/
+The coordinate system for the width and height depends on the value for #Units.
+
+If width or height is not specified, the effect is as if a value of 120% were specified.
+
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_GET_Width(objVectorFilter *Self, Variable *Value)
 {
@@ -916,13 +984,17 @@ static ERROR VECTORFILTER_SET_Width(objVectorFilter *Self, Variable *Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 X: X coordinate for the filter.
 
-The (X,Y) field values define the starting coordinate for mapping filters.
--END-
-*****************************************************************************/
+The meaning of the (X,Y) field values depend on the value for #Units.  In userspace mode, the filter position will be
+relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the
+vector's position.  It is important to note that coordinates are measured before any transforms are applied.
+
+If X or Y is not specified, the effect is as if a value of -10% were specified.
+
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_GET_X(objVectorFilter *Self, Variable *Value)
 {
@@ -950,13 +1022,18 @@ static ERROR VECTORFILTER_SET_X(objVectorFilter *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Y: Y coordinate for the filter.
 
-The (X,Y) field values define the starting coordinate for mapping filters.
+The meaning of the (X,Y) field values depend on the value for #Units.  In userspace mode, the filter position will be
+relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the
+vector's position.  It is important to note that coordinates are measured before any transforms are applied.
+
+If X or Y is not specified, the effect is as if a value of -10% were specified.
+
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORFILTER_GET_Y(objVectorFilter *Self, Variable *Value)
 {
@@ -984,7 +1061,7 @@ static ERROR VECTORFILTER_SET_Y(objVectorFilter *Self, Variable *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clFilterDimensions[] = {
    { "FixedX",         DMF_FIXED_X },
@@ -1006,21 +1083,18 @@ static const FieldArray clFilterFields[] = {
    { "Width",          FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTORFILTER_GET_Width, (APTR)VECTORFILTER_SET_Width },
    { "Height",         FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)VECTORFILTER_GET_Height, (APTR)VECTORFILTER_SET_Height },
    { "Opacity",        FDF_DOUBLE|FDF_RW,           0, NULL, (APTR)VECTORFILTER_SET_Opacity },
-   { "Scene",          FDF_INTEGRAL|FDF_R,          0, NULL, NULL },
-   { "Viewport",       FDF_SYSTEM|FDF_OBJECT|FDF_R, 0, NULL, NULL },
    { "Inherit",        FDF_OBJECT|FDF_RW,           0, NULL, (APTR)VECTORFILTER_SET_Inherit },
-   { "EffectXML",      FDF_OBJECT|FDF_R,            ID_XML, NULL, NULL },
    { "Units",          FDF_LONG|FDF_LOOKUP|FDF_RW,  (MAXINT)&clVectorFilterUnits, NULL, NULL },
    { "PrimitiveUnits", FDF_LONG|FDF_LOOKUP|FDF_RW,  (MAXINT)&clVectorFilterPrimitiveUnits, NULL, NULL },
    { "Dimensions",     FDF_LONGFLAGS|FDF_R,         (MAXINT)&clFilterDimensions, NULL, NULL },
    { "ColourSpace",    FDF_LONG|FDF_LOOKUP|FDF_RW,  (MAXINT)&clVectorFilterColourSpace, NULL, NULL },
    // Virtual fields
-   { "Vector",         FDF_SYSTEM|FDF_VIRTUAL|FDF_OBJECT|FDF_W, 0, NULL, (APTR)VECTORFILTER_SET_Vector },
+   { "EffectXML",      FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)VECTORFILTER_GET_EffectXML, NULL },
    { "Path",           FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)VECTORFILTER_SET_Path },
    END_FIELD
 };
 
-static ERROR init_filter(void)
+ERROR init_filter(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorFilter,
       FID_BaseClassID|TLONG, ID_VECTORFILTER,
