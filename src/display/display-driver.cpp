@@ -553,41 +553,52 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       Info->Flags = 0;
 
 #ifdef __xwindows__
-      XPixmapFormatValues *list;
-      LONG count, i;
-
-      Info->Width  = glRootWindow.width;
-      Info->Height = glRootWindow.height;
-      Info->AccelFlags = -1;
-      #warning TODO: Get display density
-      Info->VDensity = 96;
-      Info->HDensity = 96;
-
-      if (glDGAAvailable IS TRUE) {
-         Info->AccelFlags &= ~ACF_VIDEO_BLIT; // Turn off video blitting when DGA is active
+      if ((glHeadless) or (!XDisplay)) {
+         Info->Width         = 1024;
+         Info->Height        = 768;
+         Info->AccelFlags    = 0;
+         Info->VDensity      = 96;
+         Info->HDensity      = 96;
+         Info->BitsPerPixel  = 32;
+         Info->BytesPerPixel = 4;
       }
+      else {
+         XPixmapFormatValues *list;
+         LONG count, i;
 
-      Info->BitsPerPixel = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
+         Info->Width  = glRootWindow.width;
+         Info->Height = glRootWindow.height;
+         Info->AccelFlags = -1;
+         #warning TODO: Get display density
+         Info->VDensity = 96;
+         Info->HDensity = 96;
 
-      if (Info->BitsPerPixel <= 8) Info->BytesPerPixel = 1;
-      else if (Info->BitsPerPixel <= 16) Info->BytesPerPixel = 2;
-      else if (Info->BitsPerPixel <= 24) Info->BytesPerPixel = 3;
-      else Info->BytesPerPixel = 4;
+         if (glDGAAvailable IS TRUE) {
+            Info->AccelFlags &= ~ACF_VIDEO_BLIT; // Turn off video blitting when DGA is active
+         }
 
-      if ((list = XListPixmapFormats(XDisplay, &count))) {
-         for (i=0; i < count; i++) {
-            if (list[i].depth IS Info->BitsPerPixel) {
-               Info->BytesPerPixel = list[i].bits_per_pixel;
-               if (list[i].bits_per_pixel <= 8) Info->BytesPerPixel = 1;
-               else if (list[i].bits_per_pixel <= 16) Info->BytesPerPixel = 2;
-               else if (list[i].bits_per_pixel <= 24) Info->BytesPerPixel = 3;
-               else {
-                  Info->BytesPerPixel = 4;
-                  Info->BitsPerPixel  = 32;
+         Info->BitsPerPixel = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
+
+         if (Info->BitsPerPixel <= 8) Info->BytesPerPixel = 1;
+         else if (Info->BitsPerPixel <= 16) Info->BytesPerPixel = 2;
+         else if (Info->BitsPerPixel <= 24) Info->BytesPerPixel = 3;
+         else Info->BytesPerPixel = 4;
+
+         if ((list = XListPixmapFormats(XDisplay, &count))) {
+            for (i=0; i < count; i++) {
+               if (list[i].depth IS Info->BitsPerPixel) {
+                  Info->BytesPerPixel = list[i].bits_per_pixel;
+                  if (list[i].bits_per_pixel <= 8) Info->BytesPerPixel = 1;
+                  else if (list[i].bits_per_pixel <= 16) Info->BytesPerPixel = 2;
+                  else if (list[i].bits_per_pixel <= 24) Info->BytesPerPixel = 3;
+                  else {
+                     Info->BytesPerPixel = 4;
+                     Info->BitsPerPixel  = 32;
+                  }
                }
             }
+            XFree(list);
          }
-         XFree(list);
       }
 
 #elif _WIN32
