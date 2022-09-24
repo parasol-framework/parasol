@@ -58,6 +58,7 @@ VectorEffect::VectorEffect()
    OutBitmap  = NULL;
    InputID    = 0;
    MixID      = 0;
+   UsageCount = 0;
    Error      = ERR_Okay;
 }
 
@@ -104,28 +105,6 @@ static VectorEffect * find_output_effect(objVectorFilter *Self, ULONG ID)
    }
 
    return NULL;
-}
-
-//********************************************************************************************************************
-// Determine the usage count of each effect (i.e. the total number of times the effect is referenced in the pipeline).
-
-static void calc_usage(objVectorFilter *Self)
-{
-   for (auto &ptr : Self->Effects) {
-      auto e = ptr.get();
-      e->UsageCount = 0;
-   }
-
-   for (auto &ptr : Self->Effects) {
-      auto e = ptr.get();
-      if (e->InputID) {
-         if (auto ref = find_effect(Self, e->InputID)) ref->UsageCount++;
-      }
-
-      if (e->MixID) {
-         if (auto ref = find_effect(Self, e->MixID)) ref->UsageCount++;
-      }
-   }
 }
 
 //********************************************************************************************************************
@@ -218,6 +197,7 @@ static ERROR get_banked_bitmap(objVectorFilter *Self, objBitmap **BitmapResult)
    #endif
 
    if (bmp) {
+      if (Self->ColourSpace IS VCS_LINEAR_RGB) bmp->ColourSpace = CS_LINEAR_RGB;
       *BitmapResult = bmp;
       Self->BankIndex++;
       return ERR_Okay;
@@ -241,7 +221,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if (auto sg = get_source_graphic(Self)) {
          gfxCopyArea(sg, bmp, 0, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0, 0);
-         if (Self->ColourSpace IS CS_LINEAR_RGB) rgb2linear(*bmp);
+         if (Self->ColourSpace IS VCS_LINEAR_RGB) rgb2linear(*bmp);
       }
       else log.warning("get_source_graphic() failed.");
    }
@@ -274,7 +254,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
          gfxCopyArea(Self->BkgdBitmap, bmp, 0, Self->VectorClip.Left, Self->VectorClip.Top,
             Self->VectorClip.Right - Self->VectorClip.Left, Self->VectorClip.Bottom - Self->VectorClip.Top,
             bmp->Clip.Left, bmp->Clip.Top);
-         if (Self->ColourSpace IS CS_LINEAR_RGB) rgb2linear(*bmp);
+         if (Self->ColourSpace IS VCS_LINEAR_RGB) rgb2linear(*bmp);
       }
    }
    else if (SourceType IS VSF_BKGD_ALPHA) {
@@ -318,6 +298,8 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
       save_bitmap(bmp, std::to_string(Self->Head.UID) + "_source");
    #endif
 
+   if (Self->ColourSpace IS VCS_LINEAR_RGB) bmp->ColourSpace = CS_LINEAR_RGB;
+   else bmp->ColourSpace = CS_SRGB;
    if (Premultiply) premultiply_bitmap(bmp);
 
    *BitmapResult = bmp;
@@ -489,7 +471,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    parasol::SwitchContext context(Self);
    filter_state state;
 
-   log.branch("Rendering filter content...");
+   log.branch("Rendering filter content.  LinearRGB: %c", (Self->ColourSpace IS VCS_LINEAR_RGB) ? 'Y' : 'N');
 
    Self->ClientViewport = Viewport;
    Self->ClientVector   = Vector;
@@ -511,6 +493,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    objBitmap *out = NULL;
    for (auto &ptr : Self->Effects) {
       auto e = ptr.get();
+      log.extmsg("Effect: %s #%u, Independent: %c", e->EffectName.c_str(), e->ID, e->UsageCount > 0 ? 'Y' : 'N');
 
       Self->ActiveEffect = e;
 
@@ -538,8 +521,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
 
    // Return the result for rendering to the scene graph.
 
-   if (Self->ColourSpace IS CS_LINEAR_RGB) linear2RGB(*out);
-   out->Opacity = (Self->Opacity < 1.0) ? (255.0 * Self->Opacity) : 255;
+   if (Self->ColourSpace IS VCS_LINEAR_RGB) linear2RGB(*out);
 
    #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
       save_bitmap(out, std::to_string(Self->Head.UID));
@@ -716,7 +698,19 @@ static ERROR VECTORFILTER_DataFeed(objVectorFilter *Self, struct acDataFeed *Arg
             }
          }
 
-         calc_usage(Self);
+         // Determine the usage count of each effect (i.e. total number of times the effect is referenced in the pipeline).
+
+         for (auto &ptr : Self->Effects) {
+            auto e = ptr.get();
+            if (e->InputID) {
+               if (auto ref = find_effect(Self, e->InputID)) ref->UsageCount++;
+            }
+
+            if (e->MixID) {
+               if (auto ref = find_effect(Self, e->MixID)) ref->UsageCount++;
+            }
+         }
+
          acFree(xml);
       }
       else error = ERR_CreateObject;
@@ -765,7 +759,7 @@ static ERROR VECTORFILTER_NewObject(objVectorFilter *Self, APTR Void)
    Self->Y              = -0.1;
    Self->Width          = 1.2;  // +120% default as per SVG requirements
    Self->Height         = 1.2;
-   Self->ColourSpace    = CS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
+   Self->ColourSpace    = VCS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
    Self->Dimensions     = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
    return ERR_Okay;
 }

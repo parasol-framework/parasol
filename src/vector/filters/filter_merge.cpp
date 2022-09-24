@@ -36,7 +36,10 @@ public:
                      case SVF_STROKEPAINT:     List.emplace_back(VSF_STROKE); break;
                      default:  {
                         auto e = find_effect(Filter, child->Attrib[a].Value);
-                        if (e) List.emplace_back(VSF_REFERENCE, e);
+                        if (e) {
+                           List.emplace_back(VSF_REFERENCE, e);
+                           e->UsageCount++;
+                        }
                         else log.warning("Unable to parse 'in' value '%s'", child->Attrib[a].Value);
                         break;
                      }
@@ -59,8 +62,6 @@ public:
          else {
             if (!(bmp = get_source_graphic(Filter))) continue;
          }
-
-         save_bitmap(bmp, "merge_" + std::to_string(bmp->Head.UID));
 
          gfxCopyArea(bmp, OutBitmap, copy_flags, 0, 0, bmp->Width, bmp->Height, 0, 0);
 

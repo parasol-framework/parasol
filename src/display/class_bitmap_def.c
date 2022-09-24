@@ -26,6 +26,14 @@ static const struct FieldDef clBitmapFlags[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clBitmapColourSpace[] = {
+   { "SRGB", 0x00000001 },
+   { "LinearRGB", 0x00000002 },
+   { "CieLab", 0x00000003 },
+   { "CieLch", 0x00000004 },
+   { NULL, 0 }
+};
+
 FDEF maCopyArea[] = { { "DestBitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
 FDEF maCompress[] = { { "Level", FD_LONG }, { 0, 0 } };
 FDEF maDecompress[] = { { "RetainData", FD_LONG }, { 0, 0 } };

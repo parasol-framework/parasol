@@ -146,6 +146,8 @@ namespace agg
       const trans_affine& rotate(double a);
       const trans_affine& scale(double s);
       const trans_affine& scale(double x, double y);
+      const trans_affine& scaleX(double x);
+      const trans_affine& scaleY(double y);
 
       // Multiply matrix to another one
       const trans_affine& multiply(const trans_affine& m);
@@ -321,6 +323,20 @@ namespace agg
       shx = t2;
       tx  = t4;
       return *this;
+   }
+
+   inline const trans_affine& trans_affine::scaleX(double x) {
+       sx  *= x;
+       shx *= x;
+       tx  *= x;
+       return *this;
+   }
+
+   inline const trans_affine& trans_affine::scaleY(double y) {
+       sy  *= y;
+       shy *= y;
+       ty  *= y;
+       return *this;
    }
 
    inline const trans_affine& trans_affine::scale(double x, double y) {

@@ -116,7 +116,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "Y_MID: Align the source so that it is morphed along the middle of the target path.",
     "Y_MAX: Align the source so that it is morphed along the bottom of the target path.")
 
-  enum("CS", { start=1, comment="Colour space options." },
+  enum("VCS", { start=1, comment="Colour space options." },
     "SRGB: The default colour-space is sRGB, recommended for its speed.",
     "LINEAR_RGB: Linear RGB is the default colour space for SVG and produces the best results.",
     "INHERIT: Inherit the colour space option from the parent vector.")
@@ -384,16 +384,16 @@ struct OrderedVector {
   ]])
 
   class("VectorFilter", { src="filters/filter.cpp", output="filters/filter_def.c" }, [[
-    double X                      # Left-most position of filter area
-    double Y                      # Top-most position of filter area
-    double Width                  # Width of filter area
-    double Height                 # Height of filter area
-    double Opacity                # Level of opacity from 0 - 1.0
-    obj(VectorFilter) Inherit     # Reference to another pattern from which to inherit attributes
-    int(VUNIT) Units              # VUNIT constant
-    int(VUNIT) PrimitiveUnits     # VUNIT constant
-    int Dimensions                # Flags for detailing area values
-    int(CS) ColourSpace
+    double X                  # Left-most position of filter area
+    double Y                  # Top-most position of filter area
+    double Width              # Width of filter area
+    double Height             # Height of filter area
+    double Opacity            # Level of opacity from 0 - 1.0
+    obj(VectorFilter) Inherit # Reference to another pattern from which to inherit attributes
+    int(VUNIT) Units          # VUNIT constant
+    int(VUNIT) PrimitiveUnits # VUNIT constant
+    int Dimensions            # Flags for detailing area values
+    int(VCS) ColourSpace      # Operating colour space for RGB values
   ]],
   [[
    rkVector *ClientVector; // Client vector or viewport supplied by Scene.acDraw()

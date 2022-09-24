@@ -23,13 +23,12 @@ struct composite_over {
 
 struct composite_in {
    static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      UBYTE alpha = (M[A] * I[A] + 0xff)>>8;
-      if (alpha IS 255) ((ULONG *)D)[0] = ((ULONG *)I)[0];
+      if (M[A] IS 255) ((ULONG *)D)[0] = ((ULONG *)I)[0];
       else {
-         D[R] = (I[R] * alpha + 0xff)>>8;
-         D[G] = (I[G] * alpha + 0xff)>>8;
-         D[B] = (I[B] * alpha + 0xff)>>8;
-         D[A] = (I[A] * alpha + 0xff)>>8;
+         D[R] = (I[R] * M[A] + 0xff)>>8;
+         D[G] = (I[G] * M[A] + 0xff)>>8;
+         D[B] = (I[B] * M[A] + 0xff)>>8;
+         D[A] = (I[A] * M[A] + 0xff)>>8;
       }
    }
 };
@@ -477,148 +476,170 @@ class CompositeEffect : public VectorEffect {
       if (OutBitmap->BytesPerPixel != 4) return;
 
       objBitmap *inBmp;
-      if (get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) return;
 
       UBYTE *dest = OutBitmap->Data + (OutBitmap->Clip.Left * 4) + (OutBitmap->Clip.Top * OutBitmap->LineWidth);
-      UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
 
       switch (Operator) {
          case OP_NORMAL:
          case OP_OVER: {
-            objBitmap *mixBmp;
-            if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
-               doMix<composite_over>(inBmp, mixBmp, dest, in, mix);
-               demultiply_bitmap(mixBmp);
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
+               objBitmap *mixBmp;
+               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
+                  UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+                  UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+                  doMix<composite_over>(inBmp, mixBmp, dest, in, mix);
+                  demultiply_bitmap(mixBmp);
+               }
+               demultiply_bitmap(inBmp);
             }
             break;
          }
 
          case OP_IN: {
-            objBitmap *mixBmp;
-            if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, false)) {
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
-               doMix<composite_in>(inBmp, mixBmp, dest, in, mix);
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, false)) {
+               objBitmap *mixBmp;
+               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, false)) {
+                  UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+                  UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+                  doMix<composite_in>(inBmp, mixBmp, dest, in, mix);
+               }
             }
             break;
          }
 
          case OP_OUT: {
-            objBitmap *mixBmp;
-            if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, false)) {
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
-               doMix<composite_out>(inBmp, mixBmp, dest, in, mix);
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
+               objBitmap *mixBmp;
+               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, false)) {
+                  UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+                  UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+                  doMix<composite_out>(inBmp, mixBmp, dest, in, mix);
+               }
+               demultiply_bitmap(inBmp);
             }
             break;
          }
 
          case OP_ATOP: {
-            objBitmap *mixBmp;
-            if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
-               doMix<composite_atop>(inBmp, mixBmp, dest, in, mix);
-               demultiply_bitmap(mixBmp);
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
+               objBitmap *mixBmp;
+               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
+                  UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+                  UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+                  doMix<composite_atop>(inBmp, mixBmp, dest, in, mix);
+                  demultiply_bitmap(mixBmp);
+               }
+               demultiply_bitmap(inBmp);
             }
             break;
          }
 
          case OP_XOR: {
-            objBitmap *mixBmp;
-            if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
-               doMix<composite_xor>(inBmp, mixBmp, dest, in, mix);
-               demultiply_bitmap(mixBmp);
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
+               objBitmap *mixBmp;
+               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
+                  UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+                  UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+                  doMix<composite_xor>(inBmp, mixBmp, dest, in, mix);
+                  demultiply_bitmap(mixBmp);
+               }
+               demultiply_bitmap(inBmp);
             }
             break;
          }
 
          case OP_ARITHMETIC: {
-            objBitmap *mixBmp;
-            LONG height = OutBitmap->Clip.Bottom - OutBitmap->Clip.Top;
-            LONG width  = OutBitmap->Clip.Right - OutBitmap->Clip.Left;
-            if (inBmp->Clip.Right - inBmp->Clip.Left < width) width = inBmp->Clip.Right - inBmp->Clip.Left;
-            if (inBmp->Clip.Bottom - inBmp->Clip.Top < height) height = inBmp->Clip.Bottom - inBmp->Clip.Top;
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
+               objBitmap *mixBmp;
+               LONG height = OutBitmap->Clip.Bottom - OutBitmap->Clip.Top;
+               LONG width  = OutBitmap->Clip.Right - OutBitmap->Clip.Left;
+               if (inBmp->Clip.Right - inBmp->Clip.Left < width) width = inBmp->Clip.Right - inBmp->Clip.Left;
+               if (inBmp->Clip.Bottom - inBmp->Clip.Top < height) height = inBmp->Clip.Bottom - inBmp->Clip.Top;
 
-            const UBYTE A = OutBitmap->ColourFormat->AlphaPos>>3;
-            const UBYTE R = OutBitmap->ColourFormat->RedPos>>3;
-            const UBYTE G = OutBitmap->ColourFormat->GreenPos>>3;
-            const UBYTE B = OutBitmap->ColourFormat->BluePos>>3;
+               const UBYTE A = OutBitmap->ColourFormat->AlphaPos>>3;
+               const UBYTE R = OutBitmap->ColourFormat->RedPos>>3;
+               const UBYTE G = OutBitmap->ColourFormat->GreenPos>>3;
+               const UBYTE B = OutBitmap->ColourFormat->BluePos>>3;
 
-            if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
-               UBYTE *mix  = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
-               for (LONG y=0; y < height; y++) {
-                  auto dp = dest;
-                  auto sp = in;
-                  auto mp = mix;
-                  for (LONG x=0; x < width; x++) {
-                     #define i1(c) sp[c]
-                     #define i2(c) mp[c]
-                     LONG dr = (K1 * i1(R) * i2(R)) + (K2 * i1(R)) + (K3 * i2(R)) + K4;
-                     LONG dg = (K1 * i1(G) * i2(G)) + (K2 * i1(G)) + (K3 * i2(G)) + K4;
-                     LONG db = (K1 * i1(B) * i2(B)) + (K2 * i1(B)) + (K3 * i2(B)) + K4;
-                     LONG da = (K1 * i1(A) * i2(A)) + (K2 * i1(A)) + (K3 * i2(A)) + K4;
-                     if (dr > 0xff) dp[R] = 0xff;
-                     else if (dr < 0) dp[R] = 0;
-                     else dp[R] = dr;
+               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
+                  UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+                  UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+                  for (LONG y=0; y < height; y++) {
+                     auto dp = dest;
+                     auto sp = in;
+                     auto mp = mix;
+                     for (LONG x=0; x < width; x++) {
+                        #define i1(c) sp[c]
+                        #define i2(c) mp[c]
+                        LONG dr = (K1 * i1(R) * i2(R)) + (K2 * i1(R)) + (K3 * i2(R)) + K4;
+                        LONG dg = (K1 * i1(G) * i2(G)) + (K2 * i1(G)) + (K3 * i2(G)) + K4;
+                        LONG db = (K1 * i1(B) * i2(B)) + (K2 * i1(B)) + (K3 * i2(B)) + K4;
+                        LONG da = (K1 * i1(A) * i2(A)) + (K2 * i1(A)) + (K3 * i2(A)) + K4;
+                        if (dr > 0xff) dp[R] = 0xff;
+                        else if (dr < 0) dp[R] = 0;
+                        else dp[R] = dr;
 
-                     if (dg > 0xff) dp[G] = 0xff;
-                     else if (dg < 0) dp[G] = 0;
-                     else dp[G] = dg;
+                        if (dg > 0xff) dp[G] = 0xff;
+                        else if (dg < 0) dp[G] = 0;
+                        else dp[G] = dg;
 
-                     if (db > 0xff) dp[B] = 0xff;
-                     else if (db < 0) dp[B] = 0;
-                     else dp[B] = db;
+                        if (db > 0xff) dp[B] = 0xff;
+                        else if (db < 0) dp[B] = 0;
+                        else dp[B] = db;
 
-                     if (da > 0xff) dp[A] = 0xff;
-                     else if (da < 0) dp[A] = 0;
-                     else dp[A] = da;
+                        if (da > 0xff) dp[A] = 0xff;
+                        else if (da < 0) dp[A] = 0;
+                        else dp[A] = da;
 
-                     dp += 4;
-                     sp += 4;
-                     mp += 4;
+                        dp += 4;
+                        sp += 4;
+                        mp += 4;
+                     }
+                     dest += OutBitmap->LineWidth;
+                     in   += inBmp->LineWidth;
+                     mix  += mixBmp->LineWidth;
                   }
-                  dest += OutBitmap->LineWidth;
-                  in   += inBmp->LineWidth;
-                  mix  += mixBmp->LineWidth;
+                  demultiply_bitmap(mixBmp);
                }
-               demultiply_bitmap(mixBmp);
+               demultiply_bitmap(inBmp);
             }
             break;
          }
 
          default: {
-            objBitmap *mixBmp;
-            if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
-               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
-               #pragma GCC diagnostic ignored "-Wswitch"
-               switch(Operator) {
-                  case OP_MULTIPLY:   doMix<blend_multiply>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_SCREEN:     doMix<blend_screen>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_DARKEN:     doMix<blend_darken>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_LIGHTEN:    doMix<blend_lighten>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_OVERLAY:    doMix<blend_overlay>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_BURN:       doMix<blend_burn>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_DODGE:      doMix<blend_dodge>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_HARDLIGHT:  doMix<blend_hard_light>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_SOFTLIGHT:  doMix<blend_soft_light>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_DIFFERENCE: doMix<blend_difference>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_EXCLUSION:  doMix<blend_exclusion>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_PLUS:       doMix<blend_plus>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_MINUS:      doMix<blend_minus>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_CONTRAST:   doMix<blend_contrast>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_INVERT:     doMix<blend_invert>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_INVERTRGB:  doMix<blend_invert_rgb>(inBmp, mixBmp, dest, in, mix); break;
-               }
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
+               objBitmap *mixBmp;
+               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
+                  UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+                  UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+                  #pragma GCC diagnostic ignored "-Wswitch"
+                  switch(Operator) {
+                     case OP_MULTIPLY:   doMix<blend_multiply>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_SCREEN:     doMix<blend_screen>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_DARKEN:     doMix<blend_darken>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_LIGHTEN:    doMix<blend_lighten>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_OVERLAY:    doMix<blend_overlay>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_BURN:       doMix<blend_burn>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_DODGE:      doMix<blend_dodge>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_HARDLIGHT:  doMix<blend_hard_light>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_SOFTLIGHT:  doMix<blend_soft_light>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_DIFFERENCE: doMix<blend_difference>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_EXCLUSION:  doMix<blend_exclusion>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_PLUS:       doMix<blend_plus>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_MINUS:      doMix<blend_minus>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_CONTRAST:   doMix<blend_contrast>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_INVERT:     doMix<blend_invert>(inBmp, mixBmp, dest, in, mix); break;
+                     case OP_INVERTRGB:  doMix<blend_invert_rgb>(inBmp, mixBmp, dest, in, mix); break;
+                  }
 
-               demultiply_bitmap(mixBmp);
+                  demultiply_bitmap(mixBmp);
+               }
+               demultiply_bitmap(inBmp);
             }
 
             break;
          }
       }
-
-      demultiply_bitmap(inBmp);
-
    }
 
    virtual ~CompositeEffect() { }

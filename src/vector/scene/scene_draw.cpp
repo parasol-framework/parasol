@@ -1105,11 +1105,10 @@ private:
                log.traceBranch("Rendering filter for %s.", get_name(shape));
             #endif
 
-            objBitmap *filter_bmp;
-            if (!render_filter(shape->Filter, mView, shape, mBitmap, &filter_bmp)) {
-               if (filter->Opacity < 1.0) filter_bmp->Opacity = 255.0 * filter->Opacity;
-               gfxCopyArea(filter_bmp, mBitmap, BAF_BLEND|BAF_COPY, 0, 0, filter_bmp->Width, filter_bmp->Height, 0, 0);
-               filter_bmp->Opacity = 255;
+            objBitmap *bmp;
+            if (!render_filter(shape->Filter, mView, shape, mBitmap, &bmp)) {
+               bmp->Opacity = (filter->Opacity < 1.0) ? (255.0 * filter->Opacity) : 255;
+               gfxCopyArea(bmp, mBitmap, BAF_BLEND|BAF_COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
             }
             continue;
          }

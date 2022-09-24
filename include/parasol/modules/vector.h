@@ -154,9 +154,9 @@
 
 // Colour space options.
 
-#define CS_SRGB 1
-#define CS_LINEAR_RGB 2
-#define CS_INHERIT 3
+#define VCS_SRGB 1
+#define VCS_LINEAR_RGB 2
+#define VCS_INHERIT 3
 
 // Filter source types - these are used internally
 
@@ -526,7 +526,7 @@ typedef struct rkVectorFilter {
    LONG   Units;                       // VUNIT constant
    LONG   PrimitiveUnits;              // VUNIT constant
    LONG   Dimensions;                  // Flags for detailing area values
-   LONG   ColourSpace;
+   LONG   ColourSpace;                 // Operating colour space for RGB values
 
 #ifdef PRV_VECTORFILTER
    rkVector *ClientVector; // Client vector or viewport supplied by Scene.acDraw()

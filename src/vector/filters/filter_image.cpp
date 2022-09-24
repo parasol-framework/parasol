@@ -138,7 +138,7 @@ public:
          if ((Error) and (image_required)) Error = ERR_CreateObject;
          else Error = ERR_Okay;
 
-         if ((Filter->ColourSpace IS CS_LINEAR_RGB) and (!Error) and (Picture)) {
+         if ((Filter->ColourSpace IS VCS_LINEAR_RGB) and (!Error) and (Picture)) {
             rgb2linear(*Picture->Bitmap);
          }
       }

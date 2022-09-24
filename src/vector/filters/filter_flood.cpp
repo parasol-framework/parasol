@@ -1,6 +1,7 @@
 
 class FloodEffect : public VectorEffect {
    RGB8 Colour;
+   RGB8 LinearColour;
    DOUBLE X, Y, Width, Height;
    DOUBLE Opacity;
    LONG Dimensions;
@@ -81,6 +82,9 @@ public:
          log.warning("A valid flood-colour is required.");
          Error = ERR_Failed;
       }
+
+      LinearColour = Colour;
+      glLinearRGB.convert(LinearColour);
    }
 
    // Filter flood is implemented in identical fashion to feImage, only difference being that the
@@ -134,6 +138,7 @@ public:
 
       // Draw to destination.  No anti-aliasing is applied.
 
+      auto col = (Filter->ColourSpace IS VCS_LINEAR_RGB) ? LinearColour : Colour;
 
       agg::rasterizer_scanline_aa<> raster;
       agg::renderer_base<agg::pixfmt_psl> renderBase;
@@ -152,9 +157,8 @@ public:
       agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(path, Filter->ClientVector->Transform);
       raster.add_path(final_path);
       renderBase.clip_box(OutBitmap->Clip.Left, OutBitmap->Clip.Top, OutBitmap->Clip.Right - 1, OutBitmap->Clip.Bottom - 1);
-      solid_render.color(agg::rgba8(Colour.Red, Colour.Green, Colour.Blue, Colour.Alpha));
+      solid_render.color(agg::rgba8(col.Red, col.Green, col.Blue, col.Alpha));
       agg::render_scanlines(raster, scanline, solid_render);
-
    }
 
    virtual ~FloodEffect() { }

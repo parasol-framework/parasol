@@ -194,7 +194,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
          FID_Owner|TLONG,       Self->Scene->Head.UID,
          FID_Name|TSTR,         "SVGFilter",
          FID_Units|TLONG,       VUNIT_BOUNDING_BOX,
-         FID_ColourSpace|TLONG, CS_LINEAR_RGB,
+         FID_ColourSpace|TLONG, VCS_LINEAR_RGB,
          FID_Path|TSTR,         Self->Path,
          TAGEND);
 
@@ -219,10 +219,10 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
             case SVF_HEIGHT:  set_double(filter, FID_Height, val); break;
             case SVF_OPACITY: set_double(filter, FID_Opacity, val); break;
             case SVF_COLOR_INTERPOLATION_FILTERS: // The default is linearRGB
-               if (!StrMatch("auto", val)) SetLong(filter, FID_ColourSpace, CS_LINEAR_RGB);
-               else if (!StrMatch("sRGB", val)) SetLong(filter, FID_ColourSpace, CS_SRGB);
-               else if (!StrMatch("linearRGB", val)) SetLong(filter, FID_ColourSpace, CS_LINEAR_RGB);
-               else if (!StrMatch("inherit", val)) SetLong(filter, FID_ColourSpace, CS_INHERIT);
+               if (!StrMatch("auto", val)) SetLong(filter, FID_ColourSpace, VCS_LINEAR_RGB);
+               else if (!StrMatch("sRGB", val)) SetLong(filter, FID_ColourSpace, VCS_SRGB);
+               else if (!StrMatch("linearRGB", val)) SetLong(filter, FID_ColourSpace, VCS_LINEAR_RGB);
+               else if (!StrMatch("inherit", val)) SetLong(filter, FID_ColourSpace, VCS_INHERIT);
                break;
             case SVF_PRIMITIVEUNITS:
                if (!StrMatch("userSpaceOnUse", val)) filter->PrimitiveUnits = VUNIT_USERSPACE; // Default

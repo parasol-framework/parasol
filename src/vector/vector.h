@@ -21,6 +21,7 @@
 #include "agg_conv_stroke.h"
 #include "agg_conv_transform.h"
 #include "agg_curves.h"
+#include "agg_gamma_lut.h"
 #include "agg_path_storage.h"
 #include "agg_pattern_filters_rgba.h"
 #include "agg_pixfmt_gray.h"
@@ -50,6 +51,7 @@
 #include <parasol/modules/picture.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/font.h>
+#include <parasol/rgb_to_linear.h>
 
 #include <math.h>
 #define __STDC_FORMAT_MACROS
@@ -260,6 +262,8 @@ public:
 #define TB_NOISE 1
 
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
+extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
+extern rgb_to_linear glLinearRGB;
 
 extern void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
 extern ERROR vecApplyPath(class SimpleVector *, struct rkVectorPath *);
@@ -419,6 +423,15 @@ extern objBitmap * get_source_graphic(objVectorFilter *);
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glFocusLock;
 extern std::vector<objVector *> glFocusList; // The first reference is the most foreground object with the focus
+
+//********************************************************************************************************************
+
+inline static void rgb2linear(RGB8 &Colour)
+{
+   Colour.Red   = glGamma.dir(Colour.Red)>>4;
+   Colour.Green = glGamma.dir(Colour.Green)>>4;
+   Colour.Blue  = glGamma.dir(Colour.Blue)>>4;
+}
 
 //********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
@@ -735,14 +748,21 @@ inline static DOUBLE dist(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
 
 inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 {
-   objFile *file;
-   std::string path = "temp:filter_output_" + Name + ".pcx";
-   if (!CreateObject(ID_FILE, 0, &file,
-         FID_Path|TSTR,   path.c_str(),
-         FID_Flags|TLONG, FL_NEW|FL_WRITE,
+   objPicture *pic;
+   std::string path = "temp:filter_output_" + Name + ".png";
+
+   if (!CreateObject(ID_PICTURE, 0, &pic,
+         FID_Width|TLONG,        Bitmap->Clip.Right - Bitmap->Clip.Left,
+         FID_Height|TLONG,       Bitmap->Clip.Bottom - Bitmap->Clip.Top,
+         FID_BitsPerPixel|TLONG, 32,
+         FID_Flags|TLONG,        PCF_FORCE_ALPHA_32|PCF_NEW,
+         FID_Path|TSTR,          path.c_str(),
+         FID_ColourSpace|TLONG,  Bitmap->ColourSpace,
          TAGEND)) {
-      acSaveImage(Bitmap, file->Head.UID, 0);
-      acFree(file);
+
+      gfxCopyArea(Bitmap, pic->Bitmap, 0, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
+      acSaveImage(pic, 0, 0);
+      acFree(pic);
    }
 }
 

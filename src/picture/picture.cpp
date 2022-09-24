@@ -21,9 +21,9 @@ or application, in order to save space.
 <header>Technical Notes</>
 
 The Picture class will clip any loaded picture so that it fits the size given in the #Bitmap's Width and
-Height. If you specify the RESIZE flag, the picture will be shrunk or enlarged to fit the given dimensions.
-If you leave the Width and Height at NULL, then the picture will be loaded at its default dimensions.  If you need to
-find out general information about a picture before initialising it, you may <action>Query</action> it first so that
+Height. If you specify the `RESIZE` flag, the picture will be shrunk or enlarged to fit the given dimensions.
+If you leave the Width and Height at NULL, then the picture will be loaded at its default dimensions.  To
+find out general information about a picture before initialising it, <action>Query</action> it first so that
 the picture object can load initial details on the file format.
 
 Images are also remapped automatically if the source palette and destination palettes do not match, or if there are
@@ -42,6 +42,7 @@ significant differences between the source and destination bitmap types.
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/display.h>
+#include <parasol/rgb_to_linear.h>
 
 MODULE_COREBASE;
 static ModuleMaster *modPicture = NULL;
@@ -56,6 +57,30 @@ static void write_row_callback(png_structp, png_uint_32, int);
 static void png_error_hook(png_structp png_ptr, png_const_charp message);
 static void png_warning_hook(png_structp png_ptr, png_const_charp message);
 static ERROR create_picture_class(void);
+
+static rgb_to_linear glLinearRGB;
+
+//****************************************************************************
+
+static void conv_l2r_row32(UBYTE *Row, LONG Width) {
+   for (LONG x=0; x < Width; x++) {
+      Row[0] = glLinearRGB.invert(Row[0]);
+      Row[1] = glLinearRGB.invert(Row[1]);
+      Row[2] = glLinearRGB.invert(Row[2]);
+      Row += 4;
+   }
+}
+
+//****************************************************************************
+
+static void conv_l2r_row24(UBYTE *Row, LONG Width) {
+   for (LONG x=0; x < Width; x++) {
+      Row[0] = glLinearRGB.invert(Row[0]);
+      Row[1] = glLinearRGB.invert(Row[1]);
+      Row[2] = glLinearRGB.invert(Row[2]);
+      Row += 3;
+   }
+}
 
 //****************************************************************************
 
@@ -127,7 +152,6 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
    }
 
    acSeek(Self->prvFile, 0, SEEK_START);
-
 
    // Allocate PNG structures
 
@@ -356,7 +380,13 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
       // image to disk).  The programmer is required to specify the dimensions and colours of the Bitmap so that we can
       // initialise it.
 
-      Self->Flags &= ~(PCF_RESIZE_X|PCF_RESIZE_Y|PCF_LAZY|PCF_FORCE_ALPHA_32|PCF_SCALABLE); // Turn off irrelevant flags that don't match these
+      if (Self->Flags & PCF_FORCE_ALPHA_32) {
+         Self->Bitmap->BitsPerPixel  = 32;
+         Self->Bitmap->BytesPerPixel = 4;
+         Self->Bitmap->Flags |= BMF_ALPHA_CHANNEL;
+      }
+
+      Self->Flags &= ~(PCF_RESIZE_X|PCF_RESIZE_Y|PCF_LAZY|PCF_SCALABLE); // Turn off irrelevant flags that don't match these
 
       if (!Self->Bitmap->Width) Self->Bitmap->Width = Self->DisplayWidth;
       if (!Self->Bitmap->Height) Self->Bitmap->Height = Self->DisplayHeight;
@@ -548,6 +578,9 @@ static ERROR PIC_Refresh(objPicture *Self, APTR Void)
 /*****************************************************************************
 -ACTION-
 SaveImage: Saves the picture image to a data object.
+
+If no destination is specified then the image will be saved as a new file targeting #Path.
+
 -END-
 *****************************************************************************/
 
@@ -691,6 +724,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];  // Red
                row[i++] = mask[maskx++];  // Alpha
             }
+            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
             mask += Self->Mask->LineWidth;
@@ -716,6 +750,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];  // Red
                row[i++] = data[x+3];  // Alpha
             }
+            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
          }
@@ -735,6 +770,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];     // Red
                row[i++] = mask[maskx++]; // Alpha
             }
+            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
             mask += Self->Mask->LineWidth;
@@ -751,6 +787,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+1];  // Green
                row[i++] = data[x+2];  // Red
             }
+            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
          }
@@ -771,6 +808,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
                row[i++] = UnpackRed(bmp, data[x]);
                row[i++] = mask[maskx++];
             }
+            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data = (UWORD *)(((UBYTE *)data) + bmp->LineWidth);
             mask += Self->Mask->LineWidth;
@@ -788,6 +826,7 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
                row[i++] = UnpackGreen(bmp, data[x]);
                row[i++] = UnpackRed(bmp, data[x]);
             }
+            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data = (UWORD *)(((UBYTE *)data) + bmp->LineWidth);
          }
@@ -1063,7 +1102,7 @@ If a source picture includes a mask, the Mask field will refer to a Bitmap objec
 picture source has been loaded.  The mask will be expressed as either a 256 colour alpha bitmap, or a 1-bit mask with
 8 pixels per byte.
 
-If creating a picture from scratch that needs to support a mask, set the MASK flag prior to initialisation
+If creating a picture from scratch that needs to support a mask, set the `MASK` flag prior to initialisation
 and the picture class will allocate the mask bitmap automatically.
 
 -FIELD-

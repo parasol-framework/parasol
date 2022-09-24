@@ -1,9 +1,8 @@
 
-#include "agg_gamma_lut.h"
+agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma(2.2);
+rgb_to_linear glLinearRGB;
 
-static agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma(2.2);
-
-//****************************************************************************
+//********************************************************************************************************************
 
 static CSTRING get_effect_name(UBYTE Effect) __attribute__ ((unused));
 static CSTRING get_effect_name(UBYTE Effect)
@@ -37,7 +36,7 @@ static CSTRING get_effect_name(UBYTE Effect)
    else return "Unknown";
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 const FieldDef clAspectRatio[] = {
    { "XMin",  ARF_X_MIN },
@@ -87,7 +86,7 @@ INLINE CSTRING get_name(objVector *Vector) {
    return get_name(&Vector->Head);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Read a string-based series of vector commands and add them to Path.
 
 ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
@@ -268,7 +267,7 @@ void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
       AspectRatio, TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // These functions convert bitmaps between linear and RGB format with a pre-calculated gamma table.
 
 void rgb2linear(objBitmap &Bitmap)
@@ -280,22 +279,16 @@ void rgb2linear(objBitmap &Bitmap)
    const UBYTE B = Bitmap.ColourFormat->BluePos>>3;
    const UBYTE A = Bitmap.ColourFormat->AlphaPos>>3;
 
-   UBYTE *start_y = Bitmap.Data + (Bitmap.LineWidth * Bitmap.Clip.Top) + (Bitmap.Clip.Left * Bitmap.BytesPerPixel);
+   UBYTE *start_y = Bitmap.Data + (Bitmap.LineWidth * Bitmap.Clip.Top) + (Bitmap.Clip.Left * 4);
    for (LONG y=Bitmap.Clip.Top; y < Bitmap.Clip.Bottom; y++) {
       UBYTE *pixel = start_y;
       for (LONG x=Bitmap.Clip.Left; x < Bitmap.Clip.Right; x++) {
-         // The normal formula with no lookup is as follows.  The GammaRatio is '2.2' or '1.0/2.2' depending
-         // on the direction of the conversion.
-         // ULONG r = fastPow((DOUBLE)data[R] * (1.0 / 255.0), GammaRatio) * 255.0;
-         // ULONG g = fastPow((DOUBLE)data[G] * (1.0 / 255.0), GammaRatio) * 255.0;
-         // ULONG b = fastPow((DOUBLE)data[B] * (1.0 / 255.0), GammaRatio) * 255.0;
-
          if (pixel[A]) {
-            pixel[R] = glGamma.dir(pixel[R])>>4;
-            pixel[G] = glGamma.dir(pixel[G])>>4;
-            pixel[B] = glGamma.dir(pixel[B])>>4;
+            pixel[R] = glLinearRGB.convert(pixel[R]);
+            pixel[G] = glLinearRGB.convert(pixel[G]);
+            pixel[B] = glLinearRGB.convert(pixel[B]);
          }
-         pixel += Bitmap.BytesPerPixel;
+         pixel += 4;
       }
       start_y += Bitmap.LineWidth;
    }
@@ -310,16 +303,16 @@ void linear2RGB(objBitmap &Bitmap)
    const UBYTE B = Bitmap.ColourFormat->BluePos>>3;
    const UBYTE A = Bitmap.ColourFormat->AlphaPos>>3;
 
-   UBYTE *start_y = Bitmap.Data + (Bitmap.LineWidth * Bitmap.Clip.Top) + (Bitmap.Clip.Left * Bitmap.BytesPerPixel);
+   UBYTE *start_y = Bitmap.Data + (Bitmap.LineWidth * Bitmap.Clip.Top) + (Bitmap.Clip.Left * 4);
    for (LONG y=Bitmap.Clip.Top; y < Bitmap.Clip.Bottom; y++) {
       UBYTE *pixel = start_y;
       for (LONG x=Bitmap.Clip.Left; x < Bitmap.Clip.Right; x++) {
          if (pixel[A]) {
-            pixel[R] = glGamma.inv(pixel[R]<<4);
-            pixel[G] = glGamma.inv(pixel[G]<<4);
-            pixel[B] = glGamma.inv(pixel[B]<<4);
+            pixel[R] = glLinearRGB.invert(pixel[R]);
+            pixel[G] = glLinearRGB.invert(pixel[G]);
+            pixel[B] = glLinearRGB.invert(pixel[B]);
          }
-         pixel += Bitmap.BytesPerPixel;
+         pixel += 4;
       }
       start_y += Bitmap.LineWidth;
    }

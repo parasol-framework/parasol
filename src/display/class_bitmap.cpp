@@ -169,9 +169,8 @@ FDEF argsDrawUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { 
 FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB|FD_RESULT }, { NULL, 0 } };
 
 //****************************************************************************
-// Synopsis: RGBToValue(RGB8 *, RGBPalette *)
-// Formula:  Score = Abs(BB1 - BB2) + Abs(GG1 - GG2) + Abs(RR1 - RR2)
-//           The closer the score is to zero, the better the colour match.
+// Score = Abs(BB1 - BB2) + Abs(GG1 - GG2) + Abs(RR1 - RR2)
+// The closer the score is to zero, the better the colour match.
 
 static ULONG RGBToValue(RGB8 *RGB, RGBPalette *Palette)
 {
@@ -200,6 +199,19 @@ static ULONG RGBToValue(RGB8 *RGB, RGBPalette *Palette)
    }
 
    return best;
+}
+
+//****************************************************************************
+
+inline static UBYTE conv_l2r(DOUBLE X) {
+   LONG ix;
+
+   if (X < 0.0031308) ix = F2T(((X * 12.92) * 255.0) + 0.5);
+   else ix = F2T(((std::pow(X, 1.0 / 2.4) * 1.055 - 0.055) * 255.0) + 0.5);
+
+   if (ix < 0) return 0;
+   else if (ix > 255) return 255;
+   else return ix;
 }
 
 //****************************************************************************
@@ -237,7 +249,7 @@ static ERROR BITMAP_AccessObject(objBitmap *Self, APTR Void)
 /*****************************************************************************
 
 -ACTION-
-Clear: Clears a bitmap's image to a colour of black.
+Clear: Clears a bitmap's image to black.
 
 Clearing a bitmap wipes away its graphical contents by drawing a blank area over its existing graphics.  The colour of
 the blank area is determined by the #BkgdRGB field.  To clear a bitmap to a different colour, use the #DrawRectangle()
@@ -1108,6 +1120,7 @@ static ERROR BITMAP_NewObject(objBitmap *Self, APTR Void)
 
    Self->Palette      = &Self->prvPaletteArray;
    Self->ColourFormat = &Self->prvColourFormat;
+   Self->ColourSpace  = CS_SRGB;
 
    Self->Opacity = 255;
 
@@ -1614,7 +1627,7 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
    } pcx;
    RGB8 rgb;
    OBJECTPTR dest;
-   UBYTE *buffer, lastpixel, newpixel, counter;
+   UBYTE *buffer, lastpixel, newpixel;
    LONG i, j, p, size;
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
@@ -1651,10 +1664,9 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
 
          LONG dp = 0;
          for (i=Self->Clip.Top; i < (Self->Clip.Bottom); i++) {
-            if (pcx.NumPlanes IS 1) {
-               // Save as a 256 colour image
+            if (pcx.NumPlanes IS 1) { // Save as a 256 colour image
                lastpixel = Self->ReadUCPixel(Self, Self->Clip.Left, i);
-               counter = 1;
+               UBYTE counter = 1;
                for (j=Self->Clip.Left+1; j <= width; j++) {
                   newpixel = Self->ReadUCPixel(Self, j, i);
 
@@ -1677,68 +1689,60 @@ static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
                   }
                }
             }
-            else {
-               // Save as a true colour image
+            else { // Save as a true colour image with run-length encoding
                for (p=0; p < 3; p++) {
-                  // No encoding
-                  if (pcx.Encoding IS 0) {
-                     for (j=Self->Clip.Left; j < Self->Clip.Right; j++) {
-                        Self->ReadUCRPixel(Self, j, i, &rgb);
-                        switch(p) {
-                           case 0:  buffer[dp++] = rgb.Red;   break;
-                           case 1:  buffer[dp++] = rgb.Green; break;
-                           default: buffer[dp++] = rgb.Blue;
+                  Self->ReadUCRPixel(Self, Self->Clip.Left, i, &rgb);
+
+                  if (Self->ColourSpace IS CS_LINEAR_RGB) {
+                     rgb.Red   = conv_l2r(rgb.Red);
+                     rgb.Green = conv_l2r(rgb.Green);
+                     rgb.Blue  = conv_l2r(rgb.Blue);
+                  }
+
+                  switch(p) {
+                     case 0:  lastpixel = rgb.Red;   break;
+                     case 1:  lastpixel = rgb.Green; break;
+                     default: lastpixel = rgb.Blue;
+                  }
+                  UBYTE counter = 1;
+
+                  for (j=Self->Clip.Left+1; j < Self->Clip.Right; j++) {
+                     Self->ReadUCRPixel(Self, j, i, &rgb);
+                     switch(p) {
+                        case 0:  newpixel = rgb.Red;   break;
+                        case 1:  newpixel = rgb.Green; break;
+                        default: newpixel = rgb.Blue;
+                     }
+
+                     if (newpixel IS lastpixel) {
+                        counter++;
+                        if (counter IS 63) {
+                           buffer[dp++] = 0xc0 | counter;
+                           buffer[dp++] = lastpixel;
+                           counter = 0;
                         }
+                     }
+                     else {
+                        if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
+                           buffer[dp++] = lastpixel;
+                        }
+                        else if (counter) {
+                           buffer[dp++] = 0xc0 | counter;
+                           buffer[dp++] = lastpixel;
+                        }
+                        lastpixel = newpixel;
+                        counter = 1;
                      }
                   }
-                  else {
-                     // Encoding on
-                     Self->ReadUCRPixel(Self, Self->Clip.Left, i, &rgb);
-                     switch(p) {
-                        case 0:  lastpixel = rgb.Red;   break;
-                        case 1:  lastpixel = rgb.Green; break;
-                        default: lastpixel = rgb.Blue;
-                     }
-                     counter = 1;
 
-                     for (j=Self->Clip.Left+1; j < Self->Clip.Right; j++) {
-                        Self->ReadUCRPixel(Self, j, i, &rgb);
-                        switch(p) {
-                           case 0:  newpixel = rgb.Red;   break;
-                           case 1:  newpixel = rgb.Green; break;
-                           default: newpixel = rgb.Blue;
-                        }
+                  // Finish line if necessary
 
-                        if (newpixel IS lastpixel) {
-                           counter++;
-                           if (counter IS 63) {
-                              buffer[dp++] = 0xc0 | counter;
-                              buffer[dp++] = lastpixel;
-                              counter = 0;
-                           }
-                        }
-                        else {
-                           if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
-                              buffer[dp++] = lastpixel;
-                           }
-                           else if (counter) {
-                              buffer[dp++] = 0xc0 | counter;
-                              buffer[dp++] = lastpixel;
-                           }
-                           lastpixel = newpixel;
-                           counter = 1;
-                        }
-                     }
-
-                     // Finish line if necessary
-
-                     if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
-                        buffer[dp++] = lastpixel;
-                     }
-                     else if (counter) {
-                        buffer[dp++] = 0xc0 | counter;
-                        buffer[dp++] = lastpixel;
-                     }
+                  if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
+                     buffer[dp++] = lastpixel;
+                  }
+                  else if (counter) {
+                     buffer[dp++] = 0xc0 | counter;
+                     buffer[dp++] = lastpixel;
                   }
                }
             }
@@ -2549,6 +2553,7 @@ static const FieldArray clBitmapFields[] = {
    { "TransRGB",      FDF_RGB|FDF_RW,               0, NULL, (APTR)SET_Trans },
    { "Bkgd",          FDF_RGB|FDF_RW,               0, NULL, (APTR)SET_Bkgd },
    { "BkgdIndex",     FDF_LONG|FDF_RW,              0, NULL, (APTR)SET_BkgdIndex },
+   { "ColourSpace",   FDF_LONGFLAGS|FDF_RW,         (MAXINT)&clBitmapColourSpace, NULL, NULL },
    // Virtual fields
    { "Clip",          FDF_POINTER|FDF_STRUCT|FDF_RW, 0, (APTR)GET_Clip, (APTR)SET_Clip },
    { "Handle",        FDF_POINTER|FDF_SYSTEM|FDF_RW, 0, (APTR)GET_Handle, (APTR)SET_Handle },
