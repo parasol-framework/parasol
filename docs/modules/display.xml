@@ -1014,6 +1014,13 @@ if ((pointer = gfxAccessPointer())) {
       <const name="RMB">Release the cursor after the right mouse button is held and released.</const>
     </constants>
 
+    <constants lookup="CS" comment="Colour space options.">
+      <const name="CIE_LAB">Cartesian L*a*b* colour space defined by CIE 15.</const>
+      <const name="CIE_LCH">Polar L*CHab colour space defined by CIE 15.</const>
+      <const name="LINEAR_RGB">Linear RGB is used to improve colour balance in blending operations.</const>
+      <const name="SRGB">The default colour-space is sRGB.</const>
+    </constants>
+
     <constants lookup="CSRF" comment="Flags for CopySurface().">
       <const name="ALPHA">Enable alpha blending if the source is in 32-bit colour format with an alpha channel.</const>
       <const name="CLIP">Enable clipping of the source coordinates.</const>

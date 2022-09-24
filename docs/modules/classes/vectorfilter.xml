@@ -14,9 +14,11 @@
     <include>modules/vectorfilter.h</include>
     <copyright>Paul Manias © 2010-2022</copyright>
     <description>
-<p>The VectorFilter class allows post-effect filters to be applied to vectors once they have been rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard.</p>
+<p>The VectorFilter class allows post-effect filters to be applied to vectors once they have been rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard. Once created, a filter can be utilised by vector objects through their Filter field.  By way of example in SVG:</p>
+<pre>&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(#FOMTest)"/&gt;
+</pre>
 <p>Filter instructions are passed to VectorFilter objects via the XML data feed, where they will be parsed into an internal list of instructions.  It is not possible to modify the instructions once they have been parsed, but they can be cleared and a new set of instructions can be applied.</p>
-<p>It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing. If this is an issue, it can often be rectified by pre-rendering the filter effects in advance and storing the results in cached bitmaps.</p></description>
+<p>It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing. If this is an issue, consider pre-rendering the filter effects in advance and caching the results in memory or files.</p></description>
     <source>
       <file path="filters/">filter.cpp</file>
     </source>
@@ -53,11 +55,11 @@
       <name>ColourSpace</name>
       <comment>The colour space of the filter graphics (SRGB or linear RGB).</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="CS">INT</type>
+      <type lookup="VCS">INT</type>
       <description>
 <p>By default, colour filters are processed in SRGB format.  This is the same colour space as used by the rest of the graphics system, which means that no special conversion is necessary prior to and post filter processing.  However, linear RGB is better suited for producing high quality results at a cost of speed.</p>
 <p>Note that if SVG compatibility is required, linear RGB must be used as the default.</p>
-<types lookup="CS"/>
+<types lookup="VCS"/>
       </description>
     </field>
 
@@ -191,7 +193,7 @@
 
   </fields>
   <types>
-    <constants lookup="CS" comment="Colour space options.">
+    <constants lookup="VCS" comment="Colour space options.">
       <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
       <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
       <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
