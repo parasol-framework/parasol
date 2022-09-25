@@ -425,15 +425,6 @@ extern std::recursive_mutex glFocusLock;
 extern std::vector<objVector *> glFocusList; // The first reference is the most foreground object with the focus
 
 //********************************************************************************************************************
-
-inline static void rgb2linear(RGB8 &Colour)
-{
-   Colour.Red   = glGamma.dir(Colour.Red)>>4;
-   Colour.Green = glGamma.dir(Colour.Green)>>4;
-   Colour.Blue  = glGamma.dir(Colour.Blue)>>4;
-}
-
-//********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
 template <class T>
@@ -491,74 +482,9 @@ inline static void apply_transforms(const T &Vector, agg::trans_affine &AGGTrans
 
 //********************************************************************************************************************
 
-INLINE void BLEND32(UBYTE *p, UBYTE r, UBYTE g, UBYTE b, UBYTE a, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
-{
-   p[r] = p[r] + (((cr - p[r]) * ca)>>8);
-   p[g] = p[g] + (((cg - p[g]) * ca)>>8);
-   p[b] = p[b] + (((cb - p[b]) * ca)>>8);
-   p[a] = p[a] + ((ca * (255-p[a]))>>8);
-}
-
-INLINE void COPY32(UBYTE *p, ULONG r, ULONG g, ULONG b, ULONG a, ULONG cr, ULONG cg, ULONG cb, ULONG ca)
-{
-   p[r] = cr;
-   p[g] = cg;
-   p[b] = cb;
-   p[a] = ca;
-}
-
-/*
-INLINE void BLEND32(UBYTE *p, UBYTE r, UBYTE g, UBYTE b, UBYTE a, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
-{
-   const ULONG a1 = p[a];
-   const ULONG &a2 = ca;
-   const ULONG a2inv = 0xff - a2;
-   const ULONG a5 = a2inv * a1;
-   const ULONG a3 = a2 + a5 / 0xff;
-
-   if (a3 > 0) {
-       const ULONG r1 = glGamma.dir(p[r]);
-       const ULONG g1 = glGamma.dir(p[g]);
-       const ULONG b1 = glGamma.dir(p[b]);
-
-       const ULONG r2 = glGamma.dir(cr);
-       const ULONG g2 = glGamma.dir(cg);
-       const ULONG b2 = glGamma.dir(cb);
-
-       const ULONG a4 = 0xff * a2;
-       const ULONG a6 = 0xff * a3;
-
-       const ULONG r3 = (r2 * a4 + r1 * a5) / a6;
-       const ULONG g3 = (g2 * a4 + g1 * a5) / a6;
-       const ULONG b3 = (b2 * a4 + b1 * a5) / a6;
-
-       p[r] = glGamma.inv(r3 < glGamma.hi_res_mask ? r3 : glGamma.hi_res_mask);
-       p[g] = glGamma.inv(g3 < glGamma.hi_res_mask ? g3 : glGamma.hi_res_mask);
-       p[b] = glGamma.inv(b3 < glGamma.hi_res_mask ? b3 : glGamma.hi_res_mask);
-       p[a] = a3;
-   }
-   else {
-      p[r] = 0;
-      p[g] = 0;
-      p[b] = 0;
-      p[a] = 0;
-   }
-}
-
-INLINE void COPY32(UBYTE *p, UBYTE r, UBYTE g, UBYTE b, UBYTE a, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
-{
-   p[R] = glGamma.dir(p[cr])>>4;
-   p[G] = glGamma.dir(p[cg])>>4;
-   p[B] = glGamma.dir(p[cb])>>4;
-   p[a] = ca;
-}
-*/
-
 #include "pixfmt.h"
 
 namespace agg {
-
-//****************************************************************************
 
 template <class T> static void drawBitmapRender(agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, T &spangen, DOUBLE Opacity)

@@ -227,6 +227,12 @@
 #define VSM_LANCZOS8 14
 #define VSM_BLACKMAN8 15
 
+#define RQ_AUTO 0
+#define RQ_FAST 1
+#define RQ_CRISP 2
+#define RQ_PRECISE 3
+#define RQ_BEST 4
+
 #define RC_FINAL_PATH 0x00000001
 #define RC_BASE_PATH 0x00000002
 #define RC_TRANSFORM 0x00000004
@@ -632,6 +638,7 @@ typedef struct rkVector {
    LONG      Visibility;            // Controls the visibility of a vector and its children.
    LONG      Flags;                 // Optional flags.
    LONG      Cursor;                // The mouse cursor to display when the pointer is within the vector's boundary.
+   LONG      RenderQuality;         // Defines the quality of rendered path outlines.
 
 #ifdef PRV_VECTOR
  SHAPE_PRIVATE 
@@ -986,6 +993,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_SCALE 0x1057f68d
 #define SVF_SCREEN 0x1b5ffd45
 #define SVF_SEED 0x7c9dda26
+#define SVF_SHAPE_RENDERING 0xeecea7a1
 #define SVF_SOFTLIGHT 0x78b6e7b9
 #define SVF_SOURCEALPHA 0xbe4b853c
 #define SVF_SOURCEGRAPHIC 0x5a1343b4
@@ -998,18 +1006,6 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_STEP 0x7c9e1a01
 #define SVF_STITCHTILES 0x3d844d95
 #define SVF_STRING 0x1c93affc
-#define SVF_STROKE 0x1c93c91d
-#define SVF_STROKE_DASHARRAY 0x5faa6be9
-#define SVF_STROKE_DASHOFFSET 0x74c0b1b1
-#define SVF_STROKE_INNER_MITERLIMIT 0x8ab099f3
-#define SVF_STROKE_INNERJOIN 0x1ebcf876
-#define SVF_STROKE_LINECAP 0xe476e8e6
-#define SVF_STROKE_LINEJOIN 0x73581762
-#define SVF_STROKE_MITERLIMIT 0x49c40b8a
-#define SVF_STROKE_MITERLIMIT_THETA 0x3dab0e2d
-#define SVF_STROKE_OPACITY 0xdacd8043
-#define SVF_STROKE_WIDTH 0xa27c3faa
-#define SVF_STROKEPAINT 0x1920b9b9
 #define SVF_STYLE 0x1061af16
 #define SVF_SVG 0x0b88abb5
 #define SVF_SYMBOL 0x1ceb4efb
@@ -1202,6 +1198,18 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_SPRINGGREEN 0x6a6ae329
 #define SVF_START 0x106149d3
 #define SVF_STEELBLUE 0xa604b22a
+#define SVF_STROKE 0x1c93c91d
+#define SVF_STROKE_DASHARRAY 0x5faa6be9
+#define SVF_STROKE_DASHOFFSET 0x74c0b1b1
+#define SVF_STROKE_INNER_MITERLIMIT 0x8ab099f3
+#define SVF_STROKE_INNERJOIN 0x1ebcf876
+#define SVF_STROKE_LINECAP 0xe476e8e6
+#define SVF_STROKE_LINEJOIN 0x73581762
+#define SVF_STROKE_MITERLIMIT 0x49c40b8a
+#define SVF_STROKE_MITERLIMIT_THETA 0x3dab0e2d
+#define SVF_STROKE_OPACITY 0xdacd8043
+#define SVF_STROKE_WIDTH 0xa27c3faa
+#define SVF_STROKEPAINT 0x1920b9b9
 #define SVF_TAN 0x0b88ad48
 #define SVF_TEAL 0x7c9e660b
 #define SVF_TEXT_ANCHOR 0x0c0046d2

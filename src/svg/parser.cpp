@@ -2003,6 +2003,15 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_STROKE_INNER_MITERLIMIT: SetString(Vector, FID_InnerMiterLimit, StrValue); break;
       case SVF_STROKE_DASHOFFSET:       field_id = FID_DashOffset; break;
 
+      case SVF_SHAPE_RENDERING:
+         if (!StrMatch("auto", StrValue)) SetLong(Vector, FID_RenderQuality, RQ_AUTO);
+         else if (!StrMatch("optimizeSpeed", StrValue)) SetLong(Vector, FID_RenderQuality, RQ_FAST);
+         else if (!StrMatch("crispEdges", StrValue)) SetLong(Vector, FID_RenderQuality, RQ_CRISP);
+         else if (!StrMatch("geometricPrecision", StrValue)) SetLong(Vector, FID_RenderQuality, RQ_PRECISE);
+         else if (!StrMatch("best", StrValue)) SetLong(Vector, FID_RenderQuality, RQ_BEST);
+         else log.warning("Unknown shape-rendering value '%s'", StrValue);
+         break;
+
       case SVF_MASK: {
          auto ti = find_href_tag(Self, StrValue);
          if (ti IS -1) {

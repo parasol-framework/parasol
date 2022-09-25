@@ -43,6 +43,15 @@ static const struct FieldDef clVectorCursor[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clVectorRenderQuality[] = {
+   { "Auto", 0x00000000 },
+   { "Fast", 0x00000001 },
+   { "Crisp", 0x00000002 },
+   { "Precise", 0x00000003 },
+   { "Best", 0x00000004 },
+   { NULL, 0 }
+};
+
 FDEF maPush[] = { { "Position", FD_LONG }, { 0, 0 } };
 FDEF maTracePath[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maGetBoundary[] = { { "Flags", FD_LONG }, { "X", FD_DOUBLE|FD_RESULT }, { "Y", FD_DOUBLE|FD_RESULT }, { "Width", FD_DOUBLE|FD_RESULT }, { "Height", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
