@@ -948,7 +948,7 @@
 #define FID_PrimitiveUnits 0xf4494b91LL
 #define FID_RadiusX 0x34c03785LL
 #define FID_RadiusY 0x34c03786LL
-#define FID_RenderQuality 0x342a0eeeLL
+#define FID_PathQuality 0xa194745bLL
 #define FID_Rotate 0x19e50454LL
 #define FID_RoundX 0x19e5c605LL
 #define FID_RoundY 0x19e5c606LL

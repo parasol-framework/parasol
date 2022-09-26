@@ -999,7 +999,7 @@ private:
       else if (Vector.FillRule IS VFR_EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
 
       if ((Vector.FillColour.Alpha > 0) and (!Vector.DisableFillColour)) { // Solid colour
-         if ((Vector.RenderQuality IS RQ_CRISP) or (Vector.RenderQuality IS RQ_FAST)) {
+         if ((Vector.PathQuality IS RQ_CRISP) or (Vector.PathQuality IS RQ_FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
             renderer.color(agg::rgba(Vector.FillColour.Red, Vector.FillColour.Green, Vector.FillColour.Blue, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity));
 
@@ -1067,7 +1067,7 @@ private:
          draw_brush(*Vector.StrokeImage, mRenderBase, stroke_path, stroke_width);
       }
       else {
-         if ((Vector.RenderQuality IS RQ_CRISP) or (Vector.RenderQuality IS RQ_FAST)) {
+         if ((Vector.PathQuality IS RQ_CRISP) or (Vector.PathQuality IS RQ_FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
             renderer.color(agg::rgba(Vector.StrokeColour.Red, Vector.StrokeColour.Green, Vector.StrokeColour.Blue, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
 

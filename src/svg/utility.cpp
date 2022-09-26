@@ -362,7 +362,7 @@ static void reset_state(svgState *State)
    State->FillOpacity = -1;
    State->Opacity = -1;
    State->FontFamily = family;
-   State->RenderQuality = RQ_AUTO;
+   State->PathQuality = RQ_AUTO;
 }
 
 //****************************************************************************

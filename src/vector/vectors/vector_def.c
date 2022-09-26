@@ -43,7 +43,7 @@ static const struct FieldDef clVectorCursor[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clVectorRenderQuality[] = {
+static const struct FieldDef clVectorPathQuality[] = {
    { "Auto", 0x00000000 },
    { "Fast", 0x00000001 },
    { "Crisp", 0x00000002 },

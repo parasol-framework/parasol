@@ -638,7 +638,7 @@ typedef struct rkVector {
    LONG      Visibility;            // Controls the visibility of a vector and its children.
    LONG      Flags;                 // Optional flags.
    LONG      Cursor;                // The mouse cursor to display when the pointer is within the vector's boundary.
-   LONG      RenderQuality;         // Defines the quality of rendered path outlines.
+   LONG      PathQuality;           // Defines the quality of rendered path outlines.
 
 #ifdef PRV_VECTOR
  SHAPE_PRIVATE 

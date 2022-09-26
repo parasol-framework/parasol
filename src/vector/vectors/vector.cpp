@@ -1743,6 +1743,14 @@ The Parent value will refer to the owner of the vector within its respective bra
 top or bottom of its branch, please refer to the #Prev and #Next fields.
 
 -FIELD-
+PathQuality: Defines the quality of a path when it is rendered.
+Lookup: RQ
+
+Adjusting the render quality allows for fine adjustment of the paths produced by the rendering algorithms.  Although the
+default option of `AUTO` is recommended, it is optimal to lower the rendering quality to `CRISP` if the path is
+composed of lines at 45 degree increments and `FAST` if points are aligned to whole numbers when rendered to a bitmap.
+
+-FIELD-
 Prev: The previous vector in the branch, or NULL.
 
 The Prev value refers to the previous vector in the branch.  If the value is NULL, then the vector is positioned at the
@@ -1792,14 +1800,6 @@ static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
 }
 
 /*********************************************************************************************************************
-
--FIELD-
-RenderQuality: Defines the quality of a path when it is rendered.
-Lookup: RQ
-
-Adjusting the render quality allows for fine adjustment of the paths produced by the rendering algorithms.  Although the
-default option of `AUTO` is recommended, it may be advantageous to lower the rendering quality to `CRISP` if the path is
-composed of axial lines and `FAST` if points are aligned to whole numbers when rendered to a bitmap.
 
 -FIELD-
 ResizeEvent: A callback to trigger when the host viewport is resized.
@@ -2268,7 +2268,7 @@ static const FieldArray clVectorFields[] = {
    { "Visibility",      FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorVisibility, NULL, NULL },
    { "Flags",           FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clVectorFlags, NULL, NULL },
    { "Cursor",          FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorCursor, NULL, (APTR)VECTOR_SET_Cursor },
-   { "RenderQuality",   FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorRenderQuality, NULL, NULL },
+   { "PathQuality",     FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorPathQuality, NULL, NULL },
    // Virtual fields
    { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },
