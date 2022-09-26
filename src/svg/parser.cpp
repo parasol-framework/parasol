@@ -27,6 +27,25 @@ static LONG parse_aspect_ratio(CSTRING Value)
 }
 
 //****************************************************************************
+
+static LONG shape_rendering_to_render_quality(CSTRING Value)
+{
+   parasol::Log log;
+
+   if (!StrMatch("auto", Value)) return RQ_AUTO;
+   else if (!StrMatch("optimize-speed", Value)) return RQ_FAST;
+   else if (!StrMatch("optimizeSpeed", Value)) return RQ_FAST;
+   else if (!StrMatch("crisp-edges", Value)) return RQ_CRISP;
+   else if (!StrMatch("crispEdges", Value)) return RQ_CRISP;
+   else if (!StrMatch("geometric-precision", Value)) return RQ_PRECISE;
+   else if (!StrMatch("geometricPrecision", Value)) return RQ_PRECISE;
+   else if (!StrMatch("best", Value)) return RQ_BEST;
+   else log.warning("Unknown shape-rendering value '%s'", Value);
+
+   return RQ_AUTO;
+}
+
+//****************************************************************************
 // Apply the current state values to a vector.
 
 static void apply_state(svgState *State, OBJECTPTR Vector)
@@ -44,6 +63,10 @@ static void apply_state(svgState *State, OBJECTPTR Vector)
    }
    if (State->FillOpacity >= 0.0) SetDouble(Vector, FID_FillOpacity, State->FillOpacity);
    if (State->Opacity >= 0.0) SetDouble(Vector, FID_Opacity, State->Opacity);
+
+   if (Vector->SubID != ID_VECTORTEXT) {
+      if (State->PathQuality != RQ_AUTO) SetLong(Vector, FID_PathQuality, State->PathQuality);
+   }
 }
 
 //****************************************************************************
@@ -68,6 +91,7 @@ static void set_state(svgState *State, const XMLTag *Tag)
          case SVF_FONT_SIZE:    State->FontSize = val; break;
          case SVF_FILL_OPACITY: State->FillOpacity = StrToFloat(val); break;
          case SVF_OPACITY:      State->Opacity = StrToFloat(val); break;
+         case SVF_SHAPE_RENDERING: State->PathQuality = shape_rendering_to_render_quality(val);
       }
    }
 }
@@ -1996,6 +2020,8 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_STROKE_DASHARRAY: SetString(Vector, FID_DashArray, StrValue); break;
       case SVF_OPACITY:          SetString(Vector, FID_Opacity, StrValue); break;
       case SVF_FILL_OPACITY:     SetDouble(Vector, FID_FillOpacity, StrToFloat(StrValue)); break;
+      case SVF_SHAPE_RENDERING:  SetLong(Vector, FID_PathQuality, shape_rendering_to_render_quality(StrValue)); break;
+
       case SVF_STROKE_WIDTH:            field_id = FID_StrokeWidth; break;
       case SVF_STROKE_OPACITY:          SetString(Vector, FID_StrokeOpacity, StrValue); break;
       case SVF_STROKE_MITERLIMIT:       SetString(Vector, FID_MiterLimit, StrValue); break;

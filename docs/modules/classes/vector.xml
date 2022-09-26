@@ -528,6 +528,17 @@
     </field>
 
     <field>
+      <name>PathQuality</name>
+      <comment>Defines the quality of a path when it is rendered.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="RQ">INT</type>
+      <description>
+<p>Adjusting the render quality allows for fine adjustment of the paths produced by the rendering algorithms.  Although the default option of <code>AUTO</code> is recommended, it is optimal to lower the rendering quality to <code>CRISP</code> if the path is composed of lines at 45 degree increments and <code>FAST</code> if points are aligned to whole numbers when rendered to a bitmap.</p>
+<types lookup="RQ"/>
+      </description>
+    </field>
+
+    <field>
       <name>Prev</name>
       <comment>The previous vector in the branch, or NULL.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -670,6 +681,14 @@ Z: Close Path
       <const name="HAS_FOCUS">The vector has gained the user focus.</const>
       <const name="LOST_FOCUS">The vector has lost the user focus.</const>
       <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
+    </constants>
+
+    <constants lookup="RQ">
+      <const name="AUTO">The default option is chosen by the system.</const>
+      <const name="BEST">Use the best quality renderer available and without concerns for computational time taken.</const>
+      <const name="CRISP">Use a good quality renderer that produces crisp outlines (no anti-aliasing).</const>
+      <const name="FAST">Use the fastest renderer available and allow accuracy to be compromised in favour of speed.  Recommended for normalised paths that are known to be rectangular.</const>
+      <const name="PRECISE">Use a high quality renderer to produce accurate results.  Anti-aliasing will be enabled.</const>
     </constants>
 
     <constants lookup="VBF" comment="Options for vecGetBoundary().">

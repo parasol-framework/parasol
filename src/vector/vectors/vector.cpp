@@ -1743,6 +1743,14 @@ The Parent value will refer to the owner of the vector within its respective bra
 top or bottom of its branch, please refer to the #Prev and #Next fields.
 
 -FIELD-
+PathQuality: Defines the quality of a path when it is rendered.
+Lookup: RQ
+
+Adjusting the render quality allows for fine adjustment of the paths produced by the rendering algorithms.  Although the
+default option of `AUTO` is recommended, it is optimal to lower the rendering quality to `CRISP` if the path is
+composed of lines at 45 degree increments and `FAST` if points are aligned to whole numbers when rendered to a bitmap.
+
+-FIELD-
 Prev: The previous vector in the branch, or NULL.
 
 The Prev value refers to the previous vector in the branch.  If the value is NULL, then the vector is positioned at the
@@ -2245,21 +2253,22 @@ static const FieldDef clFillRule[] = {
 #include "vector_def.c"
 
 static const FieldArray clVectorFields[] = {
-   { "Child",            FDF_OBJECT|FD_R,              ID_VECTOR, NULL, NULL },
-   { "Scene",            FDF_OBJECT|FD_R,              ID_VECTORSCENE, NULL, NULL },
-   { "Next",             FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Next },
-   { "Prev",             FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Prev },
-   { "Parent",           FDF_OBJECT|FD_R,              0, NULL, NULL },
-   { "Matrices",         FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorMatrix", NULL, NULL },
-   { "StrokeOpacity",    FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_StrokeOpacity, (APTR)VECTOR_SET_StrokeOpacity },
-   { "FillOpacity",      FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_FillOpacity, (APTR)VECTOR_SET_FillOpacity },
-   { "Opacity",          FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_Opacity },
-   { "MiterLimit",       FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_MiterLimit },
-   { "InnerMiterLimit",  FDF_DOUBLE|FD_RW,             0, NULL, NULL },
-   { "DashOffset",       FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_DashOffset },
-   { "Visibility",       FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorVisibility, NULL, NULL },
-   { "Flags",            FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clVectorFlags, NULL, NULL },
-   { "Cursor",           FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorCursor, NULL, (APTR)VECTOR_SET_Cursor },
+   { "Child",           FDF_OBJECT|FD_R,              ID_VECTOR, NULL, NULL },
+   { "Scene",           FDF_OBJECT|FD_R,              ID_VECTORSCENE, NULL, NULL },
+   { "Next",            FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Next },
+   { "Prev",            FDF_OBJECT|FD_RW,             ID_VECTOR, NULL, (APTR)VECTOR_SET_Prev },
+   { "Parent",          FDF_OBJECT|FD_R,              0, NULL, NULL },
+   { "Matrices",        FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"VectorMatrix", NULL, NULL },
+   { "StrokeOpacity",   FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_StrokeOpacity, (APTR)VECTOR_SET_StrokeOpacity },
+   { "FillOpacity",     FDF_DOUBLE|FDF_RW,            0, (APTR)VECTOR_GET_FillOpacity, (APTR)VECTOR_SET_FillOpacity },
+   { "Opacity",         FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_Opacity },
+   { "MiterLimit",      FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_MiterLimit },
+   { "InnerMiterLimit", FDF_DOUBLE|FD_RW,             0, NULL, NULL },
+   { "DashOffset",      FDF_DOUBLE|FD_RW,             0, NULL, (APTR)VECTOR_SET_DashOffset },
+   { "Visibility",      FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorVisibility, NULL, NULL },
+   { "Flags",           FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clVectorFlags, NULL, NULL },
+   { "Cursor",          FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorCursor, NULL, (APTR)VECTOR_SET_Cursor },
+   { "PathQuality",     FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorPathQuality, NULL, NULL },
    // Virtual fields
    { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },
