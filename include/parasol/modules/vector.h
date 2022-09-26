@@ -615,7 +615,9 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
    DOUBLE DashOffset; \
    LONG   Visibility; \
    LONG   Flags; \
-   LONG   Cursor;
+   LONG   Cursor; \
+   LONG   PathQuality; \
+   LONG   ColourSpace;
   
 // Vector class definition
 
@@ -639,6 +641,7 @@ typedef struct rkVector {
    LONG      Flags;                 // Optional flags.
    LONG      Cursor;                // The mouse cursor to display when the pointer is within the vector's boundary.
    LONG      PathQuality;           // Defines the quality of rendered path outlines.
+   LONG      ColourSpace;           // Desired colour space to use when blending colours.
 
 #ifdef PRV_VECTOR
  SHAPE_PRIVATE 

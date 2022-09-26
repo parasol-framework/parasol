@@ -458,7 +458,9 @@ struct OrderedVector {
    DOUBLE DashOffset; \
    LONG   Visibility; \
    LONG   Flags; \
-   LONG   Cursor;
+   LONG   Cursor; \
+   LONG   PathQuality; \
+   LONG   ColourSpace;
   ]])
 
   methods("vector", "Vec", {
@@ -491,6 +493,7 @@ struct OrderedVector {
     int(VF)  Flags          # Optional flags.
     int(PTR) Cursor         # The mouse cursor to display when the pointer is within the vector's boundary.
     int(RQ)  PathQuality    # Defines the quality of rendered path outlines.
+    int(VCS) ColourSpace    # Desired colour space to use when blending colours.
   ]],
   [[ SHAPE_PRIVATE ]])
 
