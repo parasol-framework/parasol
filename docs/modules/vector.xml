@@ -546,6 +546,14 @@ Z: Close Path
       <const name="TRANSFORM">The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.</const>
     </constants>
 
+    <constants lookup="RQ">
+      <const name="AUTO">The default option is chosen by the system.</const>
+      <const name="BEST">Use the best quality renderer available and without concerns for computational time taken.</const>
+      <const name="CRISP">Use a good quality renderer that produces crisp outlines (no anti-aliasing).</const>
+      <const name="FAST">Use the fastest renderer available and allow accuracy to be compromised in favour of speed.  Recommended for normalised paths that are known to be rectangular.</const>
+      <const name="PRECISE">Use a high quality renderer to produce accurate results.  Anti-aliasing will be enabled.</const>
+    </constants>
+
     <constants lookup="VBF" comment="Options for vecGetBoundary().">
       <const name="INCLUSIVE">The result will be inclusive of all paths that belong to children of the queried vector.</const>
       <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>

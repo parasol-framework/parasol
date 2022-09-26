@@ -37,9 +37,9 @@
   <circle cx="160" cy="50" r="40" fill="#000" filter="url(#FOMTest)"/>
 
   <!--  Add some crosshairs of the same color of the flood at the same location as the offset -->
-  <path fill="#000" transform="translate(120, 90)" d="M-1,-21h4v20h20v4h-20v20h-4v-20h-20v-4h20v-20"/>
-  <path fill="#408000" transform="translate(160, 120)" d="M-1,-21h4v20h20v4h-20v20h-4v-20h-20v-4h20v-20"/>
-  <path fill="#408000" fill-opacity=".8" transform="translate(200, 150)" d="M-1,-21h4v20h20v4h-20v20h-4v-20h-20v-4h20v-20"/>
-  <path fill="#408000" fill-opacity=".6" transform="translate(240, 180)" d="M-1,-21h4v20h20v4h-20v20h-4v-20h-20v-4h20v-20"/>
+  <path shape-rendering="crispEdges" fill="#000" transform="translate(120, 90)" d="M-1,-21h4v20h20v4h-20v20h-4v-20h-20v-4h20v-20"/>
+  <path shape-rendering="crispEdges" fill="#408000" transform="translate(160, 120)" d="M-1,-21h4v20h20v4h-20v20h-4v-20h-20v-4h20v-20"/>
+  <path shape-rendering="crispEdges" fill="#408000" fill-opacity=".8" transform="translate(200, 150)" d="M-1,-21h4v20h20v4h-20v20h-4v-20h-20v-4h20v-20"/>
+  <path shape-rendering="crispEdges" fill="#408000" fill-opacity=".6" transform="translate(240, 180)" d="M-1,-21h4v20h20v4h-20v20h-4v-20h-20v-4h20v-20"/>
 </svg>
 

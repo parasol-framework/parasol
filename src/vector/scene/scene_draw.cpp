@@ -942,7 +942,6 @@ class VMAdaptor
 {
 private:
    agg::renderer_base<agg::pixfmt_psl> mRenderBase;
-   agg::renderer_scanline_aa_solid< agg::renderer_base<agg::pixfmt_psl> > mSolidRender;
    agg::pixfmt_psl mFormat;
    agg::scanline_u8 mScanLine;  // Use scanline_p for large solid polygons and scanline_u for things like text and gradients
    objVectorViewport *mView; // The current view
@@ -951,7 +950,7 @@ private:
 public:
    objVectorScene *Scene; // The top-level VectorScene performing the draw.
 
-   VMAdaptor() : mSolidRender(mRenderBase) { }
+   VMAdaptor() { }
 
    void draw(struct rkBitmap *Bitmap) {
       parasol::Log log;
@@ -1000,14 +999,28 @@ private:
       else if (Vector.FillRule IS VFR_EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
 
       if ((Vector.FillColour.Alpha > 0) and (!Vector.DisableFillColour)) { // Solid colour
-         mSolidRender.color(agg::rgba(Vector.FillColour.Red, Vector.FillColour.Green, Vector.FillColour.Blue, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity));
+         if ((Vector.PathQuality IS RQ_CRISP) or (Vector.PathQuality IS RQ_FAST)) {
+            agg::renderer_scanline_bin_solid renderer(mRenderBase);
+            renderer.color(agg::rgba(Vector.FillColour.Red, Vector.FillColour.Green, Vector.FillColour.Blue, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity));
 
-         if (State.mClipMask) {
-            agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
-            agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
-            agg::render_scanlines(Raster, mScanLineMasked, mSolidRender);
+            if (State.mClipMask) {
+               agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+               agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+               agg::render_scanlines(Raster, mScanLineMasked, renderer);
+            }
+            else agg::render_scanlines(Raster, mScanLine, renderer);
          }
-         else agg::render_scanlines(Raster, mScanLine, mSolidRender);
+         else {
+            agg::renderer_scanline_aa_solid renderer(mRenderBase);
+            renderer.color(agg::rgba(Vector.FillColour.Red, Vector.FillColour.Green, Vector.FillColour.Blue, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity));
+
+            if (State.mClipMask) {
+               agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+               agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+               agg::render_scanlines(Raster, mScanLineMasked, renderer);
+            }
+            else agg::render_scanlines(Raster, mScanLine, renderer);
+         }
       }
 
       if (Vector.FillImage) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
@@ -1054,14 +1067,28 @@ private:
          draw_brush(*Vector.StrokeImage, mRenderBase, stroke_path, stroke_width);
       }
       else {
-         mSolidRender.color(agg::rgba(Vector.StrokeColour.Red, Vector.StrokeColour.Green, Vector.StrokeColour.Blue, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
+         if ((Vector.PathQuality IS RQ_CRISP) or (Vector.PathQuality IS RQ_FAST)) {
+            agg::renderer_scanline_bin_solid renderer(mRenderBase);
+            renderer.color(agg::rgba(Vector.StrokeColour.Red, Vector.StrokeColour.Green, Vector.StrokeColour.Blue, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
 
-         if (State.mClipMask) {
-            agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
-            agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
-            agg::render_scanlines(Raster, mScanLineMasked, mSolidRender);
+            if (State.mClipMask) {
+               agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+               agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+               agg::render_scanlines(Raster, mScanLineMasked, renderer);
+            }
+            else agg::render_scanlines(Raster, mScanLine, renderer);
          }
-         else agg::render_scanlines(Raster, mScanLine, mSolidRender);
+         else {
+            agg::renderer_scanline_aa_solid renderer(mRenderBase);
+            renderer.color(agg::rgba(Vector.StrokeColour.Red, Vector.StrokeColour.Green, Vector.StrokeColour.Blue, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
+
+            if (State.mClipMask) {
+               agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
+               agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+               agg::render_scanlines(Raster, mScanLineMasked, renderer);
+            }
+            else agg::render_scanlines(Raster, mScanLine, renderer);
+         }
       }
    }
 
@@ -1194,12 +1221,13 @@ private:
                   }
 
                   if (Scene->Flags & VPF_OUTLINE_VIEWPORTS) { // Debug option: Draw the viewport's path with a green outline
-                     mSolidRender.color(agg::rgba(0, 1, 0));
+                     agg::renderer_scanline_bin_solid renderer(mRenderBase);
+                     renderer.color(agg::rgba(0, 1, 0));
                      agg::rasterizer_scanline_aa stroke_raster;
                      agg::conv_stroke<agg::path_storage> stroked_path(view->BasePath);
                      stroked_path.width(2);
                      stroke_raster.add_path(stroked_path);
-                     agg::render_scanlines(stroke_raster, mScanLine, mSolidRender);
+                     agg::render_scanlines(stroke_raster, mScanLine, renderer);
                   }
 
                   if (view->FillPattern) {
@@ -1393,7 +1421,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
 
       if (FillStyle->ClassID IS ID_VECTORCOLOUR) {
          objVectorColour *colour = (objVectorColour *)FillStyle;
-         agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_psl>> solid(mRenderer);
+         agg::renderer_scanline_aa_solid solid(mRenderer);
          solid.color(agg::rgba(colour->Red, colour->Green, colour->Blue, colour->Alpha));
          agg::render_scanlines(mRaster, scanline, solid);
       }
@@ -1433,7 +1461,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          draw_brush(image, mRenderer, path, StrokeWidth);
       }
       else if (StrokeStyle->ClassID IS ID_VECTORCOLOUR) {
-         agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_psl>> solid(mRenderer);
+         agg::renderer_scanline_aa_solid solid(mRenderer);
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
          mRaster.reset();
          mRaster.add_path(stroke_path);
