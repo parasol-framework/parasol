@@ -60,6 +60,7 @@ static void apply_state(svgState *State, OBJECTPTR Vector)
    if (Vector->SubID IS ID_VECTORTEXT) {
       if (State->FontFamily) SetString(Vector, FID_Face, State->FontFamily);
       if (State->FontSize)   SetString(Vector, FID_FontSize, State->FontSize);
+      if (State->FontWeight) SetLong(Vector, FID_Weight, State->FontWeight);
    }
    if (State->FillOpacity >= 0.0) SetDouble(Vector, FID_FillOpacity, State->FillOpacity);
    if (State->Opacity >= 0.0) SetDouble(Vector, FID_Opacity, State->Opacity);
@@ -89,6 +90,22 @@ static void set_state(svgState *State, const XMLTag *Tag)
          case SVF_STROKE_WIDTH: State->StrokeWidth = StrToFloat(val); break;
          case SVF_FONT_FAMILY:  State->FontFamily = val; break;
          case SVF_FONT_SIZE:    State->FontSize = val; break;
+         case SVF_FONT_WEIGHT: {
+            State->FontWeight = StrToFloat(val);
+            if (!State->FontWeight) {
+               switch(StrHash(val, FALSE)) {
+                  case SVF_NORMAL:  State->FontWeight = 400; break;
+                  case SVF_LIGHTER: State->FontWeight = 300; break; // -100 off the inherited weight
+                  case SVF_BOLD:    State->FontWeight = 700; break;
+                  case SVF_BOLDER:  State->FontWeight = 900; break; // +100 on the inherited weight
+                  case SVF_INHERIT: State->FontWeight = 400; break; // Not supported correctly yet.
+                  default:
+                     log.warning("No support for font-weight value '%s'", val); // Non-fatal
+                     State->FontWeight = 400;
+               }
+            }
+            break;
+         }
          case SVF_FILL_OPACITY: State->FillOpacity = StrToFloat(val); break;
          case SVF_OPACITY:      State->Opacity = StrToFloat(val); break;
          case SVF_SHAPE_RENDERING: State->PathQuality = shape_rendering_to_render_quality(val);
