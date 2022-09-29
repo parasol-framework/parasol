@@ -145,6 +145,38 @@
     </method>
 
     <method>
+      <name>ConvertToLinear</name>
+      <comment>Convert a bitmap's colour space to linear RGB.</comment>
+      <prototype>ERROR bmpConvertToLinear(OBJECTPTR Object)</prototype>
+      <description>
+<p>Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.</p>
+<p>The <field>ColourSpace</field> will be set to <code>LINEAR_RGB</code> on completion.  This method returns immediately if the <field>ColourSpace</field> is already set to <code>LINEAR_RGB</code>.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NothingDone">The Bitmap's content is already in linear RGB format.</error>
+        <error code="InvalidDimension">The clipping region is invalid.</error>
+        <error code="BadState">The Bitmap is not in the expected state.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>ConvertToRGB</name>
+      <comment>Convert a bitmap's colour space to standard RGB.</comment>
+      <prototype>ERROR bmpConvertToRGB(OBJECTPTR Object)</prototype>
+      <description>
+<p>Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.</p>
+<p>The <field>ColourSpace</field> will be set to <code>SRGB</code> on completion.  This method returns immediately if the <field>ColourSpace</field> is already set to <code>SRGB</code>.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NothingDone">The Bitmap's content is already in sRGB format.</error>
+        <error code="InvalidDimension">The clipping region is invalid.</error>
+        <error code="BadState">The Bitmap is not in the expected state.</error>
+      </result>
+    </method>
+
+    <method>
       <name>CopyArea</name>
       <comment>Copies a rectangular area from one bitmap to another.</comment>
       <prototype>ERROR bmpCopyArea(OBJECTPTR Object, struct rkBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
@@ -190,11 +222,12 @@
       <comment>Reverses the conversion process performed by Premultiply().</comment>
       <prototype>ERROR bmpDemultiply(OBJECTPTR Object)</prototype>
       <description>
-<p>Use Demultiply to normalise RGB values that have been converted by <method>Premultiply</method>.</p>
+<p>Use Demultiply to normalise RGB values that have previously been converted by <method>Premultiply</method>.  This method will return immediately if the bitmap values are already normalised.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="NothingDone">The content is already normalised.</error>
+        <error code="InvalidDimension">The clipping region is invalid.</error>
         <error code="BadState">The Bitmap is not in the expected state (32-bit with an alpha channel).</error>
       </result>
     </method>
@@ -283,13 +316,14 @@
       <prototype>ERROR bmpPremultiply(OBJECTPTR Object)</prototype>
       <description>
 <p>Use Premultiply to convert all RGB values in the bitmap's clipping region to pre-multiplied values.  The exact formula applied per channel is <code>(Colour * Alpha + 0xff)&gt;&gt;8</code>.  The alpha channel is not affected.</p>
-<p>This method will only operate on 32 bit bitmaps, and an alpha channel must be present.</p>
+<p>This method will only operate on 32 bit bitmaps, and an alpha channel must be present.  If the RGB values are already pre-multiplied, the method returns immediately.</p>
 <p>The process can be reversed with a call to <method>Demultiply</method>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="NothingDone">The content is already premultiplied.</error>
-        <error code="BadState">The Bitmap is not in the expected state (32-bit with an alpha channel).</error>
+        <error code="InvalidDimension">The clipping region is invalid.</error>
+        <error code="BadState">The Bitmap is not in the expected state (32-bit with an alpha channel)</error>
       </result>
     </method>
 

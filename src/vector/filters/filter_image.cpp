@@ -140,7 +140,7 @@ public:
          else Error = ERR_Okay;
 
          if ((Filter->ColourSpace IS VCS_LINEAR_RGB) and (!Error) and (Picture)) {
-            rgb2linear(*Picture->Bitmap);
+            bmpConvertToLinear(Picture->Bitmap);
          }
       }
 

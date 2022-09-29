@@ -186,7 +186,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
 
          if ((Self->ColourSpace IS VCS_LINEAR_RGB) and (Self->BkgdBitmap->ColourSpace != CS_LINEAR_RGB)) {
             bmp->ColourSpace = Self->BkgdBitmap->ColourSpace;
-            rgb2linear(*bmp);
+            bmpConvertToLinear(bmp);
          }
       }
    }
@@ -462,7 +462,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    // Return the result for rendering to the scene graph.
 
    if (out->ColourSpace IS CS_LINEAR_RGB) {
-      linear2RGB(*out);
+      bmpConvertToRGB(out);
    }
 
    #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)

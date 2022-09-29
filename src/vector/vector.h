@@ -412,8 +412,6 @@ extern void calc_full_boundary(objVector *, std::array<DOUBLE, 4> &, bool Includ
 extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
 extern void gen_vector_path(objVector *);
 extern void gen_vector_tree(objVector *);
-extern void linear2RGB(objBitmap &);
-extern void rgb2linear(objBitmap &);
 extern void send_feedback(objVector *, LONG);
 extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, UBYTE);

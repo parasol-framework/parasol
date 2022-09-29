@@ -13,6 +13,8 @@ ERROR GET_VDensity(objDisplay *Self, LONG *Value);
 
 //****************************************************************************
 
+rgb_to_linear glLinearRGB;
+
 #ifdef __xwindows__
 
 #define MAX_KEYCODES 256

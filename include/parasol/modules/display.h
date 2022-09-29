@@ -478,6 +478,8 @@ typedef struct rkBitmap {
 #define MT_BmpDrawLine -9
 #define MT_BmpPremultiply -10
 #define MT_BmpDemultiply -11
+#define MT_BmpConvertToLinear -12
+#define MT_BmpConvertToRGB -13
 
 struct bmpCopyArea { struct rkBitmap * DestBitmap; LONG Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
 struct bmpCompress { LONG Level;  };
@@ -526,6 +528,10 @@ INLINE ERROR bmpDrawLine(APTR Ob, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Co
 #define bmpPremultiply(obj) Action(MT_BmpPremultiply,(obj),0)
 
 #define bmpDemultiply(obj) Action(MT_BmpDemultiply,(obj),0)
+
+#define bmpConvertToLinear(obj) Action(MT_BmpConvertToLinear,(obj),0)
+
+#define bmpConvertToRGB(obj) Action(MT_BmpConvertToRGB,(obj),0)
 
 
 // Display class definition

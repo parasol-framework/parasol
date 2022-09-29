@@ -55,6 +55,8 @@ static const struct MethodArray clBitmapMethods[] = {
    { -9, (APTR)BITMAP_DrawLine, "DrawLine", maDrawLine, sizeof(struct bmpDrawLine) },
    { -10, (APTR)BITMAP_Premultiply, "Premultiply", 0, 0 },
    { -11, (APTR)BITMAP_Demultiply, "Demultiply", 0, 0 },
+   { -12, (APTR)BITMAP_ConvertToLinear, "ConvertToLinear", 0, 0 },
+   { -13, (APTR)BITMAP_ConvertToRGB, "ConvertToRGB", 0, 0 },
    { 0, 0, 0, 0, 0 }
 };
 
