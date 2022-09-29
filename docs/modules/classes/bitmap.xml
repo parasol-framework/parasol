@@ -186,6 +186,20 @@
     </method>
 
     <method>
+      <name>Demultiply</name>
+      <comment>Reverses the conversion process performed by Premultiply().</comment>
+      <prototype>ERROR bmpDemultiply(OBJECTPTR Object)</prototype>
+      <description>
+<p>Use Demultiply to normalise RGB values that have been converted by <method>Premultiply</method>.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NothingDone">The content is already normalised.</error>
+        <error code="BadState">The Bitmap is not in the expected state (32-bit with an alpha channel).</error>
+      </result>
+    </method>
+
+    <method>
       <name>DrawLine</name>
       <comment>Draws a line to a bitmap.</comment>
       <prototype>ERROR bmpDrawLine(OBJECTPTR Object, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Colour)</prototype>
@@ -260,6 +274,22 @@
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Premultiply</name>
+      <comment>Premultiplies RGB channel values by the alpha channel.</comment>
+      <prototype>ERROR bmpPremultiply(OBJECTPTR Object)</prototype>
+      <description>
+<p>Use Premultiply to convert all RGB values in the bitmap's clipping region to pre-multiplied values.  The exact formula applied per channel is <code>(Colour * Alpha + 0xff)&gt;&gt;8</code>.  The alpha channel is not affected.</p>
+<p>This method will only operate on 32 bit bitmaps, and an alpha channel must be present.</p>
+<p>The process can be reversed with a call to <method>Demultiply</method>.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NothingDone">The content is already premultiplied.</error>
+        <error code="BadState">The Bitmap is not in the expected state (32-bit with an alpha channel).</error>
       </result>
     </method>
 
@@ -719,6 +749,7 @@ UnpackAlpha(Bitmap, Colour)
       <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
       <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
       <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
+      <const name="PREMUL">The RGB values are premultiplied (32-bit only).</const>
       <const name="QUERIED">Automatically set after a Query on the bitmap.</const>
       <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the ColourRGB field is set and support exists in functions such as CopyArea().</const>
       <const name="USER">This user flag can be used to tag bitmaps with special meaning.  Not used internally.</const>

@@ -14,6 +14,20 @@
 #define FT_UPSIZE 6
 #define DEG2RAD 0.0174532925 // Multiple any angle by this value to convert to radians
 
+#include <array>
+#include <memory>
+#include <unordered_set>
+#include <sstream>
+#include <set>
+#include <unordered_map>
+#include <mutex>
+
+#include <parasol/main.h>
+#include <parasol/modules/xml.h>
+#include <parasol/modules/picture.h>
+#include <parasol/modules/display.h>
+#include <parasol/modules/font.h>
+
 #include "agg_alpha_mask_u8.h"
 #include "agg_basics.h"
 #include "agg_bounding_rect.h"
@@ -38,20 +52,7 @@
 //#include "agg_conv_marker.h"
 //#include "agg_vcgen_markers_term.h"
 
-#include <array>
-#include <memory>
-#include <unordered_set>
-#include <sstream>
-#include <set>
-#include <unordered_map>
-#include <mutex>
-
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/picture.h>
-#include <parasol/modules/display.h>
-#include <parasol/modules/font.h>
-#include <parasol/rgb_to_linear.h>
+#include <parasol/linear_rgb.h>
 
 #include <math.h>
 #define __STDC_FORMAT_MACROS
@@ -263,7 +264,6 @@ public:
 
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
 extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
-extern rgb_to_linear glLinearRGB;
 
 extern void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
 extern ERROR vecApplyPath(class SimpleVector *, struct rkVectorPath *);

@@ -116,10 +116,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "Y_MID: Align the source so that it is morphed along the middle of the target path.",
     "Y_MAX: Align the source so that it is morphed along the bottom of the target path.")
 
-  enum("VCS", { start=1, comment="Colour space options." },
+  enum("VCS", { start=0, comment="Colour space options." },
+    "INHERIT: Inherit the colour space option from the parent vector.",
     "SRGB: The default colour-space is sRGB, recommended for its speed.",
-    "LINEAR_RGB: Linear RGB is the default colour space for SVG and produces the best results.",
-    "INHERIT: Inherit the colour space option from the parent vector.")
+    "LINEAR_RGB: Linear RGB is the default colour space for SVG and produces the best results.")
 
   enum("VSF", { start=1, comment="Filter source types - these are used internally", restrict="c" },
     "GRAPHIC: Represents the graphics elements that were the original input into the filter element.",
@@ -573,9 +573,11 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "CLIPPATHUNITS",
     "CLOSE",
     "COLOR",
-    "COLOR-INTERPOLATION",
-    "COLOR-INTERPOLATION-FILTERS",
     "COLOUR",
+    "COLOR-INTERPOLATION",
+    "COLOUR-INTERPOLATION",
+    "COLOR-INTERPOLATION-FILTERS",
+    "COLOUR-INTERPOLATION-FILTERS",
     "COLOURISE",
     "CONTOURGRADIENT",
     "CONTRAST",

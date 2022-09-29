@@ -53,9 +53,9 @@ static const struct FieldDef clVectorPathQuality[] = {
 };
 
 static const struct FieldDef clVectorColourSpace[] = {
+   { "Inherit", 0x00000000 },
    { "SRGB", 0x00000001 },
    { "LinearRGB", 0x00000002 },
-   { "Inherit", 0x00000003 },
    { NULL, 0 }
 };
 

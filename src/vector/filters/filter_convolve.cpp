@@ -301,7 +301,7 @@ public:
 
       delete [] output;
 
-      demultiply_bitmap(inBmp);
+      bmpDemultiply(inBmp);
    }
 
    virtual ~ConvolveEffect() { }

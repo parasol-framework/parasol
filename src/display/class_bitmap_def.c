@@ -23,6 +23,7 @@ static const struct FieldDef clBitmapFlags[] = {
    { "X11DGA", 0x00002000 },
    { "FixedDepth", 0x00004000 },
    { "NoBlend", 0x00008000 },
+   { "Premul", 0x00010000 },
    { NULL, 0 }
 };
 
@@ -52,6 +53,8 @@ static const struct MethodArray clBitmapMethods[] = {
    { -7, (APTR)BITMAP_SetClipRegion, "SetClipRegion", maSetClipRegion, sizeof(struct bmpSetClipRegion) },
    { -8, (APTR)BITMAP_GetColour, "GetColour", maGetColour, sizeof(struct bmpGetColour) },
    { -9, (APTR)BITMAP_DrawLine, "DrawLine", maDrawLine, sizeof(struct bmpDrawLine) },
+   { -10, (APTR)BITMAP_Premultiply, "Premultiply", 0, 0 },
+   { -11, (APTR)BITMAP_Demultiply, "Demultiply", 0, 0 },
    { 0, 0, 0, 0, 0 }
 };
 

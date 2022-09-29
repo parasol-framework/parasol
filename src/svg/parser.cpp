@@ -1176,6 +1176,7 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, const XMLTag *T
          case SVF_ID:
             SetString(viewport, FID_ID, val);
             add_id(Self, Tag, val);
+            SetName(viewport, val);
             break;
 
          case SVF_ENABLE_BACKGROUND:
@@ -1439,10 +1440,10 @@ static void process_attrib(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTP
 
       log.trace("%s | %.8x = %.40s", Tag->Attrib[t].Name, hash, Tag->Attrib[t].Value);
 
-      // Analyse the value to determine if it is a string or number
-
       if (auto error = set_property(Self, Vector, hash, XML, Tag, Tag->Attrib[t].Value)) {
-         log.warning("Failed to set field '%s' with '%s' in %s; Error %s", Tag->Attrib[t].Name, Tag->Attrib[t].Value, Vector->Class->ClassName, GetErrorMsg(error));
+         if (Vector->SubID != ID_VECTORGROUP) {
+            log.warning("Failed to set field '%s' with '%s' in %s; Error %s", Tag->Attrib[t].Name, Tag->Attrib[t].Value, Vector->Class->ClassName, GetErrorMsg(error));
+         }
       }
    }
 }
@@ -1925,11 +1926,21 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_Y2: field_id = FID_Y2; break;
       case SVF_WIDTH:  field_id = FID_Width; break;
       case SVF_HEIGHT: field_id = FID_Height; break;
+
       case SVF_TRANSITION: {
          OBJECTPTR trans = NULL;
          if (!scFindDef(Self->Scene, StrValue, &trans)) SetPointer(Vector, FID_Transition, trans);
          else log.warning("Unable to find element '%s' referenced at line %d", StrValue, Tag->LineNo);
          break;
+      }
+
+      case SVF_COLOUR_INTERPOLATION:
+      case SVF_COLOR_INTERPOLATION: {
+         if (!StrMatch("auto", StrValue)) SetLong(Vector, FID_ColourSpace, VCS_SRGB);
+         else if (!StrMatch("sRGB", StrValue)) SetLong(Vector, FID_ColourSpace, VCS_SRGB);
+         else if (!StrMatch("linearRGB", StrValue)) SetLong(Vector, FID_ColourSpace, VCS_LINEAR_RGB);
+         else if (!StrMatch("inherit", StrValue)) SetLong(Vector, FID_ColourSpace, VCS_INHERIT);
+         else log.warning("Invalid color-interpolation value '%s' at line %d", StrValue, Tag->LineNo);
       }
 
       case SVF_STROKE_LINEJOIN: {
@@ -1991,6 +2002,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_ID:
          SetString(Vector, FID_ID, StrValue);
          if (add_id(Self, Tag, StrValue)) scAddDef(Self->Scene, StrValue, (OBJECTPTR)Vector);
+         SetName(Vector, StrValue);
          break;
 
       case SVF_NUMERIC_ID:       SetString(Vector, FID_NumericID, StrValue); break;

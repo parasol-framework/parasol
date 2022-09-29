@@ -1989,7 +1989,7 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
          // Anything that is not alphanumeric is not permitted in the object name.
          if (!illegal) {
             illegal = true;
-            log.warning("Illegal character '%c' in proposed name '%s'", c, NewName);
+            log.msg("Illegal character '%c' in proposed name '%s'", c, NewName);
          }
          c = '_';
       }

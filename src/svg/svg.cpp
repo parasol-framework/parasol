@@ -52,10 +52,11 @@ typedef struct svgState {
    CSTRING Stroke;
    CSTRING FontSize;
    CSTRING FontFamily;
-   DOUBLE StrokeWidth;
-   DOUBLE FillOpacity;
-   DOUBLE Opacity;
-   LONG   PathQuality;
+   DOUBLE  StrokeWidth;
+   DOUBLE  FillOpacity;
+   DOUBLE  Opacity;
+   LONG    FontWeight;
+   LONG    PathQuality;
 } svgState;
 
 #include <parasol/modules/svg.h>

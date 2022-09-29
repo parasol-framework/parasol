@@ -27,13 +27,11 @@ If this is an issue, consider pre-rendering the filter effects in advance and ca
 //#define DEBUG_FILTER_BITMAP
 //#define EXPORT_FILTER_BITMAP
 
-static void demultiply_bitmap(objBitmap *);
 static ERROR fe_default(objVectorFilter *, VectorEffect *, ULONG, CSTRING);
 static VectorEffect * find_effect(objVectorFilter *, CSTRING);
 static VectorEffect * find_effect(objVectorFilter *, ULONG);
 static VectorEffect * find_output_effect(objVectorFilter *, ULONG);
 static ERROR get_source_bitmap(objVectorFilter *, objBitmap **, UBYTE, ULONG, bool);
-static void premultiply_bitmap(objBitmap *);
 
 //********************************************************************************************************************
 
@@ -108,75 +106,6 @@ static VectorEffect * find_output_effect(objVectorFilter *Self, ULONG ID)
 }
 
 //********************************************************************************************************************
-// Pre-multiplying affects RGB channels where alpha masking is present.  The alpha values are unmodified.
-//
-// It is not necessary to pre-multiply if a processing effect is only utilising the alpha channel as an input.
-
-static void premultiply_bitmap(objBitmap *bmp)
-{
-   const UBYTE A = bmp->ColourFormat->AlphaPos>>3;
-   const UBYTE R = bmp->ColourFormat->RedPos>>3;
-   const UBYTE G = bmp->ColourFormat->GreenPos>>3;
-   const UBYTE B = bmp->ColourFormat->BluePos>>3;
-
-   const ULONG w = (ULONG)(bmp->Clip.Right - bmp->Clip.Left);
-   const ULONG h = (ULONG)(bmp->Clip.Bottom - bmp->Clip.Top);
-
-   UBYTE *data = bmp->Data + (bmp->Clip.Left<<2) + (bmp->Clip.Top * bmp->LineWidth);
-
-   for (ULONG y=0; y < h; y++) {
-      UBYTE *pixel = data + (bmp->LineWidth * y);
-      for (ULONG x=0; x < w; x++) {
-         UBYTE a = pixel[A];
-         if (a < 0xff) {
-             if (a == 0) pixel[R] = pixel[G] = pixel[B] = 0;
-             else {
-                pixel[R] = UBYTE((pixel[R] * a + 0xff) >> 8);
-                pixel[G] = UBYTE((pixel[G] * a + 0xff) >> 8);
-                pixel[B] = UBYTE((pixel[B] * a + 0xff) >> 8);
-             }
-         }
-         pixel += 4;
-      }
-   }
-}
-
-//********************************************************************************************************************
-// Where possible, demultiplying should be avoided as it requires numeric division 3x per affected pixel.
-
-static void demultiply_bitmap(objBitmap *bmp)
-{
-   const UBYTE A = bmp->ColourFormat->AlphaPos>>3;
-   const UBYTE R = bmp->ColourFormat->RedPos>>3;
-   const UBYTE G = bmp->ColourFormat->GreenPos>>3;
-   const UBYTE B = bmp->ColourFormat->BluePos>>3;
-
-   const ULONG w = (ULONG)(bmp->Clip.Right - bmp->Clip.Left);
-   const ULONG h = (ULONG)(bmp->Clip.Bottom - bmp->Clip.Top);
-
-   UBYTE *data = bmp->Data + (bmp->Clip.Left<<2) + (bmp->Clip.Top * bmp->LineWidth);
-
-   for (ULONG y=0; y < h; y++) {
-      UBYTE *pixel = data + (bmp->LineWidth * y);
-      for (ULONG x=0; x < w; x++) {
-         UBYTE a = pixel[A];
-         if (a < 0xff) {
-            if (a == 0) pixel[R] = pixel[G] = pixel[B] = 0;
-            else {
-               ULONG r = (ULONG(pixel[R]) * 0xff) / a;
-               ULONG g = (ULONG(pixel[G]) * 0xff) / a;
-               ULONG b = (ULONG(pixel[B]) * 0xff) / a;
-               pixel[R] = UBYTE((r > 0xff) ? 0xff : r);
-               pixel[G] = UBYTE((g > 0xff) ? 0xff : g);
-               pixel[B] = UBYTE((b > 0xff) ? 0xff : b);
-            }
-         }
-         pixel += 4;
-      }
-   }
-}
-
-//********************************************************************************************************************
 // Return a bitmap from the bank.  In order to save memory, bitmap data is managed internally so that it always
 // reflects the size of the clipping region.  The bitmap's size reflects the Filter's (X,Y), (Width,Height) values in
 // accordance with the unit setting.
@@ -198,6 +127,7 @@ static ERROR get_banked_bitmap(objVectorFilter *Self, objBitmap **BitmapResult)
 
    if (bmp) {
       if (Self->ColourSpace IS VCS_LINEAR_RGB) bmp->ColourSpace = CS_LINEAR_RGB;
+      else bmp->ColourSpace = CS_SRGB;
       *BitmapResult = bmp;
       Self->BankIndex++;
       return ERR_Okay;
@@ -221,7 +151,6 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if (auto sg = get_source_graphic(Self)) {
          gfxCopyArea(sg, bmp, 0, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0, 0);
-         if (Self->ColourSpace IS VCS_LINEAR_RGB) rgb2linear(*bmp);
       }
       else log.warning("get_source_graphic() failed.");
    }
@@ -246,15 +175,19 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
       // NOTE: The client needs to specify 'enable-background' in the nearest container element in order to indicate where the background is coming from;
       // additionally it serves as a marker for graphics to be rendered to a separate bitmap (essential for coping with any transformations in the scene graph).
       //
-      // TODO: The code as it exists here is quite basic and needs a fair amount of work in order to meet the above requirements.
-      //       See also the support for enable-background in scene_draw.cpp
+      // Refer to enable-background support in scene_draw.cpp
 
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
+
       if ((Self->BkgdBitmap) and (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
          gfxCopyArea(Self->BkgdBitmap, bmp, 0, Self->VectorClip.Left, Self->VectorClip.Top,
             Self->VectorClip.Right - Self->VectorClip.Left, Self->VectorClip.Bottom - Self->VectorClip.Top,
             bmp->Clip.Left, bmp->Clip.Top);
-         if (Self->ColourSpace IS VCS_LINEAR_RGB) rgb2linear(*bmp);
+
+         if ((Self->ColourSpace IS VCS_LINEAR_RGB) and (Self->BkgdBitmap->ColourSpace != CS_LINEAR_RGB)) {
+            bmp->ColourSpace = Self->BkgdBitmap->ColourSpace;
+            rgb2linear(*bmp);
+         }
       }
    }
    else if (SourceType IS VSF_BKGD_ALPHA) {
@@ -295,12 +228,10 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
    }
 
    #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
-      save_bitmap(bmp, std::to_string(Self->Head.UID) + "_source");
+      save_bitmap(bmp, std::to_string(Self->Head.UID) + "_" + std::to_string(Self->ClientVector->Head.UID) + "_source");
    #endif
 
-   if (Self->ColourSpace IS VCS_LINEAR_RGB) bmp->ColourSpace = CS_LINEAR_RGB;
-   else bmp->ColourSpace = CS_SRGB;
-   if (Premultiply) premultiply_bitmap(bmp);
+   if (Premultiply) bmpPremultiply(bmp);
 
    *BitmapResult = bmp;
    return ERR_Okay;
@@ -323,6 +254,8 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
       return NULL;
    }
 
+   if (Self->Rendered) return Self->SourceGraphic; // Source bitmap already exists and drawn at the correct size.
+
    if (!Self->SourceGraphic) {
       if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->SourceGraphic,
             FID_Name|TSTR,          "source_graphic",
@@ -330,18 +263,13 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
             FID_Height|TLONG,       Self->ClientViewport->Scene->PageHeight,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
+            FID_ColourSpace|TLONG,  (Self->ColourSpace IS VCS_LINEAR_RGB) ? CS_LINEAR_RGB : CS_SRGB,
             TAGEND)) return NULL;
-
-      Self->SourceGraphic->Clip = Self->VectorClip;
    }
    else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or
             (Self->ClientViewport->Scene->PageHeight > Self->SourceGraphic->Height)) {
-      if (acResize(Self->SourceGraphic, Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, 32) != ERR_Okay)
-         return NULL;
-
-      Self->SourceGraphic->Clip = Self->VectorClip;
+      acResize(Self->SourceGraphic, Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, 0);
    }
-   else if (Self->Rendered) return Self->SourceGraphic; // Source bitmap already exists and drawn at the correct size.
 
    if (!Self->SourceScene) {
       if (!CreateObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->SourceScene,
@@ -351,13 +279,21 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
 
          objVectorViewport *viewport;
          if (!CreateObject(ID_VECTORVIEWPORT, 0, &viewport,
-               FID_Owner|TLONG, Self->SourceScene->Head.UID,
+               FID_Owner|TLONG,       Self->SourceScene->Head.UID,
+               FID_ColourSpace|TLONG, (Self->ColourSpace IS VCS_LINEAR_RGB) ? VCS_LINEAR_RGB : VCS_SRGB,
                TAGEND)) {
-            viewport->Child = Self->ClientVector;
          }
+         else return NULL;
       }
       else return NULL;
    }
+   else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or
+            (Self->ClientViewport->Scene->PageHeight > Self->SourceGraphic->Height)) {
+      acResize(Self->SourceScene, Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, 0);
+   }
+
+   Self->SourceScene->Viewport->Child = Self->ClientVector;
+   Self->SourceGraphic->Clip = Self->VectorClip;
 
    auto const save_vector = Self->ClientVector->Next; // Switch off the Next pointer to prevent processing of siblings.
    Self->ClientVector->Next = NULL;
@@ -471,7 +407,11 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    parasol::SwitchContext context(Self);
    filter_state state;
 
-   log.branch("Rendering filter content.  LinearRGB: %c", (Self->ColourSpace IS VCS_LINEAR_RGB) ? 'Y' : 'N');
+   auto filter_name = GetName(Self);
+   if ((!filter_name) or (!filter_name[0])) filter_name = "Unnamed";
+   auto vector_name = GetName(Vector);
+   if ((!vector_name) or (!vector_name[0])) vector_name = "Unnamed";
+   log.branch("Rendering '%s' filter content for %s #%d '%s'.  LinearRGB: %c", filter_name, Vector->Head.Class->ClassName, Vector->Head.UID, vector_name, (Self->ColourSpace IS VCS_LINEAR_RGB) ? 'Y' : 'N');
 
    Self->ClientViewport = Viewport;
    Self->ClientVector   = Vector;
@@ -521,10 +461,12 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
 
    // Return the result for rendering to the scene graph.
 
-   if (Self->ColourSpace IS VCS_LINEAR_RGB) linear2RGB(*out);
+   if (out->ColourSpace IS CS_LINEAR_RGB) {
+      linear2RGB(*out);
+   }
 
    #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
-      save_bitmap(out, std::to_string(Self->Head.UID));
+      save_bitmap(out, std::to_string(Self->Head.UID) + "_" + std::to_string(Vector->Head.UID) + "_output");
    #endif
 
    #ifdef DEBUG_FILTER_BITMAP

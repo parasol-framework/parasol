@@ -735,7 +735,7 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                UBYTE *sdata = Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
                UBYTE *ddata = dest->Data + (DestY * dest->LineWidth) + (DestX<<2);
 
-               if (Flags & BAF_COPY) { // Avoids blending in cases where the destination pixel is empty.
+               if (Flags & BAF_COPY) { // Avoids blending in cases where the destination pixel is zero alpha.
                   for (LONG y=0; y < Height; y++) {
                      UBYTE *sp = sdata, *dp = ddata;
                      for (LONG x=0; x < Width; x++) {
@@ -764,7 +764,7 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                         for (i=0; i < Width; i++) {
                            if (sp[sA] IS 0xff) ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
                            else if (sp[sA]) {
-                              UBYTE alpha = sp[sA];
+                              const UBYTE alpha = sp[sA];
                               dp[dR] = dp[dR] + (((sp[sR] - dp[dR]) * alpha)>>8);
                               dp[dG] = dp[dG] + (((sp[sG] - dp[dG]) * alpha)>>8);
                               dp[dB] = dp[dB] + (((sp[sB] - dp[dB]) * alpha)>>8);
@@ -778,7 +778,7 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                      else {
                         for (i=0; i < Width; i++) {
                            if (sp[sA]) {
-                              UBYTE alpha = (sp[sA] * Bitmap->Opacity)>>8;
+                              const UBYTE alpha = (sp[sA] * Bitmap->Opacity)>>8;
                               dp[dR] = dp[dR] + (((sp[sR] - dp[dR]) * alpha)>>8);
                               dp[dG] = dp[dG] + (((sp[sG] - dp[dG]) * alpha)>>8);
                               dp[dB] = dp[dB] + (((sp[sB] - dp[dB]) * alpha)>>8);

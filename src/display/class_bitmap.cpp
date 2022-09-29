@@ -1184,6 +1184,133 @@ static ERROR BITMAP_NewObject(objBitmap *Self, APTR Void)
 }
 
 /*****************************************************************************
+-METHOD-
+Demultiply: Reverses the conversion process performed by Premultiply().
+
+Use Demultiply to normalise RGB values that have previously been converted by #Premultiply().  This method will
+return immediately if the bitmap values are already normalised.
+
+-ERRORS-
+Okay
+NothingDone: The content is already normalised.
+BadState: The Bitmap is not in the expected state (32-bit with an alpha channel); or the clipping region is invalid.
+
+-END-
+*****************************************************************************/
+
+static ERROR BITMAP_Demultiply(objBitmap *Self, APTR Void)
+{
+   parasol::Log log;
+
+   if (!(Self->Flags & BMF_PREMUL)) {
+      return log.warning(ERR_NothingDone);
+   }
+
+   if (Self->BitsPerPixel != 32) return log.warning(ERR_BadState);
+   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_BadState);
+
+   const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
+   const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
+
+   if (Self->Clip.Left + w > Self->Width) return log.warning(ERR_InvalidDimension);
+   if (Self->Clip.Top + h > Self->Height) return log.warning(ERR_InvalidDimension);
+
+   const UBYTE A = Self->ColourFormat->AlphaPos>>3;
+   const UBYTE R = Self->ColourFormat->RedPos>>3;
+   const UBYTE G = Self->ColourFormat->GreenPos>>3;
+   const UBYTE B = Self->ColourFormat->BluePos>>3;
+
+   UBYTE *data = Self->Data + (Self->Clip.Left<<2) + (Self->Clip.Top * Self->LineWidth);
+
+   for (LONG y=0; y < h; y++) {
+      UBYTE *pixel = data + (Self->LineWidth * y);
+      for (LONG x=0; x < w; x++) {
+         const UBYTE a = pixel[A];
+         if (a < 0xff) {
+            if (a == 0) pixel[R] = pixel[G] = pixel[B] = 0;
+            else {
+               ULONG r = (ULONG(pixel[R]) * 0xff) / a;
+               ULONG g = (ULONG(pixel[G]) * 0xff) / a;
+               ULONG b = (ULONG(pixel[B]) * 0xff) / a;
+               pixel[R] = UBYTE((r > 0xff) ? 0xff : r);
+               pixel[G] = UBYTE((g > 0xff) ? 0xff : g);
+               pixel[B] = UBYTE((b > 0xff) ? 0xff : b);
+            }
+         }
+         pixel += 4;
+      }
+   }
+
+   Self->Flags &= ~BMF_PREMUL;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-METHOD-
+Premultiply: Premultiplies RGB channel values by the alpha channel.
+
+Use Premultiply to convert all RGB values in the bitmap's clipping region to pre-multiplied values.  The
+exact formula applied per channel is `(Colour * Alpha + 0xff)>>8`.  The alpha channel is not affected.
+
+This method will only operate on 32 bit bitmaps, and an alpha channel must be present.  If the RGB values are
+already pre-multiplied, the method returns immediately.
+
+The process can be reversed with a call to #Demultiply().
+
+-ERRORS-
+Okay
+NothingDone: The content is already premultiplied.
+BadState: The Bitmap is not in the expected state (32-bit with an alpha channel); or the clipping region is invalid.
+
+-END-
+
+*****************************************************************************/
+
+static ERROR BITMAP_Premultiply(objBitmap *Self, APTR Void)
+{
+   parasol::Log log;
+
+   if (Self->Flags & BMF_PREMUL) {
+      return log.warning(ERR_NothingDone);
+   }
+
+   if (Self->BitsPerPixel != 32) return log.warning(ERR_BadState);
+   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_BadState);
+
+   const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
+   const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
+
+   if (Self->Clip.Left + w > Self->Width) return log.warning(ERR_InvalidDimension);
+   if (Self->Clip.Top + h > Self->Height) return log.warning(ERR_InvalidDimension);
+
+   const UBYTE A = Self->ColourFormat->AlphaPos>>3;
+   const UBYTE R = Self->ColourFormat->RedPos>>3;
+   const UBYTE G = Self->ColourFormat->GreenPos>>3;
+   const UBYTE B = Self->ColourFormat->BluePos>>3;
+
+   UBYTE *data = Self->Data + (Self->Clip.Left<<2) + (Self->Clip.Top * Self->LineWidth);
+
+   for (LONG y=0; y < h; y++) {
+      UBYTE *pixel = data + (Self->LineWidth * y);
+      for (LONG x=0; x < w; x++) {
+         const UBYTE a = pixel[A];
+         if (a < 0xff) {
+             if (a == 0) pixel[R] = pixel[G] = pixel[B] = 0;
+             else {
+                pixel[R] = UBYTE((pixel[R] * a + 0xff) >> 8);
+                pixel[G] = UBYTE((pixel[G] * a + 0xff) >> 8);
+                pixel[B] = UBYTE((pixel[B] * a + 0xff) >> 8);
+             }
+         }
+         pixel += 4;
+      }
+   }
+
+   Self->Flags |= BMF_PREMUL;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 -ACTION-
 Query: Fills a bitmap with pre-initialised/default values prior to initialisation.
 

@@ -154,9 +154,9 @@
 
 // Colour space options.
 
+#define VCS_INHERIT 0
 #define VCS_SRGB 1
 #define VCS_LINEAR_RGB 2
-#define VCS_INHERIT 3
 
 // Filter source types - these are used internally
 
@@ -829,9 +829,11 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_CLIPPATHUNITS 0x94efb24d
 #define SVF_CLOSE 0x0f3b9a5b
 #define SVF_COLOR 0x0f3d3244
-#define SVF_COLOR_INTERPOLATION 0x6f2c0659
-#define SVF_COLOR_INTERPOLATION_FILTERS 0x752d48ff
 #define SVF_COLOUR 0xf6e37b99
+#define SVF_COLOR_INTERPOLATION 0x6f2c0659
+#define SVF_COLOUR_INTERPOLATION 0x5655806e
+#define SVF_COLOR_INTERPOLATION_FILTERS 0x752d48ff
+#define SVF_COLOUR_INTERPOLATION_FILTERS 0x51660814
 #define SVF_COLOURISE 0xf3cb4eda
 #define SVF_CONTOURGRADIENT 0x82a83fdd
 #define SVF_CONTRAST 0x42b3b373

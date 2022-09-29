@@ -269,9 +269,18 @@ void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
 
 //********************************************************************************************************************
 // These functions convert bitmaps between linear and RGB format with a pre-calculated gamma table.
+// Note that the Bitmap.ColourSpace value is taken as truth, so these functions will do nothing if the bitmap
+// indicates it has been converted already.
 
 void rgb2linear(objBitmap &Bitmap)
 {
+   parasol::Log log(__FUNCTION__);
+
+   if (Bitmap.ColourSpace IS CS_LINEAR_RGB) {
+      log.warning("Bitmap already converted to target colourspace.");
+      return;
+   }
+
    if (Bitmap.BytesPerPixel < 4) return;
 
    const UBYTE R = Bitmap.ColourFormat->RedPos>>3;
@@ -292,10 +301,19 @@ void rgb2linear(objBitmap &Bitmap)
       }
       start_y += Bitmap.LineWidth;
    }
+
+   Bitmap.ColourSpace = CS_LINEAR_RGB;
 }
 
 void linear2RGB(objBitmap &Bitmap)
 {
+   parasol::Log log(__FUNCTION__);
+
+   if (Bitmap.ColourSpace IS CS_SRGB) {
+      log.warning("Bitmap already converted to target colourspace.");
+      return;
+   }
+
    if (Bitmap.BytesPerPixel < 4) return;
 
    const UBYTE R = Bitmap.ColourFormat->RedPos>>3;
@@ -316,6 +334,8 @@ void linear2RGB(objBitmap &Bitmap)
       }
       start_y += Bitmap.LineWidth;
    }
+
+   Bitmap.ColourSpace = CS_SRGB;
 }
 
 //********************************************************************************************************************

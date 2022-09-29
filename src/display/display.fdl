@@ -164,7 +164,8 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     "NEVER_SHRINK: Ignore resize requests that would shrink the size of the bitmap.",
     "X11_DGA: Private DGA indicator.",
     "FIXED_DEPTH: Prevent changing of bitmap depth after initialisation (e.g. via acResize()).",
-    "NO_BLEND: Drawing routines that support this flag will not blend pixels."
+    "NO_BLEND: Drawing routines that support this flag will not blend pixels.",
+    "PREMUL: The RGB values are premultiplied (32-bit only)."
   )
 
   enum("FLIP", { start=1, comment="Flags for the bitmap Flip method." },
@@ -380,7 +381,9 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     { id=6, name="DrawRectangle" },
     { id=7, name="SetClipRegion" },
     { id=8, name="GetColour", inline=false },
-    { id=9, name="DrawLine" }
+    { id=9, name="DrawLine" },
+    { id=10, name="Premultiply" },
+    { id=11, name="Demultiply" }
   })
 
   class("Bitmap", { version=2.0, src="class_bitmap.cpp", output="class_bitmap_def.c" }, [[
