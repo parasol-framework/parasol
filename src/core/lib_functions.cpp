@@ -2425,7 +2425,7 @@ Okay:
 NullArgs:
 Args:
 ArrayFull: The task's timer array is at capacity - no more subscriptions can be granted.
-BadState: The subscriber is marked for termination.
+InvalidState: The subscriber is marked for termination.
 SystemLocked:
 
 *****************************************************************************/
@@ -2438,7 +2438,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    if (Interval < 0) return log.warning(ERR_Args);
 
    OBJECTPTR subscriber = tlContext->Object;
-   if (subscriber->Flags & (NF_FREE|NF_FREE_MARK)) return log.warning(ERR_BadState);
+   if (subscriber->Flags & (NF_FREE|NF_FREE_MARK)) return log.warning(ERR_InvalidState);
 
    if (Callback->Type IS CALL_SCRIPT) log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Interval: %.3fs", Interval);
    else log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);

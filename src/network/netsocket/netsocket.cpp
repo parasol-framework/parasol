@@ -119,7 +119,7 @@ int Port: Remote port to connect to.
 -ERRORS-
 Okay: The NetSocket connecting process was successfully started.
 Args: Address was NULL, or Port was not in the required range.
-BadState: The NetSocket was not in the state NTC_DISCONNECTED.
+InvalidState: The NetSocket was not in the state NTC_DISCONNECTED.
 HostNotFound: Host name resolution failed.
 Failed: The connect failed for some other reason.
 -END-
@@ -141,7 +141,7 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
 
    if (Self->State != NTC_DISCONNECTED) {
       log.warning("Attempt to connect when socket is not in disconnected state");
-      return ERR_BadState;
+      return ERR_InvalidState;
    }
 
    log.branch("Address: %s, Port: %d", Args->Address, Args->Port);

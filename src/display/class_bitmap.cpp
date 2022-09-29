@@ -388,7 +388,7 @@ already set to `LINEAR_RGB`.
 -ERRORS-
 Okay
 NothingDone: The Bitmap's content is already in linear RGB format.
-BadState: The Bitmap is not in the expected state.
+InvalidState: The Bitmap is not in the expected state.
 InvalidDimension: The clipping region is invalid.
 -END-
 *********************************************************************************************************************/
@@ -398,7 +398,7 @@ ERROR BITMAP_ConvertToLinear(objBitmap *Self, APTR Void)
    parasol::Log log;
 
    if (Self->ColourSpace IS CS_LINEAR_RGB) return log.warning(ERR_NothingDone);
-   if (Self->BytesPerPixel != 4) return log.warning(ERR_BadState);
+   if (Self->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
    const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
@@ -461,7 +461,7 @@ already set to `SRGB`.
 -ERRORS-
 Okay
 NothingDone: The Bitmap's content is already in sRGB format.
-BadState: The Bitmap is not in the expected state.
+InvalidState: The Bitmap is not in the expected state.
 InvalidDimension: The clipping region is invalid.
 
 *********************************************************************************************************************/
@@ -471,7 +471,7 @@ ERROR BITMAP_ConvertToRGB(objBitmap *Self, APTR Void)
    parasol::Log log(__FUNCTION__);
 
    if (Self->ColourSpace IS CS_SRGB) return log.warning(ERR_NothingDone);
-   if (Self->BytesPerPixel != 4) return log.warning(ERR_BadState);
+   if (Self->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
    const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
@@ -683,7 +683,7 @@ return immediately if the bitmap values are already normalised.
 -ERRORS-
 Okay
 NothingDone: The content is already normalised.
-BadState: The Bitmap is not in the expected state (32-bit with an alpha channel).
+InvalidState: The Bitmap is not in the expected state (32-bit with an alpha channel).
 InvalidDimension: The clipping region is invalid.
 
 *********************************************************************************************************************/
@@ -696,8 +696,8 @@ static ERROR BITMAP_Demultiply(objBitmap *Self, APTR Void)
       return log.warning(ERR_NothingDone);
    }
 
-   if (Self->BitsPerPixel != 32) return log.warning(ERR_BadState);
-   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_BadState);
+   if (Self->BitsPerPixel != 32) return log.warning(ERR_InvalidState);
+   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
    const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
@@ -1407,7 +1407,7 @@ The process can be reversed with a call to #Demultiply().
 -ERRORS-
 Okay
 NothingDone: The content is already premultiplied.
-BadState: The Bitmap is not in the expected state (32-bit with an alpha channel)
+InvalidState: The Bitmap is not in the expected state (32-bit with an alpha channel)
 InvalidDimension: The clipping region is invalid.
 
 *********************************************************************************************************************/
@@ -1420,8 +1420,8 @@ static ERROR BITMAP_Premultiply(objBitmap *Self, APTR Void)
       return log.warning(ERR_NothingDone);
    }
 
-   if (Self->BitsPerPixel != 32) return log.warning(ERR_BadState);
-   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_BadState);
+   if (Self->BitsPerPixel != 32) return log.warning(ERR_InvalidState);
+   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
    const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
