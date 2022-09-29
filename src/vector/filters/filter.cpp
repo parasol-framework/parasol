@@ -128,6 +128,7 @@ static ERROR get_banked_bitmap(objVectorFilter *Self, objBitmap **BitmapResult)
    if (bmp) {
       if (Self->ColourSpace IS VCS_LINEAR_RGB) bmp->ColourSpace = CS_LINEAR_RGB;
       else bmp->ColourSpace = CS_SRGB;
+      bmp->Flags &= ~BMF_PREMUL;
       *BitmapResult = bmp;
       Self->BankIndex++;
       return ERR_Okay;
