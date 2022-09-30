@@ -268,57 +268,6 @@ void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
 }
 
 //********************************************************************************************************************
-// These functions convert bitmaps between linear and RGB format with a pre-calculated gamma table.
-
-void rgb2linear(objBitmap &Bitmap)
-{
-   if (Bitmap.BytesPerPixel < 4) return;
-
-   const UBYTE R = Bitmap.ColourFormat->RedPos>>3;
-   const UBYTE G = Bitmap.ColourFormat->GreenPos>>3;
-   const UBYTE B = Bitmap.ColourFormat->BluePos>>3;
-   const UBYTE A = Bitmap.ColourFormat->AlphaPos>>3;
-
-   UBYTE *start_y = Bitmap.Data + (Bitmap.LineWidth * Bitmap.Clip.Top) + (Bitmap.Clip.Left * 4);
-   for (LONG y=Bitmap.Clip.Top; y < Bitmap.Clip.Bottom; y++) {
-      UBYTE *pixel = start_y;
-      for (LONG x=Bitmap.Clip.Left; x < Bitmap.Clip.Right; x++) {
-         if (pixel[A]) {
-            pixel[R] = glLinearRGB.convert(pixel[R]);
-            pixel[G] = glLinearRGB.convert(pixel[G]);
-            pixel[B] = glLinearRGB.convert(pixel[B]);
-         }
-         pixel += 4;
-      }
-      start_y += Bitmap.LineWidth;
-   }
-}
-
-void linear2RGB(objBitmap &Bitmap)
-{
-   if (Bitmap.BytesPerPixel < 4) return;
-
-   const UBYTE R = Bitmap.ColourFormat->RedPos>>3;
-   const UBYTE G = Bitmap.ColourFormat->GreenPos>>3;
-   const UBYTE B = Bitmap.ColourFormat->BluePos>>3;
-   const UBYTE A = Bitmap.ColourFormat->AlphaPos>>3;
-
-   UBYTE *start_y = Bitmap.Data + (Bitmap.LineWidth * Bitmap.Clip.Top) + (Bitmap.Clip.Left * 4);
-   for (LONG y=Bitmap.Clip.Top; y < Bitmap.Clip.Bottom; y++) {
-      UBYTE *pixel = start_y;
-      for (LONG x=Bitmap.Clip.Left; x < Bitmap.Clip.Right; x++) {
-         if (pixel[A]) {
-            pixel[R] = glLinearRGB.invert(pixel[R]);
-            pixel[G] = glLinearRGB.invert(pixel[G]);
-            pixel[B] = glLinearRGB.invert(pixel[B]);
-         }
-         pixel += 4;
-      }
-      start_y += Bitmap.LineWidth;
-   }
-}
-
-//********************************************************************************************************************
 // Calculate the boundaries for a branch of the tree, including transforms, and return the combined maximum bound
 // values.  NOTE: This function performs a full traversal (siblings and children) and this may extend beyond the
 // viewport's visible boundary.

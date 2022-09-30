@@ -1993,7 +1993,7 @@ function processFunction(extract)
          if nz(ecode) and nz(comment) then
             local codeValue = _G['ERR_' .. ecode]
             if not codeValue then
-               print('Error code "' .. ecode .. '" referenced in function ' .. Function.name .. '() is invalid.')
+               print('Error code "' .. ecode .. '" referenced in function ' .. name .. '() is invalid.')
             else
                table.insert(def.result.values, { code = codeValue, codeName = ecode, msg = comment })
             end
@@ -2002,7 +2002,7 @@ function processFunction(extract)
             if nz(ecode) then
                codeValue = _G['ERR_' .. ecode]
                if not codeValue then
-                  print('Error code "' .. ecode .. '" referenced in function ' .. Function.name .. '() is invalid.')
+                  print('Error code "' .. ecode .. '" referenced in function ' .. name .. '() is invalid.')
                else
                   table.insert(def.result.values, { code = codeValue, codeName = ecode, msg = mSys.GetErrorMsg(codeValue) })
                end

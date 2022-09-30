@@ -100,6 +100,7 @@
 
 #include <parasol/modules/display.h>
 #include <parasol/modules/xml.h>
+#include <parasol/linear_rgb.h>
 
 #define URF_REDRAWS_CHILDREN     0x00000001
 

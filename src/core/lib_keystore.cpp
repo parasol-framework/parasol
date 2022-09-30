@@ -516,7 +516,7 @@ on the resource until the lock is released.  Calls to VarLock() will nest, and e
 to ~VarUnlock().
 
 The KeyStore must have been allocated with the THREAD_SAFE flag in the call to ~VarNew() in order to enable
-locking functionality.  If not done so, an error of ERR_BadState is returned.
+locking functionality.  If not done so, an error of ERR_InvalidState is returned.
 
 -INPUT-
 resource(KeyStore) Store: The key store to lock.
@@ -524,7 +524,7 @@ int Timeout: Timeout measured in milliseconds.
 
 -ERRORS-
 Okay
-BadState
+InvalidState
 TimeOut
 
 *****************************************************************************/
@@ -532,7 +532,7 @@ TimeOut
 ERROR VarLock(KeyStore *Store, LONG Timeout)
 {
    if (!Store) return ERR_NullArgs;
-   if (!Store->Mutex) return ERR_BadState;
+   if (!Store->Mutex) return ERR_InvalidState;
    return LockMutex(Store->Mutex, Timeout);
 }
 

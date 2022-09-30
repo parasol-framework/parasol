@@ -856,7 +856,7 @@ static ERROR HTTP_Write(objHTTP *Self, struct acWrite *Args)
          return ERR_BufferOverflow;
       }
    }
-   else return ERR_BadState;
+   else return ERR_InvalidState;
 }
 
 /*****************************************************************************

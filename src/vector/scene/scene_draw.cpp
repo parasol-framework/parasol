@@ -22,6 +22,8 @@ public:
    UBYTE mOverflowY;
    objVectorClip *mClipMask;
    agg::trans_affine mTransform;
+   bool mLinearRGB;
+   bool mBackgroundActive;
 
    VectorState() :
       mClip(0, 0, DBL_MAX, DBL_MAX),
@@ -34,7 +36,10 @@ public:
       mVisible(VIS_VISIBLE),
       mOverflowX(VOF_VISIBLE),
       mOverflowY(VOF_VISIBLE),
-      mClipMask(NULL) { }
+      mClipMask(NULL),
+      mLinearRGB(false),
+      mBackgroundActive(false)
+      { }
 };
 
 //****************************************************************************
@@ -999,9 +1004,12 @@ private:
       else if (Vector.FillRule IS VFR_EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
 
       if ((Vector.FillColour.Alpha > 0) and (!Vector.DisableFillColour)) { // Solid colour
+         auto colour = agg::rgba(Vector.FillColour, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity);
+         if (State.mLinearRGB) colour.to_linear();
+
          if ((Vector.PathQuality IS RQ_CRISP) or (Vector.PathQuality IS RQ_FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
-            renderer.color(agg::rgba(Vector.FillColour.Red, Vector.FillColour.Green, Vector.FillColour.Blue, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity));
+            renderer.color(colour);
 
             if (State.mClipMask) {
                agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
@@ -1012,7 +1020,7 @@ private:
          }
          else {
             agg::renderer_scanline_aa_solid renderer(mRenderBase);
-            renderer.color(agg::rgba(Vector.FillColour.Red, Vector.FillColour.Green, Vector.FillColour.Blue, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity));
+            renderer.color(colour);
 
             if (State.mClipMask) {
                agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
@@ -1069,7 +1077,7 @@ private:
       else {
          if ((Vector.PathQuality IS RQ_CRISP) or (Vector.PathQuality IS RQ_FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
-            renderer.color(agg::rgba(Vector.StrokeColour.Red, Vector.StrokeColour.Green, Vector.StrokeColour.Blue, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
+            renderer.color(agg::rgba(Vector.StrokeColour, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
 
             if (State.mClipMask) {
                agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
@@ -1080,7 +1088,7 @@ private:
          }
          else {
             agg::renderer_scanline_aa_solid renderer(mRenderBase);
-            renderer.color(agg::rgba(Vector.StrokeColour.Red, Vector.StrokeColour.Green, Vector.StrokeColour.Blue, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
+            renderer.color(agg::rgba(Vector.StrokeColour, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
 
             if (State.mClipMask) {
                agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
@@ -1144,27 +1152,41 @@ private:
             log.traceBranch("%s: #%d, Matrices: %p", get_name(shape), shape->Head.UID, shape->Matrices);
          #endif
 
+         if (mBitmap->ColourSpace IS CS_LINEAR_RGB) state.mLinearRGB = true; // The target bitmap's colour space has priority if linear.
+         else if (shape->ColourSpace IS VCS_LINEAR_RGB) state.mLinearRGB = true; // Use the parent value unless a specific CS is required by the client
+         else if (shape->ColourSpace IS VCS_SRGB) state.mLinearRGB = false;
+
          if (shape->LineJoin != agg::inherit_join)   state.mLineJoin  = shape->LineJoin;
          if (shape->InnerJoin != agg::inner_inherit) state.mInnerJoin = shape->InnerJoin;
          if (shape->LineCap != agg::inherit_cap)     state.mLineCap   = shape->LineCap;
          state.mOpacity = shape->Opacity * state.mOpacity;
 
          // Support for enable-background="new".  This requires the bitmap to have an alpha channel so that
-         // filter blending works correctly.
+         // blending will work correctly, and the bitmap will be cleared to accept fresh content.  It acts as
+         // a placeholder over the existing target bitmap, and the new content will be rendered to the target
+         // after processing the current branch.  The background is then discarded.
+
+         // TODO: The allocation of this bitmap during rendering isn't optimal.  Perhaps we could allocate it as a permanent
+         // dummy bitmap to be retained with the Vector, and the Data would be allocated dynamically during rendering.
+         //
+         // TODO: The clipping area of the bitmap should be declared so that unnecessary pixel scanning is avoided.
 
          objBitmap *bmpBkgd = NULL;
          objBitmap *bmpSave = NULL;
-         if (shape->EnableBkgd) { // If the current bitmap already has the alpha-channel enabled then we don't need a new bitmap.
+         if (shape->EnableBkgd) {
             if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &bmpBkgd,
+                  FID_Name|TSTR,    "scene_temp_bkgd",
                   FID_Width|TLONG,  mBitmap->Width,
                   FID_Height|TLONG, mBitmap->Height,
                   FID_BitsPerPixel, 32,
                   FID_Flags|TLONG,  BMF_ALPHA_CHANNEL,
+                  FID_ColourSpace|TLONG, mBitmap->ColourSpace,
                   TAGEND)) {
                bmpSave = mBitmap;
                mBitmap = bmpBkgd;
                mFormat.setBitmap(*bmpBkgd);
                ClearMemory(bmpBkgd->Data, bmpBkgd->LineWidth * bmpBkgd->Height);
+               state.mBackgroundActive = true;
             }
          }
 

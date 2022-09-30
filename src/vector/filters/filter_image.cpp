@@ -102,6 +102,7 @@ public:
 
          if ((path[0] IS '/') or ((path[0] IS '.') and (path[1] IS '.') and (path[2] IS '/'))) {
             Error = log.warning(ERR_InvalidValue);
+            return;
          }
          else {
             for (UWORD i=0; path[i]; i++) {
@@ -109,12 +110,12 @@ public:
                   while (path[i+1] IS '.') i++;
                   if (path[i+1] IS '/') {
                      Error = log.warning(ERR_InvalidValue);
-                     break;
+                     return;
                   }
                }
                else if (path[i] IS ':') {
                   Error = log.warning(ERR_InvalidValue);
-                  break;
+                  return;
                }
             }
          }
@@ -139,7 +140,7 @@ public:
          else Error = ERR_Okay;
 
          if ((Filter->ColourSpace IS VCS_LINEAR_RGB) and (!Error) and (Picture)) {
-            rgb2linear(*Picture->Bitmap);
+            bmpConvertToLinear(Picture->Bitmap);
          }
       }
 

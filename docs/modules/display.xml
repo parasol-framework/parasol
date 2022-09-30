@@ -976,6 +976,7 @@ if ((pointer = gfxAccessPointer())) {
       <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
       <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
       <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
+      <const name="PREMUL">The RGB values are premultiplied (32-bit only).</const>
       <const name="QUERIED">Automatically set after a Query on the bitmap.</const>
       <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the ColourRGB field is set and support exists in functions such as CopyArea().</const>
       <const name="USER">This user flag can be used to tag bitmaps with special meaning.  Not used internally.</const>

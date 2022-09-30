@@ -133,7 +133,7 @@ function declareErrors()
     "GetSurfaceInfo",          // GetSurfaceInfo() failed
     "Finished|EOF|EndOfFile|OutOfData", // Operation or process loop finished
     "Syntax|StringFormat",     // Invalid syntax detected
-    "BadState",                // Object was in an incorrect state for the operation
+    "InvalidState",            // Object was in an invalid state for processing.
     "HostNotFound",            // The internet host name could not be resolved
     "InvalidURI",              // Invalid Uniform Resource Identifier
     "ConnectionRefused",       // The remote host refused the connection

@@ -13,7 +13,7 @@
           is blended into itself (i.e., "double-counting").</desc>
 
     <filter id="overFlood" filterUnits="objectBoundingBox" x="-5%" y="-5%" width="110%" height="110%">
-      <feFlood flood-color="red" flood-opacity="1" result="flood"/>
+      <feFlood flood-color="#ffffff" flood-opacity="1" result="flood"/>
       <feComposite in="SourceGraphic" in2="BackgroundImage" operator="over" result="comp"/>
       <feMerge>  <feMergeNode in="flood"/> <feMergeNode in="comp"/> </feMerge>
     </filter>

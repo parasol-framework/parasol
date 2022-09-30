@@ -285,6 +285,17 @@
     </field>
 
     <field>
+      <name>ColourSpace</name>
+      <comment>Defines the colour space to use when blending the vector with a target bitmap's content.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VCS">INT</type>
+      <description>
+<p>By default, vectors are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour space to <code>LINEAR_RGB</code> will force the renderer to automatically convert sRGB values to linear RGB when blending on the fly.</p>
+<types lookup="VCS"/>
+      </description>
+    </field>
+
+    <field>
       <name>Cursor</name>
       <comment>The mouse cursor to display when the pointer is within the vector's boundary.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -694,6 +705,12 @@ Z: Close Path
     <constants lookup="VBF" comment="Options for vecGetBoundary().">
       <const name="INCLUSIVE">The result will be inclusive of all paths that belong to children of the queried vector.</const>
       <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
+    </constants>
+
+    <constants lookup="VCS" comment="Colour space options.">
+      <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
+      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
+      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
     </constants>
 
     <constants lookup="VF" comment="Optional flags and indicators for the Vector class.">

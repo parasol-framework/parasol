@@ -140,7 +140,7 @@ public:
       // where the alpha = 0.  If there's no alpha channel present then a pre-multiply isn't required.  NB: Demultiply
       // takes place at the end of the routine.
 
-      premultiply_bitmap(bmp);
+      bmpPremultiply(bmp);
 
       if (rx > 0) {
          if (rx > 254) rx = 254;
@@ -353,7 +353,7 @@ public:
          }
       }
 
-      demultiply_bitmap(bmp);
+      bmpDemultiply(bmp);
    }
 
    ~BlurEffect() { }

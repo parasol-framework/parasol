@@ -52,6 +52,13 @@ static const struct FieldDef clVectorPathQuality[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clVectorColourSpace[] = {
+   { "Inherit", 0x00000000 },
+   { "SRGB", 0x00000001 },
+   { "LinearRGB", 0x00000002 },
+   { NULL, 0 }
+};
+
 FDEF maPush[] = { { "Position", FD_LONG }, { 0, 0 } };
 FDEF maTracePath[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maGetBoundary[] = { { "Flags", FD_LONG }, { "X", FD_DOUBLE|FD_RESULT }, { "Y", FD_DOUBLE|FD_RESULT }, { "Width", FD_DOUBLE|FD_RESULT }, { "Height", FD_DOUBLE|FD_RESULT }, { 0, 0 } };

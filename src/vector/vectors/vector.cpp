@@ -515,6 +515,7 @@ static ERROR VECTOR_MoveToFront(objVector *Self, APTR Void)
 
 static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
 {
+   new (Self) objVector;
    Self->StrokeOpacity = 1.0;
    Self->FillOpacity   = 1.0;
    Self->Opacity       = 1.0;              // Overall opacity multiplier
@@ -529,7 +530,7 @@ static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
    Self->ClipRule      = VFR_NON_ZERO;
    Self->Dirty         = RC_ALL;
    Self->TabOrder      = 255;
-   new (Self) objVector;
+   Self->ColourSpace   = VCS_INHERIT;
    return ERR_Okay;
 }
 
@@ -1049,6 +1050,14 @@ static ERROR VECTOR_SET_ClipRule(objVector *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
+ColourSpace: Defines the colour space to use when blending the vector with a target bitmap's content.
+Lookup: VCS
+
+By default, vectors are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour
+space to `LINEAR_RGB` will force the renderer to automatically convert sRGB values to linear RGB when blending on the
+fly.
+
+-FIELD-
 Cursor: The mouse cursor to display when the pointer is within the vector's boundary.
 
 The Cursor field declares the pointer's cursor image to display within the vector's boundary.  The cursor will
@@ -1057,7 +1066,7 @@ lasts until the cursor vacates the area.
 
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SET_Cursor(objVector *Self, LONG Value)
 {
@@ -2269,6 +2278,8 @@ static const FieldArray clVectorFields[] = {
    { "Flags",           FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clVectorFlags, NULL, NULL },
    { "Cursor",          FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorCursor, NULL, (APTR)VECTOR_SET_Cursor },
    { "PathQuality",     FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorPathQuality, NULL, NULL },
+   { "ColourSpace",     FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorColourSpace, NULL, NULL },
+   // NOTE: Any additions to this struct need to be added to SHAPE_PUBLIC
    // Virtual fields
    { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },

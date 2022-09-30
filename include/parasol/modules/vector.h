@@ -154,9 +154,9 @@
 
 // Colour space options.
 
+#define VCS_INHERIT 0
 #define VCS_SRGB 1
 #define VCS_LINEAR_RGB 2
-#define VCS_INHERIT 3
 
 // Filter source types - these are used internally
 
@@ -535,16 +535,17 @@ typedef struct rkVectorFilter {
    LONG   ColourSpace;                 // Operating colour space for RGB values
 
 #ifdef PRV_VECTORFILTER
-   rkVector *ClientVector; // Client vector or viewport supplied by Scene.acDraw()
-   rkVectorViewport *ClientViewport; // The nearest viewport containing the vector.
+   rkVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
+   rkVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
    struct rkVectorScene *SourceScene; // Internal scene for rendering SourceGraphic
-   objBitmap *SourceGraphic; // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
-   objBitmap *BkgdBitmap; // Target bitmap supplied by Scene.acDraw()
-   VectorEffect *ActiveEffect; // Current effect being processed by the pipeline.
+   struct rkVectorScene *Scene;       // Scene that the filter belongs to.
+   objBitmap *SourceGraphic;          // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
+   objBitmap *BkgdBitmap;             // Target bitmap supplied by Scene.acDraw()
+   VectorEffect *ActiveEffect;        // Current effect being processed by the pipeline.
    std::vector<std::unique_ptr<VectorEffect>> Effects;
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
-   ClipRectangle VectorClip; // Clipping region of the vector client (reflects the vector bounds)
-   STRING Path; // Affix this path to file references (e.g. feImage).
+   ClipRectangle VectorClip;          // Clipping region of the vector client (reflects the vector bounds)
+   STRING Path;                       // Affix this path to file references (e.g. feImage).
    UBYTE BankIndex;
    bool Rendered;
    bool Disabled;
@@ -615,7 +616,9 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
    DOUBLE DashOffset; \
    LONG   Visibility; \
    LONG   Flags; \
-   LONG   Cursor;
+   LONG   Cursor; \
+   LONG   PathQuality; \
+   LONG   ColourSpace;
   
 // Vector class definition
 
@@ -639,6 +642,7 @@ typedef struct rkVector {
    LONG      Flags;                 // Optional flags.
    LONG      Cursor;                // The mouse cursor to display when the pointer is within the vector's boundary.
    LONG      PathQuality;           // Defines the quality of rendered path outlines.
+   LONG      ColourSpace;           // Desired colour space to use when blending colours.
 
 #ifdef PRV_VECTOR
  SHAPE_PRIVATE 
@@ -826,9 +830,11 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_CLIPPATHUNITS 0x94efb24d
 #define SVF_CLOSE 0x0f3b9a5b
 #define SVF_COLOR 0x0f3d3244
-#define SVF_COLOR_INTERPOLATION 0x6f2c0659
-#define SVF_COLOR_INTERPOLATION_FILTERS 0x752d48ff
 #define SVF_COLOUR 0xf6e37b99
+#define SVF_COLOR_INTERPOLATION 0x6f2c0659
+#define SVF_COLOUR_INTERPOLATION 0x5655806e
+#define SVF_COLOR_INTERPOLATION_FILTERS 0x752d48ff
+#define SVF_COLOUR_INTERPOLATION_FILTERS 0x51660814
 #define SVF_COLOURISE 0xf3cb4eda
 #define SVF_CONTOURGRADIENT 0x82a83fdd
 #define SVF_CONTRAST 0x42b3b373
