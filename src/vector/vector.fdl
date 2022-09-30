@@ -403,16 +403,17 @@ struct OrderedVector {
     int(VCS) ColourSpace      # Operating colour space for RGB values
   ]],
   [[
-   rkVector *ClientVector; // Client vector or viewport supplied by Scene.acDraw()
-   rkVectorViewport *ClientViewport; // The nearest viewport containing the vector.
+   rkVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
+   rkVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
    struct rkVectorScene *SourceScene; // Internal scene for rendering SourceGraphic
-   objBitmap *SourceGraphic; // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
-   objBitmap *BkgdBitmap; // Target bitmap supplied by Scene.acDraw()
-   VectorEffect *ActiveEffect; // Current effect being processed by the pipeline.
+   struct rkVectorScene *Scene;       // Scene that the filter belongs to.
+   objBitmap *SourceGraphic;          // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
+   objBitmap *BkgdBitmap;             // Target bitmap supplied by Scene.acDraw()
+   VectorEffect *ActiveEffect;        // Current effect being processed by the pipeline.
    std::vector<std::unique_ptr<VectorEffect>> Effects;
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
-   ClipRectangle VectorClip; // Clipping region of the vector client (reflects the vector bounds)
-   STRING Path; // Affix this path to file references (e.g. feImage).
+   ClipRectangle VectorClip;          // Clipping region of the vector client (reflects the vector bounds)
+   STRING Path;                       // Affix this path to file references (e.g. feImage).
    UBYTE BankIndex;
    bool Rendered;
    bool Disabled;

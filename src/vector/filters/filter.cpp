@@ -20,6 +20,8 @@ can be cleared and a new set of instructions can be applied.
 It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing.
 If this is an issue, consider pre-rendering the filter effects in advance and caching the results in memory or files.
 
+It is a requirement that VectorFilter objects are owned by the @VectorScene they are targeting.
+
 -END-
 
 *********************************************************************************************************************/
@@ -686,6 +688,10 @@ static ERROR VECTORFILTER_Init(objVectorFilter *Self, APTR Void)
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return log.warning(ERR_OutOfRange);
    }
+
+   OBJECTID owner_id = GetOwner(Self);
+   Self->Scene = (objVectorScene *)GetObjectPtr(owner_id);
+   if (Self->Scene->Head.ClassID != ID_VECTORSCENE) return log.warning(ERR_UnsupportedOwner);
 
    return ERR_Okay;
 }
