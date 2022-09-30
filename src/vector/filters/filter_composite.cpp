@@ -7,59 +7,74 @@ enum Operation {
 
 //********************************************************************************************************************
 // Porter/Duff Compositing routines
-// D = Dest; I = Input; M = Mix
+// For reference, this Wikipedia page explains it best: https://en.wikipedia.org/wiki/Alpha_compositing
+//
+// D = Dest; S = Source; M = Mix (equates to Dest as a pixel source)
 
 struct composite_over {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if (M[A]) {
-         D[R] = M[R] + (((I[R] - M[R]) * I[A])>>8);
-         D[G] = M[G] + (((I[G] - M[G]) * I[A])>>8);
-         D[B] = M[B] + (((I[B] - M[B]) * I[A])>>8);
-         D[A] = M[A] + ((I[A] * (255 - M[A]))>>8);
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if (!M[A]) ((ULONG *)D)[0] = ((ULONG *)S)[0];
+      else if (!S[A]) ((ULONG *)D)[0] = ((ULONG *)M)[0];
+      else {
+         const ULONG dA = S[A] + M[A] - ((S[A] * M[A] + 0xff)>>8);
+         const ULONG sA = S[A] + (S[A] >> 7); // 0..255 -> 0..256
+         const ULONG cA = 256 - sA;
+         const ULONG mA = M[A] + (M[A] >> 7); // 0..255 -> 0..256
+
+         D[R] = ((S[R] * sA + ((M[R] * mA * cA)>>8))>>8) * 255 / dA;
+         D[G] = ((S[G] * sA + ((M[G] * mA * cA)>>8))>>8) * 255 / dA;
+         D[B] = ((S[B] * sA + ((M[B] * mA * cA)>>8))>>8) * 255 / dA;
+         D[A] = dA;
       }
-      else ((ULONG *)D)[0] = ((ULONG *)I)[0];
    }
 };
 
 struct composite_in {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if (M[A] IS 255) ((ULONG *)D)[0] = ((ULONG *)I)[0];
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if (M[A] IS 255) ((ULONG *)D)[0] = ((ULONG *)S)[0];
       else {
-         D[R] = (I[R] * M[A] + 0xff)>>8;
-         D[G] = (I[G] * M[A] + 0xff)>>8;
-         D[B] = (I[B] * M[A] + 0xff)>>8;
-         D[A] = (I[A] * M[A] + 0xff)>>8;
+         D[R] = S[R];
+         D[G] = S[G];
+         D[B] = S[B];
+         D[A] = (S[A] * M[A] + 0xff)>>8;
       }
    }
 };
 
 struct composite_out {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      auto alpha = M[A] ^ 0xff;
-      D[R] = (I[R] * alpha + 0xff)>>8;
-      D[G] = (I[G] * alpha + 0xff)>>8;
-      D[B] = (I[B] * alpha + 0xff)>>8;
-      D[A] = (I[A] * alpha + 0xff)>>8;
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if (!M[A]) ((ULONG *)D)[0] = ((ULONG *)S)[0];
+      else {
+         D[R] = S[R];
+         D[G] = S[G];
+         D[B] = S[B];
+         D[A] = (S[A] * (0xff - M[A]) + 0xff)>>8;
+      }
    }
 };
 
+// Mix alpha has priority.  Source alpha is ignored except for blending.
+
 struct composite_atop {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      auto alpha = M[A];
-      D[R] = (((I[R] * I[A] + (M[R] * (I[A] ^ 0xff)))>>8) * alpha + 0xff)>>8;
-      D[G] = (((I[G] * I[A] + (M[G] * (I[A] ^ 0xff)))>>8) * alpha + 0xff)>>8;
-      D[B] = (((I[B] * I[A] + (M[B] * (I[A] ^ 0xff)))>>8) * alpha + 0xff)>>8;
-      D[A] = (((I[A] * I[A] + (M[A] * (I[A] ^ 0xff)))>>8) * alpha + 0xff)>>8;
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if (auto alpha = M[A]) {
+         const UBYTE csalpha = 0xff - S[A];
+         D[R] = (S[R] * alpha + M[R] * csalpha + 0xff) >> 8;
+         D[G] = (S[G] * alpha + M[G] * csalpha + 0xff) >> 8;
+         D[B] = (S[B] * alpha + M[B] * csalpha + 0xff) >> 8;
+         D[A] = alpha;
+      }
    }
 };
 
 struct composite_xor {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      auto alpha = I[A] ^ M[A];
-      D[R] = (((I[R] * I[A] + (M[R] * (I[A] ^ 0xff)))>>8) * alpha + 0xff)>>8;
-      D[G] = (((I[G] * I[A] + (M[G] * (I[A] ^ 0xff)))>>8) * alpha + 0xff)>>8;
-      D[B] = (((I[B] * I[A] + (M[B] * (I[A] ^ 0xff)))>>8) * alpha + 0xff)>>8;
-      D[A] = (((I[A] * I[A] + (M[A] * (I[A] ^ 0xff)))>>8) * alpha + 0xff)>>8;
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      const UBYTE s1a = 0xff - S[A];
+      const UBYTE d1a = 0xff - M[A];
+      D[R] = ((M[R] * s1a + S[R] * d1a + 0xff) >> 8);
+      D[G] = ((M[G] * s1a + S[G] * d1a + 0xff) >> 8);
+      D[B] = ((M[B] * s1a + S[B] * d1a + 0xff) >> 8);
+      D[A] = (S[A] + M[A] - ((S[A] * M[A] + (0xff>>1)) >> (8 - 1)));
    }
 };
 
@@ -67,94 +82,94 @@ struct composite_xor {
 // Blending algorithms, refer to https://en.wikipedia.org/wiki/Blend_modes
 
 struct blend_screen {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      D[R] = (UBYTE)(I[R] + M[R] - ((I[R] * M[R] + 0Xff) >> 8));
-      D[G] = (UBYTE)(I[G] + M[G] - ((I[G] * M[G] + 0Xff) >> 8));
-      D[B] = (UBYTE)(I[B] + M[B] - ((I[B] * M[B] + 0Xff) >> 8));
-      D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0Xff) >> 8));
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      D[R] = (UBYTE)(S[R] + M[R] - ((S[R] * M[R] + 0Xff) >> 8));
+      D[G] = (UBYTE)(S[G] + M[G] - ((S[G] * M[G] + 0Xff) >> 8));
+      D[B] = (UBYTE)(S[B] + M[B] - ((S[B] * M[B] + 0Xff) >> 8));
+      D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0Xff) >> 8));
    }
 };
 
 struct blend_multiply {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
-         const UBYTE s1a = 0xff - I[A];
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         const UBYTE s1a = 0xff - S[A];
          const UBYTE d1a = 0xff - M[A];
-         D[R] = (UBYTE)((I[R] * M[R] + (I[R] * d1a) + (M[R] * s1a) + 0xff) >> 8);
-         D[G] = (UBYTE)((I[G] * M[G] + (I[G] * d1a) + (M[G] * s1a) + 0xff) >> 8);
-         D[B] = (UBYTE)((I[B] * M[B] + (I[B] * d1a) + (M[B] * s1a) + 0xff) >> 8);
-         D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0xff) >> 8));
+         D[R] = (UBYTE)((S[R] * M[R] + (S[R] * d1a) + (M[R] * s1a) + 0xff) >> 8);
+         D[G] = (UBYTE)((S[G] * M[G] + (S[G] * d1a) + (M[G] * s1a) + 0xff) >> 8);
+         D[B] = (UBYTE)((S[B] * M[B] + (S[B] * d1a) + (M[B] * s1a) + 0xff) >> 8);
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_darken {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
          UBYTE d1a = 0xff - D[A];
-         UBYTE s1a = 0xff - I[A];
+         UBYTE s1a = 0xff - S[A];
          UBYTE da  = D[A];
 
-         D[R] = (UBYTE)((agg::sd_min(I[R] * da, M[R] * I[A]) + I[R] * d1a + M[R] * s1a + 0xff) >> 8);
-         D[G] = (UBYTE)((agg::sd_min(I[G] * da, M[G] * I[A]) + I[G] * d1a + M[G] * s1a + 0xff) >> 8);
-         D[B] = (UBYTE)((agg::sd_min(I[B] * da, M[B] * I[A]) + I[B] * d1a + M[B] * s1a + 0xff) >> 8);
-         D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0xff) >> 8));
+         D[R] = (UBYTE)((agg::sd_min(S[R] * da, M[R] * S[A]) + S[R] * d1a + M[R] * s1a + 0xff) >> 8);
+         D[G] = (UBYTE)((agg::sd_min(S[G] * da, M[G] * S[A]) + S[G] * d1a + M[G] * s1a + 0xff) >> 8);
+         D[B] = (UBYTE)((agg::sd_min(S[B] * da, M[B] * S[A]) + S[B] * d1a + M[B] * s1a + 0xff) >> 8);
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_lighten {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
          UBYTE d1a = 0xff - D[A];
-         UBYTE s1a = 0xff - I[A];
+         UBYTE s1a = 0xff - S[A];
 
-         D[R] = (UBYTE)((agg::sd_max(I[R] * M[A], M[R] * I[A]) + I[R] * d1a + M[R] * s1a + 0xff) >> 8);
-         D[G] = (UBYTE)((agg::sd_max(I[G] * M[A], M[G] * I[A]) + I[G] * d1a + M[G] * s1a + 0xff) >> 8);
-         D[B] = (UBYTE)((agg::sd_max(I[B] * M[A], M[B] * I[A]) + I[B] * d1a + M[B] * s1a + 0xff) >> 8);
-         D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0xff) >> 8));
+         D[R] = (UBYTE)((agg::sd_max(S[R] * M[A], M[R] * S[A]) + S[R] * d1a + M[R] * s1a + 0xff) >> 8);
+         D[G] = (UBYTE)((agg::sd_max(S[G] * M[A], M[G] * S[A]) + S[G] * d1a + M[G] * s1a + 0xff) >> 8);
+         D[B] = (UBYTE)((agg::sd_max(S[B] * M[A], M[B] * S[A]) + S[B] * d1a + M[B] * s1a + 0xff) >> 8);
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_dodge {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
          LONG d1a  = 0xff - M[A];
-         LONG s1a  = 0xff - I[A];
-         LONG drsa = M[G] * I[A];
-         LONG dgsa = M[B] * I[A];
-         LONG dbsa = M[B] * I[A];
-         LONG srda = I[R] * M[A];
-         LONG sgda = I[G] * M[A];
-         LONG sbda = I[B] * M[A];
-         LONG sada = I[A] * M[A];
+         LONG s1a  = 0xff - S[A];
+         LONG drsa = M[G] * S[A];
+         LONG dgsa = M[B] * S[A];
+         LONG dbsa = M[B] * S[A];
+         LONG srda = S[R] * M[A];
+         LONG sgda = S[G] * M[A];
+         LONG sbda = S[B] * M[A];
+         LONG sada = S[A] * M[A];
 
          D[R] = (UBYTE)((srda + drsa >= sada) ?
-             (sada + I[R] * d1a + M[R] * s1a + 0xff) >> 8 :
-             drsa / (0xff - (I[R] << 8) / I[A]) + ((I[R] * d1a + M[R] * s1a + 0xff) >> 8));
+             (sada + S[R] * d1a + M[R] * s1a + 0xff) >> 8 :
+             drsa / (0xff - (S[R] << 8) / S[A]) + ((S[R] * d1a + M[R] * s1a + 0xff) >> 8));
 
          D[G] = (UBYTE)((sgda + dgsa >= sada) ?
-             (sada + I[G] * d1a + M[G] * s1a + 0xff) >> 8 :
-             dgsa / (0xff - (I[G] << 8) / I[A]) + ((I[G] * d1a + M[G] * s1a + 0xff) >> 8));
+             (sada + S[G] * d1a + M[G] * s1a + 0xff) >> 8 :
+             dgsa / (0xff - (S[G] << 8) / S[A]) + ((S[G] * d1a + M[G] * s1a + 0xff) >> 8));
 
          D[B] = (UBYTE)((sbda + dbsa >= sada) ?
-             (sada + I[B] * d1a + M[B] * s1a + 0xff) >> 8 :
-             dbsa / (0xff - (I[B] << 8) / I[A]) + ((I[B] * d1a + M[B] * s1a + 0xff) >> 8));
+             (sada + S[B] * d1a + M[B] * s1a + 0xff) >> 8 :
+             dbsa / (0xff - (S[B] << 8) / S[A]) + ((S[B] * d1a + M[B] * s1a + 0xff) >> 8));
 
-         D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_contrast {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       LONG d2a = M[A] >> 1;
-      UBYTE s2a = I[A] >> 1;
+      UBYTE s2a = S[A] >> 1;
 
-      int r = (int)((((M[R] - d2a) * int((I[R] - s2a)*2 + 0xff)) >> 8) + d2a);
-      int g = (int)((((M[G] - d2a) * int((I[G] - s2a)*2 + 0xff)) >> 8) + d2a);
-      int b = (int)((((M[B] - d2a) * int((I[B] - s2a)*2 + 0xff)) >> 8) + d2a);
+      int r = (int)((((M[R] - d2a) * int((S[R] - s2a)*2 + 0xff)) >> 8) + d2a);
+      int g = (int)((((M[G] - d2a) * int((S[G] - s2a)*2 + 0xff)) >> 8) + d2a);
+      int b = (int)((((M[B] - d2a) * int((S[B] - s2a)*2 + 0xff)) >> 8) + d2a);
 
       r = (r < 0) ? 0 : r;
       g = (g < 0) ? 0 : g;
@@ -167,142 +182,142 @@ struct blend_contrast {
 };
 
 struct blend_overlay {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
          UBYTE d1a = 0xff - M[A];
-         UBYTE s1a = 0xff - I[A];
-         UBYTE sada = I[A] * M[A];
+         UBYTE s1a = 0xff - S[A];
+         UBYTE sada = S[A] * M[A];
 
          D[R] = (UBYTE)(((2*M[R] < M[A]) ?
-             2*I[R]*M[R] + I[R]*d1a + M[R]*s1a :
-             sada - 2*(M[A] - M[R])*(I[A] - I[R]) + I[R]*d1a + M[R]*s1a + 0xff) >> 8);
+             2*S[R]*M[R] + S[R]*d1a + M[R]*s1a :
+             sada - 2*(M[A] - M[R])*(S[A] - S[R]) + S[R]*d1a + M[R]*s1a + 0xff) >> 8);
 
          D[G] = (UBYTE)(((2*M[G] < M[A]) ?
-             2*I[G]*M[G] + I[G]*d1a + M[G]*s1a :
-             sada - 2*(M[A] - M[G])*(I[A] - I[G]) + I[G]*d1a + M[G]*s1a + 0xff) >> 8);
+             2*S[G]*M[G] + S[G]*d1a + M[G]*s1a :
+             sada - 2*(M[A] - M[G])*(S[A] - S[G]) + S[G]*d1a + M[G]*s1a + 0xff) >> 8);
 
          D[B] = (UBYTE)(((2*M[B] < M[A]) ?
-             2*I[B]*M[B] + I[B]*d1a + M[B]*s1a :
-             sada - 2*(M[A] - M[B])*(I[A] - I[B]) + I[B]*d1a + M[B]*s1a + 0xff) >> 8);
+             2*S[B]*M[B] + S[B]*d1a + M[B]*s1a :
+             sada - 2*(M[A] - M[B])*(S[A] - S[B]) + S[B]*d1a + M[B]*s1a + 0xff) >> 8);
 
-         D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_burn {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
          const UBYTE d1a = 0xff - D[A];
-         const UBYTE s1a = 0xff - I[A];
-         const LONG drsa = M[R] * I[A];
-         const LONG dgsa = M[G] * I[A];
-         const LONG dbsa = M[B] * I[A];
-         const LONG srda = I[R] * M[A];
-         const LONG sgda = I[G] * M[A];
-         const LONG sbda = I[B] * M[A];
-         const LONG sada = I[A] * M[A];
+         const UBYTE s1a = 0xff - S[A];
+         const LONG drsa = M[R] * S[A];
+         const LONG dgsa = M[G] * S[A];
+         const LONG dbsa = M[B] * S[A];
+         const LONG srda = S[R] * M[A];
+         const LONG sgda = S[G] * M[A];
+         const LONG sbda = S[B] * M[A];
+         const LONG sada = S[A] * M[A];
 
          D[R] = (UBYTE)(((srda + drsa <= sada) ?
-             I[R] * d1a + M[R] * s1a :
-             I[A] * (srda + drsa - sada) / I[R] + I[R] * d1a + M[R] * s1a + 0xff) >> 8);
+             S[R] * d1a + M[R] * s1a :
+             S[A] * (srda + drsa - sada) / S[R] + S[R] * d1a + M[R] * s1a + 0xff) >> 8);
 
          D[G] = (UBYTE)(((sgda + dgsa <= sada) ?
-             I[G] * d1a + M[G] * s1a :
-             I[A] * (sgda + dgsa - sada) / I[G] + I[G] * d1a + M[G] * s1a + 0xff) >> 8);
+             S[G] * d1a + M[G] * s1a :
+             S[A] * (sgda + dgsa - sada) / S[G] + S[G] * d1a + M[G] * s1a + 0xff) >> 8);
 
          D[B] = (UBYTE)(((sbda + dbsa <= sada) ?
-             I[B] * d1a + M[B] * s1a :
-             I[A] * (sbda + dbsa - sada) / I[B] + I[B] * d1a + M[B] * s1a + 0xff) >> 8);
+             S[B] * d1a + M[B] * s1a :
+             S[A] * (sbda + dbsa - sada) / S[B] + S[B] * d1a + M[B] * s1a + 0xff) >> 8);
 
-         D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_hard_light {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
          UBYTE d1a  = 0xff - D[A];
-         UBYTE s1a  = 0xff - I[A];
-         UBYTE sada = I[A] * M[A];
+         UBYTE s1a  = 0xff - S[A];
+         UBYTE sada = S[A] * M[A];
 
-         D[R] = (UBYTE)(((2*I[R] < I[A]) ?
-             2*I[R]*M[R] + I[R]*d1a + M[R]*s1a :
-             sada - 2*(M[A] - M[R])*(I[A] - I[R]) + I[R]*d1a + M[R]*s1a + 0xff) >> 8);
+         D[R] = (UBYTE)(((2*S[R] < S[A]) ?
+             2*S[R]*M[R] + S[R]*d1a + M[R]*s1a :
+             sada - 2*(M[A] - M[R])*(S[A] - S[R]) + S[R]*d1a + M[R]*s1a + 0xff) >> 8);
 
-         D[G] = (UBYTE)(((2*I[G] < I[A]) ?
-             2*I[G]*M[G] + I[G]*d1a + M[G]*s1a :
-             sada - 2*(M[A] - M[G])*(I[A] - I[G]) + I[G]*d1a + M[G]*s1a + 0xff) >> 8);
+         D[G] = (UBYTE)(((2*S[G] < S[A]) ?
+             2*S[G]*M[G] + S[G]*d1a + M[G]*s1a :
+             sada - 2*(M[A] - M[G])*(S[A] - S[G]) + S[G]*d1a + M[G]*s1a + 0xff) >> 8);
 
-         D[B] = (UBYTE)(((2*I[B] < I[A]) ?
-             2*I[B]*M[B] + I[B]*d1a + M[B]*s1a :
-             sada - 2*(M[A] - M[B])*(I[A] - I[B]) + I[B]*d1a + M[B]*s1a + 0xff) >> 8);
+         D[B] = (UBYTE)(((2*S[B] < S[A]) ?
+             2*S[B]*M[B] + S[B]*d1a + M[B]*s1a :
+             sada - 2*(M[A] - M[B])*(S[A] - S[B]) + S[B]*d1a + M[B]*s1a + 0xff) >> 8);
 
-         D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_soft_light {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
          double xr = double(D[R]) / 0xff;
          double xg = double(D[G]) / 0xff;
          double xb = double(D[B]) / 0xff;
          double da = double(D[A] ? D[A] : 1) / 0xff;
 
-         if(2*I[R] < I[A])   xr = xr*(I[A] + (1 - xr/da)*(2*I[R] - I[A])) + I[R]*(1 - da) + xr*(1 - I[A]);
-         else if(8*xr <= da) xr = xr*(I[A] + (1 - xr/da)*(2*I[R] - I[A])*(3 - 8*xr/da)) + I[R]*(1 - da) + xr*(1 - I[A]);
-         else                xr = (xr*I[A] + (sqrt(xr/da)*da - xr)*(2*I[R] - I[A])) + I[R]*(1 - da) + xr*(1 - I[A]);
+         if(2*S[R] < S[A])   xr = xr*(S[A] + (1 - xr/da)*(2*S[R] - S[A])) + S[R]*(1 - da) + xr*(1 - S[A]);
+         else if(8*xr <= da) xr = xr*(S[A] + (1 - xr/da)*(2*S[R] - S[A])*(3 - 8*xr/da)) + S[R]*(1 - da) + xr*(1 - S[A]);
+         else                xr = (xr*S[A] + (sqrt(xr/da)*da - xr)*(2*S[R] - S[A])) + S[R]*(1 - da) + xr*(1 - S[A]);
 
-         if(2*I[G] < I[A])   xg = xg*(I[A] + (1 - xg/da)*(2*I[G] - I[A])) + I[G]*(1 - da) + xg*(1 - I[A]);
-         else if(8*xg <= da) xg = xg*(I[A] + (1 - xg/da)*(2*I[G] - I[A])*(3 - 8*xg/da)) + I[G]*(1 - da) + xg*(1 - I[A]);
-         else                xg = (xg*I[A] + (sqrt(xg/da)*da - xg)*(2*I[G] - I[A])) + I[G]*(1 - da) + xg*(1 - I[A]);
+         if(2*S[G] < S[A])   xg = xg*(S[A] + (1 - xg/da)*(2*S[G] - S[A])) + S[G]*(1 - da) + xg*(1 - S[A]);
+         else if(8*xg <= da) xg = xg*(S[A] + (1 - xg/da)*(2*S[G] - S[A])*(3 - 8*xg/da)) + S[G]*(1 - da) + xg*(1 - S[A]);
+         else                xg = (xg*S[A] + (sqrt(xg/da)*da - xg)*(2*S[G] - S[A])) + S[G]*(1 - da) + xg*(1 - S[A]);
 
-         if(2*I[B] < I[A])   xb = xb*(I[A] + (1 - xb/da)*(2*I[B] - I[A])) + I[B]*(1 - da) + xb*(1 - I[A]);
-         else if(8*xb <= da) xb = xb*(I[A] + (1 - xb/da)*(2*I[B] - I[A])*(3 - 8*xb/da)) + I[B]*(1 - da) + xb*(1 - I[A]);
-         else                xb = (xb*I[A] + (sqrt(xb/da)*da - xb)*(2*I[B] - I[A])) + I[B]*(1 - da) + xb*(1 - I[A]);
+         if(2*S[B] < S[A])   xb = xb*(S[A] + (1 - xb/da)*(2*S[B] - S[A])) + S[B]*(1 - da) + xb*(1 - S[A]);
+         else if(8*xb <= da) xb = xb*(S[A] + (1 - xb/da)*(2*S[B] - S[A])*(3 - 8*xb/da)) + S[B]*(1 - da) + xb*(1 - S[A]);
+         else                xb = (xb*S[A] + (sqrt(xb/da)*da - xb)*(2*S[B] - S[A])) + S[B]*(1 - da) + xb*(1 - S[A]);
 
          D[R] = (UBYTE)agg::uround(xr * 0xff);
          D[G] = (UBYTE)agg::uround(xg * 0xff);
          D[B] = (UBYTE)agg::uround(xb * 0xff);
-         D[A] = (UBYTE)(I[A] + D[A] - ((I[A] * D[A] + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_difference {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
-         D[R] = (UBYTE)(I[R] + M[R] - ((2 * agg::sd_min(I[R]*M[A], M[R]*I[A]) + 0xff) >> 8));
-         D[G] = (UBYTE)(I[G] + M[G] - ((2 * agg::sd_min(I[G]*M[A], M[G]*I[A]) + 0xff) >> 8));
-         D[B] = (UBYTE)(I[B] + M[B] - ((2 * agg::sd_min(I[B]*M[A], M[B]*I[A]) + 0xff) >> 8));
-         D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0xff) >> 8));
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         D[R] = (UBYTE)(S[R] + M[R] - ((2 * agg::sd_min(S[R]*M[A], M[R]*S[A]) + 0xff) >> 8));
+         D[G] = (UBYTE)(S[G] + M[G] - ((2 * agg::sd_min(S[G]*M[A], M[G]*S[A]) + 0xff) >> 8));
+         D[B] = (UBYTE)(S[B] + M[B] - ((2 * agg::sd_min(S[B]*M[A], M[B]*S[A]) + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_exclusion {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
          const UBYTE d1a = 0xff - D[A];
-         const UBYTE s1a = 0xff - I[A];
-         D[R] = (UBYTE)((I[R]*M[A] + M[R]*I[A] - 2*I[R]*M[R] + I[R]*d1a + M[R]*s1a + 0xff) >> 8);
-         D[G] = (UBYTE)((I[G]*M[A] + M[G]*I[A] - 2*I[G]*M[G] + I[G]*d1a + M[G]*s1a + 0xff) >> 8);
-         D[B] = (UBYTE)((I[B]*M[A] + M[B]*I[A] - 2*I[B]*M[B] + I[B]*d1a + M[B]*s1a + 0xff) >> 8);
-         D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0xff) >> 8));
+         const UBYTE s1a = 0xff - S[A];
+         D[R] = (UBYTE)((S[R]*M[A] + M[R]*S[A] - 2*S[R]*M[R] + S[R]*d1a + M[R]*s1a + 0xff) >> 8);
+         D[G] = (UBYTE)((S[G]*M[A] + M[G]*S[A] - 2*S[G]*M[G] + S[G]*d1a + M[G]*s1a + 0xff) >> 8);
+         D[B] = (UBYTE)((S[B]*M[A] + M[B]*S[A] - 2*S[B]*M[B] + S[B]*d1a + M[B]*s1a + 0xff) >> 8);
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_plus {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
-         const UBYTE xr = D[R] + I[R];
-         const UBYTE xg = D[G] + I[G];
-         const UBYTE xb = D[B] + I[B];
-         const UBYTE xa = D[A] + I[A];
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         const UBYTE xr = D[R] + S[R];
+         const UBYTE xg = D[G] + S[G];
+         const UBYTE xb = D[B] + S[B];
+         const UBYTE xa = D[A] + S[A];
          D[R] = (xr > 0xff) ? (UBYTE)0xff : xr;
          D[G] = (xg > 0xff) ? (UBYTE)0xff : xg;
          D[B] = (xb > 0xff) ? (UBYTE)0xff : xb;
@@ -312,46 +327,46 @@ struct blend_plus {
 };
 
 struct blend_minus {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
-         const UBYTE xr = D[R] - I[R];
-         const UBYTE xg = D[G] - I[G];
-         const UBYTE xb = D[B] - I[B];
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         const UBYTE xr = D[R] - S[R];
+         const UBYTE xg = D[G] - S[G];
+         const UBYTE xb = D[B] - S[B];
          D[R] = (xr > 0xff) ? 0 : xr;
          D[G] = (xg > 0xff) ? 0 : xg;
          D[B] = (xb > 0xff) ? 0 : xb;
-         D[A] = (UBYTE)(I[A] + D[A] - ((I[A] * D[A] + 0xff) >> 8));
-         //D[A] = (UBYTE)(0xff - (((0xff - I[A]) * (0xff - D[A]) + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
+         //D[A] = (UBYTE)(0xff - (((0xff - S[A]) * (0xff - D[A]) + 0xff) >> 8));
       }
    }
 };
 
 struct blend_invert {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if ((I[A]) or (M[A])) {
-         const UBYTE xr = ((M[A] - D[R]) * I[A] + 0xff) >> 8;
-         const UBYTE xg = ((M[A] - D[G]) * I[A] + 0xff) >> 8;
-         const UBYTE xb = ((M[A] - D[B]) * I[A] + 0xff) >> 8;
-         const UBYTE s1a = 0xff - I[A];
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         const UBYTE xr = ((M[A] - D[R]) * S[A] + 0xff) >> 8;
+         const UBYTE xg = ((M[A] - D[G]) * S[A] + 0xff) >> 8;
+         const UBYTE xb = ((M[A] - D[B]) * S[A] + 0xff) >> 8;
+         const UBYTE s1a = 0xff - S[A];
          D[R] = (UBYTE)(xr + ((D[R] * s1a + 0xff) >> 8));
          D[G] = (UBYTE)(xg + ((D[G] * s1a + 0xff) >> 8));
          D[B] = (UBYTE)(xb + ((D[B] * s1a + 0xff) >> 8));
-         D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
 
 struct blend_invert_rgb {
-   static inline void blend(UBYTE *D, UBYTE *I, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if (I[A]) {
-         UBYTE xr = ((M[A] - D[R]) * I[R] + 0xff) >> 8;
-         UBYTE xg = ((M[A] - D[G]) * I[G] + 0xff) >> 8;
-         UBYTE xb = ((M[A] - D[B]) * I[B] + 0xff) >> 8;
-         UBYTE s1a = 0xff - I[A];
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if (S[A]) {
+         UBYTE xr = ((M[A] - D[R]) * S[R] + 0xff) >> 8;
+         UBYTE xg = ((M[A] - D[G]) * S[G] + 0xff) >> 8;
+         UBYTE xb = ((M[A] - D[B]) * S[B] + 0xff) >> 8;
+         UBYTE s1a = 0xff - S[A];
          D[R] = (UBYTE)(xr + ((D[R] * s1a + 0xff) >> 8));
          D[G] = (UBYTE)(xg + ((D[G] * s1a + 0xff) >> 8));
          D[B] = (UBYTE)(xb + ((D[B] * s1a + 0xff) >> 8));
-         D[A] = (UBYTE)(I[A] + M[A] - ((I[A] * M[A] + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
 };
@@ -403,6 +418,7 @@ class CompositeEffect : public VectorEffect {
 
       Operator   = OP_OVER;
       EffectName = "feComposite";
+      K1 = K2 = K3 = K4 = 0;
 
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
@@ -447,19 +463,13 @@ class CompositeEffect : public VectorEffect {
                break;
             }
 
-            case SVF_K1:
-               read_numseq(val, &K1, TAGEND);
-               K1 = K1 * (1.0 / 255.0);
-               break;
+            case SVF_K1: read_numseq(val, &K1, TAGEND); break;
 
             case SVF_K2: read_numseq(val, &K2, TAGEND); break;
 
             case SVF_K3: read_numseq(val, &K3, TAGEND); break;
 
-            case SVF_K4:
-               read_numseq(val, &K4, TAGEND);
-               K4 = K4 * 255.0;
-               break;
+            case SVF_K4: read_numseq(val, &K4, TAGEND); break;
 
             default: fe_default(Filter, this, hash, val); break;
          }
@@ -482,15 +492,13 @@ class CompositeEffect : public VectorEffect {
       switch (Operator) {
          case OP_NORMAL:
          case OP_OVER: {
-            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, false)) {
                objBitmap *mixBmp;
-               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
+               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, false)) {
                   UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                   UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                   doMix<composite_over>(inBmp, mixBmp, dest, in, mix);
-                  demultiply_bitmap(mixBmp);
                }
-               demultiply_bitmap(inBmp);
             }
             break;
          }
@@ -508,48 +516,43 @@ class CompositeEffect : public VectorEffect {
          }
 
          case OP_OUT: {
-            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, false)) {
                objBitmap *mixBmp;
                if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, false)) {
                   UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                   UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                   doMix<composite_out>(inBmp, mixBmp, dest, in, mix);
                }
-               demultiply_bitmap(inBmp);
             }
             break;
          }
 
          case OP_ATOP: {
-            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, false)) {
                objBitmap *mixBmp;
-               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
+               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, false)) {
                   UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                   UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                   doMix<composite_atop>(inBmp, mixBmp, dest, in, mix);
-                  demultiply_bitmap(mixBmp);
                }
-               demultiply_bitmap(inBmp);
             }
             break;
          }
 
          case OP_XOR: {
-            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, false)) {
                objBitmap *mixBmp;
-               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
+               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, false)) {
                   UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                   UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                   doMix<composite_xor>(inBmp, mixBmp, dest, in, mix);
-                  demultiply_bitmap(mixBmp);
                }
-               demultiply_bitmap(inBmp);
             }
             break;
          }
 
          case OP_ARITHMETIC: {
-            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
+            if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, false)) {
                objBitmap *mixBmp;
                LONG height = OutBitmap->Clip.Bottom - OutBitmap->Clip.Top;
                LONG width  = OutBitmap->Clip.Right - OutBitmap->Clip.Left;
@@ -561,7 +564,7 @@ class CompositeEffect : public VectorEffect {
                const UBYTE G = OutBitmap->ColourFormat->GreenPos>>3;
                const UBYTE B = OutBitmap->ColourFormat->BluePos>>3;
 
-               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
+               if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, false)) {
                   UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                   UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                   for (LONG y=0; y < height; y++) {
@@ -569,27 +572,45 @@ class CompositeEffect : public VectorEffect {
                      auto sp = in;
                      auto mp = mix;
                      for (LONG x=0; x < width; x++) {
-                        #define i1(c) sp[c]
-                        #define i2(c) mp[c]
-                        LONG dr = (K1 * i1(R) * i2(R)) + (K2 * i1(R)) + (K3 * i2(R)) + K4;
-                        LONG dg = (K1 * i1(G) * i2(G)) + (K2 * i1(G)) + (K3 * i2(G)) + K4;
-                        LONG db = (K1 * i1(B) * i2(B)) + (K2 * i1(B)) + (K3 * i2(B)) + K4;
-                        LONG da = (K1 * i1(A) * i2(A)) + (K2 * i1(A)) + (K3 * i2(A)) + K4;
-                        if (dr > 0xff) dp[R] = 0xff;
-                        else if (dr < 0) dp[R] = 0;
-                        else dp[R] = dr;
+                        if ((mp[A]) or (sp[A])) {
+                           // Scale RGB to 0 - 1.0 and premultiply the values.
+                           #define SCALE (1.0 / 255.0)
+                           #define DESCALE 255.0
+                           const DOUBLE sA = DOUBLE(sp[A]) * SCALE;
+                           const DOUBLE sR = DOUBLE(sp[R]) * SCALE * sA;
+                           const DOUBLE sG = DOUBLE(sp[G]) * SCALE * sA;
+                           const DOUBLE sB = DOUBLE(sp[B]) * SCALE * sA;
 
-                        if (dg > 0xff) dp[G] = 0xff;
-                        else if (dg < 0) dp[G] = 0;
-                        else dp[G] = dg;
+                           const DOUBLE mA = DOUBLE(mp[A]) * SCALE;
+                           const DOUBLE mR = DOUBLE(mp[R]) * SCALE * mA;
+                           const DOUBLE mG = DOUBLE(mp[G]) * SCALE * mA;
+                           const DOUBLE mB = DOUBLE(mp[B]) * SCALE * mA;
 
-                        if (db > 0xff) dp[B] = 0xff;
-                        else if (db < 0) dp[B] = 0;
-                        else dp[B] = db;
+                           DOUBLE dA = (K1 * sA * mA) + (K2 * sA) + (K3 * mA) + K4;
 
-                        if (da > 0xff) dp[A] = 0xff;
-                        else if (da < 0) dp[A] = 0;
-                        else dp[A] = da;
+                           if (dA > 0.0) {
+                              if (dA > 1.0) dA = 1.0;
+
+                              DOUBLE demul = 1.0 / dA;
+                              LONG dr = F2T(((K1 * sR * mR) + (K2 * sR) + (K3 * mR) + K4) * demul * DESCALE);
+                              LONG dg = F2T(((K1 * sG * mG) + (K2 * sG) + (K3 * mG) + K4) * demul * DESCALE);
+                              LONG db = F2T(((K1 * sB * mB) + (K2 * sB) + (K3 * mB) + K4) * demul * DESCALE);
+
+                              if (dr > 0xff) dp[R] = 0xff;
+                              else if (dr < 0) dp[R] = 0;
+                              else dp[R] = dr;
+
+                              if (dg > 0xff) dp[G] = 0xff;
+                              else if (dg < 0) dp[G] = 0;
+                              else dp[G] = dg;
+
+                              if (db > 0xff) dp[B] = 0xff;
+                              else if (db < 0) dp[B] = 0;
+                              else dp[B] = db;
+
+                              dp[A] = F2T(dA * DESCALE);
+                           }
+                        }
 
                         dp += 4;
                         sp += 4;
@@ -599,14 +620,12 @@ class CompositeEffect : public VectorEffect {
                      in   += inBmp->LineWidth;
                      mix  += mixBmp->LineWidth;
                   }
-                  demultiply_bitmap(mixBmp);
                }
-               demultiply_bitmap(inBmp);
             }
             break;
          }
 
-         default: {
+         default: { // These mix routines use pre-multiplied content.
             if (!get_source_bitmap(Filter, &inBmp, SourceType, InputID, true)) {
                objBitmap *mixBmp;
                if (!get_source_bitmap(Filter, &mixBmp, MixType, MixID, true)) {
@@ -632,9 +651,9 @@ class CompositeEffect : public VectorEffect {
                      case OP_INVERTRGB:  doMix<blend_invert_rgb>(inBmp, mixBmp, dest, in, mix); break;
                   }
 
-                  demultiply_bitmap(mixBmp);
+                   bmpDemultiply(mixBmp);
                }
-               demultiply_bitmap(inBmp);
+               bmpDemultiply(inBmp);
             }
 
             break;

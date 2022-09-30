@@ -376,6 +376,151 @@ static ERROR BITMAP_Compress(objBitmap *Self, struct bmpCompress *Args)
    return error;
 }
 
+/*********************************************************************************************************************
+-METHOD-
+ConvertToLinear: Convert a bitmap's colour space to linear RGB.
+
+Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.
+
+The #ColourSpace will be set to `LINEAR_RGB` on completion.  This method returns immediately if the #ColourSpace is
+already set to `LINEAR_RGB`.
+
+-ERRORS-
+Okay
+NothingDone: The Bitmap's content is already in linear RGB format.
+InvalidState: The Bitmap is not in the expected state.
+InvalidDimension: The clipping region is invalid.
+-END-
+*********************************************************************************************************************/
+
+ERROR BITMAP_ConvertToLinear(objBitmap *Self, APTR Void)
+{
+   parasol::Log log;
+
+   if (Self->ColourSpace IS CS_LINEAR_RGB) return log.warning(ERR_NothingDone);
+   if (Self->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
+
+   const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
+   const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
+
+   if (Self->Clip.Left + w > Self->Width) return log.warning(ERR_InvalidDimension);
+   if (Self->Clip.Top + h > Self->Height) return log.warning(ERR_InvalidDimension);
+
+   if (Self->Flags & BMF_ALPHA_CHANNEL) {
+      const UBYTE R = Self->ColourFormat->RedPos>>3;
+      const UBYTE G = Self->ColourFormat->GreenPos>>3;
+      const UBYTE B = Self->ColourFormat->BluePos>>3;
+      const UBYTE A = Self->ColourFormat->AlphaPos>>3;
+
+      UBYTE *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
+      for (LONG y=0; y < h; y++) {
+         UBYTE *pixel = data;
+         for (LONG x=0; x < w; x++) {
+            if (pixel[A]) {
+               pixel[R] = glLinearRGB.convert(pixel[R]);
+               pixel[G] = glLinearRGB.convert(pixel[G]);
+               pixel[B] = glLinearRGB.convert(pixel[B]);
+            }
+            pixel += Self->BytesPerPixel;
+         }
+         data += Self->LineWidth;
+      }
+   }
+   else {
+      const UBYTE R = Self->ColourFormat->RedPos>>3;
+      const UBYTE G = Self->ColourFormat->GreenPos>>3;
+      const UBYTE B = Self->ColourFormat->BluePos>>3;
+
+      UBYTE *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
+      for (LONG y=0; y < h; y++) {
+         UBYTE *pixel = data;
+         for (LONG x=0; x < w; x++) {
+            pixel[R] = glLinearRGB.convert(pixel[R]);
+            pixel[G] = glLinearRGB.convert(pixel[G]);
+            pixel[B] = glLinearRGB.convert(pixel[B]);
+            pixel += Self->BytesPerPixel;
+         }
+         data += Self->LineWidth;
+      }
+   }
+
+   Self->ColourSpace = CS_LINEAR_RGB;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+ConvertToRGB: Convert a bitmap's colour space to standard RGB.
+
+Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.
+
+The #ColourSpace will be set to `SRGB` on completion.  This method returns immediately if the #ColourSpace is
+already set to `SRGB`.
+
+-ERRORS-
+Okay
+NothingDone: The Bitmap's content is already in sRGB format.
+InvalidState: The Bitmap is not in the expected state.
+InvalidDimension: The clipping region is invalid.
+
+*********************************************************************************************************************/
+
+ERROR BITMAP_ConvertToRGB(objBitmap *Self, APTR Void)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (Self->ColourSpace IS CS_SRGB) return log.warning(ERR_NothingDone);
+   if (Self->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
+
+   const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
+   const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
+
+   if (Self->Clip.Left + w > Self->Width) return log.warning(ERR_InvalidDimension);
+   if (Self->Clip.Top + h > Self->Height) return log.warning(ERR_InvalidDimension);
+
+   if (Self->Flags & BMF_ALPHA_CHANNEL) {
+      const UBYTE R = Self->ColourFormat->RedPos>>3;
+      const UBYTE G = Self->ColourFormat->GreenPos>>3;
+      const UBYTE B = Self->ColourFormat->BluePos>>3;
+      const UBYTE A = Self->ColourFormat->AlphaPos>>3;
+
+      UBYTE *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
+      for (LONG y=0; y < h; y++) {
+         UBYTE *pixel = data;
+         for (LONG x=0; x < w; x++) {
+            if (pixel[A]) {
+               pixel[R] = glLinearRGB.invert(pixel[R]);
+               pixel[G] = glLinearRGB.invert(pixel[G]);
+               pixel[B] = glLinearRGB.invert(pixel[B]);
+            }
+            pixel += Self->BytesPerPixel;
+         }
+         data += Self->LineWidth;
+      }
+   }
+   else {
+      const UBYTE R = Self->ColourFormat->RedPos>>3;
+      const UBYTE G = Self->ColourFormat->GreenPos>>3;
+      const UBYTE B = Self->ColourFormat->BluePos>>3;
+
+      UBYTE *data = Self->Data + (Self->LineWidth * Self->Clip.Top) + (Self->Clip.Left * Self->BytesPerPixel);
+      for (LONG y=0; y < h; y++) {
+         UBYTE *pixel = data;
+         for (LONG x=0; x < w; x++) {
+            pixel[R] = glLinearRGB.invert(pixel[R]);
+            pixel[G] = glLinearRGB.invert(pixel[G]);
+            pixel[B] = glLinearRGB.invert(pixel[B]);
+            pixel += Self->BytesPerPixel;
+         }
+         data += Self->LineWidth;
+      }
+   }
+
+   Self->ColourSpace = CS_SRGB;
+   return ERR_Okay;
+}
+
 /*****************************************************************************
 
 -METHOD-
@@ -525,6 +670,69 @@ static ERROR BITMAP_CopyData(objBitmap *Self, struct acCopyData *Args)
       return ERR_Okay;
    }
    else return log.warning(ERR_ExclusiveDenied);
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+Demultiply: Reverses the conversion process performed by Premultiply().
+
+Use Demultiply to normalise RGB values that have previously been converted by #Premultiply().  This method will
+return immediately if the bitmap values are already normalised.
+
+-ERRORS-
+Okay
+NothingDone: The content is already normalised.
+InvalidState: The Bitmap is not in the expected state (32-bit with an alpha channel).
+InvalidDimension: The clipping region is invalid.
+
+*********************************************************************************************************************/
+
+static ERROR BITMAP_Demultiply(objBitmap *Self, APTR Void)
+{
+   parasol::Log log;
+
+   if (!(Self->Flags & BMF_PREMUL)) {
+      return log.warning(ERR_NothingDone);
+   }
+
+   if (Self->BitsPerPixel != 32) return log.warning(ERR_InvalidState);
+   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_InvalidState);
+
+   const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
+   const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
+
+   if (Self->Clip.Left + w > Self->Width) return log.warning(ERR_InvalidDimension);
+   if (Self->Clip.Top + h > Self->Height) return log.warning(ERR_InvalidDimension);
+
+   const UBYTE A = Self->ColourFormat->AlphaPos>>3;
+   const UBYTE R = Self->ColourFormat->RedPos>>3;
+   const UBYTE G = Self->ColourFormat->GreenPos>>3;
+   const UBYTE B = Self->ColourFormat->BluePos>>3;
+
+   UBYTE *data = Self->Data + (Self->Clip.Left * Self->BytesPerPixel) + (Self->Clip.Top * Self->LineWidth);
+   for (LONG y=0; y < h; y++) {
+      UBYTE *pixel = data;
+      for (LONG x=0; x < w; x++) {
+         const UBYTE a = pixel[A];
+         if (a < 0xff) {
+            if (a == 0) pixel[R] = pixel[G] = pixel[B] = 0;
+            else {
+               ULONG r = (ULONG(pixel[R]) * 0xff) / a;
+               ULONG g = (ULONG(pixel[G]) * 0xff) / a;
+               ULONG b = (ULONG(pixel[B]) * 0xff) / a;
+               pixel[R] = UBYTE((r > 0xff) ? 0xff : r);
+               pixel[G] = UBYTE((g > 0xff) ? 0xff : g);
+               pixel[B] = UBYTE((b > 0xff) ? 0xff : b);
+            }
+         }
+         pixel += 4;
+      }
+      data += Self->LineWidth;
+   }
+
+   Self->Flags &= ~BMF_PREMUL;
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -744,7 +952,6 @@ int Alpha:  Alpha component value from 0 - 255.
 -ERRORS-
 Okay
 NullArgs
--END-
 
 *****************************************************************************/
 
@@ -768,6 +975,7 @@ static ERROR BITMAP_GetColour(objBitmap *Self, struct bmpGetColour *Args)
 }
 
 /*****************************************************************************
+
 -ACTION-
 Init: Initialises a bitmap.
 
@@ -778,7 +986,7 @@ MEM_DATA.  For a display compatible bitmap use MEM_VIDEO.  If you just want to s
 use MEM_TEXTURE.
 
 This action will not work unless you have defined the #Width and #Height fields of the bitmap at a minimum.
--END-
+
 *****************************************************************************/
 
 static ERROR BITMAP_Init(objBitmap *Self, APTR Void)
@@ -1183,7 +1391,73 @@ static ERROR BITMAP_NewObject(objBitmap *Self, APTR Void)
    return ERR_Okay;
 }
 
+/*********************************************************************************************************************
+
+-METHOD-
+Premultiply: Premultiplies RGB channel values by the alpha channel.
+
+Use Premultiply to convert all RGB values in the bitmap's clipping region to pre-multiplied values.  The
+exact formula applied per channel is `(Colour * Alpha + 0xff)>>8`.  The alpha channel is not affected.
+
+This method will only operate on 32 bit bitmaps, and an alpha channel must be present.  If the RGB values are
+already pre-multiplied, the method returns immediately.
+
+The process can be reversed with a call to #Demultiply().
+
+-ERRORS-
+Okay
+NothingDone: The content is already premultiplied.
+InvalidState: The Bitmap is not in the expected state (32-bit with an alpha channel)
+InvalidDimension: The clipping region is invalid.
+
+*********************************************************************************************************************/
+
+static ERROR BITMAP_Premultiply(objBitmap *Self, APTR Void)
+{
+   parasol::Log log;
+
+   if (Self->Flags & BMF_PREMUL) {
+      return log.warning(ERR_NothingDone);
+   }
+
+   if (Self->BitsPerPixel != 32) return log.warning(ERR_InvalidState);
+   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_InvalidState);
+
+   const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
+   const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
+
+   if (Self->Clip.Left + w > Self->Width) return log.warning(ERR_InvalidDimension);
+   if (Self->Clip.Top + h > Self->Height) return log.warning(ERR_InvalidDimension);
+
+   const UBYTE A = Self->ColourFormat->AlphaPos>>3;
+   const UBYTE R = Self->ColourFormat->RedPos>>3;
+   const UBYTE G = Self->ColourFormat->GreenPos>>3;
+   const UBYTE B = Self->ColourFormat->BluePos>>3;
+
+   UBYTE *data = Self->Data + (Self->Clip.Left * Self->BytesPerPixel) + (Self->Clip.Top * Self->LineWidth);
+   for (LONG y=0; y < h; y++) {
+      UBYTE *pixel = data;
+      for (LONG x=0; x < w; x++) {
+         const UBYTE a = pixel[A];
+         if (a < 0xff) {
+             if (a == 0) pixel[R] = pixel[G] = pixel[B] = 0;
+             else {
+                pixel[R] = UBYTE((pixel[R] * a + 0xff) >> 8);
+                pixel[G] = UBYTE((pixel[G] * a + 0xff) >> 8);
+                pixel[B] = UBYTE((pixel[B] * a + 0xff) >> 8);
+             }
+         }
+         pixel += 4;
+      }
+      data += Self->LineWidth;
+   }
+
+   Self->Flags |= BMF_PREMUL;
+   return ERR_Okay;
+}
+
 /*****************************************************************************
+
 -ACTION-
 Query: Fills a bitmap with pre-initialised/default values prior to initialisation.
 
@@ -1193,7 +1467,7 @@ short of allocating the bitmap's memory.
 For this action to work properly you must have defined the Width and Height fields of the bitmap before making the
 Query.  This function is intelligent enough to fill out the fields based on the information you have given it, e.g. if
 you set the #BytesPerPixel field to 2 then it will determine that the bitmap is a 16 bit, 64k colour bitmap.
--END-
+
 *****************************************************************************/
 
 static ERROR BITMAP_Query(objBitmap *Self, APTR Void)
@@ -1400,6 +1674,7 @@ static ERROR BITMAP_ReleaseObject(objBitmap *Self, APTR Void)
 }
 
 /*****************************************************************************
+
 -ACTION-
 Resize: Resizes a bitmap object's dimensions.
 
@@ -1413,7 +1688,7 @@ Okay
 NullArgs
 AllocMemory
 FieldNotSet
--END-
+
 *****************************************************************************/
 
 static ERROR BITMAP_Resize(objBitmap *Self, struct acResize *Args)

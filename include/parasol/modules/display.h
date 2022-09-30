@@ -183,6 +183,7 @@
 #define BMF_X11_DGA 0x00002000
 #define BMF_FIXED_DEPTH 0x00004000
 #define BMF_NO_BLEND 0x00008000
+#define BMF_PREMUL 0x00010000
 
 // Flags for the bitmap Flip method.
 
@@ -475,6 +476,10 @@ typedef struct rkBitmap {
 #define MT_BmpSetClipRegion -7
 #define MT_BmpGetColour -8
 #define MT_BmpDrawLine -9
+#define MT_BmpPremultiply -10
+#define MT_BmpDemultiply -11
+#define MT_BmpConvertToLinear -12
+#define MT_BmpConvertToRGB -13
 
 struct bmpCopyArea { struct rkBitmap * DestBitmap; LONG Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
 struct bmpCompress { LONG Level;  };
@@ -519,6 +524,14 @@ INLINE ERROR bmpDrawLine(APTR Ob, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Co
    struct bmpDrawLine args = { X, Y, XEnd, YEnd, Colour };
    return(Action(MT_BmpDrawLine, (OBJECTPTR)Ob, &args));
 }
+
+#define bmpPremultiply(obj) Action(MT_BmpPremultiply,(obj),0)
+
+#define bmpDemultiply(obj) Action(MT_BmpDemultiply,(obj),0)
+
+#define bmpConvertToLinear(obj) Action(MT_BmpConvertToLinear,(obj),0)
+
+#define bmpConvertToRGB(obj) Action(MT_BmpConvertToRGB,(obj),0)
 
 
 // Display class definition

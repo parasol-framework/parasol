@@ -1,3 +1,9 @@
+// Fast conversion table routines for rgb -> linear and vice versa.  Implemented as a singleton, so define
+// glLinearRGB to appear once in your binary and use it directly.
+
+#ifndef LINEAR_RGB_H
+#define LINEAR_RGB_H 1
+
 #include <math.h>
 
 class rgb_to_linear {
@@ -21,22 +27,22 @@ private:
 
 public:
    rgb_to_linear() {
+      // Initialise conversion tables
       for (LONG i=0; i < 256; i++) {
          r2l[i] = conv_r2l((DOUBLE)i * (1.0 / 255.0));
-      }
-
-      for (LONG i=0; i < 256; i++) {
          l2r[i] = conv_l2r((DOUBLE)i * (1.0 / 255.0));
       }
    }
 
-   inline UBYTE convert(UBYTE Colour) {
+   inline UBYTE convert(const UBYTE Colour) {
       return r2l[Colour];
    }
 
-   inline UBYTE invert(UBYTE Colour) {
+   inline UBYTE invert(const UBYTE Colour) {
       return l2r[Colour];
    }
+
+   // Notice that the alpha channel is not impacted by the RGB conversion.
 
    inline void convert(RGB8 &Colour) {
       Colour.Red   = r2l[Colour.Red];
@@ -54,3 +60,7 @@ private:
    UBYTE r2l[256];
    UBYTE l2r[256];
 };
+
+extern rgb_to_linear glLinearRGB;
+
+#endif // LINEAR_RGB_H

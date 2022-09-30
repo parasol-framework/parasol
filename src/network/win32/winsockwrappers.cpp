@@ -85,7 +85,7 @@ static const struct {
    { WSAEFAULT,             ERR_InvalidData },
    { WSAEINVAL,             ERR_Args },
    { WSAEMFILE,             ERR_OutOfSpace },
-   { WSAEWOULDBLOCK,        ERR_BadState },
+   { WSAEWOULDBLOCK,        ERR_InvalidState },
    { WSAEINPROGRESS,        ERR_Busy },
    { WSAEALREADY,           ERR_Busy },
    { WSAENOTSOCK,           ERR_Args },

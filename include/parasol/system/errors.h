@@ -148,7 +148,7 @@
 #define ERR_OutOfData 126
 #define ERR_Syntax 127
 #define ERR_StringFormat 127
-#define ERR_BadState 128
+#define ERR_InvalidState 128
 #define ERR_HostNotFound 129
 #define ERR_InvalidURI 130
 #define ERR_ConnectionRefused 131

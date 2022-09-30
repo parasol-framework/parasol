@@ -4,6 +4,14 @@ The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
+******************************************************************************
+
+Relevant SVG reference manuals:
+
+https://www.w3.org/TR/SVGColor12/
+https://www.w3.org/TR/SVG11/
+https://www.w3.org/Graphics/SVG/Test/Overview.html
+
 *****************************************************************************/
 
 //#define DEBUG
@@ -52,10 +60,11 @@ typedef struct svgState {
    CSTRING Stroke;
    CSTRING FontSize;
    CSTRING FontFamily;
-   DOUBLE StrokeWidth;
-   DOUBLE FillOpacity;
-   DOUBLE Opacity;
-   LONG   PathQuality;
+   DOUBLE  StrokeWidth;
+   DOUBLE  FillOpacity;
+   DOUBLE  Opacity;
+   LONG    FontWeight;
+   LONG    PathQuality;
 } svgState;
 
 #include <parasol/modules/svg.h>

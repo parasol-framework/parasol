@@ -18,7 +18,8 @@
 <pre>&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(#FOMTest)"/&gt;
 </pre>
 <p>Filter instructions are passed to VectorFilter objects via the XML data feed, where they will be parsed into an internal list of instructions.  It is not possible to modify the instructions once they have been parsed, but they can be cleared and a new set of instructions can be applied.</p>
-<p>It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing. If this is an issue, consider pre-rendering the filter effects in advance and caching the results in memory or files.</p></description>
+<p>It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing. If this is an issue, consider pre-rendering the filter effects in advance and caching the results in memory or files.</p>
+<p>It is a requirement that VectorFilter objects are owned by the <class name="VectorScene">VectorScene</class> they are targeting.</p></description>
     <source>
       <file path="filters/">filter.cpp</file>
     </source>
