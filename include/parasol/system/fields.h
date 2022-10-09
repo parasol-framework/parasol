@@ -931,6 +931,7 @@
 #define FID_Message 0xbe463eeaLL
 #define FID_MiterLimit 0x33905165LL
 #define FID_MiterLimitTheta 0xd371d75bLL
+#define FID_MixType 0xc7f64f95LL
 #define FID_Mod 0x0b889145LL
 #define FID_Module 0x0e32c72bLL
 #define FID_Morph 0x0ff240ebLL
@@ -948,11 +949,13 @@
 #define FID_PrimitiveUnits 0xf4494b91LL
 #define FID_RadiusX 0x34c03785LL
 #define FID_RadiusY 0x34c03786LL
+#define FID_ResampleMethod 0x040a629fLL
 #define FID_PathQuality 0xa194745bLL
 #define FID_Rotate 0x19e50454LL
 #define FID_RoundX 0x19e5c605LL
 #define FID_RoundY 0x19e5c606LL
 #define FID_Source 0x1c3aff76LL
+#define FID_SourceType 0xb83b77f8LL
 #define FID_Spiral 0x1c468330LL
 #define FID_StartOffset 0xed10629aLL
 #define FID_Step 0x7c9e1a01LL

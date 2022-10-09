@@ -3364,7 +3364,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
-      <error code="BadState">Object was in an incorrect state for the operation.</error>
+      <error code="InvalidState">Object was in an incorrect state for the operation.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -3803,12 +3803,12 @@ end
     </input>
     <description>
 <p>Call VarLock() to acquire a key store's internal lock, preventing other threads from utilising key store functions on the resource until the lock is released.  Calls to VarLock() will nest, and each will need to be matched with a call to <function module="Core">VarUnlock</function>.</p>
-<p>The KeyStore must have been allocated with the THREAD_SAFE flag in the call to <function module="Core">VarNew</function> in order to enable locking functionality.  If not done so, an error of ERR_BadState is returned.</p>
+<p>The KeyStore must have been allocated with the THREAD_SAFE flag in the call to <function module="Core">VarNew</function> in order to enable locking functionality.  If not done so, an error of ERR_InvalidState is returned.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
-      <error code="BadState">Object was in an incorrect state for the operation.</error>
+      <error code="InvalidState">Object was in an incorrect state for the operation.</error>
     </result>
   </function>
 
