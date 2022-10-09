@@ -994,7 +994,10 @@ static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
       LONG src_type = Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT);
       if (src_type) {
          LONG dest_type = Field->Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT);
-         if (!(src_type & dest_type)) return ERR_FieldTypeMismatch;
+         if (!(src_type & dest_type)) {
+            RESTORE_CONTEXT(Object);
+            return ERR_FieldTypeMismatch;
+         }
       }
 
       error = ((ERROR (*)(APTR, APTR, LONG))(Field->SetValue))(Object, (APTR)Data, Elements);
