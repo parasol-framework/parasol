@@ -1777,7 +1777,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    if (!CheckAction(Owner, AC_NewChild)) {
       ERROR error;
-      struct acNewChild newchild = { .NewChildID = Object->UID };
+      struct acNewChild newchild = { .NewChild = Object };
       if ((error = Action(AC_NewChild, Owner, &newchild)) != ERR_NoSupport) {
          if (error != ERR_Okay) { // If the owner has passed the object through to another owner, return ERR_Okay, otherwise error.
             if (error IS ERR_OwnerPassThrough) return ERR_Okay;
