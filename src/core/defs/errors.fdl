@@ -73,7 +73,7 @@ function declareErrors()
     "AddClass",
     "Activate",
     "DoubleInit",
-    "FieldNotSet",
+    "UndefinedField|FieldNotSet",
     "MissingClass",         // The class could not be found in the system.
     "FileReadFlag",         // The File flag FL_READ was not set on initialisation.
     "FileWriteFlag",        // The File flag FL_WRITE was not set on initialisation.

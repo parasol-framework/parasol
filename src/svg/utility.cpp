@@ -44,7 +44,31 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
+
+static void parse_input(objSVG *Self, OBJECTPTR Effect, CSTRING Input, FIELD SourceField, FIELD RefField)
+{
+   switch (StrHash(Input, FALSE)) {
+      case SVF_SOURCEGRAPHIC:   SetLong(Effect, SourceField, VSF_GRAPHIC); break;
+      case SVF_SOURCEALPHA:     SetLong(Effect, SourceField, VSF_ALPHA); break;
+      case SVF_BACKGROUNDIMAGE: SetLong(Effect, SourceField, VSF_BKGD); break;
+      case SVF_BACKGROUNDALPHA: SetLong(Effect, SourceField, VSF_BKGD_ALPHA); break;
+      case SVF_FILLPAINT:       SetLong(Effect, SourceField, VSF_FILL); break;
+      case SVF_STROKEPAINT:     SetLong(Effect, SourceField, VSF_STROKE); break;
+      default:  {
+         if (Self->Effects.contains(Input)) {
+            SetPointer(Effect, RefField, Self->Effects[Input]);
+         }
+         else {
+            parasol::Log log;
+            log.warning("Unrecognised input '%s'", Input);
+         }
+         break;
+      }
+   }
+}
+
+//********************************************************************************************************************
 
 static LONG count_stops(objSVG *Self, const XMLTag *Tag)
 {
@@ -56,7 +80,7 @@ static LONG count_stops(objSVG *Self, const XMLTag *Tag)
    return stopcount;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note that all offsets are percentages.
 
 static ERROR process_transition_stops(objSVG *Self, const XMLTag *Tag, Transition *Stops)
@@ -101,7 +125,7 @@ static ERROR process_transition_stops(objSVG *Self, const XMLTag *Tag, Transitio
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Save an id reference for an SVG element.  The element can be then be found at any time with find_href().
 
 INLINE bool add_id(objSVG *Self, const XMLTag *Tag, CSTRING Name)
@@ -118,7 +142,33 @@ INLINE bool add_id(objSVG *Self, const XMLTag *Tag, const std::string Name)
    return true;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
+
+static CSTRING folder(objSVG *Self)
+{
+   if (Self->Folder) {
+      if (Self->Folder[0]) return Self->Folder;
+      else return NULL;
+   }
+   if (!Self->Path) return NULL;
+
+   // Setting a path of "my/house/is/red.svg" results in "my/house/is/"
+
+   STRING folder;
+   if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK, &folder)) {
+      WORD last = 0;
+      for (WORD i=0; folder[i]; i++) {
+         if ((folder[i] IS '/') or (folder[i] IS '\\')) last = i + 1;
+      }
+      folder[last] = 0;
+      Self->Folder = folder;
+      if (Self->Folder[0]) return Self->Folder;
+      else return NULL;
+   }
+   else return NULL;
+}
+
+//********************************************************************************************************************
 
 static const std::string uri_name(CSTRING Ref)
 {
@@ -138,7 +188,7 @@ static const std::string uri_name(CSTRING Ref)
    return std::string("");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG find_href_tag(objSVG *Self, CSTRING Ref)
 {
@@ -219,7 +269,7 @@ static DOUBLE read_time(CSTRING Value)
    else return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
 static DOUBLE read_unit(CSTRING Value, LARGE *FieldID)
@@ -265,9 +315,9 @@ static DOUBLE read_unit(CSTRING Value, LARGE *FieldID)
    else return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
-INLINE void set_double(APTR Object, FIELD FieldID, CSTRING Value)
+template <class T> static inline void set_double(T Object, FIELD FieldID, CSTRING Value)
 {
    LARGE field = FieldID;
    DOUBLE num = read_unit(Value, &field);
@@ -290,7 +340,7 @@ INLINE void set_double_units(APTR Object, FIELD FieldID, CSTRING Value, LONG Uni
    SetField(Object, field, num);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // The parser will break once the string value terminates, or an invalid character is encountered.  Parsed characters
 // include: 0 - 9 , ( ) - + SPACE
 
@@ -334,7 +384,7 @@ static CSTRING read_numseq(CSTRING Value, ...)
    return Value;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Currently used by gradient functions.
 
 static void add_inherit(objSVG *Self, OBJECTPTR Object, CSTRING ID)
@@ -351,7 +401,7 @@ static void add_inherit(objSVG *Self, OBJECTPTR Object, CSTRING ID)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void reset_state(svgState *State)
 {
@@ -365,7 +415,7 @@ static void reset_state(svgState *State)
    State->PathQuality = RQ_AUTO;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
 {
@@ -482,7 +532,7 @@ end:
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void convert_styles(objXML *XML)
 {

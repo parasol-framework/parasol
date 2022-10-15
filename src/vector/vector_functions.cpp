@@ -738,14 +738,14 @@ Any failure to lookup a reference will be silently discarded.
 -INPUT-
 obj Vector: Optional.  Required if url() references are to be resolved.
 cstr IRI: The IRI string to be translated.
-struct(*DRGB) RGB: A colour will be returned here if specified in the IRI.
+struct(*FRGB) RGB: A colour will be returned here if specified in the IRI.
 &obj(VectorGradient) Gradient: A VectorGradient will be returned here if specified in the IRI.
 &obj(VectorImage) Image: A VectorImage will be returned here if specified in the IRI.
 &obj(VectorPattern) Pattern: A VectorPattern will be returned here if specified in the IRI.
 
 *****************************************************************************/
 
-void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, DRGB *RGB, objVectorGradient **Gradient,
+void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, FRGB *RGB, objVectorGradient **Gradient,
    objVectorImage **Image, objVectorPattern **Pattern)
 {
    parasol::Log log(__FUNCTION__);
@@ -861,19 +861,19 @@ next:
    else if (*IRI IS '#') {
       RGB8 rgb;
       StrToColour(IRI, &rgb);
-      RGB->Red   = (DOUBLE)rgb.Red   * (1.0 / 255.0);
-      RGB->Green = (DOUBLE)rgb.Green * (1.0 / 255.0);
-      RGB->Blue  = (DOUBLE)rgb.Blue  * (1.0 / 255.0);
-      RGB->Alpha = (DOUBLE)rgb.Alpha * (1.0 / 255.0);
+      RGB->Red   = (FLOAT)rgb.Red   * (1.0 / 255.0);
+      RGB->Green = (FLOAT)rgb.Green * (1.0 / 255.0);
+      RGB->Blue  = (FLOAT)rgb.Blue  * (1.0 / 255.0);
+      RGB->Alpha = (FLOAT)rgb.Alpha * (1.0 / 255.0);
    }
    else {
       ULONG hash = StrHash(IRI, FALSE);
       for (WORD i=0; i < ARRAYSIZE(glNamedColours); i++) {
          if (glNamedColours[i].Hash IS hash) {
-            RGB->Red   = (DOUBLE)glNamedColours[i].Red * (1.0 / 255.0);
-            RGB->Green = (DOUBLE)glNamedColours[i].Green * (1.0 / 255.0);
-            RGB->Blue  = (DOUBLE)glNamedColours[i].Blue * (1.0 / 255.0);
-            RGB->Alpha = (DOUBLE)glNamedColours[i].Alpha * (1.0 / 255.0);
+            RGB->Red   = (FLOAT)glNamedColours[i].Red * (1.0 / 255.0);
+            RGB->Green = (FLOAT)glNamedColours[i].Green * (1.0 / 255.0);
+            RGB->Blue  = (FLOAT)glNamedColours[i].Blue * (1.0 / 255.0);
+            RGB->Alpha = (FLOAT)glNamedColours[i].Alpha * (1.0 / 255.0);
             return;
          }
       }

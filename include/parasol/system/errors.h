@@ -82,6 +82,7 @@
 #define ERR_AddClass 65
 #define ERR_Activate 66
 #define ERR_DoubleInit 67
+#define ERR_UndefinedField 68
 #define ERR_FieldNotSet 68
 #define ERR_MissingClass 69
 #define ERR_FileReadFlag 70

@@ -221,7 +221,764 @@ static void xtag_clippath(objSVG *Self, objXML *XML, const XMLTag *Tag)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
+
+static ERROR parse_fe_blur(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_BLURFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_STDDEVIATION: { // Y is optional, if not set then it is equivalent to X.
+            DOUBLE x = -1, y = -1;
+            read_numseq(val, &x, &y, TAGEND);
+            if (x > 0) SetDouble(fx, FID_SX, x);
+            if (y > 0) SetDouble(fx, FID_SY, y);
+            break;
+         }
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
+            if (!Self->Effects.contains(std::string(val))) {
+               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
+            }
+            break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_offset(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_OFFSETFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_DX: SetLong(fx, FID_XOffset, StrToInt(val)); break;
+
+         case SVF_DY: SetLong(fx, FID_YOffset, StrToInt(val)); break;
+
+         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
+            if (!Self->Effects.contains(std::string(val))) {
+               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
+            }
+            break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_merge(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_MERGEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_X: set_double(fx, FID_X, val); break;
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+      }
+   }
+
+   if (auto child = Tag->Child) {
+      LONG count = 0;
+      while (child) { count++; child = child->Next; }
+
+      MergeSource list[count];
+
+      LONG i = 0;
+      child = Tag->Child;
+      while (child) {
+         if (!StrMatch("feMergeNode", child->Attrib->Name)) {
+            for (LONG a=1; a < child->TotalAttrib; a++) {
+               if (!StrMatch("in", child->Attrib[a].Name)) {
+                  switch (StrHash(child->Attrib[a].Value, FALSE)) {
+                     case SVF_SOURCEGRAPHIC:   list[i++] = { .SourceType = VSF_GRAPHIC }; break;
+                     case SVF_SOURCEALPHA:     list[i++] = { .SourceType = VSF_ALPHA }; break;
+                     case SVF_BACKGROUNDIMAGE: list[i++] = { .SourceType = VSF_BKGD }; break;
+                     case SVF_BACKGROUNDALPHA: list[i++] = { .SourceType = VSF_BKGD_ALPHA }; break;
+                     case SVF_FILLPAINT:       list[i++] = { .SourceType = VSF_FILL }; break;
+                     case SVF_STROKEPAINT:     list[i++] = { .SourceType = VSF_STROKE }; break;
+                     default:  {
+                        if (auto ref = child->Attrib[a].Value) {
+                           while ((*ref) and (*ref <= 0x20)) ref++;
+                           if (Self->Effects.contains(ref)) {
+                              list[i++] = { .SourceType = VSF_REFERENCE, .Effect = Self->Effects[ref] };
+                           }
+                           else log.warning("Invalid 'in' reference '%s'", ref);
+                        }
+                        else log.warning("'in' reference is an empty string.");
+
+                        break;
+                     }
+                  }
+               }
+               else log.warning("Invalid feMergeNode attribute '%s'", child->Attrib[a].Name);
+            }
+         }
+         else log.warning("Unrecognised feMerge child node '%s'", child->Attrib->Name);
+
+         child = child->Next;
+      }
+
+      if (SetArray(fx, FID_SourceList, list, i)) {
+         acFree(fx);
+         return log.warning(ERR_SetField);
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return log.warning(ERR_Init);
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_colour_matrix(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   #define CM_SIZE 20
+   typedef std::array<DOUBLE, CM_SIZE> MATRIX;
+
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_COLOURFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   MATRIX m;
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_TYPE: {
+            LONG mode = 0;
+            switch(StrHash(val, FALSE)) {
+               case SVF_NONE:          mode = CM_NONE; break;
+               case SVF_MATRIX:        mode = CM_MATRIX; break;
+               case SVF_SATURATE:      mode = CM_SATURATE; break;
+               case SVF_HUEROTATE:     mode = CM_HUE_ROTATE; break;
+               case SVF_LUMINANCETOALPHA: mode = CM_LUMINANCE_ALPHA; break;
+               // These are special modes that are not included by SVG
+               case SVF_CONTRAST:      mode = CM_CONTRAST; break;
+               case SVF_BRIGHTNESS:    mode = CM_BRIGHTNESS; break;
+               case SVF_HUE:           mode = CM_HUE; break;
+               case SVF_COLOURISE:     mode = CM_COLOURISE; break;
+               case SVF_DESATURATE:    mode = CM_DESATURATE; break;
+               // Colour blindness modes
+               case SVF_PROTANOPIA:    mode = CM_MATRIX; m = MATRIX { 0.567,0.433,0,0,0, 0.558,0.442,0,0,0, 0,0.242,0.758,0,0, 0,0,0,1,0 }; break;
+               case SVF_PROTANOMALY:   mode = CM_MATRIX; m = MATRIX { 0.817,0.183,0,0,0, 0.333,0.667,0,0,0, 0,0.125,0.875,0,0, 0,0,0,1,0 }; break;
+               case SVF_DEUTERANOPIA:  mode = CM_MATRIX; m = MATRIX { 0.625,0.375,0,0,0, 0.7,0.3,0,0,0, 0,0.3,0.7,0,0, 0,0,0,1,0 }; break;
+               case SVF_DEUTERANOMALY: mode = CM_MATRIX; m = MATRIX { 0.8,0.2,0,0,0, 0.258,0.742,0,0,0, 0,0.142,0.858,0,0, 0,0,0,1,0 }; break;
+               case SVF_TRITANOPIA:    mode = CM_MATRIX; m = MATRIX { 0.95,0.05,0,0,0, 0,0.433,0.567,0,0, 0,0.475,0.525,0,0, 0,0,0,1,0 }; break;
+               case SVF_TRITANOMALY:   mode = CM_MATRIX; m = MATRIX { 0.967,0.033,0,0,0, 0,0.733,0.267,0,0, 0,0.183,0.817,0,0, 0,0,0,1,0 }; break;
+               case SVF_ACHROMATOPSIA: mode = CM_MATRIX; m = MATRIX { 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0,0,0,1,0 }; break;
+               case SVF_ACHROMATOMALY: mode = CM_MATRIX; m = MATRIX { 0.618,0.320,0.062,0,0, 0.163,0.775,0.062,0,0, 0.163,0.320,0.516,0,0, 0,0,0,1,0 }; break;
+
+               default:
+                  log.warning("Unrecognised colour matrix type '%s'", val);
+                  acFree(fx);
+                  return ERR_InvalidValue;
+            }
+
+            SetLong(fx, FID_Mode, mode);
+            if (mode IS CM_MATRIX) SetArray(fx, FID_Values|TDOUBLE, &m, ARRAYSIZE(m));
+            break;
+         }
+
+         case SVF_VALUES: {
+            LONG i;
+            for (i=0; (*val) and (i < CM_SIZE); i++) {
+               DOUBLE dbl;
+               val = read_numseq(val, &dbl, TAGEND);
+               m[i] = dbl;
+            }
+            SetArray(fx, FID_Values|TDOUBLE, &m, i);
+            break;
+         }
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
+            if (!Self->Effects.contains(std::string(val))) {
+               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
+            }
+            break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_convolve_matrix(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_CONVOLVEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_ORDER: {
+            DOUBLE ox = 0, oy = 0;
+            read_numseq(val, &ox, &oy, TAGEND);
+            if (ox < 1) ox = 3;
+            if (oy < 1) oy = ox;
+            SetFields(fx, FID_MatrixColumns|TLONG, F2T(ox),
+                          FID_MatrixRows|TLONG,    F2T(oy),
+                          TAGEND);
+            break;
+         }
+
+         case SVF_KERNELMATRIX: {
+            #define MAX_DIM 9
+            DOUBLE matrix[MAX_DIM * MAX_DIM];
+            LONG m = 0;
+            while ((*val) and (m < ARRAYSIZE(matrix))) {
+               val = read_numseq(val, &matrix[m], TAGEND);
+               m++;
+            }
+            SetArray(fx, FID_Matrix|TDOUBLE, &matrix, m);
+            break;
+         }
+
+         case SVF_DIVISOR: {
+            DOUBLE divisor;
+            read_numseq(val, &divisor, TAGEND);
+            SetDouble(fx, FID_Divisor, divisor);
+            break;
+         }
+
+         case SVF_BIAS: {
+            DOUBLE bias;
+            read_numseq(val, &bias, TAGEND);
+            SetDouble(fx, FID_Bias, bias);
+            break;
+         }
+
+         case SVF_TARGETX: SetLong(fx, FID_TargetX, StrToInt(val)); break;
+
+         case SVF_TARGETY: SetLong(fx, FID_TargetY, StrToInt(val)); break;
+
+         case SVF_EDGEMODE:
+            if (!StrMatch("duplicate", val)) SetLong(fx, FID_EdgeMode, EM_DUPLICATE);
+            else if (!StrMatch("wrap", val)) SetLong(fx, FID_EdgeMode, EM_WRAP);
+            else if (!StrMatch("none", val)) SetLong(fx, FID_EdgeMode, EM_NONE);
+            break;
+
+         case SVF_KERNELUNITLENGTH: {
+            DOUBLE kx, ky;
+            read_numseq(val, &kx, &ky, TAGEND);
+            if (kx < 1) kx = 1;
+            if (ky < 1) ky = kx;
+            SetDouble(fx, FID_UnitX, kx);
+            SetDouble(fx, FID_UnitY, ky);
+            break;
+         }
+
+         // The modifications will apply to R,G,B only when preserveAlpha is true.
+         case SVF_PRESERVEALPHA:
+            SetLong(fx, FID_PreserveAlpha, (!StrMatch("true", val)) or (!StrMatch("1", val)));
+            break;
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
+            if (!Self->Effects.contains(std::string(val))) {
+               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
+            }
+            break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_composite(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_COMPOSITEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_MODE:
+         case SVF_OPERATOR: {
+            switch (StrHash(val, FALSE)) {
+               // SVG Operator types
+               case SVF_NORMAL:
+               case SVF_OVER: SetLong(fx, FID_Operator, OP_OVER); break;
+               case SVF_IN:   SetLong(fx, FID_Operator, OP_IN); break;
+               case SVF_OUT:  SetLong(fx, FID_Operator, OP_OUT); break;
+               case SVF_ATOP: SetLong(fx, FID_Operator, OP_ATOP); break;
+               case SVF_XOR:  SetLong(fx, FID_Operator, OP_XOR); break;
+               case SVF_ARITHMETIC: SetLong(fx, FID_Operator, OP_ARITHMETIC); break;
+               // SVG Mode types
+               case SVF_SCREEN:   SetLong(fx, FID_Operator, OP_SCREEN); break;
+               case SVF_MULTIPLY: SetLong(fx, FID_Operator, OP_MULTIPLY); break;
+               case SVF_LIGHTEN:  SetLong(fx, FID_Operator, OP_LIGHTEN); break;
+               case SVF_DARKEN:   SetLong(fx, FID_Operator, OP_DARKEN); break;
+               // Parasol modes
+               case SVF_INVERTRGB:  SetLong(fx, FID_Operator, OP_INVERT_RGB); break;
+               case SVF_INVERT:     SetLong(fx, FID_Operator, OP_INVERT); break;
+               case SVF_CONTRAST:   SetLong(fx, FID_Operator, OP_CONTRAST); break;
+               case SVF_DODGE:      SetLong(fx, FID_Operator, OP_DODGE); break;
+               case SVF_BURN:       SetLong(fx, FID_Operator, OP_BURN); break;
+               case SVF_HARDLIGHT:  SetLong(fx, FID_Operator, OP_HARD_LIGHT); break;
+               case SVF_SOFTLIGHT:  SetLong(fx, FID_Operator, OP_SOFT_LIGHT); break;
+               case SVF_DIFFERENCE: SetLong(fx, FID_Operator, OP_DIFFERENCE); break;
+               case SVF_EXCLUSION:  SetLong(fx, FID_Operator, OP_EXCLUSION); break;
+               case SVF_PLUS:       SetLong(fx, FID_Operator, OP_PLUS); break;
+               case SVF_MINUS:      SetLong(fx, FID_Operator, OP_MINUS); break;
+               case SVF_OVERLAY:    SetLong(fx, FID_Operator, OP_OVERLAY); break;
+               default:
+                  log.warning("Composite operator '%s' not recognised.", val);
+                  acFree(fx);
+                  return ERR_InvalidValue;
+            }
+            break;
+         }
+
+         case SVF_K1: {
+            DOUBLE k1;
+            read_numseq(val, &k1, TAGEND);
+            SetDouble(fx, FID_K1, k1);
+            break;
+         }
+
+         case SVF_K2: {
+            DOUBLE k2;
+            read_numseq(val, &k2, TAGEND);
+            SetDouble(fx, FID_K2, k2);
+            break;
+         }
+
+         case SVF_K3: {
+            DOUBLE k3;
+            read_numseq(val, &k3, TAGEND);
+            SetDouble(fx, FID_K3, k3);
+            break;
+         }
+
+         case SVF_K4: {
+            DOUBLE k4;
+            read_numseq(val, &k4, TAGEND);
+            SetDouble(fx, FID_K4, k4);
+            break;
+         }
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+
+         case SVF_IN2: parse_input(Self, &fx->Head, val, FID_MixType, FID_Mix); break;
+
+         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
+            if (!Self->Effects.contains(std::string(val))) {
+               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
+            }
+            break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_flood(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_FLOODFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   ERROR error = ERR_Okay;
+   for (LONG a=1; (a < Tag->TotalAttrib) and (!error); a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_FLOOD_COLOR:
+         case SVF_FLOOD_COLOUR: {
+            FRGB rgb;
+            vecReadPainter((OBJECTPTR)NULL, val, &rgb, NULL, NULL, NULL);
+            error = SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
+            break;
+         }
+
+         case SVF_FLOOD_OPACITY: {
+            DOUBLE opacity;
+            read_numseq(val, &opacity, TAGEND);
+            error = SetDouble(fx, FID_Opacity, opacity);
+            break;
+         }
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
+            if (!Self->Effects.contains(std::string(val))) {
+               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
+            }
+            break;
+      }
+   }
+
+   if (!error) return acInit(fx);
+   else {
+      acFree(fx);
+      return log.warning(error);
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_turbulence(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_TURBULENCEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_BASEFREQUENCY: {
+            DOUBLE bfx = -1, bfy = -1;
+            read_numseq(val, &bfx, &bfy, TAGEND);
+            if (bfx < 0) bfx = 0;
+            if (bfy < 0) bfy = bfx;
+            SetFields(fx, FID_FX|TDOUBLE, bfx, FID_FY|TDOUBLE, bfy, TAGEND);
+            break;
+         }
+
+         case SVF_NUMOCTAVES: SetLong(fx, FID_Octaves, StrToInt(val)); break;
+
+         case SVF_SEED: SetLong(fx, FID_Seed, StrToInt(val)); break;
+
+         case SVF_STITCHTILES:
+            if (!StrMatch("stitch", val)) SetLong(fx, FID_Stitch, TRUE);
+            else SetLong(fx, FID_Stitch, FALSE);
+            break;
+
+         case SVF_TYPE:
+            if (!StrMatch("fractalNoise", val)) SetLong(fx, FID_Type, TB_NOISE);
+            else SetLong(fx, FID_Type, 0);
+            break;
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
+            if (!Self->Effects.contains(std::string(val))) {
+               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
+            }
+            break;
+      }
+   }
+
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_morphology(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_MORPHOLOGYFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_RADIUS: {
+            DOUBLE x = -1, y = -1;
+            read_numseq(val, &x, &y, TAGEND);
+            if (x > 0) SetLong(fx, FID_RadiusX, F2T(x));
+            if (y > 0) SetLong(fx, FID_RadiusY, F2T(y));
+            break;
+         }
+
+         case SVF_OPERATOR: SetString(fx, FID_Operator, val); break;
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
+            if (!Self->Effects.contains(std::string(val))) {
+               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
+            }
+            break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_image(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_IMAGEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   bool image_required = false;
+   CSTRING path = NULL;
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IMAGE_RENDERING: {
+            if (!StrMatch("optimizeSpeed", val)) SetLong(fx, FID_ResampleMethod, VSM_BILINEAR);
+            else if (!StrMatch("optimizeQuality", val)) SetLong(fx, FID_ResampleMethod, VSM_LANCZOS3);
+            else if (!StrMatch("auto", val));
+            else if (!StrMatch("inherit", val));
+            else log.warning("Unrecognised image-rendering option '%s'", val);
+            break;
+         }
+
+         case SVF_PRESERVEASPECTRATIO: {
+            LONG flags = 0;
+            while ((*val) and (*val <= 0x20)) val++;
+            if (!StrMatch("none", val)) flags = ARF_NONE;
+            else {
+               if (!StrCompare("xMin", val, 4, 0)) { flags |= ARF_X_MIN; val += 4; }
+               else if (!StrCompare("xMid", val, 4, 0)) { flags |= ARF_X_MID; val += 4; }
+               else if (!StrCompare("xMax", val, 4, 0)) { flags |= ARF_X_MAX; val += 4; }
+
+               if (!StrCompare("yMin", val, 4, 0)) { flags |= ARF_Y_MIN; val += 4; }
+               else if (!StrCompare("yMid", val, 4, 0)) { flags |= ARF_Y_MID; val += 4; }
+               else if (!StrCompare("yMax", val, 4, 0)) { flags |= ARF_Y_MAX; val += 4; }
+
+               while ((*val) and (*val <= 0x20)) val++;
+
+               if (!StrCompare("meet", val, 4, 0)) { flags |= ARF_MEET; }
+               else if (!StrCompare("slice", val, 5, 0)) { flags |= ARF_SLICE; }
+            }
+            SetLong(fx, FID_AspectRatio, flags);
+            break;
+         }
+
+         case SVF_XLINK_HREF:
+            path = val;
+            break;
+
+         case SVF_EXTERNALRESOURCESREQUIRED: // If true and the image cannot be loaded, return a fatal error code.
+            if (!StrMatch("true", val)) image_required = true;
+            break;
+
+         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
+            if (!Self->Effects.contains(std::string(val))) {
+               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
+            }
+            break;
+      }
+   }
+
+   if ((path) and (path[0] IS '#')) {
+      // TODO: Image renders a segment of the scene graph to an independent bitmap instead of loading a picture.
+
+      log.warning("xlink:href not yet supported.");
+
+   }
+   else if (path) {
+      // Check for security risks in the path.
+
+      if ((path[0] IS '/') or ((path[0] IS '.') and (path[1] IS '.') and (path[2] IS '/'))) {
+         acFree(fx);
+         return log.warning(ERR_InvalidValue);
+      }
+      else {
+         for (UWORD i=0; path[i]; i++) {
+            if (path[i] IS '/') {
+               while (path[i+1] IS '.') i++;
+               if (path[i+1] IS '/') {
+                  return log.warning(ERR_InvalidValue);
+               }
+            }
+            else if (path[i] IS ':') {
+               acFree(fx);
+               return log.warning(ERR_InvalidValue);
+            }
+         }
+      }
+
+      if (auto fl = folder(Self)) {
+         std::string comp_path = std::string(fl) + path;
+         SetString(fx, FID_Path, comp_path.c_str());
+      }
+      else SetString(fx, FID_Path, path);
+   }
+
+   if (auto error = acInit(fx)) {
+      acFree(fx);
+      if (image_required) return error;
+      else return ERR_Okay;
+   }
+   else return ERR_Okay;
+}
+
+//********************************************************************************************************************
 
 static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
 {
@@ -236,7 +993,6 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
          FID_Name|TSTR,         "SVGFilter",
          FID_Units|TLONG,       VUNIT_BOUNDING_BOX,
          FID_ColourSpace|TLONG, VCS_LINEAR_RGB,
-         FID_Path|TSTR,         Self->Path,
          TAGEND);
 
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -254,17 +1010,31 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
                break;
 
             case SVF_ID:      if (add_id(Self, Tag, val)) id = val; break;
+
             case SVF_X:       set_double(filter, FID_X, val); break;
+
             case SVF_Y:       set_double(filter, FID_Y, val); break;
+
             case SVF_WIDTH:   set_double(filter, FID_Width, val); break;
+
             case SVF_HEIGHT:  set_double(filter, FID_Height, val); break;
+
             case SVF_OPACITY: set_double(filter, FID_Opacity, val); break;
+
+            case SVF_FILTERRES: {
+               DOUBLE x = 0, y = 0;
+               read_numseq(val, &x, &y, TAGEND);
+               SetFields(filter, FID_ResX|TLONG, F2T(x), FID_ResY|TLONG, F2T(y), TAGEND);
+               break;
+            }
+
             case SVF_COLOR_INTERPOLATION_FILTERS: // The default is linearRGB
                if (!StrMatch("auto", val)) SetLong(filter, FID_ColourSpace, VCS_LINEAR_RGB);
                else if (!StrMatch("sRGB", val)) SetLong(filter, FID_ColourSpace, VCS_SRGB);
                else if (!StrMatch("linearRGB", val)) SetLong(filter, FID_ColourSpace, VCS_LINEAR_RGB);
                else if (!StrMatch("inherit", val)) SetLong(filter, FID_ColourSpace, VCS_INHERIT);
                break;
+
             case SVF_PRIMITIVEUNITS:
                if (!StrMatch("userSpaceOnUse", val)) filter->PrimitiveUnits = VUNIT_USERSPACE; // Default
                else if (!StrMatch("objectBoundingBox", val)) filter->PrimitiveUnits = VUNIT_BOUNDING_BOX;
@@ -291,13 +1061,44 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
       if ((id) and (!acInit(filter))) {
          SetName(filter, id);
+
          if (Tag->Child) {
-            STRING xml_str;
-            if (!xmlGetString(XML, Tag->Child->Index, XMF_INCLUDE_SIBLINGS, &xml_str)) {
-               acDataXML(filter, xml_str);
-               FreeResource(xml_str);
+            for (auto tag = Tag->Child; tag; tag=tag->Next) {
+               log.trace("Parsing filter element '%s'", tag->Attrib->Name);
+
+               switch(StrHash(tag->Attrib->Name, FALSE)) {
+                  case SVF_FEBLUR:              parse_fe_blur(Self, filter, tag); break;
+                  case SVF_FEGAUSSIANBLUR:      parse_fe_blur(Self, filter, tag); break;
+                  case SVF_FEOFFSET:            parse_fe_offset(Self, filter, tag); break;
+                  case SVF_FEMERGE:             parse_fe_merge(Self, filter, tag); break;
+                  case SVF_FECOLORMATRIX:       // American spelling
+                  case SVF_FECOLOURMATRIX:      parse_fe_colour_matrix(Self, filter, tag); break;
+                  case SVF_FECONVOLVEMATRIX:    parse_fe_convolve_matrix(Self, filter, tag); break;
+                  case SVF_FEBLEND:             // Blend and composite share the same code.
+                  case SVF_FECOMPOSITE:         parse_fe_composite(Self, filter, tag); break;
+                  case SVF_FEFLOOD:             parse_fe_flood(Self, filter, tag); break;
+                  case SVF_FETURBULENCE:        parse_fe_turbulence(Self, filter, tag); break;
+                  case SVF_FEMORPHOLOGY:        parse_fe_morphology(Self, filter, tag); break;
+                  case SVF_FEIMAGE:             parse_fe_image(Self, filter, tag); break;
+                  case SVF_FEDISPLACEMENTMAP:
+                  case SVF_FETILE:
+                  case SVF_FECOMPONENTTRANSFER:
+                  case SVF_FEDIFFUSELIGHTING:
+                  case SVF_FESPECULARLIGHTING:
+                  case SVF_FEDISTANTLIGHT:
+                  case SVF_FEPOINTLIGHT:
+                  case SVF_FESPOTLIGHT:
+                     log.warning("Filter element '%s' is not currently supported.", tag->Attrib->Name);
+                     break;
+
+                  default:
+                     log.warning("Filter element '%s' not recognised.", tag->Attrib->Name);
+                     break;
+               }
             }
          }
+
+         Self->Effects.clear();
 
          scAddDef(Self->Scene, id, (OBJECTPTR)filter);
       }
@@ -352,12 +1153,17 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
             case SVF_PATTERNTRANSFORM: SetString(pattern, FID_Transform, val); break;
 
             case SVF_ID:       id = val; break;
+
             case SVF_OVERFLOW: SetString(pattern->Viewport, FID_Overflow, val); break;
+
             case SVF_OPACITY:  set_double(pattern, FID_Opacity, val); break;
 
             case SVF_X:        set_double(pattern, FID_X, val); break;
+
             case SVF_Y:        set_double(pattern, FID_Y, val); break;
+
             case SVF_WIDTH:    set_double(pattern, FID_Width, val); break;
+
             case SVF_HEIGHT:   set_double(pattern, FID_Height, val); break;
 
             case SVF_VIEWBOX: {
@@ -474,14 +1280,14 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
    parasol::Log log(__FUNCTION__);
 
    switch(Hash) {
-      case SVF_USE:     xtag_use(Self, XML, State, Tag, Parent); break;
-      case SVF_G:       xtag_group(Self, XML, State, Tag, Parent, Vector); break;
-      case SVF_SVG:     xtag_svg(Self, XML, State, Tag, Parent, Vector); break;
-      case SVF_RECT:    process_shape(Self, ID_VECTORRECTANGLE, XML, State, Tag, Parent, Vector); break;
-      case SVF_ELLIPSE: process_shape(Self, ID_VECTORELLIPSE, XML, State, Tag, Parent, Vector); break;
-      case SVF_CIRCLE:  process_shape(Self, ID_VECTORELLIPSE, XML, State, Tag, Parent, Vector); break;
-      case SVF_PATH:    process_shape(Self, ID_VECTORPATH, XML, State, Tag, Parent, Vector); break;
-      case SVF_POLYGON: process_shape(Self, ID_VECTORPOLYGON, XML, State, Tag, Parent, Vector); break;
+      case SVF_USE:              xtag_use(Self, XML, State, Tag, Parent); break;
+      case SVF_G:                xtag_group(Self, XML, State, Tag, Parent, Vector); break;
+      case SVF_SVG:              xtag_svg(Self, XML, State, Tag, Parent, Vector); break;
+      case SVF_RECT:             process_shape(Self, ID_VECTORRECTANGLE, XML, State, Tag, Parent, Vector); break;
+      case SVF_ELLIPSE:          process_shape(Self, ID_VECTORELLIPSE, XML, State, Tag, Parent, Vector); break;
+      case SVF_CIRCLE:           process_shape(Self, ID_VECTORELLIPSE, XML, State, Tag, Parent, Vector); break;
+      case SVF_PATH:             process_shape(Self, ID_VECTORPATH, XML, State, Tag, Parent, Vector); break;
+      case SVF_POLYGON:          process_shape(Self, ID_VECTORPOLYGON, XML, State, Tag, Parent, Vector); break;
       case SVF_PARASOL_SPIRAL:   process_shape(Self, ID_VECTORSPIRAL, XML, State, Tag, Parent, Vector); break;
       case SVF_PARASOL_WAVE:     process_shape(Self, ID_VECTORWAVE, XML, State, Tag, Parent, Vector); break;
       case SVF_PARASOL_SHAPE:    process_shape(Self, ID_VECTORSHAPE, XML, State, Tag, Parent, Vector); break;
@@ -771,6 +1577,7 @@ static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, const XMLTag 
             for (LONG a=1; a < child->TotalAttrib; a++) {
                if (!StrMatch("id", child->Attrib[a].Name)) {
                   add_id(Self, child, child->Attrib[a].Value);
+                  //if (add_id(Self, child, child->Attrib[a].Value)) scAddDef(Self->Scene, StrValue, (OBJECTPTR)Vector);
                   break;
                }
             }

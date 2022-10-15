@@ -31,10 +31,12 @@ typedef struct rkSVG {
 
 #ifdef PRV_SVG
    objVectorScene *Scene;
+   STRING Folder;
    OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
    FUNCTION FrameCallback;
    struct svgAnimation *Animations;
    std::unordered_map<std::string, svgID> IDs;
+   std::unordered_map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
    svgInherit *Inherit;
    DOUBLE SVGVersion;
    TIMER AnimationTimer;

@@ -82,8 +82,9 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
       Self->Target = NULL;
    }
 
-   if (Self->Path)  { FreeResource(Self->Path);  Self->Path = NULL; }
-   if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
+   if (Self->Folder) { FreeResource(Self->Folder); Self->Folder = NULL; }
+   if (Self->Path)   { FreeResource(Self->Path);   Self->Path = NULL; }
+   if (Self->Title)  { FreeResource(Self->Title);  Self->Title = NULL; }
 
    svgAnimation *anim = Self->Animations;
    while (anim) {
@@ -417,7 +418,8 @@ static ERROR GET_Path(objSVG *Self, STRING *Value)
 
 static ERROR SET_Path(objSVG *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path)   { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Folder) { FreeResource(Self->Folder); Self->Folder = NULL; }
 
    if ((Value) AND (*Value)) {
       if (!(Self->Path = StrClone(Value))) return ERR_AllocMemory;

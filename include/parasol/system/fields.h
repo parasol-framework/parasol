@@ -925,12 +925,17 @@
 #define FID_Inherit 0x9e8d4758LL
 #define FID_InnerMiterLimit 0xd30f0f81LL
 #define FID_InputCallback 0x895c6922LL
+#define FID_K1 0x00597841LL
+#define FID_K2 0x00597842LL
+#define FID_K3 0x00597843LL
+#define FID_K4 0x00597844LL
 #define FID_Kerning 0x243d11f3LL
 #define FID_LetterSpacing 0x470ae59aLL
 #define FID_M 0x0002b612LL
 #define FID_Message 0xbe463eeaLL
 #define FID_MiterLimit 0x33905165LL
 #define FID_MiterLimitTheta 0xd371d75bLL
+#define FID_Mix 0x0b889093LL
 #define FID_MixType 0xc7f64f95LL
 #define FID_Mod 0x0b889145LL
 #define FID_Module 0x0e32c72bLL
@@ -940,6 +945,8 @@
 #define FID_N2 0x005978a5LL
 #define FID_N3 0x005978a6LL
 #define FID_NumericID 0xb41a79e5LL
+#define FID_Octaves 0x5398f9faLL
+#define FID_Operator 0x8d9849f1LL
 #define FID_Overflow 0x5b785259LL
 #define FID_OverflowX 0xca829df1LL
 #define FID_OverflowY 0xca829df2LL
@@ -954,11 +961,14 @@
 #define FID_Rotate 0x19e50454LL
 #define FID_RoundX 0x19e5c605LL
 #define FID_RoundY 0x19e5c606LL
+#define FID_Seed 0x7c9dda26LL
 #define FID_Source 0x1c3aff76LL
+#define FID_SourceList 0xb836d152LL
 #define FID_SourceType 0xb83b77f8LL
 #define FID_Spiral 0x1c468330LL
 #define FID_StartOffset 0xed10629aLL
 #define FID_Step 0x7c9e1a01LL
+#define FID_Stitch 0x1c8eedf4LL
 #define FID_Stretch 0xaf079762LL
 #define FID_Stroke 0x1c93c91dLL
 #define FID_StrokeColour 0x1fe3e1b1LL
@@ -966,6 +976,8 @@
 #define FID_StrokeWidth 0x19a3b3bdLL
 #define FID_SubFields 0xad7852e6LL
 #define FID_SubMenu 0xb03f5ca4LL
+#define FID_SX 0x00597990LL
+#define FID_SY 0x00597991LL
 #define FID_TextLength 0xa31e6e8cLL
 #define FID_TotalCommands 0x7c37643bLL
 #define FID_TotalKeys 0xf691b9c5LL
@@ -975,7 +987,23 @@
 #define FID_Vector 0x227baf98LL
 #define FID_Vertices 0xd31fda6aLL
 #define FID_Weight 0x24d3ea4dLL
+
+#define FID_Bias 0x7c949844LL
+#define FID_Divisor 0x12ffda05LL
+#define FID_EdgeMode 0xbb10b09fLL
+#define FID_MatrixRows 0x64419145LL
+#define FID_MatrixColumns 0x54dc215bLL
+#define FID_Matrix 0x0d3e291aLL
+#define FID_PreserveAlpha 0xf9b49d57LL
+#define FID_ResX 0x7c9d4fa7LL
+#define FID_ResY 0x7c9d4fa8LL
+#define FID_TargetX 0xcfb0ab64LL
+#define FID_TargetY 0xcfb0ab65LL
+#define FID_UnitX 0x108252ddLL
+#define FID_UnitY 0x108252deLL
+#define FID_Values 0x22383ff5LL
 #define FID_WindowBits 0x7f38700fLL
 #define FID_WordSpacing 0x73f6e186LL
+#define FID_XMLDef 0x27bb6ee5LL
 
 #endif

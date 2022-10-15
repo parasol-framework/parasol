@@ -23,9 +23,9 @@ static const struct FieldDef clVectorFilterColourSpace[] = {
 
 static const struct ActionArray clVectorFilterActions[] = {
    { AC_Clear, (APTR)VECTORFILTER_Clear },
-   { AC_DataFeed, (APTR)VECTORFILTER_DataFeed },
    { AC_Free, (APTR)VECTORFILTER_Free },
    { AC_Init, (APTR)VECTORFILTER_Init },
+   { AC_NewChild, (APTR)VECTORFILTER_NewChild },
    { AC_NewObject, (APTR)VECTORFILTER_NewObject },
    { 0, 0 }
 };

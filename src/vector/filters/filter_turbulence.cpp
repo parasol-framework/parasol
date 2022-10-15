@@ -1,3 +1,23 @@
+/*********************************************************************************************************************
+
+-CLASS-
+TurbulenceFX: A filter effect that utilises the Perlin turbulence function.
+
+This filter effect creates an image using the Perlin turbulence function. It allows the synthesis of artificial
+textures like clouds or marble.  For a detailed description the of the Perlin turbulence function, see "Texturing
+and Modeling", Ebert et al, AP Professional, 1994. The resulting image will fill the entire filter primitive
+subregion for this filter primitive.
+
+It is possible to create bandwidth-limited noise by synthesizing only one octave.
+
+The following order is used for applying the pseudo random numbers.  An initial seed value is computed based on
+#Seed.  Then the implementation computes the lattice points for R, then continues getting additional pseudo random
+numbers relative to the last generated pseudo random number and computes the lattice points for G, and so on for B
+and A.
+
+-END-
+
+*********************************************************************************************************************/
 
 #define RAND_m 2147483647 // 2**31 - 1
 #define RAND_a 16807      // 7**5; primitive root of m
@@ -16,40 +36,21 @@
 #define s_curve(t) (t * t * (3.0 - 2.0 * t))
 #define lerp(t, a, b) (a + t * (b - a))
 
-struct ttable {
-   LONG Lattice[LSIZE];
+typedef class rkTurbulenceFX : public objFilterEffect {
+   public:
    DOUBLE Gradient[GSIZE][LSIZE][GSUBSIZE];
-};
-
-inline LONG setup_seed(LONG lSeed)
-{
-  if (lSeed <= 0) lSeed = -(lSeed % (RAND_m - 1)) + 1;
-  if (lSeed > RAND_m - 1) lSeed = RAND_m - 1;
-  return lSeed;
-}
-
-inline LONG random(LONG lSeed)
-{
-  LONG result = RAND_a * (lSeed % RAND_q) - RAND_r * (lSeed / RAND_q);
-  if (result <= 0) result += RAND_m;
-  return result;
-}
-
-class TurbulenceEffect : public VectorEffect {
+   LONG Lattice[LSIZE];
    DOUBLE FX, FY;
-   struct ttable *Tables;
    LONG Octaves;
    LONG Seed;
-   LONG TileWidth, TileHeight;
-   LONG StitchWidth, StitchHeight;
-   LONG WrapX;
-   LONG WrapY;
    UBYTE Type;
    bool Stitch;
 
-   void xml(std::stringstream &Stream) { // TODO: Support exporting attributes
-      Stream << "feTurbulence";
-   }
+   private:
+   LONG stitch_width, stitch_height;
+   LONG wrap_x, wrap_y;
+
+   public:
 
    DOUBLE noise2(UBYTE Channel, DOUBLE VX, DOUBLE VY) {
       LONG bx0, bx1, by0, by1, b00, b10, b01, b11;
@@ -70,34 +71,34 @@ class TurbulenceEffect : public VectorEffect {
       // If stitching, adjust lattice points accordingly.
 
       if (Stitch) {
-         if (bx0 >= WrapX) bx0 -= StitchWidth;
-         if (bx1 >= WrapX) bx1 -= StitchWidth;
-         if (by0 >= WrapY) by0 -= StitchHeight;
-         if (by1 >= WrapY) by1 -= StitchHeight;
+         if (bx0 >= wrap_x) bx0 -= stitch_width;
+         if (bx1 >= wrap_x) bx1 -= stitch_width;
+         if (by0 >= wrap_y) by0 -= stitch_height;
+         if (by1 >= wrap_y) by1 -= stitch_height;
       }
 
       bx0 &= BM;
       bx1 &= BM;
       by0 &= BM;
       by1 &= BM;
-      LONG i = Tables->Lattice[bx0];
-      LONG j = Tables->Lattice[bx1];
-      b00 = Tables->Lattice[i + by0];
-      b10 = Tables->Lattice[j + by0];
-      b01 = Tables->Lattice[i + by1];
-      b11 = Tables->Lattice[j + by1];
+      LONG i = Lattice[bx0];
+      LONG j = Lattice[bx1];
+      b00 = Lattice[i + by0];
+      b10 = Lattice[j + by0];
+      b01 = Lattice[i + by1];
+      b11 = Lattice[j + by1];
       sx = s_curve(rx0);
       sy = s_curve(ry0);
-      q = Tables->Gradient[Channel][b00]; u = rx0 * q[0] + ry0 * q[1];
-      q = Tables->Gradient[Channel][b10]; v = rx1 * q[0] + ry0 * q[1];
+      q = Gradient[Channel][b00]; u = rx0 * q[0] + ry0 * q[1];
+      q = Gradient[Channel][b10]; v = rx1 * q[0] + ry0 * q[1];
       a = lerp(sx, u, v);
-      q = Tables->Gradient[Channel][b01]; u = rx0 * q[0] + ry1 * q[1];
-      q = Tables->Gradient[Channel][b11]; v = rx1 * q[0] + ry1 * q[1];
+      q = Gradient[Channel][b01]; u = rx0 * q[0] + ry1 * q[1];
+      q = Gradient[Channel][b11]; v = rx1 * q[0] + ry1 * q[1];
       b = lerp(sx, u, v);
       return lerp(sy, a, b);
    }
 
-   //****************************************************************************
+   // Standard turbulence (non-stitched)
 
    DOUBLE turbulence(UBYTE Channel, LONG x, LONG y) {
       DOUBLE sum = 0.0;
@@ -117,13 +118,11 @@ class TurbulenceEffect : public VectorEffect {
       else return sum * 255.0;
    }
 
-   // When stitching tiled turbulence, the frequencies must be adjusted so that the tile borders will be continuous.
+   // Stitched turbulence
 
-   DOUBLE turbulence_stitch(UBYTE Channel, LONG x, LONG y) {
-      StitchWidth  = LONG(TileWidth * FX + 0.5);
-      WrapX        = (x % TileWidth) * FX + PerlinN + StitchWidth;
-      StitchHeight = LONG(TileHeight * FY + 0.5);
-      WrapY        = (y % TileHeight) * FY + PerlinN + StitchHeight;
+   DOUBLE turbulence_stitch(UBYTE Channel, LONG x, LONG y, DOUBLE FX, DOUBLE FY, LONG StitchWidth, LONG StitchHeight) {
+      wrap_x = (x % StitchWidth) * FX + PerlinN + stitch_width;
+      wrap_y = (y % StitchHeight) * FY + PerlinN + stitch_height;
 
       DOUBLE sum = 0;
       DOUBLE vx = x * FX;
@@ -140,182 +139,368 @@ class TurbulenceEffect : public VectorEffect {
          ratio *= 0.5;
          // Update stitch values. Subtracting PerlinN before the multiplication and adding it
          // afterwards simplifies to subtracting it once.
-         StitchWidth  *= 2;
-         WrapX         = 2 * WrapX - PerlinN;
-         StitchHeight *= 2;
-         WrapY         = 2 * WrapY - PerlinN;
+         stitch_width  *= 2;
+         wrap_x         = 2 * wrap_x - PerlinN;
+         stitch_height *= 2;
+         wrap_y         = 2 * wrap_y - PerlinN;
       }
 
       if (Type IS TB_NOISE) return ((sum * 255.0) + 255.0) * 0.5;
       else return sum * 255.0;
    }
 
-public:
-   TurbulenceEffect(struct rkVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
-      parasol::Log log(__FUNCTION__);
+} objTurbulenceFX;
 
-      Octaves      = 1;
-      Stitch       = false;
-      Seed         = RandomNumber(1000000);
-      Type         = 0; // Default type is 'turbulence'.  1 == Noise
-      TileWidth    = 256;
-      TileHeight   = 256;
-      Tables       = NULL;
-      StitchWidth  = 0;
-      StitchHeight = 0;
-      WrapX        = 0;
-      WrapY        = 0;
-      FX           = 0;
-      FY           = 0;
-      EffectName   = "feTurbulence";
+//********************************************************************************************************************
 
-      for (LONG a=1; a < Tag->TotalAttrib; a++) {
-         CSTRING val = Tag->Attrib[a].Value;
-         if (!val) continue;
+inline LONG setup_seed(LONG lSeed)
+{
+  if (lSeed <= 0) lSeed = -(lSeed % (RAND_m - 1)) + 1;
+  if (lSeed > RAND_m - 1) lSeed = RAND_m - 1;
+  return lSeed;
+}
 
-         ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
-         switch(hash) {
-            case SVF_BASEFREQUENCY: {
-               FX = -1;
-               FY = -1;
-               read_numseq(val, &FX, &FY, TAGEND);
-               if (FX < 0) FX = 0;
-               if (FY < 0) FY = FX;
-               break;
-            }
+inline LONG random(LONG lSeed)
+{
+  LONG result = RAND_a * (lSeed % RAND_q) - RAND_r * (lSeed / RAND_q);
+  if (result <= 0) result += RAND_m;
+  return result;
+}
 
-            case SVF_NUMOCTAVES:
-               Octaves = StrToInt(val);
-               break;
+/*********************************************************************************************************************
+-ACTION-
+Draw: Render the effect to the target bitmap.
+-END-
+*********************************************************************************************************************/
 
-            case SVF_SEED:
-               Seed = StrToInt(val);
-               break;
+static ERROR TURBULENCEFX_Draw(objTurbulenceFX *Self, struct acDraw *Args)
+{
+   if (Self->Target->BytesPerPixel != 4) return ERR_Failed;
 
-            case SVF_STITCHTILES:
-               if (!StrMatch("stitch", val)) Stitch = true;
-               else Stitch = false;
-               break;
+   const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
+   const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
+   const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
+   const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
 
-            case SVF_TYPE:
-               if (!StrMatch("fractalNoise", val)) Type = TB_NOISE;
-               else Type = 0;
-               break;
+   UBYTE *data = Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth);
 
-            default:
-               fe_default(Filter, this, hash, val);
-               break;
-         }
+   const LONG height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
+   const LONG width = Self->Target->Clip.Right - Self->Target->Clip.Left;
+
+   if (Self->Stitch) {
+      std::array<DOUBLE, 4> bounds = { Self->Filter->ClientViewport->vpFixedWidth, Self->Filter->ClientViewport->vpFixedHeight, 0, 0 };
+      calc_full_boundary((objVector *)Self->Filter->ClientVector, bounds, false, false);
+      const DOUBLE tile_width  = bounds[2] - bounds[0];
+      const DOUBLE tile_height = bounds[3] - bounds[1];
+
+      // When stitching tiled turbulence, the frequencies must be adjusted so that the tile borders will be continuous.
+
+      auto fx = Self->FX;
+      auto fy = Self->FY;
+
+      if (fx != 0.0) {
+         DOUBLE fLoFreq = DOUBLE(floor(tile_width * fx)) / tile_width;
+         DOUBLE fHiFreq = DOUBLE(ceil(tile_width * fx)) / tile_width;
+         if (fx / fLoFreq < fHiFreq / fx) fx = fLoFreq;
+         else fx = fHiFreq;
       }
 
-      if (!AllocMemory(sizeof(struct ttable), MEM_DATA, &Tables, NULL)) {
-         LONG i;
-         LONG lSeed = setup_seed(Seed);
-         auto &gradient = Tables->Gradient;
-         auto &lattice  = Tables->Lattice;
+      if (fy != 0.0) {
+         DOUBLE fLoFreq = DOUBLE(floor(tile_height * fy)) / tile_height;
+         DOUBLE fHiFreq = DOUBLE(ceil(tile_height * fy)) / tile_height;
+         if (fy / fLoFreq < fHiFreq / fy) fy = fLoFreq;
+         else fy = fHiFreq;
+      }
 
-         for (LONG k=0; k < GSIZE; k++) {
-            for (i=0; i < BSIZE; i++) {
-               lattice[i] = i;
-               for (LONG j=0; j < 2; j++) {
-                  gradient[k][i][j] = (DOUBLE)(((lSeed = random(lSeed)) % (BSIZE + BSIZE)) - BSIZE) / BSIZE;
-               }
-               DOUBLE s = DOUBLE(sqrt(gradient[k][i][0] * gradient[k][i][0] + gradient[k][i][1] * gradient[k][i][1]));
-               gradient[k][i][0] /= s;
-               gradient[k][i][1] /= s;
-            }
-         }
+      auto stitch_width  = F2I(tile_width * fx);
+      auto stitch_height = F2I(tile_height * fy);
 
-         while (--i) {
-            LONG j;
-            auto tmp = lattice[i];
-            lattice[i] = lattice[j = (lSeed = random(lSeed)) % BSIZE];
-            lattice[j] = tmp;
-         }
+      for (LONG y=0; y < height; y++) {
+         UBYTE *pixel = data + (Self->Target->LineWidth * y);
+         for (LONG x=0; x < width; x++) {
+            DOUBLE r = Self->turbulence_stitch(0, x, y, fx, fy, stitch_width, stitch_height);
+            DOUBLE g = Self->turbulence_stitch(1, x, y, fx, fy, stitch_width, stitch_height);
+            DOUBLE b = Self->turbulence_stitch(2, x, y, fx, fy, stitch_width, stitch_height);
+            DOUBLE a = Self->turbulence_stitch(3, x, y, fx, fy, stitch_width, stitch_height);
 
-         for (i=0; i < BSIZE + 2; i++) {
-            lattice[BSIZE + i] = lattice[i];
-            for (LONG k=0; k < GSIZE; k++) {
-               for (LONG j=0; j < GSUBSIZE; j++) {
-                  gradient[k][BSIZE + i][j] = gradient[k][i][j];
-               }
-            }
-         }
+            if (a < 0) pixel[A] = 0; else if (a > 255) pixel[A] = 255; else pixel[A] = a;
+            if (r < 0) pixel[R] = 0; else if (r > 255) pixel[R] = 255; else pixel[R] = r;
+            if (g < 0) pixel[G] = 0; else if (g > 255) pixel[G] = 255; else pixel[G] = g;
+            if (b < 0) pixel[B] = 0; else if (b > 255) pixel[B] = 255; else pixel[B] = b;
 
-         if (Stitch) {
-            const DOUBLE fx = FX;
-            const DOUBLE fy = FY;
-            // When stitching tiled turbulence, the frequencies must be adjusted so that the tile borders will be continuous.
-            if (fx != 0.0) {
-               DOUBLE fLoFreq = DOUBLE(floor(TileWidth * fx)) / TileWidth;
-               DOUBLE fHiFreq = DOUBLE(ceil(TileWidth * fx)) / TileWidth;
-               if (fx / fLoFreq < fHiFreq / fx) FX = fLoFreq;
-               else FX = fHiFreq;
-            }
-
-            if (fy != 0.0) {
-               DOUBLE fLoFreq = DOUBLE(floor(TileHeight * fy)) / TileHeight;
-               DOUBLE fHiFreq = DOUBLE(ceil(TileHeight * fy)) / TileHeight;
-               if (fy / fLoFreq < fHiFreq / fy) FY = fLoFreq;
-               else FY = fHiFreq;
-            }
+            pixel += 4;
          }
       }
-      else Error = ERR_AllocMemory;
    }
+   else {
+      for (LONG y=0; y < height; y++) {
+         UBYTE *pixel = data + (Self->Target->LineWidth * y);
+         for (LONG x=0; x < width; x++) {
+            DOUBLE r = Self->turbulence(0, x, y);
+            DOUBLE g = Self->turbulence(1, x, y);
+            DOUBLE b = Self->turbulence(2, x, y);
+            DOUBLE a = Self->turbulence(3, x, y);
 
-   void apply(objVectorFilter *Filter, filter_state &State) {
-      if (OutBitmap->BytesPerPixel != 4) return;
+            if (a < 0) pixel[A] = 0; else if (a > 255) pixel[A] = 255; else pixel[A] = a;
+            if (r < 0) pixel[R] = 0; else if (r > 255) pixel[R] = 255; else pixel[R] = r;
+            if (g < 0) pixel[G] = 0; else if (g > 255) pixel[G] = 255; else pixel[G] = g;
+            if (b < 0) pixel[B] = 0; else if (b > 255) pixel[B] = 255; else pixel[B] = b;
 
-      const UBYTE A = OutBitmap->ColourFormat->AlphaPos>>3;
-      const UBYTE R = OutBitmap->ColourFormat->RedPos>>3;
-      const UBYTE G = OutBitmap->ColourFormat->GreenPos>>3;
-      const UBYTE B = OutBitmap->ColourFormat->BluePos>>3;
-
-      UBYTE *data = OutBitmap->Data + (OutBitmap->Clip.Left<<2) + (OutBitmap->Clip.Top * OutBitmap->LineWidth);
-
-      const LONG height = OutBitmap->Clip.Bottom - OutBitmap->Clip.Top;
-      const LONG width = OutBitmap->Clip.Right - OutBitmap->Clip.Left;
-
-      if (Stitch) {
-         for (LONG y=0; y < height; y++) {
-            UBYTE *pixel = data + (OutBitmap->LineWidth * y);
-            for (LONG x=0; x < width; x++) {
-               DOUBLE r = turbulence_stitch(0, x, y);
-               DOUBLE g = turbulence_stitch(1, x, y);
-               DOUBLE b = turbulence_stitch(2, x, y);
-               DOUBLE a = turbulence_stitch(3, x, y);
-
-               if (a < 0) pixel[A] = 0; else if (a > 255) pixel[A] = 255; else pixel[A] = a;
-               if (r < 0) pixel[R] = 0; else if (r > 255) pixel[R] = 255; else pixel[R] = r;
-               if (g < 0) pixel[G] = 0; else if (g > 255) pixel[G] = 255; else pixel[G] = g;
-               if (b < 0) pixel[B] = 0; else if (b > 255) pixel[B] = 255; else pixel[B] = b;
-
-               pixel += 4;
-            }
-         }
-      }
-      else {
-         for (LONG y=0; y < height; y++) {
-            UBYTE *pixel = data + (OutBitmap->LineWidth * y);
-            for (LONG x=0; x < width; x++) {
-               DOUBLE r = turbulence(0, x, y);
-               DOUBLE g = turbulence(1, x, y);
-               DOUBLE b = turbulence(2, x, y);
-               DOUBLE a = turbulence(3, x, y);
-
-               if (a < 0) pixel[A] = 0; else if (a > 255) pixel[A] = 255; else pixel[A] = a;
-               if (r < 0) pixel[R] = 0; else if (r > 255) pixel[R] = 255; else pixel[R] = r;
-               if (g < 0) pixel[G] = 0; else if (g > 255) pixel[G] = 255; else pixel[G] = g;
-               if (b < 0) pixel[B] = 0; else if (b > 255) pixel[B] = 255; else pixel[B] = b;
-
-               pixel += 4;
-            }
+            pixel += 4;
          }
       }
    }
 
-   virtual ~TurbulenceEffect() {
-      if (Tables) FreeResource(Tables);
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR TURBULENCEFX_Init(objTurbulenceFX *Self, APTR Void)
+{
+   LONG lSeed = setup_seed(Self->Seed);
+   auto &gradient = Self->Gradient;
+   auto &lattice  = Self->Lattice;
+
+   LONG i;
+   for (LONG k=0; k < GSIZE; k++) {
+      for (i=0; i < BSIZE; i++) {
+         lattice[i] = i;
+         for (LONG j=0; j < 2; j++) {
+            gradient[k][i][j] = (DOUBLE)(((lSeed = random(lSeed)) % (BSIZE + BSIZE)) - BSIZE) / BSIZE;
+         }
+         DOUBLE s = DOUBLE(sqrt(gradient[k][i][0] * gradient[k][i][0] + gradient[k][i][1] * gradient[k][i][1]));
+         gradient[k][i][0] /= s;
+         gradient[k][i][1] /= s;
+      }
    }
+
+   while (--i) {
+      LONG j;
+      auto tmp = lattice[i];
+      lattice[i] = lattice[j = (lSeed = random(lSeed)) % BSIZE];
+      lattice[j] = tmp;
+   }
+
+   for (i=0; i < BSIZE + 2; i++) {
+      lattice[BSIZE + i] = lattice[i];
+      for (LONG k=0; k < GSIZE; k++) {
+         for (LONG j=0; j < GSUBSIZE; j++) {
+            gradient[k][BSIZE + i][j] = gradient[k][i][j];
+         }
+      }
+   }
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR TURBULENCEFX_NewObject(objTurbulenceFX *Self, APTR Void)
+{
+   Self->Octaves    = 1;
+   Self->Stitch     = false;
+   Self->Seed       = 0;
+   Self->Type       = TB_TURBULENCE;
+   Self->FX         = 0;
+   Self->FY         = 0;
+   Self->SourceType = VSF_NONE;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+FX: The base frequency for noise on the X axis.
+
+A negative value for base frequency is an error.  The default value is zero.
+
+*********************************************************************************************************************/
+
+static ERROR TURBULENCEFX_GET_FX(objTurbulenceFX *Self, DOUBLE *Value)
+{
+   *Value = Self->FX;
+   return ERR_Okay;
+}
+
+static ERROR TURBULENCEFX_SET_FX(objTurbulenceFX *Self, DOUBLE Value)
+{
+   if (Value >= 0) {
+      Self->FX = Value;
+      return ERR_Okay;
+   }
+   else return ERR_InvalidValue;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+FY: The base frequency for noise on the Y axis.
+
+A negative value for base frequency is an error.  The default value is zero.
+
+*********************************************************************************************************************/
+
+static ERROR TURBULENCEFX_GET_FY(objTurbulenceFX *Self, DOUBLE *Value)
+{
+   *Value = Self->FY;
+   return ERR_Okay;
+}
+
+static ERROR TURBULENCEFX_SET_FY(objTurbulenceFX *Self, DOUBLE Value)
+{
+   if (Value >= 0) {
+      Self->FY = Value;
+      return ERR_Okay;
+   }
+   else return ERR_InvalidValue;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Octaves: The numOctaves parameter for the noise function.
+
+Defaults to 1 if not specified.
+
+*********************************************************************************************************************/
+
+static ERROR TURBULENCEFX_GET_Octaves(objTurbulenceFX *Self, LONG *Value)
+{
+   *Value = Self->Octaves;
+   return ERR_Okay;
+}
+
+static ERROR TURBULENCEFX_SET_Octaves(objTurbulenceFX *Self, LONG Value)
+{
+   Self->Octaves = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Seed: The starting number for the pseudo random number generator.
+
+If the value is undefined, the effect is as if a value of 0 were specified.  When the seed number is handed over to
+the algorithm it must first be truncated, i.e. rounded to the closest integer value towards zero.
+
+*********************************************************************************************************************/
+
+static ERROR TURBULENCEFX_GET_Seed(objTurbulenceFX *Self, LONG *Value)
+{
+   *Value = Self->Seed;
+   return ERR_Okay;
+}
+
+static ERROR TURBULENCEFX_SET_Seed(objTurbulenceFX *Self, LONG Value)
+{
+   Self->Seed = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Stitch: If TRUE, stitching will be enabled at the tile's edges.
+
+By default, the turbulence algorithm will sometimes show discontinuities at the tile borders.  If Stitch is set to
+TRUE then the algorithm will automatically adjust base frequency values such that the node's width and height
+(i.e., the width and height of the current subregion) contains an integral number of the Perlin tile width and height
+for the first octave.
+
+The baseFrequency will be adjusted up or down depending on which way has the smallest relative (not absolute) change
+as follows:  Given the frequency, calculate `lowFreq = floor(width*frequency) / width` and
+`hiFreq = ceil(width * frequency) / width`. If `frequency/lowFreq < hiFreq/frequency` then use lowFreq, else use
+hiFreq.  While generating turbulence values, generate lattice vectors as normal for Perlin Noise, except for those
+lattice  points that lie on the right or bottom edges of the active area (the size of the resulting tile).  In those
+cases, copy the lattice vector from the opposite edge of the active area.
+
+*********************************************************************************************************************/
+
+static ERROR TURBULENCEFX_GET_Stitch(objTurbulenceFX *Self, LONG *Value)
+{
+   *Value = Self->Stitch;
+   return ERR_Okay;
+}
+
+static ERROR TURBULENCEFX_SET_Stitch(objTurbulenceFX *Self, LONG Value)
+{
+   Self->Stitch = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Type: Can be set to 'noise' or 'turbulence'.
+
+
+*********************************************************************************************************************/
+
+static ERROR TURBULENCEFX_GET_Type(objTurbulenceFX *Self, LONG *Value)
+{
+   *Value = Self->Type;
+   return ERR_Okay;
+}
+
+static ERROR TURBULENCEFX_SET_Type(objTurbulenceFX *Self, LONG Value)
+{
+   Self->Type = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+XMLDef: Returns an SVG compliant XML string that describes the effect.
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR TURBULENCEFX_GET_XMLDef(objTurbulenceFX *Self, STRING *Value)
+{
+   std::stringstream stream;
+
+   stream << "feTurbulence";
+
+   *Value = StrClone(stream.str().c_str());
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+#include "filter_turbulence_def.c"
+
+static const FieldDef clTurbulenceType[] = {
+   { "Turbulence", TB_TURBULENCE },
+   { "Noise",      TB_NOISE },
+   { NULL, 0 }
 };
+static const FieldArray clTurbulenceFXFields[] = {
+   { "FX",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,          0, (APTR)TURBULENCEFX_GET_FX,         (APTR)TURBULENCEFX_SET_FX },
+   { "FY",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,          0, (APTR)TURBULENCEFX_GET_FY,         (APTR)TURBULENCEFX_SET_FY },
+   { "Octaves", FDF_VIRTUAL|FDF_LONG|FDF_RI,            0, (APTR)TURBULENCEFX_GET_Octaves,    (APTR)TURBULENCEFX_SET_Octaves },
+   { "Seed",    FDF_VIRTUAL|FDF_LONG|FDF_RI,            0, (APTR)TURBULENCEFX_GET_Seed,       (APTR)TURBULENCEFX_SET_Seed },
+   { "Stitch",  FDF_VIRTUAL|FDF_LONG|FDF_RI,            0, (APTR)TURBULENCEFX_GET_Stitch,     (APTR)TURBULENCEFX_SET_Stitch },
+   { "Type",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RI, (MAXINT)&clTurbulenceType, (APTR)TURBULENCEFX_GET_Type, (APTR)TURBULENCEFX_SET_Type },
+   { "XMLDef",  FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)TURBULENCEFX_GET_XMLDef,      NULL },
+   END_FIELD
+};
+
+//********************************************************************************************************************
+
+ERROR init_turbulencefx(void)
+{
+   return(CreateObject(ID_METACLASS, 0, &clTurbulenceFX,
+      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
+      FID_SubClassID|TLONG,  ID_TURBULENCEFX,
+      FID_Name|TSTRING,      "TurbulenceFX",
+      FID_Category|TLONG,    CCF_GRAPHICS,
+      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
+      FID_Actions|TPTR,      clTurbulenceFXActions,
+      FID_Fields|TARRAY,     clTurbulenceFXFields,
+      FID_Size|TLONG,        sizeof(objTurbulenceFX),
+      FID_Path|TSTR,         MOD_PATH,
+      TAGEND));
+}

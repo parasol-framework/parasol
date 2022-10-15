@@ -8,15 +8,19 @@
     <filter id="identity">
       <feColorMatrix in="SourceGraphic" type="none" values="1,0,0,0,0, 0,1,0,0,0, 0,0,1,0,0, 0,0,0,1,0" />
     </filter>
+
     <filter id="colorMeMatrix">
       <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  1 1 1 1 0  0 0 0 0 0  0 0 0 1 0" />
     </filter>
+
     <filter id="colorMeSaturate">
       <feColorMatrix in="SourceGraphic" type="saturate" values="0" />
     </filter>
+
     <filter id="colorMeHueRotate">
       <feColorMatrix in="SourceGraphic" type="hueRotate" values="180" />
     </filter>
+
     <filter id="colorMeLTA">
       <feColorMatrix in="SourceGraphic" type="luminanceToAlpha"/>
     </filter>
