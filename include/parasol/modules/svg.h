@@ -31,6 +31,7 @@ typedef struct rkSVG {
 
 #ifdef PRV_SVG
    objVectorScene *Scene;
+   STRING Folder;
    OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
    FUNCTION FrameCallback;
    struct svgAnimation *Animations;

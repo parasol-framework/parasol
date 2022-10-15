@@ -10,7 +10,7 @@ support is closely modelled around the SVG standard, and effect results are inte
 Once created, a filter can be utilised by vector objects through their Filter field.  By way of example in SVG:
 
 <pre>
-&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(#FOMTest)"/&gt;
+&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(&#35;FOMTest)"/&gt;
 </pre>
 
 Filter instructions are passed to VectorFilter objects via the XML data feed, where they will be parsed into an

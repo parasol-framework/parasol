@@ -120,6 +120,31 @@ INLINE bool add_id(objSVG *Self, const XMLTag *Tag, const std::string Name)
 
 //********************************************************************************************************************
 
+static CSTRING folder(objSVG *Self)
+{
+   if (Self->Folder) {
+      if (Self->Folder[0]) return Self->Folder;
+      else return NULL;
+   }
+   if (!Self->Path) return NULL;
+
+   // Setting a path of "my/house/is/red.svg" results in "my/house/is/"
+
+   STRING folder;
+   if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK, &folder)) {
+      WORD last = 0;
+      for (WORD i=0; folder[i]; i++) {
+         if ((folder[i] IS '/') or (folder[i] IS '\\')) last = i + 1;
+      }
+      folder[last] = 0;
+      Self->Folder = folder;
+      if (Self->Folder[0]) return Self->Folder;
+      else return NULL;
+   }
+   else return NULL;
+}
+
+//********************************************************************************************************************
 
 static const std::string uri_name(CSTRING Ref)
 {
@@ -268,7 +293,7 @@ static DOUBLE read_unit(CSTRING Value, LARGE *FieldID)
 
 //********************************************************************************************************************
 
-INLINE void set_double(APTR Object, FIELD FieldID, CSTRING Value)
+template <class T> static inline void set_double(T Object, FIELD FieldID, CSTRING Value)
 {
    LARGE field = FieldID;
    DOUBLE num = read_unit(Value, &field);

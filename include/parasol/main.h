@@ -5,7 +5,7 @@
 //
 //   General include file for all programs.
 //
-//   Copyright 1996-2020 © Paul Manias
+//   Copyright 1996-2022 © Paul Manias
 
 #ifndef PLATFORM_CONFIG_H
 #include <parasol/config.h>
@@ -323,9 +323,8 @@ struct OpenInfo {
 #define TSTRING   TSTR
 #define TREL      TRELATIVE
 
-/*****************************************************************************
-** Header used for all objects.
-*/
+//****************************************************************************
+// Header used for all objects.
 
 struct Head { // Must be 64-bit aligned
    struct rkMetaClass *Class;   // Class pointer, resolved on AccessObject()

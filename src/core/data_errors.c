@@ -68,7 +68,7 @@ CSTRING glMessages[ERR_END] = {
  "An error occurred while creating a new class.",
  "Error while Activate()ing an object.",
  "Warning - Attempt to initialise an object twice.",
- "A vital field has not been set in this object.",
+ "A required field value is undefined.",
  "The class could not be found in the system.",
  "The File flag FL_READ was not set on initialisation.",
  "The File flag FL_WRITE was not set on initialisation.",

@@ -121,7 +121,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "SRGB: The default colour-space is sRGB, recommended for its speed.",
     "LINEAR_RGB: Linear RGB is the default colour space for SVG and produces the best results.")
 
-  enum("VSF", { start=1, comment="Filter source types - these are used internally", restrict="c" },
+  enum("VSF", { start=0, comment="Filter source types - these are used internally", restrict="c" },
+    "IGNORE|NONE: The filter does not require an input source.",
     "GRAPHIC: Represents the graphics elements that were the original input into the filter element.",
     "ALPHA: As for GRAPHIC except that only the alpha channel is used.",
     "BKGD: An image snapshot of the SVG document under the filter region at the time that the filter element was invoked.",
@@ -129,7 +130,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "FILL: The value of the fill property on the target element for the filter effect.",
     "STROKE: The value of the stroke property on the target element for the filter effect.",
     "REFERENCE: This value is an assigned name for the filter primitive in the form of a custom-ident. If supplied, then graphics that result from processing this filter primitive can be referenced by an in attribute on a subsequent filter primitive within the same filter element. If no value is provided, the output will only be available for re-use as the implicit input into the next filter primitive if that filter primitive provides no value for its in attribute.",
-    "IGNORE",
     "PREVIOUS: Use the previous effect as input, or source graphic if no previous effect.")
 
   enum("WVC", { start=1, comment="Wave options." },

@@ -71,10 +71,10 @@ typedef struct svgState {
 
 //****************************************************************************
 
-static ERROR init_svg(void);
-static ERROR init_rsvg(void);
 static ERROR animation_timer(objSVG *, LARGE, LARGE);
 static void  convert_styles(objXML *);
+static ERROR init_svg(void);
+static ERROR init_rsvg(void);
 static void  process_attrib(objSVG *, objXML *, const XMLTag *, OBJECTPTR);
 static void  process_rule(objSVG *, objXML *, KatanaRule *);
 static ERROR process_shape(objSVG *, CLASSID, objXML *, svgState *, const XMLTag *, OBJECTPTR, OBJECTPTR *);
