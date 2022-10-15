@@ -586,13 +586,6 @@ struct FRGB {
    FLOAT Alpha;  // Alpha component value
 };
 
-typedef struct DRGB {
-   DOUBLE Red;    // Red component value
-   DOUBLE Green;  // Green component value
-   DOUBLE Blue;   // Blue component value
-   DOUBLE Alpha;  // Alpha component value
-} DRGB;
-
 typedef struct RGB8 {
    UBYTE Red;    // Red component value
    UBYTE Green;  // Green component value
@@ -2965,7 +2958,7 @@ struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
 struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
 struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
 struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
-struct acNewChild      { OBJECTPTR NewChild; };
+struct acNewChild      { OBJECTPTR Object; };
 struct acNewOwner      { union { OBJECTID NewOwnerID; OBJECTID NewOwner; }; CLASSID ClassID; };
 struct acRead          { APTR Buffer; LONG Length; LONG Result; };
 struct acRedimension   { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };

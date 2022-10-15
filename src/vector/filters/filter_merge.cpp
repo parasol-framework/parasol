@@ -1,74 +1,133 @@
-// Defines the way in which results will be merged.
+/*********************************************************************************************************************
 
-class MergeSource {
+-CLASS-
+MergeFX: Combines multiple effects in sequence.
+
+Use MergeFX to composite multiple input sources so that they are rendered on top of each other in a predefined
+sequence.
+
+Many effects produce a number of intermediate layers in order to create the final output image.  This filter allows
+us to collapse those into a single image.  Although this could be done by using n-1 Composite-filters, it is more
+convenient to have  this common operation available in this form, and offers the implementation some additional
+flexibility.
+
+-END-
+
+The canonical implementation of feMerge is to render the entire effect into one RGBA layer, and then render the
+resulting layer on the output device. In certain cases (in particular if the output device itself is a continuous
+tone device), and since merging is associative, it might be a sufficient approximation to evaluate the effect one
+layer at a time and render each layer individually onto the output device bottom to top.
+
+If the topmost image input is SourceGraphic and this ‘feMerge’ is the last filter primitive in the filter, the
+implementation is encouraged to render the layers up to that point, and then render the SourceGraphic directly from
+its vector description on top.
+
+*********************************************************************************************************************/
+
+typedef class rkMergeFX : public rkFilterEffect {
    public:
-      LONG SourceType;
-      VectorEffect *Effect;
-      MergeSource(LONG pSourceType, VectorEffect *pEffect) : SourceType(pSourceType), Effect(pEffect) { };
-      MergeSource(LONG pSourceType) : SourceType(pSourceType), Effect(NULL) { };
-};
-
-class MergeEffect : public VectorEffect {
-
    std::vector<MergeSource> List;
+} objMergeFX;
 
-   void xml(std::stringstream &Stream) {
-      Stream << "feMerge";
+/*********************************************************************************************************************
+-ACTION-
+Draw: Render the effect to the target bitmap.
+-END-
+*********************************************************************************************************************/
+
+static ERROR MERGEFX_Draw(objMergeFX *Self, struct acDraw *Args)
+{
+   objBitmap *bmp;
+   LONG copy_flags = 0;
+   for (auto source : Self->List) {
+      if (source.Effect) bmp = source.Effect->Target;
+      else bmp = get_source_graphic(Self->Filter);
+      if (!bmp) continue;
+
+      gfxCopyArea(bmp, Self->Target, copy_flags, 0, 0, bmp->Width, bmp->Height, 0, 0);
+
+      copy_flags = BAF_BLEND|BAF_COPY; // Any subsequent copies are to be blended
    }
 
-public:
-   MergeEffect(objVectorFilter *Filter, XMLTag *Tag) : VectorEffect() {
-      parasol::Log log(__FUNCTION__);
+   return ERR_Okay;
+}
 
-      SourceType = VSF_IGNORE;
-      EffectName = "feMerge";
+//********************************************************************************************************************
 
-      for (auto child=Tag->Child; child; child=child->Next) {
-         if (!StrMatch("feMergeNode", child->Attrib->Name)) {
-            for (LONG a=1; a < child->TotalAttrib; a++) {
-               if (!StrMatch("in", child->Attrib[a].Name)) {
-                  switch (StrHash(child->Attrib[a].Value, FALSE)) {
-                     case SVF_SOURCEGRAPHIC:   List.emplace_back(VSF_GRAPHIC); break;
-                     case SVF_SOURCEALPHA:     List.emplace_back(VSF_ALPHA); break;
-                     case SVF_BACKGROUNDIMAGE: List.emplace_back(VSF_BKGD); break;
-                     case SVF_BACKGROUNDALPHA: List.emplace_back(VSF_BKGD_ALPHA); break;
-                     case SVF_FILLPAINT:       List.emplace_back(VSF_FILL); break;
-                     case SVF_STROKEPAINT:     List.emplace_back(VSF_STROKE); break;
-                     default:  {
-                        auto e = find_effect(Filter, child->Attrib[a].Value);
-                        if (e) {
-                           List.emplace_back(VSF_REFERENCE, e);
-                           e->UsageCount++;
-                        }
-                        else log.warning("Unable to parse 'in' value '%s'", child->Attrib[a].Value);
-                        break;
-                     }
-                  }
-               }
-               else log.warning("Invalid feMergeNode attribute '%s'", child->Attrib[a].Name);
-            }
-         }
-         else log.warning("Invalid merge element '%s'", child->Attrib->Name);
+static ERROR MERGEFX_NewObject(objMergeFX *Self, APTR Void)
+{
+   Self->SourceType = VSF_IGNORE;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+SourceList: A list of source types to be processed in the merge.
+
+The list of sources is built as a simple array of MergeSource structures.
+
+Input sources are defined by the SourceType field value.  In the case of `REFERENCE`, it is necessary to provide a
+direct pointer to the referenced effect in the Effect field, or an error will be returned.
+
+*********************************************************************************************************************/
+
+static ERROR MERGEFX_SET_SourceList(objMergeFX *Self, MergeSource *Value, LONG Elements)
+{
+   if ((!Value) or (Elements <= 0)) {
+      Self->List.clear();
+      return ERR_Okay;
+   }
+
+   for (LONG i=0; i < Elements; i++) {
+      if (Value[i].SourceType IS VSF_REFERENCE) {
+         if (Value[i].Effect) Value[i].Effect->UsageCount++;
+         else return ERR_InvalidData;
       }
+
+      Self->List.push_back(Value[i]);
    }
 
-   void apply(objVectorFilter *Filter, filter_state &State) {
-      objBitmap *bmp;
-      LONG copy_flags = 0;
-      for (auto source : List) {
-         if (source.Effect) {
-            if (!(bmp = source.Effect->OutBitmap)) continue;
-         }
-         else {
-            if (!(bmp = get_source_graphic(Filter))) continue;
-         }
+   return ERR_Okay;
+}
 
-         gfxCopyArea(bmp, OutBitmap, copy_flags, 0, 0, bmp->Width, bmp->Height, 0, 0);
+/*********************************************************************************************************************
 
-         copy_flags = BAF_BLEND|BAF_COPY; // Any subsequent copies are to be blended
-      }
-   }
+-FIELD-
+XMLDef: Returns an SVG compliant XML string that describes the filter.
+-END-
 
-   virtual ~MergeEffect() {
-   }
+*********************************************************************************************************************/
+
+static ERROR MERGEFX_GET_XMLDef(objMergeFX *Self, STRING *Value)
+{
+   *Value = StrClone("feMerge");
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+#include "filter_merge_def.c"
+
+static const FieldArray clMergeFXFields[] = {
+   { "SourceList", FDF_VIRTUAL|FDF_STRUCT|FDF_ARRAY|FDF_RW, (MAXINT)"MergeSource", NULL, (APTR)MERGEFX_SET_SourceList },
+   { "XMLDef",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)MERGEFX_GET_XMLDef, NULL },
+   END_FIELD
 };
+
+//********************************************************************************************************************
+
+ERROR init_mergefx(void)
+{
+   return(CreateObject(ID_METACLASS, 0, &clMergeFX,
+      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
+      FID_SubClassID|TLONG,  ID_MERGEFX,
+      FID_Name|TSTRING,      "MergeFX",
+      FID_Category|TLONG,    CCF_GRAPHICS,
+      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
+      FID_Actions|TPTR,      clMergeFXActions,
+      FID_Fields|TARRAY,     clMergeFXFields,
+      FID_Size|TLONG,        sizeof(objMergeFX),
+      FID_Path|TSTR,         MOD_PATH,
+      TAGEND));
+}

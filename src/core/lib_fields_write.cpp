@@ -193,7 +193,7 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
             error = field->WriteValue(Object, field, type, va_arg(list, APTR), 0);
          }
          else {
-            if (type & FD_DOUBLE) {
+            if (type & (FD_DOUBLE|FD_FLOAT)) {
                DOUBLE value = va_arg(list, DOUBLE);
                error = field->WriteValue(Object, field, type, &value, 1);
             }
@@ -298,7 +298,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
             if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
             else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
 
-            if (flags & (FD_DOUBLE|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
+            if (flags & (FD_DOUBLE|FD_FLOAT|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
             #ifdef _LP64
             else if (flags & FD_PTR) va_arg(List, APTR);
             #endif
@@ -309,7 +309,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
             if (!field->Name) log.warning("Field %s of class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
             else log.warning("Field \"%s\" of class %s is init-only.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
 
-            if (flags & (FD_DOUBLE|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
+            if (flags & (FD_DOUBLE|FD_FLOAT|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
             #ifdef _LP64
             else if (flags & FD_PTR) va_arg(List, APTR);
             #endif
@@ -323,7 +323,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
          if (flags & (FD_POINTER|FD_ARRAY|FD_STRING|FD_FUNCTION)) {
             error = field->WriteValue(source, field, flags, va_arg(List, APTR), 0);
          }
-         else if (flags & FD_DOUBLE) {
+         else if (flags & (FD_DOUBLE|FD_FLOAT)) {
             DOUBLE value = va_arg(List, DOUBLE);
             error = field->WriteValue(source, field, flags, &value, 1);
          }
@@ -525,7 +525,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
       error = ERR_FieldTypeMismatch;
    }
    else if (Value) {
-      if (Field->Flags & FD_DOUBLE) {
+      if (Field->Flags & (FD_DOUBLE|FD_FLOAT)) {
          DOUBLE dbl = StrToFloat(Value);
          for (i=0; Value[i]; i++);
          if (Value[i-1] IS '%') {
@@ -694,7 +694,7 @@ ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LO
       if (Field->Flags & FD_ARRAY)         error = writeval_array(Object, Field, flags, Data, Elements);
       else if (Field->Flags & FD_LONG)     error = writeval_long(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_LARGE)    error = writeval_large(Object, Field, flags, Data, 0);
-      else if (Field->Flags & FD_DOUBLE)   error = writeval_double(Object, Field, flags, Data, 0);
+      else if (Field->Flags & (FD_DOUBLE|FD_FLOAT)) error = writeval_double(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_FUNCTION) error = writeval_function(Object, Field, flags, Data, 0);
       else if (Field->Flags & (FD_POINTER|FD_STRING)) error = writeval_ptr(Object, Field, flags, Data, 0);
       else log.warning("Unrecognised field flags $%.8x.", Field->Flags);
@@ -708,7 +708,7 @@ ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LO
       else if (Field->Flags & FD_ARRAY)    return setval_array(Object, Field, flags, Data, Elements);
       else if (Field->Flags & FD_FUNCTION) return setval_function(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_LONG)     return setval_long(Object, Field, flags, Data, 0);
-      else if (Field->Flags & FD_DOUBLE)   return setval_double(Object, Field, flags, Data, 0);
+      else if (Field->Flags & (FD_DOUBLE|FD_FLOAT))   return setval_double(Object, Field, flags, Data, 0);
       else if (Field->Flags & (FD_POINTER|FD_STRING)) return setval_pointer(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_LARGE)    return setval_large(Object, Field, flags, Data, 0);
       else return ERR_FieldTypeMismatch;
@@ -858,7 +858,7 @@ static ERROR writeval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
    LONG *offset = (LONG *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_LONG)        *offset = *((LONG *)Data);
    else if (Flags & FD_LARGE)  *offset = (LONG)(*((LARGE *)Data));
-   else if (Flags & FD_DOUBLE) *offset = F2I(*((DOUBLE *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) *offset = (LONG)StrToInt((STRING)Data);
    else return ERR_FieldTypeMismatch;
    return ERR_Okay;
@@ -869,7 +869,7 @@ static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
    LARGE *offset = (LARGE *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_LARGE)       *offset = *((LARGE *)Data);
    else if (Flags & FD_LONG)   *offset = *((LONG *)Data);
-   else if (Flags & FD_DOUBLE) *offset = F2I(*((DOUBLE *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) *offset = StrToInt((STRING)Data);
    else return ERR_FieldTypeMismatch;
    return ERR_Okay;
@@ -878,7 +878,7 @@ static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
 static ERROR writeval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    DOUBLE *offset = (DOUBLE *)((BYTE *)Object + Field->Offset);
-   if (Flags & FD_DOUBLE)      *offset = *((DOUBLE *)Data);
+   if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = *((DOUBLE *)Data);
    else if (Flags & FD_LONG)   *offset = *((LONG *)Data);
    else if (Flags & FD_LARGE)  *offset = (*((LARGE *)Data));
    else if (Flags & FD_STRING) *offset = StrToFloat((STRING)Data);
@@ -945,7 +945,7 @@ static ERROR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
       else var.Large = *((LARGE *)Data);
       error = ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
    }
-   else if (Flags & FD_DOUBLE) {
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) {
       var.Type = FD_DOUBLE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
       var.Double = *((DOUBLE *)Data);
       error = ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
@@ -994,7 +994,10 @@ static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
       LONG src_type = Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT);
       if (src_type) {
          LONG dest_type = Field->Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT);
-         if (!(src_type & dest_type)) return ERR_FieldTypeMismatch;
+         if (!(src_type & dest_type)) {
+            RESTORE_CONTEXT(Object);
+            return ERR_FieldTypeMismatch;
+         }
       }
 
       error = ((ERROR (*)(APTR, APTR, LONG))(Field->SetValue))(Object, (APTR)Data, Elements);
@@ -1066,7 +1069,7 @@ static ERROR setval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, 
    LONG int32;
    ERROR error;
    if (Flags & FD_LARGE)       int32 = (LONG)(*((LARGE *)Data));
-   else if (Flags & FD_DOUBLE) int32 = F2I(*((DOUBLE *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) int32 = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) int32 = StrToInt((STRING)Data);
    else if (Flags & FD_LONG)   int32 = *((LONG *)Data);
    else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
@@ -1086,7 +1089,7 @@ static ERROR setval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
    if (Flags & FD_LONG)        float64 = *((LONG *)Data);
    else if (Flags & FD_LARGE)  float64 = (DOUBLE)(*((LARGE *)Data));
    else if (Flags & FD_STRING) float64 = StrToFloat((CSTRING)Data);
-   else if (Flags & FD_DOUBLE) float64 = *((DOUBLE *)Data);
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) float64 = *((DOUBLE *)Data);
    else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
 
    ERROR error = ((ERROR (*)(APTR, DOUBLE))(Field->SetValue))(Object, float64);
@@ -1114,7 +1117,7 @@ static ERROR setval_pointer(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
       IntToStr(*((LARGE *)Data), buffer, sizeof(buffer));
       error = ((ERROR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
    }
-   else if (Flags & FD_DOUBLE) {
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) {
       char buffer[64];
       IntToStr(*((DOUBLE *)Data), buffer, sizeof(buffer));
       error = ((ERROR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
@@ -1133,7 +1136,7 @@ static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
    SET_CONTEXT(Object, Field, &ctx);
 
    if (Flags & FD_LONG)        int64 = *((LONG *)Data);
-   else if (Flags & FD_DOUBLE) int64 = F2I(*((DOUBLE *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) int64 = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) int64 = StrToInt((CSTRING)Data);
    else if (Flags & FD_LARGE)  int64 = *((LARGE *)Data);
    else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
@@ -1158,7 +1161,7 @@ void optimise_write_field(Field *Field)
       if (Field->Flags & FD_ARRAY)         Field->WriteValue = writeval_array;
       else if (Field->Flags & FD_LONG)     Field->WriteValue = writeval_long;
       else if (Field->Flags & FD_LARGE)    Field->WriteValue = writeval_large;
-      else if (Field->Flags & FD_DOUBLE)   Field->WriteValue = writeval_double;
+      else if (Field->Flags & (FD_DOUBLE|FD_FLOAT)) Field->WriteValue = writeval_double;
       else if (Field->Flags & FD_FUNCTION) Field->WriteValue = writeval_function;
       else if (Field->Flags & (FD_POINTER|FD_STRING)) Field->WriteValue = writeval_ptr;
       else log.warning("Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);
@@ -1172,7 +1175,7 @@ void optimise_write_field(Field *Field)
       else if (Field->Flags & FD_ARRAY)    Field->WriteValue = setval_array;
       else if (Field->Flags & FD_FUNCTION) Field->WriteValue = setval_function;
       else if (Field->Flags & FD_LONG)     Field->WriteValue = setval_long;
-      else if (Field->Flags & FD_DOUBLE)   Field->WriteValue = setval_double;
+      else if (Field->Flags & (FD_DOUBLE|FD_FLOAT))   Field->WriteValue = setval_double;
       else if (Field->Flags & (FD_POINTER|FD_STRING)) Field->WriteValue = setval_pointer;
       else if (Field->Flags & FD_LARGE)    Field->WriteValue = setval_large;
       else log.warning("Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);

@@ -6,6 +6,7 @@
 #define PRV_VECTORFILTER
 #define PRV_VECTORPATH
 #define PRV_VECTOR_MODULE
+#define PRV_FILTEREFFECT
 
 #define DBG_TRANSFORM(args...) //log.trace(args)
 
@@ -63,34 +64,14 @@ extern OBJECTPTR clVectorScene, clVectorViewport, clVectorGroup, clVectorColour;
 extern OBJECTPTR clVectorEllipse, clVectorRectangle, clVectorPath, clVectorWave;
 extern OBJECTPTR clVectorFilter, clVectorPolygon, clVectorText, clVectorClip;
 extern OBJECTPTR clVectorGradient, clVectorImage, clVectorPattern, clVector;
-extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition ;
+extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX;
+extern OBJECTPTR clBlurFX, clColourFX, clCompositeFX, clConvolveFX, clFilterEffect;
+extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX;
 
 extern struct DisplayBase *DisplayBase;
 extern struct FontBase *FontBase;
 
 //****************************************************************************
-
-enum { // Filter effects
-   FE_BLEND=1,
-   FE_COLOURMATRIX,
-   FE_COMPONENTTRANSFER,
-   FE_COMPOSITE,
-   FE_CONVOLVEMATRIX,
-   FE_DIFFUSELIGHTING,
-   FE_DISPLACEMENTMAP,
-   FE_FLOOD,
-   FE_BLUR,
-   FE_IMAGE,
-   FE_MERGE,
-   FE_MORPHOLOGY,
-   FE_OFFSET,
-   FE_SPECULARLIGHTING,
-   FE_TILE,
-   FE_TURBULENCE,
-   FE_DISTANTLIGHT,
-   FE_POINTLIGHT,
-   FE_SPOTLIGHT
-};
 
 class InputBoundary {
 public:
@@ -155,7 +136,7 @@ public:
    struct rkVector *Morph; \
    DashedStroke *DashArray; \
    GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable; \
-   struct DRGB StrokeColour, FillColour; \
+   struct FRGB StrokeColour, FillColour; \
    std::vector<FeedbackSubscription> *FeedbackSubscriptions; \
    std::vector<InputSubscription> *InputSubscriptions; \
    std::vector<KeyboardSubscription> *KeyboardSubscriptions; \
@@ -238,28 +219,6 @@ public:
 
 };
 
-class VectorEffect {
-public:
-   std::string EffectName; // Name of the effect, for debugging purposes
-   std::string Name;       // Unique name given by the client.
-   struct rkBitmap *OutBitmap; // Resulting bitmap from processing the effect.
-   ULONG ID;               // Case sensitive hash identifier for the filter, if anything needs to reference it.
-   ULONG InputID;          // The effect uses another effect as an input (referenced by hash ID).
-   ULONG MixID;            // Reference to an additional effect for mixing, e.g. compositing
-   ERROR Error;
-   UBYTE SourceType;       // VSF_REFERENCE, VSF_GRAPHIC...
-   UBYTE MixType;          // VSF...
-   UBYTE UsageCount;       // Total number of other effects utilising this effect to build a pipeline
-
-   // Defined in filter.cpp
-   VectorEffect();
-   VectorEffect(struct rkVectorFilter *, XMLTag *);
-
-   virtual void xml(std::stringstream &) = 0;
-   virtual void apply(struct rkVectorFilter *, filter_state &) = 0; // Required
-   virtual ~VectorEffect() = default;
-};
-
 #define TB_NOISE 1
 
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
@@ -281,7 +240,7 @@ extern void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
 extern ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 extern ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
 extern ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
-extern void  vecReadPainter(OBJECTPTR, CSTRING, struct DRGB *, struct rkVectorGradient **, struct rkVectorImage **, struct rkVectorPattern **);
+extern void  vecReadPainter(OBJECTPTR, CSTRING, struct FRGB *, struct rkVectorGradient **, struct rkVectorImage **, struct rkVectorPattern **);
 extern ERROR vecResetMatrix(struct VectorMatrix *);
 extern void  vecRewindPath(class SimpleVector *);
 extern ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
@@ -393,13 +352,25 @@ typedef struct rkVectorClip {
 extern CSTRING get_name(OBJECTPTR);
 extern CSTRING read_numseq(CSTRING, ...);
 extern DOUBLE read_unit(CSTRING, UBYTE *);
+extern ERROR init_blurfx(void);
 extern ERROR init_colour(void);
+extern ERROR init_colourfx(void);
+extern ERROR init_compositefx(void);
+extern ERROR init_convolvefx(void);
 extern ERROR init_filter(void);
+extern ERROR init_filtereffect(void);
+extern ERROR init_floodfx(void);
 extern ERROR init_gradient(void);
 extern ERROR init_image(void);
+extern ERROR init_imagefx(void);
+extern ERROR init_mergefx(void);
+extern ERROR init_morphfx(void);
+extern ERROR init_offsetfx(void);
 extern ERROR init_pattern(void);
 extern ERROR init_transition(void);
+extern ERROR init_turbulencefx(void);
 extern ERROR init_vectorscene(void);
+
 extern ERROR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERROR scene_input_events(const InputEvent *, LONG);
 extern GRADIENT_TABLE * get_fill_gradient_table(objVector &, DOUBLE);

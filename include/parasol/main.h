@@ -5,7 +5,7 @@
 //
 //   General include file for all programs.
 //
-//   Copyright 1996-2020 © Paul Manias
+//   Copyright 1996-2022 © Paul Manias
 
 #ifndef PLATFORM_CONFIG_H
 #include <parasol/config.h>
@@ -310,22 +310,21 @@ struct OpenInfo {
 #define TDOUBLE   0x8000000000000000LL
 #define TLONG     0x4000000000000000LL
 #define TVAR      0x2000000000000000LL
+#define TFLOAT    0x1000000000000000LL // NB: Floats are upscaled to doubles when passed as v-args.
 #define TPTR      0x0800000000000000LL
 #define TLARGE    0x0400000000000000LL
 #define TFUNCTION 0x0200000000000000LL
 #define TSTR      0x0080000000000000LL
 #define TRELATIVE 0x0020000000000000LL
 #define TARRAY    0x0000100000000000LL
-#define TFLOAT    TDOUBLE
 #define TPERCENT  TRELATIVE
 #define TAGEND    0LL
 #define TAGDIVERT -1LL
 #define TSTRING   TSTR
 #define TREL      TRELATIVE
 
-/*****************************************************************************
-** Header used for all objects.
-*/
+//****************************************************************************
+// Header used for all objects.
 
 struct Head { // Must be 64-bit aligned
    struct rkMetaClass *Class;   // Class pointer, resolved on AccessObject()

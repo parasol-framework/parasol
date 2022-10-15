@@ -1984,10 +1984,8 @@ static ERROR VECTOR_SET_Stroke(objVector *Self, STRING Value)
 -FIELD-
 StrokeColour: Defines the colour of the path stroke in RGB float format.
 
-The colour that will be used in stroking a path is defined by the StrokeColour field.  The colour is composed of
-4 floating point values comprising Red, Green, Blue and Alpha.  The intensity of each colour component is determined
-by a value range between 0 and 1.0.  If the Alpha value is zero, a coloured stroke will not be applied when drawing
-the vector.
+This field defines the colour that will be used in stroking a path, and is comprised of floating point RGBA values.
+The intensity of each component is measured from 0 - 1.0.  Stroking is disabled if the alpha value is 0.
 
 This field is complemented by the #StrokeOpacity and #Stroke fields.
 

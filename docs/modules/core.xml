@@ -5177,13 +5177,6 @@ end
       <field name="Second" type="WORD">Second of the original file's datestamp.</field>
     </struct>
 
-    <struct name="DRGB" comment="64-bit floating point RGB colour value." typeName="DRGB">
-      <field name="Red" type="DOUBLE">Red component value</field>
-      <field name="Green" type="DOUBLE">Green component value</field>
-      <field name="Blue" type="DOUBLE">Blue component value</field>
-      <field name="Alpha" type="DOUBLE">Alpha component value</field>
-    </struct>
-
     <struct name="DateTime" comment="Generic structure for date-time management.">
       <field name="Year" type="LONG">Year</field>
       <field name="Month" type="LONG">Month 1 to 12</field>

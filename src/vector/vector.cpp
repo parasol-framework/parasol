@@ -17,7 +17,9 @@ OBJECTPTR clVectorScene = NULL, clVectorViewport = NULL, clVectorGroup = NULL, c
 OBJECTPTR clVectorEllipse = NULL, clVectorRectangle = NULL, clVectorPath = NULL, clVectorWave = NULL;
 OBJECTPTR clVectorFilter = NULL, clVectorPolygon = NULL, clVectorText = NULL, clVectorClip = NULL;
 OBJECTPTR clVectorGradient = NULL, clVectorImage = NULL, clVectorPattern = NULL, clVector = NULL;
-OBJECTPTR clVectorSpiral = NULL, clVectorShape = NULL, clVectorTransition = NULL;
+OBJECTPTR clVectorSpiral = NULL, clVectorShape = NULL, clVectorTransition = NULL, clImageFX = NULL;
+OBJECTPTR clBlurFX = NULL, clColourFX = NULL, clCompositeFX = NULL, clConvolveFX = NULL, clFilterEffect = NULL;
+OBJECTPTR clFloodFX = NULL, clMergeFX = NULL, clMorphologyFX = NULL, clOffsetFX = NULL, clTurbulenceFX = NULL;
 
 static OBJECTPTR modDisplay = NULL;
 static OBJECTPTR modFont = NULL;
@@ -53,14 +55,15 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if ((error = init_vector())) return error;
    if ((error = init_colour())) return error;
    if ((error = init_clip())) return error;
-   if ((error = init_ellipse())) return error;
    if ((error = init_filter())) return error;
    if ((error = init_gradient())) return error;
    if ((error = init_group())) return error;
    if ((error = init_image())) return error;
+   // Shapes
+   if ((error = init_path())) return error;
+   if ((error = init_ellipse())) return error;
    if ((error = init_spiral())) return error;
    if ((error = init_supershape())) return error;
-   if ((error = init_path())) return error;
    if ((error = init_pattern())) return error;
    if ((error = init_polygon())) return error;
    if ((error = init_text())) return error;
@@ -68,14 +71,25 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if ((error = init_transition())) return error;
    if ((error = init_viewport())) return error;
    if ((error = init_wave())) return error;
-
+   // Effects
+   if ((error = init_filtereffect())) return error;
+   if ((error = init_imagefx())) return error;
+   if ((error = init_blurfx())) return error;
+   if ((error = init_colourfx())) return error;
+   if ((error = init_compositefx())) return error;
+   if ((error = init_convolvefx())) return error;
+   if ((error = init_floodfx())) return error;
+   if ((error = init_mergefx())) return error;
+   if ((error = init_morphfx())) return error;
+   if ((error = init_offsetfx())) return error;
+   if ((error = init_turbulencefx())) return error;
    return error;
 }
 
 ERROR CMDExpunge(void)
 {
-   if (modDisplay)    { acFree(modDisplay); modDisplay = NULL; }
-   if (modFont)       { acFree(modFont); modFont = NULL; }
+   if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
+   if (modFont)    { acFree(modFont); modFont = NULL; }
 
    if (clVectorShape)      { acFree(clVectorShape);      clVectorShape = NULL; }
    if (clVectorSpiral)     { acFree(clVectorSpiral);     clVectorSpiral = NULL; }
@@ -96,7 +110,17 @@ ERROR CMDExpunge(void)
    if (clVectorImage)      { acFree(clVectorImage);      clVectorImage = NULL; }
    if (clVectorWave)       { acFree(clVectorWave);       clVectorWave = NULL; }
    if (clVectorTransition) { acFree(clVectorTransition); clVectorTransition = NULL; }
-
+   if (clFilterEffect)     { acFree(clFilterEffect);     clFilterEffect = NULL; }
+   if (clImageFX)          { acFree(clImageFX);          clImageFX = NULL; }
+   if (clBlurFX)           { acFree(clBlurFX);           clBlurFX = NULL; }
+   if (clColourFX)         { acFree(clColourFX);         clColourFX = NULL; }
+   if (clCompositeFX)      { acFree(clCompositeFX);      clCompositeFX = NULL; }
+   if (clConvolveFX)       { acFree(clConvolveFX);       clConvolveFX = NULL; }
+   if (clFloodFX)          { acFree(clFloodFX);          clFloodFX = NULL; }
+   if (clMergeFX)          { acFree(clMergeFX);          clMergeFX = NULL; }
+   if (clMorphologyFX)     { acFree(clMorphologyFX);     clMorphologyFX = NULL; }
+   if (clOffsetFX)         { acFree(clOffsetFX);         clOffsetFX = NULL; }
+   if (clTurbulenceFX)     { acFree(clTurbulenceFX);     clTurbulenceFX = NULL; }
    return ERR_Okay;
 }
 
