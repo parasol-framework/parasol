@@ -50,7 +50,7 @@ namespace agg {
             a(DOUBLE(Alpha) / 255.0),
             linear(false) {}
 
-         rgba(DRGB &RGB, DOUBLE Alpha) :
+         rgba(FRGB &RGB, DOUBLE Alpha) :
             r(RGB.Red),
             g(RGB.Green),
             b(RGB.Blue),
@@ -129,7 +129,7 @@ namespace agg {
          }
 
          void to_linear() {
-            if ((linear == false) and (a > 0.0) and (a < 1.0)) {
+            if (linear == false) {
                if (r <= 0.04045) r /= 12.92;
                else r = std::pow((r + 0.055) / 1.055, 2.4);
 
@@ -143,7 +143,7 @@ namespace agg {
          }
 
          void to_rgb() {
-            if ((linear == true) and (a > 0.0) and (a < 1.0)) {
+            if (linear == true) {
                if (r < 0.0031308) r *= 12.92;
                else {
                   r = (std::pow(r, 1.0 / 2.4) * 1.055) - 0.055;
@@ -250,7 +250,7 @@ namespace agg {
             b(value_type(RGB.Blue)),
             a(value_type(Alpha)) {}
 
-        rgba8(DRGB &RGB, DOUBLE Alpha) :
+        rgba8(FRGB &RGB, FLOAT Alpha) :
             r((value_type)uround(RGB.Red * double(base_mask))),
             g((value_type)uround(RGB.Green * double(base_mask))),
             b((value_type)uround(RGB.Blue * double(base_mask))),

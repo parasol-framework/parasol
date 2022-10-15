@@ -325,11 +325,11 @@ Z: Close Path
   <function>
     <name>ReadPainter</name>
     <comment>Parses a painter string into its colour, gradient and image values.</comment>
-    <prototype>void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, struct DRGB * RGB, struct rkVectorGradient ** Gradient, struct rkVectorImage ** Image, struct rkVectorPattern ** Pattern)</prototype>
+    <prototype>void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, struct FRGB * RGB, struct rkVectorGradient ** Gradient, struct rkVectorImage ** Image, struct rkVectorPattern ** Pattern)</prototype>
     <input>
       <param type="OBJECTPTR" name="Vector">Optional.  Required if url() references are to be resolved.</param>
       <param type="CSTRING" name="IRI">The IRI string to be translated.</param>
-      <param type="struct DRGB *" name="RGB">A colour will be returned here if specified in the IRI.</param>
+      <param type="struct FRGB *" name="RGB">A colour will be returned here if specified in the IRI.</param>
       <param type="struct rkVectorGradient **" name="Gradient">A VectorGradient will be returned here if specified in the IRI.</param>
       <param type="struct rkVectorImage **" name="Image">A VectorImage will be returned here if specified in the IRI.</param>
       <param type="struct rkVectorPattern **" name="Pattern">A VectorPattern will be returned here if specified in the IRI.</param>
@@ -554,6 +554,11 @@ Z: Close Path
       <const name="PRECISE">Use a high quality renderer to produce accurate results.  Anti-aliasing will be enabled.</const>
     </constants>
 
+    <constants lookup="TB">
+      <const name="NOISE">Use the fractal noise function.</const>
+      <const name="TURBULENCE">Use the standard turbulence function.</const>
+    </constants>
+
     <constants lookup="VBF" comment="Options for vecGetBoundary().">
       <const name="INCLUSIVE">The result will be inclusive of all paths that belong to children of the queried vector.</const>
       <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
@@ -739,7 +744,8 @@ Z: Close Path
   <structs>
     <struct name="GradientStop" comment="Describes a colour stop for the VectorGradient Stops field.">
       <field name="Offset" type="DOUBLE">An offset in the range of 0 - 1.0</field>
-      <field name="RGB" type="struct DRGB">A floating point RGB value.</field>
+      <field name="RGB" type="struct FRGB">A floating point RGB value.</field>
+    </struct>
     </struct>
 
     <struct name="PathCommand" comment="Base structure for path commands.">

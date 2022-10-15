@@ -41,6 +41,10 @@
 #define VSPREAD_CLIP 6
 #define VSPREAD_END 7
 
+#define EM_DUPLICATE 1
+#define EM_WRAP 2
+#define EM_NONE 3
+
 #define PE_Move 1
 #define PE_MoveRel 2
 #define PE_Line 3
@@ -122,6 +126,30 @@
 #define VTS_ULTRA_EXPANDED 10
 #define VTS_EXTRA_EXPANDED 11
 
+#define OP_OVER 0
+#define OP_IN 1
+#define OP_OUT 2
+#define OP_ATOP 3
+#define OP_XOR 4
+#define OP_ARITHMETIC 5
+#define OP_SCREEN 6
+#define OP_MULTIPLY 7
+#define OP_LIGHTEN 8
+#define OP_DARKEN 9
+#define OP_INVERT_RGB 10
+#define OP_INVERT 11
+#define OP_CONTRAST 12
+#define OP_DODGE 13
+#define OP_BURN 14
+#define OP_HARD_LIGHT 15
+#define OP_SOFT_LIGHT 16
+#define OP_DIFFERENCE 17
+#define OP_EXCLUSION 18
+#define OP_PLUS 19
+#define OP_MINUS 20
+#define OP_SUBTRACT 20
+#define OP_OVERLAY 21
+
 // Viewport overflow options.
 
 #define VOF_VISIBLE 0
@@ -160,6 +188,8 @@
 
 // Filter source types - these are used internally
 
+#define VSF_IGNORE 0
+#define VSF_NONE 0
 #define VSF_GRAPHIC 1
 #define VSF_ALPHA 2
 #define VSF_BKGD 3
@@ -167,8 +197,7 @@
 #define VSF_FILL 5
 #define VSF_STROKE 6
 #define VSF_REFERENCE 7
-#define VSF_IGNORE 8
-#define VSF_PREVIOUS 9
+#define VSF_PREVIOUS 8
 
 // Wave options.
 
@@ -181,6 +210,19 @@
 #define WVS_CURVED 1
 #define WVS_ANGLED 2
 #define WVS_SAWTOOTH 3
+
+// Colour modes for ColourFX.
+
+#define CM_NONE 0
+#define CM_MATRIX 1
+#define CM_SATURATE 2
+#define CM_HUE_ROTATE 3
+#define CM_LUMINANCE_ALPHA 4
+#define CM_CONTRAST 5
+#define CM_BRIGHTNESS 6
+#define CM_HUE 7
+#define CM_DESATURATE 8
+#define CM_COLOURISE 9
 
 // Gradient flags
 
@@ -209,6 +251,9 @@
 #define VPF_RENDER_TIME 0x00000002
 #define VPF_RESIZE 0x00000004
 #define VPF_OUTLINE_VIEWPORTS 0x00000008
+
+#define TB_TURBULENCE 0
+#define TB_NOISE 1
 
 #define VSM_AUTO 0
 #define VSM_NEIGHBOUR 1
@@ -268,7 +313,7 @@ struct VectorDef {
 
 struct GradientStop {
    DOUBLE Offset;    // An offset in the range of 0 - 1.0
-   struct DRGB RGB;  // A floating point RGB value.
+   struct FRGB RGB;  // A floating point RGB value.
 };
 
 struct Transition {
@@ -733,7 +778,7 @@ struct VectorBase {
    ERROR (*_GenerateEllipse)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR);
    ERROR (*_GeneratePath)(CSTRING, APTR);
    ERROR (*_GenerateRectangle)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR);
-   void (*_ReadPainter)(APTR, CSTRING, struct DRGB *, struct rkVectorGradient **, struct rkVectorImage **, struct rkVectorPattern **);
+   void (*_ReadPainter)(APTR, CSTRING, struct FRGB *, struct rkVectorGradient **, struct rkVectorImage **, struct rkVectorPattern **);
    void (*_TranslatePath)(APTR, DOUBLE, DOUBLE);
    void (*_MoveTo)(APTR, DOUBLE, DOUBLE);
    void (*_LineTo)(APTR, DOUBLE, DOUBLE);
@@ -1098,6 +1143,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_DODGERBLUE 0x8208b222
 #define SVF_END 0x0b886f1c
 #define SVF_EXTRA_CONDENSED 0x4cb18509
+#define SVF_FILTERRES 0xd23e0c35
 #define SVF_FIREBRICK 0x7ce7a736
 #define SVF_FLORALWHITE 0xa97767c6
 #define SVF_FORESTGREEN 0x8eda0a29

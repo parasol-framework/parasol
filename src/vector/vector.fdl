@@ -32,6 +32,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "CLIP: Do not scale the graphic.  Clip it if it extends past imposed boundaries.",
     "END: Private")
 
+  enum("EM", { start=1, "Edge mode options for the convolve effect." },
+    "DUPLICATE: The input image is extended along its borders by duplicating the color values at its edges.",
+    "WRAP: The input image is extended by taking the color values from the opposite edge of the image.",
+    "NONE: The input image is extended with colour values of zero.")
+
   enum("PE", { start=1 }, "Move", "MoveRel", "Line", "LineRel", "HLine", "HLineRel", "VLine", "VLineRel",
     "Curve", "CurveRel", "Smooth", "SmoothRel", "QuadCurve", "QuadCurveRel", "QuadSmooth", "QuadSmoothRel",
     "Arc", "ArcRel", "ClosePath")
@@ -90,6 +95,30 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "ULTRA_EXPANDED",
     "EXTRA_EXPANDED")
 
+   enum("OP", { start=0, comment="" },
+    "OVER: The Porter-Duff 'over' operator, this is the default operation for standard alpha blending.",
+    "IN: The Porter-Duff 'in' operator; the input alpha channel has priority and the mix channel is secondary.",
+    "OUT: The Porter-Duff 'out' operator; the mix alpha channel is inversed with the input channel.",
+    "ATOP: The Porter-Duff 'atop' operator; the mix alpha channel has priority and the input channel does not occlude.",
+    "XOR: The Porter-Duff 'xor' operator; blend as normal but occlusion occurs when input and mix alpha channels interact.",
+    "ARITHMETIC: The SVG 'arithmetic' blending algorithm.",
+    "SCREEN: Produces a result brighter than the input.",
+    "MULTIPLY",
+    "LIGHTEN: Use the lighter colour components of the mix and input values.",
+    "DARKEN: Use the darker colour components of the mix and input values.",
+    "INVERT_RGB",
+    "INVERT",
+    "CONTRAST",
+    "DODGE: Gives a brighter result than SCREEN by decreasing the contrast between the input and mix colours.",
+    "BURN",
+    "HARD_LIGHT",
+    "SOFT_LIGHT",
+    "DIFFERENCE: Output the difference between the input and mix colours.",
+    "EXCLUSION: Produce the difference between the mix and input values around a reference point of mid-grey.",
+    "PLUS: Add the input and mix colour values together.",
+    "MINUS|SUBTRACT: The input colour value is subtracted from the mix.",
+    "OVERLAY: Combines the multiply and screen blend modes, with the mix determining tonal strength.")
+
   enum("VOF", { comment="Viewport overflow options." },
     "VISIBLE: The content is not clipped to the viewport's boundary.  This is the default.",
     "HIDDEN: All content is clipped to within the viewport's boundary.",
@@ -142,6 +171,18 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "ANGLED: Chevron style angles at 45 degrees either side of the peak and bottom edge.",
     "SAWTOOTH: Sawtooth patterns rise at 45 degrees to the peak, then direct 90 degrees to the bottom.")
 
+  enum("CM", { start=0, comment="Colour modes for ColourFX." },
+    "NONE: Do nothing.",
+    "MATRIX: Process the supplied 5x4 matrix values.",
+    "SATURATE: Adjust colour saturation with the first parameter defining the multiplier.",
+    "HUE_ROTATE: Rotate the hue by 0 - 360 degrees, controlled by the first parameter.",
+    "LUMINANCE_ALPHA: Converts each RGB value to greyscale, which then overrides the alpha channel.",
+    "CONTRAST: Adjust contrast using the first parameter to define the intensity from -1.0 to 1.0.",
+    "BRIGHTNESS: Adjust brightness using the first parameter to define the intensity.",
+    "HUE: Adjust the hue by 0 - 360 degrees using the first parameter.",
+    "DESATURATE: Desaturate the input completely so that it is rendered in greyscale.",
+    "COLOURISE: Colourise the input with the first 3 parameters used as RGB multipliers and the fourth parameter controlling intensity from 0 - 1.0.")
+
   flags("VGF", { comment="Gradient flags" },
     "RELATIVE_X1: X1 is relative",
     "RELATIVE_Y1: Y1 is relative",
@@ -167,6 +208,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "RENDER_TIME: Compute the drawing frame-rate for the RenderTime field.",
     "RESIZE: The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.",
     "OUTLINE_VIEWPORTS: Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.")
+
+  enum("TB", { start=0, "Function identifier for TurbulenceFX." },
+    "TURBULENCE: Use the standard turbulence function.",
+    "NOISE: Use the fractal noise function.")
 
   enum("VSM", { start=0, comments="Options for the VectorScene SampleMethod." },
     "AUTO: The default option is chosen by the system.  This will typically be bilinear, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.",
@@ -226,7 +271,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
 
   struct("GradientStop", { comment="Describes a colour stop for the VectorGradient Stops field." }, [[
    double Offset     # An offset in the range of 0 - 1.0
-   struct(DRGB) RGB  # A floating point RGB value.
+   struct(FRGB) RGB  # A floating point RGB value.
   ]])
 
   struct("Transition", { comment="For VectorTransition definitions" }, [[
@@ -843,6 +888,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "DODGERBLUE",
     "END",
     "EXTRA-CONDENSED",
+    "FILTERRES",
     "FIREBRICK",
     "FLORALWHITE",
     "FORESTGREEN",

@@ -155,7 +155,7 @@ public:
    struct rkVector *Morph; \
    DashedStroke *DashArray; \
    GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable; \
-   struct DRGB StrokeColour, FillColour; \
+   struct FRGB StrokeColour, FillColour; \
    std::vector<FeedbackSubscription> *FeedbackSubscriptions; \
    std::vector<InputSubscription> *InputSubscriptions; \
    std::vector<KeyboardSubscription> *KeyboardSubscriptions; \
@@ -281,7 +281,7 @@ extern void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
 extern ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 extern ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
 extern ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
-extern void  vecReadPainter(OBJECTPTR, CSTRING, struct DRGB *, struct rkVectorGradient **, struct rkVectorImage **, struct rkVectorPattern **);
+extern void  vecReadPainter(OBJECTPTR, CSTRING, struct FRGB *, struct rkVectorGradient **, struct rkVectorImage **, struct rkVectorPattern **);
 extern ERROR vecResetMatrix(struct VectorMatrix *);
 extern void  vecRewindPath(class SimpleVector *);
 extern ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);

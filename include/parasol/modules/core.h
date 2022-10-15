@@ -586,13 +586,6 @@ struct FRGB {
    FLOAT Alpha;  // Alpha component value
 };
 
-typedef struct DRGB {
-   DOUBLE Red;    // Red component value
-   DOUBLE Green;  // Green component value
-   DOUBLE Blue;   // Blue component value
-   DOUBLE Alpha;  // Alpha component value
-} DRGB;
-
 typedef struct RGB8 {
    UBYTE Red;    // Red component value
    UBYTE Green;  // Green component value
