@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>BlurFX</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Applies a Gaussian blur effect to an input source.</comment>
+    <version>1</version>
+    <id>f45d03b8</id>
+    <idstring>ID_BLURFX</idstring>
+    <category>Graphics</category>
+    <include>modules/blurfx.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>The BlurFX class performs a Gaussian blur on the input source.  The Gaussian blur kernel is an approximation of the normalized convolution <code>G(x,y) = H(x)I(y)</code> where <code>H(x) = exp(-x2/ (2s2)) / sqrt(2* pi*s2)</code> and <code>I(y) = exp(-y2/ (2t2)) / sqrt(2* pi*t2)</code> with 's' being the standard deviation in the x direction and 't' being the standard deviation in the y direction, as specified by <field>SX</field> and <field>SY</field>.</p>
+<p>At least one of <field>SX</field> or <field>SY</field> should be greater than 0, otherwise no rendering is performed.</p></description>
+    <source>
+      <file path="filters/">filter_blur.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Draw</name>
+      <comment>Draws object graphics to drawable areas.</comment>
+    </action>
+
+  </actions>
+
+  <fields>
+    <field>
+      <name>SX</name>
+      <comment>The standard deviation of the blur on the x axis.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (SX,SY) field values define the standard deviation of the gaussian blur along each axis.</p>
+<p>If either value is 0 or less, the effect is disabled on that axis.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>SY</name>
+      <comment>The standard deviation of the blur on the x axis.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (SX,SY) field values define the standard deviation of the gaussian blur along each axis.</p>
+<p>If either value is 0 or less, the effect is disabled on that axis.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>XMLDef</name>
+      <comment>Returns an SVG compliant XML string that describes the effect.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+    </field>
+
+  </fields>
+  <structs>
+  </structs>
+</book>

@@ -8,6 +8,17 @@
     <version>1</version>
     <copyright>Paul Manias © 2010-2022</copyright>
     <classes>
+      <class>BlurFX</class>
+      <class>ColourFX</class>
+      <class>CompositeFX</class>
+      <class>ConvolveFX</class>
+      <class>FilterEffect</class>
+      <class>FloodFX</class>
+      <class>ImageFX</class>
+      <class>MergeFX</class>
+      <class>MorphologyFX</class>
+      <class>OffsetFX</class>
+      <class>TurbulenceFX</class>
       <class>Vector</class>
       <class>VectorClip</class>
       <class>VectorColour</class>
@@ -510,11 +521,60 @@ Z: Close Path
       <const name="Y_MIN">Align to the top.</const>
     </constants>
 
+    <constants lookup="CM" comment="Colour modes for ColourFX.">
+      <const name="BRIGHTNESS">Adjust brightness using the first parameter to define the intensity.</const>
+      <const name="COLOURISE">Colourise the input with the first 3 parameters used as RGB multipliers and the fourth parameter controlling intensity from 0 - 1.0.</const>
+      <const name="CONTRAST">Adjust contrast using the first parameter to define the intensity from -1.0 to 1.0.</const>
+      <const name="DESATURATE">Desaturate the input completely so that it is rendered in greyscale.</const>
+      <const name="HUE">Adjust the hue by 0 - 360 degrees using the first parameter.</const>
+      <const name="HUE_ROTATE">Rotate the hue by 0 - 360 degrees, controlled by the first parameter.</const>
+      <const name="LUMINANCE_ALPHA">Converts each RGB value to greyscale, which then overrides the alpha channel.</const>
+      <const name="MATRIX">Process the supplied 5x4 matrix values.</const>
+      <const name="NONE">Do nothing.</const>
+      <const name="SATURATE">Adjust colour saturation with the first parameter defining the multiplier.</const>
+    </constants>
+
+    <constants lookup="EM">
+      <const name="DUPLICATE">The input image is extended along its borders by duplicating the color values at its edges.</const>
+      <const name="NONE">The input image is extended with colour values of zero.</const>
+      <const name="WRAP">The input image is extended by taking the color values from the opposite edge of the image.</const>
+    </constants>
+
     <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
       <const name="CHILD_HAS_FOCUS">A child of the vector has gained the user focus.</const>
       <const name="HAS_FOCUS">The vector has gained the user focus.</const>
       <const name="LOST_FOCUS">The vector has lost the user focus.</const>
       <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
+    </constants>
+
+    <constants lookup="MOP" comment="MorphologyFX options.">
+      <const name="DILATE">Dilate (fatten) the input source.</const>
+      <const name="ERODE">Erode (thin) the input source.</const>
+    </constants>
+
+    <constants lookup="OP" comment="Operators for CompositionFX.">
+      <const name="ARITHMETIC">The SVG 'arithmetic' blending algorithm.</const>
+      <const name="ATOP">The Porter-Duff 'atop' operator; the mix alpha channel has priority and the input channel does not occlude.</const>
+      <const name="BURN"/>
+      <const name="CONTRAST"/>
+      <const name="DARKEN">Use the darker colour components of the mix and input values.</const>
+      <const name="DIFFERENCE">Output the difference between the input and mix colours.</const>
+      <const name="DODGE">Gives a brighter result than SCREEN by decreasing the contrast between the input and mix colours.</const>
+      <const name="EXCLUSION">Produce the difference between the mix and input values around a reference point of mid-grey.</const>
+      <const name="HARD_LIGHT"/>
+      <const name="IN">The Porter-Duff 'in' operator; the input alpha channel has priority and the mix channel is secondary.</const>
+      <const name="INVERT"/>
+      <const name="INVERT_RGB"/>
+      <const name="LIGHTEN">Use the lighter colour components of the mix and input values.</const>
+      <const name="MINUS">The input colour value is subtracted from the mix.</const>
+      <const name="MULTIPLY"/>
+      <const name="OUT">The Porter-Duff 'out' operator; the mix alpha channel is inversed with the input channel.</const>
+      <const name="OVER">The Porter-Duff 'over' operator, this is the default operation for standard alpha blending.</const>
+      <const name="OVERLAY">Combines the multiply and screen blend modes, with the mix determining tonal strength.</const>
+      <const name="PLUS">Add the input and mix colour values together.</const>
+      <const name="SCREEN">Produces a result brighter than the input.</const>
+      <const name="SOFT_LIGHT"/>
+      <const name="XOR">The Porter-Duff 'xor' operator; blend as normal but occlusion occurs when input and mix alpha channels interact.</const>
     </constants>
 
     <constants lookup="PE">
@@ -746,6 +806,10 @@ Z: Close Path
       <field name="Offset" type="DOUBLE">An offset in the range of 0 - 1.0</field>
       <field name="RGB" type="struct FRGB">A floating point RGB value.</field>
     </struct>
+
+    <struct name="MergeSource" comment="Input source declaration for MergeFX">
+      <field name="SourceType" type="LONG" lookup="VSF">The type of the required source.</field>
+      <field name="Effect" type="struct rkFilterEffect *">Effect pointer if the SourceType is REFERENCE.</field>
     </struct>
 
     <struct name="PathCommand" comment="Base structure for path commands.">

@@ -46,6 +46,30 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 
 //********************************************************************************************************************
 
+static void parse_input(objSVG *Self, OBJECTPTR Effect, CSTRING Input, FIELD SourceField, FIELD RefField)
+{
+   switch (StrHash(Input, FALSE)) {
+      case SVF_SOURCEGRAPHIC:   SetLong(Effect, SourceField, VSF_GRAPHIC); break;
+      case SVF_SOURCEALPHA:     SetLong(Effect, SourceField, VSF_ALPHA); break;
+      case SVF_BACKGROUNDIMAGE: SetLong(Effect, SourceField, VSF_BKGD); break;
+      case SVF_BACKGROUNDALPHA: SetLong(Effect, SourceField, VSF_BKGD_ALPHA); break;
+      case SVF_FILLPAINT:       SetLong(Effect, SourceField, VSF_FILL); break;
+      case SVF_STROKEPAINT:     SetLong(Effect, SourceField, VSF_STROKE); break;
+      default:  {
+         if (Self->Effects.contains(Input)) {
+            SetPointer(Effect, RefField, Self->Effects[Input]);
+         }
+         else {
+            parasol::Log log;
+            log.warning("Unrecognised input '%s'", Input);
+         }
+         break;
+      }
+   }
+}
+
+//********************************************************************************************************************
+
 static LONG count_stops(objSVG *Self, const XMLTag *Tag)
 {
    LONG stopcount = 0;

@@ -13,8 +13,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
 
   flags("VF", { comment="Optional flags and indicators for the Vector class." },
      "DISABLED: The vector is disabled and user input should be ignored.",
-     "HAS_FOCUS: The vector holds the user's input focus."
-     )
+     "HAS_FOCUS: The vector holds the user's input focus.")
 
   enum("VUNIT", { start=0 },
     "UNDEFINED",
@@ -95,7 +94,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "ULTRA_EXPANDED",
     "EXTRA_EXPANDED")
 
-   enum("OP", { start=0, comment="" },
+  enum("MOP", { start=0, comment="MorphologyFX options." },
+    "ERODE: Erode (thin) the input source.",
+    "DILATE: Dilate (fatten) the input source.")
+
+   enum("OP", { start=0, comment="Operators for CompositionFX." },
     "OVER: The Porter-Duff 'over' operator, this is the default operation for standard alpha blending.",
     "IN: The Porter-Duff 'in' operator; the input alpha channel has priority and the mix channel is secondary.",
     "OUT: The Porter-Duff 'out' operator; the mix alpha channel is inversed with the input channel.",
@@ -435,13 +438,59 @@ struct OrderedVector {
    WORD ChangeCounter;
   ]])
 
-  class("VectorFilter", { src="filters/filter.cpp", output="filters/filter_def.c" }, [[
+  class("FilterEffect", { src="filters/filter_effect.cpp", output="filters/filter_effect_def.c" }, [[
+    obj(FilterEffect) Next  # Next filter in the chain.
+    obj(FilterEffect) Prev  # Previous filter in the chain.
+    obj(Bitmap) Target      # Target bitmap for rendering the effect.
+    obj(FilterEffect) Input # The effect uses another effect as an input.
+    obj(FilterEffect) Mix   # Reference to an additional effect for mixing, e.g. compositing
+    double X                # Primitive x coordinate.
+    double Y                # Primitive y coordinate.
+    double Width            # Primitive width.
+    double Height           # Primitive height.
+    int(DMF) Dimensions     # Primitive dimensions.
+    int(VSF) SourceType     # Desired source input.
+    int(VSF) MixType        # Optional input for mixing.
+  ]],
+  [[
+   struct rkVectorFilter *Filter; // Direct reference to the parent filter
+   UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
+  ]])
+
+  struct("MergeSource", { comment="Input source declaration for MergeFX" }, [[
+   int(VSF) SourceType        # The type of the required source.
+   obj(FilterEffect) Effect   # Effect pointer if the SourceType is REFERENCE.
+  ]])
+
+  class("ImageFX",        { src="filters/filter_image.cpp", output="filters/filter_image_def.c", comment="Image filter support class." })
+
+  class("BlurFX",         { src="filters/filter_blur.cpp", output="filters/filter_blur_def.c", comment="Blur filter support class." })
+
+  class("ColourFX",       { src="filters/filter_colourmatrix.cpp", output="filters/filter_colourmatrix_def.c", comment="Colour filter support class." })
+
+  class("CompositeFX",    { src="filters/filter_composite.cpp", output="filters/filter_composite_def.c", comment="Composite filter support class." })
+
+  class("ConvolveFX",     { src="filters/filter_convolve.cpp", output="filters/filter_convolve_def.c", comment="Convolve filter support class." })
+
+  class("FloodFX",        { src="filters/filter_flood.cpp", output="filters/filter_flood_def.c", comment="Flood filter support class." })
+
+  class("MergeFX",        { src="filters/filter_merge.cpp", output="filters/filter_merge_def.c", comment="Merge filter support class." })
+
+  class("MorphologyFX",   { src="filters/filter_morphology.cpp", output="filters/filter_morphology_def.c", comment="Morphology filter support class." })
+
+  class("OffsetFX",       { src="filters/filter_offset.cpp", output="filters/filter_offset_def.c", comment="Offset filter support class." })
+
+  class("TurbulenceFX",   { src="filters/filter_turbulence.cpp", output="filters/filter_turbulence_def.c", comment="Turbulence filter support class." })
+
+  class("VectorFilter",   { src="filters/filter.cpp", output="filters/filter_def.c" }, [[
     double X                  # Left-most position of filter area
     double Y                  # Top-most position of filter area
     double Width              # Width of filter area
     double Height             # Height of filter area
     double Opacity            # Level of opacity from 0 - 1.0
     obj(VectorFilter) Inherit # Reference to another pattern from which to inherit attributes
+    int ResX                  # Width of the intermediate images in pixels
+    int ResY                  # Height of the intermediate images in pixels
     int(VUNIT) Units          # VUNIT constant
     int(VUNIT) PrimitiveUnits # VUNIT constant
     int Dimensions            # Flags for detailing area values
@@ -454,11 +503,11 @@ struct OrderedVector {
    struct rkVectorScene *Scene;       // Scene that the filter belongs to.
    objBitmap *SourceGraphic;          // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
    objBitmap *BkgdBitmap;             // Target bitmap supplied by Scene.acDraw()
-   VectorEffect *ActiveEffect;        // Current effect being processed by the pipeline.
-   std::vector<std::unique_ptr<VectorEffect>> Effects;
+   objFilterEffect *ActiveEffect;     // Current effect being processed by the pipeline.
+   objFilterEffect *Effects;          // Pointer to the first effect in the chain.
+   objFilterEffect *LastEffect;
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
    ClipRectangle VectorClip;          // Clipping region of the vector client (reflects the vector bounds)
-   STRING Path;                       // Affix this path to file references (e.g. feImage).
    UBYTE BankIndex;
    bool Rendered;
    bool Disabled;

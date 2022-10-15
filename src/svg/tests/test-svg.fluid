@@ -66,12 +66,13 @@ function testVStripes()  hashTestSVG('patterns/vstripes.svg', 0xc8ab997e) end
 
 function testComposite()    hashTestSVG('filters/composite.svg', 0x43b5a2d2) end
 function testConvolve()     hashTestSVG('filters/convolve.svg', 0xf4019572) end
+function testW3Composite()  hashTestSVG('filters/w3-composite.svg', 0xb23c6afd) end
 function testW3Filters()    hashTestSVG('filters/w3-filters.svg', 0x4065d9d1) end
 function testW3Filters2()   hashTestSVG('filters/w3-filters2.svg', 0xfdc2450b) end
 function testW3Image()      hashTestSVG('filters/w3-image.svg', 0x2b8cece4) end
 function testW3Morphology() hashTestSVG('filters/w3-morphology.svg', 0xa34245c2) end
 function testW3Offset()     hashTestSVG('filters/w3-offset.svg', 0x591f853b) end
-function testW3Turbulence() hashTestSVG('filters/w3-turbulence.svg', 0x2c245e10) end
+function testW3Turbulence() hashTestSVG('filters/w3-turbulence.svg', 0xf6058398) end
 
 function testTransformations()  hashTestSVG('transforms/transformations.svg', 0xcc933198) end
 function testW3AspectRatio()    hashTestSVG('transforms/w3-aspectratio.svg', 0x1ffa1cea) end
@@ -100,6 +101,7 @@ function testTiger()  hashTestSVG('images/tiger.svg', 0x3f0e95a6) end
         -- Filters
         'testComposite',
         'testConvolve',
+        'testW3Composite',
         'testW3Filters',
         'testW3Filters2',
         'testW3Image',

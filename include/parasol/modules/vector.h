@@ -126,6 +126,13 @@
 #define VTS_ULTRA_EXPANDED 10
 #define VTS_EXTRA_EXPANDED 11
 
+// MorphologyFX options.
+
+#define MOP_ERODE 0
+#define MOP_DILATE 1
+
+// Operators for CompositionFX.
+
 #define OP_OVER 0
 #define OP_IN 1
 #define OP_OUT 2
@@ -562,6 +569,77 @@ typedef struct rkVectorGradient {
 #endif
 } objVectorGradient;
 
+// FilterEffect class definition
+
+#define VER_FILTEREFFECT (1.000000)
+
+typedef struct rkFilterEffect {
+   OBJECT_HEADER
+   struct rkFilterEffect * Next;    // Next filter in the chain.
+   struct rkFilterEffect * Prev;    // Previous filter in the chain.
+   struct rkBitmap * Target;        // Target bitmap for rendering the effect.
+   struct rkFilterEffect * Input;   // The effect uses another effect as an input.
+   struct rkFilterEffect * Mix;     // Reference to an additional effect for mixing, e.g. compositing
+   DOUBLE X;                        // Primitive x coordinate.
+   DOUBLE Y;                        // Primitive y coordinate.
+   DOUBLE Width;                    // Primitive width.
+   DOUBLE Height;                   // Primitive height.
+   LONG   Dimensions;               // Primitive dimensions.
+   LONG   SourceType;               // Desired source input.
+   LONG   MixType;                  // Optional input for mixing.
+
+#ifdef PRV_FILTEREFFECT
+   struct rkVectorFilter *Filter; // Direct reference to the parent filter
+   UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
+  
+#endif
+} objFilterEffect;
+
+struct MergeSource {
+   LONG SourceType;                   // The type of the required source.
+   struct rkFilterEffect * Effect;    // Effect pointer if the SourceType is REFERENCE.
+};
+
+// ImageFX class definition
+
+#define VER_IMAGEFX (1.000000)
+
+// BlurFX class definition
+
+#define VER_BLURFX (1.000000)
+
+// ColourFX class definition
+
+#define VER_COLOURFX (1.000000)
+
+// CompositeFX class definition
+
+#define VER_COMPOSITEFX (1.000000)
+
+// ConvolveFX class definition
+
+#define VER_CONVOLVEFX (1.000000)
+
+// FloodFX class definition
+
+#define VER_FLOODFX (1.000000)
+
+// MergeFX class definition
+
+#define VER_MERGEFX (1.000000)
+
+// MorphologyFX class definition
+
+#define VER_MORPHOLOGYFX (1.000000)
+
+// OffsetFX class definition
+
+#define VER_OFFSETFX (1.000000)
+
+// TurbulenceFX class definition
+
+#define VER_TURBULENCEFX (1.000000)
+
 // VectorFilter class definition
 
 #define VER_VECTORFILTER (1.000000)
@@ -574,6 +652,8 @@ typedef struct rkVectorFilter {
    DOUBLE Height;                      // Height of filter area
    DOUBLE Opacity;                     // Level of opacity from 0 - 1.0
    struct rkVectorFilter * Inherit;    // Reference to another pattern from which to inherit attributes
+   LONG   ResX;                        // Width of the intermediate images in pixels
+   LONG   ResY;                        // Height of the intermediate images in pixels
    LONG   Units;                       // VUNIT constant
    LONG   PrimitiveUnits;              // VUNIT constant
    LONG   Dimensions;                  // Flags for detailing area values
@@ -586,11 +666,11 @@ typedef struct rkVectorFilter {
    struct rkVectorScene *Scene;       // Scene that the filter belongs to.
    objBitmap *SourceGraphic;          // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
    objBitmap *BkgdBitmap;             // Target bitmap supplied by Scene.acDraw()
-   VectorEffect *ActiveEffect;        // Current effect being processed by the pipeline.
-   std::vector<std::unique_ptr<VectorEffect>> Effects;
+   objFilterEffect *ActiveEffect;     // Current effect being processed by the pipeline.
+   objFilterEffect *Effects;          // Pointer to the first effect in the chain.
+   objFilterEffect *LastEffect;
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
    ClipRectangle VectorClip;          // Clipping region of the vector client (reflects the vector bounds)
-   STRING Path;                       // Affix this path to file references (e.g. feImage).
    UBYTE BankIndex;
    bool Rendered;
    bool Disabled;

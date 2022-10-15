@@ -6,7 +6,7 @@
     <name>VectorFilter</name>
     <type>class</type>
     <module>Vector</module>
-    <comment>Filters can be applied as post-effects to rendered vectors.</comment>
+    <comment>Constructs filter pipelines that manipulate rendered vectors.</comment>
     <version>1</version>
     <id>8c6e727e</id>
     <idstring>ID_VECTORFILTER</idstring>
@@ -14,10 +14,10 @@
     <include>modules/vectorfilter.h</include>
     <copyright>Paul Manias © 2010-2022</copyright>
     <description>
-<p>The VectorFilter class allows post-effect filters to be applied to vectors once they have been rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard. Once created, a filter can be utilised by vector objects through their Filter field.  By way of example in SVG:</p>
-<pre>&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(#FOMTest)"/&gt;
+<p>The VectorFilter class allows post-effect filters to be applied to vectors as they are being rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard. Once created, a filter can be utilised by vector objects through their Filter field.  By way of example in SVG:</p>
+<pre>&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(#EffectPipeline)"/&gt;
 </pre>
-<p>Filter instructions are passed to VectorFilter objects via the XML data feed, where they will be parsed into an internal list of instructions.  It is not possible to modify the instructions once they have been parsed, but they can be cleared and a new set of instructions can be applied.</p>
+<p>Filter pipelines are constructed from effects based on the <class name="FilterEffect">FilterEffect</class> class, such as <class name="CompositeFX">CompositeFX</class> and <class name="FloodFX">FloodFX</class>. Construct a new pipeline by creating effect objects and placing them under the ownership of the VectorFilter that will be supporting them.  The VectorFilter will automatically detect them and they will be processed in the order in which they are added.  It is most optimal to create each pipeline in advance, and a new VectorFilter object should be created for each pipeline as necessary.</p>
 <p>It is important to note that filter effects are CPU intensive tasks and real-time performance may be disappointing. If this is an issue, consider pre-rendering the filter effects in advance and caching the results in memory or files.</p>
 <p>It is a requirement that VectorFilter objects are owned by the <class name="VectorScene">VectorScene</class> they are targeting.</p></description>
     <source>
@@ -28,25 +28,7 @@
   <actions>
     <action>
       <name>Clear</name>
-      <comment>Clears all filter instructions from the object.</comment>
-    </action>
-
-    <action>
-      <name>DataFeed</name>
-      <comment>Filter effects are parsed via the DataFeed action.</comment>
-      <description>
-<p>Filter instructions can be added to a VectorFilter object by parsing them as an SVG document.  The instructions must be passed as a sequential list that is formatted to SVG guidelines.</p>
-<p>The following example illustrates:</p>
-<pre>&lt;feOffset in="BackgroundImage" dx="0" dy="125"/&gt;
-&lt;feGaussianBlur stdDeviation="8" result="blur"/&gt;
-&lt;feMerge&gt;
-  &lt;feMergeNode in="blur"/&gt;
-  &lt;feMergeNode in="SourceGraphic"/&gt;
-&lt;/feMerge&gt;
-</pre>
-<p>Unsupported or invalid elements will be reported in debug output and then ignored, allowing the parser to process as many instructions as possible.</p>
-<p>Multiple calls to this action will append to existing effects.  If a reset of existing effects is necessary, call the @Clear action before appending new effects.</p>
-      </description>
+      <comment>Removes all filter effects.</comment>
     </action>
 
   </actions>
@@ -127,16 +109,6 @@
     </field>
 
     <field>
-      <name>Path</name>
-      <comment>Affix this path to all file references in the filter definition.</comment>
-      <access write="S">Set</access>
-      <type>STRING</type>
-      <description>
-<p>Setting the Path field is recommended if the filter contains sub-classes that make file references, such as a filter image.  Any relative file reference will be prefixed with the path string that is specified here.</p>
-      </description>
-    </field>
-
-    <field>
       <name>PrimitiveUnits</name>
       <comment>Alters the behaviour of some effects that support alternative position calculations.</comment>
       <access read="R" write="W">Read/Write</access>
@@ -144,6 +116,26 @@
       <description>
 <p>PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is <code>USERSPACE</code>.  When set to <code>BOUNDING_BOX</code>, the effect may calculate its dimensions strictly based on the client vector using a relative coordinate space of (0,0,100%,100%).</p>
 <types lookup="VUNIT"/>
+      </description>
+    </field>
+
+    <field>
+      <name>ResX</name>
+      <comment>Width of the intermediate images, measured in pixels.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>The combination of ResX and ResY define the available space for rendering of filter effects.  It is recommended that the client does not set these values because the default 1:1 pixel ratio is appropriate in the majority of circumstances.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ResY</name>
+      <comment>Height of the intermediate images, measured in pixels.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>The combination of ResX and ResY define the available space for rendering of filter effects.  It is recommended that the client does not set these values because the default 1:1 pixel ratio is appropriate in the majority of circumstances.</p>
       </description>
     </field>
 

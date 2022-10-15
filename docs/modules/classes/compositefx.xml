@@ -1,0 +1,108 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>CompositeFX</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Composite two sources together with a mixing algorithm.</comment>
+    <version>1</version>
+    <id>a9110956</id>
+    <idstring>ID_COMPOSITEFX</idstring>
+    <category>Graphics</category>
+    <include>modules/compositefx.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>This filter combines the Input and Mix sources using either one of the Porter-Duff compositing operations, or a colour blending algorithm.</p></description>
+    <source>
+      <file path="filters/">filter_composite.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Draw</name>
+      <comment>Render the effect to the target bitmap.</comment>
+    </action>
+
+  </actions>
+
+  <fields>
+    <field>
+      <name>K1</name>
+      <comment>Input value for the arithmetic operation.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
+      <name>K2</name>
+      <comment>Input value for the arithmetic operation.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
+      <name>K3</name>
+      <comment>Input value for the arithmetic operation.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
+      <name>K4</name>
+      <comment>Input value for the arithmetic operation.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
+      <name>Operator</name>
+      <comment>The compositing algorithm to use for rendering.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type lookup="OP">INT</type>
+      <description>
+<p>Setting the Operator will determine the algorithm that is used for compositing.  The default is <code>OVER</code>.</p>
+<types lookup="OP"/>
+      </description>
+    </field>
+
+    <field>
+      <name>XMLDef</name>
+      <comment>Returns an SVG compliant XML string that describes the filter.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="OP" comment="Operators for CompositionFX.">
+      <const name="ARITHMETIC">The SVG 'arithmetic' blending algorithm.</const>
+      <const name="ATOP">The Porter-Duff 'atop' operator; the mix alpha channel has priority and the input channel does not occlude.</const>
+      <const name="BURN"/>
+      <const name="CONTRAST"/>
+      <const name="DARKEN">Use the darker colour components of the mix and input values.</const>
+      <const name="DIFFERENCE">Output the difference between the input and mix colours.</const>
+      <const name="DODGE">Gives a brighter result than SCREEN by decreasing the contrast between the input and mix colours.</const>
+      <const name="EXCLUSION">Produce the difference between the mix and input values around a reference point of mid-grey.</const>
+      <const name="HARD_LIGHT"/>
+      <const name="IN">The Porter-Duff 'in' operator; the input alpha channel has priority and the mix channel is secondary.</const>
+      <const name="INVERT"/>
+      <const name="INVERT_RGB"/>
+      <const name="LIGHTEN">Use the lighter colour components of the mix and input values.</const>
+      <const name="MINUS">The input colour value is subtracted from the mix.</const>
+      <const name="MULTIPLY"/>
+      <const name="OUT">The Porter-Duff 'out' operator; the mix alpha channel is inversed with the input channel.</const>
+      <const name="OVER">The Porter-Duff 'over' operator, this is the default operation for standard alpha blending.</const>
+      <const name="OVERLAY">Combines the multiply and screen blend modes, with the mix determining tonal strength.</const>
+      <const name="PLUS">Add the input and mix colour values together.</const>
+      <const name="SCREEN">Produces a result brighter than the input.</const>
+      <const name="SOFT_LIGHT"/>
+      <const name="XOR">The Porter-Duff 'xor' operator; blend as normal but occlusion occurs when input and mix alpha channels interact.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

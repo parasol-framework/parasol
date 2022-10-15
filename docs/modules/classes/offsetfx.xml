@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>OffsetFX</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>A filter effect that offsets the position of an input source.</comment>
+    <version>1</version>
+    <id>8e3b5bea</id>
+    <idstring>ID_OFFSETFX</idstring>
+    <category>Graphics</category>
+    <include>modules/offsetfx.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>This filter offsets the input image relative to its current position in the image space by the specified vector of <code>(XOffset,YOffset)</code>.</p></description>
+    <source>
+      <file path="filters/">filter_offset.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Draw</name>
+      <comment>Draws object graphics to drawable areas.</comment>
+    </action>
+
+  </actions>
+
+  <fields>
+    <field>
+      <name>XMLDef</name>
+      <comment>Returns an SVG compliant XML string that describes the effect.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+    </field>
+
+    <field>
+      <name>XOffset</name>
+      <comment>The delta X coordinate for the input graphic.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>YOffset</name>
+      <comment>The delta Y coordinate for the input graphic.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.</p>
+      </description>
+    </field>
+
+  </fields>
+  <structs>
+  </structs>
+</book>

@@ -36,6 +36,7 @@ typedef struct rkSVG {
    FUNCTION FrameCallback;
    struct svgAnimation *Animations;
    std::unordered_map<std::string, svgID> IDs;
+   std::unordered_map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
    svgInherit *Inherit;
    DOUBLE SVGVersion;
    TIMER AnimationTimer;
