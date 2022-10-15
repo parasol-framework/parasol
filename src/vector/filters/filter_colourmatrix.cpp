@@ -474,13 +474,13 @@ Lookup: CM
 
 *********************************************************************************************************************/
 
-static COLOURFX_GET_Mode(objColourFX *Self, LONG *Value)
+static ERROR COLOURFX_GET_Mode(objColourFX *Self, LONG *Value)
 {
    *Value = Self->Mode;
    return ERR_Okay;
 }
 
-static COLOURFX_SET_Mode(objColourFX *Self, LONG Value)
+static ERROR COLOURFX_SET_Mode(objColourFX *Self, LONG Value)
 {
    Self->Mode = Value;
    return ERR_Okay;
@@ -498,14 +498,14 @@ When values are not defined, they default to 0.
 
 *********************************************************************************************************************/
 
-static COLOURFX_GET_Values(objColourFX *Self, DOUBLE **Array, LONG *Elements)
+static ERROR COLOURFX_GET_Values(objColourFX *Self, DOUBLE **Array, LONG *Elements)
 {
    *Array = Self->Values;
    *Elements = Self->TotalValues;
    return ERR_Okay;
 }
 
-static COLOURFX_SET_Values(objColourFX *Self, DOUBLE *Array, LONG Elements)
+static ERROR COLOURFX_SET_Values(objColourFX *Self, DOUBLE *Array, LONG Elements)
 {
    if (Elements > ARRAYSIZE(Self->Values)) return ERR_InvalidValue;
    CopyMemory(Array, Self->Values, Elements * sizeof(DOUBLE));
