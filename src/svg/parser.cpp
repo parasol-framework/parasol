@@ -3,12 +3,11 @@
 
 static LONG parse_aspect_ratio(CSTRING Value)
 {
-   LONG flags = 0;
-
    while ((*Value) and (*Value <= 0x20)) Value++;
 
-   if (!StrMatch("none", Value)) flags = ARF_NONE;
+   if (!StrMatch("none", Value)) return ARF_NONE;
    else {
+      LONG flags = 0;
       if (!StrCompare("xMin", Value, 4, 0)) { flags |= ARF_X_MIN; Value += 4; }
       else if (!StrCompare("xMid", Value, 4, 0)) { flags |= ARF_X_MID; Value += 4; }
       else if (!StrCompare("xMax", Value, 4, 0)) { flags |= ARF_X_MAX; Value += 4; }
@@ -21,9 +20,8 @@ static LONG parse_aspect_ratio(CSTRING Value)
 
       if (!StrCompare("meet", Value, 4, 0)) { flags |= ARF_MEET; }
       else if (!StrCompare("slice", Value, 5, 0)) { flags |= ARF_SLICE; }
+      return flags;
    }
-
-   return flags;
 }
 
 //****************************************************************************
@@ -255,11 +253,7 @@ static ERROR parse_fe_blur(objSVG *Self, objVectorFilter *Filter, const XMLTag *
 
          case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
-            if (!Self->Effects.contains(std::string(val))) {
-               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
-            }
-            break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
 
@@ -287,16 +281,9 @@ static ERROR parse_fe_offset(objSVG *Self, objVectorFilter *Filter, const XMLTag
       ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
       switch(hash) {
          case SVF_DX: SetLong(fx, FID_XOffset, StrToInt(val)); break;
-
          case SVF_DY: SetLong(fx, FID_YOffset, StrToInt(val)); break;
-
          case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
-
-         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
-            if (!Self->Effects.contains(std::string(val))) {
-               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
-            }
-            break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
 
@@ -460,11 +447,7 @@ static ERROR parse_fe_colour_matrix(objSVG *Self, objVectorFilter *Filter, const
 
          case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
-            if (!Self->Effects.contains(std::string(val))) {
-               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
-            }
-            break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
 
@@ -563,11 +546,7 @@ static ERROR parse_fe_convolve_matrix(objSVG *Self, objVectorFilter *Filter, con
 
          case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
-            if (!Self->Effects.contains(std::string(val))) {
-               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
-            }
-            break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
 
@@ -671,11 +650,7 @@ static ERROR parse_fe_composite(objSVG *Self, objVectorFilter *Filter, const XML
 
          case SVF_IN2: parse_input(Self, &fx->Head, val, FID_MixType, FID_Mix); break;
 
-         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
-            if (!Self->Effects.contains(std::string(val))) {
-               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
-            }
-            break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
 
@@ -728,11 +703,7 @@ static ERROR parse_fe_flood(objSVG *Self, objVectorFilter *Filter, const XMLTag 
 
          case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
-            if (!Self->Effects.contains(std::string(val))) {
-               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
-            }
-            break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
 
@@ -792,11 +763,7 @@ static ERROR parse_fe_turbulence(objSVG *Self, objVectorFilter *Filter, const XM
 
          case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
-            if (!Self->Effects.contains(std::string(val))) {
-               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
-            }
-            break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
 
@@ -844,11 +811,7 @@ static ERROR parse_fe_morphology(objSVG *Self, objVectorFilter *Filter, const XM
 
          case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
-            if (!Self->Effects.contains(std::string(val))) {
-               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
-            }
-            break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
 
@@ -895,31 +858,9 @@ static ERROR parse_fe_image(objSVG *Self, objVectorFilter *Filter, const XMLTag 
             break;
          }
 
-         case SVF_PRESERVEASPECTRATIO: {
-            LONG flags = 0;
-            while ((*val) and (*val <= 0x20)) val++;
-            if (!StrMatch("none", val)) flags = ARF_NONE;
-            else {
-               if (!StrCompare("xMin", val, 4, 0)) { flags |= ARF_X_MIN; val += 4; }
-               else if (!StrCompare("xMid", val, 4, 0)) { flags |= ARF_X_MID; val += 4; }
-               else if (!StrCompare("xMax", val, 4, 0)) { flags |= ARF_X_MAX; val += 4; }
+         case SVF_PRESERVEASPECTRATIO: SetLong(fx, FID_AspectRatio, parse_aspect_ratio(val)); break;
 
-               if (!StrCompare("yMin", val, 4, 0)) { flags |= ARF_Y_MIN; val += 4; }
-               else if (!StrCompare("yMid", val, 4, 0)) { flags |= ARF_Y_MID; val += 4; }
-               else if (!StrCompare("yMax", val, 4, 0)) { flags |= ARF_Y_MAX; val += 4; }
-
-               while ((*val) and (*val <= 0x20)) val++;
-
-               if (!StrCompare("meet", val, 4, 0)) { flags |= ARF_MEET; }
-               else if (!StrCompare("slice", val, 5, 0)) { flags |= ARF_SLICE; }
-            }
-            SetLong(fx, FID_AspectRatio, flags);
-            break;
-         }
-
-         case SVF_XLINK_HREF:
-            path = val;
-            break;
+         case SVF_XLINK_HREF: path = val; break;
 
          case SVF_EXTERNALRESOURCESREQUIRED: // If true and the image cannot be loaded, return a fatal error code.
             if (!StrMatch("true", val)) image_required = true;
@@ -927,11 +868,7 @@ static ERROR parse_fe_image(objSVG *Self, objVectorFilter *Filter, const XMLTag 
 
          case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: // Name the effect.  Allows another effect to use the result as 'in' and create a pipeline
-            if (!Self->Effects.contains(std::string(val))) {
-               Self->Effects.emplace(std::string(val), (objFilterEffect *)fx);
-            }
-            break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
 

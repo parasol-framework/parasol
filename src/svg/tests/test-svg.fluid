@@ -65,7 +65,7 @@ function testSnake()     hashTestSVG('patterns/snake.svg', 0xd8200b23) end
 function testVStripes()  hashTestSVG('patterns/vstripes.svg', 0xc8ab997e) end
 
 function testComposite()    hashTestSVG('filters/composite.svg', 0x43b5a2d2) end
-function testConvolve()     hashTestSVG('filters/convolve.svg', 0xf4019572) end
+function testConvolve()     hashTestSVG('filters/convolve.svg', 0x84f79a99) end
 function testW3Composite()  hashTestSVG('filters/w3-composite.svg', 0xb23c6afd) end
 function testW3Filters()    hashTestSVG('filters/w3-filters.svg', 0x4065d9d1) end
 function testW3Filters2()   hashTestSVG('filters/w3-filters2.svg', 0xfdc2450b) end

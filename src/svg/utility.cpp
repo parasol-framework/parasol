@@ -46,6 +46,15 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 
 //********************************************************************************************************************
 
+static void parse_result(objSVG *Self, objFilterEffect *Effect, CSTRING Value)
+{
+   if (!Self->Effects.contains(std::string(Value))) {
+      Self->Effects.emplace(std::string(Value), Effect);
+   }
+}
+
+//********************************************************************************************************************
+
 static void parse_input(objSVG *Self, OBJECTPTR Effect, CSTRING Input, FIELD SourceField, FIELD RefField)
 {
    switch (StrHash(Input, FALSE)) {
