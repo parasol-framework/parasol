@@ -1142,7 +1142,7 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
          svgState state;
          reset_state(&state);
-         process_children(Self, XML, &state, Tag->Child, pattern->Viewport);
+         process_children(Self, XML, &state, Tag->Child, (OBJECTPTR)pattern->Viewport);
          if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, pattern);
       }
       else {
