@@ -4792,7 +4792,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
       if (Self->Error) unload_doc(Self, 0);
 
       Self->UpdateLayout = TRUE;
-      if (Self->Head::Flags & NF_INITIALISED) redraw(Self, TRUE);
+      if (Self->initialised()) redraw(Self, TRUE);
 
       if (Self->Buffer) { FreeResource(Self->Buffer); Self->Buffer = NULL; }
       if (Self->Temp)   { FreeResource(Self->Temp); Self->Temp = NULL; }

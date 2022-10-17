@@ -413,7 +413,7 @@ INLINE ERROR vpSetCommandList(APTR Ob, APTR Commands, LONG Size) {
 
 #define VER_VECTORCOLOUR (1.000000)
 
-typedef class rkVectorColour : public Head {
+typedef class rkVectorColour : public BaseClass {
    public:
    DOUBLE Red;
    DOUBLE Green;
@@ -431,7 +431,7 @@ struct OrderedVector {
 
 #define VER_VECTORSCENE (1.000000)
 
-typedef class rkVectorScene : public Head {
+typedef class rkVectorScene : public BaseClass {
    public:
    LARGE    RenderTime;                 // Microseconds elapsed during the last rendering operation.
    DOUBLE   Gamma;                      // Not currently implemented.
@@ -498,7 +498,7 @@ INLINE ERROR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) {
 
 #define VER_VECTORIMAGE (1.000000)
 
-typedef class rkVectorImage : public Head {
+typedef class rkVectorImage : public BaseClass {
    public:
    DOUBLE X;                      // Starting horizontal coordinate
    DOUBLE Y;                      // Starting vertical coordinate
@@ -514,7 +514,7 @@ typedef class rkVectorImage : public Head {
 
 #define VER_VECTORPATTERN (1.000000)
 
-typedef class rkVectorPattern : public Head {
+typedef class rkVectorPattern : public BaseClass {
    public:
    DOUBLE X;                              // Starting horizontal coordinate
    DOUBLE Y;                              // Starting vertical coordinate
@@ -540,7 +540,7 @@ typedef class rkVectorPattern : public Head {
 
 #define VER_VECTORGRADIENT (1.000000)
 
-typedef class rkVectorGradient : public Head {
+typedef class rkVectorGradient : public BaseClass {
    public:
    DOUBLE X1;                            // Starting X coordinate of the gradient 'line'
    DOUBLE Y1;                            // Starting Y coordinate of the gradient 'line'
@@ -573,7 +573,7 @@ typedef class rkVectorGradient : public Head {
 
 #define VER_FILTEREFFECT (1.000000)
 
-typedef class rkFilterEffect : public Head {
+typedef class rkFilterEffect : public BaseClass {
    public:
    struct rkFilterEffect * Next;    // Next filter in the chain.
    struct rkFilterEffect * Prev;    // Previous filter in the chain.
@@ -644,7 +644,7 @@ struct MergeSource {
 
 #define VER_VECTORFILTER (1.000000)
 
-typedef class rkVectorFilter : public Head {
+typedef class rkVectorFilter : public BaseClass {
    public:
    DOUBLE X;                           // Left-most position of filter area
    DOUBLE Y;                           // Top-most position of filter area
@@ -749,7 +749,7 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
 
 #define VER_VECTOR (1.000000)
 
-typedef class rkVector : public Head {
+typedef class rkVector : public BaseClass {
    public:
    struct rkVector * Child;         // The first child vector, or NULL.
    struct rkVectorScene * Scene;    // Short-cut to the top-level VectorScene.

@@ -26,7 +26,7 @@ objVectorViewport * get_parent_view(objVector *Vector)
 
 void gen_vector_tree(objVector *Vector)
 {
-   if (!(Vector->Head::Flags & NF_INITIALISED)) return;
+   if (!Vector->initialised()) return;
 
    if (Vector->Dirty) {
       std::vector<objVector *> list;

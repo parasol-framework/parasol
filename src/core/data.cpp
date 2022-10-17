@@ -206,7 +206,7 @@ THREADVAR LONG tlThreadReadMsg = 0;
 THREADVAR LONG tlThreadWriteMsg = 0;
 #endif
 
-static struct Head glDummyObject;
+static struct BaseClass glDummyObject;
 struct ObjectContext glTopContext = { .Stack = NULL, .Object = &glDummyObject, .Field = NULL }; // Top-level context is a dummy and can be thread-shared
 THREADVAR struct ObjectContext *tlContext = &glTopContext;
 OBJECTPTR glLocale = NULL;
@@ -216,7 +216,7 @@ struct translate *glTranslate = NULL;
 THREADVAR WORD tlMsgRecursion = 0;
 THREADVAR struct Message *tlCurrentMsg   = 0;
 
-LONG  (**ManagedActions)(struct Head *Object, APTR Parameters) = 0;
+LONG  (**ManagedActions)(struct BaseClass *Object, APTR Parameters) = 0;
 ERROR (*glMessageHandler)(struct Message *) = 0;
 void (*glVideoRecovery)(void) = 0;
 void (*glKeyboardRecovery)(void) = 0;

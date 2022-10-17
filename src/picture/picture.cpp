@@ -127,7 +127,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
 {
    parasol::Log log;
 
-   if (Self->Bitmap->Head::Flags & NF_INITIALISED) return ERR_Okay;
+   if (Self->Bitmap->initialised()) return ERR_Okay;
 
    log.branch();
 
@@ -303,7 +303,7 @@ static ERROR PIC_Activate(objPicture *Self, APTR Void)
       // Init our bitmap, since decompress_png() won't in this case.
 
       if ((error = acQuery(bmp)) != ERR_Okay) goto exit;
-      if (!(bmp->Head::Flags & NF_INITIALISED)) {
+      if (!bmp->initialised()) {
          if ((error = acInit(bmp)) != ERR_Okay) goto exit;
       }
 
@@ -1252,7 +1252,7 @@ static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, i
 
    LONG rowsize = png_get_rowbytes(ReadPtr, InfoPtr);
    if ((error = acQuery(Bitmap)) != ERR_Okay) return error;
-   if (!(Bitmap->Head::Flags & NF_INITIALISED)) {
+   if (!Bitmap->initialised()) {
       if ((error = acInit(Bitmap)) != ERR_Okay) return error;
    }
    if ((error = AllocMemory(rowsize, MEM_DATA|MEM_NO_CLEAR, &row, NULL)) != ERR_Okay) return error;

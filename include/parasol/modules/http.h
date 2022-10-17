@@ -122,7 +122,7 @@
 
 #define VER_HTTP (1.000000)
 
-typedef class rkHTTP : public Head {
+typedef class rkHTTP : public BaseClass {
    public:
    DOUBLE   DataTimeout;     // Timeout for receiving data, measured in seconds
    DOUBLE   ConnectTimeout;  // Timeout for initial connection, measured in seconds

@@ -469,7 +469,7 @@ static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
    UBYTE line_abort, pchar;
 
    if ((!Font) or (!String)) return;
-   if (!(Font->Head::Flags & NF_INITIALISED)) return;
+   if (!Font->initialised()) return;
 
    if (Chars IS FSS_LINE) {
       Chars = 0x7fffffff;
@@ -633,8 +633,7 @@ int: The pixel width of the string is returned - this will be zero if there was 
 static LONG fntStringWidth(objFont *Font, CSTRING String, LONG Chars)
 {
    if ((!Font) or (!String)) return 0;
-
-   if (!(Font->Head::Flags & NF_INITIALISED)) return 0;
+   if (!Font->initialised()) return 0;
 
    font_glyph *cache;
 

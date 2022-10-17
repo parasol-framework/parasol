@@ -96,7 +96,7 @@ struct NetMsgEnd {
 
 #define VER_CLIENTSOCKET (1.000000)
 
-typedef class rkClientSocket : public Head {
+typedef class rkClientSocket : public BaseClass {
    public:
    LARGE    ConnectTime;            // System time for the creation of this socket
    struct rkClientSocket * Prev;    // Previous socket in the chain
@@ -159,7 +159,7 @@ struct rkNetClient {
 
 #define VER_PROXY (1.000000)
 
-typedef class rkProxy : public Head {
+typedef class rkProxy : public BaseClass {
    public:
    STRING NetworkFilter;
    STRING GatewayFilter;
@@ -204,7 +204,7 @@ INLINE ERROR prxFind(APTR Ob, LONG Port, LONG Enabled) {
 
 #define VER_NETLOOKUP (1.000000)
 
-typedef class rkNetLookup : public Head {
+typedef class rkNetLookup : public BaseClass {
    public:
    LARGE UserData;    // Optional user data storage
    LONG  Flags;       // Optional flags
@@ -255,7 +255,7 @@ INLINE ERROR nlBlockingResolveAddress(APTR Ob, CSTRING Address) {
 
 #define VER_NETSOCKET (1.000000)
 
-typedef class rkNetSocket : public Head {
+typedef class rkNetSocket : public BaseClass {
    public:
    struct rkNetClient * Clients;    // ServerMode - Attached clients
    APTR   UserData;                 // Pointer to user data that can be used during events

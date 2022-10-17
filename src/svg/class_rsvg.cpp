@@ -10,7 +10,7 @@ static ERROR RSVG_Activate(objPicture *Self, APTR Void)
    if ((error = acQuery(Self)) != ERR_Okay) return error;
 
    auto bmp = Self->Bitmap;
-   if (!(bmp->Head::Flags & NF_INITIALISED)) {
+   if (!bmp->initialised()) {
       if (acInit(bmp) != ERR_Okay) return ERR_Init;
    }
 
@@ -163,7 +163,7 @@ static ERROR RSVG_Resize(objPicture *Self, struct acResize *Args)
    if (!Args) return ERR_NullArgs;
 
    if (prv->SVG) {
-      if (!(Self->Bitmap->Head::Flags & NF_INITIALISED)) {
+      if (!Self->Bitmap->initialised()) {
          if (acInit(Self->Bitmap)) return ERR_Init;
       }
 

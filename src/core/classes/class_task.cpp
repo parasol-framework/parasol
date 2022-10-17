@@ -1346,7 +1346,7 @@ static ERROR TASK_AddArgument(objTask *Self, struct taskAddArgument *Args)
    LONG len = StrLength(Args->Argument) + 1;
    MEMORYID argsmid;
    CSTRING *args;
-   if (!AllocMemory(Self->ParametersSize + sizeof(STRING) + len, Self->Head::MemFlags|MEM_NO_CLEAR, (void **)&args, &argsmid)) {
+   if (!AllocMemory(Self->ParametersSize + sizeof(STRING) + len, Self->memflags()|MEM_NO_CLEAR, (void **)&args, &argsmid)) {
       Self->ParametersSize += sizeof(STRING) + len;
 
       for (total=0; Self->Parameters[total]; total++);
@@ -1559,7 +1559,7 @@ static ERROR TASK_GetEnv(objTask *Self, struct taskGetEnv *Args)
    if (glCurrentTask != Self) return ERR_Failed;
 
    if (!Self->Env) {
-      if (AllocMemory(ENV_SIZE, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (APTR *)&Self->Env, NULL) != ERR_Okay) {
+      if (AllocMemory(ENV_SIZE, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (APTR *)&Self->Env, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
@@ -1835,14 +1835,14 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
          len = StrLength(buffer);
          while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-         if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
+         if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
             for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
             Self->ProcessPath[i] = 0;
          }
       }
 
       if ((len = winGetCurrentDirectory(sizeof(buffer), buffer))) {
-         if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->Path, &Self->PathMID)) {
+         if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->Path, &Self->PathMID)) {
             for (i=0; i < len; i++) Self->Path[i] = buffer[i];
             if (Self->Path[i-1] != '\\') Self->Path[i++] = '\\';
             Self->Path[i] = 0;
@@ -1874,7 +1874,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
 
             for (len=0; buffer[len]; len++);
             while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-            if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
+            if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
                for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
                Self->ProcessPath[i] = 0;
             }
@@ -1883,7 +1883,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
          if (!Self->PathMID) { // Set the working folder
             if (getcwd(buffer, sizeof(buffer))) {
                for (len=0; buffer[len]; len++);
-               if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->Path, &Self->PathMID)) {
+               if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->Path, &Self->PathMID)) {
                   for (i=0; buffer[i]; i++) Self->Path[i] = buffer[i];
                   Self->Path[i++] = '/';
                   Self->Path[i] = 0;
@@ -2042,7 +2042,7 @@ static ERROR TASK_SetVar(objTask *Self, struct acSetVar *Args)
    if (i < ARRAYSIZE(Self->Fields) - 1) {
       STRING field;
       if (!AllocMemory(StrLength(Args->Field) + StrLength(Args->Value) + 2,
-            MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&field, NULL)) {
+            MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&field, NULL)) {
 
          LONG pos = StrCopy(Args->Field, field, COPY_ALL) + 1;
          StrCopy(Args->Value, field + pos, COPY_ALL);
@@ -2253,7 +2253,7 @@ static ERROR SET_Parameters(objTask *Self, CSTRING *Value, LONG Elements)
          Self->ParametersSize++; // String null terminator
       }
 
-      if (!AllocMemory(Self->ParametersSize, MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->Parameters, &Self->ParametersMID)) {
+      if (!AllocMemory(Self->ParametersSize, MEM_NO_CLEAR|Self->memflags(), (void **)&Self->Parameters, &Self->ParametersMID)) {
          STRING args = (STRING)(Self->Parameters + j + 1);
          for (j=0; j < Elements; j++) {
             Self->Parameters[j] = args;
@@ -2328,7 +2328,7 @@ static ERROR SET_Copyright(objTask *Self, CSTRING Value)
 
    if ((Value) and (*Value)) {
       LONG len = StrLength(Value);
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->Copyright, &Self->CopyrightMID)) {
+      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->Copyright, &Self->CopyrightMID)) {
          CopyMemory(Value, Self->Copyright, len+1);
       }
       else return log.warning(ERR_AllocMemory);
@@ -2556,7 +2556,7 @@ static ERROR SET_LaunchPath(objTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->LaunchPath, &Self->LaunchPathMID)) {
+      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->LaunchPath, &Self->LaunchPathMID)) {
          CopyMemory(Value, Self->LaunchPath, i+1);
       }
       else return log.warning(ERR_AllocMemory);
@@ -2610,7 +2610,7 @@ static ERROR SET_Location(objTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->Location, &Self->LocationMID)) {
+      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->Location, &Self->LocationMID)) {
          while ((*Value) and (*Value <= 0x20)) Value++;
          if (*Value IS '"') {
             Value++;
@@ -2746,7 +2746,7 @@ static ERROR SET_Path(objTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG len = StrLength(Value);
       while ((len > 1) and (Value[len-1] != '/') and (Value[len-1] != '\\') and (Value[len-1] != ':')) len--;
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&new_path, &new_path_mid)) {
+      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&new_path, &new_path_mid)) {
          CopyMemory(Value, new_path, len);
          new_path[len] = 0;
 

@@ -334,7 +334,7 @@ static void tag_call(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
    {
       parasol::Log log(__FUNCTION__);
-      log.traceBranch("Calling script #%d function '%s'", GetUID(script), function);
+      log.traceBranch("Calling script #%d function '%s'", script->UID, function);
 
       if (Tag->TotalAttrib > 2) {
          ScriptArg args[40];
@@ -2595,7 +2595,7 @@ static void tag_trigger(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
                trigger->Next = Self->Triggers[trigger_code];
                Self->Triggers[trigger_code] = trigger;
             }
-            else FuncError(ERR_AllocMemory);
+            else log.warning(ERR_AllocMemory);
          }
          else log.warning("Unable to resolve '%s' in script #%d to a function ID (the procedure may not exist)", function_name, script->UID);
       }

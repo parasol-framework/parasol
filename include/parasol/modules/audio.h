@@ -241,7 +241,7 @@ typedef struct WAVEFormat {
 
 #define VER_AUDIO (1.000000)
 
-typedef class rkAudio : public Head {
+typedef class rkAudio : public BaseClass {
    public:
    DOUBLE Bass;
    DOUBLE Treble;
@@ -361,7 +361,7 @@ INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, LONG Flags, DOUBLE 
 
 #define VER_SOUND (1.000000)
 
-typedef class rkSound : public Head {
+typedef class rkSound : public BaseClass {
    public:
    DOUBLE    Volume;       // Volume of sample (0 - 100%)
    DOUBLE    Pan;          // Horizontal positioning for playback on stereo speakers (-100 to +100)

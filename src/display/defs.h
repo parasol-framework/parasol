@@ -106,7 +106,7 @@
 
 #define UpdateSurfaceField(a,b) { \
    SurfaceList *list; SurfaceControl *ctl; WORD i; \
-   if (Self->Head::Flags & NF_INITIALISED) { \
+   if (Self->initialised()) { \
    if ((ctl = gfxAccessList(ARF_UPDATE))) { \
       list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
       for (i=0; i < ctl->Total; i++) { \
@@ -122,7 +122,7 @@
 
 #define UpdateSurfaceField2(a,b,c) { \
    SurfaceList *list; SurfaceControl *ctl; WORD i; \
-   if (Self->Head::Flags & NF_INITIALISED) { \
+   if (Self->initialised()) { \
       if ((ctl = gfxAccessList(ARF_UPDATE))) { \
          list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
          for (i=0; i < ctl->Total; i++) { \

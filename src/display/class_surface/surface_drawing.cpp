@@ -571,7 +571,7 @@ void move_layer(objSurface *Self, LONG X, LONG Y)
 
    if ((X IS Self->X) and (Y IS Self->Y)) return;
 
-   if (!(Self->Head::Flags & NF_INITIALISED)) {
+   if (!Self->initialised()) {
       Self->X = X;
       Self->Y = Y;
       return;

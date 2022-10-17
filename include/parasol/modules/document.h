@@ -136,7 +136,7 @@ struct DocTrigger {
 
 #define VER_DOCUMENT (1.000000)
 
-typedef class rkDocument : public Head {
+typedef class rkDocument : public BaseClass {
    public:
    LARGE    EventMask;        // Event mask for selectively receiving events from the Document object.
    STRING   Description;      // A description assigned by the author of the document

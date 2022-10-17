@@ -77,7 +77,7 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
       Self->AnimationTimer = 0;
    }
 
-   if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->Head::OwnerID IS Self->UID)) {
+   if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->ownerID() IS Self->UID)) {
       acFree(Self->Target);
       Self->Target = NULL;
    }
@@ -467,7 +467,7 @@ static ERROR SET_Target(objSVG *Self, OBJECTPTR Value)
       if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
    }
    else {
-      OBJECTID owner_id = GetOwner(Value);
+      auto owner_id = Value->ownerID();
       while ((owner_id) AND (GetClassID(owner_id) != ID_VECTORSCENE)) {
          owner_id = GetOwnerID(owner_id);
       }
@@ -513,7 +513,7 @@ is returned if an SVG document has not been successfully parsed yet.
 
 static ERROR GET_Viewport(objSVG *Self, OBJECTPTR *Value)
 {
-   if (!(Self->Head::Flags & NF_INITIALISED)) return ERR_NotInitialised;
+   if (!Self->initialised()) return ERR_NotInitialised;
    *Value = Self->Viewport;
    return ERR_Okay;
 }

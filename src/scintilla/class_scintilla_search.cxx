@@ -175,7 +175,7 @@ static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
    parasol::Log log;
 
    if (!Self->Scintilla) { // Find our parent surface
-      OBJECTID owner_id = GetOwner(Self);
+      OBJECTID owner_id = Self->ownerID();
       while ((owner_id) AND (GetClassID(owner_id) != ID_SCINTILLA)) {
          owner_id = GetOwnerID(owner_id);
       }

@@ -233,7 +233,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
    LONG datatype = 0;
    if (!add_clip(Self->ClusterID, datatype, 0, Args->Flags & CEF_EXTEND, 0, total, &counter)) {
       for (LONG i=0; list[i]; i++) {
-         parasol::ScopedObjectLock<Head> object(list[i], 5000);
+         parasol::ScopedObjectLock<BaseClass> object(list[i], 5000);
          if (object.granted()) {
             if (!classid) classid = object.obj->ClassID;
 
@@ -728,7 +728,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
       return log.warning(ERR_Args);
    }
 
-   if (!(Self->Head::Flags & NF_INITIALISED)) return log.warning(ERR_Failed);
+   if (!Self->initialised()) return log.warning(ERR_Failed);
 
    Args->Buffer[0] = 0;
 

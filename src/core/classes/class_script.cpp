@@ -330,8 +330,8 @@ static ERROR SCRIPT_Init(objScript *Self, APTR Void)
    parasol::Log log;
 
    if (!Self->TargetID) { // Define the target if it has not been set already
-      log.debug("Target not set, defaulting to owner #%d.", Self->Head::OwnerID);
-      Self->TargetID = Self->Head::OwnerID;
+      log.debug("Target not set, defaulting to owner #%d.", Self->ownerID());
+      Self->TargetID = Self->ownerID();
    }
 
    if (Self->SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
@@ -630,7 +630,7 @@ script activation - something to try when we have the time?
 static ERROR GET_Owner(objScript *Self, OBJECTID *Value)
 {
    if (Self->ScriptOwnerID) *Value = Self->ScriptOwnerID;
-   else *Value = GetOwner(Self);
+   else *Value = Self->ownerID();
    return ERR_Okay;
 }
 

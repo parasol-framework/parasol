@@ -474,7 +474,7 @@ static ERROR VECTORFILTER_Init(objVectorFilter *Self, APTR Void)
       return log.warning(ERR_OutOfRange);
    }
 
-   Self->Scene = (objVectorScene *)GetObjectPtr(GetOwner(Self));
+   Self->Scene = (objVectorScene *)GetObjectPtr(Self->ownerID());
    if (Self->Scene->ClassID != ID_VECTORSCENE) return log.warning(ERR_UnsupportedOwner);
 
    return ERR_Okay;

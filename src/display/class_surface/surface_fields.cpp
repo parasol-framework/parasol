@@ -66,7 +66,7 @@ The Cursor field may be written with valid cursor names or their ID's, as you pr
 static ERROR SET_Cursor(objSurface *Self, LONG Value)
 {
    Self->Cursor = Value;
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       UpdateSurfaceField(Self, Cursor);
       OBJECTID pointer_id;
       LONG count = 1;
@@ -136,7 +136,7 @@ static ERROR SET_Flags(objSurface *Self, LONG Value)
 {
    LONG flags = (Self->Flags & RNF_READ_ONLY) | (Value & (~RNF_READ_ONLY));
 
-   if (Self->Head::Flags & NF_INITIALISED) flags = flags & (~RNF_INIT_ONLY);
+   if (Self->initialised()) flags = flags & (~RNF_INIT_ONLY);
 
    if (flags != Self->Flags) {
       Self->Flags = flags;
@@ -275,7 +275,7 @@ static ERROR SET_Parent(objSurface *Self, LONG Value)
    // To change the parent post-initialisation, we have to re-track the surface so that it is correctly repositioned
    // within the surface lists.
 
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       if (!Self->ParentID) return ERR_Failed; // Top level surfaces cannot be re-parented
       if (Self->ParentID IS Value) return ERR_Okay;
 
@@ -332,7 +332,7 @@ static ERROR SET_PopOver(objSurface *Self, OBJECTID Value)
 
    if (Value IS Self->UID) return ERR_Okay;
 
-   if (Self->Head::Flags & NF_INITIALISED) return log.warning(ERR_Immutable);
+   if (Self->initialised()) return log.warning(ERR_Immutable);
 
    if (Value) {
       CLASSID class_id = GetClassID(Value);
@@ -507,7 +507,7 @@ static ERROR SET_PrecopyRegion(objSurface *Self, STRING Value)
       if (!AllocMemory(sizeof(PrecopyRegion) * total, MEM_DATA|MEM_NO_CLEAR, &precopy, &Self->PrecopyMID)) {
          CopyMemory(regions, precopy, sizeof(PrecopyRegion) * total);
          Self->PrecopyTotal = total;
-         if (!(Self->Head::Flags & NF_INITIALISED)) {
+         if (!Self->initialised()) {
             Self->Flags |= RNF_PRECOPY;
             UpdateSurfaceField(Self, Flags);
          }
@@ -546,7 +546,7 @@ static ERROR GET_Region(objSurface *Self, LONG *Value)
 
 static ERROR SET_Region(objSurface *Self, LONG Value)
 {
-   if (Self->Head::Flags & NF_INITIALISED) return ERR_Immutable;
+   if (Self->initialised()) return ERR_Immutable;
    else if (Value) Self->Flags |= RNF_REGION;
    else Self->Flags &= ~RNF_REGION;
    return ERR_Okay;
@@ -646,7 +646,7 @@ static ERROR GET_WindowType(objSurface *Self, LONG *Value)
 
 static ERROR SET_WindowType(objSurface *Self, LONG Value)
 {
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       parasol::Log log;
       BYTE border;
       LONG flags;
@@ -718,7 +718,7 @@ static ERROR GET_WindowHandle(objSurface *Self, APTR *Value)
 
 static ERROR SET_WindowHandle(objSurface *Self, APTR Value)
 {
-   if (Self->Head::Flags & NF_INITIALISED) return ERR_Failed;
+   if (Self->initialised()) return ERR_Failed;
    if (Value) Self->DisplayWindow = Value;
    return ERR_Okay;
 }

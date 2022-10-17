@@ -243,7 +243,7 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    }
    if (Self->Child) Self->Child->Parent = NULL;
 
-   if ((Self->Scene) and (!(Self->Scene->Head::Flags & (NF_FREE|NF_FREE_MARK)))) {
+   if ((Self->Scene) and (!(Self->Scene->collecting()))) {
       if ((Self->ParentView) and (Self->ResizeSubscription) and (Self->Scene->ResizeSubscriptions.contains(Self->ParentView))) {
          auto sub = Self->Scene->ResizeSubscriptions[Self->ParentView];
          sub.erase(Self);
@@ -426,7 +426,7 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
       return ERR_Failed;
    }
 
-   if (!Self->Parent) set_parent(Self, Self->Head::OwnerID);
+   if (!Self->Parent) set_parent(Self, Self->ownerID());
 
    log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UID : 0,
       Self->Prev ? Self->Prev->UID : 0, Self->Next ? Self->Next->UID : 0, Self);
@@ -545,7 +545,7 @@ static ERROR VECTOR_NewOwner(objVector *Self, struct acNewOwner *Args)
    // Modifying the owner after the root vector has been established is not permitted.
    // The client should instead create a new object under the target and transfer the field values.
 
-   if (Self->Head::Flags & NF_INITIALISED) return log.warning(ERR_AlreadyDefined);
+   if (Self->initialised()) return log.warning(ERR_AlreadyDefined);
 
    set_parent(Self, Args->NewOwnerID);
 
@@ -883,7 +883,7 @@ static ERROR VECTOR_SubscribeInput(objVector *Self, struct vecSubscribeInput *Ar
       }
 
       if (Self->InputSubscriptions->empty()) {
-         if ((Self->Scene) and (!(Self->Scene->Head::Flags & (NF_FREE|NF_FREE_MARK)))) {
+         if ((Self->Scene) and (!(Self->Scene->collecting()))) {
             Self->Scene->InputSubscriptions.erase(Self);
          }
       }
@@ -1072,7 +1072,7 @@ static ERROR VECTOR_SET_Cursor(objVector *Self, LONG Value)
 {
    Self->Cursor = Value;
 
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       // Send a dummy input event to refresh the cursor
 
       DOUBLE x, y, absx, absy;
@@ -1544,7 +1544,7 @@ static ERROR VECTOR_SET_Mask(objVector *Self, objVectorClip *Value)
    }
    else if (Value->SubID IS ID_VECTORCLIP) {
       if (Self->ClipMask) UnsubscribeAction(Self->ClipMask, AC_Free);
-      if (Value->Head::Flags & NF_INITIALISED) { // Ensure that the mask is initialised.
+      if (Value->initialised()) { // Ensure that the mask is initialised.
          SubscribeAction(Value, AC_Free);
          Self->ClipMask = Value;
          return ERR_Okay;
@@ -1625,7 +1625,7 @@ static ERROR VECTOR_SET_Morph(objVector *Self, objVector *Value)
    }
    else if (Value->ClassID IS ID_VECTOR) {
       if (Self->Morph) UnsubscribeAction(Self->Morph, AC_Free);
-      if (Value->Head::Flags & NF_INITIALISED) { // The object must be initialised.
+      if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC_Free);
          Self->Morph = Value;
          return ERR_Okay;
@@ -2144,7 +2144,7 @@ static ERROR VECTOR_SET_Transition(objVector *Self, rkVectorTransition *Value)
    }
    else if (Value->ClassID IS ID_VECTORTRANSITION) {
       if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
-      if (Value->Head::Flags & NF_INITIALISED) { // The object must be initialised.
+      if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC_Free);
          Self->Transition = Value;
          return ERR_Okay;
@@ -2167,7 +2167,7 @@ Visibility: Controls the visibility of a vector and its children.
 
 void send_feedback(objVector *Vector, LONG Event)
 {
-   if (!(Vector->Head::Flags & NF_INITIALISED)) return;
+   if (!Vector->initialised()) return;
    if (!Vector->FeedbackSubscriptions) return;
 
    for (auto it=Vector->FeedbackSubscriptions->begin(); it != Vector->FeedbackSubscriptions->end(); ) {

@@ -1452,7 +1452,7 @@ static ERROR SOUND_SET_Note(objSound *Self, CSTRING Value)
    // If the sound is playing, set the new playback frequency immediately
 
 #ifdef _WIN32
-   if ((!Self->Handle) and (Self->Head::Flags & NF_INITIALISED)) {
+   if ((!Self->Handle) and (Self->initialised())) {
       sndFrequency((PlatformData *)Self->prvPlatformData, Self->Playback);
       return ERR_Okay;
    }
@@ -1511,7 +1511,7 @@ static ERROR SOUND_SET_Pan(objSound *Self, DOUBLE Value)
    else if (Self->Pan > 100) Self->Pan = 100;
 
 #ifdef _WIN32
-   if ((!Self->Handle) and (Self->Head::Flags & NF_INITIALISED)) {
+   if ((!Self->Handle) and (Self->initialised())) {
       sndPan((PlatformData *)Self->prvPlatformData, Self->Pan);
       return ERR_Okay;
    }
@@ -1555,7 +1555,7 @@ static ERROR SOUND_SET_Playback(objSound *Self, LONG Value)
    Self->Flags &= ~SDF_NOTE;
 
 #ifdef _WIN32
-   if ((!Self->Handle) and (Self->Head::Flags & NF_INITIALISED)) {
+   if ((!Self->Handle) and (Self->initialised())) {
       sndFrequency((PlatformData *)Self->prvPlatformData, Self->Playback);
       return ERR_Okay;
    }
@@ -1655,7 +1655,7 @@ static ERROR SOUND_SET_Volume(objSound *Self, DOUBLE Value)
    else if (Self->Volume > 100) Self->Volume = 100;
 
 #ifdef _WIN32
-   if ((!Self->Handle) and (Self->Head::Flags & NF_INITIALISED)) {
+   if ((!Self->Handle) and (Self->initialised())) {
       sndVolume((PlatformData *)Self->prvPlatformData, glAudio->Volume * Self->Volume * (1.0 / 100.0));
       return ERR_Okay;
    }

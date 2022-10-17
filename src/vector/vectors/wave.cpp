@@ -16,8 +16,8 @@ Waves can be used in Parasol's SVG implementation by using the &lt;parasol:wave/
 
 *****************************************************************************/
 
-typedef struct rkVectorWave {
-   OBJECT_HEADER
+typedef class rkVectorWave : public BaseClass {
+   public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
    DOUBLE wX, wY;

@@ -952,7 +952,7 @@ static ERROR DISPLAY_Init(objDisplay *Self, APTR Void)
             OBJECTID surface_id;
             LONG count = 1;
             if (!FindObject("SystemSurface", ID_SURFACE, FOF_INCLUDE_SHARED, &surface_id, &count)) {
-               if (surface_id IS GetOwner(Self)) desktop = TRUE;
+               if (surface_id IS Self->ownerID()) desktop = TRUE;
             }
          }
 
@@ -1234,12 +1234,12 @@ static ERROR DISPLAY_NewObject(objDisplay *Self, APTR Void)
    parasol::Log log;
    ERROR error;
 
-   if (Self->Head::Flags & NF_PUBLIC) {
-      error = NewLockedObject(ID_BITMAP, Self->Head::Flags|NF_INTEGRAL, &Self->Bitmap, &Self->BitmapID);
+   if (Self->isPublic()) {
+      error = NewLockedObject(ID_BITMAP, Self->flags()|NF_INTEGRAL, &Self->Bitmap, &Self->BitmapID);
    }
    else {
-      error = NewObject(ID_BITMAP, Self->Head::Flags|NF_INTEGRAL, &Self->Bitmap);
-      Self->BitmapID = GetUID(Self->Bitmap);
+      error = NewObject(ID_BITMAP, Self->flags()|NF_INTEGRAL, &Self->Bitmap);
+      Self->BitmapID = Self->Bitmap->UID;
    }
 
    if (!error) {
@@ -1673,7 +1673,7 @@ static ERROR DISPLAY_SetDisplay(objDisplay *Self, struct gfxSetDisplay *Args)
       ReleaseObject(Self->Bitmap);
       Self->Bitmap = NULL;
 
-      if (!NewObject(ID_BITMAP, NF_INTEGRAL|Self->Head::Flags, &Self->Bitmap, (Self->Head::Flags & NF_PUBLIC) ? &Self->BitmapID : NULL)) {
+      if (!NewObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &Self->Bitmap, Self->isPublic() ? &Self->BitmapID : NULL)) {
          Self->BitmapID = Self->Bitmap->UID;
          Self->Bitmap->BitsPerPixel = bpp;
          Self->Bitmap->Width        = Self->Width;
@@ -1877,7 +1877,7 @@ static ERROR DISPLAY_SetMonitor(objDisplay *Self, struct gfxSetMonitor *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (CurrentTaskID() != Self->Head::TaskID) {
+   if (CurrentTaskID() != Self->ownerTask()) {
       log.warning("Only the owner of the display may call this method.");
       return ERR_Failed;
    }
@@ -2058,7 +2058,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
       objPointer *pointer;
       OBJECTID pointer_id;
       if (!NewNamedObject(ID_POINTER, NF_NO_TRACK|NF_PUBLIC|NF_UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
-         OBJECTID owner = GetOwner(Self);
+         OBJECTID owner = Self->ownerID();
          if (GetClassID(owner) IS ID_SURFACE) SetLong(pointer, FID_Surface, owner);
 
          #ifdef __ANDROID__
@@ -2559,7 +2559,7 @@ static ERROR SET_Flags(objDisplay *Self, LONG Value)
 {
    parasol::Log log;
 
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       // Only flags that are explicitly supported here may be set post-initialisation.
 
       #define ACCEPT_FLAGS (SCR_AUTO_SAVE)
@@ -2897,7 +2897,7 @@ static ERROR SET_PopOver(objDisplay *Self, OBJECTID Value)
 
 #ifdef __xwindows__
 
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       objDisplay *popover;
       if (!Value) {
          Self->PopOverID = 0;
@@ -3027,7 +3027,7 @@ width of the window can be calculated by reading the #LeftMargin and #RightMargi
 static ERROR SET_Width(objDisplay *Self, LONG Value)
 {
    if (Value > 0) {
-      if (Self->Head::Flags & NF_INITIALISED) {
+      if (Self->initialised()) {
          acResize(Self, Value, Self->Height, 0);
       }
       else Self->Width = Value;
@@ -3057,7 +3057,7 @@ static ERROR GET_WindowHandle(objDisplay *Self, APTR *Value)
 
 static ERROR SET_WindowHandle(objDisplay *Self, APTR Value)
 {
-   if (Self->Head::Flags & NF_INITIALISED) return ERR_Failed;
+   if (Self->initialised()) return ERR_Failed;
 
    if (Value) {
       Self->WindowHandle = Value;
@@ -3133,7 +3133,7 @@ To adjust the position of the display, use the #MoveToPoint() action rather than
 
 static ERROR SET_X(objDisplay *Self, LONG Value)
 {
-   if (!(Self->Head::Flags & NF_INITIALISED)) {
+   if (!(Self->initialised())) {
       Self->X = Value;
       return ERR_Okay;
    }
@@ -3157,7 +3157,7 @@ To adjust the position of the display, use the #MoveToPoint() action rather than
 
 static ERROR SET_Y(objDisplay *Self, LONG Value)
 {
-   if (!(Self->Head::Flags & NF_INITIALISED)) {
+   if (!(Self->initialised())) {
       Self->Y = Value;
       return ERR_Okay;
    }
@@ -3178,7 +3178,7 @@ void alloc_display_buffer(objDisplay *Self)
 
    objBitmap *buffer;
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->Head::Flags, &buffer, &Self->BufferID)) {
+   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &buffer, &Self->BufferID)) {
       if (!SetFields(buffer,
             FID_Name|TSTR,           "SystemBuffer",
             FID_BitsPerPixel|TLONG,  Self->Bitmap->BitsPerPixel,

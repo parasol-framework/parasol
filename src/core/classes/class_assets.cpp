@@ -216,7 +216,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
 
    // Allocate private structure
 
-   if (!AllocMemory(sizeof(prvFileAsset), Self->Head::MemFlags, &Self->ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvFileAsset), Self->memflags(), &Self->ChildPrivate, NULL)) {
       LONG len;
       for (len=0; Self->Path[len]; len++);
 

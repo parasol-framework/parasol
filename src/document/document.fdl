@@ -126,7 +126,7 @@ typedef struct escFont escFont;
     { id=14, name="ReadContent" }
   })
 
-  class("Document", { cpp=true, src={ "class/document_class.cpp", "class/fields.cpp" }, output="class/document_def.c" }, [[
+  class("Document", { src={ "class/document_class.cpp", "class/fields.cpp" }, output="class/document_def.c" }, [[
     large(DEF) EventMask # Event mask for selectively receiving events from the Document object.
     str Description      # A description assigned by the author of the document
     str FontFace         # The user's default font face

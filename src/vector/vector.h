@@ -256,7 +256,7 @@ extern void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
 //****************************************************************************
 // NB: Considered a shape (can be transformed).
 
-typedef class rkVectorViewport : public Head {
+typedef class rkVectorViewport : public BaseClass {
    public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
@@ -276,7 +276,7 @@ typedef class rkVectorViewport : public Head {
 
 //****************************************************************************
 
-typedef class rkVectorPoly : public Head {
+typedef class rkVectorPoly : public BaseClass {
    public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
@@ -288,7 +288,7 @@ typedef class rkVectorPoly : public Head {
 
 //****************************************************************************
 
-typedef class rkVectorPath : public Head {
+typedef class rkVectorPath : public BaseClass {
    public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
@@ -299,7 +299,7 @@ typedef class rkVectorPath : public Head {
 
 //****************************************************************************
 
-typedef class rkVectorRectangle : public Head {
+typedef class rkVectorRectangle : public BaseClass {
    public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
@@ -319,7 +319,7 @@ struct TransitionStop { // Passed to the Stops field.
    agg::trans_affine *AGGTransform;
 };
 
-typedef class rkVectorTransition : public Head {
+typedef class rkVectorTransition : public BaseClass {
    public:
    LONG TotalStops; // Total number of stops registered.
 
@@ -337,7 +337,7 @@ class GradientColours {
       GRADIENT_TABLE table;
 };
 
-typedef class rkVectorClip : public Head {
+typedef class rkVectorClip : public BaseClass {
    public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE

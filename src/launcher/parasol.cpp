@@ -73,6 +73,7 @@ The following parameters can be used when executing script files:\n\
 
 static ERROR process_args(void)
 {
+   parasol::Log log("Parasol");
    CSTRING *args;
    LONG i, j;
 
@@ -148,7 +149,7 @@ static ERROR process_args(void)
                if (FindObject(args[i+1], 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &glTargetID, &count) != ERR_Okay) {
                   print("Warning - could not find target object \"%s\".", args[i+1]);
                }
-               else LogMsg("Using target %d", glTargetID);
+               else log.msg("Using target %d", glTargetID);
             }
          }
          else if (!StrMatch(args[i], "--relaunch")) {
@@ -174,6 +175,8 @@ static ERROR process_args(void)
 
 int main(int argc, CSTRING *argv)
 {
+   parasol::Log log("Parasol");
+
    const char *msg = init_parasol(argc, argv);
    if (msg) {
       int i;
@@ -189,8 +192,8 @@ int main(int argc, CSTRING *argv)
    if (!process_args()) {
       if (glTargetFile) {
          STRING path;
-         if (!GetString(glTask, FID_Path, &path)) LogMsg("Path: %s", path);
-         else LogErrorMsg("No working path.");
+         if (!GetString(glTask, FID_Path, &path)) log.msg("Path: %s", path);
+         else log.error("No working path.");
 
          if (glWinHandle) {
             if (prep_environment(glWinHandle, glWidth, glHeight) != ERR_Okay) {
@@ -217,7 +220,7 @@ int main(int argc, CSTRING *argv)
    }
 
 exit:
-   LogMsg("parasol now exiting...");
+   log.msg("parasol now exiting...");
 
    if (glProcedure) { FreeResource(glProcedure); glProcedure = NULL; }
    if (glTargetFile) { FreeResource(glTargetFile); glTargetFile = NULL; }
@@ -233,7 +236,8 @@ exit:
 
 ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
 {
-   LogF("prep_env()","Win: %d, Size: %dx%d", WindowHandle, Width, Height);
+   parasol::Log log("Parasol");
+   log.branch("Win: %d, Size: %dx%d", WindowHandle, Width, Height);
 
    OBJECTPTR target;
    ERROR error;

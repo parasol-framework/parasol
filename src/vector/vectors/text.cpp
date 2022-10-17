@@ -156,8 +156,8 @@ public:
    }
 };
 
-typedef struct rkVectorText {
-   OBJECT_HEADER
+typedef class rkVectorText : public BaseClass {
+   public:
    SHAPE_PUBLIC
 
    SHAPE_PRIVATE
@@ -1038,7 +1038,7 @@ TextWidth: The raw pixel width of the widest line in the @String value..
 
 static ERROR TEXT_GET_TextWidth(objVectorText *Self, LONG *Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_NotInitialised;
+   if (!Self->initialised()) return ERR_NotInitialised;
 
    if (!Self->txFont) reset_font(Self);
 
@@ -1749,7 +1749,7 @@ static void get_text_xy(objVectorText *Vector)
 
 static void reset_font(objVectorText *Vector)
 {
-   if (!(Vector->Head.Flags & NF_INITIALISED)) return;
+   if (!Vector->initialised()) return;
 
    parasol::Log log(__FUNCTION__);
    log.branch("Style: %s, Weight: %d", Vector->txFontStyle, Vector->txWeight);

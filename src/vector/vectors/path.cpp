@@ -366,7 +366,7 @@ static ERROR VECTORPATH_SetCommandList(objVectorPath *Self, struct vpSetCommandL
 
    if ((!Args) or (!Args->Size)) return log.warning(ERR_NullArgs);
 
-   if (!(Self->Head::Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
 
    LONG total_cmds = Args->Size / sizeof(PathCommand);
    if ((total_cmds < 0) or (total_cmds > 1000000)) return log.warning(ERR_Args);

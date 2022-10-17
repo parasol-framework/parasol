@@ -32,7 +32,7 @@
 
 #define VER_PICTURE (1.000000)
 
-typedef class rkPicture : public Head {
+typedef class rkPicture : public BaseClass {
    public:
    struct rkBitmap * Bitmap;    // Bitmap details
    struct rkBitmap * Mask;      // Monochrome bit mask or alpha channel

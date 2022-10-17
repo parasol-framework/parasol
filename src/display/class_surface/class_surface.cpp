@@ -472,9 +472,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
 {
    parasol::Log log;
 
-   if ((Self->Head::Flags & (NF_FREE_MARK|NF_FREE))) { // Do nothing if the surface is being terminated.
-      return ERR_Okay;
-   }
+   if (Self->collecting()) return ERR_Okay;
 
    if (NotifyArgs->ActionID IS AC_Free) {
       if (NotifyArgs->ObjectID IS Self->ProgramID) {
@@ -487,7 +485,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
 
          Self->Flags &= ~RNF_VISIBLE;
          UpdateSurfaceField(Self, Flags);
-         if (Self->Head::Flags & NF_INTEGRAL) DelayMsg(AC_Free, Self->UID, NULL); // If the object is a child of something, give the parent object time to do the deallocation itself
+         if (Self->flags() & NF_INTEGRAL) DelayMsg(AC_Free, Self->UID, NULL); // If the object is a child of something, give the parent object time to do the deallocation itself
          else acFree(Self);
       }
       else {
@@ -695,7 +693,7 @@ static ERROR SURFACE_AddCallback(objSurface *Self, struct drwAddCallback *Args)
 
    if (call_context) context = call_context;
 
-   if (Self->Head::TaskID != CurrentTaskID()) return log.warning(ERR_ExecViolation);
+   if (Self->ownerTask() != CurrentTaskID()) return log.warning(ERR_ExecViolation);
 
    if (Self->Callback) {
       // Check if the subscription is already on the list for our surface context.
@@ -914,7 +912,7 @@ static ERROR SURFACE_Focus(objSurface *Self, APTR Void)
    FOCUSMSG("Focussing...  HasFocus: %c", (Self->Flags & RNF_HAS_FOCUS) ? 'Y' : 'N');
 
    OBJECTID modal;
-   if ((modal = gfxGetModalSurface(Self->Head::TaskID))) {
+   if ((modal = gfxGetModalSurface(Self->ownerTask()))) {
       if (modal != Self->UID) {
          ERROR error;
          error = gfxCheckIfChild(modal, Self->UID);
@@ -1130,14 +1128,14 @@ static ERROR SURFACE_Free(objSurface *Self, APTR Void)
    // Give the focus to the parent if our object has the primary focus.  Do not apply this technique to surface objects
    // acting as windows, as the window class has its own focus management code.
 
-   if ((Self->Flags & RNF_HAS_FOCUS) and (GetClassID(Self->Head::OwnerID) != ID_WINDOW)) {
+   if ((Self->Flags & RNF_HAS_FOCUS) and (GetClassID(Self->ownerID()) != ID_WINDOW)) {
       if (Self->ParentID) acFocusID(Self->ParentID);
    }
 
    if (Self->Flags & RNF_AUTO_QUIT) {
       parasol::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
-      if ((Self->Head::TaskID IS Self->ProgramID) or (!Self->ProgramID)) {
+      if ((Self->ownerTask() IS Self->ProgramID) or (!Self->ProgramID)) {
          SendMessage(NULL, MSGID_QUIT, NULL, NULL, NULL);
       }
       else {
@@ -1317,7 +1315,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
       if (Self->Flags & RNF_REGION) {
          // Regions must share the same task space with their parent.  If we can't meet this requirement, turn off the region flag.
 
-         if (parent->Head::TaskID != CurrentTaskID()) {
+         if (parent->ownerTask() != CurrentTaskID()) {
             log.warning("Region cannot initialise to parent #%d - not in our task space.", Self->ParentID);
             Self->Flags &= ~RNF_REGION;
          }
@@ -1554,7 +1552,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
       // display will adjust the coordinates to reflect the absolute position of the surface on the desktop).
 
       objDisplay *display;
-      if (!NewLockedObject(ID_DISPLAY, NF_INTEGRAL|Self->Head::Flags, &display, &Self->DisplayID)) {
+      if (!NewLockedObject(ID_DISPLAY, NF_INTEGRAL|Self->flags(), &display, &Self->DisplayID)) {
          SetFields(display,
                FID_Name|TSTR,           name,
                FID_X|TLONG,             Self->X,
@@ -1678,7 +1676,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
          }
          else bpp = display->Bitmap->BitsPerPixel;
 
-         if (!(NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->Head::Flags, &bitmap, &Self->BufferID))) {
+         if (!(NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &bitmap, &Self->BufferID))) {
             SetFields(bitmap,
                FID_BitsPerPixel|TLONG, bpp,
                FID_Width|TLONG,        Self->Width,
@@ -1778,8 +1776,8 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
       SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, &Self->UID, &Self->UserLoginHandle);
    }
 
-   if (!Self->ProgramID) Self->ProgramID = Self->Head::TaskID;
-   else if (Self->ProgramID != Self->Head::TaskID) {
+   if (!Self->ProgramID) Self->ProgramID = Self->ownerTask();
+   else if (Self->ProgramID != Self->ownerTask()) {
       OBJECTPTR task;
       if (!AccessObject(Self->ProgramID, 4000, &task)) {
          SubscribeActionTags(task, AC_Free, TAGEND);
@@ -2230,7 +2228,7 @@ static ERROR SURFACE_MoveToPoint(objSurface *Self, struct acMoveToPoint *Args)
 
 static ERROR SURFACE_NewOwner(objSurface *Self, struct acNewOwner *Args)
 {
-   if ((!Self->ParentDefined) and (!(Self->Head::Flags & NF_INITIALISED))) {
+   if ((!Self->ParentDefined) and (!Self->initialised())) {
       OBJECTID owner_id = Args->NewOwnerID;
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
@@ -2256,7 +2254,7 @@ static ERROR SURFACE_NewObject(objSurface *Self, APTR Void)
    Self->MinHeight   = 1;
    Self->Opacity  = 255;
    Self->RootID   = Self->UID;
-   Self->ProgramID   = Self->Head::TaskID;
+   Self->ProgramID   = Self->ownerTask();
    Self->WindowType  = glpWindowType;
    return ERR_Okay;
 }

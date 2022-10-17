@@ -281,7 +281,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 {
    parasol::Log log;
 
-   if (CurrentTaskID() != Self->Head::TaskID) return log.warning(ERR_IllegalActionAttempt);
+   if (CurrentTaskID() != Self->ownerTask()) return log.warning(ERR_IllegalActionAttempt);
    if ((!Self->String) or (!Self->String[0])) return log.warning(ERR_FieldNotSet);
 
    log.msg(VLF_EXTAPI, "Target: %d, Procedure: %s / ID #" PF64(), Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
@@ -312,8 +312,8 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
    // Set the script owner to the current process, prior to script execution.  Once complete, we will change back to
    // the original owner.
 
-   Self->ScriptOwnerID = Self->Head::OwnerID;
-   OBJECTID owner_id = GetOwner(Self);
+   Self->ScriptOwnerID = Self->ownerID();
+   OBJECTID owner_id = Self->ownerID();
    SetOwner(Self, CurrentTask());
 
    BYTE reload = FALSE;
@@ -679,7 +679,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       }
    }
 
-   if ((Self->Head::Flags & NF_RECLASSED) and (!Self->String)) {
+   if ((Self->flags() & NF_RECLASSED) and (!Self->String)) {
       log.trace("No support for reclassed Script with no String field value.");
       return ERR_NoSupport;
    }
@@ -711,7 +711,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
 
             if ((cache_ts IS src_ts) or (error)) {
                log.msg("Using cache '%s'", Self->CacheFile);
-               if (!AllocMemory(cache_size, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, &Self->String, NULL)) {
+               if (!AllocMemory(cache_size, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), &Self->String, NULL)) {
                   LONG len;
                   error = ReadFileToBuffer(Self->CacheFile, Self->String, cache_size, &len);
                   loaded_size = cache_size;
@@ -751,7 +751,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
 
    prvFluid *prv;
    if (!error) {
-      if (!AllocMemory(sizeof(prvFluid), Self->Head::MemFlags, &Self->ChildPrivate, NULL)) {
+      if (!AllocMemory(sizeof(prvFluid), Self->memflags(), &Self->ChildPrivate, NULL)) {
          prv = (prvFluid *)Self->ChildPrivate;
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;

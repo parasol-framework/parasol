@@ -71,7 +71,7 @@
 
 #define VER_SCINTILLA (1.000000)
 
-typedef class rkScintilla : public Head {
+typedef class rkScintilla : public BaseClass {
    public:
    LARGE    EventFlags;          // SEF flags.  Indicates the events that will be reported.
    struct rkFont * Font;         // Font to use for the text
@@ -206,7 +206,7 @@ INLINE ERROR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) {
 
 #define VER_SCINTILLASEARCH (1.000000)
 
-typedef class rkScintillaSearch : public Head {
+typedef class rkScintillaSearch : public BaseClass {
    public:
    struct rkScintilla * Scintilla;    // The targeted Scintilla object.
    CSTRING Text;                      // The text being searched for.

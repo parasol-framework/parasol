@@ -403,7 +403,7 @@ typedef struct BitmapSurfaceV2 {
 
 #define VER_BITMAP (2.000000)
 
-typedef class rkBitmap : public Head {
+typedef class rkBitmap : public BaseClass {
    public:
    struct RGBPalette * Palette;                                            // Pointer to the Bitmap's palette
    struct ColourFormat * ColourFormat;                                     // Pointer to colour information
@@ -538,7 +538,7 @@ INLINE ERROR bmpDrawLine(APTR Ob, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Co
 
 #define VER_DISPLAY (1.000000)
 
-typedef class rkDisplay : public Head {
+typedef class rkDisplay : public BaseClass {
    public:
    DOUBLE   RefreshRate;        // The active refresh rate
    struct rkBitmap * Bitmap;    // Reference to the display's bitmap information.
@@ -670,7 +670,7 @@ INLINE ERROR gfxUpdateDisplay(APTR Ob, struct rkBitmap * Bitmap, LONG X, LONG Y,
 
 #define VER_CLIPBOARD (1.000000)
 
-typedef class rkClipboard : public Head {
+typedef class rkClipboard : public BaseClass {
    public:
    LONG     Flags;      // Optional flags
    MEMORYID ClusterID;  // Identifies the data cluster (item grouping) that the clipboard will work with
@@ -737,7 +737,7 @@ INLINE ERROR clipRemove(APTR Ob, LONG Datatype) {
 
 #define VER_POINTER (1.000000)
 
-typedef class rkPointer : public Head {
+typedef class rkPointer : public BaseClass {
    public:
    DOUBLE   Speed;         // Speed multiplier (%)
    DOUBLE   Acceleration;  // Acceleration level - keep between 0.0 and 3.0
@@ -805,7 +805,7 @@ typedef class rkPointer : public Head {
 
 #define VER_SURFACE (1.000000)
 
-typedef class rkSurface : public Head {
+typedef class rkSurface : public BaseClass {
    public:
    OBJECTID DragID;     // Drag the object that this field points to
    OBJECTID BufferID;   // Buffer bitmap (backing store)

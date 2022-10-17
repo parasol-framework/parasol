@@ -15,8 +15,8 @@ The Superformula is documented in detail at Wikipedia: http://en.wikipedia.org/w
 
 #define DEFAULT_VERTICES (360 * 4)
 
-typedef struct rkVectorShape {
-   OBJECT_HEADER
+typedef class rkVectorShape : public BaseClass {
+   public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
 

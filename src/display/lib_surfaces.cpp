@@ -140,7 +140,7 @@ ERROR lock_surface(objBitmap *Bitmap, WORD Access)
       log.warning("Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->UID, Bitmap->DataFlags);
 
       if (!Bitmap->Data) {
-         if (AllocMemory(Bitmap->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Bitmap->Head::MemFlags|Bitmap->DataFlags, &Bitmap->Data, &Bitmap->DataMID) != ERR_Okay) {
+         if (AllocMemory(Bitmap->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Bitmap->memflags()|Bitmap->DataFlags, &Bitmap->Data, &Bitmap->DataMID) != ERR_Okay) {
             return log.warning(ERR_AllocMemory);
          }
          Bitmap->prvAFlags |= BF_DATA;
@@ -426,7 +426,7 @@ ERROR track_layer(objSurface *Self)
       list[i].SurfaceID = Self->UID;
       list[i].BitmapID  = Self->BufferID;
       list[i].DisplayID = Self->DisplayID;
-      list[i].TaskID    = Self->Head::TaskID;
+      list[i].TaskID    = Self->ownerTask();
       list[i].PopOverID = Self->PopOverID;
       list[i].Flags     = Self->Flags;
       list[i].X         = Self->X;
@@ -514,7 +514,7 @@ ERROR update_surface_copy(objSurface *Self, SurfaceList *Copy)
    WORD i, j, level;
 
    if (!Self) return log.warning(ERR_NullArgs);
-   if (!(Self->Head::Flags & NF_INITIALISED)) return ERR_Okay;
+   if (!Self->initialised()) return ERR_Okay;
 
    SurfaceControl *ctl;
    if ((ctl = gfxAccessList(ARF_UPDATE))) {
@@ -546,7 +546,7 @@ ERROR update_surface_copy(objSurface *Self, SurfaceList *Copy)
          //list[i].SurfaceID    = Self->UID; Never changes
          list[i].BitmapID      = Self->BufferID;
          list[i].DisplayID     = Self->DisplayID;
-         //list[i].TaskID      = Self->Head::TaskID; Never changes
+         //list[i].TaskID      = Self->ownerTask(); Never changes
          list[i].PopOverID     = Self->PopOverID;
          list[i].X             = Self->X;
          list[i].Y             = Self->Y;
@@ -682,7 +682,7 @@ ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
    if (!Width)  Width = Self->Width;
    if (!Height) Height = Self->Height;
 
-   if (!(Self->Head::Flags & NF_INITIALISED)) {
+   if (!Self->initialised()) {
       Self->X = X;
       Self->Y = Y;
       Self->Width  = Width;
@@ -749,7 +749,7 @@ ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
    Self->Height = Height;
    UpdateSurfaceList(Self);
 
-   if (!(Self->Head::Flags & NF_INITIALISED)) return ERR_Okay;
+   if (!Self->initialised()) return ERR_Okay;
 
    // Send a Resize notification to our subscribers.  Basically, this informs our surface children to resize themselves
    // to the new dimensions.  Surface objects are not permitted to redraw themselves when they receive the Redimension

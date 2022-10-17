@@ -1754,10 +1754,10 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
 
                if (name[0]) {
                   if (!StrMatch(name, "self")) {
-                     objectid = GetUniqueID(CurrentContext());
+                     objectid = CurrentContext()->UID;
                   }
                   else if ((!StrMatch(name, "container")) or (!StrMatch(name, "owner"))) {
-                     if (!OwnerID) OwnerID = GetOwner(CurrentContext());
+                     if (!OwnerID) OwnerID = CurrentContext()->ownerID();
                      objectid = OwnerID;
                   }
                   else if (!StrMatch(name, "task")) objectid = glCurrentTask->UID;

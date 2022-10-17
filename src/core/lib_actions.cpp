@@ -201,8 +201,8 @@ static void free_public_children(OBJECTPTR Object)
             }
             else if (!page_memory(glSharedBlocks + i, (APTR *)&child)) {
                OBJECTID id = child->UID;
-               if (!(child->Flags & (NF_UNLOCK_FREE|NF_FREE_MARK))) {
-                  child->Flags |= NF_FREE_MARK;
+               if (!(child->Flags & (NF_UNLOCK_FREE|NF_COLLECT))) {
+                  child->Flags |= NF_COLLECT;
                   if (child->Flags & NF_INTEGRAL) log.warning("Found unfreed object #%d (class $%.8x).", id, child->ClassID);
                   unpage_memory(child);
                   lock.release();
@@ -286,7 +286,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    auto obj = argObject;
    OBJECTID object_id = obj->UID;
 
-   prv_access(obj);
+   obj->threadLock();
 
    // If the object is private, check that the task making this call has ownership of its memory.  If not, we must fail
    // as foreign exclusive access does not allow use of Action().
@@ -297,11 +297,11 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
          if ((obj->TaskID) and (glCurrentTaskID != obj->TaskID) and (obj->TaskID != SystemTaskID)) {
             if (object_id < 0) {
                log.warning("Public object #%d corrupt - missing the NF_PUBLIC flag ($%.8x)", object_id, obj->Flags);
-               prv_release(obj);
+               obj->threadRelease();
                return ERR_ObjectCorrupt;
             }
             log.warning("Cannot execute action %s on non-public object #%d, class $%.8x (belongs to task %d, I am %d).", action_name(obj, ActionID), object_id, obj->ClassID, obj->TaskID, glCurrentTaskID);
-            prv_release(obj);
+            obj->threadRelease();
             return ERR_IllegalActionAttempt;
          }
       }
@@ -404,7 +404,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    if (ActionID != AC_Free) obj->ActionDepth--;
 
-   prv_release(obj);
+   obj->threadRelease();
    tlContext = tlContext->Stack;
 
    if (log_depth != tlDepth) {
@@ -845,7 +845,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
    OBJECTID object_id = obj->UID;
    rkMetaClass *sysclass = obj->Class;
 
-   prv_access(obj);
+   obj->threadLock();
 
    // If the object is private, check that the task making this call has ownership of its memory.  If not, we must fail
    // as foreign exclusive access does not allow use of Action().
@@ -855,14 +855,14 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
          if ((obj->TaskID) and (glCurrentTaskID != obj->TaskID) and (obj->TaskID != SystemTaskID)) {
             if (object_id < 0) {
                log.warning("Public object #%d corrupt - missing the NF_PUBLIC flag ($%.8x)", object_id, obj->Flags);
-               prv_release(obj);
+               obj->threadRelease();
                return ERR_ObjectCorrupt;
             }
             if (ActionID > 0) {
                log.warning("Cannot execute action %s on non-public object #%d, class $%.8x (belongs to task %d, I am %d).", ActionTable[ActionID].Name, object_id, obj->ClassID, obj->TaskID, glCurrentTaskID);
             }
             else log.warning("Cannot execute method %s on non-public object #%d (belongs to task %d, I am %d).", sysclass->Methods[-ActionID].Name, object_id, obj->TaskID, glCurrentTaskID);
-            prv_release(obj);
+            obj->threadRelease();
             return ERR_IllegalActionAttempt;
          }
       }
@@ -884,7 +884,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
    }
    else {
       log.warning("Illegal method ID %d executed on class %s.", ActionID, sysclass->ClassName);
-      prv_release(obj);
+      obj->threadRelease();
       return ERR_IllegalMethodID;
    }
 
@@ -892,7 +892,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
       // Calling ActionTags() on an action that does not declare arguments makes no sense and is not supported (use
       // Action() instead)
       log.warning("Do not call ActionTags() on an action that does not declare arguments. Use Action() instead.");
-      prv_release(obj);
+      obj->threadRelease();
       return ERR_IllegalActionAttempt;
    }
 
@@ -1028,7 +1028,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
    // Put the context settings back
 
    if (ActionID != AC_Free) obj->ActionDepth--;
-   prv_release(obj);
+   obj->threadRelease();
    tlContext = tlContext->Stack;
    return error;
 }
@@ -1513,7 +1513,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
 
    if (Object IS &glMetaClass) return ERR_NoSupport; // Monitoring the MetaClass is prohibited.
 
-   prv_access(Object);
+   Object->threadLock();
 
    LONG memflags;
    if (Object->Flags & NF_PUBLIC) memflags = Object->MemFlags|MEM_PUBLIC;
@@ -1537,7 +1537,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
 
       if (error) {
          SetContext(context);
-         prv_release(Object);
+         Object->threadRelease();
          return log.warning(ERR_AllocMemory);
       }
 
@@ -1576,7 +1576,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
                }
                else if (warntag IS SUB_FAIL_EXISTS) { // Return ERR_Exists immediately
                   unlock_subscribers(Object);
-                  prv_release(Object);
+                  Object->threadRelease();
                   return ERR_Exists;
                }
 
@@ -1632,7 +1632,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
             if (error) {
                unlock_subscribers(Object);
                va_end(vlist);
-               prv_release(Object);
+               Object->threadRelease();
                return log.warning(ERR_AllocMemory);
             }
          }
@@ -1660,12 +1660,12 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
    }
    else {
       va_end(vlist);
-      prv_release(Object);
+      Object->threadRelease();
       return log.warning(ERR_AccessMemory);
    }
 
    va_end(vlist);
-   prv_release(Object);
+   Object->threadRelease();
    return warnerror;
 }
 
@@ -1703,7 +1703,7 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
 
    if (!Object) return log.warning(ERR_NullArgs);
 
-   prv_access(Object);
+   Object->threadLock();
 
    //log.msg("UnsubscribeAction(%d, Subscriber %d, Action %d)", Object->UID, ActionID);
 
@@ -1750,7 +1750,7 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
       else unlock_subscribers(Object);
    }
 
-   prv_release(Object);
+   Object->threadRelease();
    return ERR_Okay;
 }
 
@@ -1788,8 +1788,8 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    if (Object->ActionDepth > 0) { // Free() is being called while the object itself is still in use.  This can be an issue with private objects that haven't been locked with AccessObject().
       log.trace("Free() attempt while object is in use.");
-      if (!(Object->Flags & NF_FREE_MARK)) {
-         set_object_flags(Object, Object->Flags|NF_FREE_MARK);
+      if (!(Object->Flags & NF_COLLECT)) {
+         set_object_flags(Object, Object->Flags|NF_COLLECT);
          ActionMsg(AC_Free, Object->UID, NULL, 0, -1);
       }
       return ERR_Okay|ERF_Notified;
@@ -1805,7 +1805,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    if (mc->ActionTable[AC_FreeWarning].PerformAction) {
       if (mc->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
-         if ((Object->Flags & (NF_FREE_MARK|NF_FREE))) {
+         if (Object->collecting()) {
             // If the object is marked for deletion then it is not possible to avoid destruction (this prevents objects
             // from locking up the shutdown process).
 
@@ -1818,7 +1818,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    if (mc->Base) { // Sub-class detected, so call the base class
       if (mc->Base->ActionTable[AC_FreeWarning].PerformAction) {
          if (mc->Base->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
-            if ((Object->Flags & (NF_FREE_MARK|NF_FREE))) {
+            if (Object->collecting()) {
                // If the object is marked for deletion then it is not possible to avoid destruction (this prevents
                // objects from locking up the shutdown process).
                log.msg("Object will be destroyed despite being in use.");
@@ -1900,7 +1900,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    else {
       // Clear the object header.  This helps to raise problems in any areas of code that may attempt to use the object
       // after it has been destroyed.
-      ClearMemory(Object, sizeof(Head));
+      ClearMemory(Object, sizeof(BaseClass));
       FreeResource(Object);
    }
 
@@ -1925,7 +1925,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
       return ERR_ObjectCorrupt;
    }
 
-   if (Object->Flags & NF_INITIALISED) {  // Initialising twice does not cause an error, but send a warning and return
+   if (Object->initialised()) {  // Initialising twice does not cause an error, but send a warning and return
       log.warning(ERR_DoubleInit);
       return ERR_Okay;
    }

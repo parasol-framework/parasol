@@ -863,9 +863,7 @@ static ERROR SET_KeyFilter(objConfig *Self, CSTRING Value)
       if (!(Self->KeyFilter = StrClone(Value))) return ERR_AllocMemory;
    }
 
-   if (Self->Head::Flags & NF_INITIALISED) {
-      apply_key_filter(Self, Self->KeyFilter);
-   }
+   if (Self->initialised()) apply_key_filter(Self, Self->KeyFilter);
 
    return ERR_Okay;
 }
@@ -919,7 +917,7 @@ static ERROR SET_GroupFilter(objConfig *Self, CSTRING Value)
       if (!(Self->GroupFilter = StrClone(Value))) return ERR_AllocMemory;
    }
 
-   if (Self->Head::Flags & NF_INITIALISED) apply_group_filter(Self, Self->GroupFilter);
+   if (Self->initialised()) apply_group_filter(Self, Self->GroupFilter);
 
    return ERR_Okay;
 }

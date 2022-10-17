@@ -11,8 +11,8 @@ point.
 
 #define MAX_SPIRAL_VERTICES 65536
 
-typedef struct rkVectorSpiral {
-   OBJECT_HEADER
+typedef class rkVectorSpiral : public BaseClass {
+   public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
 

@@ -320,7 +320,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
    LONG len, resume_from, i;
    ERROR result;
 
-   if (!(Self->Head::Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
 
    log.branch("Host: %s, Port: %d, Path: %s, Proxy: %s, SSL: %d", Self->Host, Self->Port, Self->Path, Self->ProxyServer, (Self->Flags & HTF_SSL) ? 1 : 0);
 
@@ -1141,7 +1141,7 @@ static ERROR SET_Location(objHTTP *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
       // Free the current socket if the entire URI changes

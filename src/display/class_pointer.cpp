@@ -678,7 +678,7 @@ static ERROR PTR_Init(objPointer *Self, APTR Void)
    // GetOverObject will not function.
 
    if (!Self->SurfaceID) {
-      Self->SurfaceID = GetOwner(Self);
+      Self->SurfaceID = Self->UID;
       while ((Self->SurfaceID) and (GetClassID(Self->SurfaceID) != ID_SURFACE)) {
          Self->SurfaceID = GetOwnerID(Self->SurfaceID);
       }
@@ -692,7 +692,7 @@ static ERROR PTR_Init(objPointer *Self, APTR Void)
    // Allocate a custom cursor bitmap
 
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->Head::Flags, &bitmap, &Self->BitmapID)) {
+   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &bitmap, &Self->BitmapID)) {
       SetFields(bitmap,
          FID_Name|TSTR,           "CustomCursor",
          FID_Width|TLONG,         MAX_CURSOR_WIDTH,
@@ -1216,7 +1216,7 @@ X: The horizontal position of the pointer within its parent display.
 
 static ERROR PTR_SET_X(objPointer *Self, DOUBLE Value)
 {
-   if (Self->Head::Flags & NF_INITIALISED) acMoveToPoint(Self, Value, 0, 0, MTF_X);
+   if (Self->initialised()) acMoveToPoint(Self, Value, 0, 0, MTF_X);
    else Self->X = Value;
    return ERR_Okay;
 }
@@ -1231,7 +1231,7 @@ Y: The vertical position of the pointer within its parent display.
 
 static ERROR PTR_SET_Y(objPointer *Self, DOUBLE Value)
 {
-   if (Self->Head::Flags & NF_INITIALISED) acMoveToPoint(Self, 0, Value, 0, MTF_Y);
+   if (Self->initialised()) acMoveToPoint(Self, 0, Value, 0, MTF_Y);
    else Self->Y = Value;
    return ERR_Okay;
 }
@@ -1548,7 +1548,7 @@ static ERROR init_mouse_driver(void)
 
    // Allocate the surface for software based cursor images
 
-   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->Head::Flags, &surface, &Self->CursorSurfaceID)) {
+   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->flags(), &surface, &Self->CursorSurfaceID)) {
       SetFields(surface,
          FID_Name|TSTR,    "Pointer",
          FID_Parent|TLONG, Self->SurfaceID,

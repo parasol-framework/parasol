@@ -1066,7 +1066,7 @@ static ERROR SET_Outgoing(objNetSocket *Self, FUNCTION *Value)
       Self->Outgoing = *Value;
       if (Self->Outgoing.Type IS CALL_SCRIPT) SubscribeAction(Self->Outgoing.Script.Script, AC_Free);
 
-      if (Self->Head::Flags & NF_INITIALISED) {
+      if (Self->initialised()) {
          if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC_CONNECTED)) {
             // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
 
@@ -1264,7 +1264,7 @@ static void free_socket(objNetSocket *Self)
    if (Self->WriteQueue.Buffer) { FreeResource(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = NULL; }
    if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = NULL; }
 
-   if (!(Self->Head::Flags & NF_FREE)) {
+   if (!Self->terminating()) {
       if (Self->State != NTC_DISCONNECTED) {
          log.traceBranch("Changing state to disconnected.");
          SetLong(Self, FID_State, NTC_DISCONNECTED);
@@ -1335,7 +1335,7 @@ static ERROR write_queue(objNetSocket *Self, NetQueue *Queue, CPTR Message, LONG
 // reliable method of managing recursion problems, but burdens the message queue.
 
 #ifdef _WIN32
-void win32_netresponse(Head *SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERROR Error)
+void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERROR Error)
 {
    parasol::Log log(__FUNCTION__);
 

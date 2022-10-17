@@ -36,7 +36,7 @@ static ERROR FILTEREFFECT_Init(objFilterEffect *Self, APTR Void)
 {
    parasol::Log log;
 
-   Self->Filter = (objVectorFilter *)GetObjectPtr(GetOwner(Self));
+   Self->Filter = (objVectorFilter *)GetObjectPtr(Self->ownerID());
    if (Self->Filter->ClassID != ID_VECTORFILTER) return log.warning(ERR_UnsupportedOwner);
 
    // If the client didn't specify a source input, figure out what to use.

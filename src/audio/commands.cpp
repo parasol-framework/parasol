@@ -201,7 +201,7 @@ static ERROR COMMAND_SetPosition(objAudio *Self, LONG Handle, LONG Position)
 
    log.trace("SetPosition($%.8x, %d)", Handle, Position);
 
-   if (CurrentTaskID() != Self->Head::TaskID) {
+   if (CurrentTaskID() != Self->ownerTask()) {
       log.warning("Illegal attempt to use SetPosition directly (please use command messaging).");
    }
 

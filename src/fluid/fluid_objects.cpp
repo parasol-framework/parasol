@@ -507,7 +507,7 @@ static int object_find(lua_State *Lua)
    OBJECTID object_id;
 
    LONG type = lua_type(Lua, 1);
-   if ((type IS LUA_TSTRING) AND ((object_name = lua_tostring(Lua, 1)))) {
+   if ((type IS LUA_TSTRING) and ((object_name = lua_tostring(Lua, 1)))) {
       LONG class_type = lua_type(Lua, 2); // Optional
       if (class_type IS LUA_TNUMBER) {
          class_id = lua_tointeger(Lua, 2);
@@ -519,11 +519,11 @@ static int object_find(lua_State *Lua)
 
       log.trace("obj.find(%s, $%.8x)", object_name, class_id);
 
-      if ((!StrMatch("self", object_name)) AND (!class_id)) {
+      if ((!StrMatch("self", object_name)) and (!class_id)) {
          return object_find_ptr(Lua, Lua->Script);
       }
       else if (!StrMatch("owner", object_name)) {
-         if ((obj = GetObjectPtr(Lua->Script->Head::OwnerID))) {
+         if ((obj = GetObjectPtr(Lua->Script->ownerID()))) {
             return object_find_ptr(Lua, obj);
          }
          else return 0;
@@ -538,7 +538,7 @@ static int object_find(lua_State *Lua)
       }
       else log.debug("Unable to find object '%s'", object_name);
    }
-   else if ((type IS LUA_TNUMBER) AND ((object_id = lua_tointeger(Lua, 1)))) {
+   else if ((type IS LUA_TNUMBER) and ((object_id = lua_tointeger(Lua, 1)))) {
       log.trace("obj.find(#%d)", object_id);
 
       if (CheckObjectIDExists(object_id) != ERR_Okay) return 0;

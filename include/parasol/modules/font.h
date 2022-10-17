@@ -52,7 +52,7 @@ struct FontList {
 
 #define VER_FONT (1.000000)
 
-typedef class rkFont : public Head {
+typedef class rkFont : public BaseClass {
    public:
    DOUBLE Angle;                                               // Rotation angle to use when drawing the font.
    DOUBLE Point;                                               // The Point/Height of the font (arbitrary size, non-exact)

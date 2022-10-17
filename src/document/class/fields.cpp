@@ -151,7 +151,7 @@ Flags: Optional flags that affect object behaviour.
 
 static ERROR SET_Flags(objDocument *Self, LONG Value)
 {
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       Self->Flags = Value & (~(DCF_NO_SCROLLBARS|DCF_UNRESTRICTED|DCF_DISABLED));
    }
    else Self->Flags = Value & (~(DCF_DISABLED));
@@ -390,7 +390,7 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
       recursion++;
       unload_doc(Self, (reload IS FALSE) ? ULD_REFRESH : 0);
 
-      if (Self->Head::Flags & NF_INITIALISED) {
+      if (Self->initialised()) {
          if ((Self->XML) and (reload IS FALSE)) {
             process_parameters(Self, Self->Path);
             process_page(Self, Self->XML);
@@ -472,7 +472,7 @@ static ERROR GET_PageWidth(objDocument *Self, Variable *Value)
 
    // Reading the PageWidth returns the pixel width of the page after parsing.
 
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       value = Self->CalcWidth;
 
       if (Value->Type & FD_PERCENTAGE) {
@@ -542,7 +542,7 @@ determine the correct surface object based on object ownership.
 
 static ERROR SET_Surface(objDocument *Self, OBJECTID Value)
 {
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       if (Self->SurfaceID IS Value) return ERR_Okay;
       return ERR_NoSupport;
    }

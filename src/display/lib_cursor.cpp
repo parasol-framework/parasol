@@ -597,7 +597,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
 
          #elif _WIN32
 
-            if (pointer->Head::TaskID IS CurrentTask()->UID) {
+            if (pointer->ownerTask() IS CurrentTask()->UID) {
                winSetCursor(GetWinCursor(CursorID));
                pointer->CursorID = CursorID;
             }

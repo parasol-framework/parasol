@@ -9,8 +9,8 @@ The VectorEllipse class provides the necessary functionality for elliptical path
 
 *****************************************************************************/
 
-typedef struct rkVectorEllipse {
-   OBJECT_HEADER
+typedef class rkVectorEllipse : public BaseClass {
+   public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
    DOUBLE eCX, eCY;

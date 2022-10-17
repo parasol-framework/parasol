@@ -362,7 +362,7 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
       return ERR_InvalidObject;
    }
 
-   if (!(Bitmap->Head::Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+   if (!Bitmap->initialised()) return log.warning(ERR_NotInitialised);
 
    //log.trace("%dx%d,%dx%d to %dx%d, Offset: %dx%d to %dx%d", X, Y, Width, Height, DestX, DestY, Bitmap->XOffset, Bitmap->YOffset, dest->XOffset, dest->YOffset);
 
@@ -1746,7 +1746,7 @@ void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
       return;
    }
 
-   if (!(Bitmap->Head::Flags & NF_INITIALISED)) { log.warning(ERR_NotInitialised); return; }
+   if (!Bitmap->initialised()) { log.warning(ERR_NotInitialised); return; }
 
    X += Bitmap->XOffset;
    Y += Bitmap->YOffset;

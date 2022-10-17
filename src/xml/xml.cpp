@@ -510,7 +510,7 @@ static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
    if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) return log.warning(ERR_NullArgs);
-   if (!(Self->Head::Flags & NF_INITIALISED)) return log.warning(ERR_Failed);
+   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
 
    CSTRING field = Args->Field;
    Args->Buffer[0] = 0;
@@ -2421,7 +2421,7 @@ static ERROR SET_Path(objXML *Self, CSTRING Value)
    }
    else if ((Value) and (*Value)) {
       if ((Self->Path = StrClone(Value))) {
-         if (Self->Head::Flags & NF_INITIALISED) {
+         if (Self->initialised()) {
             parse_source(Self);
             Self->Modified++;
             return Self->ParseError;
@@ -2525,7 +2525,7 @@ static ERROR SET_Source(objXML *Self, OBJECTPTR Value)
 
    if (Value) {
       Self->Source = Value;
-      if (Self->Head::Flags & NF_INITIALISED) {
+      if (Self->initialised()) {
          parse_source(Self);
          Self->Modified++;
          return Self->ParseError;
@@ -2556,7 +2556,7 @@ is an allocation that must be freed.
 
 static ERROR GET_Statement(objXML *Self, STRING *Value)
 {
-   if (!(Self->Head::Flags & NF_INITIALISED)) {
+   if (!Self->initialised()) {
       if (Self->Statement) {
          *Value = StrClone(Self->Statement);
          return ERR_Okay;
@@ -2594,7 +2594,7 @@ static ERROR SET_Statement(objXML *Self, CSTRING Value)
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
 
    if ((Value) and (*Value)) {
-      if (Self->Head::Flags & NF_INITIALISED) {
+      if (Self->initialised()) {
          Self->ParseError = txt_to_xml(Self, Value);
          Self->Modified++;
          return Self->ParseError;
@@ -2603,7 +2603,7 @@ static ERROR SET_Statement(objXML *Self, CSTRING Value)
       else return ERR_AllocMemory;
    }
    else {
-      if (Self->Head::Flags & NF_INITIALISED) {
+      if (Self->initialised()) {
          auto temp = Self->ReadOnly;
          Self->ReadOnly = FALSE;
          acClear(Self);

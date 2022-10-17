@@ -231,7 +231,7 @@ static ERROR DOCUMENT_ApplyFontStyle(objDocument *Self, struct docApplyFontStyle
 
    log.traceBranch("Apply font styling - Face: %s, Style: %s", style->Font->Face, style->Font->Style);
 
-   if (font->Head::Flags & NF_INITIALISED) {
+   if (font->initialised()) {
       font->Colour = style->FontColour;
       font->Underline = style->FontUnderline;
    }
@@ -461,7 +461,7 @@ static ERROR DOCUMENT_DataFeed(objDocument *Self, struct acDataFeed *Args)
          return log.warning(ERR_SetField);
       }
 
-      if (Self->Head::Flags & NF_INITIALISED) {
+      if (Self->initialised()) {
          // Document is initialised.  Refresh the document from the XML source.
 
          acRefresh(Self);
@@ -1177,7 +1177,7 @@ static ERROR DOCUMENT_NewObject(objDocument *Self, APTR Void)
 
 static ERROR DOCUMENT_NewOwner(objDocument *Self, struct acNewOwner *Args)
 {
-   if (!(Self->Head::Flags & NF_INITIALISED)) {
+   if (!Self->initialised()) {
       OBJECTID owner_id = Args->NewOwnerID;
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);

@@ -15,7 +15,7 @@ module({ name="Picture", copyright="Paul Manias © 2001-2022", version=1.0 }, fu
     "FORCE_ALPHA_32: If the picture source includes an alpha channel mask, it will normally be separated out and stored in the Mask field.  If you set the FORCE_ALPHA_32 option before loading, the image will be forced into 32-bit graphics mode with alpha channel.  The mask information will be stored in the alpha byte and the Mask field will not be set.",
     { RESIZE = "RESIZE_X|RESIZE_Y" })
 
-  class("Picture", { cpp=true, src="picture.cpp", output="picture_def.c" }, [[
+  class("Picture", { src="picture.cpp", output="picture_def.c" }, [[
     obj(Bitmap) Bitmap  # Bitmap details
     obj(Bitmap) Mask    # Monochrome bit mask or alpha channel
     int(PCF) Flags      # Optional flags

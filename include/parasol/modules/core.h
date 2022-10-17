@@ -1091,7 +1091,7 @@ struct Edges {
 #define NF_FREE 0x00000040
 #define NF_TIMER_SUB 0x00000080
 #define NF_CREATE_OBJECT 0x00000100
-#define NF_FREE_MARK 0x00000200
+#define NF_COLLECT 0x00000200
 #define NF_NEW_OBJECT 0x00000400
 #define NF_RECLASSED 0x00000800
 #define NF_MESSAGE 0x00001000
@@ -1706,60 +1706,6 @@ struct ScriptArg { // For use with scExec
    };
 };
 
-//****************************************************************************
-// Header used for all objects.
-
-struct Head { // Must be 64-bit aligned
-   struct rkMetaClass *Class;   // Class pointer, resolved on AccessObject()
-   struct Stats *Stats;         // Stats pointer, resolved on AccessObject() [Private]
-   APTR  ChildPrivate;          // Address for the ChildPrivate structure, if allocated
-   APTR  CreatorMeta;           // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID ClassID;             // Reference to the object's class, used to resolve the Class pointer
-   CLASSID SubID;               // Reference to the object's sub-class, used to resolve the Class pointer
-   OBJECTID UID;                // Unique object identifier
-   OBJECTID OwnerID;            // Refers to the owner of this object
-   WORD Flags;                  // Object flags
-   WORD MemFlags;               // Recommended memory allocation flags
-   OBJECTID TaskID;             // The process that this object belongs to
-   volatile LONG  ThreadID;     // Managed by prv_access() and prv_release() - set by get_thread_id()
-   #ifdef _WIN32
-      WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
-   #else
-      LONG ThreadMsg;
-   #endif
-   UBYTE ThreadPending;         // ActionThread() increments this.
-   volatile BYTE Queue;         // Managed by prv_access() and prv_release()
-   volatile BYTE SleepQueue;    //
-   volatile BYTE Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
-   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
-/*
-   bool initialised() {
-      return Flags & NF_INITIALISED;
-   }*/
-} __attribute__ ((aligned (8)));
-
-#define ClassName(a) ((struct rkMetaClass *)(((OBJECTPTR)(a))->Class))->Name
-
-#define OBJECT_HEADER struct Head Head;
-  
-// StorageDevice class definition
-
-#define VER_STORAGEDEVICE (1.000000)
-
-typedef class rkStorageDevice : public Head {
-   public:
-   LARGE DeviceFlags;    // Flags identifying the type of media
-   LARGE DeviceSize;     // Size of the device
-   LARGE BytesFree;      // Bytes available to the user
-   LARGE BytesUsed;      // Bytes already used
-
-#ifdef PRV_STORAGEDEVICE
-   STRING prvDeviceID;   // Unique ID for the filesystem, if available
-   STRING prvVolume;
-  
-#endif
-} objStorageDevice;
-
 struct CoreBase {
    ERROR (*_AccessMemory)(MEMORYID, LONG, LONG, APTR);
    ERROR (*_Action)(LONG, APTR, APTR);
@@ -2169,12 +2115,8 @@ struct CoreBase {
 #define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
 #define GetObjectAddress          (CoreBase->_GetMemAddress)
 
-#undef FuncError
-#define FuncError(a)              (CoreBase->_FuncError)((CSTRING)__func__, a)
-#define HeadError(a,b)            (CoreBase->_FuncError)(a, b)
-
 #undef NewLockedObject
-#define NewLockedObject(a,b,c,d)        (CoreBase->_NewLockedObject(a,b,c,d,0))
+#define NewLockedObject(a,b,c,d)  (CoreBase->_NewLockedObject(a,b,c,d,0))
 
 #undef PrintDiagnosis
 #define PrintDiagnosis()          (CoreBase->_PrintDiagnosis(NULL,NULL))
@@ -2188,13 +2130,6 @@ struct CoreBase {
 
 #define CheckObjectIDExists(a)    (CheckObjectExists(a,0))
 #define CheckObjectNameExists(a)  (CheckObjectExists(0,a))
-#define LogMethod(...)            (LogF("#",__VA_ARGS__))
-#define LogAction(...)            (LogF("#",__VA_ARGS__))
-#define LogFunction(...)          (LogF("#",__VA_ARGS__))
-#define LogCriticalError(...)     (LogF("!",__VA_ARGS__))
-#define LogErrorMsg(...)          (LogF("@",__VA_ARGS__))
-#define LogBranch(...)            (LogF("~",__VA_ARGS__))
-#define LogMsg(...)               (LogF(0,__VA_ARGS__))
 #define GetParentContext()        ((OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT))
 #define GetResourcePtr(a)         ((APTR)(MAXINT)GetResource((a)))
 #define AllocPublicMemory(a,b,c)  (AllocMemory((a),(b)|MEM_PUBLIC,0,(c)))
@@ -2206,23 +2141,149 @@ struct CoreBase {
 
 extern struct CoreBase *CoreBase;
 
-INLINE OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
-INLINE APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
-INLINE OBJECTID GetOwner(APTR Object) { return ((OBJECTPTR)Object)->OwnerID; }
-INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UID; }
-INLINE OBJECTID GetUID(APTR Object) { return ((OBJECTPTR)Object)->UID; }
-
-#ifdef __cplusplus
 typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
-#endif
+
+// If AUTO_OBJECT_LOCK is enabled, objects will be automatically locked to prevent thread-clashes.
+// NB: Turning this off will cause issues between threads unless they call the necessary locking functions.
+
+//#define AUTO_OBJECT_LOCK 1
+
+//********************************************************************************************************************
+// Header used for all objects.
+
+struct BaseClass { // Must be 64-bit aligned
+   struct rkMetaClass *Class;   // Class pointer, resolved on AccessObject()
+   struct Stats *Stats;         // Stats pointer, resolved on AccessObject() [Private]
+   APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
+   APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
+   CLASSID  ClassID;            // Reference to the object's class, used to resolve the Class pointer
+   CLASSID  SubID;              // Reference to the object's sub-class, used to resolve the Class pointer
+   OBJECTID UID;                // Unique object identifier
+   OBJECTID OwnerID;            // Refers to the owner of this object
+   WORD     Flags;              // Object flags
+   WORD     MemFlags;           // Recommended memory allocation flags
+   OBJECTID TaskID;             // The process that this object belongs to
+   volatile LONG  ThreadID;     // Managed by locking functions
+   #ifdef _WIN32
+      WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
+   #else
+      LONG ThreadMsg;
+   #endif
+   UBYTE ThreadPending;         // ActionThread() increments this.
+   volatile BYTE Queue;         // Managed by locking functions
+   volatile BYTE SleepQueue;    //
+   volatile bool Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
+   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
+
+   ~BaseClass() {
+   }
+
+   inline LONG flags() {
+      return Flags;
+   }
+
+   inline bool initialised() {
+      return Flags & NF_INITIALISED;
+   }
+
+   inline OBJECTID ownerTask() {
+      return TaskID;
+   }
+
+   inline bool collecting() { // Is object being freed or marked for collection?
+      return Flags & (NF_FREE|NF_COLLECT);
+   }
+
+   inline bool terminating() { // Is object currently being freed?
+      return Flags & NF_FREE;
+   }
+
+   inline bool isPublic() {
+      return Flags & NF_PUBLIC;
+   }
+
+   inline OBJECTID ownerID() {
+      return OwnerID;
+   }
+
+   inline ERROR threadLock() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (INC_QUEUE(this) IS 1) {
+            ThreadID = get_thread_id();
+            return ERR_Okay;
+         }
+         else {
+            if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
+            SUB_QUEUE(this); // Put the lock count back to normal before AccessPrivateObject()
+            return AccessPrivateObject(this, -1); // Can fail if object is marked for deletion.
+         }
+      #else
+         return ERR_Okay;
+      #endif
+   }
+
+   inline void threadRelease() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (SleepQueue > 0) ReleasePrivateObject(this);
+         else SUB_QUEUE(this);
+      #endif
+   }
+
+   // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
+   // object lock if the queue value was at zero.
+
+   inline LONG incQueue() {
+      return __sync_add_and_fetch(&Queue, 1);
+   }
+
+   inline LONG subQueue() {
+      return __sync_sub_and_fetch(&Queue, 1);
+   }
+
+   inline LONG incSleep() {
+      return __sync_add_and_fetch(&SleepQueue, 1);
+   }
+
+   inline LONG subSleep() {
+      return __sync_sub_and_fetch(&SleepQueue, 1);
+   }
+
+   inline LONG memflags() {
+      return MemFlags;
+   }
+
+} __attribute__ ((aligned (8)));
+
+#define ClassName(a) ((a)->Class->Name)
+
+INLINE OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
+INLINE APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
   
+// StorageDevice class definition
+
+#define VER_STORAGEDEVICE (1.000000)
+
+typedef class rkStorageDevice : public BaseClass {
+   public:
+   LARGE DeviceFlags;    // Flags identifying the type of media
+   LARGE DeviceSize;     // Size of the device
+   LARGE BytesFree;      // Bytes available to the user
+   LARGE BytesUsed;      // Bytes already used
+
+#ifdef PRV_STORAGEDEVICE
+   STRING prvDeviceID;   // Unique ID for the filesystem, if available
+   STRING prvVolume;
+  
+#endif
+} objStorageDevice;
+
 // File class definition
 
 #define VER_FILE (1.200000)
 
-typedef class rkFile : public Head {
+typedef class rkFile : public BaseClass {
    public:
    LARGE    Position; // The current read/write byte position in a file.
    LONG     Flags;    // File flags and options.
@@ -2324,7 +2385,7 @@ INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, LONG Flags) {
 
 #define VER_CONFIG (1.000000)
 
-typedef class rkConfig : public Head {
+typedef class rkConfig : public BaseClass {
    public:
    STRING Path;         // The location pointer
    STRING KeyFilter;    // Enables key filtering, removing any unwanted keys on load.
@@ -2454,7 +2515,7 @@ INLINE ERROR cfgReadInt(APTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 
 #define VER_SCRIPT (1.000000)
 
-typedef class rkScript : public Head {
+typedef class rkScript : public BaseClass {
    public:
    OBJECTID TargetID;  // The object that script objects must be initialised to, e.g. for obj.new()
    LONG     Flags;     // Optional flags
@@ -2524,7 +2585,7 @@ INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
 
 #define VER_METACLASS (1.000000)
 
-typedef class rkMetaClass : public Head {
+typedef class rkMetaClass : public BaseClass {
    public:
    DOUBLE  ClassVersion;                // Version of the class
    struct MethodArray * Methods;        // Original method array supplied by the module.
@@ -2575,7 +2636,7 @@ INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, struct rkMetaC
 
 #define VER_TASK (1.000000)
 
-typedef class rkTask : public Head {
+typedef class rkTask : public BaseClass {
    public:
    DOUBLE TimeOut;
    LONG   Flags;
@@ -2673,7 +2734,7 @@ INLINE ERROR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) {
 
 #define VER_THREAD (1.000000)
 
-typedef class rkThread : public Head {
+typedef class rkThread : public BaseClass {
    public:
    APTR  Data;       // User data pointer.
    LONG  DataSize;   // Size of user data.
@@ -2735,7 +2796,7 @@ struct TaskList {
 
 #define VER_MODULE (1.000000)
 
-typedef class rkModule : public Head {
+typedef class rkModule : public BaseClass {
    public:
    DOUBLE Version;                          // Minimum required version of the module
    const struct Function * FunctionList;    // Array of functions
@@ -2770,7 +2831,7 @@ INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) {
 
 #define VER_TIME (1.000000)
 
-typedef class rkTime : public Head {
+typedef class rkTime : public BaseClass {
    public:
    LARGE SystemTime;    // Total number of microseconds passed since the system base time
    LONG  Year;          // Year   (-ve for BC, +ve for AD)
@@ -2796,7 +2857,7 @@ typedef class rkTime : public Head {
 
 #define VER_COMPRESSION (1.000000)
 
-typedef class rkCompression : public Head {
+typedef class rkCompression : public BaseClass {
    public:
    LARGE    TotalOutput;     // Total number of bytes output (e.g. during compression of a stream)
    OBJECTID OutputID;        // Reference to output object for user messages
@@ -2939,7 +3000,7 @@ INLINE ERROR cmpFind(APTR Ob, CSTRING Path, LONG Flags, struct CompressedItem **
 
 #define VER_COMPRESSEDSTREAM (1.000000)
 
-typedef class rkCompressedStream : public Head {
+typedef class rkCompressedStream : public BaseClass {
    public:
    LARGE     TotalOutput; // Count of the total bytes that have been output.
    OBJECTPTR Input;      // The object that is the source of the compressed data.
@@ -2974,7 +3035,6 @@ INLINE BYTE CMP_DATETIME(struct DateTime *one, struct DateTime *two)
    if (one->Second > two->Second) return 1;
    return 0;
 }
-  
 
 // Macro based actions.
 

@@ -238,7 +238,7 @@ ERROR AUDIO_AddSample(objAudio *Self, struct sndAddSample *Args)
    // Check that the use of AddSample() is legal.  We cannot allow foreign tasks to call us directly, because private
    // allocation of the sample memory means that the sample data will end up belonging to the wrong task in such a case.
 
-   if (CurrentTaskID() != Self->Head::TaskID) {
+   if (CurrentTaskID() != Self->ownerTask()) {
       log.warning("Illegal call - use WaitMsg() to add samples to Audio Servers.");
       return ERR_IllegalActionAttempt;
    }
@@ -378,7 +378,7 @@ static ERROR AUDIO_AddStream(objAudio *Self, struct sndAddStream *Args)
    // allocation of the sample memory means that the sample data will end up belonging to the wrong task in
    // such a case.
 
-   if (CurrentTaskID() != Self->Head::TaskID) {
+   if (CurrentTaskID() != Self->ownerTask()) {
       log.warning("Illegal call - use WaitMsg() to add streams to Audio Servers.");
       return ERR_IllegalActionAttempt;
    }
@@ -1189,7 +1189,7 @@ static ERROR AUDIO_RemoveSample(objAudio *Self, struct sndRemoveSample *Args)
    // to call us directly, because private allocation of the sample memory
    // means that the sample data can belong to different tasks.
 
-   if (CurrentTaskID() != Self->Head::TaskID) {
+   if (CurrentTaskID() != Self->ownerTask()) {
       log.warning("Illegal call - use WaitMsg() to remove samples from Audio Servers.");
       return ERR_IllegalActionAttempt;
    }
@@ -2227,7 +2227,7 @@ static void load_config(objAudio *Self)
                   Self->VolumeCtlMID = 0;
                }
 
-               if (!AllocMemory(sizeof(VolumeCtl) * (keys.size() + 1), Self->Head::MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
+               if (!AllocMemory(sizeof(VolumeCtl) * (keys.size() + 1), Self->memflags()|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
                   Self->VolumeCtlTotal = keys.size();
 
                   for (auto& [k, v] : keys) {
@@ -2467,7 +2467,7 @@ next_card:
       return ERR_NoSupport;
    }
 
-   if (!AllocMemory(sizeof(VolumeCtl) * (voltotal + 1), Self->Head::MemFlags|MEM_NO_CLEAR, &volctl, &volmid)) {
+   if (!AllocMemory(sizeof(VolumeCtl) * (voltotal + 1), Self->memflags()|MEM_NO_CLEAR, &volctl, &volmid)) {
       index = 0;
       for (elem=snd_mixer_first_elem(Self->MixHandle); elem; elem=snd_mixer_elem_next(elem)) {
          snd_mixer_selem_get_id(elem, sid);

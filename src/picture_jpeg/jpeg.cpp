@@ -48,7 +48,7 @@ static ERROR JPEG_Activate(objPicture *Self, APTR Void)
 
    // Return if the picture object has already been activated
 
-   if (Self->Bitmap->Head::Flags & NF_INITIALISED) return ERR_Okay;
+   if (Self->Bitmap->initialised()) return ERR_Okay;
 
    if (!Self->prvFile) {
       if (GetString(Self, FID_Location, &location) != ERR_Okay) return log.warning(ERR_GetField);

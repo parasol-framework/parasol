@@ -248,9 +248,11 @@ static LONG glScriptReceivedMsg = 0;
 
 static void read_stdin(objTask *Task, APTR Buffer, LONG Size, ERROR Status)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Status IS ERR_Finished) {
       SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
-      LogMsg("Input pipe closed.");
+      log.msg("Input pipe closed.");
       return;
    }
 
@@ -281,7 +283,7 @@ static void read_stdin(objTask *Task, APTR Buffer, LONG Size, ERROR Status)
    if (glScriptBuffer[glScriptBufferLength-1] IS 0x1a) { // Ctrl-Z
       glScriptBuffer[glScriptBufferLength-1] = 0;
       SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
-      LogMsg("EOF received.");
+      log.msg("EOF received.");
       return;
    }
 }

@@ -286,7 +286,7 @@ static ERROR FILE_BufferContent(objFile *Self, APTR Void)
             acSeekStart(Self, 0);
             acRead(Self, buffer, 1024 * 1024, &len);
             if (len > 0) {
-               if (!AllocMemory(len, Self->Head::MemFlags|MEM_NO_CLEAR, (APTR *)&Self->Buffer, NULL)) {
+               if (!AllocMemory(len, Self->memflags()|MEM_NO_CLEAR, (APTR *)&Self->Buffer, NULL)) {
                   CopyMemory(buffer, Self->Buffer, len);
                   Self->Size = len;
                }
@@ -300,7 +300,7 @@ static ERROR FILE_BufferContent(objFile *Self, APTR Void)
       // the file content is treated as a string.
 
       BYTE *buffer;
-      if (!AllocMemory(Self->Size+1, Self->Head::MemFlags|MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
+      if (!AllocMemory(Self->Size+1, Self->memflags()|MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
          buffer[Self->Size] = 0;
          if (!acRead(Self, buffer, Self->Size, &len)) {
             Self->Buffer = buffer;
@@ -316,7 +316,7 @@ static ERROR FILE_BufferContent(objFile *Self, APTR Void)
    // If the file was empty, allocate a 1-byte memory block for the Buffer field, in order to satisfy condition tests.
 
    if (!Self->Buffer) {
-      if (AllocMemory(1, Self->Head::MemFlags, (APTR *)&Self->Buffer, NULL) != ERR_Okay) {
+      if (AllocMemory(1, Self->memflags(), (APTR *)&Self->Buffer, NULL) != ERR_Okay) {
          return log.warning(ERR_AllocMemory);
       }
    }
@@ -590,7 +590,7 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
          // Allocate buffer if none specified.  An extra byte is allocated for a NULL byte on the end, in case the file
          // content is treated as a string.
 
-         if (AllocMemory((Self->Size < 1) ? 1 : Self->Size+1, Self->Head::MemFlags|MEM_NO_CLEAR, (APTR *)&Self->Buffer, NULL) != ERR_Okay) {
+         if (AllocMemory((Self->Size < 1) ? 1 : Self->Size+1, Self->memflags()|MEM_NO_CLEAR, (APTR *)&Self->Buffer, NULL) != ERR_Okay) {
             return log.warning(ERR_AllocMemory);
          }
          ((BYTE *)Self->Buffer)[Self->Size] = 0;
@@ -606,7 +606,7 @@ static ERROR FILE_Init(objFile *Self, APTR Void)
       Self->Size = StrLength(Self->Path + 7);
 
       if (Self->Size > 0) {
-         if (!AllocMemory(Self->Size, Self->Head::MemFlags, (APTR *)&Self->Buffer, NULL)) {
+         if (!AllocMemory(Self->Size, Self->memflags(), (APTR *)&Self->Buffer, NULL)) {
             Self->Flags |= FL_READ|FL_WRITE;
             CopyMemory(Self->Path + 7, Self->Buffer, Self->Size);
             return ERR_Okay;
@@ -829,7 +829,7 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
       }
 
       STRING newpath;
-      if (!AllocMemory(len + 1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (APTR *)&newpath, NULL)) {
+      if (!AllocMemory(len + 1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (APTR *)&newpath, NULL)) {
          LONG j = StrCopy(dest, newpath, COPY_ALL);
          i++;
          while ((src[i]) and (src[i] != '/') and (src[i] != '\\')) newpath[j++] = src[i++];
@@ -854,7 +854,7 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
    }
    else {
       STRING newpath;
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (APTR *)&newpath, NULL)) {
+      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (APTR *)&newpath, NULL)) {
          CopyMemory(dest, newpath, len+1);
 
          #ifdef _WIN32
@@ -1188,7 +1188,7 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
 
    if ((Self->prvType & STAT_FOLDER) or (Self->Flags & FL_FOLDER)) {
       if (Self->Path[i-1] IS ':') { // Renaming a volume
-         if (!AllocMemory(namelen+2, MEM_STRING|Self->Head::MemFlags, (APTR *)&n, NULL)) {
+         if (!AllocMemory(namelen+2, MEM_STRING|Self->memflags(), (APTR *)&n, NULL)) {
             for (i=0; (Args->Name[i]) and (Args->Name[i] != ':') and (Args->Name[i] != '/') and (Args->Name[i] != '\\'); i++) n[i] = Args->Name[i];
             n[i] = 0;
             if (!RenameVolume(Self->Path, n)) {
@@ -1209,7 +1209,7 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
          // We are renaming a folder
          for (--i; (i > 0) and (Self->Path[i-1] != ':') and (Self->Path[i-1] != '/') and (Self->Path[i-1] != '\\'); i--);
 
-         if (!AllocMemory(i+namelen+2, MEM_STRING|Self->Head::MemFlags, (APTR *)&n, NULL)) {
+         if (!AllocMemory(i+namelen+2, MEM_STRING|Self->memflags(), (APTR *)&n, NULL)) {
             for (j=0; j < i; j++) n[j] = Self->Path[j];
 
             for (i=0; (Args->Name[i]) and (Args->Name[i] != '/') and (Args->Name[i] != '\\') and (Args->Name[i] != ':'); i++) {
@@ -1235,7 +1235,7 @@ static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
    }
    else { // We are renaming a file
       while ((i > 0) and (Self->Path[i-1] != ':') and (Self->Path[i-1] != '/') and (Self->Path[i-1] != '\\')) i--;
-      if (!AllocMemory(i+namelen+1, MEM_STRING|Self->Head::MemFlags, (APTR *)&n, NULL)) {
+      if (!AllocMemory(i+namelen+1, MEM_STRING|Self->memflags(), (APTR *)&n, NULL)) {
          // Generate the new path, then rename the file
 
          for (j=0; j < i; j++) n[j] = Self->Path[j];
@@ -1958,7 +1958,7 @@ static ERROR SET_Group(objFile *Self, LONG Value)
 {
 #ifdef __unix__
    parasol::Log log;
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       log.msg("Changing group to #%d", Value);
       if (!fchown(Self->Handle, -1, Value)) return ERR_Okay;
       else return log.warning(convert_errno(errno, ERR_Failed));
@@ -2249,7 +2249,7 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if (Self->Head::Flags & NF_INITIALISED) return log.warning(ERR_Immutable);
+   if (Self->initialised()) return log.warning(ERR_Immutable);
 
    if (Self->Stream) {
       #ifdef __unix__
@@ -2272,7 +2272,7 @@ static ERROR SET_Path(objFile *Self, CSTRING Value)
       else len = StrLength(Value);
 
       // Note: An extra byte is allocated in case the FL_FOLDER flag is set
-      if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (APTR *)&Self->Path, NULL)) {
+      if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (APTR *)&Self->Path, NULL)) {
          // If the path is set to ':' then this is the equivalent of asking for a folder list of all volumes in
          // the system.  No further initialisation is necessary in such a case.
 
@@ -2393,7 +2393,7 @@ static ERROR GET_Permissions(objFile *Self, LONG *Value)
 
 static ERROR SET_Permissions(objFile *Self, LONG Value)
 {
-   if (!(Self->Head::Flags & NF_INITIALISED)) {
+   if (!Self->initialised()) {
       Self->Permissions = Value;
       return ERR_Okay;
    }
@@ -2501,7 +2501,7 @@ The Position will always remain at zero if the file object represents a folder.
 
 static ERROR SET_Position(objFile *Self, LARGE Value)
 {
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       return acSeekStart(Self, Value);
    }
    else {
@@ -2589,14 +2589,14 @@ static ERROR SET_Size(objFile *Self, LARGE Size)
    if (Size < 0) return log.warning(ERR_OutOfRange);
 
    if (Self->Buffer) {
-      if (Self->Head::Flags & NF_INITIALISED) return ERR_NoSupport;
+      if (Self->initialised()) return ERR_NoSupport;
       else Self->Size = Size;
 
       if (Self->Position > Self->Size) acSeekStart(Self, Size);
       return ERR_Okay;
    }
 
-   if (!(Self->Head::Flags & NF_INITIALISED)) {
+   if (!Self->initialised()) {
       Self->Size = Size;
       if (Self->Position > Self->Size) acSeekStart(Self, Size);
       return ERR_Okay;
@@ -2791,7 +2791,7 @@ static ERROR SET_User(objFile *Self, LONG Value)
 {
 #ifdef __unix__
    parasol::Log log;
-   if (Self->Head::Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       log.msg("Changing user to #%d", Value);
       if (!fchown(Self->Handle, Value, -1)) {
          return ERR_Okay;

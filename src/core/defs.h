@@ -35,11 +35,6 @@
 
 //#define USE_GLOBAL_EVENTS 1 // Use a global locking system for resources in Windows (equivalent to Linux)
 
-// If AUTO_OBJECT_LOCK is enabled, objects will be automatically locked to prevent thread-clashes with prv_access().  It is used by Action() and similar functions.
-// NB: Turning this off will cause issues between threads unless they call the necessary locking functions.
-
-//#define AUTO_OBJECT_LOCK 1
-
 #define MAX_TASKS    50  // Maximum number of tasks allowed to run at once
 #define MAX_SEMLOCKS 40  // Maximum number of semaphore allocations per task
 
@@ -780,7 +775,7 @@ extern struct DocView *glDocView;
 
 /****************************************************************************/
 
-class ModuleMaster : public Head {
+class ModuleMaster : public BaseClass {
    public:
    class ModuleMaster *Next;   // Next module in list
    class ModuleMaster *Prev;   // Previous module in list
@@ -1126,59 +1121,7 @@ INLINE CSTRING GET_FIELD_NAME(ULONG FieldID)
 }
 
 /*****************************************************************************
-** These are fast in-line calls for object locking.  These functions attempt to quickly 'steal' the object lock if the
-** queue value was at zero.
 */
-
-#define INC_QUEUE(Object) __sync_add_and_fetch(&(Object)->Queue, 1)
-#define SUB_QUEUE(Object) __sync_sub_and_fetch(&(Object)->Queue, 1)
-
-/* // For debugging specific object locking issues only.
-INLINE BYTE INC_QUEUE(OBJECTPTR Object)
-{
-   BYTE result = __sync_add_and_fetch(&(Object)->Queue, 1);
-   if (Object->UID IS 2435) LogF("@Add","%d", result);
-   return result;
-}
-
-INLINE BYTE SUB_QUEUE(OBJECTPTR Object)
-{
-   BYTE result = __sync_sub_and_fetch(&(Object)->Queue, 1);
-   if (Object->UID IS 2435) LogF("@Sub","%d", result);
-   return result;
-}
-*/
-
-#define INC_SLEEP(Object) __sync_add_and_fetch(&(Object)->SleepQueue, 1)
-#define SUB_SLEEP(Object) __sync_sub_and_fetch(&(Object)->SleepQueue, 1)
-
-#ifdef AUTO_OBJECT_LOCK
-
-INLINE ERROR prv_access(OBJECTPTR Object)
-{
-   if (INC_QUEUE(Object) IS 1) {
-      Object->ThreadID = get_thread_id();
-      return ERR_Okay;
-   }
-   else {
-      if (Object->ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-      SUB_QUEUE(Object); // Put the lock count back to normal before AccessPrivateObject()
-      return AccessPrivateObject(Object, -1); // Can fail if object is marked for deletion.
-   }
-}
-
-INLINE void prv_release(OBJECTPTR Object)
-{
-   if (Object->SleepQueue > 0) ReleasePrivateObject(Object);
-   else SUB_QUEUE(Object);
-}
-
-#else
-
-INLINE ERROR prv_access(OBJECTPTR Object) { return ERR_Okay; }
-INLINE void prv_release(OBJECTPTR Object) { }
-
-#endif
 
 #ifdef  __cplusplus
 
@@ -1190,17 +1133,17 @@ class ScopedObjectAccess {
       ERROR error;
 
       ScopedObjectAccess(OBJECTPTR Object) {
-         error = prv_access(Object);
+         error = Object->threadLock();
          obj = Object;
       }
 
-      ~ScopedObjectAccess() { if (!error) prv_release(obj); }
+      ~ScopedObjectAccess() { if (!error) obj->threadRelease(); }
 
       bool granted() { return error == ERR_Okay; }
 
       void release() {
          if (!error) {
-            prv_release(obj);
+            obj->threadRelease();
             error = ERR_NotLocked;
          }
       }

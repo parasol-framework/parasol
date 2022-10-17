@@ -90,16 +90,16 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
          return ERR_NoFieldAccess;
       }
 
-      if ((field->Flags & FD_INIT) and (Object->Flags & NF_INITIALISED) and (tlContext->Object != Object)) {
+      if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
          if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
          else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
 
 
-      prv_access(Object);
+      Object->threadLock();
       ERROR error = field->WriteValue(Object, field, type, Array, Elements);
-      prv_release(Object);
+      Object->threadRelease();
       return error;
    }
    else {
@@ -178,13 +178,13 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
          else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
-      else if ((field->Flags & FD_INIT) and (Object->Flags & NF_INITIALISED) and (tlContext->Object != Object)) {
+      else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
          if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
          else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
 
-      prv_access(Object);
+      Object->threadLock();
 
       va_list list;
       va_start(list, FieldID);
@@ -209,7 +209,7 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
 
       va_end(list);
 
-      prv_release(Object);
+      Object->threadRelease();
    }
    else {
       log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), ((rkMetaClass *)Object->Class)->ClassName);
@@ -283,7 +283,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
 
    parasol::Log log("SetFields");
 
-   prv_access(Object);
+   Object->threadLock();
 
    FIELD field_id;
    while ((field_id = va_arg(List, LARGE)) != TAGEND) {
@@ -305,7 +305,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
             else va_arg(List, LONG);
             continue;
          }
-         else if ((field->Flags & FD_INIT) and (Object->Flags & NF_INITIALISED) and (tlContext->Object != Object)) {
+         else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
             if (!field->Name) log.warning("Field %s of class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
             else log.warning("Field \"%s\" of class %s is init-only.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
 
@@ -338,18 +338,18 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
 
          if ((error) and (error != ERR_NoSupport)) {
             log.warning("(%s:%d) Failed to set field %s (error #%d).", ((rkMetaClass *)source->Class)->ClassName, source->UID, GET_FIELD_NAME(field_id), error);
-            prv_release(Object);
+            Object->threadRelease();
             return error;
          }
       }
       else {
          log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((rkMetaClass *)Object->Class)->ClassName);
-         prv_release(Object);
+         Object->threadRelease();
          return ERR_UnsupportedField;
       }
    }
 
-   prv_release(Object);
+   Object->threadRelease();
    return ERR_Okay;
 }
 
@@ -501,7 +501,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
       return ERR_NoFieldAccess;
    }
 
-   if ((Field->Flags & FD_INIT) and (Object->Flags & NF_INITIALISED) and (tlContext->Object != Object)) {
+   if ((Field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
       log.warning("Field \"%s\" in class %s is init-only.", FieldName, ((rkMetaClass *)Object->Class)->ClassName);
       return ERR_NoFieldAccess;
    }
@@ -509,10 +509,10 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
    if (!Value[0]) Value = NULL;
 
    ERROR error;
-   prv_access(Object);
+   Object->threadLock();
    if (Field->Flags & FD_ARRAY) { // CSV values
       if (!Value) {
-         prv_release(Object);
+         Object->threadRelease();
          return ERR_NoData;
       }
       error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
@@ -559,7 +559,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
             }
             else {
                log.warning("Object \"%s\" could not be found.", Value);
-               prv_release(Object);
+               Object->threadRelease();
                return ERR_Search;
             }
          }
@@ -600,7 +600,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
    }
    else error = ERR_UnrecognisedFieldType;
 
-   prv_release(Object);
+   Object->threadRelease();
    return error;
 }
 

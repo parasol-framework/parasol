@@ -20,7 +20,7 @@
 
 #define VER_SVG (1.000000)
 
-typedef class rkSVG : public Head {
+typedef class rkSVG : public BaseClass {
    public:
    OBJECTPTR Target;    // Refers to the target of the generated SVG scene.
    STRING    Path;      // The location of the source SVG data.

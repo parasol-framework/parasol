@@ -39,7 +39,7 @@ module({ name="Font", copyright="Paul Manias © 1998-2022", version=1.0 }, funct
     LINE = "-2: Terminate operation at the first line feed or word-wrap."
   })
 
-  class("Font", { version=1, cpp=true, src="class_font.cpp", output="class_font_def.c" }, [[
+  class("Font", { version=1, src="class_font.cpp", output="class_font_def.c" }, [[
    double Angle           # Rotation angle to use when drawing the font.
    double Point           # The Point/Height of the font (arbitrary size, non-exact)
    double StrokeSize      # For scalable fonts only.  Indicates the strength of the stroked outline if Outline.Alpha > 0
