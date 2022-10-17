@@ -951,6 +951,42 @@ struct ScriptArg { // For use with scExec
       DOUBLE Double;
    };
 };
+
+//****************************************************************************
+// Header used for all objects.
+
+struct Head { // Must be 64-bit aligned
+   struct rkMetaClass *Class;   // Class pointer, resolved on AccessObject()
+   struct Stats *Stats;         // Stats pointer, resolved on AccessObject() [Private]
+   APTR  ChildPrivate;          // Address for the ChildPrivate structure, if allocated
+   APTR  CreatorMeta;           // The creator (via NewObject) is permitted to store a custom data pointer here.
+   CLASSID ClassID;             // Reference to the object's class, used to resolve the Class pointer
+   CLASSID SubID;               // Reference to the object's sub-class, used to resolve the Class pointer
+   OBJECTID UID;                // Unique object identifier
+   OBJECTID OwnerID;            // Refers to the owner of this object
+   WORD Flags;                  // Object flags
+   WORD MemFlags;               // Recommended memory allocation flags
+   OBJECTID TaskID;             // The process that this object belongs to
+   volatile LONG  ThreadID;     // Managed by prv_access() and prv_release() - set by get_thread_id()
+   #ifdef _WIN32
+      WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
+   #else
+      LONG ThreadMsg;
+   #endif
+   UBYTE ThreadPending;         // ActionThread() increments this.
+   volatile BYTE Queue;         // Managed by prv_access() and prv_release()
+   volatile BYTE SleepQueue;    //
+   volatile BYTE Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
+   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
+/*
+   bool initialised() {
+      return Flags & NF_INITIALISED;
+   }*/
+} __attribute__ ((aligned (8)));
+
+#define ClassName(a) ((struct rkMetaClass *)(((OBJECTPTR)(a))->Class))->Name
+
+#define OBJECT_HEADER struct Head Head;
   ]])
 
   class("StorageDevice", { src="../classes/class_storagedevice.cpp" }, [[
