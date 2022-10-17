@@ -283,7 +283,7 @@ static ERROR SCINTILLA_ActionNotify(objScintilla *Self, struct acActionNotify *A
       request.Preference[2] = 0;
 
       struct acDataFeed dc;
-      dc.ObjectID = Self->Head.UID;
+      dc.ObjectID = Self->UID;
       dc.Datatype = DATA_REQUEST;
       dc.Buffer   = &request;
       dc.Size     = sizeof(request);
@@ -350,7 +350,7 @@ static ERROR SCINTILLA_ActionNotify(objScintilla *Self, struct acActionNotify *A
       SCICALL(SCI_SETUNDOCOLLECTION, 0UL); // Turn off undo
 
       if (write->Buffer) {
-         acDataFeed(Self, Self->Head.UID, DATA_TEXT, write->Buffer, write->Result);
+         acDataFeed(Self, Self->UID, DATA_TEXT, write->Buffer, write->Result);
       }
       else { // We have to read the data from the file stream
       }
@@ -628,7 +628,7 @@ static ERROR SCINTILLA_Free(objScintilla *Self, APTR)
    }
 
    /*if (Self->PointerLocked) {
-      RestoreCursor(PTR_DEFAULT, Self->Head.UID);
+      RestoreCursor(PTR_DEFAULT, Self->UID);
       Self->PointerLocked = FALSE;
    }*/
 
@@ -1034,7 +1034,7 @@ static ERROR SCINTILLA_NewObject(objScintilla *Self, APTR)
 
 static ERROR SCINTILLA_NewOwner(objScintilla *Self, struct acNewOwner *Args)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) {
+   if (!(Self->Head::Flags & NF_INITIALISED)) {
       OBJECTID owner_id = Args->NewOwnerID;
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
@@ -1452,11 +1452,11 @@ static ERROR SET_AllowTabs(objScintilla *Self, LONG Value)
 {
    if (Value) {
       Self->AllowTabs = TRUE;
-      if (Self->Head.Flags & NF_INITIALISED) SCICALL(SCI_SETUSETABS, 1UL);
+      if (Self->Head::Flags & NF_INITIALISED) SCICALL(SCI_SETUSETABS, 1UL);
    }
    else {
       Self->AllowTabs = FALSE;
-      if (Self->Head.Flags & NF_INITIALISED) SCICALL(SCI_SETUSETABS, 0UL);
+      if (Self->Head::Flags & NF_INITIALISED) SCICALL(SCI_SETUSETABS, 0UL);
    }
    return ERR_Okay;
 }
@@ -1492,7 +1492,7 @@ static ERROR SET_BkgdColour(objScintilla *Self, RGB8 *Value)
 {
    Self->BkgdColour = *Value;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       SCICALL(SCI_STYLESETBACK, STYLE_DEFAULT, (long int)SCICOLOUR(Self->BkgdColour.Red, Self->BkgdColour.Green, Self->BkgdColour.Blue));
    }
 
@@ -1524,7 +1524,7 @@ static ERROR SET_CursorColour(objScintilla *Self, RGB8 *Value)
 {
    Self->CursorColour = *Value;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       SCICALL(SCI_SETCARETFORE, STYLE_DEFAULT, (long int)SCICOLOUR(Self->CursorColour.Red, Self->CursorColour.Green, Self->CursorColour.Blue));
    }
 
@@ -1586,11 +1586,11 @@ static ERROR SET_FoldingMarkers(objScintilla *Self, LONG Value)
 {
    if (Value) {
       Self->FoldingMarkers = TRUE;
-      if (Self->Head.Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 2, 20L);
+      if (Self->Head::Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 2, 20L);
    }
    else {
       Self->FoldingMarkers = FALSE;
-      if (Self->Head.Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 2, 0L);
+      if (Self->Head::Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 2, 0L);
    }
    return ERR_Okay;
 }
@@ -1615,7 +1615,7 @@ static ERROR SET_LeftMargin(objScintilla *Self, LONG Value)
 {
    if ((Value >= 0) and (Value <= 100)) {
       Self->LeftMargin = Value;
-      if (Self->Head.Flags & NF_INITIALISED) {
+      if (Self->Head::Flags & NF_INITIALISED) {
          SCICALL(SCI_SETMARGINLEFT, 0, Self->LeftMargin);
       }
       return ERR_Okay;
@@ -1635,7 +1635,7 @@ The lexer for document styling is defined here.
 static ERROR SET_Lexer(objScintilla *Self, LONG Value)
 {
    Self->Lexer = Value;
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       parasol::Log log;
       log.branch("Changing lexer to %d", Value);
       Self->API->SetLexer(Self->Lexer);
@@ -1652,7 +1652,7 @@ LineCount: The total number of lines in the document.
 
 static ERROR GET_LineCount(objScintilla *Self, LONG *Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       *Value = SCICALL(SCI_GETLINECOUNT);
       return ERR_Okay;
    }
@@ -1670,7 +1670,7 @@ static ERROR SET_LineHighlight(objScintilla *Self, RGB8 *Value)
 {
    Self->LineHighlight = *Value;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       SCICALL(SCI_SETCARETLINEBACK, SCICOLOUR(Self->LineHighlight.Red, Self->LineHighlight.Green, Self->LineHighlight.Blue));
       if (Self->LineHighlight.Alpha > 0) {
          SCICALL(SCI_SETCARETLINEVISIBLE, 1UL);
@@ -1699,11 +1699,11 @@ static ERROR SET_LineNumbers(objScintilla *Self, LONG Value)
 {
    if (Value) {
       Self->LineNumbers = TRUE;
-      if (Self->Head.Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 0, 50L);
+      if (Self->Head::Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 0, 50L);
    }
    else {
       Self->LineNumbers = FALSE;
-      if (Self->Head.Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 0, 0L);
+      if (Self->Head::Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 0, 0L);
    }
    return ERR_Okay;
 }
@@ -1737,7 +1737,7 @@ static ERROR SET_Path(objScintilla *Self, CSTRING Value)
 
    if ((Value) and (*Value)) {
       if ((Self->Path = StrClone(Value))) {
-         if (Self->Head.Flags & NF_INITIALISED) {
+         if (Self->Head::Flags & NF_INITIALISED) {
             if (load_file(Self, Self->Path) != ERR_Okay) {
                return ERR_File;
             }
@@ -1787,7 +1787,7 @@ not make this change for you automatically.
 
 static ERROR SET_Modified(objScintilla *Self, LONG Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       if (Value) {
          Self->Modified = TRUE;
       }
@@ -1813,7 +1813,7 @@ static ERROR SET_RightMargin(objScintilla *Self, LONG Value)
 {
    if ((Value >= 0) and (Value <= 100)) {
       Self->RightMargin = Value;
-      if (Self->Head.Flags & NF_INITIALISED) {
+      if (Self->Head::Flags & NF_INITIALISED) {
          SCICALL(SCI_SETMARGINRIGHT, 0, Self->RightMargin);
       }
       return ERR_Okay;
@@ -1838,11 +1838,11 @@ static ERROR SET_ShowWhitespace(objScintilla *Self, LONG Value)
 {
    if (Value) {
       Self->ShowWhitespace = 1;
-      if (Self->Head.Flags & NF_INITIALISED) SCICALL(SCI_SETVIEWWS, (long unsigned int)SCWS_VISIBLEALWAYS);
+      if (Self->Head::Flags & NF_INITIALISED) SCICALL(SCI_SETVIEWWS, (long unsigned int)SCWS_VISIBLEALWAYS);
    }
    else {
       Self->ShowWhitespace = 0;
-      if (Self->Head.Flags & NF_INITIALISED) SCICALL(SCI_SETVIEWWS, (long unsigned int)SCWS_INVISIBLE);
+      if (Self->Head::Flags & NF_INITIALISED) SCICALL(SCI_SETVIEWWS, (long unsigned int)SCWS_INVISIBLE);
    }
    return ERR_Okay;
 }
@@ -1961,7 +1961,7 @@ static ERROR GET_String(objScintilla *Self, STRING *Value)
 
 static ERROR SET_String(objScintilla *Self, CSTRING Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       if ((Value) and (*Value)) SCICALL(SCI_SETTEXT, 0UL, (const char *)Value);
       else acClear(Self);
    }
@@ -1994,11 +1994,11 @@ static ERROR SET_Symbols(objScintilla *Self, LONG Value)
 {
    if (Value) {
       Self->Symbols = TRUE;
-      if (Self->Head.Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 1, 20L);
+      if (Self->Head::Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 1, 20L);
    }
    else {
       Self->Symbols = FALSE;
-      if (Self->Head.Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 1, 0L);
+      if (Self->Head::Flags & NF_INITIALISED) SCICALL(SCI_SETMARGINWIDTHN, 1, 0L);
    }
    return ERR_Okay;
 }
@@ -2021,7 +2021,7 @@ static ERROR SET_TabWidth(objScintilla *Self, LONG Value)
    if (Value > 0) {
       if (Value > 200) Value = 200;
       Self->TabWidth = Value;
-      if (Self->Head.Flags & NF_INITIALISED) SCICALL(SCI_SETTABWIDTH, Value);
+      if (Self->Head::Flags & NF_INITIALISED) SCICALL(SCI_SETTABWIDTH, Value);
       return ERR_Okay;
    }
    else return ERR_OutOfRange;
@@ -2038,7 +2038,7 @@ static ERROR SET_TextColour(objScintilla *Self, RGB8 *Value)
 {
    Self->TextColour = *Value;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       SCICALL(SCI_STYLESETFORE, STYLE_DEFAULT, (long int)SCICOLOUR(Self->TextColour.Red, Self->TextColour.Green, Self->TextColour.Blue));
    }
 
@@ -2071,7 +2071,7 @@ static ERROR SET_Wordwrap(objScintilla *Self, LONG Value)
    if (Value) Self->Wordwrap = TRUE;
    else Self->Wordwrap = FALSE;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       Self->API->panWordwrap(Self->Wordwrap);
    }
    return ERR_Okay;
@@ -2129,7 +2129,7 @@ static void draw_scintilla(objScintilla *Self, objSurface *Surface, struct rkBit
    parasol::Log log;
 
    if (!Self->Visible) return;
-   if (!(Self->Head.Flags & NF_INITIALISED)) return;
+   if (!(Self->Head::Flags & NF_INITIALISED)) return;
 
    log.traceBranch("Surface: %d, Bitmap: %d. Clip: %dx%d,%dx%d, Offset: %dx%d", Surface->UID, Bitmap->UID, Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left, Bitmap->Clip.Bottom - Bitmap->Clip.Top, Bitmap->XOffset, Bitmap->YOffset);
 
@@ -2212,7 +2212,7 @@ static ERROR load_file(objScintilla *Self, CSTRING Path)
 
    if (!CreateObject(ID_FILE, NF_INTEGRAL, &file, FID_Flags|TLONG, FL_READ, FID_Path|TSTR, Path, TAGEND)) {
       if (file->Flags & FL_STREAM) {
-         if (!flStartStream(file, Self->Head.UID, FL_READ, 0)) {
+         if (!flStartStream(file, Self->UID, FL_READ, 0)) {
             acClear(Self);
 
             SubscribeActionTags(file, AC_Write, TAGEND);
@@ -2448,7 +2448,7 @@ static void calc_longest_line(objScintilla *Self)
 
    log.trace("Longest line: %d", Self->LongestWidth);
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       if (Self->LongestWidth >= 60) {
          SCICALL(SCI_SETSCROLLWIDTH, Self->LongestWidth);
       }

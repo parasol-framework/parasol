@@ -420,7 +420,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 
          // Event report has to be delayed, as we otherwise get interference in the drawing process.
          scintilla->ReportEventFlags |= SEF_CURSOR_POS;
-         DelayMsg(MT_SciReportEvent, scintilla->Head.UID, NULL);
+         DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
       }
    }
    else if (code IS SCN_STYLENEEDED) {
@@ -445,7 +445,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       log.trace("[MODIFYATTEMPTRO]");
 
       scintilla->ReportEventFlags |= SEF_FAIL_RO;
-      DelayMsg(MT_SciReportEvent, scintilla->Head.UID, NULL);
+      DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
    }
    else if (code IS SCN_CHARADDED) {
       // This is sent when the user types an ordinary text character (as opposed to a command character) that is
@@ -483,7 +483,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       }
 
       scintilla->ReportEventFlags |= SEF_NEW_CHAR;
-      DelayMsg(MT_SciReportEvent, scintilla->Head.UID, NULL);
+      DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
    }
    else if (code IS SCN_SAVEPOINTREACHED) {
       // The document is unmodified (recently saved)

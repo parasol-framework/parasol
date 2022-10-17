@@ -1674,7 +1674,7 @@ static ERROR DISPLAY_SetDisplay(objDisplay *Self, struct gfxSetDisplay *Args)
       Self->Bitmap = NULL;
 
       if (!NewObject(ID_BITMAP, NF_INTEGRAL|Self->Head::Flags, &Self->Bitmap, (Self->Head::Flags & NF_PUBLIC) ? &Self->BitmapID : NULL)) {
-         Self->BitmapID = Self->Bitmap->Head.UID;
+         Self->BitmapID = Self->Bitmap->UID;
          Self->Bitmap->BitsPerPixel = bpp;
          Self->Bitmap->Width        = Self->Width;
          Self->Bitmap->Height       = Self->Height;
@@ -1877,7 +1877,7 @@ static ERROR DISPLAY_SetMonitor(objDisplay *Self, struct gfxSetMonitor *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (CurrentTaskID() != Self->Head.TaskID) {
+   if (CurrentTaskID() != Self->Head::TaskID) {
       log.warning("Only the owner of the display may call this method.");
       return ERR_Failed;
    }
@@ -2904,7 +2904,7 @@ static ERROR SET_PopOver(objDisplay *Self, OBJECTID Value)
          XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)0);
       }
       else if (!AccessObject(Value, 2000, &popover)) {
-         if (popover->Head.ClassID IS ID_DISPLAY) {
+         if (popover->ClassID IS ID_DISPLAY) {
             Self->PopOverID = Value;
             XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)popover->WindowHandle);
          }

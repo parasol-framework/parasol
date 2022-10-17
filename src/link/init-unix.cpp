@@ -19,18 +19,18 @@ restriction.
 #define ROOT_PATH "/usr/local"
 #endif
 
-extern void program(void);
-extern STRING ProgCopyright;
-extern STRING ProgAuthor;
-extern STRING ProgName;
-extern STRING ProgDate;
-extern LONG ProgDebug;
-extern FLOAT ProgCoreVersion;
+extern "C" void program(void);
+extern "C" STRING ProgCopyright;
+extern "C" STRING ProgAuthor;
+extern "C" STRING ProgName;
+extern "C" STRING ProgDate;
+extern "C" LONG ProgDebug;
+extern "C" FLOAT ProgCoreVersion;
 
 struct CoreBase *CoreBase;
 
 static ERROR PROGRAM_DataFeed(OBJECTPTR, struct acDataFeed *);
-void close_parasol(void);
+extern "C" void close_parasol(void);
 
 //****************************************************************************
 
@@ -43,15 +43,15 @@ void usererror(CSTRING Message)
 // Main execution point.
 
 static APTR glCoreHandle = 0;
-static void (*closecore)(void) = 0;
+typedef void CLOSECORE(void);
+static CLOSECORE *closecore = NULL;
 
-const char * init_parasol(int argc, CSTRING *argv)
+extern "C" const char * init_parasol(int argc, CSTRING *argv)
 {
    #define MAX_ARGS 30
    APTR *actions;
 
    glCoreHandle = NULL;
-   closecore    = NULL;
    CSTRING msg  = NULL;
 
    char root_path[232] = ""; // NB: Assigned to info.RootPath
@@ -129,13 +129,15 @@ const char * init_parasol(int argc, CSTRING *argv)
       goto failed_lib_open;
    }
 
-   struct CoreBase * (*opencore)(struct OpenInfo *);
-   if (!(opencore = dlsym(glCoreHandle, "OpenCore"))) {
+   typedef struct CoreBase * OPENCORE(struct OpenInfo *);
+
+   OPENCORE *opencore;
+   if (!(opencore = (OPENCORE *)dlsym(glCoreHandle, "OpenCore"))) {
       msg = "Could not find the OpenCore symbol in the Core library.";
       goto failed_lib_sym;
    }
 
-   if (!(closecore = dlsym(glCoreHandle, "CloseCore"))) {
+   if (!(closecore = (CLOSECORE *)dlsym(glCoreHandle, "CloseCore"))) {
       msg = "Could not find the CloseCore symbol.";
       goto failed_lib_sym;
    }
@@ -144,7 +146,7 @@ const char * init_parasol(int argc, CSTRING *argv)
       OBJECTPTR task = CurrentTask();
 
       if (!GetPointer(task, FID_Actions, &actions)) {
-         actions[AC_DataFeed] = PROGRAM_DataFeed;
+         actions[AC_DataFeed] = (APTR)PROGRAM_DataFeed;
       }
    }
    else if (info.Error IS ERR_CoreVersion) msg = "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
@@ -157,7 +159,7 @@ failed_lib_open:
 
 //****************************************************************************
 
-void close_parasol(void)
+extern "C" void close_parasol(void)
 {
    if (closecore) closecore();
    if (glCoreHandle) dlclose(glCoreHandle);
