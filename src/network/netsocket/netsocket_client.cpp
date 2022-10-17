@@ -76,7 +76,7 @@ static void client_server_incoming(SOCKET_HANDLE FD, rkNetSocket *Data)
    parasol::SwitchContext context(Self);
 
    if (Self->Terminating) {
-      log.trace("[NetSocket:%d] Socket terminating...", Self->Head.UID);
+      log.trace("[NetSocket:%d] Socket terminating...", Self->UID);
       if (Self->SocketHandle != NOHANDLE) free_socket(Self);
       return;
    }
@@ -95,12 +95,12 @@ static void client_server_incoming(SOCKET_HANDLE FD, rkNetSocket *Data)
 #endif
 
    if (Self->IncomingRecursion) {
-      log.trace("[NetSocket:%d] Recursion detected on handle " PF64(), Self->Head.UID, (MAXINT)FD);
+      log.trace("[NetSocket:%d] Recursion detected on handle " PF64(), Self->UID, (MAXINT)FD);
       if (Self->IncomingRecursion < 2) Self->IncomingRecursion++; // Indicate that there is more data to be received
       return;
    }
 
-   log.traceBranch("[NetSocket:%d] Socket: " PF64(), Self->Head.UID, (MAXINT)FD);
+   log.traceBranch("[NetSocket:%d] Socket: " PF64(), Self->UID, (MAXINT)FD);
 
    Self->InUse++;
    Self->IncomingRecursion++;
@@ -129,7 +129,7 @@ restart:
       }
 
       if (error IS ERR_Terminate) log.trace("Termination of socket requested by channel subscriber.");
-      else if (!Self->ReadCalled) log.warning("[NetSocket:%d] Subscriber did not call Read()", Self->Head.UID);
+      else if (!Self->ReadCalled) log.warning("[NetSocket:%d] Subscriber did not call Read()", Self->UID);
    }
 
    if (!Self->ReadCalled) {
@@ -216,7 +216,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
          if (len > 0) {
             error = SEND(Self, Self->SocketHandle, (BYTE *)Self->WriteQueue.Buffer + Self->WriteQueue.Index, &len, 0);
             if ((error) OR (!len)) break;
-            log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->Head.UID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
+            log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->UID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
             Self->WriteQueue.Index += len;
          }
 
@@ -257,7 +257,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
       // we don't tax the system resources.
 
       if ((Self->Outgoing.Type IS CALL_NONE) AND (!Self->WriteQueue.Buffer)) {
-         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->Head.UID, Self->SocketHandle);
+         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->UID, Self->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
          #elif _WIN32

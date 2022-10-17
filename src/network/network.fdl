@@ -86,6 +86,7 @@ typedef LONG SOCKET_HANDLE;
   })
 
   class("ClientSocket", {
+      cpp=true,
       src="clientsocket/clientsocket.cpp",
       output="clientsocket/clientsocket_def.c",
       comment="Simple data storage class utilised by NetClient to represent a single client socket connection."
@@ -128,7 +129,7 @@ typedef LONG SOCKET_HANDLE;
     { id=3, name="FindNext" }
   })
 
-  class("Proxy", { src="class_proxy.cpp", output="class_proxy_def.c" }, [[
+  class("Proxy", { cpp=true, src="class_proxy.cpp", output="class_proxy_def.c" }, [[
     str NetworkFilter
     str GatewayFilter
     str Username
@@ -155,7 +156,7 @@ typedef LONG SOCKET_HANDLE;
     { id=4, name="BlockingResolveAddress" }
   })
 
-  class("NetLookup", { src="class_netlookup.cpp", output="class_netlookup_def.c" }, [[
+  class("NetLookup", { cpp=true, src="class_netlookup.cpp", output="class_netlookup_def.c" }, [[
     large UserData   # Optional user data storage
     int(NLF) Flags   # Optional flags
   ]],
@@ -175,7 +176,7 @@ typedef LONG SOCKET_HANDLE;
     { id=6, name="WriteMsg" }
   })
 
-  class("NetSocket", { src="netsocket/netsocket.cpp", output="netsocket/netsocket_def.c" }, [[
+  class("NetSocket", { cpp=true, src="netsocket/netsocket.cpp", output="netsocket/netsocket_def.c" }, [[
     ptr(struct(rkNetClient)) Clients # ServerMode - Attached clients
     ptr UserData      # Pointer to user data that can be used during events
     str Address       # Connect the socket to this remote address (if client)

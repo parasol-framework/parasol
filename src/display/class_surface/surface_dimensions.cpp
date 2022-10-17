@@ -37,7 +37,7 @@ static ERROR SET_AbsX(objSurface *Self, LONG Value)
    parasol::Log log;
    LONG parent, x;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       SurfaceControl *ctl;
       if ((ctl = gfxAccessList(ARF_READ))) {
          auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
@@ -95,7 +95,7 @@ static ERROR SET_AbsY(objSurface *Self, LONG Value)
    parasol::Log log;
    LONG parent, y;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       SurfaceControl *ctl;
       if ((ctl = gfxAccessList(ARF_READ))) {
          auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
@@ -312,7 +312,7 @@ static ERROR SET_Height(objSurface *Self, Variable *Value)
    else return log.warning(ERR_FieldTypeMismatch);
 
    if (value <= 0) {
-      if (Self->Head.Flags & NF_INITIALISED) return ERR_InvalidDimension;
+      if (Self->Head::Flags & NF_INITIALISED) return ERR_InvalidDimension;
       else {
          Self->Dimensions &= ~(DMF_HEIGHT);
          return ERR_Okay;
@@ -880,7 +880,7 @@ static ERROR SET_Width(objSurface *Self, Variable *Value)
    else return log.warning(ERR_FieldTypeMismatch);
 
    if (value <= 0) {
-      if (Self->Head.Flags & NF_INITIALISED) return ERR_InvalidDimension;
+      if (Self->Head::Flags & NF_INITIALISED) return ERR_InvalidDimension;
       else {
          Self->Dimensions &= ~(DMF_WIDTH);
          return ERR_Okay;

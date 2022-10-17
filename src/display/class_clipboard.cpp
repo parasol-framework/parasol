@@ -728,7 +728,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
       return log.warning(ERR_Args);
    }
 
-   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_Failed);
+   if (!(Self->Head::Flags & NF_INITIALISED)) return log.warning(ERR_Failed);
 
    Args->Buffer[0] = 0;
 

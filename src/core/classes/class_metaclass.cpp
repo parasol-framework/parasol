@@ -163,51 +163,32 @@ static MethodArray glMetaMethods[TOTAL_METAMETHODS+2] = {
 
 struct Stats glMetaClass_Stats = { .ActionSubscriptions = { .Ptr = 0 }, .MID_FeedList = 0, .NotifyFlags = { 0, 0 }, .MethodFlags = { 0, 0 }, .Name = { 'M','e','t','a','C','l','a','s','s' } , .SubscriptionSize = 0, .FeedSize = 0 };
 
-rkMetaClass glMetaClass = {
-   .Head = {
-     .Class         = &glMetaClass,
-     .Stats         = &glMetaClass_Stats,
-     .ChildPrivate  = NULL,
-     .CreatorMeta   = NULL,
-     .ClassID       = ID_METACLASS,
-     .SubID         = ID_METACLASS,
-     .UID           = 123,
-     .OwnerID       = 0,
-     .Flags         = NF_INITIALISED,
-     .MemFlags      = 0,
-     .TaskID        = 0,
-     .ThreadID      = 0,
-     .ThreadMsg     = 0,
-     .ThreadPending = 0,
-     .Queue         = 0,
-     .SleepQueue    = 0,
-     .Locked        = 0,
-     .ActionDepth   = 0
-   },
-   .ClassVersion    = 1,
-   .Methods         = glMetaMethods,
-   .Fields          = glMetaFields,
-   .ClassName       = "MetaClass",
-   .FileExtension   = 0,
-   .FileDescription = 0,
-   .FileHeader      = 0,
-   .Path            = 0,
-   .Size            = sizeof(rkMetaClass),
-   .Flags           = 0,
-   .SubClassID      = ID_METACLASS,
-   .BaseClassID     = ID_METACLASS,
-   .OpenCount       = 0,
-   .TotalMethods    = TOTAL_METAMETHODS,
-   .TotalFields     = TOTAL_METAFIELDS,
-   .Category        = CCF_SYSTEM,
-   .Base            = NULL,
-   .prvFields       = glMetaFieldsPreset,
-   .SubFields       = NULL,
-   .Master          = NULL,
-   .Children        = { 0, 0, 0, 0, 0, 0, 0, 0 },
-   .Location        = NULL,
-   .OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1
-};
+rkMetaClass glMetaClass;
+
+void init_metaclass(void)
+{
+   ClearMemory(&glMetaClass, sizeof(glMetaClass));
+
+   glMetaClass.Head::Class         = &glMetaClass;
+   glMetaClass.Head::Stats         = &glMetaClass_Stats;
+   glMetaClass.Head::ClassID       = ID_METACLASS;
+   glMetaClass.Head::SubID         = ID_METACLASS;
+   glMetaClass.Head::UID           = 123;
+   glMetaClass.Head::Flags         = NF_INITIALISED;
+
+   glMetaClass.ClassVersion    = 1;
+   glMetaClass.Methods         = glMetaMethods;
+   glMetaClass.Fields          = glMetaFields;
+   glMetaClass.ClassName       = "MetaClass";
+   glMetaClass.Size            = sizeof(rkMetaClass);
+   glMetaClass.SubClassID      = ID_METACLASS;
+   glMetaClass.BaseClassID     = ID_METACLASS;
+   glMetaClass.TotalMethods    = TOTAL_METAMETHODS;
+   glMetaClass.TotalFields     = TOTAL_METAFIELDS;
+   glMetaClass.Category        = CCF_SYSTEM;
+   glMetaClass.prvFields       = glMetaFieldsPreset;
+   glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
+}
 
 //****************************************************************************
 // Sort class lookup by class ID.
@@ -587,7 +568,7 @@ A value of NULL is returned if the module does not provide an IDL string.
 
 static ERROR GET_IDL(rkMetaClass *Self, CSTRING *Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_NotInitialised;
+   if (!(Self->Head::Flags & NF_INITIALISED)) return ERR_NotInitialised;
 
    if ((Self->Master) AND (Self->Master->Header)) {
       *Value = Self->Master->Header->Definitions;
@@ -718,7 +699,7 @@ Module: The name of the module binary that initialised the class.
 
 static ERROR GET_Module(rkMetaClass *Self, CSTRING *Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_NotInitialised;
+   if (!(Self->Head::Flags & NF_INITIALISED)) return ERR_NotInitialised;
 
    if (Self->Master) {
       *Value = Self->Master->LibraryName;
@@ -1378,7 +1359,7 @@ ERROR load_classes(void)
             TAGEND)) {
 
          LONG filesize;
-         GetLong((OBJECTPTR)file, FID_Size, &filesize);
+         GetLong(file, FID_Size, &filesize);
 
          LONG total;
          if (!(error = acRead(file, &total, sizeof(total), NULL))) {
@@ -1410,7 +1391,7 @@ ERROR load_classes(void)
          }
          else error = log.warning(ERR_Read);
 
-         acFree(&file->Head);
+         acFree(file);
       }
       else glScanClasses = TRUE;
 

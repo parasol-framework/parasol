@@ -136,7 +136,7 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, const XMLTag *Tag)
    OBJECTPTR trans;
    if (!NewObject(ID_VECTORTRANSITION, 0, &trans)) {
       SetFields(trans,
-         FID_Owner|TLONG, Self->Scene->Head.UID, // All clips belong to the root page to prevent hierarchy issues.
+         FID_Owner|TLONG, Self->Scene->UID, // All clips belong to the root page to prevent hierarchy issues.
          FID_Name|TSTR,   "SVGTransition",
          TAGEND);
 
@@ -155,10 +155,10 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, const XMLTag *Tag)
          if (stopcount >= 2) {
             Transition stops[stopcount];
             process_transition_stops(Self, Tag, stops);
-            SetArray((OBJECTPTR)trans, FID_Stops, stops, stopcount);
+            SetArray(trans, FID_Stops, stops, stopcount);
 
             if (!acInit(trans)) {
-               scAddDef(Self->Scene, id, (OBJECTPTR)trans);
+               scAddDef(Self->Scene, id, trans);
                return;
             }
          }
@@ -183,7 +183,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
    if (!NewObject(ID_VECTORCLIP, 0, &clip)) {
       SetFields(clip,
-         FID_Owner|TLONG, Self->Scene->Head.UID, // All clips belong to the root page to prevent hierarchy issues.
+         FID_Owner|TLONG, Self->Scene->UID, // All clips belong to the root page to prevent hierarchy issues.
          FID_Name|TSTR,   "SVGClip",
          FID_Units|TLONG, VUNIT_BOUNDING_BOX,
          TAGEND);
@@ -208,7 +208,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, const XMLTag *Tag)
             // Valid child elements for clip-path are: circle, ellipse, line, path, polygon, polyline, rect, text, use, animate
 
             process_children(Self, XML, &state, Tag->Child, clip);
-            scAddDef(Self->Scene, id, (OBJECTPTR)clip);
+            scAddDef(Self->Scene, id, clip);
          }
          else acFree(clip);
       }
@@ -251,7 +251,7 @@ static ERROR parse_fe_blur(objSVG *Self, objVectorFilter *Filter, const XMLTag *
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -282,7 +282,7 @@ static ERROR parse_fe_offset(objSVG *Self, objVectorFilter *Filter, const XMLTag
       switch(hash) {
          case SVF_DX: SetLong(fx, FID_XOffset, StrToInt(val)); break;
          case SVF_DY: SetLong(fx, FID_YOffset, StrToInt(val)); break;
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
@@ -445,7 +445,7 @@ static ERROR parse_fe_colour_matrix(objSVG *Self, objVectorFilter *Filter, const
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -544,7 +544,7 @@ static ERROR parse_fe_convolve_matrix(objSVG *Self, objVectorFilter *Filter, con
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -646,9 +646,9 @@ static ERROR parse_fe_composite(objSVG *Self, objVectorFilter *Filter, const XML
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
-         case SVF_IN2: parse_input(Self, &fx->Head, val, FID_MixType, FID_Mix); break;
+         case SVF_IN2: parse_input(Self, fx, val, FID_MixType, FID_Mix); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -681,7 +681,7 @@ static ERROR parse_fe_flood(objSVG *Self, objVectorFilter *Filter, const XMLTag 
          case SVF_FLOOD_COLOR:
          case SVF_FLOOD_COLOUR: {
             FRGB rgb;
-            vecReadPainter((OBJECTPTR)NULL, val, &rgb, NULL, NULL, NULL);
+            vecReadPainter(NULL, val, &rgb, NULL, NULL, NULL);
             error = SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
             break;
          }
@@ -701,7 +701,7 @@ static ERROR parse_fe_flood(objSVG *Self, objVectorFilter *Filter, const XMLTag 
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -761,7 +761,7 @@ static ERROR parse_fe_turbulence(objSVG *Self, objVectorFilter *Filter, const XM
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -809,7 +809,7 @@ static ERROR parse_fe_morphology(objSVG *Self, objVectorFilter *Filter, const XM
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -866,7 +866,7 @@ static ERROR parse_fe_image(objSVG *Self, objVectorFilter *Filter, const XMLTag 
             if (!StrMatch("true", val)) image_required = true;
             break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -874,6 +874,7 @@ static ERROR parse_fe_image(objSVG *Self, objVectorFilter *Filter, const XMLTag 
 
    if ((path) and (path[0] IS '#')) {
       // TODO: Image renders a segment of the scene graph to an independent bitmap instead of loading a picture.
+      // The process is equivalent to the 'use' instruction.
 
       log.warning("xlink:href not yet supported.");
 
@@ -926,7 +927,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
    if (!NewObject(ID_VECTORFILTER, 0, &filter)) {
       SetFields(filter,
-         FID_Owner|TLONG,       Self->Scene->Head.UID,
+         FID_Owner|TLONG,       Self->Scene->UID,
          FID_Name|TSTR,         "SVGFilter",
          FID_Units|TLONG,       VUNIT_BOUNDING_BOX,
          FID_ColourSpace|TLONG, VCS_LINEAR_RGB,
@@ -1037,7 +1038,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
          Self->Effects.clear();
 
-         scAddDef(Self->Scene, id, (OBJECTPTR)filter);
+         scAddDef(Self->Scene, id, filter);
       }
       else acFree(filter);
    }
@@ -1141,8 +1142,8 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
          svgState state;
          reset_state(&state);
-         process_children(Self, XML, &state, Tag->Child, (OBJECTPTR)pattern->Viewport);
-         if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, (OBJECTPTR)pattern);
+         process_children(Self, XML, &state, Tag->Child, pattern->Viewport);
+         if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, pattern);
       }
       else {
          acFree(pattern);
@@ -1346,7 +1347,7 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
 
    if (!error) {
       error = CreateObject(ID_PICTURE, 0, Picture,
-            FID_Owner|TLONG,        Self->Scene->Head.UID,
+            FID_Owner|TLONG,        Self->Scene->UID,
             FID_Path|TSTR,          Path,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
@@ -1374,7 +1375,7 @@ static void def_image(objSVG *Self, const XMLTag *Tag)
 
    if (!NewObject(ID_VECTORIMAGE, 0, &image)) {
       SetFields(image,
-         FID_Owner|TLONG,        Self->Scene->Head.UID,
+         FID_Owner|TLONG,        Self->Scene->UID,
          FID_Name|TSTR,          "SVGImage",
          FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
          FID_SpreadMethod|TLONG, VSPREAD_PAD,
@@ -1408,7 +1409,7 @@ static void def_image(objSVG *Self, const XMLTag *Tag)
          if (pic) {
             SetPointer(image, FID_Picture, pic);
             if (!acInit(image)) {
-               if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, (OBJECTPTR)image);
+               if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, image);
             }
             else {
                acFree(image);
@@ -1465,9 +1466,9 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, const XMLTag
             TAGEND)) {
 
          char id[32] = "img";
-         IntToStr(image->Head.UID, id+3, sizeof(id)-3);
+         IntToStr(image->UID, id+3, sizeof(id)-3);
          SetOwner(pic, image); // It's best if the pic belongs to the image.
-         scAddDef(Self->Scene, id, (OBJECTPTR)image);
+         scAddDef(Self->Scene, id, image);
 
          char fillname[256];
          StrFormat(fillname, sizeof(fillname), "url(#%s)", id);
@@ -1514,7 +1515,7 @@ static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, const XMLTag 
             for (LONG a=1; a < child->TotalAttrib; a++) {
                if (!StrMatch("id", child->Attrib[a].Name)) {
                   add_id(Self, child, child->Attrib[a].Value);
-                  //if (add_id(Self, child, child->Attrib[a].Value)) scAddDef(Self->Scene, StrValue, (OBJECTPTR)Vector);
+                  //if (add_id(Self, child, child->Attrib[a].Value)) scAddDef(Self->Scene, StrValue, Vector);
                   break;
                }
             }
@@ -1691,7 +1692,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR P
       OBJECTPTR shape;
       svgState state;
       reset_state(&state);
-      process_shape(Self, class_id, XML, &state, tagref, &Self->Scene->Head, &shape);
+      process_shape(Self, class_id, XML, &state, tagref, Self->Scene, &shape);
       SetPointer(Parent, FID_Morph, shape);
       if (transvector) SetPointer(Parent, FID_Transition, transvector);
       SetLong(Parent, FID_MorphFlags, flags);
@@ -2762,7 +2763,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
 
       case SVF_ID:
          SetString(Vector, FID_ID, StrValue);
-         if (add_id(Self, Tag, StrValue)) scAddDef(Self->Scene, StrValue, (OBJECTPTR)Vector);
+         if (add_id(Self, Tag, StrValue)) scAddDef(Self->Scene, StrValue, Vector);
          SetName(Vector, StrValue);
          break;
 

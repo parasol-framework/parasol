@@ -257,7 +257,7 @@ void release_object(struct object *Object)
 
 INLINE struct KeyStore * GET_INCLUDES(objScript *Script)
 {
-   auto prv = (prvFluid *)Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Script->ChildPrivate;
    if (!prv->Includes) prv->Includes = VarNew(64, 0);
    return prv->Includes;
 }
@@ -372,11 +372,11 @@ static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
    prvFluid *prv;
    va_list list;
 
-   if ((!Script) or (Script->Head.ClassID != ID_FLUID) or (!Name) or (!*Name)) return log.warning(ERR_Args);
+   if ((!Script) or (Script->ClassID != ID_FLUID) or (!Name) or (!*Name)) return log.warning(ERR_Args);
 
-   log.branch("Script: %d, Name: %s, Type: $%.8x", Script->Head.UID, Name, Type);
+   log.branch("Script: %d, Name: %s, Type: $%.8x", Script->UID, Name, Type);
 
-   if (!(prv = (prvFluid *)Script->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(prv = (prvFluid *)Script->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 
    va_start(list, Type);
 
@@ -487,7 +487,7 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CP
    lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
    if (!Values) return;
 
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    structentry *def;
 
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
@@ -516,7 +516,7 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
    lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
    if (!Data) return;
 
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    structentry *def;
 
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
@@ -595,7 +595,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 
    log.branch("Definition: %s", IncName);
 
-   auto prv = (prvFluid *)Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Script->ChildPrivate;
 
    // For security purposes, check the validity of the include name.
 

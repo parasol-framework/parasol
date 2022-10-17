@@ -393,10 +393,10 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
    LONG new_index = -1;
 
-   log.branch("%s", Vector->Head.Class->ClassName);
+   log.branch("%s", Vector->Class->ClassName);
 
    ERROR error = ERR_Okay;
-   if (Vector->Head.SubID IS ID_VECTORRECTANGLE) {
+   if (Vector->SubID IS ID_VECTORRECTANGLE) {
       DOUBLE rx, ry, x, y, width, height;
       LONG dim;
 
@@ -424,7 +424,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORELLIPSE) {
+   else if (Vector->SubID IS ID_VECTORELLIPSE) {
       DOUBLE rx, ry, cx, cy;
       LONG dim;
 
@@ -441,10 +441,10 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORPATH) {
+   else if (Vector->SubID IS ID_VECTORPATH) {
       error = save_vectorpath(Self, XML, Vector, Parent);
    }
-   else if (Vector->Head.SubID IS ID_VECTORPOLYGON) { // Serves <polygon>, <line> and <polyline>
+   else if (Vector->SubID IS ID_VECTORPOLYGON) { // Serves <polygon>, <line> and <polyline>
       VectorPoint *points;
       LONG total_points, i;
       char buffer[2048];
@@ -491,7 +491,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORTEXT) {
+   else if (Vector->SubID IS ID_VECTORTEXT) {
       DOUBLE x, y, *dx, *dy, *rotate, text_length;
       LONG total, i, weight;
       STRING str;
@@ -556,11 +556,11 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORGROUP) {
+   else if (Vector->SubID IS ID_VECTORGROUP) {
       error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<g/>", &new_index);
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORCLIP) {
+   else if (Vector->SubID IS ID_VECTORCLIP) {
       STRING str;
       if ((!(error = GetString(Vector, FID_ID, &str))) and (str)) { // The id is an essential requirement
          error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<clipPath/>", &new_index);
@@ -577,7 +577,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
       }
    }
-   else if (Vector->Head.SubID IS ID_VECTORWAVE) {
+   else if (Vector->SubID IS ID_VECTORWAVE) {
       DOUBLE dbl;
       LONG dim;
 
@@ -618,7 +618,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORSPIRAL) {
+   else if (Vector->SubID IS ID_VECTORSPIRAL) {
       DOUBLE dbl;
       LONG dim, length;
 
@@ -656,7 +656,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORSHAPE) {
+   else if (Vector->SubID IS ID_VECTORSHAPE) {
       DOUBLE dbl;
       LONG num, dim;
 
@@ -690,7 +690,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORVIEWPORT) {
+   else if (Vector->SubID IS ID_VECTORVIEWPORT) {
       DOUBLE x, y, width, height;
       LONG dim;
 
@@ -717,7 +717,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       }
    }
    else {
-      log.msg("Unrecognised class \"%s\"", Vector->Head.Class->ClassName);
+      log.msg("Unrecognised class \"%s\"", Vector->Class->ClassName);
       return ERR_Okay; // Skip objects in the scene graph that we don't recognise
    }
 

@@ -139,7 +139,7 @@ static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
    Self->ErrorString = NULL;
    Self->Error = ERR_Okay;
 
-   ERROR error = acActivate(&Self->Head);
+   ERROR error = acActivate(Self);
 
    Args->Error = Self->Error;
    Self->Error = saved_error;
@@ -176,7 +176,7 @@ of ScriptArg structures.  The following example illustrates such a list:
 
 <pre>
 struct ScriptArg args[] = {
-   { "Object",       FD_OBJECTID, { .Long = Self->Head.UID } },
+   { "Object",       FD_OBJECTID, { .Long = Self->UID } },
    { "Output",       FD_PTR,      { .Address = output } },
    { "OutputLength", FD_LONG,     { .Long = len } }
 };
@@ -236,7 +236,7 @@ static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
    LONG savetotal = Self->TotalArgs;
    Self->TotalArgs = Args->TotalArgs;
 
-   ERROR error = acActivate(&Self->Head);
+   ERROR error = acActivate(Self);
 
    Self->ProcedureID = save_id;
    Self->Procedure = save_name;
@@ -330,11 +330,11 @@ static ERROR SCRIPT_Init(objScript *Self, APTR Void)
    parasol::Log log;
 
    if (!Self->TargetID) { // Define the target if it has not been set already
-      log.debug("Target not set, defaulting to owner #%d.", Self->Head.OwnerID);
-      Self->TargetID = Self->Head.OwnerID;
+      log.debug("Target not set, defaulting to owner #%d.", Self->Head::OwnerID);
+      Self->TargetID = Self->Head::OwnerID;
    }
 
-   if (Self->Head.SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
+   if (Self->SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
 
    return ERR_NoSupport;
 }
@@ -606,7 +606,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
 static ERROR SET_Name(objScript *Self, CSTRING Name)
 {
    if (Name) {
-      SetName(&Self->Head, Name);
+      SetName(Self, Name);
       struct acSetVar args = { .Field = "Name", .Value = Name };
       return SCRIPT_SetVar(Self, &args);
    }
@@ -641,7 +641,7 @@ static ERROR SET_Owner(objScript *Self, OBJECTID Value)
    if (Value) {
       OBJECTPTR newowner;
       if (!AccessObject(Value, 2000, &newowner)) {
-         SetOwner(&Self->Head, newowner);
+         SetOwner(Self, newowner);
          ReleaseObject(newowner);
          return ERR_Okay;
       }
@@ -789,7 +789,7 @@ PRIVATE: Variables
 static ERROR GET_Variables(objScript *Self, KeyStore **Value)
 {
    if (!Self->Vars) {
-      parasol::SwitchContext ctx(&Self->Head);
+      parasol::SwitchContext ctx(Self);
       Self->Vars = VarNew(0, 0);
       if (!Self->Vars) return ERR_AllocMemory;
    }
@@ -847,7 +847,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
 
       STRING workingpath;
       if (path) { // Extract absolute path
-         parasol::SwitchContext ctx(&Self->Head);
+         parasol::SwitchContext ctx(Self);
          char save = Self->Path[j];
          Self->Path[j] = 0;
          Self->WorkingPath = StrClone(Self->Path);
@@ -866,7 +866,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          }
          else StrFormat(buf, sizeof(buf), "%s", workingpath);
 
-         parasol::SwitchContext ctx(&Self->Head);
+         parasol::SwitchContext ctx(Self);
          if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
             Self->WorkingPath = StrClone(workingpath);
          }

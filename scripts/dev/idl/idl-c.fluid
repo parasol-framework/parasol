@@ -1122,8 +1122,8 @@ function processClassFields(class, Blueprint, Private)
       end
 
       if physicalFields then
-         output("typedef struct rk" .. class.name ..  " {")
-         output("   OBJECT_HEADER")
+         output("typedef class rk" .. class.name ..  " : public Head {")
+         output("   public:")
 
          local max_len = 3 + type_max + 1 + 2
 

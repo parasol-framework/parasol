@@ -21,7 +21,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
       else if (Vector->ClassID IS ID_VECTOR) {
          objVector *shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, shape->Head.Class->ClassName);
-         if (shape->Child) debug_branch(Header, (OBJECTPTR)shape->Child, Level);
+         if (shape->Child) debug_branch(Header, shape->Child, Level);
          Vector = &shape->Next->Head;
       }
       else break;
@@ -448,7 +448,7 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
          if (!StrCompare("*.svgz", Path, 0, STR_WILDCARD)) {
             OBJECTPTR file, stream;
             if (!CreateObject(ID_FILE, 0, &file,
-                  FID_Owner|TLONG, xml->Head.UID,
+                  FID_Owner|TLONG, xml->UID,
                   FID_Path|TSTR,   Path,
                   FID_Flags|TLONG, FL_READ,
                   TAGEND)) {
@@ -499,7 +499,7 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
                svgState state;
                reset_state(&state);
                if (Self->Target) xtag_svg(Self, xml, &state, tag, Self->Target, &sibling);
-               else xtag_svg(Self, xml, &state, tag, &Self->Scene->Head, &sibling);
+               else xtag_svg(Self, xml, &state, tag, Self->Scene, &sibling);
             }
          }
 
@@ -519,7 +519,7 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
             // If auto-scale is enabled, access the top-level viewport and set the Width and Height to 100%
 
             objVector *view = Self->Scene->Viewport;
-            while ((view) and (view->Head.SubID != ID_VECTORVIEWPORT)) view = view->Next;
+            while ((view) and (view->SubID != ID_VECTORVIEWPORT)) view = view->Next;
             if (view) SetFields(view, FID_Width|TDOUBLE|TPERCENT, 100.0, FID_Height|TDOUBLE|TPERCENT, 100.0, TAGEND);
          }
       }

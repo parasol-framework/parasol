@@ -75,7 +75,7 @@ static void set_ptr_ref(struct references *Ref, CPTR Address, LONG Resource)
 
 ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, CPTR Address)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    structentry *def;
 
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
@@ -123,7 +123,7 @@ ERROR struct_to_table(lua_State *Lua, struct references *References, struct stru
    set_ptr_ref(References, Address, table_ref);
    lua_rawgeti(Lua, LUA_REGISTRYINDEX, table_ref); // Retrieve the struct table
 
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    auto field = (structdef_field *)(StructDef + 1);
    for (LONG f=0; f < StructDef->Total; f++, field=(structdef_field *)((BYTE *)field + field->Length)) {
@@ -218,7 +218,7 @@ struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING StructName, 
 
    log.traceBranch("Struct: %s, Address: %p, Deallocate: %d", StructName, Address, Deallocate);
 
-   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   auto prv = (prvFluid *)Self->ChildPrivate;
    structentry *def;
    if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
       return push_struct_def(prv->Lua, Address, def, Deallocate);
@@ -303,7 +303,7 @@ static ERROR eval_type(objScript *Self, CSTRING Sequence, LONG *Pos, LONG *Type,
       if (Sequence[i] IS ':') {
          i++;
          struct structentry *def;
-         auto prv = (prvFluid *)Self->Head.ChildPrivate;
+         auto prv = (prvFluid *)Self->ChildPrivate;
          if (!KeyGet(prv->Structs, STRUCTHASH(Sequence+i), &def, NULL)) {
             *Size = def->Size;
          }
@@ -445,7 +445,7 @@ ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
       return ERR_NullArgs;
    }
 
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    if ((prv->Structs) and (!VarGet(prv->Structs, StructName, NULL, NULL))) {
       luaL_error(Lua, "Structure name '%s' is already registered.", StructName);
       return ERR_Exists;
@@ -531,7 +531,7 @@ static int struct_size(lua_State *Lua)
 {
    CSTRING name;
    if ((name = lua_tostring(Lua, 1))) {
-      auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
       structentry *def;
       if (!VarGet(prv->Structs, name, &def, NULL)) {
          lua_pushnumber(Lua, def->Size);
@@ -555,7 +555,7 @@ static int struct_new(lua_State *Lua)
    CSTRING struct_name;
 
    if ((struct_name = lua_tostring(Lua, 1))) {
-      auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
       structentry *def;
       if (VarGet(prv->Structs, struct_name, &def, NULL)) {
          luaL_argerror(Lua, 1, "The requested structure is not defined.");

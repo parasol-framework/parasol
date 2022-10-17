@@ -764,7 +764,7 @@ void ScintillaParasol::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
       // means that the clipping area needs to be extended, and we're not able to do that from inside a Draw() call.
       // The simplest solution is to send a new draw message to the parent surface, telling it to redraw the entire area.
 
-      DelayMsg(AC_Draw, TargetSurface->Head.UID, NULL);
+      DelayMsg(AC_Draw, TargetSurface->UID, NULL);
    }
 
    this->paintState = notPainting;

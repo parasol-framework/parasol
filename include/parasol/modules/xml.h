@@ -82,8 +82,8 @@ typedef struct XMLTag {
 
 #define VER_XML (1.000000)
 
-typedef struct rkXML {
-   OBJECT_HEADER
+typedef class rkXML : public Head {
+   public:
    STRING    Path;            // Location of the XML data file
    struct XMLTag * * Tags;    // Array of tag pointers, in linear order.  Useful for looking up indexes.  NULL-terminated.
    OBJECTPTR Source;          // Alternative data source to specifying a Path

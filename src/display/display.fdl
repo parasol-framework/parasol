@@ -388,7 +388,7 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     { id=13, name="ConvertToRGB" }
   })
 
-  class("Bitmap", { version=2.0, src="class_bitmap.cpp", output="class_bitmap_def.c" }, [[
+  class("Bitmap", { version=2.0, cpp=true, src="class_bitmap.cpp", output="class_bitmap_def.c" }, [[
     struct(*RGBPalette) Palette          # Pointer to the Bitmap's palette
     struct(*ColourFormat) ColourFormat   # Pointer to colour information
     fptr(void obj(Bitmap) int int uint) DrawUCPixel
@@ -461,7 +461,7 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     { id=10, name="CheckXWindow" }
   })
 
-  class("Display", { version=1.0, src="class_display.cpp", output="class_display_def.c" }, [[
+  class("Display", { version=1.0, cpp=true, src="class_display.cpp", output="class_display_def.c" }, [[
     double RefreshRate      # The active refresh rate
     obj(Bitmap) Bitmap      # Reference to the display's bitmap information.
     int(SCR) Flags          # Optional flags
@@ -532,7 +532,7 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     { id=6, name='Remove' }
   })
 
-  class('Clipboard', { src='class_clipboard.cpp', output='class_clipboard_def.c' }, [[
+  class('Clipboard', { cpp=true, src='class_clipboard.cpp', output='class_clipboard_def.c' }, [[
     int(CLF) Flags      # Optional flags
     mem Cluster         # Identifies the data cluster (item grouping) that the clipboard will work with
   ]],
@@ -541,7 +541,7 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
    BYTE     ClusterAllocated:1;
   ]])
 
-  class("Pointer", { version=1.0, src="class_pointer.cpp", output="class_pointer_def.c" }, [[
+  class("Pointer", { version=1.0, cpp=true, src="class_pointer.cpp", output="class_pointer_def.c" }, [[
     double Speed           # Speed multiplier (%)
     double Acceleration    # Acceleration level - keep between 0.0 and 3.0
     double DoubleClick     # Double click speed
@@ -615,7 +615,7 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     { id=10, name="ScheduleRedraw" }
   })
 
-  class("Surface", { src={
+  class("Surface", { cpp=true, src={
       "class_surface/class_surface.cpp",
       "class_surface/surface_dimensions.cpp",
       "class_surface/surface_drawing.cpp",

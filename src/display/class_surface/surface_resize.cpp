@@ -34,7 +34,7 @@ static ERROR SURFACE_Redimension(objSurface *Self, struct acRedimension *Args)
          LONG index = 0;
          while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
             auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
-            if ((action->ActionID IS AC_Redimension) and (action->ObjectID IS Self->Head.UID)) {
+            if ((action->ActionID IS AC_Redimension) and (action->ObjectID IS Self->UID)) {
                ReleaseMemory(queue);
                return ERR_Okay|ERF_Notified;
             }

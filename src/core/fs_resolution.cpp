@@ -142,7 +142,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
    // Keep looping until the volume is resolved
 
    dest[0] = 0;
-   if (!AccessPrivateObject((OBJECTPTR)glVolumes, 4000)) {
+   if (!AccessPrivateObject(glVolumes, 4000)) {
       ERROR error = ERR_Failed;
       for (loop=10; loop > 0; loop--) {
          error = resolve(glVolumes, src, dest, Flags);
@@ -201,7 +201,7 @@ resolved_path:
          break;
       } // for()
 
-      ReleasePrivateObject((OBJECTPTR)glVolumes);
+      ReleasePrivateObject(glVolumes);
 
       if (loop > 0) { // Note that loop starts at 10 and decrements to zero
          if ((!error) and (!dest[0])) error = ERR_Failed;

@@ -283,7 +283,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    if (!argObject) return log.warning(ERR_NullArgs);
 
-   auto obj = (OBJECTPTR)argObject;
+   auto obj = argObject;
    OBJECTID object_id = obj->UID;
 
    prv_access(obj);
@@ -841,7 +841,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
    if (!argObject) return log.warning(ERR_NullArgs);
    if (ActionID > glActionCount) return log.warning(ERR_IllegalActionID);
 
-   OBJECTPTR obj = (OBJECTPTR)argObject;
+   auto obj = argObject;
    OBJECTID object_id = obj->UID;
    rkMetaClass *sysclass = obj->Class;
 
@@ -900,7 +900,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 
    struct ObjectContext new_context = {
       .Stack  = tlContext,
-      .Object = (OBJECTPTR)obj,
+      .Object = obj,
       .Field  = NULL,
       .Action = (WORD)ActionID
    };
@@ -1141,9 +1141,9 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
             .Data = call,
             .Size = argssize
          };
-         Action(MT_ThSetData, &thread->Head, &setdata);
+         Action(MT_ThSetData, thread, &setdata);
 
-         error = Action(AC_Activate, &thread->Head, NULL);
+         error = Action(AC_Activate, thread, NULL);
       }
 
       if (error) {
@@ -1511,7 +1511,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
 
    if (!Object) return log.warning(ERR_NullArgs);
 
-   if (Object IS &glMetaClass.Head) return ERR_NoSupport; // Monitoring the MetaClass is prohibited.
+   if (Object IS &glMetaClass) return ERR_NoSupport; // Monitoring the MetaClass is prohibited.
 
    prv_access(Object);
 

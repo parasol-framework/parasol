@@ -218,7 +218,7 @@ inline static UBYTE conv_l2r(DOUBLE X) {
 
 static ERROR BITMAP_AccessObject(objBitmap *Self, APTR Void)
 {
-   if (Self->Head.Flags & NF_INITIALISED) CalculatePixelRoutines(Self);
+   if (Self->Head::Flags & NF_INITIALISED) CalculatePixelRoutines(Self);
 
    Self->Palette      = &Self->prvPaletteArray;
    Self->ColourFormat = &Self->prvColourFormat;
@@ -352,7 +352,7 @@ static ERROR BITMAP_Compress(objBitmap *Self, struct bmpCompress *Args)
       cbuf.OutputSize = Self->Size;
       if (!Action(MT_CmpCompressBuffer, glCompress, &cbuf)) {
          APTR data;
-         if (!AllocMemory(cbuf.Result, MEM_NO_CLEAR|Self->Head.MemFlags, &data, &Self->prvCompressMID)) {
+         if (!AllocMemory(cbuf.Result, MEM_NO_CLEAR|Self->Head::MemFlags, &data, &Self->prvCompressMID)) {
             CopyMemory(buffer, data, cbuf.Result);
             FreeResource(buffer);
             ReleaseMemoryID(Self->prvCompressMID);
@@ -588,7 +588,7 @@ static ERROR BITMAP_Decompress(objBitmap *Self, struct bmpDecompress *Args)
    // accesses the Data address following attempted decompression.
 
    if (!Self->Data) {
-      if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->Head.MemFlags|Self->DataFlags, &Self->Data, &Self->DataMID)) {
+      if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->Head::MemFlags|Self->DataFlags, &Self->Data, &Self->DataMID)) {
          Self->prvAFlags |= BF_DATA;
       }
       else return log.warning(ERR_AllocMemory);
@@ -644,7 +644,7 @@ static ERROR BITMAP_CopyData(objBitmap *Self, struct acCopyData *Args)
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
    if (!AccessObject(Args->DestID, 3000, &Dest)) {
-      if ((Dest->Head.ClassID != ID_BITMAP)) {
+      if ((Dest->ClassID != ID_BITMAP)) {
          ReleaseObject(Dest);
          return log.warning(ERR_Args);
       }
@@ -1051,7 +1051,7 @@ static ERROR BITMAP_Init(objBitmap *Self, APTR Void)
 
             if (Self->x11.XShmImage IS FALSE) {
                log.msg("Allocating a memory based XImage.");
-               if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->Head.MemFlags|Self->DataFlags, &Self->Data, &Self->DataMID)) {
+               if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->Head::MemFlags|Self->DataFlags, &Self->Data, &Self->DataMID)) {
                   Self->prvAFlags |= BF_DATA;
 
                   if (Self->LineWidth & 0x0001) alignment = 8;
@@ -1127,7 +1127,7 @@ static ERROR BITMAP_Init(objBitmap *Self, APTR Void)
             }
             else return log.warning(ERR_SystemCall);
          }
-         else if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->Head.MemFlags|Self->DataFlags, &Self->Data, &Self->DataMID)) {
+         else if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->Head::MemFlags|Self->DataFlags, &Self->Data, &Self->DataMID)) {
             Self->prvAFlags |= BF_DATA;
          }
          else return log.warning(ERR_AllocMemory);
@@ -1169,7 +1169,7 @@ static ERROR BITMAP_Init(objBitmap *Self, APTR Void)
             log.warning("Support for MEM_TEXTURE not included yet.");
             return ERR_NoSupport;
          }
-         else if (!AllocMemory(Self->Size, Self->Head.MemFlags|Self->DataFlags|MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR, &Self->Data, &Self->DataMID)) {
+         else if (!AllocMemory(Self->Size, Self->Head::MemFlags|Self->DataFlags|MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR, &Self->Data, &Self->DataMID)) {
             Self->prvAFlags |= BF_DATA;
          }
          else return ERR_AllocMemory;
@@ -1746,7 +1746,7 @@ static ERROR BITMAP_Resize(objBitmap *Self, struct acResize *Args)
    if (Self->Type IS BMP_PLANAR) size = linewidth * height * bpp;
    else size = linewidth * height;
 
-   if (GetClassID(Self->Head.OwnerID) IS ID_DISPLAY) goto setfields;
+   if (GetClassID(Self->Head::OwnerID) IS ID_DISPLAY) goto setfields;
 
 #ifdef __xwindows__
 
@@ -1770,7 +1770,7 @@ static ERROR BITMAP_Resize(objBitmap *Self, struct acResize *Args)
       if ((size <= Self->Size) and (size / Self->Size > 0.5)) { // Do nothing when shrinking unless able to save considerable resources
          size = Self->Size;
       }
-      else if (!AllocMemory(size, MEM_NO_BLOCKING|MEM_NO_POOL|Self->Head.MemFlags|Self->DataFlags|MEM_NO_CLEAR, &data, &datamid)) {
+      else if (!AllocMemory(size, MEM_NO_BLOCKING|MEM_NO_POOL|Self->Head::MemFlags|Self->DataFlags|MEM_NO_CLEAR, &data, &datamid)) {
          if (Self->DataMID) {
             ReleaseMemoryID(Self->DataMID);
             FreeResourceID(Self->DataMID);
@@ -2339,7 +2339,7 @@ ERROR SET_Data(objBitmap *Self, UBYTE *Data)
          }
          else if (Self->DataFlags != info.Flags) {
             Self->DataFlags = info.Flags;
-            if (Self->Head.Flags & NF_INITIALISED) CalculatePixelRoutines(Self);
+            if (Self->Head::Flags & NF_INITIALISED) CalculatePixelRoutines(Self);
          }
       }
    }

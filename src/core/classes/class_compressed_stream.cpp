@@ -86,7 +86,7 @@ static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
    parasol::Log log(__FUNCTION__);
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
-   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+   if (!(Self->Head::Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
 
    Args->Result = 0;
    if (Args->Length <= 0) return ERR_Okay;
@@ -226,7 +226,7 @@ static ERROR CSTREAM_Seek(objCompressedStream *Self, struct acSeek *Args)
    while (pos > 0) {
       struct acRead read = { .Buffer = buffer, .Length = (LONG)pos };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
-      if (Action(AC_Read, (OBJECTPTR)Self, &read)) return ERR_Decompression;
+      if (Action(AC_Read, Self, &read)) return ERR_Decompression;
       pos -= read.Result;
    }
 
@@ -244,7 +244,7 @@ static ERROR CSTREAM_Write(objCompressedStream *Self, struct acWrite *Args)
    parasol::Log log(__FUNCTION__);
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
-   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+   if (!(Self->Head::Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
 
    if (!Self->Deflating) {
       ClearMemory(&Self->Stream, sizeof(Self->Stream));

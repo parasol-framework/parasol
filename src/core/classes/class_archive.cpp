@@ -85,7 +85,7 @@ INLINE CSTRING name_from_path(CSTRING Path)
 
 static void reset_state(objFile *Self)
 {
-   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (prv->Inflating) { inflateEnd(&prv->Stream); prv->Inflating = false; }
 
@@ -98,7 +98,7 @@ static void reset_state(objFile *Self)
 
 static ERROR seek_to_item(objFile *Self)
 {
-   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
    ZipFile *item = &prv->Info;
 
    acSeekStart(prv->FileStream, item->Offset + HEAD_EXTRALEN);
@@ -180,7 +180,7 @@ static ERROR ARCHIVE_Activate(objFile *Self, APTR Void)
 {
    parasol::Log log;
 
-   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (!prv->Archive) return log.warning(ERR_SystemCorrupt);
 
@@ -205,10 +205,10 @@ static ERROR ARCHIVE_Activate(objFile *Self, APTR Void)
 
 static ERROR ARCHIVE_Free(objFile *Self, APTR Void)
 {
-   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (prv) {
-      if (prv->FileStream) { acFree(&prv->FileStream->Head); prv->FileStream = NULL; }
+      if (prv->FileStream) { acFree(prv->FileStream); prv->FileStream = NULL; }
       if (prv->Inflating)  { inflateEnd(&prv->Stream); prv->Inflating = false; }
    }
 
@@ -228,14 +228,14 @@ static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
    if (Self->Flags & (FL_NEW|FL_WRITE)) return log.warning(ERR_ReadOnly);
 
    ERROR error = ERR_Search;
-   if (!AllocMemory(sizeof(prvFileArchive), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvFileArchive), Self->Head::MemFlags, &Self->ChildPrivate, NULL)) {
       if (Self->Path[StrLength(Self->Path)-1] IS ':') { // Nothing is referenced
          return ERR_Okay;
       }
       else {
          std::string file_path;
 
-         auto prv = (prvFileArchive *)(Self->Head.ChildPrivate);
+         auto prv = (prvFileArchive *)(Self->ChildPrivate);
          prv->Archive = find_archive(Self->Path, file_path);
 
          if (prv->Archive) {
@@ -255,9 +255,9 @@ static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
             }
 
             if (item) {
-               ((prvFileArchive *)(Self->Head.ChildPrivate))->Info = *item;
-               if (!(error = acActivate((OBJECTPTR)Self))) {
-                  error = acQuery((OBJECTPTR)Self);
+               ((prvFileArchive *)(Self->ChildPrivate))->Info = *item;
+               if (!(error = acActivate(Self))) {
+                  error = acQuery(Self);
                }
             }
          }
@@ -266,7 +266,7 @@ static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
    else error = ERR_AllocMemory;
 
    if (error) {
-      if (Self->Head.ChildPrivate) { FreeResource(Self->Head.ChildPrivate); Self->Head.ChildPrivate = NULL; }
+      if (Self->ChildPrivate) { FreeResource(Self->ChildPrivate); Self->ChildPrivate = NULL; }
    }
 
    return error;
@@ -276,13 +276,13 @@ static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
 
 static ERROR ARCHIVE_Query(objFile *Self, APTR Void)
 {
-   auto prv = (prvFileArchive *)(Self->Head.ChildPrivate);
+   auto prv = (prvFileArchive *)(Self->ChildPrivate);
 
    // Activate the source if this hasn't been done already.
 
    ERROR error;
    if (!prv->FileStream) {
-      error = acActivate((OBJECTPTR)Self);
+      error = acActivate(Self);
       if (error) return error;
    }
 
@@ -319,7 +319,7 @@ static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
    else if (Args->Length == 0) return ERR_Okay;
    else if (Args->Length < 0) return ERR_OutOfRange;
 
-   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (prv->Info.DeflateMethod IS 0) {
       ERROR error = acRead(prv->FileStream, Args->Buffer, Args->Length, &Args->Result);
@@ -339,7 +339,7 @@ static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
             .Length = (zf->CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf->CompressedSize : SIZE_COMPRESSION_BUFFER
          };
 
-         if (Action(AC_Read, &prv->FileStream->Head, &read)) return ERR_Read;
+         if (Action(AC_Read, prv->FileStream, &read)) return ERR_Read;
          if (read.Result <= 0) return ERR_Read;
 
          prv->ReadPtr          = prv->OutputBuffer;
@@ -388,7 +388,7 @@ static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
             if (prv->InputLength < SIZE_COMPRESSION_BUFFER) read.Length = prv->InputLength;
             else read.Length = SIZE_COMPRESSION_BUFFER;
 
-            if (Action(AC_Read, &prv->FileStream->Head, &read)) return ERR_Read;
+            if (Action(AC_Read, prv->FileStream, &read)) return ERR_Read;
             if (read.Result <= 0) return ERR_Read;
 
             prv->InputLength -= read.Result;
@@ -433,7 +433,7 @@ static ERROR ARCHIVE_Seek(objFile *Self, struct acSeek *Args)
    while (Self->Position < pos) {
       struct acRead read = { .Buffer = buffer, .Length = (LONG)(pos - Self->Position) };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
-      if (Action(AC_Read, (OBJECTPTR)Self, &read)) return ERR_Decompression;
+      if (Action(AC_Read, Self, &read)) return ERR_Decompression;
    }
 
    return ERR_Okay;
@@ -451,7 +451,7 @@ static ERROR ARCHIVE_Write(objFile *Self, struct acWrite *Args)
 
 static ERROR ARCHIVE_GET_Size(objFile *Self, LARGE *Value)
 {
-   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
    if (prv) {
       *Value = prv->Info.OriginalSize;
       return ERR_Okay;
@@ -588,7 +588,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    if ((cmp = find_archive(Path, file_path))) {
       struct cmpFind find = { .Path=file_path.c_str(), .Flags=STR_CASE|STR_MATCH_LEN };
-      if ((error = Action(MT_CmpFind, &cmp->Head, &find))) return error;
+      if ((error = Action(MT_CmpFind, cmp, &find))) return error;
       item = find.Item;
    }
    else return ERR_DoesNotExist;

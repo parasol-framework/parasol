@@ -56,7 +56,7 @@ static int thread_script(lua_State *Lua)
 
       objScript *script;
       if (!CreateObject(ID_SCRIPT, 0, &script,
-            FID_Owner|TLONG,    thread->Head.UID,
+            FID_Owner|TLONG,    thread->UID,
             FID_Statement|TSTR, statement,
             TAGEND)) {
 
@@ -65,7 +65,7 @@ static int thread_script(lua_State *Lua)
             thread_callback cb = {
                .callbackID   = luaL_ref(Lua, LUA_REGISTRYINDEX),
                .threadScript = script,
-               .mainScriptID = Lua->Script->Head.UID
+               .mainScriptID = Lua->Script->UID
             };
             thSetData(thread, &cb, sizeof(cb));
 
@@ -107,7 +107,7 @@ static ERROR thread_script_callback(objThread *Thread)
    if ((!GetPointer(Thread, FID_Data, &cb)) AND (cb)) {
       objScript *script;
       if (!AccessObject(cb->mainScriptID, 4000, &script)) {
-         auto prv = (prvFluid *)script->Head.ChildPrivate;
+         auto prv = (prvFluid *)script->ChildPrivate;
          if (!prv) return log.warning(ERR_ObjectCorrupt);
          scCallback(script, cb->callbackID, NULL, 0, NULL);
          luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb->callbackID);
@@ -166,11 +166,11 @@ static int thread_action(lua_State *Lua)
    LONG type = lua_type(Lua, 3); // Optional callback.
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, 3));
-      SET_FUNCTION_SCRIPT(callback, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      SET_FUNCTION_SCRIPT(callback, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
    else if (type IS LUA_TFUNCTION) {
       lua_pushvalue(Lua, 3);
-      SET_FUNCTION_SCRIPT(callback, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      SET_FUNCTION_SCRIPT(callback, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
    else callback.Type = 0;
 
@@ -275,11 +275,11 @@ static int thread_method(lua_State *Lua)
                LONG type = lua_type(Lua, 3); // Optional callback.
                if (type IS LUA_TSTRING) {
                   lua_getglobal(Lua, (STRING)lua_tostring(Lua, 3));
-                  SET_FUNCTION_SCRIPT(callback, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                  SET_FUNCTION_SCRIPT(callback, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else if (type IS LUA_TFUNCTION) {
                   lua_pushvalue(Lua, 3);
-                  SET_FUNCTION_SCRIPT(callback, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                  SET_FUNCTION_SCRIPT(callback, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else callback.Type = 0;
 

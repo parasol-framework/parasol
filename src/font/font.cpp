@@ -376,7 +376,7 @@ static ERROR fntGetList(FontList **Result)
 
    *Result = NULL;
 
-   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head, 3000);
+   parasol::ScopedObjectLock<objConfig> config(glConfig, 3000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    size_t size = 0;
@@ -469,7 +469,7 @@ static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
    UBYTE line_abort, pchar;
 
    if ((!Font) or (!String)) return;
-   if (!(Font->Head.Flags & NF_INITIALISED)) return;
+   if (!(Font->Head::Flags & NF_INITIALISED)) return;
 
    if (Chars IS FSS_LINE) {
       Chars = 0x7fffffff;
@@ -634,7 +634,7 @@ static LONG fntStringWidth(objFont *Font, CSTRING String, LONG Chars)
 {
    if ((!Font) or (!String)) return 0;
 
-   if (!(Font->Head.Flags & NF_INITIALISED)) return 0;
+   if (!(Font->Head::Flags & NF_INITIALISED)) return 0;
 
    font_glyph *cache;
 
@@ -947,7 +947,7 @@ static ERROR fntRemoveFont(CSTRING Name)
 
    log.branch("%s", Name);
 
-   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head);
+   parasol::ScopedObjectLock<objConfig> config(glConfig);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    // Delete all files related to this font
@@ -1043,7 +1043,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
 
    if (!Name) return log.warning(ERR_NullArgs);
 
-   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head, 5000);
+   parasol::ScopedObjectLock<objConfig> config(glConfig, 5000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    ConfigGroups *groups;
@@ -1238,7 +1238,7 @@ static ERROR fntRefreshFonts(void)
 
    log.branch("Refreshing the fonts: directory.");
 
-   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head, 3000);
+   parasol::ScopedObjectLock<objConfig> config(glConfig, 3000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    acClear(glConfig); // Clear out existing font information
@@ -1499,10 +1499,10 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
 
             font_count  = 0;
             font_offset = 0;
-            size_shift  = ReadWordLE(&file.obj->Head);
+            size_shift  = ReadWordLE(file.obj);
 
-            for (type_id=ReadWordLE(&file.obj->Head); type_id; type_id=ReadWordLE(&file.obj->Head)) {
-               count = ReadWordLE(&file.obj->Head);
+            for (type_id=ReadWordLE(file.obj); type_id; type_id=ReadWordLE(file.obj)) {
+               count = ReadWordLE(file.obj);
 
                if (type_id IS 0x8008) {
                   font_count  = count;
@@ -1527,8 +1527,8 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
                // Get the offset and size of each font entry
 
                for (LONG i=0; i < font_count; i++) {
-                  fonts[i].Offset = ReadWordLE(&file.obj->Head)<<size_shift;
-                  fonts[i].Size   = ReadWordLE(&file.obj->Head)<<size_shift;
+                  fonts[i].Offset = ReadWordLE(file.obj)<<size_shift;
+                  fonts[i].Size   = ReadWordLE(file.obj)<<size_shift;
                   acSeekCurrent(file.obj, 8);
                }
 

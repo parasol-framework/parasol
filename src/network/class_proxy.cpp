@@ -556,12 +556,12 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
       cfgWriteInt(config, Self->GroupName,   "Enabled",       Self->Enabled);
 
       if (!CreateObject(ID_FILE, 0, &file,
-            FID_Path|TSTR,  "user:config/network/proxies.cfg",
+            FID_Path|TSTR,         "user:config/network/proxies.cfg",
             FID_Permissions|TLONG, PERMIT_USER_READ|PERMIT_USER_WRITE,
             FID_Flags|TLONG,       FL_NEW|FL_WRITE,
             TAGEND)) {
 
-         error = acSaveToObject(config, file->Head.UID, 0);
+         error = acSaveToObject(config, file->UID, 0);
          acFree(file);
       }
       else error = ERR_CreateObject;

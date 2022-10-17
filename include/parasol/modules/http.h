@@ -122,8 +122,8 @@
 
 #define VER_HTTP (1.000000)
 
-typedef struct rkHTTP {
-   OBJECT_HEADER
+typedef class rkHTTP : public Head {
+   public:
    DOUBLE   DataTimeout;     // Timeout for receiving data, measured in seconds
    DOUBLE   ConnectTimeout;  // Timeout for initial connection, measured in seconds
    LARGE    Index;           // Current read/write index, relative to content length so always starts from zero

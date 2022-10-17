@@ -52,8 +52,8 @@ struct FontList {
 
 #define VER_FONT (1.000000)
 
-typedef struct rkFont {
-   OBJECT_HEADER
+typedef class rkFont : public Head {
+   public:
    DOUBLE Angle;                                               // Rotation angle to use when drawing the font.
    DOUBLE Point;                                               // The Point/Height of the font (arbitrary size, non-exact)
    DOUBLE StrokeSize;                                          // For scalable fonts only.  Indicates the strength of the stroked outline if Outline.Alpha > 0

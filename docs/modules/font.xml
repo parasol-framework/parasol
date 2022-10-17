@@ -50,7 +50,7 @@
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="FieldNotSet">A vital field has not been set in this object.</error>
+      <error code="FieldNotSet">A required field value is undefined.</error>
     </result>
   </function>
 

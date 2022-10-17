@@ -248,7 +248,7 @@ private:
 
 static bool check_dirty(objVector *Shape) {
    while (Shape) {
-      if (Shape->Head.ClassID != ID_VECTOR) return true;
+      if (Shape->ClassID != ID_VECTOR) return true;
       if (Shape->Dirty) return true;
 
       if (Shape->Child) {
@@ -1107,7 +1107,7 @@ private:
          parasol::Log log(__FUNCTION__);
          VectorState state = VectorState(ParentState);
 
-         if (shape->Head.ClassID != ID_VECTOR) {
+         if (shape->ClassID != ID_VECTOR) {
             log.trace("Non-Vector discovered in the vector tree.");
             continue;
          }
@@ -1117,7 +1117,7 @@ private:
             gen_vector_path(shape);
             shape->Dirty = 0;
          }
-         else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Head.Class->ClassName, shape->Head.UID, shape->ParentView ? shape->ParentView->Head.UID : 0);
+         else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Class->ClassName, shape->UID, shape->ParentView ? shape->ParentView->UID : 0);
 
          // Visibility management.
 
@@ -1129,7 +1129,7 @@ private:
             else if (shape->Visibility != VIS_VISIBLE) visible = false;
 
             if (!visible) {
-               log.trace("%s: #%d, Not Visible", get_name(&shape->Head), shape->Head.UID);
+               log.trace("%s: #%d, Not Visible", get_name(shape), shape->UID);
                continue;
             }
          }
@@ -1149,7 +1149,7 @@ private:
          }
 
          #ifdef DBG_DRAW
-            log.traceBranch("%s: #%d, Matrices: %p", get_name(shape), shape->Head.UID, shape->Matrices);
+            log.traceBranch("%s: #%d, Matrices: %p", get_name(shape), shape->UID, shape->Matrices);
          #endif
 
          if (mBitmap->ColourSpace IS CS_LINEAR_RGB) state.mLinearRGB = true; // The target bitmap's colour space has priority if linear.
@@ -1190,7 +1190,7 @@ private:
             }
          }
 
-         if (shape->Head.SubID IS ID_VECTORVIEWPORT) {
+         if (shape->SubID IS ID_VECTORVIEWPORT) {
             if ((shape->Child) or (shape->InputSubscriptions) or (shape->FillPattern)) {
                auto view = (objVectorViewport *)shape;
 
@@ -1211,7 +1211,7 @@ private:
                }
 
                #ifdef DBG_DRAW
-                  log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f)", shape->Head.UID, state.mClip.x1, state.mClip.y1, state.mClip.x2, state.mClip.y2);
+                  log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f)", shape->UID, state.mClip.x1, state.mClip.y1, state.mClip.x2, state.mClip.y2);
                #endif
 
                if ((state.mClip.x2 > state.mClip.x1) and (state.mClip.y2 > state.mClip.y1)) { // Continue only if the clipping region is visible
@@ -1239,7 +1239,7 @@ private:
                      if (view->vpBX2 < x2) x2 = view->vpBX2;
                      if (view->vpBY1 > y1) y1 = view->vpBY1;
                      if (view->vpBY2 < y2) y2 = view->vpBY2;
-                     Scene->InputBoundaries.emplace_back(shape->Head.UID, view->Cursor, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
+                     Scene->InputBoundaries.emplace_back(shape->UID, view->Cursor, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
                   }
 
                   if (Scene->Flags & VPF_OUTLINE_VIEWPORTS) { // Debug option: Draw the viewport's path with a green outline
@@ -1298,7 +1298,7 @@ private:
 
             if (shape->GeneratePath) { // A vector that generates a path can be drawn
                #ifdef DBG_DRAW
-                  log.traceBranch("%s: #%d, Mask: %p", get_name(shape), shape->Head.UID, shape->ClipMask);
+                  log.traceBranch("%s: #%d, Mask: %p", get_name(shape), shape->UID, shape->ClipMask);
                #endif
 
                if (!mView) {
@@ -1387,7 +1387,7 @@ private:
                   if (xmax < bx2) bx2 = xmax;
                   if (ymax < by2) by2 = ymax;
 
-                  Scene->InputBoundaries.emplace_back(shape->Head.UID, shape->Cursor, bx1, by1, bx2, by2, absx, absy);
+                  Scene->InputBoundaries.emplace_back(shape->UID, shape->Cursor, bx1, by1, bx2, by2, absx, absy);
                }
 
                state.mClipMask = saved_mask;

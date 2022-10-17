@@ -52,10 +52,10 @@ static void debug_tree(objVector *Vector, LONG &Level)
 
       if (v->Child) {
          parasol::Log blog(__FUNCTION__);
-         blog.branch("Vector #%d%s %s %s %s", v->Head.UID, indent, v->Head.Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
+         blog.branch("Vector #%d%s %s %s %s", v->UID, indent, v->Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
          debug_tree(v->Child, Level);
       }
-      else log.msg("Vector #%d%s %s %s %s", v->Head.UID, indent, v->Head.Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
+      else log.msg("Vector #%d%s %s %s %s", v->UID, indent, v->Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
    }
 
    Level--;
@@ -71,7 +71,7 @@ void set_parent(objVector *Self, OBJECTID OwnerID)
    CLASSID class_id = GetClassID(OwnerID);
    if ((class_id != ID_VECTORSCENE) and (class_id != ID_VECTOR)) return;
 
-   Self->Parent = (OBJECTPTR)GetObjectPtr(OwnerID);
+   Self->Parent = GetObjectPtr(OwnerID);
 
    // Ensure that the sibling fields are valid, if not then clear them.
 
@@ -111,9 +111,9 @@ void set_parent(objVector *Self, OBJECTID OwnerID)
 static ERROR VECTOR_ActionNotify(objVector *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) {
-      if ((Self->ClipMask) and (Args->ObjectID IS Self->ClipMask->Head.UID)) Self->ClipMask = NULL;
-      else if ((Self->Morph) and (Args->ObjectID IS Self->Morph->Head.UID)) Self->Morph = NULL;
-      else if ((Self->Transition) and (Args->ObjectID IS Self->Transition->Head.UID)) Self->Transition = NULL;
+      if ((Self->ClipMask) and (Args->ObjectID IS Self->ClipMask->UID)) Self->ClipMask = NULL;
+      else if ((Self->Morph) and (Args->ObjectID IS Self->Morph->UID)) Self->Morph = NULL;
+      else if ((Self->Transition) and (Args->ObjectID IS Self->Transition->UID)) Self->Transition = NULL;
       else if (Self->FeedbackSubscriptions) {
          for (auto it=Self->FeedbackSubscriptions->begin(); it != Self->FeedbackSubscriptions->end(); ) {
             auto &sub = *it;
@@ -243,7 +243,7 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    }
    if (Self->Child) Self->Child->Parent = NULL;
 
-   if ((Self->Scene) and (!(Self->Scene->Head.Flags & (NF_FREE|NF_FREE_MARK)))) {
+   if ((Self->Scene) and (!(Self->Scene->Head::Flags & (NF_FREE|NF_FREE_MARK)))) {
       if ((Self->ParentView) and (Self->ResizeSubscription) and (Self->Scene->ResizeSubscriptions.contains(Self->ParentView))) {
          auto sub = Self->Scene->ResizeSubscriptions[Self->ParentView];
          sub.erase(Self);
@@ -390,7 +390,7 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
       Args->Height = bounds[3] - bounds[1];
       return ERR_Okay;
    }
-   else if (Self->Head.SubID IS ID_VECTORVIEWPORT) {
+   else if (Self->SubID IS ID_VECTORVIEWPORT) {
       if (Self->Dirty) gen_vector_tree((objVector *)Self);
 
       auto view = (objVectorViewport *)Self;
@@ -421,15 +421,15 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
 {
    parasol::Log log;
 
-   if ((!Self->Head.SubID) or (Self->Head.SubID IS ID_VECTOR)) {
+   if ((!Self->SubID) or (Self->SubID IS ID_VECTOR)) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
       return ERR_Failed;
    }
 
-   if (!Self->Parent) set_parent(Self, Self->Head.OwnerID);
+   if (!Self->Parent) set_parent(Self, Self->Head::OwnerID);
 
    log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UID : 0,
-      Self->Prev ? Self->Prev->Head.UID : 0, Self->Next ? Self->Next->Head.UID : 0, Self);
+      Self->Prev ? Self->Prev->UID : 0, Self->Next ? Self->Next->UID : 0, Self);
 
    if (auto parent = Self->Parent) {
       if (parent->ClassID IS ID_VECTOR) {
@@ -452,7 +452,7 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
                Self->Next = parent_shape->Child;
             }
             parent_shape->Child = Self;
-            Self->Parent = (OBJECTPTR)parent_shape;
+            Self->Parent = parent_shape;
          }
       }
       else if (parent->ClassID IS ID_VECTORSCENE) {
@@ -477,7 +477,7 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
          if (Self->ParentView) {
             Self->Scene->ResizeSubscriptions[Self->ParentView][Self] = glResizeSubscriptions[Self];
          }
-         else if (Self->Head.SubID IS ID_VECTORVIEWPORT) { // The top-level viewport responds to its own sizing.
+         else if (Self->SubID IS ID_VECTORVIEWPORT) { // The top-level viewport responds to its own sizing.
             Self->Scene->ResizeSubscriptions[(objVectorViewport *)Self][Self] = glResizeSubscriptions[Self];
          }
          glResizeSubscriptions.erase(Self);
@@ -540,12 +540,12 @@ static ERROR VECTOR_NewOwner(objVector *Self, struct acNewOwner *Args)
 {
    parasol::Log log;
 
-   if (!Self->Head.SubID) return ERR_Okay;
+   if (!Self->SubID) return ERR_Okay;
 
    // Modifying the owner after the root vector has been established is not permitted.
    // The client should instead create a new object under the target and transfer the field values.
 
-   if (Self->Head.Flags & NF_INITIALISED) return log.warning(ERR_AlreadyDefined);
+   if (Self->Head::Flags & NF_INITIALISED) return log.warning(ERR_AlreadyDefined);
 
    set_parent(Self, Args->NewOwnerID);
 
@@ -632,7 +632,7 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
    if (Self->Dirty) gen_vector_tree((objVector *)Self);
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
-   if (Self->Head.SubID IS ID_VECTORVIEWPORT) {
+   if (Self->SubID IS ID_VECTORVIEWPORT) {
       agg::vertex_d w, x, y, z;
 
       auto &vertices = Self->BasePath.vertices(); // Note: Viewport BasePath is fully transformed.
@@ -649,7 +649,7 @@ static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
 
       if (inside) return ERR_Okay;
    }
-   else if (Self->Head.SubID IS ID_VECTORRECTANGLE) {
+   else if (Self->SubID IS ID_VECTORRECTANGLE) {
       agg::vertex_d w, x, y, z;
       agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(Self->BasePath, Self->Transform);
 
@@ -883,7 +883,7 @@ static ERROR VECTOR_SubscribeInput(objVector *Self, struct vecSubscribeInput *Ar
       }
 
       if (Self->InputSubscriptions->empty()) {
-         if ((Self->Scene) and (!(Self->Scene->Head.Flags & (NF_FREE|NF_FREE_MARK)))) {
+         if ((Self->Scene) and (!(Self->Scene->Head::Flags & (NF_FREE|NF_FREE_MARK)))) {
             Self->Scene->InputSubscriptions.erase(Self);
          }
       }
@@ -997,7 +997,7 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
          { "X",       FD_DOUBLE },
          { "Y",       FD_DOUBLE }
       };
-      args[0].Long = Self->Head.UID;
+      args[0].Long = Self->UID;
 
       if (auto script = Args->Callback->Script.Script) {
          LONG index = 0;
@@ -1072,7 +1072,7 @@ static ERROR VECTOR_SET_Cursor(objVector *Self, LONG Value)
 {
    Self->Cursor = Value;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       // Send a dummy input event to refresh the cursor
 
       DOUBLE x, y, absx, absy;
@@ -1223,7 +1223,7 @@ static ERROR VECTOR_SET_Fill(objVector *Self, CSTRING Value)
 {
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
    Self->FillString = StrClone(Value);
-   vecReadPainter(&Self->Head, Value, &Self->FillColour, &Self->FillGradient, &Self->FillImage, &Self->FillPattern);
+   vecReadPainter(Self, Value, &Self->FillColour, &Self->FillGradient, &Self->FillImage, &Self->FillPattern);
    return ERR_Okay;
 }
 
@@ -1542,9 +1542,9 @@ static ERROR VECTOR_SET_Mask(objVector *Self, objVectorClip *Value)
       }
       return ERR_Okay;
    }
-   else if (Value->Head.SubID IS ID_VECTORCLIP) {
+   else if (Value->SubID IS ID_VECTORCLIP) {
       if (Self->ClipMask) UnsubscribeAction(Self->ClipMask, AC_Free);
-      if (Value->Head.Flags & NF_INITIALISED) { // Ensure that the mask is initialised.
+      if (Value->Head::Flags & NF_INITIALISED) { // Ensure that the mask is initialised.
          SubscribeAction(Value, AC_Free);
          Self->ClipMask = Value;
          return ERR_Okay;
@@ -1623,9 +1623,9 @@ static ERROR VECTOR_SET_Morph(objVector *Self, objVector *Value)
       }
       return ERR_Okay;
    }
-   else if (Value->Head.ClassID IS ID_VECTOR) {
+   else if (Value->ClassID IS ID_VECTOR) {
       if (Self->Morph) UnsubscribeAction(Self->Morph, AC_Free);
-      if (Value->Head.Flags & NF_INITIALISED) { // The object must be initialised.
+      if (Value->Head::Flags & NF_INITIALISED) { // The object must be initialised.
          SubscribeAction(Value, AC_Free);
          Self->Morph = Value;
          return ERR_Okay;
@@ -1677,9 +1677,9 @@ static ERROR VECTOR_SET_Next(objVector *Self, objVector *Value)
 {
    parasol::Log log;
 
-   if (Value->Head.ClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
+   if (Value->ClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
    if ((!Value) or (Value IS Self)) return log.warning(ERR_InvalidValue);
-   if (Self->Head.OwnerID != Value->Head.OwnerID) return log.warning(ERR_UnsupportedOwner); // Owners must match
+   if (Self->OwnerID != Value->OwnerID) return log.warning(ERR_UnsupportedOwner); // Owners must match
 
    if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
@@ -1780,9 +1780,9 @@ static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
 {
    parasol::Log log;
 
-   if (Value->Head.ClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
+   if (Value->ClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
    if (!Value) return log.warning(ERR_InvalidValue);
-   if (Self->Head.OwnerID != Value->Head.OwnerID) return log.warning(ERR_UnsupportedOwner); // Owners must match
+   if (Self->OwnerID != Value->OwnerID) return log.warning(ERR_UnsupportedOwner); // Owners must match
 
    if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
@@ -1975,7 +1975,7 @@ static ERROR VECTOR_SET_Stroke(objVector *Self, STRING Value)
 {
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    Self->StrokeString = StrClone(Value);
-   vecReadPainter(&Self->Head, Value, &Self->StrokeColour, &Self->StrokeGradient, &Self->StrokeImage, &Self->StrokePattern);
+   vecReadPainter(Self, Value, &Self->StrokeColour, &Self->StrokeGradient, &Self->StrokeImage, &Self->StrokePattern);
    return ERR_Okay;
 }
 
@@ -2142,9 +2142,9 @@ static ERROR VECTOR_SET_Transition(objVector *Self, rkVectorTransition *Value)
       }
       return ERR_Okay;
    }
-   else if (Value->Head.ClassID IS ID_VECTORTRANSITION) {
+   else if (Value->ClassID IS ID_VECTORTRANSITION) {
       if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
-      if (Value->Head.Flags & NF_INITIALISED) { // The object must be initialised.
+      if (Value->Head::Flags & NF_INITIALISED) { // The object must be initialised.
          SubscribeAction(Value, AC_Free);
          Self->Transition = Value;
          return ERR_Okay;
@@ -2167,7 +2167,7 @@ Visibility: Controls the visibility of a vector and its children.
 
 void send_feedback(objVector *Vector, LONG Event)
 {
-   if (!(Vector->Head.Flags & NF_INITIALISED)) return;
+   if (!(Vector->Head::Flags & NF_INITIALISED)) return;
    if (!Vector->FeedbackSubscriptions) return;
 
    for (auto it=Vector->FeedbackSubscriptions->begin(); it != Vector->FeedbackSubscriptions->end(); ) {

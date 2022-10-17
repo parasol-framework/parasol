@@ -32,7 +32,7 @@ ERROR DeleteVolume(CSTRING Name)
 
    log.branch("Name: %s", Name);
 
-   parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 5000);
+   parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 5000);
    if (!volumes.granted()) return log.warning(ERR_AccessObject);
 
    ConfigGroups *groups;
@@ -65,7 +65,7 @@ ERROR DeleteVolume(CSTRING Name)
             for (auto& [group, keys] : groups[0]) {
                if (!StrMatch(vol.c_str(), keys["Name"].c_str())) {
                   cfgDeleteGroup(userconfig, group.c_str());
-                  SaveObjectToFile((OBJECTPTR)userconfig, "user:config/volumes.cfg", PERMIT_READ|PERMIT_WRITE);
+                  SaveObjectToFile(userconfig, "user:config/volumes.cfg", PERMIT_READ|PERMIT_WRITE);
 
                   // Broadcast the change
 
@@ -79,7 +79,7 @@ ERROR DeleteVolume(CSTRING Name)
             }
          }
 
-         acFree(&userconfig->Head);
+         acFree(userconfig);
       }
 
       return ERR_Okay;
@@ -100,7 +100,7 @@ ERROR RenameVolume(CSTRING Volume, CSTRING Name)
 {
    parasol::Log log(__FUNCTION__);
 
-   parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 5000);
+   parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 5000);
    if (volumes.granted()) {
       ConfigGroups *groups;
       if (!GetPointer(glVolumes, FID_Data, &groups)) {
@@ -251,7 +251,7 @@ next:
    if (label) log.branch("Name: %s (%s), Path: %s", name, label, path.c_str());
    else log.branch("Name: %s, Path: %s", name, path.c_str());
 
-   parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 8000);
+   parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 8000);
    if (!volumes.granted()) return log.warning(ERR_AccessObject);
 
    std::string savefile;
@@ -284,8 +284,8 @@ next:
                   objConfig *userconfig;
                   if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, savefile.c_str(), TAGEND)) {
                      cfgWriteValue(userconfig, group.c_str(), "Path", keys["Path"].c_str());
-                     SaveObjectToFile((OBJECTPTR)userconfig, savefile.c_str(), savepermissions);
-                     acFree(&userconfig->Head);
+                     SaveObjectToFile(userconfig, savefile.c_str(), savepermissions);
+                     acFree(userconfig);
                   }
                }
 
@@ -328,8 +328,8 @@ next:
                   }
                }
 
-               SaveObjectToFile((OBJECTPTR)userconfig, savefile.c_str(), savepermissions);
-               acFree(&userconfig->Head);
+               SaveObjectToFile(userconfig, savefile.c_str(), savepermissions);
+               acFree(userconfig);
             }
          }
          break;

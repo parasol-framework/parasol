@@ -256,8 +256,8 @@ extern void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
 //****************************************************************************
 // NB: Considered a shape (can be transformed).
 
-typedef struct rkVectorViewport {
-   OBJECT_HEADER
+typedef class rkVectorViewport : public Head {
+   public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
    FUNCTION vpDragCallback;
@@ -276,8 +276,8 @@ typedef struct rkVectorViewport {
 
 //****************************************************************************
 
-typedef struct rkVectorPoly {
-   OBJECT_HEADER
+typedef class rkVectorPoly : public Head {
+   public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
 
@@ -288,8 +288,8 @@ typedef struct rkVectorPoly {
 
 //****************************************************************************
 
-typedef struct rkVectorPath {
-   OBJECT_HEADER
+typedef class rkVectorPath : public Head {
+   public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
 
@@ -299,8 +299,8 @@ typedef struct rkVectorPath {
 
 //****************************************************************************
 
-typedef struct rkVectorRectangle {
-   OBJECT_HEADER
+typedef class rkVectorRectangle : public Head {
+   public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
    DOUBLE rX, rY;
@@ -319,8 +319,8 @@ struct TransitionStop { // Passed to the Stops field.
    agg::trans_affine *AGGTransform;
 };
 
-typedef struct rkVectorTransition {
-   OBJECT_HEADER
+typedef class rkVectorTransition : public Head {
+   public:
    LONG TotalStops; // Total number of stops registered.
 
 #ifdef PRV_VECTOR
@@ -337,8 +337,8 @@ class GradientColours {
       GRADIENT_TABLE table;
 };
 
-typedef struct rkVectorClip {
-   OBJECT_HEADER
+typedef class rkVectorClip : public Head {
+   public:
    SHAPE_PUBLIC
    SHAPE_PRIVATE
    UBYTE *ClipData;
@@ -666,7 +666,7 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 
 inline static objVector * get_parent(const objVector *Vector)
 {
-   if (Vector->Head.ClassID != ID_VECTOR) return NULL;
+   if (Vector->ClassID != ID_VECTOR) return NULL;
    while (Vector) {
       if (!Vector->Parent) Vector = Vector->Prev; // Scan back to the first sibling to find the parent
       else if (Vector->Parent->ClassID IS ID_VECTOR) return (objVector *)(Vector->Parent);
@@ -728,7 +728,7 @@ void configure_stroke(objVector &Vector, T &Stroke)
    //     stroke-dashoffset="10" fill="lightslategray" stroke-linejoin="round" />
 
    if (Vector.LineJoin) {
-      if (Vector.Head.SubID IS ID_VECTORPOLYGON) {
+      if (Vector.SubID IS ID_VECTORPOLYGON) {
          if (((objVectorPoly &)Vector).Closed) {
             switch(Vector.LineJoin) {
                case VLJ_MITER:        Stroke.line_cap(agg::square_cap); break;

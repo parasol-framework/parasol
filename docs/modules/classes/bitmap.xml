@@ -94,7 +94,7 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="FieldNotSet">A vital field has not been set in this object.</error>
+        <error code="FieldNotSet">A required field value is undefined.</error>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -156,7 +156,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NothingDone">The Bitmap's content is already in linear RGB format.</error>
         <error code="InvalidDimension">The clipping region is invalid.</error>
-        <error code="BadState">The Bitmap is not in the expected state.</error>
+        <error code="InvalidState">The Bitmap is not in the expected state.</error>
       </result>
     </method>
 
@@ -172,7 +172,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NothingDone">The Bitmap's content is already in sRGB format.</error>
         <error code="InvalidDimension">The clipping region is invalid.</error>
-        <error code="BadState">The Bitmap is not in the expected state.</error>
+        <error code="InvalidState">The Bitmap is not in the expected state.</error>
       </result>
     </method>
 
@@ -228,7 +228,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NothingDone">The content is already normalised.</error>
         <error code="InvalidDimension">The clipping region is invalid.</error>
-        <error code="BadState">The Bitmap is not in the expected state (32-bit with an alpha channel).</error>
+        <error code="InvalidState">The Bitmap is not in the expected state (32-bit with an alpha channel).</error>
       </result>
     </method>
 
@@ -323,7 +323,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NothingDone">The content is already premultiplied.</error>
         <error code="InvalidDimension">The clipping region is invalid.</error>
-        <error code="BadState">The Bitmap is not in the expected state (32-bit with an alpha channel)</error>
+        <error code="InvalidState">The Bitmap is not in the expected state (32-bit with an alpha channel)</error>
       </result>
     </method>
 

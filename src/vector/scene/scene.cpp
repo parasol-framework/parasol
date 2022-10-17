@@ -131,7 +131,7 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
       return Action(MT_ScAddDef, Self->HostScene, Args);
    }
 
-   OBJECTPTR def = (OBJECTPTR)Args->Def;
+   OBJECTPTR def = Args->Def;
 
    if ((def->ClassID IS ID_VECTORSCENE) or
        (def->ClassID IS ID_VECTOR) or
@@ -148,14 +148,14 @@ static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
 
    // If the resource does not belong to the Scene object, this can lead to invalid pointer references
 
-   if (def->OwnerID != Self->Head.UID) {
+   if (def->OwnerID != Self->UID) {
       OBJECTID owner_id = def->OwnerID;
-      while ((owner_id) and (owner_id != Self->Head.UID)) {
+      while ((owner_id) and (owner_id != Self->UID)) {
          owner_id = GetOwnerID(owner_id);
       }
 
       if (!owner_id) {
-         log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->Head.UID, def->OwnerID);
+         log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->UID, def->OwnerID);
          return ERR_UnsupportedOwner;
       }
    }
@@ -404,7 +404,7 @@ static ERROR VECTORSCENE_Reset(objVectorScene *Self, APTR Void)
    if (Self->Buffer)  { delete Self->Buffer; Self->Buffer = NULL; }
    if (Self->Defs)    { FreeResource(Self->Defs); Self->Defs = NULL; }
 
-   if (!(Self->Head.Flags & NF_FREE)) { // Reset all variables
+   if (!(Self->Head::Flags & NF_FREE)) { // Reset all variables
       Self->Gamma = 1.0;
    }
 
@@ -456,10 +456,10 @@ static ERROR VECTORSCENE_SearchByID(objVectorScene *Self, struct scSearchByID *A
 
    objVector *vector = Self->Viewport;
    while (vector) {
-      //log.msg("Search","%.3d: %p <- #%d -> %p Child %p", vector->Index, vector->Prev, vector->Head.UID, vector->Next, vector->Child);
+      //log.msg("Search","%.3d: %p <- #%d -> %p Child %p", vector->Index, vector->Prev, vector->UID, vector->Next, vector->Child);
 cont:
       if (vector->NumericID IS Args->ID) {
-         Args->Result = (OBJECTPTR)vector;
+         Args->Result = vector;
          return ERR_Okay;
       }
 
@@ -467,7 +467,7 @@ cont:
       else if (vector->Next) vector = vector->Next;
       else {
          while ((vector = (objVector *)get_parent(vector))) { // Unwind back up the stack, looking for the first Parent with a Next field.
-            if (vector->Head.ClassID != ID_VECTOR) return ERR_Search;
+            if (vector->ClassID != ID_VECTOR) return ERR_Search;
             if (vector->Next) {
                vector = vector->Next;
                goto cont;
@@ -643,7 +643,7 @@ void apply_focus(objVectorScene *Scene, objVector *Vector)
    std::vector<objVector *> focus_gained; // The first reference is the most foreground object
 
    for (auto scan=Vector; scan; scan=(objVector *)scan->Parent) {
-      if (scan->Head.ClassID IS ID_VECTOR) {
+      if (scan->ClassID IS ID_VECTOR) {
          focus_gained.emplace_back(scan);
       }
       else break;
@@ -653,7 +653,7 @@ void apply_focus(objVectorScene *Scene, objVector *Vector)
    std::string vlist;
    for (auto const fv : focus_gained) {
       char buffer[30];
-      snprintf(buffer, sizeof(buffer), "#%d ", fv->Head.UID);
+      snprintf(buffer, sizeof(buffer), "#%d ", fv->UID);
       vlist.append(buffer);
    }
 
@@ -675,7 +675,7 @@ void apply_focus(objVectorScene *Scene, objVector *Vector)
       }
 
       if ((no_focus) or (lost_focus_to_child) or (was_child_now_primary)) {
-         parasol::ScopedObjectLock<objVector> vec(&fgv->Head, 1000);
+         parasol::ScopedObjectLock<objVector> vec(fgv, 1000);
          if (vec.granted()) {
             send_feedback(fgv, focus_event);
             focus_event = FM_CHILD_HAS_FOCUS;
@@ -687,7 +687,7 @@ void apply_focus(objVectorScene *Scene, objVector *Vector)
 
    for (auto const fv : glFocusList) {
       if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
-         parasol::ScopedObjectLock<objVector> vec(&fv->Head, 1000);
+         parasol::ScopedObjectLock<objVector> vec(fv, 1000);
          if (vec.granted()) send_feedback(fv, FM_LOST_FOCUS);
       }
       else break;
@@ -706,7 +706,7 @@ void get_viewport_at_xy_scan(objVector *Vector, std::vector<std::vector<objVecto
    if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
 
    for (auto scan=Vector; scan; scan=scan->Next) {
-      if (scan->Head.SubID IS ID_VECTORVIEWPORT) {
+      if (scan->SubID IS ID_VECTORVIEWPORT) {
          auto vp = (objVectorViewport *)scan;
 
          if (vp->Dirty) gen_vector_path((objVector *)vp);
@@ -907,10 +907,10 @@ static void send_enter_event(objVector *Vector, const InputEvent *Event, DOUBLE 
 {
    InputEvent event = {
       .Next        = NULL,
-      .Value       = Vector->Head.UID,
+      .Value       = Vector->UID,
       .Timestamp   = Event->Timestamp,
-      .RecipientID = Vector->Head.UID,
-      .OverID      = Vector->Head.UID,
+      .RecipientID = Vector->UID,
+      .OverID      = Vector->UID,
       .AbsX        = Event->X,
       .AbsY        = Event->Y,
       .X           = Event->X - X,
@@ -929,10 +929,10 @@ static void send_left_event(objVector *Vector, const InputEvent *Event, DOUBLE X
 {
    InputEvent event = {
       .Next        = NULL,
-      .Value       = Vector->Head.UID,
+      .Value       = Vector->UID,
       .Timestamp   = Event->Timestamp,
-      .RecipientID = Vector->Head.UID,
-      .OverID      = Vector->Head.UID,
+      .RecipientID = Vector->UID,
+      .OverID      = Vector->UID,
       .AbsX        = Event->X,
       .AbsY        = Event->Y,
       .X           = Event->X - X,
@@ -953,7 +953,7 @@ static void send_wheel_event(objVectorScene *Scene, objVector *Vector, const Inp
       .Next        = NULL,
       .Value       = Event->Value,
       .Timestamp   = Event->Timestamp,
-      .RecipientID = Vector->Head.UID,
+      .RecipientID = Vector->UID,
       .OverID      = Event->OverID,
       .AbsX        = Event->X,
       .AbsY        = Event->Y,
@@ -1080,12 +1080,12 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                send_input_events(vector, &event);
 
                if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
-                  if ((Self->ActiveVector) and (Self->ActiveVector != vector->Head.UID)) {
+                  if ((Self->ActiveVector) and (Self->ActiveVector != vector->UID)) {
                      parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
                      if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
                   }
 
-                  Self->ActiveVector  = vector->Head.UID;
+                  Self->ActiveVector  = vector->UID;
                   Self->ActiveVectorX = tx;
                   Self->ActiveVectorY = ty;
                }

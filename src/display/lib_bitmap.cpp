@@ -312,34 +312,34 @@ UBYTE validate_clip(CSTRING Header, CSTRING Name, objBitmap *Bitmap)
    }
 #else
    if ((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) {
-      log.warning("#%d %s: Invalid right-clip of %d (offset %d), limited to width of %d.", Bitmap->Head.UID, Name, Bitmap->Clip.Right, Bitmap->XOffset, Bitmap->Width);
+      log.warning("#%d %s: Invalid right-clip of %d (offset %d), limited to width of %d.", Bitmap->UID, Name, Bitmap->Clip.Right, Bitmap->XOffset, Bitmap->Width);
       Bitmap->Clip.Right = Bitmap->Width - Bitmap->XOffset;
    }
 
    if ((Bitmap->YOffset + Bitmap->Clip.Bottom) > Bitmap->Height) {
-      log.warning("#%d %s: Invalid bottom-clip of %d (offset %d), limited to height of %d.", Bitmap->Head.UID, Name, Bitmap->Clip.Bottom, Bitmap->YOffset, Bitmap->Height);
+      log.warning("#%d %s: Invalid bottom-clip of %d (offset %d), limited to height of %d.", Bitmap->UID, Name, Bitmap->Clip.Bottom, Bitmap->YOffset, Bitmap->Height);
       Bitmap->Clip.Bottom = Bitmap->Height - Bitmap->YOffset;
    }
 
    if ((Bitmap->XOffset + Bitmap->Clip.Left) < 0) {
-      log.warning("#%d %s: Invalid left-clip of %d (offset %d).", Bitmap->Head.UID, Name, Bitmap->Clip.Left, Bitmap->XOffset);
+      log.warning("#%d %s: Invalid left-clip of %d (offset %d).", Bitmap->UID, Name, Bitmap->Clip.Left, Bitmap->XOffset);
       Bitmap->XOffset = 0;
       Bitmap->Clip.Left = 0;
    }
 
    if ((Bitmap->YOffset + Bitmap->Clip.Top) < 0) {
-      log.warning("#%d %s: Invalid top-clip of %d (offset %d).", Bitmap->Head.UID, Name, Bitmap->Clip.Top, Bitmap->YOffset);
+      log.warning("#%d %s: Invalid top-clip of %d (offset %d).", Bitmap->UID, Name, Bitmap->Clip.Top, Bitmap->YOffset);
       Bitmap->YOffset = 0;
       Bitmap->Clip.Top = 0;
    }
 
    if (Bitmap->Clip.Left >= Bitmap->Clip.Right) {
-      log.warning("#%d %s: Left clip >= Right clip (%d >= %d)", Bitmap->Head.UID, Name, Bitmap->Clip.Left, Bitmap->Clip.Right);
+      log.warning("#%d %s: Left clip >= Right clip (%d >= %d)", Bitmap->UID, Name, Bitmap->Clip.Left, Bitmap->Clip.Right);
       return 1;
    }
 
    if (Bitmap->Clip.Top >= Bitmap->Clip.Bottom) {
-      log.warning("#%d %s: Top clip >= Bottom clip (%d >= %d)", Bitmap->Head.UID, Name, Bitmap->Clip.Top, Bitmap->Clip.Bottom);
+      log.warning("#%d %s: Top clip >= Bottom clip (%d >= %d)", Bitmap->UID, Name, Bitmap->Clip.Top, Bitmap->Clip.Bottom);
       return 1;
    }
 #endif
@@ -357,12 +357,12 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
    UBYTE *data, *srcdata;
 
    if (!dest) return ERR_NullArgs;
-   if (dest->Head.ClassID != ID_BITMAP) {
-      log.warning("Destination #%d is not a Bitmap.", dest->Head.UID);
+   if (dest->ClassID != ID_BITMAP) {
+      log.warning("Destination #%d is not a Bitmap.", dest->UID);
       return ERR_InvalidObject;
    }
 
-   if (!(Bitmap->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+   if (!(Bitmap->Head::Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
 
    //log.trace("%dx%d,%dx%d to %dx%d, Offset: %dx%d to %dx%d", X, Y, Width, Height, DestX, DestY, Bitmap->XOffset, Bitmap->YOffset, dest->XOffset, dest->YOffset);
 
@@ -1746,7 +1746,7 @@ void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
       return;
    }
 
-   if (!(Bitmap->Head.Flags & NF_INITIALISED)) { log.warning(ERR_NotInitialised); return; }
+   if (!(Bitmap->Head::Flags & NF_INITIALISED)) { log.warning(ERR_NotInitialised); return; }
 
    X += Bitmap->XOffset;
    Y += Bitmap->YOffset;

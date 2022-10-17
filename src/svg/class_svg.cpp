@@ -77,7 +77,7 @@ static ERROR SVG_Free(objSVG *Self, APTR Void)
       Self->AnimationTimer = 0;
    }
 
-   if ((Self->Target) AND (Self->Target IS &Self->Scene->Head) AND (Self->Scene->Head.OwnerID IS Self->Head.UID)) {
+   if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->Head::OwnerID IS Self->UID)) {
       acFree(Self->Target);
       Self->Target = NULL;
    }
@@ -260,11 +260,11 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
       auto mc = (rkMetaClass *)FindClass(Args->ClassID);
       if ((!GetPointer(mc, FID_ActionTable, &routine)) AND (routine)) {
          if ((routine[AC_SaveToObject]) AND (routine[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
-            return routine[AC_SaveToObject]((OBJECTPTR)Self, Args);
+            return routine[AC_SaveToObject](Self, Args);
          }
          else if ((routine[AC_SaveImage]) AND (routine[AC_SaveImage] != (APTR)SVG_SaveImage)) {
             struct acSaveImage saveimage = { .DestID = Args->DestID };
-            return routine[AC_SaveImage]((OBJECTPTR)Self, &saveimage);
+            return routine[AC_SaveImage](Self, &saveimage);
          }
          else return log.warning(ERR_NoSupport);
       }
@@ -464,7 +464,7 @@ static ERROR SET_Target(objSVG *Self, OBJECTPTR Value)
    if (Value->ClassID IS ID_VECTORSCENE) {
       Self->Target = Value;
       Self->Scene = (objVectorScene *)Value;
-      if (Self->Scene->Viewport) Self->Viewport = &Self->Scene->Viewport->Head;
+      if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
    }
    else {
       OBJECTID owner_id = GetOwner(Value);
@@ -476,7 +476,7 @@ static ERROR SET_Target(objSVG *Self, OBJECTPTR Value)
 
       Self->Scene = (objVectorScene *)GetObjectPtr(owner_id);
       Self->Target = Value;
-      if (Self->Scene->Viewport) Self->Viewport = &Self->Scene->Viewport->Head;
+      if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
    }
 
    return ERR_Okay;
@@ -513,7 +513,7 @@ is returned if an SVG document has not been successfully parsed yet.
 
 static ERROR GET_Viewport(objSVG *Self, OBJECTPTR *Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_NotInitialised;
+   if (!(Self->Head::Flags & NF_INITIALISED)) return ERR_NotInitialised;
    *Value = Self->Viewport;
    return ERR_Okay;
 }

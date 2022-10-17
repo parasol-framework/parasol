@@ -24,7 +24,7 @@ static void draw_clips(objVectorClip *Self, objVector *Branch,
 {
    agg::scanline_p8 sl;
    for (auto scan=Branch; scan; scan=(objVector *)scan->Next) {
-      if (scan->Head.ClassID IS ID_VECTOR) {
+      if (scan->ClassID IS ID_VECTOR) {
          agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, scan->Transform);
          Rasterizer.reset();
          Rasterizer.add_path(final_path);

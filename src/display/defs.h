@@ -106,11 +106,11 @@
 
 #define UpdateSurfaceField(a,b) { \
    SurfaceList *list; SurfaceControl *ctl; WORD i; \
-   if (Self->Head.Flags & NF_INITIALISED) { \
+   if (Self->Head::Flags & NF_INITIALISED) { \
    if ((ctl = gfxAccessList(ARF_UPDATE))) { \
       list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
       for (i=0; i < ctl->Total; i++) { \
-         if (list[i].SurfaceID IS (a)->Head.UID) { \
+         if (list[i].SurfaceID IS (a)->UID) { \
             list[i].b = (a)->b; \
             break; \
          } \
@@ -122,11 +122,11 @@
 
 #define UpdateSurfaceField2(a,b,c) { \
    SurfaceList *list; SurfaceControl *ctl; WORD i; \
-   if (Self->Head.Flags & NF_INITIALISED) { \
+   if (Self->Head::Flags & NF_INITIALISED) { \
       if ((ctl = gfxAccessList(ARF_UPDATE))) { \
          list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
          for (i=0; i < ctl->Total; i++) { \
-            if (list[i].SurfaceID IS (a)->Head.UID) { \
+            if (list[i].SurfaceID IS (a)->UID) { \
                list[i].b = (a)->c; \
                break; \
             } \
@@ -354,7 +354,7 @@ extern const std::array<struct InputType, JET_END> glInputType;
 extern const std::array<std::string, JET_END> glInputNames;
 
 #define find_surface_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
-#define find_own_index(a,b)     find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->Head.UID)
+#define find_own_index(a,b)     find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->UID)
 #define find_parent_index(a,b)  find_parent_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
 
 //****************************************************************************

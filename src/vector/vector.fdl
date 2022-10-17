@@ -327,11 +327,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     { id=34, name="SetCommandList" }
   })
 
-  class("VectorPath", { src="vectors/path.cpp", output="vectors/path_def.c" })
+  class("VectorPath", { cpp=true, src="vectors/path.cpp", output="vectors/path_def.c" })
 
   // Use SET_VECTOR_COLOUR() to configure the RGB values in VectorColour
 
-  class("VectorColour", { src="defs/colour.cpp", comment="VectorColour is a basic stub class that is used for the DrawPath() routine when filling or stroking solid colour values" }, [[
+  class("VectorColour", { cpp=true, src="defs/colour.cpp", comment="VectorColour is a basic stub class that is used for the DrawPath() routine when filling or stroking solid colour values" }, [[
    double Red
    double Green
    double Blue
@@ -352,7 +352,7 @@ struct OrderedVector {
 #endif
    ]])
 
-  class("VectorScene", { src="scene/scene.cpp", output="scene/scene_def.c" }, [[
+  class("VectorScene", { cpp=true, src="scene/scene.cpp", output="scene/scene_def.c" }, [[
    large RenderTime           # Microseconds elapsed during the last rendering operation.
    double Gamma               # Not currently implemented.
    obj(VectorScene) HostScene # Reference to a controlling VectorScene at the top of the hierarchy, if applicable.
@@ -382,7 +382,7 @@ struct OrderedVector {
    UBYTE AdaptorType;
   ]])
 
-  class("VectorImage", { src="defs/image.cpp" }, [[
+  class("VectorImage", { cpp=true, src="defs/image.cpp" }, [[
     double X             # Starting horizontal coordinate
     double Y             # Starting vertical coordinate
     obj(Picture) Picture
@@ -393,7 +393,7 @@ struct OrderedVector {
     int(ARF) AspectRatio # Defines how the referenced image should fit in the boundary of its target shape.
   ]])
 
-  class("VectorPattern", { src="defs/pattern.cpp" }, [[
+  class("VectorPattern", { cpp=true, src="defs/pattern.cpp" }, [[
     double X                      # Starting horizontal coordinate
     double Y                      # Starting vertical coordinate
     double Width                  # Width of the canvas
@@ -412,7 +412,7 @@ struct OrderedVector {
    objBitmap *Bitmap;
   ]])
 
-  class("VectorGradient", { src="defs/gradient.cpp", output="defs/gradient_def.c" }, [[
+  class("VectorGradient", { cpp=true, src="defs/gradient.cpp", output="defs/gradient_def.c" }, [[
     double X1                    # Starting X coordinate of the gradient 'line'
     double Y1                    # Starting Y coordinate of the gradient 'line'
     double X2                    # Ending X of the gradient 'line'
@@ -438,7 +438,7 @@ struct OrderedVector {
    WORD ChangeCounter;
   ]])
 
-  class("FilterEffect", { src="filters/filter_effect.cpp", output="filters/filter_effect_def.c" }, [[
+  class("FilterEffect", { cpp=true, src="filters/filter_effect.cpp", output="filters/filter_effect_def.c" }, [[
     obj(FilterEffect) Next  # Next filter in the chain.
     obj(FilterEffect) Prev  # Previous filter in the chain.
     obj(Bitmap) Target      # Target bitmap for rendering the effect.
@@ -462,27 +462,27 @@ struct OrderedVector {
    obj(FilterEffect) Effect   # Effect pointer if the SourceType is REFERENCE.
   ]])
 
-  class("ImageFX",        { src="filters/filter_image.cpp", output="filters/filter_image_def.c", comment="Image filter support class." })
+  class("ImageFX",        { cpp=true, src="filters/filter_image.cpp", output="filters/filter_image_def.c", comment="Image filter support class." })
 
-  class("BlurFX",         { src="filters/filter_blur.cpp", output="filters/filter_blur_def.c", comment="Blur filter support class." })
+  class("BlurFX",         { cpp=true, src="filters/filter_blur.cpp", output="filters/filter_blur_def.c", comment="Blur filter support class." })
 
-  class("ColourFX",       { src="filters/filter_colourmatrix.cpp", output="filters/filter_colourmatrix_def.c", comment="Colour filter support class." })
+  class("ColourFX",       { cpp=true, src="filters/filter_colourmatrix.cpp", output="filters/filter_colourmatrix_def.c", comment="Colour filter support class." })
 
-  class("CompositeFX",    { src="filters/filter_composite.cpp", output="filters/filter_composite_def.c", comment="Composite filter support class." })
+  class("CompositeFX",    { cpp=true, src="filters/filter_composite.cpp", output="filters/filter_composite_def.c", comment="Composite filter support class." })
 
-  class("ConvolveFX",     { src="filters/filter_convolve.cpp", output="filters/filter_convolve_def.c", comment="Convolve filter support class." })
+  class("ConvolveFX",     { cpp=true, src="filters/filter_convolve.cpp", output="filters/filter_convolve_def.c", comment="Convolve filter support class." })
 
-  class("FloodFX",        { src="filters/filter_flood.cpp", output="filters/filter_flood_def.c", comment="Flood filter support class." })
+  class("FloodFX",        { cpp=true, src="filters/filter_flood.cpp", output="filters/filter_flood_def.c", comment="Flood filter support class." })
 
-  class("MergeFX",        { src="filters/filter_merge.cpp", output="filters/filter_merge_def.c", comment="Merge filter support class." })
+  class("MergeFX",        { cpp=true, src="filters/filter_merge.cpp", output="filters/filter_merge_def.c", comment="Merge filter support class." })
 
-  class("MorphologyFX",   { src="filters/filter_morphology.cpp", output="filters/filter_morphology_def.c", comment="Morphology filter support class." })
+  class("MorphologyFX",   { cpp=true, src="filters/filter_morphology.cpp", output="filters/filter_morphology_def.c", comment="Morphology filter support class." })
 
-  class("OffsetFX",       { src="filters/filter_offset.cpp", output="filters/filter_offset_def.c", comment="Offset filter support class." })
+  class("OffsetFX",       { cpp=true, src="filters/filter_offset.cpp", output="filters/filter_offset_def.c", comment="Offset filter support class." })
 
-  class("TurbulenceFX",   { src="filters/filter_turbulence.cpp", output="filters/filter_turbulence_def.c", comment="Turbulence filter support class." })
+  class("TurbulenceFX",   { cpp=true, src="filters/filter_turbulence.cpp", output="filters/filter_turbulence_def.c", comment="Turbulence filter support class." })
 
-  class("VectorFilter",   { src="filters/filter.cpp", output="filters/filter_def.c" }, [[
+  class("VectorFilter",   { cpp=true, src="filters/filter.cpp", output="filters/filter_def.c" }, [[
     double X                  # Left-most position of filter area
     double Y                  # Top-most position of filter area
     double Width              # Width of filter area
@@ -519,23 +519,23 @@ struct OrderedVector {
     { id=30, name="DeleteLine" }
   })
 
-  class('VectorText', { src='vectors/text.cpp', output="vectors/text_def.cpp"  })
+  class('VectorText', { cpp=true, src='vectors/text.cpp', output="vectors/text_def.cpp"  })
 
-  class('VectorWave', { src='vectors/wave.cpp' })
+  class('VectorWave', { cpp=true, src='vectors/wave.cpp' })
 
-  class('VectorRectangle', { src='vectors/rectangle.cpp' })
+  class('VectorRectangle', { cpp=true, src='vectors/rectangle.cpp' })
 
-  class('VectorPolygon', { src='vectors/polygon.cpp' })
+  class('VectorPolygon', { cpp=true, src='vectors/polygon.cpp' })
 
-  class('VectorShape', { src='vectors/supershape.cpp' })
+  class('VectorShape', { cpp=true, src='vectors/supershape.cpp' })
 
-  class('VectorSpiral', { src='vectors/spiral.cpp' })
+  class('VectorSpiral', { cpp=true, src='vectors/spiral.cpp' })
 
-  class('VectorEllipse', { src='vectors/ellipse.cpp' })
+  class('VectorEllipse', { cpp=true, src='vectors/ellipse.cpp' })
 
-  class('VectorClip', { src='vectors/clip.cpp' })
+  class('VectorClip', { cpp=true, src='vectors/clip.cpp' })
 
-  class('VectorViewport', { src='vectors/viewport.cpp', output="vectors/viewport_def.cpp" })
+  class('VectorViewport', { cpp=true, src='vectors/viewport.cpp', output="vectors/viewport_def.cpp" })
 
   c_insert([[
 #define SHAPE_PUBLIC \
@@ -571,7 +571,7 @@ struct OrderedVector {
     { id=10, name="FreeMatrix" }
   })
 
-  class("Vector", { src="vectors/vector.cpp", output="vectors/vector_def.c", version=1 }, [[
+  class("Vector", { cpp=true, src="vectors/vector.cpp", output="vectors/vector_def.c", version=1 }, [[
     obj(Vector) Child       # The first child vector, or NULL.
     obj(VectorScene) Scene  # Short-cut to the top-level VectorScene.
     obj(Vector) Next        # The next vector in the branch, or NULL.
@@ -625,13 +625,13 @@ struct OrderedVector {
 
 #ifdef PRV_VECTORSCENE
 __inline__ bool OrderedVector::operator()(const struct rkVector *a, const struct rkVector *b) const {
-   if (a->TabOrder == b->TabOrder) return a->Head.UID < b->Head.UID;
+   if (a->TabOrder == b->TabOrder) return a->UID < b->UID;
    else return a->TabOrder < b->TabOrder;
 }
 #endif
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
-   Colour->Head.ClassID = ID_VECTORCOLOUR;
+   Colour->ClassID = ID_VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
    Colour->Blue  = Blue;

@@ -687,7 +687,7 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
 
    // Post an event for the task's closure
 
-   evTaskRemoved task_removed = { EVID_SYSTEM_TASK_REMOVED, Task->Head.UID, Task->ProcessID };
+   evTaskRemoved task_removed = { EVID_SYSTEM_TASK_REMOVED, Task->UID, Task->ProcessID };
    BroadcastEvent(&task_removed, sizeof(task_removed));
 
    // Send a break if we're waiting for this process to end
@@ -720,7 +720,7 @@ extern "C" void deregister_process_pipes(objTask *Self, WINHANDLE ProcessHandle)
 static ERROR InterceptedAction(objTask *Self, APTR Args)
 {
    if (Self->Actions[tlContext->Action].PerformAction) {
-      return Self->Actions[tlContext->Action].PerformAction((OBJECTPTR)Self, Args);
+      return Self->Actions[tlContext->Action].PerformAction(Self, Args);
    }
    else return ERR_NoSupport;
 }
@@ -877,7 +877,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    redirect_stderr = NULL;
    hide_output = FALSE;
 
-   if (!GetField((OBJECTPTR)Self, FID_Parameters|TPTR, &args)) {
+   if (!GetField(Self, FID_Parameters|TPTR, &args)) {
       for (j=0; args[j]; j++) {
          if (args[j][0] IS '>') {
             // Redirection argument detected
@@ -1050,7 +1050,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    }
 
    argcount = 0;
-   if (!GetField((OBJECTPTR)Self, FID_Parameters|TPTR, &args)) {
+   if (!GetField(Self, FID_Parameters|TPTR, &args)) {
       for (argcount=0; args[argcount]; argcount++);
    }
 
@@ -1062,7 +1062,7 @@ static ERROR TASK_Activate(objTask *Self, APTR Void)
    // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF_SHELL is used,
    // however it is extremely useful in the debug printout to see what is being executed.
 
-   if (!GetField((OBJECTPTR)Self, FID_Parameters|TPTR, &args)) {
+   if (!GetField(Self, FID_Parameters|TPTR, &args)) {
       for (j=0; args[j]; j++) {
          buffer[i++] = ' ';
 
@@ -1329,12 +1329,12 @@ static ERROR TASK_AddArgument(objTask *Self, struct taskAddArgument *Args)
    if (!Self->ParametersMID) {
       CSTRING array[2];
       array[0] = Args->Argument;
-      return SetArray((OBJECTPTR)Self, FID_Parameters|TSTR, array, 1);
+      return SetArray(Self, FID_Parameters|TSTR, array, 1);
    }
 
    if (!Self->Parameters) {
       CSTRING *args;
-      if (GetField((OBJECTPTR)Self, FID_Parameters|TPTR, &args) != ERR_Okay) {
+      if (GetField(Self, FID_Parameters|TPTR, &args) != ERR_Okay) {
          return log.warning(ERR_GetField);
       }
       Self->Parameters = args;
@@ -1346,7 +1346,7 @@ static ERROR TASK_AddArgument(objTask *Self, struct taskAddArgument *Args)
    LONG len = StrLength(Args->Argument) + 1;
    MEMORYID argsmid;
    CSTRING *args;
-   if (!AllocMemory(Self->ParametersSize + sizeof(STRING) + len, Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&args, &argsmid)) {
+   if (!AllocMemory(Self->ParametersSize + sizeof(STRING) + len, Self->Head::MemFlags|MEM_NO_CLEAR, (void **)&args, &argsmid)) {
       Self->ParametersSize += sizeof(STRING) + len;
 
       for (total=0; Self->Parameters[total]; total++);
@@ -1428,11 +1428,11 @@ Okay
 
 static ERROR TASK_Expunge(objTask *Self, APTR Void)
 {
-   if (Self->Head.UID IS SystemTaskID) {
+   if (Self->UID IS SystemTaskID) {
       parasol::ScopedSysLock lock(PL_PROCESSES, 4000);
       if (lock.granted()) {
          for (LONG i=0; i < MAX_TASKS; i++) {
-            if ((shTasks[i].TaskID) and (shTasks[i].TaskID != Self->Head.UID)) {
+            if ((shTasks[i].TaskID) and (shTasks[i].TaskID != Self->UID)) {
                ActionMsg(MT_TaskExpunge, shTasks[i].TaskID, NULL, 0, 0);
             }
          }
@@ -1559,7 +1559,7 @@ static ERROR TASK_GetEnv(objTask *Self, struct taskGetEnv *Args)
    if (glCurrentTask != Self) return ERR_Failed;
 
    if (!Self->Env) {
-      if (AllocMemory(ENV_SIZE, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (APTR *)&Self->Env, NULL) != ERR_Okay) {
+      if (AllocMemory(ENV_SIZE, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (APTR *)&Self->Env, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
@@ -1801,7 +1801,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
    MessageHeader *msgblock;
    LONG i, len;
 
-   if (Self->Head.UID IS SystemTaskID) {
+   if (Self->UID IS SystemTaskID) {
       // Perform the following if this is the System Task
       Self->ProcessID = 0;
    }
@@ -1810,7 +1810,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
 
       Self->ProcessID = glProcessID;
 
-      glCurrentTaskID = Self->Head.UID;
+      glCurrentTaskID = Self->UID;
       glCurrentTask   = Self;
 
       // Allocate the message block for this Task
@@ -1825,7 +1825,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
       // Refer to the task object ID in the system list
 
       if (!LOCK_PROCESS_TABLE(4000)) {
-         glTaskEntry->TaskID = Self->Head.UID;
+         glTaskEntry->TaskID = Self->UID;
          glTaskEntry->MessageID = glTaskMessageMID;
          UNLOCK_PROCESS_TABLE();
       }
@@ -1835,14 +1835,14 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
          len = StrLength(buffer);
          while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-         if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
+         if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
             for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
             Self->ProcessPath[i] = 0;
          }
       }
 
       if ((len = winGetCurrentDirectory(sizeof(buffer), buffer))) {
-         if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Path, &Self->PathMID)) {
+         if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->Path, &Self->PathMID)) {
             for (i=0; i < len; i++) Self->Path[i] = buffer[i];
             if (Self->Path[i-1] != '\\') Self->Path[i++] = '\\';
             Self->Path[i] = 0;
@@ -1874,7 +1874,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
 
             for (len=0; buffer[len]; len++);
             while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-            if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
+            if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
                for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
                Self->ProcessPath[i] = 0;
             }
@@ -1883,7 +1883,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
          if (!Self->PathMID) { // Set the working folder
             if (getcwd(buffer, sizeof(buffer))) {
                for (len=0; buffer[len]; len++);
-               if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Path, &Self->PathMID)) {
+               if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->Path, &Self->PathMID)) {
                   for (i=0; buffer[i]; i++) Self->Path[i] = buffer[i];
                   Self->Path[i++] = '/';
                   Self->Path[i] = 0;
@@ -2042,7 +2042,7 @@ static ERROR TASK_SetVar(objTask *Self, struct acSetVar *Args)
    if (i < ARRAYSIZE(Self->Fields) - 1) {
       STRING field;
       if (!AllocMemory(StrLength(Args->Field) + StrLength(Args->Value) + 2,
-            MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&field, NULL)) {
+            MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&field, NULL)) {
 
          LONG pos = StrCopy(Args->Field, field, COPY_ALL) + 1;
          StrCopy(Args->Value, field + pos, COPY_ALL);
@@ -2161,7 +2161,7 @@ static ERROR SET_Args(objTask *Self, CSTRING Value)
          if (*Value) while (*Value > 0x20) Value++;
 
          struct taskAddArgument add = { .Argument = buffer };
-         Action(MT_TaskAddArgument, &Self->Head, &add);
+         Action(MT_TaskAddArgument, Self, &add);
       }
    }
 
@@ -2253,7 +2253,7 @@ static ERROR SET_Parameters(objTask *Self, CSTRING *Value, LONG Elements)
          Self->ParametersSize++; // String null terminator
       }
 
-      if (!AllocMemory(Self->ParametersSize, MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Parameters, &Self->ParametersMID)) {
+      if (!AllocMemory(Self->ParametersSize, MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->Parameters, &Self->ParametersMID)) {
          STRING args = (STRING)(Self->Parameters + j + 1);
          for (j=0; j < Elements; j++) {
             Self->Parameters[j] = args;
@@ -2328,7 +2328,7 @@ static ERROR SET_Copyright(objTask *Self, CSTRING Value)
 
    if ((Value) and (*Value)) {
       LONG len = StrLength(Value);
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Copyright, &Self->CopyrightMID)) {
+      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->Copyright, &Self->CopyrightMID)) {
          CopyMemory(Value, Self->Copyright, len+1);
       }
       else return log.warning(ERR_AllocMemory);
@@ -2556,7 +2556,7 @@ static ERROR SET_LaunchPath(objTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->LaunchPath, &Self->LaunchPathMID)) {
+      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->LaunchPath, &Self->LaunchPathMID)) {
          CopyMemory(Value, Self->LaunchPath, i+1);
       }
       else return log.warning(ERR_AllocMemory);
@@ -2610,7 +2610,7 @@ static ERROR SET_Location(objTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Location, &Self->LocationMID)) {
+      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&Self->Location, &Self->LocationMID)) {
          while ((*Value) and (*Value <= 0x20)) Value++;
          if (*Value IS '"') {
             Value++;
@@ -2746,7 +2746,7 @@ static ERROR SET_Path(objTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG len = StrLength(Value);
       while ((len > 1) and (Value[len-1] != '/') and (Value[len-1] != '\\') and (Value[len-1] != ':')) len--;
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&new_path, &new_path_mid)) {
+      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->Head::MemFlags, (void **)&new_path, &new_path_mid)) {
          CopyMemory(Value, new_path, len);
          new_path[len] = 0;
 
@@ -2993,7 +2993,7 @@ extern "C" ERROR add_task_class(void)
    log.branch();
 
    if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&TaskClass)) {
-      if (!SetFields((OBJECTPTR)TaskClass,
+      if (!SetFields(TaskClass,
             FID_ClassVersion|TFLOAT,  VER_TASK,
             FID_Name|TSTRING,         "Task",
             FID_Category|TLONG,       CCF_SYSTEM,
@@ -3006,7 +3006,7 @@ extern "C" ERROR add_task_class(void)
             FID_Size|TLONG,           sizeof(objTask),
             FID_Path|TSTR,            "modules:core",
             TAGEND)) {
-         return acInit(&TaskClass->Head);
+         return acInit(TaskClass);
       }
       else return ERR_SetField;
    }

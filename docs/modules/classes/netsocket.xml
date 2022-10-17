@@ -94,7 +94,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <error code="Okay">The NetSocket connecting process was successfully started.</error>
         <error code="Failed">The connect failed for some other reason.</error>
         <error code="Args">Address was NULL, or Port was not in the required range.</error>
-        <error code="BadState">The NetSocket was not in the state NTC_DISCONNECTED.</error>
+        <error code="InvalidState">The NetSocket was not in the state NTC_DISCONNECTED.</error>
         <error code="HostNotFound">Host name resolution failed.</error>
       </result>
     </method>

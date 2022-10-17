@@ -220,7 +220,7 @@ typedef struct {
     { id=8, name="SetVolume" },
   })
 
-  class("Audio", { src="class_audio.cpp", output="audio_def.c" }, [[
+  class("Audio", { cpp=true, src="class_audio.cpp", output="audio_def.c" }, [[
     double Bass
     double Treble
     int OutputRate
@@ -266,7 +266,7 @@ typedef struct {
    char prvDevice[28];
   ]])
 
-  class("Sound", { src="class_sound.cpp" }, [[
+  class("Sound", { cpp=true, src="class_sound.cpp" }, [[
     double Volume      # Volume of sample (0 - 100%)
     double Pan         # Horizontal positioning for playback on stereo speakers (-100 to +100)
     int Priority       # Priority over other sounds

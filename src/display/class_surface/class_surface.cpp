@@ -405,7 +405,7 @@ static void invalidate_overlap(objSurface *Self, SurfaceList *list, WORD Total, 
          if (Bottom < listbottom) listbottom = Bottom;
          if (Right < listright)   listright  = Right;
 
-         _redraw_surface(Self->Head.UID, list, i, Total, listx, listy, listright, listbottom, NULL);
+         _redraw_surface(Self->UID, list, i, Total, listx, listy, listright, listbottom, NULL);
       }
 
 skipcontent:
@@ -451,7 +451,7 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
    OBJECTID surface_id = GetOwnerID(DisplayID);
    objSurface *surface;
    if (!AccessObject(surface_id, 4000, &surface)) {
-      if (surface->Head.ClassID IS ID_SURFACE) {
+      if (surface->ClassID IS ID_SURFACE) {
          if ((X != surface->X) or (Y != surface->Y)) {
             surface->X = X;
             surface->Y = Y;
@@ -472,7 +472,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
 {
    parasol::Log log;
 
-   if ((Self->Head.Flags & (NF_FREE_MARK|NF_FREE))) { // Do nothing if the surface is being terminated.
+   if ((Self->Head::Flags & (NF_FREE_MARK|NF_FREE))) { // Do nothing if the surface is being terminated.
       return ERR_Okay;
    }
 
@@ -487,7 +487,7 @@ static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *Notif
 
          Self->Flags &= ~RNF_VISIBLE;
          UpdateSurfaceField(Self, Flags);
-         if (Self->Head.Flags & NF_INTEGRAL) DelayMsg(AC_Free, Self->Head.UID, NULL); // If the object is a child of something, give the parent object time to do the deallocation itself
+         if (Self->Head::Flags & NF_INTEGRAL) DelayMsg(AC_Free, Self->UID, NULL); // If the object is a child of something, give the parent object time to do the deallocation itself
          else acFree(Self);
       }
       else {
@@ -695,7 +695,7 @@ static ERROR SURFACE_AddCallback(objSurface *Self, struct drwAddCallback *Args)
 
    if (call_context) context = call_context;
 
-   if (Self->Head.TaskID != CurrentTaskID()) return log.warning(ERR_ExecViolation);
+   if (Self->Head::TaskID != CurrentTaskID()) return log.warning(ERR_ExecViolation);
 
    if (Self->Callback) {
       // Check if the subscription is already on the list for our surface context.
@@ -914,14 +914,14 @@ static ERROR SURFACE_Focus(objSurface *Self, APTR Void)
    FOCUSMSG("Focussing...  HasFocus: %c", (Self->Flags & RNF_HAS_FOCUS) ? 'Y' : 'N');
 
    OBJECTID modal;
-   if ((modal = gfxGetModalSurface(Self->Head.TaskID))) {
-      if (modal != Self->Head.UID) {
+   if ((modal = gfxGetModalSurface(Self->Head::TaskID))) {
+      if (modal != Self->UID) {
          ERROR error;
-         error = gfxCheckIfChild(modal, Self->Head.UID);
+         error = gfxCheckIfChild(modal, Self->UID);
 
          if ((error != ERR_True) and (error != ERR_LimitedSuccess)) {
             // Focussing is not OK - surface is out of the modal's scope
-            log.warning("Surface #%d is not within modal #%d's scope.", Self->Head.UID, modal);
+            log.warning("Surface #%d is not within modal #%d's scope.", Self->UID, modal);
             glLastFocusTime = PreciseTime();
             return ERR_Failed|ERF_Notified;
          }
@@ -932,7 +932,7 @@ static ERROR SURFACE_Focus(objSurface *Self, APTR Void)
    if (!AccessMemory(RPM_FocusList, MEM_READ_WRITE, 1000, &focuslist)) {
       // Return immediately if this surface object already has the -primary- focus
 
-      if ((Self->Flags & RNF_HAS_FOCUS) and (focuslist[0] IS Self->Head.UID)) {
+      if ((Self->Flags & RNF_HAS_FOCUS) and (focuslist[0] IS Self->UID)) {
          FOCUSMSG("Surface already has the primary focus.");
          ReleaseMemory(focuslist);
          glLastFocusTime = PreciseTime();
@@ -948,7 +948,7 @@ static ERROR SURFACE_Focus(objSurface *Self, APTR Void)
          auto surfacelist = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
 
          LONG surface_index;
-         OBJECTID surface_id = Self->Head.UID;
+         OBJECTID surface_id = Self->UID;
          if ((surface_index = find_own_index(ctl, Self)) IS -1) {
             // This is not a critical failure as child surfaces can be expected to disappear from the surface list
             // during the free process.
@@ -1016,7 +1016,7 @@ static ERROR SURFACE_Focus(objSurface *Self, APTR Void)
       // Send a Focus action to all parent surface objects in our generated focus list.
 
       struct drwInheritedFocus inherit = {
-         .FocusID = Self->Head.UID,
+         .FocusID = Self->UID,
          .Flags   = Self->Flags
       };
       for (LONG i=1; focuslist[i]; i++) { // Start from one to skip Self
@@ -1114,14 +1114,14 @@ static ERROR SURFACE_Free(objSurface *Self, APTR Void)
 
    // Remove any references to this surface object from the global surface list
 
-   untrack_layer(Self->Head.UID);
+   untrack_layer(Self->UID);
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
       acFreeID(Self->DisplayID);
       Self->DisplayID = NULL;
    }
 
-   if ((Self->BufferID) and ((!Self->BitmapOwnerID) or (Self->BitmapOwnerID IS Self->Head.UID))) {
+   if ((Self->BufferID) and ((!Self->BitmapOwnerID) or (Self->BitmapOwnerID IS Self->UID))) {
       if (Self->Bitmap) { ReleaseObject(Self->Bitmap); Self->Bitmap = NULL; }
       acFreeID(Self->BufferID);
       Self->BufferID = 0;
@@ -1130,14 +1130,14 @@ static ERROR SURFACE_Free(objSurface *Self, APTR Void)
    // Give the focus to the parent if our object has the primary focus.  Do not apply this technique to surface objects
    // acting as windows, as the window class has its own focus management code.
 
-   if ((Self->Flags & RNF_HAS_FOCUS) and (GetClassID(Self->Head.OwnerID) != ID_WINDOW)) {
+   if ((Self->Flags & RNF_HAS_FOCUS) and (GetClassID(Self->Head::OwnerID) != ID_WINDOW)) {
       if (Self->ParentID) acFocusID(Self->ParentID);
    }
 
    if (Self->Flags & RNF_AUTO_QUIT) {
       parasol::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
-      if ((Self->Head.TaskID IS Self->ProgramID) or (!Self->ProgramID)) {
+      if ((Self->Head::TaskID IS Self->ProgramID) or (!Self->ProgramID)) {
          SendMessage(NULL, MSGID_QUIT, NULL, NULL, NULL);
       }
       else {
@@ -1157,7 +1157,7 @@ static ERROR SURFACE_Free(objSurface *Self, APTR Void)
    if (Self->InputHandle) gfxUnsubscribeInput(Self->InputHandle);
 
    for (auto it = glWindowHooks.begin(); it != glWindowHooks.end();) {
-      if (it->first.SurfaceID IS Self->Head.UID) {
+      if (it->first.SurfaceID IS Self->UID) {
          it = glWindowHooks.erase(it);
       }
       else it++;
@@ -1197,7 +1197,7 @@ static ERROR SURFACE_Hide(objSurface *Self, APTR Void)
          gfxExposeSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, NULL);
       }
       else {
-         if (Self->BitmapOwnerID != Self->Head.UID) {
+         if (Self->BitmapOwnerID != Self->UID) {
             gfxRedrawSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, IRF_RELATIVE);
          }
          gfxExposeSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
@@ -1212,7 +1212,7 @@ static ERROR SURFACE_Hide(objSurface *Self, APTR Void)
       Self->PrevModalID = 0;
    }
    else if ((task = (TaskList *)GetResourcePtr(RES_TASK_CONTROL))) {
-      if (task->ModalID IS Self->Head.UID) {
+      if (task->ModalID IS Self->UID) {
          log.msg("Surface is modal, switching off modal mode.");
          task->ModalID = 0;
       }
@@ -1281,7 +1281,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
    OBJECTID parent_bitmap = 0;
    OBJECTID bitmap_owner  = 0;
 
-   if (!Self->RootID) Self->RootID = Self->Head.UID;
+   if (!Self->RootID) Self->RootID = Self->UID;
 
    if (Self->Flags & RNF_CURSOR) Self->Flags |= RNF_STICK_TO_FRONT;
 
@@ -1317,7 +1317,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
       if (Self->Flags & RNF_REGION) {
          // Regions must share the same task space with their parent.  If we can't meet this requirement, turn off the region flag.
 
-         if (parent->Head.TaskID != CurrentTaskID()) {
+         if (parent->Head::TaskID != CurrentTaskID()) {
             log.warning("Region cannot initialise to parent #%d - not in our task space.", Self->ParentID);
             Self->Flags &= ~RNF_REGION;
          }
@@ -1335,7 +1335,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
 
       if (parent->Type & RT_ROOT) { // The window class can set the ROOT type
          Self->Type |= RT_ROOT;
-         if (Self->RootID IS Self->Head.UID) {
+         if (Self->RootID IS Self->UID) {
             Self->InheritedRoot = TRUE;
             Self->RootID = parent->RootID; // Inherit the parent's root layer
          }
@@ -1554,7 +1554,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
       // display will adjust the coordinates to reflect the absolute position of the surface on the desktop).
 
       objDisplay *display;
-      if (!NewLockedObject(ID_DISPLAY, NF_INTEGRAL|Self->Head.Flags, &display, &Self->DisplayID)) {
+      if (!NewLockedObject(ID_DISPLAY, NF_INTEGRAL|Self->Head::Flags, &display, &Self->DisplayID)) {
          SetFields(display,
                FID_Name|TSTR,           name,
                FID_X|TLONG,             Self->X,
@@ -1609,7 +1609,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
             GetPointer(display, FID_WindowHandle, &Self->DisplayWindow);
 
             #ifdef _WIN32
-               winSetSurfaceID(Self->DisplayWindow, Self->Head.UID);
+               winSetSurfaceID(Self->DisplayWindow, Self->UID);
             #endif
 
             // Subscribe to Redimension notifications if the display is hosted.  Also subscribe to Draw because this
@@ -1655,7 +1655,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
    if (Self->Flags & (RNF_REGION|RNF_TRANSPARENT)) require_store = FALSE;
 
    if (require_store) {
-      Self->BitmapOwnerID = Self->Head.UID;
+      Self->BitmapOwnerID = Self->UID;
 
       objDisplay *display;
       if (!(error = AccessObject(Self->DisplayID, 3000, &display))) {
@@ -1678,7 +1678,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
          }
          else bpp = display->Bitmap->BitsPerPixel;
 
-         if (!(NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->Head.Flags, &bitmap, &Self->BufferID))) {
+         if (!(NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->Head::Flags, &bitmap, &Self->BufferID))) {
             SetFields(bitmap,
                FID_BitsPerPixel|TLONG, bpp,
                FID_Width|TLONG,        Self->Width,
@@ -1772,14 +1772,14 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
       FUNCTION call;
 
       SET_FUNCTION_STDC(call, (APTR)event_task_removed);
-      SubscribeEvent(EVID_SYSTEM_TASK_REMOVED, &call, &Self->Head.UID, &Self->TaskRemovedHandle);
+      SubscribeEvent(EVID_SYSTEM_TASK_REMOVED, &call, &Self->UID, &Self->TaskRemovedHandle);
 
       SET_FUNCTION_STDC(call, (APTR)event_user_login);
-      SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, &Self->Head.UID, &Self->UserLoginHandle);
+      SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, &Self->UID, &Self->UserLoginHandle);
    }
 
-   if (!Self->ProgramID) Self->ProgramID = Self->Head.TaskID;
-   else if (Self->ProgramID != Self->Head.TaskID) {
+   if (!Self->ProgramID) Self->ProgramID = Self->Head::TaskID;
+   else if (Self->ProgramID != Self->Head::TaskID) {
       OBJECTPTR task;
       if (!AccessObject(Self->ProgramID, 4000, &task)) {
          SubscribeActionTags(task, AC_Free, TAGEND);
@@ -1871,12 +1871,12 @@ static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
       while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS AC_MoveToPoint) and (action->ObjectID IS Self->Head.UID)) {
+         if ((action->ActionID IS AC_MoveToPoint) and (action->ObjectID IS Self->UID)) {
             ReleaseMemory(queue);
             return ERR_Okay|ERF_Notified;
          }
          else if ((action->ActionID IS AC_Move) and (action->SendArgs IS TRUE) and
-                  (action->ObjectID IS Self->Head.UID)) {
+                  (action->ObjectID IS Self->UID)) {
             auto msgmove = (struct acMove *)(action + 1);
             msgmove->DeltaX += Args->DeltaX;
             msgmove->DeltaY += Args->DeltaY;
@@ -2001,7 +2001,7 @@ static ERROR SURFACE_MoveToBack(objSurface *Self, APTR Void)
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
 
       WORD index; // Get our position within the chain
-      if ((index = find_surface_list(list, ctl->Total, Self->Head.UID)) IS -1) {
+      if ((index = find_surface_list(list, ctl->Total, Self->UID)) IS -1) {
          gfxReleaseList(ARF_WRITE);
          return log.warning(ERR_Search)|ERF_Notified;
       }
@@ -2017,7 +2017,7 @@ static ERROR SURFACE_MoveToBack(objSurface *Self, APTR Void)
       WORD level = list[index].Level;
       for (i=index-1; (i >= 0) and (list[i].Level >= level); i--) {
          if (list[i].Level IS level) {
-            if (Self->BitmapOwnerID IS Self->Head.UID) { // If we own an independent bitmap, we cannot move behind surfaces that are members of the parent region
+            if (Self->BitmapOwnerID IS Self->UID) { // If we own an independent bitmap, we cannot move behind surfaces that are members of the parent region
                if (list[i].BitmapID IS parent_bitmap) break;
             }
             if (list[i].SurfaceID IS Self->PopOverID) break; // Do not move behind surfaces that we must stay in front of
@@ -2041,7 +2041,7 @@ static ERROR SURFACE_MoveToBack(objSurface *Self, APTR Void)
 
       if (Self->Flags & RNF_VISIBLE) {
          // Redraw our background if we are volatile
-         if (check_volatile(cplist, index)) _redraw_surface(Self->Head.UID, cplist, pos, total, cplist[pos].Left, cplist[pos].Top, cplist[pos].Right, cplist[pos].Bottom, NULL);
+         if (check_volatile(cplist, index)) _redraw_surface(Self->UID, cplist, pos, total, cplist[pos].Left, cplist[pos].Top, cplist[pos].Right, cplist[pos].Bottom, NULL);
 
          // Expose changes to the display
          _expose_surface(Self->ParentID, cplist, pos, total, Self->X, Self->Y, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
@@ -2092,13 +2092,13 @@ static ERROR SURFACE_MoveToFront(objSurface *Self, APTR Void)
       if (list[i].Level IS level) {
          if (list[i].Flags & RNF_POINTER) break; // Do not move in front of the mouse cursor
 
-         if (list[i].PopOverID IS Self->Head.UID) {
+         if (list[i].PopOverID IS Self->UID) {
             // A surface has been discovered that has to be in front of us.
 
             break;
          }
 
-         if (Self->BitmapOwnerID != Self->Head.UID) {
+         if (Self->BitmapOwnerID != Self->UID) {
             // If we are a member of our parent's bitmap, we cannot be moved in front of bitmaps that own an independent buffer.
 
             if (list[i].BitmapID != Self->BufferID) break;
@@ -2181,8 +2181,8 @@ static ERROR SURFACE_MoveToFront(objSurface *Self, APTR Void)
          ReleaseObject(bitmap);
       }
 
-      if (check_volatile(cplist, i)) _redraw_surface(Self->Head.UID, cplist, i, total, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
-      _expose_surface(Self->Head.UID, cplist, i, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      if (check_volatile(cplist, i)) _redraw_surface(Self->UID, cplist, i, total, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
+      _expose_surface(Self->UID, cplist, i, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
 
    if (Self->PopOverID) {
@@ -2230,7 +2230,7 @@ static ERROR SURFACE_MoveToPoint(objSurface *Self, struct acMoveToPoint *Args)
 
 static ERROR SURFACE_NewOwner(objSurface *Self, struct acNewOwner *Args)
 {
-   if ((!Self->ParentDefined) and (!(Self->Head.Flags & NF_INITIALISED))) {
+   if ((!Self->ParentDefined) and (!(Self->Head::Flags & NF_INITIALISED))) {
       OBJECTID owner_id = Args->NewOwnerID;
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
@@ -2255,8 +2255,8 @@ static ERROR SURFACE_NewObject(objSurface *Self, APTR Void)
    Self->MinWidth    = 1;
    Self->MinHeight   = 1;
    Self->Opacity  = 255;
-   Self->RootID   = Self->Head.UID;
-   Self->ProgramID   = Self->Head.TaskID;
+   Self->RootID   = Self->UID;
+   Self->ProgramID   = Self->Head::TaskID;
    Self->WindowType  = glpWindowType;
    return ERR_Okay;
 }
@@ -2446,7 +2446,7 @@ static ERROR SURFACE_ResetDimensions(objSurface *Self, struct drwResetDimensions
    if ((ctl = gfxAccessList(ARF_READ))) {
       LONG index;
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      if ((index = find_surface_index(ctl, Self->ParentID ? Self->ParentID : Self->Head.UID)) != -1) {
+      if ((index = find_surface_index(ctl, Self->ParentID ? Self->ParentID : Self->UID)) != -1) {
          _redraw_surface(Self->ParentID, list, index, ctl->Total, nx, ny, nx2-nx, ny2-ny, IRF_RELATIVE);
          _expose_surface(Self->ParentID, list, index, ctl->Total, nx, ny, nx2-nx, ny2-ny, 0);
       }
@@ -2700,7 +2700,7 @@ static ERROR SURFACE_SetOpacity(objSurface *Self, struct drwSetOpacity *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Self->BitmapOwnerID != Self->Head.UID) {
+   if (Self->BitmapOwnerID != Self->UID) {
       log.warning("Opacity cannot be set on a surface that does not own its bitmap.");
       return ERR_NoSupport;
    }
@@ -2717,7 +2717,7 @@ static ERROR SURFACE_SetOpacity(objSurface *Self, struct drwSetOpacity *Args)
 
    // Use the DelayMsg() feature so that we don't end up with major lag problems when SetOpacity is being used for things like fading.
 
-   if (Self->Flags & RNF_VISIBLE) DelayMsg(MT_DrwInvalidateRegion, Self->Head.UID, NULL);
+   if (Self->Flags & RNF_VISIBLE) DelayMsg(MT_DrwInvalidateRegion, Self->UID, NULL);
 
    return ERR_Okay;
 }
@@ -2750,7 +2750,7 @@ static ERROR SURFACE_Show(objSurface *Self, APTR Void)
    }
    else Self->Flags |= RNF_VISIBLE;
 
-   if (Self->Modal) Self->PrevModalID = gfxSetModalSurface(Self->Head.UID);
+   if (Self->Modal) Self->PrevModalID = gfxSetModalSurface(Self->UID);
 
    if (!notified) {
       UpdateSurfaceField(Self, Flags);
@@ -2760,8 +2760,8 @@ static ERROR SURFACE_Show(objSurface *Self, APTR Void)
          gfxExposeSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, NULL);
       }
       else {
-         gfxRedrawSurface(Self->Head.UID, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
-         gfxExposeSurface(Self->Head.UID, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+         gfxRedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
+         gfxExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
       }
    }
 
@@ -2894,7 +2894,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
                ychange = 0;
                if ((ctl = gfxAccessList(ARF_READ))) {
                   auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-                  if ((dragindex = find_surface_index(ctl, Self->Head.UID)) != -1) {
+                  if ((dragindex = find_surface_index(ctl, Self->UID)) != -1) {
                      xchange = absx - list[dragindex].Left;
                      ychange = absy - list[dragindex].Top;
                   }
@@ -2904,7 +2904,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
             // Move the dragging surface to the new location
 
-            if ((Self->DragID) and (Self->DragID != Self->Head.UID)) {
+            if ((Self->DragID) and (Self->DragID != Self->UID)) {
                acMoveID(Self->DragID, xchange, ychange, 0);
             }
             else {
@@ -2924,7 +2924,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
             if (Self->DragStatus IS DRAG_ANCHOR) {
                if ((ctl = gfxAccessList(ARF_READ))) {
                   auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-                  if ((dragindex = find_surface_index(ctl, Self->Head.UID)) != -1) {
+                  if ((dragindex = find_surface_index(ctl, Self->UID)) != -1) {
                      DOUBLE absx = list[dragindex].Left + glAnchorX;
                      DOUBLE absy = list[dragindex].Top + glAnchorY;
                      gfxReleaseList(ARF_READ);
@@ -2950,7 +2950,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
                glAnchorX  = event->X;
                glAnchorY  = event->Y;
-               if (!gfxLockCursor(Self->Head.UID)) {
+               if (!gfxLockCursor(Self->UID)) {
                   Self->DragStatus = DRAG_ANCHOR;
                }
                else Self->DragStatus = DRAG_NORMAL;
@@ -2958,7 +2958,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
          }
          else { // Click released
             if (Self->DragStatus) {
-               gfxUnlockCursor(Self->Head.UID);
+               gfxUnlockCursor(Self->UID);
                Self->DragStatus = DRAG_NONE;
             }
          }

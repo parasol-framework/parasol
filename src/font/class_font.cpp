@@ -423,7 +423,7 @@ static ERROR GET_Bold(objFont *Self, LONG *Value)
 
 static ERROR SET_Bold(objFont *Self, LONG Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       // If the font is initialised, setting the bold style is implicit
       return SET_Style(Self, "Bold");
    }
@@ -671,7 +671,7 @@ static ERROR GET_Italic(objFont *Self, LONG *Value)
 
 static ERROR SET_Italic(objFont *Self, LONG Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       // If the font is initialised, setting the italic style is implicit
       return SET_Style(Self, "Italic");
    }
@@ -726,7 +726,7 @@ This feature is ideal for use when distributing custom fonts with an application
 
 static ERROR SET_Path(objFont *Self, CSTRING Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) {
+   if (!(Self->Head::Flags & NF_INITIALISED)) {
       if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
       if (Value) Self->Path = StrClone(Value);
       return ERR_Okay;
@@ -828,7 +828,7 @@ static ERROR SET_Point(objFont *Self, Variable *Value)
 
    if (value < 1) value = 1;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       if (Self->Cache) {
          unload_glyph_cache(Self); // Remove any existing glyph reference
          Self->Point = value;

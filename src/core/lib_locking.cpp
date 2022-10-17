@@ -1149,9 +1149,9 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
          }
          else return error;
       }
-      else if (ObjectID IS glMetaClass.Head.UID) { // Access to the MetaClass requires this special case handler.
-         if (!(error = AccessPrivateObject(&glMetaClass.Head, MilliSeconds))) {
-            *Result = &glMetaClass.Head;
+      else if (ObjectID IS glMetaClass.UID) { // Access to the MetaClass requires this special case handler.
+         if (!(error = AccessPrivateObject(&glMetaClass, MilliSeconds))) {
+            *Result = &glMetaClass;
             return ERR_Okay;
          }
          else return error;

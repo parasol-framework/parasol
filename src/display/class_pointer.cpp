@@ -692,7 +692,7 @@ static ERROR PTR_Init(objPointer *Self, APTR Void)
    // Allocate a custom cursor bitmap
 
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->Head.Flags, &bitmap, &Self->BitmapID)) {
+   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->Head::Flags, &bitmap, &Self->BitmapID)) {
       SetFields(bitmap,
          FID_Name|TSTR,           "CustomCursor",
          FID_Width|TLONG,         MAX_CURSOR_WIDTH,
@@ -1216,7 +1216,7 @@ X: The horizontal position of the pointer within its parent display.
 
 static ERROR PTR_SET_X(objPointer *Self, DOUBLE Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) acMoveToPoint(Self, Value, 0, 0, MTF_X);
+   if (Self->Head::Flags & NF_INITIALISED) acMoveToPoint(Self, Value, 0, 0, MTF_X);
    else Self->X = Value;
    return ERR_Okay;
 }
@@ -1231,7 +1231,7 @@ Y: The vertical position of the pointer within its parent display.
 
 static ERROR PTR_SET_Y(objPointer *Self, DOUBLE Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) acMoveToPoint(Self, 0, Value, 0, MTF_Y);
+   if (Self->Head::Flags & NF_INITIALISED) acMoveToPoint(Self, 0, Value, 0, MTF_Y);
    else Self->Y = Value;
    return ERR_Okay;
 }
@@ -1326,7 +1326,7 @@ static BYTE get_over_object(objPointer *Self)
                .AbsY        = Self->Y,
                .X           = Self->X - li_left,
                .Y           = Self->Y - li_top,
-               .DeviceID    = Self->Head.UID,
+               .DeviceID    = Self->UID,
                .Type        = JET_LEFT_SURFACE,
                .Flags       = JTYPE_FEEDBACK,
                .Mask        = JTYPE_FEEDBACK
@@ -1526,7 +1526,7 @@ static ERROR init_mouse_driver(void)
          log.msg("Setting open port %s, device %s to non-blocking.", glPorts[port].Name, glPorts[port].Device);
          fcntl(glPorts[port].FD, F_SETFL, fcntl(glPorts[port].FD, F_GETFL)|O_NONBLOCK);
          flush_mouse(port);
-         RegisterFD(glPorts[port].FD, RFD_READ, &read_mouseport, (APTR)Self->Head.UID);
+         RegisterFD(glPorts[port].FD, RFD_READ, &read_mouseport, (APTR)Self->UID);
       }
    }
 
@@ -1548,11 +1548,11 @@ static ERROR init_mouse_driver(void)
 
    // Allocate the surface for software based cursor images
 
-   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->Head.Flags, &surface, &Self->CursorSurfaceID)) {
+   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->Head::Flags, &surface, &Self->CursorSurfaceID)) {
       SetFields(surface,
          FID_Name|TSTR,    "Pointer",
          FID_Parent|TLONG, Self->SurfaceID,
-         FID_Owner|TLONG,  Self->Head.UID,
+         FID_Owner|TLONG,  Self->UID,
          FID_X|TLONG,      -64,
          FID_Y|TLONG,      -64,
          FID_Width|TLONG,  MAX_CURSOR_WIDTH,

@@ -241,8 +241,8 @@ typedef struct WAVEFormat {
 
 #define VER_AUDIO (1.000000)
 
-typedef struct rkAudio {
-   OBJECT_HEADER
+typedef class rkAudio : public Head {
+   public:
    DOUBLE Bass;
    DOUBLE Treble;
    LONG   OutputRate;
@@ -361,8 +361,8 @@ INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, LONG Flags, DOUBLE 
 
 #define VER_SOUND (1.000000)
 
-typedef struct rkSound {
-   OBJECT_HEADER
+typedef class rkSound : public Head {
+   public:
    DOUBLE    Volume;       // Volume of sample (0 - 100%)
    DOUBLE    Pan;          // Horizontal positioning for playback on stereo speakers (-100 to +100)
    LONG      Priority;     // Priority over other sounds

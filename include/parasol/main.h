@@ -323,6 +323,23 @@ struct OpenInfo {
 #define TSTRING   TSTR
 #define TREL      TRELATIVE
 
+#define ResolveAddress(a,b)  ((APTR)(((BYTE *)(a)) + (b)))
+
+#define FreeFromLL(a,b,c) if ((a)->Prev) (a)->Prev->Next = (a)->Next; \
+                          if ((a)->Next) (a)->Next->Prev = (a)->Prev; \
+                          if ((a) == (b)) { \
+                             (c) = (void *)((a)->Next); \
+                             if ((a)->Next) (a)->Next->Prev = 0; \
+                          } \
+                          (a)->Prev = 0; \
+                          (a)->Next = 0;
+
+#define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
+
+#ifdef  __cplusplus
+}
+#endif
+
 //****************************************************************************
 // Header used for all objects.
 
@@ -349,28 +366,15 @@ struct Head { // Must be 64-bit aligned
    volatile BYTE SleepQueue;    //
    volatile BYTE Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
+/*
+   bool initialised() {
+      return Flags & NF_INITIALISED;
+   }*/
 } __attribute__ ((aligned (8)));
 
 #define ClassName(a) ((struct rkMetaClass *)(((OBJECTPTR)(a))->Class))->Name
 
 #define OBJECT_HEADER struct Head Head;
-
-#define ResolveAddress(a,b)  ((APTR)(((BYTE *)(a)) + (b)))
-
-#define FreeFromLL(a,b,c) if ((a)->Prev) (a)->Prev->Next = (a)->Next; \
-                          if ((a)->Next) (a)->Next->Prev = (a)->Prev; \
-                          if ((a) == (b)) { \
-                             (c) = (void *)((a)->Next); \
-                             if ((a)->Next) (a)->Next->Prev = 0; \
-                          } \
-                          (a)->Prev = 0; \
-                          (a)->Next = 0;
-
-#define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
-
-#ifdef  __cplusplus
-}
-#endif
 
 #include <parasol/modules/core.h>
 

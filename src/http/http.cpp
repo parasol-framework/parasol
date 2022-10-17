@@ -320,7 +320,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
    LONG len, resume_from, i;
    ERROR result;
 
-   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+   if (!(Self->Head::Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
 
    log.branch("Host: %s, Port: %d, Path: %s, Proxy: %s, SSL: %d", Self->Host, Self->Port, Self->Path, Self->ProxyServer, (Self->Flags & HTF_SSL) ? 1 : 0);
 
@@ -572,7 +572,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
 
       // Add any custom headers
 
-      if ((Self->CurrentState != HGS_AUTHENTICATING) AND (Self->Headers)) {
+      if ((Self->CurrentState != HGS_AUTHENTICATING) and (Self->Headers)) {
          for (const auto& [k, v] : Self->Headers[0]) {
             log.trace("Custom header: %s: %s", k.c_str(), v.c_str());
             len += StrFormat(cmd+len, sizeof(cmd)-len, "%s: %s\r\n", k.c_str(), v.c_str());
@@ -1141,7 +1141,7 @@ static ERROR SET_Location(objHTTP *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
       // Free the current socket if the entire URI changes
@@ -1477,7 +1477,7 @@ static ERROR SET_CurrentState(objHTTP *Self, LONG Value)
 
    if ((Value >= HGS_COMPLETED) and (Self->CurrentState < HGS_COMPLETED)) {
       Self->CurrentState = Value;
-      if (Self->Socket) DelayMsg(AC_Deactivate, Self->Head.UID, NULL);
+      if (Self->Socket) DelayMsg(AC_Deactivate, Self->UID, NULL);
    }
    else Self->CurrentState = Value;
 
@@ -1491,7 +1491,7 @@ static ERROR SET_CurrentState(objHTTP *Self, LONG Value)
          OBJECTPTR script;
          if ((script = Self->StateChanged.Script.Script)) {
             const ScriptArg args[] = {
-               { "HTTP", FD_OBJECTID, { .Long = Self->Head.UID } },
+               { "HTTP", FD_OBJECTID, { .Long = Self->UID } },
                { "State", FD_LONG, { .Long = Self->CurrentState } }
             };
 

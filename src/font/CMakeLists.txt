@@ -29,7 +29,7 @@ set (FT_SOURCE
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftglyph.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/sfnt/sfnt.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftbase.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftsystem.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftsystem.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/smooth/smooth.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/truetype/truetype.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftinit.c"

@@ -1,6 +1,6 @@
 
 if (WIN32)
-   add_library(init-win init-win.c)
+   add_library(init-win init-win.cpp)
    target_include_directories (init-win PRIVATE "${PROJECT_SOURCE_DIR}/core/include")
 else ()
    add_library(init-unix init-unix.c)

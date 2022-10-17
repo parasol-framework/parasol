@@ -764,7 +764,7 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
 
    if (Self->Flags & CMF_READ_ONLY) return log.warning(ERR_NoPermission);
 
-   if (Self->Head.SubID) return log.warning(ERR_NoSupport);
+   if (Self->SubID) return log.warning(ERR_NoSupport);
 
    if (Self->OutputID) {
       StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Compressing \"%s\" to \"%s\".\n", Args->Location, Self->Path);
@@ -1021,7 +1021,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
    // If the object belongs to a Compression sub-class, return ERR_NoSupport
 
-   if (Self->Head.SubID) return ERR_NoSupport;
+   if (Self->SubID) return ERR_NoSupport;
 
    // Tell the user what we are doing
 
@@ -1231,7 +1231,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
                   while ((!(error = Action(AC_Read, Self->FileIO, &read))) and (read.Result > 0)) {
                      struct acWrite write = { .Buffer = Self->prvInput, .Length = read.Result };
-                     if (Action(AC_Write, &file->Head, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
+                     if (Action(AC_Write, file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
 
                      inputlen -= read.Result;
                      if (inputlen <= 0) break;
@@ -1280,7 +1280,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                         .Buffer = Self->prvOutput,
                         .Length = (LONG)(SIZE_COMPRESSION_BUFFER - Self->prvZip.avail_out)
                      };
-                     if (Action(AC_Write, &file->Head, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
+                     if (Action(AC_Write, file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
 
                      // Exit if all data has been written out
 
@@ -1320,7 +1320,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
             flSetDate(file, feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, 0);
 
-            acFree(&file->Head);
+            acFree(file);
             file = NULL;
          }
 
@@ -1340,7 +1340,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
 exit:
    if (inflateend) inflateEnd(&Self->prvZip);
-   if (file) acFree(&file->Head);
+   if (file) acFree(file);
 
    if ((error IS ERR_Okay) and (Self->prvFileIndex <= 0)) {
       log.msg("No files matched the path \"%s\".", Args->Path);
@@ -1384,7 +1384,7 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
    if ((!Args) or (!Args->Path) or (!Args->Path[0])) return log.warning(ERR_NullArgs);
    if (!Args->Object) return log.warning(ERR_NullArgs);
    if (!Self->FileIO) return log.warning(ERR_MissingPath);
-   if (Self->Head.SubID) return ERR_NoSupport; // Object belongs to a Compression sub-class
+   if (Self->SubID) return ERR_NoSupport; // Object belongs to a Compression sub-class
 
    log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, Self->Permissions);
 
@@ -1590,7 +1590,7 @@ static ERROR COMPRESSION_Find(objCompression *Self, struct cmpFind *Args)
    parasol::Log log;
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
-   if (Self->Head.SubID) return ERR_NoSupport;
+   if (Self->SubID) return ERR_NoSupport;
 
    log.traceBranch("Path: %s, Flags: $%.8x", Args->Path, Args->Flags);
    for (auto item = Self->prvFiles; item; item = (ZipFile *)item->Next) {
@@ -1612,7 +1612,7 @@ Flush: Flushes all pending actions.
 
 static ERROR COMPRESSION_Flush(objCompression *Self, APTR Void)
 {
-   if (Self->Head.SubID) return ERR_Okay;
+   if (Self->SubID) return ERR_Okay;
 
    Self->prvZip.avail_in = 0;
 
@@ -1832,7 +1832,7 @@ static ERROR COMPRESSION_RemoveFile(objCompression *Self, struct cmpRemoveFile *
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
 
-   if (Self->Head.SubID) return ERR_NoSupport;
+   if (Self->SubID) return ERR_NoSupport;
 
    // Search for the file(s) in our archive that match the given name and delete them.
 
@@ -1893,7 +1893,7 @@ static ERROR COMPRESSION_Scan(objCompression *Self, struct cmpScan *Args)
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Self->Head.SubID) return ERR_NoSupport;
+   if (Self->SubID) return ERR_NoSupport;
 
    log.traceBranch("Folder: \"%s\", Filter: \"%s\"", Args->Folder, Args->Filter);
 

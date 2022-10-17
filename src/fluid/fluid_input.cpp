@@ -52,7 +52,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
    parasol::Log log(__FUNCTION__);
 
    auto Self = (objScript *)CurrentContext();
-   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   auto prv = (prvFluid *)Self->ChildPrivate;
 
    auto list = prv->InputList;
    for (; (list) and (list->InputHandle != Handle); list=list->Next);
@@ -123,7 +123,7 @@ static int input_index(lua_State *Lua)
 static int input_keyboard(lua_State *Lua)
 {
    parasol::Log log("input.keyboard");
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    OBJECTID object_id;
    struct object *obj;
@@ -204,7 +204,7 @@ static int input_keyboard(lua_State *Lua)
 
 static int input_request_item(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    if (!lua_isfunction(Lua, 4)) {
       luaL_argerror(Lua, 4, "Function expected.");
@@ -273,7 +273,7 @@ static int input_request_item(lua_State *Lua)
       dcr.Preference[1] = 0;
 
       struct acDataFeed dc = {
-         .ObjectID = Lua->Script->Head.UID,
+         .ObjectID = Lua->Script->UID,
          .Datatype = DATA_REQUEST,
          .Buffer   = &dcr,
          .Size     = sizeof(dcr)
@@ -301,7 +301,7 @@ static int input_request_item(lua_State *Lua)
 static int input_subscribe(lua_State *Lua)
 {
    parasol::Log log("input.subscribe");
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    LONG mask = lua_tointeger(Lua, 1); // Optional
 
@@ -409,7 +409,7 @@ static int input_destruct(lua_State *Lua)
       if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = NULL; }
 
       if (Lua->Script) { // Remove from the chain.
-         auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          if (prv->InputList IS input) prv->InputList = input->Next;
          else {
             auto list = prv->InputList;
@@ -434,7 +434,7 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
 {
    parasol::Log log("input.key_event");
    objScript *script = Input->Script;
-   auto prv = (prvFluid *)script->Head.ChildPrivate;
+   auto prv = (prvFluid *)script->ChildPrivate;
 
    if ((!script) or (!prv)) {
       log.trace("Input->Script undefined.");
@@ -469,7 +469,7 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
 static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
 {
    parasol::Log log(__FUNCTION__);
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    objScript *script = Lua->Script;
 
    if ((!script) or (!prv)) {

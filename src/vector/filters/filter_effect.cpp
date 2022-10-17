@@ -37,7 +37,7 @@ static ERROR FILTEREFFECT_Init(objFilterEffect *Self, APTR Void)
    parasol::Log log;
 
    Self->Filter = (objVectorFilter *)GetObjectPtr(GetOwner(Self));
-   if (Self->Filter->Head.ClassID != ID_VECTORFILTER) return log.warning(ERR_UnsupportedOwner);
+   if (Self->Filter->ClassID != ID_VECTORFILTER) return log.warning(ERR_UnsupportedOwner);
 
    // If the client didn't specify a source input, figure out what to use.
 
@@ -46,7 +46,7 @@ static ERROR FILTEREFFECT_Init(objFilterEffect *Self, APTR Void)
          Self->SourceType = VSF_REFERENCE;
          Self->Input = Self->Prev;
          Self->Input->UsageCount++;
-         log.msg("Using effect %s #%d as an input.", Self->Input->Head.Class->ClassName, Self->Input->Head.UID);
+         log.msg("Using effect %s #%d as an input.", Self->Input->Class->ClassName, Self->Input->UID);
       }
       else {
          Self->SourceType = VSF_GRAPHIC;

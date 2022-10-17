@@ -454,7 +454,7 @@ struct MemoryMessage {
 ** Global data variables.
 */
 
-extern struct rkMetaClass glMetaClass;
+extern class rkMetaClass glMetaClass;
 extern LONG glEUID, glEGID, glUID, glGID;
 extern LONG glKeyState;
 extern char glSystemPath[SIZE_SYSTEM_PATH];
@@ -780,10 +780,10 @@ extern struct DocView *glDocView;
 
 /****************************************************************************/
 
-struct ModuleMaster {
-   OBJECT_HEADER
-   struct ModuleMaster *Next;  // Next module in list
-   struct ModuleMaster *Prev;  // Previous module in list
+class ModuleMaster : public Head {
+   public:
+   class ModuleMaster *Next;   // Next module in list
+   class ModuleMaster *Prev;   // Previous module in list
    struct ModHeader  *Header;  // Pointer to module header - for memory resident modules only.
    struct CoreBase *CoreBase;  // Module's personal Core reference
    #ifdef __unix__
@@ -896,6 +896,7 @@ ERROR  free_ptr_args(APTR, const struct FunctionField *, WORD);
 void   free_public_resources(OBJECTID);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
+void   init_metaclass(void);
 ERROR  init_sleep(LONG OtherProcessID, LONG GlobalThreadID, LONG ResourceID, LONG ResourceType, WORD *);
 ERROR  load_classes(void);
 ERROR  local_copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);

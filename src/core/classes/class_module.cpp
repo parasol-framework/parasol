@@ -215,7 +215,7 @@ extern "C" ERROR add_module_class(void)
 static ERROR intercepted_master(ModuleMaster *Self, APTR Args)
 {
    if (Self->prvActions[tlContext->Action].PerformAction) {
-      return Self->prvActions[tlContext->Action].PerformAction((OBJECTPTR)Self, Args);
+      return Self->prvActions[tlContext->Action].PerformAction(Self, Args);
    }
    else return ERR_NoSupport;
 }
@@ -267,7 +267,7 @@ static ERROR MODULE_Free(objModule *Self, APTR Void)
 
    if (Self->Master) {
       if (Self->Master->OpenCount > 0) Self->Master->OpenCount--;
-      if (Self->Master->Close)         Self->Master->Close((OBJECTPTR)Self);
+      if (Self->Master->Close)         Self->Master->Close(Self);
       Self->Master = NULL;
    }
 
@@ -340,7 +340,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
       DEBUG_LINE
 
       if (!AccessObject(SystemTaskID, 5000, &Task)) {
-         SetOwner((OBJECTPTR)master, (OBJECTPTR)Task);
+         SetOwner(master, Task);
          ReleaseObject(Task);
       }
 
@@ -352,7 +352,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
       aflags |= AF_MODULEMASTER;
 
-      context = SetContext((OBJECTPTR)master);
+      context = SetContext(master);
 
       StrCopy(name, master->LibraryName, sizeof(master->LibraryName));
 
@@ -595,14 +595,14 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
          if (table->HeaderVersion >= MODULE_HEADER_V2) {
             if (table->Master) {
-               log.debug("Module already loaded as #%d, reverting to original ModuleMaster object.", table->Master->Head.UID);
+               log.debug("Module already loaded as #%d, reverting to original ModuleMaster object.", table->Master->UID);
 
                SetContext(context);
                context = NULL;
 
                free_module(master->LibraryBase);
                master->LibraryBase = NULL;
-               acFree(&master->Head);
+               acFree(master);
 
                Self->Master = table->Master;
                master = table->Master;
@@ -634,7 +634,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
             mmname[2] = '_';
             for (i=0; (size_t) i < sizeof(mmname)-4; i++) mmname[i+3] = master->Name[i];
             mmname[i+3] = 0;
-            SetName((OBJECTPTR)master, mmname);
+            SetName(master, mmname);
          }
 #endif
       }
@@ -651,7 +651,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
             fix_core_table(modkb, table->CoreVersion);
 
             log.traceBranch("Initialising the module.");
-            error = master->Init((OBJECTPTR)Self, modkb);
+            error = master->Init(Self, modkb);
             if (error) goto exit;
          }
       }
@@ -686,7 +686,7 @@ open_module:
 
    if (master->Open) {
       log.trace("Opening %s module.", Self->Name);
-      if (master->Open((OBJECTPTR)Self) != ERR_Okay) {
+      if (master->Open(Self) != ERR_Okay) {
          log.warning(ERR_ModuleOpenFailed);
          goto exit;
       }
@@ -740,7 +740,7 @@ exit:
             master->Expunge();
          }
 
-         acFree(&master->Head);
+         acFree(master);
          Self->Master = NULL;
       }
    }

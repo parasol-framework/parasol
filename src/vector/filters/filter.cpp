@@ -91,7 +91,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
 
    parasol::SwitchContext ctx(Self);
 
-   log.branch("%s #%d <- ID: #%u, Type: %d", Self->ActiveEffect->Head.Class->ClassName, Self->ActiveEffect->Head.UID, Effect ? Effect->Head.UID : 0, SourceType);
+   log.branch("%s #%d <- ID: #%u, Type: %d", Self->ActiveEffect->Class->ClassName, Self->ActiveEffect->UID, Effect ? Effect->UID : 0, SourceType);
 
    objBitmap *bmp = NULL;
    if (SourceType IS VSF_GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
@@ -162,12 +162,12 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
          }
 
          if (!bmp) {
-            log.warning("%s has dependency on %s effect #%u and does not output a bitmap.", Self->ActiveEffect->Head.Class->ClassName, Effect->Head.Class->ClassName, Effect->Head.UID);
+            log.warning("%s has dependency on %s effect #%u and does not output a bitmap.", Self->ActiveEffect->Class->ClassName, Effect->Class->ClassName, Effect->UID);
             return ERR_NoData;
          }
       }
       else {
-         log.warning("%s source reference has not provided an effect.", Self->ActiveEffect->Head.Class->ClassName);
+         log.warning("%s source reference has not provided an effect.", Self->ActiveEffect->Class->ClassName);
          return ERR_NoData;
       }
   }
@@ -181,7 +181,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
    }
 
    #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
-      save_bitmap(bmp, std::to_string(Self->Head.UID) + "_" + std::to_string(Self->ClientVector->Head.UID) + "_source");
+      save_bitmap(bmp, std::to_string(Self->UID) + "_" + std::to_string(Self->ClientVector->UID) + "_source");
    #endif
 
    if (Premultiply) bmpPremultiply(bmp);
@@ -203,7 +203,7 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
    parasol::Log log(__FUNCTION__);
 
    if (!Self->ClientVector) {
-      log.warning("%s No ClientVector defined.", Self->ActiveEffect->Head.Class->ClassName);
+      log.warning("%s No ClientVector defined.", Self->ActiveEffect->Class->ClassName);
       return NULL;
    }
 
@@ -234,7 +234,7 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
 
          objVectorViewport *viewport;
          if (!CreateObject(ID_VECTORVIEWPORT, 0, &viewport,
-               FID_Owner|TLONG,       Self->SourceScene->Head.UID,
+               FID_Owner|TLONG,       Self->SourceScene->UID,
                FID_ColourSpace|TLONG, (Self->ColourSpace IS VCS_LINEAR_RGB) ? VCS_LINEAR_RGB : VCS_SRGB,
                TAGEND)) {
          }
@@ -275,7 +275,7 @@ static ERROR set_clip_region(objVectorFilter *Self, objVectorViewport *Viewport,
    const DOUBLE container_height = Viewport->vpFixedHeight;
 
    if ((container_width < 1) or (container_height < 1)) {
-      log.warning("Viewport #%d has no size.", Viewport->Head.UID);
+      log.warning("Viewport #%d has no size.", Viewport->UID);
       return ERR_NothingDone;
    }
 
@@ -366,7 +366,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    if ((!filter_name) or (!filter_name[0])) filter_name = "Unnamed";
    auto vector_name = GetName(Vector);
    if ((!vector_name) or (!vector_name[0])) vector_name = "Unnamed";
-   log.branch("Rendering '%s' filter content for %s #%d '%s'.  LinearRGB: %c", filter_name, Vector->Head.Class->ClassName, Vector->Head.UID, vector_name, (Self->ColourSpace IS VCS_LINEAR_RGB) ? 'Y' : 'N');
+   log.branch("Rendering '%s' filter content for %s #%d '%s'.  LinearRGB: %c", filter_name, Vector->Class->ClassName, Vector->UID, vector_name, (Self->ColourSpace IS VCS_LINEAR_RGB) ? 'Y' : 'N');
 
    Self->ClientViewport = Viewport;
    Self->ClientVector   = Vector;
@@ -387,7 +387,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
 
    objBitmap *out = NULL;
    for (auto e = Self->Effects; e; e = e->Next) {
-      log.extmsg("Effect: %s #%u, Pipelined: %c; Use Count: %d", e->Head.Class->ClassName, e->Head.UID, e->UsageCount > 0 ? 'Y' : 'N', e->UsageCount);
+      log.extmsg("Effect: %s #%u, Pipelined: %c; Use Count: %d", e->Class->ClassName, e->UID, e->UsageCount > 0 ? 'Y' : 'N', e->UsageCount);
 
       Self->ActiveEffect = e;
 
@@ -420,7 +420,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    }
 
    #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
-      save_bitmap(out, std::to_string(Self->Head.UID) + "_" + std::to_string(Vector->Head.UID) + "_output");
+      save_bitmap(out, std::to_string(Self->UID) + "_" + std::to_string(Vector->UID) + "_output");
    #endif
 
    #ifdef DEBUG_FILTER_BITMAP
@@ -475,7 +475,7 @@ static ERROR VECTORFILTER_Init(objVectorFilter *Self, APTR Void)
    }
 
    Self->Scene = (objVectorScene *)GetObjectPtr(GetOwner(Self));
-   if (Self->Scene->Head.ClassID != ID_VECTORSCENE) return log.warning(ERR_UnsupportedOwner);
+   if (Self->Scene->ClassID != ID_VECTORSCENE) return log.warning(ERR_UnsupportedOwner);
 
    return ERR_Okay;
 }
@@ -626,7 +626,7 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 static ERROR VECTORFILTER_SET_Inherit(objVectorFilter *Self, objVectorFilter *Value)
 {
    if (Value) {
-      if (Value->Head.ClassID IS ID_VECTORFILTER) Self->Inherit = Value;
+      if (Value->ClassID IS ID_VECTORFILTER) Self->Inherit = Value;
       else return ERR_InvalidValue;
    }
    else Self->Inherit = NULL;

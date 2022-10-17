@@ -697,7 +697,7 @@ static LONG parse_tag(objDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
 
       tagarg[i] = 0;
 
-      log.traceBranch("XML: %d, First-Tag: '%.30s', Face: %.20s, Tag: %p, Flags: $%.8x", XML->Head.UID, tagarg, Self->Style.Face, Tag, Flags);
+      log.traceBranch("XML: %d, First-Tag: '%.30s', Face: %.20s, Tag: %p, Flags: $%.8x", XML->UID, tagarg, Self->Style.Face, Tag, Flags);
 
    #endif
 
@@ -4613,7 +4613,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
 
    parasol::Log log(__FUNCTION__);
 
-   log.branch("Page: %s, XML: %d, Tags: %d", Self->PageName, xml->Head.UID, xml->TagCount);
+   log.branch("Page: %s, XML: %d, Tags: %d", Self->PageName, xml->UID, xml->TagCount);
 
    // Look for the first page that matches the requested page name (if a name is specified).  Pages can be located anywhere
    // within the XML source - they don't have to be at the root.
@@ -4792,7 +4792,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
       if (Self->Error) unload_doc(Self, 0);
 
       Self->UpdateLayout = TRUE;
-      if (Self->Head.Flags & NF_INITIALISED) redraw(Self, TRUE);
+      if (Self->Head::Flags & NF_INITIALISED) redraw(Self, TRUE);
 
       if (Self->Buffer) { FreeResource(Self->Buffer); Self->Buffer = NULL; }
       if (Self->Temp)   { FreeResource(Self->Temp); Self->Temp = NULL; }
@@ -4979,7 +4979,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
 
    if (Self->LinkIndex != -1) {
       Self->LinkIndex = -1;
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->UID);
    }
 
    if (Self->FontFace) FreeResource(Self->FontFace);
@@ -5693,7 +5693,7 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
                   error = insert_string(name, Buffer, Self->BufferSize, pos, sizeof("[%id]")-1);
                }
                else if (!StrCompare("self]", str, 0, 0)) {
-                  IntToStr(Self->Head.UID, name, sizeof(name));
+                  IntToStr(Self->UID, name, sizeof(name));
                   error = insert_string(name, Buffer, Self->BufferSize, pos, sizeof("[%self]")-1);
                }
                else if (!StrCompare("platform]", str, 0, 0)) {
@@ -5980,7 +5980,7 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
                            OBJECTID parent_id = list[j];
                            while (parent_id) {
                               parent_id = GetOwnerID(parent_id);
-                              if (parent_id IS Self->Head.UID) {
+                              if (parent_id IS Self->UID) {
                                  objectid = list[j];
                                  break;
                               }
@@ -6146,7 +6146,7 @@ static BYTE valid_object(objDocument *Self, OBJECTPTR Object)
       if (!obj->OwnerID) return FALSE;
       if (obj->OwnerID < 0) return valid_objectid(Self, obj->UID); // Switch to scanning public objects
       obj = GetObjectPtr(obj->OwnerID);
-      if (obj IS (OBJECTPTR)Self) return TRUE;
+      if (obj IS Self) return TRUE;
    }
    return FALSE;
 }
@@ -6160,7 +6160,7 @@ static BYTE valid_objectid(objDocument *Self, OBJECTID ObjectID)
 
    while (ObjectID) {
       ObjectID = GetOwnerID(ObjectID);
-      if (ObjectID IS Self->Head.UID) return TRUE;
+      if (ObjectID IS Self->UID) return TRUE;
    }
    return FALSE;
 }
@@ -6767,7 +6767,7 @@ static void check_mouse_pos(objDocument *Self, DOUBLE X, DOUBLE Y)
             // The mouse pointer is inside a link
 
             if (Self->LinkIndex IS -1) {
-               gfxSetCursor(0, CRF_BUFFER, PTR_HAND, 0, Self->Head.UID);
+               gfxSetCursor(0, CRF_BUFFER, PTR_HAND, 0, Self->UID);
                Self->CursorSet = TRUE;
             }
 
@@ -6791,7 +6791,7 @@ static void check_mouse_pos(objDocument *Self, DOUBLE X, DOUBLE Y)
 
    if (Self->MouseOverSegment != -1) {
       if ((Self->Segments[Self->MouseOverSegment].TextContent) or (Self->Segments[Self->MouseOverSegment].Edit)) {
-         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UID);
+         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->UID);
          Self->CursorSet = TRUE;
       }
       return;
@@ -6800,7 +6800,7 @@ static void check_mouse_pos(objDocument *Self, DOUBLE X, DOUBLE Y)
    for (LONG i=0; i < Self->ECIndex; i++) {
       if ((X >= Self->EditCells[i].X) and (X < Self->EditCells[i].X + Self->EditCells[i].Width) and
           (Y >= Self->EditCells[i].Y) and (Y < Self->EditCells[i].Y + Self->EditCells[i].Height)) {
-         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UID);
+         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->UID);
          Self->CursorSet = TRUE;
          return;
       }
@@ -6810,7 +6810,7 @@ static void check_mouse_pos(objDocument *Self, DOUBLE X, DOUBLE Y)
 
    if (Self->CursorSet) {
       Self->CursorSet = FALSE;
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->UID);
    }
 }
 
@@ -7563,7 +7563,7 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
                log.warning("Function reference to object '%s' is not a Script object.", scriptref);
                return ERR_WrongClass;
             }
-            else if ((Script[0]->OwnerID != Self->Head.UID) and (!(Self->Flags & DCF_UNRESTRICTED))) {
+            else if ((Script[0]->OwnerID != Self->UID) and (!(Self->Flags & DCF_UNRESTRICTED))) {
                log.warning("Script '%s' does not belong to this document.  Action ignored due to security restrictions.", scriptref);
                return ERR_NoPermission;
             }

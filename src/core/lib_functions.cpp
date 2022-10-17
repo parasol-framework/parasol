@@ -302,7 +302,7 @@ obj: Returns a pointer to the current Task object or NULL if failure.
 
 OBJECTPTR CurrentTask(void)
 {
-   return (OBJECTPTR)glCurrentTask;
+   return glCurrentTask;
 }
 
 /*****************************************************************************

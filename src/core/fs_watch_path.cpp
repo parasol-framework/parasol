@@ -252,7 +252,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
 
    AdjustLogLevel(2);
 
-   log.branch("File monitoring event received (Handle %p, File #%d).", Handle, File->Head.UID);
+   log.branch("File monitoring event received (Handle %p, File #%d).", Handle, File->UID);
 
    ERROR error;
    ERROR (*routine)(objFile *, CSTRING path, LARGE Custom, LONG Flags);
@@ -296,7 +296,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
             error = routine(File, path, File->prvWatch->Custom, status);
          }
 
-         if (error IS ERR_Terminate) Action(MT_FlWatch, &File->Head, NULL);
+         if (error IS ERR_Terminate) Action(MT_FlWatch, File, NULL);
       }
    }
    else {
@@ -307,7 +307,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
       }
       else error = routine(File, File->Path, File->prvWatch->Custom, 0);
 
-      if (error IS ERR_Terminate) Action(MT_FlWatch, &File->Head, NULL);
+      if (error IS ERR_Terminate) Action(MT_FlWatch, File, NULL);
    }
 
    winFindNextChangeNotification(Handle);

@@ -176,7 +176,7 @@ static void update_displayinfo(objDisplay *Self)
    if (StrMatch("SystemDisplay", GetName(Self)) != ERR_Okay) return;
 
    glDisplayInfo->DisplayID = 0;
-   get_display_info(Self->Head.UID, glDisplayInfo, sizeof(DISPLAYINFO));
+   get_display_info(Self->UID, glDisplayInfo, sizeof(DISPLAYINFO));
 }
 
 //****************************************************************************
@@ -285,7 +285,7 @@ static ERROR DISPLAY_CheckXWindow(objDisplay *Self, APTR Void)
       Self->X = absx;
       Self->Y = absy;
 
-      resize_feedback(&Self->ResizeFeedback, Self->Head.UID, absx, absy, Self->Width, Self->Height);
+      resize_feedback(&Self->ResizeFeedback, Self->UID, absx, absy, Self->Width, Self->Height);
    }
 
 #endif
@@ -360,7 +360,7 @@ static ERROR DISPLAY_DataFeed(objDisplay *Self, struct acDataFeed *Args)
             pos += StrCopy("</receipt>", xml+pos, xmlsize-pos);
 
             struct acDataFeed dc;
-            dc.ObjectID = Self->Head.UID;
+            dc.ObjectID = Self->UID;
             dc.Datatype = DATA_RECEIPT;
             dc.Buffer   = xml;
             dc.Size     = pos+1;
@@ -684,7 +684,7 @@ static ERROR DISPLAY_Hide(objDisplay *Self, APTR Void)
 
 #elif _GLES_
    if (Self->Flags & SCR_VISIBLE) {
-      adHideDisplay(Self->Head.UID);
+      adHideDisplay(Self->UID);
    }
 #endif
 
@@ -928,7 +928,7 @@ static ERROR DISPLAY_Init(objDisplay *Self, APTR Void)
 
       glDisplayWindow = Self->XWindowHandle;
 
-      XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->Head.UID, 1);
+      XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->UID, 1);
 
    #elif _WIN32
 
@@ -1234,11 +1234,11 @@ static ERROR DISPLAY_NewObject(objDisplay *Self, APTR Void)
    parasol::Log log;
    ERROR error;
 
-   if (Self->Head.Flags & NF_PUBLIC) {
-      error = NewLockedObject(ID_BITMAP, Self->Head.Flags|NF_INTEGRAL, &Self->Bitmap, &Self->BitmapID);
+   if (Self->Head::Flags & NF_PUBLIC) {
+      error = NewLockedObject(ID_BITMAP, Self->Head::Flags|NF_INTEGRAL, &Self->Bitmap, &Self->BitmapID);
    }
    else {
-      error = NewObject(ID_BITMAP, Self->Head.Flags|NF_INTEGRAL, &Self->Bitmap);
+      error = NewObject(ID_BITMAP, Self->Head::Flags|NF_INTEGRAL, &Self->Bitmap);
       Self->BitmapID = GetUID(Self->Bitmap);
    }
 
@@ -1673,7 +1673,7 @@ static ERROR DISPLAY_SetDisplay(objDisplay *Self, struct gfxSetDisplay *Args)
       ReleaseObject(Self->Bitmap);
       Self->Bitmap = NULL;
 
-      if (!NewObject(ID_BITMAP, NF_INTEGRAL|Self->Head.Flags, &Self->Bitmap, (Self->Head.Flags & NF_PUBLIC) ? &Self->BitmapID : NULL)) {
+      if (!NewObject(ID_BITMAP, NF_INTEGRAL|Self->Head::Flags, &Self->Bitmap, (Self->Head::Flags & NF_PUBLIC) ? &Self->BitmapID : NULL)) {
          Self->BitmapID = Self->Bitmap->Head.UID;
          Self->Bitmap->BitsPerPixel = bpp;
          Self->Bitmap->Width        = Self->Width;
@@ -2019,7 +2019,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
 
       // Post a delayed CheckXWindow() message so that we can respond to changes by the window manager.
 
-      DelayMsg(MT_GfxCheckXWindow, Self->Head.UID, NULL);
+      DelayMsg(MT_GfxCheckXWindow, Self->UID, NULL);
 
       // This really shouldn't be here, but until the management of menu focussing is fixed, we need it.
 
@@ -2045,7 +2045,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
    #elif _GLES_
 
       #warning TODO: Bring back the native window if it is hidden.
-      glActiveDisplayID = Self->Head.UID;
+      glActiveDisplayID = Self->UID;
       Self->Flags &= ~SCR_NOACCELERATION;
 
    #else
@@ -2559,7 +2559,7 @@ static ERROR SET_Flags(objDisplay *Self, LONG Value)
 {
    parasol::Log log;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       // Only flags that are explicitly supported here may be set post-initialisation.
 
       #define ACCEPT_FLAGS (SCR_AUTO_SAVE)
@@ -2599,11 +2599,11 @@ static ERROR SET_Flags(objDisplay *Self, LONG Value)
             Self->Width  = winwidth;
             Self->Height = winheight;
 
-            resize_feedback(&Self->ResizeFeedback, Self->Head.UID, cx, cy, cwidth, cheight);
+            resize_feedback(&Self->ResizeFeedback, Self->UID, cx, cy, cwidth, cheight);
 
             if (Self->Flags & SCR_VISIBLE) {
                winShowWindow(Self->WindowHandle, TRUE);
-               DelayMsg(AC_Focus, Self->Head.UID, NULL);
+               DelayMsg(AC_Focus, Self->UID, NULL);
             }
          }
 
@@ -2671,7 +2671,7 @@ static ERROR SET_Flags(objDisplay *Self, LONG Value)
             XSetTransientForHint(XDisplay, Self->XWindowHandle, DefaultRootWindow(XDisplay));
          }
 
-         XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->Head.UID, 1);
+         XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->UID, 1);
 
          // Indicate that the window position is not to be meddled with by the window manager.
 
@@ -2689,10 +2689,10 @@ static ERROR SET_Flags(objDisplay *Self, LONG Value)
          if (Self->Flags & SCR_VISIBLE) {
             acShow(Self);
             XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
-            DelayMsg(AC_Focus, Self->Head.UID, NULL);
+            DelayMsg(AC_Focus, Self->UID, NULL);
          }
 
-         resize_feedback(&Self->ResizeFeedback, Self->Head.UID, Self->X, Self->Y, Self->Width, Self->Height);
+         resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);
       #endif
       }
 
@@ -2897,7 +2897,7 @@ static ERROR SET_PopOver(objDisplay *Self, OBJECTID Value)
 
 #ifdef __xwindows__
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->Head::Flags & NF_INITIALISED) {
       objDisplay *popover;
       if (!Value) {
          Self->PopOverID = 0;
@@ -3027,7 +3027,7 @@ width of the window can be calculated by reading the #LeftMargin and #RightMargi
 static ERROR SET_Width(objDisplay *Self, LONG Value)
 {
    if (Value > 0) {
-      if (Self->Head.Flags & NF_INITIALISED) {
+      if (Self->Head::Flags & NF_INITIALISED) {
          acResize(Self, Value, Self->Height, 0);
       }
       else Self->Width = Value;
@@ -3057,7 +3057,7 @@ static ERROR GET_WindowHandle(objDisplay *Self, APTR *Value)
 
 static ERROR SET_WindowHandle(objDisplay *Self, APTR Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) return ERR_Failed;
+   if (Self->Head::Flags & NF_INITIALISED) return ERR_Failed;
 
    if (Value) {
       Self->WindowHandle = Value;
@@ -3133,7 +3133,7 @@ To adjust the position of the display, use the #MoveToPoint() action rather than
 
 static ERROR SET_X(objDisplay *Self, LONG Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) {
+   if (!(Self->Head::Flags & NF_INITIALISED)) {
       Self->X = Value;
       return ERR_Okay;
    }
@@ -3157,7 +3157,7 @@ To adjust the position of the display, use the #MoveToPoint() action rather than
 
 static ERROR SET_Y(objDisplay *Self, LONG Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) {
+   if (!(Self->Head::Flags & NF_INITIALISED)) {
       Self->Y = Value;
       return ERR_Okay;
    }
@@ -3178,7 +3178,7 @@ void alloc_display_buffer(objDisplay *Self)
 
    objBitmap *buffer;
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->Head.Flags, &buffer, &Self->BufferID)) {
+   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->Head::Flags, &buffer, &Self->BufferID)) {
       if (!SetFields(buffer,
             FID_Name|TSTR,           "SystemBuffer",
             FID_BitsPerPixel|TLONG,  Self->Bitmap->BitsPerPixel,

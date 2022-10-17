@@ -8,7 +8,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
    log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, State, CurrentContext()->UID);
 
    auto Self = (objHTTP *)Socket->UserData; //(objHTTP *)CurrentContext();
-   if (Self->Head.ClassID != ID_HTTP) { log.warning(ERR_SystemCorrupt); return; }
+   if (Self->ClassID != ID_HTTP) { log.warning(ERR_SystemCorrupt); return; }
 
    if (State IS NTC_CONNECTING) {
       log.msg("Waiting for connection...");
@@ -162,7 +162,7 @@ static ERROR socket_outgoing(objNetSocket *Socket)
    #define CHUNK_TAIL 2 // CRLF
 
    auto Self = (objHTTP *)Socket->UserData;
-   if (Self->Head.ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
+   if (Self->ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
 
    log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, Self->CurrentState);
 
@@ -382,7 +382,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
    log.msg("Context: %d", CurrentContext()->UID);
 
-   if (Self->Head.ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
+   if (Self->ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
 
    if (Self->CurrentState >= HGS_COMPLETED) {
       // Erroneous data received from server while we are in a completion/resting state.  Returning a terminate message
@@ -471,7 +471,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   log.msg("Authentication successful, reactivating...");
                   Self->SecurePath = FALSE;
                   SetLong(Self, FID_CurrentState, HGS_AUTHENTICATED);
-                  DelayMsg(AC_Activate, Self->Head.UID, NULL);
+                  DelayMsg(AC_Activate, Self->UID, NULL);
                   return ERR_Okay;
                }
 
@@ -620,7 +620,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                      }
                      else error = ERR_AllocMemory;
                   }
-                  else ActionMsg(AC_Activate, Self->Head.UID, NULL);
+                  else ActionMsg(AC_Activate, Self->UID, NULL);
 
                   return ERR_Okay;
                }
@@ -1061,7 +1061,7 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
    if (Self->OutputObjectID) {
       if (Self->ObjectMode IS HOM_DATA_FEED) {
          struct acDataFeed data = {
-            .ObjectID = Self->Head.UID,
+            .ObjectID = Self->UID,
             .DataType = Self->Datatype,
             .Buffer   = Buffer,
             .Size     = Length

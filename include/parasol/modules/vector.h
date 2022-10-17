@@ -413,8 +413,8 @@ INLINE ERROR vpSetCommandList(APTR Ob, APTR Commands, LONG Size) {
 
 #define VER_VECTORCOLOUR (1.000000)
 
-typedef struct rkVectorColour {
-   OBJECT_HEADER
+typedef class rkVectorColour : public Head {
+   public:
    DOUBLE Red;
    DOUBLE Green;
    DOUBLE Blue;
@@ -431,8 +431,8 @@ struct OrderedVector {
 
 #define VER_VECTORSCENE (1.000000)
 
-typedef struct rkVectorScene {
-   OBJECT_HEADER
+typedef class rkVectorScene : public Head {
+   public:
    LARGE    RenderTime;                 // Microseconds elapsed during the last rendering operation.
    DOUBLE   Gamma;                      // Not currently implemented.
    struct rkVectorScene * HostScene;    // Reference to a controlling VectorScene at the top of the hierarchy, if applicable.
@@ -498,8 +498,8 @@ INLINE ERROR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) {
 
 #define VER_VECTORIMAGE (1.000000)
 
-typedef struct rkVectorImage {
-   OBJECT_HEADER
+typedef class rkVectorImage : public Head {
+   public:
    DOUBLE X;                      // Starting horizontal coordinate
    DOUBLE Y;                      // Starting vertical coordinate
    struct rkPicture * Picture;
@@ -514,8 +514,8 @@ typedef struct rkVectorImage {
 
 #define VER_VECTORPATTERN (1.000000)
 
-typedef struct rkVectorPattern {
-   OBJECT_HEADER
+typedef class rkVectorPattern : public Head {
+   public:
    DOUBLE X;                              // Starting horizontal coordinate
    DOUBLE Y;                              // Starting vertical coordinate
    DOUBLE Width;                          // Width of the canvas
@@ -540,8 +540,8 @@ typedef struct rkVectorPattern {
 
 #define VER_VECTORGRADIENT (1.000000)
 
-typedef struct rkVectorGradient {
-   OBJECT_HEADER
+typedef class rkVectorGradient : public Head {
+   public:
    DOUBLE X1;                            // Starting X coordinate of the gradient 'line'
    DOUBLE Y1;                            // Starting Y coordinate of the gradient 'line'
    DOUBLE X2;                            // Ending X of the gradient 'line'
@@ -573,8 +573,8 @@ typedef struct rkVectorGradient {
 
 #define VER_FILTEREFFECT (1.000000)
 
-typedef struct rkFilterEffect {
-   OBJECT_HEADER
+typedef class rkFilterEffect : public Head {
+   public:
    struct rkFilterEffect * Next;    // Next filter in the chain.
    struct rkFilterEffect * Prev;    // Previous filter in the chain.
    struct rkBitmap * Target;        // Target bitmap for rendering the effect.
@@ -644,8 +644,8 @@ struct MergeSource {
 
 #define VER_VECTORFILTER (1.000000)
 
-typedef struct rkVectorFilter {
-   OBJECT_HEADER
+typedef class rkVectorFilter : public Head {
+   public:
    DOUBLE X;                           // Left-most position of filter area
    DOUBLE Y;                           // Top-most position of filter area
    DOUBLE Width;                       // Width of filter area
@@ -749,8 +749,8 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
 
 #define VER_VECTOR (1.000000)
 
-typedef struct rkVector {
-   OBJECT_HEADER
+typedef class rkVector : public Head {
+   public:
    struct rkVector * Child;         // The first child vector, or NULL.
    struct rkVectorScene * Scene;    // Short-cut to the top-level VectorScene.
    struct rkVector * Next;          // The next vector in the branch, or NULL.
@@ -914,13 +914,13 @@ struct VectorBase {
 
 #ifdef PRV_VECTORSCENE
 __inline__ bool OrderedVector::operator()(const struct rkVector *a, const struct rkVector *b) const {
-   if (a->TabOrder == b->TabOrder) return a->Head.UID < b->Head.UID;
+   if (a->TabOrder == b->TabOrder) return a->UID < b->UID;
    else return a->TabOrder < b->TabOrder;
 }
 #endif
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
-   Colour->Head.ClassID = ID_VECTORCOLOUR;
+   Colour->ClassID = ID_VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
    Colour->Blue  = Blue;

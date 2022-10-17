@@ -403,8 +403,8 @@ typedef struct BitmapSurfaceV2 {
 
 #define VER_BITMAP (2.000000)
 
-typedef struct rkBitmap {
-   OBJECT_HEADER
+typedef class rkBitmap : public Head {
+   public:
    struct RGBPalette * Palette;                                            // Pointer to the Bitmap's palette
    struct ColourFormat * ColourFormat;                                     // Pointer to colour information
    void (*DrawUCPixel)(struct rkBitmap *, LONG, LONG, ULONG);
@@ -538,8 +538,8 @@ INLINE ERROR bmpDrawLine(APTR Ob, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Co
 
 #define VER_DISPLAY (1.000000)
 
-typedef struct rkDisplay {
-   OBJECT_HEADER
+typedef class rkDisplay : public Head {
+   public:
    DOUBLE   RefreshRate;        // The active refresh rate
    struct rkBitmap * Bitmap;    // Reference to the display's bitmap information.
    LONG     Flags;              // Optional flags
@@ -670,8 +670,8 @@ INLINE ERROR gfxUpdateDisplay(APTR Ob, struct rkBitmap * Bitmap, LONG X, LONG Y,
 
 #define VER_CLIPBOARD (1.000000)
 
-typedef struct rkClipboard {
-   OBJECT_HEADER
+typedef class rkClipboard : public Head {
+   public:
    LONG     Flags;      // Optional flags
    MEMORYID ClusterID;  // Identifies the data cluster (item grouping) that the clipboard will work with
 
@@ -737,8 +737,8 @@ INLINE ERROR clipRemove(APTR Ob, LONG Datatype) {
 
 #define VER_POINTER (1.000000)
 
-typedef struct rkPointer {
-   OBJECT_HEADER
+typedef class rkPointer : public Head {
+   public:
    DOUBLE   Speed;         // Speed multiplier (%)
    DOUBLE   Acceleration;  // Acceleration level - keep between 0.0 and 3.0
    DOUBLE   DoubleClick;   // Double click speed
@@ -805,8 +805,8 @@ typedef struct rkPointer {
 
 #define VER_SURFACE (1.000000)
 
-typedef struct rkSurface {
-   OBJECT_HEADER
+typedef class rkSurface : public Head {
+   public:
    OBJECTID DragID;     // Drag the object that this field points to
    OBJECTID BufferID;   // Buffer bitmap (backing store)
    OBJECTID ParentID;   // Graphical container of the Surface object, if any

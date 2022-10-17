@@ -1710,8 +1710,8 @@ struct ScriptArg { // For use with scExec
 
 #define VER_STORAGEDEVICE (1.000000)
 
-typedef struct rkStorageDevice {
-   OBJECT_HEADER
+typedef class rkStorageDevice : public Head {
+   public:
    LARGE DeviceFlags;    // Flags identifying the type of media
    LARGE DeviceSize;     // Size of the device
    LARGE BytesFree;      // Bytes available to the user
@@ -2186,8 +2186,8 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 
 #define VER_FILE (1.200000)
 
-typedef struct rkFile {
-   OBJECT_HEADER
+typedef class rkFile : public Head {
+   public:
    LARGE    Position; // The current read/write byte position in a file.
    LONG     Flags;    // File flags and options.
    LONG     Static;   // Set to TRUE if a file object should be static.
@@ -2288,8 +2288,8 @@ INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, LONG Flags) {
 
 #define VER_CONFIG (1.000000)
 
-typedef struct rkConfig {
-   OBJECT_HEADER
+typedef class rkConfig : public Head {
+   public:
    STRING Path;         // The location pointer
    STRING KeyFilter;    // Enables key filtering, removing any unwanted keys on load.
    STRING GroupFilter;  // Enables group filtering, removing any unwanted groups on load.
@@ -2418,8 +2418,8 @@ INLINE ERROR cfgReadInt(APTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 
 #define VER_SCRIPT (1.000000)
 
-typedef struct rkScript {
-   OBJECT_HEADER
+typedef class rkScript : public Head {
+   public:
    OBJECTID TargetID;  // The object that script objects must be initialised to, e.g. for obj.new()
    LONG     Flags;     // Optional flags
    ERROR    Error;     // If an error occurred, this field will indicate the error number
@@ -2488,8 +2488,8 @@ INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
 
 #define VER_METACLASS (1.000000)
 
-typedef struct rkMetaClass {
-   OBJECT_HEADER
+typedef class rkMetaClass : public Head {
+   public:
    DOUBLE  ClassVersion;                // Version of the class
    struct MethodArray * Methods;        // Original method array supplied by the module.
    const struct FieldArray * Fields;    // Original field array supplied by the module.
@@ -2539,8 +2539,8 @@ INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, struct rkMetaC
 
 #define VER_TASK (1.000000)
 
-typedef struct rkTask {
-   OBJECT_HEADER
+typedef class rkTask : public Head {
+   public:
    DOUBLE TimeOut;
    LONG   Flags;
    LONG   ReturnCode;
@@ -2637,8 +2637,8 @@ INLINE ERROR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) {
 
 #define VER_THREAD (1.000000)
 
-typedef struct rkThread {
-   OBJECT_HEADER
+typedef class rkThread : public Head {
+   public:
    APTR  Data;       // User data pointer.
    LONG  DataSize;   // Size of user data.
    LONG  StackSize;  // Pre-set stack size
@@ -2699,8 +2699,8 @@ struct TaskList {
 
 #define VER_MODULE (1.000000)
 
-typedef struct rkModule {
-   OBJECT_HEADER
+typedef class rkModule : public Head {
+   public:
    DOUBLE Version;                          // Minimum required version of the module
    const struct Function * FunctionList;    // Array of functions
    APTR   ModBase;                          // Ptr to function jump table
@@ -2734,8 +2734,8 @@ INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) {
 
 #define VER_TIME (1.000000)
 
-typedef struct rkTime {
-   OBJECT_HEADER
+typedef class rkTime : public Head {
+   public:
    LARGE SystemTime;    // Total number of microseconds passed since the system base time
    LONG  Year;          // Year   (-ve for BC, +ve for AD)
    LONG  Month;         // Month  (1 - 12)
@@ -2760,8 +2760,8 @@ typedef struct rkTime {
 
 #define VER_COMPRESSION (1.000000)
 
-typedef struct rkCompression {
-   OBJECT_HEADER
+typedef class rkCompression : public Head {
+   public:
    LARGE    TotalOutput;     // Total number of bytes output (e.g. during compression of a stream)
    OBJECTID OutputID;        // Reference to output object for user messages
    LONG     CompressionLevel; // Compression level (percentage - 0% none, 100% high)
@@ -2903,8 +2903,8 @@ INLINE ERROR cmpFind(APTR Ob, CSTRING Path, LONG Flags, struct CompressedItem **
 
 #define VER_COMPRESSEDSTREAM (1.000000)
 
-typedef struct rkCompressedStream {
-   OBJECT_HEADER
+typedef class rkCompressedStream : public Head {
+   public:
    LARGE     TotalOutput; // Count of the total bytes that have been output.
    OBJECTPTR Input;      // The object that is the source of the compressed data.
    OBJECTPTR Output;     // The object that is the destination for the compressed data.

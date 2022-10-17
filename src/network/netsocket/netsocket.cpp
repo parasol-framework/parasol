@@ -375,7 +375,7 @@ static ERROR NETSOCKET_FreeWarning(objNetSocket *Self, APTR Void)
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
          log.msg("NetSocket in use, cannot free yet (request delayed).");
          Self->Terminating = TRUE;
-         DelayMsg(AC_Free, Self->Head.UID, NULL);
+         DelayMsg(AC_Free, Self->UID, NULL);
       }
       return ERR_InUse;
    }
@@ -1066,7 +1066,7 @@ static ERROR SET_Outgoing(objNetSocket *Self, FUNCTION *Value)
       Self->Outgoing = *Value;
       if (Self->Outgoing.Type IS CALL_SCRIPT) SubscribeAction(Self->Outgoing.Script.Script, AC_Free);
 
-      if (Self->Head.Flags & NF_INITIALISED) {
+      if (Self->Head::Flags & NF_INITIALISED) {
          if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC_CONNECTED)) {
             // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
 
@@ -1264,7 +1264,7 @@ static void free_socket(objNetSocket *Self)
    if (Self->WriteQueue.Buffer) { FreeResource(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = NULL; }
    if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = NULL; }
 
-   if (!(Self->Head.Flags & NF_FREE)) {
+   if (!(Self->Head::Flags & NF_FREE)) {
       if (Self->State != NTC_DISCONNECTED) {
          log.traceBranch("Changing state to disconnected.");
          SetLong(Self, FID_State, NTC_DISCONNECTED);
@@ -1353,7 +1353,7 @@ void win32_netresponse(Head *SocketObject, SOCKET_HANDLE SocketHandle, LONG Mess
 
    #ifdef DEBUG
    static const CSTRING msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
-   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->Head.UID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
+   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
    #endif
 
    parasol::SwitchContext context(Socket);

@@ -374,7 +374,7 @@ static void tag_call(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
          // Add the created XML object to the document rather than destroying it
 
-         add_resource_id(Self, xmlinc->Head.UID, RT_OBJECT_TEMP);
+         add_resource_id(Self, xmlinc->UID, RT_OBJECT_TEMP);
       }
       FreeResource(results);
    }
@@ -691,7 +691,7 @@ static void tag_include(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 
          parse_tag(Self, xmlinc, xmlinc->Tags[0], Index, Flags);
 
-         add_resource_id(Self, xmlinc->Head.UID, RT_OBJECT_TEMP);
+         add_resource_id(Self, xmlinc->UID, RT_OBJECT_TEMP);
       }
       else log.warning("Failed to include '%s'", src);
    }
@@ -726,7 +726,7 @@ static void tag_parse(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 
             // Add the created XML object to the document rather than destroying it
 
-            add_resource_id(Self, xmlinc->Head.UID, RT_OBJECT_TEMP);
+            add_resource_id(Self, xmlinc->UID, RT_OBJECT_TEMP);
          }
       }
    }
@@ -1213,7 +1213,7 @@ static void tag_xml_content(objDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
 
    Tag = Tag->Child;
 
-   LAYOUT("~tag_xml()","XML: %d, Tag: %d/%d, Target: %d", XML->Head.UID, Tag->Index, XML->TagCount, target->UID);
+   LAYOUT("~tag_xml()","XML: %d, Tag: %d/%d, Target: %d", XML->UID, Tag->Index, XML->TagCount, target->UID);
 
    if (!target) {
       log.warning("<xml> used without a valid object reference to receive the XML.");
@@ -1453,7 +1453,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
                   if ((objectid) and (valid_objectid(Self, objectid))) {
                      objXML *objxml;
                      if (!AccessObject(objectid, 3000, &objxml)) {
-                        if (objxml->Head.ClassID IS ID_XML) {
+                        if (objxml->ClassID IS ID_XML) {
                            if (!xmlGetString(objxml, 0, XMF_INCLUDE_SIBLINGS|XMF_STRIP_CDATA, &content)) {
                               acDataXML(object, content);
                               FreeResource(content);
@@ -1802,7 +1802,7 @@ static void tag_script(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 
                   // Add the created XML object to the document rather than destroying it
 
-                  add_resource_id(Self, xmlinc->Head.UID, RT_OBJECT_TEMP);
+                  add_resource_id(Self, xmlinc->UID, RT_OBJECT_TEMP);
                }
             }
          }

@@ -311,7 +311,7 @@ static ERROR VECTORTEXT_Init(objVectorText *Self, APTR Void)
 {
    if (Self->txFlags & VTXF_EDITABLE) {
       if (!Self->txFocusID) {
-         if (Self->ParentView) Self->txFocusID = Self->ParentView->Head.UID;
+         if (Self->ParentView) Self->txFocusID = Self->ParentView->UID;
       }
 
       OBJECTPTR focus;
@@ -620,7 +620,7 @@ static ERROR TEXT_GET_Font(objVectorText *Self, OBJECTPTR *Value)
    if (!Self->txFont) reset_font(Self);
 
    if (Self->txFont) {
-      *Value = &Self->txFont->Head;
+      *Value = Self->txFont;
       return ERR_Okay;
    }
    else return ERR_FieldNotSet;

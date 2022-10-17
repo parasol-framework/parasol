@@ -30,7 +30,7 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
    if (!cols) {
       if (Vector.FillGradient->Inherit) cols = Vector.FillGradient->Inherit->Colours;
       if (!cols) {
-         log.warning("No colour table referenced in fill gradient %p for vector #%d.", Vector.FillGradient, Vector.Head.UID);
+         log.warning("No colour table referenced in fill gradient %p for vector #%d.", Vector.FillGradient, Vector.UID);
          return NULL;
       }
    }
@@ -67,7 +67,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
    if (!cols) {
       if (Vector.StrokeGradient->Inherit) cols = Vector.StrokeGradient->Inherit->Colours;
       if (!cols) {
-         log.warning("No colour table referenced in stroke gradient %p for vector #%d.", Vector.FillGradient, Vector.Head.UID);
+         log.warning("No colour table referenced in stroke gradient %p for vector #%d.", Vector.FillGradient, Vector.UID);
          return NULL;
       }
    }
@@ -386,7 +386,7 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 static ERROR VECTORGRADIENT_SET_Inherit(objVectorGradient *Self, objVectorGradient *Value)
 {
    if (Value) {
-      if (Value->Head.ClassID IS ID_VECTORGRADIENT) Self->Inherit = Value;
+      if (Value->ClassID IS ID_VECTORGRADIENT) Self->Inherit = Value;
       else return ERR_InvalidValue;
    }
    else Self->Inherit = NULL;
