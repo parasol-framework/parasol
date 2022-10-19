@@ -102,9 +102,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>DisconnectClient</name>
       <comment>Disconnects all sockets connected to a specific client IP.</comment>
-      <prototype>ERROR nsDisconnectClient(OBJECTPTR Object, struct rkNetClient * Client)</prototype>
+      <prototype>ERROR nsDisconnectClient(OBJECTPTR Object, struct NetClient * Client)</prototype>
       <input>
-        <param type="struct rkNetClient *" name="Client">The client to be disconnected.</param>
+        <param type="struct NetClient *" name="Client">The client to be disconnected.</param>
       </input>
       <description>
 <p>For server sockets with client IP connections, this method will terminate all socket connections made to a specific client IP and free the resources allocated to it.  If <field>Feedback</field> is defined, a DISCONNECTED state message will also be issued for each socket connection.</p>
@@ -119,9 +119,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>DisconnectSocket</name>
       <comment>Disconnects a single socket that is connected to a client IP address.</comment>
-      <prototype>ERROR nsDisconnectSocket(OBJECTPTR Object, struct rkClientSocket * Socket)</prototype>
+      <prototype>ERROR nsDisconnectSocket(OBJECTPTR Object, objClientSocket * Socket)</prototype>
       <input>
-        <param type="struct rkClientSocket *" name="Socket">The client socket to be disconnected.</param>
+        <param type="objClientSocket *" name="Socket">The client socket to be disconnected.</param>
       </input>
       <description>
 <p>This method will disconnect a socket connection for a given client.  If <field>Feedback</field> is defined, a DISCONNECTED state message will also be issued.</p>
@@ -227,7 +227,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <name>Clients</name>
       <comment>For server sockets, lists all clients connected to the server.</comment>
       <access read="R">Read</access>
-      <type>struct rkNetClient *</type>
+      <type>struct NetClient *</type>
     </field>
 
     <field>
@@ -396,12 +396,12 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
     </struct>
 
-    <struct name="rkNetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
+    <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
       <field name="IP" type="char" size="8">IP address in 4/8-byte format</field>
-      <field name="Next" type="struct rkNetClient *">Next client in the chain</field>
-      <field name="Prev" type="struct rkNetClient *">Previous client in the chain</field>
-      <field name="NetSocket" type="struct rkNetSocket *">Reference to the parent socket</field>
-      <field name="Sockets" type="struct rkClientSocket *">Pointer to a list of sockets opened with this client.</field>
+      <field name="Next" type="struct NetClient *">Next client in the chain</field>
+      <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
+      <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
+      <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
       <field name="UserData" type="APTR">Free for user data storage.</field>
       <field name="TotalSockets" type="LONG">Count of all created sockets</field>
     </struct>

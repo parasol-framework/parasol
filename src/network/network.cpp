@@ -176,7 +176,7 @@ static KeyStore *glAddresses = NULL;
 static LONG glResolveNameMsgID = 0;
 static LONG glResolveAddrMsgID = 0;
 
-static void client_server_incoming(SOCKET_HANDLE, rkNetSocket *);
+static void client_server_incoming(SOCKET_HANDLE, objNetSocket *);
 static BYTE check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
 static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);

@@ -94,13 +94,13 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
    // Check if this IP address already has a client structure from an earlier socket connection.
    // (One NetClient represents a single IP address; Multiple ClientSockets can connect from that IP address)
 
-   rkNetClient *client_ip;
+   struct NetClient *client_ip;
    for (client_ip=Self->Clients; client_ip; client_ip=client_ip->Next) {
       if (((LARGE *)&ip)[0] IS ((LARGE *)&client_ip->IP)[0]) break;
    }
 
    if (!client_ip) {
-      if (AllocMemory(sizeof(rkNetClient), MEM_DATA, &client_ip, NULL) != ERR_Okay) {
+      if (AllocMemory(sizeof(struct NetClient), MEM_DATA, &client_ip, NULL) != ERR_Okay) {
          CLOSESOCKET(clientfd);
          return;
       }
@@ -167,7 +167,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 ** Terminates the connection to the client and removes associated resources.
 */
 
-static void free_client(objNetSocket *Self, rkNetClient *Client)
+static void free_client(objNetSocket *Self, struct NetClient *Client)
 {
    parasol::Log log(__FUNCTION__);
    static THREADVAR BYTE recursive = 0;

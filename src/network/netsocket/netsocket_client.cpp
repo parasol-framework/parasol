@@ -68,7 +68,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 ** This function is called from win32_netresponse() and is managed outside of the normal message queue.
 */
 
-static void client_server_incoming(SOCKET_HANDLE FD, rkNetSocket *Data)
+static void client_server_incoming(SOCKET_HANDLE FD, objNetSocket *Data)
 {
    parasol::Log log(__FUNCTION__);
    objNetSocket *Self = Data;
@@ -170,7 +170,7 @@ restart:
 ** to the write queue.
 */
 
-static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
+static void client_server_outgoing(SOCKET_HANDLE Void, objNetSocket *Data)
 {
    parasol::Log log(__FUNCTION__);
    objNetSocket *Self = Data;

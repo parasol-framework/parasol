@@ -64,11 +64,11 @@ static LONG glMaxWriteLen = 16 * 1024;
 static void client_connect(HOSTHANDLE, APTR);
 #endif
 
-static void client_server_incoming(SOCKET_HANDLE, rkNetSocket *);
-static void client_server_outgoing(SOCKET_HANDLE, rkNetSocket *);
+static void client_server_incoming(SOCKET_HANDLE, objNetSocket *);
+static void client_server_outgoing(SOCKET_HANDLE, objNetSocket *);
 static void clientsocket_incoming(HOSTHANDLE, APTR);
 static void clientsocket_outgoing(HOSTHANDLE, APTR);
-static void free_client(objNetSocket *, rkNetClient *);
+static void free_client(objNetSocket *, struct NetClient *);
 static void free_client_socket(objNetSocket *, objClientSocket *, BYTE);
 static void server_client_connect(SOCKET_HANDLE, objNetSocket *);
 static void free_socket(objNetSocket *);
@@ -299,7 +299,7 @@ be issued for each socket connection.
 If only one socket connection needs to be disconnected, please use #DisconnectSocket().
 
 -INPUT-
-obj(NetClient) Client: The client to be disconnected.
+struct(*NetClient) Client: The client to be disconnected.
 
 -ERRORS-
 Okay

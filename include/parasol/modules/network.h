@@ -17,6 +17,11 @@
 #include <mutex>
 #endif
 
+typedef class plClientSocket objClientSocket;
+typedef class plProxy objProxy;
+typedef class plNetLookup objNetLookup;
+typedef class plNetSocket objNetSocket;
+
 
 #ifdef ENABLE_SSL
 #include "openssl/ssl.h"
@@ -92,6 +97,16 @@ struct NetMsgEnd {
    ULONG Magic;  // Standard key to recognise the message packet
 };
 
+struct NetClient {
+   char IP[8];                 // IP address in 4/8-byte format
+   struct NetClient * Next;    // Next client in the chain
+   struct NetClient * Prev;    // Previous client in the chain
+   objNetSocket * NetSocket;   // Reference to the parent socket
+   objClientSocket * Sockets;  // Pointer to a list of sockets opened with this client.
+   APTR UserData;              // Free for user data storage.
+   LONG TotalSockets;          // Count of all created sockets
+};
+
 // ClientSocket class definition
 
 #define VER_CLIENTSOCKET (1.000000)
@@ -120,17 +135,17 @@ INLINE ERROR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) {
 }
 
 
-typedef class rkClientSocket : public BaseClass {
+typedef class plClientSocket : public BaseClass {
    public:
-   LARGE    ConnectTime;            // System time for the creation of this socket
-   struct rkClientSocket * Prev;    // Previous socket in the chain
-   struct rkClientSocket * Next;    // Next socket in the chain
-   struct rkNetClient * Client;     // Parent client structure
-   APTR     UserData;               // Free for user data storage.
-   FUNCTION Outgoing;               // Callback for data being sent over the socket
-   FUNCTION Incoming;               // Callback for data being received from the socket
-   LONG     MsgLen;                 // Length of the current incoming message
-   LONG     ReadCalled:1;           // TRUE if the Read action has been called
+   LARGE    ConnectTime;         // System time for the creation of this socket
+   objClientSocket * Prev;       // Previous socket in the chain
+   objClientSocket * Next;       // Next socket in the chain
+   struct NetClient * Client;    // Parent client structure
+   APTR     UserData;            // Free for user data storage.
+   FUNCTION Outgoing;            // Callback for data being sent over the socket
+   FUNCTION Incoming;            // Callback for data being received from the socket
+   LONG     MsgLen;              // Length of the current incoming message
+   LONG     ReadCalled:1;        // TRUE if the Read action has been called
 
 #ifdef PRV_CLIENTSOCKET
    union {
@@ -174,16 +189,6 @@ typedef class rkClientSocket : public BaseClass {
    }
 } objClientSocket;
 
-struct rkNetClient {
-   char IP[8];                        // IP address in 4/8-byte format
-   struct rkNetClient * Next;         // Next client in the chain
-   struct rkNetClient * Prev;         // Previous client in the chain
-   struct rkNetSocket * NetSocket;    // Reference to the parent socket
-   struct rkClientSocket * Sockets;   // Pointer to a list of sockets opened with this client.
-   APTR UserData;                     // Free for user data storage.
-   LONG TotalSockets;                 // Count of all created sockets
-};
-
 // Proxy class definition
 
 #define VER_PROXY (1.000000)
@@ -206,7 +211,7 @@ INLINE ERROR prxFind(APTR Ob, LONG Port, LONG Enabled) {
 #define prxFindNext(obj) Action(MT_prxFindNext,(obj),0)
 
 
-typedef class rkProxy : public BaseClass {
+typedef class plProxy : public BaseClass {
    public:
    STRING NetworkFilter;    // The name of the network that the proxy is limited to.
    STRING GatewayFilter;    // The IP address of the gateway that the proxy is limited to.
@@ -272,7 +277,7 @@ INLINE ERROR nlBlockingResolveAddress(APTR Ob, CSTRING Address) {
 }
 
 
-typedef class rkNetLookup : public BaseClass {
+typedef class plNetLookup : public BaseClass {
    public:
    LARGE UserData;    // Optional user data storage
    LONG  Flags;       // Optional flags
@@ -285,10 +290,6 @@ typedef class rkNetLookup : public BaseClass {
   
 #endif
    // Action stubs
-
-   // ActionNotify
-
-   // FreeWarning
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
 } objNetLookup;
@@ -308,8 +309,8 @@ typedef class rkNetLookup : public BaseClass {
 
 struct nsConnect { CSTRING Address; LONG Port;  };
 struct nsGetLocalIPAddress { struct IPAddress * Address;  };
-struct nsDisconnectClient { struct rkNetClient * Client;  };
-struct nsDisconnectSocket { struct rkClientSocket * Socket;  };
+struct nsDisconnectClient { struct NetClient * Client;  };
+struct nsDisconnectSocket { objClientSocket * Socket;  };
 struct nsReadMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
 struct nsWriteMsg { APTR Message; LONG Length;  };
 
@@ -323,12 +324,12 @@ INLINE ERROR nsGetLocalIPAddress(APTR Ob, struct IPAddress * Address) {
    return(Action(MT_nsGetLocalIPAddress, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR nsDisconnectClient(APTR Ob, struct rkNetClient * Client) {
+INLINE ERROR nsDisconnectClient(APTR Ob, struct NetClient * Client) {
    struct nsDisconnectClient args = { Client };
    return(Action(MT_nsDisconnectClient, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR nsDisconnectSocket(APTR Ob, struct rkClientSocket * Socket) {
+INLINE ERROR nsDisconnectSocket(APTR Ob, objClientSocket * Socket) {
    struct nsDisconnectSocket args = { Socket };
    return(Action(MT_nsDisconnectSocket, (OBJECTPTR)Ob, &args));
 }
@@ -349,27 +350,27 @@ INLINE ERROR nsWriteMsg(APTR Ob, APTR Message, LONG Length) {
 }
 
 
-typedef class rkNetSocket : public BaseClass {
+typedef class plNetSocket : public BaseClass {
    public:
-   struct rkNetClient * Clients;    // For server sockets, lists all clients connected to the server.
-   APTR   UserData;                 // A user-defined pointer that can be useful in action notify events.
-   STRING Address;                  // An IP address or domain name to connect to.
-   LONG   State;                    // The current connection state of the netsocket object.
-   ERROR  Error;                    // Information about the last error that occurred during a NetSocket operation
-   LONG   Port;                     // The port number to use for initiating a connection.
-   LONG   Flags;                    // Optional flags.
-   LONG   TotalClients;             // Indicates the total number of clients currently connected to the socket (if in server mode).
-   LONG   Backlog;                  // The maximum number of connections that can be queued against the socket.
-   LONG   ClientLimit;              // The maximum number of clients that can be connected to a server socket.
-   LONG   MsgLimit;                 // Limits the size of incoming and outgoing messages.
+   struct NetClient * Clients;    // For server sockets, lists all clients connected to the server.
+   APTR   UserData;               // A user-defined pointer that can be useful in action notify events.
+   STRING Address;                // An IP address or domain name to connect to.
+   LONG   State;                  // The current connection state of the netsocket object.
+   ERROR  Error;                  // Information about the last error that occurred during a NetSocket operation
+   LONG   Port;                   // The port number to use for initiating a connection.
+   LONG   Flags;                  // Optional flags.
+   LONG   TotalClients;           // Indicates the total number of clients currently connected to the socket (if in server mode).
+   LONG   Backlog;                // The maximum number of connections that can be queued against the socket.
+   LONG   ClientLimit;            // The maximum number of clients that can be connected to a server socket.
+   LONG   MsgLimit;               // Limits the size of incoming and outgoing messages.
 
 #ifdef PRV_NETSOCKET
    SOCKET_HANDLE SocketHandle;   // Handle of the socket
    FUNCTION Outgoing;
    FUNCTION Incoming;
    FUNCTION Feedback;
-   struct rkNetLookup *NetLookup;
-   struct rkNetClient *LastClient;
+   objNetLookup *NetLookup;
+   struct NetClient *LastClient;
    struct NetQueue WriteQueue;
    struct NetQueue ReadQueue;
    UBYTE  ReadCalled:1;          // The Read() action sets this to TRUE whenever called.
@@ -385,11 +386,11 @@ typedef class rkNetSocket : public BaseClass {
          WORD WinRecursion; // For win32_netresponse()
       #endif
       union {
-         void (*ReadSocket)(SOCKET_HANDLE, struct rkNetSocket *);
+         void (*ReadSocket)(SOCKET_HANDLE, objNetSocket *);
          void (*ReadClientSocket)(SOCKET_HANDLE, objClientSocket *);
       };
       union {
-         void (*WriteSocket)(SOCKET_HANDLE, struct rkNetSocket *);
+         void (*WriteSocket)(SOCKET_HANDLE, objNetSocket *);
          void (*WriteClientSocket)(SOCKET_HANDLE, objClientSocket *);
       };
    #endif
@@ -402,15 +403,11 @@ typedef class rkNetSocket : public BaseClass {
 #endif
    // Action stubs
 
-   // ActionNotify
-
    inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   // FreeWarning
-
    inline ERROR init() { return Action(AC_Init, this, NULL); }
    inline ERROR read(APTR Buffer, LONG Bytes, LONG *Result) {
       ERROR error;
@@ -490,7 +487,7 @@ struct NetworkBase {
    ULONG (*_HostToLong)(ULONG);
    ULONG (*_ShortToHost)(ULONG);
    ULONG (*_LongToHost)(ULONG);
-   ERROR (*_SetSSL)(struct rkNetSocket *, ...);
+   ERROR (*_SetSSL)(objNetSocket *, ...);
 };
 
 #ifndef PRV_NETWORK_MODULE
