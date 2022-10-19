@@ -154,7 +154,7 @@ static ERROR parse_file(objConfig *Self, CSTRING Path)
 {
    ERROR error = ERR_Okay;
    while ((*Path) and (!error)) {
-      rkFile *file;
+      objFile *file;
       if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
             FID_Path|TSTR,   Path,
             FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,

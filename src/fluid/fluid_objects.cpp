@@ -569,7 +569,7 @@ static int object_class(lua_State *Lua)
       return 0;
    }
 
-   rkMetaClass *cl = query->Class;
+   objMetaClass *cl = query->Class;
    auto def = (struct object *)lua_newuserdata(Lua, sizeof(struct object)); // +1 stack
    ClearMemory(def, sizeof(struct object));
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack

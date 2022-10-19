@@ -960,7 +960,7 @@ static ERROR BITMAP_GetColour(objBitmap *Self, struct bmpGetColour *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Self->BitsPerPixel > 8) {
-      Args->Colour = PackPixelA(Self, Args->Red, Args->Green, Args->Blue, Args->Alpha);
+      Args->Colour = Self->packPixel(Args->Red, Args->Green, Args->Blue, Args->Alpha);
    }
    else {
       struct RGB8 rgb;
@@ -1865,7 +1865,7 @@ setfields:
    CalculatePixelRoutines(Self);
 
    if (Self->Flags & BMF_CLEAR) {
-      gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, bmpGetColourRGB(Self, &Self->BkgdRGB), BAF_FILL);
+      gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->getColour(Self->BkgdRGB), BAF_FILL);
    }
 
 #ifdef __xwindows__

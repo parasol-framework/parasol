@@ -850,7 +850,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>FindClass</name>
     <category>Objects</category>
     <comment>Returns all class objects for a given class ID.</comment>
-    <prototype>struct rkMetaClass * FindClass(CLASSID ClassID)</prototype>
+    <prototype>objMetaClass * FindClass(CLASSID ClassID)</prototype>
     <input>
       <param type="CLASSID" name="ClassID">A class ID such as one retrieved from <function module="Core">ResolveClassName</function>.</param>
     </input>
@@ -858,7 +858,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
 <p>This function is used to find a specific class by ID.  If a matching class is not already loaded, the class database is checked to determine if the class is installed on the system.  If a match is discovered, the corresponding module will be loaded into memory and the class will be returned.  In the event of failure or if there is no matching class registered, NULL is returned.</p>
 <p>If the ID of the class is not known, please call <function module="Core">ResolveClassName</function> and then pass the resulting ID to this function.</p>
     </description>
-    <result type="struct rkMetaClass *">Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.</result>
+    <result type="objMetaClass *">Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.</result>
   </function>
 
   <function>

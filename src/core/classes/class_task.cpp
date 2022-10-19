@@ -508,7 +508,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
             const FunctionField *fields;
             if (action->ActionID > 0) fields = ActionTable[action->ActionID].Args;
             else {
-               rkMetaClass *objclass = (rkMetaClass *)obj->Class;
+               auto objclass = (objMetaClass *)obj->Class;
                if (objclass->Base) objclass = objclass->Base;
 
                if (objclass->Methods) {

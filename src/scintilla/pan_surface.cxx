@@ -112,7 +112,8 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
 {
    if (bitmap) return;
 
-   FMSG("~panInitPixMap()","Size: %dx%d", width, height);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("Size: %dx%d", width, height);
 
    //DebugOff();
    ERROR error = CreateObject(ID_BITMAP, NULL, &bitmap,
@@ -122,10 +123,8 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
       TAGEND);
    //DebugOn();
 
-   LOGRETURN();
-
    if (error != ERR_Okay) {
-      LogF("@panInitPixMap","Failed to create offscreen surface object.");
+      log.warning("Failed to create offscreen surface object.");
       return;
    }
 
@@ -137,8 +136,6 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
    cliprect.top    = 0;
    cliprect.right  = bitmap->Width;
    cliprect.bottom = bitmap->Height;
-
-   LOGRETURN();
 }
 
 /****************************************************************************/
@@ -146,7 +143,7 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
 INLINE ULONG to_pan_col(struct rkBitmap *bitmap, const Scintilla::ColourAllocated& colour)
 {
    ULONG col32 = colour.AsLong();
-   return PackPixel(bitmap, SCIRED(col32), SCIGREEN(col32), SCIBLUE(col32));
+   return bitmap->packPixel(SCIRED(col32), SCIGREEN(col32), SCIBLUE(col32), 255);
 }
 
 /****************************************************************************/

@@ -136,36 +136,144 @@ struct DocTrigger {
 
 #define VER_DOCUMENT (1.000000)
 
+// Document methods
+
+#define MT_docFeedParser -1
+#define MT_docSelectLink -2
+#define MT_docApplyFontStyle -3
+#define MT_docFindIndex -4
+#define MT_docInsertXML -5
+#define MT_docRemoveContent -6
+#define MT_docInsertText -7
+#define MT_docCallFunction -8
+#define MT_docAddListener -9
+#define MT_docRemoveListener -10
+#define MT_docShowIndex -11
+#define MT_docHideIndex -12
+#define MT_docEdit -13
+#define MT_docReadContent -14
+
+struct docFeedParser { CSTRING String;  };
+struct docSelectLink { LONG Index; CSTRING Name;  };
+struct docApplyFontStyle { struct DocStyleV1 * Style; struct rkFont * Font;  };
+struct docFindIndex { CSTRING Name; LONG Start; LONG End;  };
+struct docInsertXML { CSTRING XML; LONG Index;  };
+struct docRemoveContent { LONG Start; LONG End;  };
+struct docInsertText { CSTRING Text; LONG Index; LONG Preformat;  };
+struct docCallFunction { CSTRING Function; struct ScriptArg * Args; LONG TotalArgs;  };
+struct docAddListener { LONG Trigger; FUNCTION * Function;  };
+struct docRemoveListener { LONG Trigger; FUNCTION * Function;  };
+struct docShowIndex { CSTRING Name;  };
+struct docHideIndex { CSTRING Name;  };
+struct docEdit { CSTRING Name; LONG Flags;  };
+struct docReadContent { LONG Format; LONG Start; LONG End; STRING Result;  };
+
+INLINE ERROR docFeedParser(APTR Ob, CSTRING String) {
+   struct docFeedParser args = { String };
+   return(Action(MT_docFeedParser, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docSelectLink(APTR Ob, LONG Index, CSTRING Name) {
+   struct docSelectLink args = { Index, Name };
+   return(Action(MT_docSelectLink, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docApplyFontStyle(APTR Ob, struct DocStyleV1 * Style, struct rkFont * Font) {
+   struct docApplyFontStyle args = { Style, Font };
+   return(Action(MT_docApplyFontStyle, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docFindIndex(APTR Ob, CSTRING Name, LONG * Start, LONG * End) {
+   struct docFindIndex args = { Name, 0, 0 };
+   ERROR error = Action(MT_docFindIndex, (OBJECTPTR)Ob, &args);
+   if (Start) *Start = args.Start;
+   if (End) *End = args.End;
+   return(error);
+}
+
+INLINE ERROR docInsertXML(APTR Ob, CSTRING XML, LONG Index) {
+   struct docInsertXML args = { XML, Index };
+   return(Action(MT_docInsertXML, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docRemoveContent(APTR Ob, LONG Start, LONG End) {
+   struct docRemoveContent args = { Start, End };
+   return(Action(MT_docRemoveContent, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docInsertText(APTR Ob, CSTRING Text, LONG Index, LONG Preformat) {
+   struct docInsertText args = { Text, Index, Preformat };
+   return(Action(MT_docInsertText, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docCallFunction(APTR Ob, CSTRING Function, struct ScriptArg * Args, LONG TotalArgs) {
+   struct docCallFunction args = { Function, Args, TotalArgs };
+   return(Action(MT_docCallFunction, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docAddListener(APTR Ob, LONG Trigger, FUNCTION * Function) {
+   struct docAddListener args = { Trigger, Function };
+   return(Action(MT_docAddListener, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docRemoveListener(APTR Ob, LONG Trigger, FUNCTION * Function) {
+   struct docRemoveListener args = { Trigger, Function };
+   return(Action(MT_docRemoveListener, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docShowIndex(APTR Ob, CSTRING Name) {
+   struct docShowIndex args = { Name };
+   return(Action(MT_docShowIndex, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docHideIndex(APTR Ob, CSTRING Name) {
+   struct docHideIndex args = { Name };
+   return(Action(MT_docHideIndex, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docEdit(APTR Ob, CSTRING Name, LONG Flags) {
+   struct docEdit args = { Name, Flags };
+   return(Action(MT_docEdit, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR docReadContent(APTR Ob, LONG Format, LONG Start, LONG End, STRING * Result) {
+   struct docReadContent args = { Format, Start, End, 0 };
+   ERROR error = Action(MT_docReadContent, (OBJECTPTR)Ob, &args);
+   if (Result) *Result = args.Result;
+   return(error);
+}
+
+
 typedef class rkDocument : public BaseClass {
    public:
-   LARGE    EventMask;        // Event mask for selectively receiving events from the Document object.
-   STRING   Description;      // A description assigned by the author of the document
-   STRING   FontFace;         // The user's default font face
-   STRING   Title;            // The title of the document
-   STRING   Author;           // The author of the document
-   STRING   Copyright;        // Copyright information for the document
-   STRING   Keywords;         // Keywords for the document
-   OBJECTID TabFocusID;       // If the tab key is pressed, focus can be changed to this object
-   OBJECTID SurfaceID;        // The surface that the document will be rendered to
-   OBJECTID FocusID;
-   LONG     Flags;            // Optional flags
-   LONG     LeftMargin;       // Size of the left margin
-   LONG     TopMargin;        // Size of the top margin
-   LONG     RightMargin;      // Size of the right margin
-   LONG     BottomMargin;     // Size of the bottom margin
-   LONG     FontSize;         // The user's default font size
-   LONG     PageHeight;       // Height of the document page
-   LONG     BorderEdge;
-   LONG     LineHeight;       // Default line height (assumed to be an average) for all text the loaded page
-   ERROR    Error;            // Processing error code
-   struct RGB8 FontColour;    // Default font colour
-   struct RGB8 Highlight;     // Default colour for document highlighting
-   struct RGB8 Background;    // Colour for document background
-   struct RGB8 CursorColour;  // The colour of the cursor
-   struct RGB8 LinkColour;    // Colour to use for hyperlinks
-   struct RGB8 VLinkColour;   // Colour to use for visited hyperlinks
-   struct RGB8 SelectColour;  // Default colour to use when links are selected (e.g. when the user tabs to a link)
-   struct RGB8 Border;
+   LARGE    EventMask;        // Specifies events that need to be reported from the Document object.
+   STRING   Description;      // A description of the document, provided by its author.
+   STRING   FontFace;         // Defines the default font face.
+   STRING   Title;            // The title of the document.
+   STRING   Author;           // The author(s) of the document.
+   STRING   Copyright;        // Copyright information for the document.
+   STRING   Keywords;         // Includes keywords declared by the source document.
+   OBJECTID TabFocusID;       // Allows the user to hit the tab key to focus on other GUI objects.
+   OBJECTID SurfaceID;        // Defines the surface area for document graphics.
+   OBJECTID FocusID;          // Refers to the object that will be monitored for user focusing.
+   LONG     Flags;            // Optional flags that affect object behaviour.
+   LONG     LeftMargin;       // Defines the amount of whitespace to leave at the left of the page.
+   LONG     TopMargin;        // Defines the amount of white-space to leave at the top of the document page.
+   LONG     RightMargin;      // Defines the amount of white-space to leave at the right side of the document page.
+   LONG     BottomMargin;     // Defines the amount of whitespace to leave at the bottom of the document page.
+   LONG     FontSize;         // The point-size of the default font.
+   LONG     PageHeight;       // Measures the page height of the document, in pixels.
+   LONG     BorderEdge;       // Border edge flags.
+   LONG     LineHeight;       // Default line height (taken as an average) for all text on the page.
+   ERROR    Error;            // The most recently generated error code.
+   struct RGB8 FontColour;    // Default font colour.
+   struct RGB8 Highlight;     // Defines the colour used to highlight document.
+   struct RGB8 Background;    // Optional background colour for the document.
+   struct RGB8 CursorColour;  // The colour used for the document cursor.
+   struct RGB8 LinkColour;    // Default font colour for hyperlinks.
+   struct RGB8 VLinkColour;   // Default font colour for visited hyperlinks.
+   struct RGB8 SelectColour;  // Default font colour to use when hyperlinks are selected.
+   struct RGB8 Border;        // Border colour around the document's surface.
 
 #ifdef PRV_DOCUMENT
    FUNCTION EventCallback;
@@ -295,115 +403,51 @@ typedef class rkDocument : public BaseClass {
    UBYTE  BkgdGfx;
   
 #endif
+   // Action stubs
+
+   // ActionNotify
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
+   inline ERROR clipboard(LONG Mode) {
+      struct acClipboard args = { Mode };
+      return Action(AC_Clipboard, this, &args);
+   }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
+   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
+   inline ERROR focus() { return Action(AC_Focus, this, NULL); }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   // NewOwner
+
+   inline ERROR refresh() { return Action(AC_Refresh, this, NULL); }
+   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveToObject args = { { DestID }, { ClassID } };
+      return Action(AC_SaveToObject, this, &args);
+   }
+   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+      struct acScrollToPoint args = { X, Y, Z, Flags };
+      return Action(AC_ScrollToPoint, this, &args);
+   }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+      struct acSetVar args = { FieldName, Value };
+      return Action(AC_SetVar, this, &args);
+   }
 } objDocument;
-
-// Document methods
-
-#define MT_docFeedParser -1
-#define MT_docSelectLink -2
-#define MT_docApplyFontStyle -3
-#define MT_docFindIndex -4
-#define MT_docInsertXML -5
-#define MT_docRemoveContent -6
-#define MT_docInsertText -7
-#define MT_docCallFunction -8
-#define MT_docAddListener -9
-#define MT_docRemoveListener -10
-#define MT_docShowIndex -11
-#define MT_docHideIndex -12
-#define MT_docEdit -13
-#define MT_docReadContent -14
-
-struct docFeedParser { CSTRING String;  };
-struct docSelectLink { LONG Index; CSTRING Name;  };
-struct docApplyFontStyle { struct DocStyleV1 * Style; struct rkFont * Font;  };
-struct docFindIndex { CSTRING Name; LONG Start; LONG End;  };
-struct docInsertXML { CSTRING XML; LONG Index;  };
-struct docRemoveContent { LONG Start; LONG End;  };
-struct docInsertText { CSTRING Text; LONG Index; LONG Preformat;  };
-struct docCallFunction { CSTRING Function; struct ScriptArg * Args; LONG TotalArgs;  };
-struct docAddListener { LONG Trigger; FUNCTION * Function;  };
-struct docRemoveListener { LONG Trigger; FUNCTION * Function;  };
-struct docShowIndex { CSTRING Name;  };
-struct docHideIndex { CSTRING Name;  };
-struct docEdit { CSTRING Name; LONG Flags;  };
-struct docReadContent { LONG Format; LONG Start; LONG End; STRING Result;  };
-
-INLINE ERROR docFeedParser(APTR Ob, CSTRING String) {
-   struct docFeedParser args = { String };
-   return(Action(MT_docFeedParser, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docSelectLink(APTR Ob, LONG Index, CSTRING Name) {
-   struct docSelectLink args = { Index, Name };
-   return(Action(MT_docSelectLink, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docApplyFontStyle(APTR Ob, struct DocStyleV1 * Style, struct rkFont * Font) {
-   struct docApplyFontStyle args = { Style, Font };
-   return(Action(MT_docApplyFontStyle, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docFindIndex(APTR Ob, CSTRING Name, LONG * Start, LONG * End) {
-   struct docFindIndex args = { Name, 0, 0 };
-   ERROR error = Action(MT_docFindIndex, (OBJECTPTR)Ob, &args);
-   if (Start) *Start = args.Start;
-   if (End) *End = args.End;
-   return(error);
-}
-
-INLINE ERROR docInsertXML(APTR Ob, CSTRING XML, LONG Index) {
-   struct docInsertXML args = { XML, Index };
-   return(Action(MT_docInsertXML, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docRemoveContent(APTR Ob, LONG Start, LONG End) {
-   struct docRemoveContent args = { Start, End };
-   return(Action(MT_docRemoveContent, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docInsertText(APTR Ob, CSTRING Text, LONG Index, LONG Preformat) {
-   struct docInsertText args = { Text, Index, Preformat };
-   return(Action(MT_docInsertText, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docCallFunction(APTR Ob, CSTRING Function, struct ScriptArg * Args, LONG TotalArgs) {
-   struct docCallFunction args = { Function, Args, TotalArgs };
-   return(Action(MT_docCallFunction, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docAddListener(APTR Ob, LONG Trigger, FUNCTION * Function) {
-   struct docAddListener args = { Trigger, Function };
-   return(Action(MT_docAddListener, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docRemoveListener(APTR Ob, LONG Trigger, FUNCTION * Function) {
-   struct docRemoveListener args = { Trigger, Function };
-   return(Action(MT_docRemoveListener, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docShowIndex(APTR Ob, CSTRING Name) {
-   struct docShowIndex args = { Name };
-   return(Action(MT_docShowIndex, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docHideIndex(APTR Ob, CSTRING Name) {
-   struct docHideIndex args = { Name };
-   return(Action(MT_docHideIndex, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docEdit(APTR Ob, CSTRING Name, LONG Flags) {
-   struct docEdit args = { Name, Flags };
-   return(Action(MT_docEdit, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR docReadContent(APTR Ob, LONG Format, LONG Start, LONG End, STRING * Result) {
-   struct docReadContent args = { Format, Start, End, 0 };
-   ERROR error = Action(MT_docReadContent, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
 
 struct DocumentBase {
    LONG (*_CharLength)(struct rkDocument *, LONG);

@@ -71,6 +71,11 @@ extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceF
 extern struct DisplayBase *DisplayBase;
 extern struct FontBase *FontBase;
 
+typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
+typedef class plVectorClip objVectorClip;
+typedef class plVectorTransition objVectorTransition;
+typedef class plVectorText objVectorText;
+
 //****************************************************************************
 
 class InputBoundary {
@@ -112,52 +117,6 @@ public:
 
    DashedStroke(agg::path_storage &pPath, LONG Elements=2) : path(pPath), stroke(path), values(Elements) { }
 };
-
-#define SHAPE_PRIVATE \
-   DOUBLE FinalX, FinalY; \
-   DOUBLE BX1, BY1, BX2, BY2; \
-   DOUBLE FillGradientAlpha, StrokeGradientAlpha; \
-   DOUBLE StrokeWidth; \
-   agg::path_storage BasePath; \
-   agg::trans_affine Transform; \
-   struct RGB8 rgbStroke, rgbFill; \
-   objVectorFilter *Filter; \
-   struct rkVectorViewport *ParentView; \
-   CSTRING FilterString, StrokeString, FillString; \
-   STRING ID; \
-   void   (*GeneratePath)(struct rkVector *); \
-   agg::rasterizer_scanline_aa<> *StrokeRaster; \
-   agg::rasterizer_scanline_aa<> *FillRaster; \
-   struct rkVectorClip     *ClipMask; \
-   struct rkVectorGradient *StrokeGradient, *FillGradient; \
-   struct rkVectorImage    *FillImage, *StrokeImage; \
-   struct rkVectorPattern  *FillPattern, *StrokePattern; \
-   struct rkVectorTransition *Transition; \
-   struct rkVector *Morph; \
-   DashedStroke *DashArray; \
-   GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable; \
-   struct FRGB StrokeColour, FillColour; \
-   std::vector<FeedbackSubscription> *FeedbackSubscriptions; \
-   std::vector<InputSubscription> *InputSubscriptions; \
-   std::vector<KeyboardSubscription> *KeyboardSubscriptions; \
-   LONG   InputMask; \
-   LONG   NumericID; \
-   LONG   PathLength; \
-   UBYTE  MorphFlags; \
-   UBYTE  FillRule; \
-   UBYTE  ClipRule; \
-   UBYTE  Dirty; \
-   UBYTE  TabOrder; \
-   UBYTE  EnableBkgd:1; \
-   UBYTE  DisableFillColour:1; \
-   UBYTE  ButtonLock:1; \
-   UBYTE  RelativeStrokeWidth:1; \
-   UBYTE  DisableHitTesting:1; \
-   UBYTE  ResizeSubscription:1; \
-   agg::line_join_e  LineJoin; \
-   agg::line_cap_e   LineCap; \
-   agg::inner_join_e InnerJoin; \
-   DOUBLE fixed_stroke_width();
 
 class filter_state {
 public:
@@ -221,45 +180,13 @@ public:
 
 #define TB_NOISE 1
 
-typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
-extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
-
-extern void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
-extern ERROR vecApplyPath(class SimpleVector *, struct rkVectorPath *);
-extern void  vecClosePath(class SimpleVector *);
-extern void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
-extern void  vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
-extern ERROR vecDrawPath(struct rkBitmap *, class SimpleVector *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern void  vecFreePath(APTR);
-extern ERROR vecGenerateEllipse(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR *);
-extern ERROR vecGenerateRectangle(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR *);
-extern ERROR vecGeneratePath(CSTRING, APTR *);
-extern LONG  vecGetVertex(class SimpleVector *, DOUBLE *, DOUBLE *);
-extern void  vecLineTo(class SimpleVector *, DOUBLE, DOUBLE);
-extern void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
-extern ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-extern ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
-extern ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
-extern void  vecReadPainter(OBJECTPTR, CSTRING, struct FRGB *, struct rkVectorGradient **, struct rkVectorImage **, struct rkVectorPattern **);
-extern ERROR vecResetMatrix(struct VectorMatrix *);
-extern void  vecRewindPath(class SimpleVector *);
-extern ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
-extern ERROR vecScale(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern ERROR vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern void  vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
-extern void  vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-extern ERROR vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
-
 #include <parasol/modules/vector.h>
 
 //****************************************************************************
 // NB: Considered a shape (can be transformed).
 
-typedef class rkVectorViewport : public BaseClass {
+typedef class plVectorViewport : public objVector {
    public:
-   SHAPE_PUBLIC
-   SHAPE_PRIVATE
    FUNCTION vpDragCallback;
    DOUBLE vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
    DOUBLE vpTargetX, vpTargetY, vpTargetXO, vpTargetYO, vpTargetWidth, vpTargetHeight; // Target dimensions
@@ -267,7 +194,7 @@ typedef class rkVectorViewport : public BaseClass {
    DOUBLE vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
    DOUBLE vpBX1, vpBY1, vpBX2, vpBY2; // Bounding box coordinates relative to (0,0), used for clipping
    DOUBLE vpAlignX, vpAlignY;
-   struct rkVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.  This is in addition to the Vector ClipMask, which can be user-defined.
+   objVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.  This is in addition to the Vector ClipMask, which can be user-defined.
    LONG  vpDimensions;
    LONG  vpAspectRatio;
    UBYTE vpDragging:1;
@@ -276,11 +203,8 @@ typedef class rkVectorViewport : public BaseClass {
 
 //****************************************************************************
 
-typedef class rkVectorPoly : public BaseClass {
+typedef class plVectorPoly : public objVector {
    public:
-   SHAPE_PUBLIC
-   SHAPE_PRIVATE
-
    struct VectorPoint *Points;
    LONG TotalPoints;
    bool Closed:1;      // Polygons are closed (TRUE) and Polylines are open (FALSE)
@@ -288,21 +212,16 @@ typedef class rkVectorPoly : public BaseClass {
 
 //****************************************************************************
 
-typedef class rkVectorPath : public BaseClass {
+typedef class plVectorPath : public objVector {
    public:
-   SHAPE_PUBLIC
-   SHAPE_PRIVATE
-
    std::vector<PathCommand> Commands;
    agg::path_storage *CustomPath;
 } objVectorPath;
 
 //****************************************************************************
 
-typedef class rkVectorRectangle : public BaseClass {
+typedef class plVectorRectangle : public objVector {
    public:
-   SHAPE_PUBLIC
-   SHAPE_PRIVATE
    DOUBLE rX, rY;
    DOUBLE rWidth, rHeight;
    DOUBLE rRoundX, rRoundY;
@@ -319,7 +238,7 @@ struct TransitionStop { // Passed to the Stops field.
    agg::trans_affine *AGGTransform;
 };
 
-typedef class rkVectorTransition : public BaseClass {
+typedef class plVectorTransition : public BaseClass {
    public:
    LONG TotalStops; // Total number of stops registered.
 
@@ -333,18 +252,16 @@ typedef class rkVectorTransition : public BaseClass {
 
 class GradientColours {
    public:
-      GradientColours(struct rkVectorGradient *, DOUBLE);
+      GradientColours(objVectorGradient *, DOUBLE);
       GRADIENT_TABLE table;
 };
 
-typedef class rkVectorClip : public BaseClass {
+typedef class plVectorClip : public objVector {
    public:
-   SHAPE_PUBLIC
-   SHAPE_PRIVATE
    UBYTE *ClipData;
    agg::path_storage *ClipPath; // Internally generated path
    agg::rendering_buffer ClipRenderer;
-   struct rkVector *TargetVector;
+   objVector *TargetVector;
    LONG ClipUnits;
    LONG ClipSize;
 } objVectorClip;
@@ -745,3 +662,33 @@ void configure_stroke(objVector &Vector, T &Stroke)
    if (Vector.MiterLimit > 0) Stroke.miter_limit(Vector.MiterLimit);
    if (Vector.InnerMiterLimit > 0) Stroke.inner_miter_limit(Vector.InnerMiterLimit);
 }
+
+extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
+
+extern void get_text_xy(objVectorText *);
+extern void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
+extern ERROR vecApplyPath(class SimpleVector *, objVectorPath *);
+extern void  vecClosePath(class SimpleVector *);
+extern void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+extern void  vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
+extern ERROR vecDrawPath(objBitmap *, class SimpleVector *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+extern void  vecFreePath(APTR);
+extern ERROR vecGenerateEllipse(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR *);
+extern ERROR vecGenerateRectangle(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR *);
+extern ERROR vecGeneratePath(CSTRING, APTR *);
+extern LONG  vecGetVertex(class SimpleVector *, DOUBLE *, DOUBLE *);
+extern void  vecLineTo(class SimpleVector *, DOUBLE, DOUBLE);
+extern void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
+extern ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+extern ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
+extern ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
+extern void  vecReadPainter(OBJECTPTR, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
+extern ERROR vecResetMatrix(struct VectorMatrix *);
+extern void  vecRewindPath(class SimpleVector *);
+extern ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
+extern ERROR vecScale(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern ERROR vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern void  vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
+extern void  vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+extern ERROR vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);

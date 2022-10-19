@@ -1221,7 +1221,7 @@ static ERROR draw_vector_font(objFont *Self)
    LONG prevglyph = 0;
    LONG startx    = dxcoord;
    LONG charclip  = Self->WrapEdge - (Self->prvChar['.'].Advance * 3);
-   ULONG ucolour = bmpGetColourRGB(Bitmap, &Self->Underline);
+   ULONG ucolour  = Bitmap->getColour(Self->Underline);
 
    while (*str) {
       if (*str IS '\n') { // Reset the font to a new line
@@ -1776,12 +1776,12 @@ static ERROR draw_bitmap_font(objFont *Self)
       else dxcoord = Self->X + Self->AlignWidth - linewidth;
    }
 
-   ULONG colour  = bmpGetColourRGB(bitmap, &Self->Colour);
-   ULONG ucolour = bmpGetColourRGB(bitmap, &Self->Underline);
+   ULONG colour  = bitmap->getColour(Self->Colour);
+   ULONG ucolour = bitmap->getColour(Self->Underline);
 
    if (Self->Outline.Alpha > 0) {
       Self->BmpCache->get_outline();
-      ocolour = bmpGetColourRGB(bitmap, &Self->Outline);
+      ocolour = bitmap->getColour(Self->Outline);
    }
    else ocolour = 0;
 

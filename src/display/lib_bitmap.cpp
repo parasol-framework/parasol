@@ -117,9 +117,9 @@ static ERROR dither(objBitmap *Bitmap, objBitmap *Dest, ColourFormat *Format, LO
          data = srcdata+(SrcX<<1);
          for (x=0; x < Width; x++, data+=2, buffer++) {
             colour = ((UWORD *)data)[0];
-            buffer->Red   = UnpackRed(Bitmap, colour)<<6;
-            buffer->Green = UnpackGreen(Bitmap, colour)<<6;
-            buffer->Blue  = UnpackBlue(Bitmap, colour)<<6;
+            buffer->Red   = Bitmap->unpackRed(colour)<<6;
+            buffer->Green = Bitmap->unpackGreen(colour)<<6;
+            buffer->Blue  = Bitmap->unpackBlue(colour)<<6;
          }
       }
       else {
@@ -155,7 +155,7 @@ static ERROR dither(objBitmap *Bitmap, objBitmap *Dest, ColourFormat *Format, LO
             brgb.Red   = (buffer->Red>>6) & rmask;
             brgb.Green = (buffer->Green>>6) & gmask;
             brgb.Blue  = (buffer->Blue>>6) & bmask;
-            ((ULONG *)data)[0] = PackPixelWBA(Dest, brgb.Red, brgb.Green, brgb.Blue, buffer->Alpha);
+            ((ULONG *)data)[0] = Dest->packPixelWB(brgb.Red, brgb.Green, brgb.Blue, buffer->Alpha);
             DITHER_ERROR(Red);
             DITHER_ERROR(Green);
             DITHER_ERROR(Blue);
@@ -536,9 +536,9 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                for (i=0; i < Width; i++) {
                   colour = Bitmap->ReadUCPixel(Bitmap, X + i, Y);
                   if (colour != (ULONG)Bitmap->TransIndex) {
-                     wincolour = UnpackRed(Bitmap, colour);
-                     wincolour |= UnpackGreen(Bitmap, colour)<<8;
-                     wincolour |= UnpackBlue(Bitmap, colour)<<16;
+                     wincolour = Bitmap->unpackRed(colour);
+                     wincolour |= Bitmap->unpackGreen(colour)<<8;
+                     wincolour |= Bitmap->unpackBlue(colour)<<16;
                      SetPixelV(dest->win.Drawable, DestX + i, DestY, wincolour);
                   }
                }
@@ -806,7 +806,7 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                      alpha = (glAlphaLookup + (alpha<<8))[Bitmap->Opacity]<<8; // Multiply the source pixel by overall translucency level
 
                      if (alpha >= BLEND_MAX_THRESHOLD<<8) {
-                        ddata[i] = PackPixel(dest, (UBYTE)(colour >> Bitmap->prvColourFormat.RedPos),
+                        ddata[i] = dest->packPixel((UBYTE)(colour >> Bitmap->prvColourFormat.RedPos),
                                                    (UBYTE)(colour >> Bitmap->prvColourFormat.GreenPos),
                                                    (UBYTE)(colour >> Bitmap->prvColourFormat.BluePos));
                      }
@@ -816,9 +816,9 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                         blue  = colour >> Bitmap->prvColourFormat.BluePos;
                         srctable  = glAlphaLookup + (alpha);
                         desttable = dest_lookup - (alpha);
-                        ddata[i] = PackPixel(dest, (UBYTE)(srctable[red]   + desttable[UnpackRed(dest, ddata[i])]),
-                                                   (UBYTE)(srctable[green] + desttable[UnpackGreen(dest, ddata[i])]),
-                                                   (UBYTE)(srctable[blue]  + desttable[UnpackBlue(dest, ddata[i])]));
+                        ddata[i] = dest->packPixel((UBYTE)(srctable[red]   + desttable[dest->unpackRed(ddata[i])]),
+                                                   (UBYTE)(srctable[green] + desttable[dest->unpackGreen(ddata[i])]),
+                                                   (UBYTE)(srctable[blue]  + desttable[dest->unpackBlue(ddata[i])]));
                      }
                   }
                   sdata = (ULONG *)(((UBYTE *)sdata) + Bitmap->LineWidth);
@@ -882,9 +882,9 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                      if (colour != (ULONG)Bitmap->TransIndex) {
                         dest->ReadUCRPixel(dest, DestX + i, DestY, &pixel);
 
-                        pixel.Red   = srctable[UnpackRed(Bitmap, colour)]   + desttable[pixel.Red];
-                        pixel.Green = srctable[UnpackGreen(Bitmap, colour)] + desttable[pixel.Green];
-                        pixel.Blue  = srctable[UnpackBlue(Bitmap, colour)]  + desttable[pixel.Blue];
+                        pixel.Red   = srctable[Bitmap->unpackRed(colour)]   + desttable[pixel.Red];
+                        pixel.Green = srctable[Bitmap->unpackGreen(colour)] + desttable[pixel.Green];
+                        pixel.Blue  = srctable[Bitmap->unpackBlue(colour)]  + desttable[pixel.Blue];
 
                         dest->DrawUCRPixel(dest, DestX + i, DestY, &pixel);
                      }
@@ -994,9 +994,9 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
                   ddata = (UWORD *)(dest->Data + (DestY * dest->LineWidth) + (DestX<<1));
                   while (Height > 0) {
                      for (i=0; i < Width; i++) {
-                        ddata[i] = PackPixel(dest, srctable[UnpackRed(Bitmap, sdata[i])]   + desttable[UnpackRed(dest, ddata[i])],
-                                                   srctable[UnpackGreen(Bitmap, sdata[i])] + desttable[UnpackGreen(dest, ddata[i])],
-                                                   srctable[UnpackBlue(Bitmap, sdata[i])]  + desttable[UnpackBlue(dest, ddata[i])]);
+                        ddata[i] = dest->packPixel(srctable[Bitmap->unpackRed(sdata[i])]   + desttable[dest->unpackRed(ddata[i])],
+                                                   srctable[Bitmap->unpackGreen(sdata[i])] + desttable[dest->unpackGreen(ddata[i])],
+                                                   srctable[Bitmap->unpackBlue(sdata[i])]  + desttable[dest->unpackBlue(ddata[i])]);
                      }
                      ddata = (UWORD *)(((BYTE *)ddata) + dest->LineWidth);
                      sdata = (UWORD *)(((BYTE *)sdata) + Bitmap->LineWidth);
@@ -1322,10 +1322,9 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap,
 
                      srctable  = glAlphaLookup + (alpha<<8);
                      desttable = glAlphaLookup + ((255-alpha)<<8);
-                     ddata[i] = PackPixelWBA(Bitmap, srctable[red] + desttable[destred],
+                     ddata[i] = Bitmap->packPixelWB(srctable[red] + desttable[destred],
                                                   srctable[green] + desttable[destgreen],
-                                                  srctable[blue] + desttable[destblue],
-                                                  255);
+                                                  srctable[blue] + desttable[destblue]);
                   }
                }
                sdata = (ULONG *)(((UBYTE *)sdata) + Surface->LineWidth);
@@ -1471,9 +1470,9 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap,
                ddata = (UWORD *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<1));
                while (Height > 0) {
                   for (i=0; i < Width; i++) {
-                     ddata[i] = PackPixel(Bitmap, srctable[UnpackSRed(Surface, sdata[i])] + desttable[UnpackRed(Bitmap, ddata[i])],
-                                                  srctable[UnpackSGreen(Surface, sdata[i])] + desttable[UnpackGreen(Bitmap, ddata[i])],
-                                                  srctable[UnpackSBlue(Surface, sdata[i])] + desttable[UnpackBlue(Bitmap, ddata[i])]);
+                     ddata[i] = Bitmap->packPixel(srctable[UnpackSRed(Surface, sdata[i])] + desttable[Bitmap->unpackRed(ddata[i])],
+                                                  srctable[UnpackSGreen(Surface, sdata[i])] + desttable[Bitmap->unpackGreen(ddata[i])],
+                                                  srctable[UnpackSBlue(Surface, sdata[i])] + desttable[Bitmap->unpackBlue(ddata[i])]);
                   }
                   ddata = (UWORD *)(((BYTE *)ddata) + Bitmap->LineWidth);
                   sdata = (UWORD *)(((BYTE *)sdata) + Surface->LineWidth);
@@ -1584,9 +1583,9 @@ void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY, ULONG 
       }
    #endif
 
-   rgb.Red   = UnpackRed(Bitmap, Colour);
-   rgb.Green = UnpackGreen(Bitmap, Colour);
-   rgb.Blue  = UnpackBlue(Bitmap, Colour);
+   rgb.Red   = Bitmap->unpackRed(Colour);
+   rgb.Green = Bitmap->unpackGreen(Colour);
+   rgb.Blue  = Bitmap->unpackBlue(Colour);
 
    #ifdef _WIN32
 
@@ -1769,17 +1768,14 @@ void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
    if ((X + Width) >= Bitmap->Clip.Right + Bitmap->XOffset)   Width = Bitmap->Clip.Right + Bitmap->XOffset - X;
    if ((Y + Height) >= Bitmap->Clip.Bottom + Bitmap->YOffset) Height = Bitmap->Clip.Bottom + Bitmap->YOffset - Y;
 
-   UWORD red   = UnpackRed(Bitmap, Colour);
-   UWORD green = UnpackGreen(Bitmap, Colour);
-   UWORD blue  = UnpackBlue(Bitmap, Colour);
+   UWORD red   = Bitmap->unpackRed(Colour);
+   UWORD green = Bitmap->unpackGreen(Colour);
+   UWORD blue  = Bitmap->unpackBlue(Colour);
 
    // Translucent rectangle support
 
-   UBYTE opacity = 255;
-   if (Flags & BAF_BLEND) {
-      opacity = UnpackAlpha(Bitmap, Colour);
-   }
-   else opacity = Bitmap->Opacity; // Pulling the opacity from the bitmap is deprecated, used BAF_BLEND instead.
+   // NB: The opacity Bitmap field is deprecated and BAF_BLEND should be used instead, or default to 255.
+   UBYTE opacity = (Flags & BAF_BLEND) ? Bitmap->unpackAlpha(Colour) : Bitmap->Opacity;
 
    if (opacity < 255) {
       if (!lock_surface(Bitmap, SURFACE_READWRITE)) {

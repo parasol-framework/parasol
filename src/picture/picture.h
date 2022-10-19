@@ -10,6 +10,6 @@
    STRING   prvDescription; \
    STRING   prvDisclaimer; \
    BYTE     prvHeader[256]; \
-   struct rkFile *prvFile; \
+   objFile  *prvFile; \
    UBYTE    Cached:1; \
    UBYTE    Queried:1;

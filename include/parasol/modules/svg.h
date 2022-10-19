@@ -20,14 +20,26 @@
 
 #define VER_SVG (1.000000)
 
+// SVG methods
+
+#define MT_SvgRender -1
+
+struct svgRender { struct rkBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height;  };
+
+INLINE ERROR svgRender(APTR Ob, struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) {
+   struct svgRender args = { Bitmap, X, Y, Width, Height };
+   return(Action(MT_SvgRender, (OBJECTPTR)Ob, &args));
+}
+
+
 typedef class rkSVG : public BaseClass {
    public:
-   OBJECTPTR Target;    // Refers to the target of the generated SVG scene.
+   OBJECTPTR Target;    // The root Viewport that is generated during SVG initialisation can be created as a child of this target object.
    STRING    Path;      // The location of the source SVG data.
-   STRING    Title;     // Automatically defined if the title element is used in the SVG source document.
-   LONG      Frame;     // Draw the SVG only when this frame number is a match to the target surface frame number.
+   STRING    Title;     // The title of the SVG document.
+   LONG      Frame;     // Forces the graphics to be drawn to a specific frame.
    LONG      Flags;     // Optional flags.
-   LONG      FrameRate; // Maximum frame rate to use for animation.
+   LONG      FrameRate; // The maximum frame rate to use when animating a vector scene.
 
 #ifdef PRV_SVG
    objVectorScene *Scene;
@@ -44,18 +56,23 @@ typedef class rkSVG : public BaseClass {
    UBYTE PreserveWS:1; // Preserve white-space
   
 #endif
+   // Action stubs
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveImage args = { { DestID }, { ClassID } };
+      return Action(AC_SaveImage, this, &args);
+   }
+   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveToObject args = { { DestID }, { ClassID } };
+      return Action(AC_SaveToObject, this, &args);
+   }
 } objSVG;
-
-// SVG methods
-
-#define MT_SvgRender -1
-
-struct svgRender { struct rkBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height;  };
-
-INLINE ERROR svgRender(APTR Ob, struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) {
-   struct svgRender args = { Bitmap, X, Y, Width, Height };
-   return(Action(MT_SvgRender, (OBJECTPTR)Ob, &args));
-}
-
 
 #endif

@@ -32,15 +32,15 @@
 
 #define VER_PICTURE (1.000000)
 
-typedef class rkPicture : public BaseClass {
+typedef class plPicture : public BaseClass {
    public:
-   struct rkBitmap * Bitmap;    // Bitmap details
-   struct rkBitmap * Mask;      // Monochrome bit mask or alpha channel
-   LONG Flags;                  // Optional flags
-   LONG DisplayHeight;          // Preferred display height
-   LONG DisplayWidth;           // Preferred display width
-   LONG Quality;                // Quality rating when saving image (0% low, 100% high)
-   LONG FrameRate;              // Refresh & redraw the picture X times per second.  Used by pictures that have an animation refresh rate
+   objBitmap * Bitmap;    // Represents a picture's image data.
+   objBitmap * Mask;      // Refers to a Bitmap that imposes a mask on the image.
+   LONG Flags;            // Optional initialisation flags.
+   LONG DisplayHeight;    // The preferred height to use when displaying the image.
+   LONG DisplayWidth;     // The preferred width to use when displaying the image.
+   LONG Quality;          // Defines the quality level to use when saving the image.
+   LONG FrameRate;        // Refresh & redraw the picture X times per second.  Used by pictures that have an animation refresh rate
 
 #ifdef PRV_PICTURE
  PRV_PICTURE_FIELDS 

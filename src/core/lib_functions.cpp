@@ -327,7 +327,7 @@ obj(MetaClass): Returns a pointer to the MetaClass structure that has been found
 
 *****************************************************************************/
 
-rkMetaClass * FindClass(CLASSID ClassID)
+objMetaClass * FindClass(CLASSID ClassID)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -340,7 +340,7 @@ rkMetaClass * FindClass(CLASSID ClassID)
    else {
       // A simple KeyGet() works for base-classes and sub-classes because the hash map is indexed by class name.
 
-      rkMetaClass **ptr;
+      objMetaClass **ptr;
       if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
          return ptr[0];
       }
@@ -366,7 +366,7 @@ rkMetaClass * FindClass(CLASSID ClassID)
          if ((mod = find_module(ClassID))) path = (STRING)(mod + 1);
       }
 
-      rkMetaClass *mc = NULL;
+      objMetaClass *mc = NULL;
       if (path) {
          // Load the module from the associated location and then find the class that it contains.  If the module fails,
          // we keep on looking for other installed modules that may handle the class.
@@ -1759,7 +1759,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    if (Object->OwnerID IS Owner->UID) return ERR_Okay;
 
-   if (((rkMetaClass *)Object->Class)->Flags & CLF_NO_OWNERSHIP) {
+   if (((objMetaClass *)Object->Class)->Flags & CLF_NO_OWNERSHIP) {
       log.traceWarning("Cannot set the object owner as CLF_NO_OWNERSHIP is set in its class.");
       return ERR_Okay;
    }
@@ -2335,7 +2335,7 @@ ERROR SubscribeFeed(OBJECTPTR Object)
 
    ScopedObjectAccess objlock(Object);
 
-   log.traceBranch("%s: %d", ((rkMetaClass *)Object->Class)->ClassName, Object->UID);
+   log.traceBranch("%s: %d", ((objMetaClass *)Object->Class)->ClassName, Object->UID);
 
    if (Object->Flags & NF_PUBLIC) memflags = Object->MemFlags|MEM_PUBLIC;
    else memflags = Object->MemFlags;
@@ -2528,7 +2528,7 @@ ERROR UnsubscribeFeed(OBJECTPTR Object)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.trace("%s: %d", ((rkMetaClass *)Object->Class)->ClassName, Object->UID);
+   log.trace("%s: %d", ((objMetaClass *)Object->Class)->ClassName, Object->UID);
 
    if (!Object) return log.warning(ERR_NullArgs);
 

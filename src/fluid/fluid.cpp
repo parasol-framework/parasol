@@ -789,7 +789,7 @@ int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
    }
 }
 
-int code_writer(lua_State *Lua, CPTR Data, size_t Size, void *File)
+int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)
 {
    parasol::Log log(__FUNCTION__);
 

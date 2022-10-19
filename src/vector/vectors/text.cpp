@@ -88,7 +88,7 @@ public:
 
    void resetFlash() { flash = 0; }
 
-   void selectedArea(struct rkVectorText *Self, LONG *Row, LONG *Column, LONG *EndRow, LONG *EndColumn) {
+   void selectedArea(objVectorText *Self, LONG *Row, LONG *Column, LONG *EndRow, LONG *EndColumn) {
       if (selectRow < mRow) {
          *Row       = selectRow;
          *EndRow    = mRow;
@@ -115,9 +115,9 @@ public:
       }
    }
 
-   void move(struct rkVectorText *, LONG, LONG, bool ValidateWidth = false);
-   void resetVector(struct rkVectorText *);
-   void validatePosition(struct rkVectorText *);
+   void move(objVectorText *, LONG, LONG, bool ValidateWidth = false);
+   void resetVector(objVectorText *);
+   void validatePosition(objVectorText *);
 };
 
 class CharPos {
@@ -156,11 +156,8 @@ public:
    }
 };
 
-typedef class rkVectorText : public BaseClass {
+typedef class plVectorText : public objVector {
    public:
-   SHAPE_PUBLIC
-
-   SHAPE_PRIVATE
    FUNCTION txValidateInput;
    DOUBLE txInlineSize; // Enables word-wrapping
    DOUBLE txX, txY;
@@ -174,9 +171,9 @@ typedef class rkVectorText : public BaseClass {
    DOUBLE *txDX, *txDY; // A series of spacing adjustments that apply on a per-character level.
    DOUBLE *txRotate;  // A series of angles that will rotate each individual character.
    DOUBLE txXOffset, txYOffset; // X,Y adjustment for ensuring that the cursor is visible.
-   struct rkFont *txFont;
+   objFont *txFont;
    objBitmap *txAlphaBitmap; // Host for the bitmap font texture
-   struct rkVectorImage *txBitmapImage;
+   objVectorImage *txBitmapImage;
    FT_Size FreetypeSize;
    std::vector<TextLine> txLines;
    TextCursor txCursor;
@@ -357,7 +354,7 @@ static ERROR VECTORTEXT_NewObject(objVectorText *Self, APTR Void)
    new (&Self->txCursor) TextCursor;
 
    StrCopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
-   Self->GeneratePath = (void (*)(rkVector *))&generate_text;
+   Self->GeneratePath = (void (*)(objVector *))&generate_text;
    Self->StrokeWidth  = 0.0;
    Self->txWeight     = DEFAULT_WEIGHT;
    Self->txFontSize   = 10 * 4.0 / 3.0;
@@ -1715,7 +1712,7 @@ Close:
 
 //****************************************************************************
 
-static void get_text_xy(objVectorText *Vector)
+extern void get_text_xy(objVectorText *Vector)
 {
    DOUBLE x = Vector->txX, y = Vector->txY;
 

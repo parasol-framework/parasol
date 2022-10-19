@@ -193,7 +193,7 @@ redo_upload:
    LONG len = 0;
    if (Self->Outgoing.Type != CALL_NONE) {
       if (Self->Outgoing.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(rkHTTP *, APTR, LONG, LONG *))Self->Outgoing.StdC.Routine;
+         auto routine = (ERROR (*)(objHTTP *, APTR, LONG, LONG *))Self->Outgoing.StdC.Routine;
          error = routine(Self, Self->WriteBuffer, Self->WriteSize, &len);
       }
       else if (Self->Outgoing.Type IS CALL_SCRIPT) {
@@ -1028,7 +1028,7 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
 
       ERROR error;
       if (Self->Incoming.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(rkHTTP *, APTR, LONG))Self->Incoming.StdC.Routine;
+         auto routine = (ERROR (*)(objHTTP *, APTR, LONG))Self->Incoming.StdC.Routine;
          error = routine(Self, Buffer, Length);
       }
       else if (Self->Incoming.Type IS CALL_SCRIPT) {

@@ -446,6 +446,74 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
       LONG prvGLPixel;
       LONG prvGLFormat;
    #endif
+  ]],
+  [[
+   inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
+      if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
+      else {
+         struct bmpGetColour args = { Red, Green, Blue, Alpha };
+         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         return 0;
+      }
+   }
+
+   inline ULONG getColour(struct RGB8 &RGB) {
+      if (BitsPerPixel > 8) return packPixel(RGB);
+      else {
+         struct bmpGetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
+         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         return 0;
+      }
+   }
+
+   inline ULONG packPixel(UBYTE R, UBYTE G, UBYTE B) {
+      return
+         (((R>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((G>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((B>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((255>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixel(UBYTE R, UBYTE G, UBYTE B, UBYTE A) {
+      return
+         (((R>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((G>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((B>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((A>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixel(struct RGB8 &RGB, UBYTE Alpha) {
+      return
+         (((RGB.Red>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((RGB.Green>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((RGB.Blue>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((Alpha>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixel(struct RGB8 &RGB) {
+      return
+         (((RGB.Red>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((RGB.Green>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((RGB.Blue>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((RGB.Alpha>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   // Pack pixel 'whole-byte' version, for faster 24/32 bit formats
+
+   inline ULONG packPixelWB(UBYTE R, UBYTE G, UBYTE B, UBYTE A = 255) {
+      return (R << ColourFormat->RedPos) | (G << ColourFormat->GreenPos) | (B << ColourFormat->BluePos) | (A << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixelWB(struct RGB8 &RGB) {
+      return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (RGB.Alpha << ColourFormat->AlphaPos);
+   }
+
+   // Colour unpacking routines
+
+   template <class T> inline UBYTE unpackRed(T Packed)   { return (((Packed >> ColourFormat->RedPos) & ColourFormat->RedMask) << ColourFormat->RedShift); }
+   template <class T> inline UBYTE unpackGreen(T Packed) { return (((Packed >> ColourFormat->GreenPos) & ColourFormat->GreenMask) << ColourFormat->GreenShift); }
+   template <class T> inline UBYTE unpackBlue(T Packed)  { return (((Packed >> ColourFormat->BluePos) & ColourFormat->BlueMask) << ColourFormat->BlueShift); }
+   template <class T> inline UBYTE unpackAlpha(T Packed) { return (((Packed >> ColourFormat->AlphaPos) & ColourFormat->AlphaMask)); }
   ]])
 
   methods("Display", "Gfx", {
@@ -753,45 +821,6 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     "WindowHook")
 
   c_insert([[
-// Standard pack pixel for all formats
-
-#define PackPixel(a,b,c,d) ((((b)>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-                           ((((c)>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-                           ((((d)>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-                           (((255>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelA(a,b,c,d,e) \
-   ((((b)>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((c)>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((d)>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   ((((e)>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackAlpha(a,b) ((((b)>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelRGB(a,b) \
-   ((((b)->Red>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((b)->Green>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((b)->Blue>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   (((255>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelRGBA(a,b) \
-   ((((b)->Red>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((b)->Green>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((b)->Blue>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   ((((b)->Alpha>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-// Pack pixel 'whole-byte' version, for faster 24/32 bit formats
-
-#define PackPixelWB(a,b,c,d) ((b) << (a)->ColourFormat->RedPos) | ((c) << (a)->ColourFormat->GreenPos) | ((d) << (a)->ColourFormat->BluePos)
-#define PackPixelWBA(a,b,c,d,e) ((b) << (a)->ColourFormat->RedPos) | ((c) << (a)->ColourFormat->GreenPos) | ((d) << (a)->ColourFormat->BluePos) | ((e) << (a)->ColourFormat->AlphaPos)
-
-// Colour unpacking routines
-
-#define UnpackRed(a,b)   ((((b) >> (a)->ColourFormat->RedPos) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedShift)
-#define UnpackGreen(a,b) ((((b) >> (a)->ColourFormat->GreenPos) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenShift)
-#define UnpackBlue(a,b)  ((((b) >> (a)->ColourFormat->BluePos) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BlueShift)
-#define UnpackAlpha(a,b) ((((b) >> (a)->ColourFormat->AlphaPos) & (a)->ColourFormat->AlphaMask))
-
 // Direct ColourFormat versions
 
 #define CFPackPixel(a,b,c,d)      ((((b)>>(a)->RedShift) & (a)->RedMask) << (a)->RedPos) | ((((c)>>(a)->GreenShift) & (a)->GreenMask) << (a)->GreenPos) | ((((d)>>(a)->BlueShift) & (a)->BlueMask) << (a)->BluePos)
@@ -803,28 +832,6 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
 #define CFUnpackGreen(a,b)        ((((b) >> (a)->GreenPos) & (a)->GreenMask) << (a)->GreenShift)
 #define CFUnpackBlue(a,b)         ((((b) >> (a)->BluePos) & (a)->BlueMask) << (a)->BlueShift)
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
-
-INLINE ULONG bmpGetColour(APTR Bitmap, UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
-   if (((objBitmap *)Bitmap)->BitsPerPixel > 8) {
-      return PackPixelA((objBitmap *)Bitmap, Red, Green, Blue, Alpha);
-   }
-   else {
-      struct bmpGetColour args = { Red, Green, Blue, Alpha };
-      if (!Action(MT_BmpGetColour, Bitmap, &args)) return args.Colour;
-      return 0;
-   }
-}
-
-INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
-   if (((objBitmap *)Bitmap)->BitsPerPixel > 8) {
-      return PackPixelA((objBitmap *)Bitmap, RGB->Red, RGB->Green, RGB->Blue, RGB->Alpha);
-   }
-   else {
-      struct bmpGetColour args = { RGB->Red, RGB->Green, RGB->Blue, RGB->Alpha };
-      if (!Action(MT_BmpGetColour, Bitmap, &args)) return args.Colour;
-      return 0;
-   }
-}
 
 #define gfxReleasePointer(a)    (ReleaseObject(a))
 // Helper function for surface lookups.

@@ -19,6 +19,18 @@
 #include <unordered_map>
 #endif
 
+typedef class plStorageDevice objStorageDevice;
+typedef class plFile objFile;
+typedef class plConfig objConfig;
+typedef class plScript objScript;
+typedef class plMetaClass objMetaClass;
+typedef class plTask objTask;
+typedef class plThread objThread;
+typedef class plModule objModule;
+typedef class plTime objTime;
+typedef class plCompression objCompression;
+typedef class plCompressedStream objCompressedStream;
+
 #ifdef _WIN32
 
 #define NETMSG_START 0
@@ -1727,7 +1739,7 @@ struct CoreBase {
    LONG (*_AdjustLogLevel)(LONG);
    void (*_LogF)(const void *, const char *, ...) __attribute__((format(printf, 2, 3)));
    ERROR (*_FindObject)(CSTRING, CLASSID, LONG, OBJECTID *, LONG *);
-   struct rkMetaClass * (*_FindClass)(CLASSID);
+   objMetaClass * (*_FindClass)(CLASSID);
    ERROR (*_ReleaseObject)(APTR);
    ERROR (*_FreeResource)(const void *);
    ERROR (*_FreeResourceID)(MEMORYID);
@@ -2154,7 +2166,7 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 // Header used for all objects.
 
 struct BaseClass { // Must be 64-bit aligned
-   struct rkMetaClass *Class;   // Class pointer, resolved on AccessObject()
+   objMetaClass *Class;         // Class pointer, resolved on AccessObject()
    struct Stats *Stats;         // Stats pointer, resolved on AccessObject() [Private]
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
@@ -2260,17 +2272,260 @@ struct BaseClass { // Must be 64-bit aligned
 
 INLINE OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 INLINE APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
+#define CONV_TIME_DATETIME(a) ((struct DateTime *)(&(a)->Year))
+
+INLINE BYTE CMP_DATETIME(struct DateTime *one, struct DateTime *two)
+{
+   if (one->Year < two->Year) return -1;
+   if (one->Year > two->Year) return 1;
+   if (one->Month < two->Month) return -1;
+   if (one->Month > two->Month) return 1;
+   if (one->Day < two->Day) return -1;
+   if (one->Day > two->Day) return 1;
+   if (one->Minute < two->Minute) return -1;
+   if (one->Minute > two->Minute) return 1;
+   if (one->Hour < two->Hour) return -1;
+   if (one->Hour > two->Hour) return 1;
+   if (one->Second < two->Second) return -1;
+   if (one->Second > two->Second) return 1;
+   return 0;
+}
+
+// Macro based actions.
+
+#define SetRead(a,b,c)  a.Buffer=(b);   a.Length=(c);
+#define SetSeek(a,b,c)  a.Position=(b); a.Offset=(c);
+#define SetWrite(a,b,c) a.Buffer=(b);   a.Length=(c);
+
+// Action and Notification Structures
+
+struct acActionNotify  { union { ACTIONID ActionID; ACTIONID Action; }; union { OBJECTID ObjectID; OBJECTID Object; }; APTR Args; LONG Size; ERROR Error; LONG Time; };
+struct acClipboard     { LONG Mode; };
+struct acCopyData      { union { OBJECTID DestID; OBJECTID Dest; }; };
+struct acCustom        { LONG Number; CSTRING String; };
+struct acDataFeed      { union { OBJECTID ObjectID; OBJECTID Object; }; union { LONG DataType; LONG Datatype; }; const void *Buffer; LONG Size; };
+struct acDragDrop      { union { OBJECTID SourceID; OBJECTID Source; }; LONG Item; CSTRING Datatype; };
+struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
+struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
+struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
+struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
+struct acNewChild      { OBJECTPTR Object; };
+struct acNewOwner      { union { OBJECTID NewOwnerID; OBJECTID NewOwner; }; CLASSID ClassID; };
+struct acRead          { APTR Buffer; LONG Length; LONG Result; };
+struct acRedimension   { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
+struct acRedo          { LONG Steps; };
+struct acRename        { CSTRING Name; };
+struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
+struct acSaveImage     { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSaveToObject  { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
+struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
+struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
+struct acSeek          { DOUBLE Offset; LONG Position; };
+struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
+struct acSetVar        { CSTRING Field; CSTRING Value; };
+struct acUndo          { LONG Steps; };
+struct acWrite         { CPTR Buffer; LONG Length; LONG Result; };
+
+// Action Macros
+
+#define acActivate(a)         (Action(AC_Activate,(a),NULL))
+#define acClear(a)            (Action(AC_Clear,(a),NULL))
+#define acDeactivate(a)       (Action(AC_Deactivate,(a),NULL))
+#define acDisable(a)          (Action(AC_Disable,(a),NULL))
+#define acDragDrop(obj,b,c,d) (Action(AC_DragDrop,(obj),(b),(c),(d))
+#define acDraw(a)             (Action(AC_Draw,(a),NULL))
+#define acEnable(a)           (Action(AC_Enable,(a),NULL))
+#define acFlush(a)            (Action(AC_Flush,(a),NULL))
+#define acFocus(a)            (Action(AC_Focus,(a),NULL))
+#define acFree(a)             (Action(AC_Free,(a),NULL))
+#define acHide(a)             (Action(AC_Hide,(a),NULL))
+#define acInit(a)             (Action(AC_Init,(a),NULL))
+#define acLock(a)             (Action(AC_Lock,(a),NULL))
+#define acLostFocus(a)        (Action(AC_LostFocus,(a),NULL))
+#define acMoveToBack(a)       (Action(AC_MoveToBack,(a),NULL))
+#define acMoveToFront(a)      (Action(AC_MoveToFront,(a),NULL))
+#define acNext(a)             (Action(AC_Next,(a),NULL)
+#define acPrev(a)             (Action(AC_Prev,(a),NULL)
+#define acQuery(a)            (Action(AC_Query,(a),NULL))
+#define acRefresh(a)          (Action(AC_Refresh, (a), NULL))
+#define acReset(a)            (Action(AC_Reset,(a),NULL))
+#define acSaveSettings(a)     (Action(AC_SaveSettings,(a),NULL))
+#define acShow(a)             (Action(AC_Show,(a),NULL))
+#define acSort(a)             (Action(AC_Sort,(a),NULL))
+#define acUnlock(a)           (Action(AC_Unlock,(a),NULL))
+
+#define acActivateID(a)       (ActionMsg(AC_Activate,(a),NULL))
+#define acClearID(a)          (ActionMsg(AC_Clear,(a),NULL))
+#define acDisableID(a)        (ActionMsg(AC_Disable,(a),NULL))
+#define acDrawID(a)           (ActionMsg(AC_Draw,(a),NULL))
+#define acEnableID(a)         (ActionMsg(AC_Enable,(a),NULL))
+#define acFlushID(a)          (ActionMsg(AC_Flush,(a),NULL))
+#define acFocusID(a)          (ActionMsg(AC_Focus,(a),NULL))
+#define acFreeID(a)           (ActionMsg(AC_Free,(a),NULL))
+#define acHideID(a)           (ActionMsg(AC_Hide,(a),NULL))
+#define acInitID(a)           (ActionMsg(AC_Init,(a),NULL))
+#define acLostFocusID(a)      (ActionMsg(AC_LostFocus,(a),NULL))
+#define acMoveToBackID(a)     (ActionMsg(AC_MoveToBack,(a),NULL))
+#define acMoveToFrontID(a)    (ActionMsg(AC_MoveToFront,(a),NULL))
+#define acQueryID(a)          (ActionMsg(AC_Query,(a),NULL))
+#define acRefreshID(a)        (ActionMsg(AC_Refresh,(a),NULL))
+#define acSaveSettingsID(a)   (ActionMsg(AC_SaveSettings,(a),NULL))
+#define acShowID(a)           (ActionMsg(AC_Show,(a),NULL))
+
+INLINE ERROR acClipboard(OBJECTPTR Object, LONG Mode) {
+   struct acClipboard args = { Mode };
+   return Action(AC_Clipboard, Object, &args);
+}
+
+INLINE ERROR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height) {
+   struct acDraw args = { X, Y, Width, Height };
+   return Action(AC_Draw, Object, &args);
+}
+
+INLINE ERROR acDataFeed(OBJECTPTR Object, OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+   struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   return Action(AC_DataFeed, Object, &args);
+}
+
+INLINE ERROR acMove(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
+   struct acMove args = { X, Y, Z };
+   return Action(AC_Move, Object, &args);
+}
+
+INLINE ERROR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
+   ERROR error;
+   struct acRead read = { (BYTE *)Buffer, Bytes };
+   if (!(error = Action(AC_Read, Object, &read))) {
+      if (Read) *Read = read.Result;
+      return ERR_Okay;
+   }
+   else {
+      if (Read) *Read = 0;
+      return error;
+   }
+}
+
+INLINE ERROR acRedo(OBJECTPTR Object, LONG Steps) {
+   struct acRedo args = { Steps };
+   return Action(AC_Redo, Object, &args);
+}
+
+INLINE ERROR acRedimension(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   struct acRedimension args = { X, Y, Z, Width, Height, Depth };
+   return Action(AC_Redimension, Object, &args);
+}
+
+INLINE ERROR acRename(OBJECTPTR Object, CSTRING Name) {
+   struct acRename args = { Name };
+   return Action(AC_Rename, Object, &args);
+}
+
+INLINE ERROR acResize(OBJECTPTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   struct acResize args = { Width, Height, Depth };
+   return Action(AC_Resize, Object, &args);
+}
+
+INLINE ERROR acScroll(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
+   struct acScroll args = { X, Y, Z };
+   return Action(AC_Scroll, Object, &args);
+}
+
+INLINE ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   struct acScrollToPoint args = { X, Y, Z, Flags };
+   return Action(AC_ScrollToPoint, Object, &args);
+}
+
+INLINE ERROR acUndo(OBJECTPTR Object, LONG Steps) {
+   struct acUndo args = { Steps };
+   return Action(AC_Undo, Object, &args);
+}
+
+INLINE ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
+   struct acGetVar args = { FieldName, Buffer, Size };
+   ERROR error = Action(AC_GetVar, Object, &args);
+   if ((error) AND (Buffer)) Buffer[0] = 0;
+   return error;
+}
+
+INLINE ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   struct acMoveToPoint moveto = { X, Y, Z, Flags };
+   return Action(AC_MoveToPoint, Object, &moveto);
+}
+
+INLINE ERROR acSaveImage(OBJECTPTR Object, OBJECTID DestID, CLASSID ClassID) {
+   struct acSaveImage args = { { DestID }, { ClassID } };
+   return Action(AC_SaveImage, Object, &args);
+}
+
+INLINE ERROR acSaveToObject(OBJECTPTR Object, OBJECTID DestID, CLASSID ClassID) {
+   struct acSaveToObject args = { { DestID }, { ClassID } };
+   return Action(AC_SaveToObject, Object, &args);
+}
+
+INLINE ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, LONG Position) {
+   struct acSeek args = { Offset, Position };
+   return Action(AC_Seek, Object, &args);
+}
+
+INLINE ERROR acSetVars(OBJECTPTR Object, CSTRING tags, ...) {
+   struct acSetVar args;
+   va_list list;
+
+   va_start(list, tags);
+   while ((args.Field = va_arg(list, STRING)) != TAGEND) {
+      args.Value = va_arg(list, STRING);
+      if (Action(AC_SetVar, Object, &args) != ERR_Okay) {
+         va_end(list);
+         return ERR_Failed;
+      }
+   }
+   va_end(list);
+   return ERR_Okay;
+}
+
+INLINE ERROR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
+   ERROR error;
+   struct acWrite write = { (BYTE *)Buffer, Bytes };
+   if (!(error = Action(AC_Write, Object, &write))) {
+      if (Result) *Result = write.Result;
+   }
+   else if (Result) *Result = 0;
+   return error;
+}
+
+INLINE LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
+   struct acWrite write = { (BYTE *)Buffer, Bytes };
+   if (!Action(AC_Write, Object, &write)) return write.Result;
+   else return 0;
+}
+
+#define acSeekStart(a,b)    acSeek((a),(b),SEEK_START)
+#define acSeekEnd(a,b)      acSeek((a),(b),SEEK_END)
+#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK_CURRENT)
+
+INLINE ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+   struct acSelectArea area = { X, Y, Width, Height };
+   return Action(AC_SelectArea, Object, &area);
+}
+
+INLINE ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
+   struct acSetVar args = { FieldName, Value };
+   return Action(AC_SetVar, Object, &args);
+}
+
+#define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
+#define SetVar(a,b,c)    acSetVar(a,b,c)
   
 // StorageDevice class definition
 
 #define VER_STORAGEDEVICE (1.000000)
 
-typedef class rkStorageDevice : public BaseClass {
+typedef class plStorageDevice : public BaseClass {
    public:
-   LARGE DeviceFlags;    // Flags identifying the type of media
-   LARGE DeviceSize;     // Size of the device
-   LARGE BytesFree;      // Bytes available to the user
-   LARGE BytesUsed;      // Bytes already used
+   LARGE DeviceFlags;    // These read-only flags identify the type of device and its features.
+   LARGE DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
+   LARGE BytesFree;      // Total amount of storage space that is available, measured in bytes.
+   LARGE BytesUsed;      // Total amount of storage space in use.
 
 #ifdef PRV_STORAGEDEVICE
    STRING prvDeviceID;   // Unique ID for the filesystem, if available
@@ -2282,40 +2537,6 @@ typedef class rkStorageDevice : public BaseClass {
 // File class definition
 
 #define VER_FILE (1.200000)
-
-typedef class rkFile : public BaseClass {
-   public:
-   LARGE    Position; // The current read/write byte position in a file.
-   LONG     Flags;    // File flags and options.
-   LONG     Static;   // Set to TRUE if a file object should be static.
-   OBJECTID TargetID; // Specifies a surface ID to target for user feedback and dialog boxes.
-   BYTE *   Buffer;   // Points to the internal data buffer if the file content is held in memory.
-
-#ifdef PRV_FILE
-    struct DateTime prvModified;  // [28 byte structure]
-    struct DateTime prvCreated;  // [28 byte structure]
-    LARGE Size;
-    #ifdef _WIN32
-       LONG  Stream;
-    #else
-       APTR  Stream;
-    #endif
-    STRING Path;
-    STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
-    STRING prvLink;
-    STRING prvLine;
-    CSTRING prvIcon;
-    struct rkWatchPath *prvWatch;
-    OBJECTPTR ProgressDialog;
-    struct DirInfo *prvList;
-    LARGE  ProgressTime;
-    LONG   Permissions;
-    LONG   prvType;
-    LONG   Handle;         // Native system file handle
-    WORD   prvLineLen;
-  
-#endif
-} objFile;
 
 // File methods
 
@@ -2336,7 +2557,7 @@ struct flMove { CSTRING Dest; FUNCTION * Callback;  };
 struct flCopy { CSTRING Dest; FUNCTION * Callback;  };
 struct flSetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; LONG Type;  };
 struct flReadLine { STRING Result;  };
-struct flNext { struct rkFile * File;  };
+struct flNext { objFile * File;  };
 struct flWatch { FUNCTION * Callback; LARGE Custom; LONG Flags;  };
 
 INLINE ERROR flStartStream(APTR Ob, OBJECTID SubscriberID, LONG Flags, LONG Length) {
@@ -2368,7 +2589,7 @@ INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG
 
 #define flBufferContent(obj) Action(MT_FlBufferContent,(obj),0)
 
-INLINE ERROR flNext(APTR Ob, struct rkFile ** File) {
+INLINE ERROR flNext(APTR Ob, objFile ** File) {
    struct flNext args = { 0 };
    ERROR error = Action(MT_FlNext, (OBJECTPTR)Ob, &args);
    if (File) *File = args.File;
@@ -2381,23 +2602,90 @@ INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, LONG Flags) {
 }
 
 
+typedef class plFile : public BaseClass {
+   public:
+   LARGE    Position; // The current read/write byte position in a file.
+   LONG     Flags;    // File flags and options.
+   LONG     Static;   // Set to TRUE if a file object should be static.
+   OBJECTID TargetID; // Specifies a surface ID to target for user feedback and dialog boxes.
+   BYTE *   Buffer;   // Points to the internal data buffer if the file content is held in memory.
+
+#ifdef PRV_FILE
+    struct DateTime prvModified;  // [28 byte structure]
+    struct DateTime prvCreated;  // [28 byte structure]
+    LARGE Size;
+    #ifdef _WIN32
+       LONG  Stream;
+    #else
+       APTR  Stream;
+    #endif
+    STRING Path;
+    STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
+    STRING prvLink;
+    STRING prvLine;
+    CSTRING prvIcon;
+    struct rkWatchPath *prvWatch;
+    OBJECTPTR ProgressDialog;
+    struct DirInfo *prvList;
+    LARGE  ProgressTime;
+    LONG   Permissions;
+    LONG   prvType;
+    LONG   Handle;         // Native system file handle
+    WORD   prvLineLen;
+  
+#endif
+   // Action stubs
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR query() { return Action(AC_Query, this, NULL); }
+   inline ERROR read(APTR Buffer, LONG Bytes, LONG *Result) {
+      ERROR error;
+      struct acRead read = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Read, this, &read))) {
+         if (Result) *Result = read.Result;
+         return ERR_Okay;
+      }
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
+   }
+   inline ERROR rename(CSTRING Name) {
+      struct acRename args = { Name };
+      return Action(AC_Rename, this, &args);
+   }
+   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
+   inline ERROR seek(DOUBLE Offset, LONG Position) {
+      struct acSeek args = { Offset, Position };
+      return Action(AC_Seek, this, &args);
+   }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline LONG writeResult(CPTR Buffer, LONG Bytes) {
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!Action(AC_Write, this, &write)) return write.Result;
+      else return 0;
+   }
+} objFile;
+
 // Config class definition
 
 #define VER_CONFIG (1.000000)
-
-typedef class rkConfig : public BaseClass {
-   public:
-   STRING Path;         // The location pointer
-   STRING KeyFilter;    // Enables key filtering, removing any unwanted keys on load.
-   STRING GroupFilter;  // Enables group filtering, removing any unwanted groups on load.
-   LONG   Flags;        // Not currently in use
-
-#ifdef PRV_CONFIG
-   ConfigGroups *Groups;
-   ULONG    CRC;   // CRC32, for determining if config data has been altered
-  
-#endif
-} objConfig;
 
 // Config methods
 
@@ -2480,31 +2768,60 @@ INLINE ERROR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
 }
 
 
-INLINE ERROR cfgWriteInt(APTR Self, CSTRING Group, CSTRING Key, LONG Integer)
+typedef class plConfig : public BaseClass {
+   public:
+   STRING Path;         // Set this field to the location of the source configuration file.
+   STRING KeyFilter;    // Set this field to enable key filtering.
+   STRING GroupFilter;  // Set this field to enable group filtering.
+   LONG   Flags;        // Optional flags may be set here.
+
+#ifdef PRV_CONFIG
+   ConfigGroups *Groups;
+   ULONG    CRC;   // CRC32, for determining if config data has been altered
+  
+#endif
+   // Action stubs
+
+   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR flush() { return Action(AC_Flush, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
+   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveToObject args = { { DestID }, { ClassID } };
+      return Action(AC_SaveToObject, this, &args);
+   }
+   inline ERROR sort() { return Action(AC_Sort, this, NULL); }
+} objConfig;
+
+INLINE ERROR cfgWriteInt(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG Integer)
 {
    if (!Self) return ERR_NullArgs;
    char buffer[32];
    StrFormat(buffer, sizeof(buffer), "%d", Integer);
    struct cfgWriteValue write = { Group, Key, buffer };
-   return Action(MT_CfgWriteValue, (OBJECTPTR)Self, &write);
+   return Action(MT_CfgWriteValue, Self, &write);
 }
 
-INLINE ERROR cfgReadFloat(APTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
+INLINE ERROR cfgReadFloat(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
 {
    ERROR error;
    struct cfgReadValue read = { .Group = Group, .Key = Key };
-   if (!(error = Action(MT_CfgReadValue, (OBJECTPTR)Self, &read))) {
+   if (!(error = Action(MT_CfgReadValue, Self, &read))) {
       *Value = StrToFloat(read.Data);
       return ERR_Okay;
    }
    else { *Value = 0; return error; }
 }
 
-INLINE ERROR cfgReadInt(APTR Self, CSTRING Group, CSTRING Key, LONG *Value)
+INLINE ERROR cfgReadInt(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 {
    ERROR error;
    struct cfgReadValue read = { .Group = Group, .Key = Key };
-   if (!(error = Action(MT_CfgReadValue, (OBJECTPTR)Self, &read))) {
+   if (!(error = Action(MT_CfgReadValue, Self, &read))) {
       *Value = StrToInt(read.Data);
       return ERR_Okay;
    }
@@ -2514,35 +2831,6 @@ INLINE ERROR cfgReadInt(APTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 // Script class definition
 
 #define VER_SCRIPT (1.000000)
-
-typedef class rkScript : public BaseClass {
-   public:
-   OBJECTID TargetID;  // The object that script objects must be initialised to, e.g. for obj.new()
-   LONG     Flags;     // Optional flags
-   ERROR    Error;     // If an error occurred, this field will indicate the error number
-   LONG     CurrentLine; // Current line being executed, or failed line if script execution terminated
-   LONG     LineOffset; // An optional offset to use when reporting line numbers
-
-#ifdef PRV_SCRIPT
-   LARGE    ProcedureID;          // For callbacks
-   struct   KeyStore *Vars;       // Global parameters
-   STRING   *Results;
-   char     Language[4];          // 3-character language code, null-terminated
-   const struct ScriptArg *ProcArgs;  // Procedure args - applies during Exec
-   STRING   Path;                 // File location of the script
-   STRING   String;
-   STRING   WorkingPath;
-   STRING   ErrorString;
-   CSTRING  Procedure;
-   STRING   CacheFile;
-   LONG     ActivationCount;      // Incremented every time the script is activated.
-   LONG     ResultsTotal;
-   LONG     TotalArgs;            // Total number of ProcArgs
-   char     LanguageDir[32];      // Directory to use for language files
-   OBJECTID ScriptOwnerID;
-  
-#endif
-} objScript;
 
 // Script methods
 
@@ -2581,31 +2869,94 @@ INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
 }
 
 
+typedef class plScript : public BaseClass {
+   public:
+   OBJECTID TargetID;  // Reference to the default container that new script objects will be initialised to.
+   LONG     Flags;     // Optional flags.
+   ERROR    Error;     // If a script fails during execution, an error code may be readable here.
+   LONG     CurrentLine; // Indicates the current line being executed when in debug mode.
+   LONG     LineOffset; // For debugging purposes, this value is added to any message referencing a line number.
+
+#ifdef PRV_SCRIPT
+   LARGE    ProcedureID;          // For callbacks
+   struct   KeyStore *Vars;       // Global parameters
+   STRING   *Results;
+   char     Language[4];          // 3-character language code, null-terminated
+   const struct ScriptArg *ProcArgs;  // Procedure args - applies during Exec
+   STRING   Path;                 // File location of the script
+   STRING   String;
+   STRING   WorkingPath;
+   STRING   ErrorString;
+   CSTRING  Procedure;
+   STRING   CacheFile;
+   LONG     ActivationCount;      // Incremented every time the script is activated.
+   LONG     ResultsTotal;
+   LONG     TotalArgs;            // Total number of ProcArgs
+   char     LanguageDir[32];      // Directory to use for language files
+   OBJECTID ScriptOwnerID;
+  
+#endif
+   // Action stubs
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+      struct acSetVar args = { FieldName, Value };
+      return Action(AC_SetVar, this, &args);
+   }
+} objScript;
+
 // MetaClass class definition
 
 #define VER_METACLASS (1.000000)
 
-typedef class rkMetaClass : public BaseClass {
+// MetaClass methods
+
+#define MT_mcFindField -1
+
+struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
+
+INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) {
+   struct mcFindField args = { ID, 0, 0 };
+   ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
+   if (Field) *Field = args.Field;
+   if (Source) *Source = args.Source;
+   return(error);
+}
+
+
+typedef class plMetaClass : public BaseClass {
    public:
-   DOUBLE  ClassVersion;                // Version of the class
-   struct MethodArray * Methods;        // Original method array supplied by the module.
-   const struct FieldArray * Fields;    // Original field array supplied by the module.
-   CSTRING ClassName;                   // Name of the class
-   CSTRING FileExtension;               // File extension that is supported by this class.
-   CSTRING FileDescription;             // File description
-   CSTRING FileHeader;                  // Internal file header for identifying the file
-   CSTRING Path;                        // Module path to the class
-   LONG    Size;                        // Byte-size of the class when produced as an object
-   LONG    Flags;                       // Special flags
-   CLASSID SubClassID;                  // Sub-class ID
-   CLASSID BaseClassID;                 // Base-class ID
-   LONG    OpenCount;                   // Number of objects allocated to this class
-   LONG    TotalMethods;                // Total number of methods
-   LONG    TotalFields;                 // Total number of fields, including any additional standard fields like 'Name'
-   LONG    Category;                    // Assigned category
+   DOUBLE  ClassVersion;                // The version number of the class.
+   struct MethodArray * Methods;        // Set this field to define the methods supported by the class.
+   const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
+   CSTRING ClassName;                   // The name of the represented class.
+   CSTRING FileExtension;               // Describes the file extension represented by the class.
+   CSTRING FileDescription;             // Describes the file type represented by the class.
+   CSTRING FileHeader;                  // Defines a string expression that will allow relevant file data to be matched to the class.
+   CSTRING Path;                        // The path to the module binary that represents the class.
+   LONG    Size;                        // The total size of the object structure represented by the MetaClass.
+   LONG    Flags;                       // Optional flag settings.
+   CLASSID SubClassID;                  // Specifies the sub-class ID of a class object.
+   CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
+   LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
+   LONG    TotalMethods;                // The total number of methods supported by a class.
+   LONG    TotalFields;                 // The total number of fields defined by a class.
+   LONG    Category;                    // The system category that a class belongs to.
 
 #ifdef PRV_METACLASS
-    struct rkMetaClass *Base;            // Reference to the base class if this is a sub-class
+    objMetaClass *Base;                  // Reference to the base class if this is a sub-class
     struct Field *prvFields;             // Internal field structure
     const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
     struct ModuleMaster *Master; // Master module that owns this class, if any.
@@ -2617,81 +2968,9 @@ typedef class rkMetaClass : public BaseClass {
 #endif
 } objMetaClass;
 
-// MetaClass methods
-
-#define MT_mcFindField -1
-
-struct mcFindField { LONG ID; struct Field * Field; struct rkMetaClass * Source;  };
-
-INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, struct rkMetaClass ** Source) {
-   struct mcFindField args = { ID, 0, 0 };
-   ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
-   if (Field) *Field = args.Field;
-   if (Source) *Source = args.Source;
-   return(error);
-}
-
-
 // Task class definition
 
 #define VER_TASK (1.000000)
-
-typedef class rkTask : public BaseClass {
-   public:
-   DOUBLE TimeOut;
-   LONG   Flags;
-   LONG   ReturnCode;
-   LONG   ProcessID;  // Native process ID of the activated task
-
-#ifdef PRV_TASK
-   MEMORYID MessageMID;
-   MEMORYID LocationMID;       // Where to load the task from (string)
-   MEMORYID ParametersMID;     // Arguments (string)
-   MEMORYID CopyrightMID;      // Copyright details (string)
-   MEMORYID PathMID;
-   MEMORYID ProcessPathMID;
-   MEMORYID LaunchPathMID;
-   STRING   LaunchPath;
-   STRING   Path;
-   STRING   ProcessPath;
-   STRING   Location;         // Where to load the task from (string)
-   CSTRING  *Parameters;      // Arguments (string array)
-   STRING   Copyright;        // Copyright details (string)
-   char     Name[32];         // Name of the task, if specified (string)
-   char     Author[60];       // Who wrote the program (string)
-   char     Date[20];         // Date of compilation (string)
-   char     Short[80];        // Short description of program (string)
-   LONG     ParametersSize;   // Byte size of the arguments structure
-   STRING   Fields[100];      // Unlisted field storage
-   BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
-   FUNCTION ErrorCallback;
-   FUNCTION OutputCallback;
-   FUNCTION ExitCallback;
-   FUNCTION InputCallback;
-   struct MsgHandler *MsgAction;
-   struct MsgHandler *MsgGetField;
-   struct MsgHandler *MsgSetField;
-   struct MsgHandler *MsgActionResult;
-   struct MsgHandler *MsgDebug;
-   struct MsgHandler *MsgWaitForObjects;
-   struct MsgHandler *MsgValidateProcess;
-   struct MsgHandler *MsgQuit;
-   struct MsgHandler *MsgEvent;
-   struct MsgHandler *MsgThreadCallback;
-   struct MsgHandler *MsgThreadAction;
-
-   #ifdef __unix__
-      LONG InFD;             // stdin FD for receiving output from launched task
-      LONG ErrFD;            // stderr FD for receiving output from launched task
-   #endif
-   #ifdef _WIN32
-      STRING Env;
-      APTR Platform;
-   #endif
-   struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
-  
-#endif
-} objTask;
 
 // Task methods
 
@@ -2730,22 +3009,94 @@ INLINE ERROR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) {
 #define taskCloseInstance(obj) Action(MT_TaskCloseInstance,(obj),0)
 
 
+typedef class plTask : public BaseClass {
+   public:
+   DOUBLE TimeOut;    // Limits the amount of time to wait for a launched process to return.
+   LONG   Flags;      // Optional flags.
+   LONG   ReturnCode; // The task's return code can be retrieved following execution.
+   LONG   ProcessID;  // Reflects the process ID when an executable is launched.
+
+#ifdef PRV_TASK
+   MEMORYID MessageMID;
+   MEMORYID LocationMID;       // Where to load the task from (string)
+   MEMORYID ParametersMID;     // Arguments (string)
+   MEMORYID CopyrightMID;      // Copyright details (string)
+   MEMORYID PathMID;
+   MEMORYID ProcessPathMID;
+   MEMORYID LaunchPathMID;
+   STRING   LaunchPath;
+   STRING   Path;
+   STRING   ProcessPath;
+   STRING   Location;         // Where to load the task from (string)
+   CSTRING  *Parameters;      // Arguments (string array)
+   STRING   Copyright;        // Copyright details (string)
+   char     Name[32];         // Name of the task, if specified (string)
+   char     Author[60];       // Who wrote the program (string)
+   char     Date[20];         // Date of compilation (string)
+   char     Short[80];        // Short description of program (string)
+   LONG     ParametersSize;   // Byte size of the arguments structure
+   STRING   Fields[100];      // Variable field storage
+   BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
+   FUNCTION ErrorCallback;
+   FUNCTION OutputCallback;
+   FUNCTION ExitCallback;
+   FUNCTION InputCallback;
+   struct MsgHandler *MsgAction;
+   struct MsgHandler *MsgGetField;
+   struct MsgHandler *MsgSetField;
+   struct MsgHandler *MsgActionResult;
+   struct MsgHandler *MsgDebug;
+   struct MsgHandler *MsgWaitForObjects;
+   struct MsgHandler *MsgValidateProcess;
+   struct MsgHandler *MsgQuit;
+   struct MsgHandler *MsgEvent;
+   struct MsgHandler *MsgThreadCallback;
+   struct MsgHandler *MsgThreadAction;
+
+   #ifdef __unix__
+      LONG InFD;             // stdin FD for receiving output from launched task
+      LONG ErrFD;            // stderr FD for receiving output from launched task
+   #endif
+   #ifdef _WIN32
+      STRING Env;
+      APTR Platform;
+   #endif
+   struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
+  
+#endif
+   // Action stubs
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+      struct acSetVar args = { FieldName, Value };
+      return Action(AC_SetVar, this, &args);
+   }
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline LONG writeResult(CPTR Buffer, LONG Bytes) {
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!Action(AC_Write, this, &write)) return write.Result;
+      else return 0;
+   }
+} objTask;
+
 // Thread class definition
 
 #define VER_THREAD (1.000000)
-
-typedef class rkThread : public BaseClass {
-   public:
-   APTR  Data;       // User data pointer.
-   LONG  DataSize;   // Size of user data.
-   LONG  StackSize;  // Pre-set stack size
-   ERROR Error;      // Error code returned by the thread on completion.
-   LONG  Flags;      // Optional flags.
-
-#ifdef PRV_THREAD
- struct prvThread prv; 
-#endif
-} objThread;
 
 // Thread methods
 
@@ -2765,6 +3116,24 @@ INLINE ERROR thWait(APTR Ob, LONG TimeOut) {
    return(Action(MT_ThWait, (OBJECTPTR)Ob, &args));
 }
 
+
+typedef class plThread : public BaseClass {
+   public:
+   APTR  Data;       // Pointer to initialisation data for the thread.
+   LONG  DataSize;   // The size of the buffer referenced in the Data field.
+   LONG  StackSize;  // The stack size to allocate for the thread.
+   ERROR Error;      // Reflects the error code returned by the thread routine.
+   LONG  Flags;      // Optional flags can be defined here.
+
+#ifdef PRV_THREAD
+ struct prvThread prv; 
+#endif
+   // Action stubs
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+} objThread;
 
 // Private task list control structure.
 
@@ -2796,23 +3165,6 @@ struct TaskList {
 
 #define VER_MODULE (1.000000)
 
-typedef class rkModule : public BaseClass {
-   public:
-   DOUBLE Version;                          // Minimum required version of the module
-   const struct Function * FunctionList;    // Array of functions
-   APTR   ModBase;                          // Ptr to function jump table
-   struct ModuleMaster * Master;            // Shared details on the module
-   struct ModHeader * Header;               // For creating in-memory modules only.
-   LONG   Flags;                            // Optional flags
-
-#ifdef PRV_MODULE
-   char   Name[60];      // Name of the module
-   APTR   prvMBMemory;   // Module base memory
-   struct KeyStore *Vars;
-  
-#endif
-} objModule;
-
 // Module methods
 
 #define MT_ModResolveSymbol -1
@@ -2827,24 +3179,39 @@ INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) {
 }
 
 
+typedef class plModule : public BaseClass {
+   public:
+   DOUBLE Version;                          // Minimum required version number.
+   const struct Function * FunctionList;    // Refers to a list of public functions exported by the module.
+   APTR   ModBase;                          // The Module's function base (jump table) must be read from this field.
+   struct ModuleMaster * Master;            // For internal use only.
+   struct ModHeader * Header;               // For internal usage only.
+   LONG   Flags;                            // Optional flags.
+
+#ifdef PRV_MODULE
+   char   Name[60];      // Name of the module
+   APTR   prvMBMemory;   // Module base memory
+   struct KeyStore *Vars;
+  
+#endif
+   // Action stubs
+
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+      struct acSetVar args = { FieldName, Value };
+      return Action(AC_SetVar, this, &args);
+   }
+} objModule;
+
 // Time class definition
 
 #define VER_TIME (1.000000)
-
-typedef class rkTime : public BaseClass {
-   public:
-   LARGE SystemTime;    // Total number of microseconds passed since the system base time
-   LONG  Year;          // Year   (-ve for BC, +ve for AD)
-   LONG  Month;         // Month  (1 - 12)
-   LONG  Day;           // Day    (1 - 31)
-   LONG  Hour;          // Hour   (0 - 23)
-   LONG  Minute;        // Minute (0 - 59)
-   LONG  Second;        // Second (0 - 59)
-   LONG  TimeZone;      // 0 is GMT, range is +1300 or -1300
-   LONG  DayOfWeek;     // Day of week (0 = Sunday ..)
-   LONG  MilliSecond;   // Millisecond (0 - 999)
-   LONG  MicroSecond;   // Microsecond  (0 - 999999)
-} objTime;
 
 // Time methods
 
@@ -2853,47 +3220,28 @@ typedef class rkTime : public BaseClass {
 #define tmSetTime(obj) Action(MT_TmSetTime,(obj),0)
 
 
+typedef class plTime : public BaseClass {
+   public:
+   LARGE SystemTime;    // Represents the system time when the time object was last queried.
+   LONG  Year;          // Year (-ve for BC, +ve for AD).
+   LONG  Month;         // Month (1 - 12)
+   LONG  Day;           // Day (1 - 31)
+   LONG  Hour;          // Hour (0 - 23)
+   LONG  Minute;        // Minute (0 - 59)
+   LONG  Second;        // Second (0 - 59)
+   LONG  TimeZone;      // No information.
+   LONG  DayOfWeek;     // Day of week (0 - 6) starting from Sunday.
+   LONG  MilliSecond;   // Millisecond (0 - 999)
+   LONG  MicroSecond;   // Microsecond (0 - 999999)
+   // Action stubs
+
+   inline ERROR query() { return Action(AC_Query, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+} objTime;
+
 // Compression class definition
 
 #define VER_COMPRESSION (1.000000)
-
-typedef class rkCompression : public BaseClass {
-   public:
-   LARGE    TotalOutput;     // Total number of bytes output (e.g. during compression of a stream)
-   OBJECTID OutputID;        // Reference to output object for user messages
-   LONG     CompressionLevel; // Compression level (percentage - 0% none, 100% high)
-   LONG     Flags;           // Optional flags
-   LONG     SegmentSize;     // Splits the compressed file if it surpasses a set byte limit (e.g. 1.44MB)
-   LONG     Permissions;     // Default permissions to use for decompressed files
-   LONG     MinOutputSize;   // Minimum recommended output buffer size
-   LONG     WindowBits;      // Window bits, currently applicable to the default (zlib) compression
-
-#ifdef PRV_COMPRESSION
-   OBJECTPTR FileIO;             // File input/output
-   STRING *  FileList;           // List of all files held in the compression object
-   STRING    Path;               // Location of the compressed data
-   CompressionFeedback *FeedbackInfo;
-   UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
-   char      Password[128];      // Password for the compressed object
-   FUNCTION  Feedback;           // Set a function here to get de/compression feedack
-   ULONG     ArchiveHash;        // Archive reference, used for the 'archive:' volume
-
-   // Zip only fields
-   z_stream prvZip;
-   z_stream Stream;
-   UBYTE  *prvOutput;
-   UBYTE  *prvInput;
-   struct ZipFile *prvFiles;    // List of files in the archive (must be in order of the archive's entries)
-   UBYTE  *OutputBuffer;        // Output buffer for compressed data
-   LONG   OutputSize;           // Size of OutputBuffer
-   LONG   prvTotalFiles;
-   LONG   prvFileIndex;
-   WORD   prvCompressionCount;  // Counter of times that compression has occurred
-   UBYTE  Deflating;
-   UBYTE  Inflating;
-  
-#endif
-} objCompression;
 
 // Compression methods
 
@@ -2996,16 +3344,58 @@ INLINE ERROR cmpFind(APTR Ob, CSTRING Path, LONG Flags, struct CompressedItem **
 }
 
 
+typedef class plCompression : public BaseClass {
+   public:
+   LARGE    TotalOutput;     // The total number of bytes that have been output during the compression or decompression of streamed data.
+   OBJECTID OutputID;        // Resulting messages will be sent to the object referred to in this field.
+   LONG     CompressionLevel; // The compression level to use when compressing data.
+   LONG     Flags;           // Optional flags.
+   LONG     SegmentSize;     // Private. Splits the compressed file if it surpasses a set byte limit.
+   LONG     Permissions;     // Default permissions for decompressed files are defined here.
+   LONG     MinOutputSize;   // Indicates the minimum output buffer size that will be needed during de/compression.
+   LONG     WindowBits;      // Special option for certain compression formats.
+
+#ifdef PRV_COMPRESSION
+   OBJECTPTR FileIO;             // File input/output
+   STRING *  FileList;           // List of all files held in the compression object
+   STRING    Path;               // Location of the compressed data
+   CompressionFeedback *FeedbackInfo;
+   UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
+   char      Password[128];      // Password for the compressed object
+   FUNCTION  Feedback;           // Set a function here to get de/compression feedack
+   ULONG     ArchiveHash;        // Archive reference, used for the 'archive:' volume
+
+   // Zip only fields
+   z_stream prvZip;
+   z_stream Stream;
+   UBYTE  *prvOutput;
+   UBYTE  *prvInput;
+   struct ZipFile *prvFiles;    // List of files in the archive (must be in order of the archive's entries)
+   UBYTE  *OutputBuffer;        // Output buffer for compressed data
+   LONG   OutputSize;           // Size of OutputBuffer
+   LONG   prvTotalFiles;
+   LONG   prvFileIndex;
+   WORD   prvCompressionCount;  // Counter of times that compression has occurred
+   UBYTE  Deflating;
+   UBYTE  Inflating;
+  
+#endif
+   // Action stubs
+
+   inline ERROR flush() { return Action(AC_Flush, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+} objCompression;
+
 // CompressedStream class definition
 
 #define VER_COMPRESSEDSTREAM (1.000000)
 
-typedef class rkCompressedStream : public BaseClass {
+typedef class plCompressedStream : public BaseClass {
    public:
-   LARGE     TotalOutput; // Count of the total bytes that have been output.
-   OBJECTPTR Input;      // The object that is the source of the compressed data.
-   OBJECTPTR Output;     // The object that is the destination for the compressed data.
-   LONG      Format;     // CF_GZIP, CF_ZLIB, CF_DEFLATE
+   LARGE     TotalOutput; // A live counter of total bytes that have been output by the stream.
+   OBJECTPTR Input;      // An input object that will supply data for decompression.
+   OBJECTPTR Output;     // A target object that will receive data compressed by the stream.
+   LONG      Format;     // The format of the compressed stream.  The default is GZIP.
 
 #ifdef PRV_COMPRESSEDSTREAM
    UBYTE *OutputBuffer;
@@ -3017,319 +3407,71 @@ typedef class rkCompressedStream : public BaseClass {
 #endif
 } objCompressedStream;
 
-#define CONV_TIME_DATETIME(a) ((struct DateTime *)(&(a)->Year))
 
-INLINE BYTE CMP_DATETIME(struct DateTime *one, struct DateTime *two)
-{
-   if (one->Year < two->Year) return -1;
-   if (one->Year > two->Year) return 1;
-   if (one->Month < two->Month) return -1;
-   if (one->Month > two->Month) return 1;
-   if (one->Day < two->Day) return -1;
-   if (one->Day > two->Day) return 1;
-   if (one->Minute < two->Minute) return -1;
-   if (one->Minute > two->Minute) return 1;
-   if (one->Hour < two->Hour) return -1;
-   if (one->Hour > two->Hour) return 1;
-   if (one->Second < two->Second) return -1;
-   if (one->Second > two->Second) return 1;
-   return 0;
+INLINE ERROR GetLarge(OBJECTPTR Object, ULONG FieldID, LARGE *Value) {
+   return GetField(Object, (FIELD)FieldID|TLARGE, Value);
 }
 
-// Macro based actions.
-
-#define SetRead(a,b,c)  a.Buffer=(b);   a.Length=(c);
-#define SetSeek(a,b,c)  a.Position=(b); a.Offset=(c);
-#define SetWrite(a,b,c) a.Buffer=(b);   a.Length=(c);
-
-// Action and Notification Structures
-
-struct acActionNotify  { union { ACTIONID ActionID; ACTIONID Action; }; union { OBJECTID ObjectID; OBJECTID Object; }; APTR Args; LONG Size; ERROR Error; LONG Time; };
-struct acClipboard     { LONG Mode; };
-struct acCopyData      { union { OBJECTID DestID; OBJECTID Dest; }; };
-struct acCustom        { LONG Number; CSTRING String; };
-struct acDataFeed      { union { OBJECTID ObjectID; OBJECTID Object; }; union { LONG DataType; LONG Datatype; }; const void *Buffer; LONG Size; };
-struct acDragDrop      { union { OBJECTID SourceID; OBJECTID Source; }; LONG Item; CSTRING Datatype; };
-struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
-struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
-struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
-struct acNewChild      { OBJECTPTR Object; };
-struct acNewOwner      { union { OBJECTID NewOwnerID; OBJECTID NewOwner; }; CLASSID ClassID; };
-struct acRead          { APTR Buffer; LONG Length; LONG Result; };
-struct acRedimension   { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acRedo          { LONG Steps; };
-struct acRename        { CSTRING Name; };
-struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acSaveImage     { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSaveToObject  { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
-struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
-struct acSeek          { DOUBLE Offset; LONG Position; };
-struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
-struct acSetVar        { CSTRING Field; CSTRING Value; };
-struct acUndo          { LONG Steps; };
-struct acWrite         { CPTR Buffer; LONG Length; LONG Result; };
-
-// Action Macros
-
-#define acActivate(a)         (Action(AC_Activate,(a),NULL))
-#define acClear(a)            (Action(AC_Clear,(a),NULL))
-#define acDeactivate(a)       (Action(AC_Deactivate,(a),NULL))
-#define acDisable(a)          (Action(AC_Disable,(a),NULL))
-#define acDragDrop(obj,b,c,d) (Action(AC_DragDrop,(obj),(b),(c),(d))
-#define acDraw(a)             (Action(AC_Draw,(a),NULL))
-#define acEnable(a)           (Action(AC_Enable,(a),NULL))
-#define acFlush(a)            (Action(AC_Flush,(a),NULL))
-#define acFocus(a)            (Action(AC_Focus,(a),NULL))
-#define acFree(a)             (Action(AC_Free,(a),NULL))
-#define acHide(a)             (Action(AC_Hide,(a),NULL))
-#define acInit(a)             (Action(AC_Init,(a),NULL))
-#define acLock(a)             (Action(AC_Lock,(a),NULL))
-#define acLostFocus(a)        (Action(AC_LostFocus,(a),NULL))
-#define acMoveToBack(a)       (Action(AC_MoveToBack,(a),NULL))
-#define acMoveToFront(a)      (Action(AC_MoveToFront,(a),NULL))
-#define acNext(a)             (Action(AC_Next,(a),NULL)
-#define acPrev(a)             (Action(AC_Prev,(a),NULL)
-#define acQuery(a)            (Action(AC_Query,(a),NULL))
-#define acRefresh(a)          (Action(AC_Refresh, (a), NULL))
-#define acReset(a)            (Action(AC_Reset,(a),NULL))
-#define acSaveSettings(a)     (Action(AC_SaveSettings,(a),NULL))
-#define acShow(a)             (Action(AC_Show,(a),NULL))
-#define acSort(a)             (Action(AC_Sort,(a),NULL))
-#define acUnlock(a)           (Action(AC_Unlock,(a),NULL))
-
-#define acActivateID(a)       (ActionMsg(AC_Activate,(a),NULL))
-#define acClearID(a)          (ActionMsg(AC_Clear,(a),NULL))
-#define acDisableID(a)        (ActionMsg(AC_Disable,(a),NULL))
-#define acDrawID(a)           (ActionMsg(AC_Draw,(a),NULL))
-#define acEnableID(a)         (ActionMsg(AC_Enable,(a),NULL))
-#define acFlushID(a)          (ActionMsg(AC_Flush,(a),NULL))
-#define acFocusID(a)          (ActionMsg(AC_Focus,(a),NULL))
-#define acFreeID(a)           (ActionMsg(AC_Free,(a),NULL))
-#define acHideID(a)           (ActionMsg(AC_Hide,(a),NULL))
-#define acInitID(a)           (ActionMsg(AC_Init,(a),NULL))
-#define acLostFocusID(a)      (ActionMsg(AC_LostFocus,(a),NULL))
-#define acMoveToBackID(a)     (ActionMsg(AC_MoveToBack,(a),NULL))
-#define acMoveToFrontID(a)    (ActionMsg(AC_MoveToFront,(a),NULL))
-#define acQueryID(a)          (ActionMsg(AC_Query,(a),NULL))
-#define acRefreshID(a)        (ActionMsg(AC_Refresh,(a),NULL))
-#define acSaveSettingsID(a)   (ActionMsg(AC_SaveSettings,(a),NULL))
-#define acShowID(a)           (ActionMsg(AC_Show,(a),NULL))
-
-INLINE ERROR acClipboard(APTR Object, LONG Mode) {
-   struct acClipboard args = { Mode };
-   return Action(AC_Clipboard, (OBJECTPTR)Object, &args);
+INLINE ERROR GetLong(OBJECTPTR Object, ULONG FieldID, LONG *Value) {
+   return GetField(Object, (FIELD)FieldID|TLONG, Value);
 }
 
-INLINE ERROR acDrawArea(APTR Object, LONG X, LONG Y, LONG Width, LONG Height) {
-   struct acDraw args = { X, Y, Width, Height };
-   return Action(AC_Draw, (OBJECTPTR)Object, &args);
+INLINE ERROR GetDouble(OBJECTPTR Object, ULONG FieldID, DOUBLE *Value) {
+   return GetField(Object, (FIELD)FieldID|TDOUBLE, Value);
 }
 
-INLINE ERROR acDataFeed(APTR Object, OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-   struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
-   return Action(AC_DataFeed, (OBJECTPTR)Object, &args);
+INLINE ERROR GetString(OBJECTPTR Object, ULONG FieldID, STRING *Value) {
+   return GetField(Object, (FIELD)FieldID|TSTRING, Value);
 }
 
-INLINE ERROR acMove(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
-   struct acMove args = { X, Y, Z };
-   return Action(AC_Move, (OBJECTPTR)Object, &args);
+INLINE ERROR GetPercentage(OBJECTPTR Object, ULONG FieldID, DOUBLE *Value) {
+   return GetField(Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
 }
 
-INLINE ERROR acRead(APTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
-   ERROR error;
-   struct acRead read = { (BYTE *)Buffer, Bytes };
-   if (!(error = Action(AC_Read, (OBJECTPTR)Object, &read))) {
-      if (Read) *Read = read.Result;
-      return ERR_Okay;
-   }
-   else {
-      if (Read) *Read = 0;
-      return error;
-   }
+INLINE ERROR GetPointer(OBJECTPTR Object, ULONG FieldID, APTR Value) {
+   return GetField(Object, (FIELD)FieldID|TPTR, Value);
 }
 
-INLINE ERROR acRedo(APTR Object, LONG Steps) {
-   struct acRedo args = { Steps };
-   return Action(AC_Redo, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acRedimension(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
-   struct acRedimension args = { X, Y, Z, Width, Height, Depth };
-   return Action(AC_Redimension, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acRename(APTR Object, CSTRING Name) {
-   struct acRename args = { Name };
-   return Action(AC_Rename, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acResize(APTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
-   struct acResize args = { Width, Height, Depth };
-   return Action(AC_Resize, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acScroll(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
-   struct acScroll args = { X, Y, Z };
-   return Action(AC_Scroll, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acScrollToPoint(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
-   struct acScrollToPoint args = { X, Y, Z, Flags };
-   return Action(AC_ScrollToPoint, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acUndo(APTR Object, LONG Steps) {
-   struct acUndo args = { Steps };
-   return Action(AC_Undo, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acGetVar(APTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
-   struct acGetVar args = { FieldName, Buffer, Size };
-   ERROR error = Action(AC_GetVar, (OBJECTPTR)Object, &args);
-   if ((error) AND (Buffer)) Buffer[0] = 0;
-   return error;
-}
-
-INLINE ERROR acMoveToPoint(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
-   struct acMoveToPoint moveto = { X, Y, Z, Flags };
-   return Action(AC_MoveToPoint, (OBJECTPTR)Object, &moveto);
-}
-
-INLINE ERROR acSaveImage(APTR Object, OBJECTID DestID, CLASSID ClassID) {
-   struct acSaveImage args = { { DestID }, { ClassID } };
-   return Action(AC_SaveImage, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acSaveToObject(APTR Object, OBJECTID DestID, CLASSID ClassID) {
-   struct acSaveToObject args = { { DestID }, { ClassID } };
-   return Action(AC_SaveToObject, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acSeek(APTR Object, DOUBLE Offset, LONG Position) {
-   struct acSeek args = { Offset, Position };
-   return Action(AC_Seek, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acSetVars(APTR Object, CSTRING tags, ...) {
-   struct acSetVar args;
-   va_list list;
-
-   va_start(list, tags);
-   while ((args.Field = va_arg(list, STRING)) != TAGEND) {
-      args.Value = va_arg(list, STRING);
-      if (Action(AC_SetVar, (OBJECTPTR)Object, &args) != ERR_Okay) {
-         va_end(list);
-         return ERR_Failed;
-      }
-   }
-   va_end(list);
-   return ERR_Okay;
-}
-
-INLINE ERROR acWrite(APTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
-   ERROR error;
-   struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (!(error = Action(AC_Write, (OBJECTPTR)Object, &write))) {
-      if (Result) *Result = write.Result;
-   }
-   else if (Result) *Result = 0;
-   return error;
-}
-
-INLINE LONG acWriteResult(APTR Object, CPTR Buffer, LONG Bytes) {
-   struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (!Action(AC_Write, (OBJECTPTR)Object, &write)) return write.Result;
-   else return 0;
-}
-
-#define acSeekStart(a,b)    acSeek((a),(b),SEEK_START)
-#define acSeekEnd(a,b)      acSeek((a),(b),SEEK_END)
-#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK_CURRENT)
-
-INLINE ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
-   struct acSelectArea area = { X, Y, Width, Height };
-   return Action(AC_SelectArea, (OBJECTPTR)Object, &area);
-}
-
-INLINE ERROR acSetVar(APTR Object, CSTRING FieldName, CSTRING Value) {
-   struct acSetVar args = { FieldName, Value };
-   return Action(AC_SetVar, (OBJECTPTR)Object, &args);
-}
-
-#define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
-#define SetVar(a,b,c)    acSetVar(a,b,c)
-#define SetVars(a,b,...) acSetUnlistedFields(a,b __VA_ARGS__)
-
-// Variadic macro
-
-#define SetUnlistedFields(a,b,...)    acSetUnlistedFields(a,b __VA_ARGS__)
-
-INLINE ERROR GetLarge(APTR Object, ULONG FieldID, LARGE *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TLARGE, Value);
-}
-
-INLINE ERROR GetLong(APTR Object, ULONG FieldID, LONG *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TLONG, Value);
-}
-
-INLINE ERROR GetDouble(APTR Object, ULONG FieldID, DOUBLE *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE, Value);
-}
-
-INLINE ERROR GetString(APTR Object, ULONG FieldID, STRING *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TSTRING, Value);
-}
-
-INLINE ERROR GetPercentage(APTR Object, ULONG FieldID, DOUBLE *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
-}
-
-INLINE ERROR GetPointer(APTR Object, ULONG FieldID, APTR Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
-}
-
-INLINE ERROR GetVariable(APTR Object, ULONG FieldID, struct Variable *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TVAR, Value);
+INLINE ERROR GetVariable(OBJECTPTR Object, ULONG FieldID, struct Variable *Value) {
+   return GetField(Object, (FIELD)FieldID|TVAR, Value);
 }
 
 //****************************************************************************
 
-INLINE ERROR SetLarge(APTR Object, ULONG FieldID, LARGE Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TLARGE, Value);
+INLINE ERROR SetLarge(OBJECTPTR Object, ULONG FieldID, LARGE Value) {
+   return SetField(Object, (FIELD)FieldID|TLARGE, Value);
 }
 
-INLINE ERROR SetLong(APTR Object, ULONG FieldID, LONG Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TLONG, Value);
+INLINE ERROR SetLong(OBJECTPTR Object, ULONG FieldID, LONG Value) {
+   return SetField(Object, (FIELD)FieldID|TLONG, Value);
 }
 
-INLINE ERROR SetFunction(APTR Object, ULONG FieldID, FUNCTION *Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TFUNCTION, Value);
+INLINE ERROR SetFunction(OBJECTPTR Object, ULONG FieldID, FUNCTION *Value) {
+   return SetField(Object, (FIELD)FieldID|TFUNCTION, Value);
 }
 
-INLINE ERROR SetFunctionPtr(APTR Object, ULONG FieldID, APTR Value) { // Yes, the pointer value will be converted to a StdC FUNCTION type internally.
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
+INLINE ERROR SetFunctionPtr(OBJECTPTR Object, ULONG FieldID, APTR Value) { // Yes, the pointer value will be converted to a StdC FUNCTION type internally.
+   return SetField(Object, (FIELD)FieldID|TPTR, Value);
 }
 
-INLINE ERROR SetDouble(APTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE, Value);
+INLINE ERROR SetDouble(OBJECTPTR Object, ULONG FieldID, DOUBLE Value) {
+   return SetField(Object, (FIELD)FieldID|TDOUBLE, Value);
 }
 
-INLINE ERROR SetString(APTR Object, ULONG FieldID, CSTRING Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TSTRING, Value);
+INLINE ERROR SetString(OBJECTPTR Object, ULONG FieldID, CSTRING Value) {
+   return SetField(Object, (FIELD)FieldID|TSTRING, Value);
 }
 
-INLINE ERROR SetPercentage(APTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
+INLINE ERROR SetPercentage(OBJECTPTR Object, ULONG FieldID, DOUBLE Value) {
+   return SetField(Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
 }
 
-INLINE ERROR SetPointer(APTR Object, ULONG FieldID, const void *Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
+INLINE ERROR SetPointer(OBJECTPTR Object, ULONG FieldID, const void *Value) {
+   return SetField(Object, (FIELD)FieldID|TPTR, Value);
 }
 
-INLINE ERROR SetVariable(APTR Object, ULONG FieldID, struct Variable *Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TVAR, Value);
+INLINE ERROR SetVariable(OBJECTPTR Object, ULONG FieldID, struct Variable *Value) {
+   return SetField(Object, (FIELD)FieldID|TVAR, Value);
 }
 
 #ifndef PRV_CORE
@@ -3693,23 +3835,23 @@ INLINE void SET_DEVICE(struct dcDeviceInput *Input, WORD Type, WORD Flags, DOUBL
 //****************************************************************************
 // File Methods.
 
-INLINE CSTRING flReadLine(APTR Object) {
+INLINE CSTRING flReadLine(OBJECTPTR Object) {
    struct flReadLine args;
-   if (!Action(MT_FlReadLine, (OBJECTPTR)Object, &args)) return args.Result;
+   if (!Action(MT_FlReadLine, Object, &args)) return args.Result;
    else return NULL;
 }
 
 //****************************************************************************
 // Little endian read functions.
 
-INLINE ERROR flReadLE2(APTR Object, WORD *Result)
+INLINE ERROR flReadLE2(OBJECTPTR Object, WORD *Result)
 {
    struct acRead read;
    UBYTE data[2];
 
    read.Buffer = data;
    read.Length = 2;
-   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
+   if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS 2) {
          #ifdef LITTLE_ENDIAN
             *Result = ((WORD *)data)[0];
@@ -3723,12 +3865,12 @@ INLINE ERROR flReadLE2(APTR Object, WORD *Result)
    else return ERR_Read;
 }
 
-INLINE ERROR flReadLE4(APTR Object, LONG *Result)
+INLINE ERROR flReadLE4(OBJECTPTR Object, LONG *Result)
 {
    UBYTE data[4];
 
    struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
+   if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS sizeof(data)) {
          #ifdef LITTLE_ENDIAN
             *Result = ((LONG *)data)[0];
@@ -3742,11 +3884,11 @@ INLINE ERROR flReadLE4(APTR Object, LONG *Result)
    else return ERR_Read;
 }
 
-INLINE ERROR flReadLE8(APTR Object, LARGE *Result)
+INLINE ERROR flReadLE8(OBJECTPTR Object, LARGE *Result)
 {
    UBYTE data[8];
    struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
+   if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS sizeof(data)) {
          #ifdef LITTLE_ENDIAN
             *Result = ((LARGE *)data)[0];

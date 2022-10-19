@@ -257,7 +257,7 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
    if (!Self->Viewport) return log.warning(ERR_NoData);
 
    if ((Args->ClassID) AND (Args->ClassID != ID_SVG)) {
-      auto mc = (rkMetaClass *)FindClass(Args->ClassID);
+      auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((!GetPointer(mc, FID_ActionTable, &routine)) AND (routine)) {
          if ((routine[AC_SaveToObject]) AND (routine[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
             return routine[AC_SaveToObject](Self, Args);

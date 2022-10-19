@@ -24,7 +24,7 @@ its vector description on top.
 
 *********************************************************************************************************************/
 
-typedef class rkMergeFX : public rkFilterEffect {
+typedef class rkMergeFX : public objFilterEffect {
    public:
    std::vector<MergeSource> List;
 } objMergeFX;

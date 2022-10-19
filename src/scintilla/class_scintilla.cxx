@@ -2145,7 +2145,7 @@ static void draw_scintilla(objScintilla *Self, objSurface *Surface, struct rkBit
    glBitmap = NULL;
 
    if (Self->Flags & SCF_DISABLED) {
-      gfxDrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, PackPixelA(Bitmap, 0, 0, 0, 64), BAF_FILL|BAF_BLEND);
+      gfxDrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, Bitmap->packPixel(0, 0, 0, 64), BAF_FILL|BAF_BLEND);
    }
 }
 

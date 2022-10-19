@@ -174,7 +174,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          BYTE hold_priority;
       #endif
    #endif
-   rkTask *localtask;
+   objTask *localtask;
    LONG i;
    OBJECTPTR SystemTask;
    ERROR error;
@@ -1772,7 +1772,7 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    for (const auto & mem : glPrivateMemory) {
       if (!(mem.Flags & MEM_OBJECT)) continue;
 
-      rkTask *task;
+      objTask *task;
       if ((task = mem.Address)) {
          if ((task->ClassID IS ID_TASK) and (task->ProcessID IS childprocess)) {
             task->ReturnCode    = result;

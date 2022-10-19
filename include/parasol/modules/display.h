@@ -403,69 +403,6 @@ typedef struct BitmapSurfaceV2 {
 
 #define VER_BITMAP (2.000000)
 
-typedef class rkBitmap : public BaseClass {
-   public:
-   struct RGBPalette * Palette;                                            // Pointer to the Bitmap's palette
-   struct ColourFormat * ColourFormat;                                     // Pointer to colour information
-   void (*DrawUCPixel)(struct rkBitmap *, LONG, LONG, ULONG);
-   void (*DrawUCRPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *);
-   ULONG (*ReadUCPixel)(struct rkBitmap *, LONG, LONG);
-   void (*ReadUCRPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *);
-   void (*ReadUCRIndex)(struct rkBitmap *, UBYTE *, struct RGB8 *);
-   void (*DrawUCRIndex)(struct rkBitmap *, UBYTE *, struct RGB8 *);
-   UBYTE *  Data;                                                          // Pointer to bitmap data area
-   LONG     Width;                                                         // Width
-   LONG     ByteWidth;                                                     // ByteWidth (not including padding - see LineWidth)
-   LONG     Height;                                                        // Height
-   LONG     Type;                                                          // Bitmap type
-   LONG     LineWidth;                                                     // Line differential in bytes
-   LONG     PlaneMod;                                                      // Plane differential in bytes
-   struct ClipRectangle Clip;                                              // Clipping rectangle
-   LONG     Size;                                                          // Total size of the bitmap in bytes
-   LONG     DataFlags;                                                     // Memory flags to use in allocation
-   LONG     AmtColours;                                                    // Maximum amount of colours available
-   LONG     Flags;                                                         // Optional flags
-   LONG     TransIndex;                                                    // Colour index or packed colour value that acts as the background/transparency
-   LONG     BytesPerPixel;                                                 // 1, 2, 3, 4
-   LONG     BitsPerPixel;                                                  // 1, 8, 15, 16, 24, 32
-   LONG     Position;                                                      // Current byte position for reading and writing
-   LONG     XOffset;                                                       // Horizontal offset to apply to graphics coordinates
-   LONG     YOffset;                                                       // Vertical offset to apply to graphics coordinates
-   LONG     Opacity;                                                       // Opacity setting to use in drawing operations
-   MEMORYID DataMID;                                                       // Memory ID of the bitmap's data, if applicable.
-   struct RGB8 TransRGB;                                                   // The transparent colour of the bitmap, in RGB format.
-   struct RGB8 BkgdRGB;                                                    // Background colour (for clearing, resizing)
-   LONG     BkgdIndex;                                                     // Colour index or packed colour of the background.
-   LONG     ColourSpace;                                                   // Defines the colour space for RGB values.
-
-#ifdef PRV_BITMAP
-   ULONG  *Gradients;
-   APTR   ResolutionChangeHandle;
-   struct RGBPalette prvPaletteArray;
-   struct ColourFormat prvColourFormat;
-   MEMORYID prvCompressMID;
-   LONG   prvAFlags;                  // Private allocation flags
-   #ifdef __xwindows__
-      struct {
-         XImage   ximage;
-         Drawable drawable;
-         XImage   *readable;
-         XShmSegmentInfo ShmInfo;
-         BYTE XShmImage;
-      } x11;
-   #elif _WIN32
-      struct {
-         APTR Drawable;  // HDC for the Bitmap
-      } win;
-   #elif _GLES_
-      ULONG prvWriteBackBuffer:1;  // For OpenGL surface locking.
-      LONG prvGLPixel;
-      LONG prvGLFormat;
-   #endif
-  
-#endif
-} objBitmap;
-
 // Bitmap methods
 
 #define MT_BmpCopyArea -1
@@ -534,74 +471,198 @@ INLINE ERROR bmpDrawLine(APTR Ob, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Co
 #define bmpConvertToRGB(obj) Action(MT_BmpConvertToRGB,(obj),0)
 
 
-// Display class definition
-
-#define VER_DISPLAY (1.000000)
-
-typedef class rkDisplay : public BaseClass {
+typedef class rkBitmap : public BaseClass {
    public:
-   DOUBLE   RefreshRate;        // The active refresh rate
-   struct rkBitmap * Bitmap;    // Reference to the display's bitmap information.
-   LONG     Flags;              // Optional flags
-   LONG     Width;              // The width of the visible display
-   LONG     Height;             // The height of the visible display
-   LONG     X;                  // Hardware co-ordinate for vertical offset, or position of host window
-   LONG     Y;                  // Hardware co-ordinate for horizontal offset, or position of host window
-   LONG     BmpX;               // Current offset of the horizontal axis
-   LONG     BmpY;               // Current offset of the vertical axis
-   OBJECTID BufferID;           // Double buffer bitmap
-   LONG     TotalMemory;        // The total amount of accessible RAM installed on the video card.
-   LONG     MinHScan;           // The minimum horizontal scan rate of the display output device.
-   LONG     MaxHScan;           // The maximum horizontal scan rate of the display output device.
-   LONG     MinVScan;           // The minimum vertical scan rate of the display output device.
-   LONG     MaxVScan;           // The maximum vertical scan rate of the display output device.
-   LONG     DisplayType;        // Indicates the display type.
-   LONG     DPMS;               // Optional display power modes.
-   OBJECTID PopOverID;          // For hosted displays, PopOver can refer to another display that should always remain behind us
-   LONG     LeftMargin;         // Left window margin, if hosted
-   LONG     RightMargin;        // Right window margin, if hosted
-   LONG     TopMargin;          // Top window margin, if hosted
-   LONG     BottomMargin;       // Bottom window margin, if hosted
+   struct RGBPalette * Palette;                                            // Points to a bitmap's colour palette.
+   struct ColourFormat * ColourFormat;                                     // Describes the colour format used to construct each bitmap pixel.
+   void (*DrawUCPixel)(struct rkBitmap *, LONG, LONG, ULONG);              // Points to a C function that draws pixels to the bitmap using colour indexes.
+   void (*DrawUCRPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *);     // Points to a C function that draws pixels to the bitmap in RGB format.
+   ULONG (*ReadUCPixel)(struct rkBitmap *, LONG, LONG);                    // Points to a C function that reads pixels from the bitmap in colour index format.
+   void (*ReadUCRPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *);     // Points to a C function that reads pixels from the bitmap in RGB format.
+   void (*ReadUCRIndex)(struct rkBitmap *, UBYTE *, struct RGB8 *);        // Points to a C function that reads pixels from the bitmap in RGB format.
+   void (*DrawUCRIndex)(struct rkBitmap *, UBYTE *, struct RGB8 *);        // Points to a C function that draws pixels to the bitmap in RGB format.
+   UBYTE *  Data;                                                          // Pointer to a bitmap's data area.
+   LONG     Width;                                                         // The width of the bitmap, in pixels.
+   LONG     ByteWidth;                                                     // The width of the bitmap, in bytes.
+   LONG     Height;                                                        // The height of the bitmap, in pixels.
+   LONG     Type;                                                          // Defines the data type of the bitmap.
+   LONG     LineWidth;                                                     // Line differential in bytes
+   LONG     PlaneMod;                                                      // The differential between each bitmap plane.
+   struct ClipRectangle Clip;                                              // Defines the bitmap's clipping region.
+   LONG     Size;                                                          // The total size of the bitmap, in bytes.
+   LONG     DataFlags;                                                     // Defines the memory flags to use in allocating a bitmap's data area.
+   LONG     AmtColours;                                                    // The maximum number of displayable colours.
+   LONG     Flags;                                                         // Optional flags.
+   LONG     TransIndex;                                                    // The transparent colour of the bitmap, represented as an index.
+   LONG     BytesPerPixel;                                                 // The number of bytes per pixel.
+   LONG     BitsPerPixel;                                                  // The number of bits per pixel
+   LONG     Position;                                                      // The current read/write data position.
+   LONG     XOffset;                                                       // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
+   LONG     YOffset;                                                       // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
+   LONG     Opacity;                                                       // Determines the translucency setting to use in drawing operations.
+   MEMORYID DataMID;                                                       // Memory ID of the bitmap's data, if applicable.
+   struct RGB8 TransRGB;                                                   // The transparent colour of the bitmap, in RGB format.
+   struct RGB8 BkgdRGB;                                                    // Background colour (for clearing, resizing)
+   LONG     BkgdIndex;                                                     // The bitmap's background colour is defined here as a colour index.
+   LONG     ColourSpace;                                                   // Defines the colour space for RGB values.
 
-#ifdef PRV_DISPLAY
-   DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
-   struct resolution *Resolutions;
-   FUNCTION  ResizeFeedback;
-   MEMORYID  ResolutionsMID;
-   WORD      TotalResolutions;
-   OBJECTID  BitmapID;
-   LONG      BmpXOffset;     // X offset for scrolling
-   LONG      BmpYOffset;     // Y offset for scrolling
+#ifdef PRV_BITMAP
+   ULONG  *Gradients;
+   APTR   ResolutionChangeHandle;
+   struct RGBPalette prvPaletteArray;
+   struct ColourFormat prvColourFormat;
+   MEMORYID prvCompressMID;
+   LONG   prvAFlags;                  // Private allocation flags
    #ifdef __xwindows__
-   union {
-      APTR   WindowHandle;
-      Window XWindowHandle;
-   };
-   #elif __ANDROID__
-      ANativeWindow *WindowHandle;
-   #else
-      APTR   WindowHandle;
-   #endif
-   APTR      UserLoginHandle;
-   WORD      Opacity;
-   LONG      VDensity;          // Cached DPI value, if calculable.
-   LONG      HDensity;
-   char      DriverVendor[60];
-   char      DriverCopyright[80];
-   char      Manufacturer[60];
-   char      Chipset[40];
-   char      DAC[32];
-   char      Clock[32];
-   char      DriverVersion[16];
-   char      CertificationDate[20];
-   char      Display[32];
-   char      DisplayManufacturer[60];
-   #ifdef _WIN32
-      APTR OldProcedure;
+      struct {
+         XImage   ximage;
+         Drawable drawable;
+         XImage   *readable;
+         XShmSegmentInfo ShmInfo;
+         BYTE XShmImage;
+      } x11;
+   #elif _WIN32
+      struct {
+         APTR Drawable;  // HDC for the Bitmap
+      } win;
+   #elif _GLES_
+      ULONG prvWriteBackBuffer:1;  // For OpenGL surface locking.
+      LONG prvGLPixel;
+      LONG prvGLFormat;
    #endif
   
 #endif
-} objDisplay;
+   public:
+   inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
+      if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
+      else {
+         struct bmpGetColour args = { Red, Green, Blue, Alpha };
+         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         return 0;
+      }
+   }
+
+   inline ULONG getColour(struct RGB8 &RGB) {
+      if (BitsPerPixel > 8) return packPixel(RGB);
+      else {
+         struct bmpGetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
+         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         return 0;
+      }
+   }
+
+   inline ULONG packPixel(UBYTE R, UBYTE G, UBYTE B) {
+      return
+         (((R>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((G>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((B>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((255>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixel(UBYTE R, UBYTE G, UBYTE B, UBYTE A) {
+      return
+         (((R>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((G>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((B>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((A>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixel(struct RGB8 &RGB, UBYTE Alpha) {
+      return
+         (((RGB.Red>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((RGB.Green>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((RGB.Blue>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((Alpha>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixel(struct RGB8 &RGB) {
+      return
+         (((RGB.Red>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((RGB.Green>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((RGB.Blue>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((RGB.Alpha>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   // Pack pixel 'whole-byte' version, for faster 24/32 bit formats
+
+   inline ULONG packPixelWB(UBYTE R, UBYTE G, UBYTE B, UBYTE A = 255) {
+      return (R << ColourFormat->RedPos) | (G << ColourFormat->GreenPos) | (B << ColourFormat->BluePos) | (A << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixelWB(struct RGB8 &RGB) {
+      return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (RGB.Alpha << ColourFormat->AlphaPos);
+   }
+
+   // Colour unpacking routines
+
+   template <class T> inline UBYTE unpackRed(T Packed)   { return (((Packed >> ColourFormat->RedPos) & ColourFormat->RedMask) << ColourFormat->RedShift); }
+   template <class T> inline UBYTE unpackGreen(T Packed) { return (((Packed >> ColourFormat->GreenPos) & ColourFormat->GreenMask) << ColourFormat->GreenShift); }
+   template <class T> inline UBYTE unpackBlue(T Packed)  { return (((Packed >> ColourFormat->BluePos) & ColourFormat->BlueMask) << ColourFormat->BlueShift); }
+   template <class T> inline UBYTE unpackAlpha(T Packed) { return (((Packed >> ColourFormat->AlphaPos) & ColourFormat->AlphaMask)); }
+  
+   // Action stubs
+
+   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
+   inline ERROR copyData(OBJECTID DestID) {
+      struct acCopyData args = { .DestID = DestID };
+      return Action(AC_CopyData, this, &args);
+   }
+   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERROR flush() { return Action(AC_Flush, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR lock() { return Action(AC_Lock, this, NULL); }
+   inline ERROR query() { return Action(AC_Query, this, NULL); }
+   inline ERROR read(APTR Buffer, LONG Bytes, LONG *Result) {
+      ERROR error;
+      struct acRead read = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Read, this, &read))) {
+         if (Result) *Result = read.Result;
+         return ERR_Okay;
+      }
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
+   }
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+      struct acResize args = { Width, Height, Depth };
+      return Action(AC_Resize, this, &args);
+   }
+   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveImage args = { { DestID }, { ClassID } };
+      return Action(AC_SaveImage, this, &args);
+   }
+   inline ERROR seek(DOUBLE Offset, LONG Position) {
+      struct acSeek args = { Offset, Position };
+      return Action(AC_Seek, this, &args);
+   }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR unlock() { return Action(AC_Unlock, this, NULL); }
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline LONG writeResult(CPTR Buffer, LONG Bytes) {
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!Action(AC_Write, this, &write)) return write.Result;
+      else return 0;
+   }
+} objBitmap;
+
+// Display class definition
+
+#define VER_DISPLAY (1.000000)
 
 // Display methods
 
@@ -666,21 +727,125 @@ INLINE ERROR gfxUpdateDisplay(APTR Ob, struct rkBitmap * Bitmap, LONG X, LONG Y,
 #define gfxCheckXWindow(obj) Action(MT_GfxCheckXWindow,(obj),0)
 
 
+typedef class rkDisplay : public BaseClass {
+   public:
+   DOUBLE   RefreshRate;        // This field manages the display refresh rate.
+   struct rkBitmap * Bitmap;    // Reference to the display's bitmap information.
+   LONG     Flags;              // Optional flag settings.
+   LONG     Width;              // Defines the width of the display.
+   LONG     Height;             // Defines the height of the display.
+   LONG     X;                  // Defines the horizontal coordinate of the display.
+   LONG     Y;                  // Defines the vertical coordinate of the display.
+   LONG     BmpX;               // The horizontal coordinate of the bitmap within a display.
+   LONG     BmpY;               // The vertical coordinate of the Bitmap within a display.
+   OBJECTID BufferID;           // Double buffer bitmap
+   LONG     TotalMemory;        // The total amount of user accessible RAM installed on the video card, or zero if unknown.
+   LONG     MinHScan;           // The minimum horizontal scan rate of the display output device.
+   LONG     MaxHScan;           // The maximum horizontal scan rate of the display output device.
+   LONG     MinVScan;           // The minimum vertical scan rate of the display output device.
+   LONG     MaxVScan;           // The maximum vertical scan rate of the display output device.
+   LONG     DisplayType;        // In hosted mode, indicates the bottom margin of the client window.
+   LONG     DPMS;               // Holds the default display power management method.
+   OBJECTID PopOverID;          // Enables pop-over support for hosted display windows.
+   LONG     LeftMargin;         // In hosted mode, indicates the left-hand margin of the client window.
+   LONG     RightMargin;        // In hosted mode, indicates the pixel margin between the client window and right window edge.
+   LONG     TopMargin;          // In hosted mode, indicates the pixel margin between the client window and top window edge.
+   LONG     BottomMargin;       // In hosted mode, indicates the bottom margin of the client window.
+
+#ifdef PRV_DISPLAY
+   DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
+   struct resolution *Resolutions;
+   FUNCTION  ResizeFeedback;
+   MEMORYID  ResolutionsMID;
+   WORD      TotalResolutions;
+   OBJECTID  BitmapID;
+   LONG      BmpXOffset;     // X offset for scrolling
+   LONG      BmpYOffset;     // Y offset for scrolling
+   #ifdef __xwindows__
+   union {
+      APTR   WindowHandle;
+      Window XWindowHandle;
+   };
+   #elif __ANDROID__
+      ANativeWindow *WindowHandle;
+   #else
+      APTR   WindowHandle;
+   #endif
+   APTR      UserLoginHandle;
+   WORD      Opacity;
+   LONG      VDensity;          // Cached DPI value, if calculable.
+   LONG      HDensity;
+   char      DriverVendor[60];
+   char      DriverCopyright[80];
+   char      Manufacturer[60];
+   char      Chipset[40];
+   char      DAC[32];
+   char      Clock[32];
+   char      DriverVersion[16];
+   char      CertificationDate[20];
+   char      Display[32];
+   char      DisplayManufacturer[60];
+   #ifdef _WIN32
+      APTR OldProcedure;
+   #endif
+  
+#endif
+   // Action stubs
+
+   // ActionNotify
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
+   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
+   inline ERROR flush() { return Action(AC_Flush, this, NULL); }
+   inline ERROR focus() { return Action(AC_Focus, this, NULL); }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR hide() { return Action(AC_Hide, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) {
+      struct acMove args = { X, Y, Z };
+      return Action(AC_Move, this, &args);
+   }
+   inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
+   inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
+   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+      struct acMoveToPoint moveto = { X, Y, Z, Flags };
+      return Action(AC_MoveToPoint, this, &moveto);
+   }
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+      struct acRedimension args = { X, Y, Z, Width, Height, Depth };
+      return Action(AC_Redimension, this, &args);
+   }
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+      struct acResize args = { Width, Height, Depth };
+      return Action(AC_Resize, this, &args);
+   }
+   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveImage args = { { DestID }, { ClassID } };
+      return Action(AC_SaveImage, this, &args);
+   }
+   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
+   inline ERROR show() { return Action(AC_Show, this, NULL); }
+} objDisplay;
+
 // Clipboard class definition
 
 #define VER_CLIPBOARD (1.000000)
-
-typedef class rkClipboard : public BaseClass {
-   public:
-   LONG     Flags;      // Optional flags
-   MEMORYID ClusterID;  // Identifies the data cluster (item grouping) that the clipboard will work with
-
-#ifdef PRV_CLIPBOARD
-   FUNCTION RequestHandler;
-   BYTE     ClusterAllocated:1;
-  
-#endif
-} objClipboard;
 
 // Clipboard methods
 
@@ -733,36 +898,64 @@ INLINE ERROR clipRemove(APTR Ob, LONG Datatype) {
 }
 
 
+typedef class rkClipboard : public BaseClass {
+   public:
+   LONG     Flags;      // Optional flags.
+   MEMORYID ClusterID;  // Identifies a unique cluster of items targeted by a clipboard object.
+
+#ifdef PRV_CLIPBOARD
+   FUNCTION RequestHandler;
+   BYTE     ClusterAllocated:1;
+  
+#endif
+   // Action stubs
+
+   // ActionNotify
+
+   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+} objClipboard;
+
 // Pointer class definition
 
 #define VER_POINTER (1.000000)
 
 typedef class rkPointer : public BaseClass {
    public:
-   DOUBLE   Speed;         // Speed multiplier (%)
-   DOUBLE   Acceleration;  // Acceleration level - keep between 0.0 and 3.0
-   DOUBLE   DoubleClick;   // Double click speed
-   DOUBLE   WheelSpeed;    // Mouse-wheel speed
-   DOUBLE   X;             // Current x coordinate
-   DOUBLE   Y;             // Current y coordinate
-   DOUBLE   OverX;         // The X coord relative to the closest object
-   DOUBLE   OverY;         // The Y coord relative to the closest object
-   DOUBLE   OverZ;         // The Z distance relative to the closest object
-   LONG     MaxSpeed;      // Maximum speed
-   OBJECTID InputID;       // Indicates where pointer input comes from (usually SystemMouse)
-   OBJECTID SurfaceID;     // Top-most surface that contains the pointer
-   OBJECTID AnchorID;      // Surface object that the pointer is anchored to
-   LONG     CursorID;      // Current cursor image
-   OBJECTID CursorOwnerID; // Who owns the currently active cursor status
-   LONG     Flags;         // Optional flags
-   OBJECTID RestrictID;    // Surface object that the pointer is restricted to
+   DOUBLE   Speed;         // Speed multiplier for Pointer movement.
+   DOUBLE   Acceleration;  // The rate of acceleration for relative pointer movement.
+   DOUBLE   DoubleClick;   // The maximum interval between two clicks for a double click to be recognised.
+   DOUBLE   WheelSpeed;    // Defines a multiplier to be applied to the mouse wheel.
+   DOUBLE   X;             // The horizontal position of the pointer within its parent display.
+   DOUBLE   Y;             // The vertical position of the pointer within its parent display.
+   DOUBLE   OverX;         // The horizontal position of the Pointer with respect to the object underneath the hot-spot.
+   DOUBLE   OverY;         // The vertical position of the Pointer with respect to the object underneath the hot-spot.
+   DOUBLE   OverZ;         // The position of the Pointer within an object.
+   LONG     MaxSpeed;      // Restricts the maximum speed of a pointer's movement.
+   OBJECTID InputID;       // Declares the I/O object to read movement from.
+   OBJECTID SurfaceID;     // The top-most surface that is under the pointer's hot spot.
+   OBJECTID AnchorID;      // Can refer to a surface that the pointer has been anchored to.
+   LONG     CursorID;      // Sets the user's cursor image, selected from the pre-defined graphics bank.
+   OBJECTID CursorOwnerID; // The current owner of the cursor, as defined by SetCursor().
+   LONG     Flags;         // Optional flags.
+   OBJECTID RestrictID;    // Refers to a surface when the pointer is restricted.
    LONG     HostX;         // Indicates the current position of the host cursor on Windows or X11
    LONG     HostY;         // Indicates the current position of the host cursor on Windows or X11
-   OBJECTID BitmapID;      // Bitmap to use for custom cursor images
-   OBJECTID DragSourceID;  // If drag & drop is active, refers to the object managing the draggable item
-   LONG     DragItem;      // If drag & drop is active, refers to the custom ID of the item being dragged
-   OBJECTID OverObjectID;  // Object positioned under the pointer
-   LONG     ClickSlop;     // Leniency value for determining whether the user intended to make a click or drag.
+   OBJECTID BitmapID;      // Refers to bitmap in which custom cursor images can be drawn.
+   OBJECTID DragSourceID;  // The object managing the current drag operation, as defined by StartCursorDrag().
+   LONG     DragItem;      // The currently dragged item, as defined by StartCursorDrag().
+   OBJECTID OverObjectID;  // Readable field that gives the ID of the object under the pointer.
+   LONG     ClickSlop;     // A leniency value that assists in determining if the user intended to click or drag.
 
 #ifdef PRV_POINTER
    struct {
@@ -804,89 +997,6 @@ typedef class rkPointer : public BaseClass {
 // Surface class definition
 
 #define VER_SURFACE (1.000000)
-
-typedef class rkSurface : public BaseClass {
-   public:
-   OBJECTID DragID;     // Drag the object that this field points to
-   OBJECTID BufferID;   // Buffer bitmap (backing store)
-   OBJECTID ParentID;   // Graphical container of the Surface object, if any
-   OBJECTID PopOverID;  // Keeps a surface in front of another surface in the Z order.
-   LONG     TopMargin;  // Top movement limit
-   LONG     BottomMargin; // Bottom movement limit
-   LONG     LeftMargin; // Left movement limit
-   LONG     RightMargin; // Right movement limit
-   LONG     MinWidth;   // Minimum width setting
-   LONG     MinHeight;  // Minimum height setting
-   LONG     MaxWidth;   // Maximum width setting
-   LONG     MaxHeight;  // Maximum height setting
-   LONG     LeftLimit;  // Limits the surface area from moving too far left
-   LONG     RightLimit; // Limits the surface area from moving too far right
-   LONG     TopLimit;   // Limits the surface area from moving too far up
-   LONG     BottomLimit; // Limits the surface area from moving too far down
-   OBJECTID DisplayID;  // Refers to the Display object that is managing the surface's graphics.
-   LONG     Flags;      // Special flags
-   LONG     X;          // Fixed horizontal coordinate
-   LONG     Y;          // Fixed vertical coordinate
-   LONG     Width;      // Fixed width
-   LONG     Height;     // Fixed height
-   OBJECTID RootID;     // Surface that is acting as a root for many surface children (useful when applying translucency)
-   OBJECTID ProgramID;  // The task that is represented by the surface object (important for linking desktop windows to foreign tasks)
-   LONG     Align;      // Alignment flags
-   LONG     Dimensions; // Dimension flags
-   LONG     DragStatus; // Indicates the draggable state when dragging is enabled.
-   LONG     Cursor;     // The preferred cursor image to use when the pointer is over the surface
-   struct RGB8 Colour;  // Background colour specification
-   LONG     Type;       // Internal surface type flags
-   LONG     Modal;      // Set to 1 to enable modal mode
-
-#ifdef PRV_SURFACE
-   // These coordinate fields are private but may be accessed by some internal classes, like Document
-
-   LONG     XOffset, YOffset;     // Fixed horizontal and vertical offset
-   DOUBLE   XOffsetPercent;       // Relative horizontal offset
-   DOUBLE   YOffsetPercent;       // Relative vertical offset
-   DOUBLE   WidthPercent, HeightPercent; // Relative width and height
-   DOUBLE   XPercent, YPercent;   // Relative coordinate
-
-   LARGE    LastRedimension;      // Timestamp of the last redimension call
-   objBitmap *Bitmap;
-   struct SurfaceCallback *Callback;
-   APTR      UserLoginHandle;
-   APTR      TaskRemovedHandle;
-   WINHANDLE DisplayWindow;       // Reference to the platform dependent window representing the Surface object
-   OBJECTID PrevModalID;          // Previous surface to have been modal
-   OBJECTID BitmapOwnerID;        // The surface object that owns the root bitmap
-   OBJECTID RevertFocusID;
-   LONG     LineWidth;            // Bitmap line width, in bytes
-   LONG     ScrollToX, ScrollToY;
-   LONG     ScrollFromX, ScrollFromY;
-   LONG     ListIndex;            // Last known list index
-   LONG     InputHandle;          // Input handler for dragging of surfaces
-   TIMER    RedrawTimer;          // For ScheduleRedraw()
-   TIMER    ScrollTimer;
-   MEMORYID DataMID;              // Bitmap memory reference
-   MEMORYID PrecopyMID;           // Precopy region information
-   struct SurfaceCallback CallbackCache[4];
-   WORD     ScrollProgress;
-   WORD     Opacity;
-   UWORD    InheritedRoot:1;      // TRUE if the user set the RootLayer manually
-   UWORD    ParentDefined:1;      // TRUE if the parent field was set manually
-   UWORD    SkipPopOver:1;
-   UWORD    FixedX:1;
-   UWORD    FixedY:1;
-   UWORD    Document:1;
-   UWORD    RedrawScheduled:1;
-   UWORD    RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
-   BYTE     BitsPerPixel;         // Bitmap bits per pixel
-   BYTE     BytesPerPixel;        // Bitmap bytes per pixel
-   UBYTE    CallbackCount;
-   UBYTE    CallbackSize;         // Current size of the callback array.
-   BYTE     WindowType;           // See SWIN constants
-   BYTE     PrecopyTotal;
-   BYTE     Anchored;
-  
-#endif
-} objSurface;
 
 // Surface methods
 
@@ -944,6 +1054,138 @@ INLINE ERROR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOU
 
 #define drwScheduleRedraw(obj) Action(MT_DrwScheduleRedraw,(obj),0)
 
+
+typedef class rkSurface : public BaseClass {
+   public:
+   OBJECTID DragID;     // This object-based field is used to control the dragging of objects around the display.
+   OBJECTID BufferID;   // The ID of the bitmap that manages the surface's graphics.
+   OBJECTID ParentID;   // The parent for a surface is defined here.
+   OBJECTID PopOverID;  // Keeps a surface in front of another surface in the Z order.
+   LONG     TopMargin;  // Manipulates the top margin of a surface object.
+   LONG     BottomMargin; // Manipulates the bottom margin of a surface object.
+   LONG     LeftMargin; // Manipulates the left margin of a surface object.
+   LONG     RightMargin; // Manipulates the right margin of a surface object.
+   LONG     MinWidth;   // Prevents the width of a surface object from shrinking beyond a certain value.
+   LONG     MinHeight;  // Prevents the height of a surface object from shrinking beyond a certain value.
+   LONG     MaxWidth;   // Prevents the width of a surface object from exceeding a certain value.
+   LONG     MaxHeight;  // Prevents the height of a surface object from exceeding a certain value.
+   LONG     LeftLimit;  // Prevents a surface object from moving beyond a given point on the left-hand side.
+   LONG     RightLimit; // Prevents a surface object from moving beyond a given point on the right-hand side.
+   LONG     TopLimit;   // Prevents a surface object from moving beyond a given point at the top of its container.
+   LONG     BottomLimit; // Prevents a surface object from moving beyond a given point at the bottom of its container.
+   OBJECTID DisplayID;  // Refers to the @Display object that is managing the surface's graphics.
+   LONG     Flags;      // Optional flags.
+   LONG     X;          // Determines the horizontal position of a surface object.
+   LONG     Y;          // Determines the vertical position of a surface object.
+   LONG     Width;      // Defines the width of a surface object.
+   LONG     Height;     // Defines the height of a surface object.
+   OBJECTID RootID;     // Surface that is acting as a root for many surface children (useful when applying translucency)
+   OBJECTID ProgramID;  // The task that is represented by the surface object (important for linking desktop windows to foreign tasks)
+   LONG     Align;      // This field allows you to align a surface area within its owner.
+   LONG     Dimensions; // Indicates currently active dimension settings.
+   LONG     DragStatus; // Indicates the draggable state when dragging is enabled.
+   LONG     Cursor;     // A default cursor image can be set here for changing the mouse pointer.
+   struct RGB8 Colour;  // String-based field for setting the background colour.
+   LONG     Type;       // Internal surface type flags
+   LONG     Modal;      // Sets the surface as modal (prevents user interaction with other surfaces).
+
+#ifdef PRV_SURFACE
+   // These coordinate fields are private but may be accessed by some internal classes, like Document
+
+   LONG     XOffset, YOffset;     // Fixed horizontal and vertical offset
+   DOUBLE   XOffsetPercent;       // Relative horizontal offset
+   DOUBLE   YOffsetPercent;       // Relative vertical offset
+   DOUBLE   WidthPercent, HeightPercent; // Relative width and height
+   DOUBLE   XPercent, YPercent;   // Relative coordinate
+
+   LARGE    LastRedimension;      // Timestamp of the last redimension call
+   objBitmap *Bitmap;
+   struct SurfaceCallback *Callback;
+   APTR      UserLoginHandle;
+   APTR      TaskRemovedHandle;
+   WINHANDLE DisplayWindow;       // Reference to the platform dependent window representing the Surface object
+   OBJECTID PrevModalID;          // Previous surface to have been modal
+   OBJECTID BitmapOwnerID;        // The surface object that owns the root bitmap
+   OBJECTID RevertFocusID;
+   LONG     LineWidth;            // Bitmap line width, in bytes
+   LONG     ScrollToX, ScrollToY;
+   LONG     ScrollFromX, ScrollFromY;
+   LONG     ListIndex;            // Last known list index
+   LONG     InputHandle;          // Input handler for dragging of surfaces
+   TIMER    RedrawTimer;          // For ScheduleRedraw()
+   TIMER    ScrollTimer;
+   MEMORYID DataMID;              // Bitmap memory reference
+   MEMORYID PrecopyMID;           // Precopy region information
+   struct SurfaceCallback CallbackCache[4];
+   WORD     ScrollProgress;
+   WORD     Opacity;
+   UWORD    InheritedRoot:1;      // TRUE if the user set the RootLayer manually
+   UWORD    ParentDefined:1;      // TRUE if the parent field was set manually
+   UWORD    SkipPopOver:1;
+   UWORD    FixedX:1;
+   UWORD    FixedY:1;
+   UWORD    Document:1;
+   UWORD    RedrawScheduled:1;
+   UWORD    RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
+   BYTE     BitsPerPixel;         // Bitmap bits per pixel
+   BYTE     BytesPerPixel;        // Bitmap bytes per pixel
+   UBYTE    CallbackCount;
+   UBYTE    CallbackSize;         // Current size of the callback array.
+   BYTE     WindowType;           // See SWIN constants
+   BYTE     PrecopyTotal;
+   BYTE     Anchored;
+  
+#endif
+   // Action stubs
+
+   // ActionNotify
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
+   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
+   inline ERROR focus() { return Action(AC_Focus, this, NULL); }
+   inline ERROR hide() { return Action(AC_Hide, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR lostFocus() { return Action(AC_LostFocus, this, NULL); }
+   inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) {
+      struct acMove args = { X, Y, Z };
+      return Action(AC_Move, this, &args);
+   }
+   inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
+   inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
+   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+      struct acMoveToPoint moveto = { X, Y, Z, Flags };
+      return Action(AC_MoveToPoint, this, &moveto);
+   }
+   // NewOwner
+
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+      struct acRedimension args = { X, Y, Z, Width, Height, Depth };
+      return Action(AC_Redimension, this, &args);
+   }
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+      struct acResize args = { Width, Height, Depth };
+      return Action(AC_Resize, this, &args);
+   }
+   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveImage args = { { DestID }, { ClassID } };
+      return Action(AC_SaveImage, this, &args);
+   }
+   inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z) {
+      struct acScroll args = { X, Y, Z };
+      return Action(AC_Scroll, this, &args);
+   }
+   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+      struct acScrollToPoint args = { X, Y, Z, Flags };
+      return Action(AC_ScrollToPoint, this, &args);
+   }
+   inline ERROR show() { return Action(AC_Show, this, NULL); }
+} objSurface;
 
 struct DisplayBase {
    struct SurfaceControl * (*_AccessList)(LONG);
@@ -1049,45 +1291,6 @@ struct DisplayBase {
 #define gfxWindowHook(...) (DisplayBase->_WindowHook)(__VA_ARGS__)
 #endif
 
-// Standard pack pixel for all formats
-
-#define PackPixel(a,b,c,d) ((((b)>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-                           ((((c)>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-                           ((((d)>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-                           (((255>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelA(a,b,c,d,e) \
-   ((((b)>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((c)>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((d)>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   ((((e)>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackAlpha(a,b) ((((b)>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelRGB(a,b) \
-   ((((b)->Red>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((b)->Green>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((b)->Blue>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   (((255>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelRGBA(a,b) \
-   ((((b)->Red>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((b)->Green>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((b)->Blue>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   ((((b)->Alpha>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-// Pack pixel 'whole-byte' version, for faster 24/32 bit formats
-
-#define PackPixelWB(a,b,c,d) ((b) << (a)->ColourFormat->RedPos) | ((c) << (a)->ColourFormat->GreenPos) | ((d) << (a)->ColourFormat->BluePos)
-#define PackPixelWBA(a,b,c,d,e) ((b) << (a)->ColourFormat->RedPos) | ((c) << (a)->ColourFormat->GreenPos) | ((d) << (a)->ColourFormat->BluePos) | ((e) << (a)->ColourFormat->AlphaPos)
-
-// Colour unpacking routines
-
-#define UnpackRed(a,b)   ((((b) >> (a)->ColourFormat->RedPos) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedShift)
-#define UnpackGreen(a,b) ((((b) >> (a)->ColourFormat->GreenPos) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenShift)
-#define UnpackBlue(a,b)  ((((b) >> (a)->ColourFormat->BluePos) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BlueShift)
-#define UnpackAlpha(a,b) ((((b) >> (a)->ColourFormat->AlphaPos) & (a)->ColourFormat->AlphaMask))
-
 // Direct ColourFormat versions
 
 #define CFPackPixel(a,b,c,d)      ((((b)>>(a)->RedShift) & (a)->RedMask) << (a)->RedPos) | ((((c)>>(a)->GreenShift) & (a)->GreenMask) << (a)->GreenPos) | ((((d)>>(a)->BlueShift) & (a)->BlueMask) << (a)->BluePos)
@@ -1099,28 +1302,6 @@ struct DisplayBase {
 #define CFUnpackGreen(a,b)        ((((b) >> (a)->GreenPos) & (a)->GreenMask) << (a)->GreenShift)
 #define CFUnpackBlue(a,b)         ((((b) >> (a)->BluePos) & (a)->BlueMask) << (a)->BlueShift)
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
-
-INLINE ULONG bmpGetColour(APTR Bitmap, UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
-   if (((objBitmap *)Bitmap)->BitsPerPixel > 8) {
-      return PackPixelA((objBitmap *)Bitmap, Red, Green, Blue, Alpha);
-   }
-   else {
-      struct bmpGetColour args = { Red, Green, Blue, Alpha };
-      if (!Action(MT_BmpGetColour, Bitmap, &args)) return args.Colour;
-      return 0;
-   }
-}
-
-INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
-   if (((objBitmap *)Bitmap)->BitsPerPixel > 8) {
-      return PackPixelA((objBitmap *)Bitmap, RGB->Red, RGB->Green, RGB->Blue, RGB->Alpha);
-   }
-   else {
-      struct bmpGetColour args = { RGB->Red, RGB->Green, RGB->Blue, RGB->Alpha };
-      if (!Action(MT_BmpGetColour, Bitmap, &args)) return args.Colour;
-      return 0;
-   }
-}
 
 #define gfxReleasePointer(a)    (ReleaseObject(a))
 // Helper function for surface lookups.

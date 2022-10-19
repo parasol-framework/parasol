@@ -317,7 +317,7 @@ void gen_vector_path(objVector *Vector)
       // aligned, for which the width and height of the base-path must be known.
 
       if ((Vector->Dirty & RC_TRANSFORM) and (Vector->SubID IS ID_VECTORTEXT)) {
-         get_text_xy((rkVectorText *)Vector); // Sets FinalX/Y
+         get_text_xy((objVectorText *)Vector); // Sets FinalX/Y
 
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);

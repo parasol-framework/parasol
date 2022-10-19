@@ -1192,7 +1192,7 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
             return ERR_MissingClass;
          }
 
-         obj->Stats = (Stats *)ResolveAddress(obj, ((rkMetaClass *)obj->Class)->Size);
+         obj->Stats = (Stats *)ResolveAddress(obj, ((objMetaClass *)obj->Class)->Size);
       }
 
       // Tell the object that an exclusive call is being made
@@ -1203,7 +1203,7 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
             // do not call the AccessObject support routine if NewObject support has been written by the developer
             // (the NewObject support routine is expected to do the equivalent of AccessObject).
 
-            if (!(((rkMetaClass *)obj->Class)->ActionTable[AC_NewObject].PerformAction)) error = Action(AC_AccessObject, obj, NULL);
+            if (!(((objMetaClass *)obj->Class)->ActionTable[AC_NewObject].PerformAction)) error = Action(AC_AccessObject, obj, NULL);
          }
          else error = Action(AC_AccessObject, obj, NULL);
       }
@@ -1732,7 +1732,7 @@ MEMORYID ReleaseMemory(APTR Address)
       auto mem = glPrivateMemory.find(((LONG *)Address)[-2]);
 
       if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
-         if (tlContext->Object->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->Object->UID, ((rkMetaClass *)tlContext->Object->Class)->ClassName);
+         if (tlContext->Object->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->Object->UID, ((objMetaClass *)tlContext->Object->Class)->ClassName);
          else log.warning("Unable to find a record for memory address %p.", Address);
          if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);
          return 0;
@@ -1915,7 +1915,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
          auto mem = glPrivateMemory.find(MemoryID);
 
          if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
-            if (tlContext->Object->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->Object->UID, ((rkMetaClass *)tlContext->Object->Class)->ClassName);
+            if (tlContext->Object->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->Object->UID, ((objMetaClass *)tlContext->Object->Class)->ClassName);
             else log.warning("Unable to find a record for memory #%d.", MemoryID);
             if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);
             return ERR_Search;

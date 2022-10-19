@@ -179,7 +179,7 @@
   <structs>
     <struct name="VectorMatrix" comment="Vector transformation matrix.">
       <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
-      <field name="Vector" type="struct rkVector *">The vector associated with the transform.</field>
+      <field name="Vector" type="objVector *">The vector associated with the transform.</field>
       <field name="ScaleX" type="DOUBLE">Matrix value A</field>
       <field name="ShearY" type="DOUBLE">Matrix value B</field>
       <field name="ShearX" type="DOUBLE">Matrix value C</field>

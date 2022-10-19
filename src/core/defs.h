@@ -117,9 +117,10 @@ struct rkBase64Decode;
 struct FileInfo;
 struct DirInfo;
 struct CacheFile;
-struct rkFile;
-struct rkStorageDevice;
-struct rkConfig;
+typedef class plFile objFile;
+typedef class plStorageDevice objStorageDevice;
+typedef class plConfig objConfig;
+typedef class plMetaClass objMetaClass;
 struct ActionTable;
 struct FileFeedback;
 struct ResourceManager;
@@ -157,28 +158,6 @@ struct rkWatchPath {
 };
 
 #define STAT_FOLDER 0x0001
-
-struct virtual_drive {
-   ULONG VirtualID;  // Hash name of the volume, not including the trailing colon
-   char Name[32];    // Volume name, including the trailing colon at the end
-   ULONG CaseSensitive:1;
-   ERROR (*ScanDir)(struct DirInfo *);
-   ERROR (*Rename)(STRING, STRING);
-   ERROR (*Delete)(STRING, FUNCTION *);
-   ERROR (*OpenDir)(struct DirInfo *);
-   ERROR (*CloseDir)(struct DirInfo *);
-   ERROR (*Obsolete)(CSTRING, struct DirInfo **, LONG);
-   ERROR (*TestPath)(CSTRING, LONG, LONG *);
-   ERROR (*WatchPath)(struct rkFile *);
-   void  (*IgnoreFile)(struct rkFile *);
-   ERROR (*GetInfo)(CSTRING, struct FileInfo *, LONG);
-   ERROR (*GetDeviceInfo)(CSTRING, struct rkStorageDevice *);
-   ERROR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
-   ERROR (*CreateFolder)(CSTRING, LONG);
-   ERROR (*SameFile)(CSTRING, CSTRING);
-   ERROR (*ReadLink)(STRING, STRING *);
-   ERROR (*CreateLink)(CSTRING, CSTRING);
-};
 
 #include "prototypes.h"
 
@@ -246,6 +225,28 @@ typedef struct ActionSubscription {
    MEMORYID MessagePortMID; // Message port for the object
    CLASSID  ClassID;        // Class of the subscribed object
 } ActionSubscription;
+
+struct virtual_drive {
+   ULONG VirtualID;  // Hash name of the volume, not including the trailing colon
+   char Name[32];    // Volume name, including the trailing colon at the end
+   ULONG CaseSensitive:1;
+   ERROR (*ScanDir)(struct DirInfo *);
+   ERROR (*Rename)(STRING, STRING);
+   ERROR (*Delete)(STRING, FUNCTION *);
+   ERROR (*OpenDir)(struct DirInfo *);
+   ERROR (*CloseDir)(struct DirInfo *);
+   ERROR (*Obsolete)(CSTRING, struct DirInfo **, LONG);
+   ERROR (*TestPath)(CSTRING, LONG, LONG *);
+   ERROR (*WatchPath)(objFile *);
+   void  (*IgnoreFile)(objFile *);
+   ERROR (*GetInfo)(CSTRING, struct FileInfo *, LONG);
+   ERROR (*GetDeviceInfo)(CSTRING, objStorageDevice *);
+   ERROR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
+   ERROR (*CreateFolder)(CSTRING, LONG);
+   ERROR (*SameFile)(CSTRING, CSTRING);
+   ERROR (*ReadLink)(STRING, STRING *);
+   ERROR (*CreateLink)(CSTRING, CSTRING);
+};
 
 extern LONG glMaxDocViews, glTotalDocViews;
 extern const struct virtual_drive glFSDefault;
@@ -449,7 +450,7 @@ struct MemoryMessage {
 ** Global data variables.
 */
 
-extern class rkMetaClass glMetaClass;
+extern objMetaClass glMetaClass;
 extern LONG glEUID, glEGID, glUID, glGID;
 extern LONG glKeyState;
 extern char glSystemPath[SIZE_SYSTEM_PATH];
@@ -479,7 +480,7 @@ extern struct KeyStore *glObjectLookup;         // Locked with TL_OBJECT_LOOKUP
 extern struct ClassHeader  *glClassDB;          // Read-only.  Class database.
 extern struct ModuleHeader *glModules;          // Read-only.  Module database.
 extern struct OpenInfo *glOpenInfo;             // Read-only.  The OpenInfo structure initially passed to OpenCore()
-extern struct rkTask *glCurrentTask;            // Threads should use glCurrentTaskID to manage access.
+extern objTask *glCurrentTask;            // Threads should use glCurrentTaskID to manage access.
 extern CSTRING glMessages[ERR_END];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
 extern LONG glTotalPages; // Read-only
@@ -503,8 +504,8 @@ extern OBJECTPTR modIconv;
 extern OBJECTPTR glLocale;
 extern objTime *glTime;
 extern struct translate *glTranslate;
-extern struct rkConfig *glVolumes; // Volume management object, contains all FS volume names and their meta data.  Use AccessPrivateObject() to lock.
-extern struct rkConfig *glDatatypes;
+extern objConfig *glVolumes; // Volume management object, contains all FS volume names and their meta data.  Use AccessPrivateObject() to lock.
+extern objConfig *glDatatypes;
 extern struct KeyStore *glClassMap; // Register of all classes.
 extern struct KeyStore *glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern OBJECTID glClassFileID;
@@ -513,20 +514,20 @@ extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 
 extern CSTRING glClassBinPath;
 extern CSTRING glModuleBinPath;
-extern struct rkMetaClass *ModuleMasterClass;
-extern struct rkMetaClass *ModuleClass;
-extern struct rkMetaClass *TaskClass;
-extern struct rkMetaClass *ThreadClass;
-extern struct rkMetaClass *TimeClass;
-extern struct rkMetaClass *ConfigClass;
-extern struct rkMetaClass *glFileClass;
-extern struct rkMetaClass *glStorageClass;
-extern struct rkMetaClass *glScriptClass;
-extern struct rkMetaClass *glArchiveClass;
-extern struct rkMetaClass *glCompressionClass;
-extern struct rkMetaClass *glCompressedStreamClass;
+extern objMetaClass *ModuleMasterClass;
+extern objMetaClass *ModuleClass;
+extern objMetaClass *TaskClass;
+extern objMetaClass *ThreadClass;
+extern objMetaClass *TimeClass;
+extern objMetaClass *ConfigClass;
+extern objMetaClass *glFileClass;
+extern objMetaClass *glStorageClass;
+extern objMetaClass *glScriptClass;
+extern objMetaClass *glArchiveClass;
+extern objMetaClass *glCompressionClass;
+extern objMetaClass *glCompressedStreamClass;
 #ifdef __ANDROID__
-extern struct rkMetaClass *glAssetClass;
+extern objMetaClass *glAssetClass;
 #endif
 extern BYTE fs_initialised;
 extern APTR glPageFault;
@@ -832,8 +833,8 @@ ERROR fs_closedir(struct DirInfo *);
 ERROR fs_createlink(CSTRING, CSTRING);
 ERROR fs_delete(STRING, FUNCTION *);
 ERROR fs_getinfo(CSTRING, struct FileInfo *, LONG);
-ERROR fs_getdeviceinfo(CSTRING, struct rkStorageDevice *);
-void  fs_ignore_file(struct rkFile *);
+ERROR fs_getdeviceinfo(CSTRING, objStorageDevice *);
+void  fs_ignore_file(objFile *);
 ERROR fs_makedir(CSTRING, LONG);
 ERROR fs_opendir(struct DirInfo *);
 ERROR fs_readlink(STRING, STRING *);
@@ -841,14 +842,14 @@ ERROR fs_rename(STRING, STRING);
 ERROR fs_samefile(CSTRING, CSTRING);
 ERROR fs_scandir(struct DirInfo *);
 ERROR fs_testpath(CSTRING, LONG, LONG *);
-ERROR fs_watch_path(struct rkFile *);
+ERROR fs_watch_path(objFile *);
 
 const struct virtual_drive * get_fs(CSTRING Path);
 void free_storage_class(void);
 
 ERROR convert_zip_error(struct z_stream_s *, LONG);
 ERROR check_cache(OBJECTPTR, LARGE TimeElapsed, LARGE TotalElapsed);
-ERROR get_class_cmd(CSTRING, struct rkConfig *, LONG, CLASSID, STRING *);
+ERROR get_class_cmd(CSTRING, objConfig *, LONG, CLASSID, STRING *);
 ERROR fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
 ERROR fs_copydir(STRING, STRING, struct FileFeedback *, FUNCTION *, BYTE);
 LONG  get_parent_permissions(CSTRING, LONG *, LONG *);
@@ -915,7 +916,7 @@ ERROR  resolve_args(APTR, const struct FunctionField *);
 APTR   resolve_public_address(struct PublicAddress *);
 void   scan_classes(void);
 void   set_object_flags(OBJECTPTR, LONG);
-ERROR  sort_class_fields(struct rkMetaClass *, struct Field *);
+ERROR  sort_class_fields(objMetaClass *, struct Field *);
 void   remove_threadpool(void);
 ERROR  threadpool_get(objThread **);
 void   threadpool_release(objThread *);

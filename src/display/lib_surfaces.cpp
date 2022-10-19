@@ -2011,10 +2011,10 @@ void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, WORD In
       else prepare_background(Self, list, Total, Index, DestBitmap, &abs, STAGE_PRECOPY);
    }
    else if (Self->Flags & RNF_COMPOSITE) {
-      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, PackPixelA((objBitmap *)DestBitmap, 0, 0, 0, 0), TRUE);
+      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, DestBitmap->packPixel(0, 0, 0, 0), TRUE);
    }
    else if (Self->Colour.Alpha > 0) {
-      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, PackPixelA((objBitmap *)DestBitmap, Self->Colour.Red, Self->Colour.Green, Self->Colour.Blue, 255), TRUE);
+      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, DestBitmap->packPixel(Self->Colour.Red, Self->Colour.Green, Self->Colour.Blue), TRUE);
    }
 
    // Draw graphics to the buffer

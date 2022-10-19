@@ -2125,13 +2125,13 @@ and @VectorWave are able to take full advantage of this feature.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Transition(objVector *Self, rkVectorTransition **Value)
+static ERROR VECTOR_GET_Transition(objVector *Self, objVectorTransition **Value)
 {
    *Value = Self->Transition;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_Transition(objVector *Self, rkVectorTransition *Value)
+static ERROR VECTOR_SET_Transition(objVector *Self, objVectorTransition *Value)
 {
    parasol::Log log;
 
@@ -2201,7 +2201,7 @@ void send_feedback(objVector *Vector, LONG Event)
 
 //********************************************************************************************************************
 
-DOUBLE rkVector::fixed_stroke_width()
+DOUBLE objVector::fixed_stroke_width()
 {
    if (this->RelativeStrokeWidth) {
       return get_parent_diagonal(this) * this->StrokeWidth;
@@ -2277,7 +2277,6 @@ static const FieldArray clVectorFields[] = {
    { "Cursor",          FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorCursor, NULL, (APTR)VECTOR_SET_Cursor },
    { "PathQuality",     FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorPathQuality, NULL, NULL },
    { "ColourSpace",     FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clVectorColourSpace, NULL, NULL },
-   // NOTE: Any additions to this struct need to be added to SHAPE_PUBLIC
    // Virtual fields
    { "ClipRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clFillRule, (APTR)VECTOR_GET_ClipRule, (APTR)VECTOR_SET_ClipRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, 0, (APTR)VECTOR_GET_DashArray, (APTR)VECTOR_SET_DashArray },

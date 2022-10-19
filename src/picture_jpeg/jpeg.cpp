@@ -54,8 +54,8 @@ static ERROR JPEG_Activate(objPicture *Self, APTR Void)
       if (GetString(Self, FID_Location, &location) != ERR_Okay) return log.warning(ERR_GetField);
 
       if (CreateObject(ID_FILE, 0, &Self->prvFile,
-            FID_Location|TSTRING, location,
-            FID_Flags|TLONG,      FL_READ|FL_APPROXIMATE,
+            FID_Location|TSTR, location,
+            FID_Flags|TLONG,   FL_READ|FL_APPROXIMATE,
             TAGEND) != ERR_Okay) {
          log.warning("Failed to open file \"%s\".", location);
          return ERR_File;

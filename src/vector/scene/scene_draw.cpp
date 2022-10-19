@@ -396,7 +396,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
 
 static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
    LONG SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
-   struct rkVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+   objVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
    DOUBLE dwidth, dheight;
@@ -556,7 +556,7 @@ class pattern_rgb {
 
       static agg::rgba8 pixel16(const pattern_rgb &Pattern, int x, int y) {
          UWORD p = ((UWORD *)(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<1)))[0];
-         return agg::rgba8(UnpackRed(Pattern.mBitmap, p), UnpackGreen(Pattern.mBitmap, p), UnpackBlue(Pattern.mBitmap, p));
+         return agg::rgba8(Pattern.mBitmap->unpackRed(p), Pattern.mBitmap->unpackGreen(p), Pattern.mBitmap->unpackBlue(p));
       }
 
       static agg::rgba8 pixelScaled(const pattern_rgb &Pattern, int x, int y) {
@@ -578,7 +578,7 @@ class pattern_rgb {
       DOUBLE mHeight;
 };
 
-void draw_brush(const struct rkVectorImage &Image,
+void draw_brush(const objVectorImage &Image,
    agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::conv_transform<agg::path_storage, agg::trans_affine> &Path,
    DOUBLE StrokeWidth)
@@ -626,7 +626,7 @@ void draw_brush(const struct rkVectorImage &Image,
 
 static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMethod,
    const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
-   rkVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+   objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, DOUBLE BorderWidth = 0, DOUBLE Alpha = 1.0)
 {
    const DOUBLE c_width  = (Image.Units IS VUNIT_USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
@@ -652,7 +652,7 @@ static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMetho
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
 static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::trans_affine &Transform,
-   DOUBLE ViewWidth, DOUBLE ViewHeight, const rkVectorGradient &Gradient,
+   DOUBLE ViewWidth, DOUBLE ViewHeight, const objVectorGradient &Gradient,
    GRADIENT_TABLE *Table,
    agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster,
@@ -957,7 +957,7 @@ public:
 
    VMAdaptor() { }
 
-   void draw(struct rkBitmap *Bitmap) {
+   void draw(objBitmap *Bitmap) {
       parasol::Log log;
 
       log.traceBranch("Bitmap: %dx%d,%dx%d, Viewport: %p", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Scene->Viewport);
@@ -1495,7 +1495,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
    }
 }
 
-void agg::pixfmt_psl::setBitmap(struct rkBitmap &Bitmap)
+void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap)
 {
    mBitmap = &Bitmap;
 

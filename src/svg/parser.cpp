@@ -1092,7 +1092,7 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
             case SVF_ID:       id = val; break;
 
-            case SVF_OVERFLOW: SetString(pattern->Viewport, FID_Overflow, val); break;
+            case SVF_OVERFLOW: SetString((OBJECTPTR)pattern->Viewport, FID_Overflow, val); break;
 
             case SVF_OPACITY:  set_double(pattern, FID_Opacity, val); break;
 

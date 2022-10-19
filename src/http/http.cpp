@@ -1484,7 +1484,7 @@ static ERROR SET_CurrentState(objHTTP *Self, LONG Value)
    if (Self->StateChanged.Type != CALL_NONE) {
       ERROR error;
       if (Self->StateChanged.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(rkHTTP *, LONG))Self->StateChanged.StdC.Routine;
+         auto routine = (ERROR (*)(objHTTP *, LONG))Self->StateChanged.StdC.Routine;
          error = routine(Self, Self->CurrentState);
       }
       else if (Self->StateChanged.Type IS CALL_SCRIPT) {

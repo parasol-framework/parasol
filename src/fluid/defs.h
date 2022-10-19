@@ -133,7 +133,7 @@ struct metafield {
 };
 
 struct fwidget {
-   struct rkMetaClass *Class;
+   objMetaClass *Class;
    struct metafield *Fields;
    lua_State *Lua;
    LONG InputMask;
@@ -201,7 +201,7 @@ struct module {
 
 struct object {
    OBJECTPTR prvObject;       // If the object is private we can have the address
-   struct rkMetaClass *Class; // Direct pointer to the module's class
+   objMetaClass *Class;       // Direct pointer to the module's class
    OBJECTID  ObjectID;        // If the object is referenced externally, access is managed by ID
    CLASSID   ClassID;         // Class identifier
    UBYTE     Detached:1;      // TRUE if the object is an external reference or is not to be garbage collected

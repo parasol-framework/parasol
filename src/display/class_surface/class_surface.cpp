@@ -2839,7 +2839,7 @@ static void draw_region(objSurface *Self, objSurface *Parent, objBitmap *Bitmap)
       // Clear the Bitmap to the background colour if necessary
 
       if (Self->Colour.Alpha > 0) {
-         gfxDrawRectangle(Bitmap, 0, 0, Self->Width, Self->Height, PackPixelA(Bitmap, Self->Colour.Red, Self->Colour.Green, Self->Colour.Blue, 255), TRUE);
+         gfxDrawRectangle(Bitmap, 0, 0, Self->Width, Self->Height, Bitmap->packPixel(Self->Colour, 255), TRUE);
       }
 
       process_surface_callbacks(Self, Bitmap);

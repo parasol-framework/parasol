@@ -11,11 +11,8 @@ point.
 
 #define MAX_SPIRAL_VERTICES 65536
 
-typedef class rkVectorSpiral : public BaseClass {
+typedef class plVectorSpiral : public objVector {
    public:
-   SHAPE_PUBLIC
-   SHAPE_PRIVATE
-
    DOUBLE Scale;
    DOUBLE Offset;
    DOUBLE Radius;
@@ -66,7 +63,7 @@ static ERROR SPIRAL_NewObject(objVectorSpiral *Self, APTR Void)
    Self->Step   = 0.1;
    Self->Offset = 1;
    Self->Scale  = 1;
-   Self->GeneratePath = (void (*)(rkVector *))&generate_spiral;
+   Self->GeneratePath = (void (*)(objVector *))&generate_spiral;
    return ERR_Okay;
 }
 

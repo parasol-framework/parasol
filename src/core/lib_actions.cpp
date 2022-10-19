@@ -75,7 +75,7 @@ struct thread_data {
    BYTE      Parameters;
 };
 
-static ERROR thread_action(rkThread *Thread)
+static ERROR thread_action(objThread *Thread)
 {
    ERROR error;
    thread_data *data = (thread_data *)Thread->Data;
@@ -315,7 +315,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    obj->ActionDepth++;
 
-   rkMetaClass *cl = obj->Class;
+   objMetaClass *cl = obj->Class;
    auto log_depth = tlDepth;
 
    ERROR error;
@@ -643,7 +643,7 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
             }
          }
 
-         rkMetaClass *Class;
+         objMetaClass *Class;
          if ((Class = FindClass(ClassID))) {
             if ((-ActionID) < Class->TotalMethods) {
                fields   = Class->Methods[-ActionID].Args;
@@ -843,7 +843,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 
    auto obj = argObject;
    OBJECTID object_id = obj->UID;
-   rkMetaClass *sysclass = obj->Class;
+   objMetaClass *sysclass = obj->Class;
 
    obj->threadLock();
 
@@ -1092,7 +1092,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
       BYTE call_data[sizeof(thread_data) + SIZE_ACTIONBUFFER];
       BYTE free_args = FALSE;
       const FunctionField *args = NULL;
-      rkMetaClass *metaclass;
+      objMetaClass *metaclass;
 
       if (Parameters) {
          if (ActionID > 0) {
@@ -1190,7 +1190,7 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
 
    if ((Object) and (ActionID)) {
       if (Object->ClassID IS ID_METACLASS) {
-         if (((rkMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
+         if (((objMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
          else return ERR_False;
       }
       else if (Object->Class) {
@@ -1761,7 +1761,7 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
 ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 {
    parasol::Log log("Free");
-   rkMetaClass *mc;
+   objMetaClass *mc;
 
    Object->ActionDepth--; // See Action() regarding this
 
@@ -1795,8 +1795,8 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       return ERR_Okay|ERF_Notified;
    }
 
-   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", ((rkMetaClass *)Object)->ClassName, Object->OwnerID);
-   else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((rkModule *)Object)->Name, Object->OwnerID);
+   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", ((objMetaClass *)Object)->ClassName, Object->OwnerID);
+   else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((objModule *)Object)->Name, Object->OwnerID);
    else if (Object->Stats->Name[0])       log.branch("Name: %s, Owner: %d", Object->Stats->Name, Object->OwnerID);
    else log.branch("Owner: %d", Object->OwnerID);
 
@@ -1917,7 +1917,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
 
    if (!Object->Stats) return log.warning(ERR_NoStats);
 
-   rkMetaClass *baseclass;
+   objMetaClass *baseclass;
    if (!(baseclass = Object->Class)) return log.warning(ERR_LostClass);
 
    if (Object->ClassID != baseclass->BaseClassID) {
@@ -1962,7 +1962,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
       //
       // ERR_UseSubClass: Similar to ERR_NoSupport, but avoids scanning of sub-classes that aren't loaded in memory.
 
-      rkMetaClass * sublist[16];
+      objMetaClass * sublist[16];
       LONG sli = -1;
 
       while (Object->Class) {
@@ -1998,10 +1998,10 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
             // Initialise a list of all sub-classes already in memory for querying in sequence.
             sli = 0;
             LONG i = 0;
-            rkMetaClass **ptr;
+            objMetaClass **ptr;
             CSTRING key = NULL;
             while ((i < ARRAYSIZE(sublist)-1) and (!VarIterate(glClassMap, key, &key, (APTR *)&ptr, NULL))) {
-               rkMetaClass *mc = ptr[0];
+               objMetaClass *mc = ptr[0];
                if ((Object->ClassID IS mc->BaseClassID) and (mc->BaseClassID != mc->SubClassID)) {
                   sublist[i++] = mc;
                }

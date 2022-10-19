@@ -240,7 +240,7 @@ static int thread_method(lua_State *Lua)
 
    if ((object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
       if ((method = luaL_checkstring(Lua, 2))) {
-         rkMetaClass *mc;
+         objMetaClass *mc;
          MethodArray *table;
          LONG total_methods, i;
 

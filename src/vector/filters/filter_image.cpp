@@ -24,7 +24,7 @@ Width and Height.  The placement and scaling of the referenced image is controll
 
 *********************************************************************************************************************/
 
-typedef class rkImageFX : public rkFilterEffect {
+typedef class rkImageFX : public objFilterEffect {
    public:
    objBitmap *Bitmap;    // Bitmap containing source image data.
    objPicture *Picture;  // Origin picture if loading a source file.

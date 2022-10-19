@@ -101,7 +101,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
 // Constructor for the GradientColours class.  This expects to be called whenever the Gradient class updates the
 // Stops array.
 
-GradientColours::GradientColours(rkVectorGradient *Gradient, DOUBLE Alpha)
+GradientColours::GradientColours(objVectorGradient *Gradient, DOUBLE Alpha)
 {
    LONG stop, i1, i2, i;
    GradientStop *stops = Gradient->Stops;

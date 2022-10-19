@@ -540,9 +540,9 @@ private:
    static void blend16(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
    {
       UWORD pixel = ((UWORD *)p)[0];
-      UBYTE red   = UnpackRed(Self->mBitmap, pixel);
-      UBYTE green = UnpackGreen(Self->mBitmap, pixel);
-      UBYTE blue  = UnpackBlue(Self->mBitmap, pixel);
+      UBYTE red   = Self->mBitmap->unpackRed(pixel);
+      UBYTE green = Self->mBitmap->unpackGreen(pixel);
+      UBYTE blue  = Self->mBitmap->unpackBlue(pixel);
       red   = red + (((cr - red) * alpha)>>8);
       green = green + (((cg - green) * alpha)>>8);
       blue  = blue + (((cb - blue) * alpha)>>8);

@@ -803,9 +803,9 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
             LONG i = 0;
             WORD maskx = 0;
             for (LONG x=0; x < bmp->Width; x++) {
-               row[i++] = UnpackBlue(bmp, data[x]);
-               row[i++] = UnpackGreen(bmp, data[x]);
-               row[i++] = UnpackRed(bmp, data[x]);
+               row[i++] = bmp->unpackBlue(data[x]);
+               row[i++] = bmp->unpackGreen(data[x]);
+               row[i++] = bmp->unpackRed(data[x]);
                row[i++] = mask[maskx++];
             }
             if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
@@ -822,9 +822,9 @@ static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
          for (LONG y=0; y < bmp->Height; y++) {
             LONG i = 0;
             for (LONG x=0; x < bmp->Width; x++) {
-               row[i++] = UnpackBlue(bmp, data[x]);
-               row[i++] = UnpackGreen(bmp, data[x]);
-               row[i++] = UnpackRed(bmp, data[x]);
+               row[i++] = bmp->unpackBlue(data[x]);
+               row[i++] = bmp->unpackGreen(data[x]);
+               row[i++] = bmp->unpackRed(data[x]);
             }
             if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
@@ -861,7 +861,7 @@ static ERROR PIC_SaveToObject(objPicture *Self, struct acSaveToObject *Args)
    ERROR (**routine)(OBJECTPTR, APTR);
 
    if ((Args->ClassID) and (Args->ClassID != ID_PICTURE)) {
-      rkMetaClass *mc = (rkMetaClass *)FindClass(Args->ClassID);
+      auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((GetPointer(mc, FID_ActionTable, &routine) IS ERR_Okay) and (routine)) {
          if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)PIC_SaveToObject)) {
             return routine[AC_SaveToObject](Self, Args);

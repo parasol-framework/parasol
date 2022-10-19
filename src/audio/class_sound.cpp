@@ -1042,7 +1042,7 @@ static ERROR SOUND_SaveToObject(objSound *Self, struct acSaveToObject *Args)
    // This routine is used if the developer is trying to save the sound data as a specific subclass type.
 
    if ((Args->ClassID) and (Args->ClassID != ID_SOUND)) {
-      auto mclass = (rkMetaClass *)FindClass(Args->ClassID);
+      auto mclass = (objMetaClass *)FindClass(Args->ClassID);
 
       ERROR (**routine)(OBJECTPTR, APTR);
       if ((!GetPointer(mclass, FID_ActionTable, (APTR *)&routine)) and (routine)) {

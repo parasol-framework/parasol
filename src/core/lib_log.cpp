@@ -82,7 +82,7 @@ LONG AdjustLogLevel(LONG BaseLine)
 {
    if (glLogLevel >= 9) return tlBaseLine; // Do nothing if trace logging is active.
    LONG old_level = tlBaseLine;
-   if ((BaseLine >= -6) AND (BaseLine <= 6)) tlBaseLine += BaseLine;
+   if ((BaseLine >= -6) and (BaseLine <= 6)) tlBaseLine += BaseLine;
    return old_level;
 }
 
@@ -185,7 +185,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
       }
       else {
          msglevel = 3;
-         if ((*Header >= '1') AND (*Header <= '9')) { // Numbers are detail indicators
+         if ((*Header >= '1') and (*Header <= '9')) { // Numbers are detail indicators
             msglevel = *Header - '1' + 3;
             Header++;
          }
@@ -204,7 +204,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
    if (glLogLevel >= msglevel) {
       //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
 
-      #if defined(__unix__) AND !defined(__ANDROID__)
+      #if defined(__unix__) and !defined(__ANDROID__)
          BYTE flushdbg;
          if (glLogLevel >= 3) {
             flushdbg = TRUE;
@@ -215,7 +215,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
       #endif
 
       #ifdef ESC_OUTPUT
-         if ((glLogLevel > 2) AND (msglevel <= 2)) {
+         if ((glLogLevel > 2) and (msglevel <= 2)) {
             #ifdef _WIN32
                fprintf(stderr, "!");
                adjust = 1;
@@ -229,8 +229,8 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
       if (tlContext->Action) {
          if (tlContext->Action < 0) {
-            rkMetaClass *mc = (rkMetaClass *)tlContext->Object->Class;
-            if ((mc) AND (mc->Methods) AND (-tlContext->Action < mc->TotalMethods)) {
+            objMetaClass *mc = (objMetaClass *)tlContext->Object->Class;
+            if ((mc) and (mc->Methods) and (-tlContext->Action < mc->TotalMethods)) {
                action = mc->Methods[-tlContext->Action].Name;
             }
             else action = "Method";
@@ -253,7 +253,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
             char msg[180];
 
             if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((rkMetaClass *)tlContext->Object->Class)->Name;
+            else name = ((objMetaClass *)tlContext->Object->Class)->Name;
 
             if (glLogLevel > 5) {
                if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UID, tlContext->Field->Name, Format);
@@ -283,7 +283,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
          }
          else {
             size_t len;
-            for (len=0; (Header[len]) AND (len < sizeof(msgheader)-2); len++) msgheader[len] = Header[len];
+            for (len=0; (Header[len]) and (len < sizeof(msgheader)-2); len++) msgheader[len] = Header[len];
             msgheader[len++] = ' ';
             msgheader[len] = 0;
          }
@@ -291,7 +291,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
          OBJECTPTR obj = tlContext->Object;
          if (obj->Class) {
             if (obj->Stats->Name[0]) name = obj->Stats->Name;
-            else name = ((rkMetaClass *)obj->Class)->ClassName;
+            else name = ((objMetaClass *)obj->Class)->ClassName;
 
             if (glLogLevel > 5) {
                if (tlContext->Field) {
@@ -311,13 +311,13 @@ void LogF(CSTRING Header, CSTRING Format, ...)
          vfprintf(stderr, Format, arg);
          va_end(arg);
 
-         #if defined(ESC_OUTPUT) AND !defined(_WIN32)
-            if ((glLogLevel > 2) AND (msglevel <= 2)) fprintf(stderr, "\033[0m");
+         #if defined(ESC_OUTPUT) and !defined(_WIN32)
+            if ((glLogLevel > 2) and (msglevel <= 2)) fprintf(stderr, "\033[0m");
          #endif
 
          fprintf(stderr, "\n");
 
-         #if defined(__unix__) AND !defined(__ANDROID__)
+         #if defined(__unix__) and !defined(__ANDROID__)
             if (flushdbg) {
                fflush(0); // A fflush() appears to be enough - using fsync() will synchronise to disk, which we don't want by default (slow)
                if (glSync) fsync(STDERR_FILENO);
@@ -407,7 +407,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       ThreadLock lock(TL_PRINT, -1);
 
-      if ((Header) AND (!*Header)) Header = NULL;
+      if ((Header) and (!*Header)) Header = NULL;
 
       if (Flags & (VLF_BRANCH|VLF_FUNCTION)) msgstate = MS_FUNCTION;
       else msgstate = MS_MSG;
@@ -415,7 +415,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
       //fprintf(stderr, "%p ", tlContext);
 
-      #if defined(__unix__) AND !defined(__ANDROID__)
+      #if defined(__unix__) and !defined(__ANDROID__)
          BYTE flushdbg;
          if (glLogLevel >= 3) {
             flushdbg = TRUE;
@@ -426,7 +426,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       #endif
 
       #ifdef ESC_OUTPUT // Highlight errors if the log output is crowded
-         if ((glLogLevel > 2) AND (Flags & (VLF_ERROR|VLF_WARNING))) {
+         if ((glLogLevel > 2) and (Flags & (VLF_ERROR|VLF_WARNING))) {
             #ifdef _WIN32
                fprintf(stderr, "!");
                adjust = 1;
@@ -440,8 +440,8 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       if (tlContext->Action) {
          if (tlContext->Action < 0) {
-            rkMetaClass *mc = (rkMetaClass *)tlContext->Object->Class;
-            if ((mc) AND (mc->Methods) AND (-tlContext->Action < mc->TotalMethods)) {
+            objMetaClass *mc = (objMetaClass *)tlContext->Object->Class;
+            if ((mc) and (mc->Methods) and (-tlContext->Action < mc->TotalMethods)) {
                action = mc->Methods[-tlContext->Action].Name;
             }
             else action = "Method";
@@ -464,7 +464,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
             char msg[180];
 
             if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((rkMetaClass *)tlContext->Object->Class)->Name;
+            else name = ((objMetaClass *)tlContext->Object->Class)->Name;
 
             if (glLogLevel > 5) {
                if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UID, tlContext->Field->Name, Message);
@@ -488,7 +488,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          }
          else {
             size_t len;
-            for (len=0; (Header[len]) AND (len < sizeof(msgheader)-2); len++) msgheader[len] = Header[len];
+            for (len=0; (Header[len]) and (len < sizeof(msgheader)-2); len++) msgheader[len] = Header[len];
             msgheader[len++] = ' ';
             msgheader[len] = 0;
          }
@@ -496,7 +496,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          OBJECTPTR obj = tlContext->Object;
          if (obj->Class) {
             if (obj->Stats->Name[0]) name = obj->Stats->Name;
-            else name = ((rkMetaClass *)obj->Class)->ClassName;
+            else name = ((objMetaClass *)obj->Class)->ClassName;
 
             if (glLogLevel > 5) {
                if (tlContext->Field) {
@@ -513,13 +513,13 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
          vfprintf(stderr, Message, Args);
 
-         #if defined(ESC_OUTPUT) AND !defined(_WIN32)
-            if ((glLogLevel > 2) AND (Flags & (VLF_ERROR|VLF_WARNING))) fprintf(stderr, "\033[0m");
+         #if defined(ESC_OUTPUT) and !defined(_WIN32)
+            if ((glLogLevel > 2) and (Flags & (VLF_ERROR|VLF_WARNING))) fprintf(stderr, "\033[0m");
          #endif
 
          fprintf(stderr, "\n");
 
-         #if defined(__unix__) AND !defined(__ANDROID__)
+         #if defined(__unix__) and !defined(__ANDROID__)
             if (flushdbg) {
                fflush(0); // A fflush() appears to be enough - using fsync() will synchronise to disk, which we don't want by default (slow)
                if (glSync) fsync(STDERR_FILENO);
@@ -570,19 +570,19 @@ ERROR FuncError(CSTRING Header, ERROR Code)
       return Code;
    }
 
-   if ((tlDepth >= glMaxDepth) OR (tlLogStatus <= 0)) {
+   if ((tlDepth >= glMaxDepth) or (tlLogStatus <= 0)) {
       if (step) LogReturn();
       return Code;
    }
 
-   if ((Code < glTotalMessages) AND (Code > 0)) {
+   if ((Code < glTotalMessages) and (Code > 0)) {
       // Print the header
 
       if (!Header) {
          if (tlContext->Action) {
             if (tlContext->Action < 0) {
-               rkMetaClass *mc = (rkMetaClass *)tlContext->Object->Class;
-               if ((mc) AND (mc->Methods) AND (-tlContext->Action < mc->TotalMethods)) {
+               objMetaClass *mc = (objMetaClass *)tlContext->Object->Class;
+               if ((mc) and (mc->Methods) and (-tlContext->Action < mc->TotalMethods)) {
                   Header = mc->Methods[-tlContext->Action].Name;
                }
                else Header = "Method";
@@ -597,7 +597,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
             STRING name;
 
             if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((rkMetaClass *)tlContext->Object->Class)->Name;
+            else name = ((objMetaClass *)tlContext->Object->Class)->Name;
 
             if (tlContext->Field) {
                 __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d:%s] %s", name, tlContext->Object->UID, tlContext->Field->Name, glMessages[Code]);
@@ -624,7 +624,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 
          if (tlContext->Object->Class) {
             if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((rkMetaClass *)tlContext->Object->Class)->ClassName;
+            else name = ((objMetaClass *)tlContext->Object->Class)->ClassName;
 
             if (tlContext->Field) {
                fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, tlContext->Object->UID, tlContext->Field->Name, glMessages[Code], hiend);
@@ -703,7 +703,7 @@ static void fmsg(CSTRING Header, STRING Buffer, BYTE Colon, BYTE Sub) // Buffer 
    else {
       depth = tlDepth;
       #ifdef _WIN32
-         if (Sub AND (depth > 0)) {
+         if (Sub and (depth > 0)) {
             col--;
             depth--; // Make a correction to the depth level if an error mark is printed.
          }
@@ -716,7 +716,7 @@ static void fmsg(CSTRING Header, STRING Buffer, BYTE Colon, BYTE Sub) // Buffer 
    }
 
    if (glLogLevel >= 3) {
-      while ((depth > 0) AND (pos < col)) {
+      while ((depth > 0) and (pos < col)) {
          #ifdef __ANDROID__
             Buffer[pos++] = '_';
          #else
@@ -725,7 +725,7 @@ static void fmsg(CSTRING Header, STRING Buffer, BYTE Colon, BYTE Sub) // Buffer 
          depth--;
       }
 
-      while ((depth < 0) AND (pos < col)) { // Print depth warnings if the counter is negative.
+      while ((depth < 0) and (pos < col)) { // Print depth warnings if the counter is negative.
          Buffer[pos++] = '-';
          depth++;
       }
@@ -733,13 +733,13 @@ static void fmsg(CSTRING Header, STRING Buffer, BYTE Colon, BYTE Sub) // Buffer 
 
    if (pos < col) { // Print as many function letters as possible.
       WORD len;
-      for (len=0; (Header[len]) AND (pos < col); len++) Buffer[pos++] = Header[len];
-      if ((!Colon) AND (Header[len-1] != ':') AND (Header[len-1] != ')')) Colon = MS_MSG;
+      for (len=0; (Header[len]) and (pos < col); len++) Buffer[pos++] = Header[len];
+      if ((!Colon) and (Header[len-1] != ':') and (Header[len-1] != ')')) Colon = MS_MSG;
       if (Colon IS MS_MSG) {
-         if ((Header[len-1] != ':') AND (Header[len-1] != ')') AND (pos < col)) Buffer[pos++] = ':';
+         if ((Header[len-1] != ':') and (Header[len-1] != ')') and (pos < col)) Buffer[pos++] = ':';
       }
       else if (Colon IS MS_FUNCTION) {
-         if ((Header[len-1] != ':') AND (Header[len-1] != ')') AND (pos < col-1)) {
+         if ((Header[len-1] != ':') and (Header[len-1] != ')') and (pos < col-1)) {
             Buffer[pos++] = '(';
             Buffer[pos++] = ')';
          }

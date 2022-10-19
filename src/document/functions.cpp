@@ -3514,7 +3514,7 @@ static void add_link(objDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, L
 
 static void draw_background(objDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, PackPixelRGBA(Bitmap, &Self->Background), BAF_FILL);
+   gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Background), BAF_FILL);
 }
 
 //****************************************************************************
@@ -3571,13 +3571,13 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
       // Page boundary is marked in blue
       gfxDrawRectangle(Bitmap, Self->LeftMargin-1, Self->TopMargin-1,
          Self->CalcWidth - Self->RightMargin - Self->LeftMargin + 2, Self->PageHeight - Self->TopMargin - Self->BottomMargin + 2,
-         PackPixel(Bitmap, 0, 0, 255), 0);
+         Bitmap->packPixel(0, 0, 255), 0);
 
       // Special clip regions are marked in grey
       for (i=0; i < Self->TotalClips; i++) {
          gfxDrawRectangle(Bitmap, Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Top,
             Self->Clips[i].Clip.Right - Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Bottom - Self->Clips[i].Clip.Top,
-            PackPixel(Bitmap, 255, 200, 200), 0);
+            Bitmap->packPixel(255, 200, 200), 0);
       }
    #endif
 
@@ -3629,20 +3629,20 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
             if ((select_start > segment->Index) and (select_start < segment->Stop)) {
                if (select_end < segment->Stop) {
                   gfxDrawRectangle(Bitmap, segment->X + select_startx, segment->Y,
-                     select_endx - select_startx, segment->Height, PackPixel(Bitmap, 0, 128, 0), BAF_FILL);
+                     select_endx - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF_FILL);
                }
                else {
                   gfxDrawRectangle(Bitmap, segment->X + select_startx, segment->Y,
-                     segment->Width - select_startx, segment->Height, PackPixel(Bitmap, 0, 128, 0), BAF_FILL);
+                     segment->Width - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF_FILL);
                }
             }
             else if (select_end < segment->Stop) {
                gfxDrawRectangle(Bitmap, segment->X, segment->Y, select_endx, segment->Height,
-                  PackPixel(Bitmap, 0, 128, 0), BAF_FILL);
+                  Bitmap->packPixel(0, 128, 0), BAF_FILL);
             }
             else {
                gfxDrawRectangle(Bitmap, segment->X, segment->Y, segment->Width, segment->Height,
-                  PackPixel(Bitmap, 0, 128, 0), BAF_FILL);
+                  Bitmap->packPixel(0, 128, 0), BAF_FILL);
             }
             Bitmap->Opacity = 255;
          }
@@ -3654,7 +3654,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
             else {
                if (gfxGetUserFocus() IS Self->PageID) { // Standard text cursor
                   gfxDrawRectangle(Bitmap, segment->X + Self->CursorCharX, segment->Y, 2, segment->BaseLine,
-                     PackPixel(Bitmap, 255, 0, 0), BAF_FILL);
+                     Bitmap->packPixel(255, 0, 0), BAF_FILL);
                   cursor_drawn = TRUE;
                }
             }
@@ -3666,7 +3666,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
             gfxDrawRectangle(Bitmap,
                segment->X, segment->Y,
                (segment->Width > 0) ? segment->Width : 5, segment->Height,
-               PackPixel(Bitmap, 0, 255, 0), 0);
+               Bitmap->packPixel(0, 255, 0), 0);
          }
       #endif
 
@@ -3780,7 +3780,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                         // TODO: Requires conversion to vector
                         //gfxDrawEllipse(Bitmap,
                         //   fx - escpara->ItemIndent, segment->Y + ((segment->BaseLine - SIZE_BULLET)/2),
-                        //   SIZE_BULLET, SIZE_BULLET, PackPixelRGB(Bitmap, &esclist->Colour), TRUE);
+                        //   SIZE_BULLET, SIZE_BULLET, Bitmap->packPixel(esclist->Colour), TRUE);
                      }
                   }
                   break;
@@ -3803,7 +3803,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                      gfxDrawRectangle(Bitmap,
                         esctable->X+esctable->Thickness, esctable->Y+esctable->Thickness,
                         esctable->Width-(esctable->Thickness<<1), esctable->Height-(esctable->Thickness<<1),
-                        PackPixelRGBA(Bitmap, &esctable->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(esctable->Colour), BAF_FILL|BAF_BLEND);
                   }
 
                   if (esctable->Shadow.Alpha > 0) {
@@ -3812,7 +3812,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                         gfxDrawRectangle(Bitmap,
                            esctable->X+j, esctable->Y+j,
                            esctable->Width-(j<<1), esctable->Height-(j<<1),
-                           PackPixelRGBA(Bitmap, &esctable->Shadow), 0);
+                           Bitmap->packPixel(esctable->Shadow), 0);
                      }
                      Bitmap->Opacity = alpha;
                   }
@@ -3833,7 +3833,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                   if (escrow->Colour.Alpha) {
                      gfxDrawRectangle(Bitmap, esctable->X, escrow->Y, esctable->Width, escrow->RowHeight,
-                        PackPixelRGBA(Bitmap, &escrow->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(escrow->Colour), BAF_FILL|BAF_BLEND);
                   }
                   break;
                }
@@ -3859,12 +3859,12 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                      gfxDrawRectangle(Bitmap, esccell->AbsX+border, esccell->AbsY+border,
                         esctable->Columns[esccell->Column].Width-border, escrow->RowHeight-border,
-                        PackPixelRGBA(Bitmap, &esccell->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(esccell->Colour), BAF_FILL|BAF_BLEND);
                   }
 
                   if (esccell->Shadow.Alpha > 0) { // Border colour
                      gfxDrawRectangle(Bitmap, esccell->AbsX, esccell->AbsY, esctable->Columns[esccell->Column].Width,
-                        escrow->RowHeight, PackPixelRGBA(Bitmap, &esccell->Shadow), 0);
+                        escrow->RowHeight, Bitmap->packPixel(esccell->Shadow), 0);
                   }
                   break;
                }
@@ -3935,20 +3935,20 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 static void draw_border(objDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
    if ((!Self->BorderEdge) or (Self->BorderEdge IS (DBE_TOP|DBE_BOTTOM|DBE_LEFT|DBE_RIGHT))) {
-      gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, PackPixelRGBA(Bitmap, &Self->Border), 0);
+      gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Border), 0);
    }
    else {
       if (Self->BorderEdge & DBE_TOP) {
-         gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, 1, PackPixelRGBA(Bitmap, &Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, 1, Bitmap->packPixel(Self->Border), 0);
       }
       if (Self->BorderEdge & DBE_LEFT) {
-         gfxDrawRectangle(Bitmap, 0, 0, 1, Surface->Height, PackPixelRGBA(Bitmap, &Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), 0);
       }
       if (Self->BorderEdge & DBE_RIGHT) {
-         gfxDrawRectangle(Bitmap, Surface->Width-1, 0, 1, Surface->Height, PackPixelRGBA(Bitmap, &Self->Border), 0);
+         gfxDrawRectangle(Bitmap, Surface->Width-1, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), 0);
       }
       if (Self->BorderEdge & DBE_BOTTOM) {
-         gfxDrawRectangle(Bitmap, 0, Surface->Height-1, Surface->Width, 1, PackPixelRGBA(Bitmap, &Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, Surface->Height-1, Surface->Width, 1, Bitmap->packPixel(Self->Border), 0);
       }
    }
 }

@@ -190,7 +190,7 @@ static ERROR VECTORPATH_Init(objVectorPath *Self, APTR Void)
 static ERROR VECTORPATH_NewObject(objVectorPath *Self, APTR Void)
 {
    new(&Self->Commands) std::vector<PathCommand>;
-   Self->GeneratePath = (void (*)(rkVector *))&generate_path;
+   Self->GeneratePath = (void (*)(objVector *))&generate_path;
    return ERR_Okay;
 }
 

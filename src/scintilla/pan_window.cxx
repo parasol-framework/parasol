@@ -176,7 +176,7 @@ void Scintilla::Window::SetFont(Scintilla::Font &)
 
 void Scintilla::Window::SetCursor(Cursor curs)
 {
-   APTR surface;
+   objSurface *surface;
    LONG cursorid;
 
    if (curs IS cursorLast) return;
@@ -193,7 +193,7 @@ void Scintilla::Window::SetCursor(Cursor curs)
    }
 
    if (wid) {
-      if (AccessObject(getSurfaceID(this), 500, &surface) IS ERR_Okay) {
+      if (!AccessObject(getSurfaceID(this), 500, &surface)) {
          SetLong(surface, FID_Cursor, cursorid);
          cursorLast = curs;
          ReleaseObject(surface);

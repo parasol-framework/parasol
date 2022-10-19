@@ -142,8 +142,8 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2022", version=1.0 }, funct
    LONG   WriteSize;
    LONG   WriteOffset;
    APTR   Buffer;           // Temporary buffer for storing outgoing data
-   struct rkFile *flOutput;
-   struct rkFile *flInput;
+   objFile *flOutput;
+   objFile *flInput;
    objNetSocket *Socket;    // Socket over which the communication is taking place
    UBYTE  *Chunk;           // Chunk buffer
    LONG   ChunkSize;        // Size of the chunk buffer
