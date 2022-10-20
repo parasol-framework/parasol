@@ -10,7 +10,7 @@ static void VideoDrawPixel32(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 
 static void VideoDrawRGBPixel32(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB)
 {
-   XSetForeground(XDisplay, glXGC, PackPixelWB(Bitmap, RGB->Red, RGB->Green, RGB->Blue));
+   XSetForeground(XDisplay, glXGC, Bitmap->packPixelWB(*RGB));
    XDrawPoint(XDisplay, Bitmap->x11.drawable, glXGC, X, Y);
 }
 
@@ -100,7 +100,7 @@ static void VideoDrawPixel16(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 
 static void VideoDrawRGBPixel16(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB)
 {
-   XSetForeground(XDisplay, glXGC, PackPixel(Bitmap, RGB->Red, RGB->Green, RGB->Blue));
+   XSetForeground(XDisplay, glXGC, Bitmap->packPixel(*RGB));
    XDrawPoint(XDisplay, Bitmap->x11.drawable, glXGC, X, Y);
 }
 
@@ -118,17 +118,17 @@ static void VideoReadRGBPixel16(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *
 {
    UWORD data;
    data  = ((UWORD *)((BYTE *)Bitmap->x11.readable->data + (Bitmap->x11.readable->bytes_per_line * Y) + (X<<1)))[0];
-   RGB->Red   = UnpackRed(Bitmap, data);
-   RGB->Green = UnpackGreen(Bitmap, data);
-   RGB->Blue  = UnpackBlue(Bitmap, data);
+   RGB->Red   = Bitmap->unpackRed(data);
+   RGB->Green = Bitmap->unpackGreen(data);
+   RGB->Blue  = Bitmap->unpackBlue(data);
    RGB->Alpha = 0;
 }
 
 static void VideoReadRGBIndex16(objBitmap *Bitmap, UWORD *Data, struct RGB8 *RGB)
 {
-   RGB->Red   = UnpackRed(Bitmap, Data[0]);
-   RGB->Green = UnpackGreen(Bitmap, Data[0]);
-   RGB->Blue  = UnpackBlue(Bitmap, Data[0]);
+   RGB->Red   = Bitmap->unpackRed(Data[0]);
+   RGB->Green = Bitmap->unpackGreen(Data[0]);
+   RGB->Blue  = Bitmap->unpackBlue(Data[0]);
    RGB->Alpha = 0;
 }
 
