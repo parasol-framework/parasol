@@ -586,7 +586,7 @@ ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y
 
                while (Height > 0) {
                   for (i=0; i < Width; i++) {
-                     alpha = 255 - UnpackAlpha(Bitmap, srcdata[i]);
+                     alpha = 255 - Bitmap->unpackAlpha(srcdata[i]);
 
                      if (alpha >= BLEND_MAX_THRESHOLD) {
                         pixel.Red   = (UBYTE)(srcdata[i] >> Bitmap->prvColourFormat.RedPos);

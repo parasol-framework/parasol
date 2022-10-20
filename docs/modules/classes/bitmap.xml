@@ -494,22 +494,22 @@ Chunky/32   = Width * 4
 <field type="UBYTE" name="AlphaPos">Left shift/positional value for the alpha component.</field>
 <field type="UBYTE" name="BitsPerPixel"> Number of bits per pixel for this format.</field>
 </struct>
-<p>The following C macros can called on any bitmap in order to build colour values from individual RGB components:</p>
-<pre>PackPixel(Bitmap, Red, Green, Blue)
-PackPixelA(Bitmap, Red, Green, Blue, Alpha)
-PackAlpha(Bitmap, Alpha)
-PackPixelRGB(Bitmap, struct RGB8 *RGB)
-PackPixelRGBA(Bitmap, struct RGB8 *RGB)
+<p>The following C++ methods can called on any bitmap in order to build colour values from individual RGB components:</p>
+<pre>packPixel(Red, Green, Blue)
+packPixel(Red, Green, Blue, Alpha)
+packAlpha(Alpha)
+packPixelRGB(RGB8 &amp;RGB)
+packPixelRGBA(RGB8 &amp;RGB)
 </pre>
 <p>The following C macros are optimised versions of the above that are limited to 24 and 32-bit bitmaps:</p>
-<pre>PackPixelWB(Bitmap, Red, Green, Blue)
-PackPixelWBA(Bitmap, Red, Green, Blue, Alpha)
+<pre>PackPixelWB(Red, Green, Blue)
+PackPixelWBA(Red, Green, Blue, Alpha)
 </pre>
-<p>The following C macros can be used to unpack individual colour components from any colour value read from the bitmap:</p>
-<pre>UnpackRed(Bitmap, Colour)
-UnpackGreen(Bitmap, Colour)
-UnpackBlue(Bitmap, Colour)
-UnpackAlpha(Bitmap, Colour)
+<p>The following C++ methods can be used to unpack individual colour components from any colour value read from the bitmap:</p>
+<pre>unpackRed(Colour)
+unpackGreen(Colour)
+unpackBlue(Colour)
+unpackAlpha(Colour)
 </pre>
       </description>
     </field>

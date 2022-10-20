@@ -2288,30 +2288,30 @@ only applies to bitmaps that use 2-bytes per colour value or better.  The struct
 <field type="UBYTE" name="BitsPerPixel"> Number of bits per pixel for this format.</>
 </>
 
-The following C macros can called on any bitmap in order to build colour values from individual RGB components:
+The following C++ methods can called on any bitmap in order to build colour values from individual RGB components:
 
 <pre>
-PackPixel(Bitmap, Red, Green, Blue)
-PackPixelA(Bitmap, Red, Green, Blue, Alpha)
-PackAlpha(Bitmap, Alpha)
-PackPixelRGB(Bitmap, struct RGB8 *RGB)
-PackPixelRGBA(Bitmap, struct RGB8 *RGB)
+packPixel(Red, Green, Blue)
+packPixel(Red, Green, Blue, Alpha)
+packAlpha(Alpha)
+packPixelRGB(RGB8 &RGB)
+packPixelRGBA(RGB8 &RGB)
 </pre>
 
 The following C macros are optimised versions of the above that are limited to 24 and 32-bit bitmaps:
 
 <pre>
-PackPixelWB(Bitmap, Red, Green, Blue)
-PackPixelWBA(Bitmap, Red, Green, Blue, Alpha)
+PackPixelWB(Red, Green, Blue)
+PackPixelWBA(Red, Green, Blue, Alpha)
 </pre>
 
-The following C macros can be used to unpack individual colour components from any colour value read from the bitmap:
+The following C++ methods can be used to unpack individual colour components from any colour value read from the bitmap:
 
 <pre>
-UnpackRed(Bitmap, Colour)
-UnpackGreen(Bitmap, Colour)
-UnpackBlue(Bitmap, Colour)
-UnpackAlpha(Bitmap, Colour)
+unpackRed(Colour)
+unpackGreen(Colour)
+unpackBlue(Colour)
+unpackAlpha(Colour)
 </pre>
 
 -FIELD-
