@@ -9,7 +9,7 @@ static ERROR set_dimension(objXML *XML, LONG Index, CSTRING Attrib, DOUBLE Value
 
 //*********************************************************************************************************************
 
-static ERROR save_vectorpath(objSVG *Self, objXML *XML, objVector *Vector, LONG Parent)
+static ERROR save_vectorpath(extSVG *Self, objXML *XML, objVector *Vector, LONG Parent)
 {
    STRING path;
    ERROR error;
@@ -28,7 +28,7 @@ static ERROR save_vectorpath(objSVG *Self, objXML *XML, objVector *Vector, LONG 
 
 //*********************************************************************************************************************
 
-static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LONG Parent)
+static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG Parent)
 {
    parasol::Log log(__FUNCTION__);
    KeyStore *keystore;
@@ -215,7 +215,7 @@ static ERROR save_svg_transform(VectorMatrix *Transform, char *Buffer, LONG Size
 
 //*********************************************************************************************************************
 
-static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LONG Tag)
+static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG Tag)
 {
    parasol::Log log(__FUNCTION__);
    char buffer[160];
@@ -387,7 +387,7 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
 
 //*********************************************************************************************************************
 
-static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Parent)
+static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Parent)
 {
    parasol::Log log(__FUNCTION__);
 

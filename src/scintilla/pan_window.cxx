@@ -9,7 +9,7 @@
 
 inline OBJECTID getSurfaceID(Scintilla::Window* win)
 {
-   objScintilla *scintilla = (objScintilla *)win->GetID();
+   extScintilla *scintilla = (extScintilla *)win->GetID();
    return scintilla->SurfaceID;
 }
 
@@ -102,7 +102,7 @@ void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla:
 
 Scintilla::PRectangle Scintilla::Window::GetClientPosition()
 {
-   objScintilla *scintilla = (objScintilla *)this->GetID();
+   extScintilla *scintilla = (extScintilla *)this->GetID();
 
    //FMSG("Window::GetClientPosition()","%dx%d", scintilla->Surface.Width, scintilla->Surface.Height);
    return Scintilla::PRectangle(0, 0, scintilla->Surface.Width, scintilla->Surface.Height);
@@ -133,7 +133,7 @@ void Scintilla::Window::Show(bool show)
 
 void Scintilla::Window::InvalidateAll()
 {
-   objScintilla *scintilla = (objScintilla *)this->GetID();
+   auto scintilla = (extScintilla *)this->GetID();
 
    // Scintilla expects the invalidation to be buffered, so a delayed message is appropriate.
 
@@ -148,7 +148,7 @@ void Scintilla::Window::InvalidateAll()
 
 void Scintilla::Window::InvalidateRectangle(Scintilla::PRectangle rc)
 {
-   objScintilla *scintilla = (objScintilla *)this->GetID();
+   auto scintilla = (extScintilla *)this->GetID();
 
    if (scintilla->Visible IS FALSE) return;
 
@@ -207,6 +207,6 @@ void Scintilla::Window::SetCursor(Cursor curs)
 
 void Scintilla::Window::SetTitle(const char *s)
 {
-   objScintilla *scintilla = (objScintilla *)this->GetID();
+   extScintilla *scintilla = (extScintilla *)this->GetID();
    SetString(scintilla, FID_Title, (STRING)s);
 }

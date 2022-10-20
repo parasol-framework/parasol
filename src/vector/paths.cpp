@@ -246,8 +246,8 @@ void gen_vector_path(objVector *Vector)
 
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
 
-      if (Vector->Scene->ResizeSubscriptions.contains(view)) {
-         Vector->Scene->PendingResizeMsgs.insert(view);
+      if (((extVectorScene *)Vector->Scene)->ResizeSubscriptions.contains(view)) {
+         ((extVectorScene *)Vector->Scene)->PendingResizeMsgs.insert(view);
       }
    }
    else if (Vector->ClassID IS ID_VECTOR) {

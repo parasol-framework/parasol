@@ -244,12 +244,12 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    if (Self->Child) Self->Child->Parent = NULL;
 
    if ((Self->Scene) and (!(Self->Scene->collecting()))) {
-      if ((Self->ParentView) and (Self->ResizeSubscription) and (Self->Scene->ResizeSubscriptions.contains(Self->ParentView))) {
-         auto sub = Self->Scene->ResizeSubscriptions[Self->ParentView];
+      if ((Self->ParentView) and (Self->ResizeSubscription) and (((extVectorScene *)Self->Scene)->ResizeSubscriptions.contains(Self->ParentView))) {
+         auto sub = ((extVectorScene *)Self->Scene)->ResizeSubscriptions[Self->ParentView];
          sub.erase(Self);
       }
-      Self->Scene->InputSubscriptions.erase(Self);
-      Self->Scene->KeyboardSubscriptions.erase(Self);
+      ((extVectorScene *)Self->Scene)->InputSubscriptions.erase(Self);
+      ((extVectorScene *)Self->Scene)->KeyboardSubscriptions.erase(Self);
    }
 
    {
@@ -475,10 +475,10 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
       const std::lock_guard<std::mutex> lock(glResizeLock);
       if (glResizeSubscriptions.contains(Self)) {
          if (Self->ParentView) {
-            Self->Scene->ResizeSubscriptions[Self->ParentView][Self] = glResizeSubscriptions[Self];
+            ((extVectorScene *)Self->Scene)->ResizeSubscriptions[Self->ParentView][Self] = glResizeSubscriptions[Self];
          }
          else if (Self->SubID IS ID_VECTORVIEWPORT) { // The top-level viewport responds to its own sizing.
-            Self->Scene->ResizeSubscriptions[(objVectorViewport *)Self][Self] = glResizeSubscriptions[Self];
+            ((extVectorScene *)Self->Scene)->ResizeSubscriptions[(objVectorViewport *)Self][Self] = glResizeSubscriptions[Self];
          }
          glResizeSubscriptions.erase(Self);
       }
@@ -873,7 +873,7 @@ static ERROR VECTOR_SubscribeInput(objVector *Self, struct vecSubscribeInput *Ar
       if (mask & JTYPE_FEEDBACK) mask |= JTYPE_MOVEMENT;
 
       Self->InputMask |= mask;
-      Self->Scene->InputSubscriptions[Self] = Self->InputMask;
+      ((extVectorScene *)Self->Scene)->InputSubscriptions[Self] = Self->InputMask;
       Self->InputSubscriptions->emplace_back(*Args->Callback, mask);
    }
    else if (Self->InputSubscriptions) { // Remove existing subscriptions for this callback
@@ -884,7 +884,7 @@ static ERROR VECTOR_SubscribeInput(objVector *Self, struct vecSubscribeInput *Ar
 
       if (Self->InputSubscriptions->empty()) {
          if ((Self->Scene) and (!(Self->Scene->collecting()))) {
-            Self->Scene->InputSubscriptions.erase(Self);
+            ((extVectorScene *)Self->Scene)->InputSubscriptions.erase(Self);
          }
       }
    }
@@ -936,7 +936,7 @@ static ERROR VECTOR_SubscribeKeyboard(objVector *Self, struct vecSubscribeKeyboa
       if (!Self->KeyboardSubscriptions) return log.warning(ERR_AllocMemory);
    }
 
-   Self->Scene->KeyboardSubscriptions.emplace(Self);
+   ((extVectorScene *)Self->Scene)->KeyboardSubscriptions.emplace(Self);
    Self->KeyboardSubscriptions->emplace_back(*Args->Callback);
    return ERR_Okay;
 }
@@ -1828,7 +1828,7 @@ static ERROR VECTOR_SET_ResizeEvent(objVector *Self, FUNCTION *Value)
 {
    Self->ResizeSubscription = true;
    if ((Self->Scene) and (Self->ParentView)) {
-      Self->Scene->ResizeSubscriptions[Self->ParentView][Self] = *Value;
+      ((extVectorScene *)Self->Scene)->ResizeSubscriptions[Self->ParentView][Self] = *Value;
    }
    else {
       const std::lock_guard<std::mutex> lock(glResizeLock);

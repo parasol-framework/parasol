@@ -7,7 +7,7 @@
 static void client_connect(SOCKET_HANDLE Void, APTR Data)
 {
    parasol::Log log(__FUNCTION__);
-   objNetSocket *Self = (objNetSocket *)Data;
+   extNetSocket *Self = (extNetSocket *)Data;
 
    log.trace("Connection from server received.");
 
@@ -68,10 +68,10 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 ** This function is called from win32_netresponse() and is managed outside of the normal message queue.
 */
 
-static void client_server_incoming(SOCKET_HANDLE FD, objNetSocket *Data)
+static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
 {
    parasol::Log log(__FUNCTION__);
-   objNetSocket *Self = Data;
+   extNetSocket *Self = Data;
 
    parasol::SwitchContext context(Self);
 
@@ -113,7 +113,7 @@ restart:
    ERROR error = ERR_Okay;
    if (Self->Incoming.Type) {
       if (Self->Incoming.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(objNetSocket *))Self->Incoming.StdC.Routine;
+         auto routine = (ERROR (*)(extNetSocket *))Self->Incoming.StdC.Routine;
          if (routine) {
             parasol::SwitchContext context(Self->Incoming.StdC.Context);
             error = routine(Self);
@@ -170,10 +170,10 @@ restart:
 ** to the write queue.
 */
 
-static void client_server_outgoing(SOCKET_HANDLE Void, objNetSocket *Data)
+static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
 {
    parasol::Log log(__FUNCTION__);
-   objNetSocket *Self = Data;
+   extNetSocket *Self = Data;
 
    if (Self->Terminating) return;
 
@@ -236,7 +236,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, objNetSocket *Data)
    if ((!Self->WriteQueue.Buffer) OR (Self->WriteQueue.Index >= Self->WriteQueue.Length)) {
       if (Self->Outgoing.Type) {
          if (Self->Outgoing.Type IS CALL_STDC) {
-            auto routine = (ERROR (*)(objNetSocket *))Self->Outgoing.StdC.Routine;
+            auto routine = (ERROR (*)(extNetSocket *))Self->Outgoing.StdC.Routine;
             if (routine) {
                parasol::SwitchContext context(Self->Outgoing.StdC.Context);
                error = routine(Self);

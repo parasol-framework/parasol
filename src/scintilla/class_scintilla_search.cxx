@@ -51,7 +51,7 @@ ScintillaSearch: Provides search functionality for use on Scintilla objects.
 #include "scintillaparasol.h"
 #include <parasol/modules/scintilla.h>
 
-#define SCICALL     Self->Scintilla->API->SendScintilla
+#define SCICALL     ((extScintilla *)(Self->Scintilla))->API->SendScintilla
 
 /*****************************************************************************
 

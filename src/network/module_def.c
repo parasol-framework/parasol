@@ -10,7 +10,7 @@ static ULONG netHostToShort(ULONG Value);
 static ULONG netHostToLong(ULONG Value);
 static ULONG netShortToHost(ULONG Value);
 static ULONG netLongToHost(ULONG Value);
-static ERROR netSetSSL(objNetSocket * NetSocket, ...);
+static ERROR netSetSSL(extNetSocket * NetSocket, ...);
 
 #ifdef  __cplusplus
 }

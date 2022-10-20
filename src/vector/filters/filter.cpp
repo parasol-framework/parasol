@@ -362,6 +362,8 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
 
    parasol::SwitchContext context(Self);
 
+   //Self->ColourSpace = CS_SRGB;
+
    auto filter_name = GetName(Self);
    if ((!filter_name) or (!filter_name[0])) filter_name = "Unnamed";
    auto vector_name = GetName(Vector);

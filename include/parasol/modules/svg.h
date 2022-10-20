@@ -42,22 +42,6 @@ typedef class plSVG : public BaseClass {
    LONG      Frame;     // Forces the graphics to be drawn to a specific frame.
    LONG      Flags;     // Optional flags.
    LONG      FrameRate; // The maximum frame rate to use when animating a vector scene.
-
-#ifdef PRV_SVG
-   objVectorScene *Scene;
-   STRING Folder;
-   OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
-   FUNCTION FrameCallback;
-   struct svgAnimation *Animations;
-   std::unordered_map<std::string, svgID> IDs;
-   std::unordered_map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
-   svgInherit *Inherit;
-   DOUBLE SVGVersion;
-   TIMER AnimationTimer;
-   UBYTE Animated:1;
-   UBYTE PreserveWS:1; // Preserve white-space
-  
-#endif
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }

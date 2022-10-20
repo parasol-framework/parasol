@@ -146,18 +146,6 @@ typedef class plClientSocket : public BaseClass {
    FUNCTION Incoming;            // Callback for data being received from the socket
    LONG     MsgLen;              // Length of the current incoming message
    LONG     ReadCalled:1;        // TRUE if the Read action has been called
-
-#ifdef PRV_CLIENTSOCKET
-   union {
-      SOCKET_HANDLE SocketHandle;
-      SOCKET_HANDLE Handle;
-   };
-   struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
-   struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
-   UBYTE OutgoingRecursion;
-   UBYTE InUse;
-  
-#endif
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -224,14 +212,6 @@ typedef class plProxy : public BaseClass {
    LONG   Enabled;          // All proxies are enabled by default until this field is set to FALSE.
    LONG   Record;           // The unique ID of the current proxy record.
    LONG   Host;             // If TRUE, the proxy settings are derived from the host operating system's default settings.
-
-#ifdef PRV_PROXY
-   char GroupName[40];
-   char FindPort[16];
-   BYTE  FindEnabled;
-   UBYTE Find:1;
-  
-#endif
    // Action stubs
 
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
@@ -281,14 +261,6 @@ typedef class plNetLookup : public BaseClass {
    public:
    LARGE UserData;    // Optional user data storage
    LONG  Flags;       // Optional flags
-
-#ifdef PRV_NETLOOKUP
-   FUNCTION Callback;
-   struct DNSEntry Info;
-   std::unordered_set<OBJECTID> *Threads;
-   std::mutex *ThreadLock;
-  
-#endif
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -363,44 +335,6 @@ typedef class plNetSocket : public BaseClass {
    LONG   Backlog;                // The maximum number of connections that can be queued against the socket.
    LONG   ClientLimit;            // The maximum number of clients that can be connected to a server socket.
    LONG   MsgLimit;               // Limits the size of incoming and outgoing messages.
-
-#ifdef PRV_NETSOCKET
-   SOCKET_HANDLE SocketHandle;   // Handle of the socket
-   FUNCTION Outgoing;
-   FUNCTION Incoming;
-   FUNCTION Feedback;
-   objNetLookup *NetLookup;
-   struct NetClient *LastClient;
-   struct NetQueue WriteQueue;
-   struct NetQueue ReadQueue;
-   UBYTE  ReadCalled:1;          // The Read() action sets this to TRUE whenever called.
-   UBYTE  IPV6:1;
-   UBYTE  Terminating:1;         // Set to TRUE when the NetSocket is marked for deletion.
-   UBYTE  ExternalSocket:1;      // Set to TRUE if the SocketHandle field was set manually by the client.
-   UBYTE  InUse;                 // Recursion counter to signal that the object is doing something.
-   UBYTE  SSLBusy;               // Tracks the current actions of SSL handshaking.
-   UBYTE  IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
-   UBYTE  OutgoingRecursion;
-   #ifdef _WIN32
-      #ifdef NO_NETRECURSION
-         WORD WinRecursion; // For win32_netresponse()
-      #endif
-      union {
-         void (*ReadSocket)(SOCKET_HANDLE, objNetSocket *);
-         void (*ReadClientSocket)(SOCKET_HANDLE, objClientSocket *);
-      };
-      union {
-         void (*WriteSocket)(SOCKET_HANDLE, objNetSocket *);
-         void (*WriteClientSocket)(SOCKET_HANDLE, objClientSocket *);
-      };
-   #endif
-   #ifdef ENABLE_SSL
-      SSL *SSL;
-      SSL_CTX *CTX;
-      BIO *BIO;
-   #endif
-  
-#endif
    // Action stubs
 
    inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {

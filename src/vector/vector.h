@@ -182,6 +182,24 @@ public:
 
 #include <parasol/modules/vector.h>
 
+class extVectorScene : public objVectorScene {
+   public:
+   DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
+   class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
+   agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
+   APTR KeyHandle; // Keyboard subscription
+   std::unordered_set<objVectorViewport *> PendingResizeMsgs;
+   std::unordered_map<objVector *, LONG> InputSubscriptions;
+   std::set<objVector *, OrderedVector> KeyboardSubscriptions;
+   std::vector<struct InputBoundary> InputBoundaries;
+   std::unordered_map<objVectorViewport *, std::unordered_map<objVector *, FUNCTION>> ResizeSubscriptions;
+   OBJECTID ButtonLock; // The vector currently holding a button lock
+   OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
+   LONG InputHandle;
+   LONG Cursor; // Current cursor image
+   UBYTE AdaptorType;
+};
+
 //****************************************************************************
 // NB: Considered a shape (can be transformed).
 

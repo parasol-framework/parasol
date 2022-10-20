@@ -151,60 +151,6 @@ typedef class plHTTP : public BaseClass {
    STRING   ProxyServer;     // The targeted HTTP server is specified here, either by name or IP address.
    LONG     ProxyPort;       // The port to use when communicating with the proxy server.
    LONG     BufferSize;      // Indicates the preferred buffer size for data operations.
-
-#ifdef PRV_HTTP
-   FUNCTION Incoming;
-   FUNCTION Outgoing;
-   FUNCTION AuthCallback;
-   FUNCTION StateChanged;
-   std::unordered_map<std::string, std::string> *Args;
-   std::unordered_map<std::string, std::string> *Headers;
-   STRING Response;         // Response header buffer
-   STRING URI;              // Temporary string, used only when the user reads the URI
-   STRING Username;
-   STRING Password;
-   STRING AuthNonce;
-   STRING AuthOpaque;
-   STRING AuthPath;
-   STRING ContentType;
-   UBYTE  *RecvBuffer;      // Receive buffer - aids downloading if HTF_RECVBUFFER is defined
-   UBYTE  *WriteBuffer;
-   LONG   WriteSize;
-   LONG   WriteOffset;
-   APTR   Buffer;           // Temporary buffer for storing outgoing data
-   objFile *flOutput;
-   objFile *flInput;
-   objNetSocket *Socket;    // Socket over which the communication is taking place
-   UBYTE  *Chunk;           // Chunk buffer
-   LONG   ChunkSize;        // Size of the chunk buffer
-   LONG   ChunkBuffered;    // Number of bytes buffered, cannot exceed ChunkSize
-   LONG   ChunkLen;         // Length of the current chunk being processed (applies when reading the chunk data)
-   LONG   ChunkIndex;
-   TIMER  TimeoutManager;
-   LARGE  LastReceipt;      // Last time (microseconds) at which data was received
-   LARGE  TotalSent;        // Total number of bytes sent - exists for assisting debugging only
-   OBJECTID DialogWindow;
-   LONG   RecvSize;
-   LONG   ResponseIndex;    // Next element to write to in 'Buffer'
-   LONG   SearchIndex;      // Current position of the CRLFCRLF search.
-   LONG   ResponseSize;
-   WORD   InputPos;         // File name parsing position in InputFile
-   UBYTE  RedirectCount;
-   UBYTE  AuthCNonce[10];
-   UBYTE  AuthQOP[12];
-   UBYTE  AuthAlgorithm[12];
-   UBYTE  AuthRetries;
-   UWORD  Connecting:1;
-   UWORD  AuthAttempt:1;
-   UWORD  AuthPreset:1;
-   UWORD  AuthDigest:1;
-   UWORD  SecurePath:1;
-   UWORD  Tunneling:1;
-   UWORD  Chunked:1;
-   UWORD  MultipleInput:1;
-   UWORD  ProxyDefined:1;   // TRUE if the ProxyServer has been manually set by the user
-  
-#endif
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }

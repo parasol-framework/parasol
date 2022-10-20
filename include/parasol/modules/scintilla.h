@@ -171,38 +171,6 @@ typedef class plScintilla : public BaseClass {
    LONG      CursorCol;          // The current column of the text cursor.
    LONG      Lexer;              // The lexer for document styling is defined here.
    LONG      Modified;           // Returns TRUE if the document has been modified and not saved.
-
-#ifdef PRV_SCINTILLA
-   struct  SurfaceCoords Surface;
-   FUNCTION FileDrop;
-   FUNCTION EventCallback;
-   objFile *FileStream;
-   objFont *BoldFont;        // Bold version of the current font
-   objFont *ItalicFont;      // Italic version of the current font
-   objFont *BIFont;          // Bold-Italic version of the current font
-   ScintillaParasol *API;
-   APTR   prvKeyEvent;
-   STRING StringBuffer;
-   LONG   LongestLine;         // Longest line in the document
-   LONG   LongestWidth;        // Pixel width of the longest line
-   LONG   TabWidth;
-   LONG   InputHandle;
-   TIMER  TimerID;
-   LARGE  ReportEventFlags;    // For delayed event reporting.
-   UWORD  KeyAlt:1;
-   UWORD  KeyCtrl:1;
-   UWORD  KeyShift:1;
-   UWORD  LineNumbers:1;
-   UWORD  Wordwrap:1;
-   UWORD  Symbols:1;
-   UWORD  FoldingMarkers:1;
-   UWORD  ShowWhitespace:1;
-   UWORD  AutoIndent:1;
-   UWORD  HoldModify:1;
-   UWORD  AllowTabs:1;
-   UBYTE  ScrollLocked;
-  
-#endif
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }

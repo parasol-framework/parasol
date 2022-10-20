@@ -1,5 +1,5 @@
 
-static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
+static ERROR count_tags(extXML *Self, CSTRING Text, CSTRING *Result)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -155,7 +155,7 @@ static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
 //****************************************************************************
 // Convert a text string into XML tags.
 
-static ERROR txt_to_xml(objXML *Self, CSTRING Text)
+static ERROR txt_to_xml(extXML *Self, CSTRING Text)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -305,7 +305,7 @@ static ERROR txt_to_xml(objXML *Self, CSTRING Text)
 //****************************************************************************
 // Extracts the next tag from an XML string.  This function also recurses into itself.
 
-static CSTRING extract_tag_attrib(objXML *Self, CSTRING Str, LONG *AttribSize, WORD *TotalAttrib)
+static CSTRING extract_tag_attrib(extXML *Self, CSTRING Str, LONG *AttribSize, WORD *TotalAttrib)
 {
    CSTRING str = Str;
    LONG size = 0;
@@ -367,7 +367,7 @@ static CSTRING extract_tag_attrib(objXML *Self, CSTRING Str, LONG *AttribSize, W
 //****************************************************************************
 // Called by txt_to_xml() to extract the next tag from an XML string.  This function also recurses into itself.
 
-static ERROR extract_tag(objXML *Self, exttag *Status)
+static ERROR extract_tag(extXML *Self, exttag *Status)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -674,7 +674,7 @@ static ERROR extract_tag(objXML *Self, exttag *Status)
 
 //****************************************************************************
 
-static ERROR extract_content(objXML *Self, exttag *Status)
+static ERROR extract_content(extXML *Self, exttag *Status)
 {
    parasol::Log log(__FUNCTION__);
    XMLTag *tag;
@@ -1049,7 +1049,7 @@ static void sift_up(ListSort **lookup, LONG i, LONG heapsize)
 //****************************************************************************
 // Gets the nth sibling with the given name.
 
-static XMLTag * next_sibling(objXML *Self, XMLTag *Tag, LONG Index, STRING Name, LONG FlatScan)
+static XMLTag * next_sibling(extXML *Self, XMLTag *Tag, LONG Index, STRING Name, LONG FlatScan)
 {
    //FMSG("next_sibling","Index: %d, Name: %s, Flat: %d", Index, Name, FlatScan);
 
@@ -1103,9 +1103,9 @@ static XMLTag * next_sibling(objXML *Self, XMLTag *Tag, LONG Index, STRING Name,
 //   /menu/window/* (First child of the window tag)
 //   /menu/*[@id='5']
 
-static ERROR find_tag2(objXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback);
+static ERROR find_tag2(extXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback);
 
-static XMLTag * find_tag(objXML *Self, XMLTag *Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
+static XMLTag * find_tag(extXML *Self, XMLTag *Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1125,7 +1125,7 @@ static XMLTag * find_tag(objXML *Self, XMLTag *Tag, CSTRING XPath, CSTRING *Attr
    else return NULL;
 }
 
-static ERROR find_tag2(objXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
+static ERROR find_tag2(extXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
 {
    parasol::Log log("find_tag");
    char tagname[120];
@@ -1390,7 +1390,7 @@ matched_attrib:
 
       ERROR error = ERR_Okay;
       if (Callback->Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(objXML *, XMLTag *, CSTRING))Callback->StdC.Routine;
+         auto routine = (ERROR (*)(extXML *, XMLTag *, CSTRING))Callback->StdC.Routine;
          error = routine(Self, current, NULL);
       }
       else if (Callback->Type IS CALL_SCRIPT) {
@@ -1425,7 +1425,7 @@ matched_attrib:
 
       ERROR error = ERR_Okay;
       if (Callback->Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(objXML *, XMLTag *, CSTRING))Callback->StdC.Routine;
+         auto routine = (ERROR (*)(extXML *, XMLTag *, CSTRING))Callback->StdC.Routine;
          error = routine(Self, current, NULL);
       }
       else if (Callback->Type IS CALL_SCRIPT) {
@@ -1481,7 +1481,7 @@ parse_error:
 
 //****************************************************************************
 
-static ERROR parse_source(objXML *Self)
+static ERROR parse_source(extXML *Self)
 {
    parasol::Log log(__FUNCTION__);
    CacheFile *filecache;
@@ -1537,7 +1537,7 @@ static ERROR parse_source(objXML *Self)
 //****************************************************************************
 // Extracts immediate content, does not recurse into child tags.
 
-static ERROR get_content(objXML *Self, XMLTag *Tag, STRING Buffer, LONG Size)
+static ERROR get_content(extXML *Self, XMLTag *Tag, STRING Buffer, LONG Size)
 {
    Buffer[0] = 0;
    if ((Tag = Tag->Child)) {
@@ -1561,7 +1561,7 @@ static ERROR get_content(objXML *Self, XMLTag *Tag, STRING Buffer, LONG Size)
 
 //****************************************************************************
 
-static void free_xml(objXML *Self)
+static void free_xml(extXML *Self)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
@@ -1571,7 +1571,7 @@ static void free_xml(objXML *Self)
 
 //**********************************************************************
 
-static void clear_tags(objXML *XML)
+static void clear_tags(extXML *XML)
 {
    for (LONG i=0; i < XML->TagCount; i++) {
       if (XML->Tags[i]) FreeResource(XML->Tags[i]);
@@ -1584,7 +1584,7 @@ static void clear_tags(objXML *XML)
 
 #warning TODO: Support processing of ENTITY declarations in the doctype.
 
-static void parse_doctype(objXML *Self, CSTRING Input)
+static void parse_doctype(extXML *Self, CSTRING Input)
 {
 
 }

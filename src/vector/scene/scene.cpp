@@ -39,12 +39,12 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 
 #include "scene_draw.cpp"
 
-static ERROR VECTORSCENE_Reset(objVectorScene *, APTR);
+static ERROR VECTORSCENE_Reset(extVectorScene *, APTR);
 
-static void scene_key_event(objVectorScene *, evKey *, LONG);
-static void process_resize_msgs(objVectorScene *);
+static void scene_key_event(extVectorScene *, evKey *, LONG);
+static void process_resize_msgs(extVectorScene *);
 
-static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
+static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
 {
    Self->Bitmap = Bitmap;
 
@@ -59,7 +59,7 @@ static void render_to_surface(objVectorScene *Self, objSurface *Surface, objBitm
 
 //********************************************************************************************************************
 
-static ERROR VECTORSCENE_ActionNotify(objVectorScene *Self, struct acActionNotify *Args)
+static ERROR VECTORSCENE_ActionNotify(extVectorScene *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) {
       if (Self->SurfaceID IS Args->ObjectID) {
@@ -121,7 +121,7 @@ UnsupportedOwner: The definition is not owned by the scene.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_AddDef(objVectorScene *Self, struct scAddDef *Args)
+static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
 {
    parasol::Log log;
 
@@ -197,7 +197,7 @@ FieldNotSet: The Bitmap field is NULL.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_Draw(objVectorScene *Self, struct acDraw *Args)
+static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 {
    parasol::Log log;
    objBitmap *bmp;
@@ -264,7 +264,7 @@ Search: A definition with the given Name was not found.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
+static ERROR VECTORSCENE_FindDef(extVectorScene *Self, struct scFindDef *Args)
 {
    parasol::Log log;
 
@@ -300,9 +300,9 @@ static ERROR VECTORSCENE_FindDef(objVectorScene *Self, struct scFindDef *Args)
 
 //********************************************************************************************************************
 
-static ERROR VECTORSCENE_Free(objVectorScene *Self, APTR Args)
+static ERROR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
 {
-   Self->~objVectorScene();
+   Self->~extVectorScene();
 
    if (Self->Viewport) Self->Viewport->Parent = NULL;
    if (Self->Adaptor)  { delete Self->Adaptor; Self->Adaptor = NULL; }
@@ -322,7 +322,7 @@ static ERROR VECTORSCENE_Free(objVectorScene *Self, APTR Args)
 
 //********************************************************************************************************************
 
-static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
+static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
 {
    // Setting the SurfaceID is optional and enables auto-rendering to the display.  The
    // alternative for the client is to set the Bitmap field and manage rendering manually.
@@ -366,11 +366,11 @@ static ERROR VECTORSCENE_Init(objVectorScene *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VECTORSCENE_NewObject(objVectorScene *Self, APTR Void)
+static ERROR VECTORSCENE_NewObject(extVectorScene *Self, APTR Void)
 {
    Self->SampleMethod = VSM_BILINEAR;
 
-   new (Self) objVectorScene;
+   new (Self) extVectorScene;
 
    // Please refer to the Reset action for setting variable defaults
    return VECTORSCENE_Reset(Self, NULL);
@@ -382,7 +382,7 @@ Redimension: Redefines the size of the page.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_Redimension(objVectorScene *Self, struct acRedimension *Args)
+static ERROR VECTORSCENE_Redimension(extVectorScene *Self, struct acRedimension *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -398,7 +398,7 @@ Reset: Clears all registered definitions and resets field values.  Child vectors
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_Reset(objVectorScene *Self, APTR Void)
+static ERROR VECTORSCENE_Reset(extVectorScene *Self, APTR Void)
 {
    if (Self->Adaptor) { delete Self->Adaptor; Self->Adaptor = NULL; }
    if (Self->Buffer)  { delete Self->Buffer; Self->Buffer = NULL; }
@@ -414,7 +414,7 @@ Resize: Redefines the size of the page.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_Resize(objVectorScene *Self, struct acResize *Args)
+static ERROR VECTORSCENE_Resize(extVectorScene *Self, struct acResize *Args)
 {
    if (!Args) return ERR_NullArgs;
    if (Args->Width >= 1.0)  Self->PageWidth  = F2T(Args->Width);
@@ -446,7 +446,7 @@ Search: A vector with a matching ID was not found.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORSCENE_SearchByID(objVectorScene *Self, struct scSearchByID *Args)
+static ERROR VECTORSCENE_SearchByID(extVectorScene *Self, struct scSearchByID *Args)
 {
    if (!Args) return ERR_NullArgs;
    Args->Result = NULL;
@@ -485,7 +485,7 @@ The target bitmap to use when drawing the vectors must be specified here.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Bitmap(objVectorScene *Self, objBitmap *Value)
+static ERROR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
 {
    if (Value) {
       if (Self->Buffer) delete Self->Buffer;
@@ -532,7 +532,7 @@ option is used then the viewport will be scaled to fit within the page.
 
 ****************************************************************************/
 
-static ERROR SET_PageHeight(objVectorScene *Self, LONG Value)
+static ERROR SET_PageHeight(extVectorScene *Self, LONG Value)
 {
    if (Value IS Self->PageHeight) return ERR_Okay;
 
@@ -553,7 +553,7 @@ option is used then the viewport will be scaled to fit within the page.
 
 ****************************************************************************/
 
-static ERROR SET_PageWidth(objVectorScene *Self, LONG Value)
+static ERROR SET_PageWidth(extVectorScene *Self, LONG Value)
 {
    if (Value IS Self->PageWidth) return ERR_Okay;
 
@@ -577,7 +577,7 @@ The `RENDER_TIME` flag should also be set before fetching this value, as it is r
 
 ****************************************************************************/
 
-static ERROR GET_RenderTime(objVectorScene *Self, LARGE *Value)
+static ERROR GET_RenderTime(extVectorScene *Self, LARGE *Value)
 {
    Self->Flags |= VPF_RENDER_TIME;
    *Value = Self->RenderTime;
@@ -603,7 +603,7 @@ and user focus management will also require an associated surface as a pre-requi
 
 *********************************************************************************************************************/
 
-static ERROR SET_Surface(objVectorScene *Self, OBJECTID Value)
+static ERROR SET_Surface(extVectorScene *Self, OBJECTID Value)
 {
    Self->SurfaceID = Value;
    return ERR_Okay;
@@ -629,7 +629,7 @@ VectorViewport object is initialised.
 // Also sends LostFocus notifications to vectors that previously had the focus.
 // The glFocusList maintains the current focus state, with the most foreground vector at the beginning.
 
-void apply_focus(objVectorScene *Scene, objVector *Vector)
+void apply_focus(extVectorScene *Scene, objVector *Vector)
 {
    if (!Vector) return;
 
@@ -719,7 +719,7 @@ void get_viewport_at_xy_scan(objVector *Vector, std::vector<std::vector<objVecto
 
 //********************************************************************************************************************
 
-objVectorViewport * get_viewport_at_xy(objVectorScene *Scene, DOUBLE X, DOUBLE Y)
+objVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y)
 {
    std::vector<std::vector<objVectorViewport *>> viewports;
    get_viewport_at_xy_scan((objVector *)Scene->Viewport, viewports, X, Y, 0);
@@ -747,7 +747,7 @@ objVectorViewport * get_viewport_at_xy(objVectorScene *Scene, DOUBLE X, DOUBLE Y
 
 //********************************************************************************************************************
 
-static void process_resize_msgs(objVectorScene *Self)
+static void process_resize_msgs(extVectorScene *Self)
 {
    if (Self->PendingResizeMsgs.size() > 0) {
       for (auto it=Self->PendingResizeMsgs.begin(); it != Self->PendingResizeMsgs.end(); it++) {
@@ -815,7 +815,7 @@ static ERROR vector_keyboard_events(objVector *Vector, const evKey *Event)
 //********************************************************************************************************************
 // Distribute input events to any vectors that have subscribed and have the focus
 
-static void scene_key_event(objVectorScene *Self, evKey *Event, LONG Size)
+static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
 {
    const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
 
@@ -944,7 +944,7 @@ static void send_left_event(objVector *Vector, const InputEvent *Event, DOUBLE X
 
 //********************************************************************************************************************
 
-static void send_wheel_event(objVectorScene *Scene, objVector *Vector, const InputEvent *Event)
+static void send_wheel_event(extVectorScene *Scene, objVector *Vector, const InputEvent *Event)
 {
    InputEvent event = {
       .Next        = NULL,
@@ -971,7 +971,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 {
    parasol::Log log(__FUNCTION__);
 
-   auto Self = (objVectorScene *)CurrentContext();
+   auto Self = (extVectorScene *)CurrentContext();
    if (!Self->SurfaceID) return ERR_Okay;
 
    LONG cursor = -1;
@@ -1145,7 +1145,7 @@ ERROR init_vectorscene(void)
       FID_Actions|TPTR,   clVectorSceneActions,
       FID_Methods|TARRAY, clVectorSceneMethods,
       FID_Fields|TARRAY,  clSceneFields,
-      FID_Size|TLONG,     sizeof(objVectorScene),
+      FID_Size|TLONG,     sizeof(extVectorScene),
       FID_Path|TSTR,      "modules:vector",
       TAGEND));
 }

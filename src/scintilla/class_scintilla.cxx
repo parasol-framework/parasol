@@ -103,7 +103,6 @@ capabilities.
 
 #include "scintillaparasol.h"
 
-#include <parasol/modules/scintilla.h>
 #include "module_def.c"
 
 MODULE_COREBASE;
@@ -164,55 +163,55 @@ static const struct {
 //****************************************************************************
 // Scintilla class definition.
 
-static ERROR GET_AllowTabs(objScintilla *, LONG *);
-static ERROR GET_AutoIndent(objScintilla *, LONG *);
-static ERROR GET_FileDrop(objScintilla *, FUNCTION **);
-static ERROR GET_FoldingMarkers(objScintilla *, LONG *);
-static ERROR GET_LineCount(objScintilla *, LONG *);
-static ERROR GET_LineNumbers(objScintilla *, LONG *);
-static ERROR GET_Path(objScintilla *, CSTRING *);
-static ERROR GET_ShowWhitespace(objScintilla *, LONG *);
-static ERROR GET_EventCallback(objScintilla *, FUNCTION **);
-static ERROR GET_String(objScintilla *, STRING *);
-static ERROR GET_Symbols(objScintilla *, LONG *);
-static ERROR GET_TabWidth(objScintilla *, LONG *);
-static ERROR GET_Wordwrap(objScintilla *, LONG *);
+static ERROR GET_AllowTabs(extScintilla *, LONG *);
+static ERROR GET_AutoIndent(extScintilla *, LONG *);
+static ERROR GET_FileDrop(extScintilla *, FUNCTION **);
+static ERROR GET_FoldingMarkers(extScintilla *, LONG *);
+static ERROR GET_LineCount(extScintilla *, LONG *);
+static ERROR GET_LineNumbers(extScintilla *, LONG *);
+static ERROR GET_Path(extScintilla *, CSTRING *);
+static ERROR GET_ShowWhitespace(extScintilla *, LONG *);
+static ERROR GET_EventCallback(extScintilla *, FUNCTION **);
+static ERROR GET_String(extScintilla *, STRING *);
+static ERROR GET_Symbols(extScintilla *, LONG *);
+static ERROR GET_TabWidth(extScintilla *, LONG *);
+static ERROR GET_Wordwrap(extScintilla *, LONG *);
 
-static ERROR SET_AllowTabs(objScintilla *, LONG);
-static ERROR SET_AutoIndent(objScintilla *, LONG);
-static ERROR SET_BkgdColour(objScintilla *, RGB8 *);
-static ERROR SET_CursorColour(objScintilla *, RGB8 *);
-static ERROR SET_FileDrop(objScintilla *, FUNCTION *);
-static ERROR SET_FoldingMarkers(objScintilla *, LONG);
-static ERROR SET_LeftMargin(objScintilla *, LONG);
-static ERROR SET_Lexer(objScintilla *, LONG);
-static ERROR SET_LineHighlight(objScintilla *, RGB8 *);
-static ERROR SET_LineNumbers(objScintilla *, LONG);
-static ERROR SET_Path(objScintilla *, CSTRING);
-static ERROR SET_Modified(objScintilla *, LONG);
-static ERROR SET_Origin(objScintilla *, CSTRING);
-static ERROR SET_RightMargin(objScintilla *, LONG);
-static ERROR SET_ShowWhitespace(objScintilla *, LONG);
-static ERROR SET_EventCallback(objScintilla *, FUNCTION *);
-static ERROR SET_SelectBkgd(objScintilla *, RGB8 *);
-static ERROR SET_SelectFore(objScintilla *, RGB8 *);
-static ERROR SET_String(objScintilla *, CSTRING);
-static ERROR SET_Symbols(objScintilla *, LONG);
-static ERROR SET_TabWidth(objScintilla *, LONG);
-static ERROR SET_TextColour(objScintilla *, RGB8 *);
-static ERROR SET_Wordwrap(objScintilla *, LONG);
+static ERROR SET_AllowTabs(extScintilla *, LONG);
+static ERROR SET_AutoIndent(extScintilla *, LONG);
+static ERROR SET_BkgdColour(extScintilla *, RGB8 *);
+static ERROR SET_CursorColour(extScintilla *, RGB8 *);
+static ERROR SET_FileDrop(extScintilla *, FUNCTION *);
+static ERROR SET_FoldingMarkers(extScintilla *, LONG);
+static ERROR SET_LeftMargin(extScintilla *, LONG);
+static ERROR SET_Lexer(extScintilla *, LONG);
+static ERROR SET_LineHighlight(extScintilla *, RGB8 *);
+static ERROR SET_LineNumbers(extScintilla *, LONG);
+static ERROR SET_Path(extScintilla *, CSTRING);
+static ERROR SET_Modified(extScintilla *, LONG);
+static ERROR SET_Origin(extScintilla *, CSTRING);
+static ERROR SET_RightMargin(extScintilla *, LONG);
+static ERROR SET_ShowWhitespace(extScintilla *, LONG);
+static ERROR SET_EventCallback(extScintilla *, FUNCTION *);
+static ERROR SET_SelectBkgd(extScintilla *, RGB8 *);
+static ERROR SET_SelectFore(extScintilla *, RGB8 *);
+static ERROR SET_String(extScintilla *, CSTRING);
+static ERROR SET_Symbols(extScintilla *, LONG);
+static ERROR SET_TabWidth(extScintilla *, LONG);
+static ERROR SET_TextColour(extScintilla *, RGB8 *);
+static ERROR SET_Wordwrap(extScintilla *, LONG);
 
 //****************************************************************************
 
 static ERROR consume_input_events(const InputEvent *, LONG);
-static void create_styled_fonts(objScintilla *);
+static void create_styled_fonts(extScintilla *);
 static ERROR create_scintilla(void);
-static void draw_scintilla(objScintilla *, objSurface *, objBitmap *);
-static ERROR load_file(objScintilla *, CSTRING);
-static void calc_longest_line(objScintilla *);
-static void key_event(objScintilla *, evKey *, LONG);
-static void report_event(objScintilla *, LARGE Event);
-static ERROR idle_timer(objScintilla *Self, LARGE Elapsed, LARGE CurrentTime);
+static void draw_scintilla(extScintilla *, objSurface *, objBitmap *);
+static ERROR load_file(extScintilla *, CSTRING);
+static void calc_longest_line(extScintilla *);
+static void key_event(extScintilla *, evKey *, LONG);
+static void report_event(extScintilla *, LARGE Event);
+static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime);
 extern ERROR init_search(void);
 
 //****************************************************************************
@@ -251,7 +250,7 @@ ERROR CMDExpunge(void)
 
 //*****************************************************************************
 
-static ERROR SCINTILLA_ActionNotify(objScintilla *Self, struct acActionNotify *Args)
+static ERROR SCINTILLA_ActionNotify(extScintilla *Self, struct acActionNotify *Args)
 {
    parasol::Log log;
 
@@ -369,7 +368,7 @@ Clear: Clears all content from the editor.
 
 ******************************************************************************/
 
-static ERROR SCINTILLA_Clear(objScintilla *Self, APTR Void)
+static ERROR SCINTILLA_Clear(extScintilla *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -387,7 +386,7 @@ Clipboard: Full support for clipboard activity is provided through this action.
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_Clipboard(objScintilla *Self, struct acClipboard *Args)
+static ERROR SCINTILLA_Clipboard(extScintilla *Self, struct acClipboard *Args)
 {
    parasol::Log log;
 
@@ -410,7 +409,7 @@ static ERROR SCINTILLA_Clipboard(objScintilla *Self, struct acClipboard *Args)
 
 //*****************************************************************************
 
-static ERROR SCINTILLA_DataFeed(objScintilla *Self, struct acDataFeed *Args)
+static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
@@ -448,7 +447,7 @@ static ERROR SCINTILLA_DataFeed(objScintilla *Self, struct acDataFeed *Args)
                   if (Self->FileDrop.Type) {
                      if (Self->FileDrop.Type IS CALL_STDC) {
                         parasol::SwitchContext ctx(Self->FileDrop.StdC.Context);
-                        auto routine = (void (*)(objScintilla *, STRING))Self->FileDrop.StdC.Routine;
+                        auto routine = (void (*)(extScintilla *, STRING))Self->FileDrop.StdC.Routine;
                         routine(Self, path);
                      }
                      else if (Self->FileDrop.Type IS CALL_SCRIPT) {
@@ -510,7 +509,7 @@ Okay
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_DeleteLine(objScintilla *Self, struct sciDeleteLine *Args)
+static ERROR SCINTILLA_DeleteLine(extScintilla *Self, struct sciDeleteLine *Args)
 {
    parasol::Log log;
    LONG line, pos, start, end, linecount;
@@ -555,7 +554,7 @@ Disable: Disables the target #Surface.
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_Disable(objScintilla *Self, APTR Void)
+static ERROR SCINTILLA_Disable(extScintilla *Self, APTR Void)
 {
    Self->Flags |= SCF_DISABLED;
    DelayMsg(AC_Draw, Self->SurfaceID, NULL);
@@ -568,7 +567,7 @@ Draw: Draws the Scintilla object's graphics.
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_Draw(objScintilla *Self, struct acDraw *Args)
+static ERROR SCINTILLA_Draw(extScintilla *Self, struct acDraw *Args)
 {
    ActionMsg(AC_Draw, Self->SurfaceID, Args);
    return ERR_Okay;
@@ -580,7 +579,7 @@ Enable: Enables the target #Surface.
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_Enable(objScintilla *Self, APTR Void)
+static ERROR SCINTILLA_Enable(extScintilla *Self, APTR Void)
 {
    Self->Flags &= ~SCF_DISABLED;
    DelayMsg(AC_Draw, Self->SurfaceID, NULL);
@@ -593,14 +592,14 @@ Focus: Focus on the Scintilla surface.
 -END-
 *****************************************************************************/
 
-static ERROR SCINTILLA_Focus(objScintilla *Self, APTR Void)
+static ERROR SCINTILLA_Focus(extScintilla *Self, APTR Void)
 {
    return acFocusID(Self->SurfaceID);
 }
 
 //*****************************************************************************
 
-static ERROR SCINTILLA_Free(objScintilla *Self, APTR)
+static ERROR SCINTILLA_Free(extScintilla *Self, APTR)
 {
    parasol::Log log;
    OBJECTPTR object;
@@ -667,7 +666,7 @@ BufferOverflow: The supplied buffer is not large enough to contain the
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_GetLine(objScintilla *Self, struct sciGetLine *Args)
+static ERROR SCINTILLA_GetLine(extScintilla *Self, struct sciGetLine *Args)
 {
    parasol::Log log;
 
@@ -701,7 +700,7 @@ NullArgs:
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_GetPos(objScintilla *Self, struct sciGetPos *Args)
+static ERROR SCINTILLA_GetPos(extScintilla *Self, struct sciGetPos *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -727,7 +726,7 @@ OutOfRange: The Line is less than zero.
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_GotoLine(objScintilla *Self, struct sciGotoLine *Args)
+static ERROR SCINTILLA_GotoLine(extScintilla *Self, struct sciGotoLine *Args)
 {
    parasol::Log log;
 
@@ -741,7 +740,7 @@ static ERROR SCINTILLA_GotoLine(objScintilla *Self, struct sciGotoLine *Args)
 
 //*****************************************************************************
 
-static ERROR SCINTILLA_Hide(objScintilla *Self, APTR Void)
+static ERROR SCINTILLA_Hide(extScintilla *Self, APTR Void)
 {
    if (Self->Visible) {
       parasol::Log log;
@@ -757,7 +756,7 @@ static ERROR SCINTILLA_Hide(objScintilla *Self, APTR Void)
 
 //*****************************************************************************
 
-static ERROR SCINTILLA_Init(objScintilla *Self, APTR)
+static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 {
    parasol::Log log;
 
@@ -956,7 +955,7 @@ OutOfRange
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_InsertText(objScintilla *Self, struct sciInsertText *Args)
+static ERROR SCINTILLA_InsertText(extScintilla *Self, struct sciInsertText *Args)
 {
    parasol::Log log;
    LONG pos;
@@ -990,7 +989,7 @@ static ERROR SCINTILLA_InsertText(objScintilla *Self, struct sciInsertText *Args
 
 //*****************************************************************************
 
-static ERROR SCINTILLA_NewObject(objScintilla *Self, APTR)
+static ERROR SCINTILLA_NewObject(extScintilla *Self, APTR)
 {
    if (!NewObject(ID_FONT, NF_INTEGRAL, &Self->Font)) {
       SetString(Self->Font, FID_Face, "courier:10");
@@ -1032,7 +1031,7 @@ static ERROR SCINTILLA_NewObject(objScintilla *Self, APTR)
 
 //*****************************************************************************
 
-static ERROR SCINTILLA_NewOwner(objScintilla *Self, struct acNewOwner *Args)
+static ERROR SCINTILLA_NewOwner(extScintilla *Self, struct acNewOwner *Args)
 {
    if (!Self->initialised()) {
       OBJECTID owner_id = Args->NewOwnerID;
@@ -1051,7 +1050,7 @@ Redo: Redo the most recently undone activity.
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_Redo(objScintilla *Self, struct acRedo *Args)
+static ERROR SCINTILLA_Redo(extScintilla *Self, struct acRedo *Args)
 {
    parasol::Log log;
 
@@ -1082,7 +1081,7 @@ OutOfRange: The line index is less than zero or greater than the available numbe
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_ReplaceLine(objScintilla *Self, struct sciReplaceLine *Args)
+static ERROR SCINTILLA_ReplaceLine(extScintilla *Self, struct sciReplaceLine *Args)
 {
    parasol::Log log;
 
@@ -1127,7 +1126,7 @@ Search: The keyword could not be found.
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_ReplaceText(objScintilla *Self, struct sciReplaceText *Args)
+static ERROR SCINTILLA_ReplaceText(extScintilla *Self, struct sciReplaceText *Args)
 {
    parasol::Log log;
    LONG start, end;
@@ -1209,7 +1208,7 @@ Private
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_ReportEvent(objScintilla *Self, APTR Void)
+static ERROR SCINTILLA_ReportEvent(extScintilla *Self, APTR Void)
 {
    if (!Self->ReportEventFlags) return ERR_Okay;
 
@@ -1225,7 +1224,7 @@ SaveToObject: Save content as a text stream to another object.
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_SaveToObject(objScintilla *Self, struct acSaveToObject *Args)
+static ERROR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
 
@@ -1274,7 +1273,7 @@ CreateObject: Failed to create a Font object.
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_SetFont(objScintilla *Self, struct sciSetFont *Args)
+static ERROR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
 {
    parasol::Log log;
 
@@ -1297,7 +1296,7 @@ static ERROR SCINTILLA_SetFont(objScintilla *Self, struct sciSetFont *Args)
 //****************************************************************************
 // Scintilla: ScrollToPoint
 
-static ERROR SCINTILLA_ScrollToPoint(objScintilla *Self, struct acScrollToPoint *Args)
+static ERROR SCINTILLA_ScrollToPoint(extScintilla *Self, struct acScrollToPoint *Args)
 {
    parasol::Log log;
 
@@ -1329,7 +1328,7 @@ Okay:
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_SelectRange(objScintilla *Self, struct sciSelectRange *Args)
+static ERROR SCINTILLA_SelectRange(extScintilla *Self, struct sciSelectRange *Args)
 {
    parasol::Log log;
 
@@ -1357,7 +1356,7 @@ static ERROR SCINTILLA_SelectRange(objScintilla *Self, struct sciSelectRange *Ar
 
 //****************************************************************************
 
-static ERROR SCINTILLA_Show(objScintilla *Self, APTR Void)
+static ERROR SCINTILLA_Show(extScintilla *Self, APTR Void)
 {
    if (!Self->Visible) {
       parasol::Log log;
@@ -1385,7 +1384,7 @@ The position of the cursor is reset to the left margin as a result of calling th
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_TrimWhitespace(objScintilla *Self, APTR Void)
+static ERROR SCINTILLA_TrimWhitespace(extScintilla *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -1425,7 +1424,7 @@ Undo: Undo the last user action.
 
 *****************************************************************************/
 
-static ERROR SCINTILLA_Undo(objScintilla *Self, struct acUndo *Args)
+static ERROR SCINTILLA_Undo(extScintilla *Self, struct acUndo *Args)
 {
    parasol::Log log;
 
@@ -1442,13 +1441,13 @@ AllowTabs: If enabled, use of the tab key produces real tabs and not spaces.
 
 *****************************************************************************/
 
-static ERROR GET_AllowTabs(objScintilla *Self, LONG *Value)
+static ERROR GET_AllowTabs(extScintilla *Self, LONG *Value)
 {
    *Value = Self->AllowTabs;
    return ERR_Okay;
 }
 
-static ERROR SET_AllowTabs(objScintilla *Self, LONG Value)
+static ERROR SET_AllowTabs(extScintilla *Self, LONG Value)
 {
    if (Value) {
       Self->AllowTabs = TRUE;
@@ -1468,13 +1467,13 @@ AutoIndent: If TRUE, enables auto-indenting when the user presses the enter key.
 
 *****************************************************************************/
 
-static ERROR GET_AutoIndent(objScintilla *Self, LONG *Value)
+static ERROR GET_AutoIndent(extScintilla *Self, LONG *Value)
 {
    *Value = Self->AutoIndent;
    return ERR_Okay;
 }
 
-static ERROR SET_AutoIndent(objScintilla *Self, LONG Value)
+static ERROR SET_AutoIndent(extScintilla *Self, LONG Value)
 {
    if (Value) Self->AutoIndent = 1;
    else Self->AutoIndent = 0;
@@ -1488,7 +1487,7 @@ BkgdColour: Defines the background colour.  Alpha blending is not supported.
 
 *****************************************************************************/
 
-static ERROR SET_BkgdColour(objScintilla *Self, RGB8 *Value)
+static ERROR SET_BkgdColour(extScintilla *Self, RGB8 *Value)
 {
    Self->BkgdColour = *Value;
 
@@ -1520,7 +1519,7 @@ CursorColour: Defines the colour of the text cursor.  Alpha blending is not supp
 
 *****************************************************************************/
 
-static ERROR SET_CursorColour(objScintilla *Self, RGB8 *Value)
+static ERROR SET_CursorColour(extScintilla *Self, RGB8 *Value)
 {
    Self->CursorColour = *Value;
 
@@ -1543,7 +1542,7 @@ If multiple files are dropped, the callback will be repeatedly called until all 
 
 *****************************************************************************/
 
-static ERROR GET_FileDrop(objScintilla *Self, FUNCTION **Value)
+static ERROR GET_FileDrop(extScintilla *Self, FUNCTION **Value)
 {
    if (Self->FileDrop.Type != CALL_NONE) {
       *Value = &Self->FileDrop;
@@ -1552,7 +1551,7 @@ static ERROR GET_FileDrop(objScintilla *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_FileDrop(objScintilla *Self, FUNCTION *Value)
+static ERROR SET_FileDrop(extScintilla *Self, FUNCTION *Value)
 {
    if (Value) Self->FileDrop = *Value;
    else Self->FileDrop.Type = CALL_NONE;
@@ -1576,13 +1575,13 @@ FoldingMarkers: Folding markers in the left margin will be visible when this val
 
 *****************************************************************************/
 
-static ERROR GET_FoldingMarkers(objScintilla *Self, LONG *Value)
+static ERROR GET_FoldingMarkers(extScintilla *Self, LONG *Value)
 {
    *Value = Self->FoldingMarkers;
    return ERR_Okay;
 }
 
-static ERROR SET_FoldingMarkers(objScintilla *Self, LONG Value)
+static ERROR SET_FoldingMarkers(extScintilla *Self, LONG Value)
 {
    if (Value) {
       Self->FoldingMarkers = TRUE;
@@ -1611,7 +1610,7 @@ LeftMargin: The amount of white-space at the left side of the page.
 
 *****************************************************************************/
 
-static ERROR SET_LeftMargin(objScintilla *Self, LONG Value)
+static ERROR SET_LeftMargin(extScintilla *Self, LONG Value)
 {
    if ((Value >= 0) and (Value <= 100)) {
       Self->LeftMargin = Value;
@@ -1632,7 +1631,7 @@ The lexer for document styling is defined here.
 
 *****************************************************************************/
 
-static ERROR SET_Lexer(objScintilla *Self, LONG Value)
+static ERROR SET_Lexer(extScintilla *Self, LONG Value)
 {
    Self->Lexer = Value;
    if (Self->initialised()) {
@@ -1650,7 +1649,7 @@ LineCount: The total number of lines in the document.
 
 *****************************************************************************/
 
-static ERROR GET_LineCount(objScintilla *Self, LONG *Value)
+static ERROR GET_LineCount(extScintilla *Self, LONG *Value)
 {
    if (Self->initialised()) {
       *Value = SCICALL(SCI_GETLINECOUNT);
@@ -1666,7 +1665,7 @@ LineHighlight: The colour to use when highlighting the line that contains the us
 
 *****************************************************************************/
 
-static ERROR SET_LineHighlight(objScintilla *Self, RGB8 *Value)
+static ERROR SET_LineHighlight(extScintilla *Self, RGB8 *Value)
 {
    Self->LineHighlight = *Value;
 
@@ -1689,13 +1688,13 @@ LineNumbers: Line numbers will appear on the left when this value is TRUE.
 
 *****************************************************************************/
 
-static ERROR GET_LineNumbers(objScintilla *Self, LONG *Value)
+static ERROR GET_LineNumbers(extScintilla *Self, LONG *Value)
 {
    *Value = Self->LineNumbers;
    return ERR_Okay;
 }
 
-static ERROR SET_LineNumbers(objScintilla *Self, LONG Value)
+static ERROR SET_LineNumbers(extScintilla *Self, LONG Value)
 {
    if (Value) {
       Self->LineNumbers = TRUE;
@@ -1721,13 +1720,13 @@ that you specify.  To change the path without automatically loading from the sou
 
 *****************************************************************************/
 
-static ERROR GET_Path(objScintilla *Self, CSTRING *Value)
+static ERROR GET_Path(extScintilla *Self, CSTRING *Value)
 {
    *Value = Self->Path;
    return ERR_Okay;
 }
 
-static ERROR SET_Path(objScintilla *Self, CSTRING Value)
+static ERROR SET_Path(extScintilla *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -1760,7 +1759,7 @@ needs to be changed without causing a load operation.
 
 ****************************************************************************/
 
-static ERROR SET_Origin(objScintilla *Self, CSTRING Value)
+static ERROR SET_Origin(extScintilla *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
@@ -1785,7 +1784,7 @@ not make this change for you automatically.
 
 *****************************************************************************/
 
-static ERROR SET_Modified(objScintilla *Self, LONG Value)
+static ERROR SET_Modified(extScintilla *Self, LONG Value)
 {
    if (Self->initialised()) {
       if (Value) {
@@ -1809,7 +1808,7 @@ RightMargin: Defines the amount of white-space at the right side of the page.
 
 *****************************************************************************/
 
-static ERROR SET_RightMargin(objScintilla *Self, LONG Value)
+static ERROR SET_RightMargin(extScintilla *Self, LONG Value)
 {
    if ((Value >= 0) and (Value <= 100)) {
       Self->RightMargin = Value;
@@ -1828,13 +1827,13 @@ ShowWhitespace: White-space characters will be visible to the user when this fie
 
 *****************************************************************************/
 
-static ERROR GET_ShowWhitespace(objScintilla *Self, LONG *Value)
+static ERROR GET_ShowWhitespace(extScintilla *Self, LONG *Value)
 {
    *Value = Self->ShowWhitespace;
    return ERR_Okay;
 }
 
-static ERROR SET_ShowWhitespace(objScintilla *Self, LONG Value)
+static ERROR SET_ShowWhitespace(extScintilla *Self, LONG Value)
 {
    if (Value) {
       Self->ShowWhitespace = 1;
@@ -1862,7 +1861,7 @@ supported events and additional details.
 
 *****************************************************************************/
 
-static ERROR GET_EventCallback(objScintilla *Self, FUNCTION **Value)
+static ERROR GET_EventCallback(extScintilla *Self, FUNCTION **Value)
 {
    if (Self->EventCallback.Type != CALL_NONE) {
       *Value = &Self->EventCallback;
@@ -1871,7 +1870,7 @@ static ERROR GET_EventCallback(objScintilla *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_EventCallback(objScintilla *Self, FUNCTION *Value)
+static ERROR SET_EventCallback(extScintilla *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->EventCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
@@ -1895,7 +1894,7 @@ SelectBkgd: Defines the background colour of selected text.  Supports alpha blen
 
 *****************************************************************************/
 
-static ERROR SET_SelectBkgd(objScintilla *Self, RGB8 *Value)
+static ERROR SET_SelectBkgd(extScintilla *Self, RGB8 *Value)
 {
    if ((Value) and (Value->Alpha)) {
       Self->SelectBkgd = *Value;
@@ -1917,7 +1916,7 @@ SelectFore: Defines the colour of selected text.  Supports alpha blending.
 
 *****************************************************************************/
 
-static ERROR SET_SelectFore(objScintilla *Self, RGB8 *Value)
+static ERROR SET_SelectFore(extScintilla *Self, RGB8 *Value)
 {
    parasol::Log log;
 
@@ -1945,7 +1944,7 @@ method as the preferred alternative, as it is much more efficient with memory us
 
 *****************************************************************************/
 
-static ERROR GET_String(objScintilla *Self, STRING *Value)
+static ERROR GET_String(extScintilla *Self, STRING *Value)
 {
    LONG len = SCICALL(SCI_GETLENGTH);
 
@@ -1959,7 +1958,7 @@ static ERROR GET_String(objScintilla *Self, STRING *Value)
    else return ERR_AllocMemory;
 }
 
-static ERROR SET_String(objScintilla *Self, CSTRING Value)
+static ERROR SET_String(extScintilla *Self, CSTRING Value)
 {
    if (Self->initialised()) {
       if ((Value) and (*Value)) SCICALL(SCI_SETTEXT, 0UL, (const char *)Value);
@@ -1984,13 +1983,13 @@ Symbols: Symbols can be displayed in the left margin when this value is TRUE.
 
 *****************************************************************************/
 
-static ERROR GET_Symbols(objScintilla *Self, LONG *Value)
+static ERROR GET_Symbols(extScintilla *Self, LONG *Value)
 {
    *Value = Self->Symbols;
    return ERR_Okay;
 }
 
-static ERROR SET_Symbols(objScintilla *Self, LONG Value)
+static ERROR SET_Symbols(extScintilla *Self, LONG Value)
 {
    if (Value) {
       Self->Symbols = TRUE;
@@ -2010,13 +2009,13 @@ TabWidth: The width of tab stops in the document, measured as fixed-width charac
 
 *****************************************************************************/
 
-static ERROR GET_TabWidth(objScintilla *Self, LONG *Value)
+static ERROR GET_TabWidth(extScintilla *Self, LONG *Value)
 {
    *Value = Self->TabWidth;
    return ERR_Okay;
 }
 
-static ERROR SET_TabWidth(objScintilla *Self, LONG Value)
+static ERROR SET_TabWidth(extScintilla *Self, LONG Value)
 {
    if (Value > 0) {
       if (Value > 200) Value = 200;
@@ -2034,7 +2033,7 @@ TextColour: Defines the default colour of foreground text.  Supports alpha blend
 
 *****************************************************************************/
 
-static ERROR SET_TextColour(objScintilla *Self, RGB8 *Value)
+static ERROR SET_TextColour(extScintilla *Self, RGB8 *Value)
 {
    Self->TextColour = *Value;
 
@@ -2060,13 +2059,13 @@ Wordwrap: Enables automatic word wrapping when TRUE.
 
 *****************************************************************************/
 
-static ERROR GET_Wordwrap(objScintilla *Self, LONG *Value)
+static ERROR GET_Wordwrap(extScintilla *Self, LONG *Value)
 {
    *Value = Self->Wordwrap;
    return ERR_Okay;
 }
 
-static ERROR SET_Wordwrap(objScintilla *Self, LONG Value)
+static ERROR SET_Wordwrap(extScintilla *Self, LONG Value)
 {
    if (Value) Self->Wordwrap = TRUE;
    else Self->Wordwrap = FALSE;
@@ -2079,7 +2078,7 @@ static ERROR SET_Wordwrap(objScintilla *Self, LONG Value)
 
 //*****************************************************************************
 
-static void create_styled_fonts(objScintilla *Self)
+static void create_styled_fonts(extScintilla *Self)
 {
    parasol::Log log;
 
@@ -2124,7 +2123,7 @@ static void create_styled_fonts(objScintilla *Self)
 
 static THREADVAR objBitmap *glBitmap = NULL;
 
-static void draw_scintilla(objScintilla *Self, objSurface *Surface, objBitmap *Bitmap)
+static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *Bitmap)
 {
    parasol::Log log;
 
@@ -2202,7 +2201,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 
 //*****************************************************************************
 
-static ERROR load_file(objScintilla *Self, CSTRING Path)
+static ERROR load_file(extScintilla *Self, CSTRING Path)
 {
    parasol::Log log(__FUNCTION__);
    objFile *file;
@@ -2271,7 +2270,7 @@ static ERROR load_file(objScintilla *Self, CSTRING Path)
 
 //*****************************************************************************
 
-static void key_event(objScintilla *Self, evKey *Event, LONG Size)
+static void key_event(extScintilla *Self, evKey *Event, LONG Size)
 {
    parasol::Log log;
 
@@ -2347,7 +2346,7 @@ static void key_event(objScintilla *Self, evKey *Event, LONG Size)
 
 static ERROR consume_input_events(const InputEvent *Events, LONG TotalEvents)
 {
-   auto Self = (objScintilla *)CurrentContext();
+   auto Self = (extScintilla *)CurrentContext();
 
    for (auto event=Events; event; event=event->Next) {
       if (Self->Flags & SCF_DISABLED) continue;
@@ -2368,13 +2367,13 @@ static ERROR consume_input_events(const InputEvent *Events, LONG TotalEvents)
 
 //*****************************************************************************
 
-static void report_event(objScintilla *Self, LARGE Event)
+static void report_event(extScintilla *Self, LARGE Event)
 {
    if (Event & Self->EventFlags) {
       if (Self->EventCallback.Type) {
           if (Self->EventCallback.Type IS CALL_STDC) {
             parasol::SwitchContext ctx(Self->EventCallback.StdC.Context);
-            auto routine = (void (*)(objScintilla *, LARGE)) Self->EventCallback.StdC.Routine;
+            auto routine = (void (*)(extScintilla *, LARGE)) Self->EventCallback.StdC.Routine;
             routine(Self, Event);
          }
          else if (Self->EventCallback.Type IS CALL_SCRIPT) {
@@ -2402,7 +2401,7 @@ static void report_event(objScintilla *Self, LARGE Event)
 
 //*****************************************************************************
 
-static void calc_longest_line(objScintilla *Self)
+static void calc_longest_line(extScintilla *Self)
 {
    LONG linewidth;
    #define LINE_COUNT_LIMIT 2000
@@ -2460,7 +2459,7 @@ static void calc_longest_line(objScintilla *Self)
 
 //****************************************************************************
 
-static ERROR idle_timer(objScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
 {
    AdjustLogLevel(3);
    Self->API->panIdleEvent();
@@ -2531,7 +2530,7 @@ static ERROR create_scintilla(void)
       FID_Actions|TPTR,   clScintillaActions,
       FID_Methods|TARRAY, clScintillaMethods,
       FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(objScintilla),
+      FID_Size|TLONG,     sizeof(extScintilla),
       FID_Path|TSTR,      "modules:scintilla",
       TAGEND);
 }

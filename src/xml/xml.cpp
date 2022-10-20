@@ -58,25 +58,33 @@ struct exttag {
    LONG   Branch;
 };
 
+class extXML : public objXML {
+   public:
+   struct xml_cache *Cache; // Array of tag pointers, in linear order
+   STRING Statement;
+   LONG   Balance;          // Indicates that the tag structure is correctly balanced if zero
+   UBYTE  ReadOnly:1;
+};
+
 static ERROR add_xml_class(void);
 static XMLTag * build_xml_string(XMLTag *, STRING Buffer, LONG, LONG *);
-static void clear_tags(objXML *XML);
-static ERROR txt_to_xml(objXML *, CSTRING);
-static ERROR extract_tag(objXML *, exttag *);
-static ERROR extract_content(objXML *, exttag *);
-static XMLTag * find_tag(objXML *, XMLTag *, CSTRING, CSTRING *, FUNCTION *);
-static void free_xml(objXML *);
-static ERROR get_content(objXML *, XMLTag *, STRING Buffer, LONG Size);
+static void clear_tags(extXML *XML);
+static ERROR txt_to_xml(extXML *, CSTRING);
+static ERROR extract_tag(extXML *, exttag *);
+static ERROR extract_content(extXML *, exttag *);
+static XMLTag * find_tag(extXML *, XMLTag *, CSTRING, CSTRING *, FUNCTION *);
+static void free_xml(extXML *);
+static ERROR get_content(extXML *, XMLTag *, STRING Buffer, LONG Size);
 static XMLTag * len_xml_str(XMLTag *, LONG, LONG *);
-static ERROR parse_source(objXML *);
-static void parse_doctype(objXML *, CSTRING Input);
+static ERROR parse_source(extXML *);
+static void parse_doctype(extXML *, CSTRING Input);
 static void tag_count(XMLTag *, LONG *);
 static void sift_down(ListSort **, LONG, LONG);
 static void sift_up(ListSort **, LONG, LONG);
-static XMLTag * next_sibling(objXML *, XMLTag *, LONG, STRING, LONG);
-static void xml_unescape(objXML *, STRING);
-static ERROR SET_Statement(objXML *, CSTRING Value);
-static ERROR SET_Source(objXML *Self, OBJECTPTR Value);
+static XMLTag * next_sibling(extXML *, XMLTag *, LONG, STRING, LONG);
+static void xml_unescape(extXML *, STRING);
+static ERROR SET_Statement(extXML *, CSTRING Value);
+static ERROR SET_Source(extXML *Self, OBJECTPTR Value);
 
 /*****************************************************************************
 ** Debug routines
@@ -84,8 +92,8 @@ static ERROR SET_Source(objXML *Self, OBJECTPTR Value);
 
 #if defined(DEBUG) || defined(DEBUG_TREE_REMOVE) || defined(DEBUG_TREE_INSERT) || defined(DEBUG_TREE_MOVE)
 
-static void debug_tree(STRING Header, objXML *Self) __attribute__ ((unused));
-static void debug_tree(STRING Header, objXML *Self)
+static void debug_tree(STRING Header, extXML *Self) __attribute__ ((unused));
+static void debug_tree(STRING Header, extXML *Self)
 {
    parasol::Log log(Header);
    LONG i, j;
@@ -141,7 +149,7 @@ Clear: Clears all of the data held in an XML object.
 -END-
 *****************************************************************************/
 
-static ERROR XML_Clear(objXML *Self, APTR Void)
+static ERROR XML_Clear(extXML *Self, APTR Void)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
@@ -170,7 +178,7 @@ NullArgs
 
 static THREADVAR LONG tlXMLCounter;
 
-static ERROR xml_count(objXML *Self, XMLTag *Tag, CSTRING Attrib)
+static ERROR xml_count(extXML *Self, XMLTag *Tag, CSTRING Attrib)
 {
    parasol::Log log;
    tlXMLCounter++;
@@ -178,7 +186,7 @@ static ERROR xml_count(objXML *Self, XMLTag *Tag, CSTRING Attrib)
    return ERR_Okay;
 }
 
-static ERROR XML_Count(objXML *Self, struct xmlCount *Args)
+static ERROR XML_Count(extXML *Self, struct xmlCount *Args)
 {
    parasol::Log log;
 
@@ -201,14 +209,14 @@ DataFeed: XML data can be added to an XML object through this action.
 -END-
 *****************************************************************************/
 
-static ERROR XML_DataFeed(objXML *Self, struct acDataFeed *Args)
+static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
    if ((Args->DataType IS DATA_XML) or (Args->DataType IS DATA_TEXT)) {
-      objXML xml;
+      extXML xml;
       XMLTag *tag;
       ERROR error;
 
@@ -266,7 +274,7 @@ static ERROR XML_DataFeed(objXML *Self, struct acDataFeed *Args)
 
 //****************************************************************************
 
-static ERROR XML_Free(objXML *Self, APTR Void)
+static ERROR XML_Free(extXML *Self, APTR Void)
 {
    free_xml(Self);
    return ERR_Okay;
@@ -293,7 +301,7 @@ Search: A matching tag could not be found.
 
 *****************************************************************************/
 
-static ERROR XML_Filter(objXML *Self, struct xmlFilter *Args)
+static ERROR XML_Filter(extXML *Self, struct xmlFilter *Args)
 {
    if ((!Args) or (!Args->XPath)) return ERR_NullArgs;
 
@@ -335,7 +343,7 @@ Search: A matching tag could not be found.
 
 *****************************************************************************/
 
-static ERROR XML_FindTag(objXML *Self, struct xmlFindTag *Args)
+static ERROR XML_FindTag(extXML *Self, struct xmlFindTag *Args)
 {
    parasol::Log log;
 
@@ -385,7 +393,7 @@ OutOfRange: The Index is invalid.
 
 *****************************************************************************/
 
-static ERROR XML_FindTagFromIndex(objXML *Self, struct xmlFindTagFromIndex *Args)
+static ERROR XML_FindTagFromIndex(extXML *Self, struct xmlFindTagFromIndex *Args)
 {
    parasol::Log log;
 
@@ -436,7 +444,7 @@ NotFound: The attribute name was not found.
 
 ****************************************************************************/
 
-static ERROR XML_GetAttrib(objXML *Self, struct xmlGetAttrib *Args)
+static ERROR XML_GetAttrib(extXML *Self, struct xmlGetAttrib *Args)
 {
    parasol::Log log;
 
@@ -502,7 +510,7 @@ attribute will be returned.  If the Attrib name is omitted, the content of the m
 
 *****************************************************************************/
 
-static ERROR XML_GetVar(objXML *Self, struct acGetVar *Args)
+static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
 {
    parasol::Log log;
    XMLTag *tags;
@@ -762,7 +770,7 @@ BufferOverflow: The buffer was not large enough to hold the content (the resulti
 
 *****************************************************************************/
 
-static ERROR XML_GetContent(objXML *Self, struct xmlGetContent *Args)
+static ERROR XML_GetContent(extXML *Self, struct xmlGetContent *Args)
 {
    parasol::Log log;
 
@@ -797,7 +805,7 @@ AllocMemory: Failed to allocate an XML string for the result.
 
 *****************************************************************************/
 
-static ERROR XML_GetString(objXML *Self, struct xmlGetString *Args)
+static ERROR XML_GetString(extXML *Self, struct xmlGetString *Args)
 {
    parasol::Log log;
 
@@ -872,7 +880,7 @@ OutOfRange: The Index parameter is invalid.
 
 *****************************************************************************/
 
-static ERROR XML_GetTag(objXML *Self, struct xmlGetTag *Args)
+static ERROR XML_GetTag(extXML *Self, struct xmlGetTag *Args)
 {
    parasol::Log log;
 
@@ -907,7 +915,7 @@ AllocMemory: Failed to allocate an XML string for the result.
 
 *****************************************************************************/
 
-static ERROR XML_GetXPath(objXML *Self, struct xmlGetXPath *Args)
+static ERROR XML_GetXPath(extXML *Self, struct xmlGetXPath *Args)
 {
    parasol::Log log;
 
@@ -982,7 +990,7 @@ static ERROR XML_GetXPath(objXML *Self, struct xmlGetXPath *Args)
 
 //****************************************************************************
 
-static ERROR XML_Init(objXML *Self, APTR Void)
+static ERROR XML_Init(extXML *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -1050,7 +1058,7 @@ ReadOnly
 
 *****************************************************************************/
 
-static ERROR XML_InsertContent(objXML *Self, struct xmlInsertContent *Args)
+static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
 {
    parasol::Log log;
 
@@ -1119,7 +1127,7 @@ ReadOnly: Changes to the XML data are not permitted.
 
 *****************************************************************************/
 
-static ERROR XML_InsertXML(objXML *Self, struct xmlInsertXML *Args)
+static ERROR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
 {
    parasol::Log log;
 
@@ -1223,7 +1231,7 @@ Search: The XPath could not be resolved.
 
 *****************************************************************************/
 
-ERROR XML_InsertXPath(objXML *Self, struct xmlInsertXPath *Args)
+ERROR XML_InsertXPath(extXML *Self, struct xmlInsertXPath *Args)
 {
    parasol::Log log;
 
@@ -1274,9 +1282,9 @@ ReadOnly
 
 *****************************************************************************/
 
-static void recalc_indexes(objXML *Self, XMLTag *Tag, LONG *Index, LONG *);
+static void recalc_indexes(extXML *Self, XMLTag *Tag, LONG *Index, LONG *);
 
-static ERROR XML_MoveTags(objXML *Self, struct xmlMoveTags *Args)
+static ERROR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
 {
    parasol::Log log;
    LONG min_index, max_index;
@@ -1395,7 +1403,7 @@ static ERROR XML_MoveTags(objXML *Self, struct xmlMoveTags *Args)
    return ERR_Okay;
 }
 
-static void recalc_indexes(objXML *Self, XMLTag *Tag, LONG *Index, LONG *Level)
+static void recalc_indexes(extXML *Self, XMLTag *Tag, LONG *Index, LONG *Level)
 {
    while (Tag) {
       Self->Tags[*Index] = Tag;
@@ -1413,7 +1421,7 @@ static void recalc_indexes(objXML *Self, XMLTag *Tag, LONG *Index, LONG *Level)
 
 //****************************************************************************
 
-static ERROR XML_NewObject(objXML *Self, APTR Void)
+static ERROR XML_NewObject(extXML *Self, APTR Void)
 {
    if (!AllocMemory(sizeof(APTR), MEM_DATA, &Self->Tags, NULL)) {
       Self->ParseError = ERR_Okay;
@@ -1451,7 +1459,7 @@ ReadOnly
 
 *****************************************************************************/
 
-static ERROR XML_RemoveTag(objXML *Self, struct xmlRemoveTag *Args)
+static ERROR XML_RemoveTag(extXML *Self, struct xmlRemoveTag *Args)
 {
    parasol::Log log;
    LONG i;
@@ -1570,7 +1578,7 @@ ReadOnly
 
 *****************************************************************************/
 
-static ERROR XML_RemoveXPath(objXML *Self, struct xmlRemoveXPath *Args)
+static ERROR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
 {
    parasol::Log log;
 
@@ -1615,7 +1623,7 @@ Reset: Clears the information held in an XML object.
 -END-
 *****************************************************************************/
 
-static ERROR XML_Reset(objXML *Self, APTR Void)
+static ERROR XML_Reset(extXML *Self, APTR Void)
 {
    return acClear(Self);
 }
@@ -1626,7 +1634,7 @@ SaveToObject: Saves XML data to a storage object (e.g. file).
 -END-
 *****************************************************************************/
 
-static ERROR XML_SaveToObject(objXML *Self, struct acSaveToObject *Args)
+static ERROR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
 
@@ -1690,7 +1698,7 @@ ReadOnly: The XML object is read-only.
 
 *****************************************************************************/
 
-static ERROR XML_SetAttrib(objXML *Self, struct xmlSetAttrib *Args)
+static ERROR XML_SetAttrib(extXML *Self, struct xmlSetAttrib *Args)
 {
    parasol::Log log;
    XMLTag *newtag;
@@ -2007,7 +2015,7 @@ OutOfRange: The Index parameter is invalid.
 
 *****************************************************************************/
 
-static ERROR XML_SetRoot(objXML *Self, struct xmlSetRoot *Args)
+static ERROR XML_SetRoot(extXML *Self, struct xmlSetRoot *Args)
 {
    parasol::Log log;
 
@@ -2051,7 +2059,7 @@ Search: Failed to find the tag referenced by the XPath.
 
 *****************************************************************************/
 
-static ERROR XML_SetVar(objXML *Self, struct acSetVar *Args)
+static ERROR XML_SetVar(extXML *Self, struct acSetVar *Args)
 {
    parasol::Log log;
 
@@ -2117,7 +2125,7 @@ NothingDone: The XML array was already sorted to your specifications.   Dependen
 
 *****************************************************************************/
 
-static ERROR XML_SortXML(objXML *Self, struct xmlSort *Args)
+static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
 {
    parasol::Log log;
 
@@ -2401,13 +2409,13 @@ during a program's life cycle.
 
 ****************************************************************************/
 
-static ERROR GET_Path(objXML *Self, STRING *Value)
+static ERROR GET_Path(extXML *Self, STRING *Value)
 {
    if (Self->Path) { *Value = Self->Path; return ERR_Okay; }
    else return ERR_NoData;
 }
 
-static ERROR SET_Path(objXML *Self, CSTRING Value)
+static ERROR SET_Path(extXML *Self, CSTRING Value)
 {
    if (Self->Source) SET_Source(Self, NULL);
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
@@ -2451,7 +2459,7 @@ owner of the XML object is free to use this extra space as it wishes.
 
 *****************************************************************************/
 
-static ERROR SET_PrivateDataSize(objXML *Self, LONG Value)
+static ERROR SET_PrivateDataSize(extXML *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->PrivateDataSize = Value;
@@ -2471,13 +2479,13 @@ parsing where the same data is used across multiple XML objects.
 
 *****************************************************************************/
 
-static ERROR GET_ReadOnly(objXML *Self, LONG *Value)
+static ERROR GET_ReadOnly(extXML *Self, LONG *Value)
 {
    *Value = Self->ReadOnly;
    return ERR_Okay;
 }
 
-static ERROR SET_ReadOnly(objXML *Self, LONG Value)
+static ERROR SET_ReadOnly(extXML *Self, LONG Value)
 {
    Self->ReadOnly = Value;
    return ERR_Okay;
@@ -2493,7 +2501,7 @@ queries start from the top of the tree.  The index cannot exceed the value in th
 
 *****************************************************************************/
 
-static ERROR SET_RootIndex(objXML *Self, LONG Value)
+static ERROR SET_RootIndex(extXML *Self, LONG Value)
 {
    if ((Value >= 0) and (Value < Self->TagCount)) {
       Self->RootIndex = Value;
@@ -2518,7 +2526,7 @@ automatically.
 
 *****************************************************************************/
 
-static ERROR SET_Source(objXML *Self, OBJECTPTR Value)
+static ERROR SET_Source(extXML *Self, OBJECTPTR Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
@@ -2554,7 +2562,7 @@ is an allocation that must be freed.
 
 *****************************************************************************/
 
-static ERROR GET_Statement(objXML *Self, STRING *Value)
+static ERROR GET_Statement(extXML *Self, STRING *Value)
 {
    if (!Self->initialised()) {
       if (Self->Statement) {
@@ -2588,7 +2596,7 @@ static ERROR GET_Statement(objXML *Self, STRING *Value)
    else return ERR_AllocMemory;
 }
 
-static ERROR SET_Statement(objXML *Self, CSTRING Value)
+static ERROR SET_Statement(extXML *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
@@ -2637,7 +2645,7 @@ The Tags field is still defined in the event that it is empty (the array will co
 
 *****************************************************************************/
 
-static ERROR GET_Tags(objXML *Self, XMLTag ***Values, LONG *Elements)
+static ERROR GET_Tags(extXML *Self, XMLTag ***Values, LONG *Elements)
 {
    *Values = Self->Tags;
    *Elements = Self->TagCount;
@@ -2656,6 +2664,8 @@ static const FieldArray clFields[] = {
    { "PrivateDataSize", FDF_LONG|FDF_RI,      0, NULL, (APTR)SET_PrivateDataSize },
    { "RootIndex",       FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_RootIndex },
    { "Modified",        FDF_LONG|FDF_R,       0, NULL, NULL },
+   { "ParseError",      FDF_LONG|FD_PRIVATE|FDF_R, 0, NULL, NULL },
+   { "LineNo",          FDF_LONG|FD_PRIVATE|FDF_R, 0, NULL, NULL },
    // Virtual fields
    { "Location",        FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
    { "ReadOnly",        FDF_LONG|FDF_RI,               0, (APTR)GET_ReadOnly, (APTR)SET_ReadOnly },
@@ -2684,7 +2694,7 @@ static ERROR add_xml_class(void)
       FID_Actions|TPTR,         clXMLActions,
       FID_Methods|TARRAY,       clXMLMethods,
       FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(objXML),
+      FID_Size|TLONG,           sizeof(extXML),
       FID_Path|TSTR,            MOD_PATH,
       TAGEND);
 }

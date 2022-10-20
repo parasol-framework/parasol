@@ -115,9 +115,9 @@ static ERROR VECTORVIEWPORT_Free(objVectorViewport *Self, APTR Void)
 {
    if (Self->vpClipMask) { acFree(Self->vpClipMask); Self->vpClipMask = NULL; }
 
-   if ((Self->Scene) and (!Self->Scene->ResizeSubscriptions.empty())) {
-      if (Self->Scene->ResizeSubscriptions.contains(Self)) {
-         Self->Scene->ResizeSubscriptions.erase(Self);
+   if ((Self->Scene) and (!((extVectorScene *)Self->Scene)->ResizeSubscriptions.empty())) {
+      if (((extVectorScene *)Self->Scene)->ResizeSubscriptions.contains(Self)) {
+         ((extVectorScene *)Self->Scene)->ResizeSubscriptions.erase(Self);
       }
    }
 

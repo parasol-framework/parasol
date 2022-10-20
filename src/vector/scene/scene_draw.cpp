@@ -953,7 +953,7 @@ private:
    objBitmap *mBitmap;
 
 public:
-   objVectorScene *Scene; // The top-level VectorScene performing the draw.
+   extVectorScene *Scene; // The top-level VectorScene performing the draw.
 
    VMAdaptor() { }
 

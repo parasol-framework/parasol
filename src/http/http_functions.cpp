@@ -7,7 +7,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
 
    log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, State, CurrentContext()->UID);
 
-   auto Self = (objHTTP *)Socket->UserData; //(objHTTP *)CurrentContext();
+   auto Self = (extHTTP *)Socket->UserData; //(extHTTP *)CurrentContext();
    if (Self->ClassID != ID_HTTP) { log.warning(ERR_SystemCorrupt); return; }
 
    if (State IS NTC_CONNECTING) {
@@ -161,7 +161,7 @@ static ERROR socket_outgoing(objNetSocket *Socket)
    #define CHUNK_LENGTH_OFFSET 16
    #define CHUNK_TAIL 2 // CRLF
 
-   auto Self = (objHTTP *)Socket->UserData;
+   auto Self = (extHTTP *)Socket->UserData;
    if (Self->ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
 
    log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, Self->CurrentState);
@@ -193,7 +193,7 @@ redo_upload:
    LONG len = 0;
    if (Self->Outgoing.Type != CALL_NONE) {
       if (Self->Outgoing.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(objHTTP *, APTR, LONG, LONG *))Self->Outgoing.StdC.Routine;
+         auto routine = (ERROR (*)(extHTTP *, APTR, LONG, LONG *))Self->Outgoing.StdC.Routine;
          error = routine(Self, Self->WriteBuffer, Self->WriteSize, &len);
       }
       else if (Self->Outgoing.Type IS CALL_SCRIPT) {
@@ -378,7 +378,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
 {
    parasol::Log log("http_incoming");
    LONG len;
-   auto Self = (objHTTP *)Socket->UserData;
+   auto Self = (extHTTP *)Socket->UserData;
 
    log.msg("Context: %d", CurrentContext()->UID);
 
@@ -895,7 +895,7 @@ static CSTRING adv_crlf(CSTRING String)
 
 //****************************************************************************
 
-static ERROR parse_response(objHTTP *Self, CSTRING Buffer)
+static ERROR parse_response(extHTTP *Self, CSTRING Buffer)
 {
    parasol::Log log;
 
@@ -974,7 +974,7 @@ static ERROR parse_response(objHTTP *Self, CSTRING Buffer)
 //****************************************************************************
 // Sends some data specified in the arguments to the listener
 
-static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
+static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1028,7 +1028,7 @@ static ERROR process_data(objHTTP *Self, APTR Buffer, LONG Length)
 
       ERROR error;
       if (Self->Incoming.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(objHTTP *, APTR, LONG))Self->Incoming.StdC.Routine;
+         auto routine = (ERROR (*)(extHTTP *, APTR, LONG))Self->Incoming.StdC.Routine;
          error = routine(Self, Buffer, Length);
       }
       else if (Self->Incoming.Type IS CALL_SCRIPT) {
@@ -1139,7 +1139,7 @@ static void writehex(HASH Bin, HASHHEX Hex)
 //****************************************************************************
 // Calculate H(A1) as per spec
 
-static void digest_calc_ha1(objHTTP *Self, HASHHEX SessionKey)
+static void digest_calc_ha1(extHTTP *Self, HASHHEX SessionKey)
 {
    MD5_CTX md5;
    HASH HA1;
@@ -1174,7 +1174,7 @@ static void digest_calc_ha1(objHTTP *Self, HASHHEX SessionKey)
 //****************************************************************************
 // Calculate request-digest/response-digest as per HTTP Digest spec
 
-static void digest_calc_response(objHTTP *Self, CSTRING Request, CSTRING NonceCount, HASHHEX HA1, HASHHEX HEntity, HASHHEX Response)
+static void digest_calc_response(extHTTP *Self, CSTRING Request, CSTRING NonceCount, HASHHEX HA1, HASHHEX HEntity, HASHHEX Response)
 {
    parasol::Log log;
    MD5_CTX md5;
@@ -1231,7 +1231,7 @@ static void digest_calc_response(objHTTP *Self, CSTRING Request, CSTRING NonceCo
 
 //****************************************************************************
 
-static ERROR write_socket(objHTTP *Self, APTR Buffer, LONG Length, LONG *Result)
+static ERROR write_socket(extHTTP *Self, APTR Buffer, LONG Length, LONG *Result)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1263,7 +1263,7 @@ static ERROR write_socket(objHTTP *Self, APTR Buffer, LONG Length, LONG *Result)
 ** the client should check if the content is streamed in the event of a timeout and not necessarily assume failure.
 */
 
-static ERROR timeout_manager(objHTTP *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERROR timeout_manager(extHTTP *Self, LARGE Elapsed, LARGE CurrentTime)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1277,7 +1277,7 @@ static ERROR timeout_manager(objHTTP *Self, LARGE Elapsed, LARGE CurrentTime)
 //****************************************************************************
 // Returns ERR_True if the transmission is complete and also sets status to HGS_COMPLETED, otherwise ERR_False.
 
-static ERROR check_incoming_end(objHTTP *Self)
+static ERROR check_incoming_end(extHTTP *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1298,7 +1298,7 @@ static ERROR check_incoming_end(objHTTP *Self)
 
 //****************************************************************************
 
-static LONG set_http_method(objHTTP *Self, STRING Buffer, LONG Size, CSTRING Method)
+static LONG set_http_method(extHTTP *Self, STRING Buffer, LONG Size, CSTRING Method)
 {
    if ((Self->ProxyServer) and (!(Self->Flags & HTF_SSL))) {
       // Normal proxy request without SSL tunneling
@@ -1313,7 +1313,7 @@ static LONG set_http_method(objHTTP *Self, STRING Buffer, LONG Size, CSTRING Met
 
 //****************************************************************************
 
-static ERROR parse_file(objHTTP *Self, STRING Buffer, LONG Size)
+static ERROR parse_file(extHTTP *Self, STRING Buffer, LONG Size)
 {
    LONG i;
    LONG pos = Self->InputPos;

@@ -246,16 +246,8 @@ typedef class plXML : public BaseClass {
    LONG      PrivateDataSize; // Allocates a private data buffer for the owner's use against each XML tag.
    LONG      RootIndex;       // Defines the root tag for queries into the XML tree.
    LONG      Modified;        // A timestamp of when the XML data was last modified.
-
-#ifdef PRV_XML
-   struct xml_cache *Cache; // Array of tag pointers, in linear order
-   STRING Statement;
-   ERROR  ParseError;
-   LONG   Balance;          // Indicates that the tag structure is correctly balanced if zero
-   UBYTE  ReadOnly:1;
-   LONG   LineNo;
-  
-#endif
+   LONG      ParseError;      // Private
+   LONG      LineNo;          // Private
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }

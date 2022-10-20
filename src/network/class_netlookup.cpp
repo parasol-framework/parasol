@@ -28,7 +28,7 @@ struct resolve_buffer {
 
 static ERROR resolve_address(CSTRING, const IPAddress *, DNSEntry **);
 static ERROR resolve_name(CSTRING, DNSEntry **);
-static void resolve_callback(objNetLookup *, ERROR, CSTRING, IPAddress *, LONG);
+static void resolve_callback(extNetLookup *, ERROR, CSTRING, IPAddress *, LONG);
 #ifdef _WIN32
 static ERROR cache_host(KeyStore *, CSTRING, struct hostent *, DNSEntry **);
 #else
@@ -48,7 +48,7 @@ static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
 
    log.traceBranch("MsgID: %d, MsgType: %d, Host: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
-   objNetLookup *nl;
+   extNetLookup *nl;
    if (!AccessObject(r->NetLookupID, 2000, &nl)) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
@@ -77,7 +77,7 @@ static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
 
    log.traceBranch("MsgID: %d, MsgType: %d, Address: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
-   objNetLookup *nl;
+   extNetLookup *nl;
    if (!AccessObject(r->NetLookupID, 2000, &nl)) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
@@ -134,7 +134,7 @@ static ERROR thread_resolve_addr(objThread *Thread)
 
 //****************************************************************************
 
-static ERROR NETLOOKUP_ActionNotify(objNetLookup *Self, struct acActionNotify *Args)
+static ERROR NETLOOKUP_ActionNotify(extNetLookup *Self, struct acActionNotify *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -169,7 +169,7 @@ Failed: The address could not be resolved
 
 *****************************************************************************/
 
-static ERROR NETLOOKUP_BlockingResolveAddress(objNetLookup *Self, struct nlBlockingResolveAddress *Args)
+static ERROR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nlBlockingResolveAddress *Args)
 {
    parasol::Log log;
    ERROR error;
@@ -216,7 +216,7 @@ Failed:
 
 *****************************************************************************/
 
-static ERROR NETLOOKUP_BlockingResolveName(objNetLookup *Self, struct nlResolveName *Args)
+static ERROR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nlResolveName *Args)
 {
    parasol::Log log;
    ERROR error;
@@ -246,7 +246,7 @@ This routine may block temporarily if there are unresolved requests awaiting com
 
 *****************************************************************************/
 
-static ERROR NETLOOKUP_Free(objNetLookup *Self, APTR Void)
+static ERROR NETLOOKUP_Free(extNetLookup *Self, APTR Void)
 {
    if (Self->Threads) { delete Self->Threads; Self->Threads = NULL; }
    if (Self->ThreadLock) { delete Self->ThreadLock; Self->ThreadLock = NULL; }
@@ -261,7 +261,7 @@ static ERROR NETLOOKUP_Free(objNetLookup *Self, APTR Void)
 
 //***************************************************************************
 
-static ERROR NETLOOKUP_FreeWarning(objNetLookup *Self, APTR Void)
+static ERROR NETLOOKUP_FreeWarning(extNetLookup *Self, APTR Void)
 {
    if (not Self->Threads->empty()) {
       parasol::Log log;
@@ -283,7 +283,7 @@ restart:
 
 //***************************************************************************
 
-static ERROR NETLOOKUP_NewObject(objNetLookup *Self, APTR Void)
+static ERROR NETLOOKUP_NewObject(extNetLookup *Self, APTR Void)
 {
    Self->Threads = new std::unordered_set<OBJECTID>;
    Self->ThreadLock = new std::mutex;
@@ -312,7 +312,7 @@ Failed: The address could not be resolved
 
 *****************************************************************************/
 
-static ERROR NETLOOKUP_ResolveAddress(objNetLookup *Self, struct nlResolveAddress *Args)
+static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress *Args)
 {
    parasol::Log log;
 
@@ -385,7 +385,7 @@ Failed:
 
 *****************************************************************************/
 
-static ERROR NETLOOKUP_ResolveName(objNetLookup *Self, struct nlResolveName *Args)
+static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Args)
 {
    parasol::Log log;
 
@@ -439,7 +439,7 @@ A list of the most recently resolved IP addresses can be read from this field.
 
 ****************************************************************************/
 
-static ERROR GET_Addresses(objNetLookup *Self, BYTE **Value, LONG *Elements)
+static ERROR GET_Addresses(extNetLookup *Self, BYTE **Value, LONG *Elements)
 {
    if (Self->Info.Addresses) {
       *Value = (BYTE *)Self->Info.Addresses;
@@ -462,7 +462,7 @@ The Fluid prototype is as follows, with results readable from the #HostName and 
 
 ****************************************************************************/
 
-static ERROR GET_Callback(objNetLookup *Self, FUNCTION **Value)
+static ERROR GET_Callback(extNetLookup *Self, FUNCTION **Value)
 {
    if (Self->Callback.Type != CALL_NONE) {
       *Value = &Self->Callback;
@@ -471,7 +471,7 @@ static ERROR GET_Callback(objNetLookup *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_Callback(objNetLookup *Self, FUNCTION *Value)
+static ERROR SET_Callback(extNetLookup *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->Callback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Callback.Script.Script, AC_Free);
@@ -492,7 +492,7 @@ The name of the most recently resolved host is readable from this field.
 
 ****************************************************************************/
 
-static ERROR GET_HostName(objNetLookup *Self, CSTRING *Value)
+static ERROR GET_HostName(extNetLookup *Self, CSTRING *Value)
 {
    if (Self->Info.HostName) {
       *Value = Self->Info.HostName;
@@ -745,14 +745,14 @@ static ERROR resolve_name(CSTRING HostName, DNSEntry **Info)
 
 //***************************************************************************
 
-static void resolve_callback(objNetLookup *Self, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)
+static void resolve_callback(extNetLookup *Self, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)
 {
    parasol::Log log(__FUNCTION__);
    log.traceBranch("Host: %s", HostName);
 
    if (Self->Callback.Type IS CALL_STDC) {
       parasol::SwitchContext context(Self->Callback.StdC.Context);
-      auto routine = (ERROR (*)(objNetLookup *, ERROR, CSTRING, IPAddress *, LONG))(Self->Callback.StdC.Routine);
+      auto routine = (ERROR (*)(extNetLookup *, ERROR, CSTRING, IPAddress *, LONG))(Self->Callback.StdC.Routine);
       routine(Self, Error, HostName, Addresses, TotalAddresses);
    }
    else if (Self->Callback.Type IS CALL_SCRIPT) {
@@ -792,7 +792,7 @@ ERROR init_netlookup(void)
       FID_Actions|TPTR,   clNetLookupActions,
       FID_Methods|TARRAY, clNetLookupMethods,
       FID_Fields|TARRAY,  clNetLookupFields,
-      FID_Size|TLONG,     sizeof(objNetLookup),
+      FID_Size|TLONG,     sizeof(extNetLookup),
       FID_Path|TSTR,      MOD_PATH,
       TAGEND));
 }

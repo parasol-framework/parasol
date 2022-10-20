@@ -2,7 +2,7 @@
 //****************************************************************************
 // Note that all offsets are percentages.
 
-static ERROR process_gradient_stops(objSVG *Self, const XMLTag *Tag, GradientStop *Stops)
+static ERROR process_gradient_stops(extSVG *Self, const XMLTag *Tag, GradientStop *Stops)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -60,7 +60,7 @@ static ERROR process_gradient_stops(objSVG *Self, const XMLTag *Tag, GradientSto
 
 //****************************************************************************
 
-static ERROR xtag_lineargradient(objSVG *Self, const XMLTag *Tag)
+static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -138,7 +138,7 @@ static ERROR xtag_lineargradient(objSVG *Self, const XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_radialgradient(objSVG *Self, const XMLTag *Tag)
+static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -214,7 +214,7 @@ static ERROR xtag_radialgradient(objSVG *Self, const XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_diamondgradient(objSVG *Self, const XMLTag *Tag)
+static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -290,7 +290,7 @@ static ERROR xtag_diamondgradient(objSVG *Self, const XMLTag *Tag)
 //****************************************************************************
 // NB: Contour gradients are not part of the SVG standard.
 
-static ERROR xtag_contourgradient(objSVG *Self, const XMLTag *Tag)
+static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -360,7 +360,7 @@ static ERROR xtag_contourgradient(objSVG *Self, const XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_conicgradient(objSVG *Self, const XMLTag *Tag)
+static ERROR xtag_conicgradient(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;

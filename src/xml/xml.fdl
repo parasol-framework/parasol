@@ -95,14 +95,8 @@ module({ name="XML", copyright="Paul Manias © 2001-2022", version=1.0 }, functi
     int PrivateDataSize   # Extra data can be allocated per tag, according to the number of bytes specified here
     int RootIndex         # Root tag index
     int Modified          # Modification timestamp
-  ]],
-  [[
-   struct xml_cache *Cache; // Array of tag pointers, in linear order
-   STRING Statement;
-   ERROR  ParseError;
-   LONG   Balance;          // Indicates that the tag structure is correctly balanced if zero
-   UBYTE  ReadOnly:1;
-   LONG   LineNo;
+    int ParseError        # Private
+    int LineNo            # Private
   ]])
 
   c_insert([[
