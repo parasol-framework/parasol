@@ -21,12 +21,12 @@
   <function>
     <name>AccessPointer</name>
     <comment>Returns a lock on the default pointer object.</comment>
-    <prototype>struct rkPointer * gfxAccessPointer()</prototype>
+    <prototype>objPointer * gfxAccessPointer()</prototype>
     <description>
 <p>Use AccessPointer() to grab a lock on the default pointer object that is active in the system.  This is typically the first object created from the Pointer class with a name of <code>SystemPointer</code>.</p>
 <p>Call <function module="Core">ReleaseObject</function> to free the lock once it is no longer required.</p>
     </description>
-    <result type="struct rkPointer *">Returns the address of the default pointer object.</result>
+    <result type="objPointer *">Returns the address of the default pointer object.</result>
   </function>
 
   <function>
@@ -51,9 +51,9 @@
   <function>
     <name>Compress</name>
     <comment>Compresses bitmap data to save memory.</comment>
-    <prototype>ERROR gfxCompress(struct rkBitmap * Bitmap, LONG Level)</prototype>
+    <prototype>ERROR gfxCompress(objBitmap * Bitmap, LONG Level)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">Pointer to the <class name="Bitmap">Bitmap</class> that will be compressed.</param>
+      <param type="objBitmap *" name="Bitmap">Pointer to the <class name="Bitmap">Bitmap</class> that will be compressed.</param>
       <param type="LONG" name="Level">Level of compression.  Zero uses a default setting (recommended), the maximum is 10.</param>
     </input>
     <description>
@@ -73,10 +73,10 @@
   <function>
     <name>CopyArea</name>
     <comment>Copies a rectangular area from one bitmap to another.</comment>
-    <prototype>ERROR gfxCopyArea(struct rkBitmap * Bitmap, struct rkBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">The source bitmap.</param>
-      <param type="struct rkBitmap *" name="Dest">Pointer to the destination bitmap.</param>
+      <param type="objBitmap *" name="Bitmap">The source bitmap.</param>
+      <param type="objBitmap *" name="Dest">Pointer to the destination bitmap.</param>
       <param type="LONG" name="Flags" lookup="BAF">Special flags.</param>
       <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
       <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
@@ -100,10 +100,10 @@
   <function>
     <name>CopyRawBitmap</name>
     <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
-    <prototype>ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, struct rkBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="struct BitmapSurfaceV2 *" name="Surface">Description of the surface source.</param>
-      <param type="struct rkBitmap *" name="Bitmap">Destination bitmap.</param>
+      <param type="objBitmap *" name="Bitmap">Destination bitmap.</param>
       <param type="LONG" name="Flags" lookup="CSRF">Optional flags.</param>
       <param type="LONG" name="X">Horizontal source coordinate.</param>
       <param type="LONG" name="Y">Vertical source coordinate.</param>
@@ -126,10 +126,10 @@
   <function>
     <name>CopySurface</name>
     <comment>Copies surface graphics data into any bitmap object</comment>
-    <prototype>ERROR gfxCopySurface(OBJECTID Surface, struct rkBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object to copy from.</param>
-      <param type="struct rkBitmap *" name="Bitmap">Must reference a target Bitmap object.</param>
+      <param type="objBitmap *" name="Bitmap">Must reference a target Bitmap object.</param>
       <param type="LONG" name="Flags" lookup="BDF">Optional flags.</param>
       <param type="LONG" name="X">The horizontal source coordinate.</param>
       <param type="LONG" name="Y">The vertical source coordinate.</param>
@@ -153,9 +153,9 @@
   <function>
     <name>Decompress</name>
     <comment>Decompresses a compressed bitmap.</comment>
-    <prototype>ERROR gfxDecompress(struct rkBitmap * Bitmap, LONG RetainData)</prototype>
+    <prototype>ERROR gfxDecompress(objBitmap * Bitmap, LONG RetainData)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">Pointer to the <class name="Bitmap">Bitmap</class> that will be decompressed.</param>
+      <param type="objBitmap *" name="Bitmap">Pointer to the <class name="Bitmap">Bitmap</class> that will be decompressed.</param>
       <param type="LONG" name="RetainData">Retains the compression data if TRUE.</param>
     </input>
     <description>
@@ -171,9 +171,9 @@
   <function>
     <name>DrawLine</name>
     <comment>Draws a line to a bitmap.</comment>
-    <prototype>void gfxDrawLine(struct rkBitmap * Bitmap, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Colour)</prototype>
+    <prototype>void gfxDrawLine(objBitmap * Bitmap, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Colour)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">The target bitmap.</param>
+      <param type="objBitmap *" name="Bitmap">The target bitmap.</param>
       <param type="LONG" name="X">X-axis starting position.</param>
       <param type="LONG" name="Y">Y-axis starting position.</param>
       <param type="LONG" name="XEnd">X-axis end position.</param>
@@ -189,9 +189,9 @@
   <function>
     <name>DrawPixel</name>
     <comment>Draws a single pixel to a bitmap.</comment>
-    <prototype>void gfxDrawPixel(struct rkBitmap * Bitmap, LONG X, LONG Y, ULONG Colour)</prototype>
+    <prototype>void gfxDrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">The target bitmap object.</param>
+      <param type="objBitmap *" name="Bitmap">The target bitmap object.</param>
       <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
       <param type="LONG" name="Y">The vertical coordinate of the pixel.</param>
       <param type="ULONG" name="Colour">The colour value to use for the pixel.</param>
@@ -204,9 +204,9 @@
   <function>
     <name>DrawRGBPixel</name>
     <comment>Draws a 24 bit pixel to a bitmap.</comment>
-    <prototype>void gfxDrawRGBPixel(struct rkBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB)</prototype>
+    <prototype>void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">The target bitmap object.</param>
+      <param type="objBitmap *" name="Bitmap">The target bitmap object.</param>
       <param type="LONG" name="X">Horizontal coordinate of the pixel.</param>
       <param type="LONG" name="Y">Vertical coordinate of the pixel.</param>
       <param type="struct RGB8 *" name="RGB">The colour to be drawn, in RGB format.</param>
@@ -219,9 +219,9 @@
   <function>
     <name>DrawRectangle</name>
     <comment>Draws rectangles, both filled and unfilled.</comment>
-    <prototype>void gfxDrawRectangle(struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)</prototype>
+    <prototype>void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">Pointer to the target <class name="Bitmap">Bitmap</class>.</param>
+      <param type="objBitmap *" name="Bitmap">Pointer to the target <class name="Bitmap">Bitmap</class>.</param>
       <param type="LONG" name="X">The left-most coordinate of the rectangle.</param>
       <param type="LONG" name="Y">The top-most coordinate of the rectangle.</param>
       <param type="LONG" name="Width">The width of the rectangle.</param>
@@ -260,9 +260,9 @@
   <function>
     <name>FlipBitmap</name>
     <comment>Flips a bitmap around its horizontal or vertical axis.</comment>
-    <prototype>void gfxFlipBitmap(struct rkBitmap * Bitmap, LONG Orientation)</prototype>
+    <prototype>void gfxFlipBitmap(objBitmap * Bitmap, LONG Orientation)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
+      <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
       <param type="LONG" name="Orientation" lookup="FLIP">Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.  If set to neither, the function does nothing.</param>
     </input>
     <description>
@@ -520,10 +520,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>LockBitmap</name>
     <comment>Returns a bitmap that represents the video area covered by the surface object.</comment>
-    <prototype>ERROR gfxLockBitmap(OBJECTID Surface, struct rkBitmap ** Bitmap, LONG * Info)</prototype>
+    <prototype>ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LONG * Info)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Object ID of the surface object that you want to lock.</param>
-      <param type="struct rkBitmap **" name="Bitmap">The resulting bitmap will be returned in this parameter.</param>
+      <param type="objBitmap **" name="Bitmap">The resulting bitmap will be returned in this parameter.</param>
       <param type="LONG *" name="Info" lookup="LVF">Special flags may be returned in this parameter.  If LVF_EXPOSE_CHANGES is returned, any changes must be exposed in order for them to be displayed to the user.</param>
     </input>
     <description>
@@ -558,9 +558,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>ReadPixel</name>
     <comment>Reads a pixel's colour from the target bitmap.</comment>
-    <prototype>ULONG gfxReadPixel(struct rkBitmap * Bitmap, LONG X, LONG Y)</prototype>
+    <prototype>ULONG gfxReadPixel(objBitmap * Bitmap, LONG X, LONG Y)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
+      <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
       <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
       <param type="LONG" name="Y">The vertical coordinate of the pixel.</param>
     </input>
@@ -573,9 +573,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>ReadRGBPixel</name>
     <comment>Reads a pixel's colour from the target bitmap.</comment>
-    <prototype>void gfxReadRGBPixel(struct rkBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB)</prototype>
+    <prototype>void gfxReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
+      <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
       <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
       <param type="LONG" name="Y">The vertical coordinate of the pixel.</param>
       <param type="struct RGB8 **" name="RGB">The colour values will be stored in this RGB structure.</param>
@@ -589,9 +589,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>Resample</name>
     <comment>Resamples a bitmap by dithering it to a new set of colour masks.</comment>
-    <prototype>ERROR gfxResample(struct rkBitmap * Bitmap, struct ColourFormat * ColourFormat)</prototype>
+    <prototype>ERROR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">The bitmap object to be resampled.</param>
+      <param type="objBitmap *" name="Bitmap">The bitmap object to be resampled.</param>
       <param type="struct ColourFormat *" name="ColourFormat">The new colour format to be applied to the bitmap.</param>
     </input>
     <description>
@@ -639,9 +639,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>SetClipRegion</name>
     <comment>Sets a clipping region for a bitmap object.</comment>
-    <prototype>void gfxSetClipRegion(struct rkBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</prototype>
+    <prototype>void gfxSetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">The target bitmap.</param>
+      <param type="objBitmap *" name="Bitmap">The target bitmap.</param>
       <param type="LONG" name="Number">The number of the clip region to set.</param>
       <param type="LONG" name="Left">The horizontal start of the clip region.</param>
       <param type="LONG" name="Top">The vertical start of the clip region.</param>
@@ -703,11 +703,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   <function>
     <name>SetCustomCursor</name>
     <comment>Sets the cursor to a customised bitmap image.</comment>
-    <prototype>ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, struct rkBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
+    <prototype>ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should restrict itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
       <param type="LONG" name="Flags" lookup="CRF">Optional flags affecting the cursor are set here.</param>
-      <param type="struct rkBitmap *" name="Bitmap">The bitmap to set for the mouse cursor.</param>
+      <param type="objBitmap *" name="Bitmap">The bitmap to set for the mouse cursor.</param>
       <param type="LONG" name="HotX">The horizontal position of the cursor hot-spot.</param>
       <param type="LONG" name="HotY">The vertical position of the cursor hot-spot.</param>
       <param type="OBJECTID" name="Owner">The object nominated as the owner of the anchor.</param>
@@ -858,9 +858,9 @@ if ((pointer = gfxAccessPointer())) {
   <function>
     <name>Sync</name>
     <comment>Waits for the completion of all active bitmap operations.</comment>
-    <prototype>void gfxSync(struct rkBitmap * Bitmap)</prototype>
+    <prototype>void gfxSync(objBitmap * Bitmap)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">Pointer to the bitmap that you want to synchronise or NULL to sleep on the graphics accelerator.</param>
+      <param type="objBitmap *" name="Bitmap">Pointer to the bitmap that you want to synchronise or NULL to sleep on the graphics accelerator.</param>
     </input>
     <description>
 <p>The Sync() function will wait for all current video operations to complete before it returns.  This ensures that it is safe to write to video memory with the CPU, preventing any possibility of clashes with the onboard graphics chip.</p>
@@ -870,10 +870,10 @@ if ((pointer = gfxAccessPointer())) {
   <function>
     <name>UnlockBitmap</name>
     <comment>Unlocks any earlier call to gfxLockBitmap().</comment>
-    <prototype>ERROR gfxUnlockBitmap(OBJECTID Surface, struct rkBitmap * Bitmap)</prototype>
+    <prototype>ERROR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object that you are releasing.</param>
-      <param type="struct rkBitmap *" name="Bitmap">Pointer to the bitmap structure returned earlier by LockBitmap().</param>
+      <param type="objBitmap *" name="Bitmap">Pointer to the bitmap structure returned earlier by LockBitmap().</param>
     </input>
     <description>
 <p>Call the UnlockBitmap() function to release a surface object from earlier calls to <function module="Display">LockBitmap</function>.</p>

@@ -19,6 +19,9 @@
 #include <parasol/modules/font.h>
 #endif
 
+typedef class plScintilla objScintilla;
+typedef class plScintillaSearch objScintillaSearch;
+
 // Scintilla Lexers.  These codes originate from the Scintilla library.
 
 #define SCLEX_ERRORLIST 10
@@ -147,27 +150,27 @@ INLINE ERROR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) {
 #define sciReportEvent(obj) Action(MT_SciReportEvent,(obj),0)
 
 
-typedef class rkScintilla : public BaseClass {
+typedef class plScintilla : public BaseClass {
    public:
-   LARGE    EventFlags;          // Specifies events that need to be reported from the Scintilla object.
-   struct rkFont * Font;         // Refers to the font that is used for drawing text in the document.
-   CSTRING  Path;                // Identifies the location of a text file to load.
-   OBJECTID SurfaceID;           // Refers to the @Surface targeted by the Scintilla object.
-   LONG     Flags;               // Optional flags.
-   OBJECTID FocusID;             // Defines the object that is monitored for user focus changes.
-   LONG     Visible;             // If TRUE, indicates the Scintilla object is visible in the target #Surface.
-   LONG     LeftMargin;          // The amount of white-space at the left side of the page.
-   LONG     RightMargin;         // Defines the amount of white-space at the right side of the page.
+   LARGE     EventFlags;         // Specifies events that need to be reported from the Scintilla object.
+   objFont * Font;               // Refers to the font that is used for drawing text in the document.
+   CSTRING   Path;               // Identifies the location of a text file to load.
+   OBJECTID  SurfaceID;          // Refers to the @Surface targeted by the Scintilla object.
+   LONG      Flags;              // Optional flags.
+   OBJECTID  FocusID;            // Defines the object that is monitored for user focus changes.
+   LONG      Visible;            // If TRUE, indicates the Scintilla object is visible in the target #Surface.
+   LONG      LeftMargin;         // The amount of white-space at the left side of the page.
+   LONG      RightMargin;        // Defines the amount of white-space at the right side of the page.
    struct RGB8 LineHighlight;    // The colour to use when highlighting the line that contains the user's cursor.
    struct RGB8 SelectFore;       // Defines the colour of selected text.  Supports alpha blending.
    struct RGB8 SelectBkgd;       // Defines the background colour of selected text.  Supports alpha blending.
    struct RGB8 BkgdColour;       // Defines the background colour.  Alpha blending is not supported.
    struct RGB8 CursorColour;     // Defines the colour of the text cursor.  Alpha blending is not supported.
    struct RGB8 TextColour;       // Defines the default colour of foreground text.  Supports alpha blending.
-   LONG     CursorRow;           // The current row of the text cursor.
-   LONG     CursorCol;           // The current column of the text cursor.
-   LONG     Lexer;               // The lexer for document styling is defined here.
-   LONG     Modified;            // Returns TRUE if the document has been modified and not saved.
+   LONG      CursorRow;          // The current row of the text cursor.
+   LONG      CursorCol;          // The current column of the text cursor.
+   LONG      Lexer;              // The lexer for document styling is defined here.
+   LONG      Modified;           // Returns TRUE if the document has been modified and not saved.
 
 #ifdef PRV_SCINTILLA
    struct  SurfaceCoords Surface;
@@ -201,8 +204,6 @@ typedef class rkScintilla : public BaseClass {
   
 #endif
    // Action stubs
-
-   // ActionNotify
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
    inline ERROR clipboard(LONG Mode) {
@@ -280,13 +281,13 @@ INLINE ERROR ssFind(APTR Ob, LONG * Pos, LONG Flags) {
 }
 
 
-typedef class rkScintillaSearch : public BaseClass {
+typedef class plScintillaSearch : public BaseClass {
    public:
-   struct rkScintilla * Scintilla;    // Targets a Scintilla object for searching.
-   CSTRING Text;                      // The string sequence to search for.
-   LONG    Flags;                     // Optional flags.
-   LONG    Start;                     // Start of the current/most recent selection
-   LONG    End;                       // End of the current/most recent selection
+   objScintilla * Scintilla;    // Targets a Scintilla object for searching.
+   CSTRING Text;                // The string sequence to search for.
+   LONG    Flags;               // Optional flags.
+   LONG    Start;               // Start of the current/most recent selection
+   LONG    End;                 // End of the current/most recent selection
 } objScintillaSearch;
 
 #endif

@@ -207,7 +207,7 @@ static ERROR SET_Wordwrap(objScintilla *, LONG);
 static ERROR consume_input_events(const InputEvent *, LONG);
 static void create_styled_fonts(objScintilla *);
 static ERROR create_scintilla(void);
-static void draw_scintilla(objScintilla *, objSurface *, rkBitmap *);
+static void draw_scintilla(objScintilla *, objSurface *, objBitmap *);
 static ERROR load_file(objScintilla *, CSTRING);
 static void calc_longest_line(objScintilla *);
 static void key_event(objScintilla *, evKey *, LONG);
@@ -2124,7 +2124,7 @@ static void create_styled_fonts(objScintilla *Self)
 
 static THREADVAR objBitmap *glBitmap = NULL;
 
-static void draw_scintilla(objScintilla *Self, objSurface *Surface, struct rkBitmap *Bitmap)
+static void draw_scintilla(objScintilla *Self, objSurface *Surface, objBitmap *Bitmap)
 {
    parasol::Log log;
 

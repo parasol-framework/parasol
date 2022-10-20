@@ -75,7 +75,7 @@ public:
       setBitmap(Bitmap);
    }
 
-   void setBitmap(struct rkBitmap &Bitmap);
+   void setBitmap(objBitmap &Bitmap);
    void (*fBlendPix)(agg::pixfmt_psl *, UBYTE *, ULONG cr, ULONG cg, ULONG cb, ULONG alpha);
    void (*fCopyPix)(agg::pixfmt_psl *,  UBYTE *, ULONG cr, ULONG cg, ULONG cb, ULONG alpha);
    void (*fCoverPix)(agg::pixfmt_psl *, UBYTE *, ULONG cr, ULONG cg, ULONG cb, ULONG alpha, ULONG);
@@ -755,7 +755,7 @@ public:
 
 public:
    UBYTE *mData;
-   struct rkBitmap *mBitmap;
+   objBitmap *mBitmap;
    UBYTE oR, oG, oB, oA;
 };
 

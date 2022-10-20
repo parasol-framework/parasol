@@ -2688,10 +2688,10 @@ static ERROR CalculatePixelRoutines(objBitmap *Self)
          case 2:
             Self->ReadUCPixel  = &VideoReadPixel16;
             Self->ReadUCRPixel = &VideoReadRGBPixel16;
-            Self->ReadUCRIndex = (void (*)(rkBitmap *, UBYTE *, RGB8 *))&VideoReadRGBIndex16;
+            Self->ReadUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoReadRGBIndex16;
             Self->DrawUCPixel  = &VideoDrawPixel16;
             Self->DrawUCRPixel = &VideoDrawRGBPixel16;
-            Self->DrawUCRIndex = (void (*)(rkBitmap *, UBYTE *, RGB8 *))&VideoDrawRGBIndex16;
+            Self->DrawUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoDrawRGBIndex16;
             break;
 
          case 3:
@@ -2706,10 +2706,10 @@ static ERROR CalculatePixelRoutines(objBitmap *Self)
          case 4:
             Self->ReadUCPixel  = &VideoReadPixel32;
             Self->ReadUCRPixel = &VideoReadRGBPixel32;
-            Self->ReadUCRIndex = (void (*)(rkBitmap *, UBYTE *, RGB8 *))&VideoReadRGBIndex32;
+            Self->ReadUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoReadRGBIndex32;
             Self->DrawUCPixel  = &VideoDrawPixel32;
             Self->DrawUCRPixel = &VideoDrawRGBPixel32;
-            Self->DrawUCRIndex = (void (*)(rkBitmap *, UBYTE *, RGB8 *))&VideoDrawRGBIndex32;
+            Self->DrawUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoDrawRGBIndex32;
             break;
 
          default:
@@ -2733,10 +2733,10 @@ static ERROR CalculatePixelRoutines(objBitmap *Self)
       case 2:
          Self->ReadUCPixel  = MemReadPixel16;
          Self->ReadUCRPixel = MemReadRGBPixel16;
-         Self->ReadUCRIndex = (void (*)(rkBitmap *, UBYTE *, RGB8 *))MemReadRGBIndex16;
+         Self->ReadUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))MemReadRGBIndex16;
          Self->DrawUCPixel  = MemDrawPixel16;
          Self->DrawUCRPixel = MemDrawRGBPixel16;
-         Self->DrawUCRIndex = (void (*)(rkBitmap *, UBYTE *, RGB8 *))MemDrawRGBIndex16;
+         Self->DrawUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))MemDrawRGBIndex16;
          break;
 
       case 3:
@@ -2761,10 +2761,10 @@ static ERROR CalculatePixelRoutines(objBitmap *Self)
       case 4:
          Self->ReadUCPixel  = MemReadPixel32;
          Self->ReadUCRPixel = MemReadRGBPixel32;
-         Self->ReadUCRIndex = (void (*)(rkBitmap *, UBYTE *, RGB8 *))MemReadRGBIndex32;
+         Self->ReadUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))MemReadRGBIndex32;
          Self->DrawUCPixel  = MemDrawPixel32;
          Self->DrawUCRPixel = MemDrawRGBPixel32;
-         Self->DrawUCRIndex = (void (*)(rkBitmap *, UBYTE *, RGB8 *))MemDrawRGBIndex32;
+         Self->DrawUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))MemDrawRGBIndex32;
          break;
 
       default:

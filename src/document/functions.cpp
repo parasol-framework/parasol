@@ -3711,7 +3711,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                               auto opacity = Bitmap->Opacity;
                               Bitmap->Opacity = 255;
-                              auto routine = (void (*)(OBJECTPTR, rkSurface *, rkBitmap *))layout->DrawCallback.StdC.Routine;
+                              auto routine = (void (*)(OBJECTPTR, rkSurface *, objBitmap *))layout->DrawCallback.StdC.Routine;
                               routine(object, Surface, Bitmap);
                               Bitmap->Opacity = opacity;
                            }

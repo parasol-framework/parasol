@@ -5,10 +5,10 @@ extern "C" {
 #endif
 
 static ERROR fntGetList(struct FontList ** Result);
-static LONG fntStringWidth(struct rkFont * Font, CSTRING String, LONG Chars);
-static void fntStringSize(struct rkFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows);
-static ERROR fntConvertCoords(struct rkFont * Font, CSTRING String, LONG X, LONG Y, LONG * Column, LONG * Row, LONG * ByteColumn, LONG * BytePos, LONG * CharX);
-static LONG fntCharWidth(struct rkFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
+static LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars);
+static void fntStringSize(objFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows);
+static ERROR fntConvertCoords(objFont * Font, CSTRING String, LONG X, LONG Y, LONG * Column, LONG * Row, LONG * ByteColumn, LONG * BytePos, LONG * CharX);
+static LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
 static DOUBLE fntSetDefaultSize(DOUBLE Size);
 static APTR fntFreetypeHandle();
 static ERROR fntInstallFont(CSTRING Files);

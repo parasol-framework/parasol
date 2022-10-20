@@ -84,7 +84,7 @@ void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
 ** This is the main entry point, we're called from the Init action here.
 */
 
-ScintillaParasol::ScintillaParasol(int SurfaceID, struct rkScintilla *Scintilla)
+ScintillaParasol::ScintillaParasol(int SurfaceID, objScintilla *Scintilla)
 :  scintilla(Scintilla), surfaceid(SurfaceID)
 {
    lastkeytrans[0] = 0;

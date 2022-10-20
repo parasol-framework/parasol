@@ -179,7 +179,7 @@ static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
       while ((owner_id) AND (GetClassID(owner_id) != ID_SCINTILLA)) {
          owner_id = GetOwnerID(owner_id);
       }
-      if (owner_id) Self->Scintilla = (struct rkScintilla *)GetObjectPtr(owner_id);
+      if (owner_id) Self->Scintilla = (objScintilla *)GetObjectPtr(owner_id);
       else return log.warning(ERR_UnsupportedOwner);
    }
 
@@ -209,7 +209,7 @@ Search: The string could not be found.
 
 *****************************************************************************/
 
-static ERROR SEARCH_Next(struct rkScintillaSearch *Self, struct ssNext *Args)
+static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 {
    parasol::Log log;
 

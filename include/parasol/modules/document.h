@@ -23,6 +23,8 @@
 #include <parasol/modules/font.h>
 #endif
 
+typedef class plDocument objDocument;
+
 // Official version number (date format).  Any changes to the handling of document content require that this number be updated.
 
 #define RIPPLE_VERSION "20160601"
@@ -83,12 +85,12 @@
 #define VER_DOCSTYLE 1
 
 typedef struct DocStyleV1 {
-   LONG Version;                    // Version of this DocStyle structure
-   struct rkDocument * Document;    // The document object that this style originates from
-   struct rkFont * Font;            // Pointer to the current font object.  Indicates face, style etc, but not simple attributes like colour
-   struct RGB8 FontColour;          // Foreground colour (colour of the font)
-   struct RGB8 FontUnderline;       // Underline colour for the font, if active
-   LONG StyleFlags;                 // Font style flags (FSO)
+   LONG      Version;            // Version of this DocStyle structure
+   objDocument * Document;       // The document object that this style originates from
+   objFont * Font;               // Pointer to the current font object.  Indicates face, style etc, but not simple attributes like colour
+   struct RGB8 FontColour;       // Foreground colour (colour of the font)
+   struct RGB8 FontUnderline;    // Underline colour for the font, if active
+   LONG      StyleFlags;         // Font style flags (FSO)
 } DOCSTYLE;
 
 struct deLinkActivated {
@@ -155,7 +157,7 @@ struct DocTrigger {
 
 struct docFeedParser { CSTRING String;  };
 struct docSelectLink { LONG Index; CSTRING Name;  };
-struct docApplyFontStyle { struct DocStyleV1 * Style; struct rkFont * Font;  };
+struct docApplyFontStyle { struct DocStyleV1 * Style; objFont * Font;  };
 struct docFindIndex { CSTRING Name; LONG Start; LONG End;  };
 struct docInsertXML { CSTRING XML; LONG Index;  };
 struct docRemoveContent { LONG Start; LONG End;  };
@@ -178,7 +180,7 @@ INLINE ERROR docSelectLink(APTR Ob, LONG Index, CSTRING Name) {
    return(Action(MT_docSelectLink, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docApplyFontStyle(APTR Ob, struct DocStyleV1 * Style, struct rkFont * Font) {
+INLINE ERROR docApplyFontStyle(APTR Ob, struct DocStyleV1 * Style, objFont * Font) {
    struct docApplyFontStyle args = { Style, Font };
    return(Action(MT_docApplyFontStyle, (OBJECTPTR)Ob, &args));
 }
@@ -244,7 +246,7 @@ INLINE ERROR docReadContent(APTR Ob, LONG Format, LONG Start, LONG End, STRING *
 }
 
 
-typedef class rkDocument : public BaseClass {
+typedef class plDocument : public BaseClass {
    public:
    LARGE    EventMask;        // Specifies events that need to be reported from the Document object.
    STRING   Description;      // A description of the document, provided by its author.
@@ -405,8 +407,6 @@ typedef class rkDocument : public BaseClass {
 #endif
    // Action stubs
 
-   // ActionNotify
-
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
    inline ERROR clipboard(LONG Mode) {
@@ -450,7 +450,7 @@ typedef class rkDocument : public BaseClass {
 } objDocument;
 
 struct DocumentBase {
-   LONG (*_CharLength)(struct rkDocument *, LONG);
+   LONG (*_CharLength)(objDocument *, LONG);
 };
 
 #ifndef PRV_DOCUMENT_MODULE

@@ -601,26 +601,48 @@ end
 -- FDL function
 
 function platform(Platform, Function)
+   local saveHeader = glHeader
+   local saveOutput = glOutput
+   glHeader = { }
+   glOutput = { }
+
+   local define
    if (Platform:lower() == 'windows') then
-      output('#ifdef _WIN32')
-      output()
+      define = '_WIN32'
       Function()
-      output('#endif')
-      output()
    elseif (Platform:lower() == 'linux') then
-      output('#ifdef __linux__')
-      output()
+      define = '__linux__'
       Function()
-      output('#endif')
-      output()
    elseif (Platform:lower() == 'x11') then
-      output('#ifdef __xwindows__')
-      output()
+      define = '__xwindows__'
       Function()
-      output('#endif')
-      output()
    else
       error('Unrecognised platform "' .. Platform .. '"')
+   end
+
+   local platformHeader = glHeader
+   local platformOutput = glOutput
+   glHeader = saveHeader
+   glOutput = saveOutput
+
+   if #platformHeader > 0 then
+      priority('#ifdef ' .. define)
+      priority()
+      for k,v in ipairs(platformHeader) do
+         priority(v)
+      end
+      priority('#endif')
+      priority()
+   end
+
+   if #platformOutput > 0 then
+      output('#ifdef ' .. define)
+      output()
+      for k,v in ipairs(platformOutput) do
+         output(v)
+      end
+      output('#endif')
+      output()
    end
 end
 

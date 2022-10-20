@@ -1,4 +1,6 @@
 
+typedef class plScintilla objScintilla;
+
 /*****************************************************************************
 ** Class ScintillaParasol
 **
@@ -8,7 +10,7 @@
 
 class ScintillaParasol : public Scintilla::ScintillaBase {
 public:
-   ScintillaParasol(int SurfaceID, struct rkScintilla *Scintilla);
+   ScintillaParasol(int SurfaceID, objScintilla *Scintilla);
    virtual ~ScintillaParasol();
    virtual void Initialise() {};
    virtual void Finalise();
@@ -108,6 +110,6 @@ private:
    BYTE ticking_on:1;
    BYTE captured_mouse:1;
    DOUBLE lastticktime;
-   struct rkScintilla *scintilla;
+   objScintilla *scintilla;
    OBJECTID surfaceid;
 };

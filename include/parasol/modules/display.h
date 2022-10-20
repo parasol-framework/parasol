@@ -16,6 +16,16 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/XShm.h>
 
+#endif
+
+typedef class plBitmap objBitmap;
+typedef class plDisplay objDisplay;
+typedef class plClipboard objClipboard;
+typedef class plPointer objPointer;
+typedef class plSurface objSurface;
+
+#ifdef __xwindows__
+
 #undef NULL
 #define NULL 0
     
@@ -418,7 +428,7 @@ typedef struct BitmapSurfaceV2 {
 #define MT_BmpConvertToLinear -12
 #define MT_BmpConvertToRGB -13
 
-struct bmpCopyArea { struct rkBitmap * DestBitmap; LONG Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
+struct bmpCopyArea { objBitmap * DestBitmap; LONG Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
 struct bmpCompress { LONG Level;  };
 struct bmpDecompress { LONG RetainData;  };
 struct bmpFlip { LONG Orientation;  };
@@ -427,7 +437,7 @@ struct bmpSetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bot
 struct bmpGetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
 struct bmpDrawLine { LONG X; LONG Y; LONG XEnd; LONG YEnd; ULONG Colour;  };
 
-INLINE ERROR bmpCopyArea(APTR Ob, struct rkBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
+INLINE ERROR bmpCopyArea(APTR Ob, objBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
    struct bmpCopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
    return(Action(MT_BmpCopyArea, (OBJECTPTR)Ob, &args));
 }
@@ -471,40 +481,40 @@ INLINE ERROR bmpDrawLine(APTR Ob, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Co
 #define bmpConvertToRGB(obj) Action(MT_BmpConvertToRGB,(obj),0)
 
 
-typedef class rkBitmap : public BaseClass {
+typedef class plBitmap : public BaseClass {
    public:
-   struct RGBPalette * Palette;                                            // Points to a bitmap's colour palette.
-   struct ColourFormat * ColourFormat;                                     // Describes the colour format used to construct each bitmap pixel.
-   void (*DrawUCPixel)(struct rkBitmap *, LONG, LONG, ULONG);              // Points to a C function that draws pixels to the bitmap using colour indexes.
-   void (*DrawUCRPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *);     // Points to a C function that draws pixels to the bitmap in RGB format.
-   ULONG (*ReadUCPixel)(struct rkBitmap *, LONG, LONG);                    // Points to a C function that reads pixels from the bitmap in colour index format.
-   void (*ReadUCRPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *);     // Points to a C function that reads pixels from the bitmap in RGB format.
-   void (*ReadUCRIndex)(struct rkBitmap *, UBYTE *, struct RGB8 *);        // Points to a C function that reads pixels from the bitmap in RGB format.
-   void (*DrawUCRIndex)(struct rkBitmap *, UBYTE *, struct RGB8 *);        // Points to a C function that draws pixels to the bitmap in RGB format.
-   UBYTE *  Data;                                                          // Pointer to a bitmap's data area.
-   LONG     Width;                                                         // The width of the bitmap, in pixels.
-   LONG     ByteWidth;                                                     // The width of the bitmap, in bytes.
-   LONG     Height;                                                        // The height of the bitmap, in pixels.
-   LONG     Type;                                                          // Defines the data type of the bitmap.
-   LONG     LineWidth;                                                     // Line differential in bytes
-   LONG     PlaneMod;                                                      // The differential between each bitmap plane.
-   struct ClipRectangle Clip;                                              // Defines the bitmap's clipping region.
-   LONG     Size;                                                          // The total size of the bitmap, in bytes.
-   LONG     DataFlags;                                                     // Defines the memory flags to use in allocating a bitmap's data area.
-   LONG     AmtColours;                                                    // The maximum number of displayable colours.
-   LONG     Flags;                                                         // Optional flags.
-   LONG     TransIndex;                                                    // The transparent colour of the bitmap, represented as an index.
-   LONG     BytesPerPixel;                                                 // The number of bytes per pixel.
-   LONG     BitsPerPixel;                                                  // The number of bits per pixel
-   LONG     Position;                                                      // The current read/write data position.
-   LONG     XOffset;                                                       // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
-   LONG     YOffset;                                                       // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
-   LONG     Opacity;                                                       // Determines the translucency setting to use in drawing operations.
-   MEMORYID DataMID;                                                       // Memory ID of the bitmap's data, if applicable.
-   struct RGB8 TransRGB;                                                   // The transparent colour of the bitmap, in RGB format.
-   struct RGB8 BkgdRGB;                                                    // Background colour (for clearing, resizing)
-   LONG     BkgdIndex;                                                     // The bitmap's background colour is defined here as a colour index.
-   LONG     ColourSpace;                                                   // Defines the colour space for RGB values.
+   struct RGBPalette * Palette;                                      // Points to a bitmap's colour palette.
+   struct ColourFormat * ColourFormat;                               // Describes the colour format used to construct each bitmap pixel.
+   void (*DrawUCPixel)(objBitmap *, LONG, LONG, ULONG);              // Points to a C function that draws pixels to the bitmap using colour indexes.
+   void (*DrawUCRPixel)(objBitmap *, LONG, LONG, struct RGB8 *);     // Points to a C function that draws pixels to the bitmap in RGB format.
+   ULONG (*ReadUCPixel)(objBitmap *, LONG, LONG);                    // Points to a C function that reads pixels from the bitmap in colour index format.
+   void (*ReadUCRPixel)(objBitmap *, LONG, LONG, struct RGB8 *);     // Points to a C function that reads pixels from the bitmap in RGB format.
+   void (*ReadUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *);        // Points to a C function that reads pixels from the bitmap in RGB format.
+   void (*DrawUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *);        // Points to a C function that draws pixels to the bitmap in RGB format.
+   UBYTE *  Data;                                                    // Pointer to a bitmap's data area.
+   LONG     Width;                                                   // The width of the bitmap, in pixels.
+   LONG     ByteWidth;                                               // The width of the bitmap, in bytes.
+   LONG     Height;                                                  // The height of the bitmap, in pixels.
+   LONG     Type;                                                    // Defines the data type of the bitmap.
+   LONG     LineWidth;                                               // Line differential in bytes
+   LONG     PlaneMod;                                                // The differential between each bitmap plane.
+   struct ClipRectangle Clip;                                        // Defines the bitmap's clipping region.
+   LONG     Size;                                                    // The total size of the bitmap, in bytes.
+   LONG     DataFlags;                                               // Defines the memory flags to use in allocating a bitmap's data area.
+   LONG     AmtColours;                                              // The maximum number of displayable colours.
+   LONG     Flags;                                                   // Optional flags.
+   LONG     TransIndex;                                              // The transparent colour of the bitmap, represented as an index.
+   LONG     BytesPerPixel;                                           // The number of bytes per pixel.
+   LONG     BitsPerPixel;                                            // The number of bits per pixel
+   LONG     Position;                                                // The current read/write data position.
+   LONG     XOffset;                                                 // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
+   LONG     YOffset;                                                 // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
+   LONG     Opacity;                                                 // Determines the translucency setting to use in drawing operations.
+   MEMORYID DataMID;                                                 // Memory ID of the bitmap's data, if applicable.
+   struct RGB8 TransRGB;                                             // The transparent colour of the bitmap, in RGB format.
+   struct RGB8 BkgdRGB;                                              // Background colour (for clearing, resizing)
+   LONG     BkgdIndex;                                               // The bitmap's background colour is defined here as a colour index.
+   LONG     ColourSpace;                                             // Defines the colour space for RGB values.
 
 #ifdef PRV_BITMAP
    ULONG  *Gradients;
@@ -683,7 +693,7 @@ struct gfxSizeHints { LONG MinWidth; LONG MinHeight; LONG MaxWidth; LONG MaxHeig
 struct gfxSetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; LONG Flags;  };
 struct gfxSetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; LONG Flags;  };
 struct gfxSetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; LONG Flags;  };
-struct gfxUpdateDisplay { struct rkBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
+struct gfxUpdateDisplay { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
 
 #define gfxWaitVBL(obj) Action(MT_GfxWaitVBL,(obj),0)
 
@@ -719,7 +729,7 @@ INLINE ERROR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG Min
 
 #define gfxMinimise(obj) Action(MT_GfxMinimise,(obj),0)
 
-INLINE ERROR gfxUpdateDisplay(APTR Ob, struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
+INLINE ERROR gfxUpdateDisplay(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
    struct gfxUpdateDisplay args = { Bitmap, X, Y, Width, Height, XDest, YDest };
    return(Action(MT_GfxUpdateDisplay, (OBJECTPTR)Ob, &args));
 }
@@ -727,30 +737,30 @@ INLINE ERROR gfxUpdateDisplay(APTR Ob, struct rkBitmap * Bitmap, LONG X, LONG Y,
 #define gfxCheckXWindow(obj) Action(MT_GfxCheckXWindow,(obj),0)
 
 
-typedef class rkDisplay : public BaseClass {
+typedef class plDisplay : public BaseClass {
    public:
-   DOUBLE   RefreshRate;        // This field manages the display refresh rate.
-   struct rkBitmap * Bitmap;    // Reference to the display's bitmap information.
-   LONG     Flags;              // Optional flag settings.
-   LONG     Width;              // Defines the width of the display.
-   LONG     Height;             // Defines the height of the display.
-   LONG     X;                  // Defines the horizontal coordinate of the display.
-   LONG     Y;                  // Defines the vertical coordinate of the display.
-   LONG     BmpX;               // The horizontal coordinate of the bitmap within a display.
-   LONG     BmpY;               // The vertical coordinate of the Bitmap within a display.
-   OBJECTID BufferID;           // Double buffer bitmap
-   LONG     TotalMemory;        // The total amount of user accessible RAM installed on the video card, or zero if unknown.
-   LONG     MinHScan;           // The minimum horizontal scan rate of the display output device.
-   LONG     MaxHScan;           // The maximum horizontal scan rate of the display output device.
-   LONG     MinVScan;           // The minimum vertical scan rate of the display output device.
-   LONG     MaxVScan;           // The maximum vertical scan rate of the display output device.
-   LONG     DisplayType;        // In hosted mode, indicates the bottom margin of the client window.
-   LONG     DPMS;               // Holds the default display power management method.
-   OBJECTID PopOverID;          // Enables pop-over support for hosted display windows.
-   LONG     LeftMargin;         // In hosted mode, indicates the left-hand margin of the client window.
-   LONG     RightMargin;        // In hosted mode, indicates the pixel margin between the client window and right window edge.
-   LONG     TopMargin;          // In hosted mode, indicates the pixel margin between the client window and top window edge.
-   LONG     BottomMargin;       // In hosted mode, indicates the bottom margin of the client window.
+   DOUBLE   RefreshRate;  // This field manages the display refresh rate.
+   objBitmap * Bitmap;    // Reference to the display's bitmap information.
+   LONG     Flags;        // Optional flag settings.
+   LONG     Width;        // Defines the width of the display.
+   LONG     Height;       // Defines the height of the display.
+   LONG     X;            // Defines the horizontal coordinate of the display.
+   LONG     Y;            // Defines the vertical coordinate of the display.
+   LONG     BmpX;         // The horizontal coordinate of the bitmap within a display.
+   LONG     BmpY;         // The vertical coordinate of the Bitmap within a display.
+   OBJECTID BufferID;     // Double buffer bitmap
+   LONG     TotalMemory;  // The total amount of user accessible RAM installed on the video card, or zero if unknown.
+   LONG     MinHScan;     // The minimum horizontal scan rate of the display output device.
+   LONG     MaxHScan;     // The maximum horizontal scan rate of the display output device.
+   LONG     MinVScan;     // The minimum vertical scan rate of the display output device.
+   LONG     MaxVScan;     // The maximum vertical scan rate of the display output device.
+   LONG     DisplayType;  // In hosted mode, indicates the bottom margin of the client window.
+   LONG     DPMS;         // Holds the default display power management method.
+   OBJECTID PopOverID;    // Enables pop-over support for hosted display windows.
+   LONG     LeftMargin;   // In hosted mode, indicates the left-hand margin of the client window.
+   LONG     RightMargin;  // In hosted mode, indicates the pixel margin between the client window and right window edge.
+   LONG     TopMargin;    // In hosted mode, indicates the pixel margin between the client window and top window edge.
+   LONG     BottomMargin; // In hosted mode, indicates the bottom margin of the client window.
 
 #ifdef PRV_DISPLAY
    DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
@@ -791,8 +801,6 @@ typedef class rkDisplay : public BaseClass {
   
 #endif
    // Action stubs
-
-   // ActionNotify
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
@@ -898,7 +906,7 @@ INLINE ERROR clipRemove(APTR Ob, LONG Datatype) {
 }
 
 
-typedef class rkClipboard : public BaseClass {
+typedef class plClipboard : public BaseClass {
    public:
    LONG     Flags;      // Optional flags.
    MEMORYID ClusterID;  // Identifies a unique cluster of items targeted by a clipboard object.
@@ -909,8 +917,6 @@ typedef class rkClipboard : public BaseClass {
   
 #endif
    // Action stubs
-
-   // ActionNotify
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
    inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
@@ -930,7 +936,7 @@ typedef class rkClipboard : public BaseClass {
 
 #define VER_POINTER (1.000000)
 
-typedef class rkPointer : public BaseClass {
+typedef class plPointer : public BaseClass {
    public:
    DOUBLE   Speed;         // Speed multiplier for Pointer movement.
    DOUBLE   Acceleration;  // The rate of acceleration for relative pointer movement.
@@ -1055,7 +1061,7 @@ INLINE ERROR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOU
 #define drwScheduleRedraw(obj) Action(MT_DrwScheduleRedraw,(obj),0)
 
 
-typedef class rkSurface : public BaseClass {
+typedef class plSurface : public BaseClass {
    public:
    OBJECTID DragID;     // This object-based field is used to control the dragging of objects around the display.
    OBJECTID BufferID;   // The ID of the bitmap that manages the surface's graphics.
@@ -1138,8 +1144,6 @@ typedef class rkSurface : public BaseClass {
 #endif
    // Action stubs
 
-   // ActionNotify
-
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
    inline ERROR draw() { return Action(AC_Draw, this, NULL); }
@@ -1189,19 +1193,19 @@ typedef class rkSurface : public BaseClass {
 
 struct DisplayBase {
    struct SurfaceControl * (*_AccessList)(LONG);
-   struct rkPointer * (*_AccessPointer)(void);
+   objPointer * (*_AccessPointer)(void);
    ERROR (*_CheckIfChild)(OBJECTID, OBJECTID);
-   ERROR (*_Compress)(struct rkBitmap *, LONG);
-   ERROR (*_CopyArea)(struct rkBitmap *, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
-   ERROR (*_CopyRawBitmap)(struct BitmapSurfaceV2 *, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
-   ERROR (*_CopySurface)(OBJECTID, struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
-   ERROR (*_Decompress)(struct rkBitmap *, LONG);
-   void (*_DrawLine)(struct rkBitmap *, LONG, LONG, LONG, LONG, ULONG);
-   void (*_DrawPixel)(struct rkBitmap *, LONG, LONG, ULONG);
-   void (*_DrawRGBPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *);
-   void (*_DrawRectangle)(struct rkBitmap *, LONG, LONG, LONG, LONG, ULONG, LONG);
+   ERROR (*_Compress)(objBitmap *, LONG);
+   ERROR (*_CopyArea)(objBitmap *, objBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
+   ERROR (*_CopyRawBitmap)(struct BitmapSurfaceV2 *, objBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
+   ERROR (*_CopySurface)(OBJECTID, objBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
+   ERROR (*_Decompress)(objBitmap *, LONG);
+   void (*_DrawLine)(objBitmap *, LONG, LONG, LONG, LONG, ULONG);
+   void (*_DrawPixel)(objBitmap *, LONG, LONG, ULONG);
+   void (*_DrawRGBPixel)(objBitmap *, LONG, LONG, struct RGB8 *);
+   void (*_DrawRectangle)(objBitmap *, LONG, LONG, LONG, LONG, ULONG, LONG);
    ERROR (*_ExposeSurface)(OBJECTID, LONG, LONG, LONG, LONG, LONG);
-   void (*_FlipBitmap)(struct rkBitmap *, LONG);
+   void (*_FlipBitmap)(objBitmap *, LONG);
    void (*_GetColourFormat)(struct ColourFormat *, LONG, LONG, LONG, LONG, LONG);
    ERROR (*_GetCursorInfo)(struct CursorInfo *, LONG);
    ERROR (*_GetCursorPos)(DOUBLE *, DOUBLE *);
@@ -1215,25 +1219,25 @@ struct DisplayBase {
    ERROR (*_GetSurfaceInfo)(OBJECTID, struct SurfaceInfoV2 **);
    OBJECTID (*_GetUserFocus)(void);
    ERROR (*_GetVisibleArea)(OBJECTID, LONG *, LONG *, LONG *, LONG *, LONG *, LONG *);
-   ERROR (*_LockBitmap)(OBJECTID, struct rkBitmap **, LONG *);
+   ERROR (*_LockBitmap)(OBJECTID, objBitmap **, LONG *);
    ERROR (*_LockCursor)(OBJECTID);
-   ULONG (*_ReadPixel)(struct rkBitmap *, LONG, LONG);
-   void (*_ReadRGBPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 **);
+   ULONG (*_ReadPixel)(objBitmap *, LONG, LONG);
+   void (*_ReadRGBPixel)(objBitmap *, LONG, LONG, struct RGB8 **);
    void (*_ReleaseList)(LONG);
-   ERROR (*_Resample)(struct rkBitmap *, struct ColourFormat *);
+   ERROR (*_Resample)(objBitmap *, struct ColourFormat *);
    ERROR (*_RestoreCursor)(LONG, OBJECTID);
    DOUBLE (*_ScaleToDPI)(DOUBLE);
    ERROR (*_ScanDisplayModes)(CSTRING, struct DisplayInfoV3 *, LONG);
-   void (*_SetClipRegion)(struct rkBitmap *, LONG, LONG, LONG, LONG, LONG, LONG);
+   void (*_SetClipRegion)(objBitmap *, LONG, LONG, LONG, LONG, LONG, LONG);
    ERROR (*_SetCursor)(OBJECTID, LONG, LONG, CSTRING, OBJECTID);
    ERROR (*_SetCursorPos)(DOUBLE, DOUBLE);
-   ERROR (*_SetCustomCursor)(OBJECTID, LONG, struct rkBitmap *, LONG, LONG, OBJECTID);
+   ERROR (*_SetCustomCursor)(OBJECTID, LONG, objBitmap *, LONG, LONG, OBJECTID);
    ERROR (*_SetHostOption)(LONG, LARGE);
    OBJECTID (*_SetModalSurface)(OBJECTID);
    ERROR (*_StartCursorDrag)(OBJECTID, LONG, CSTRING, OBJECTID);
    ERROR (*_SubscribeInput)(FUNCTION *, OBJECTID, LONG, OBJECTID, LONG *);
-   void (*_Sync)(struct rkBitmap *);
-   ERROR (*_UnlockBitmap)(OBJECTID, struct rkBitmap *);
+   void (*_Sync)(objBitmap *);
+   ERROR (*_UnlockBitmap)(OBJECTID, objBitmap *);
    ERROR (*_UnlockCursor)(OBJECTID);
    ERROR (*_UnsubscribeInput)(LONG);
    ERROR (*_WindowHook)(OBJECTID, LONG, FUNCTION *);

@@ -15,9 +15,9 @@
   <function>
     <name>CharWidth</name>
     <comment>Returns the width of a character.</comment>
-    <prototype>LONG fntCharWidth(struct rkFont * Font, ULONG Char, ULONG KChar, LONG * Kerning)</prototype>
+    <prototype>LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning)</prototype>
     <input>
-      <param type="struct rkFont *" name="Font">The font to use for calculating the character width.</param>
+      <param type="objFont *" name="Font">The font to use for calculating the character width.</param>
       <param type="ULONG" name="Char">A unicode character.</param>
       <param type="ULONG" name="KChar">A unicode character to use for calculating the font kerning (optional).</param>
       <param type="LONG *" name="Kerning">The resulting kerning value (optional).</param>
@@ -31,9 +31,9 @@
   <function>
     <name>ConvertCoords</name>
     <comment>Converts pixel coordinates into equivalent column and row positions in font strings.</comment>
-    <prototype>ERROR fntConvertCoords(struct rkFont * Font, CSTRING String, LONG X, LONG Y, LONG * Column, LONG * Row, LONG * ByteColumn, LONG * BytePos, LONG * CharX)</prototype>
+    <prototype>ERROR fntConvertCoords(objFont * Font, CSTRING String, LONG X, LONG Y, LONG * Column, LONG * Row, LONG * ByteColumn, LONG * BytePos, LONG * CharX)</prototype>
     <input>
-      <param type="struct rkFont *" name="Font">An initialised font object.</param>
+      <param type="objFont *" name="Font">An initialised font object.</param>
       <param type="CSTRING" name="String">Either point to a string for inspection or set to NULL to inspect the string currently in the font's String field.</param>
       <param type="LONG" name="X">The horizontal coordinate to translate into a column position.</param>
       <param type="LONG" name="Y">The vertical coordinate to translate into a row position.</param>
@@ -159,9 +159,9 @@
   <function>
     <name>StringSize</name>
     <comment>Calculates the exact dimensions of a font string, giving respect to word wrapping.</comment>
-    <prototype>void fntStringSize(struct rkFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows)</prototype>
+    <prototype>void fntStringSize(objFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows)</prototype>
     <input>
-      <param type="struct rkFont *" name="Font">An initialised font object.</param>
+      <param type="objFont *" name="Font">An initialised font object.</param>
       <param type="CSTRING" name="String">The string to be analysed.</param>
       <param type="LONG" name="Chars" lookup="FSS">The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length.  FSS constants can also be used here.</param>
       <param type="LONG" name="Wrap">The pixel position at which word wrapping occurs.  If zero or less, wordwrap is disabled.</param>
@@ -177,9 +177,9 @@
   <function>
     <name>StringWidth</name>
     <comment>Returns the pixel width of any given string in relation to a font's settings.</comment>
-    <prototype>LONG fntStringWidth(struct rkFont * Font, CSTRING String, LONG Chars)</prototype>
+    <prototype>LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars)</prototype>
     <input>
-      <param type="struct rkFont *" name="Font">An initialised font object.</param>
+      <param type="objFont *" name="Font">An initialised font object.</param>
       <param type="CSTRING" name="String">The string to be calculated.</param>
       <param type="LONG" name="Chars">The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length, or -1 to use the entire string.</param>
     </input>

@@ -11,6 +11,8 @@
 
 #define MODVERSION_SVG (1)
 
+typedef class plSVG objSVG;
+
 // SVG flags.
 
 #define SVF_AUTOSCALE 0x00000001
@@ -24,15 +26,15 @@
 
 #define MT_SvgRender -1
 
-struct svgRender { struct rkBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height;  };
+struct svgRender { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height;  };
 
-INLINE ERROR svgRender(APTR Ob, struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) {
+INLINE ERROR svgRender(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) {
    struct svgRender args = { Bitmap, X, Y, Width, Height };
    return(Action(MT_SvgRender, (OBJECTPTR)Ob, &args));
 }
 
 
-typedef class rkSVG : public BaseClass {
+typedef class plSVG : public BaseClass {
    public:
    OBJECTPTR Target;    // The root Viewport that is generated during SVG initialisation can be created as a child of this target object.
    STRING    Path;      // The location of the source SVG data.

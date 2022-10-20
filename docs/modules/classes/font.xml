@@ -454,7 +454,7 @@ Charter:120%::255,128,255
       <name>WrapCallback</name>
       <comment>The routine defined here will be called when the wordwrap boundary is encountered.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type prototype="ERROR (*WrapCallback)(struct rkFont *, LONG *, LONG *)">FUNCTION *</type>
+      <type prototype="ERROR (*WrapCallback)(objFont *, LONG *, LONG *)">FUNCTION *</type>
       <description>
 <p>Customisation of a font's word-wrap behaviour can be achieved by defining a word-wrap callback routine.  If word-wrapping has been enabled via the <code>WORDWRAP</code> flag, the WrapCallback routine will be called when the word-wrap boundary is encountered.  The routine defined in the WrapCallback field must follow this synopsis: <code>ERROR WrapCallback(*Font, STRING String, LONG *X, LONG *Y)</code>.</p>
 <p>The String value reflects the current position within the font string. The X and Y indicate the coordinates at which the wordwrap has occurred.  It is assumed that the routine will update the coordinates to reflect the position at which the font should continue drawing.  If this is undesirable, returning ERR_NothingDone will cause the the font object to automatically update the coordinates for you.  Returning a value of ERR_Terminate will abort the drawing process early.  All other error codes will abort the process and the given error code will be returned as the draw action's result.</p>

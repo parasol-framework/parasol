@@ -15,9 +15,9 @@
   <function>
     <name>CharLength</name>
     <comment>Returns the length of any character or escape code in a document data stream.</comment>
-    <prototype>LONG docCharLength(struct rkDocument * Document, LONG Index)</prototype>
+    <prototype>LONG docCharLength(objDocument * Document, LONG Index)</prototype>
     <input>
-      <param type="struct rkDocument *" name="Document">The document to query.</param>
+      <param type="objDocument *" name="Document">The document to query.</param>
       <param type="LONG" name="Index">The byte index of the character to inspect.</param>
     </input>
     <description>
@@ -90,8 +90,8 @@
   <structs>
     <struct name="DocStyle" comment="This structure is passed to objects that support the LayoutStyle field" typeName="DOCSTYLE">
       <field name="Version" type="LONG">Version of this DocStyle structure</field>
-      <field name="Document" type="struct rkDocument *">The document object that this style originates from</field>
-      <field name="Font" type="struct rkFont *">Pointer to the current font object.  Indicates face, style etc, but not simple attributes like colour</field>
+      <field name="Document" type="objDocument *">The document object that this style originates from</field>
+      <field name="Font" type="objFont *">Pointer to the current font object.  Indicates face, style etc, but not simple attributes like colour</field>
       <field name="FontColour" type="struct RGB8">Foreground colour (colour of the font)</field>
       <field name="FontUnderline" type="struct RGB8">Underline colour for the font, if active</field>
       <field name="StyleFlags" type="LONG">Font style flags (FSO)</field>

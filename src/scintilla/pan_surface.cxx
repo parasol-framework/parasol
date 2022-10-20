@@ -99,7 +99,7 @@ void SurfacePan::Init(Scintilla::SurfaceID sid, Scintilla::WindowID WID_NAME)
    if (bitmap) return;
 
    // Surface id will be a bitmap object
-   bitmap = static_cast<struct rkBitmap *>(sid);
+   bitmap = static_cast<objBitmap *>(sid);
 
    // Set the Clipping rect to the dimensions of the bitmap
    cliprect.left = 0;
@@ -140,7 +140,7 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
 
 /****************************************************************************/
 
-INLINE ULONG to_pan_col(struct rkBitmap *bitmap, const Scintilla::ColourAllocated& colour)
+INLINE ULONG to_pan_col(objBitmap *bitmap, const Scintilla::ColourAllocated& colour)
 {
    ULONG col32 = colour.AsLong();
    return bitmap->packPixel(SCIRED(col32), SCIGREEN(col32), SCIBLUE(col32), 255);
