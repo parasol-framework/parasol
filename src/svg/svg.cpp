@@ -18,7 +18,6 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #define PRV_SVG
 #include <unordered_map>
 #include <string>
-#include "../picture/picture.h"
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/xml.h>

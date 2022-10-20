@@ -182,14 +182,14 @@ enum {
 struct ptrSetWinCursor { LONG Cursor;  };
 struct ptrGrabX11Pointer { OBJECTID SurfaceID;  };
 
-INLINE ERROR ptrSetWinCursor(APTR Ob, LONG Cursor) {
+INLINE ERROR ptrSetWinCursor(OBJECTPTR Ob, LONG Cursor) {
    struct ptrSetWinCursor args = { Cursor };
    return Action(MT_PtrSetWinCursor, Ob, &args);
 }
 
 #define ptrUngrabX11Pointer(obj) Action(MT_PtrUngrabX11Pointer,(obj),0)
 
-INLINE ERROR ptrGrabX11Pointer(APTR Ob, OBJECTID SurfaceID) {
+INLINE ERROR ptrGrabX11Pointer(OBJECTPTR Ob, OBJECTID SurfaceID) {
    struct ptrGrabX11Pointer args = { SurfaceID };
    return Action(MT_PtrGrabX11Pointer, Ob, &args);
 }

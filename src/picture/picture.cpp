@@ -38,11 +38,12 @@ significant differences between the source and destination bitmap types.
 #include "lib/png.h"
 #include "lib/pngpriv.h"
 
-#include "picture.h"
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/display.h>
 #include <parasol/linear_rgb.h>
+
+#include "picture.h"
 
 MODULE_COREBASE;
 static ModuleMaster *modPicture = NULL;
@@ -51,7 +52,7 @@ static OBJECTPTR modDisplay = NULL;
 static DisplayBase *DisplayBase = NULL;
 static THREADVAR LONG glError = FALSE;
 
-static ERROR decompress_png(objPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
+static ERROR decompress_png(prvPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
 static void read_row_callback(png_structp, png_uint_32, int);
 static void write_row_callback(png_structp, png_uint_32, int);
 static void png_error_hook(png_structp png_ptr, png_const_charp message);
@@ -123,7 +124,7 @@ Bitmap using its available drawing methods.
 
 *****************************************************************************/
 
-static ERROR PIC_Activate(objPicture *Self, APTR Void)
+static ERROR PIC_Activate(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -341,7 +342,7 @@ exit:
 
 //****************************************************************************
 
-static ERROR PIC_Free(objPicture *Self, APTR Void)
+static ERROR PIC_Free(prvPicture *Self, APTR Void)
 {
    if (Self->prvPath)        { FreeResource(Self->prvPath); Self->prvPath = NULL; }
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
@@ -371,7 +372,7 @@ Query actions to load or find out more information about the image format.
 
 *****************************************************************************/
 
-static ERROR PIC_Init(objPicture *Self, APTR Void)
+static ERROR PIC_Init(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -463,7 +464,7 @@ static ERROR PIC_Init(objPicture *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR PIC_NewObject(objPicture *Self, APTR Void)
+static ERROR PIC_NewObject(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -477,7 +478,7 @@ static ERROR PIC_NewObject(objPicture *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR PIC_Query(objPicture *Self, APTR Void)
+static ERROR PIC_Query(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
    STRING path;
@@ -559,7 +560,7 @@ Read: Reads raw image data from a Picture object.
 -END-
 *****************************************************************************/
 
-static ERROR PIC_Read(objPicture *Self, struct acRead *Args)
+static ERROR PIC_Read(prvPicture *Self, struct acRead *Args)
 {
    return Action(AC_Read, Self->Bitmap, Args);
 }
@@ -570,7 +571,7 @@ Refresh: Refreshes a loaded picture - draws the next frame.
 -END-
 *****************************************************************************/
 
-static ERROR PIC_Refresh(objPicture *Self, APTR Void)
+static ERROR PIC_Refresh(prvPicture *Self, APTR Void)
 {
    return ERR_Okay;
 }
@@ -584,7 +585,7 @@ If no destination is specified then the image will be saved as a new file target
 -END-
 *****************************************************************************/
 
-static ERROR PIC_SaveImage(objPicture *Self, struct acSaveImage *Args)
+static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
 {
    parasol::Log log;
    STRING path;
@@ -855,7 +856,7 @@ SaveToObject: Saves the picture image to a data object.
 -END-
 *****************************************************************************/
 
-static ERROR PIC_SaveToObject(objPicture *Self, struct acSaveToObject *Args)
+static ERROR PIC_SaveToObject(prvPicture *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
    ERROR (**routine)(OBJECTPTR, APTR);
@@ -884,7 +885,7 @@ Seek: Seeks to a new read/write position within a Picture object.
 -END-
 *****************************************************************************/
 
-static ERROR PIC_Seek(objPicture *Self, struct acSeek *Args)
+static ERROR PIC_Seek(prvPicture *Self, struct acSeek *Args)
 {
    return Action(AC_Seek, Self->Bitmap, Args);
 }
@@ -895,7 +896,7 @@ Write: Writes raw image data to a picture object.
 -END-
 *****************************************************************************/
 
-static ERROR PIC_Write(objPicture *Self, struct acWrite *Args)
+static ERROR PIC_Write(prvPicture *Self, struct acWrite *Args)
 {
    return Action(AC_Write, Self->Bitmap, Args);
 }
@@ -907,13 +908,13 @@ Author: The name of the person or company that created the image.
 
 *****************************************************************************/
 
-static ERROR GET_Author(objPicture *Self, STRING *Value)
+static ERROR GET_Author(prvPicture *Self, STRING *Value)
 {
    *Value = Self->prvAuthor;
    return ERR_Okay;
 }
 
-static ERROR SET_Author(objPicture *Self, CSTRING Value)
+static ERROR SET_Author(prvPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvAuthor, sizeof(Self->prvAuthor));
    else Self->prvAuthor[0] = 0;
@@ -941,13 +942,13 @@ example "Copyright H.R. Giger (c) 1992."
 
 *****************************************************************************/
 
-static ERROR GET_Copyright(objPicture *Self, STRING *Value)
+static ERROR GET_Copyright(prvPicture *Self, STRING *Value)
 {
    *Value = Self->prvCopyright;
    return ERR_Okay;
 }
 
-static ERROR SET_Copyright(objPicture *Self, CSTRING Value)
+static ERROR SET_Copyright(prvPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvCopyright, sizeof(Self->prvCopyright));
    else Self->prvCopyright[0] = 0;
@@ -963,7 +964,7 @@ description.
 
 *****************************************************************************/
 
-static ERROR GET_Description(objPicture *Self, STRING *Value)
+static ERROR GET_Description(prvPicture *Self, STRING *Value)
 {
    if (Self->prvDescription) {
       *Value = Self->prvDescription;
@@ -975,7 +976,7 @@ static ERROR GET_Description(objPicture *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Description(objPicture *Self, CSTRING Value)
+static ERROR SET_Description(prvPicture *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -995,7 +996,7 @@ If it is necessary to associate a disclaimer with an image, the legal text may b
 
 *****************************************************************************/
 
-static ERROR GET_Disclaimer(objPicture *Self, STRING *Value)
+static ERROR GET_Disclaimer(prvPicture *Self, STRING *Value)
 {
    if (Self->prvDisclaimer) {
       *Value = Self->prvDisclaimer;
@@ -1007,7 +1008,7 @@ static ERROR GET_Disclaimer(objPicture *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Disclaimer(objPicture *Self, CSTRING Value)
+static ERROR SET_Disclaimer(prvPicture *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -1057,7 +1058,7 @@ The buffer that is referred to by the Header field is not populated until the In
 
 *****************************************************************************/
 
-static ERROR GET_Header(objPicture *Self, APTR *Value)
+static ERROR GET_Header(prvPicture *Self, APTR *Value)
 {
    *Value = Self->prvHeader;
    return ERR_Okay;
@@ -1069,7 +1070,7 @@ Path: The location of source image data.
 
 *****************************************************************************/
 
-static ERROR GET_Path(objPicture *Self, STRING *Value)
+static ERROR GET_Path(prvPicture *Self, STRING *Value)
 {
    if (Self->prvPath) {
       *Value = Self->prvPath;
@@ -1081,7 +1082,7 @@ static ERROR GET_Path(objPicture *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Path(objPicture *Self, CSTRING Value)
+static ERROR SET_Path(prvPicture *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -1119,13 +1120,13 @@ Software: The name of the application that was used to draw the image.
 
 *****************************************************************************/
 
-static ERROR GET_Software(objPicture *Self, STRING *Value)
+static ERROR GET_Software(prvPicture *Self, STRING *Value)
 {
    *Value = Self->prvSoftware;
    return ERR_Okay;
 }
 
-static ERROR SET_Software(objPicture *Self, CSTRING Value)
+static ERROR SET_Software(prvPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvSoftware, sizeof(Self->prvSoftware));
    else Self->prvSoftware[0] = 0;
@@ -1138,13 +1139,13 @@ Title: The title of the image.
 -END-
 *****************************************************************************/
 
-static ERROR GET_Title(objPicture *Self, STRING *Value)
+static ERROR GET_Title(prvPicture *Self, STRING *Value)
 {
    *Value = Self->prvTitle;
    return ERR_Okay;
 }
 
-static ERROR SET_Title(objPicture *Self, CSTRING Value)
+static ERROR SET_Title(prvPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvTitle, sizeof(Self->prvTitle));
    else Self->prvTitle[0] = 0;
@@ -1170,7 +1171,7 @@ static void write_row_callback(png_structp write_ptr, png_uint_32 row, int pass)
 void png_read_data(png_structp png, png_bytep data, png_size_t length)
 {
    struct acRead read = { data, (LONG)length };
-   if ((Action(AC_Read, png->io_ptr, &read) != ERR_Okay) or ((png_size_t)read.Result != length)) {
+   if ((Action(AC_Read, (OBJECTPTR)png->io_ptr, &read) != ERR_Okay) or ((png_size_t)read.Result != length)) {
       png_error(png, "File read error");
    }
 }
@@ -1188,7 +1189,7 @@ void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data
 void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
 {
    struct acWrite write = { data, (LONG)length };
-   if ((Action(AC_Write, png->io_ptr, &write) != ERR_Okay) or ((png_size_t)write.Result != length)) {
+   if ((Action(AC_Write, (OBJECTPTR)png->io_ptr, &write) != ERR_Okay) or ((png_size_t)write.Result != length)) {
       png_error(png, "File write error");
    }
 }
@@ -1232,7 +1233,7 @@ ZEXTERN uLong ZEXPORT crc32   OF((uLong crc, const Bytef *buf, uInt len))
 
 //****************************************************************************
 
-static ERROR decompress_png(objPicture *Self, objBitmap *Bitmap, int BitDepth, int ColourType, png_structp ReadPtr,
+static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, int ColourType, png_structp ReadPtr,
                             png_infop InfoPtr, png_uint_32 PngWidth, png_uint_32 PngHeight)
 {
    ERROR error;
@@ -1489,7 +1490,7 @@ static ERROR create_picture_class(void)
       FID_FileHeader|TSTR,      "[0:$89504e470d0a1a0a]",
       FID_Actions|TPTR,         clActions,
       FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(objPicture),
+      FID_Size|TLONG,           sizeof(prvPicture),
       FID_Path|TSTR,            MOD_PATH,
       TAGEND);
 }

@@ -698,15 +698,15 @@ typedef class plVectorFilter : public BaseClass {
 #ifdef PRV_VECTORFILTER
    objVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
    objVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
-   objVectorScene *SourceScene; // Internal scene for rendering SourceGraphic
-   objVectorScene *Scene;       // Scene that the filter belongs to.
-   objBitmap *SourceGraphic;          // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
-   objBitmap *BkgdBitmap;             // Target bitmap supplied by Scene.acDraw()
-   objFilterEffect *ActiveEffect;     // Current effect being processed by the pipeline.
-   objFilterEffect *Effects;          // Pointer to the first effect in the chain.
+   objVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
+   objVectorScene *Scene;              // Scene that the filter belongs to.
+   objBitmap *SourceGraphic;           // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
+   objBitmap *BkgdBitmap;              // Target bitmap supplied by Scene.acDraw()
+   objFilterEffect *ActiveEffect;      // Current effect being processed by the pipeline.
+   objFilterEffect *Effects;           // Pointer to the first effect in the chain.
    objFilterEffect *LastEffect;
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
-   ClipRectangle VectorClip;          // Clipping region of the vector client (reflects the vector bounds)
+   ClipRectangle VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
    UBYTE BankIndex;
    bool Rendered;
    bool Disabled;
@@ -875,9 +875,9 @@ typedef class plVector : public BaseClass {
    DOUBLE StrokeWidth;
    agg::path_storage BasePath;
    agg::trans_affine Transform;
-   struct RGB8 rgbStroke, rgbFill;
+   RGB8 rgbStroke, rgbFill;
    objVectorFilter *Filter;
-   struct plVectorViewport *ParentView;
+   objVectorViewport *ParentView;
    CSTRING FilterString, StrokeString, FillString;
    STRING ID;
    void   (*GeneratePath)(objVector *);
@@ -891,7 +891,7 @@ typedef class plVector : public BaseClass {
    objVector *Morph;
    DashedStroke *DashArray;
    GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
-   struct FRGB StrokeColour, FillColour;
+   FRGB StrokeColour, FillColour;
    std::vector<FeedbackSubscription> *FeedbackSubscriptions;
    std::vector<InputSubscription> *InputSubscriptions;
    std::vector<KeyboardSubscription> *KeyboardSubscriptions;
@@ -935,12 +935,12 @@ typedef class plVector : public BaseClass {
 } objVector;
 
 struct VectorBase {
-   ERROR (*_DrawPath)(objBitmap *, APTR, DOUBLE, APTR, APTR);
+   ERROR (*_DrawPath)(objBitmap *, APTR, DOUBLE, OBJECTPTR, OBJECTPTR);
    void (*_FreePath)(APTR);
    ERROR (*_GenerateEllipse)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR);
    ERROR (*_GeneratePath)(CSTRING, APTR);
    ERROR (*_GenerateRectangle)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR);
-   void (*_ReadPainter)(APTR, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
+   void (*_ReadPainter)(OBJECTPTR, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
    void (*_TranslatePath)(APTR, DOUBLE, DOUBLE);
    void (*_MoveTo)(APTR, DOUBLE, DOUBLE);
    void (*_LineTo)(APTR, DOUBLE, DOUBLE);
@@ -952,7 +952,7 @@ struct VectorBase {
    void (*_ClosePath)(APTR);
    void (*_RewindPath)(APTR);
    LONG (*_GetVertex)(APTR, DOUBLE *, DOUBLE *);
-   ERROR (*_ApplyPath)(APTR, APTR);
+   ERROR (*_ApplyPath)(APTR, OBJECTPTR);
    ERROR (*_Rotate)(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
    ERROR (*_Translate)(struct VectorMatrix *, DOUBLE, DOUBLE);
    ERROR (*_Skew)(struct VectorMatrix *, DOUBLE, DOUBLE);

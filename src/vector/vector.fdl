@@ -503,15 +503,15 @@ struct OrderedVector {
   [[
    objVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
    objVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
-   objVectorScene *SourceScene; // Internal scene for rendering SourceGraphic
-   objVectorScene *Scene;       // Scene that the filter belongs to.
-   objBitmap *SourceGraphic;          // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
-   objBitmap *BkgdBitmap;             // Target bitmap supplied by Scene.acDraw()
-   objFilterEffect *ActiveEffect;     // Current effect being processed by the pipeline.
-   objFilterEffect *Effects;          // Pointer to the first effect in the chain.
+   objVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
+   objVectorScene *Scene;              // Scene that the filter belongs to.
+   objBitmap *SourceGraphic;           // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
+   objBitmap *BkgdBitmap;              // Target bitmap supplied by Scene.acDraw()
+   objFilterEffect *ActiveEffect;      // Current effect being processed by the pipeline.
+   objFilterEffect *Effects;           // Pointer to the first effect in the chain.
    objFilterEffect *LastEffect;
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
-   ClipRectangle VectorClip;          // Clipping region of the vector client (reflects the vector bounds)
+   ClipRectangle VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
    UBYTE BankIndex;
    bool Rendered;
    bool Disabled;
@@ -580,9 +580,9 @@ struct OrderedVector {
    DOUBLE StrokeWidth;
    agg::path_storage BasePath;
    agg::trans_affine Transform;
-   struct RGB8 rgbStroke, rgbFill;
+   RGB8 rgbStroke, rgbFill;
    objVectorFilter *Filter;
-   struct plVectorViewport *ParentView;
+   objVectorViewport *ParentView;
    CSTRING FilterString, StrokeString, FillString;
    STRING ID;
    void   (*GeneratePath)(objVector *);
@@ -596,7 +596,7 @@ struct OrderedVector {
    objVector *Morph;
    DashedStroke *DashArray;
    GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
-   struct FRGB StrokeColour, FillColour;
+   FRGB StrokeColour, FillColour;
    std::vector<FeedbackSubscription> *FeedbackSubscriptions;
    std::vector<InputSubscription> *InputSubscriptions;
    std::vector<KeyboardSubscription> *KeyboardSubscriptions;

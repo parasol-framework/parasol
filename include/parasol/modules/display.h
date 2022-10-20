@@ -1336,7 +1336,7 @@ INLINE ERROR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment)
    return ActionMsg(MT_DrwSetOpacity, ObjectID, &args);
 }
 
-INLINE ERROR drwAddCallback(APTR Surface, APTR Callback) {
+INLINE ERROR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
       FUNCTION func;
       SET_FUNCTION_STDC(func, Callback);
@@ -1349,7 +1349,7 @@ INLINE ERROR drwAddCallback(APTR Surface, APTR Callback) {
    }
 }
 
-INLINE ERROR drwRemoveCallback(APTR Surface, APTR Callback) {
+INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
       FUNCTION func;
       SET_FUNCTION_STDC(func, Callback);

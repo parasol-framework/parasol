@@ -1109,7 +1109,7 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
                client_set_viewbox = true;
                pattern->ContentUnits = VUNIT_USERSPACE;
                read_numseq(val, &vx, &vy, &vwidth, &vheight, TAGEND);
-               SetFields(pattern->Viewport,
+               SetFields((OBJECTPTR)pattern->Viewport,
                   FID_ViewX|TDOUBLE,      vx,
                   FID_ViewY|TDOUBLE,      vy,
                   FID_ViewWidth|TDOUBLE,  vwidth,

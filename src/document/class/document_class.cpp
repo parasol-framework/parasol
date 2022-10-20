@@ -10,7 +10,7 @@ features for creating complex documents and manuals.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Args)
+static ERROR DOCUMENT_ActionNotify(extDocument *Self, struct acActionNotify *Args)
 {
    parasol::Log log;
 
@@ -103,7 +103,7 @@ static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Arg
                }
             }
             else if (trigger->Function.Type IS CALL_STDC) {
-               auto routine = (void (*)(APTR, objDocument *, LONG Width, LONG Height))trigger->Function.StdC.Routine;
+               auto routine = (void (*)(APTR, extDocument *, LONG Width, LONG Height))trigger->Function.StdC.Routine;
                if (routine) {
                   parasol::SwitchContext context(trigger->Function.StdC.Context);
                   routine(trigger->Function.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight);
@@ -132,7 +132,7 @@ belong to the document object.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_Activate(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
 {
    parasol::Log log;
    log.branch();
@@ -187,7 +187,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_AddListener(objDocument *Self, struct docAddListener *Args)
+static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args)
 {
    DocTrigger *trigger;
 
@@ -221,7 +221,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_ApplyFontStyle(objDocument *Self, struct docApplyFontStyle *Args)
+static ERROR DOCUMENT_ApplyFontStyle(extDocument *Self, struct docApplyFontStyle *Args)
 {
    parasol::Log log;
    objFont *font;
@@ -271,7 +271,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_CallFunction(objDocument *Self, struct docCallFunction *Args)
+static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Args)
 {
    parasol::Log log;
 
@@ -298,7 +298,7 @@ data will be deleted from the object and the graphics will be automatically upda
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_Clear(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -317,7 +317,7 @@ Clipboard: Full support for clipboard activity is provided through this action.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_Clipboard(objDocument *Self, struct acClipboard *Args)
+static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 {
    parasol::Log log;
    OBJECTPTR file;
@@ -433,7 +433,7 @@ Mismatch:    The data type that was passed to the action is not supported by the
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_DataFeed(objDocument *Self, struct acDataFeed *Args)
+static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
@@ -485,7 +485,7 @@ Disable: Disables object functionality.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_Disable(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Disable(extDocument *Self, APTR Void)
 {
    Self->Flags |= DCF_DISABLED;
    return ERR_Okay;
@@ -493,7 +493,7 @@ static ERROR DOCUMENT_Disable(objDocument *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR DOCUMENT_Draw(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
 {
    if (Self->SurfaceID) {
       if (Self->Processing) DelayMsg(AC_Draw, Self->UID, NULL);
@@ -526,7 +526,7 @@ Search: The cell was not found.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_Edit(objDocument *Self, struct docEdit *Args)
+static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -551,7 +551,7 @@ Enable: Enables object functionality.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_Enable(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Enable(extDocument *Self, APTR Void)
 {
    Self->Flags &= ~DCF_DISABLED;
    return ERR_Okay;
@@ -573,7 +573,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_FeedParser(objDocument *Self, struct docFeedParser *Args)
+static ERROR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
 {
    parasol::Log log;
 
@@ -614,7 +614,7 @@ Search: The index was not found.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_FindIndex(objDocument *Self, struct docFindIndex *Args)
+static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 {
    parasol::Log log;
 
@@ -668,7 +668,7 @@ Focus: Sets the user focus on the document page.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_Focus(objDocument *Self, APTR Args)
+static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
 {
    acFocusID(Self->PageID);
    return ERR_Okay;
@@ -676,7 +676,7 @@ static ERROR DOCUMENT_Focus(objDocument *Self, APTR Args)
 
 //****************************************************************************
 
-static ERROR DOCUMENT_Free(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 {
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->FlashTimer) { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
@@ -730,7 +730,7 @@ GetVar: Script arguments can be retrieved through this action.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_GetVar(objDocument *Self, struct acGetVar *Args)
+static ERROR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
 {
    if ((!Args) or (!Args->Buffer) or (!Args->Field) or (Args->Size < 2)) return ERR_Args;
 
@@ -749,7 +749,7 @@ static ERROR DOCUMENT_GetVar(objDocument *Self, struct acGetVar *Args)
 
 //****************************************************************************
 
-static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 {
    parasol::Log log;
    ERROR error;
@@ -922,7 +922,7 @@ Search
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_HideIndex(objDocument *Self, struct docHideIndex *Args)
+static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
 {
    parasol::Log log(__FUNCTION__);
    LONG tab;
@@ -1018,7 +1018,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_InsertXML(objDocument *Self, struct docInsertXML *Args)
+static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 {
    parasol::Log log;
    ERROR error;
@@ -1097,7 +1097,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_InsertText(objDocument *Self, struct docInsertText *Args)
+static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1166,7 +1166,7 @@ static ERROR DOCUMENT_InsertText(objDocument *Self, struct docInsertText *Args)
 
 //****************************************************************************
 
-static ERROR DOCUMENT_NewObject(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 {
    Self->UniqueID = 1000;
    unload_doc(Self, 0);
@@ -1175,7 +1175,7 @@ static ERROR DOCUMENT_NewObject(objDocument *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR DOCUMENT_NewOwner(objDocument *Self, struct acNewOwner *Args)
+static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
 {
    if (!Self->initialised()) {
       OBJECTID owner_id = Args->NewOwnerID;
@@ -1215,7 +1215,7 @@ NoData: Operation successful, but no data was present for extraction.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_ReadContent(objDocument *Self, struct docReadContent *Args)
+static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1270,7 +1270,7 @@ Refresh: Reloads the document data from the original source location.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_Refresh(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -1298,7 +1298,7 @@ static ERROR DOCUMENT_Refresh(objDocument *Self, APTR Void)
          }
       }
       else if (trigger->Function.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, objDocument *))trigger->Function.StdC.Routine;
+         auto routine = (void (*)(APTR, extDocument *))trigger->Function.StdC.Routine;
          if (routine) {
             parasol::SwitchContext context(trigger->Function.StdC.Context);
             routine(trigger->Function.StdC.Context, Self);
@@ -1353,7 +1353,7 @@ Args
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_RemoveContent(objDocument *Self, struct docRemoveContent *Args)
+static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *Args)
 {
    parasol::Log log;
 
@@ -1388,7 +1388,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_RemoveListener(objDocument *Self, struct docRemoveListener *Args)
+static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *Args)
 {
    if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR_NullArgs;
 
@@ -1427,7 +1427,7 @@ SaveToObject: Use this action to save edited information as an XML document file
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_SaveToObject(objDocument *Self, struct acSaveToObject *Args)
+static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
    OBJECTPTR Object;
@@ -1450,7 +1450,7 @@ ScrollToPoint: Scrolls a document object's graphical content.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_ScrollToPoint(objDocument *Self, struct acScrollToPoint *Args)
+static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -1499,7 +1499,7 @@ OutOfRange
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_SelectLink(objDocument *Self, struct docSelectLink *Args)
+static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
 {
    parasol::Log log;
 
@@ -1537,7 +1537,7 @@ SetVar: Passes variable parameters to loaded documents.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_SetVar(objDocument *Self, struct acSetVar *Args)
+static ERROR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
 {
    // Please note that it is okay to set zero-length arguments
 
@@ -1573,7 +1573,7 @@ Search: The index could not be found.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
+static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 {
    parasol::Log log;
 

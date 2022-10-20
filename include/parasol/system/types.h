@@ -28,7 +28,7 @@ typedef struct rkFunction {
    unsigned short ID; // Unused.  Unique identifier for the function.
    union {
       struct {
-         void * Context;
+         OBJECTPTR Context;
          void * Routine;
       } StdC;
 

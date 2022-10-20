@@ -821,12 +821,18 @@ function class(Name, Options, Blueprint, Private, Custom)
          -- Look for C/C++ action declarations, in the format: ERROR CLASS_Action(...).  This will create a series
          -- of dummy action entries that can be overwritten with -ACTION- sections.
 
-         for actionName in string.gmatch(content, 'ERROR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)') do
-            if (glActions[actionName] != nil) then
-               if (glFeedback == 'verbose') then print('Discovered action ' .. actionName) end
-               class.actions[actionName] = { name=actionName }
-            else
-               if (glFeedback == 'verbose') then print('Ignoring declaration of ' .. actionName) end
+         local patterns = {
+            'ERROR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)',
+            'ERROR%s-' .. Name:upper() .. '_(%a-)%(ext.-%)'
+         }
+         for _, pattern in pairs(patterns) do
+            for actionName in string.gmatch(content, pattern) do
+               if (glActions[actionName] != nil) then
+                  if (glFeedback == 'verbose') then print('Discovered action ' .. actionName) end
+                  class.actions[actionName] = { name=actionName }
+               else
+                  if (glFeedback == 'verbose') then print('Ignoring declaration of ' .. actionName) end
+               end
             end
          end
 
@@ -1650,6 +1656,7 @@ glTypes = {
    large      = { fd='FD_LARGE',     c_type='LARGE' },
    cid        = { fd='FD_LONG|FD_UNSIGNED', c_type='CLASSID' },
    obj        = { fd='FD_OBJECTPTR', c_type='OBJECTPTR' },
+   ext        = { fd='FD_OBJECTPTR', c_type='OBJECTPTR' },
    str        = { fd='FD_STR',       c_type='STRING' },
    cstr       = { fd='FD_STR',       c_type='CSTRING' },
    func       = { fd='FD_FUNCTION',  c_type='FUNCTION' },
@@ -1772,14 +1779,23 @@ function cType(Field, Origin)
    end
 
    do
-      local ref_obj = Field.type:match("^obj%((.+)%)$")
+      local ref_obj = Field.type:match("^ext%((.+)%)$")
+      local extended = false
+      if (ref_obj != nil) then -- 'ext' indicates an object class extended with private fields.
+         extended = true
+      else
+         ref_obj = Field.type:match("^obj%((.+)%)$")
+      end
+
       if (ref_obj != nil) then
          local ptr_object = ref_obj:match("%*(.+)")
          if (ptr_object != nil) then
             Field.type = "obj" .. ptr_object .. " **"
+            if extended then Field.extType = "ext" .. ptr_object .. " **" end
             Field.className = ptr_object
          else
             Field.type = "obj" .. ref_obj .. " *"
+            if extended then Field.extType = "ext" .. ref_obj .. " *" end
             Field.className = ref_obj
          end
          Field.fullType = glTypes.obj
@@ -2312,6 +2328,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    local macroValues = ""
    local argSeq = ""
    local proto = ""
+   local doc_proto = ""
    local complexArgs = false
 
    if nz(Def.input) then
@@ -2328,10 +2345,11 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
             if nz(argSeq) then
                argSeq = argSeq .. ", "
                proto = proto .. ", "
+               doc_proto = doc_proto .. ", "
                macroValues = macroValues .. ","
             end
 
-            if (param.type == "OBJECTPTR") or (param.type == "APTR *") or (param.type == "OBJECTPTR *") then
+            if (param.type == "APTR *") or (param.type == "OBJECTPTR *") then
                argSeq = argSeq .. "APTR"
             else
                argSeq = argSeq .. param.type
@@ -2339,25 +2357,30 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
             if (param.sizeof) then
                proto = proto .. param.type .. " " .. cName(param)
+               doc_proto = doc_proto .. param.type .. " " .. cName(param)
                macroValues = macroValues .. "sizeof(*" .. string.char(abc-1) .. ")"
                complexArgs = true
             elseif (param.type == "...") then
                proto = proto .. param.type
+               doc_proto = doc_proto .. param.type
                if nz(macroArgs) then
                   macroArgs = macroArgs .. ","
                else // This special case is required when '...' is the first parameter.
                   if (param.fullType.fd == "FD_VARTAGS") then
                      argSeq = "LARGE," .. argSeq
                      proto = "LARGE," .. proto
+                     doc_proto = "LARGE," .. doc_proto
                   else
                      argSeq = "LONG," .. argSeq
                      proto = "LONG," .. proto
+                     doc_proto = "LONG," .. doc_proto
                   end
                end
                macroArgs = macroArgs .. "..."
                macroValues = macroValues .. "__VA_ARGS__"
             else
-               proto = proto .. param.type .. " " .. cName(param)
+               proto = proto .. nz(param.extType, param.type) .. " " .. cName(param)
+               doc_proto = doc_proto .. param.type .. " " .. cName(param)
                if nz(macroArgs) then macroArgs = macroArgs .. "," end
                macroArgs = macroArgs .. string.char(abc)
                macroValues = macroValues .. string.char(abc)
@@ -2376,6 +2399,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    func.def = "   " .. nz(response.type,"NIL") .. " (*_" .. func.name .. ")(" .. nz(nz(Def.ext_proto, argSeq),"void") .. ");"
    func.c_proto = proto
+   func.doc_proto = doc_proto
    func.c_response = response.type
 
    if (complexArgs) then
@@ -2468,7 +2492,7 @@ function buildPrototypes()
                local proto = "OBJECTPTR Object"
                if nz(method.params) then
                   for _, param in ipairs(method.params) do
-                     proto = proto .. ", " .. param.type .. " " .. param.name
+                     proto = proto .. ", " .. nz(param.extType, param.type) .. " " .. param.name
                   end
                end
                method.prototype = "ERROR " .. cl.methodPrefix:lower() .. method.name .. "(" .. proto .. ")"
@@ -2491,6 +2515,7 @@ function buildPrototypes()
          end
 
          func.prototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.c_proto,"") .. ")"
+         func.docPrototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
          proto = proto .. func.prototype .. ";\n"
       end
       proto = proto .. '\n#ifdef  __cplusplus\n}\n#endif\n'

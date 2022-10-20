@@ -1,7 +1,8 @@
+#include "../picture/picture.h"
 
 //****************************************************************************
 
-static ERROR RSVG_Activate(objPicture *Self, APTR Void)
+static ERROR RSVG_Activate(prvPicture *Self, APTR Void)
 {
    prvSVG *prv;
    if (!(prv = (prvSVG *)Self->ChildPrivate)) return ERR_NotInitialised;
@@ -21,7 +22,7 @@ static ERROR RSVG_Activate(objPicture *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR RSVG_Free(objPicture *Self, APTR Void)
+static ERROR RSVG_Free(prvPicture *Self, APTR Void)
 {
    prvSVG *prv;
    if ((prv = (prvSVG *)Self->ChildPrivate)) {
@@ -32,7 +33,7 @@ static ERROR RSVG_Free(objPicture *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR RSVG_Init(objPicture *Self, APTR Void)
+static ERROR RSVG_Init(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
    STRING path;
@@ -66,7 +67,7 @@ static ERROR RSVG_Init(objPicture *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR RSVG_Query(objPicture *Self, APTR Void)
+static ERROR RSVG_Query(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
    prvSVG *prv;
@@ -155,7 +156,7 @@ static ERROR RSVG_Query(objPicture *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR RSVG_Resize(objPicture *Self, struct acResize *Args)
+static ERROR RSVG_Resize(prvPicture *Self, struct acResize *Args)
 {
    prvSVG *prv;
    if (!(prv = (prvSVG *)Self->ChildPrivate)) return ERR_NotInitialised;

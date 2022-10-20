@@ -11,6 +11,9 @@
 
 #define MODVERSION_AUDIO (1)
 
+typedef class plAudio objAudio;
+typedef class plSound objSound;
+
 // Optional flags for the Audio object.
 
 #define ADF_OVER_SAMPLING 0x00000001
@@ -308,7 +311,7 @@ INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, LONG Flags, DOUBLE 
 }
 
 
-typedef class rkAudio : public BaseClass {
+typedef class plAudio : public BaseClass {
    public:
    DOUBLE Bass;           // Sets the amount of bass to use for audio playback.
    DOUBLE Treble;         // Sets the amount of treble to use for audio playback.
@@ -373,7 +376,7 @@ typedef class rkAudio : public BaseClass {
 
 #define VER_SOUND (1.000000)
 
-typedef class rkSound : public BaseClass {
+typedef class plSound : public BaseClass {
    public:
    DOUBLE    Volume;       // The volume to use when playing the sound sample.
    DOUBLE    Pan;          // Determines the horizontal position of a sound when played through stereo speakers.
@@ -414,8 +417,6 @@ typedef class rkSound : public BaseClass {
   
 #endif
    // Action stubs
-
-   // ActionNotify
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }

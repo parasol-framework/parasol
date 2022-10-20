@@ -15,6 +15,8 @@
 #include <parasol/modules/display.h>
 #endif
 
+typedef class plPicture objPicture;
+
 // Flags for the Picture class.
 
 #define PCF_RESIZE_X 0x00000001
@@ -41,10 +43,6 @@ typedef class plPicture : public BaseClass {
    LONG DisplayWidth;     // The preferred width to use when displaying the image.
    LONG Quality;          // Defines the quality level to use when saving the image.
    LONG FrameRate;        // Refresh & redraw the picture X times per second.  Used by pictures that have an animation refresh rate
-
-#ifdef PRV_PICTURE
- PRV_PICTURE_FIELDS 
-#endif
 } objPicture;
 
 #endif

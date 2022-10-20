@@ -336,7 +336,7 @@ template <class T> static inline void set_double(T Object, FIELD FieldID, CSTRIN
 //***************************************************************************
 // This version forces all coordinates to be interpreted as relative when in BOUNDINGBOX mode.
 
-INLINE void set_double_units(APTR Object, FIELD FieldID, CSTRING Value, LONG Units)
+INLINE void set_double_units(OBJECTPTR Object, FIELD FieldID, CSTRING Value, LONG Units)
 {
    LARGE field = FieldID;
    DOUBLE num = read_unit(Value, &field);

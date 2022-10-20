@@ -11,6 +11,8 @@
 
 #define MODVERSION_XML (1)
 
+typedef class plXML objXML;
+
 // For SetAttrib()
 
 #define XMS_NEW -1
@@ -233,7 +235,7 @@ INLINE ERROR xmlGetTag(APTR Ob, LONG Index, struct XMLTag ** Result) {
 }
 
 
-typedef class rkXML : public BaseClass {
+typedef class plXML : public BaseClass {
    public:
    STRING    Path;            // Set this field if the XML document originates from a file source.
    struct XMLTag * * Tags;    // Points to an array of tags loaded into an XML object.
