@@ -2185,7 +2185,7 @@ static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Ar
       Self->Opacity);
    return ERR_Okay;
 #else
-   return(gfxCopyArea(Args->Bitmap, Self->Bitmap, NULL,
+   return(gfxCopyArea((extBitmap *)Args->Bitmap, (extBitmap *)Self->Bitmap, NULL,
       Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest));
 #endif
 }

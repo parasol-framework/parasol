@@ -119,7 +119,7 @@ ERROR lock_surface(extBitmap *Bitmap, WORD Access)
    return ERR_Okay;
 }
 
-ERROR unlock_surface(objBitmap *Bitmap)
+ERROR unlock_surface(extBitmap *Bitmap)
 {
    return ERR_Okay;
 }
