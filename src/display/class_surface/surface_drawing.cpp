@@ -1,10 +1,10 @@
 
-void copy_bkgd(SurfaceList *, WORD, WORD, WORD, WORD, WORD, WORD, WORD, objBitmap *, objBitmap *, WORD, BYTE);
+void copy_bkgd(SurfaceList *, WORD, WORD, WORD, WORD, WORD, WORD, WORD, extBitmap *, extBitmap *, WORD, BYTE);
 
 ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD Total, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)
 {
    parasol::Log log("expose_surface");
-   objBitmap *bitmap;
+   extBitmap *bitmap;
    ClipRectangle abs;
    WORD i, j;
    UBYTE skip;
@@ -298,7 +298,7 @@ the surface area first).</li>
 
 *****************************************************************************/
 
-ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
+ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 {
    parasol::Log log;
 
@@ -405,7 +405,7 @@ Okay
 
 *****************************************************************************/
 
-static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
+static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
 {
    if (tlNoExpose) return ERR_Okay;
 
@@ -499,7 +499,7 @@ AccessMemory: Failed to access the internal surface list.
 
 *****************************************************************************/
 
-static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegion *Args)
+static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegion *Args)
 {
    if ((!(Self->Flags & RNF_VISIBLE)) or (tlNoDrawing) or (Self->Width < 1) or (Self->Height < 1)) {
       return ERR_Okay|ERF_Notified;
@@ -563,7 +563,7 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
 
 //****************************************************************************
 
-void move_layer(objSurface *Self, LONG X, LONG Y)
+void move_layer(extSurface *Self, LONG X, LONG Y)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -719,7 +719,7 @@ void move_layer(objSurface *Self, LONG X, LONG Y)
 ** Stage:      Either STAGE_PRECOPY or STAGE_AFTERCOPY.
 */
 
-void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD Index, objBitmap *DestBitmap, ClipRectangle *clip, BYTE Stage)
+void prepare_background(extSurface *Self, SurfaceList *list, WORD Total, WORD Index, extBitmap *DestBitmap, ClipRectangle *clip, BYTE Stage)
 {
    parasol::Log log("prepare_bkgd");
 
@@ -797,7 +797,7 @@ void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD In
       if ((list[Index].Flags & RNF_PERVASIVE_COPY) and (Stage IS STAGE_AFTERCOPY)) pervasive = TRUE;
       else pervasive = FALSE;
 
-      objBitmap *bitmap;
+      extBitmap *bitmap;
       ERROR error;
       if (!(error = AccessObject(list[i].BitmapID, 2000, &bitmap))) {
          copy_bkgd(list, i, end, master, expose.Left, expose.Top, expose.Right, expose.Bottom, DestBitmap, bitmap, opaque, pervasive);
@@ -815,7 +815,7 @@ void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD In
 */
 
 void copy_bkgd(SurfaceList *list, WORD Index, WORD End, WORD Master, WORD Left, WORD Top, WORD Right, WORD Bottom,
-   objBitmap *DestBitmap, objBitmap *SrcBitmap, WORD Opacity, BYTE Pervasive)
+   extBitmap *DestBitmap, extBitmap *SrcBitmap, WORD Opacity, BYTE Pervasive)
 {
    parasol::Log log(__FUNCTION__);
 

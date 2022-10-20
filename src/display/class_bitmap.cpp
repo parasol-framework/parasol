@@ -47,7 +47,7 @@ DLLCALL LONG WINAPI SetPixel(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
 #endif
 
-static LONG CalculatePixelRoutines(objBitmap *);
+static LONG CalculatePixelRoutines(extBitmap *);
 
 //****************************************************************************
 // Pixel and pen based functions.
@@ -144,15 +144,15 @@ static void DrawRGBPixelPlanar(objBitmap *, LONG X, LONG Y, RGB8 *);
 
 //****************************************************************************
 
-static ERROR GET_Handle(objBitmap *, APTR *);
+static ERROR GET_Handle(extBitmap *, APTR *);
 
-static ERROR SET_Bkgd(objBitmap *, RGB8 *);
-static ERROR SET_BkgdIndex(objBitmap *, LONG);
-static ERROR SET_Trans(objBitmap *, RGB8 *);
-static ERROR SET_TransIndex(objBitmap *, LONG);
-static ERROR SET_Data(objBitmap *, UBYTE *);
-static ERROR SET_Handle(objBitmap *, APTR);
-static ERROR SET_Palette(objBitmap *, RGBPalette *);
+static ERROR SET_Bkgd(extBitmap *, RGB8 *);
+static ERROR SET_BkgdIndex(extBitmap *, LONG);
+static ERROR SET_Trans(extBitmap *, RGB8 *);
+static ERROR SET_TransIndex(extBitmap *, LONG);
+static ERROR SET_Data(extBitmap *, UBYTE *);
+static ERROR SET_Handle(extBitmap *, APTR);
+static ERROR SET_Palette(extBitmap *, RGBPalette *);
 
 static const FieldDef clDataFlags[] = {
    { "Public",  MEM_PUBLIC  }, { "Video",   MEM_VIDEO   },
@@ -216,7 +216,7 @@ inline static UBYTE conv_l2r(DOUBLE X) {
 
 //****************************************************************************
 
-static ERROR BITMAP_AccessObject(objBitmap *Self, APTR Void)
+static ERROR BITMAP_AccessObject(extBitmap *Self, APTR Void)
 {
    if (Self->initialised()) CalculatePixelRoutines(Self);
 
@@ -259,7 +259,7 @@ If the bitmap supports alpha blending, the alpha blend bits will be reset to 'cl
 
 *****************************************************************************/
 
-static ERROR BITMAP_Clear(objBitmap *Self, APTR Void)
+static ERROR BITMAP_Clear(extBitmap *Self, APTR Void)
 {
 #ifdef _GLES_
    if (Self->DataFlags & MEM_VIDEO) {
@@ -308,7 +308,7 @@ CreateObject: A Compression object could not be created.
 
 *****************************************************************************/
 
-static ERROR BITMAP_Compress(objBitmap *Self, struct bmpCompress *Args)
+static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
 {
    parasol::Log log;
 
@@ -393,7 +393,7 @@ InvalidDimension: The clipping region is invalid.
 -END-
 *********************************************************************************************************************/
 
-ERROR BITMAP_ConvertToLinear(objBitmap *Self, APTR Void)
+ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -466,7 +466,7 @@ InvalidDimension: The clipping region is invalid.
 
 *********************************************************************************************************************/
 
-ERROR BITMAP_ConvertToRGB(objBitmap *Self, APTR Void)
+ERROR BITMAP_ConvertToRGB(extBitmap *Self, APTR Void)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -529,8 +529,8 @@ CopyArea: Copies a rectangular area from one bitmap to another.
 This method is a proxy for ~Display.CopyArea().
 
 -INPUT-
-obj(Bitmap) DestBitmap: Pointer to the destination bitmap.
-int Flags:  Special flags.
+obj(Bitmap) DestBitmap: The target bitmap.
+int(BAF) Flags:  Optional flags.
 int X: The horizontal position of the area to be copied.
 int Y: The vertical position of the area to be copied.
 int Width:  The width of the area.
@@ -541,13 +541,13 @@ int YDest:  The vertical position to copy the area to.
 -ERRORS-
 Okay
 NullArgs
-Mismatch: The destination bitmap is not a close enough match to the source bitmap in order to perform the operation.
+Mismatch: The target bitmap is not a close enough match to the source bitmap in order to perform the operation.
 
 *****************************************************************************/
 
 static ERROR BITMAP_CopyArea(objBitmap *Self, struct bmpCopyArea *Args)
 {
-   if (Args) return gfxCopyArea(Self, Args->DestBitmap, Args->Flags, Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest);
+   if (Args) return gfxCopyArea((extBitmap *)Self, (extBitmap *)Args->DestBitmap, Args->Flags, Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest);
    else return ERR_NullArgs;
 }
 
@@ -573,7 +573,7 @@ AllocMemory: Insufficient memory in recreating the bitmap data buffer.
 
 *****************************************************************************/
 
-static ERROR BITMAP_Decompress(objBitmap *Self, struct bmpDecompress *Args)
+static ERROR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
 {
    parasol::Log log;
    struct cmpDecompressBuffer dbuf;
@@ -635,10 +635,10 @@ This action features automatic clipping and remapping, for occasions where the b
 
 *****************************************************************************/
 
-static ERROR BITMAP_CopyData(objBitmap *Self, struct acCopyData *Args)
+static ERROR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
 {
    parasol::Log log;
-   objBitmap *Dest;
+   extBitmap *Dest;
    LONG MaxHeight;
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
@@ -652,15 +652,15 @@ static ERROR BITMAP_CopyData(objBitmap *Self, struct acCopyData *Args)
       if (Self->Height > Dest->Height) MaxHeight = Dest->Height;
       else MaxHeight = Self->Height;
 
-      if (Self->Width >= Dest->Width) { // Source is wider or equal to the destination
+      if (Self->Width >= Dest->Width) { // Source is wider or equal to the target
          gfxCopyArea(Self, Dest, NULL, 0, 0, Dest->Width, MaxHeight, 0, 0);
       }
-      else { // The destination is wider than the source.  Cpoy the source first, then clear the exposed region on the right.
+      else { // The target is wider than the source.  Cpoy the source first, then clear the exposed region on the right.
          gfxCopyArea(Self, Dest, NULL, 0, 0, Self->Width, MaxHeight, 0, 0);
          gfxDrawRectangle(Dest, Self->Width, 0, Dest->Width - Self->Width, MaxHeight, Dest->BkgdIndex, BAF_FILL);
       }
 
-      // If the destination height is greater, we will need to clear the pixels trailing at the bottom.
+      // If the target height is greater, we will need to clear the pixels trailing at the bottom.
 
       if (Self->Height < Dest->Height) {
          gfxDrawRectangle(Dest, 0, Self->Height, Dest->Width, Dest->Height - Self->Height, Dest->BkgdIndex, BAF_FILL);
@@ -688,7 +688,7 @@ InvalidDimension: The clipping region is invalid.
 
 *********************************************************************************************************************/
 
-static ERROR BITMAP_Demultiply(objBitmap *Self, APTR Void)
+static ERROR BITMAP_Demultiply(extBitmap *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -742,7 +742,7 @@ Draw: Clears a bitmap's image to its assigned background colour.
 
 *****************************************************************************/
 
-static ERROR BITMAP_Draw(objBitmap *Self, APTR Void)
+static ERROR BITMAP_Draw(extBitmap *Self, APTR Void)
 {
    gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF_FILL);
    return ERR_Okay;
@@ -768,7 +768,7 @@ NullArgs:
 
 *****************************************************************************/
 
-static ERROR BITMAP_DrawLine(objBitmap *Self, struct bmpDrawLine *Args)
+static ERROR BITMAP_DrawLine(extBitmap *Self, struct bmpDrawLine *Args)
 {
    if (Args) gfxDrawLine(Self, Args->X, Args->Y, Args->XEnd, Args->YEnd, Args->Colour);
    else return ERR_NullArgs;
@@ -799,7 +799,7 @@ Args
 
 *****************************************************************************/
 
-static ERROR BITMAP_DrawRectangle(objBitmap *Self, struct bmpDrawRectangle *Args)
+static ERROR BITMAP_DrawRectangle(extBitmap *Self, struct bmpDrawRectangle *Args)
 {
    if (!Args) return ERR_NullArgs;
    gfxDrawRectangle(Self, Args->X, Args->Y, Args->Width, Args->Height, Args->Colour, Args->Flags);
@@ -823,7 +823,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR BITMAP_Flip(objBitmap *Self, struct bmpFlip *Args)
+static ERROR BITMAP_Flip(extBitmap *Self, struct bmpFlip *Args)
 {
    parasol::Log log;
 
@@ -876,7 +876,7 @@ You do not have to use this function if you stick to using the graphics function
 -END-
 ******************************************************************************/
 
-static ERROR BITMAP_Flush(objBitmap *Self, APTR Void)
+static ERROR BITMAP_Flush(extBitmap *Self, APTR Void)
 {
 #ifdef _GLES_
    if (!lock_graphics_active(__func__)) {
@@ -889,7 +889,7 @@ static ERROR BITMAP_Flush(objBitmap *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR BITMAP_Free(objBitmap *Self, APTR Void)
+static ERROR BITMAP_Free(extBitmap *Self, APTR Void)
 {
    #ifdef __xwindows__
       if (Self->x11.XShmImage IS TRUE) {
@@ -955,7 +955,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR BITMAP_GetColour(objBitmap *Self, struct bmpGetColour *Args)
+static ERROR BITMAP_GetColour(extBitmap *Self, struct bmpGetColour *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -989,7 +989,7 @@ This action will not work unless you have defined the #Width and #Height fields 
 
 *****************************************************************************/
 
-static ERROR BITMAP_Init(objBitmap *Self, APTR Void)
+static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 {
    parasol::Log log;
    #ifdef __xwindows__
@@ -1264,7 +1264,7 @@ Lock: Locks the bitmap surface so that you can manipulate the graphics directly.
 -END-
 *****************************************************************************/
 
-static ERROR BITMAP_Lock(objBitmap *Self, APTR Void)
+static ERROR BITMAP_Lock(extBitmap *Self, APTR Void)
 {
 #ifdef __xwindows__
    if (Self->x11.drawable) {
@@ -1320,7 +1320,7 @@ static ERROR BITMAP_Lock(objBitmap *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR BITMAP_NewObject(objBitmap *Self, APTR Void)
+static ERROR BITMAP_NewObject(extBitmap *Self, APTR Void)
 {
    #define CBANK 5
    RGB8 *RGB;
@@ -1412,7 +1412,7 @@ InvalidDimension: The clipping region is invalid.
 
 *********************************************************************************************************************/
 
-static ERROR BITMAP_Premultiply(objBitmap *Self, APTR Void)
+static ERROR BITMAP_Premultiply(extBitmap *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -1470,7 +1470,7 @@ you set the #BytesPerPixel field to 2 then it will determine that the bitmap is 
 
 *****************************************************************************/
 
-static ERROR BITMAP_Query(objBitmap *Self, APTR Void)
+static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
 {
    parasol::Log log;
    objDisplay *display;
@@ -1643,7 +1643,7 @@ Read: Reads raw image data from a bitmap object.
 -END-
 *****************************************************************************/
 
-static ERROR BITMAP_Read(objBitmap *Self, struct acRead *Args)
+static ERROR BITMAP_Read(extBitmap *Self, struct acRead *Args)
 {
    if (!Self->Data) return ERR_NoData;
    if ((!Args) or (!Args->Buffer)) return ERR_NullArgs;
@@ -1658,7 +1658,7 @@ static ERROR BITMAP_Read(objBitmap *Self, struct acRead *Args)
 
 //****************************************************************************
 
-static ERROR BITMAP_ReleaseObject(objBitmap *Self, APTR Void)
+static ERROR BITMAP_ReleaseObject(extBitmap *Self, APTR Void)
 {
 #ifdef __xwindows__
    XSync(XDisplay, False);
@@ -1691,7 +1691,7 @@ FieldNotSet
 
 *****************************************************************************/
 
-static ERROR BITMAP_Resize(objBitmap *Self, struct acResize *Args)
+static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
 {
    parasol::Log log;
    MEMORYID datamid;
@@ -1880,7 +1880,7 @@ SaveImage: Saves a bitmap's image to a data object of your choosing in PCX forma
 -END-
 *****************************************************************************/
 
-static ERROR BITMAP_SaveImage(objBitmap *Self, struct acSaveImage *Args)
+static ERROR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
 {
    parasol::Log log;
    struct {
@@ -2058,7 +2058,7 @@ Seek: Changes the current byte position for read/write operations.
 
 *****************************************************************************/
 
-static ERROR BITMAP_Seek(objBitmap *Self, struct acSeek *Args)
+static ERROR BITMAP_Seek(extBitmap *Self, struct acSeek *Args)
 {
    if (Args->Position IS SEEK_START) Self->Position = (LONG)Args->Offset;
    else if (Args->Position IS SEEK_END) Self->Position = (LONG)(Self->Size - Args->Offset);
@@ -2092,7 +2092,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR BITMAP_SetClipRegion(objBitmap *Self, struct bmpSetClipRegion *Args)
+static ERROR BITMAP_SetClipRegion(extBitmap *Self, struct bmpSetClipRegion *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -2106,7 +2106,7 @@ Unlock: Unlocks the bitmap surface once direct access is no longer required.
 
 *****************************************************************************/
 
-static ERROR BITMAP_Unlock(objBitmap *Self, APTR Void)
+static ERROR BITMAP_Unlock(extBitmap *Self, APTR Void)
 {
 #ifndef __xwindows__
    unlock_surface(Self);
@@ -2120,7 +2120,7 @@ Write: Writes raw image data to a bitmap object.
 -END-
 *****************************************************************************/
 
-static ERROR BITMAP_Write(objBitmap *Self, struct acWrite *Args)
+static ERROR BITMAP_Write(extBitmap *Self, struct acWrite *Args)
 {
    if (Self->Data) {
       BYTE *Data = (BYTE *)Self->Data + Self->Position;
@@ -2157,7 +2157,7 @@ The #BkgdIndex will be updated as a result of setting this field.
 
 *****************************************************************************/
 
-static ERROR SET_Bkgd(objBitmap *Self, RGB8 *Value)
+static ERROR SET_Bkgd(extBitmap *Self, RGB8 *Value)
 {
    Self->BkgdRGB = *Value;
 
@@ -2182,7 +2182,7 @@ directly.
 
 *****************************************************************************/
 
-static ERROR SET_BkgdIndex(objBitmap *Self, LONG Index)
+static ERROR SET_BkgdIndex(extBitmap *Self, LONG Index)
 {
    if ((Index < 0) or (Index > 255)) return ERR_OutOfRange;
    Self->BkgdIndex = Index;
@@ -2252,13 +2252,13 @@ Clip: Defines the bitmap's clipping region.
 
 *****************************************************************************/
 
-static ERROR GET_Clip(objBitmap *Self, ClipRectangle **Value)
+static ERROR GET_Clip(extBitmap *Self, ClipRectangle **Value)
 {
    *Value = &Self->Clip;
    return ERR_Okay;
 }
 
-static ERROR SET_Clip(objBitmap *Self, ClipRectangle *Value)
+static ERROR SET_Clip(extBitmap *Self, ClipRectangle *Value)
 {
    Self->Clip = *Value;
    return ERR_Okay;
@@ -2323,7 +2323,7 @@ initialisation process to allocate the correct amount of memory for you by not i
 
 *****************************************************************************/
 
-ERROR SET_Data(objBitmap *Self, UBYTE *Data)
+ERROR SET_Data(extBitmap *Self, UBYTE *Data)
 {
    // This code allows us to calculate the correct memory flags and also set the pixel drawing functions accordingly
    // (i.e. functions to draw to video memory are different to drawing to normal memory).
@@ -2406,7 +2406,7 @@ Handle: Private. Platform dependent field for referencing video memory.
 
 *****************************************************************************/
 
-static ERROR GET_Handle(objBitmap *Self, APTR *Value)
+static ERROR GET_Handle(extBitmap *Self, APTR *Value)
 {
 #ifdef _WIN32
    *Value = (APTR)Self->win.Drawable;
@@ -2419,7 +2419,7 @@ static ERROR GET_Handle(objBitmap *Self, APTR *Value)
 #endif
 }
 
-static ERROR SET_Handle(objBitmap *Self, APTR Value)
+static ERROR SET_Handle(extBitmap *Self, APTR Value)
 {
    // Note: The only area of the system allowed to set this field are the Display/Surface classes for video management.
 
@@ -2484,7 +2484,7 @@ to be propagated to the video display.
 
 *****************************************************************************/
 
-ERROR SET_Palette(objBitmap *Self, RGBPalette *SrcPalette)
+ERROR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
 {
    parasol::Log log;
 
@@ -2580,7 +2580,7 @@ NOTE: This field should never be set if the bitmap utilises alpha transparency.
 
 *****************************************************************************/
 
-static ERROR SET_Trans(objBitmap *Self, RGB8 *Value)
+static ERROR SET_Trans(extBitmap *Self, RGB8 *Value)
 {
    Self->TransRGB = *Value;
 
@@ -2609,7 +2609,7 @@ NOTE: This field should never be set if the bitmap utilises alpha transparency.
 
 *****************************************************************************/
 
-static ERROR SET_TransIndex(objBitmap *Self, LONG Index)
+static ERROR SET_TransIndex(extBitmap *Self, LONG Index)
 {
    if ((Index < 0) or (Index > 255)) return ERR_OutOfRange;
 
@@ -2641,7 +2641,7 @@ YOffset: Private. Provided for surface/video drawing purposes - considered too a
 
 //****************************************************************************
 
-static ERROR CalculatePixelRoutines(objBitmap *Self)
+static ERROR CalculatePixelRoutines(extBitmap *Self)
 {
    parasol::Log log;
 
@@ -2688,10 +2688,10 @@ static ERROR CalculatePixelRoutines(objBitmap *Self)
          case 2:
             Self->ReadUCPixel  = &VideoReadPixel16;
             Self->ReadUCRPixel = &VideoReadRGBPixel16;
-            Self->ReadUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoReadRGBIndex16;
+            Self->ReadUCRIndex = (void (*)(extBitmap *, UBYTE *, RGB8 *))&VideoReadRGBIndex16;
             Self->DrawUCPixel  = &VideoDrawPixel16;
             Self->DrawUCRPixel = &VideoDrawRGBPixel16;
-            Self->DrawUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoDrawRGBIndex16;
+            Self->DrawUCRIndex = (void (*)(extBitmap *, UBYTE *, RGB8 *))&VideoDrawRGBIndex16;
             break;
 
          case 3:
@@ -2706,10 +2706,10 @@ static ERROR CalculatePixelRoutines(objBitmap *Self)
          case 4:
             Self->ReadUCPixel  = &VideoReadPixel32;
             Self->ReadUCRPixel = &VideoReadRGBPixel32;
-            Self->ReadUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoReadRGBIndex32;
+            Self->ReadUCRIndex = (void (*)(extBitmap *, UBYTE *, RGB8 *))&VideoReadRGBIndex32;
             Self->DrawUCPixel  = &VideoDrawPixel32;
             Self->DrawUCRPixel = &VideoDrawRGBPixel32;
-            Self->DrawUCRIndex = (void (*)(objBitmap *, UBYTE *, RGB8 *))&VideoDrawRGBIndex32;
+            Self->DrawUCRIndex = (void (*)(extBitmap *, UBYTE *, RGB8 *))&VideoDrawRGBIndex32;
             break;
 
          default:
@@ -2846,7 +2846,7 @@ ERROR create_bitmap_class(void)
       FID_Actions|TPTR,   clBitmapActions,
       FID_Methods|TARRAY, clBitmapMethods,
       FID_Fields|TARRAY,  clBitmapFields,
-      FID_Size|TLONG,     sizeof(objBitmap),
+      FID_Size|TLONG,     sizeof(extBitmap),
       FID_Path|TSTR,      MOD_PATH,
       TAGEND));
 }

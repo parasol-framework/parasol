@@ -181,8 +181,8 @@
       <comment>Copies a rectangular area from one bitmap to another.</comment>
       <prototype>ERROR bmpCopyArea(OBJECTPTR Object, objBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
       <input>
-        <param type="objBitmap *" name="DestBitmap">Pointer to the destination bitmap.</param>
-        <param type="LONG" name="Flags">Special flags.</param>
+        <param type="objBitmap *" name="DestBitmap">The target bitmap.</param>
+        <param type="LONG" name="Flags" lookup="BAF">Optional flags.</param>
         <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
         <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
         <param type="LONG" name="Width">The width of the area.</param>
@@ -195,7 +195,7 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="Mismatch">The destination bitmap is not a close enough match to the source bitmap in order to perform the operation.</error>
+        <error code="Mismatch">The target bitmap is not a close enough match to the source bitmap in order to perform the operation.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>

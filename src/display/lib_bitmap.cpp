@@ -26,7 +26,7 @@ static size_t glDitherSize = 0;
       }                                  \
    }
 
-static ERROR dither(objBitmap *Bitmap, objBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
+static ERROR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
    LONG SrcX, LONG SrcY, LONG DestX, LONG DestY)
 {
    parasol::Log log(__FUNCTION__);
@@ -216,7 +216,7 @@ The `BMF_COMPRESSED` bit will be set in the Flags field after a successful call 
 bitmap is compressed.
 
 -INPUT-
-obj(Bitmap) Bitmap: Pointer to the @Bitmap that will be compressed.
+ext(Bitmap) Bitmap: Pointer to the @Bitmap that will be compressed.
 int Level: Level of compression.  Zero uses a default setting (recommended), the maximum is 10.
 
 -ERRORS-
@@ -228,7 +228,7 @@ CreateObject: A Compression object could not be created.
 
 *****************************************************************************/
 
-ERROR gfxCompress(objBitmap *Bitmap, LONG Level)
+ERROR gfxCompress(extBitmap *Bitmap, LONG Level)
 {
    return ActionTags(MT_BmpCompress, Bitmap, Level);
 }
@@ -248,7 +248,7 @@ with the Altered argument set to FALSE.  This will remove the raw image data fro
 compressed data without starting a recompression process.
 
 -INPUT-
-obj(Bitmap) Bitmap: Pointer to the @Bitmap that will be decompressed.
+ext(Bitmap) Bitmap: Pointer to the @Bitmap that will be decompressed.
 int RetainData:     Retains the compression data if TRUE.
 
 -ERRORS-
@@ -257,7 +257,7 @@ AllocMemory
 
 *****************************************************************************/
 
-ERROR gfxDecompress(objBitmap *Bitmap, LONG RetainData)
+ERROR gfxDecompress(extBitmap *Bitmap, LONG RetainData)
 {
    return ActionTags(MT_BmpDecompress, Bitmap, RetainData);
 }
@@ -280,8 +280,8 @@ needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blen
 will also need to have the `BMF_ALPHA_CHANNEL` flag set to indicate that an alpha channel is available).
 
 -INPUT-
-obj(Bitmap) Bitmap: The source bitmap.
-obj(Bitmap) Dest: Pointer to the destination bitmap.
+ext(Bitmap) Bitmap: The source bitmap.
+ext(Bitmap) Dest: Pointer to the destination bitmap.
 int(BAF) Flags: Special flags.
 int X:      The horizontal position of the area to be copied.
 int Y:      The vertical position of the area to be copied.
@@ -298,7 +298,7 @@ Mismatch: The destination bitmap is not a close enough match to the source bitma
 
 *****************************************************************************/
 
-UBYTE validate_clip(CSTRING Header, CSTRING Name, objBitmap *Bitmap)
+UBYTE validate_clip(CSTRING Header, CSTRING Name, extBitmap *Bitmap)
 {
    parasol::Log log(Header);
 
@@ -347,7 +347,7 @@ UBYTE validate_clip(CSTRING Header, CSTRING Name, objBitmap *Bitmap)
    return 0;
 }
 
-ERROR gfxCopyArea(objBitmap *Bitmap, objBitmap *dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG DestX, LONG DestY)
+ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG DestX, LONG DestY)
 {
    parasol::Log log(__FUNCTION__);
    RGB8 pixel, src;
@@ -1114,7 +1114,7 @@ YDest parameters define the top left corner that you will blit the graphics to i
 
 -INPUT-
 struct(*BitmapSurface) Surface: Description of the surface source.
-obj(Bitmap) Bitmap: Destination bitmap.
+ext(Bitmap) Bitmap: Destination bitmap.
 int(CSRF) Flags:  Optional flags.
 int X:      Horizontal source coordinate.
 int Y:      Vertical source coordinate.
@@ -1164,7 +1164,7 @@ static ULONG read_surface32(BITMAPSURFACE *Surface, WORD X, WORD Y)
    return ((ULONG *)((UBYTE *)Surface->Data + (Surface->LineWidth * Y) + (X<<2)))[0];
 }
 
-ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap,
+ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
           LONG Flags, LONG X, LONG Y, LONG Width, LONG Height,
           LONG XDest, LONG YDest)
 {
@@ -1549,7 +1549,7 @@ This function will draw a line using a bitmap colour value.  The line will start
 The opacity of the line is determined by the value in the Opacity field of the target bitmap.
 
 -INPUT-
-obj(Bitmap) Bitmap: The target bitmap.
+ext(Bitmap) Bitmap: The target bitmap.
 int X: X-axis starting position.
 int Y: Y-axis starting position.
 int XEnd: X-axis end position.
@@ -1558,7 +1558,7 @@ uint Colour: The pixel colour for drawing the line.
 
 *****************************************************************************/
 
-void gfxDrawLine(objBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY, ULONG Colour)
+void gfxDrawLine(extBitmap *Bitmap, LONG X, LONG Y, LONG EndX, LONG EndY, ULONG Colour)
 {
    RGB8 pixel, rgb;
    LONG i, dx, dy, l, m, x_inc, y_inc;
@@ -1712,7 +1712,7 @@ the pixel value in the Colour argument.  Blending is not enabled unless the `BAF
 value is present in the Colour.
 
 -INPUT-
-obj(Bitmap) Bitmap: Pointer to the target @Bitmap.
+ext(Bitmap) Bitmap: Pointer to the target @Bitmap.
 int X:       The left-most coordinate of the rectangle.
 int Y:       The top-most coordinate of the rectangle.
 int Width:   The width of the rectangle.
@@ -1722,7 +1722,7 @@ int(BAF) Flags: Use BAF_FILL to fill the rectangle.  Use of BAF_BLEND will enabl
 
 *****************************************************************************/
 
-void gfxDrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)
+void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    RGB8 pixel;
@@ -1983,14 +1983,14 @@ This function draws an RGB colour to the (X, Y) position of a target bitmap.  Th
 coordinates to ensure that the pixel is inside the bitmap's clipping area.
 
 -INPUT-
-obj(Bitmap) Bitmap: The target bitmap object.
+ext(Bitmap) Bitmap: The target bitmap object.
 int X: Horizontal coordinate of the pixel.
 int Y: Vertical coordinate of the pixel.
 struct(*RGB8) RGB: The colour to be drawn, in RGB format.
 
 *****************************************************************************/
 
-void gfxDrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *Pixel)
+void gfxDrawRGBPixel(extBitmap *Bitmap, LONG X, LONG Y, RGB8 *Pixel)
 {
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
    if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
@@ -2006,14 +2006,14 @@ This function draws a pixel to the coordinates X, Y on a bitmap with a colour de
 This function will check the given coordinates to make sure that the pixel is inside the bitmap's clipping area.
 
 -INPUT-
-obj(Bitmap) Bitmap: The target bitmap object.
+ext(Bitmap) Bitmap: The target bitmap object.
 int X: The horizontal coordinate of the pixel.
 int Y: The vertical coordinate of the pixel.
 uint Colour: The colour value to use for the pixel.
 
 *****************************************************************************/
 
-void gfxDrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
+void gfxDrawPixel(extBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 {
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
    if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
@@ -2030,12 +2030,12 @@ required to flip a bitmap is dependent on the area of the bitmap you are trying 
 colours.
 
 -INPUT-
-obj(Bitmap) Bitmap: Pointer to a bitmap object.
+ext(Bitmap) Bitmap: Pointer to a bitmap object.
 int(FLIP) Orientation: Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.  If set to neither, the function does nothing.
 
 *****************************************************************************/
 
-void gfxFlipBitmap(objBitmap *Bitmap, LONG Orientation)
+void gfxFlipBitmap(extBitmap *Bitmap, LONG Orientation)
 {
    ActionTags(MT_BmpFlip, Bitmap, Orientation);
 }
@@ -2160,14 +2160,14 @@ the next call to this function.  Zero is returned in the alpha component if the 
 This function is thread-safe if the target Bitmap is locked.
 
 -INPUT-
-obj(Bitmap) Bitmap: Pointer to a bitmap object.
+ext(Bitmap) Bitmap: Pointer to a bitmap object.
 int X: The horizontal coordinate of the pixel.
 int Y: The vertical coordinate of the pixel.
 &struct(RGB8) RGB: The colour values will be stored in this RGB structure.
 
 *****************************************************************************/
 
-void gfxReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 **Pixel)
+void gfxReadRGBPixel(extBitmap *Bitmap, LONG X, LONG Y, RGB8 **Pixel)
 {
    static THREADVAR RGB8 pixel;
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left) or
@@ -2190,7 +2190,7 @@ This function reads a pixel from a bitmap area and returns its colour index (if 
 or its packed pixel value.  Zero is returned if the pixel is out of bounds.
 
 -INPUT-
-obj(Bitmap) Bitmap: Pointer to a bitmap object.
+ext(Bitmap) Bitmap: Pointer to a bitmap object.
 int X: The horizontal coordinate of the pixel.
 int Y: The vertical coordinate of the pixel.
 
@@ -2199,7 +2199,7 @@ uint: The colour value of the pixel will be returned.  Zero is returned if the p
 
 *****************************************************************************/
 
-ULONG gfxReadPixel(objBitmap *Bitmap, LONG X, LONG Y)
+ULONG gfxReadPixel(extBitmap *Bitmap, LONG X, LONG Y)
 {
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left) or
        (Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return 0;
@@ -2219,7 +2219,7 @@ You are required to supply a ColourFormat structure that describes the colour fo
 the bitmap's image data.
 
 -INPUT-
-obj(Bitmap) Bitmap: The bitmap object to be resampled.
+ext(Bitmap) Bitmap: The bitmap object to be resampled.
 struct(*ColourFormat) ColourFormat: The new colour format to be applied to the bitmap.
 
 -ERRORS-
@@ -2228,7 +2228,7 @@ NullArgs
 
 *****************************************************************************/
 
-ERROR gfxResample(objBitmap *Bitmap, ColourFormat *Format)
+ERROR gfxResample(extBitmap *Bitmap, ColourFormat *Format)
 {
    if ((!Bitmap) or (!Format)) return ERR_NullArgs;
 
@@ -2255,7 +2255,7 @@ The `ClipLeft`, `ClipTop`, `ClipRight` and `ClipBottom` fields in the target Bit
 area that is covered by the clipping regions that have been set.
 
 -INPUT-
-obj(Bitmap) Bitmap: The target bitmap.
+ext(Bitmap) Bitmap: The target bitmap.
 int Number:    The number of the clip region to set.
 int Left:      The horizontal start of the clip region.
 int Top:       The vertical start of the clip region.
@@ -2265,7 +2265,7 @@ int Terminate: Set to TRUE if this is the last clip region in the list, otherwis
 
 *****************************************************************************/
 
-void gfxSetClipRegion(objBitmap *Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom,
+void gfxSetClipRegion(extBitmap *Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom,
    LONG Terminate)
 {
    Bitmap->Clip.Left   = Left;
@@ -2288,12 +2288,12 @@ The Sync() function will wait for all current video operations to complete befor
 safe to write to video memory with the CPU, preventing any possibility of clashes with the onboard graphics chip.
 
 -INPUT-
-obj(Bitmap) Bitmap: Pointer to the bitmap that you want to synchronise or NULL to sleep on the graphics accelerator.
+ext(Bitmap) Bitmap: Pointer to the bitmap that you want to synchronise or NULL to sleep on the graphics accelerator.
 -END-
 
 *****************************************************************************/
 
-void gfxSync(objBitmap *Bitmap)
+void gfxSync(extBitmap *Bitmap)
 {
 
 }

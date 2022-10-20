@@ -45,16 +45,16 @@ having to communicate with each other directly.
 #undef __xwindows__
 #include "../defs.h"
 
-static ERROR SET_Opacity(objSurface *, DOUBLE);
-static ERROR SET_XOffset(objSurface *, Variable *);
-static ERROR SET_YOffset(objSurface *, Variable *);
+static ERROR SET_Opacity(extSurface *, DOUBLE);
+static ERROR SET_XOffset(extSurface *, Variable *);
+static ERROR SET_YOffset(extSurface *, Variable *);
 
 #define MOVE_VERTICAL   0x0001
 #define MOVE_HORIZONTAL 0x0002
 
 static ERROR consume_input_events(const InputEvent *, LONG);
-static void draw_region(objSurface *, objSurface *, objBitmap *);
-static ERROR redraw_timer(objSurface *, LARGE, LARGE);
+static void draw_region(extSurface *, extSurface *, extBitmap *);
+static ERROR redraw_timer(extSurface *, LARGE, LARGE);
 
 /*****************************************************************************
 ** This call is used to refresh the pointer image when at least one layer has been rearranged.  The timer is used to
@@ -73,7 +73,7 @@ static ERROR refresh_pointer_timer(OBJECTPTR Task, LARGE Elapsed, LARGE CurrentT
    return ERR_Terminate; // Timer is only called once
 }
 
-void refresh_pointer(objSurface *Self)
+void refresh_pointer(extSurface *Self)
 {
    if (!glRefreshPointerTimer) {
       parasol::SwitchContext context(glModule);
@@ -174,7 +174,7 @@ static UBYTE check_volatile(SurfaceList *list, WORD index)
 //****************************************************************************
 
 static void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIndex, LONG Left, LONG Top,
-                   LONG Right, LONG Bottom, OBJECTID DisplayID, objBitmap *Bitmap)
+                   LONG Right, LONG Bottom, OBJECTID DisplayID, extBitmap *Bitmap)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -357,7 +357,7 @@ static void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIn
 ** All coordinates are expressed in absolute format.
 */
 
-static void invalidate_overlap(objSurface *Self, SurfaceList *list, WORD Total, LONG OldIndex, LONG Index,
+static void invalidate_overlap(extSurface *Self, SurfaceList *list, WORD Total, LONG OldIndex, LONG Index,
    LONG Left, LONG Top, LONG Right, LONG Bottom, objBitmap *Bitmap)
 {
    parasol::Log log(__FUNCTION__);
@@ -449,7 +449,7 @@ static BYTE check_surface_list(void)
 static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
 {
    OBJECTID surface_id = GetOwnerID(DisplayID);
-   objSurface *surface;
+   extSurface *surface;
    if (!AccessObject(surface_id, 4000, &surface)) {
       if (surface->ClassID IS ID_SURFACE) {
          if ((X != surface->X) or (Y != surface->Y)) {
@@ -468,7 +468,7 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
 
 //****************************************************************************
 
-static ERROR SURFACE_ActionNotify(objSurface *Self, struct acActionNotify *NotifyArgs)
+static ERROR SURFACE_ActionNotify(extSurface *Self, struct acActionNotify *NotifyArgs)
 {
    parasol::Log log;
 
@@ -638,7 +638,7 @@ Activate: Shows a surface object on the display.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_Activate(objSurface *Self, APTR Void)
+static ERROR SURFACE_Activate(extSurface *Self, APTR Void)
 {
    if (!Self->ParentID) acShow(Self);
    return ERR_Okay;
@@ -673,7 +673,7 @@ AllocMemory
 
 *****************************************************************************/
 
-static ERROR SURFACE_AddCallback(objSurface *Self, struct drwAddCallback *Args)
+static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
 {
    parasol::Log log;
 
@@ -768,7 +768,7 @@ Disable: Disables a surface object.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_Disable(objSurface *Self, APTR Void)
+static ERROR SURFACE_Disable(extSurface *Self, APTR Void)
 {
    Self->Flags |= RNF_DISABLED;
    UpdateSurfaceField(Self, Flags);
@@ -781,7 +781,7 @@ Enable: Enables a disabled surface object.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_Enable(objSurface *Self, APTR Void)
+static ERROR SURFACE_Enable(extSurface *Self, APTR Void)
 {
    Self->Flags &= ~RNF_DISABLED;
    UpdateSurfaceField(Self, Flags);
@@ -810,7 +810,7 @@ static void event_task_removed(OBJECTID *SurfaceID, APTR Info, LONG InfoSize)
 ** Event: user.login
 */
 
-static void event_user_login(objSurface *Self, APTR Info, LONG InfoSize)
+static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
 {
    parasol::Log log;
 
@@ -880,7 +880,7 @@ Focus: Changes the primary user focus to the surface object.
 
 static LARGE glLastFocusTime = 0;
 
-static ERROR SURFACE_Focus(objSurface *Self, APTR Void)
+static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -1079,7 +1079,7 @@ static ERROR SURFACE_Focus(objSurface *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR SURFACE_Free(objSurface *Self, APTR Void)
+static ERROR SURFACE_Free(extSurface *Self, APTR Void)
 {
    if (Self->ScrollTimer) { UpdateTimer(Self->ScrollTimer, 0); Self->ScrollTimer = 0; }
    if (Self->RedrawTimer) { UpdateTimer(Self->RedrawTimer, 0); Self->RedrawTimer = 0; }
@@ -1097,7 +1097,7 @@ static ERROR SURFACE_Free(objSurface *Self, APTR Void)
    }
 
    if (Self->ParentID) {
-      objSurface *parent;
+      extSurface *parent;
       ERROR error;
       if (!(error = AccessObject(Self->ParentID, 5000, &parent))) {
          UnsubscribeAction(parent, NULL);
@@ -1170,7 +1170,7 @@ Hide: Hides a surface object from the display.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_Hide(objSurface *Self, APTR Void)
+static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -1237,7 +1237,7 @@ Okay
 
 *****************************************************************************/
 
-static ERROR SURFACE_InheritedFocus(objSurface *Self, struct gfxInheritedFocus *Args)
+static ERROR SURFACE_InheritedFocus(extSurface *Self, struct gfxInheritedFocus *Args)
 {
    Message *msg;
 
@@ -1270,7 +1270,7 @@ static ERROR SURFACE_InheritedFocus(objSurface *Self, struct gfxInheritedFocus *
 
 //****************************************************************************
 
-static ERROR SURFACE_Init(objSurface *Self, APTR Void)
+static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 {
    parasol::Log log;
    objBitmap *bitmap;
@@ -1302,7 +1302,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
 
    ERROR error;
    if (Self->ParentID) {
-      objSurface *parent;
+      extSurface *parent;
       if (AccessObject(Self->ParentID, 3000, &parent) != ERR_Okay) {
          log.warning("Failed to access parent #%d.", Self->ParentID);
          return ERR_AccessObject;
@@ -1568,7 +1568,7 @@ static ERROR SURFACE_Init(objSurface *Self, APTR Void)
                TAGEND);
 
          if (Self->PopOverID) {
-            objSurface *popsurface;
+            extSurface *popsurface;
             if (!AccessObject(Self->PopOverID, 2000, &popsurface)) {
                OBJECTID pop_display = popsurface->DisplayID;
                ReleaseObject(popsurface);
@@ -1794,7 +1794,7 @@ LostFocus: Informs a surface object that it has lost the user focus.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_LostFocus(objSurface *Self, APTR Void)
+static ERROR SURFACE_LostFocus(extSurface *Self, APTR Void)
 {
 #if 0
    Message *msg;
@@ -1835,7 +1835,7 @@ host platform.
 
 *****************************************************************************/
 
-static ERROR SURFACE_Minimise(objSurface *Self, APTR Void)
+static ERROR SURFACE_Minimise(extSurface *Self, APTR Void)
 {
    if (Self->DisplayID) ActionMsg(MT_GfxMinimise, Self->DisplayID, NULL);
    return ERR_Okay;
@@ -1847,7 +1847,7 @@ Move: Moves a surface object to a new display position.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_Move(objSurface *Self, struct acMove *Args)
+static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
 {
    parasol::Log log;
    struct acMove move;
@@ -1983,7 +1983,7 @@ MoveToBack: Moves a surface object to the back of its container.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_MoveToBack(objSurface *Self, APTR Void)
+static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -2057,7 +2057,7 @@ MoveToFront: Moves a surface object to the front of its container.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_MoveToFront(objSurface *Self, APTR Void)
+static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 {
    parasol::Log log;
    OBJECTPTR parent;
@@ -2207,7 +2207,7 @@ MoveToPoint: Moves a surface object to an absolute coordinate.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_MoveToPoint(objSurface *Self, struct acMoveToPoint *Args)
+static ERROR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
 {
    struct acMove move;
 
@@ -2226,7 +2226,7 @@ static ERROR SURFACE_MoveToPoint(objSurface *Self, struct acMoveToPoint *Args)
 ** Surface: NewOwner()
 */
 
-static ERROR SURFACE_NewOwner(objSurface *Self, struct acNewOwner *Args)
+static ERROR SURFACE_NewOwner(extSurface *Self, struct acNewOwner *Args)
 {
    if ((!Self->ParentDefined) and (!Self->initialised())) {
       OBJECTID owner_id = Args->NewOwnerID;
@@ -2242,7 +2242,7 @@ static ERROR SURFACE_NewOwner(objSurface *Self, struct acNewOwner *Args)
 
 //****************************************************************************
 
-static ERROR SURFACE_NewObject(objSurface *Self, APTR Void)
+static ERROR SURFACE_NewObject(extSurface *Self, APTR Void)
 {
    Self->LeftLimit   = -1000000000;
    Self->RightLimit  = -1000000000;
@@ -2261,7 +2261,7 @@ static ERROR SURFACE_NewObject(objSurface *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR SURFACE_ReleaseObject(objSurface *Self, APTR Void)
+static ERROR SURFACE_ReleaseObject(extSurface *Self, APTR Void)
 {
    return ERR_Okay;
 }
@@ -2286,7 +2286,7 @@ Search
 
 *****************************************************************************/
 
-static ERROR SURFACE_RemoveCallback(objSurface *Self, struct drwRemoveCallback *Args)
+static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *Args)
 {
    parasol::Log log;
    OBJECTPTR context = NULL;
@@ -2386,7 +2386,7 @@ AccessMemory: Unable to access internal surface list.
 
 *****************************************************************************/
 
-static ERROR SURFACE_ResetDimensions(objSurface *Self, struct drwResetDimensions *Args)
+static ERROR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions *Args)
 {
    parasol::Log log;
 
@@ -2477,7 +2477,7 @@ Okay
 
 *****************************************************************************/
 
-static ERROR SURFACE_ScheduleRedraw(objSurface *Self, APTR Void)
+static ERROR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
 {
    // TODO Currently defaults to 60FPS, we should get the correct FPS from the Display object.
    #define FPS 60.0
@@ -2515,7 +2515,7 @@ the user's preferred default file format is used.
 
 *****************************************************************************/
 
-static ERROR SURFACE_SaveImage(objSurface *Self, struct acSaveImage *Args)
+static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 {
    parasol::Log log;
    WORD i, j, level;
@@ -2568,7 +2568,7 @@ static ERROR SURFACE_SaveImage(objSurface *Self, struct acSaveImage *Args)
                      bitmapid = list[j].BitmapID;
                      if (list[j].Flags & RNF_REGION) continue;
 
-                     objBitmap *picbmp;
+                     extBitmap *picbmp;
                      GetPointer(picture, FID_Bitmap, &picbmp);
                      gfxCopySurface(list[j].SurfaceID, picbmp, NULL, 0, 0, list[j].Width, list[j].Height,
                         list[j].Left - list[i].Left, list[j].Top - list[i].Top);
@@ -2610,7 +2610,7 @@ listening for the Scroll action on the surface.
 
 *****************************************************************************/
 
-static ERROR SURFACE_Scroll(objSurface *Self, struct acScroll *Args)
+static ERROR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -2647,7 +2647,7 @@ ScrollToPoint: Moves the content of a surface object to a specific point.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_ScrollToPoint(objSurface *Self, struct acScrollToPoint *Args)
+static ERROR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -2692,7 +2692,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR SURFACE_SetOpacity(objSurface *Self, struct drwSetOpacity *Args)
+static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
 {
    parasol::Log log;
 
@@ -2726,7 +2726,7 @@ Show: Shows a surface object on the display.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_Show(objSurface *Self, APTR Void)
+static ERROR SURFACE_Show(extSurface *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -2770,7 +2770,7 @@ static ERROR SURFACE_Show(objSurface *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR redraw_timer(objSurface *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERROR redraw_timer(extSurface *Self, LARGE Elapsed, LARGE CurrentTime)
 {
    if (Self->RedrawScheduled) {
       Self->RedrawScheduled = FALSE; // Done before Draw() because it tests this field.
@@ -2792,7 +2792,7 @@ static ERROR redraw_timer(objSurface *Self, LARGE Elapsed, LARGE CurrentTime)
 
 //****************************************************************************
 
-static void draw_region(objSurface *Self, objSurface *Parent, objBitmap *Bitmap)
+static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
 {
    // Only region objects can respond to draw messages
 
@@ -2856,7 +2856,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    parasol::Log log(__FUNCTION__);
 
-   auto Self = (objSurface *)CurrentContext();
+   auto Self = (extSurface *)CurrentContext();
 
    static DOUBLE glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
 
@@ -3073,7 +3073,7 @@ ERROR create_surface_class(void)
       FID_Actions|TPTR,   clSurfaceActions,
       FID_Methods|TARRAY, clSurfaceMethods,
       FID_Fields|TARRAY,  clSurfaceFields,
-      FID_Size|TLONG,     sizeof(objSurface),
+      FID_Size|TLONG,     sizeof(extSurface),
       FID_Flags|TLONG,    flags,
       FID_Path|TSTR,      MOD_PATH,
       TAGEND);

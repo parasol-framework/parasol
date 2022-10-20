@@ -716,10 +716,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>Use the SetCustomCursor() function to change the pointer image and/or anchor the position of the pointer so that it cannot move without permission.  The functionality provided is identical to that of the SetCursor() function with some minor adjustments to allow custom images to be set.</p>
 <p>The Bitmap that is provided should be within the width, height and bits-per-pixel settings that are returned by the GetCursorInfo() function.  If the basic settings are outside the allowable parameters, the Bitmap will be trimmed or resampled appropriately when the cursor is downloaded to the video card.</p>
 <p>It may be possible to speed up the creation of custom cursors by drawing directly to the pointer's internal bitmap buffer rather than supplying a fresh bitmap.  To do this, the Bitmap parameter must be NULL and it is necessary to draw to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap is always returned as a 32-bit, alpha-enabled graphics area.  The following code illustrates this process:</p>
-<pre>objPointer *pointer;
-objBitmap *bitmap;
-
-if ((pointer = gfxAccessPointer())) {
+<pre>if (auto pointer = gfxAccessPointer()) {
+   objBitmap *bitmap;
    if (!AccessObject(pointer-&gt;BitmapID, 3000, &amp;bitmap)) {
       // Adjust clipping to match the cursor size.
       buffer-&gt;Clip.Right  = CursorWidth;

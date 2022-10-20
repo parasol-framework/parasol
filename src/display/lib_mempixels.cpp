@@ -27,19 +27,19 @@ static ULONG MemReadPixel32(objBitmap *Bitmap, LONG X, LONG Y)
 static void MemReadRGBPixel32(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB)
 {
    ULONG colour = ((ULONG *)((UBYTE *)Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2)))[0];
-   RGB->Red   = colour >> Bitmap->prvColourFormat.RedPos;
-   RGB->Green = colour >> Bitmap->prvColourFormat.GreenPos;
-   RGB->Blue  = colour >> Bitmap->prvColourFormat.BluePos;
-   RGB->Alpha = colour >> Bitmap->prvColourFormat.AlphaPos;
+   RGB->Red   = colour >> ((extBitmap *)Bitmap)->prvColourFormat.RedPos;
+   RGB->Green = colour >> ((extBitmap *)Bitmap)->prvColourFormat.GreenPos;
+   RGB->Blue  = colour >> ((extBitmap *)Bitmap)->prvColourFormat.BluePos;
+   RGB->Alpha = colour >> ((extBitmap *)Bitmap)->prvColourFormat.AlphaPos;
 }
 
 static void MemReadRGBIndex32(objBitmap *Bitmap, ULONG *Data, struct RGB8 *RGB)
 {
    ULONG colour = Data[0];
-   RGB->Red   = colour >> Bitmap->prvColourFormat.RedPos;
-   RGB->Green = colour >> Bitmap->prvColourFormat.GreenPos;
-   RGB->Blue  = colour >> Bitmap->prvColourFormat.BluePos;
-   RGB->Alpha = colour >> Bitmap->prvColourFormat.AlphaPos;
+   RGB->Red   = colour >> ((extBitmap *)Bitmap)->prvColourFormat.RedPos;
+   RGB->Green = colour >> ((extBitmap *)Bitmap)->prvColourFormat.GreenPos;
+   RGB->Blue  = colour >> ((extBitmap *)Bitmap)->prvColourFormat.BluePos;
+   RGB->Alpha = colour >> ((extBitmap *)Bitmap)->prvColourFormat.AlphaPos;
 }
 
 //****************************************************************************

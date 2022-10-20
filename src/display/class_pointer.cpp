@@ -16,22 +16,22 @@ used for all interactions with this service.
 
 #include "defs.h"
 
-static ERROR GET_ButtonOrder(objPointer *, CSTRING *);
-static ERROR GET_ButtonState(objPointer *, LONG *);
+static ERROR GET_ButtonOrder(extPointer *, CSTRING *);
+static ERROR GET_ButtonState(extPointer *, LONG *);
 
-static ERROR SET_ButtonOrder(objPointer *, CSTRING);
-static ERROR SET_MaxSpeed(objPointer *, LONG);
-static ERROR PTR_SET_X(objPointer *, DOUBLE);
-static ERROR PTR_SET_Y(objPointer *, DOUBLE);
+static ERROR SET_ButtonOrder(extPointer *, CSTRING);
+static ERROR SET_MaxSpeed(extPointer *, LONG);
+static ERROR PTR_SET_X(extPointer *, DOUBLE);
+static ERROR PTR_SET_Y(extPointer *, DOUBLE);
 
 #ifdef _WIN32
-static ERROR PTR_SetWinCursor(objPointer *, struct ptrSetWinCursor *);
+static ERROR PTR_SetWinCursor(extPointer *, struct ptrSetWinCursor *);
 static FunctionField mthSetWinCursor[]  = { { "Cursor", FD_LONG }, { NULL, 0 } };
 #endif
 
 #ifdef __xwindows__
-static ERROR PTR_GrabX11Pointer(objPointer *, struct ptrGrabX11Pointer *);
-static ERROR PTR_UngrabX11Pointer(objPointer *, APTR);
+static ERROR PTR_GrabX11Pointer(extPointer *, struct ptrGrabX11Pointer *);
+static ERROR PTR_UngrabX11Pointer(extPointer *, APTR);
 static FunctionField mthGrabX11Pointer[] = { { "Surface", FD_LONG }, { NULL, 0 } };
 #endif
 
@@ -40,13 +40,13 @@ static FLOAT glDefaultAcceleration = 0.8;
 static TIMER glRepeatTimer = 0;
 OBJECTID glOverTaskID = 0; // Task that owns the surface that the cursor is positioned over
 
-static ERROR repeat_timer(objPointer *, LARGE, LARGE);
-static void set_pointer_defaults(objPointer *);
-static WORD examine_chain(objPointer *, WORD, SurfaceControl *, WORD);
-static BYTE get_over_object(objPointer *);
-static void process_ptr_button(objPointer *, struct dcDeviceInput *);
-static void process_ptr_movement(objPointer *, struct dcDeviceInput *);
-static void process_ptr_wheel(objPointer *, struct dcDeviceInput *);
+static ERROR repeat_timer(extPointer *, LARGE, LARGE);
+static void set_pointer_defaults(extPointer *);
+static WORD examine_chain(extPointer *, WORD, SurfaceControl *, WORD);
+static BYTE get_over_object(extPointer *);
+static void process_ptr_button(extPointer *, struct dcDeviceInput *);
+static void process_ptr_movement(extPointer *, struct dcDeviceInput *);
+static void process_ptr_wheel(extPointer *, struct dcDeviceInput *);
 static void send_inputmsg(InputEvent *input, InputSubscription *List);
 
 //****************************************************************************
@@ -133,7 +133,7 @@ static void send_inputmsg(InputEvent *Event, InputSubscription *List)
 *****************************************************************************/
 
 #ifdef _WIN32
-static ERROR PTR_SetWinCursor(objPointer *Self, struct ptrSetWinCursor *Args)
+static ERROR PTR_SetWinCursor(extPointer *Self, struct ptrSetWinCursor *Args)
 {
    winSetCursor(GetWinCursor(Args->Cursor));
    Self->CursorID = Args->Cursor;
@@ -146,7 +146,7 @@ static ERROR PTR_SetWinCursor(objPointer *Self, struct ptrSetWinCursor *Args)
 */
 
 #ifdef __xwindows__
-static ERROR PTR_GrabX11Pointer(objPointer *Self, struct ptrGrabX11Pointer *Args)
+static ERROR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args)
 {
    APTR xwin;
    OBJECTPTR surface;
@@ -161,7 +161,7 @@ static ERROR PTR_GrabX11Pointer(objPointer *Self, struct ptrGrabX11Pointer *Args
    return ERR_Okay;
 }
 
-static ERROR PTR_UngrabX11Pointer(objPointer *Self, APTR Void)
+static ERROR PTR_UngrabX11Pointer(extPointer *Self, APTR Void)
 {
    XUngrabPointer(XDisplay, CurrentTime);
    return ERR_Okay;
@@ -183,7 +183,7 @@ flag for that button.
 
 *****************************************************************************/
 
-static ERROR PTR_DataFeed(objPointer *Self, struct acDataFeed *Args)
+static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
@@ -216,7 +216,7 @@ static ERROR PTR_DataFeed(objPointer *Self, struct acDataFeed *Args)
 
 //****************************************************************************
 
-static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
+static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 {
    parasol::Log log(__FUNCTION__);
    InputEvent userinput;
@@ -376,7 +376,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
 
 //****************************************************************************
 
-static void process_ptr_wheel(objPointer *Self, struct dcDeviceInput *Input)
+static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 {
    InputSubscription *subs;
 
@@ -420,7 +420,7 @@ static void process_ptr_wheel(objPointer *Self, struct dcDeviceInput *Input)
 
 //****************************************************************************
 
-static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
+static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 {
    parasol::Log log(__FUNCTION__);
    InputEvent userinput;
@@ -608,14 +608,14 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
 
 //****************************************************************************
 
-static void ptr_user_login(objPointer *Self, APTR Info, LONG Size)
+static void ptr_user_login(extPointer *Self, APTR Info, LONG Size)
 {
    set_pointer_defaults(Self);
 }
 
 //****************************************************************************
 
-static ERROR PTR_Free(objPointer *Self, APTR Void)
+static ERROR PTR_Free(extPointer *Self, APTR Void)
 {
    acHide(Self);
 
@@ -641,7 +641,7 @@ Hide: Hides the pointer from the display.
 -END-
 *****************************************************************************/
 
-static ERROR PTR_Hide(objPointer *Self, APTR Void)
+static ERROR PTR_Hide(extPointer *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -668,7 +668,7 @@ static ERROR PTR_Hide(objPointer *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR PTR_Init(objPointer *Self, APTR Void)
+static ERROR PTR_Init(extPointer *Self, APTR Void)
 {
    parasol::Log log;
    objBitmap *bitmap;
@@ -751,7 +751,7 @@ change).
 
 *****************************************************************************/
 
-static ERROR PTR_Move(objPointer *Self, struct acMove *Args)
+static ERROR PTR_Move(extPointer *Self, struct acMove *Args)
 {
    parasol::Log log;
 
@@ -774,7 +774,7 @@ The client can subscribe to this action to listen for changes to the cursor's po
 
 *****************************************************************************/
 
-static ERROR PTR_MoveToPoint(objPointer *Self, struct acMoveToPoint *Args)
+static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 {
    parasol::Log log;
 
@@ -856,7 +856,7 @@ static ERROR PTR_MoveToPoint(objPointer *Self, struct acMoveToPoint *Args)
 
 //****************************************************************************
 
-static ERROR PTR_NewObject(objPointer *Self, APTR Void)
+static ERROR PTR_NewObject(extPointer *Self, APTR Void)
 {
 #ifdef __native__
    StrCopy("AutoDetect", Self->Device, sizeof(Self->Device));
@@ -875,7 +875,7 @@ Refresh: Refreshes the pointer's cursor status.
 -END-
 *****************************************************************************/
 
-static ERROR PTR_Refresh(objPointer *Self, APTR Void)
+static ERROR PTR_Refresh(extPointer *Self, APTR Void)
 {
    // Calling OverObject will refresh the cursor image from the underlying surface object.  Incidentally, the point of
    // all this is to satisfy the Surface class' need to have the pointer refreshed if a surface's cursor ID is changed.
@@ -890,7 +890,7 @@ Reset: Resets the pointer settings back to the default.
 -END-
 *****************************************************************************/
 
-static ERROR PTR_Reset(objPointer *Self, APTR Void)
+static ERROR PTR_Reset(extPointer *Self, APTR Void)
 {
    parasol::Log log;
    log.branch();
@@ -910,7 +910,7 @@ SaveToObject: Saves the current pointer settings to another object.
 -END-
 *****************************************************************************/
 
-static ERROR PTR_SaveToObject(objPointer *Self, struct acSaveToObject *Args)
+static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
    OBJECTPTR config;
@@ -950,7 +950,7 @@ Show: Shows the pointer if it is not already on the display.
 -END-
 *****************************************************************************/
 
-static ERROR PTR_Show(objPointer *Self, APTR Void)
+static ERROR PTR_Show(extPointer *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -1016,13 +1016,13 @@ Changes to this field will have an immediate impact on the pointing device's beh
 
 *****************************************************************************/
 
-static ERROR GET_ButtonOrder(objPointer *Self, CSTRING *Value)
+static ERROR GET_ButtonOrder(extPointer *Self, CSTRING *Value)
 {
    *Value = Self->ButtonOrder;
    return ERR_Okay;
 }
 
-static ERROR SET_ButtonOrder(objPointer *Self, CSTRING Value)
+static ERROR SET_ButtonOrder(extPointer *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -1077,7 +1077,7 @@ flags returned by this field are JD_LMB, JD_RMB and JD_MMB indicating left, righ
 
 *****************************************************************************/
 
-static ERROR GET_ButtonState(objPointer *Self, LONG *Value)
+static ERROR GET_ButtonState(extPointer *Self, LONG *Value)
 {
    LONG i;
    LONG state = 0;
@@ -1147,7 +1147,7 @@ movement at larger offsets than what is normal).  You can also set the value to 
 
 *****************************************************************************/
 
-static ERROR SET_MaxSpeed(objPointer *Self, LONG Value)
+static ERROR SET_MaxSpeed(extPointer *Self, LONG Value)
 {
    if (Value < 2) Self->MaxSpeed = 2;
    else if (Value > 200) Self->MaxSpeed = 200;
@@ -1214,7 +1214,7 @@ X: The horizontal position of the pointer within its parent display.
 
 *****************************************************************************/
 
-static ERROR PTR_SET_X(objPointer *Self, DOUBLE Value)
+static ERROR PTR_SET_X(extPointer *Self, DOUBLE Value)
 {
    if (Self->initialised()) acMoveToPoint(Self, Value, 0, 0, MTF_X);
    else Self->X = Value;
@@ -1229,7 +1229,7 @@ Y: The vertical position of the pointer within its parent display.
 
 *****************************************************************************/
 
-static ERROR PTR_SET_Y(objPointer *Self, DOUBLE Value)
+static ERROR PTR_SET_Y(extPointer *Self, DOUBLE Value)
 {
    if (Self->initialised()) acMoveToPoint(Self, 0, Value, 0, MTF_Y);
    else Self->Y = Value;
@@ -1238,7 +1238,7 @@ static ERROR PTR_SET_Y(objPointer *Self, DOUBLE Value)
 
 //****************************************************************************
 
-static void set_pointer_defaults(objPointer *Self)
+static void set_pointer_defaults(extPointer *Self)
 {
    DOUBLE speed         = glDefaultSpeed;
    DOUBLE acceleration  = glDefaultAcceleration;
@@ -1273,7 +1273,7 @@ static void set_pointer_defaults(objPointer *Self)
 
 //****************************************************************************
 
-static BYTE get_over_object(objPointer *Self)
+static BYTE get_over_object(extPointer *Self)
 {
    parasol::Log log(__FUNCTION__);
    SurfaceControl *ctl;
@@ -1363,7 +1363,7 @@ static BYTE get_over_object(objPointer *Self)
 
 //****************************************************************************
 
-static WORD examine_chain(objPointer *Self, WORD Index, SurfaceControl *Ctl, WORD ListEnd)
+static WORD examine_chain(extPointer *Self, WORD Index, SurfaceControl *Ctl, WORD ListEnd)
 {
    // NB: The reason why we traverse backwards is because we want to catch the front-most objects first.
 
@@ -1386,7 +1386,7 @@ static WORD examine_chain(objPointer *Self, WORD Index, SurfaceControl *Ctl, WOR
 //****************************************************************************
 // This timer is used for handling repeat-clicks.
 
-static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
+static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1707,7 +1707,7 @@ ERROR create_pointer_class(void)
       FID_Actions|TPTR,   clPointerActions,
       FID_Methods|TARRAY, clPointerMethods,
       FID_Fields|TARRAY,  clPointerFields,
-      FID_Size|TLONG,     sizeof(objPointer),
+      FID_Size|TLONG,     sizeof(extPointer),
       FID_Flags|TLONG,    CLF_SHARED_ONLY,
       FID_Path|TSTR,      MOD_PATH,
       TAGEND));

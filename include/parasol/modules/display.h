@@ -515,33 +515,6 @@ typedef class plBitmap : public BaseClass {
    struct RGB8 BkgdRGB;                                              // Background colour (for clearing, resizing)
    LONG     BkgdIndex;                                               // The bitmap's background colour is defined here as a colour index.
    LONG     ColourSpace;                                             // Defines the colour space for RGB values.
-
-#ifdef PRV_BITMAP
-   ULONG  *Gradients;
-   APTR   ResolutionChangeHandle;
-   struct RGBPalette prvPaletteArray;
-   struct ColourFormat prvColourFormat;
-   MEMORYID prvCompressMID;
-   LONG   prvAFlags;                  // Private allocation flags
-   #ifdef __xwindows__
-      struct {
-         XImage   ximage;
-         Drawable drawable;
-         XImage   *readable;
-         XShmSegmentInfo ShmInfo;
-         BYTE XShmImage;
-      } x11;
-   #elif _WIN32
-      struct {
-         APTR Drawable;  // HDC for the Bitmap
-      } win;
-   #elif _GLES_
-      ULONG prvWriteBackBuffer:1;  // For OpenGL surface locking.
-      LONG prvGLPixel;
-      LONG prvGLFormat;
-   #endif
-  
-#endif
    public:
    inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
       if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
@@ -761,45 +734,6 @@ typedef class plDisplay : public BaseClass {
    LONG     RightMargin;  // In hosted mode, indicates the pixel margin between the client window and right window edge.
    LONG     TopMargin;    // In hosted mode, indicates the pixel margin between the client window and top window edge.
    LONG     BottomMargin; // In hosted mode, indicates the bottom margin of the client window.
-
-#ifdef PRV_DISPLAY
-   DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
-   struct resolution *Resolutions;
-   FUNCTION  ResizeFeedback;
-   MEMORYID  ResolutionsMID;
-   WORD      TotalResolutions;
-   OBJECTID  BitmapID;
-   LONG      BmpXOffset;     // X offset for scrolling
-   LONG      BmpYOffset;     // Y offset for scrolling
-   #ifdef __xwindows__
-   union {
-      APTR   WindowHandle;
-      Window XWindowHandle;
-   };
-   #elif __ANDROID__
-      ANativeWindow *WindowHandle;
-   #else
-      APTR   WindowHandle;
-   #endif
-   APTR      UserLoginHandle;
-   WORD      Opacity;
-   LONG      VDensity;          // Cached DPI value, if calculable.
-   LONG      HDensity;
-   char      DriverVendor[60];
-   char      DriverCopyright[80];
-   char      Manufacturer[60];
-   char      Chipset[40];
-   char      DAC[32];
-   char      Clock[32];
-   char      DriverVersion[16];
-   char      CertificationDate[20];
-   char      Display[32];
-   char      DisplayManufacturer[60];
-   #ifdef _WIN32
-      APTR OldProcedure;
-   #endif
-  
-#endif
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -962,42 +896,6 @@ typedef class plPointer : public BaseClass {
    LONG     DragItem;      // The currently dragged item, as defined by StartCursorDrag().
    OBJECTID OverObjectID;  // Readable field that gives the ID of the object under the pointer.
    LONG     ClickSlop;     // A leniency value that assists in determining if the user intended to click or drag.
-
-#ifdef PRV_POINTER
-   struct {
-      LARGE LastClickTime;      // Timestamp
-      OBJECTID LastClicked;     // Most recently clicked object
-      UBYTE DblClick:1;         // TRUE if last click was a double-click
-   } Buttons[10];
-   LARGE    ClickTime;
-   LARGE    AnchorTime;
-   DOUBLE   LastClickX, LastClickY;
-   DOUBLE   LastReleaseX, LastReleaseY;
-   APTR     UserLoginHandle;
-   OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
-   OBJECTID CursorReleaseID;
-   OBJECTID DragSurface;        // Draggable surface anchored to the pointer position
-   OBJECTID DragParent;         // Parent of the draggable surface
-   MEMORYID MessageQueue;       // Message port of the task that holds the cursor
-   MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
-   LONG     CursorRelease;
-   LONG     BufferCursor;
-   LONG     BufferFlags;
-   MEMORYID BufferQueue;
-   OBJECTID BufferOwner;
-   OBJECTID BufferObject;
-   char     DragData[8];          // Data preferences for current drag & drop item
-   char     Device[32];
-   char     ButtonOrder[12];      // The order of the first 11 buttons can be changed here
-   WORD     ButtonOrderFlags[12]; // Button order represented as JD flags
-   BYTE     PostComposite;        // Enable post-composite drawing (default)
-   UBYTE    prvOverCursorID;
-   struct {
-      WORD HotX;
-      WORD HotY;
-   } Cursors[PTR_END];
-  
-#endif
 } objPointer;
 
 // Surface class definition
@@ -1096,50 +994,12 @@ typedef class plSurface : public BaseClass {
    LONG     Modal;      // Sets the surface as modal (prevents user interaction with other surfaces).
 
 #ifdef PRV_SURFACE
-   // These coordinate fields are private but may be accessed by some internal classes, like Document
-
+   // These coordinate fields are considered private but may be accessed by some internal classes, like Document
    LONG     XOffset, YOffset;     // Fixed horizontal and vertical offset
    DOUBLE   XOffsetPercent;       // Relative horizontal offset
    DOUBLE   YOffsetPercent;       // Relative vertical offset
    DOUBLE   WidthPercent, HeightPercent; // Relative width and height
    DOUBLE   XPercent, YPercent;   // Relative coordinate
-
-   LARGE    LastRedimension;      // Timestamp of the last redimension call
-   objBitmap *Bitmap;
-   struct SurfaceCallback *Callback;
-   APTR      UserLoginHandle;
-   APTR      TaskRemovedHandle;
-   WINHANDLE DisplayWindow;       // Reference to the platform dependent window representing the Surface object
-   OBJECTID PrevModalID;          // Previous surface to have been modal
-   OBJECTID BitmapOwnerID;        // The surface object that owns the root bitmap
-   OBJECTID RevertFocusID;
-   LONG     LineWidth;            // Bitmap line width, in bytes
-   LONG     ScrollToX, ScrollToY;
-   LONG     ScrollFromX, ScrollFromY;
-   LONG     ListIndex;            // Last known list index
-   LONG     InputHandle;          // Input handler for dragging of surfaces
-   TIMER    RedrawTimer;          // For ScheduleRedraw()
-   TIMER    ScrollTimer;
-   MEMORYID DataMID;              // Bitmap memory reference
-   MEMORYID PrecopyMID;           // Precopy region information
-   struct SurfaceCallback CallbackCache[4];
-   WORD     ScrollProgress;
-   WORD     Opacity;
-   UWORD    InheritedRoot:1;      // TRUE if the user set the RootLayer manually
-   UWORD    ParentDefined:1;      // TRUE if the parent field was set manually
-   UWORD    SkipPopOver:1;
-   UWORD    FixedX:1;
-   UWORD    FixedY:1;
-   UWORD    Document:1;
-   UWORD    RedrawScheduled:1;
-   UWORD    RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
-   BYTE     BitsPerPixel;         // Bitmap bits per pixel
-   BYTE     BytesPerPixel;        // Bitmap bytes per pixel
-   UBYTE    CallbackCount;
-   UBYTE    CallbackSize;         // Current size of the callback array.
-   BYTE     WindowType;           // See SWIN constants
-   BYTE     PrecopyTotal;
-   BYTE     Anchored;
   
 #endif
    // Action stubs

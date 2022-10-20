@@ -306,7 +306,7 @@ static APTR glCacheTimer = NULL;
 //****************************************************************************
 // Assumes a cache lock is held on being called.
 
-static BitmapCache * check_bitmap_cache(objFont *Self, LONG Style)
+static BitmapCache * check_bitmap_cache(extFont *Self, LONG Style)
 {
    parasol::Log log(__FUNCTION__);
 

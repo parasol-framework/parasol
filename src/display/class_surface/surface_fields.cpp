@@ -9,7 +9,7 @@ the display and as such is not recommended.
 
 ****************************************************************************/
 
-static ERROR GET_BitsPerPixel(objSurface *Self, LONG *Value)
+static ERROR GET_BitsPerPixel(extSurface *Self, LONG *Value)
 {
    SURFACEINFO *info;
    if (!gfxGetSurfaceInfo(Self->UID, &info)) {
@@ -19,7 +19,7 @@ static ERROR GET_BitsPerPixel(objSurface *Self, LONG *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_BitsPerPixel(objSurface *Self, LONG Value)
+static ERROR SET_BitsPerPixel(extSurface *Self, LONG Value)
 {
    Self->BitsPerPixel = Value;
    return ERR_Okay;
@@ -63,7 +63,7 @@ The Cursor field may be written with valid cursor names or their ID's, as you pr
 
 ****************************************************************************/
 
-static ERROR SET_Cursor(objSurface *Self, LONG Value)
+static ERROR SET_Cursor(extSurface *Self, LONG Value)
 {
    Self->Cursor = Value;
    if (Self->initialised()) {
@@ -99,7 +99,7 @@ To turn off dragging, set the field to zero.
 
 *****************************************************************************/
 
-static ERROR SET_Drag(objSurface *Self, OBJECTID Value)
+static ERROR SET_Drag(extSurface *Self, OBJECTID Value)
 {
    if (Value) {
       auto callback = make_function_stdc(consume_input_events);
@@ -132,7 +132,7 @@ field so that existing flags are not overwritten.  To not do so can produce unex
 
 *****************************************************************************/
 
-static ERROR SET_Flags(objSurface *Self, LONG Value)
+static ERROR SET_Flags(extSurface *Self, LONG Value)
 {
    LONG flags = (Self->Flags & RNF_READ_ONLY) | (Value & (~RNF_READ_ONLY));
 
@@ -152,7 +152,7 @@ LayoutStyle: Private. This system field is supported purely to receive notificat
 
 *****************************************************************************/
 
-static ERROR SET_LayoutStyle(objSurface *Self, APTR Value)
+static ERROR SET_LayoutStyle(extSurface *Self, APTR Value)
 {
    Self->Document = TRUE;
    return ERR_Okay;
@@ -168,7 +168,7 @@ with normally.
 
 *****************************************************************************/
 
-static ERROR SET_Modal(objSurface *Self, LONG Modal)
+static ERROR SET_Modal(extSurface *Self, LONG Modal)
 {
    if ((!Modal) and (Self-Modal)) {
       TaskList *task;
@@ -199,7 +199,7 @@ setting the coordinate fields directly.
 
 *****************************************************************************/
 
-static ERROR SET_Movement(objSurface *Self, LONG Flags)
+static ERROR SET_Movement(extSurface *Self, LONG Flags)
 {
    if (Flags IS MOVE_HORIZONTAL) Self->Flags = (Self->Flags & RNF_NO_HORIZONTAL) | RNF_NO_VERTICAL;
    else if (Flags IS MOVE_VERTICAL) Self->Flags = (Self->Flags & RNF_NO_VERTICAL) | RNF_NO_HORIZONTAL;
@@ -226,13 +226,13 @@ Please note that the use of translucency is realised at a significant cost to th
 
 ****************************************************************************/
 
-static ERROR GET_Opacity(objSurface *Self, DOUBLE *Value)
+static ERROR GET_Opacity(extSurface *Self, DOUBLE *Value)
 {
    *Value = Self->Opacity * 100 / 255;
    return ERR_Okay;
 }
 
-static ERROR SET_Opacity(objSurface *Self, DOUBLE Value)
+static ERROR SET_Opacity(extSurface *Self, DOUBLE Value)
 {
    WORD opacity;
 
@@ -270,7 +270,7 @@ a surface object.  This behaviour can be switched off by setting a Parent of zer
 
 *****************************************************************************/
 
-static ERROR SET_Parent(objSurface *Self, LONG Value)
+static ERROR SET_Parent(extSurface *Self, LONG Value)
 {
    // To change the parent post-initialisation, we have to re-track the surface so that it is correctly repositioned
    // within the surface lists.
@@ -326,7 +326,7 @@ Surface field, if available.  If this does not yield a valid surface then ERR_In
 
 *****************************************************************************/
 
-static ERROR SET_PopOver(objSurface *Self, OBJECTID Value)
+static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
 {
    parasol::Log log;
 
@@ -375,7 +375,7 @@ This example uses percentages to create two regions: `(0%,0%,20%,20%) (5%,5%,10%
 -END-
 *****************************************************************************/
 
-static ERROR SET_PrecopyRegion(objSurface *Self, STRING Value)
+static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
 {
    parasol::Log log;
 
@@ -537,14 +537,14 @@ Use of the #Buffer option can avoid this problem if it becomes an issue.
 
 *****************************************************************************/
 
-static ERROR GET_Region(objSurface *Self, LONG *Value)
+static ERROR GET_Region(extSurface *Self, LONG *Value)
 {
    if (Self->Flags & RNF_REGION) *Value = TRUE;
    else *Value = FALSE;
    return ERR_Okay;
 }
 
-static ERROR SET_Region(objSurface *Self, LONG Value)
+static ERROR SET_Region(extSurface *Self, LONG Value)
 {
    if (Self->initialised()) return ERR_Immutable;
    else if (Value) Self->Flags |= RNF_REGION;
@@ -552,7 +552,7 @@ static ERROR SET_Region(objSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-static ERROR SET_RevertFocus(objSurface *Self, OBJECTID Value)
+static ERROR SET_RevertFocus(extSurface *Self, OBJECTID Value)
 {
    Self->RevertFocusID = Value;
    return ERR_Okay;
@@ -565,7 +565,7 @@ RootLayer: Private
 
 *****************************************************************************/
 
-static ERROR SET_RootLayer(objSurface *Self, OBJECTID Value)
+static ERROR SET_RootLayer(extSurface *Self, OBJECTID Value)
 {
    Self->RootID = Value;
    UpdateSurfaceField(Self, RootID); // Update RootLayer
@@ -581,7 +581,7 @@ Returns the surface object that has the primary user focus.  Returns NULL if no 
 
 *****************************************************************************/
 
-static ERROR GET_UserFocus(objSurface *Self, OBJECTID *Value)
+static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
 {
    parasol::Log log;
    OBJECTID *focuslist;
@@ -609,14 +609,14 @@ Visibility is directly affected by the Hide and Show actions if you wish to chan
 
 *****************************************************************************/
 
-static ERROR GET_Visible(objSurface *Self, LONG *Value)
+static ERROR GET_Visible(extSurface *Self, LONG *Value)
 {
    if (Self->Flags & RNF_VISIBLE) *Value = TRUE;
    else *Value = FALSE;
    return ERR_Okay;
 }
 
-static ERROR SET_Visible(objSurface *Self, LONG Value)
+static ERROR SET_Visible(extSurface *Self, LONG Value)
 {
    if (Value) acShow(Self);
    else acHide(Self);
@@ -638,13 +638,13 @@ custom surfaces.
 
 *****************************************************************************/
 
-static ERROR GET_WindowType(objSurface *Self, LONG *Value)
+static ERROR GET_WindowType(extSurface *Self, LONG *Value)
 {
    *Value = Self->WindowType;
    return ERR_Okay;
 }
 
-static ERROR SET_WindowType(objSurface *Self, LONG Value)
+static ERROR SET_WindowType(extSurface *Self, LONG Value)
 {
    if (Self->initialised()) {
       parasol::Log log;
@@ -710,13 +710,13 @@ window that already exists.
 
 *****************************************************************************/
 
-static ERROR GET_WindowHandle(objSurface *Self, APTR *Value)
+static ERROR GET_WindowHandle(extSurface *Self, APTR *Value)
 {
    *Value = (APTR)Self->DisplayWindow;
    return ERR_Okay;
 }
 
-static ERROR SET_WindowHandle(objSurface *Self, APTR Value)
+static ERROR SET_WindowHandle(extSurface *Self, APTR Value)
 {
    if (Self->initialised()) return ERR_Failed;
    if (Value) Self->DisplayWindow = Value;

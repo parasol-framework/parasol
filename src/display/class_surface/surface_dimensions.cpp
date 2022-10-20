@@ -11,7 +11,7 @@ It is possible to set this field, but only after initialisation of the surface o
 
 ****************************************************************************/
 
-static ERROR GET_AbsX(objSurface *Self, LONG *Value)
+static ERROR GET_AbsX(extSurface *Self, LONG *Value)
 {
    parasol::Log log;
    SurfaceControl *ctl;
@@ -32,7 +32,7 @@ static ERROR GET_AbsX(objSurface *Self, LONG *Value)
    else return log.warning(ERR_AccessMemory);
 }
 
-static ERROR SET_AbsX(objSurface *Self, LONG Value)
+static ERROR SET_AbsX(extSurface *Self, LONG Value)
 {
    parasol::Log log;
    LONG parent, x;
@@ -69,7 +69,7 @@ It is possible to set this field, but only after initialisation of the surface o
 
 ****************************************************************************/
 
-static ERROR GET_AbsY(objSurface *Self, LONG *Value)
+static ERROR GET_AbsY(extSurface *Self, LONG *Value)
 {
    parasol::Log log;
    SurfaceControl *ctl;
@@ -90,7 +90,7 @@ static ERROR GET_AbsY(objSurface *Self, LONG *Value)
    else return log.warning(ERR_AccessMemory);
 }
 
-static ERROR SET_AbsY(objSurface *Self, LONG Value)
+static ERROR SET_AbsY(extSurface *Self, LONG Value)
 {
    parasol::Log log;
    LONG parent, y;
@@ -129,7 +129,7 @@ Bottom: Returns the bottom-most coordinate of a surface object (Y + Height).
 
 *****************************************************************************/
 
-static ERROR GET_Bottom(objSurface *Self, LONG *Bottom)
+static ERROR GET_Bottom(extSurface *Self, LONG *Bottom)
 {
    *Bottom = Self->Y + Self->Height;
    return ERR_Okay;
@@ -149,7 +149,7 @@ setting the coordinate fields directly (which can be useful in certain cases).
 
 *****************************************************************************/
 
-static ERROR SET_BottomLimit(objSurface *Self, LONG Value)
+static ERROR SET_BottomLimit(extSurface *Self, LONG Value)
 {
    Self->BottomLimit = Value;
    return ERR_Okay;
@@ -169,7 +169,7 @@ By default, all margins are set to zero when a new surface object is created.
 
 *****************************************************************************/
 
-static ERROR SET_BottomMargin(objSurface *Self, LONG Value)
+static ERROR SET_BottomMargin(extSurface *Self, LONG Value)
 {
    if (Value < 0) Self->BottomMargin = -Value;
    else Self->BottomMargin = Value;
@@ -192,7 +192,7 @@ FIXED_X, FIXED_XOFFSET and FIXED_WIDTH simultaneously.
 
 *****************************************************************************/
 
-static ERROR SET_Dimensions(objSurface *Self, LONG Value)
+static ERROR SET_Dimensions(extSurface *Self, LONG Value)
 {
    parasol::Log log;
    SURFACEINFO *parent;
@@ -282,7 +282,7 @@ pairing the Y and YOffset fields together for dynamic height adjustment.
 
 ****************************************************************************/
 
-static ERROR GET_Height(objSurface *Self, Variable *Value)
+static ERROR GET_Height(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_PERCENTAGE) {
       if (Self->Dimensions & DMF_RELATIVE_HEIGHT) {
@@ -299,10 +299,10 @@ static ERROR GET_Height(objSurface *Self, Variable *Value)
    }
 }
 
-static ERROR SET_Height(objSurface *Self, Variable *Value)
+static ERROR SET_Height(extSurface *Self, Variable *Value)
 {
    parasol::Log log;
-   objSurface *parent;
+   extSurface *parent;
    Variable var;
    DOUBLE value;
 
@@ -369,13 +369,13 @@ object's height.
 
 ****************************************************************************/
 
-static ERROR GET_InsideHeight(objSurface *Self, LONG *Value)
+static ERROR GET_InsideHeight(extSurface *Self, LONG *Value)
 {
    *Value = Self->Height - Self->TopMargin - Self->BottomMargin;
    return ERR_Okay;
 }
 
-static ERROR SET_InsideHeight(objSurface *Self, LONG Value)
+static ERROR SET_InsideHeight(extSurface *Self, LONG Value)
 {
    LONG height;
    height = Value + Self->TopMargin + Self->BottomMargin;
@@ -397,13 +397,13 @@ object's width.
 
 ****************************************************************************/
 
-static ERROR GET_InsideWidth(objSurface *Self, LONG *Value)
+static ERROR GET_InsideWidth(extSurface *Self, LONG *Value)
 {
    *Value = Self->Width - Self->LeftMargin - Self->RightMargin;
    return ERR_Okay;
 }
 
-static ERROR SET_InsideWidth(objSurface *Self, LONG Value)
+static ERROR SET_InsideWidth(extSurface *Self, LONG Value)
 {
    LONG width;
    width = Value + Self->LeftMargin + Self->RightMargin;
@@ -426,7 +426,7 @@ setting the coordinate fields directly.
 
 *****************************************************************************/
 
-static ERROR SET_LeftLimit(objSurface *Self, LONG Value)
+static ERROR SET_LeftLimit(extSurface *Self, LONG Value)
 {
    Self->LeftLimit = Value;
    return ERR_Okay;
@@ -456,7 +456,7 @@ to the inside-height of the surface area, thus the overall maximum height will i
 
 *****************************************************************************/
 
-static ERROR SET_MaxHeight(objSurface *Self, LONG Value)
+static ERROR SET_MaxHeight(extSurface *Self, LONG Value)
 {
    Self->MaxHeight = Value;
 
@@ -486,7 +486,7 @@ values.
 
 *****************************************************************************/
 
-static ERROR SET_MaxWidth(objSurface *Self, LONG Value)
+static ERROR SET_MaxWidth(extSurface *Self, LONG Value)
 {
    Self->MaxWidth = Value;
 
@@ -515,7 +515,7 @@ It is possible to circumvent the MinHeight by setting the #Height field directly
 
 *****************************************************************************/
 
-static ERROR SET_MinHeight(objSurface *Self, LONG Value)
+static ERROR SET_MinHeight(extSurface *Self, LONG Value)
 {
    Self->MinHeight = Value;
    if (Self->MinHeight < 1) Self->MinHeight = 1;
@@ -545,7 +545,7 @@ It is possible to circumvent the MinWidth by setting the Width field directly.
 
 *****************************************************************************/
 
-static ERROR SET_MinWidth(objSurface *Self, LONG Value)
+static ERROR SET_MinWidth(extSurface *Self, LONG Value)
 {
    Self->MinWidth = Value;
    if (Self->MinWidth < 1) Self->MinWidth = 1;
@@ -569,7 +569,7 @@ Right: Returns the right-most coordinate of a surface object (X + Width).
 
 *****************************************************************************/
 
-static ERROR GET_Right(objSurface *Self, LONG *Value)
+static ERROR GET_Right(extSurface *Self, LONG *Value)
 {
    *Value = Self->X + Self->Width;
    return ERR_Okay;
@@ -589,7 +589,7 @@ setting the coordinate fields directly (which can be useful in certain cases).
 
 *****************************************************************************/
 
-static ERROR SET_RightLimit(objSurface *Self, LONG Value)
+static ERROR SET_RightLimit(extSurface *Self, LONG Value)
 {
    Self->RightLimit = Value;
    return ERR_Okay;
@@ -609,7 +609,7 @@ By default, all margins are set to zero when a new surface object is created.
 
 *****************************************************************************/
 
-static ERROR SET_RightMargin(objSurface *Self, LONG Value)
+static ERROR SET_RightMargin(extSurface *Self, LONG Value)
 {
    if (Value < 0) Self->RightMargin = -Value;
    else Self->RightMargin = Value;
@@ -630,7 +630,7 @@ setting the coordinate fields directly (which can be useful in certain cases).
 
 *****************************************************************************/
 
-static ERROR SET_TopLimit(objSurface *Self, LONG Value)
+static ERROR SET_TopLimit(extSurface *Self, LONG Value)
 {
    Self->TopLimit = Value;
    return ERR_Okay;
@@ -661,7 +661,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *****************************************************************************/
 
-static ERROR GET_VisibleHeight(objSurface *Self, LONG *Value)
+static ERROR GET_VisibleHeight(extSurface *Self, LONG *Value)
 {
    parasol::Log log;
    SurfaceControl *ctl;
@@ -708,7 +708,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *****************************************************************************/
 
-static ERROR GET_VisibleWidth(objSurface *Self, LONG *Value)
+static ERROR GET_VisibleWidth(extSurface *Self, LONG *Value)
 {
    parasol::Log log;
    SurfaceControl *ctl;
@@ -755,7 +755,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *****************************************************************************/
 
-static ERROR GET_VisibleX(objSurface *Self, LONG *Value)
+static ERROR GET_VisibleX(extSurface *Self, LONG *Value)
 {
    parasol::Log log;
    SurfaceControl *ctl;
@@ -802,7 +802,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *****************************************************************************/
 
-static ERROR GET_VisibleY(objSurface *Self, LONG *Value)
+static ERROR GET_VisibleY(extSurface *Self, LONG *Value)
 {
    parasol::Log log;
    SurfaceControl *ctl;
@@ -852,7 +852,7 @@ Width values of 0 or less are illegal, and will result in an ERR_OutOfRange erro
 
 *****************************************************************************/
 
-static ERROR GET_Width(objSurface *Self, Variable *Value)
+static ERROR GET_Width(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
       if (Value->Type & FD_PERCENTAGE) {
@@ -867,11 +867,11 @@ static ERROR GET_Width(objSurface *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_Width(objSurface *Self, Variable *Value)
+static ERROR SET_Width(extSurface *Self, Variable *Value)
 {
    parasol::Log log;
    Variable var;
-   objSurface *parent;
+   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
@@ -936,7 +936,7 @@ immediately.
 
 *****************************************************************************/
 
-static ERROR GET_XCoord(objSurface *Self, Variable *Value)
+static ERROR GET_XCoord(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
       if (Value->Type & FD_PERCENTAGE) Value->Double = Self->XPercent;
@@ -953,10 +953,10 @@ static ERROR GET_XCoord(objSurface *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_XCoord(objSurface *Self, Variable *Value)
+static ERROR SET_XCoord(extSurface *Self, Variable *Value)
 {
    parasol::Log log;
-   objSurface *parent;
+   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
@@ -1010,11 +1010,11 @@ an X coordinate calculated from the formula `X = ContainerWidth - SurfaceWidth -
 
 *****************************************************************************/
 
-static ERROR GET_XOffset(objSurface *Self, Variable *Value)
+static ERROR GET_XOffset(extSurface *Self, Variable *Value)
 {
    parasol::Log log;
    Variable xoffset;
-   objSurface *parent;
+   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_PERCENTAGE) {
@@ -1048,10 +1048,10 @@ static ERROR GET_XOffset(objSurface *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_XOffset(objSurface *Self, Variable *Value)
+static ERROR SET_XOffset(extSurface *Self, Variable *Value)
 {
    parasol::Log log;
-   objSurface *parent;
+   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
@@ -1112,7 +1112,7 @@ If the value is changed while the surface is on display, its position will be up
 
 *****************************************************************************/
 
-static ERROR GET_YCoord(objSurface *Self, Variable *Value)
+static ERROR GET_YCoord(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
       if (Value->Type & FD_PERCENTAGE) Value->Double = Self->YPercent;
@@ -1129,10 +1129,10 @@ static ERROR GET_YCoord(objSurface *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_YCoord(objSurface *Self, Variable *Value)
+static ERROR SET_YCoord(extSurface *Self, Variable *Value)
 {
    parasol::Log log;
-   objSurface *parent;
+   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE)     value = Value->Double;
@@ -1176,11 +1176,11 @@ at a Y coordinate calculated from the formula "Y = ContainerHeight - SurfaceHeig
 
 *****************************************************************************/
 
-static ERROR GET_YOffset(objSurface *Self, Variable *Value)
+static ERROR GET_YOffset(extSurface *Self, Variable *Value)
 {
    parasol::Log log;
    Variable yoffset;
-   objSurface *parent;
+   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_PERCENTAGE) {
@@ -1212,10 +1212,10 @@ static ERROR GET_YOffset(objSurface *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_YOffset(objSurface *Self, Variable *Value)
+static ERROR SET_YOffset(extSurface *Self, Variable *Value)
 {
    parasol::Log log;
-   objSurface *parent;
+   extSurface *parent;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;

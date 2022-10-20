@@ -91,27 +91,6 @@ typedef class plFont : public BaseClass {
    LONG   EndY;                                          // Indicates the final vertical coordinate after completing a draw operation.
    LONG   VDPI;                                          // Defines the vertical dots-per-inch of the target device.
    LONG   HDPI;                                          // Defines the horizontal dots-per-inch of the target device.
-
-#ifdef PRV_FONT
-   WORD *prvTabs;                // Array of tab stops
-   UBYTE *prvData;
-   class font_cache *Cache;     // Reference to the Truetype font that is in use
-   struct FontCharacter *prvChar;
-   struct BitmapCache *BmpCache;
-   struct font_glyph prvTempGlyph;
-   LONG prvLineCount;
-   LONG prvStrWidth;
-   WORD prvSpaceWidth;          // Pixel width of word breaks
-   WORD prvBitmapHeight;
-   WORD prvLineCountCR;
-   char prvEscape[2];
-   char prvFace[32];
-   char prvBuffer[80];
-   char prvStyle[20];
-   char prvDefaultChar;
-   UBYTE prvTotalTabs;
-  
-#endif
    // Action stubs
 
    inline ERROR draw() { return Action(AC_Draw, this, NULL); }

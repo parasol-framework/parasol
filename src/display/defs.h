@@ -269,6 +269,148 @@ struct ClipEntry {
    WORD     TotalItems;  // Total number of items in the clip-set
 };
 
+class extPointer : public objPointer {
+   public:
+   struct {
+      LARGE LastClickTime;      // Timestamp
+      OBJECTID LastClicked;     // Most recently clicked object
+      UBYTE DblClick:1;         // TRUE if last click was a double-click
+   } Buttons[10];
+   LARGE    ClickTime;
+   LARGE    AnchorTime;
+   DOUBLE   LastClickX, LastClickY;
+   DOUBLE   LastReleaseX, LastReleaseY;
+   APTR     UserLoginHandle;
+   OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
+   OBJECTID CursorReleaseID;
+   OBJECTID DragSurface;        // Draggable surface anchored to the pointer position
+   OBJECTID DragParent;         // Parent of the draggable surface
+   MEMORYID MessageQueue;       // Message port of the task that holds the cursor
+   MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
+   LONG     CursorRelease;
+   LONG     BufferCursor;
+   LONG     BufferFlags;
+   MEMORYID BufferQueue;
+   OBJECTID BufferOwner;
+   OBJECTID BufferObject;
+   char     DragData[8];          // Data preferences for current drag & drop item
+   char     Device[32];
+   char     ButtonOrder[12];      // The order of the first 11 buttons can be changed here
+   WORD     ButtonOrderFlags[12]; // Button order represented as JD flags
+   BYTE     PostComposite;        // Enable post-composite drawing (default)
+   UBYTE    prvOverCursorID;
+   struct {
+      WORD HotX;
+      WORD HotY;
+   } Cursors[PTR_END];
+};
+
+class extSurface : public objSurface {
+   public:
+   LARGE    LastRedimension;      // Timestamp of the last redimension call
+   objBitmap *Bitmap;
+   struct SurfaceCallback *Callback;
+   APTR      UserLoginHandle;
+   APTR      TaskRemovedHandle;
+   WINHANDLE DisplayWindow;       // Reference to the platform dependent window representing the Surface object
+   OBJECTID PrevModalID;          // Previous surface to have been modal
+   OBJECTID BitmapOwnerID;        // The surface object that owns the root bitmap
+   OBJECTID RevertFocusID;
+   LONG     LineWidth;            // Bitmap line width, in bytes
+   LONG     ScrollToX, ScrollToY;
+   LONG     ScrollFromX, ScrollFromY;
+   LONG     ListIndex;            // Last known list index
+   LONG     InputHandle;          // Input handler for dragging of surfaces
+   TIMER    RedrawTimer;          // For ScheduleRedraw()
+   TIMER    ScrollTimer;
+   MEMORYID DataMID;              // Bitmap memory reference
+   MEMORYID PrecopyMID;           // Precopy region information
+   struct SurfaceCallback CallbackCache[4];
+   WORD     ScrollProgress;
+   WORD     Opacity;
+   UWORD    InheritedRoot:1;      // TRUE if the user set the RootLayer manually
+   UWORD    ParentDefined:1;      // TRUE if the parent field was set manually
+   UWORD    SkipPopOver:1;
+   UWORD    FixedX:1;
+   UWORD    FixedY:1;
+   UWORD    Document:1;
+   UWORD    RedrawScheduled:1;
+   UWORD    RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
+   BYTE     BitsPerPixel;         // Bitmap bits per pixel
+   BYTE     BytesPerPixel;        // Bitmap bytes per pixel
+   UBYTE    CallbackCount;
+   UBYTE    CallbackSize;         // Current size of the callback array.
+   BYTE     WindowType;           // See SWIN constants
+   BYTE     PrecopyTotal;
+   BYTE     Anchored;
+};
+
+class extDisplay : public objDisplay {
+   public:
+   DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
+   struct resolution *Resolutions;
+   FUNCTION  ResizeFeedback;
+   MEMORYID  ResolutionsMID;
+   WORD      TotalResolutions;
+   OBJECTID  BitmapID;
+   LONG      BmpXOffset;     // X offset for scrolling
+   LONG      BmpYOffset;     // Y offset for scrolling
+   #ifdef __xwindows__
+   union {
+      APTR   WindowHandle;
+      Window XWindowHandle;
+   };
+   #elif __ANDROID__
+      ANativeWindow *WindowHandle;
+   #else
+      APTR   WindowHandle;
+   #endif
+   APTR  UserLoginHandle;
+   WORD  Opacity;
+   LONG  VDensity;          // Cached DPI value, if calculable.
+   LONG  HDensity;
+   char  DriverVendor[60];
+   char  DriverCopyright[80];
+   char  Manufacturer[60];
+   char  Chipset[40];
+   char  DAC[32];
+   char  Clock[32];
+   char  DriverVersion[16];
+   char  CertificationDate[20];
+   char  Display[32];
+   char  DisplayManufacturer[60];
+   #ifdef _WIN32
+      APTR OldProcedure;
+   #endif
+};
+
+class extBitmap : public objBitmap {
+   public:
+   ULONG  *Gradients;
+   APTR   ResolutionChangeHandle;
+   struct RGBPalette prvPaletteArray;
+   struct ColourFormat prvColourFormat;
+   MEMORYID prvCompressMID;
+   LONG   prvAFlags;                  // Private allocation flags
+   #ifdef __xwindows__
+      struct {
+         XImage   ximage;
+         Drawable drawable;
+         XImage   *readable;
+         XShmSegmentInfo ShmInfo;
+         BYTE XShmImage;
+      } x11;
+   #elif _WIN32
+      struct {
+         APTR Drawable;  // HDC for the Bitmap
+      } win;
+   #elif _GLES_
+      ULONG prvWriteBackBuffer:1;  // For OpenGL surface locking.
+      LONG prvGLPixel;
+      LONG prvGLFormat;
+   #endif
+};
+
 extern ERROR create_bitmap_class(void);
 extern ERROR create_clipboard_class(void);
 extern ERROR create_display_class(void);
@@ -276,8 +418,8 @@ extern ERROR create_pointer_class(void);
 extern ERROR create_surface_class(void);
 extern ERROR get_surface_abs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
 extern void  input_event_loop(HOSTHANDLE, APTR);
-extern ERROR lock_surface(objBitmap *, WORD);
-extern ERROR unlock_surface(objBitmap *);
+extern ERROR lock_surface(extBitmap *, WORD);
+extern ERROR unlock_surface(extBitmap *);
 extern ERROR get_display_info(OBJECTID, DISPLAYINFO *, LONG);
 extern void  resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
 extern void  forbidDrawing(void);
@@ -287,24 +429,24 @@ extern void  permitExpose(void);
 extern ERROR apply_style(OBJECTPTR, OBJECTPTR, CSTRING);
 extern ERROR load_styles(void);
 extern WORD  find_bitmap_owner(SurfaceList *, WORD);
-extern void  move_layer(objSurface *, LONG, LONG);
+extern void  move_layer(extSurface *, LONG, LONG);
 extern void  move_layer_pos(SurfaceControl *, LONG, LONG);
-extern void  prepare_background(objSurface *, SurfaceList *, WORD, WORD, objBitmap *, ClipRectangle *, BYTE);
-extern void  process_surface_callbacks(objSurface *, objBitmap *);
-extern void  refresh_pointer(objSurface *Self);
-extern ERROR track_layer(objSurface *);
+extern void  prepare_background(extSurface *, SurfaceList *, WORD, WORD, extBitmap *, ClipRectangle *, BYTE);
+extern void  process_surface_callbacks(extSurface *, extBitmap *);
+extern void  refresh_pointer(extSurface *Self);
+extern ERROR track_layer(extSurface *);
 extern void  untrack_layer(OBJECTID);
 extern BYTE  restrict_region_to_parents(SurfaceList *, LONG, ClipRectangle *, BYTE);
 extern ERROR load_style_values(void);
-extern ERROR resize_layer(objSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
+extern ERROR resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
 extern void  redraw_nonintersect(OBJECTID, SurfaceList *, WORD, WORD, ClipRectangle *, ClipRectangle *, LONG, LONG);
 extern ERROR _expose_surface(OBJECTID, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, LONG);
 extern ERROR _redraw_surface(OBJECTID, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, LONG);
-extern void  _redraw_surface_do(objSurface *, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, objBitmap *, LONG);
+extern void  _redraw_surface_do(extSurface *, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, extBitmap *, LONG);
 extern void  check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
-extern ERROR update_surface_copy(objSurface *, SurfaceList *);
+extern ERROR update_surface_copy(extSurface *, SurfaceList *);
 extern LONG  find_surface_list(SurfaceList *, LONG, OBJECTID);
-extern LONG  find_parent_list(SurfaceList *, WORD, objSurface *);
+extern LONG  find_parent_list(SurfaceList *, WORD, extSurface *);
 
 extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
 
@@ -327,7 +469,7 @@ extern bool glHeadless;
 extern FieldDef CursorLookup[];
 extern UBYTE *glAlphaLookup;
 extern TIMER glRefreshPointerTimer;
-extern objBitmap *glComposite;
+extern extBitmap *glComposite;
 extern DOUBLE glpRefreshRate, glpGammaRed, glpGammaGreen, glpGammaBlue;
 extern LONG glpDisplayWidth, glpDisplayHeight, glpDisplayX, glpDisplayY;
 extern LONG glpDisplayDepth; // If zero, the display depth will be based on the hosted desktop's bit depth.
