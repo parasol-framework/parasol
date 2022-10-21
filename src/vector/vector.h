@@ -75,6 +75,7 @@ typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
 typedef class plVectorClip objVectorClip;
 typedef class plVectorTransition objVectorTransition;
 typedef class plVectorText objVectorText;
+typedef class extVectorScene;
 typedef class extFilterEffect;
 
 //****************************************************************************
@@ -197,8 +198,8 @@ class extVectorFilter : public objVectorFilter {
    public:
    objVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
    objVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
-   objVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
-   objVectorScene *Scene;              // Scene that the filter belongs to.
+   extVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
+   extVectorScene *Scene;              // Scene that the filter belongs to.
    objBitmap *SourceGraphic;           // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
    objBitmap *BkgdBitmap;              // Target bitmap supplied by Scene.acDraw()
    extFilterEffect *ActiveEffect;      // Current effect being processed by the pipeline.
