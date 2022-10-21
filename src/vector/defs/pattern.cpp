@@ -491,7 +491,7 @@ static const FieldArray clPatternFields[] = {
    // Virtual fields
    { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"VectorMatrix", (APTR)VECTORPATTERN_GET_Matrices, (APTR)VECTORPATTERN_SET_Matrices },
    { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)PATTERN_SET_Transform },
-   { "Viewport",     FDF_OBJECT|FDF_R,             0, (APTR)PATTERN_GET_Viewport, NULL },
+   { "Viewport",     FDF_VIRTUAL|FDF_OBJECT|FDF_R, ID_VECTORVIEWPORT, (APTR)PATTERN_GET_Viewport, NULL },
    END_FIELD
 };
 

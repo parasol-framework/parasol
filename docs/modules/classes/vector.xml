@@ -682,11 +682,6 @@ Z: Close Path
 
   </fields>
   <types>
-    <constants lookup="ARC" comment="Options for drawing arcs.">
-      <const name="LARGE"/>
-      <const name="SWEEP"/>
-    </constants>
-
     <constants lookup="FM" comment="Mask for controlling feedback events that are received.">
       <const name="CHILD_HAS_FOCUS">A child of the vector has gained the user focus.</const>
       <const name="HAS_FOCUS">The vector has gained the user focus.</const>

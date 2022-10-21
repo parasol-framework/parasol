@@ -156,7 +156,7 @@ public:
    }
 };
 
-typedef class plVectorText : public extVector {
+class objVectorText : public extVector {
    public:
    FUNCTION txValidateInput;
    DOUBLE txInlineSize; // Enables word-wrapping
@@ -193,7 +193,7 @@ typedef class plVectorText : public extVector {
    bool txXRelative:1;
    bool txYRelative:1;
 // bool txSpacingAndGlyphs:1;
-} objVectorText;
+};
 
 static void add_line(objVectorText *, std::string, LONG Offset, LONG Length, LONG Line = -1);
 static ERROR cursor_timer(objVectorText *, LARGE, LARGE);

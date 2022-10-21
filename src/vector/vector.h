@@ -72,9 +72,9 @@ extern struct DisplayBase *DisplayBase;
 extern struct FontBase *FontBase;
 
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
-typedef class plVectorClip objVectorClip;
+typedef class objVectorClip;
 typedef class objVectorTransition;
-typedef class plVectorText objVectorText;
+typedef class objVectorText;
 typedef class extVector;
 typedef class extVectorScene;
 typedef class extFilterEffect;
@@ -342,30 +342,26 @@ class extVectorViewport : public extVector {
 
 //****************************************************************************
 
-typedef class plVectorPoly : public extVector {
+class objVectorPoly : public extVector {
    public:
    struct VectorPoint *Points;
    LONG TotalPoints;
    bool Closed:1;      // Polygons are closed (TRUE) and Polylines are open (FALSE)
-} objVectorPoly;
+};
 
-//****************************************************************************
-
-typedef class plVectorPath : public extVector {
+class objVectorPath : public extVector {
    public:
    std::vector<PathCommand> Commands;
    agg::path_storage *CustomPath;
-} objVectorPath;
+};
 
-//****************************************************************************
-
-typedef class plVectorRectangle : public extVector {
+class objVectorRectangle : public extVector {
    public:
    DOUBLE rX, rY;
    DOUBLE rWidth, rHeight;
    DOUBLE rRoundX, rRoundY;
    LONG   rDimensions;
-} objVectorRectangle;
+};
 
 //****************************************************************************
 
@@ -375,7 +371,7 @@ class GradientColours {
       GRADIENT_TABLE table;
 };
 
-typedef class plVectorClip : public extVector {
+class objVectorClip : public extVector {
    public:
    UBYTE *ClipData;
    agg::path_storage *ClipPath; // Internally generated path
@@ -383,7 +379,9 @@ typedef class plVectorClip : public extVector {
    extVector *TargetVector;
    LONG ClipUnits;
    LONG ClipSize;
-} objVectorClip;
+};
+
+//****************************************************************************
 
 extern CSTRING get_name(OBJECTPTR);
 extern CSTRING read_numseq(CSTRING, ...);
