@@ -174,7 +174,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          BYTE hold_priority;
       #endif
    #endif
-   rkTask *localtask;
+   objTask *localtask;
    LONG i;
    OBJECTPTR SystemTask;
    ERROR error;
@@ -791,6 +791,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
 #endif
 
+   init_metaclass();
+
    // Allocate the page management table for public memory blocks.
 
    glTotalPages = PAGE_TABLE_CHUNK;
@@ -921,20 +923,20 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       localtask->Flags |= TSF_DUMMY;
 
       if (Info->Flags & OPF_NAME) {
-         SetField((OBJECTPTR)localtask, FID_Name|TSTRING, Info->Name);
+         SetField(localtask, FID_Name|TSTRING, Info->Name);
          StrCopy(Info->Name, glProgName, sizeof(glProgName));
       }
 
-      if (Info->Flags & OPF_AUTHOR)    SetField((OBJECTPTR)localtask, FID_Author|TSTR, Info->Author);
-      if (Info->Flags & OPF_COPYRIGHT) SetField((OBJECTPTR)localtask, FID_Copyright|TSTR, Info->Copyright);
-      if (Info->Flags & OPF_DATE)      SetField((OBJECTPTR)localtask, FID_Date|TSTR, Info->Date);
+      if (Info->Flags & OPF_AUTHOR)    SetField(localtask, FID_Author|TSTR, Info->Author);
+      if (Info->Flags & OPF_COPYRIGHT) SetField(localtask, FID_Copyright|TSTR, Info->Copyright);
+      if (Info->Flags & OPF_DATE)      SetField(localtask, FID_Date|TSTR, Info->Date);
 
-      if (!acInit(&localtask->Head)) {
+      if (!acInit(localtask)) {
          // NB: The glCurrentTask and glCurrentTaskID variables are set on task initialisation
 
-         if (na > 0) SetArray(&localtask->Head, FID_Parameters, newargs, na);
+         if (na > 0) SetArray(localtask, FID_Parameters, newargs, na);
 
-         if (!acActivate(&localtask->Head)) {
+         if (!acActivate(localtask)) {
 
          }
          else {
@@ -1770,9 +1772,9 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    for (const auto & mem : glPrivateMemory) {
       if (!(mem.Flags & MEM_OBJECT)) continue;
 
-      rkTask *task;
+      objTask *task;
       if ((task = mem.Address)) {
-         if ((task->Head.ClassID IS ID_TASK) and (task->ProcessID IS childprocess)) {
+         if ((task->ClassID IS ID_TASK) and (task->ProcessID IS childprocess)) {
             task->ReturnCode    = result;
             task->ReturnCodeSet = TRUE;
             break;
@@ -2096,9 +2098,9 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
 
    ERROR error;
    if (!(error = NewObject(ID_CONFIG, NF_NO_TRACK, (OBJECTPTR *)&glVolumes))) {
-      SetName(&glVolumes->Head, "SystemVolumes");
-      if (acInit(&glVolumes->Head) != ERR_Okay) {
-         acFree(&glVolumes->Head);
+      SetName(glVolumes, "SystemVolumes");
+      if (acInit(glVolumes) != ERR_Okay) {
+         acFree(glVolumes);
          return log.warning(ERR_CreateObject);
       }
 

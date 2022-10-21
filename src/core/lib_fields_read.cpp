@@ -24,7 +24,7 @@ static THREADVAR char strGetField[400]; // Buffer for retrieving unlisted field 
 
 Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
 {
-   rkMetaClass *mc = (rkMetaClass *)(Object->Class);
+   objMetaClass *mc = (objMetaClass *)(Object->Class);
    Field *field = mc->prvFields;
    *Result = Object;
 
@@ -44,7 +44,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
       for (LONG i=0; mc->Children[i] != 0xff; i++) {
          OBJECTPTR child;
          if ((!copy_field_to_buffer(Object, mc->prvFields + mc->Children[i], FT_POINTER, &child, NULL, NULL)) AND (child)) {
-            rkMetaClass *childclass = (rkMetaClass *)(child->Class);
+            objMetaClass *childclass = (objMetaClass *)(child->Class);
             field = childclass->prvFields;
 
             LONG floor = 0;
@@ -104,7 +104,7 @@ Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Source) // Read-on
    /*if (Object->ClassID IS ID_METACLASS) {
       // If FindField() is called on a meta-class, the fields declared for that class will be inspected rather than
       // the metaclass itself.
-      return lookup_id_byclass((rkMetaClass *)Object, FieldID, (rkMetaClass **)Source);
+      return lookup_id_byclass((objMetaClass *)Object, FieldID, (objMetaClass **)Source);
    }
    else*/ return lookup_id(Object, FieldID, Source);
 }
@@ -340,7 +340,7 @@ ERROR GetFields(OBJECTPTR Object, ...)
          if (!error) error = copy_field_to_buffer(source, field, fieldflags, value, NULL, NULL);
       }
       else {
-         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((rkMetaClass *)Object->Class)->ClassName);
+         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((objMetaClass *)Object->Class)->ClassName);
          error = ERR_UnsupportedField;
       }
    }
@@ -501,7 +501,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                      lookup++;
                   }
                }
-               else log.warning("No lookup table for field '%s', class '%s'.", fname, ((rkMetaClass *)Object->Class)->ClassName);
+               else log.warning("No lookup table for field '%s', class '%s'.", fname, ((objMetaClass *)Object->Class)->ClassName);
 
                return ERR_Okay;
             }
@@ -579,9 +579,9 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          if (!Action(AC_GetVar, Object, &var)) {
             return ERR_Okay;
          }
-         else log.msg("Could not find field %s from object %p (%s).", FieldName, Object, ((rkMetaClass *)Object->Class)->ClassName);
+         else log.msg("Could not find field %s from object %p (%s).", FieldName, Object, ((objMetaClass *)Object->Class)->ClassName);
       }
-      else log.warning("Could not find field %s from object %p (%s).", FieldName, Object, ((rkMetaClass *)Object->Class)->ClassName);
+      else log.warning("Could not find field %s from object %p (%s).", FieldName, Object, ((objMetaClass *)Object->Class)->ClassName);
 
       return ERR_UnsupportedField;
    }
@@ -594,7 +594,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
 {
    parasol::Log log("GetField");
 
-   //log.msg("[%s:%d] Name: %s, Flags: $%x", ((rkMetaClass *)Object->Class)->Name, Object->UID, Field->Name, DestFlags);
+   //log.msg("[%s:%d] Name: %s, Flags: $%x", ((objMetaClass *)Object->Class)->Name, Object->UID, Field->Name, DestFlags);
 
    BYTE value[16]; // 128 bits of space
    APTR data;
@@ -789,6 +789,6 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
    return ERR_Okay;
 
 mismatch:
-   log.warning("Mismatch while reading %s.%s (field $%.8x, requested $%.8x).", ((rkMetaClass *)Object->Class)->ClassName, Field->Name, Field->Flags, DestFlags);
+   log.warning("Mismatch while reading %s.%s (field $%.8x, requested $%.8x).", ((objMetaClass *)Object->Class)->ClassName, Field->Name, Field->Flags, DestFlags);
    return ERR_FieldTypeMismatch;
 }

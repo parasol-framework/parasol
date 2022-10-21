@@ -8,8 +8,8 @@ Please refer to it for further information on licensing.
 
 #include "defs.h"
 
-ERROR GET_HDensity(objDisplay *Self, LONG *Value);
-ERROR GET_VDensity(objDisplay *Self, LONG *Value);
+ERROR GET_HDensity(extDisplay *Self, LONG *Value);
+ERROR GET_VDensity(extDisplay *Self, LONG *Value);
 
 //****************************************************************************
 
@@ -210,7 +210,7 @@ bool glSixBitDisplay = false;
 std::unordered_map<LONG, InputCallback> glInputCallbacks;
 static MsgHandler *glExposeHandler = NULL;
 TIMER glRefreshPointerTimer = 0;
-objBitmap *glComposite = NULL;
+extBitmap *glComposite = NULL;
 static BYTE glDisplayType = DT_NATIVE;
 DOUBLE glpRefreshRate = -1, glpGammaRed = 1, glpGammaGreen = 1, glpGammaBlue = 1;
 LONG glpDisplayWidth = 1024, glpDisplayHeight = 768, glpDisplayX = 0, glpDisplayY = 0;
@@ -505,7 +505,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       return log.warning(ERR_Args);
    }
 
-   objDisplay *display;
+   extDisplay *display;
    if (DisplayID) {
       if (glDisplayInfo->DisplayID IS DisplayID) {
          CopyMemory(glDisplayInfo, Info, InfoSize);
@@ -1395,7 +1395,7 @@ ERROR init_egl(void)
 
 //****************************************************************************
 
-void refresh_display_from_egl(objDisplay *Self)
+void refresh_display_from_egl(extDisplay *Self)
 {
    parasol::Log log(__FUNCTION__);
 

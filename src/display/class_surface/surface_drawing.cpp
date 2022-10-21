@@ -1,10 +1,10 @@
 
-void copy_bkgd(SurfaceList *, WORD, WORD, WORD, WORD, WORD, WORD, WORD, objBitmap *, objBitmap *, WORD, BYTE);
+void copy_bkgd(SurfaceList *, WORD, WORD, WORD, WORD, WORD, WORD, WORD, extBitmap *, extBitmap *, WORD, BYTE);
 
 ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD Total, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)
 {
    parasol::Log log("expose_surface");
-   objBitmap *bitmap;
+   extBitmap *bitmap;
    ClipRectangle abs;
    WORD i, j;
    UBYTE skip;
@@ -298,7 +298,7 @@ the surface area first).</li>
 
 *****************************************************************************/
 
-ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
+ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 {
    parasol::Log log;
 
@@ -339,13 +339,13 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UID)) {
+         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
             if (action->SendArgs IS FALSE) {
                ReleaseMemoryID(msgqueue);
                return ERR_Okay|ERF_Notified;
             }
          }
-         else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->Head.UID)) {
+         else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->UID)) {
             if (action->SendArgs IS TRUE) {
                auto msgdraw = (struct acDraw *)(action + 1);
 
@@ -379,8 +379,8 @@ ERROR SURFACE_Draw(objSurface *Self, struct acDraw *Args)
    }
 
    log.traceBranch("%dx%d,%dx%d", x, y, width, height);
-   gfxRedrawSurface(Self->Head.UID, x, y, width, height, IRF_RELATIVE|IRF_IGNORE_CHILDREN);
-   gfxExposeSurface(Self->Head.UID, x, y, width, height, EXF_REDRAW_VOLATILE);
+   gfxRedrawSurface(Self->UID, x, y, width, height, IRF_RELATIVE|IRF_IGNORE_CHILDREN);
+   gfxExposeSurface(Self->UID, x, y, width, height, EXF_REDRAW_VOLATILE);
    return ERR_Okay|ERF_Notified;
 }
 
@@ -405,7 +405,7 @@ Okay
 
 *****************************************************************************/
 
-static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
+static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
 {
    if (tlNoExpose) return ERR_Okay;
 
@@ -419,7 +419,7 @@ static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->Head.UID)) {
+         if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->UID)) {
             if (action->SendArgs) {
                auto msgexpose = (struct drwExpose *)(action + 1);
 
@@ -464,8 +464,8 @@ static ERROR SURFACE_Expose(objSurface *Self, struct drwExpose *Args)
    }
 
    ERROR error;
-   if (Args) error = gfxExposeSurface(Self->Head.UID, Args->X, Args->Y, Args->Width, Args->Height, Args->Flags);
-   else error = gfxExposeSurface(Self->Head.UID, 0, 0, Self->Width, Self->Height, 0);
+   if (Args) error = gfxExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, Args->Flags);
+   else error = gfxExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, 0);
 
    return error;
 }
@@ -499,7 +499,7 @@ AccessMemory: Failed to access the internal surface list.
 
 *****************************************************************************/
 
-static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegion *Args)
+static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegion *Args)
 {
    if ((!(Self->Flags & RNF_VISIBLE)) or (tlNoDrawing) or (Self->Width < 1) or (Self->Height < 1)) {
       return ERR_Okay|ERF_Notified;
@@ -518,7 +518,7 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion)];
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
-         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->Head.UID)) {
+         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
             if (action->SendArgs IS TRUE) {
                auto msginvalid = (struct drwInvalidateRegion *)(action + 1);
 
@@ -550,12 +550,12 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
    }
 
    if (Args) {
-      gfxRedrawSurface(Self->Head.UID, Args->X, Args->Y, Args->Width, Args->Height, IRF_RELATIVE);
-      gfxExposeSurface(Self->Head.UID, Args->X, Args->Y, Args->Width, Args->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      gfxRedrawSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, IRF_RELATIVE);
+      gfxExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
    else {
-      gfxRedrawSurface(Self->Head.UID, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
-      gfxExposeSurface(Self->Head.UID, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      gfxRedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
+      gfxExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
 
    return ERR_Okay|ERF_Notified;
@@ -563,7 +563,7 @@ static ERROR SURFACE_InvalidateRegion(objSurface *Self, struct drwInvalidateRegi
 
 //****************************************************************************
 
-void move_layer(objSurface *Self, LONG X, LONG Y)
+void move_layer(extSurface *Self, LONG X, LONG Y)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -571,7 +571,7 @@ void move_layer(objSurface *Self, LONG X, LONG Y)
 
    if ((X IS Self->X) and (Y IS Self->Y)) return;
 
-   if (!(Self->Head.Flags & NF_INITIALISED)) {
+   if (!Self->initialised()) {
       Self->X = X;
       Self->Y = Y;
       return;
@@ -693,8 +693,8 @@ void move_layer(objSurface *Self, LONG X, LONG Y)
       else if (list[index].BitmapID IS list[parent_index].BitmapID) redraw = TRUE;
       else redraw = FALSE;
 
-      if (redraw) _redraw_surface(Self->Head.UID, list, index, total, destx, desty, destx+Self->Width, desty+Self->Height, NULL);
-      _expose_surface(Self->Head.UID, list, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      if (redraw) _redraw_surface(Self->UID, list, index, total, destx, desty, destx+Self->Width, desty+Self->Height, NULL);
+      _expose_surface(Self->UID, list, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
 
       // Expose underlying graphics resulting from the movement
 
@@ -719,7 +719,7 @@ void move_layer(objSurface *Self, LONG X, LONG Y)
 ** Stage:      Either STAGE_PRECOPY or STAGE_AFTERCOPY.
 */
 
-void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD Index, objBitmap *DestBitmap, ClipRectangle *clip, BYTE Stage)
+void prepare_background(extSurface *Self, SurfaceList *list, WORD Total, WORD Index, extBitmap *DestBitmap, ClipRectangle *clip, BYTE Stage)
 {
    parasol::Log log("prepare_bkgd");
 
@@ -797,7 +797,7 @@ void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD In
       if ((list[Index].Flags & RNF_PERVASIVE_COPY) and (Stage IS STAGE_AFTERCOPY)) pervasive = TRUE;
       else pervasive = FALSE;
 
-      objBitmap *bitmap;
+      extBitmap *bitmap;
       ERROR error;
       if (!(error = AccessObject(list[i].BitmapID, 2000, &bitmap))) {
          copy_bkgd(list, i, end, master, expose.Left, expose.Top, expose.Right, expose.Bottom, DestBitmap, bitmap, opaque, pervasive);
@@ -815,7 +815,7 @@ void prepare_background(objSurface *Self, SurfaceList *list, WORD Total, WORD In
 */
 
 void copy_bkgd(SurfaceList *list, WORD Index, WORD End, WORD Master, WORD Left, WORD Top, WORD Right, WORD Bottom,
-   objBitmap *DestBitmap, objBitmap *SrcBitmap, WORD Opacity, BYTE Pervasive)
+   extBitmap *DestBitmap, extBitmap *SrcBitmap, WORD Opacity, BYTE Pervasive)
 {
    parasol::Log log(__FUNCTION__);
 

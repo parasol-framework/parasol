@@ -1754,13 +1754,13 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
 
                if (name[0]) {
                   if (!StrMatch(name, "self")) {
-                     objectid = GetUniqueID(CurrentContext());
+                     objectid = CurrentContext()->UID;
                   }
                   else if ((!StrMatch(name, "container")) or (!StrMatch(name, "owner"))) {
-                     if (!OwnerID) OwnerID = GetOwner(CurrentContext());
+                     if (!OwnerID) OwnerID = CurrentContext()->ownerID();
                      objectid = OwnerID;
                   }
-                  else if (!StrMatch(name, "task")) objectid = glCurrentTask->Head.UID;
+                  else if (!StrMatch(name, "task")) objectid = glCurrentTask->UID;
                   else {
                      LONG count = 1;
                      FindObject(name, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &objectid, &count);
@@ -1981,11 +1981,11 @@ LONG StrTranslateRefresh(void)
             sharectl->TranslationMID = memoryid;
             glTranslate = translate;
             glTranslateMID = memoryid;
-            acFree(&config->Head);
+            acFree(config);
 
             return TRUE;
          }
-         acFree(&config->Head);
+         acFree(config);
       }
       else {
          // If there is no translation file for this language, revert to no translation table (which will give the user English).

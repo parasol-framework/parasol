@@ -8,7 +8,7 @@ extern struct CoreBase *CoreBase;
 
 typedef struct {
    struct jpeg_destination_mgr pub; /* public fields */
-   struct rkFile *outfile;		/* target stream */
+   objFile *outfile;		/* target stream */
    JOCTET * buffer;		/* start of buffer */
 } my_destination_mgr;
 
@@ -87,7 +87,7 @@ METHODDEF(void) term_destination(j_compress_ptr cinfo)
 ** for closing it after finishing compression.
 */
 
-GLOBAL(void) jpeg_stdio_dest(j_compress_ptr cinfo, struct rkFile *outfile)
+GLOBAL(void) jpeg_stdio_dest(j_compress_ptr cinfo, objFile *outfile)
 {
    my_dest_ptr dest;
 

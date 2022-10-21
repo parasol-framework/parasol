@@ -114,7 +114,7 @@ static void set_state(svgState *State, const XMLTag *Tag)
 //****************************************************************************
 // Process all child elements that belong to the target Tag.
 
-static void process_children(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Vector)
+static void process_children(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Vector)
 {
    OBJECTPTR sibling = NULL;
    for (auto child=Tag; child; child=child->Next) {
@@ -127,7 +127,7 @@ static void process_children(objSVG *Self, objXML *XML, svgState *State, const X
 
 //****************************************************************************
 
-static void xtag_pathtransition(objSVG *Self, objXML *XML, const XMLTag *Tag)
+static void xtag_pathtransition(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -136,7 +136,7 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, const XMLTag *Tag)
    OBJECTPTR trans;
    if (!NewObject(ID_VECTORTRANSITION, 0, &trans)) {
       SetFields(trans,
-         FID_Owner|TLONG, Self->Scene->Head.UID, // All clips belong to the root page to prevent hierarchy issues.
+         FID_Owner|TLONG, Self->Scene->UID, // All clips belong to the root page to prevent hierarchy issues.
          FID_Name|TSTR,   "SVGTransition",
          TAGEND);
 
@@ -155,10 +155,10 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, const XMLTag *Tag)
          if (stopcount >= 2) {
             Transition stops[stopcount];
             process_transition_stops(Self, Tag, stops);
-            SetArray((OBJECTPTR)trans, FID_Stops, stops, stopcount);
+            SetArray(trans, FID_Stops, stops, stopcount);
 
             if (!acInit(trans)) {
-               scAddDef(Self->Scene, id, (OBJECTPTR)trans);
+               scAddDef(Self->Scene, id, trans);
                return;
             }
          }
@@ -172,7 +172,7 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
 //****************************************************************************
 
-static void xtag_clippath(objSVG *Self, objXML *XML, const XMLTag *Tag)
+static void xtag_clippath(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -183,7 +183,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
    if (!NewObject(ID_VECTORCLIP, 0, &clip)) {
       SetFields(clip,
-         FID_Owner|TLONG, Self->Scene->Head.UID, // All clips belong to the root page to prevent hierarchy issues.
+         FID_Owner|TLONG, Self->Scene->UID, // All clips belong to the root page to prevent hierarchy issues.
          FID_Name|TSTR,   "SVGClip",
          FID_Units|TLONG, VUNIT_BOUNDING_BOX,
          TAGEND);
@@ -208,7 +208,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, const XMLTag *Tag)
             // Valid child elements for clip-path are: circle, ellipse, line, path, polygon, polyline, rect, text, use, animate
 
             process_children(Self, XML, &state, Tag->Child, clip);
-            scAddDef(Self->Scene, id, (OBJECTPTR)clip);
+            scAddDef(Self->Scene, id, clip);
          }
          else acFree(clip);
       }
@@ -221,7 +221,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_blur(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -251,7 +251,7 @@ static ERROR parse_fe_blur(objSVG *Self, objVectorFilter *Filter, const XMLTag *
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -266,7 +266,7 @@ static ERROR parse_fe_blur(objSVG *Self, objVectorFilter *Filter, const XMLTag *
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_offset(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -282,7 +282,7 @@ static ERROR parse_fe_offset(objSVG *Self, objVectorFilter *Filter, const XMLTag
       switch(hash) {
          case SVF_DX: SetLong(fx, FID_XOffset, StrToInt(val)); break;
          case SVF_DY: SetLong(fx, FID_YOffset, StrToInt(val)); break;
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
@@ -296,7 +296,7 @@ static ERROR parse_fe_offset(objSVG *Self, objVectorFilter *Filter, const XMLTag
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_merge(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -373,7 +373,7 @@ static ERROR parse_fe_merge(objSVG *Self, objVectorFilter *Filter, const XMLTag 
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_colour_matrix(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    #define CM_SIZE 20
    typedef std::array<DOUBLE, CM_SIZE> MATRIX;
@@ -445,7 +445,7 @@ static ERROR parse_fe_colour_matrix(objSVG *Self, objVectorFilter *Filter, const
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -460,7 +460,7 @@ static ERROR parse_fe_colour_matrix(objSVG *Self, objVectorFilter *Filter, const
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_convolve_matrix(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -544,7 +544,7 @@ static ERROR parse_fe_convolve_matrix(objSVG *Self, objVectorFilter *Filter, con
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -559,7 +559,7 @@ static ERROR parse_fe_convolve_matrix(objSVG *Self, objVectorFilter *Filter, con
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_composite(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -646,9 +646,9 @@ static ERROR parse_fe_composite(objSVG *Self, objVectorFilter *Filter, const XML
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
-         case SVF_IN2: parse_input(Self, &fx->Head, val, FID_MixType, FID_Mix); break;
+         case SVF_IN2: parse_input(Self, fx, val, FID_MixType, FID_Mix); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -663,7 +663,7 @@ static ERROR parse_fe_composite(objSVG *Self, objVectorFilter *Filter, const XML
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_flood(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -681,7 +681,7 @@ static ERROR parse_fe_flood(objSVG *Self, objVectorFilter *Filter, const XMLTag 
          case SVF_FLOOD_COLOR:
          case SVF_FLOOD_COLOUR: {
             FRGB rgb;
-            vecReadPainter((OBJECTPTR)NULL, val, &rgb, NULL, NULL, NULL);
+            vecReadPainter(NULL, val, &rgb, NULL, NULL, NULL);
             error = SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
             break;
          }
@@ -701,7 +701,7 @@ static ERROR parse_fe_flood(objSVG *Self, objVectorFilter *Filter, const XMLTag 
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -716,7 +716,7 @@ static ERROR parse_fe_flood(objSVG *Self, objVectorFilter *Filter, const XMLTag 
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_turbulence(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -761,7 +761,7 @@ static ERROR parse_fe_turbulence(objSVG *Self, objVectorFilter *Filter, const XM
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -777,7 +777,7 @@ static ERROR parse_fe_turbulence(objSVG *Self, objVectorFilter *Filter, const XM
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_morphology(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -809,7 +809,7 @@ static ERROR parse_fe_morphology(objSVG *Self, objVectorFilter *Filter, const XM
 
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -824,7 +824,7 @@ static ERROR parse_fe_morphology(objSVG *Self, objVectorFilter *Filter, const XM
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_image(objSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_image(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -866,7 +866,7 @@ static ERROR parse_fe_image(objSVG *Self, objVectorFilter *Filter, const XMLTag 
             if (!StrMatch("true", val)) image_required = true;
             break;
 
-         case SVF_IN: parse_input(Self, &fx->Head, val, FID_SourceType, FID_Input); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
@@ -874,6 +874,7 @@ static ERROR parse_fe_image(objSVG *Self, objVectorFilter *Filter, const XMLTag 
 
    if ((path) and (path[0] IS '#')) {
       // TODO: Image renders a segment of the scene graph to an independent bitmap instead of loading a picture.
+      // The process is equivalent to the 'use' instruction.
 
       log.warning("xlink:href not yet supported.");
 
@@ -917,7 +918,7 @@ static ERROR parse_fe_image(objSVG *Self, objVectorFilter *Filter, const XMLTag 
 
 //********************************************************************************************************************
 
-static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
+static void xtag_filter(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -926,7 +927,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
    if (!NewObject(ID_VECTORFILTER, 0, &filter)) {
       SetFields(filter,
-         FID_Owner|TLONG,       Self->Scene->Head.UID,
+         FID_Owner|TLONG,       Self->Scene->UID,
          FID_Name|TSTR,         "SVGFilter",
          FID_Units|TLONG,       VUNIT_BOUNDING_BOX,
          FID_ColourSpace|TLONG, VCS_LINEAR_RGB,
@@ -1037,7 +1038,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
          Self->Effects.clear();
 
-         scAddDef(Self->Scene, id, (OBJECTPTR)filter);
+         scAddDef(Self->Scene, id, filter);
       }
       else acFree(filter);
    }
@@ -1047,7 +1048,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, const XMLTag *Tag)
 // NB: In bounding-box mode, the default view-box is 0 0 1 1, where 1 is equivalent to 100% of the target space.
 // If the client sets a custom view-box then the dimensions are fixed, and no scaling will apply.
 
-static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
+static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorPattern *pattern;
@@ -1091,7 +1092,7 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
             case SVF_ID:       id = val; break;
 
-            case SVF_OVERFLOW: SetString(pattern->Viewport, FID_Overflow, val); break;
+            case SVF_OVERFLOW: SetString((OBJECTPTR)pattern->Viewport, FID_Overflow, val); break;
 
             case SVF_OPACITY:  set_double(pattern, FID_Opacity, val); break;
 
@@ -1108,7 +1109,7 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
                client_set_viewbox = true;
                pattern->ContentUnits = VUNIT_USERSPACE;
                read_numseq(val, &vx, &vy, &vwidth, &vheight, TAGEND);
-               SetFields(pattern->Viewport,
+               SetFields((OBJECTPTR)pattern->Viewport,
                   FID_ViewX|TDOUBLE,      vx,
                   FID_ViewY|TDOUBLE,      vy,
                   FID_ViewWidth|TDOUBLE,  vwidth,
@@ -1142,7 +1143,7 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
          svgState state;
          reset_state(&state);
          process_children(Self, XML, &state, Tag->Child, (OBJECTPTR)pattern->Viewport);
-         if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, (OBJECTPTR)pattern);
+         if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, pattern);
       }
       else {
          acFree(pattern);
@@ -1153,12 +1154,12 @@ static void process_pattern(objSVG *Self, objXML *XML, const XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState *State, const XMLTag *Tag,
+static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState *State, const XMLTag *Tag,
    OBJECTPTR Parent, OBJECTPTR *Result)
 {
    parasol::Log log(__FUNCTION__);
    ERROR error;
-   OBJECTPTR vector;
+   objVector *vector;
 
    if (!(error = NewObject(VectorID, 0, &vector))) {
       SetOwner(vector, Parent);
@@ -1169,7 +1170,7 @@ static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState
       process_attrib(Self, XML, Tag, vector);
 
       if (!acInit(vector)) {
-         // Process child tags
+         // Process child tags, if any
 
          for (auto child=Tag->Child; child; child=child->Next) {
             if (child->Attrib->Name) {
@@ -1212,7 +1213,7 @@ static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState
 
 //****************************************************************************
 
-static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static ERROR xtag_default(extSVG *Self, ULONG Hash, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1295,7 +1296,7 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
 
 //****************************************************************************
 
-static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
+static ERROR load_pic(extSVG *Self, CSTRING Path, objPicture **Picture)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1346,7 +1347,7 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
 
    if (!error) {
       error = CreateObject(ID_PICTURE, 0, Picture,
-            FID_Owner|TLONG,        Self->Scene->Head.UID,
+            FID_Owner|TLONG,        Self->Scene->UID,
             FID_Path|TSTR,          Path,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
@@ -1365,7 +1366,7 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
 //****************************************************************************
 // Definition images are stored once, allowing them to be used multiple times via Fill and Stroke references.
 
-static void def_image(objSVG *Self, const XMLTag *Tag)
+static void def_image(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorImage *image;
@@ -1374,7 +1375,7 @@ static void def_image(objSVG *Self, const XMLTag *Tag)
 
    if (!NewObject(ID_VECTORIMAGE, 0, &image)) {
       SetFields(image,
-         FID_Owner|TLONG,        Self->Scene->Head.UID,
+         FID_Owner|TLONG,        Self->Scene->UID,
          FID_Name|TSTR,          "SVGImage",
          FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
          FID_SpreadMethod|TLONG, VSPREAD_PAD,
@@ -1408,7 +1409,7 @@ static void def_image(objSVG *Self, const XMLTag *Tag)
          if (pic) {
             SetPointer(image, FID_Picture, pic);
             if (!acInit(image)) {
-               if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, (OBJECTPTR)image);
+               if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, image);
             }
             else {
                acFree(image);
@@ -1429,7 +1430,7 @@ static void def_image(objSVG *Self, const XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static ERROR xtag_image(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
    LONG ratio = 0;
@@ -1465,9 +1466,9 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, const XMLTag
             TAGEND)) {
 
          char id[32] = "img";
-         IntToStr(image->Head.UID, id+3, sizeof(id)-3);
+         IntToStr(image->UID, id+3, sizeof(id)-3);
          SetOwner(pic, image); // It's best if the pic belongs to the image.
-         scAddDef(Self->Scene, id, (OBJECTPTR)image);
+         scAddDef(Self->Scene, id, image);
 
          char fillname[256];
          StrFormat(fillname, sizeof(fillname), "url(#%s)", id);
@@ -1491,7 +1492,7 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, const XMLTag
 
 //****************************************************************************
 
-static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_defs(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1514,7 +1515,7 @@ static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, const XMLTag 
             for (LONG a=1; a < child->TotalAttrib; a++) {
                if (!StrMatch("id", child->Attrib[a].Name)) {
                   add_id(Self, child, child->Attrib[a].Value);
-                  //if (add_id(Self, child, child->Attrib[a].Value)) scAddDef(Self->Scene, StrValue, (OBJECTPTR)Vector);
+                  //if (add_id(Self, child, child->Attrib[a].Value)) scAddDef(Self->Scene, StrValue, Vector);
                   break;
                }
             }
@@ -1528,7 +1529,7 @@ static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, const XMLTag 
 
 //****************************************************************************
 
-static ERROR xtag_style(objSVG *Self, objXML *XML, const XMLTag *Tag)
+static ERROR xtag_style(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    ERROR error = ERR_Okay;
@@ -1587,7 +1588,7 @@ static ERROR xtag_style(objSVG *Self, objXML *XML, const XMLTag *Tag)
 // When a use element is encountered, it looks for the associated symbol ID and then processes the XML child tags that
 // belong to it.
 
-static void xtag_symbol(objSVG *Self, objXML *XML, const XMLTag *Tag)
+static void xtag_symbol(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    log.traceBranch("Tag: %p", Tag);
@@ -1601,7 +1602,7 @@ static void xtag_symbol(objSVG *Self, objXML *XML, const XMLTag *Tag)
 ** Most vector shapes can be morphed to the path of another vector.
 */
 
-static void xtag_morph(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
+static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1691,7 +1692,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR P
       OBJECTPTR shape;
       svgState state;
       reset_state(&state);
-      process_shape(Self, class_id, XML, &state, tagref, &Self->Scene->Head, &shape);
+      process_shape(Self, class_id, XML, &state, tagref, Self->Scene, &shape);
       SetPointer(Parent, FID_Morph, shape);
       if (transvector) SetPointer(Parent, FID_Transition, transvector);
       SetLong(Parent, FID_MorphFlags, flags);
@@ -1706,7 +1707,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR P
 // non-exposed DOM tree which had the 'use' element as its parent and all of the 'use' element's ancestors as its
 // higher-level ancestors.
 
-static void xtag_use(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent)
+static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
    CSTRING ref = NULL;
@@ -1836,7 +1837,7 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, const XMLTag *T
 
 //****************************************************************************
 
-static void xtag_group(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static void xtag_group(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1868,7 +1869,7 @@ static void xtag_group(objSVG *Self, objXML *XML, svgState *State, const XMLTag 
 ** Refer to section 7.9 of the SVG Specification for more information.
 */
 
-static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static void xtag_svg(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
    LONG a;
@@ -1996,7 +1997,7 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, const XMLTag *T
 // <animateTransform attributeType="XML" attributeName="transform" type="rotate" from="0,150,150" to="360,150,150"
 //   begin="0s" dur="5s" repeatCount="indefinite"/>
 
-static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_animatetransform(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
    svgAnimation anim;
@@ -2151,7 +2152,7 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, const XMLTag *Tag,
 //****************************************************************************
 // <animateMotion from="0,0" to="100,100" dur="4s" fill="freeze"/>
 
-static ERROR xtag_animatemotion(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_animatemotion(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
 {
    Self->Animated = TRUE;
 
@@ -2182,7 +2183,7 @@ static ERROR xtag_animatemotion(objSVG *Self, objXML *XML, const XMLTag *Tag, OB
 
 //****************************************************************************
 
-static void process_attrib(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Vector)
+static void process_attrib(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -2212,7 +2213,7 @@ static void process_attrib(objSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTP
 //****************************************************************************
 // Apply all attributes in a rule to a target tag.
 
-static void apply_rule(objSVG *Self, objXML *XML, KatanaArray *Properties, const XMLTag *Tag)
+static void apply_rule(extSVG *Self, objXML *XML, KatanaArray *Properties, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -2303,7 +2304,7 @@ static void apply_rule(objSVG *Self, objXML *XML, KatanaArray *Properties, const
 //****************************************************************************
 // Scan and apply all stylesheet selectors to the loaded XML document.
 
-static void process_rule(objSVG *Self, objXML *XML, KatanaRule *Rule)
+static void process_rule(extSVG *Self, objXML *XML, KatanaRule *Rule)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -2381,7 +2382,7 @@ static void process_rule(objSVG *Self, objXML *XML, KatanaRule *Rule)
 
 //****************************************************************************
 
-static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XML, const XMLTag *Tag, CSTRING StrValue)
+static ERROR set_property(extSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XML, const XMLTag *Tag, CSTRING StrValue)
 {
    parasol::Log log(__FUNCTION__);
    DOUBLE num;
@@ -2762,7 +2763,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
 
       case SVF_ID:
          SetString(Vector, FID_ID, StrValue);
-         if (add_id(Self, Tag, StrValue)) scAddDef(Self->Scene, StrValue, (OBJECTPTR)Vector);
+         if (add_id(Self, Tag, StrValue)) scAddDef(Self->Scene, StrValue, Vector);
          SetName(Vector, StrValue);
          break;
 

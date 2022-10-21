@@ -30,7 +30,7 @@ FDEF argsUndo[]          = { { "Steps", FD_LONG }, { 0, 0 } };
 FDEF argsWrite[]         = { { "Buffer", FD_PTR|FD_BUFFER }, { "Length", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsSelectArea[]    = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { 0, 0 } };
 
-const struct ActionTable ActionTable[] = { // Sorted by action ID.
+extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { 0, 0, 0, 0 },
    { AHASH_ACTIONNOTIFY,   sizeof(struct acActionNotify), "ActionNotify", argsActionNotify },
    { AHASH_ACTIVATE,       0, "Activate", 0 },

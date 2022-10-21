@@ -7,6 +7,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     loadFile(glPath .. 'common-graphics.fdl')
   end)
 
+  c_insert([[
+typedef class plVectorViewport objVectorViewport;
+  ]])
+
   flags("ARC", { comment="Options for drawing arcs." },
     "LARGE",
     "SWEEP")
@@ -347,7 +351,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
    c_insert([[
 #ifdef PRV_VECTORSCENE
 struct OrderedVector {
-   bool operator()(const struct rkVector *a, const struct rkVector *b) const;
+   bool operator()(const objVector *a, const objVector *b) const;
 };
 #endif
    ]])
@@ -364,22 +368,6 @@ struct OrderedVector {
    int PageWidth              # Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
    int PageHeight             # Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
    int(VSM) SampleMethod      # VSM: Method to use for resampling images and patterns.
-  ]],
-  [[
-   DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
-   class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
-   agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
-   APTR KeyHandle; // Keyboard subscription
-   std::unordered_set<struct rkVectorViewport *> PendingResizeMsgs;
-   std::unordered_map<struct rkVector *, LONG> InputSubscriptions;
-   std::set<struct rkVector *, OrderedVector> KeyboardSubscriptions;
-   std::vector<struct InputBoundary> InputBoundaries;
-   std::unordered_map<struct rkVectorViewport *, std::unordered_map<struct rkVector *, FUNCTION>> ResizeSubscriptions;
-   OBJECTID ButtonLock; // The vector currently holding a button lock
-   OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
-   LONG InputHandle;
-   LONG Cursor; // Current cursor image
-   UBYTE AdaptorType;
   ]])
 
   class("VectorImage", { src="defs/image.cpp" }, [[
@@ -428,14 +416,6 @@ struct OrderedVector {
     int(VGT) Type
     int(VGF) Flags               # Optional flags.
     int TotalStops               # The total number of records in the Stops array.
-  ]],
-  [[
-   struct GradientStop *Stops;  // An array of gradient stop colours.
-   struct VectorMatrix *Matrices;
-   class GradientColours *Colours;
-   STRING ID;
-   LONG NumericID;
-   WORD ChangeCounter;
   ]])
 
   class("FilterEffect", { src="filters/filter_effect.cpp", output="filters/filter_effect_def.c" }, [[
@@ -451,10 +431,6 @@ struct OrderedVector {
     int(DMF) Dimensions     # Primitive dimensions.
     int(VSF) SourceType     # Desired source input.
     int(VSF) MixType        # Optional input for mixing.
-  ]],
-  [[
-   struct rkVectorFilter *Filter; // Direct reference to the parent filter
-   UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
   ]])
 
   struct("MergeSource", { comment="Input source declaration for MergeFX" }, [[
@@ -497,17 +473,17 @@ struct OrderedVector {
     int(VCS) ColourSpace      # Operating colour space for RGB values
   ]],
   [[
-   rkVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
-   rkVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
-   struct rkVectorScene *SourceScene; // Internal scene for rendering SourceGraphic
-   struct rkVectorScene *Scene;       // Scene that the filter belongs to.
-   objBitmap *SourceGraphic;          // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
-   objBitmap *BkgdBitmap;             // Target bitmap supplied by Scene.acDraw()
-   objFilterEffect *ActiveEffect;     // Current effect being processed by the pipeline.
-   objFilterEffect *Effects;          // Pointer to the first effect in the chain.
+   objVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
+   objVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
+   objVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
+   objVectorScene *Scene;              // Scene that the filter belongs to.
+   objBitmap *SourceGraphic;           // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
+   objBitmap *BkgdBitmap;              // Target bitmap supplied by Scene.acDraw()
+   objFilterEffect *ActiveEffect;      // Current effect being processed by the pipeline.
+   objFilterEffect *Effects;           // Pointer to the first effect in the chain.
    objFilterEffect *LastEffect;
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
-   ClipRectangle VectorClip;          // Clipping region of the vector client (reflects the vector bounds)
+   ClipRectangle VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
    UBYTE BankIndex;
    bool Rendered;
    bool Disabled;
@@ -536,27 +512,6 @@ struct OrderedVector {
   class('VectorClip', { src='vectors/clip.cpp' })
 
   class('VectorViewport', { src='vectors/viewport.cpp', output="vectors/viewport_def.cpp" })
-
-  c_insert([[
-#define SHAPE_PUBLIC \
-   struct rkVector *Child; \
-   struct rkVectorScene *Scene; \
-   struct rkVector *Next; \
-   struct rkVector *Prev; \
-   OBJECTPTR Parent; \
-   struct VectorMatrix *Matrices; \
-   DOUBLE StrokeOpacity; \
-   DOUBLE FillOpacity; \
-   DOUBLE Opacity; \
-   DOUBLE MiterLimit; \
-   DOUBLE InnerMiterLimit; \
-   DOUBLE DashOffset; \
-   LONG   Visibility; \
-   LONG   Flags; \
-   LONG   Cursor; \
-   LONG   PathQuality; \
-   LONG   ColourSpace;
-  ]])
 
   methods("vector", "Vec", {
     { id=1, name="Push" },
@@ -590,7 +545,53 @@ struct OrderedVector {
     int(RQ)  PathQuality    # Defines the quality of rendered path outlines.
     int(VCS) ColourSpace    # Desired colour space to use when blending colours.
   ]],
-  [[ SHAPE_PRIVATE ]])
+  [[
+   DOUBLE FinalX, FinalY;
+   DOUBLE BX1, BY1, BX2, BY2;
+   DOUBLE FillGradientAlpha, StrokeGradientAlpha;
+   DOUBLE StrokeWidth;
+   agg::path_storage BasePath;
+   agg::trans_affine Transform;
+   RGB8 rgbStroke, rgbFill;
+   objVectorFilter *Filter;
+   objVectorViewport *ParentView;
+   CSTRING FilterString, StrokeString, FillString;
+   STRING ID;
+   void   (*GeneratePath)(objVector *);
+   agg::rasterizer_scanline_aa<> *StrokeRaster;
+   agg::rasterizer_scanline_aa<> *FillRaster;
+   objVectorClip     *ClipMask;
+   objVectorGradient *StrokeGradient, *FillGradient;
+   objVectorImage    *FillImage, *StrokeImage;
+   objVectorPattern  *FillPattern, *StrokePattern;
+   objVectorTransition *Transition;
+   objVector *Morph;
+   DashedStroke *DashArray;
+   GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
+   FRGB StrokeColour, FillColour;
+   std::vector<FeedbackSubscription> *FeedbackSubscriptions;
+   std::vector<InputSubscription> *InputSubscriptions;
+   std::vector<KeyboardSubscription> *KeyboardSubscriptions;
+   LONG   InputMask;
+   LONG   NumericID;
+   LONG   PathLength;
+   UBYTE  MorphFlags;
+   UBYTE  FillRule;
+   UBYTE  ClipRule;
+   UBYTE  Dirty;
+   UBYTE  TabOrder;
+   UBYTE  EnableBkgd:1;
+   UBYTE  DisableFillColour:1;
+   UBYTE  ButtonLock:1;
+   UBYTE  RelativeStrokeWidth:1;
+   UBYTE  DisableHitTesting:1;
+   UBYTE  ResizeSubscription:1;
+   agg::line_join_e  LineJoin;
+   agg::line_cap_e   LineCap;
+   agg::inner_join_e InnerJoin;
+   // Methods
+   DOUBLE fixed_stroke_width();
+  ]])
 
   functionNames("vec",
     "DrawPath",
@@ -624,14 +625,14 @@ struct OrderedVector {
 //****************************************************************************
 
 #ifdef PRV_VECTORSCENE
-__inline__ bool OrderedVector::operator()(const struct rkVector *a, const struct rkVector *b) const {
-   if (a->TabOrder == b->TabOrder) return a->Head.UID < b->Head.UID;
+__inline__ bool OrderedVector::operator()(const objVector *a, const objVector *b) const {
+   if (a->TabOrder == b->TabOrder) return a->UID < b->UID;
    else return a->TabOrder < b->TabOrder;
 }
 #endif
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
-   Colour->Head.ClassID = ID_VECTORCOLOUR;
+   Colour->ClassID = ID_VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
    Colour->Blue  = Blue;

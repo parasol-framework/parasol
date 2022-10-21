@@ -122,7 +122,7 @@ static int object_new(lua_State *Lua)
    CSTRING class_name;
    CLASSID class_id;
 
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    LONG objflags = 0;
    LONG type = lua_type(Lua, 1);
@@ -253,7 +253,7 @@ static int object_state(lua_State *Lua)
       return 0;
    }
 
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    if (!prv->StateMap) {
       prv->StateMap = new (std::nothrow) std::unordered_map<OBJECTID, LONG>();
@@ -295,7 +295,7 @@ static int object_newchild(lua_State *Lua)
       return 0;
    }
 
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    CSTRING class_name;
    CLASSID class_id;
@@ -507,7 +507,7 @@ static int object_find(lua_State *Lua)
    OBJECTID object_id;
 
    LONG type = lua_type(Lua, 1);
-   if ((type IS LUA_TSTRING) AND ((object_name = lua_tostring(Lua, 1)))) {
+   if ((type IS LUA_TSTRING) and ((object_name = lua_tostring(Lua, 1)))) {
       LONG class_type = lua_type(Lua, 2); // Optional
       if (class_type IS LUA_TNUMBER) {
          class_id = lua_tointeger(Lua, 2);
@@ -519,11 +519,11 @@ static int object_find(lua_State *Lua)
 
       log.trace("obj.find(%s, $%.8x)", object_name, class_id);
 
-      if ((!StrMatch("self", object_name)) AND (!class_id)) {
-         return object_find_ptr(Lua, (OBJECTPTR)Lua->Script);
+      if ((!StrMatch("self", object_name)) and (!class_id)) {
+         return object_find_ptr(Lua, Lua->Script);
       }
       else if (!StrMatch("owner", object_name)) {
-         if ((obj = GetObjectPtr(Lua->Script->Head.OwnerID))) {
+         if ((obj = GetObjectPtr(Lua->Script->ownerID()))) {
             return object_find_ptr(Lua, obj);
          }
          else return 0;
@@ -538,7 +538,7 @@ static int object_find(lua_State *Lua)
       }
       else log.debug("Unable to find object '%s'", object_name);
    }
-   else if ((type IS LUA_TNUMBER) AND ((object_id = lua_tointeger(Lua, 1)))) {
+   else if ((type IS LUA_TNUMBER) and ((object_id = lua_tointeger(Lua, 1)))) {
       log.trace("obj.find(#%d)", object_id);
 
       if (CheckObjectIDExists(object_id) != ERR_Okay) return 0;
@@ -569,15 +569,15 @@ static int object_class(lua_State *Lua)
       return 0;
    }
 
-   rkMetaClass *cl = query->Class;
+   objMetaClass *cl = query->Class;
    auto def = (struct object *)lua_newuserdata(Lua, sizeof(struct object)); // +1 stack
    ClearMemory(def, sizeof(struct object));
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
    lua_setmetatable(Lua, -2); // -1 stack
 
-   def->prvObject = &cl->Head;
-   def->ObjectID  = cl->Head.UID;
-   def->ClassID   = cl->Head.SubID ? cl->Head.SubID : cl->Head.ClassID;
+   def->prvObject = cl;
+   def->ObjectID  = cl->UID;
+   def->ClassID   = cl->SubID ? cl->SubID : cl->ClassID;
    def->Class     = cl;
    def->Detached  = TRUE;
    def->Locked    = FALSE;
@@ -762,7 +762,7 @@ static int object_subscribe(lua_State *Lua)
    parasol::Log log("obj.subscribe");
    log.trace("Object: %d, Action: %s (ID %d)", def->ObjectID, action, action_id);
 
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    ERROR error;
    if (!(error = SubscribeActionTags(obj, action_id, TAGEND))) {
@@ -811,7 +811,7 @@ static int object_unsubscribe(lua_State *Lua)
 {
    parasol::Log log("unsubscribe");
 
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    struct object *def;
    if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
@@ -913,7 +913,7 @@ static int object_destruct(lua_State *Lua)
             // owned by a Database object).
 
             auto owner_id = GetOwnerID(def->ObjectID);
-            if ((def->ClassID IS ID_RECORDSET) or (owner_id IS Lua->Script->Head.UID) or (owner_id IS Lua->Script->TargetID)) {
+            if ((def->ClassID IS ID_RECORDSET) or (owner_id IS Lua->Script->UID) or (owner_id IS Lua->Script->TargetID)) {
                log.trace("Freeing Fluid-owned object #%d.", def->ObjectID);
                acFreeID(def->ObjectID);
             }
@@ -1013,7 +1013,7 @@ static int object_index(lua_State *Lua)
                   // so long as there are no fields named 'access' or 'release' and the user doesn't write field names
                   // with odd caps.
 
-                  auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+                  auto prv = (prvFluid *)Lua->Script->ChildPrivate;
                   prv->CaughtError = getfield(Lua, def, code);
                   if (!prv->CaughtError) return 1;
                   //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);

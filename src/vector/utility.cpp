@@ -83,7 +83,7 @@ CSTRING get_name(OBJECTPTR Vector)
 }
 
 INLINE CSTRING get_name(objVector *Vector) {
-   return get_name(&Vector->Head);
+   return get_name(Vector);
 }
 
 //********************************************************************************************************************
@@ -279,7 +279,7 @@ void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
    for (; Vector; Vector=(objVector *)Vector->Next) {
       if (Vector->Dirty) gen_vector_path(Vector);
 
-      if (Vector->Head.SubID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
+      if (Vector->SubID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
          DOUBLE bx1, by1, bx2, by2;
 
          if ((Vector->ClipMask) and (Vector->ClipMask->ClipPath)) {
@@ -349,14 +349,14 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
    while (Vector) {
       if (Vector->ClassID IS ID_VECTORSCENE) {
          log.msg("Scene: %p", Vector);
-         if (((objVectorScene *)Vector)->Viewport) debug_tree_ptrs(Header, &(((objVectorScene *)Vector)->Viewport->Head), Level);
+         if (((objVectorScene *)Vector)->Viewport) debug_tree_ptrs(Header, (((objVectorScene *)Vector)->Viewport), Level);
          break;
       }
       else if (Vector->ClassID IS ID_VECTOR) {
          objVector *shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, get_name(shape));
-         if (shape->Child) debug_tree_ptrs(Header, &shape->Child->Head, Level);
-         Vector = &shape->Next->Head;
+         if (shape->Child) debug_tree_ptrs(Header, shape->Child, Level);
+         Vector = shape->Next;
       }
       else break;
    }

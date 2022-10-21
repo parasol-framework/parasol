@@ -84,7 +84,7 @@ void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
 ** This is the main entry point, we're called from the Init action here.
 */
 
-ScintillaParasol::ScintillaParasol(int SurfaceID, struct rkScintilla *Scintilla)
+ScintillaParasol::ScintillaParasol(int SurfaceID, extScintilla *Scintilla)
 :  scintilla(Scintilla), surfaceid(SurfaceID)
 {
    lastkeytrans[0] = 0;
@@ -420,7 +420,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 
          // Event report has to be delayed, as we otherwise get interference in the drawing process.
          scintilla->ReportEventFlags |= SEF_CURSOR_POS;
-         DelayMsg(MT_SciReportEvent, scintilla->Head.UID, NULL);
+         DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
       }
    }
    else if (code IS SCN_STYLENEEDED) {
@@ -445,7 +445,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       log.trace("[MODIFYATTEMPTRO]");
 
       scintilla->ReportEventFlags |= SEF_FAIL_RO;
-      DelayMsg(MT_SciReportEvent, scintilla->Head.UID, NULL);
+      DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
    }
    else if (code IS SCN_CHARADDED) {
       // This is sent when the user types an ordinary text character (as opposed to a command character) that is
@@ -483,7 +483,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       }
 
       scintilla->ReportEventFlags |= SEF_NEW_CHAR;
-      DelayMsg(MT_SciReportEvent, scintilla->Head.UID, NULL);
+      DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
    }
    else if (code IS SCN_SAVEPOINTREACHED) {
       // The document is unmodified (recently saved)
@@ -764,7 +764,7 @@ void ScintillaParasol::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
       // means that the clipping area needs to be extended, and we're not able to do that from inside a Draw() call.
       // The simplest solution is to send a new draw message to the parent surface, telling it to redraw the entire area.
 
-      DelayMsg(AC_Draw, TargetSurface->Head.UID, NULL);
+      DelayMsg(AC_Draw, TargetSurface->UID, NULL);
    }
 
    this->paintState = notPainting;

@@ -25,22 +25,22 @@ are returned by the function and not automatically presented in a dialog box.
 #define KEY_READ 0x20019
 #define MAX_PATH 260
 #define INVALID_HANDLE_VALUE (void *)(-1)
-
-DLLCALL APTR WINAPI LoadLibraryA(STRING);
+extern "C" {
+DLLCALL APTR WINAPI LoadLibraryA(CSTRING);
 DLLCALL LONG WINAPI FreeLibrary(APTR);
 DLLCALL LONG WINAPI FindClose(APTR);
 DLLCALL APTR WINAPI FindFirstFileA(STRING, void *);
-DLLCALL APTR WINAPI GetProcAddress(APTR, STRING);
-DLLCALL LONG WINAPI RegOpenKeyExA(LONG,STRING,LONG,LONG,APTR *);
-DLLCALL LONG WINAPI RegQueryValueExA(APTR,STRING,LONG *,LONG *,BYTE *,LONG *);
+DLLCALL APTR WINAPI GetProcAddress(APTR, CSTRING);
+DLLCALL LONG WINAPI RegOpenKeyExA(LONG,CSTRING,LONG,LONG,APTR *);
+DLLCALL LONG WINAPI RegQueryValueExA(APTR,CSTRING,LONG *,LONG *,BYTE *,LONG *);
 DLLCALL void WINAPI CloseHandle(APTR);
-DLLCALL int  WINAPI MessageBoxA(LONG,STRING,STRING,LONG);
-DLLCALL LONG WINAPI GetCurrentDirectoryA(LONG, STRING);
-DLLCALL LONG WINAPI GetModuleFileNameA(APTR, STRING, LONG);
-DLLCALL LONG WINAPI SetDllDirectoryA(STRING);
+DLLCALL int  WINAPI MessageBoxA(LONG,CSTRING,CSTRING,LONG);
+DLLCALL LONG WINAPI GetCurrentDirectoryA(LONG, CSTRING);
+DLLCALL LONG WINAPI GetModuleFileNameA(APTR, CSTRING, LONG);
+DLLCALL LONG WINAPI SetDllDirectoryA(CSTRING);
 DLLCALL LONG WINAPI SetDefaultDllDirectories(LONG DirectoryFlags);
 DLLCALL void * AddDllDirectory(STRING NewDirectory);
-
+}
 #define LOAD_LIBRARY_SEARCH_APPLICATION_DIR 0x00000200
 #define LOAD_LIBRARY_SEARCH_USER_DIRS 0x00000400
 #define LOAD_LIBRARY_SEARCH_SYSTEM32 0x00000800
@@ -79,42 +79,36 @@ extern FLOAT ProgCoreVersion;
 struct CoreBase *CoreBase;
 
 static ERROR PROGRAM_DataFeed(OBJECTPTR, struct acDataFeed *);
-void close_parasol(void);
+extern "C" void close_parasol(void);
 static APTR find_core(char *PathBuffer, int Size);
 
 //****************************************************************************
 
-APTR corehandle = 0;
-void (*closecore)(void) = 0;
-APTR keyhandle;
+typedef struct CoreBase * OPENCORE(struct OpenInfo *);
+typedef void CLOSECORE(void);
+
+APTR corehandle = NULL;
+CLOSECORE *closecore = NULL;
 static char msgbuf[120];
 
-const char * init_parasol(int argc, CSTRING *argv)
+extern "C" const char * init_parasol(int argc, CSTRING *argv)
 {
    #define MAX_ARGS 30
    struct OpenInfo info;
-   struct CoreBase * (*opencore)(struct OpenInfo *);
    const char *msg = NULL;
    APTR *actions;
    char path_buffer[256];
 
-   corehandle = NULL;
-   opencore   = NULL;
-   closecore  = NULL;
-   keyhandle  = NULL;
-
    corehandle = find_core(path_buffer, sizeof(path_buffer));
-   if (!corehandle) {
-      msg = "Failed to open Parasol's core library.";
-      goto exit;
-   }
+   if (!corehandle) return "Failed to open Parasol's core library.";
 
-   if (!(opencore = GetProcAddress(corehandle, "OpenCore"))) {
+   auto opencore = (OPENCORE *)GetProcAddress((APTR)corehandle, "OpenCore");
+   if (!opencore) {
       msg = "Could not find the OpenCore symbol in Parasol.";
       goto exit;
    }
 
-   if (!(closecore = GetProcAddress(corehandle, "CloseCore"))) {
+   if (!(closecore = (CLOSECORE *)GetProcAddress((APTR)corehandle, "CloseCore"))) {
       msg = "Could not find the CloseCore symbol in Parasol.";
       goto exit;
    }
@@ -142,7 +136,7 @@ const char * init_parasol(int argc, CSTRING *argv)
       OBJECTPTR task = CurrentTask();
 
       if (!GetPointer(task, FID_Actions, &actions)) {
-         actions[AC_DataFeed] = PROGRAM_DataFeed;
+         actions[AC_DataFeed] = (APTR)PROGRAM_DataFeed;
       }
    }
    else if (info.Error IS ERR_CoreVersion) msg = "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
@@ -164,7 +158,6 @@ void close_parasol(void)
 {
    if (closecore) closecore();
    if (corehandle) FreeLibrary(corehandle);
-   if (keyhandle) CloseHandle(keyhandle);
 }
 
 #include "common-win.c"

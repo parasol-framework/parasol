@@ -7,7 +7,7 @@ static void print(objCompression *Self, CSTRING Buffer)
 
    if (Self->OutputID) {
       struct acDataFeed feed = {
-         .ObjectID = Self->Head.UID,
+         .ObjectID = Self->UID,
          .DataType = DATA_TEXT,
          .Buffer   = Buffer
       };
@@ -35,7 +35,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
 
    if ((file->Flags & FL_LINK) and (!(Self->Flags & CMF_NO_LINKS))) {
       log.msg("Folder is a link.");
-      acFree(&file->Head);
+      acFree(file);
       return compress_file(Self, Location, Path, TRUE);
    }
 
@@ -60,11 +60,11 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
 
    Self->prvFileIndex++;
    if ((error IS ERR_Terminate) or (error IS ERR_Cancelled)) {
-      acFree(&file->Head);
+      acFree(file);
       return ERR_Cancelled;
    }
    else if (error IS ERR_Skip) {
-      acFree(&file->Head);
+      acFree(file);
       return ERR_Okay;
    }
    else error = ERR_Okay;
@@ -86,7 +86,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
       if ((chain = Self->prvFiles)) {
          while (chain->Next) chain = (ZipFile *)chain->Next;
          if (acSeekStart(Self->FileIO, chain->Offset + HEAD_NAMELEN) != ERR_Okay) {
-            acFree(&file->Head);
+            acFree(file);
             return log.warning(ERR_Seek);
          }
          UWORD namelen    = read_word(Self->FileIO);
@@ -105,7 +105,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
       // Allocate the file entry structure and set up some initial variables.
 
       if (AllocMemory(sizeof(ZipFile) + pathlen + 1, MEM_DATA, (APTR *)&entry, NULL) != ERR_Okay) {
-         acFree(&file->Head);
+         acFree(file);
          return ERR_AllocMemory;
       }
 
@@ -186,7 +186,7 @@ static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Pat
       FreeResource(dir);
    }
 
-   acFree(&file->Head);
+   acFree(file);
    return ERR_Okay;
 
 exit:
@@ -195,7 +195,7 @@ exit:
       FreeResource(entry);
    }
 
-   acFree(&file->Head);
+   acFree(file);
    return error;
 }
 
@@ -393,7 +393,7 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
    }
    else {
       struct acRead read = { .Buffer = Self->prvInput, .Length = SIZE_COMPRESSION_BUFFER };
-      while ((!Action(AC_Read, &file->Head, &read)) and (read.Result > 0)) {
+      while ((!Action(AC_Read, file, &read)) and (read.Result > 0)) {
          Self->prvZip.next_in  = Self->prvInput;
          Self->prvZip.avail_in = read.Result;
 
@@ -422,7 +422,7 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
       }
    }
 
-   if (acFlush(&Self->Head) != ERR_Okay) goto exit;
+   if (acFlush(Self) != ERR_Okay) goto exit;
    deflateEnd(&Self->prvZip);
    deflateend = FALSE;
 
@@ -474,7 +474,7 @@ static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path,
 
    if (fileexists) remove_file(Self, &fileexists);
 
-   acFree(&file->Head);
+   acFree(file);
    Self->prvFileIndex++;
    return ERR_Okay;
 
@@ -486,7 +486,7 @@ exit:
       FreeResource(entry);
    }
 
-   if (file) acFree(&file->Head);
+   if (file) acFree(file);
 
    Self->prvFileIndex++;
    return error;
@@ -883,7 +883,7 @@ static void write_eof(objCompression *Self)
 {
    ZipFile *chain;
 
-   if ((Self->FileIO) and (!Self->Head.SubID) and (Self->prvCompressionCount > 0)) {
+   if ((Self->FileIO) and (!Self->SubID) and (Self->prvCompressionCount > 0)) {
       if ((chain = Self->prvFiles)) {
          // Determine the start of the list offset
 

@@ -60,7 +60,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
 {
    parasol::Log log(__FUNCTION__);
    objScript *Self = Lua->Script;
-   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   auto prv = (prvFluid *)Self->ChildPrivate;
 
    FieldType &= (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRING|FD_STRUCT|FD_FLOAT|FD_LONG|FD_WORD|FD_BYTE);
 
@@ -201,7 +201,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
 
 static int array_new(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    CSTRING type;
    if ((type = lua_tostring(Lua, 2))) {
       parasol::Log log(__FUNCTION__);

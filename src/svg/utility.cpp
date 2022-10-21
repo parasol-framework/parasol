@@ -21,7 +21,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
       else if (Vector->ClassID IS ID_VECTOR) {
          objVector *shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, shape->Head.Class->ClassName);
-         if (shape->Child) debug_branch(Header, (OBJECTPTR)shape->Child, Level);
+         if (shape->Child) debug_branch(Header, shape->Child, Level);
          Vector = &shape->Next->Head;
       }
       else break;
@@ -46,7 +46,7 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 
 //********************************************************************************************************************
 
-static void parse_result(objSVG *Self, objFilterEffect *Effect, CSTRING Value)
+static void parse_result(extSVG *Self, objFilterEffect *Effect, CSTRING Value)
 {
    if (!Self->Effects.contains(std::string(Value))) {
       Self->Effects.emplace(std::string(Value), Effect);
@@ -55,7 +55,7 @@ static void parse_result(objSVG *Self, objFilterEffect *Effect, CSTRING Value)
 
 //********************************************************************************************************************
 
-static void parse_input(objSVG *Self, OBJECTPTR Effect, CSTRING Input, FIELD SourceField, FIELD RefField)
+static void parse_input(extSVG *Self, OBJECTPTR Effect, CSTRING Input, FIELD SourceField, FIELD RefField)
 {
    switch (StrHash(Input, FALSE)) {
       case SVF_SOURCEGRAPHIC:   SetLong(Effect, SourceField, VSF_GRAPHIC); break;
@@ -79,7 +79,7 @@ static void parse_input(objSVG *Self, OBJECTPTR Effect, CSTRING Input, FIELD Sou
 
 //********************************************************************************************************************
 
-static LONG count_stops(objSVG *Self, const XMLTag *Tag)
+static LONG count_stops(extSVG *Self, const XMLTag *Tag)
 {
    LONG stopcount = 0;
    for (auto scan=Tag->Child; scan; scan=scan->Next) {
@@ -92,7 +92,7 @@ static LONG count_stops(objSVG *Self, const XMLTag *Tag)
 //********************************************************************************************************************
 // Note that all offsets are percentages.
 
-static ERROR process_transition_stops(objSVG *Self, const XMLTag *Tag, Transition *Stops)
+static ERROR process_transition_stops(extSVG *Self, const XMLTag *Tag, Transition *Stops)
 {
    parasol::Log log("process_stops");
 
@@ -137,14 +137,14 @@ static ERROR process_transition_stops(objSVG *Self, const XMLTag *Tag, Transitio
 //********************************************************************************************************************
 // Save an id reference for an SVG element.  The element can be then be found at any time with find_href().
 
-INLINE bool add_id(objSVG *Self, const XMLTag *Tag, CSTRING Name)
+INLINE bool add_id(extSVG *Self, const XMLTag *Tag, CSTRING Name)
 {
    if (Self->IDs.contains(std::string(Name))) return false;
    Self->IDs.emplace(std::string(Name), Tag->Index);
    return true;
 }
 
-INLINE bool add_id(objSVG *Self, const XMLTag *Tag, const std::string Name)
+INLINE bool add_id(extSVG *Self, const XMLTag *Tag, const std::string Name)
 {
    if (Self->IDs.contains(Name)) return false;
    Self->IDs.emplace(Name, Tag->Index);
@@ -153,7 +153,7 @@ INLINE bool add_id(objSVG *Self, const XMLTag *Tag, const std::string Name)
 
 //********************************************************************************************************************
 
-static CSTRING folder(objSVG *Self)
+static CSTRING folder(extSVG *Self)
 {
    if (Self->Folder) {
       if (Self->Folder[0]) return Self->Folder;
@@ -199,7 +199,7 @@ static const std::string uri_name(CSTRING Ref)
 
 //********************************************************************************************************************
 
-static LONG find_href_tag(objSVG *Self, CSTRING Ref)
+static LONG find_href_tag(extSVG *Self, CSTRING Ref)
 {
    while ((*Ref) and (*Ref <= 0x20)) Ref++;
    auto ref = uri_name(Ref);
@@ -336,7 +336,7 @@ template <class T> static inline void set_double(T Object, FIELD FieldID, CSTRIN
 //***************************************************************************
 // This version forces all coordinates to be interpreted as relative when in BOUNDINGBOX mode.
 
-INLINE void set_double_units(APTR Object, FIELD FieldID, CSTRING Value, LONG Units)
+INLINE void set_double_units(OBJECTPTR Object, FIELD FieldID, CSTRING Value, LONG Units)
 {
    LARGE field = FieldID;
    DOUBLE num = read_unit(Value, &field);
@@ -396,7 +396,7 @@ static CSTRING read_numseq(CSTRING Value, ...)
 //********************************************************************************************************************
 // Currently used by gradient functions.
 
-static void add_inherit(objSVG *Self, OBJECTPTR Object, CSTRING ID)
+static void add_inherit(extSVG *Self, OBJECTPTR Object, CSTRING ID)
 {
    parasol::Log log(__FUNCTION__);
    svgInherit *inherit;
@@ -426,7 +426,7 @@ static void reset_state(svgState *State)
 
 //********************************************************************************************************************
 
-static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
+static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -448,7 +448,7 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
          if (!StrCompare("*.svgz", Path, 0, STR_WILDCARD)) {
             OBJECTPTR file, stream;
             if (!CreateObject(ID_FILE, 0, &file,
-                  FID_Owner|TLONG, xml->Head.UID,
+                  FID_Owner|TLONG, xml->UID,
                   FID_Path|TSTR,   Path,
                   FID_Flags|TLONG, FL_READ,
                   TAGEND)) {
@@ -499,7 +499,7 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
                svgState state;
                reset_state(&state);
                if (Self->Target) xtag_svg(Self, xml, &state, tag, Self->Target, &sibling);
-               else xtag_svg(Self, xml, &state, tag, &Self->Scene->Head, &sibling);
+               else xtag_svg(Self, xml, &state, tag, Self->Scene, &sibling);
             }
          }
 
@@ -519,7 +519,7 @@ static ERROR load_svg(objSVG *Self, CSTRING Path, CSTRING Buffer)
             // If auto-scale is enabled, access the top-level viewport and set the Width and Height to 100%
 
             objVector *view = Self->Scene->Viewport;
-            while ((view) and (view->Head.SubID != ID_VECTORVIEWPORT)) view = view->Next;
+            while ((view) and (view->SubID != ID_VECTORVIEWPORT)) view = view->Next;
             if (view) SetFields(view, FID_Width|TDOUBLE|TPERCENT, 100.0, FID_Height|TDOUBLE|TPERCENT, 100.0, TAGEND);
          }
       }

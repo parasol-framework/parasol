@@ -15,11 +15,8 @@ The Superformula is documented in detail at Wikipedia: http://en.wikipedia.org/w
 
 #define DEFAULT_VERTICES (360 * 4)
 
-typedef struct rkVectorShape {
-   OBJECT_HEADER
-   SHAPE_PUBLIC
-   SHAPE_PRIVATE
-
+typedef class clVectorShape : public objVector {
+   public:
    DOUBLE Radius;
    DOUBLE CX, CY;
    DOUBLE M, N1, N2, N3, A, B, Phi;
@@ -155,7 +152,7 @@ static ERROR SUPER_NewObject(objVectorShape *Self, APTR Void)
    Self->Phi = 2;
    Self->Vertices = DEFAULT_VERTICES;
    Self->Close = TRUE;
-   Self->GeneratePath = (void (*)(rkVector *))&generate_supershape;
+   Self->GeneratePath = (void (*)(objVector *))&generate_supershape;
    return ERR_Okay;
 }
 

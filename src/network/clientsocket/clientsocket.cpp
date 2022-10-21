@@ -20,20 +20,20 @@ is opened by a client.  This is a very simple class that assists in the manageme
 static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 {
    parasol::Log log(__FUNCTION__);
-   auto ClientSocket = (objClientSocket *)Data;
+   auto ClientSocket = (extClientSocket *)Data;
    if (!ClientSocket->Client) return;
-   objNetSocket *Socket = ClientSocket->Client->NetSocket;
+   auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
 
    Socket->InUse++;
    ClientSocket->ReadCalled = FALSE;
 
-   log.traceBranch("Handle: " PF64() ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->Head.UID, ClientSocket->Head.UID);
+   log.traceBranch("Handle: " PF64() ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->UID, ClientSocket->UID);
 
    ERROR error = ERR_Okay;
    if (Socket->Incoming.Type) {
       if (Socket->Incoming.Type IS CALL_STDC) {
          parasol::SwitchContext context(Socket->Incoming.StdC.Context);
-         auto routine = (ERROR (*)(objNetSocket *, objClientSocket *))Socket->Incoming.StdC.Routine;
+         auto routine = (ERROR (*)(extNetSocket *, extClientSocket *))Socket->Incoming.StdC.Routine;
          if (routine) error = routine(Socket, ClientSocket);
       }
       else if (Socket->Incoming.Type IS CALL_SCRIPT) {
@@ -83,8 +83,8 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 {
    parasol::Log log(__FUNCTION__);
-   auto ClientSocket = (objClientSocket *)Data;
-   objNetSocket *Socket = ClientSocket->Client->NetSocket;
+   auto ClientSocket = (extClientSocket *)Data;
+   auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
 
    if (Socket->Terminating) return;
 
@@ -125,7 +125,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
          if (len > 0) {
             error = SEND(Socket, ClientSocket->SocketHandle, (BYTE *)ClientSocket->WriteQueue.Buffer + ClientSocket->WriteQueue.Index, &len, 0);
             if ((error) OR (!len)) break;
-            log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Socket->Head.UID, len, ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index);
+            log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Socket->UID, len, ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index);
             ClientSocket->WriteQueue.Index += len;
          }
 
@@ -145,8 +145,8 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    if ((!ClientSocket->WriteQueue.Buffer) OR (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Length)) {
       if (ClientSocket->Outgoing.Type) {
          if (ClientSocket->Outgoing.Type IS CALL_STDC) {
-            ERROR (*routine)(objNetSocket *, objClientSocket *);
-            if ((routine = reinterpret_cast<ERROR (*)(objNetSocket *, objClientSocket *)>(ClientSocket->Outgoing.StdC.Routine))) {
+            ERROR (*routine)(extNetSocket *, extClientSocket *);
+            if ((routine = reinterpret_cast<ERROR (*)(extNetSocket *, extClientSocket *)>(ClientSocket->Outgoing.StdC.Routine))) {
                parasol::SwitchContext context(ClientSocket->Outgoing.StdC.Context);
                error = routine(Socket, ClientSocket);
             }
@@ -169,7 +169,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       // we don't tax the system resources.
 
       if ((ClientSocket->Outgoing.Type IS CALL_NONE) AND (!ClientSocket->WriteQueue.Buffer)) {
-         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->Head.UID, ClientSocket->SocketHandle);
+         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
          #elif _WIN32
@@ -184,7 +184,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 
 //****************************************************************************
 
-static ERROR CLIENTSOCKET_Free(objClientSocket *Self, APTR Void)
+static ERROR CLIENTSOCKET_Free(extClientSocket *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -212,7 +212,7 @@ static ERROR CLIENTSOCKET_Free(objClientSocket *Self, APTR Void)
 
    if (!Self->Client->Sockets) {
       log.msg("No more open sockets, removing client.");
-      free_client(Self->Client->NetSocket, Self->Client);
+      free_client((extNetSocket *)Self->Client->NetSocket, Self->Client);
    }
 
    return ERR_Okay;
@@ -220,7 +220,7 @@ static ERROR CLIENTSOCKET_Free(objClientSocket *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR CLIENTSOCKET_Init(objClientSocket *Self, APTR Void)
+static ERROR CLIENTSOCKET_Init(extClientSocket *Self, APTR Void)
 {
 #ifdef __linux__
    LONG non_blocking = 1;
@@ -264,14 +264,14 @@ Failed: A permanent failure has occurred and socket has been closed.
 
 *****************************************************************************/
 
-static ERROR CLIENTSOCKET_Read(objClientSocket *Self, struct acRead *Args)
+static ERROR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 {
    parasol::Log log;
    if ((!Args) OR (!Args->Buffer)) return log.error(ERR_NullArgs);
    if (Self->SocketHandle IS NOHANDLE) return log.error(ERR_Disconnected);
    Self->ReadCalled = TRUE;
    if (!Args->Length) { Args->Result = 0; return ERR_Okay; }
-   return RECEIVE(Self->Client->NetSocket, Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
+   return RECEIVE((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
 }
 
 /*****************************************************************************
@@ -302,7 +302,7 @@ AllocMemory: A message buffer could not be allocated.
 
 *****************************************************************************/
 
-static ERROR CLIENTSOCKET_ReadClientMsg(objClientSocket *Self, struct csReadClientMsg *Args)
+static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClientMsg *Args)
 {
    parasol::Log log;
 
@@ -430,7 +430,7 @@ software queue are governed by the #MsgLimit field setting.
 
 *****************************************************************************/
 
-static ERROR CLIENTSOCKET_Write(objClientSocket *Self, struct acWrite *Args)
+static ERROR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
 {
    parasol::Log log;
 
@@ -439,13 +439,13 @@ static ERROR CLIENTSOCKET_Write(objClientSocket *Self, struct acWrite *Args)
    if (Self->SocketHandle IS NOHANDLE) return log.error(ERR_Disconnected);
 
    LONG len = Args->Length;
-   ERROR error = SEND(Self->Client->NetSocket, Self->SocketHandle, Args->Buffer, &len, 0);
+   ERROR error = SEND((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, &len, 0);
 
    if ((error) OR (len < Args->Length)) {
       if (error) log.trace("SEND() Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
       else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
       if ((error IS ERR_DataSize) OR (error IS ERR_BufferOverflow) OR (len > 0))  {
-         write_queue(Self->Client->NetSocket, &Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
+         write_queue((extNetSocket *)(Self->Client->NetSocket), &Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
          #elif _WIN32
@@ -479,7 +479,7 @@ OutOfRange
 
 *****************************************************************************/
 
-static ERROR CLIENTSOCKET_WriteClientMsg(objClientSocket *Self, struct csWriteClientMsg *Args)
+static ERROR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteClientMsg *Args)
 {
    parasol::Log log;
 
@@ -531,7 +531,7 @@ static ERROR init_clientsocket(void)
       FID_Category|TLONG,       CCF_NETWORK,
       FID_Actions|TPTR,         clClientSocketActions,
       FID_Fields|TARRAY,        clClientSocketFields,
-      FID_Size|TLONG,           sizeof(objClientSocket),
+      FID_Size|TLONG,           sizeof(extClientSocket),
       FID_Path|TSTR,            MOD_PATH,
       TAGEND) != ERR_Okay) return ERR_CreateObject;
 

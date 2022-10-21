@@ -63,9 +63,9 @@
     <method>
       <name>Render</name>
       <comment>Render the scene to a target Bitamp.</comment>
-      <prototype>ERROR svgRender(OBJECTPTR Object, struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
+      <prototype>ERROR svgRender(OBJECTPTR Object, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
       <input>
-        <param type="struct rkBitmap *" name="Bitmap">The target bitmap.</param>
+        <param type="objBitmap *" name="Bitmap">The target bitmap.</param>
         <param type="LONG" name="X">Target X coordinate.</param>
         <param type="LONG" name="Y">Target Y coordinate.</param>
         <param type="LONG" name="Width">Target page width.</param>

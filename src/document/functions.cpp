@@ -130,7 +130,7 @@ static void print_xmltree(XMLTag *Tag, LONG *Indent)
 #undef NULL
 #define NULL 0
 
-static void print_stream(objDocument *Self, STRING Stream)
+static void print_stream(extDocument *Self, STRING Stream)
 {
    STRING str;
    escFont *style;
@@ -204,7 +204,7 @@ static void print_stream(objDocument *Self, STRING Stream)
 #undef NULL
 #define NULL 0
 
-static void print_lines(objDocument *Self)
+static void print_lines(extDocument *Self)
 {
    fprintf(stderr, "\nSEGMENTS\n--------\n");
 
@@ -254,7 +254,7 @@ static void print_lines(objDocument *Self)
    }
 }
 
-static void print_sorted_lines(objDocument *Self)
+static void print_sorted_lines(extDocument *Self)
 {
    fprintf(stderr, "\nSORTED SEGMENTS\n---------------\n");
 
@@ -300,7 +300,7 @@ static void print_sorted_lines(objDocument *Self)
    }
 }
 
-static void print_tabfocus(objDocument *Self)
+static void print_tabfocus(extDocument *Self)
 {
    if (Self->TabIndex) {
       fprintf(stderr, "\nTAB FOCUSLIST\n-------------\n");
@@ -371,12 +371,12 @@ enum {
    WRAP_WRAPPED
 };
 
-static void check_clips(objDocument *Self, LONG Index, layout *l,
+static void check_clips(extDocument *Self, LONG Index, layout *l,
    LONG ObjectIndex, LONG *ObjectX, LONG *ObjectY, LONG ObjectWidth, LONG ObjectHeight);
 
 //****************************************************************************
 
-INLINE BYTE sortseg_compare(objDocument *Self, SortSegment *Left, SortSegment *Right)
+INLINE BYTE sortseg_compare(extDocument *Self, SortSegment *Left, SortSegment *Right)
 {
    if (Left->Y < Right->Y) return 1;
    else if (Left->Y > Right->Y) return -1;
@@ -414,7 +414,7 @@ INLINE LONG uri_char(CSTRING *Source, STRING Dest, LONG Size)
 
 static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
-   auto Self = (objDocument *)CurrentContext();
+   auto Self = (extDocument *)CurrentContext();
 
    for (auto input=Events; input; input=input->Next) {
       if (input->Flags & JTYPE_MOVEMENT) {
@@ -448,7 +448,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 //****************************************************************************
 // Checks if the file path is safe, i.e. does not refer to an absolute file location.
 
-static LONG safe_file_path(objDocument *Self, CSTRING Path)
+static LONG safe_file_path(extDocument *Self, CSTRING Path)
 {
    if (Self->Flags & DCF_UNRESTRICTED) return TRUE;
 
@@ -462,7 +462,7 @@ static LONG safe_file_path(objDocument *Self, CSTRING Path)
 //****************************************************************************
 // Used by if, elseif, while statements to check the satisfaction of conditions.
 
-static BYTE check_tag_conditions(objDocument *Self, XMLTag *Tag)
+static BYTE check_tag_conditions(extDocument *Self, XMLTag *Tag)
 {
    parasol::Log log("eval");
 
@@ -530,7 +530,7 @@ static BYTE check_tag_conditions(objDocument *Self, XMLTag *Tag)
 ** IXF_SIBLINGS:   If set, sibling tags that follow the root will be parsed.
 */
 
-static ERROR insert_xml(objDocument *Self, objXML *XML, XMLTag *Tag, LONG Index, UBYTE Flags)
+static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag *Tag, LONG Index, UBYTE Flags)
 {
    parasol::Log log(__FUNCTION__);
    objFont *font;
@@ -663,7 +663,7 @@ static ERROR insert_xml(objDocument *Self, objXML *XML, XMLTag *Tag, LONG Index,
    Self->BufferIndex = b_revert; \
    Self->ArgIndex = s_revert;
 
-static LONG parse_tag(objDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, LONG Flags)
+static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    XMLTag *child, *object_template;
@@ -697,7 +697,7 @@ static LONG parse_tag(objDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
 
       tagarg[i] = 0;
 
-      log.traceBranch("XML: %d, First-Tag: '%.30s', Face: %.20s, Tag: %p, Flags: $%.8x", XML->Head.UID, tagarg, Self->Style.Face, Tag, Flags);
+      log.traceBranch("XML: %d, First-Tag: '%.30s', Face: %.20s, Tag: %p, Flags: $%.8x", XML->UID, tagarg, Self->Style.Face, Tag, Flags);
 
    #endif
 
@@ -973,7 +973,7 @@ next_skiprestore:
 
 //****************************************************************************
 
-static void style_check(objDocument *Self, LONG *Index)
+static void style_check(extDocument *Self, LONG *Index)
 {
    if (Self->Style.FontChange) {
       // Create a new font object for the current style
@@ -1000,7 +1000,7 @@ static void style_check(objDocument *Self, LONG *Index)
 //
 // Preformat must be set to TRUE if all consecutive whitespace characters in Text are to be inserted.
 
-static ERROR insert_text(objDocument *Self, LONG *Index, CSTRING Text, LONG Length, BYTE Preformat)
+static ERROR insert_text(extDocument *Self, LONG *Index, CSTRING Text, LONG Length, BYTE Preformat)
 {
    UBYTE *stream;
    LONG pos, i;
@@ -1112,7 +1112,7 @@ static ERROR insert_text(objDocument *Self, LONG *Index, CSTRING Text, LONG Leng
 //
 // ESC,Code,Length[2],...Data...,Length[2],ESC
 
-static ERROR insert_escape(objDocument *Self, LONG *Index, WORD EscapeCode, APTR Data, LONG Length)
+static ERROR insert_escape(extDocument *Self, LONG *Index, WORD EscapeCode, APTR Data, LONG Length)
 {
    parasol::Log log(__FUNCTION__);
    UBYTE *stream;
@@ -1195,7 +1195,7 @@ static ERROR insert_escape(objDocument *Self, LONG *Index, WORD EscapeCode, APTR
 //****************************************************************************
 // This function is called only when a paragraph or explicit line-break (\n) is encountered.
 
-static void end_line(objDocument *Self, layout *l, LONG NewLine, LONG Index, DOUBLE Spacing, LONG RestartIndex, CSTRING Caller)
+static void end_line(extDocument *Self, layout *l, LONG NewLine, LONG Index, DOUBLE Spacing, LONG RestartIndex, CSTRING Caller)
 {
    LONG i, bottomline, new_y;
 
@@ -1290,7 +1290,7 @@ static void end_line(objDocument *Self, layout *l, LONG NewLine, LONG Index, DOU
 // Index - The current index value.
 // ObjectIndex - The index that indicates the start of the word.
 
-static UBYTE check_wordwrap(CSTRING Type, objDocument *Self, LONG Index, layout *l, LONG X, LONG *Width,
+static UBYTE check_wordwrap(CSTRING Type, extDocument *Self, LONG Index, layout *l, LONG X, LONG *Width,
    LONG ObjectIndex, LONG *GraphicX, LONG *GraphicY, LONG GraphicWidth, LONG GraphicHeight)
 {
    parasol::Log log(__FUNCTION__);
@@ -1394,7 +1394,7 @@ restart:
    return result;
 }
 
-static void check_clips(objDocument *Self, LONG Index, layout *l,
+static void check_clips(extDocument *Self, LONG Index, layout *l,
    LONG ObjectIndex, LONG *GraphicX, LONG *GraphicY, LONG GraphicWidth, LONG GraphicHeight)
 {
    LONG clip, i, height;
@@ -1503,7 +1503,7 @@ typedef struct {
    l = (s)->Layout; \
    i = (s)->Index;
 
-INLINE void restore_state(objDocument *Self, LAYOUT_STATE *State)
+INLINE void restore_state(extDocument *Self, LAYOUT_STATE *State)
 {
    LAYOUT("layout_restore:","Restoring earlier layout state to index %d", State->Index);
 
@@ -1513,7 +1513,7 @@ INLINE void restore_state(objDocument *Self, LAYOUT_STATE *State)
    Self->ECIndex    = State->ECIndex;
 }
 
-static LONG layout_section(objDocument *Self, LONG Offset, objFont **Font,
+static LONG layout_section(extDocument *Self, LONG Offset, objFont **Font,
    LONG AbsX, LONG AbsY, LONG *Width, LONG *Height,
    LONG LeftMargin, LONG TopMargin, LONG RightMargin, LONG BottomMargin, BYTE *VerticalRepass)
 {
@@ -3416,7 +3416,7 @@ exit:
 // the bottom-most line, or one of the clipping regions if one of them
 // extends further than the bottom-most line.
 
-static LONG calc_page_height(objDocument *Self, LONG FirstClip, LONG Y, LONG BottomMargin)
+static LONG calc_page_height(extDocument *Self, LONG FirstClip, LONG Y, LONG BottomMargin)
 {
    // Find the last segment that had text and use that to determine the bottom of the page
 
@@ -3456,7 +3456,7 @@ static LONG calc_page_height(objDocument *Self, LONG FirstClip, LONG Y, LONG Bot
 // Terminates all links and frees the memory.  Another method to clear the links
 // is to set the TotalLinks to zero, which retains the link cache allocation.
 
-static void free_links(objDocument *Self)
+static void free_links(extDocument *Self)
 {
    if (!Self->Links) return;
 
@@ -3470,7 +3470,7 @@ static void free_links(objDocument *Self)
 //****************************************************************************
 // Record a clickable link, cell, or other form of clickable area.
 
-static void add_link(objDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, LONG Y, LONG Width, LONG Height, CSTRING Caller)
+static void add_link(extDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, LONG Y, LONG Width, LONG Height, CSTRING Caller)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -3512,16 +3512,16 @@ static void add_link(objDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, L
 
 //****************************************************************************
 
-static void draw_background(objDocument *Self, objSurface *Surface, objBitmap *Bitmap)
+static void draw_background(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, PackPixelRGBA(Bitmap, &Self->Background), BAF_FILL);
+   gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Background), BAF_FILL);
 }
 
 //****************************************************************************
 // Note that this function also controls the drawing of objects that have loaded into the document (see the
 // subscription hook in the layout process).
 
-static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bitmap)
+static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
    parasol::Log log(__FUNCTION__);
    escList *esclist;
@@ -3571,13 +3571,13 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
       // Page boundary is marked in blue
       gfxDrawRectangle(Bitmap, Self->LeftMargin-1, Self->TopMargin-1,
          Self->CalcWidth - Self->RightMargin - Self->LeftMargin + 2, Self->PageHeight - Self->TopMargin - Self->BottomMargin + 2,
-         PackPixel(Bitmap, 0, 0, 255), 0);
+         Bitmap->packPixel(0, 0, 255), 0);
 
       // Special clip regions are marked in grey
       for (i=0; i < Self->TotalClips; i++) {
          gfxDrawRectangle(Bitmap, Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Top,
             Self->Clips[i].Clip.Right - Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Bottom - Self->Clips[i].Clip.Top,
-            PackPixel(Bitmap, 255, 200, 200), 0);
+            Bitmap->packPixel(255, 200, 200), 0);
       }
    #endif
 
@@ -3629,20 +3629,20 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
             if ((select_start > segment->Index) and (select_start < segment->Stop)) {
                if (select_end < segment->Stop) {
                   gfxDrawRectangle(Bitmap, segment->X + select_startx, segment->Y,
-                     select_endx - select_startx, segment->Height, PackPixel(Bitmap, 0, 128, 0), BAF_FILL);
+                     select_endx - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF_FILL);
                }
                else {
                   gfxDrawRectangle(Bitmap, segment->X + select_startx, segment->Y,
-                     segment->Width - select_startx, segment->Height, PackPixel(Bitmap, 0, 128, 0), BAF_FILL);
+                     segment->Width - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF_FILL);
                }
             }
             else if (select_end < segment->Stop) {
                gfxDrawRectangle(Bitmap, segment->X, segment->Y, select_endx, segment->Height,
-                  PackPixel(Bitmap, 0, 128, 0), BAF_FILL);
+                  Bitmap->packPixel(0, 128, 0), BAF_FILL);
             }
             else {
                gfxDrawRectangle(Bitmap, segment->X, segment->Y, segment->Width, segment->Height,
-                  PackPixel(Bitmap, 0, 128, 0), BAF_FILL);
+                  Bitmap->packPixel(0, 128, 0), BAF_FILL);
             }
             Bitmap->Opacity = 255;
          }
@@ -3654,7 +3654,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
             else {
                if (gfxGetUserFocus() IS Self->PageID) { // Standard text cursor
                   gfxDrawRectangle(Bitmap, segment->X + Self->CursorCharX, segment->Y, 2, segment->BaseLine,
-                     PackPixel(Bitmap, 255, 0, 0), BAF_FILL);
+                     Bitmap->packPixel(255, 0, 0), BAF_FILL);
                   cursor_drawn = TRUE;
                }
             }
@@ -3666,7 +3666,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
             gfxDrawRectangle(Bitmap,
                segment->X, segment->Y,
                (segment->Width > 0) ? segment->Width : 5, segment->Height,
-               PackPixel(Bitmap, 0, 255, 0), 0);
+               Bitmap->packPixel(0, 255, 0), 0);
          }
       #endif
 
@@ -3711,7 +3711,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                               auto opacity = Bitmap->Opacity;
                               Bitmap->Opacity = 255;
-                              auto routine = (void (*)(OBJECTPTR, rkSurface *, rkBitmap *))layout->DrawCallback.StdC.Routine;
+                              auto routine = (void (*)(OBJECTPTR, rkSurface *, objBitmap *))layout->DrawCallback.StdC.Routine;
                               routine(object, Surface, Bitmap);
                               Bitmap->Opacity = opacity;
                            }
@@ -3772,7 +3772,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                            font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
                            font->AlignWidth = segment->AlignWidth;
                            SetString(font, FID_String, (STRING)(escpara + 1));
-                           acDraw(font);
+                           font->draw();
                         }
                      }
                      else if (esclist->Type IS LT_BULLET) {
@@ -3780,7 +3780,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                         // TODO: Requires conversion to vector
                         //gfxDrawEllipse(Bitmap,
                         //   fx - escpara->ItemIndent, segment->Y + ((segment->BaseLine - SIZE_BULLET)/2),
-                        //   SIZE_BULLET, SIZE_BULLET, PackPixelRGB(Bitmap, &esclist->Colour), TRUE);
+                        //   SIZE_BULLET, SIZE_BULLET, Bitmap->packPixel(esclist->Colour), TRUE);
                      }
                   }
                   break;
@@ -3803,7 +3803,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                      gfxDrawRectangle(Bitmap,
                         esctable->X+esctable->Thickness, esctable->Y+esctable->Thickness,
                         esctable->Width-(esctable->Thickness<<1), esctable->Height-(esctable->Thickness<<1),
-                        PackPixelRGBA(Bitmap, &esctable->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(esctable->Colour), BAF_FILL|BAF_BLEND);
                   }
 
                   if (esctable->Shadow.Alpha > 0) {
@@ -3812,7 +3812,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                         gfxDrawRectangle(Bitmap,
                            esctable->X+j, esctable->Y+j,
                            esctable->Width-(j<<1), esctable->Height-(j<<1),
-                           PackPixelRGBA(Bitmap, &esctable->Shadow), 0);
+                           Bitmap->packPixel(esctable->Shadow), 0);
                      }
                      Bitmap->Opacity = alpha;
                   }
@@ -3833,7 +3833,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                   if (escrow->Colour.Alpha) {
                      gfxDrawRectangle(Bitmap, esctable->X, escrow->Y, esctable->Width, escrow->RowHeight,
-                        PackPixelRGBA(Bitmap, &escrow->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(escrow->Colour), BAF_FILL|BAF_BLEND);
                   }
                   break;
                }
@@ -3859,12 +3859,12 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
                      gfxDrawRectangle(Bitmap, esccell->AbsX+border, esccell->AbsY+border,
                         esctable->Columns[esccell->Column].Width-border, escrow->RowHeight-border,
-                        PackPixelRGBA(Bitmap, &esccell->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(esccell->Colour), BAF_FILL|BAF_BLEND);
                   }
 
                   if (esccell->Shadow.Alpha > 0) { // Border colour
                      gfxDrawRectangle(Bitmap, esccell->AbsX, esccell->AbsY, esctable->Columns[esccell->Column].Width,
-                        escrow->RowHeight, PackPixelRGBA(Bitmap, &esccell->Shadow), 0);
+                        escrow->RowHeight, Bitmap->packPixel(esccell->Shadow), 0);
                   }
                   break;
                }
@@ -3909,7 +3909,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
                font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
                font->AlignWidth = segment->AlignWidth;
                SetString(font, FID_String, strbuffer);
-               acDraw(font);
+               font->draw();
                fx = font->EndX;
                si = 0;
             }
@@ -3924,7 +3924,7 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
          font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
          font->AlignWidth = segment->AlignWidth;
          SetString(font, FID_String, strbuffer);
-         acDraw(font);
+         font->draw();
          fx = font->EndX;
       }
    } // for loop
@@ -3932,23 +3932,23 @@ static void draw_document(objDocument *Self, objSurface *Surface, objBitmap *Bit
 
 //****************************************************************************
 
-static void draw_border(objDocument *Self, objSurface *Surface, objBitmap *Bitmap)
+static void draw_border(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
    if ((!Self->BorderEdge) or (Self->BorderEdge IS (DBE_TOP|DBE_BOTTOM|DBE_LEFT|DBE_RIGHT))) {
-      gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, PackPixelRGBA(Bitmap, &Self->Border), 0);
+      gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Border), 0);
    }
    else {
       if (Self->BorderEdge & DBE_TOP) {
-         gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, 1, PackPixelRGBA(Bitmap, &Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, 1, Bitmap->packPixel(Self->Border), 0);
       }
       if (Self->BorderEdge & DBE_LEFT) {
-         gfxDrawRectangle(Bitmap, 0, 0, 1, Surface->Height, PackPixelRGBA(Bitmap, &Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), 0);
       }
       if (Self->BorderEdge & DBE_RIGHT) {
-         gfxDrawRectangle(Bitmap, Surface->Width-1, 0, 1, Surface->Height, PackPixelRGBA(Bitmap, &Self->Border), 0);
+         gfxDrawRectangle(Bitmap, Surface->Width-1, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), 0);
       }
       if (Self->BorderEdge & DBE_BOTTOM) {
-         gfxDrawRectangle(Bitmap, 0, Surface->Height-1, Surface->Width, 1, PackPixelRGBA(Bitmap, &Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, Surface->Height-1, Surface->Width, 1, Bitmap->packPixel(Self->Border), 0);
       }
    }
 }
@@ -4003,7 +4003,7 @@ static void xml_extract_content(XMLTag *Tag, char *Buffer, LONG *Index, BYTE Whi
 
 //****************************************************************************
 
-static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
+static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
 {
    parasol::Log log(__FUNCTION__);
    struct acScroll scroll;
@@ -4331,7 +4331,7 @@ static ERROR keypress(objDocument *Self, LONG Flags, LONG Value, LONG Unicode)
 
 //****************************************************************************
 
-static ERROR load_doc(objDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadFlags)
+static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadFlags)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -4385,7 +4385,7 @@ static ERROR load_doc(objDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
 // This function lays out the document so that it is ready to be drawn.  It calculates the position, pixel length and
 // height of each line and rearranges any objects that are present in the document.
 
-static void layout_doc(objDocument *Self)
+static void layout_doc(extDocument *Self)
 {
    parasol::Log log(__FUNCTION__);
    objFont *font;
@@ -4586,7 +4586,7 @@ restart:
             }
          }
          else if (trigger->Function.Type IS CALL_STDC) {
-            auto routine = (void (*)(APTR, objDocument *, LONG, LONG, LONG, LONG))trigger->Function.StdC.Routine;
+            auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG))trigger->Function.StdC.Routine;
             if (routine) {
                parasol::SwitchContext context(trigger->Function.StdC.Context);
                routine(trigger->Function.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight, Self->CalcWidth, Self->PageHeight);
@@ -4605,7 +4605,7 @@ restart:
 //
 // This function does not clear existing data, so you can use it to append new content to existing document content.
 
-static ERROR process_page(objDocument *Self, objXML *xml)
+static ERROR process_page(extDocument *Self, objXML *xml)
 {
    DOUBLE x, y;
 
@@ -4613,7 +4613,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
 
    parasol::Log log(__FUNCTION__);
 
-   log.branch("Page: %s, XML: %d, Tags: %d", Self->PageName, xml->Head.UID, xml->TagCount);
+   log.branch("Page: %s, XML: %d, Tags: %d", Self->PageName, xml->UID, xml->TagCount);
 
    // Look for the first page that matches the requested page name (if a name is specified).  Pages can be located anywhere
    // within the XML source - they don't have to be at the root.
@@ -4792,7 +4792,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
       if (Self->Error) unload_doc(Self, 0);
 
       Self->UpdateLayout = TRUE;
-      if (Self->Head.Flags & NF_INITIALISED) redraw(Self, TRUE);
+      if (Self->initialised()) redraw(Self, TRUE);
 
       if (Self->Buffer) { FreeResource(Self->Buffer); Self->Buffer = NULL; }
       if (Self->Temp)   { FreeResource(Self->Temp); Self->Temp = NULL; }
@@ -4838,7 +4838,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
             }
          }
          else if (trigger->Function.Type IS CALL_STDC) {
-            auto routine = (void (*)(APTR, objDocument *))trigger->Function.StdC.Routine;
+            auto routine = (void (*)(APTR, extDocument *))trigger->Function.StdC.Routine;
             if (routine) {
                parasol::SwitchContext context(trigger->Function.StdC.Context);
                routine(trigger->Function.StdC.Context, Self);
@@ -4853,7 +4853,7 @@ static ERROR process_page(objDocument *Self, objXML *xml)
 
 //****************************************************************************
 
-static docresource * add_resource_id(objDocument *Self, LONG ID, LONG Type)
+static docresource * add_resource_id(extDocument *Self, LONG ID, LONG Type)
 {
    docresource *r;
    if (!AllocMemory(sizeof(docresource), MEM_NO_CLEAR, &r, NULL)) {
@@ -4871,7 +4871,7 @@ static docresource * add_resource_id(objDocument *Self, LONG ID, LONG Type)
 
 //****************************************************************************
 
-static docresource * add_resource_ptr(objDocument *Self, APTR Address, LONG Type)
+static docresource * add_resource_ptr(extDocument *Self, APTR Address, LONG Type)
 {
    docresource *r;
    if (!AllocMemory(sizeof(docresource), MEM_NO_CLEAR, &r, NULL)) {
@@ -4895,7 +4895,7 @@ static docresource * add_resource_ptr(objDocument *Self, APTR Address, LONG Type
 // The PageName is not freed because the desired page must not be dropped during refresh of manually loaded XML for
 // example.
 
-static ERROR unload_doc(objDocument *Self, BYTE Flags)
+static ERROR unload_doc(extDocument *Self, BYTE Flags)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -4979,7 +4979,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
 
    if (Self->LinkIndex != -1) {
       Self->LinkIndex = -1;
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->UID);
    }
 
    if (Self->FontFace) FreeResource(Self->FontFace);
@@ -5131,7 +5131,7 @@ static ERROR unload_doc(objDocument *Self, BYTE Flags)
 //****************************************************************************
 // If the layout needs to be recalculated, set the UpdateLayout field before calling this function.
 
-static void redraw(objDocument *Self, BYTE Focus)
+static void redraw(extDocument *Self, BYTE Focus)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -5153,7 +5153,7 @@ static void redraw(objDocument *Self, BYTE Focus)
 //****************************************************************************
 
 #if 0
-static LONG get_line_from_index(objDocument *Self, LONG Index)
+static LONG get_line_from_index(extDocument *Self, LONG Index)
 {
    LONG line;
    for (line=1; line < Self->SegCount; line++) {
@@ -5218,7 +5218,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 
 //****************************************************************************
 
-static void add_template(objDocument *Self, objXML *XML, XMLTag *Tag)
+static void add_template(extDocument *Self, objXML *XML, XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    LONG i;
@@ -5355,7 +5355,7 @@ exit:
 // Offset: The start of the line within the stream.
 // Stop:   The stream index at which the line stops.
 
-static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, layout *Layout,
+static LONG add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *Layout,
    LONG Y, LONG Width, LONG AlignWidth, CSTRING Debug)
 {
    parasol::Log log(__FUNCTION__);
@@ -5583,7 +5583,7 @@ static LONG add_drawsegment(objDocument *Self, LONG Offset, LONG Stop, layout *L
 **    %viewwidth   Width of the the document's available viewing area.
 */
 
-static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
+static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 {
    parasol::Log log(__FUNCTION__);
    Field *classfield;
@@ -5693,7 +5693,7 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
                   error = insert_string(name, Buffer, Self->BufferSize, pos, sizeof("[%id]")-1);
                }
                else if (!StrCompare("self]", str, 0, 0)) {
-                  IntToStr(Self->Head.UID, name, sizeof(name));
+                  IntToStr(Self->UID, name, sizeof(name));
                   error = insert_string(name, Buffer, Self->BufferSize, pos, sizeof("[%self]")-1);
                }
                else if (!StrCompare("platform]", str, 0, 0)) {
@@ -5980,7 +5980,7 @@ static ERROR convert_xml_args(objDocument *Self, XMLAttrib *Attrib, LONG Total)
                            OBJECTID parent_id = list[j];
                            while (parent_id) {
                               parent_id = GetOwnerID(parent_id);
-                              if (parent_id IS Self->Head.UID) {
+                              if (parent_id IS Self->UID) {
                                  objectid = list[j];
                                  break;
                               }
@@ -6135,7 +6135,7 @@ static ERROR insert_string(CSTRING Insert, STRING Buffer, LONG BufferSize, LONG 
 //****************************************************************************
 // Checks if an object reference is a valid member of the document.
 
-static BYTE valid_object(objDocument *Self, OBJECTPTR Object)
+static BYTE valid_object(extDocument *Self, OBJECTPTR Object)
 {
    OBJECTPTR obj;
 
@@ -6146,7 +6146,7 @@ static BYTE valid_object(objDocument *Self, OBJECTPTR Object)
       if (!obj->OwnerID) return FALSE;
       if (obj->OwnerID < 0) return valid_objectid(Self, obj->UID); // Switch to scanning public objects
       obj = GetObjectPtr(obj->OwnerID);
-      if (obj IS (OBJECTPTR)Self) return TRUE;
+      if (obj IS Self) return TRUE;
    }
    return FALSE;
 }
@@ -6154,13 +6154,13 @@ static BYTE valid_object(objDocument *Self, OBJECTPTR Object)
 //****************************************************************************
 //Checks if an object reference is a valid member of the document.
 
-static BYTE valid_objectid(objDocument *Self, OBJECTID ObjectID)
+static BYTE valid_objectid(extDocument *Self, OBJECTID ObjectID)
 {
    if (Self->Flags & DCF_UNRESTRICTED) return TRUE;
 
    while (ObjectID) {
       ObjectID = GetOwnerID(ObjectID);
-      if (ObjectID IS Self->Head.UID) return TRUE;
+      if (ObjectID IS Self->UID) return TRUE;
    }
    return FALSE;
 }
@@ -6229,7 +6229,7 @@ static ERROR safe_translate(STRING Buffer, LONG Size, LONG Flags)
 
 //****************************************************************************
 
-static ERROR activate_edit(objDocument *Self, LONG CellIndex, LONG CursorIndex)
+static ERROR activate_edit(extDocument *Self, LONG CellIndex, LONG CursorIndex)
 {
    parasol::Log log(__FUNCTION__);
    escCell *cell;
@@ -6328,7 +6328,7 @@ static ERROR activate_edit(objDocument *Self, LONG CellIndex, LONG CursorIndex)
 
 //****************************************************************************
 
-static void deactivate_edit(objDocument *Self, BYTE Redraw)
+static void deactivate_edit(extDocument *Self, BYTE Redraw)
 {
    parasol::Log log(__FUNCTION__);
    UBYTE *stream;
@@ -6424,7 +6424,7 @@ static void deactivate_edit(objDocument *Self, BYTE Redraw)
 // Index: The stream index of the object/table/item that is creating the clip.
 // Transparent: If TRUE, wrapping will not be performed around the clip region.
 
-static ERROR add_clip(objDocument *Self, SurfaceClip *Clip, LONG Index, CSTRING Name, BYTE Transparent)
+static ERROR add_clip(extDocument *Self, SurfaceClip *Clip, LONG Index, CSTRING Name, BYTE Transparent)
 {
    LAYOUT("add_clip()","%d: %dx%d,%dx%d, Transparent: %d", Self->TotalClips, Clip->Left, Clip->Top, Clip->Right, Clip->Bottom, Transparent);
 
@@ -6462,7 +6462,7 @@ static ERROR add_clip(objDocument *Self, SurfaceClip *Clip, LONG Index, CSTRING 
 //****************************************************************************
 // Sends motion events for zones that the mouse pointer has departed.
 
-static void check_pointer_exit(objDocument *Self, LONG X, LONG Y)
+static void check_pointer_exit(extDocument *Self, LONG X, LONG Y)
 {
    MouseOver *prev = NULL;
    for (auto scan=Self->MouseOverChain; scan;) {
@@ -6496,7 +6496,7 @@ static void check_pointer_exit(objDocument *Self, LONG X, LONG Y)
 
 //****************************************************************************
 
-static void pointer_enter(objDocument *Self, LONG Index, CSTRING Function, LONG Left, LONG Top, LONG Right, LONG Bottom)
+static void pointer_enter(extDocument *Self, LONG Index, CSTRING Function, LONG Left, LONG Top, LONG Right, LONG Bottom)
 {
    parasol::Log log(__FUNCTION__);
    MouseOver *mouseover;
@@ -6534,7 +6534,7 @@ static void pointer_enter(objDocument *Self, LONG Index, CSTRING Function, LONG 
 
 //****************************************************************************
 
-static void check_mouse_click(objDocument *Self, DOUBLE X, DOUBLE Y)
+static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
    parasol::Log log(__FUNCTION__);
    LONG segment, bytepos;
@@ -6657,7 +6657,7 @@ static void check_mouse_click(objDocument *Self, DOUBLE X, DOUBLE Y)
 
 //****************************************************************************
 
-static void check_mouse_release(objDocument *Self, DOUBLE X, DOUBLE Y)
+static void check_mouse_release(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
    if ((ABS(X - Self->ClickX) > 3) or (ABS(Y - Self->ClickY) > 3)) {
       parasol::Log log(__FUNCTION__);
@@ -6670,7 +6670,7 @@ static void check_mouse_release(objDocument *Self, DOUBLE X, DOUBLE Y)
 
 //****************************************************************************
 
-static void check_mouse_pos(objDocument *Self, DOUBLE X, DOUBLE Y)
+static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
    DocEdit *edit;
    UBYTE found;
@@ -6767,7 +6767,7 @@ static void check_mouse_pos(objDocument *Self, DOUBLE X, DOUBLE Y)
             // The mouse pointer is inside a link
 
             if (Self->LinkIndex IS -1) {
-               gfxSetCursor(0, CRF_BUFFER, PTR_HAND, 0, Self->Head.UID);
+               gfxSetCursor(0, CRF_BUFFER, PTR_HAND, 0, Self->UID);
                Self->CursorSet = TRUE;
             }
 
@@ -6791,7 +6791,7 @@ static void check_mouse_pos(objDocument *Self, DOUBLE X, DOUBLE Y)
 
    if (Self->MouseOverSegment != -1) {
       if ((Self->Segments[Self->MouseOverSegment].TextContent) or (Self->Segments[Self->MouseOverSegment].Edit)) {
-         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UID);
+         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->UID);
          Self->CursorSet = TRUE;
       }
       return;
@@ -6800,7 +6800,7 @@ static void check_mouse_pos(objDocument *Self, DOUBLE X, DOUBLE Y)
    for (LONG i=0; i < Self->ECIndex; i++) {
       if ((X >= Self->EditCells[i].X) and (X < Self->EditCells[i].X + Self->EditCells[i].Width) and
           (Y >= Self->EditCells[i].Y) and (Y < Self->EditCells[i].Y + Self->EditCells[i].Height)) {
-         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->Head.UID);
+         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->UID);
          Self->CursorSet = TRUE;
          return;
       }
@@ -6810,13 +6810,13 @@ static void check_mouse_pos(objDocument *Self, DOUBLE X, DOUBLE Y)
 
    if (Self->CursorSet) {
       Self->CursorSet = FALSE;
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->UID);
    }
 }
 
 //****************************************************************************
 
-static ERROR resolve_font_pos(objDocument *Self, LONG Segment, LONG X, LONG *CharX, LONG *BytePos)
+static ERROR resolve_font_pos(extDocument *Self, LONG Segment, LONG X, LONG *CharX, LONG *BytePos)
 {
    parasol::Log log(__FUNCTION__);
    LONG i, index;
@@ -6900,7 +6900,7 @@ static ERROR resolve_font_pos(objDocument *Self, LONG Segment, LONG X, LONG *Cha
 // Using only a stream index, this function will determine the X coordinate of the character at that index.  This is
 // slower than resolve_font_pos(), because the segment has to be resolved by this function.
 
-static ERROR resolve_fontx_by_index(objDocument *Self, LONG Index, LONG *CharX)
+static ERROR resolve_fontx_by_index(extDocument *Self, LONG Index, LONG *CharX)
 {
    parasol::Log log("resolve_fontx");
    LONG segment;
@@ -6964,7 +6964,7 @@ static ERROR resolve_fontx_by_index(objDocument *Self, LONG Index, LONG *CharX)
 
 //****************************************************************************
 
-static LONG find_segment(objDocument *Self, LONG Index, LONG InclusiveStop)
+static LONG find_segment(extDocument *Self, LONG Index, LONG InclusiveStop)
 {
    LONG segment;
 
@@ -6990,7 +6990,7 @@ static LONG find_segment(objDocument *Self, LONG Index, LONG InclusiveStop)
 //****************************************************************************
 // The text will be deselected, but the cursor and editing area will remain active.
 
-static void deselect_text(objDocument *Self)
+static void deselect_text(extDocument *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -7071,7 +7071,7 @@ static void fix_command(STRING Command, STRING *Args)
 
 //****************************************************************************
 
-static LONG find_tabfocus(objDocument *Self, UBYTE Type, LONG Reference)
+static LONG find_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
 {
    for (LONG i=0; i < Self->TabIndex; i++) {
       if ((Self->Tabs[i].Type IS Type) and (Reference IS Self->Tabs[i].Ref)) return i;
@@ -7082,7 +7082,7 @@ static LONG find_tabfocus(objDocument *Self, UBYTE Type, LONG Reference)
 //****************************************************************************
 // This function is used in tags.c by the link and object insertion code.
 
-static LONG add_tabfocus(objDocument *Self, UBYTE Type, LONG Reference)
+static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -7164,7 +7164,7 @@ static LONG add_tabfocus(objDocument *Self, UBYTE Type, LONG Reference)
 // Changes the focus to an object or link in the document.  The new index is stored in the FocusIndex field.  If the
 // Index is set to -1, set_focus() will focus on the first element, but only if it is an object.
 
-static void set_focus(objDocument *Self, LONG Index, CSTRING Caller)
+static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -7259,7 +7259,7 @@ static void set_focus(objDocument *Self, LONG Index, CSTRING Caller)
 //****************************************************************************
 // Scrolls any given area of the document into view.
 
-static BYTE view_area(objDocument *Self, LONG Left, LONG Top, LONG Right, LONG Bottom)
+static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG Bottom)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -7313,7 +7313,7 @@ static BYTE view_area(objDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
 
 //****************************************************************************
 
-static void advance_tabfocus(objDocument *Self, BYTE Direction)
+static void advance_tabfocus(extDocument *Self, BYTE Direction)
 {
    parasol::Log log(__FUNCTION__);
    LONG i;
@@ -7371,7 +7371,7 @@ static void advance_tabfocus(objDocument *Self, BYTE Direction)
 //****************************************************************************
 // scheme://domain.com/path?param1=value&param2=value#fragment:bookmark
 
-static void process_parameters(objDocument *Self, CSTRING String)
+static void process_parameters(extDocument *Self, CSTRING String)
 {
    parasol::Log log(__FUNCTION__);
    LONG i, setsize;
@@ -7472,7 +7472,7 @@ static void process_parameters(objDocument *Self, CSTRING String)
 // Obsoletion of the old scrollbar code means that we should be adjusting page size only and let the scrollbars
 // automatically adjust in the background.
 
-static void calc_scroll(objDocument *Self)
+static void calc_scroll(extDocument *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -7483,7 +7483,7 @@ static void calc_scroll(objDocument *Self)
 ** Resolves function references.
 */
 
-static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, CSTRING *Function, CSTRING *Args)
+static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, CSTRING *Function, CSTRING *Args)
 {
    parasol::Log log(__FUNCTION__);
    LONG len, pos;
@@ -7563,7 +7563,7 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
                log.warning("Function reference to object '%s' is not a Script object.", scriptref);
                return ERR_WrongClass;
             }
-            else if ((Script[0]->OwnerID != Self->Head.UID) and (!(Self->Flags & DCF_UNRESTRICTED))) {
+            else if ((Script[0]->OwnerID != Self->UID) and (!(Self->Flags & DCF_UNRESTRICTED))) {
                log.warning("Script '%s' does not belong to this document.  Action ignored due to security restrictions.", scriptref);
                return ERR_NoPermission;
             }
@@ -7587,7 +7587,7 @@ static ERROR extract_script(objDocument *Self, CSTRING Link, OBJECTPTR *Script, 
 
 //****************************************************************************
 
-static void exec_link(objDocument *Self, LONG Index)
+static void exec_link(extDocument *Self, LONG Index)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -7803,7 +7803,7 @@ end:
 // Information about the current font can be pulled from the Font object referenced in the Font field.  Supplementary
 // information like the font colour is provided separately.
 
-static void set_object_style(objDocument *Self, OBJECTPTR Object)
+static void set_object_style(extDocument *Self, OBJECTPTR Object)
 {
    DOCSTYLE style;
 
@@ -7822,7 +7822,7 @@ static void set_object_style(objDocument *Self, OBJECTPTR Object)
 
 //****************************************************************************
 
-static void show_bookmark(objDocument *Self, CSTRING Bookmark)
+static void show_bookmark(extDocument *Self, CSTRING Bookmark)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -7842,7 +7842,7 @@ static void show_bookmark(objDocument *Self, CSTRING Bookmark)
 
 //****************************************************************************
 
-static void key_event(objDocument *Self, evKey *Event, LONG Size)
+static void key_event(extDocument *Self, evKey *Event, LONG Size)
 {
    if (Event->Qualifiers & KQ_PRESSED) {
       keypress(Self, Event->Qualifiers, Event->Code, Event->Unicode);
@@ -7851,7 +7851,7 @@ static void key_event(objDocument *Self, evKey *Event, LONG Size)
 
 //****************************************************************************
 
-static ERROR flash_cursor(objDocument *Self, LARGE TimeElapsed, LARGE CurrentTime)
+static ERROR flash_cursor(extDocument *Self, LARGE TimeElapsed, LARGE CurrentTime)
 {
    Self->CursorState ^= 1;
 
@@ -7861,7 +7861,7 @@ static ERROR flash_cursor(objDocument *Self, LARGE TimeElapsed, LARGE CurrentTim
 
 //****************************************************************************
 
-static void reset_cursor(objDocument *Self)
+static void reset_cursor(extDocument *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -7878,7 +7878,7 @@ static void reset_cursor(objDocument *Self)
 
 //****************************************************************************
 
-static ERROR report_event(objDocument *Self, LARGE Event, APTR EventData, CSTRING StructName)
+static ERROR report_event(extDocument *Self, LARGE Event, APTR EventData, CSTRING StructName)
 {
    parasol::Log log(__FUNCTION__);
    ERROR result = ERR_Okay;
@@ -7887,7 +7887,7 @@ static ERROR report_event(objDocument *Self, LARGE Event, APTR EventData, CSTRIN
       log.branch("Reporting event $%.8x", (LONG)Event);
 
       if (Self->EventCallback.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(objDocument *, LARGE, APTR))Self->EventCallback.StdC.Routine;
+         auto routine = (ERROR (*)(extDocument *, LARGE, APTR))Self->EventCallback.StdC.Routine;
          parasol::SwitchContext context(Self->EventCallback.StdC.Context);
          result = routine(Self, Event, EventData);
       }

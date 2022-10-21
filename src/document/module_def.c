@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-static LONG docCharLength(struct rkDocument * Document, LONG Index);
+static LONG docCharLength(extDocument * Document, LONG Index);
 
 #ifdef  __cplusplus
 }

@@ -63,9 +63,9 @@ long jround_up (long a, long b)
 
 void jcopy_sample_rows (JSAMPARRAY input_array, int source_row, JSAMPARRAY output_array, int dest_row, int num_rows, JDIMENSION num_cols)
 {
-   register JSAMPROW inptr, outptr;
-   register JDIMENSION count;
-   register int row;
+   JSAMPROW inptr, outptr;
+   JDIMENSION count;
+   int row;
 
    input_array += source_row;
    output_array += dest_row;
@@ -80,8 +80,8 @@ void jcopy_sample_rows (JSAMPARRAY input_array, int source_row, JSAMPARRAY outpu
 
 void jcopy_block_row (JBLOCKROW input_row, JBLOCKROW output_row, JDIMENSION num_blocks)
 {
-  register JCOEFPTR inptr, outptr;
-  register long count;
+  JCOEFPTR inptr, outptr;
+  long count;
 
   inptr = (JCOEFPTR) input_row;
   outptr = (JCOEFPTR) output_row;
@@ -92,8 +92,8 @@ void jcopy_block_row (JBLOCKROW input_row, JBLOCKROW output_row, JDIMENSION num_
 
 void jzero_far (void FAR * target, LONG bytestozero)
 {
-  register char FAR * ptr = (char FAR *) target;
-  register LONG count;
+  char FAR * ptr = (char FAR *) target;
+  LONG count;
 
   for (count = bytestozero; count > 0; count--) {
      *ptr++ = 0;

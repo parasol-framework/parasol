@@ -15,7 +15,7 @@ static int object_newindex(lua_State *Lua)
             ERROR error = set_object_field(Lua, obj, fieldname, 3);
             release_object(object);
             if (error >= ERR_ExceptionThreshold) {
-               auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+               auto prv = (prvFluid *)Lua->Script->ChildPrivate;
                prv->CaughtError = error;
                luaL_error(Lua, GetErrorMsg(error));
             }
@@ -127,7 +127,7 @@ static int object_set(lua_State *Lua)
       lua_pushinteger(Lua, error);
 
       if (error >= ERR_ExceptionThreshold) {
-         auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->CaughtError = error;
          luaL_error(prv->Lua, GetErrorMsg(error));
       }
@@ -164,7 +164,7 @@ static int object_setvar(lua_State *Lua)
          lua_pushinteger(Lua, error);
 
          if (error >= ERR_ExceptionThreshold) {
-            auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+            auto prv = (prvFluid *)Lua->Script->ChildPrivate;
             if (prv->Catch) {
                prv->CaughtError = error;
                luaL_error(prv->Lua, GetErrorMsg(error));
@@ -368,7 +368,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                else if (field->Flags & FD_STRUCT) {
                   // Array structs can be set if the Lua table consists of Fluid.struct types.
 
-                  auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+                  auto prv = (prvFluid *)Lua->Script->ChildPrivate;
                   struct structentry *def;
                   if (!VarGet(prv->Structs, (CSTRING)field->Arg, &def, NULL)) {
                      LONG aligned_size = ALIGN64(def->Size);
@@ -413,13 +413,13 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
          if (type IS LUA_TSTRING) {
             FUNCTION func;
             lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
-            SET_FUNCTION_SCRIPT(func, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            SET_FUNCTION_SCRIPT(func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return SetFunction(src, field->FieldID, &func);
          }
          else if (type IS LUA_TFUNCTION) {
             FUNCTION func;
             lua_pushvalue(Lua, ValueIndex);
-            SET_FUNCTION_SCRIPT(func, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            SET_FUNCTION_SCRIPT(func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return SetFunction(src, field->FieldID, &func);
          }
          else return ERR_FieldTypeMismatch;

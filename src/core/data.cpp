@@ -40,21 +40,21 @@ char glDisplayDriver[28] = "";
 
 CSTRING glClassBinPath = "system:config/classes.bin";
 CSTRING glModuleBinPath = "system:config/modules.bin";
-struct rkMetaClass *ModuleMasterClass = 0;
-struct rkMetaClass *ModuleClass = 0;
-struct rkMetaClass *TaskClass = 0;
-struct rkMetaClass *ThreadClass = 0;
-struct rkMetaClass *TimeClass = 0;
-struct rkMetaClass *ConfigClass = 0;
-struct rkMetaClass *glFileClass = 0;
-struct rkMetaClass *glScriptClass = 0;
-struct rkMetaClass *glArchiveClass = 0;
-struct rkMetaClass *glCompressionClass = 0;
-struct rkMetaClass *glCompressedStreamClass = 0;
+objMetaClass *ModuleMasterClass = 0;
+objMetaClass *ModuleClass = 0;
+objMetaClass *TaskClass = 0;
+objMetaClass *ThreadClass = 0;
+objMetaClass *TimeClass = 0;
+objMetaClass *ConfigClass = 0;
+objMetaClass *glFileClass = 0;
+objMetaClass *glScriptClass = 0;
+objMetaClass *glArchiveClass = 0;
+objMetaClass *glCompressionClass = 0;
+objMetaClass *glCompressedStreamClass = 0;
 #ifdef __ANDROID__
-struct rkMetaClass *glAssetClass = 0;
+objMetaClass *glAssetClass = 0;
 #endif
-struct rkMetaClass *glStorageClass = NULL;
+objMetaClass *glStorageClass = NULL;
 BYTE fs_initialised = FALSE;
 APTR glPageFault = NULL;
 BYTE glScanClasses = FALSE;
@@ -84,7 +84,7 @@ std::list<CoreTimer> glTimers;
 OBJECTID glClassFileID = 0;
 APTR glJNIEnv = 0;
 UWORD glFunctionID = 3333;
-struct rkTask *glCurrentTask = 0;
+objTask *glCurrentTask = 0;
 OBJECTID  glCurrentTaskID  = 0;
 OBJECTID  SystemTaskID     = 0;
 struct KeyStore *glClassMap = NULL;
@@ -102,8 +102,8 @@ LONG glInstanceID = 0;
 LONG glMemRegSize = 0;
 LONG glActionCount = AC_END;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
-struct rkConfig *glVolumes = NULL; // Volume management object
-struct rkConfig *glDatatypes = NULL;
+objConfig *glVolumes = NULL; // Volume management object
+objConfig *glDatatypes = NULL;
 struct FDTable *glFDTable = NULL;
 WORD glTotalFDs = 0, glLastFD = 0;
 UBYTE glTimerCycle = 1;
@@ -206,7 +206,7 @@ THREADVAR LONG tlThreadReadMsg = 0;
 THREADVAR LONG tlThreadWriteMsg = 0;
 #endif
 
-static struct Head glDummyObject;
+static struct BaseClass glDummyObject;
 struct ObjectContext glTopContext = { .Stack = NULL, .Object = &glDummyObject, .Field = NULL }; // Top-level context is a dummy and can be thread-shared
 THREADVAR struct ObjectContext *tlContext = &glTopContext;
 OBJECTPTR glLocale = NULL;
@@ -216,7 +216,7 @@ struct translate *glTranslate = NULL;
 THREADVAR WORD tlMsgRecursion = 0;
 THREADVAR struct Message *tlCurrentMsg   = 0;
 
-LONG  (**ManagedActions)(struct Head *Object, APTR Parameters) = 0;
+LONG  (**ManagedActions)(struct BaseClass *Object, APTR Parameters) = 0;
 ERROR (*glMessageHandler)(struct Message *) = 0;
 void (*glVideoRecovery)(void) = 0;
 void (*glKeyboardRecovery)(void) = 0;

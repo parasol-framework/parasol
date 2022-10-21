@@ -422,30 +422,74 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     int BkgdIndex               # Colour index or packed colour of the background.
     int(CS) ColourSpace         # Defines the colour space for RGB values.
   ]],
+  nil,
   [[
-   ULONG  *Gradients;
-   APTR   ResolutionChangeHandle;
-   struct RGBPalette prvPaletteArray;
-   struct ColourFormat prvColourFormat;
-   MEMORYID prvCompressMID;
-   LONG   prvAFlags;                  // Private allocation flags
-   #ifdef __xwindows__
-      struct {
-         XImage   ximage;
-         Drawable drawable;
-         XImage   *readable;
-         XShmSegmentInfo ShmInfo;
-         BYTE XShmImage;
-      } x11;
-   #elif _WIN32
-      struct {
-         APTR Drawable;  // HDC for the Bitmap
-      } win;
-   #elif _GLES_
-      ULONG prvWriteBackBuffer:1;  // For OpenGL surface locking.
-      LONG prvGLPixel;
-      LONG prvGLFormat;
-   #endif
+   inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
+      if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
+      else {
+         struct bmpGetColour args = { Red, Green, Blue, Alpha };
+         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         return 0;
+      }
+   }
+
+   inline ULONG getColour(struct RGB8 &RGB) {
+      if (BitsPerPixel > 8) return packPixel(RGB);
+      else {
+         struct bmpGetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
+         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         return 0;
+      }
+   }
+
+   inline ULONG packPixel(UBYTE R, UBYTE G, UBYTE B) {
+      return
+         (((R>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((G>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((B>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((255>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixel(UBYTE R, UBYTE G, UBYTE B, UBYTE A) {
+      return
+         (((R>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((G>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((B>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((A>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixel(struct RGB8 &RGB, UBYTE Alpha) {
+      return
+         (((RGB.Red>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((RGB.Green>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((RGB.Blue>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((Alpha>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixel(struct RGB8 &RGB) {
+      return
+         (((RGB.Red>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((RGB.Green>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((RGB.Blue>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((RGB.Alpha>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   // Pack pixel 'whole-byte' version, for faster 24/32 bit formats
+
+   inline ULONG packPixelWB(UBYTE R, UBYTE G, UBYTE B, UBYTE A = 255) {
+      return (R << ColourFormat->RedPos) | (G << ColourFormat->GreenPos) | (B << ColourFormat->BluePos) | (A << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixelWB(struct RGB8 &RGB) {
+      return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (RGB.Alpha << ColourFormat->AlphaPos);
+   }
+
+   // Colour unpacking routines
+
+   template <class T> inline UBYTE unpackRed(T Packed)   { return (((Packed >> ColourFormat->RedPos) & ColourFormat->RedMask) << ColourFormat->RedShift); }
+   template <class T> inline UBYTE unpackGreen(T Packed) { return (((Packed >> ColourFormat->GreenPos) & ColourFormat->GreenMask) << ColourFormat->GreenShift); }
+   template <class T> inline UBYTE unpackBlue(T Packed)  { return (((Packed >> ColourFormat->BluePos) & ColourFormat->BlueMask) << ColourFormat->BlueShift); }
+   template <class T> inline UBYTE unpackAlpha(T Packed) { return (((Packed >> ColourFormat->AlphaPos) & ColourFormat->AlphaMask)); }
   ]])
 
   methods("Display", "Gfx", {
@@ -462,65 +506,28 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
   })
 
   class("Display", { version=1.0, src="class_display.cpp", output="class_display_def.c" }, [[
-    double RefreshRate      # The active refresh rate
-    obj(Bitmap) Bitmap      # Reference to the display's bitmap information.
-    int(SCR) Flags          # Optional flags
-    int Width               # The width of the visible display
-    int Height              # The height of the visible display
-    int X                   # Hardware co-ordinate for vertical offset, or position of host window
-    int Y                   # Hardware co-ordinate for horizontal offset, or position of host window
-    int BmpX                # Current offset of the horizontal axis
-    int BmpY                # Current offset of the vertical axis
-    oid Buffer              # Double buffer bitmap
-    int TotalMemory         # The total amount of accessible RAM installed on the video card.
-    int MinHScan            # The minimum horizontal scan rate of the display output device.
-    int MaxHScan            # The maximum horizontal scan rate of the display output device.
-    int MinVScan            # The minimum vertical scan rate of the display output device.
-    int MaxVScan            # The maximum vertical scan rate of the display output device.
-    int(DT) DisplayType     # Indicates the display type.
-    int(DPMS) DPMS          # Optional display power modes.
-    oid PopOver             # For hosted displays, PopOver can refer to another display that should always remain behind us
-    int LeftMargin          # Left window margin, if hosted
-    int RightMargin         # Right window margin, if hosted
-    int TopMargin           # Top window margin, if hosted
-    int BottomMargin        # Bottom window margin, if hosted
-  ]],
-  [[
-   DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
-   struct resolution *Resolutions;
-   FUNCTION  ResizeFeedback;
-   MEMORYID  ResolutionsMID;
-   WORD      TotalResolutions;
-   OBJECTID  BitmapID;
-   LONG      BmpXOffset;     // X offset for scrolling
-   LONG      BmpYOffset;     // Y offset for scrolling
-   #ifdef __xwindows__
-   union {
-      APTR   WindowHandle;
-      Window XWindowHandle;
-   };
-   #elif __ANDROID__
-      ANativeWindow *WindowHandle;
-   #else
-      APTR   WindowHandle;
-   #endif
-   APTR      UserLoginHandle;
-   WORD      Opacity;
-   LONG      VDensity;          // Cached DPI value, if calculable.
-   LONG      HDensity;
-   char      DriverVendor[60];
-   char      DriverCopyright[80];
-   char      Manufacturer[60];
-   char      Chipset[40];
-   char      DAC[32];
-   char      Clock[32];
-   char      DriverVersion[16];
-   char      CertificationDate[20];
-   char      Display[32];
-   char      DisplayManufacturer[60];
-   #ifdef _WIN32
-      APTR OldProcedure;
-   #endif
+    double RefreshRate   # The active refresh rate
+    obj(Bitmap) Bitmap   # Reference to the display's bitmap information.
+    int(SCR) Flags       # Optional flags
+    int Width            # The width of the visible display
+    int Height           # The height of the visible display
+    int X                # Hardware co-ordinate for vertical offset, or position of host window
+    int Y                # Hardware co-ordinate for horizontal offset, or position of host window
+    int BmpX             # Current offset of the horizontal axis
+    int BmpY             # Current offset of the vertical axis
+    oid Buffer           # Double buffer bitmap
+    int TotalMemory      # The total amount of accessible RAM installed on the video card.
+    int MinHScan         # The minimum horizontal scan rate of the display output device.
+    int MaxHScan         # The maximum horizontal scan rate of the display output device.
+    int MinVScan         # The minimum vertical scan rate of the display output device.
+    int MaxVScan         # The maximum vertical scan rate of the display output device.
+    int(DT) DisplayType  # Indicates the display type.
+    int(DPMS) DPMS       # Optional display power modes.
+    oid PopOver          # For hosted displays, PopOver can refer to another display that should always remain behind us
+    int LeftMargin       # Left window margin, if hosted
+    int RightMargin      # Right window margin, if hosted
+    int TopMargin        # Top window margin, if hosted
+    int BottomMargin     # Bottom window margin, if hosted
   ]])
 
   methods('clipboard', 'Clip', {
@@ -566,40 +573,6 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     int    DragItem        # If drag & drop is active, refers to the custom ID of the item being dragged
     oid    OverObject      # Object positioned under the pointer
     int    ClickSlop       # Leniency value for determining whether the user intended to make a click or drag.
-  ]],
-  [[
-   struct {
-      LARGE LastClickTime;      // Timestamp
-      OBJECTID LastClicked;     // Most recently clicked object
-      UBYTE DblClick:1;         // TRUE if last click was a double-click
-   } Buttons[10];
-   LARGE    ClickTime;
-   LARGE    AnchorTime;
-   DOUBLE   LastClickX, LastClickY;
-   DOUBLE   LastReleaseX, LastReleaseY;
-   APTR     UserLoginHandle;
-   OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
-   OBJECTID CursorReleaseID;
-   OBJECTID DragSurface;        // Draggable surface anchored to the pointer position
-   OBJECTID DragParent;         // Parent of the draggable surface
-   MEMORYID MessageQueue;       // Message port of the task that holds the cursor
-   MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
-   LONG     CursorRelease;
-   LONG     BufferCursor;
-   LONG     BufferFlags;
-   MEMORYID BufferQueue;
-   OBJECTID BufferOwner;
-   OBJECTID BufferObject;
-   char     DragData[8];          // Data preferences for current drag & drop item
-   char     Device[32];
-   char     ButtonOrder[12];      // The order of the first 11 buttons can be changed here
-   WORD     ButtonOrderFlags[12]; // Button order represented as JD flags
-   BYTE     PostComposite;        // Enable post-composite drawing (default)
-   UBYTE    prvOverCursorID;
-   struct {
-      WORD HotX;
-      WORD HotY;
-   } Cursors[PTR_END];
   ]])
 
   methods("surface", "Drw", {
@@ -655,50 +628,12 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     int Modal             # Set to 1 to enable modal mode
   ]],
   [[
-   // These coordinate fields are private but may be accessed by some internal classes, like Document
-
+   // These coordinate fields are considered private but may be accessed by some internal classes, like Document
    LONG     XOffset, YOffset;     // Fixed horizontal and vertical offset
    DOUBLE   XOffsetPercent;       // Relative horizontal offset
    DOUBLE   YOffsetPercent;       // Relative vertical offset
    DOUBLE   WidthPercent, HeightPercent; // Relative width and height
    DOUBLE   XPercent, YPercent;   // Relative coordinate
-
-   LARGE    LastRedimension;      // Timestamp of the last redimension call
-   objBitmap *Bitmap;
-   struct SurfaceCallback *Callback;
-   APTR      UserLoginHandle;
-   APTR      TaskRemovedHandle;
-   WINHANDLE DisplayWindow;       // Reference to the platform dependent window representing the Surface object
-   OBJECTID PrevModalID;          // Previous surface to have been modal
-   OBJECTID BitmapOwnerID;        // The surface object that owns the root bitmap
-   OBJECTID RevertFocusID;
-   LONG     LineWidth;            // Bitmap line width, in bytes
-   LONG     ScrollToX, ScrollToY;
-   LONG     ScrollFromX, ScrollFromY;
-   LONG     ListIndex;            // Last known list index
-   LONG     InputHandle;          // Input handler for dragging of surfaces
-   TIMER    RedrawTimer;          // For ScheduleRedraw()
-   TIMER    ScrollTimer;
-   MEMORYID DataMID;              // Bitmap memory reference
-   MEMORYID PrecopyMID;           // Precopy region information
-   struct SurfaceCallback CallbackCache[4];
-   WORD     ScrollProgress;
-   WORD     Opacity;
-   UWORD    InheritedRoot:1;      // TRUE if the user set the RootLayer manually
-   UWORD    ParentDefined:1;      // TRUE if the parent field was set manually
-   UWORD    SkipPopOver:1;
-   UWORD    FixedX:1;
-   UWORD    FixedY:1;
-   UWORD    Document:1;
-   UWORD    RedrawScheduled:1;
-   UWORD    RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
-   BYTE     BitsPerPixel;         // Bitmap bits per pixel
-   BYTE     BytesPerPixel;        // Bitmap bytes per pixel
-   UBYTE    CallbackCount;
-   UBYTE    CallbackSize;         // Current size of the callback array.
-   BYTE     WindowType;           // See SWIN constants
-   BYTE     PrecopyTotal;
-   BYTE     Anchored;
   ]])
 
   functionNames("gfx",
@@ -753,45 +688,6 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     "WindowHook")
 
   c_insert([[
-// Standard pack pixel for all formats
-
-#define PackPixel(a,b,c,d) ((((b)>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-                           ((((c)>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-                           ((((d)>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-                           (((255>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelA(a,b,c,d,e) \
-   ((((b)>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((c)>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((d)>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   ((((e)>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackAlpha(a,b) ((((b)>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelRGB(a,b) \
-   ((((b)->Red>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((b)->Green>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((b)->Blue>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   (((255>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelRGBA(a,b) \
-   ((((b)->Red>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((b)->Green>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((b)->Blue>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   ((((b)->Alpha>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-// Pack pixel 'whole-byte' version, for faster 24/32 bit formats
-
-#define PackPixelWB(a,b,c,d) ((b) << (a)->ColourFormat->RedPos) | ((c) << (a)->ColourFormat->GreenPos) | ((d) << (a)->ColourFormat->BluePos)
-#define PackPixelWBA(a,b,c,d,e) ((b) << (a)->ColourFormat->RedPos) | ((c) << (a)->ColourFormat->GreenPos) | ((d) << (a)->ColourFormat->BluePos) | ((e) << (a)->ColourFormat->AlphaPos)
-
-// Colour unpacking routines
-
-#define UnpackRed(a,b)   ((((b) >> (a)->ColourFormat->RedPos) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedShift)
-#define UnpackGreen(a,b) ((((b) >> (a)->ColourFormat->GreenPos) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenShift)
-#define UnpackBlue(a,b)  ((((b) >> (a)->ColourFormat->BluePos) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BlueShift)
-#define UnpackAlpha(a,b) ((((b) >> (a)->ColourFormat->AlphaPos) & (a)->ColourFormat->AlphaMask))
-
 // Direct ColourFormat versions
 
 #define CFPackPixel(a,b,c,d)      ((((b)>>(a)->RedShift) & (a)->RedMask) << (a)->RedPos) | ((((c)>>(a)->GreenShift) & (a)->GreenMask) << (a)->GreenPos) | ((((d)>>(a)->BlueShift) & (a)->BlueMask) << (a)->BluePos)
@@ -803,28 +699,6 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
 #define CFUnpackGreen(a,b)        ((((b) >> (a)->GreenPos) & (a)->GreenMask) << (a)->GreenShift)
 #define CFUnpackBlue(a,b)         ((((b) >> (a)->BluePos) & (a)->BlueMask) << (a)->BlueShift)
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
-
-INLINE ULONG bmpGetColour(APTR Bitmap, UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
-   if (((objBitmap *)Bitmap)->BitsPerPixel > 8) {
-      return PackPixelA((objBitmap *)Bitmap, Red, Green, Blue, Alpha);
-   }
-   else {
-      struct bmpGetColour args = { Red, Green, Blue, Alpha };
-      if (!Action(MT_BmpGetColour, Bitmap, &args)) return args.Colour;
-      return 0;
-   }
-}
-
-INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
-   if (((objBitmap *)Bitmap)->BitsPerPixel > 8) {
-      return PackPixelA((objBitmap *)Bitmap, RGB->Red, RGB->Green, RGB->Blue, RGB->Alpha);
-   }
-   else {
-      struct bmpGetColour args = { RGB->Red, RGB->Green, RGB->Blue, RGB->Alpha };
-      if (!Action(MT_BmpGetColour, Bitmap, &args)) return args.Colour;
-      return 0;
-   }
-}
 
 #define gfxReleasePointer(a)    (ReleaseObject(a))
 // Helper function for surface lookups.
@@ -855,7 +729,7 @@ INLINE ERROR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment)
    return ActionMsg(MT_DrwSetOpacity, ObjectID, &args);
 }
 
-INLINE ERROR drwAddCallback(APTR Surface, APTR Callback) {
+INLINE ERROR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
       FUNCTION func;
       SET_FUNCTION_STDC(func, Callback);
@@ -868,7 +742,7 @@ INLINE ERROR drwAddCallback(APTR Surface, APTR Callback) {
    }
 }
 
-INLINE ERROR drwRemoveCallback(APTR Surface, APTR Callback) {
+INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
       FUNCTION func;
       SET_FUNCTION_STDC(func, Callback);

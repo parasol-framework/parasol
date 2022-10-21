@@ -216,7 +216,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
 
    // Allocate private structure
 
-   if (!AllocMemory(sizeof(prvFileAsset), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvFileAsset), Self->memflags(), &Self->ChildPrivate, NULL)) {
       LONG len;
       for (len=0; Self->Path[len]; len++);
 
@@ -239,13 +239,13 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
             return ERR_Okay;
          }
          else {
-            FreeResource(Self->Head.ChildPrivate);
-            Self->Head.ChildPrivate = NULL;
+            FreeResource(Self->ChildPrivate);
+            Self->ChildPrivate = NULL;
             return ERR_DoesNotExist;
          }
       }
       else {
-         prv = Self->Head.ChildPrivate;
+         prv = Self->ChildPrivate;
 
          // Check that the location exists / open the file.
 
@@ -257,8 +257,8 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
             else log.warning("Failed to open asset file \"%s\"", Self->Path+LEN_ASSETS);
          }
 
-         FreeResource(Self->Head.ChildPrivate);
-         Self->Head.ChildPrivate = NULL;
+         FreeResource(Self->ChildPrivate);
+         Self->ChildPrivate = NULL;
          return ERR_Failed;
       }
    }
@@ -279,7 +279,7 @@ static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
    parasol::Log log(__FUNCTION__);
    prvFileAsset *prv;
 
-   if (!(prv = Self->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
    if (!(Self->Flags & FL_READ)) return log.warning(ERR_FileReadFlag);
 
    Args->Result = AAsset_read(prv->Asset, Args->Buffer, Args->Length);
@@ -317,7 +317,7 @@ static ERROR ASSET_Seek(objFile *Self, struct acSeek *Args)
    prvFileAsset *prv;
    LONG method;
 
-   if (!(prv = Self->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 
    if (Args->Position IS POS_START) method = SEEK_SET;
    else if (Args->Position IS POS_END) method = SEEK_END;
@@ -359,7 +359,7 @@ static ERROR GET_Size(objFile *Self, LARGE *Value)
 {
    prvFileAsset *prv;
 
-   if (!(prv = Self->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 
    if (prv->Asset) {
       *Value = AAsset_getLength(prv->Asset);

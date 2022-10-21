@@ -205,9 +205,9 @@
     <method>
       <name>Next</name>
       <comment>Retrieve meta information describing the next indexed file in the folder list.</comment>
-      <prototype>ERROR flNext(OBJECTPTR Object, struct rkFile ** File)</prototype>
+      <prototype>ERROR flNext(OBJECTPTR Object, objFile ** File)</prototype>
       <input>
-        <param type="struct rkFile **" name="File">A pointer to a new File object will be returned in this parameter if the call is successful.</param>
+        <param type="objFile **" name="File">A pointer to a new File object will be returned in this parameter if the call is successful.</param>
       </input>
       <description>
 <p>If a file object represents a folder, calling the Next() method will retrieve meta information about the next file in the folder's index.  This information will be returned as a new File object that is partially initialised (the file will not be opened, but information such as size, timestamps and permissions will be retrievable).</p>

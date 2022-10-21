@@ -81,7 +81,7 @@ NullArgs
 ERROR vecApplyPath(class SimpleVector *Vector, objVectorPath *VectorPath)
 {
    if ((!Vector) or (!VectorPath)) return ERR_NullArgs;
-   if (VectorPath->Head.SubID != ID_VECTORPATH) return ERR_Args;
+   if (VectorPath->SubID != ID_VECTORPATH) return ERR_Args;
 
    SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
 
@@ -813,7 +813,7 @@ next:
             return;
          }
 
-         log.warning("Failed to lookup IRI '%s' in scene #%d", name, scene->Head.UID);
+         log.warning("Failed to lookup IRI '%s' in scene #%d", name, scene->UID);
       }
       else log.warning("Invalid IRI: %s", IRI);
    }

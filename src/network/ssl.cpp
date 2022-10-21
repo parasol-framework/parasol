@@ -23,7 +23,7 @@ static ERROR sslInit(void)
 
 //****************************************************************************
 
-static void sslDisconnect(objNetSocket *Self)
+static void sslDisconnect(extNetSocket *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -90,7 +90,7 @@ static void sslCtxMsgCallback(SSL *s, int where, int ret)
 ** certificates.
 */
 
-static ERROR sslSetup(objNetSocket *Self)
+static ERROR sslSetup(extNetSocket *Self)
 {
    STRING path;
    ERROR error;
@@ -142,7 +142,7 @@ static ERROR sslSetup(objNetSocket *Self)
 
 //****************************************************************************
 
-static ERROR sslLinkSocket(objNetSocket *Self)
+static ERROR sslLinkSocket(extNetSocket *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -168,7 +168,7 @@ static ERROR sslLinkSocket(objNetSocket *Self)
 // NTC_CONNECTING_SSL may be used to indicate that the connection is ongoing.  If a failure occurs, the state is set to
 // NTC_DISCONNECTED and the Error field is set appropriately.
 
-static ERROR sslConnect(objNetSocket *Self)
+static ERROR sslConnect(extNetSocket *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -228,7 +228,7 @@ static ERROR sslConnect(objNetSocket *Self)
 static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
 {
    parasol::Log log(__FUNCTION__);
-   objNetSocket *Self = reinterpret_cast<objNetSocket *>(Data);
+   extNetSocket *Self = reinterpret_cast<extNetSocket *>(Data);
    LONG result;
 
    log.msg("Socket: " PF64(), (MAXINT)Socket);
@@ -270,7 +270,7 @@ static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
 static void ssl_handshake_read(SOCKET_HANDLE Socket, APTR Data)
 {
    parasol::Log log(__FUNCTION__);
-   objNetSocket *Self = reinterpret_cast<objNetSocket *>(Data);
+   extNetSocket *Self = reinterpret_cast<extNetSocket *>(Data);
    LONG result;
 
    log.msg("Socket: " PF64(), (MAXINT)Socket);

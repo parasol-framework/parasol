@@ -24,7 +24,7 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, LONG * Element
 LONG AdjustLogLevel(LONG Adjust);
 void LogF(CSTRING Header, CSTRING Message, ...);
 ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * Array, LONG * Count);
-struct rkMetaClass * FindClass(CLASSID ClassID);
+objMetaClass * FindClass(CLASSID ClassID);
 ERROR ReleaseObject(OBJECTPTR Object);
 ERROR FreeResource(const void * Address);
 ERROR FreeResourceID(MEMORYID ID);

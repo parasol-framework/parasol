@@ -138,14 +138,14 @@ static ERROR AUDIO_Activate(objAudio *Self, APTR Void)
    Self->MixElements   = Self->MixBufferSize / Self->MixBitSize;
 
    LONG i;
-   if (!AllocMemory(Self->MixBufferSize + 1024, Self->Head.MemFlags, &Self->BufferMemory, &Self->BufferMemoryMID)) {
+   if (!AllocMemory(Self->MixBufferSize + 1024, Self->MemFlags, &Self->BufferMemory, &Self->BufferMemoryMID)) {
       // Align to 1024 bytes
       Self->MixBuffer = (APTR)((((UMAXINT)Self->BufferMemory) + 1023) & (~1023));
 
       // Allocate the sample byte->float conversion table, align it at a 1024-byte boundary and initialize it.  The
       // values in the table range from -32768 to +32768.
 
-      if (!AllocMemory(1024 + 256 * sizeof(FLOAT), Self->Head.MemFlags, &Self->BFMemory, &Self->BFMemoryMID)) {
+      if (!AllocMemory(1024 + 256 * sizeof(FLOAT), Self->MemFlags, &Self->BFMemory, &Self->BFMemoryMID)) {
          ByteFloatTable = (FLOAT *)((((UMAXINT)Self->BFMemory) + 1023) & (~1023));
          for (i=0; i < 256; i++) ByteFloatTable[i] = 256 * (i-128);
 
@@ -238,7 +238,7 @@ ERROR AUDIO_AddSample(objAudio *Self, struct sndAddSample *Args)
    // Check that the use of AddSample() is legal.  We cannot allow foreign tasks to call us directly, because private
    // allocation of the sample memory means that the sample data will end up belonging to the wrong task in such a case.
 
-   if (CurrentTaskID() != Self->Head.TaskID) {
+   if (CurrentTaskID() != Self->ownerTask()) {
       log.warning("Illegal call - use WaitMsg() to add samples to Audio Servers.");
       return ERR_IllegalActionAttempt;
    }
@@ -378,7 +378,7 @@ static ERROR AUDIO_AddStream(objAudio *Self, struct sndAddStream *Args)
    // allocation of the sample memory means that the sample data will end up belonging to the wrong task in
    // such a case.
 
-   if (CurrentTaskID() != Self->Head.TaskID) {
+   if (CurrentTaskID() != Self->ownerTask()) {
       log.warning("Illegal call - use WaitMsg() to add streams to Audio Servers.");
       return ERR_IllegalActionAttempt;
    }
@@ -934,10 +934,10 @@ static ERROR AUDIO_Init(objAudio *Self, APTR Void)
    FUNCTION call;
 
    SET_FUNCTION_STDC(call, (APTR)task_removed);
-   SubscribeEvent(EVID_SYSTEM_TASK_REMOVED, &call, (APTR)(MAXINT)Self->Head.UID, (APTR)&Self->TaskRemovedHandle);
+   SubscribeEvent(EVID_SYSTEM_TASK_REMOVED, &call, (APTR)(MAXINT)Self->UID, (APTR)&Self->TaskRemovedHandle);
 
    SET_FUNCTION_STDC(call, (APTR)user_login);
-   SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, (APTR)(MAXINT)Self->Head.UID, (APTR)&Self->UserLoginHandle);
+   SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, (APTR)(MAXINT)Self->UID, (APTR)&Self->UserLoginHandle);
 
    return ERR_Okay;
 }
@@ -969,12 +969,12 @@ static ERROR AUDIO_NewObject(objAudio *Self, APTR Void)
    // Allocate sample array
 
    Self->TotalSamples = 30;
-   if (AllocMemory(Self->TotalSamples * sizeof(AudioSample), Self->Head.MemFlags, &Self->Samples, &Self->SamplesMID) != ERR_Okay) {
+   if (AllocMemory(Self->TotalSamples * sizeof(AudioSample), Self->MemFlags, &Self->Samples, &Self->SamplesMID) != ERR_Okay) {
       return ERR_AllocMemory;
    }
 
 #ifdef __linux__
-   if (!AllocMemory(sizeof(VolumeCtl) * 3, Self->Head.MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
+   if (!AllocMemory(sizeof(VolumeCtl) * 3, Self->MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
       StrCopy("Master", Self->VolumeCtl[0].Name, sizeof(Self->VolumeCtl[0].Name));
       Self->VolumeCtl[0].Flags = 0;
       for (i=0; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = 75;
@@ -986,7 +986,7 @@ static ERROR AUDIO_NewObject(objAudio *Self, APTR Void)
       Self->VolumeCtl[2].Name[0] = 0;
    }
 #else
-   if (!AllocMemory(sizeof(VolumeCtl) * 2, Self->Head.MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
+   if (!AllocMemory(sizeof(VolumeCtl) * 2, Self->MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
       StrCopy("Master", Self->VolumeCtl[0].Name, sizeof(Self->VolumeCtl[0].Name));
       Self->VolumeCtl[0].Flags = 0;
       Self->VolumeCtl[0].Channels[0] = 75;
@@ -1088,7 +1088,7 @@ static ERROR AUDIO_OpenChannels(objAudio *Self, struct sndOpenChannels *Args)
    if (Self->Flags & ADF_OVER_SAMPLING) total = Args->Total * 2;
    else total = Args->Total;
 
-   if (!AllocMemory(sizeof(AudioChannel) * total, Self->Head.MemFlags|MEM_TASK, &Self->Channels[index].Channel, &Self->Channels[index].ChannelMID)) {
+   if (!AllocMemory(sizeof(AudioChannel) * total, Self->MemFlags|MEM_TASK, &Self->Channels[index].Channel, &Self->Channels[index].ChannelMID)) {
       Self->Channels[index].Total = Args->Total;
       Self->Channels[index].Actual = total;
       Self->Channels[index].TaskID = CurrentTaskID();
@@ -1099,7 +1099,7 @@ static ERROR AUDIO_OpenChannels(objAudio *Self, struct sndOpenChannels *Args)
       // Allocate the command buffer
 
       if (Args->Commands > 0) {
-         if (!AllocMemory(sizeof(AudioCommand) * Args->Commands, Self->Head.MemFlags|MEM_CALLER, &Self->Channels[index].Commands, &Self->Channels[index].CommandMID)) {
+         if (!AllocMemory(sizeof(AudioCommand) * Args->Commands, Self->MemFlags|MEM_CALLER, &Self->Channels[index].Commands, &Self->Channels[index].CommandMID)) {
             Self->Channels[index].TotalCommands = Args->Commands;
             Self->Channels[index].Position      = 0;
             Self->Channels[index].UpdateRate    = 125;  // Default update rate of 125ms (equates to 5000Hz)
@@ -1189,7 +1189,7 @@ static ERROR AUDIO_RemoveSample(objAudio *Self, struct sndRemoveSample *Args)
    // to call us directly, because private allocation of the sample memory
    // means that the sample data can belong to different tasks.
 
-   if (CurrentTaskID() != Self->Head.TaskID) {
+   if (CurrentTaskID() != Self->ownerTask()) {
       log.warning("Illegal call - use WaitMsg() to remove samples from Audio Servers.");
       return ERR_IllegalActionAttempt;
    }
@@ -1691,7 +1691,7 @@ static ERROR SET_MasterVolume(objAudio *Self, DOUBLE Value)
    setvol.Flags  = 0;
    if (setvol.Volume < 0) setvol.Volume = 0;
    if (setvol.Volume > 100) setvol.Volume = 100;
-   DelayMsg(MT_SndSetVolume, Self->Head.UID, &setvol);
+   DelayMsg(MT_SndSetVolume, Self->UID, &setvol);
 
    return ERR_Okay;
 }
@@ -1730,7 +1730,7 @@ static ERROR SET_Mute(objAudio *Self, LONG Value)
    };
    if (Value) setvol.Flags = SVF_MUTE;
    else setvol.Flags = SVF_UNMUTE;
-   DelayMsg(MT_SndSetVolume, Self->Head.UID, &setvol);
+   DelayMsg(MT_SndSetVolume, Self->UID, &setvol);
    return ERR_Okay;
 }
 
@@ -2088,7 +2088,7 @@ static ERROR audio_timer(objAudio *Self, LARGE Elapsed, LARGE CurrentTime)
             }
             else {
                log.warning("Audio error is terminal, self-destructing...");
-               DelayMsg(AC_Free, Self->Head.UID, NULL);
+               DelayMsg(AC_Free, Self->UID, NULL);
                return ERR_Failed;
             }
          }
@@ -2227,7 +2227,7 @@ static void load_config(objAudio *Self)
                   Self->VolumeCtlMID = 0;
                }
 
-               if (!AllocMemory(sizeof(VolumeCtl) * (keys.size() + 1), Self->Head.MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
+               if (!AllocMemory(sizeof(VolumeCtl) * (keys.size() + 1), Self->memflags()|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
                   Self->VolumeCtlTotal = keys.size();
 
                   for (auto& [k, v] : keys) {
@@ -2467,7 +2467,7 @@ next_card:
       return ERR_NoSupport;
    }
 
-   if (!AllocMemory(sizeof(VolumeCtl) * (voltotal + 1), Self->Head.MemFlags|MEM_NO_CLEAR, &volctl, &volmid)) {
+   if (!AllocMemory(sizeof(VolumeCtl) * (voltotal + 1), Self->memflags()|MEM_NO_CLEAR, &volctl, &volmid)) {
       index = 0;
       for (elem=snd_mixer_first_elem(Self->MixHandle); elem; elem=snd_mixer_elem_next(elem)) {
          snd_mixer_selem_get_id(elem, sid);

@@ -652,7 +652,7 @@ function docFunction(Function)
    if nz(Function.version)   then out = out .. '    <version>' .. Function.version .. '</version>\n' end
    if nz(Function.synonym)   then out = out .. '    <synonym>' .. Function.synonym .. '</synonym>\n' end
    if nz(Function.comment)   then out = out .. '    <comment>' .. Function.comment:escXML() .. '</comment>\n' end
-   if nz(Function.prototype) then out = out .. '    <prototype>' .. Function.prototype:escXML() .. '</prototype>\n' end
+   if nz(Function.prototype) then out = out .. '    <prototype>' .. Function.docPrototype:escXML() .. '</prototype>\n' end
    if nz(Function.id)        then out = out .. '    <id>' .. Function.id .. '</id>\n' end
 
    -- Function arguments
@@ -811,7 +811,7 @@ function docStructures(References)
             local prototype = ''
             if (f.isFunctionPtr) then
                type = 'FUNCTION *'
-                prototype = ' prototype="' .. f.type .. '"'
+               prototype = ' prototype="' .. f.type .. '"'
             end
 
             out = out .. "      <field name=\"" .. f.name .. "\" type=\"" .. type .. '"' .. prototype .. ref .. arraySize .. ">"

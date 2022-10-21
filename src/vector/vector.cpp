@@ -40,7 +40,6 @@ static ERROR init_vector(void);
 static ERROR init_viewport(void);
 static ERROR init_wave(void);
 
-static void get_text_xy(struct rkVectorText *);
 #include "utility.cpp"
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)

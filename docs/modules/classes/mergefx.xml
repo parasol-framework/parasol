@@ -34,9 +34,9 @@
       <name>SourceList</name>
       <comment>A list of source types to be processed in the merge.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type>APTR</type>
+      <type>STRUCT []</type>
       <description>
-<p>The list of sources is built as a series of MergeSource structures, chained together by a Next pointer.  The last entry in the list is required to have a Next pointer of NULL.</p>
+<p>The list of sources is built as a simple array of MergeSource structures.</p>
 <p>Input sources are defined by the SourceType field value.  In the case of <code>REFERENCE</code>, it is necessary to provide a direct pointer to the referenced effect in the Effect field, or an error will be returned.</p>
       </description>
     </field>

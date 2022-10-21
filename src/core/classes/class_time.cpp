@@ -266,7 +266,7 @@ static const MethodArray TimeMethods[] = {
 extern "C" ERROR add_time_class(void)
 {
    if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&TimeClass)) {
-      if (SetFields((OBJECTPTR)TimeClass,
+      if (SetFields(TimeClass,
             FID_BaseClassID|TLONG,   ID_TIME,
             FID_ClassVersion|TFLOAT, VER_TIME,
             FID_Name|TSTRING,   "Time",
@@ -277,7 +277,7 @@ extern "C" ERROR add_time_class(void)
             FID_Size|TLONG,     sizeof(objTime),
             FID_Path|TSTR,      "modules:core",
             TAGEND) IS ERR_Okay) {
-         if (!acInit(&TimeClass->Head)) {
+         if (!acInit(TimeClass)) {
             return ERR_Okay;
          }
          else return ERR_Init;

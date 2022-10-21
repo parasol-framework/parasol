@@ -85,7 +85,7 @@ static int processing_new(lua_State *Lua)
       }
 
       if (fp->Signals->empty()) { // Monitor the script for a signal if the client did not specify any objects
-         ObjectSignal sig = { .Object = &Lua->Script->Head };
+         ObjectSignal sig = { .Object = Lua->Script };
          fp->Signals->push_back(sig);
       }
 
@@ -138,7 +138,7 @@ static int processing_sleep(lua_State *Lua)
    }
    else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
       ObjectSignal signal_list_c[2];
-      signal_list_c[0].Object   = &Lua->Script->Head;
+      signal_list_c[0].Object   = Lua->Script;
       signal_list_c[1].Object   = NULL;
 
       std::scoped_lock lock(recursion);

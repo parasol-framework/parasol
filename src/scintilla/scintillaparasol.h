@@ -1,4 +1,41 @@
 
+typedef class plScintilla objScintilla;
+typedef class ScintillaParasol ScintillaParasol;
+
+#include <parasol/modules/scintilla.h>
+
+class extScintilla : public objScintilla {
+   public:
+   struct  SurfaceCoords Surface;
+   FUNCTION FileDrop;
+   FUNCTION EventCallback;
+   objFile *FileStream;
+   objFont *BoldFont;        // Bold version of the current font
+   objFont *ItalicFont;      // Italic version of the current font
+   objFont *BIFont;          // Bold-Italic version of the current font
+   ScintillaParasol *API;
+   APTR   prvKeyEvent;
+   STRING StringBuffer;
+   LONG   LongestLine;         // Longest line in the document
+   LONG   LongestWidth;        // Pixel width of the longest line
+   LONG   TabWidth;
+   LONG   InputHandle;
+   TIMER  TimerID;
+   LARGE  ReportEventFlags;    // For delayed event reporting.
+   UWORD  KeyAlt:1;
+   UWORD  KeyCtrl:1;
+   UWORD  KeyShift:1;
+   UWORD  LineNumbers:1;
+   UWORD  Wordwrap:1;
+   UWORD  Symbols:1;
+   UWORD  FoldingMarkers:1;
+   UWORD  ShowWhitespace:1;
+   UWORD  AutoIndent:1;
+   UWORD  HoldModify:1;
+   UWORD  AllowTabs:1;
+   UBYTE  ScrollLocked;
+};
+
 /*****************************************************************************
 ** Class ScintillaParasol
 **
@@ -8,7 +45,7 @@
 
 class ScintillaParasol : public Scintilla::ScintillaBase {
 public:
-   ScintillaParasol(int SurfaceID, struct rkScintilla *Scintilla);
+   ScintillaParasol(int SurfaceID, extScintilla *Scintilla);
    virtual ~ScintillaParasol();
    virtual void Initialise() {};
    virtual void Finalise();
@@ -108,6 +145,6 @@ private:
    BYTE ticking_on:1;
    BYTE captured_mouse:1;
    DOUBLE lastticktime;
-   struct rkScintilla *scintilla;
+   extScintilla *scintilla;
    OBJECTID surfaceid;
 };

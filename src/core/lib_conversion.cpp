@@ -178,7 +178,7 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
             TAGEND)) return ERR_CreateObject;
       }
 
-      acQuery(&glTime->Head);
+      acQuery(glTime);
       dt.Year   = glTime->Year;
       dt.Month  = glTime->Month;
       dt.Day    = glTime->Day;
@@ -488,7 +488,7 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
             TAGEND)) return ERR_CreateObject;
    }
 
-   acQuery(&glTime->Head);
+   acQuery(glTime);
 
    if (!StrMatch("yesterday", Date)) {
       Output->Year   = glTime->Year;

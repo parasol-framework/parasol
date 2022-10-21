@@ -50,25 +50,25 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 
 #ifdef _WIN32
 
-ERROR lock_surface(objBitmap *Bitmap, WORD Access)
+ERROR lock_surface(extBitmap *Bitmap, WORD Access)
 {
    if (!Bitmap->Data) {
       parasol::Log log(__FUNCTION__);
-      log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->Head.UID);
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->UID);
       return ERR_FieldNotSet;
    }
 
    return ERR_Okay;
 }
 
-ERROR unlock_surface(objBitmap *Bitmap)
+ERROR unlock_surface(extBitmap *Bitmap)
 {
    return ERR_Okay;
 }
 
 #elif __xwindows__
 
-ERROR lock_surface(objBitmap *Bitmap, WORD Access)
+ERROR lock_surface(extBitmap *Bitmap, WORD Access)
 {
    LONG size;
    WORD alignment;
@@ -119,14 +119,14 @@ ERROR lock_surface(objBitmap *Bitmap, WORD Access)
    return ERR_Okay;
 }
 
-ERROR unlock_surface(objBitmap *Bitmap)
+ERROR unlock_surface(extBitmap *Bitmap)
 {
    return ERR_Okay;
 }
 
 #elif _GLES_
 
-ERROR lock_surface(objBitmap *Bitmap, WORD Access)
+ERROR lock_surface(extBitmap *Bitmap, WORD Access)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -137,10 +137,10 @@ ERROR lock_surface(objBitmap *Bitmap, WORD Access)
       //
       // Practically the only reason why we allow this is for unusual measures like taking screenshots, grabbing the display for debugging, development testing etc.
 
-      log.warning("Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->Head.UID, Bitmap->DataFlags);
+      log.warning("Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->UID, Bitmap->DataFlags);
 
       if (!Bitmap->Data) {
-         if (AllocMemory(Bitmap->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Bitmap->Head.MemFlags|Bitmap->DataFlags, &Bitmap->Data, &Bitmap->DataMID) != ERR_Okay) {
+         if (AllocMemory(Bitmap->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Bitmap->memflags()|Bitmap->DataFlags, &Bitmap->Data, &Bitmap->DataMID) != ERR_Okay) {
             return log.warning(ERR_AllocMemory);
          }
          Bitmap->prvAFlags |= BF_DATA;
@@ -168,14 +168,14 @@ ERROR lock_surface(objBitmap *Bitmap, WORD Access)
    }
 
    if (!Bitmap->Data) {
-      log.warning("[Bitmap:%d] Bitmap is missing the Data field.  Memory flags: $%.8x", Bitmap->Head.UID, Bitmap->DataFlags);
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.  Memory flags: $%.8x", Bitmap->UID, Bitmap->DataFlags);
       return ERR_FieldNotSet;
    }
 
    return ERR_Okay;
 }
 
-ERROR unlock_surface(objBitmap *Bitmap)
+ERROR unlock_surface(extBitmap *Bitmap)
 {
    if ((Bitmap->DataFlags & MEM_VIDEO) and (Bitmap->prvWriteBackBuffer)) {
       if (!lock_graphics_active(__func__)) {
@@ -318,7 +318,7 @@ WORD find_bitmap_owner(SurfaceList *List, WORD Index)
 //
 // Surface levels start at 1, which indicates the top-most level.
 
-ERROR track_layer(objSurface *Self)
+ERROR track_layer(extSurface *Self)
 {
    parasol::Log log(__FUNCTION__);
    SurfaceControl *ctl;
@@ -420,13 +420,13 @@ ERROR track_layer(objSurface *Self)
          if (i < ctl->Total) CopyMemory(list+i, list+i+1, sizeof(SurfaceList) * (ctl->Total-i));
       }
 
-      log.trace("Surface: %d, Index: %d, Level: %d, Parent: %d", Self->Head.UID, i, level, Self->ParentID);
+      log.trace("Surface: %d, Index: %d, Level: %d, Parent: %d", Self->UID, i, level, Self->ParentID);
 
       list[i].ParentID  = Self->ParentID;
-      list[i].SurfaceID = Self->Head.UID;
+      list[i].SurfaceID = Self->UID;
       list[i].BitmapID  = Self->BufferID;
       list[i].DisplayID = Self->DisplayID;
-      list[i].TaskID    = Self->Head.TaskID;
+      list[i].TaskID    = Self->ownerTask();
       list[i].PopOverID = Self->PopOverID;
       list[i].Flags     = Self->Flags;
       list[i].X         = Self->X;
@@ -508,13 +508,13 @@ void untrack_layer(OBJECTID ObjectID)
 
 //****************************************************************************
 
-ERROR update_surface_copy(objSurface *Self, SurfaceList *Copy)
+ERROR update_surface_copy(extSurface *Self, SurfaceList *Copy)
 {
    parasol::Log log(__FUNCTION__);
    WORD i, j, level;
 
    if (!Self) return log.warning(ERR_NullArgs);
-   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_Okay;
+   if (!Self->initialised()) return ERR_Okay;
 
    SurfaceControl *ctl;
    if ((ctl = gfxAccessList(ARF_UPDATE))) {
@@ -543,10 +543,10 @@ ERROR update_surface_copy(objSurface *Self, SurfaceList *Copy)
 
       if (i != -1) {
          list[i].ParentID      = Self->ParentID;
-         //list[i].SurfaceID    = Self->Head.UID; Never changes
+         //list[i].SurfaceID    = Self->UID; Never changes
          list[i].BitmapID      = Self->BufferID;
          list[i].DisplayID     = Self->DisplayID;
-         //list[i].TaskID      = Self->Head.TaskID; Never changes
+         //list[i].TaskID      = Self->ownerTask(); Never changes
          list[i].PopOverID     = Self->PopOverID;
          list[i].X             = Self->X;
          list[i].Y             = Self->Y;
@@ -676,13 +676,13 @@ void move_layer_pos(SurfaceControl *ctl, LONG SrcIndex, LONG DestIndex)
 //
 // This function is also useful for skipping the dimension limits normally imposed when resizing.
 
-ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth,
+ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth,
    LONG InsideHeight, LONG BPP, DOUBLE RefreshRate, LONG DeviceFlags)
 {
    if (!Width)  Width = Self->Width;
    if (!Height) Height = Self->Height;
 
-   if (!(Self->Head.Flags & NF_INITIALISED)) {
+   if (!Self->initialised()) {
       Self->X = X;
       Self->Y = Y;
       Self->Width  = Width;
@@ -699,7 +699,7 @@ ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
 
    log.traceBranch("resize_layer() %dx%d,%dx%d TO %dx%d,%dx%dx%d", Self->X, Self->Y, Self->Width, Self->Height, X, Y, Width, Height, BPP);
 
-   if (Self->BitmapOwnerID IS Self->Head.UID) {
+   if (Self->BitmapOwnerID IS Self->UID) {
       objBitmap *bitmap;
       if (!AccessObject(Self->BufferID, 5000, &bitmap)) {
          if (!acResize(bitmap, Width, Height, BPP)) {
@@ -749,7 +749,7 @@ ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
    Self->Height = Height;
    UpdateSurfaceList(Self);
 
-   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_Okay;
+   if (!Self->initialised()) return ERR_Okay;
 
    // Send a Resize notification to our subscribers.  Basically, this informs our surface children to resize themselves
    // to the new dimensions.  Surface objects are not permitted to redraw themselves when they receive the Redimension
@@ -777,15 +777,15 @@ ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
       gfxReleaseList(ARF_READ);
 
       WORD index;
-      if ((index = find_surface_list(cplist, total, Self->Head.UID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
+      if ((index = find_surface_list(cplist, total, Self->UID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
          return ERR_Search;
       }
 
       parasol::Log log;
       log.traceBranch("Redrawing the resized surface.");
 
-      _redraw_surface(Self->Head.UID, cplist, index, total, cplist[index].Left, cplist[index].Top, cplist[index].Right, cplist[index].Bottom, 0);
-      _expose_surface(Self->Head.UID, cplist, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      _redraw_surface(Self->UID, cplist, index, total, cplist[index].Left, cplist[index].Top, cplist[index].Right, cplist[index].Bottom, 0);
+      _expose_surface(Self->UID, cplist, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
 
       if (Self->ParentID) {
          // Update external regions on all four sides that have been exposed by the resize, for example due to a decrease in area or a coordinate shift.
@@ -816,7 +816,7 @@ ERROR resize_layer(objSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
             .Bottom = cplist[index].Bottom
          };
 
-         if (Self->BitmapOwnerID IS Self->Head.UID) {
+         if (Self->BitmapOwnerID IS Self->UID) {
             redraw_nonintersect(Self->ParentID, cplist, parent_index, total, &region_a, &region_b, -1, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
          }
          else redraw_nonintersect(Self->ParentID, cplist, parent_index, total, &region_a, &region_b, 0, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
@@ -845,7 +845,7 @@ static UBYTE check_visibility(SurfaceList *list, WORD index)
    return TRUE;
 }
 
-static void check_bmp_buffer_depth(objSurface *Self, objBitmap *Bitmap)
+static void check_bmp_buffer_depth(extSurface *Self, objBitmap *Bitmap)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -854,7 +854,7 @@ static void check_bmp_buffer_depth(objSurface *Self, objBitmap *Bitmap)
    DISPLAYINFO *info;
    if (!gfxGetDisplayInfo(Self->DisplayID, &info)) {
       if (info->BitsPerPixel != Bitmap->BitsPerPixel) {
-         log.msg("[%d] Updating buffer Bitmap %dx%dx%d to match new display depth of %dbpp.", Bitmap->Head.UID, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel, info->BitsPerPixel);
+         log.msg("[%d] Updating buffer Bitmap %dx%dx%d to match new display depth of %dbpp.", Bitmap->UID, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel, info->BitsPerPixel);
          acResize(Bitmap, Bitmap->Width, Bitmap->Height, info->BitsPerPixel);
          Self->LineWidth     = Bitmap->LineWidth;
          Self->BytesPerPixel = Bitmap->BytesPerPixel;
@@ -867,18 +867,18 @@ static void check_bmp_buffer_depth(objSurface *Self, objBitmap *Bitmap)
 
 //****************************************************************************
 
-void process_surface_callbacks(objSurface *Self, objBitmap *Bitmap)
+void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
 {
    parasol::Log log(__FUNCTION__);
 
    #ifdef DBG_DRAW_ROUTINES
-      log.traceBranch("Bitmap: %d, Count: %d", Bitmap->Head.UID, Self->CallbackCount);
+      log.traceBranch("Bitmap: %d, Count: %d", Bitmap->UID, Self->CallbackCount);
    #endif
 
    for (LONG i=0; i < Self->CallbackCount; i++) {
       Bitmap->Opacity = 255;
       if (Self->Callback[i].Function.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, objSurface *, objBitmap *))Self->Callback[i].Function.StdC.Routine;
+         auto routine = (void (*)(APTR, extSurface *, objBitmap *))Self->Callback[i].Function.StdC.Routine;
 
          #ifdef DBG_DRAW_ROUTINES
             parasol::Log log(__FUNCTION__);
@@ -1021,13 +1021,13 @@ LONG find_surface_list(SurfaceList *list, LONG Total, OBJECTID SurfaceID)
    return -1;
 }
 
-LONG find_parent_list(SurfaceList *list, WORD Total, objSurface *Self)
+LONG find_parent_list(SurfaceList *list, WORD Total, extSurface *Self)
 {
    if (glRecentSurfaceIndex < Total) { // Cached lookup
       if (list[glRecentSurfaceIndex].SurfaceID IS Self->ParentID) return glRecentSurfaceIndex;
    }
 
-   if ((Self->ListIndex < Total) and (list[Self->ListIndex].SurfaceID IS Self->Head.UID)) {
+   if ((Self->ListIndex < Total) and (list[Self->ListIndex].SurfaceID IS Self->UID)) {
       for (LONG i=Self->ListIndex-1; i >= 0; i--) {
          if (list[i].SurfaceID IS Self->ParentID) {
             glRecentSurfaceIndex = i;
@@ -1146,7 +1146,7 @@ can potentially result in time lags.
 
 -INPUT-
 oid Surface: The ID of the surface object to copy from.
-obj(Bitmap) Bitmap: Must reference a target Bitmap object.
+ext(Bitmap) Bitmap: Must reference a target Bitmap object.
 int(BDF) Flags:  Optional flags.
 int X:      The horizontal source coordinate.
 int Y:      The vertical source coordinate.
@@ -1163,7 +1163,7 @@ AccessMemory: Failed to access the internal surfacelist memory structure
 
 ****************************************************************************/
 
-ERROR gfxCopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, LONG Flags,
+ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
           LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)
 {
    parasol::Log log(__FUNCTION__);
@@ -1199,7 +1199,7 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, LONG Flags,
             }
 
             if ((Flags & (BDF_SYNC|BDF_DITHER)) or (!list_root.DataMID)) {
-               objBitmap *src;
+               extBitmap *src;
                if (!AccessObject(list_root.BitmapID, 4000, &src)) {
                   src->XOffset    = list_i.Left - list_root.Left;
                   src->YOffset    = list_i.Top - list_root.Top;
@@ -1738,12 +1738,12 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD To
 
    // Draw the surface graphics into the bitmap buffer
 
-   objSurface *surface;
+   extSurface *surface;
    ERROR error;
    if (!(error = AccessObject(list[index].SurfaceID, 5000, &surface))) {
       log.trace("Area: %dx%d,%dx%d", Left, Top, Right-Left, Bottom-Top);
 
-      objBitmap *bitmap;
+      extBitmap *bitmap;
       if (!AccessObject(list[index].BitmapID, 5000, &bitmap)) {
          // Check if there has been a change in the video bit depth.  If so, regenerate the bitmap with a matching depth.
 
@@ -1805,8 +1805,8 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD To
 //****************************************************************************
 // This function fulfils the recursive drawing requirements of _redraw_surface() and is not intended for any other use.
 
-void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, WORD Index,
-                               LONG Left, LONG Top, LONG Right, LONG Bottom, objBitmap *DestBitmap, LONG Flags)
+void _redraw_surface_do(extSurface *Self, SurfaceList *list, WORD Total, WORD Index,
+                               LONG Left, LONG Top, LONG Right, LONG Bottom, extBitmap *DestBitmap, LONG Flags)
 {
    parasol::Log log("redraw_surface");
 
@@ -1895,13 +1895,13 @@ void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, WORD In
    // our Index field will not match with the surface that is referenced in Self.  We need to ensure
    // correctness before going any further.
 
-   if (list[Index].SurfaceID != Self->Head.UID) {
-      Index = find_surface_list(list, Total, Self->Head.UID);
+   if (list[Index].SurfaceID != Self->UID) {
+      Index = find_surface_list(list, Total, Self->UID);
    }
 
    // Prepare the buffer so that it matches the exposed area
 
-   if (Self->BitmapOwnerID != Self->Head.UID) {
+   if (Self->BitmapOwnerID != Self->UID) {
       for (i=Index; (i > 0) and (list[i].SurfaceID != Self->BitmapOwnerID); i--);
       DestBitmap->XOffset = list[Index].Left - list[i].Left; // Offset is relative to the bitmap owner
       DestBitmap->YOffset = list[Index].Top - list[i].Top;
@@ -2011,15 +2011,15 @@ void _redraw_surface_do(objSurface *Self, SurfaceList *list, WORD Total, WORD In
       else prepare_background(Self, list, Total, Index, DestBitmap, &abs, STAGE_PRECOPY);
    }
    else if (Self->Flags & RNF_COMPOSITE) {
-      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, PackPixelA((objBitmap *)DestBitmap, 0, 0, 0, 0), TRUE);
+      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, DestBitmap->packPixel(0, 0, 0, 0), TRUE);
    }
    else if (Self->Colour.Alpha > 0) {
-      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, PackPixelA((objBitmap *)DestBitmap, Self->Colour.Red, Self->Colour.Green, Self->Colour.Blue, 255), TRUE);
+      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, DestBitmap->packPixel(Self->Colour.Red, Self->Colour.Green, Self->Colour.Blue), TRUE);
    }
 
    // Draw graphics to the buffer
 
-   tlFreeExpose = DestBitmap->Head.UID;
+   tlFreeExpose = DestBitmap->UID;
 
       process_surface_callbacks(Self, DestBitmap);
 
@@ -2085,7 +2085,7 @@ OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
    // targetted or turned off altogether if there was no previously modal surface.
 
    if (SurfaceID) {
-      objSurface *surface;
+      extSurface *surface;
       OBJECTID divert = 0;
       if (!AccessObject(SurfaceID, 3000, &surface)) {
          if (!(surface->Flags & RNF_VISIBLE)) {
@@ -2176,9 +2176,9 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
 
    *Bitmap = 0;
 
-   objSurface *surface;
+   extSurface *surface;
    if (!AccessObject(SurfaceID, 5000, &surface)) {
-      objBitmap *bitmap;
+      extBitmap *bitmap;
       if (AccessObject(surface->BufferID, 5000, &bitmap) != ERR_Okay) {
          ReleaseObject(surface);
          return log.warning(ERR_AccessObject);
@@ -2282,7 +2282,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
 
       // Gain access to the bitmap buffer and set the clipping and offsets to the correct values.
 
-      objBitmap *bmp;
+      extBitmap *bmp;
       if (!AccessObject(list_root.BitmapID, 5000, &bmp)) {
          bmp->XOffset = expose.Left - list_root.Left; // The offset is the position of the surface within the root bitmap
          bmp->YOffset = expose.Top - list_root.Top;
@@ -2349,7 +2349,7 @@ Call the UnlockBitmap() function to release a surface object from earlier calls 
 
 -INPUT-
 oid Surface:        The ID of the surface object that you are releasing.
-obj(Bitmap) Bitmap: Pointer to the bitmap structure returned earlier by LockBitmap().
+ext(Bitmap) Bitmap: Pointer to the bitmap structure returned earlier by LockBitmap().
 
 -ERRORS-
 Okay: The bitmap has been unlocked successfully.
@@ -2357,7 +2357,7 @@ NullArgs:
 
 *****************************************************************************/
 
-ERROR gfxUnlockBitmap(OBJECTID SurfaceID, objBitmap *Bitmap)
+ERROR gfxUnlockBitmap(OBJECTID SurfaceID, extBitmap *Bitmap)
 {
    if ((!SurfaceID) or (!Bitmap)) return ERR_NullArgs;
    ReleaseObject(Bitmap);

@@ -179,7 +179,7 @@ extern struct CoreBase *CoreBase;
   FT_CALLBACK_DEF( void )
   ft_ansi_stream_close( FT_Stream  stream )
   {
-    Action(AC_Free, STREAM_FILE(stream), NULL);
+    Action(AC_Free, (OBJECTPTR)STREAM_FILE(stream), NULL);
 
     stream->descriptor.pointer = NULL;
     stream->size               = 0;
@@ -220,9 +220,7 @@ extern struct CoreBase *CoreBase;
                      unsigned long   count )
   {
    struct acRead read;
-   OBJECTPTR file;
-
-   file = (OBJECTPTR)STREAM_FILE(stream);
+   OBJECTPTR file = (OBJECTPTR)STREAM_FILE(stream);
 
    acSeekStart(file, offset);
 

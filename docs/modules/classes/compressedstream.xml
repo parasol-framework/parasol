@@ -241,6 +241,7 @@
     </constants>
 
     <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
+      <const name="COLLECT">Marked for garbage collection.</const>
       <const name="FOREIGN_OWNER">Read-only indicator for when an object's parent is in a foreign process.</const>
       <const name="FREE">Read-only indicator for when the object is being freed.</const>
       <const name="INITIALISED">Read-only indicator if the object has been initialised.</const>

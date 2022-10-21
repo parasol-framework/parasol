@@ -119,7 +119,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
          // SetDisplay() for more information.
 
          XRRScreenChangeNotifyEvent *notify;
-         objDisplay *display;
+         extDisplay *display;
          objSurface *surface;
 
          notify = (XRRScreenChangeNotifyEvent *)&xevent;
@@ -270,7 +270,7 @@ void handle_stack_change(XCirculateEvent *xevent)
 void handle_configure_notify(XConfigureEvent *xevent)
 {
    parasol::Log log(__FUNCTION__);
-   objDisplay *display;
+   extDisplay *display;
    OBJECTID display_id;
 
    LONG x = xevent->x;

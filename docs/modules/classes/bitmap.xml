@@ -94,7 +94,7 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="FieldNotSet">A vital field has not been set in this object.</error>
+        <error code="FieldNotSet">A required field value is undefined.</error>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -156,7 +156,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NothingDone">The Bitmap's content is already in linear RGB format.</error>
         <error code="InvalidDimension">The clipping region is invalid.</error>
-        <error code="BadState">The Bitmap is not in the expected state.</error>
+        <error code="InvalidState">The Bitmap is not in the expected state.</error>
       </result>
     </method>
 
@@ -172,17 +172,17 @@
         <error code="Okay">Operation successful.</error>
         <error code="NothingDone">The Bitmap's content is already in sRGB format.</error>
         <error code="InvalidDimension">The clipping region is invalid.</error>
-        <error code="BadState">The Bitmap is not in the expected state.</error>
+        <error code="InvalidState">The Bitmap is not in the expected state.</error>
       </result>
     </method>
 
     <method>
       <name>CopyArea</name>
       <comment>Copies a rectangular area from one bitmap to another.</comment>
-      <prototype>ERROR bmpCopyArea(OBJECTPTR Object, struct rkBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+      <prototype>ERROR bmpCopyArea(OBJECTPTR Object, objBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
       <input>
-        <param type="struct rkBitmap *" name="DestBitmap">Pointer to the destination bitmap.</param>
-        <param type="LONG" name="Flags">Special flags.</param>
+        <param type="objBitmap *" name="DestBitmap">The target bitmap.</param>
+        <param type="LONG" name="Flags" lookup="BAF">Optional flags.</param>
         <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
         <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
         <param type="LONG" name="Width">The width of the area.</param>
@@ -195,7 +195,7 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="Mismatch">The destination bitmap is not a close enough match to the source bitmap in order to perform the operation.</error>
+        <error code="Mismatch">The target bitmap is not a close enough match to the source bitmap in order to perform the operation.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -228,7 +228,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NothingDone">The content is already normalised.</error>
         <error code="InvalidDimension">The clipping region is invalid.</error>
-        <error code="BadState">The Bitmap is not in the expected state (32-bit with an alpha channel).</error>
+        <error code="InvalidState">The Bitmap is not in the expected state (32-bit with an alpha channel).</error>
       </result>
     </method>
 
@@ -323,7 +323,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NothingDone">The content is already premultiplied.</error>
         <error code="InvalidDimension">The clipping region is invalid.</error>
-        <error code="BadState">The Bitmap is not in the expected state (32-bit with an alpha channel)</error>
+        <error code="InvalidState">The Bitmap is not in the expected state (32-bit with an alpha channel)</error>
       </result>
     </method>
 
@@ -494,22 +494,22 @@ Chunky/32   = Width * 4
 <field type="UBYTE" name="AlphaPos">Left shift/positional value for the alpha component.</field>
 <field type="UBYTE" name="BitsPerPixel"> Number of bits per pixel for this format.</field>
 </struct>
-<p>The following C macros can called on any bitmap in order to build colour values from individual RGB components:</p>
-<pre>PackPixel(Bitmap, Red, Green, Blue)
-PackPixelA(Bitmap, Red, Green, Blue, Alpha)
-PackAlpha(Bitmap, Alpha)
-PackPixelRGB(Bitmap, struct RGB8 *RGB)
-PackPixelRGBA(Bitmap, struct RGB8 *RGB)
+<p>The following C++ methods can called on any bitmap in order to build colour values from individual RGB components:</p>
+<pre>packPixel(Red, Green, Blue)
+packPixel(Red, Green, Blue, Alpha)
+packAlpha(Alpha)
+packPixelRGB(RGB8 &amp;RGB)
+packPixelRGBA(RGB8 &amp;RGB)
 </pre>
 <p>The following C macros are optimised versions of the above that are limited to 24 and 32-bit bitmaps:</p>
-<pre>PackPixelWB(Bitmap, Red, Green, Blue)
-PackPixelWBA(Bitmap, Red, Green, Blue, Alpha)
+<pre>PackPixelWB(Red, Green, Blue)
+PackPixelWBA(Red, Green, Blue, Alpha)
 </pre>
-<p>The following C macros can be used to unpack individual colour components from any colour value read from the bitmap:</p>
-<pre>UnpackRed(Bitmap, Colour)
-UnpackGreen(Bitmap, Colour)
-UnpackBlue(Bitmap, Colour)
-UnpackAlpha(Bitmap, Colour)
+<p>The following C++ methods can be used to unpack individual colour components from any colour value read from the bitmap:</p>
+<pre>unpackRed(Colour)
+unpackGreen(Colour)
+unpackBlue(Colour)
+unpackAlpha(Colour)
 </pre>
       </description>
     </field>
@@ -556,7 +556,7 @@ UnpackAlpha(Bitmap, Colour)
       <name>DrawUCPixel</name>
       <comment>Points to a C function that draws pixels to the bitmap using colour indexes.</comment>
       <access read="R">Read</access>
-      <type prototype="void (*DrawUCPixel)(struct rkBitmap *, LONG, LONG, ULONG)">FUNCTION *</type>
+      <type prototype="void (*DrawUCPixel)(objBitmap *, LONG, LONG, ULONG)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid coordinates that would result in a segfault).</p>
 <p>The prototype of the DrawUCPixel function is <code>Function(*Bitmap, LONG X, LONG Y, ULONG Colour)</code>.</p>
@@ -568,7 +568,7 @@ UnpackAlpha(Bitmap, Colour)
       <name>DrawUCRIndex</name>
       <comment>Points to a C function that draws pixels to the bitmap in RGB format.</comment>
       <access read="R">Read</access>
-      <type prototype="void (*DrawUCRIndex)(struct rkBitmap *, UBYTE *, struct RGB8 *)">FUNCTION *</type>
+      <type prototype="void (*DrawUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
 <p>The prototype of the DrawUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, RGB8 *RGB)</code>.</p>
@@ -581,7 +581,7 @@ UnpackAlpha(Bitmap, Colour)
       <name>DrawUCRPixel</name>
       <comment>Points to a C function that draws pixels to the bitmap in RGB format.</comment>
       <access read="R">Read</access>
-      <type prototype="void (*DrawUCRPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *)">FUNCTION *</type>
+      <type prototype="void (*DrawUCRPixel)(objBitmap *, LONG, LONG, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid coordinates that would result in a segfault).</p>
 <p>The prototype of the DrawUCRPixel function is <code>Function(*Bitmap, LONG X, LONG Y, RGB8 *RGB)</code>.</p>
@@ -681,7 +681,7 @@ UnpackAlpha(Bitmap, Colour)
       <name>ReadUCPixel</name>
       <comment>Points to a C function that reads pixels from the bitmap in colour index format.</comment>
       <access read="R">Read</access>
-      <type prototype="ULONG (*ReadUCPixel)(struct rkBitmap *, LONG, LONG)">FUNCTION *</type>
+      <type prototype="ULONG (*ReadUCPixel)(objBitmap *, LONG, LONG)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid X/Y coordinates that would result in a segfault).</p>
 <p>The prototype of the ReadUCPixel function is <code>Function(*Bitmap, LONG X, LONG Y, LONG *Index)</code>.</p>
@@ -693,7 +693,7 @@ UnpackAlpha(Bitmap, Colour)
       <name>ReadUCRIndex</name>
       <comment>Points to a C function that reads pixels from the bitmap in RGB format.</comment>
       <access read="R">Read</access>
-      <type prototype="void (*ReadUCRIndex)(struct rkBitmap *, UBYTE *, struct RGB8 *)">FUNCTION *</type>
+      <type prototype="void (*ReadUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
 <p>The prototype of the ReadUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, RGB8 *RGB)</code>.</p>
@@ -706,7 +706,7 @@ UnpackAlpha(Bitmap, Colour)
       <name>ReadUCRPixel</name>
       <comment>Points to a C function that reads pixels from the bitmap in RGB format.</comment>
       <access read="R">Read</access>
-      <type prototype="void (*ReadUCRPixel)(struct rkBitmap *, LONG, LONG, struct RGB8 *)">FUNCTION *</type>
+      <type prototype="void (*ReadUCRPixel)(objBitmap *, LONG, LONG, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid X/Y coordinates that would result in a segfault).</p>
 <p>The prototype of the ReadUCRPixel function is <code>Function(*Bitmap, LONG X, LONG Y, RGB8 *RGB)</code>.</p>

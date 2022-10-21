@@ -30,8 +30,8 @@ static OBJECTPTR clParc = NULL;
 
 //****************************************************************************
 
-typedef struct rkParc {
-   OBJECT_HEADER
+typedef class rkParc : public BaseClass {
+   public:
    STRING   Message;    // Set to a suitable user error message when an error occurs
    OBJECTID OutputID;   // An object that will receive program output
    LONG     Flags;

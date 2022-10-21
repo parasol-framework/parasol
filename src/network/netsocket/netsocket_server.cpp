@@ -2,7 +2,7 @@
 //****************************************************************************
 // Called when a socket handle detects a new client wanting to connect to it.
 
-static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
+static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 {
    parasol::Log log(__FUNCTION__);
    UBYTE ip[8];
@@ -94,13 +94,13 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
    // Check if this IP address already has a client structure from an earlier socket connection.
    // (One NetClient represents a single IP address; Multiple ClientSockets can connect from that IP address)
 
-   rkNetClient *client_ip;
+   struct NetClient *client_ip;
    for (client_ip=Self->Clients; client_ip; client_ip=client_ip->Next) {
       if (((LARGE *)&ip)[0] IS ((LARGE *)&client_ip->IP)[0]) break;
    }
 
    if (!client_ip) {
-      if (AllocMemory(sizeof(rkNetClient), MEM_DATA, &client_ip, NULL) != ERR_Okay) {
+      if (AllocMemory(sizeof(struct NetClient), MEM_DATA, &client_ip, NULL) != ERR_Okay) {
          CLOSESOCKET(clientfd);
          return;
       }
@@ -130,7 +130,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 
    // Socket Management
 
-   objClientSocket *client_socket;
+   extClientSocket *client_socket;
    if (!NewObject(ID_CLIENTSOCKET, 0, &client_socket)) {
       client_socket->Handle = clientfd;
       client_socket->Client = client_ip;
@@ -144,7 +144,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 
    if (Self->Feedback.Type IS CALL_STDC) {
       parasol::SwitchContext context(Self->Feedback.StdC.Context);
-      auto routine = (void (*)(objNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
+      auto routine = (void (*)(extNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
       if (routine) routine(Self, client_socket, NTC_CONNECTED);
    }
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
@@ -167,7 +167,7 @@ static void server_client_connect(SOCKET_HANDLE FD, objNetSocket *Self)
 ** Terminates the connection to the client and removes associated resources.
 */
 
-static void free_client(objNetSocket *Self, rkNetClient *Client)
+static void free_client(extNetSocket *Self, struct NetClient *Client)
 {
    parasol::Log log(__FUNCTION__);
    static THREADVAR BYTE recursive = 0;
@@ -183,7 +183,7 @@ static void free_client(objNetSocket *Self, rkNetClient *Client)
 
    while (Client->Sockets) {
       objClientSocket *current_socket = Client->Sockets;
-      free_client_socket(Self, Client->Sockets, TRUE);
+      free_client_socket(Self, (extClientSocket *)Client->Sockets, TRUE);
       if (Client->Sockets IS current_socket) {
          log.warning("Resource management error detected in Client->Sockets");
          break;
@@ -210,18 +210,18 @@ static void free_client(objNetSocket *Self, rkNetClient *Client)
 ** Terminates the connection to the client and removes associated resources.
 */
 
-static void free_client_socket(objNetSocket *Socket, objClientSocket *ClientSocket, BYTE Signal)
+static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSocket, BYTE Signal)
 {
    parasol::Log log(__FUNCTION__);
 
    if (!ClientSocket) return;
 
-   log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, Socket->Head.UID, ClientSocket->Head.UID);
+   log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, Socket->UID, ClientSocket->UID);
 
    if ((Signal) and (Socket->Feedback.Type)) {
       if (Socket->Feedback.Type IS CALL_STDC) {
          parasol::SwitchContext context(Socket->Feedback.StdC.Context);
-         auto routine = (void (*)(objNetSocket *, objClientSocket *, LONG))Socket->Feedback.StdC.Routine;
+         auto routine = (void (*)(extNetSocket *, objClientSocket *, LONG))Socket->Feedback.StdC.Routine;
          if (routine) routine(Socket, ClientSocket, NTC_DISCONNECTED);
       }
       else if (Socket->Feedback.Type IS CALL_SCRIPT) {

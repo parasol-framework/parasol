@@ -179,7 +179,7 @@ penalty.
 static ERROR PATTERN_SET_Inherit(objVectorPattern *Self, objVectorPattern *Value)
 {
    if (Value) {
-      if (Value->Head.ClassID IS ID_VECTORPATTERN) {
+      if (Value->ClassID IS ID_VECTORPATTERN) {
          Self->Inherit = Value;
       }
       else return ERR_InvalidValue;

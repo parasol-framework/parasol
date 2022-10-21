@@ -9,10 +9,8 @@ The VectorEllipse class provides the necessary functionality for elliptical path
 
 *****************************************************************************/
 
-typedef struct rkVectorEllipse {
-   OBJECT_HEADER
-   SHAPE_PUBLIC
-   SHAPE_PRIVATE
+typedef class plVectorEllipse : public objVector {
+   public:
    DOUBLE eCX, eCY;
    DOUBLE eRadiusX, eRadiusY;
    LONG eDimensions;
@@ -106,7 +104,7 @@ static ERROR ELLIPSE_MoveToPoint(objVectorEllipse *Self, struct acMoveToPoint *A
 
 static ERROR ELLIPSE_NewObject(objVectorEllipse *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(rkVector *))&generate_ellipse;
+   Self->GeneratePath = (void (*)(objVector *))&generate_ellipse;
    return ERR_Okay;
 }
 
