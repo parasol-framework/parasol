@@ -223,7 +223,7 @@ static ERROR VECTOR_Enable(extVector *Self, APTR Void)
 
 static ERROR VECTOR_Free(extVector *Self, APTR Args)
 {
-   Self->~objVector();
+   Self->~extVector();
 
    if (Self->ID)           { FreeResource(Self->ID); Self->ID = NULL; }
    if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = NULL; }
@@ -516,7 +516,7 @@ static ERROR VECTOR_MoveToFront(extVector *Self, APTR Void)
 
 static ERROR VECTOR_NewObject(extVector *Self, APTR Void)
 {
-   new (Self) objVector;
+   new (Self) extVector;
    Self->StrokeOpacity = 1.0;
    Self->FillOpacity   = 1.0;
    Self->Opacity       = 1.0;              // Overall opacity multiplier
@@ -1226,7 +1226,7 @@ static ERROR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 {
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
    Self->FillString = StrClone(Value);
-   vecReadPainter(Self, Value, &Self->FillColour, &Self->FillGradient, &Self->FillImage, &Self->FillPattern);
+   vecReadPainter(Self->Scene, Value, &Self->FillColour, (objVectorGradient **)&Self->FillGradient, &Self->FillImage, &Self->FillPattern);
    return ERR_Okay;
 }
 
@@ -1979,7 +1979,7 @@ static ERROR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    Self->StrokeString = StrClone(Value);
-   vecReadPainter(Self, Value, &Self->StrokeColour, &Self->StrokeGradient, &Self->StrokeImage, &Self->StrokePattern);
+   vecReadPainter(Self->Scene, Value, &Self->StrokeColour, (objVectorGradient **)&Self->StrokeGradient, &Self->StrokeImage, &Self->StrokePattern);
    return ERR_Okay;
 }
 
@@ -2205,7 +2205,7 @@ void send_feedback(extVector *Vector, LONG Event)
 
 //********************************************************************************************************************
 
-DOUBLE objVector::fixed_stroke_width()
+DOUBLE extVector::fixed_stroke_width()
 {
    if (this->RelativeStrokeWidth) {
       return get_parent_diagonal(this) * this->StrokeWidth;

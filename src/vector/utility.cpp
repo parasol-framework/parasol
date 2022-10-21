@@ -353,7 +353,7 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
          break;
       }
       else if (Vector->ClassID IS ID_VECTOR) {
-         objVector *shape = (objVector *)Vector;
+         auto shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, get_name(shape));
          if (shape->Child) debug_tree_ptrs(Header, shape->Child, Level);
          Vector = shape->Next;

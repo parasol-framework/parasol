@@ -221,7 +221,53 @@ class extFilterEffect : public objFilterEffect {
 
 class extVector : public objVector {
    public:
+   DOUBLE FinalX, FinalY;
+   DOUBLE BX1, BY1, BX2, BY2;
+   DOUBLE FillGradientAlpha, StrokeGradientAlpha;
+   DOUBLE StrokeWidth;
+   agg::path_storage BasePath;
+   agg::trans_affine Transform;
+   RGB8 rgbStroke, rgbFill;
+   extVectorFilter *Filter;
+   objVectorViewport *ParentView;
+   CSTRING FilterString, StrokeString, FillString;
+   STRING ID;
+   void   (*GeneratePath)(extVector *);
+   agg::rasterizer_scanline_aa<> *StrokeRaster;
+   agg::rasterizer_scanline_aa<> *FillRaster;
+   objVectorClip     *ClipMask;
+   extVectorGradient *StrokeGradient, *FillGradient;
+   objVectorImage    *FillImage, *StrokeImage;
+   objVectorPattern  *FillPattern, *StrokePattern;
+   objVectorTransition *Transition;
+   extVector *Morph;
+   DashedStroke *DashArray;
+   GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
+   FRGB StrokeColour, FillColour;
+   std::vector<FeedbackSubscription> *FeedbackSubscriptions;
+   std::vector<InputSubscription> *InputSubscriptions;
+   std::vector<KeyboardSubscription> *KeyboardSubscriptions;
+   LONG   InputMask;
+   LONG   NumericID;
+   LONG   PathLength;
+   UBYTE  MorphFlags;
+   UBYTE  FillRule;
+   UBYTE  ClipRule;
+   UBYTE  Dirty;
+   UBYTE  TabOrder;
+   UBYTE  EnableBkgd:1;
+   UBYTE  DisableFillColour:1;
+   UBYTE  ButtonLock:1;
+   UBYTE  RelativeStrokeWidth:1;
+   UBYTE  DisableHitTesting:1;
+   UBYTE  ResizeSubscription:1;
+   agg::line_join_e  LineJoin;
+   agg::line_cap_e   LineCap;
+   agg::inner_join_e InnerJoin;
+   // Methods
+   DOUBLE fixed_stroke_width();
 };
+
 struct TabOrderedVector {
    bool operator()(const extVector *a, const extVector *b) const;
 };
@@ -746,7 +792,7 @@ extern void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
 extern ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 extern ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
 extern ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
-extern void  vecReadPainter(OBJECTPTR, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
+extern void  vecReadPainter(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
 extern ERROR vecResetMatrix(struct VectorMatrix *);
 extern void  vecRewindPath(class SimpleVector *);
 extern ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);

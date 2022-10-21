@@ -732,11 +732,11 @@ RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is suppo
 component values range between 0.0 and 1.0.
 
 A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has
-been registered with the given Vector object.  If Vector is NULL then it will not be possible to find the reference.
+been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference.
 Any failure to lookup a reference will be silently discarded.
 
 -INPUT-
-obj Vector: Optional.  Required if url() references are to be resolved.
+obj(VectorScene) Scene: Optional.  Required if url() references are to be resolved.
 cstr IRI: The IRI string to be translated.
 struct(*FRGB) RGB: A colour will be returned here if specified in the IRI.
 &obj(VectorGradient) Gradient: A VectorGradient will be returned here if specified in the IRI.
@@ -745,7 +745,7 @@ struct(*FRGB) RGB: A colour will be returned here if specified in the IRI.
 
 *****************************************************************************/
 
-void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, FRGB *RGB, objVectorGradient **Gradient,
+void vecReadPainter(objVectorScene *Scene, CSTRING IRI, FRGB *RGB, objVectorGradient **Gradient,
    objVectorImage **Image, objVectorPattern **Pattern)
 {
    parasol::Log log(__FUNCTION__);
@@ -764,20 +764,18 @@ next:
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
    if (!StrCompare("url(", IRI, 4, 0)) {
-      if (!Vector) {
-         log.trace("No Vector specified to enable URL() reference.");
-         return;
-      }
-      objVectorScene *scene;
-
-      if (Vector->ClassID IS ID_VECTOR) scene = ((objVector *)Vector)->Scene;
-      else if (Vector->ClassID IS ID_VECTORSCENE) scene = (objVectorScene *)Vector;
-      else {
-         log.warning("The referenced Vector is invalid.");
+      if (!Scene) {
+         log.trace("No Scene specified to enable URL() reference.");
          return;
       }
 
-      if (scene->HostScene) scene = scene->HostScene;
+      if (Scene->ClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
+      else if (Scene->ClassID != ID_VECTORSCENE) {
+         log.warning("The Scene is invalid.");
+         return;
+      }
+
+      if (Scene->HostScene) Scene = Scene->HostScene;
 
       IRI += 4;
       if (*IRI IS '#') {
@@ -789,7 +787,7 @@ next:
          name[i] = 0;
 
          VectorDef *def;
-         if (!VarGet(scene->Defs, name, &def, NULL)) {
+         if (!VarGet(Scene->Defs, name, &def, NULL)) {
             if (def->Object->ClassID IS ID_VECTORGRADIENT) {
                if (Gradient) *Gradient = (objVectorGradient *)def->Object;
             }
@@ -813,7 +811,7 @@ next:
             return;
          }
 
-         log.warning("Failed to lookup IRI '%s' in scene #%d", name, scene->UID);
+         log.warning("Failed to lookup IRI '%s' in scene #%d", name, Scene->UID);
       }
       else log.warning("Invalid IRI: %s", IRI);
    }

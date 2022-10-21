@@ -336,9 +336,9 @@ Z: Close Path
   <function>
     <name>ReadPainter</name>
     <comment>Parses a painter string into its colour, gradient and image values.</comment>
-    <prototype>void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern)</prototype>
+    <prototype>void vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Vector">Optional.  Required if url() references are to be resolved.</param>
+      <param type="objVectorScene *" name="Scene">Optional.  Required if url() references are to be resolved.</param>
       <param type="CSTRING" name="IRI">The IRI string to be translated.</param>
       <param type="struct FRGB *" name="RGB">A colour will be returned here if specified in the IRI.</param>
       <param type="objVectorGradient **" name="Gradient">A VectorGradient will be returned here if specified in the IRI.</param>
@@ -348,7 +348,7 @@ Z: Close Path
     <description>
 <p>This function will parse an SVG style IRI into its equivalent internal lookup values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
 <p>Colours can be referenced using one of three methods.  Colour names such as <code>orange</code> and <code>red</code> are accepted.  Hexadecimal RGB values are supported in the format <code>#RRGGBBAA</code>.  Floating point RGB is supported as <code>rgb(r,g,b,a)</code> whereby the component values range between 0.0 and 1.0.</p>
-<p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the given Vector object.  If Vector is NULL then it will not be possible to find the reference. Any failure to lookup a reference will be silently discarded.</p>
+<p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference. Any failure to lookup a reference will be silently discarded.</p>
     </description>
   </function>
 
