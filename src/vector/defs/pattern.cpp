@@ -323,6 +323,16 @@ Viewport: Refers to the viewport that contains the pattern.
 The Viewport refers to a @VectorViewport object that is created to host the vectors for the rendered pattern.  If the
 Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.
 
+*****************************************************************************/
+
+static ERROR PATTERN_GET_Viewport(extVectorPattern *Self, extVectorViewport **Value)
+{
+   *Value = Self->Viewport;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
 -FIELD-
 Width: Width of the pattern tile.
 
@@ -472,7 +482,6 @@ static const FieldArray clPatternFields[] = {
    { "Height",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Height, (APTR)PATTERN_SET_Height },
    { "Opacity",      FDF_DOUBLE|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Opacity },
    { "Scene",        FDF_INTEGRAL|FDF_R,         0, NULL, NULL },
-   { "Viewport",     FDF_OBJECT|FDF_R,           0, NULL, NULL },
    { "Inherit",      FDF_OBJECT|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_RW,            (MAXINT)&clPatternSpread, NULL, NULL },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clPatternUnits, NULL, NULL },
@@ -482,6 +491,7 @@ static const FieldArray clPatternFields[] = {
    // Virtual fields
    { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"VectorMatrix", (APTR)VECTORPATTERN_GET_Matrices, (APTR)VECTORPATTERN_SET_Matrices },
    { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)PATTERN_SET_Transform },
+   { "Viewport",     FDF_OBJECT|FDF_R,             0, (APTR)PATTERN_GET_Viewport, NULL },
    END_FIELD
 };
 

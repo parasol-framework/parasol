@@ -7,10 +7,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     loadFile(glPath .. 'common-graphics.fdl')
   end)
 
-  c_insert([[
-typedef class plVectorViewport objVectorViewport;
-  ]])
-
   flags("ARC", { comment="Options for drawing arcs." },
     "LARGE",
     "SWEEP")
@@ -321,18 +317,6 @@ typedef class plVectorViewport objVectorViewport;
     double TranslateY           # Matrix value F
   ]])
 
-  // VectorPath method ID's start high enough to give a cushion from inherited Vector methods.
-
-  methods("VectorPath", "VP", {
-    { id=30, name="AddCommand" },
-    { id=31, name="RemoveCommand" },
-    { id=32, name="SetCommand" },
-    { id=33, name="GetCommand" },
-    { id=34, name="SetCommandList" }
-  })
-
-  class("VectorPath", { src="vectors/path.cpp", output="vectors/path_def.c" })
-
   // Use SET_VECTOR_COLOUR() to configure the RGB values in VectorColour
 
   class("VectorColour", { src="defs/colour.cpp", comment="VectorColour is a basic stub class that is used for the DrawPath() routine when filling or stroking solid colour values" }, [[
@@ -349,17 +333,17 @@ typedef class plVectorViewport objVectorViewport;
   })
 
   class("VectorScene", { src="scene/scene.cpp", output="scene/scene_def.c" }, [[
-   large RenderTime           # Microseconds elapsed during the last rendering operation.
-   double Gamma               # Not currently implemented.
-   obj(VectorScene) HostScene # Reference to a controlling VectorScene at the top of the hierarchy, if applicable.
-   obj(Vector) Viewport       # Reference to the VectorViewport that contains the VectorScene.
-   obj(Bitmap) Bitmap         # Target bitmap.
-   struct(*KeyStore) Defs     # Stores references to gradients, images, patterns etc
-   oid Surface                # Target surface for automated rendering
-   int(VPF) Flags             # Optional flags.
-   int PageWidth              # Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
-   int PageHeight             # Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
-   int(VSM) SampleMethod      # VSM: Method to use for resampling images and patterns.
+   large RenderTime             # Microseconds elapsed during the last rendering operation.
+   double Gamma                 # Not currently implemented.
+   obj(VectorScene) HostScene   # Reference to a controlling VectorScene at the top of the hierarchy, if applicable.
+   obj(VectorViewport) Viewport # Reference to the VectorViewport that contains the VectorScene.
+   obj(Bitmap) Bitmap           # Target bitmap.
+   struct(*KeyStore) Defs       # Stores references to gradients, images, patterns etc
+   oid Surface                  # Target surface for automated rendering
+   int(VPF) Flags               # Optional flags.
+   int PageWidth                # Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
+   int PageHeight               # Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
+   int(VSM) SampleMethod        # VSM: Method to use for resampling images and patterns.
   ]])
 
   class("VectorImage", { src="defs/image.cpp" }, [[
@@ -380,7 +364,6 @@ typedef class plVectorViewport objVectorViewport;
     double Height                 # Height of the canvas
     double Opacity                # Level of opacity from 0 - 1.0
     obj(VectorScene) Scene        # Internal scene
-    obj(VectorViewport) Viewport  # Internal viewport
     obj(VectorPattern) Inherit    # Reference to another pattern from which to inherit attributes
     int(VSPREAD) SpreadMethod     # Behaviour to use when pattern bounds do not match the vector path.
     int(VUNIT) Units              # VUNIT constant
@@ -461,30 +444,6 @@ typedef class plVectorViewport objVectorViewport;
     int(VCS) ColourSpace      # Operating colour space for RGB values
   ]])
 
-  // VectorText method ID's start high enough to give a cushion from inherited Vector methods.
-
-  methods("VectorText", "VT", {
-    { id=30, name="DeleteLine" }
-  })
-
-  class('VectorText', { src='vectors/text.cpp', output="vectors/text_def.cpp"  })
-
-  class('VectorWave', { src='vectors/wave.cpp' })
-
-  class('VectorRectangle', { src='vectors/rectangle.cpp' })
-
-  class('VectorPolygon', { src='vectors/polygon.cpp' })
-
-  class('VectorShape', { src='vectors/supershape.cpp' })
-
-  class('VectorSpiral', { src='vectors/spiral.cpp' })
-
-  class('VectorEllipse', { src='vectors/ellipse.cpp' })
-
-  class('VectorClip', { src='vectors/clip.cpp' })
-
-  class('VectorViewport', { src='vectors/viewport.cpp', output="vectors/viewport_def.cpp" })
-
   methods("vector", "Vec", {
     { id=1, name="Push" },
     { id=2, name="TracePath" },
@@ -517,6 +476,42 @@ typedef class plVectorViewport objVectorViewport;
     int(RQ)  PathQuality    # Defines the quality of rendered path outlines.
     int(VCS) ColourSpace    # Desired colour space to use when blending colours.
   ]])
+
+  // VectorPath method ID's start high enough to give a cushion from inherited Vector methods.
+
+  methods("VectorPath", "VP", {
+    { id=30, name="AddCommand" },
+    { id=31, name="RemoveCommand" },
+    { id=32, name="SetCommand" },
+    { id=33, name="GetCommand" },
+    { id=34, name="SetCommandList" }
+  })
+
+  class("VectorPath", { src="vectors/path.cpp", output="vectors/path_def.c" })
+
+  // VectorText method ID's start high enough to give a cushion from inherited Vector methods.
+
+  methods("VectorText", "VT", {
+    { id=30, name="DeleteLine" }
+  })
+
+  class('VectorText', { src='vectors/text.cpp', output="vectors/text_def.cpp"  })
+
+  class('VectorWave', { src='vectors/wave.cpp' })
+
+  class('VectorRectangle', { src='vectors/rectangle.cpp' })
+
+  class('VectorPolygon', { src='vectors/polygon.cpp' })
+
+  class('VectorShape', { src='vectors/supershape.cpp' })
+
+  class('VectorSpiral', { src='vectors/spiral.cpp' })
+
+  class('VectorEllipse', { src='vectors/ellipse.cpp' })
+
+  class('VectorClip', { src='vectors/clip.cpp' })
+
+  class('VectorViewport', { base='Vector',  src='vectors/viewport.cpp', output="vectors/viewport_def.cpp" })
 
   functionNames("vec",
     "DrawPath",

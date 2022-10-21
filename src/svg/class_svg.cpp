@@ -279,10 +279,10 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
          LONG index = xml->TagCount-1;
 
          if (!(error = xmlInsertXML(xml, index, XMI_NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &index))) {
-            BYTE multiple_viewports = (Self->Scene->Viewport->Next) ? TRUE : FALSE;
+            bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
             if (multiple_viewports) {
                if (!(error = save_svg_defs(Self, xml, Self->Scene, index))) {
-                  for (objVector *scan=Self->Scene->Viewport; scan; scan=scan->Next) {
+                  for (auto scan=Self->Scene->Viewport; scan; scan=(objVectorViewport *)scan->Next) {
                      if (!scan->Child) continue; // Ignore dummy viewports with no content
                      save_svg_scan(Self, xml, scan, index);
                   }

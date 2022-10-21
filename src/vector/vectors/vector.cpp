@@ -95,11 +95,11 @@ void set_parent(extVector *Self, OBJECTID OwnerID)
       if ((!Self->Prev) and (!Self->Next)) {
          if (((objVectorScene *)Self->Parent)->Viewport) { // Insert at the end
             auto end = ((objVectorScene *)Self->Parent)->Viewport;
-            while (end->Next) end = end->Next;
+            while (end->Next) end = (objVectorViewport *)end->Next;
             end->Next = Self;
             Self->Prev = end;
          }
-         else ((objVectorScene *)Self->Parent)->Viewport = Self;
+         else ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
       }
 
       Self->Scene = (objVectorScene *)Self->Parent;
@@ -238,7 +238,7 @@ static ERROR VECTOR_Free(extVector *Self, APTR Args)
    if (Self->Next) Self->Next->Prev = Self->Prev;
    if (Self->Prev) Self->Prev->Next = Self->Next;
    if ((Self->Parent) and (!Self->Prev)) {
-      if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = Self->Next;
+      if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
       else ((extVector *)Self->Parent)->Child = Self->Next;
    }
    if (Self->Child) Self->Child->Parent = NULL;
@@ -394,7 +394,7 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
    else if (Self->SubID IS ID_VECTORVIEWPORT) {
       if (Self->Dirty) gen_vector_tree(Self);
 
-      auto view = (objVectorViewport *)Self;
+      auto view = (extVectorViewport *)Self;
       Args->X      = view->vpBX1;
       Args->Y      = view->vpBY1;
       Args->Width  = view->vpBX2 - view->vpBX1;
@@ -479,7 +479,7 @@ static ERROR VECTOR_Init(extVector *Self, APTR Void)
             ((extVectorScene *)Self->Scene)->ResizeSubscriptions[Self->ParentView][Self] = glResizeSubscriptions[Self];
          }
          else if (Self->SubID IS ID_VECTORVIEWPORT) { // The top-level viewport responds to its own sizing.
-            ((extVectorScene *)Self->Scene)->ResizeSubscriptions[(objVectorViewport *)Self][Self] = glResizeSubscriptions[Self];
+            ((extVectorScene *)Self->Scene)->ResizeSubscriptions[(extVectorViewport *)Self][Self] = glResizeSubscriptions[Self];
          }
          glResizeSubscriptions.erase(Self);
       }
@@ -732,7 +732,7 @@ static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
       Self->Prev = scan->Prev;
       if (!Self->Prev) {
          if (scan->Parent->ClassID IS ID_VECTOR) ((extVector *)scan->Parent)->Child = Self;
-         else if (scan->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)scan->Parent)->Viewport = Self;
+         else if (scan->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)scan->Parent)->Viewport = (objVectorViewport *)Self;
          Self->Parent = scan->Parent;
       }
    }
@@ -749,7 +749,7 @@ static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
       }
       if ((!Self->Prev) and (scan != Self)) {
          if (Self->Parent->ClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self->Next;
-         else if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = Self->Next;
+         else if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
       }
       Self->Prev = scan;
       Self->Next = scan->Next;
@@ -1694,7 +1694,7 @@ static ERROR VECTOR_SET_Next(extVector *Self, extVector *Value)
 
    if (Value->Parent) { // Patch into the parent if we are at the start of the branch
       Self->Parent = Value->Parent;
-      if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = Self;
+      if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
       else if (Self->Parent->ClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
    }
 
@@ -1792,7 +1792,7 @@ static ERROR VECTOR_SET_Prev(extVector *Self, extVector *Value)
 
    if (Self->Parent) { // Detach from the parent
       if (Self->Parent->ClassID IS ID_VECTORSCENE) {
-         ((objVectorScene *)Self->Parent)->Viewport = Self->Next;
+         ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
          Self->Next->Parent = Self->Parent;
       }
       else if (Self->Parent->ClassID IS ID_VECTOR) {

@@ -241,6 +241,11 @@
 
   </fields>
   <types>
+    <constants lookup="ARC" comment="Options for drawing arcs.">
+      <const name="LARGE"/>
+      <const name="SWEEP"/>
+    </constants>
+
     <constants lookup="ARF" comment="Aspect ratios control alignment, scaling and clipping.">
       <const name="MEET">Aspect ratio is preserved. The entire viewbox will be visible in the viewport.  The viewbox is scaled up as much as possible.</const>
       <const name="NONE">Scale the viewbox to match the size of the viewport.  Aspect ratio is not preserved.</const>
@@ -255,5 +260,16 @@
 
   </types>
   <structs>
+    <struct name="VectorMatrix" comment="Vector transformation matrix.">
+      <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
+      <field name="Vector" type="objVector *">The vector associated with the transform.</field>
+      <field name="ScaleX" type="DOUBLE">Matrix value A</field>
+      <field name="ShearY" type="DOUBLE">Matrix value B</field>
+      <field name="ShearX" type="DOUBLE">Matrix value C</field>
+      <field name="ScaleY" type="DOUBLE">Matrix value D</field>
+      <field name="TranslateX" type="DOUBLE">Matrix value E</field>
+      <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+    </struct>
+
   </structs>
 </book>

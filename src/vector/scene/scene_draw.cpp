@@ -949,7 +949,7 @@ private:
    agg::renderer_base<agg::pixfmt_psl> mRenderBase;
    agg::pixfmt_psl mFormat;
    agg::scanline_u8 mScanLine;  // Use scanline_p for large solid polygons and scanline_u for things like text and gradients
-   objVectorViewport *mView; // The current view
+   extVectorViewport *mView; // The current view
    objBitmap *mBitmap;
 
 public:
@@ -1192,7 +1192,7 @@ private:
 
          if (shape->SubID IS ID_VECTORVIEWPORT) {
             if ((shape->Child) or (shape->InputSubscriptions) or (shape->FillPattern)) {
-               auto view = (objVectorViewport *)shape;
+               auto view = (extVectorViewport *)shape;
 
                if (view->vpOverflowX != VOF_INHERIT) state.mOverflowX = view->vpOverflowX;
                if (view->vpOverflowY != VOF_INHERIT) state.mOverflowY = view->vpOverflowY;

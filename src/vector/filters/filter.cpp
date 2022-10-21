@@ -232,7 +232,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
             FID_PageHeight|TLONG, Self->ClientViewport->Scene->PageHeight,
             TAGEND)) {
 
-         objVectorViewport *viewport;
+         extVectorViewport *viewport;
          if (!CreateObject(ID_VECTORVIEWPORT, 0, &viewport,
                FID_Owner|TLONG,       Self->SourceScene->UID,
                FID_ColourSpace|TLONG, (Self->ColourSpace IS VCS_LINEAR_RGB) ? VCS_LINEAR_RGB : VCS_SRGB,
@@ -267,7 +267,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
 
 //********************************************************************************************************************
 
-static ERROR set_clip_region(extVectorFilter *Self, objVectorViewport *Viewport, extVector *Vector)
+static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, extVector *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -352,7 +352,7 @@ static ERROR set_clip_region(extVectorFilter *Self, objVectorViewport *Viewport,
 //********************************************************************************************************************
 // Main rendering routine for filter effects.  Called by the scene graph renderer whenever a vector uses a filter.
 
-ERROR render_filter(extVectorFilter *Self, objVectorViewport *Viewport, extVector *Vector, objBitmap *BkgdBitmap, objBitmap **Output)
+ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector *Vector, objBitmap *BkgdBitmap, objBitmap **Output)
 {
    parasol::Log log(__FUNCTION__);
 

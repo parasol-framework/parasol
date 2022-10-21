@@ -783,6 +783,9 @@ function class(Name, Options, Blueprint, Private, Custom)
    local class = registerClass(Name)
    class.name = Name -- The name defined by class() has priority over any name defined by method()
    class.src = Options.src
+   if Options.base then
+      class.base = "obj" .. Options.base
+   end
    class.references = { }
 
    glActiveRefs = class.references
@@ -1353,7 +1356,6 @@ function outputClassHeader(class, Private, Custom)
 
       if physicalFields then
          priority("typedef class pl" .. class.name ..  " obj" .. class.name .. ";")
-
          output("typedef class pl" .. class.name ..  " : public BaseClass {")
          output("   public:")
 
@@ -1410,6 +1412,11 @@ function outputClassHeader(class, Private, Custom)
             end
          end
 
+         output("} obj" .. class.name .. ";")
+         output()
+      elseif class.base then
+         priority("typedef class pl" .. class.name ..  " obj" .. class.name .. ";")
+         output("typedef class pl" .. class.name ..  " : public " .. class.base .. " {")
          output("} obj" .. class.name .. ";")
          output()
       end
