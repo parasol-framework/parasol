@@ -1134,7 +1134,7 @@ private:
             }
          }
 
-         auto filter = shape->Filter;
+         auto filter = (extVectorFilter *)shape->Filter;
          if ((filter) and (!filter->Disabled)) {
             #ifdef DBG_DRAW
                log.traceBranch("Rendering filter for %s.", get_name(shape));

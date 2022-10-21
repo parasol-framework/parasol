@@ -185,10 +185,10 @@ public:
 
 class extVectorFilter : public objVectorFilter {
    public:
-   extVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
+   objVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
    objVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
-   extVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
-   extVectorScene *Scene;              // Scene that the filter belongs to.
+   objVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
+   objVectorScene *Scene;              // Scene that the filter belongs to.
    objBitmap *SourceGraphic;           // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
    objBitmap *BkgdBitmap;              // Target bitmap supplied by Scene.acDraw()
    extFilterEffect *ActiveEffect;      // Current effect being processed by the pipeline.
