@@ -181,7 +181,7 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
 
    objSurface *surface;
    if (!AccessObject(SurfaceID, 3000, &surface)) {
-      objDisplay *display;
+      extDisplay *display;
       OBJECTID display_id = surface->DisplayID;
       if (!AccessObject(display_id, 3000, &display)) {
          FUNCTION feedback = display->ResizeFeedback;

@@ -187,7 +187,7 @@ ERROR ScanDir(DirInfo *Dir)
    // Support for scanning of volume names
 
    if ((Dir->prvPath[0] IS ':') or (!Dir->prvPath[0])) {
-      parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 8000);
+      parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 8000);
       if (!volumes.granted()) return log.warning(ERR_AccessObject);
 
       ConfigGroups *groups;

@@ -349,7 +349,7 @@ ERROR gfxLockCursor(OBJECTID SurfaceID)
 {
 #ifdef __native__
    parasol::Log log(__FUNCTION__);
-   objPointer *pointer;
+   extPointer *pointer;
 
    if (!SurfaceID) return log.warning(ERR_NullArgs);
 
@@ -405,9 +405,9 @@ Args
 ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
 {
    parasol::Log log(__FUNCTION__);
-   objPointer *pointer;
+   extPointer *pointer;
 
-   if ((pointer = gfxAccessPointer())) {
+   if ((pointer = (extPointer *)gfxAccessPointer())) {
 /*
       OBJECTPTR caller;
       caller = CurrentContext();
@@ -481,7 +481,7 @@ AccessObject: Failed to access the internally maintained image object.
 ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, OBJECTID OwnerID)
 {
    parasol::Log log(__FUNCTION__);
-   objPointer *pointer;
+   extPointer *pointer;
    LONG flags;
 
 /*
@@ -494,7 +494,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
 
    if ((CursorID < 0) or (CursorID >= PTR_END)) return log.warning(ERR_OutOfRange);
 
-   if (!(pointer = gfxAccessPointer())) {
+   if (!(pointer = (extPointer *)gfxAccessPointer())) {
       log.warning("Failed to access the mouse pointer.");
       return ERR_AccessObject;
    }
@@ -597,14 +597,14 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
 
          #elif _WIN32
 
-            if (pointer->Head.TaskID IS CurrentTask()->UID) {
+            if (pointer->ownerTask() IS CurrentTask()->UID) {
                winSetCursor(GetWinCursor(CursorID));
                pointer->CursorID = CursorID;
             }
             else {
                struct ptrSetWinCursor set;
                set.Cursor = CursorID;
-               DelayMsg(MT_PtrSetWinCursor, pointer->Head.UID, &set);
+               DelayMsg(MT_PtrSetWinCursor, pointer->UID, &set);
             }
 
          #endif
@@ -677,10 +677,8 @@ to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap 
 alpha-enabled graphics area.  The following code illustrates this process:
 
 <pre>
-objPointer *pointer;
-objBitmap *bitmap;
-
-if ((pointer = gfxAccessPointer())) {
+if (auto pointer = gfxAccessPointer()) {
+   objBitmap *bitmap;
    if (!AccessObject(pointer->BitmapID, 3000, &bitmap)) {
       // Adjust clipping to match the cursor size.
       buffer->Clip.Right  = CursorWidth;
@@ -719,7 +717,7 @@ ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG 
 {
 #ifdef __snap__
    parasol::Log log(__FUNCTION__);
-   objPointer *pointer;
+   extPointer *pointer;
    objBitmap *buffer;
    ERROR error;
 
@@ -798,10 +796,8 @@ AccessObject: Failed to access the SystemPointer object.
 
 ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
 {
-   objPointer *pointer;
-
    struct acMoveToPoint move = { X, Y, 0, MTF_X|MTF_Y };
-   if ((pointer = gfxAccessPointer())) {
+   if (auto pointer = gfxAccessPointer()) {
       Action(AC_MoveToPoint, pointer, &move);
       ReleaseObject(pointer);
    }
@@ -860,8 +856,7 @@ ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID
 
    if (!Source) return log.warning(ERR_NullArgs);
 
-   objPointer *pointer;
-   if ((pointer = gfxAccessPointer())) {
+   if (auto pointer = (extPointer *)gfxAccessPointer()) {
       if (!pointer->Buttons[0].LastClicked) {
          gfxReleasePointer(pointer);
          return log.warning(ERR_Failed);
@@ -920,8 +915,7 @@ ERROR gfxUnlockCursor(OBJECTID SurfaceID)
 
    if (!SurfaceID) return log.warning(ERR_NullArgs);
 
-   objPointer *pointer;
-   if ((pointer = gfxAccessPointer())) {
+   if (auto pointer = (extPointer *)gfxAccessPointer()) {
       if (pointer->AnchorID IS SurfaceID) {
          pointer->AnchorID = NULL;
          pointer->AnchorMsgQueue = NULL;

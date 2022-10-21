@@ -38,8 +38,6 @@ Font: Provides font management functionality and hosts the Font class.
 #include <wchar.h>
 #include <parasol/strings.hpp>
 
-#include "font_bitmap.cpp"
-
 /*****************************************************************************
 ** This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
 ** refer to an ASCII table to see what is going on here.
@@ -75,17 +73,40 @@ static FT_Library glFTLibrary = NULL;
 static LONG glDisplayVDPI = FIXED_DPI; // Initially matches the fixed DPI value, can change if display has a high DPI setting.
 static LONG glDisplayHDPI = FIXED_DPI;
 
+class extFont : public objFont {
+   public:
+   WORD *prvTabs;                // Array of tab stops
+   UBYTE *prvData;
+   class font_cache *Cache;     // Reference to the Truetype font that is in use
+   struct FontCharacter *prvChar;
+   struct BitmapCache *BmpCache;
+   struct font_glyph prvTempGlyph;
+   LONG prvLineCount;
+   LONG prvStrWidth;
+   WORD prvSpaceWidth;          // Pixel width of word breaks
+   WORD prvBitmapHeight;
+   WORD prvLineCountCR;
+   char prvEscape[2];
+   char prvFace[32];
+   char prvBuffer[80];
+   char prvStyle[20];
+   char prvDefaultChar;
+   UBYTE prvTotalTabs;
+};
+
+#include "font_def.c"
+
+#include "font_bitmap.cpp"
+
 static ERROR add_font_class(void);
 static LONG getutf8(CSTRING, ULONG *);
 static LONG get_kerning(FT_Face, LONG Glyph, LONG PrevGlyph);
-static font_glyph * get_glyph(objFont *, ULONG, bool);
-static void unload_glyph_cache(objFont *);
+static font_glyph * get_glyph(extFont *, ULONG, bool);
+static void unload_glyph_cache(extFont *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
 static ERROR analyse_bmp_font(STRING, winfnt_header_fields *, STRING *, UBYTE *, UBYTE);
 static ERROR  fntRefreshFonts(void);
-
-#include "font_def.c"
 
 //****************************************************************************
 // Return the first unicode value from a given string address.
@@ -219,7 +240,7 @@ INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 
 //****************************************************************************
 
-INLINE void calc_lines(objFont *Self)
+INLINE void calc_lines(extFont *Self)
 {
    if (Self->String) {
       if (Self->Flags & FTF_CHAR_CLIP) {
@@ -310,7 +331,7 @@ The previous character in the word is set in KChar and the kerning value will be
 kerning information is not required, set the KChar and Kerning parameters to zero.
 
 -INPUT-
-obj(Font) Font: The font to use for calculating the character width.
+ext(Font) Font: The font to use for calculating the character width.
 uint Char: A unicode character.
 uint KChar: A unicode character to use for calculating the font kerning (optional).
 &int Kerning: The resulting kerning value (optional).
@@ -320,7 +341,7 @@ int: The pixel width of the character will be returned.
 
 *****************************************************************************/
 
-static LONG fntCharWidth(objFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
+static LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
 {
    if (Kerning) *Kerning = 0;
 
@@ -376,7 +397,7 @@ static ERROR fntGetList(FontList **Result)
 
    *Result = NULL;
 
-   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head, 3000);
+   parasol::ScopedObjectLock<objConfig> config(glConfig, 3000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    size_t size = 0;
@@ -452,7 +473,7 @@ is encountered and the Rows value will reflect the byte position of the word at 
 encountered.
 
 -INPUT-
-obj(Font) Font: An initialised font object.
+ext(Font) Font: An initialised font object.
 cstr String: The string to be analysed.
 int(FSS) Chars:  The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length.  FSS constants can also be used here.
 int Wrap:   The pixel position at which word wrapping occurs.  If zero or less, wordwrap is disabled.
@@ -461,7 +482,7 @@ int Wrap:   The pixel position at which word wrapping occurs.  If zero or less, 
 
 *****************************************************************************/
 
-static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
+static void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
 {
    font_glyph *cache;
    ULONG unicode;
@@ -469,7 +490,7 @@ static void fntStringSize(objFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
    UBYTE line_abort, pchar;
 
    if ((!Font) or (!String)) return;
-   if (!(Font->Head.Flags & NF_INITIALISED)) return;
+   if (!Font->initialised()) return;
 
    if (Chars IS FSS_LINE) {
       Chars = 0x7fffffff;
@@ -621,7 +642,7 @@ of the longest line will be returned.
 Word wrapping will not be taken into account, even if it has been enabled in the font object.
 
 -INPUT-
-obj(Font) Font: An initialised font object.
+ext(Font) Font: An initialised font object.
 cstr String: The string to be calculated.
 int Chars: The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length, or -1 to use the entire string.
 
@@ -630,11 +651,10 @@ int: The pixel width of the string is returned - this will be zero if there was 
 
 *****************************************************************************/
 
-static LONG fntStringWidth(objFont *Font, CSTRING String, LONG Chars)
+static LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
 {
    if ((!Font) or (!String)) return 0;
-
-   if (!(Font->Head.Flags & NF_INITIALISED)) return 0;
+   if (!Font->initialised()) return 0;
 
    font_glyph *cache;
 
@@ -701,7 +721,7 @@ String consists of 15 rows amounting to 150 pixels in height, the Row value will
 Negative coordinate values are not permitted.
 
 -INPUT-
-obj(Font) Font: An initialised font object.
+ext(Font) Font: An initialised font object.
 cstr String: Either point to a string for inspection or set to NULL to inspect the string currently in the font's String field.
 int X:       The horizontal coordinate to translate into a column position.
 int Y:       The vertical coordinate to translate into a row position.
@@ -718,7 +738,7 @@ FieldNotSet: The String field has not been set.
 
 *****************************************************************************/
 
-static ERROR fntConvertCoords(objFont *Font, CSTRING String, LONG X, LONG Y, LONG *Column, LONG *Row,
+static ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Column, LONG *Row,
    LONG *ByteColumn, LONG *BytePos, LONG *CharX)
 {
    font_glyph *cache;
@@ -947,7 +967,7 @@ static ERROR fntRemoveFont(CSTRING Name)
 
    log.branch("%s", Name);
 
-   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head);
+   parasol::ScopedObjectLock<objConfig> config(glConfig);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    // Delete all files related to this font
@@ -1043,7 +1063,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
 
    if (!Name) return log.warning(ERR_NullArgs);
 
-   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head, 5000);
+   parasol::ScopedObjectLock<objConfig> config(glConfig, 5000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    ConfigGroups *groups;
@@ -1238,7 +1258,7 @@ static ERROR fntRefreshFonts(void)
 
    log.branch("Refreshing the fonts: directory.");
 
-   parasol::ScopedObjectLock<objConfig> config(&glConfig->Head, 3000);
+   parasol::ScopedObjectLock<objConfig> config(glConfig, 3000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    acClear(glConfig); // Clear out existing font information
@@ -1499,10 +1519,10 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
 
             font_count  = 0;
             font_offset = 0;
-            size_shift  = ReadWordLE(&file.obj->Head);
+            size_shift  = ReadWordLE(file.obj);
 
-            for (type_id=ReadWordLE(&file.obj->Head); type_id; type_id=ReadWordLE(&file.obj->Head)) {
-               count = ReadWordLE(&file.obj->Head);
+            for (type_id=ReadWordLE(file.obj); type_id; type_id=ReadWordLE(file.obj)) {
+               count = ReadWordLE(file.obj);
 
                if (type_id IS 0x8008) {
                   font_count  = count;
@@ -1527,8 +1547,8 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
                // Get the offset and size of each font entry
 
                for (LONG i=0; i < font_count; i++) {
-                  fonts[i].Offset = ReadWordLE(&file.obj->Head)<<size_shift;
-                  fonts[i].Size   = ReadWordLE(&file.obj->Head)<<size_shift;
+                  fonts[i].Offset = ReadWordLE(file.obj)<<size_shift;
+                  fonts[i].Size   = ReadWordLE(file.obj)<<size_shift;
                   acSeekCurrent(file.obj, 8);
                }
 

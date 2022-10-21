@@ -101,7 +101,7 @@ static ERROR VECTORVIEWPORT_Clear(objVectorViewport *Self, APTR Void)
    ChildEntry list[512];
    LONG count = ARRAYSIZE(list);
    do {
-      if (!ListChildren(Self->Head.UID, FALSE, list, &count)) {
+      if (!ListChildren(Self->UID, FALSE, list, &count)) {
          for (WORD i=0; i < count; i++) acFreeID(list[i].ObjectID);
       }
    } while (count IS ARRAYSIZE(list));
@@ -115,9 +115,9 @@ static ERROR VECTORVIEWPORT_Free(objVectorViewport *Self, APTR Void)
 {
    if (Self->vpClipMask) { acFree(Self->vpClipMask); Self->vpClipMask = NULL; }
 
-   if ((Self->Scene) and (!Self->Scene->ResizeSubscriptions.empty())) {
-      if (Self->Scene->ResizeSubscriptions.contains(Self)) {
-         Self->Scene->ResizeSubscriptions.erase(Self);
+   if ((Self->Scene) and (!((extVectorScene *)Self->Scene)->ResizeSubscriptions.empty())) {
+      if (((extVectorScene *)Self->Scene)->ResizeSubscriptions.contains(Self)) {
+         ((extVectorScene *)Self->Scene)->ResizeSubscriptions.erase(Self);
       }
    }
 

@@ -23,7 +23,7 @@ by setting the #FrameCallback with a suitable function.
 -END-
 *****************************************************************************/
 
-static ERROR SVG_Activate(objSVG *Self, APTR Void)
+static ERROR SVG_Activate(extSVG *Self, APTR Void)
 {
    if (Self->Animated) {
       if (!Self->AnimationTimer) {
@@ -43,7 +43,7 @@ Deactivate: Stops all playback of SVG animations.
 -END-
 *****************************************************************************/
 
-static ERROR SVG_Deactivate(objSVG *Self, APTR Void)
+static ERROR SVG_Deactivate(extSVG *Self, APTR Void)
 {
    if (Self->AnimationTimer) { UpdateTimer(Self->AnimationTimer, 0); Self->AnimationTimer = 0; }
    return ERR_Okay;
@@ -55,7 +55,7 @@ DataFeed: Vector graphics are created by passing XML-based instructions here.
 -END-
 *****************************************************************************/
 
-static ERROR SVG_DataFeed(objSVG *Self, struct acDataFeed *Args)
+static ERROR SVG_DataFeed(extSVG *Self, struct acDataFeed *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -68,16 +68,16 @@ static ERROR SVG_DataFeed(objSVG *Self, struct acDataFeed *Args)
 
 //****************************************************************************
 
-static ERROR SVG_Free(objSVG *Self, APTR Void)
+static ERROR SVG_Free(extSVG *Self, APTR Void)
 {
-   Self->~objSVG();
+   Self->~extSVG();
 
    if (Self->AnimationTimer) {
       UpdateTimer(Self->AnimationTimer, 0);
       Self->AnimationTimer = 0;
    }
 
-   if ((Self->Target) AND (Self->Target IS &Self->Scene->Head) AND (Self->Scene->Head.OwnerID IS Self->Head.UID)) {
+   if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->ownerID() IS Self->UID)) {
       acFree(Self->Target);
       Self->Target = NULL;
    }
@@ -117,7 +117,7 @@ generate the content in a local #Scene object, or alternatively the content can 
 -END-
 *****************************************************************************/
 
-static ERROR SVG_Init(objSVG *Self, APTR Void)
+static ERROR SVG_Init(extSVG *Self, APTR Void)
 {
    if (!Self->Target) {
       if (!CreateObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Target, TAGEND)) {
@@ -133,14 +133,14 @@ static ERROR SVG_Init(objSVG *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR SVG_NewObject(objSVG *Self, APTR Void)
+static ERROR SVG_NewObject(extSVG *Self, APTR Void)
 {
    #ifdef __ANDROID__
       Self->FrameRate = 30; // Choose a lower frame rate for Android devices, so as to minimise power consumption.
    #else
       Self->FrameRate = 60;
    #endif
-   new (Self) objSVG;
+   new (Self) extSVG;
    return ERR_Okay;
 }
 
@@ -166,7 +166,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR SVG_Render(objSVG *Self, struct svgRender *Args)
+static ERROR SVG_Render(extSVG *Self, struct svgRender *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -206,7 +206,7 @@ is recommended in particular because it supports an alpha channel.
 -END-
 *****************************************************************************/
 
-static ERROR SVG_SaveImage(objSVG *Self, struct acSaveImage *Args)
+static ERROR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
 {
    ERROR error;
 
@@ -246,7 +246,7 @@ SaveToObject: Saves the SVG document to a data object.
 -END-
 *****************************************************************************/
 
-static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
+static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
    static char header[] =
@@ -257,14 +257,14 @@ static ERROR SVG_SaveToObject(objSVG *Self, struct acSaveToObject *Args)
    if (!Self->Viewport) return log.warning(ERR_NoData);
 
    if ((Args->ClassID) AND (Args->ClassID != ID_SVG)) {
-      auto mc = (rkMetaClass *)FindClass(Args->ClassID);
+      auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((!GetPointer(mc, FID_ActionTable, &routine)) AND (routine)) {
          if ((routine[AC_SaveToObject]) AND (routine[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
-            return routine[AC_SaveToObject]((OBJECTPTR)Self, Args);
+            return routine[AC_SaveToObject](Self, Args);
          }
          else if ((routine[AC_SaveImage]) AND (routine[AC_SaveImage] != (APTR)SVG_SaveImage)) {
             struct acSaveImage saveimage = { .DestID = Args->DestID };
-            return routine[AC_SaveImage]((OBJECTPTR)Self, &saveimage);
+            return routine[AC_SaveImage](Self, &saveimage);
          }
          else return log.warning(ERR_NoSupport);
       }
@@ -358,7 +358,7 @@ The function prototype is `void Function(*SVG)`.
 
 *****************************************************************************/
 
-static ERROR GET_FrameCallback(objSVG *Self, FUNCTION **Value)
+static ERROR GET_FrameCallback(extSVG *Self, FUNCTION **Value)
 {
    if (Self->FrameCallback.Type != CALL_NONE) {
       *Value = &Self->FrameCallback;
@@ -367,7 +367,7 @@ static ERROR GET_FrameCallback(objSVG *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_FrameCallback(objSVG *Self, FUNCTION *Value)
+static ERROR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->FrameCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
@@ -392,7 +392,7 @@ The recommended frame rate is 60, as this will match the majority of modern disp
 
 *****************************************************************************/
 
-static ERROR SET_FrameRate(objSVG *Self, LONG Value)
+static ERROR SET_FrameRate(extSVG *Self, LONG Value)
 {
    if ((Value >= 20) AND (Value <= 1000)) {
       Self->FrameRate = Value;
@@ -410,13 +410,13 @@ SVG data can be loaded from a file source by setting the Path field to an SVG fi
 
 *****************************************************************************/
 
-static ERROR GET_Path(objSVG *Self, STRING *Value)
+static ERROR GET_Path(extSVG *Self, STRING *Value)
 {
    *Value = Self->Path;
    return ERR_Okay;
 }
 
-static ERROR SET_Path(objSVG *Self, CSTRING Value)
+static ERROR SET_Path(extSVG *Self, CSTRING Value)
 {
    if (Self->Path)   { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Folder) { FreeResource(Self->Folder); Self->Folder = NULL; }
@@ -436,7 +436,7 @@ The Scene is a read-only field that assists in quickly finding the @VectorScene 
 
 *****************************************************************************/
 
-static ERROR GET_Scene(objSVG *Self, objVectorScene **Value)
+static ERROR GET_Scene(extSVG *Self, objVectorScene **Value)
 {
    *Value = Self->Scene;
    return ERR_Okay;
@@ -459,15 +459,15 @@ referenced by the Target field.
 
 *****************************************************************************/
 
-static ERROR SET_Target(objSVG *Self, OBJECTPTR Value)
+static ERROR SET_Target(extSVG *Self, OBJECTPTR Value)
 {
    if (Value->ClassID IS ID_VECTORSCENE) {
       Self->Target = Value;
       Self->Scene = (objVectorScene *)Value;
-      if (Self->Scene->Viewport) Self->Viewport = &Self->Scene->Viewport->Head;
+      if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
    }
    else {
-      OBJECTID owner_id = GetOwner(Value);
+      auto owner_id = Value->ownerID();
       while ((owner_id) AND (GetClassID(owner_id) != ID_VECTORSCENE)) {
          owner_id = GetOwnerID(owner_id);
       }
@@ -476,7 +476,7 @@ static ERROR SET_Target(objSVG *Self, OBJECTPTR Value)
 
       Self->Scene = (objVectorScene *)GetObjectPtr(owner_id);
       Self->Target = Value;
-      if (Self->Scene->Viewport) Self->Viewport = &Self->Scene->Viewport->Head;
+      if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
    }
 
    return ERR_Okay;
@@ -493,7 +493,7 @@ NULL will be returned.
 
 *****************************************************************************/
 
-static ERROR SET_Title(objSVG *Self, CSTRING Value)
+static ERROR SET_Title(extSVG *Self, CSTRING Value)
 {
    if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
    if (Value) Self->Title = StrClone(Value);
@@ -511,9 +511,9 @@ is returned if an SVG document has not been successfully parsed yet.
 
 *****************************************************************************/
 
-static ERROR GET_Viewport(objSVG *Self, OBJECTPTR *Value)
+static ERROR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_NotInitialised;
+   if (!Self->initialised()) return ERR_NotInitialised;
    *Value = Self->Viewport;
    return ERR_Okay;
 }
@@ -553,7 +553,7 @@ static ERROR init_svg(void)
       FID_Methods|TARRAY, clSVGMethods,
       FID_Fields|TARRAY,  clSVGFields,
       FID_Flags|TLONG,    CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Size|TLONG,     sizeof(objSVG),
+      FID_Size|TLONG,     sizeof(extSVG),
       FID_Path|TSTR,      MOD_PATH,
       TAGEND);
 }

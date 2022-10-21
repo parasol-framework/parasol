@@ -140,6 +140,64 @@ typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for no
    #error "No support for this platform"
 #endif
 
+class extClientSocket : public objClientSocket {
+   public:
+   union {
+      SOCKET_HANDLE SocketHandle;
+      SOCKET_HANDLE Handle;
+   };
+   struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
+   struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
+   UBYTE OutgoingRecursion;
+   UBYTE InUse;
+};
+
+class extNetSocket : public objNetSocket {
+   public:
+   SOCKET_HANDLE SocketHandle;   // Handle of the socket
+   FUNCTION Outgoing;
+   FUNCTION Incoming;
+   FUNCTION Feedback;
+   objNetLookup *NetLookup;
+   struct NetClient *LastClient;
+   struct NetQueue WriteQueue;
+   struct NetQueue ReadQueue;
+   UBYTE  ReadCalled:1;          // The Read() action sets this to TRUE whenever called.
+   UBYTE  IPV6:1;
+   UBYTE  Terminating:1;         // Set to TRUE when the NetSocket is marked for deletion.
+   UBYTE  ExternalSocket:1;      // Set to TRUE if the SocketHandle field was set manually by the client.
+   UBYTE  InUse;                 // Recursion counter to signal that the object is doing something.
+   UBYTE  SSLBusy;               // Tracks the current actions of SSL handshaking.
+   UBYTE  IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
+   UBYTE  OutgoingRecursion;
+   #ifdef _WIN32
+      #ifdef NO_NETRECURSION
+         WORD WinRecursion; // For win32_netresponse()
+      #endif
+      union {
+         void (*ReadSocket)(SOCKET_HANDLE, extNetSocket *);
+         void (*ReadClientSocket)(SOCKET_HANDLE, extClientSocket *);
+      };
+      union {
+         void (*WriteSocket)(SOCKET_HANDLE, extNetSocket *);
+         void (*WriteClientSocket)(SOCKET_HANDLE, extClientSocket *);
+      };
+   #endif
+   #ifdef ENABLE_SSL
+      SSL *SSL;
+      SSL_CTX *CTX;
+      BIO *BIO;
+   #endif
+};
+
+class extNetLookup : public objNetLookup {
+   public:
+   FUNCTION Callback;
+   struct DNSEntry Info;
+   std::unordered_set<OBJECTID> *Threads;
+   std::mutex *ThreadLock;
+};
+
 //****************************************************************************
 
 enum {
@@ -160,11 +218,11 @@ static OBJECTPTR glModule = NULL;
 #ifdef ENABLE_SSL
 static BYTE ssl_init = FALSE;
 
-static ERROR sslConnect(objNetSocket *);
-static void sslDisconnect(objNetSocket *);
+static ERROR sslConnect(extNetSocket *);
+static void sslDisconnect(extNetSocket *);
 static ERROR sslInit(void);
-static ERROR sslLinkSocket(objNetSocket *);
-static ERROR sslSetup(objNetSocket *);
+static ERROR sslLinkSocket(extNetSocket *);
+static ERROR sslSetup(extNetSocket *);
 #endif
 
 static OBJECTPTR clNetLookup = NULL;
@@ -176,7 +234,7 @@ static KeyStore *glAddresses = NULL;
 static LONG glResolveNameMsgID = 0;
 static LONG glResolveAddrMsgID = 0;
 
-static void client_server_incoming(SOCKET_HANDLE, rkNetSocket *);
+static void client_server_incoming(SOCKET_HANDLE, extNetSocket *);
 static BYTE check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
 static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
@@ -466,7 +524,7 @@ If a failure occurs when executing a command, the execution of all further comma
 returned immediately.
 
 -INPUT-
-obj(NetSocket) NetSocket: The target NetSocket object.
+ext(NetSocket) NetSocket: The target NetSocket object.
 tags Tags: Series of tags terminated by TAGEND.
 
 -ERRORS-
@@ -476,7 +534,7 @@ NullArgs: The NetSocket argument was not specified.
 
 *****************************************************************************/
 
-static ERROR netSetSSL(objNetSocket *Socket, ...)
+static ERROR netSetSSL(extNetSocket *Socket, ...)
 {
 #ifdef ENABLE_SSL
    LONG value, tagid;
@@ -530,15 +588,15 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self) __attribute__((un
 static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 {
    #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-   RegisterFD((HOSTHANDLE)((objNetSocket *)Self)->SocketHandle, RFD_REMOVE|RFD_READ|RFD_SOCKET, NULL, NULL);
+   RegisterFD((HOSTHANDLE)((extNetSocket *)Self)->SocketHandle, RFD_REMOVE|RFD_READ|RFD_SOCKET, NULL, NULL);
    #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
-   client_server_incoming(FD, (objNetSocket *)Self);
+   client_server_incoming(FD, (extNetSocket *)Self);
 }
 #endif
 
 //****************************************************************************
 
-static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
+static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -655,7 +713,7 @@ static ERROR RECEIVE(objNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
 
 //****************************************************************************
 
-static ERROR SEND(objNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Length, LONG Flags)
+static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Length, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
 

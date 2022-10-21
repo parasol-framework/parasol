@@ -26,11 +26,11 @@
     <method>
       <name>FindField</name>
       <comment>Search a class definition for a specific field.</comment>
-      <prototype>ERROR mcFindField(OBJECTPTR Object, LONG ID, struct Field ** Field, struct rkMetaClass ** Source)</prototype>
+      <prototype>ERROR mcFindField(OBJECTPTR Object, LONG ID, struct Field ** Field, objMetaClass ** Source)</prototype>
       <input>
         <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <function module="Core">StrHash</function> function.</param>
         <param type="struct Field **" name="Field">Pointer to the field if discovered, otherwise NULL.</param>
-        <param type="struct rkMetaClass **" name="Source">Pointer to the class that is associated with the field, or NULL if the field was not found.</param>
+        <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the field, or NULL if the field was not found.</param>
       </input>
       <description>
 <p>This method checks if a class has defined a given field by scanning its blueprint for a matching ID.</p>

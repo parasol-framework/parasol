@@ -248,7 +248,7 @@ private:
 
 static bool check_dirty(objVector *Shape) {
    while (Shape) {
-      if (Shape->Head.ClassID != ID_VECTOR) return true;
+      if (Shape->ClassID != ID_VECTOR) return true;
       if (Shape->Dirty) return true;
 
       if (Shape->Child) {
@@ -396,7 +396,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
 
 static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
    LONG SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
-   struct rkVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+   objVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
    DOUBLE dwidth, dheight;
@@ -556,7 +556,7 @@ class pattern_rgb {
 
       static agg::rgba8 pixel16(const pattern_rgb &Pattern, int x, int y) {
          UWORD p = ((UWORD *)(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<1)))[0];
-         return agg::rgba8(UnpackRed(Pattern.mBitmap, p), UnpackGreen(Pattern.mBitmap, p), UnpackBlue(Pattern.mBitmap, p));
+         return agg::rgba8(Pattern.mBitmap->unpackRed(p), Pattern.mBitmap->unpackGreen(p), Pattern.mBitmap->unpackBlue(p));
       }
 
       static agg::rgba8 pixelScaled(const pattern_rgb &Pattern, int x, int y) {
@@ -578,7 +578,7 @@ class pattern_rgb {
       DOUBLE mHeight;
 };
 
-void draw_brush(const struct rkVectorImage &Image,
+void draw_brush(const objVectorImage &Image,
    agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::conv_transform<agg::path_storage, agg::trans_affine> &Path,
    DOUBLE StrokeWidth)
@@ -626,7 +626,7 @@ void draw_brush(const struct rkVectorImage &Image,
 
 static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMethod,
    const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
-   rkVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+   objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, DOUBLE BorderWidth = 0, DOUBLE Alpha = 1.0)
 {
    const DOUBLE c_width  = (Image.Units IS VUNIT_USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
@@ -652,7 +652,7 @@ static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMetho
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
 static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::trans_affine &Transform,
-   DOUBLE ViewWidth, DOUBLE ViewHeight, const rkVectorGradient &Gradient,
+   DOUBLE ViewWidth, DOUBLE ViewHeight, const extVectorGradient &Gradient,
    GRADIENT_TABLE *Table,
    agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster,
@@ -953,11 +953,11 @@ private:
    objBitmap *mBitmap;
 
 public:
-   objVectorScene *Scene; // The top-level VectorScene performing the draw.
+   extVectorScene *Scene; // The top-level VectorScene performing the draw.
 
    VMAdaptor() { }
 
-   void draw(struct rkBitmap *Bitmap) {
+   void draw(objBitmap *Bitmap) {
       parasol::Log log;
 
       log.traceBranch("Bitmap: %dx%d,%dx%d, Viewport: %p", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Scene->Viewport);
@@ -1039,7 +1039,7 @@ private:
       if (Vector.FillGradient) {
          if (auto table = get_fill_gradient_table(Vector, State.mOpacity * Vector.FillOpacity)) {
             draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Vector.FillGradient->Units IS VUNIT_USERSPACE, State),
-               view_width(), view_height(), *Vector.FillGradient, table, mRenderBase, Raster, 0);
+               view_width(), view_height(), *((extVectorGradient *)Vector.FillGradient), table, mRenderBase, Raster, 0);
          }
       }
 
@@ -1057,8 +1057,8 @@ private:
 
       if (Vector.StrokeGradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
-            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Vector.StrokeGradient->Units IS VUNIT_USERSPACE, State),
-               view_width(), view_height(), *Vector.StrokeGradient, table, mRenderBase, Raster, Vector.fixed_stroke_width());
+            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.StrokeGradient)->Units IS VUNIT_USERSPACE, State),
+               view_width(), view_height(), *((extVectorGradient *)Vector.StrokeGradient), table, mRenderBase, Raster, Vector.fixed_stroke_width());
          }
       }
       else if (Vector.StrokePattern) {
@@ -1107,7 +1107,7 @@ private:
          parasol::Log log(__FUNCTION__);
          VectorState state = VectorState(ParentState);
 
-         if (shape->Head.ClassID != ID_VECTOR) {
+         if (shape->ClassID != ID_VECTOR) {
             log.trace("Non-Vector discovered in the vector tree.");
             continue;
          }
@@ -1117,7 +1117,7 @@ private:
             gen_vector_path(shape);
             shape->Dirty = 0;
          }
-         else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Head.Class->ClassName, shape->Head.UID, shape->ParentView ? shape->ParentView->Head.UID : 0);
+         else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Class->ClassName, shape->UID, shape->ParentView ? shape->ParentView->UID : 0);
 
          // Visibility management.
 
@@ -1129,19 +1129,19 @@ private:
             else if (shape->Visibility != VIS_VISIBLE) visible = false;
 
             if (!visible) {
-               log.trace("%s: #%d, Not Visible", get_name(&shape->Head), shape->Head.UID);
+               log.trace("%s: #%d, Not Visible", get_name(shape), shape->UID);
                continue;
             }
          }
 
-         auto filter = shape->Filter;
+         auto filter = (extVectorFilter *)shape->Filter;
          if ((filter) and (!filter->Disabled)) {
             #ifdef DBG_DRAW
                log.traceBranch("Rendering filter for %s.", get_name(shape));
             #endif
 
             objBitmap *bmp;
-            if (!render_filter(shape->Filter, mView, shape, mBitmap, &bmp)) {
+            if (!render_filter(filter, mView, shape, mBitmap, &bmp)) {
                bmp->Opacity = (filter->Opacity < 1.0) ? (255.0 * filter->Opacity) : 255;
                gfxCopyArea(bmp, mBitmap, BAF_BLEND|BAF_COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
             }
@@ -1149,7 +1149,7 @@ private:
          }
 
          #ifdef DBG_DRAW
-            log.traceBranch("%s: #%d, Matrices: %p", get_name(shape), shape->Head.UID, shape->Matrices);
+            log.traceBranch("%s: #%d, Matrices: %p", get_name(shape), shape->UID, shape->Matrices);
          #endif
 
          if (mBitmap->ColourSpace IS CS_LINEAR_RGB) state.mLinearRGB = true; // The target bitmap's colour space has priority if linear.
@@ -1190,7 +1190,7 @@ private:
             }
          }
 
-         if (shape->Head.SubID IS ID_VECTORVIEWPORT) {
+         if (shape->SubID IS ID_VECTORVIEWPORT) {
             if ((shape->Child) or (shape->InputSubscriptions) or (shape->FillPattern)) {
                auto view = (objVectorViewport *)shape;
 
@@ -1211,7 +1211,7 @@ private:
                }
 
                #ifdef DBG_DRAW
-                  log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f)", shape->Head.UID, state.mClip.x1, state.mClip.y1, state.mClip.x2, state.mClip.y2);
+                  log.traceBranch("Viewport #%d clip region (%.2f %.2f %.2f %.2f)", shape->UID, state.mClip.x1, state.mClip.y1, state.mClip.x2, state.mClip.y2);
                #endif
 
                if ((state.mClip.x2 > state.mClip.x1) and (state.mClip.y2 > state.mClip.y1)) { // Continue only if the clipping region is visible
@@ -1239,7 +1239,7 @@ private:
                      if (view->vpBX2 < x2) x2 = view->vpBX2;
                      if (view->vpBY1 > y1) y1 = view->vpBY1;
                      if (view->vpBY2 < y2) y2 = view->vpBY2;
-                     Scene->InputBoundaries.emplace_back(shape->Head.UID, view->Cursor, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
+                     Scene->InputBoundaries.emplace_back(shape->UID, view->Cursor, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
                   }
 
                   if (Scene->Flags & VPF_OUTLINE_VIEWPORTS) { // Debug option: Draw the viewport's path with a green outline
@@ -1298,7 +1298,7 @@ private:
 
             if (shape->GeneratePath) { // A vector that generates a path can be drawn
                #ifdef DBG_DRAW
-                  log.traceBranch("%s: #%d, Mask: %p", get_name(shape), shape->Head.UID, shape->ClipMask);
+                  log.traceBranch("%s: #%d, Mask: %p", get_name(shape), shape->UID, shape->ClipMask);
                #endif
 
                if (!mView) {
@@ -1387,7 +1387,7 @@ private:
                   if (xmax < bx2) bx2 = xmax;
                   if (ymax < by2) by2 = ymax;
 
-                  Scene->InputBoundaries.emplace_back(shape->Head.UID, shape->Cursor, bx1, by1, bx2, by2, absx, absy);
+                  Scene->InputBoundaries.emplace_back(shape->UID, shape->Cursor, bx1, by1, bx2, by2, absx, absy);
                }
 
                state.mClipMask = saved_mask;
@@ -1442,7 +1442,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       mRaster.add_path(mPath);
 
       if (FillStyle->ClassID IS ID_VECTORCOLOUR) {
-         objVectorColour *colour = (objVectorColour *)FillStyle;
+         auto colour = (objVectorColour *)FillStyle;
          agg::renderer_scanline_aa_solid solid(mRenderer);
          solid.color(agg::rgba(colour->Red, colour->Green, colour->Blue, colour->Alpha));
          agg::render_scanlines(mRaster, scanline, solid);
@@ -1452,7 +1452,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          draw_image(bounds, mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster, 0, 1.0);
       }
       else if (FillStyle->ClassID IS ID_VECTORGRADIENT) {
-         objVectorGradient &gradient = (objVectorGradient &)*FillStyle;
+         extVectorGradient &gradient = (extVectorGradient &)*FillStyle;
          draw_gradient(bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
       }
       else if (FillStyle->ClassID IS ID_VECTORPATTERN) {
@@ -1467,7 +1467,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          mRaster.reset();
          mRaster.add_path(stroke_path);
 
-         objVectorGradient &gradient = (objVectorGradient &)*StrokeStyle;
+         extVectorGradient &gradient = (extVectorGradient &)*StrokeStyle;
          draw_gradient(bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
       }
       else if (StrokeStyle->ClassID IS ID_VECTORPATTERN) {
@@ -1495,7 +1495,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
    }
 }
 
-void agg::pixfmt_psl::setBitmap(struct rkBitmap &Bitmap)
+void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap)
 {
    mBitmap = &Bitmap;
 

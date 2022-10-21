@@ -205,7 +205,7 @@ static ERROR POLYGON_MoveToPoint(objVectorPoly *Self, struct acMoveToPoint *Args
 
 static ERROR POLYGON_NewObject(objVectorPoly *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(rkVector *))&generate_polygon;
+   Self->GeneratePath = (void (*)(objVector *))&generate_polygon;
    Self->Closed       = TRUE;
    Self->TotalPoints  = 2;
    if (AllocMemory(sizeof(VectorPoint) * Self->TotalPoints, MEM_DATA, &Self->Points, NULL)) return ERR_AllocMemory;

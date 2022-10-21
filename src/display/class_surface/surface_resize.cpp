@@ -5,7 +5,7 @@ Redimension: Moves and resizes a surface object in a single action call.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_Redimension(objSurface *Self, struct acRedimension *Args)
+static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
 {
    parasol::Log log;
 
@@ -34,7 +34,7 @@ static ERROR SURFACE_Redimension(objSurface *Self, struct acRedimension *Args)
          LONG index = 0;
          while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
             auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
-            if ((action->ActionID IS AC_Redimension) and (action->ObjectID IS Self->Head.UID)) {
+            if ((action->ActionID IS AC_Redimension) and (action->ObjectID IS Self->UID)) {
                ReleaseMemory(queue);
                return ERR_Okay|ERF_Notified;
             }
@@ -106,7 +106,7 @@ Resize: Alters the dimensions of a surface object.
 -END-
 *****************************************************************************/
 
-static ERROR SURFACE_Resize(objSurface *Self, struct acResize *Args)
+static ERROR SURFACE_Resize(extSurface *Self, struct acResize *Args)
 {
    if (!Args) return ERR_NullArgs|ERF_Notified;
 
@@ -151,7 +151,7 @@ Failed
 
 *****************************************************************************/
 
-static ERROR SURFACE_SetDisplay(objSurface *Self, struct gfxSetDisplay *Args)
+static ERROR SURFACE_SetDisplay(extSurface *Self, struct gfxSetDisplay *Args)
 {
    parasol::Log log;
 

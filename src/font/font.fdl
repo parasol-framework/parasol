@@ -75,25 +75,6 @@ module({ name="Font", copyright="Paul Manias © 1998-2022", version=1.0 }, funct
    int   EndY             # Finished vertical coordinate after drawing
    int   VDPI             # Target DPI - this might be used if targeting DPI on paper rather than the display.
    int   HDPI
-  ]],
-  [[
-   WORD *prvTabs;                // Array of tab stops
-   UBYTE *prvData;
-   class font_cache *Cache;     // Reference to the Truetype font that is in use
-   struct FontCharacter *prvChar;
-   struct BitmapCache *BmpCache;
-   struct font_glyph prvTempGlyph;
-   LONG prvLineCount;
-   LONG prvStrWidth;
-   WORD prvSpaceWidth;          // Pixel width of word breaks
-   WORD prvBitmapHeight;
-   WORD prvLineCountCR;
-   char prvEscape[2];
-   char prvFace[32];
-   char prvBuffer[80];
-   char prvStyle[20];
-   char prvDefaultChar;
-   UBYTE prvTotalTabs;
   ]])
 
   functionNames("fnt",

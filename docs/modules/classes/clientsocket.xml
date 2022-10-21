@@ -96,7 +96,7 @@
       <name>Client</name>
       <comment>Parent client structure</comment>
       <access read="R">Read</access>
-      <type>struct rkNetClient *</type>
+      <type>struct NetClient *</type>
     </field>
 
     <field>
@@ -157,5 +157,15 @@
 
   </fields>
   <structs>
+    <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
+      <field name="IP" type="char" size="8">IP address in 4/8-byte format</field>
+      <field name="Next" type="struct NetClient *">Next client in the chain</field>
+      <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
+      <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
+      <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
+      <field name="UserData" type="APTR">Free for user data storage.</field>
+      <field name="TotalSockets" type="LONG">Count of all created sockets</field>
+    </struct>
+
   </structs>
 </book>

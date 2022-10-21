@@ -61,7 +61,7 @@ UnitX/Y is considerably smaller than a device pixel.
 
 //********************************************************************************************************************
 
-typedef class rkConvolveEffect : public objFilterEffect {
+typedef class rkConvolveEffect : public extFilterEffect {
    public:
    DOUBLE UnitX, UnitY;
    DOUBLE Divisor;
@@ -489,7 +489,7 @@ static ERROR CONVOLVEFX_GET_TargetX(objConvolveFX *Self, LONG *Value)
 
 static ERROR CONVOLVEFX_SET_TargetX(objConvolveFX *Self, LONG Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       parasol::Log log;
       if ((Value < 0) or (Value >= Self->MatrixColumns)) return log.warning(ERR_OutOfRange);
    }
@@ -518,7 +518,7 @@ static ERROR CONVOLVEFX_GET_TargetY(objConvolveFX *Self, LONG *Value)
 
 static ERROR CONVOLVEFX_SET_TargetY(objConvolveFX *Self, LONG Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       parasol::Log log;
       if ((Value < 0) or (Value >= Self->MatrixRows)) return log.warning(ERR_OutOfRange);
    }

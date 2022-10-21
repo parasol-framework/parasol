@@ -141,10 +141,10 @@
     <method>
       <name>ApplyFontStyle</name>
       <comment>Applies DocStyle information to a font.</comment>
-      <prototype>ERROR docApplyFontStyle(OBJECTPTR Object, struct DocStyleV1 * Style, struct rkFont * Font)</prototype>
+      <prototype>ERROR docApplyFontStyle(OBJECTPTR Object, struct DocStyleV1 * Style, objFont * Font)</prototype>
       <input>
         <param type="struct DocStyleV1 *" name="Style">Pointer to a DocStyle structure.</param>
-        <param type="struct rkFont *" name="Font">Pointer to a Font object that the style information will be applied to.</param>
+        <param type="objFont *" name="Font">Pointer to a Font object that the style information will be applied to.</param>
       </input>
       <description>
 <p>This method applies font information from DocStyle structures to new <class name="Font">Font</class> objects.  The Font object should be uninitialised as it is not possible to apply changes to the font face, style or size after initialisation.</p>
@@ -779,8 +779,8 @@
   <structs>
     <struct name="DocStyle" comment="This structure is passed to objects that support the LayoutStyle field" typeName="DOCSTYLE">
       <field name="Version" type="LONG">Version of this DocStyle structure</field>
-      <field name="Document" type="struct rkDocument *">The document object that this style originates from</field>
-      <field name="Font" type="struct rkFont *">Pointer to the current font object.  Indicates face, style etc, but not simple attributes like colour</field>
+      <field name="Document" type="objDocument *">The document object that this style originates from</field>
+      <field name="Font" type="objFont *">Pointer to the current font object.  Indicates face, style etc, but not simple attributes like colour</field>
       <field name="FontColour" type="struct RGB8">Foreground colour (colour of the font)</field>
       <field name="FontUnderline" type="struct RGB8">Underline colour for the font, if active</field>
       <field name="StyleFlags" type="LONG">Font style flags (FSO)</field>

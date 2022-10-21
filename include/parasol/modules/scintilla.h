@@ -19,6 +19,9 @@
 #include <parasol/modules/font.h>
 #endif
 
+typedef class plScintilla objScintilla;
+typedef class plScintillaSearch objScintillaSearch;
+
 // Scintilla Lexers.  These codes originate from the Scintilla library.
 
 #define SCLEX_ERRORLIST 10
@@ -70,61 +73,6 @@
 // Scintilla class definition
 
 #define VER_SCINTILLA (1.000000)
-
-typedef struct rkScintilla {
-   OBJECT_HEADER
-   LARGE    EventFlags;          // SEF flags.  Indicates the events that will be reported.
-   struct rkFont * Font;         // Font to use for the text
-   CSTRING  Path;                // Source text file
-   OBJECTID SurfaceID;           // The object that should be rendered to
-   LONG     Flags;               // Optional flags
-   OBJECTID FocusID;
-   LONG     Visible;             // TRUE if the text is visible
-   LONG     LeftMargin;          // Size of the left margin
-   LONG     RightMargin;         // Size of the right margin
-   struct RGB8 LineHighlight;    // Background colour for the current line of the cursor
-   struct RGB8 SelectFore;       // Default colour for text highlighting (foreground)
-   struct RGB8 SelectBkgd;       // Default colour for text highlighting (background)
-   struct RGB8 BkgdColour;       // Colour for text background
-   struct RGB8 CursorColour;     // The colour of the cursor
-   struct RGB8 TextColour;       // The colour of foreground text
-   LONG     CursorRow;           // Current cursor row
-   LONG     CursorCol;           // Current cursor column
-   LONG     Lexer;               // Chosen lexer
-   LONG     Modified;            // TRUE if the document has been modified since last save.
-
-#ifdef PRV_SCINTILLA
-   struct  SurfaceCoords Surface;
-   FUNCTION FileDrop;
-   FUNCTION EventCallback;
-   objFile *FileStream;
-   objFont *BoldFont;        // Bold version of the current font
-   objFont *ItalicFont;      // Italic version of the current font
-   objFont *BIFont;          // Bold-Italic version of the current font
-   ScintillaParasol *API;
-   APTR   prvKeyEvent;
-   STRING StringBuffer;
-   LONG   LongestLine;         // Longest line in the document
-   LONG   LongestWidth;        // Pixel width of the longest line
-   LONG   TabWidth;
-   LONG   InputHandle;
-   TIMER  TimerID;
-   LARGE  ReportEventFlags;    // For delayed event reporting.
-   UWORD  KeyAlt:1;
-   UWORD  KeyCtrl:1;
-   UWORD  KeyShift:1;
-   UWORD  LineNumbers:1;
-   UWORD  Wordwrap:1;
-   UWORD  Symbols:1;
-   UWORD  FoldingMarkers:1;
-   UWORD  ShowWhitespace:1;
-   UWORD  AutoIndent:1;
-   UWORD  HoldModify:1;
-   UWORD  AllowTabs:1;
-   UBYTE  ScrollLocked;
-  
-#endif
-} objScintilla;
 
 // Scintilla methods
 
@@ -202,18 +150,72 @@ INLINE ERROR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) {
 #define sciReportEvent(obj) Action(MT_SciReportEvent,(obj),0)
 
 
+typedef class plScintilla : public BaseClass {
+   public:
+   LARGE     EventFlags;         // Specifies events that need to be reported from the Scintilla object.
+   objFont * Font;               // Refers to the font that is used for drawing text in the document.
+   CSTRING   Path;               // Identifies the location of a text file to load.
+   OBJECTID  SurfaceID;          // Refers to the @Surface targeted by the Scintilla object.
+   LONG      Flags;              // Optional flags.
+   OBJECTID  FocusID;            // Defines the object that is monitored for user focus changes.
+   LONG      Visible;            // If TRUE, indicates the Scintilla object is visible in the target #Surface.
+   LONG      LeftMargin;         // The amount of white-space at the left side of the page.
+   LONG      RightMargin;        // Defines the amount of white-space at the right side of the page.
+   struct RGB8 LineHighlight;    // The colour to use when highlighting the line that contains the user's cursor.
+   struct RGB8 SelectFore;       // Defines the colour of selected text.  Supports alpha blending.
+   struct RGB8 SelectBkgd;       // Defines the background colour of selected text.  Supports alpha blending.
+   struct RGB8 BkgdColour;       // Defines the background colour.  Alpha blending is not supported.
+   struct RGB8 CursorColour;     // Defines the colour of the text cursor.  Alpha blending is not supported.
+   struct RGB8 TextColour;       // Defines the default colour of foreground text.  Supports alpha blending.
+   LONG      CursorRow;          // The current row of the text cursor.
+   LONG      CursorCol;          // The current column of the text cursor.
+   LONG      Lexer;              // The lexer for document styling is defined here.
+   LONG      Modified;           // Returns TRUE if the document has been modified and not saved.
+   // Action stubs
+
+   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
+   inline ERROR clipboard(LONG Mode) {
+      struct acClipboard args = { Mode };
+      return Action(AC_Clipboard, this, &args);
+   }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
+   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
+   inline ERROR focus() { return Action(AC_Focus, this, NULL); }
+   inline ERROR hide() { return Action(AC_Hide, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   // NewOwner
+
+   inline ERROR redo(LONG Steps) {
+      struct acRedo args = { Steps };
+      return Action(AC_Redo, this, &args);
+   }
+   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveToObject args = { { DestID }, { ClassID } };
+      return Action(AC_SaveToObject, this, &args);
+   }
+   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+      struct acScrollToPoint args = { X, Y, Z, Flags };
+      return Action(AC_ScrollToPoint, this, &args);
+   }
+   inline ERROR show() { return Action(AC_Show, this, NULL); }
+   inline ERROR undo(LONG Steps) {
+      struct acUndo args = { Steps };
+      return Action(AC_Undo, this, &args);
+   }
+} objScintilla;
+
 // ScintillaSearch class definition
 
 #define VER_SCINTILLASEARCH (1.000000)
-
-typedef struct rkScintillaSearch {
-   OBJECT_HEADER
-   struct rkScintilla * Scintilla;    // The targeted Scintilla object.
-   CSTRING Text;                      // The text being searched for.
-   LONG    Flags;                     // Optional flags affecting the search.
-   LONG    Start;                     // Start of the current/most recent selection
-   LONG    End;                       // End of the current/most recent selection
-} objScintillaSearch;
 
 // ScintillaSearch methods
 
@@ -246,5 +248,14 @@ INLINE ERROR ssFind(APTR Ob, LONG * Pos, LONG Flags) {
    return(error);
 }
 
+
+typedef class plScintillaSearch : public BaseClass {
+   public:
+   objScintilla * Scintilla;    // Targets a Scintilla object for searching.
+   CSTRING Text;                // The string sequence to search for.
+   LONG    Flags;               // Optional flags.
+   LONG    Start;               // Start of the current/most recent selection
+   LONG    End;                 // End of the current/most recent selection
+} objScintillaSearch;
 
 #endif

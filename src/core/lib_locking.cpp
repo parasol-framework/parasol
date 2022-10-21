@@ -1149,9 +1149,9 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
          }
          else return error;
       }
-      else if (ObjectID IS glMetaClass.Head.UID) { // Access to the MetaClass requires this special case handler.
-         if (!(error = AccessPrivateObject(&glMetaClass.Head, MilliSeconds))) {
-            *Result = &glMetaClass.Head;
+      else if (ObjectID IS glMetaClass.UID) { // Access to the MetaClass requires this special case handler.
+         if (!(error = AccessPrivateObject(&glMetaClass, MilliSeconds))) {
+            *Result = &glMetaClass;
             return ERR_Okay;
          }
          else return error;
@@ -1192,7 +1192,7 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
             return ERR_MissingClass;
          }
 
-         obj->Stats = (Stats *)ResolveAddress(obj, ((rkMetaClass *)obj->Class)->Size);
+         obj->Stats = (Stats *)ResolveAddress(obj, ((objMetaClass *)obj->Class)->Size);
       }
 
       // Tell the object that an exclusive call is being made
@@ -1203,14 +1203,14 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
             // do not call the AccessObject support routine if NewObject support has been written by the developer
             // (the NewObject support routine is expected to do the equivalent of AccessObject).
 
-            if (!(((rkMetaClass *)obj->Class)->ActionTable[AC_NewObject].PerformAction)) error = Action(AC_AccessObject, obj, NULL);
+            if (!(((objMetaClass *)obj->Class)->ActionTable[AC_NewObject].PerformAction)) error = Action(AC_AccessObject, obj, NULL);
          }
          else error = Action(AC_AccessObject, obj, NULL);
       }
       else error = ERR_Okay;
 
       if ((error IS ERR_Okay) or (error IS ERR_NoAction)) {
-         obj->Locked = 1; // Set the lock and return the object address
+         obj->Locked = true; // Set the lock and return the object address
          *Result = obj;
 
          #ifdef DBG_OBJECTLOCKS
@@ -1277,19 +1277,19 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
       // This is quite safe so long as the developer is being careful with use of the object between threads (i.e. not
       // destroying the object when other threads could potentially be using it).
 
-      if (INC_QUEUE(Object) IS 1) {
+      if (Object->incQueue() IS 1) {
          /*if (Object->Flags & NF_FREE) { // Disallow access to objects being freed.
-            SUB_QUEUE(Object);
+            Object->subQueue();
             return ERR_MarkedForDeletion;
          }*/
-         Object->Locked = 1;
+         Object->Locked = true;
          Object->ThreadID = our_thread;
          return ERR_Okay;
       }
 
       if (our_thread IS Object->ThreadID) { // Support nested locks.
          /*if (Object->Flags & NF_FREE) { // Disallow access to objects being freed.
-            SUB_QUEUE(Object);
+            Object->subQueue();
             return ERR_MarkedForDeletion;
          }*/
          return ERR_Okay;
@@ -1299,7 +1299,7 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
       //    zero.  As a result it would not send a signal, because it mistakenly thinks it still has a lock.
       // Solution: When restoring the queue, we check for zero.  If true, we try to re-lock because we know that the
       //    object is free.  By not sleeping, we don't have to be concerned about the missing signal.
-   } while (SUB_QUEUE(Object) IS 0); // Make a correction because we didn't obtain the lock.  Repeat loop if the object lock is at zero (available).
+   } while (Object->subQueue() IS 0); // Make a correction because we didn't obtain the lock.  Repeat loop if the object lock is at zero (available).
 
    if (Object->Flags & (NF_FREE|NF_UNLOCK_FREE)) return ERR_MarkedForDeletion; // If the object is currently being removed by another thread, sleeping on it is pointless.
 
@@ -1311,7 +1311,7 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
    if (Timeout < 0) end_time = 0x0fffffffffffffffLL; // Do not alter this value.
    else end_time = (PreciseTime() / 1000LL) + Timeout;
 
-   INC_SLEEP(Object); // Increment the sleep queue first so that ReleasePrivateObject() will know that another thread is expecting a wake-up.
+   Object->incSleep(); // Increment the sleep queue first so that ReleasePrivateObject() will know that another thread is expecting a wake-up.
 
    ThreadLock lock(TL_PRIVATE_OBJECTS, Timeout);
    if (lock.granted()) {
@@ -1331,22 +1331,22 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
                locks[wl].WaitingForProcessID    = 0;
                locks[wl].WaitingForThreadID     = 0;
                locks[wl].Flags = 0;
-               SUB_SLEEP(Object);
+               Object->subSleep();
                return ERR_DoesNotExist;
             }
 
-            if (INC_QUEUE(Object) IS 1) { // Increment the lock count - also doubles as a prv_access() call if the lock value is 1.
+            if (Object->incQueue() IS 1) { // Increment the lock count - also doubles as a prv_access() call if the lock value is 1.
                locks[wl].WaitingForResourceID   = 0;
                locks[wl].WaitingForResourceType = 0;
                locks[wl].WaitingForProcessID    = 0;
                locks[wl].WaitingForThreadID     = 0;
                locks[wl].Flags = 0;
-               Object->Locked = 0;
+               Object->Locked = false;
                Object->ThreadID = our_thread;
-               SUB_SLEEP(Object);
+               Object->subSleep();
                return ERR_Okay;
             }
-            else SUB_QUEUE(Object);
+            else Object->subQueue();
 
             cond_wait(TL_PRIVATE_OBJECTS, CN_OBJECTS, tmout);
          } // end while()
@@ -1361,11 +1361,11 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
       }
       else error = log.error(ERR_Failed);
 
-      SUB_SLEEP(Object);
+      Object->subSleep();
       return error;
    }
    else {
-      SUB_SLEEP(Object);
+      Object->subSleep();
       return ERR_SystemLocked;
    }
 }
@@ -1732,7 +1732,7 @@ MEMORYID ReleaseMemory(APTR Address)
       auto mem = glPrivateMemory.find(((LONG *)Address)[-2]);
 
       if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
-         if (tlContext->Object->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->Object->UID, ((rkMetaClass *)tlContext->Object->Class)->ClassName);
+         if (tlContext->Object->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->Object->UID, ((objMetaClass *)tlContext->Object->Class)->ClassName);
          else log.warning("Unable to find a record for memory address %p.", Address);
          if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);
          return 0;
@@ -1915,7 +1915,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
          auto mem = glPrivateMemory.find(MemoryID);
 
          if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
-            if (tlContext->Object->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->Object->UID, ((rkMetaClass *)tlContext->Object->Class)->ClassName);
+            if (tlContext->Object->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->Object->UID, ((objMetaClass *)tlContext->Object->Class)->ClassName);
             else log.warning("Unable to find a record for memory #%d.", MemoryID);
             if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);
             return ERR_Search;
@@ -2024,7 +2024,7 @@ ERROR ReleaseObject(OBJECTPTR Object)
 
          if (Object->Flags & NF_UNLOCK_FREE) {
             Object->Flags &= ~(NF_UNLOCK_FREE|NF_FREE);
-            Object->Locked = 0;
+            Object->Locked = false;
             if (Object->UID < 0) { // If public, free the object and then release the memory block to destroy it.
                acFree(Object);
                ReleaseMemory(Object);
@@ -2035,7 +2035,7 @@ ERROR ReleaseObject(OBJECTPTR Object)
             }
          }
          else {
-            Object->Locked = 0;
+            Object->Locked = false;
             ReleaseMemory(Object);
          }
 
@@ -2082,9 +2082,9 @@ void ReleasePrivateObject(OBJECTPTR Object)
    // If the queue reaches zero, check if there are other threads sleeping on this object.  If so, use a signal to
    // wake at least one of them.
 
-   if (SUB_QUEUE(Object) > 0) return;
+   if (Object->subQueue() > 0) return;
 
-   Object->Locked = 0;
+   Object->Locked = false;
 
    if (Object->SleepQueue > 0) {
       #ifdef DEBUG

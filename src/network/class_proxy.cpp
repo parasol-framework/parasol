@@ -29,11 +29,19 @@ each entry the proxy database.  You may change existing values of any proxy and 
 #define HKEY_PROXY "\\HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\"
 #endif
 
+class extProxy : public objProxy {
+   public:
+   char  GroupName[40];
+   char  FindPort[16];
+   BYTE  FindEnabled;
+   UBYTE Find:1;
+};
+
 static objConfig *glConfig = NULL; // NOT THREAD SAFE
 
-static ERROR find_proxy(objProxy *);
-static void clear_values(objProxy *);
-static ERROR get_record(objProxy *);
+static ERROR find_proxy(extProxy *);
+static void clear_values(extProxy *);
+static ERROR get_record(extProxy *);
 
 /*
 static void free_proxy(void)
@@ -56,7 +64,7 @@ Okay: Proxy deleted.
 
 *****************************************************************************/
 
-static ERROR PROXY_Delete(objProxy *Self, APTR Void)
+static ERROR PROXY_Delete(extProxy *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -92,7 +100,7 @@ The change will not come into effect until the proxy record is saved.
 
 *****************************************************************************/
 
-static ERROR PROXY_Disable(objProxy *Self, APTR Void)
+static ERROR PROXY_Disable(extProxy *Self, APTR Void)
 {
    Self->Enabled = FALSE;
    return ERR_Okay;
@@ -108,7 +116,7 @@ is saved.
 
 *****************************************************************************/
 
-static ERROR PROXY_Enable(objProxy *Self, APTR Void)
+static ERROR PROXY_Enable(extProxy *Self, APTR Void)
 {
    Self->Enabled = TRUE;
    return ERR_Okay;
@@ -144,7 +152,7 @@ NoSearchResult: No matching proxy was discovered.
 
 *****************************************************************************/
 
-static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
+static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
 {
    parasol::Log log;
 
@@ -310,7 +318,7 @@ NoSearchResult: No matching proxy was discovered.
 
 *****************************************************************************/
 
-static ERROR PROXY_FindNext(objProxy *Self, APTR Void)
+static ERROR PROXY_FindNext(extProxy *Self, APTR Void)
 {
    if (!Self->Find) return ERR_NoSearchResult; // Ensure that Find() was used to initiate a search
 
@@ -319,7 +327,7 @@ static ERROR PROXY_FindNext(objProxy *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR find_proxy(objProxy *Self)
+static ERROR find_proxy(extProxy *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -406,7 +414,7 @@ static ERROR find_proxy(objProxy *Self)
 
 //****************************************************************************
 
-static ERROR PROXY_Free(objProxy *Self, APTR Void)
+static ERROR PROXY_Free(extProxy *Self, APTR Void)
 {
    clear_values(Self);
    return ERR_Okay;
@@ -414,14 +422,14 @@ static ERROR PROXY_Free(objProxy *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR PROXY_Init(objProxy *Self, APTR Void)
+static ERROR PROXY_Init(extProxy *Self, APTR Void)
 {
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static ERROR PROXY_NewObject(objProxy *Self, APTR Void)
+static ERROR PROXY_NewObject(extProxy *Self, APTR Void)
 {
    Self->GroupName[0] = 0;
    Self->Enabled = TRUE;
@@ -444,7 +452,7 @@ administrator to define proxy settings as the default for all users by copying t
 
 *****************************************************************************/
 
-static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
+static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 {
    parasol::Log log;
    objConfig *config;
@@ -556,12 +564,12 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
       cfgWriteInt(config, Self->GroupName,   "Enabled",       Self->Enabled);
 
       if (!CreateObject(ID_FILE, 0, &file,
-            FID_Path|TSTR,  "user:config/network/proxies.cfg",
+            FID_Path|TSTR,         "user:config/network/proxies.cfg",
             FID_Permissions|TLONG, PERMIT_USER_READ|PERMIT_USER_WRITE,
             FID_Flags|TLONG,       FL_NEW|FL_WRITE,
             TAGEND)) {
 
-         error = acSaveToObject(config, file->Head.UID, 0);
+         error = acSaveToObject(config, file->UID, 0);
          acFree(file);
       }
       else error = ERR_CreateObject;
@@ -583,7 +591,7 @@ results of searches performed by the #Find() method.
 
 ****************************************************************************/
 
-static ERROR SET_GatewayFilter(objProxy *Self, CSTRING Value)
+static ERROR SET_GatewayFilter(extProxy *Self, CSTRING Value)
 {
    if (Self->GatewayFilter) { FreeResource(Self->GatewayFilter); Self->GatewayFilter = NULL; }
 
@@ -610,7 +618,7 @@ The Port defines the port that the proxy server is supporting, e.g. port 80 for 
 
 ****************************************************************************/
 
-static ERROR SET_Port(objProxy *Self, LONG Value)
+static ERROR SET_Port(extProxy *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->Port = Value;
@@ -631,7 +639,7 @@ This filter must not be set if the proxy needs to work on an unnamed network.
 
 ****************************************************************************/
 
-static ERROR SET_NetworkFilter(objProxy *Self, CSTRING Value)
+static ERROR SET_NetworkFilter(extProxy *Self, CSTRING Value)
 {
    if (Self->NetworkFilter) { FreeResource(Self->NetworkFilter); Self->NetworkFilter = NULL; }
 
@@ -653,7 +661,7 @@ proxy server.
 
 ****************************************************************************/
 
-static ERROR SET_Username(objProxy *Self, CSTRING Value)
+static ERROR SET_Username(extProxy *Self, CSTRING Value)
 {
    if (Self->Username) { FreeResource(Self->Username); Self->Username = NULL; }
 
@@ -675,7 +683,7 @@ the proxy.
 
 ****************************************************************************/
 
-static ERROR SET_Password(objProxy *Self, CSTRING Value)
+static ERROR SET_Password(extProxy *Self, CSTRING Value)
 {
    if (Self->Password) { FreeResource(Self->Password); Self->Password = NULL; }
 
@@ -695,7 +703,7 @@ A proxy can be given a human readable name by setting this field.
 
 ****************************************************************************/
 
-static ERROR SET_ProxyName(objProxy *Self, CSTRING Value)
+static ERROR SET_ProxyName(extProxy *Self, CSTRING Value)
 {
    if (Self->ProxyName) { FreeResource(Self->ProxyName); Self->ProxyName = NULL; }
 
@@ -715,7 +723,7 @@ The domain name or IP address of the proxy server must be defined here.
 
 ****************************************************************************/
 
-static ERROR SET_Server(objProxy *Self, CSTRING Value)
+static ERROR SET_Server(extProxy *Self, CSTRING Value)
 {
    if (Self->Server) { FreeResource(Self->Server); Self->Server = NULL; }
 
@@ -735,7 +743,7 @@ The port used to communicate with the proxy server must be defined here.
 
 ****************************************************************************/
 
-static ERROR SET_ServerPort(objProxy *Self, LONG Value)
+static ERROR SET_ServerPort(extProxy *Self, LONG Value)
 {
    parasol::Log log;
    if ((Value > 0) and (Value <= 65536)) {
@@ -755,7 +763,7 @@ discovered in searches unless
 
 ****************************************************************************/
 
-static ERROR SET_Enabled(objProxy *Self, LONG Value)
+static ERROR SET_Enabled(extProxy *Self, LONG Value)
 {
    if (Value) Self->Enabled = TRUE;
    else Self->Enabled = FALSE;
@@ -776,7 +784,7 @@ record is found and all record fields will be updated to reflect the data of tha
 
 ****************************************************************************/
 
-static ERROR SET_Record(objProxy *Self, LONG Value)
+static ERROR SET_Record(extProxy *Self, LONG Value)
 {
    clear_values(Self);
    IntToStr(Value, Self->GroupName, sizeof(Self->GroupName));
@@ -789,7 +797,7 @@ static ERROR SET_Record(objProxy *Self, LONG Value)
 ** Also not that you must have called clear_values() at some point before this function.
 */
 
-static ERROR get_record(objProxy *Self)
+static ERROR get_record(extProxy *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -816,7 +824,7 @@ static ERROR get_record(objProxy *Self)
 
 /***************************************************************************/
 
-static void clear_values(objProxy *Self)
+static void clear_values(extProxy *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -883,7 +891,7 @@ ERROR init_proxy(void)
       FID_Actions|TPTR,   clProxyActions,
       FID_Methods|TARRAY, clProxyMethods,
       FID_Fields|TARRAY,  clProxyFields,
-      FID_Size|TLONG,     sizeof(objProxy),
+      FID_Size|TLONG,     sizeof(extProxy),
       FID_Path|TSTR,      MOD_PATH,
       TAGEND));
 }

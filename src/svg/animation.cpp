@@ -1,7 +1,7 @@
 
 //****************************************************************************
 
-static ERROR animation_timer(objSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
+static ERROR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 {
    if (!SVG->Animations) return ERR_Okay;
 
@@ -89,7 +89,7 @@ restart:
    if (SVG->FrameCallback.Type != CALL_NONE) {
       if (SVG->FrameCallback.Type IS CALL_STDC) {
          parasol::SwitchContext context(SVG->FrameCallback.StdC.Context);
-         auto routine = (void (*)(rkSVG *))SVG->FrameCallback.StdC.Routine;
+         auto routine = (void (*)(extSVG *))SVG->FrameCallback.StdC.Routine;
          routine(SVG);
       }
       else if (SVG->FrameCallback.Type IS CALL_SCRIPT) {

@@ -154,14 +154,14 @@ static ERROR parse_file(objConfig *Self, CSTRING Path)
 {
    ERROR error = ERR_Okay;
    while ((*Path) and (!error)) {
-      rkFile *file;
+      objFile *file;
       if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
             FID_Path|TSTR,   Path,
             FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
             TAGEND))) {
 
          LONG filesize;
-         GetLong((OBJECTPTR)file, FID_Size, &filesize);
+         GetLong(file, FID_Size, &filesize);
 
          if (filesize > 0) {
             STRING data;
@@ -175,7 +175,7 @@ static ERROR parse_file(objConfig *Self, CSTRING Path)
             else error = ERR_AllocMemory;
          }
 
-         acFree(&file->Head);
+         acFree(file);
          file = NULL;
       }
       else if (Self->Flags & CNF_OPTIONAL_FILES) error = ERR_Okay;
@@ -326,7 +326,7 @@ static ERROR CONFIG_Free(objConfig *Self, APTR Void)
                   FID_Flags|TLONG,       FL_WRITE|FL_NEW,
                   FID_Permissions|TLONG, 0,
                   TAGEND)) {
-               ActionTags(AC_SaveToObject, (OBJECTPTR)Self, file->UID, 0);
+               ActionTags(AC_SaveToObject, Self, file->UID, 0);
                acFree(file);
             }
          }
@@ -454,7 +454,7 @@ static ERROR CONFIG_MergeFile(objConfig *Self, struct cfgMergeFile *Args)
    objConfig *src;
    if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&src, FID_Path|TSTR, Args->Path, TAGEND)) {
       merge_groups(Self->Groups[0], src->Groups[0]);
-      acFree(&src->Head);
+      acFree(src);
       return ERR_Okay;
    }
    return ERR_File;
@@ -599,7 +599,7 @@ static ERROR CONFIG_SaveSettings(objConfig *Self, APTR Void)
             FID_Flags|TLONG,       FL_WRITE|FL_NEW,
             FID_Permissions|TLONG, 0,
             TAGEND)) {
-         if (!ActionTags(AC_SaveToObject, (OBJECTPTR)Self, file->UID, 0)) {
+         if (!ActionTags(AC_SaveToObject, Self, file->UID, 0)) {
             Self->CRC = crc;
          }
          acFree(file);
@@ -672,7 +672,7 @@ static ERROR CONFIG_Set(objConfig *Self, struct cfgSet *Args)
    if ((!Args->Key) or (!Args->Key[0])) return ERR_NullArgs;
 
    auto group = find_group_wild(Self, Args->Group);
-   if (group) return Action(MT_CfgWriteValue, &Self->Head, Args);
+   if (group) return Action(MT_CfgWriteValue, Self, Args);
    else return ERR_Search;
 }
 
@@ -863,9 +863,7 @@ static ERROR SET_KeyFilter(objConfig *Self, CSTRING Value)
       if (!(Self->KeyFilter = StrClone(Value))) return ERR_AllocMemory;
    }
 
-   if (Self->Head.Flags & NF_INITIALISED) {
-      apply_key_filter(Self, Self->KeyFilter);
-   }
+   if (Self->initialised()) apply_key_filter(Self, Self->KeyFilter);
 
    return ERR_Okay;
 }
@@ -919,7 +917,7 @@ static ERROR SET_GroupFilter(objConfig *Self, CSTRING Value)
       if (!(Self->GroupFilter = StrClone(Value))) return ERR_AllocMemory;
    }
 
-   if (Self->Head.Flags & NF_INITIALISED) apply_group_filter(Self, Self->GroupFilter);
+   if (Self->initialised()) apply_group_filter(Self, Self->GroupFilter);
 
    return ERR_Okay;
 }
@@ -1211,7 +1209,7 @@ static const FieldArray clFields[] = {
 extern "C" ERROR add_config_class(void)
 {
    if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&ConfigClass)) {
-      if (!SetFields((OBJECTPTR)ConfigClass,
+      if (!SetFields(ConfigClass,
             FID_BaseClassID|TLONG,    ID_CONFIG,
             FID_ClassVersion|TFLOAT,  VER_CONFIG,
             FID_Name|TSTR,            "Config",
@@ -1225,7 +1223,7 @@ extern "C" ERROR add_config_class(void)
             FID_Size|TLONG,           sizeof(objConfig),
             FID_Path|TSTR,            "modules:core",
             TAGEND)) {
-         return acInit(&ConfigClass->Head);
+         return acInit(ConfigClass);
       }
       else return ERR_SetField;
    }

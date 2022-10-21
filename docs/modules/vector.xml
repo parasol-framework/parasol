@@ -125,9 +125,9 @@
   <function>
     <name>DrawPath</name>
     <comment>Draws a vector path to a target bitmap.</comment>
-    <prototype>ERROR vecDrawPath(struct rkBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)</prototype>
+    <prototype>ERROR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)</prototype>
     <input>
-      <param type="struct rkBitmap *" name="Bitmap">Pointer to a target Bitmap object.</param>
+      <param type="objBitmap *" name="Bitmap">Pointer to a target Bitmap object.</param>
       <param type="APTR" name="Path">The vector path to render.</param>
       <param type="DOUBLE" name="StrokeWidth">The width of the stroke.  Set to 0 if no stroke is required.</param>
       <param type="OBJECTPTR" name="StrokeStyle">Pointer to a valid object for stroke definition, or NULL if none required.</param>
@@ -336,14 +336,14 @@ Z: Close Path
   <function>
     <name>ReadPainter</name>
     <comment>Parses a painter string into its colour, gradient and image values.</comment>
-    <prototype>void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, struct FRGB * RGB, struct rkVectorGradient ** Gradient, struct rkVectorImage ** Image, struct rkVectorPattern ** Pattern)</prototype>
+    <prototype>void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern)</prototype>
     <input>
       <param type="OBJECTPTR" name="Vector">Optional.  Required if url() references are to be resolved.</param>
       <param type="CSTRING" name="IRI">The IRI string to be translated.</param>
       <param type="struct FRGB *" name="RGB">A colour will be returned here if specified in the IRI.</param>
-      <param type="struct rkVectorGradient **" name="Gradient">A VectorGradient will be returned here if specified in the IRI.</param>
-      <param type="struct rkVectorImage **" name="Image">A VectorImage will be returned here if specified in the IRI.</param>
-      <param type="struct rkVectorPattern **" name="Pattern">A VectorPattern will be returned here if specified in the IRI.</param>
+      <param type="objVectorGradient **" name="Gradient">A VectorGradient will be returned here if specified in the IRI.</param>
+      <param type="objVectorImage **" name="Image">A VectorImage will be returned here if specified in the IRI.</param>
+      <param type="objVectorPattern **" name="Pattern">A VectorPattern will be returned here if specified in the IRI.</param>
     </input>
     <description>
 <p>This function will parse an SVG style IRI into its equivalent internal lookup values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
@@ -809,7 +809,7 @@ Z: Close Path
 
     <struct name="MergeSource" comment="Input source declaration for MergeFX">
       <field name="SourceType" type="LONG" lookup="VSF">The type of the required source.</field>
-      <field name="Effect" type="struct rkFilterEffect *">Effect pointer if the SourceType is REFERENCE.</field>
+      <field name="Effect" type="objFilterEffect *">Effect pointer if the SourceType is REFERENCE.</field>
     </struct>
 
     <struct name="PathCommand" comment="Base structure for path commands.">
@@ -836,7 +836,7 @@ Z: Close Path
 
     <struct name="VectorMatrix" comment="Vector transformation matrix.">
       <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
-      <field name="Vector" type="struct rkVector *">The vector associated with the transform.</field>
+      <field name="Vector" type="objVector *">The vector associated with the transform.</field>
       <field name="ScaleX" type="DOUBLE">Matrix value A</field>
       <field name="ShearY" type="DOUBLE">Matrix value B</field>
       <field name="ShearX" type="DOUBLE">Matrix value C</field>

@@ -21,7 +21,7 @@ extern "C" {
 
 void clear_subscriptions(objScript *Self)
 {
-   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return;
 
    // Free action subscriptions
@@ -78,7 +78,7 @@ int fcmd_check(lua_State *Lua)
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
       ERROR error = lua_tonumber(Lua, 1);
       if (error >= ERR_ExceptionThreshold) {
-         auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->CaughtError = error;
          luaL_error(prv->Lua, GetErrorMsg(error));
       }
@@ -94,7 +94,7 @@ int fcmd_raise(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
       ERROR error = lua_tonumber(Lua, 1);
-      auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
       prv->CaughtError = error;
       luaL_error(prv->Lua, GetErrorMsg(error));
    }
@@ -143,7 +143,7 @@ int fcmd_raise(lua_State *Lua)
 int fcmd_catch_handler(lua_State *Lua)
 {
    lua_Debug ar;
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    if (lua_getstack(Lua, 2, &ar)) {
       lua_getinfo(Lua, "nSl", &ar);
       // ar.currentline, ar.name, ar.source, ar.short_src, ar.linedefined, ar.lastlinedefined, ar.what
@@ -156,7 +156,7 @@ int fcmd_catch_handler(lua_State *Lua)
 
 int fcmd_catch(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    if (lua_gettop(Lua) >= 2) {
       LONG type = lua_type(Lua, 1);
@@ -310,7 +310,7 @@ int fcmd_catch(lua_State *Lua)
 static void receive_event(eventsub *Event, APTR Info, LONG InfoSize)
 {
    auto Script = (objScript *)CurrentContext();
-   auto prv = (prvFluid *)Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Script->ChildPrivate;
    if (!prv) return;
 
    parasol::Log log(__FUNCTION__);
@@ -332,7 +332,7 @@ static void receive_event(eventsub *Event, APTR Info, LONG InfoSize)
 
 int fcmd_unsubscribe_event(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    if (!prv) return 0;
 
    APTR handle;
@@ -442,7 +442,7 @@ int fcmd_subscribe_event(lua_State *Lua)
    else if (!(error = AllocMemory(sizeof(struct eventsub), MEM_DATA, &es, NULL))) {
       auto call = make_function_stdc(receive_event);
       if (!(error = SubscribeEvent(event_id, &call, es, &es->EventHandle))) {
-         auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          lua_settop(Lua, 2);
          es->Function = luaL_ref(Lua, LUA_REGISTRYINDEX);
          es->EventID  = event_id;
@@ -551,7 +551,7 @@ int fcmd_include(lua_State *Lua)
 
 int fcmd_require(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    CSTRING module, error_msg = NULL;
    ERROR error = ERR_Okay;
@@ -621,7 +621,7 @@ int fcmd_require(lua_State *Lua)
 
 int fcmd_get_execution_state(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    lua_newtable(Lua);
    lua_pushstring(Lua, "inRequire");
    lua_pushboolean(Lua, prv->RequireCounter ? TRUE : FALSE);
@@ -638,7 +638,7 @@ int fcmd_get_execution_state(lua_State *Lua)
 
 int fcmd_loadfile(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    CSTRING error_msg = NULL;
    LONG results = 0;
@@ -776,7 +776,7 @@ static const char * code_reader_buffer(lua_State *, void *, size_t *);
 
 int fcmd_exec(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    LONG results = 0;
 

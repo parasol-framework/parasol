@@ -98,7 +98,7 @@
 <p>If parameters will be passed to the procedure in C/C++ or similar compiled language, they must be specified as an array of ScriptArg structures.  The following example illustrates such a list:</p>
 <pre>
 struct ScriptArg args[] = {
-   { "Object",       FD_OBJECTID, { .Long = Self-&gt;Head.UID } },
+   { "Object",       FD_OBJECTID, { .Long = Self-&gt;UID } },
    { "Output",       FD_PTR,      { .Address = output } },
    { "OutputLength", FD_LONG,     { .Long = len } }
 };

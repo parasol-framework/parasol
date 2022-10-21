@@ -9,7 +9,7 @@ This field is always NULL if a document does not declare an author string.
 
 *****************************************************************************/
 
-static ERROR SET_Author(objDocument *Self, CSTRING Value)
+static ERROR SET_Author(extDocument *Self, CSTRING Value)
 {
    if (Self->Author) { FreeResource(Self->Author); Self->Author = NULL; }
    if ((Value) and (*Value)) Self->Author = StrClone(Value);
@@ -52,7 +52,7 @@ This field is always NULL if a document does not declare a copyright string.
 
 *****************************************************************************/
 
-static ERROR SET_Copyright(objDocument *Self, CSTRING Value)
+static ERROR SET_Copyright(extDocument *Self, CSTRING Value)
 {
    if (Self->Copyright) { FreeResource(Self->Copyright); Self->Copyright = NULL; }
    if ((Value) and (*Value)) Self->Copyright = StrClone(Value);
@@ -78,7 +78,7 @@ If a loaded document defines its own custom script, it will have priority over t
 
 *****************************************************************************/
 
-static ERROR SET_DefaultScript(objDocument *Self, OBJECTPTR Value)
+static ERROR SET_DefaultScript(extDocument *Self, OBJECTPTR Value)
 {
    Self->UserDefaultScript = Value;
    return ERR_Okay;
@@ -112,7 +112,7 @@ order to prevent the event from being processed any further.
 
 *****************************************************************************/
 
-static ERROR GET_EventCallback(objDocument *Self, FUNCTION **Value)
+static ERROR GET_EventCallback(extDocument *Self, FUNCTION **Value)
 {
    if (Self->EventCallback.Type != CALL_NONE) {
       *Value = &Self->EventCallback;
@@ -121,7 +121,7 @@ static ERROR GET_EventCallback(objDocument *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_EventCallback(objDocument *Self, FUNCTION *Value)
+static ERROR SET_EventCallback(extDocument *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->EventCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
@@ -149,9 +149,9 @@ Flags: Optional flags that affect object behaviour.
 
 ****************************************************************************/
 
-static ERROR SET_Flags(objDocument *Self, LONG Value)
+static ERROR SET_Flags(extDocument *Self, LONG Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       Self->Flags = Value & (~(DCF_NO_SCROLLBARS|DCF_UNRESTRICTED|DCF_DISABLED));
    }
    else Self->Flags = Value & (~(DCF_DISABLED));
@@ -181,7 +181,7 @@ default font face chosen by that document.
 
 *****************************************************************************/
 
-static ERROR SET_FontFace(objDocument *Self, CSTRING Value)
+static ERROR SET_FontFace(extDocument *Self, CSTRING Value)
 {
    if (Self->FontFace) FreeResource(Self->FontFace);
    if (Value) {
@@ -213,7 +213,7 @@ The point size of the default font is defined here.  Valid values range between 
 
 *****************************************************************************/
 
-static ERROR SET_FontSize(objDocument *Self, LONG Value)
+static ERROR SET_FontSize(extDocument *Self, LONG Value)
 {
    if (Value < 6) Self->FontSize = 6;
    else if (Value > 128) Self->FontSize = 128;
@@ -238,7 +238,7 @@ separation.
 
 *****************************************************************************/
 
-static ERROR SET_Keywords(objDocument *Self, STRING Value)
+static ERROR SET_Keywords(extDocument *Self, STRING Value)
 {
    if (Self->Keywords) FreeResource(Self->Keywords);
    if ((Value) and (*Value)) Self->Keywords = StrClone(Value);
@@ -291,7 +291,7 @@ The new document layout will be displayed when incoming messages are next proces
 
 *****************************************************************************/
 
-static ERROR GET_Path(objDocument *Self, STRING *Value)
+static ERROR GET_Path(extDocument *Self, STRING *Value)
 {
    if (Self->Path) {
       *Value = Self->Path;
@@ -303,7 +303,7 @@ static ERROR GET_Path(objDocument *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Path(objDocument *Self, CSTRING Value)
+static ERROR SET_Path(extDocument *Self, CSTRING Value)
 {
    parasol::Log log;
    static BYTE recursion = 0;
@@ -371,7 +371,7 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
          }
       }
       else if (trigger->Function.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, objDocument *, STRING, STRING))trigger->Function.StdC.Routine;
+         auto routine = (void (*)(APTR, extDocument *, STRING, STRING))trigger->Function.StdC.Routine;
          if (routine) {
             parasol::SwitchContext context(trigger->Function.StdC.Context);
             routine(trigger->Function.StdC.Context, Self, Self->Path, newpath);
@@ -390,7 +390,7 @@ static ERROR SET_Path(objDocument *Self, CSTRING Value)
       recursion++;
       unload_doc(Self, (reload IS FALSE) ? ULD_REFRESH : 0);
 
-      if (Self->Head.Flags & NF_INITIALISED) {
+      if (Self->initialised()) {
          if ((Self->XML) and (reload IS FALSE)) {
             process_parameters(Self, Self->Path);
             process_page(Self, Self->XML);
@@ -433,7 +433,7 @@ changed without causing a load operation.
 
 ****************************************************************************/
 
-static ERROR SET_Origin(objDocument *Self, STRING Value)
+static ERROR SET_Origin(extDocument *Self, STRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
@@ -466,13 +466,13 @@ margins.
 
 *****************************************************************************/
 
-static ERROR GET_PageWidth(objDocument *Self, Variable *Value)
+static ERROR GET_PageWidth(extDocument *Self, Variable *Value)
 {
    DOUBLE value;
 
    // Reading the PageWidth returns the pixel width of the page after parsing.
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       value = Self->CalcWidth;
 
       if (Value->Type & FD_PERCENTAGE) {
@@ -488,7 +488,7 @@ static ERROR GET_PageWidth(objDocument *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_PageWidth(objDocument *Self, Variable *Value)
+static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
 {
    parasol::Log log;
 
@@ -540,9 +540,9 @@ determine the correct surface object based on object ownership.
 
 *****************************************************************************/
 
-static ERROR SET_Surface(objDocument *Self, OBJECTID Value)
+static ERROR SET_Surface(extDocument *Self, OBJECTID Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       if (Self->SurfaceID IS Value) return ERR_Okay;
       return ERR_NoSupport;
    }
@@ -567,7 +567,7 @@ always NULL if a document does not declare a title.
 
 *****************************************************************************/
 
-static ERROR SET_Title(objDocument *Self, STRING Value)
+static ERROR SET_Title(extDocument *Self, STRING Value)
 {
    if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
    if ((Value) and (*Value)) Self->Title = StrClone(Value);
@@ -597,7 +597,7 @@ field to be manually set.
 
 *****************************************************************************/
 
-static ERROR SET_UpdateLayout(objDocument *Self, LONG Value)
+static ERROR SET_UpdateLayout(extDocument *Self, LONG Value)
 {
    if (Value) Self->UpdateLayout = TRUE;
    return ERR_Okay;
@@ -618,7 +618,7 @@ colour for visited links if the author desires.
 PRIVATE: Variables
 *****************************************************************************/
 
-static ERROR GET_Variables(objDocument *Self, KeyStore **Value)
+static ERROR GET_Variables(extDocument *Self, KeyStore **Value)
 {
    *Value = Self->Vars;
    return ERR_Okay;
@@ -641,7 +641,7 @@ You can manually change the working path by setting the #Origin field without af
 
 *****************************************************************************/
 
-static ERROR GET_WorkingPath(objDocument *Self, CSTRING *Value)
+static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 {
    parasol::Log log;
 

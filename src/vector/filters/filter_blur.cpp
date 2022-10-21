@@ -73,7 +73,7 @@ UBYTE const stack_blur_tables<T>::g_stack_blur8_shr[255] =
    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24
 };
 
-typedef class rkBlurFX : public rkFilterEffect {
+typedef class rkBlurFX : public objFilterEffect {
    public:
    DOUBLE SX, SY;
 } objBlurFX;

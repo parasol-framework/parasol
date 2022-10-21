@@ -25,9 +25,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 </list>
 <p>It is possible to write to a NetSocket object before the connection to a server is established.  Doing so will buffer the data in the socket until the connection with the server has been initiated, at which point the data will be immediately sent.</p>
 <header>Server-Client Connections</header>
-<p>To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the <field>Port</field> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, you should also set the MULTICONNECT flag.</p>
+<p>To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the <field>Port</field> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the <code>MULTICONNECT</code> flag.</p>
 <p>When a new connection is detected, the <field>Feedback</field> function will be called as <code>Feedback(*NetSocket, *ClientSocket, LONG State)</code></p>
-<p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved and the State value will be set to NTC_CONNECTED.  If a client disconnects, the <field>Feedback</field> function will be called in the same manner but with a State value of NTC_DISCONNECTED.</p>
+<p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved and the State value will be set to <code>NTC_CONNECTED</code>.  If a client disconnects, the <field>Feedback</field> function will be called in the same manner but with a State value of <code>NTC_DISCONNECTED</code>.</p>
 <p>Information on all active connections can be read from the <field>Clients</field> field.  This contains a linked list of IP addresses and their connections to the server port.</p>
 <p>To send data to a client, write it to the target <class name="ClientSocket">ClientSocket</class>.</p>
 <p>All data that is received from client sockets will be passed to the <field>Incoming</field> feedback routine with a reference to a <class name="ClientSocket">ClientSocket</class>.</p></description>
@@ -94,7 +94,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <error code="Okay">The NetSocket connecting process was successfully started.</error>
         <error code="Failed">The connect failed for some other reason.</error>
         <error code="Args">Address was NULL, or Port was not in the required range.</error>
-        <error code="BadState">The NetSocket was not in the state NTC_DISCONNECTED.</error>
+        <error code="InvalidState">The NetSocket was not in the state NTC_DISCONNECTED.</error>
         <error code="HostNotFound">Host name resolution failed.</error>
       </result>
     </method>
@@ -102,9 +102,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>DisconnectClient</name>
       <comment>Disconnects all sockets connected to a specific client IP.</comment>
-      <prototype>ERROR nsDisconnectClient(OBJECTPTR Object, struct rkNetClient * Client)</prototype>
+      <prototype>ERROR nsDisconnectClient(OBJECTPTR Object, struct NetClient * Client)</prototype>
       <input>
-        <param type="struct rkNetClient *" name="Client">The client to be disconnected.</param>
+        <param type="struct NetClient *" name="Client">The client to be disconnected.</param>
       </input>
       <description>
 <p>For server sockets with client IP connections, this method will terminate all socket connections made to a specific client IP and free the resources allocated to it.  If <field>Feedback</field> is defined, a DISCONNECTED state message will also be issued for each socket connection.</p>
@@ -119,9 +119,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>DisconnectSocket</name>
       <comment>Disconnects a single socket that is connected to a client IP address.</comment>
-      <prototype>ERROR nsDisconnectSocket(OBJECTPTR Object, struct rkClientSocket * Socket)</prototype>
+      <prototype>ERROR nsDisconnectSocket(OBJECTPTR Object, objClientSocket * Socket)</prototype>
       <input>
-        <param type="struct rkClientSocket *" name="Socket">The client socket to be disconnected.</param>
+        <param type="objClientSocket *" name="Socket">The client socket to be disconnected.</param>
       </input>
       <description>
 <p>This method will disconnect a socket connection for a given client.  If <field>Feedback</field> is defined, a DISCONNECTED state message will also be issued.</p>
@@ -227,7 +227,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <name>Clients</name>
       <comment>For server sockets, lists all clients connected to the server.</comment>
       <access read="R">Read</access>
-      <type>struct rkNetClient *</type>
+      <type>struct NetClient *</type>
     </field>
 
     <field>
@@ -396,12 +396,12 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
     </struct>
 
-    <struct name="rkNetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
+    <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
       <field name="IP" type="char" size="8">IP address in 4/8-byte format</field>
-      <field name="Next" type="struct rkNetClient *">Next client in the chain</field>
-      <field name="Prev" type="struct rkNetClient *">Previous client in the chain</field>
-      <field name="NetSocket" type="struct rkNetSocket *">Reference to the parent socket</field>
-      <field name="Sockets" type="struct rkClientSocket *">Pointer to a list of sockets opened with this client.</field>
+      <field name="Next" type="struct NetClient *">Next client in the chain</field>
+      <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
+      <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
+      <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
       <field name="UserData" type="APTR">Free for user data storage.</field>
       <field name="TotalSockets" type="LONG">Count of all created sockets</field>
     </struct>

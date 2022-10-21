@@ -321,7 +321,7 @@ public:
 
 //********************************************************************************************************************
 
-typedef class rkColourEffect : public objFilterEffect {
+typedef class rkColourEffect : public extFilterEffect {
    public:
    DOUBLE Values[CM_SIZE];
    ColourMatrix *Matrix;

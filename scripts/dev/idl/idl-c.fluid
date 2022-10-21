@@ -17,11 +17,204 @@
 
 -----------------------------------------------------------------------------------------------------------------------
 
+glActionStubs = {
+   -- Hidden actions
+   ActionNotify  = "",
+   Free          = "",
+   FreeWarning   = "",
+   NewChild      = "",
+   NewObject     = "",
+   ReleaseObject = "",
+   AccessObject  = "",
+
+   -- Actions without parameters
+   Activate     = "   inline ERROR activate() { return Action(AC_Activate, this, NULL); }",
+   Clear        = "   inline ERROR clear() { return Action(AC_Clear, this, NULL); }",
+   Deactivate   = "   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }",
+   Disable      = "   inline ERROR disable() { return Action(AC_Disable, this, NULL); }",
+   Enable       = "   inline ERROR enable() { return Action(AC_Enable, this, NULL); }",
+   Flush        = "   inline ERROR flush() { return Action(AC_Flush, this, NULL); }",
+   Focus        = "   inline ERROR focus() { return Action(AC_Focus, this, NULL); }",
+   Hide         = "   inline ERROR hide() { return Action(AC_Hide, this, NULL); }",
+   Init         = "   inline ERROR init() { return Action(AC_Init, this, NULL); }",
+   Lock         = "   inline ERROR lock() { return Action(AC_Lock, this, NULL); }",
+   LostFocus    = "   inline ERROR lostFocus() { return Action(AC_LostFocus, this, NULL); }",
+   MoveToBack   = "   inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }",
+   MoveToFront  = "   inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }",
+   Next         = "   inline ERROR next() { return Action(AC_Next, this, NULL); }",
+   Prev         = "   inline ERROR prev() { return Action(AC_Prev, this, NULL); }",
+   Query        = "   inline ERROR query() { return Action(AC_Query, this, NULL); }",
+   Refresh      = "   inline ERROR refresh() { return Action(AC_Refresh, this, NULL); }",
+   Reset        = "   inline ERROR reset() { return Action(AC_Reset, this, NULL); }",
+   SaveSettings = "   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }",
+   Show         = "   inline ERROR show() { return Action(AC_Show, this, NULL); }",
+   Sort         = "   inline ERROR sort() { return Action(AC_Sort, this, NULL); }",
+   Unlock       = "   inline ERROR unlock() { return Action(AC_Unlock, this, NULL); }",
+
+   CopyData = [[
+   inline ERROR copyData(OBJECTID DestID) {
+      struct acCopyData args = { .DestID = DestID };
+      return Action(AC_CopyData, this, &args);
+   }]],
+   DragDrop = [[
+   inline ERROR dragDrop(OBJECTID Source, LONG Item, CSTRING Datatype) {
+      struct acDragDrop args = { .Source = Source, .Item = Item, .Datatype = Datatype };
+      return Action(AC_DragDrop, this, &args);
+   }]],
+   Clipboard = [[
+   inline ERROR clipboard(LONG Mode) {
+      struct acClipboard args = { Mode };
+      return Action(AC_Clipboard, this, &args);
+   }]],
+   Draw = [[
+   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }]],
+   DataFeed = [[
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }]],
+   Move = [[
+   inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) {
+      struct acMove args = { X, Y, Z };
+      return Action(AC_Move, this, &args);
+   }]],
+   Read = [[
+   inline ERROR read(APTR Buffer, LONG Bytes, LONG *Result) {
+      ERROR error;
+      struct acRead read = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Read, this, &read))) {
+         if (Result) *Result = read.Result;
+         return ERR_Okay;
+      }
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
+   }]],
+   Redo = [[
+   inline ERROR redo(LONG Steps) {
+      struct acRedo args = { Steps };
+      return Action(AC_Redo, this, &args);
+   }]],
+   Redimension = [[
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+      struct acRedimension args = { X, Y, Z, Width, Height, Depth };
+      return Action(AC_Redimension, this, &args);
+   }]],
+   Rename = [[
+   inline ERROR rename(CSTRING Name) {
+      struct acRename args = { Name };
+      return Action(AC_Rename, this, &args);
+   }]],
+   Resize = [[
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+      struct acResize args = { Width, Height, Depth };
+      return Action(AC_Resize, this, &args);
+   }]],
+   Scroll = [[
+   inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z) {
+      struct acScroll args = { X, Y, Z };
+      return Action(AC_Scroll, this, &args);
+   }]],
+   ScrollToPoint = [[
+   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+      struct acScrollToPoint args = { X, Y, Z, Flags };
+      return Action(AC_ScrollToPoint, this, &args);
+   }]],
+   Undo = [[
+   inline ERROR undo(LONG Steps) {
+      struct acUndo args = { Steps };
+      return Action(AC_Undo, this, &args);
+   }]],
+   GetVar = [[
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }]],
+   MoveToPoint = [[
+   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+      struct acMoveToPoint moveto = { X, Y, Z, Flags };
+      return Action(AC_MoveToPoint, this, &moveto);
+   }]],
+   SaveImage = [[
+   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveImage args = { { DestID }, { ClassID } };
+      return Action(AC_SaveImage, this, &args);
+   }]],
+   SaveToObject = [[
+   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveToObject args = { { DestID }, { ClassID } };
+      return Action(AC_SaveToObject, this, &args);
+   }]],
+   Seek = [[
+   inline ERROR seek(DOUBLE Offset, LONG Position) {
+      struct acSeek args = { Offset, Position };
+      return Action(AC_Seek, this, &args);
+   }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   ]],
+   SetVars = [[
+   inline ERROR setVars(CSTRING tags, ...) {
+      struct acSetVar args;
+      va_list list;
+      va_start(list, tags);
+      while ((args.Field = va_arg(list, STRING)) != TAGEND) {
+         args.Value = va_arg(list, STRING);
+         if (Action(AC_SetVar, this, &args) != ERR_Okay) {
+            va_end(list);
+            return ERR_Failed;
+         }
+      }
+      va_end(list);
+      return ERR_Okay;
+   }]],
+   Write = [[
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline LONG writeResult(CPTR Buffer, LONG Bytes) {
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!Action(AC_Write, this, &write)) return write.Result;
+      else return 0;
+   }]],
+   SelectArea = [[
+   inline ERROR acSelectArea(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+      struct acSelectArea area = { X, Y, Width, Height };
+      return Action(AC_SelectArea, this, &area);
+   }]],
+   SetVar = [[
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+      struct acSetVar args = { FieldName, Value };
+      return Action(AC_SetVar, this, &args);
+   }]],
+}
+
+-----------------------------------------------------------------------------------------------------------------------
+
+glHeader = { }
 glOutput = { }
 glActiveRefs = { } -- For cType()
 
 function output(String)
    table.insert(glOutput, nz(String, ''))
+end
+
+function priority(String)
+   table.insert(glHeader, nz(String, ''))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -48,25 +241,25 @@ function c_include(...)
          if (inc != nil) then inc = inc:gsub('[/%.]', '_') end
 
          if (inc != nil) then
-            output('#ifndef ' .. inc:upper())
-            output('#include ' .. v)
-            output('#endif')
-            output()
+            priority('#ifndef ' .. inc:upper())
+            priority('#include ' .. v)
+            priority('#endif')
+            priority()
          else
-            output('#include ' .. v)
+            priority('#include ' .. v)
          end
       else
-         output('#include "' .. v .. '"')
+         priority('#include "' .. v .. '"')
       end
    end
-   output()
+   priority()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function cpp_include(...)
-   output('#ifdef __cplusplus')
+   priority('#ifdef __cplusplus')
    for k,v in ipairs({...}) do
       if (v:find('^<(.+)>$') != nil) then
          local inc = v:match('^<parasol/(.+)>$')
@@ -74,19 +267,19 @@ function cpp_include(...)
          if (inc != nil) then inc = inc:gsub('[/%.]', '_') end
 
          if (inc != nil) then
-            output('#ifndef ' .. inc:upper())
-            output('#include ' .. v)
-            output('#endif')
-            output()
+            priority('#ifndef ' .. inc:upper())
+            priority('#include ' .. v)
+            priority('#endif')
+            priority()
          else
-            output('#include ' .. v)
+            priority('#include ' .. v)
          end
       else
-         output('#include "' .. v .. '"')
+         priority('#include "' .. v .. '"')
       end
    end
-   output('#endif')
-   output()
+   priority('#endif')
+   priority()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -107,29 +300,29 @@ function module(Options, Function)
    glModule = Options
 
    if nz(glModule.name) then
-      output('#ifndef MODULES_' .. glModule.name:upper())
-      output('#define MODULES_' .. glModule.name:upper() .. ' 1')
-      output()
+      priority('#ifndef MODULES_' .. glModule.name:upper())
+      priority('#define MODULES_' .. glModule.name:upper() .. ' 1')
+      priority()
    else
       error('No "name" field specified in module() call.')
    end
 
-   output('// Name:      ' .. glModule.name:lower() .. '.h')
+   priority('// Name:      ' .. glModule.name:lower() .. '.h')
 
    if nz(Options['copyright']) then
-      output('// Copyright: ' .. Options['copyright'])
+      priority('// Copyright: ' .. Options['copyright'])
    end
-   output('// Generator: idl-c')
-   output()
+   priority('// Generator: idl-c')
+   priority()
 
-   output('#ifndef MAIN_H')
-   output('#include <parasol/main.h>')
-   output('#endif')
-   output()
+   priority('#ifndef MAIN_H')
+   priority('#include <parasol/main.h>')
+   priority('#endif')
+   priority()
 
    if nz(glModule.version) then
-      output('#define MODVERSION_' .. glModule.name:upper() .. ' (' .. glModule.version .. ')')
-      output()
+      priority('#define MODVERSION_' .. glModule.name:upper() .. ' (' .. glModule.version .. ')')
+      priority()
    end
 
    Function()
@@ -141,26 +334,26 @@ end
 function header(Options, Function)
    glHeaderPath = Options['path']
    if nz(glHeaderPath) then
-      output('#ifndef ' .. glHeaderPath:gsub('/','_'):upper())
-      output('#define ' .. glHeaderPath:gsub('/','_'):upper() .. ' 1')
-      output()
-      output('// Name:      ' .. glHeaderPath:lower() .. '.h')
+      priority('#ifndef ' .. glHeaderPath:gsub('/','_'):upper())
+      priority('#define ' .. glHeaderPath:gsub('/','_'):upper() .. ' 1')
+      priority()
+      priority('// Name:      ' .. glHeaderPath:lower() .. '.h')
    else
       local s = ''
       for i=1,10 do
          s = s .. string.char(math.random(65, 90))
       end
 
-      output('#ifndef ' .. s:gsub('/','_'):upper())
-      output('#define ' .. s:gsub('/','_'):upper() .. ' 1')
-      output()
+      priority('#ifndef ' .. s:gsub('/','_'):upper())
+      priority('#define ' .. s:gsub('/','_'):upper() .. ' 1')
+      priority()
    end
 
    if nz(Options['copyright']) then
-      output('// Copyright: ' .. Options['copyright'])
+      priority('// Copyright: ' .. Options['copyright'])
    end
-   output('// Generator: idl-c')
-   output()
+   priority('// Generator: idl-c')
+   priority()
 
    Function()
 end
@@ -408,26 +601,48 @@ end
 -- FDL function
 
 function platform(Platform, Function)
+   local saveHeader = glHeader
+   local saveOutput = glOutput
+   glHeader = { }
+   glOutput = { }
+
+   local define
    if (Platform:lower() == 'windows') then
-      output('#ifdef _WIN32')
-      output()
+      define = '_WIN32'
       Function()
-      output('#endif')
-      output()
    elseif (Platform:lower() == 'linux') then
-      output('#ifdef __linux__')
-      output()
+      define = '__linux__'
       Function()
-      output('#endif')
-      output()
    elseif (Platform:lower() == 'x11') then
-      output('#ifdef __xwindows__')
-      output()
+      define = '__xwindows__'
       Function()
-      output('#endif')
-      output()
    else
       error('Unrecognised platform "' .. Platform .. '"')
+   end
+
+   local platformHeader = glHeader
+   local platformOutput = glOutput
+   glHeader = saveHeader
+   glOutput = saveOutput
+
+   if #platformHeader > 0 then
+      priority('#ifdef ' .. define)
+      priority()
+      for k,v in ipairs(platformHeader) do
+         priority(v)
+      end
+      priority('#endif')
+      priority()
+   end
+
+   if #platformOutput > 0 then
+      output('#ifdef ' .. define)
+      output()
+      for k,v in ipairs(platformOutput) do
+         output(v)
+      end
+      output('#endif')
+      output()
    end
 end
 
@@ -555,7 +770,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- FDL Function
 
-function class(Name, Options, Blueprint, Private)
+function class(Name, Options, Blueprint, Private, Custom)
    if (glFeedback == 'verbose') then print('Processing class ' .. nz(Name,'NIL')) end
 
    Options = checkOptions(Options)
@@ -587,7 +802,7 @@ function class(Name, Options, Blueprint, Private)
 
    -- Process methods and fields defined in the source code (if available)
 
-   local cdef = processClassFields(class, Blueprint, Private)
+   local cdef = processClassFields(class, Blueprint)
 
    class.actions = { }
    if (class.src != nil) then
@@ -606,12 +821,18 @@ function class(Name, Options, Blueprint, Private)
          -- Look for C/C++ action declarations, in the format: ERROR CLASS_Action(...).  This will create a series
          -- of dummy action entries that can be overwritten with -ACTION- sections.
 
-         for actionName in string.gmatch(content, 'ERROR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)') do
-            if (glActions[actionName] != nil) then
-               if (glFeedback == 'verbose') then print('Discovered action ' .. actionName) end
-               class.actions[actionName] = { name=actionName }
-            else
-               if (glFeedback == 'verbose') then print('Ignoring declaration of ' .. actionName) end
+         local patterns = {
+            'ERROR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)',
+            'ERROR%s-' .. Name:upper() .. '_(%a-)%(ext.-%)'
+         }
+         for _, pattern in pairs(patterns) do
+            for actionName in string.gmatch(content, pattern) do
+               if (glActions[actionName] != nil) then
+                  if (glFeedback == 'verbose') then print('Discovered action ' .. actionName) end
+                  class.actions[actionName] = { name=actionName }
+               else
+                  if (glFeedback == 'verbose') then print('Ignoring declaration of ' .. actionName) end
+               end
             end
          end
 
@@ -779,6 +1000,8 @@ function class(Name, Options, Blueprint, Private)
    if nz(class.sortedActions) then
       table.sort(class.sortedActions, function(a,b) return a.name < b.name end)
    end
+
+   outputClassHeader(class, Private, Custom)
 
    -- Output internal C definitions for this class, if an output file has been specified.
 
@@ -1010,7 +1233,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Process the formal field definitions in a class blueprint.
 
-function processClassFields(class, Blueprint, Private)
+function processClassFields(class, Blueprint)
    local cdef = ''
 
    -- Process fields defined in the FDL
@@ -1063,23 +1286,23 @@ function processClassFields(class, Blueprint, Private)
    -- described without the developer writing a custom field configuration in C.
 
    local fdef = "static const struct FieldArray cl" .. class.name .. "Fields[] = {\n"
-   local type_len = 0
+   class.longestType = 0
    local name_len = 0
-   local type_max = 0
+   class.longestFieldType = 0  -- Holds the longest field + type string
    for _, f in ipairs(class.fields) do
       if not f.virtual then
          local field_name = cName(f)
 
          if (field_name:len() > name_len) then name_len = field_name:len() end
 
-         if (f.type:len() > type_len) then
+         if (f.type:len() > class.longestType) then
             if (f.type:len() < 10) then
-               type_len = f.type:len()
+               class.longestType = f.type:len()
             end
          end
 
-         if (f.type:len() + field_name:len() > type_max) then
-            type_max = f.type:len() + 2 + field_name:len()
+         if (f.type:len() + field_name:len() > class.longestFieldType) then
+            class.longestFieldType = f.type:len() + 2 + field_name:len()
          end
 
          if (f.ref != nil) then
@@ -1115,6 +1338,13 @@ function processClassFields(class, Blueprint, Private)
    end
    fdef = fdef .. "};\n\n"
 
+   return cdef
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Output the CPP compatible class definition
+
+function outputClassHeader(class, Private, Custom)
    if nz(class.fields) then
       local physicalFields = false
       for _, f in ipairs(class.fields) do
@@ -1122,19 +1352,21 @@ function processClassFields(class, Blueprint, Private)
       end
 
       if physicalFields then
-         output("typedef struct rk" .. class.name ..  " {")
-         output("   OBJECT_HEADER")
+         priority("typedef class pl" .. class.name ..  " obj" .. class.name .. ";")
 
-         local max_len = 3 + type_max + 1 + 2
+         output("typedef class pl" .. class.name ..  " : public BaseClass {")
+         output("   public:")
+
+         local max_len = 3 + class.longestFieldType + 1 + 2
 
          for _, f in ipairs(class.fields) do
             if not f.virtual then
                local left
                local field_name = cName(f, true)
                if nz(field_name) then
-                  left = string.format('   %-' .. type_len .. 's %s;', f.type, field_name)
+                  left = string.format('   %-' .. class.longestType .. 's %s;', f.type, field_name)
                else
-                  left = string.format('   %-' .. type_len .. 's;', f.type)
+                  left = string.format('   %-' .. class.longestType .. 's;', f.type)
                end
 
                if nz(f.comment) then
@@ -1152,12 +1384,36 @@ function processClassFields(class, Blueprint, Private)
             output("#endif")
          end
 
+         if (Custom != nil) then
+            output("   public:")
+            output(Custom)
+         end
+
+         -- Insert registered actions
+
+         if nz(class.sortedActions) then
+            output("   // Action stubs\n")
+            for _, action in ipairs(class.sortedActions) do
+               if glActionStubs[action.name] then
+                  if (glActionStubs[action.name]:len() != 0) then
+                     local stub = glActionStubs[action.name]
+                     stub = string.match(stub,'^()\n*$') and '' or string.match(stub,'^\n*(.*%S)')
+                     output(stub)
+                  end
+               else
+                  output("   // " .. action.name .. "\n")
+               end
+            end
+
+            if not class.actions['Init'] then
+               output(glActionStubs['Init'])
+            end
+         end
+
          output("} obj" .. class.name .. ";")
          output()
       end
    end
-
-   return cdef
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -1400,6 +1656,7 @@ glTypes = {
    large      = { fd='FD_LARGE',     c_type='LARGE' },
    cid        = { fd='FD_LONG|FD_UNSIGNED', c_type='CLASSID' },
    obj        = { fd='FD_OBJECTPTR', c_type='OBJECTPTR' },
+   ext        = { fd='FD_OBJECTPTR', c_type='OBJECTPTR' },
    str        = { fd='FD_STR',       c_type='STRING' },
    cstr       = { fd='FD_STR',       c_type='CSTRING' },
    func       = { fd='FD_FUNCTION',  c_type='FUNCTION' },
@@ -1522,14 +1779,23 @@ function cType(Field, Origin)
    end
 
    do
-      local ref_obj = Field.type:match("^obj%((.+)%)$")
+      local ref_obj = Field.type:match("^ext%((.+)%)$")
+      local extended = false
+      if (ref_obj != nil) then -- 'ext' indicates an object class extended with private fields.
+         extended = true
+      else
+         ref_obj = Field.type:match("^obj%((.+)%)$")
+      end
+
       if (ref_obj != nil) then
          local ptr_object = ref_obj:match("%*(.+)")
          if (ptr_object != nil) then
-            Field.type = "struct rk" .. ptr_object .. " **"
+            Field.type = "obj" .. ptr_object .. " **"
+            if extended then Field.extType = "ext" .. ptr_object .. " **" end
             Field.className = ptr_object
          else
-            Field.type = "struct rk" .. ref_obj .. " *"
+            Field.type = "obj" .. ref_obj .. " *"
+            if extended then Field.extType = "ext" .. ref_obj .. " *" end
             Field.className = ref_obj
          end
          Field.fullType = glTypes.obj
@@ -2062,6 +2328,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    local macroValues = ""
    local argSeq = ""
    local proto = ""
+   local doc_proto = ""
    local complexArgs = false
 
    if nz(Def.input) then
@@ -2078,10 +2345,11 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
             if nz(argSeq) then
                argSeq = argSeq .. ", "
                proto = proto .. ", "
+               doc_proto = doc_proto .. ", "
                macroValues = macroValues .. ","
             end
 
-            if (param.type == "OBJECTPTR") or (param.type == "APTR *") or (param.type == "OBJECTPTR *") then
+            if (param.type == "APTR *") or (param.type == "OBJECTPTR *") then
                argSeq = argSeq .. "APTR"
             else
                argSeq = argSeq .. param.type
@@ -2089,25 +2357,30 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
             if (param.sizeof) then
                proto = proto .. param.type .. " " .. cName(param)
+               doc_proto = doc_proto .. param.type .. " " .. cName(param)
                macroValues = macroValues .. "sizeof(*" .. string.char(abc-1) .. ")"
                complexArgs = true
             elseif (param.type == "...") then
                proto = proto .. param.type
+               doc_proto = doc_proto .. param.type
                if nz(macroArgs) then
                   macroArgs = macroArgs .. ","
                else // This special case is required when '...' is the first parameter.
                   if (param.fullType.fd == "FD_VARTAGS") then
                      argSeq = "LARGE," .. argSeq
                      proto = "LARGE," .. proto
+                     doc_proto = "LARGE," .. doc_proto
                   else
                      argSeq = "LONG," .. argSeq
                      proto = "LONG," .. proto
+                     doc_proto = "LONG," .. doc_proto
                   end
                end
                macroArgs = macroArgs .. "..."
                macroValues = macroValues .. "__VA_ARGS__"
             else
-               proto = proto .. param.type .. " " .. cName(param)
+               proto = proto .. nz(param.extType, param.type) .. " " .. cName(param)
+               doc_proto = doc_proto .. param.type .. " " .. cName(param)
                if nz(macroArgs) then macroArgs = macroArgs .. "," end
                macroArgs = macroArgs .. string.char(abc)
                macroValues = macroValues .. string.char(abc)
@@ -2126,6 +2399,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    func.def = "   " .. nz(response.type,"NIL") .. " (*_" .. func.name .. ")(" .. nz(nz(Def.ext_proto, argSeq),"void") .. ");"
    func.c_proto = proto
+   func.doc_proto = doc_proto
    func.c_response = response.type
 
    if (complexArgs) then
@@ -2157,6 +2431,20 @@ function saveOutput()
 
    do
       local file = obj.new("file", { flags="WRITE|NEW", location=tempPath } )
+
+      priority() -- Blank line at the end
+
+      local blank = 0
+      for a=1, #glHeader do
+         local str = glHeader[a] .. "\n"
+         if (str == "\n") then
+            blank = blank + 1
+         else
+            blank = 0
+         end
+
+         if (blank < 2) then file.acWrite(str, str:len()) end
+      end
 
       local blank = 0
       for a=1, #glOutput do
@@ -2204,7 +2492,7 @@ function buildPrototypes()
                local proto = "OBJECTPTR Object"
                if nz(method.params) then
                   for _, param in ipairs(method.params) do
-                     proto = proto .. ", " .. param.type .. " " .. param.name
+                     proto = proto .. ", " .. nz(param.extType, param.type) .. " " .. param.name
                   end
                end
                method.prototype = "ERROR " .. cl.methodPrefix:lower() .. method.name .. "(" .. proto .. ")"
@@ -2227,6 +2515,7 @@ function buildPrototypes()
          end
 
          func.prototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.c_proto,"") .. ")"
+         func.docPrototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
          proto = proto .. func.prototype .. ";\n"
       end
       proto = proto .. '\n#ifdef  __cplusplus\n}\n#endif\n'

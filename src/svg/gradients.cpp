@@ -2,7 +2,7 @@
 //****************************************************************************
 // Note that all offsets are percentages.
 
-static ERROR process_gradient_stops(objSVG *Self, const XMLTag *Tag, GradientStop *Stops)
+static ERROR process_gradient_stops(extSVG *Self, const XMLTag *Tag, GradientStop *Stops)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -37,7 +37,7 @@ static ERROR process_gradient_stops(objSVG *Self, const XMLTag *Tag, GradientSto
                else if (Stops[i].Offset > 1.0) Stops[i].Offset = 1.0;
             }
             else if (!StrMatch("stop-color", name)) {
-               vecReadPainter(&Self->Scene->Head, value, &Stops[i].RGB, NULL, NULL, NULL);
+               vecReadPainter(Self->Scene, value, &Stops[i].RGB, NULL, NULL, NULL);
             }
             else if (!StrMatch("stop-opacity", name)) {
                stop_opacity = StrToFloat(value);
@@ -60,7 +60,7 @@ static ERROR process_gradient_stops(objSVG *Self, const XMLTag *Tag, GradientSto
 
 //****************************************************************************
 
-static ERROR xtag_lineargradient(objSVG *Self, const XMLTag *Tag)
+static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -107,7 +107,7 @@ static ERROR xtag_lineargradient(objSVG *Self, const XMLTag *Tag)
                else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
-            case SVF_XLINK_HREF: add_inherit(Self, (OBJECTPTR)gradient, val); break;
+            case SVF_XLINK_HREF: add_inherit(Self, gradient, val); break;
             case SVF_ID: id = val; break;
 
             default: {
@@ -124,12 +124,12 @@ static ERROR xtag_lineargradient(objSVG *Self, const XMLTag *Tag)
       if (stopcount >= 2) {
          GradientStop stops[stopcount];
          process_gradient_stops(Self, Tag, stops);
-         SetArray((OBJECTPTR)gradient, FID_Stops, stops, stopcount);
+         SetArray(gradient, FID_Stops, stops, stopcount);
       }
 
       if (!acInit(gradient)) {
          if (id) SetName(gradient, id);
-         return scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
+         return scAddDef(Self->Scene, id, gradient);
       }
       else return ERR_Init;
    }
@@ -138,7 +138,7 @@ static ERROR xtag_lineargradient(objSVG *Self, const XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_radialgradient(objSVG *Self, const XMLTag *Tag)
+static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -185,10 +185,10 @@ static ERROR xtag_radialgradient(objSVG *Self, const XMLTag *Tag)
                else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
                break;
 
-            case SVF_XLINK_HREF: add_inherit(Self, &gradient->Head, val); break;
+            case SVF_XLINK_HREF: add_inherit(Self, gradient, val); break;
             default: {
                LONG j;
-               for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
+               for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
                if (Tag->Attrib[a].Name[j] IS ':') break;
                log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;
@@ -200,12 +200,12 @@ static ERROR xtag_radialgradient(objSVG *Self, const XMLTag *Tag)
       if (stopcount >= 2) {
          GradientStop stops[stopcount];
          process_gradient_stops(Self, Tag, stops);
-         SetArray((OBJECTPTR)gradient, FID_Stops, stops, stopcount);
+         SetArray(gradient, FID_Stops, stops, stopcount);
       }
 
       if (!acInit(gradient)) {
          if (id) SetName(gradient, id);
-         return scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
+         return scAddDef(Self->Scene, id, gradient);
       }
       else return ERR_Init;
    }
@@ -214,7 +214,7 @@ static ERROR xtag_radialgradient(objSVG *Self, const XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_diamondgradient(objSVG *Self, const XMLTag *Tag)
+static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -259,7 +259,7 @@ static ERROR xtag_diamondgradient(objSVG *Self, const XMLTag *Tag)
                else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
-            case SVF_XLINK_HREF: add_inherit(Self, &gradient->Head, val); break;
+            case SVF_XLINK_HREF: add_inherit(Self, gradient, val); break;
             case SVF_ID: id = val; break;
             default: {
                LONG j;
@@ -275,12 +275,12 @@ static ERROR xtag_diamondgradient(objSVG *Self, const XMLTag *Tag)
       if (stopcount >= 2) {
          GradientStop stops[stopcount];
          process_gradient_stops(Self, Tag, stops);
-         SetArray((OBJECTPTR)gradient, FID_Stops, stops, stopcount);
+         SetArray(gradient, FID_Stops, stops, stopcount);
       }
 
       if (!acInit(gradient)) {
          if (id) SetName(gradient, id);
-         return scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
+         return scAddDef(Self->Scene, id, gradient);
       }
       else return ERR_Init;
    }
@@ -290,7 +290,7 @@ static ERROR xtag_diamondgradient(objSVG *Self, const XMLTag *Tag)
 //****************************************************************************
 // NB: Contour gradients are not part of the SVG standard.
 
-static ERROR xtag_contourgradient(objSVG *Self, const XMLTag *Tag)
+static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -330,11 +330,11 @@ static ERROR xtag_contourgradient(objSVG *Self, const XMLTag *Tag)
                else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
-            case SVF_XLINK_HREF: add_inherit(Self, &gradient->Head, val); break;
+            case SVF_XLINK_HREF: add_inherit(Self, gradient, val); break;
             case SVF_ID: id = val; break;
             default: {
                LONG j;
-               for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
+               for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
                if (Tag->Attrib[a].Name[j] IS ':') break;
                log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;
@@ -346,12 +346,12 @@ static ERROR xtag_contourgradient(objSVG *Self, const XMLTag *Tag)
       if (stopcount >= 2) {
          GradientStop stops[stopcount];
          process_gradient_stops(Self, Tag, stops);
-         SetArray((OBJECTPTR)gradient, FID_Stops, stops, stopcount);
+         SetArray(gradient, FID_Stops, stops, stopcount);
       }
 
       if (!acInit(gradient)) {
          if (id) SetName(gradient, id);
-         return scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
+         return scAddDef(Self->Scene, id, gradient);
       }
       else return ERR_Init;
    }
@@ -360,7 +360,7 @@ static ERROR xtag_contourgradient(objSVG *Self, const XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_conicgradient(objSVG *Self, const XMLTag *Tag)
+static ERROR xtag_conicgradient(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -409,11 +409,11 @@ static ERROR xtag_conicgradient(objSVG *Self, const XMLTag *Tag)
                else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
-            case SVF_XLINK_HREF: add_inherit(Self, &gradient->Head, val); break;
+            case SVF_XLINK_HREF: add_inherit(Self, gradient, val); break;
             case SVF_ID: id = val; break;
             default: {
                LONG j;
-               for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
+               for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
                if (Tag->Attrib[a].Name[j] IS ':') break;
                log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;
@@ -425,12 +425,12 @@ static ERROR xtag_conicgradient(objSVG *Self, const XMLTag *Tag)
       if (stopcount >= 2) {
          GradientStop stops[stopcount];
          process_gradient_stops(Self, Tag, stops);
-         SetArray((OBJECTPTR)gradient, FID_Stops, stops, stopcount);
+         SetArray(gradient, FID_Stops, stops, stopcount);
       }
 
       if (!acInit(gradient)) {
          if (id) SetName(gradient, id);
-         return scAddDef(Self->Scene, id, (OBJECTPTR)gradient);
+         return scAddDef(Self->Scene, id, gradient);
       }
       else return ERR_Init;
    }

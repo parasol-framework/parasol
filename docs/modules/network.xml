@@ -72,9 +72,9 @@
   <function>
     <name>SetSSL</name>
     <comment>Alters SSL settings on an initialised NetSocket object.</comment>
-    <prototype>ERROR netSetSSL(struct rkNetSocket * NetSocket, ...)</prototype>
+    <prototype>ERROR netSetSSL(objNetSocket * NetSocket, ...)</prototype>
     <input>
-      <param type="struct rkNetSocket *" name="NetSocket">The target NetSocket object.</param>
+      <param type="objNetSocket *" name="NetSocket">The target NetSocket object.</param>
       <param type="..." name="Tags">Series of tags terminated by TAGEND.</param>
     </input>
     <description>
@@ -202,12 +202,12 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
       <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
     </struct>
 
-    <struct name="rkNetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
+    <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
       <field name="IP" type="char" size="8">IP address in 4/8-byte format</field>
-      <field name="Next" type="struct rkNetClient *">Next client in the chain</field>
-      <field name="Prev" type="struct rkNetClient *">Previous client in the chain</field>
-      <field name="NetSocket" type="struct rkNetSocket *">Reference to the parent socket</field>
-      <field name="Sockets" type="struct rkClientSocket *">Pointer to a list of sockets opened with this client.</field>
+      <field name="Next" type="struct NetClient *">Next client in the chain</field>
+      <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
+      <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
+      <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
       <field name="UserData" type="APTR">Free for user data storage.</field>
       <field name="TotalSockets" type="LONG">Count of all created sockets</field>
     </struct>

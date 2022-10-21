@@ -15,6 +15,17 @@
 #include <parasol/modules/display.h>
 #endif
 
+typedef class plVectorColour objVectorColour;
+typedef class plVectorScene objVectorScene;
+typedef class plVectorImage objVectorImage;
+typedef class plVectorPattern objVectorPattern;
+typedef class plVectorGradient objVectorGradient;
+typedef class plFilterEffect objFilterEffect;
+typedef class plVectorFilter objVectorFilter;
+typedef class plVector objVector;
+
+typedef class plVectorViewport objVectorViewport;
+  
 // Options for drawing arcs.
 
 #define ARC_LARGE 0x00000001
@@ -354,7 +365,7 @@ struct PathCommand {
 
 struct VectorMatrix {
    struct VectorMatrix * Next;    // The next transform in the list.
-   struct rkVector * Vector;      // The vector associated with the transform.
+   objVector * Vector;            // The vector associated with the transform.
    DOUBLE ScaleX;                 // Matrix value A
    DOUBLE ShearY;                 // Matrix value B
    DOUBLE ShearX;                 // Matrix value C
@@ -413,56 +424,23 @@ INLINE ERROR vpSetCommandList(APTR Ob, APTR Commands, LONG Size) {
 
 #define VER_VECTORCOLOUR (1.000000)
 
-typedef struct rkVectorColour {
-   OBJECT_HEADER
-   DOUBLE Red;
-   DOUBLE Green;
-   DOUBLE Blue;
-   DOUBLE Alpha;
+typedef class plVectorColour : public BaseClass {
+   public:
+   DOUBLE Red;    // The red component value.
+   DOUBLE Green;  // The green component value.
+   DOUBLE Blue;   // The blue component value.
+   DOUBLE Alpha;  // The alpha component value.
 } objVectorColour;
 
 #ifdef PRV_VECTORSCENE
 struct OrderedVector {
-   bool operator()(const struct rkVector *a, const struct rkVector *b) const;
+   bool operator()(const objVector *a, const objVector *b) const;
 };
 #endif
    
 // VectorScene class definition
 
 #define VER_VECTORSCENE (1.000000)
-
-typedef struct rkVectorScene {
-   OBJECT_HEADER
-   LARGE    RenderTime;                 // Microseconds elapsed during the last rendering operation.
-   DOUBLE   Gamma;                      // Not currently implemented.
-   struct rkVectorScene * HostScene;    // Reference to a controlling VectorScene at the top of the hierarchy, if applicable.
-   struct rkVector * Viewport;          // Reference to the VectorViewport that contains the VectorScene.
-   struct rkBitmap * Bitmap;            // Target bitmap.
-   struct KeyStore * Defs;              // Stores references to gradients, images, patterns etc
-   OBJECTID SurfaceID;                  // Target surface for automated rendering
-   LONG     Flags;                      // Optional flags.
-   LONG     PageWidth;                  // Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
-   LONG     PageHeight;                 // Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
-   LONG     SampleMethod;               // VSM: Method to use for resampling images and patterns.
-
-#ifdef PRV_VECTORSCENE
-   DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
-   class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
-   agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
-   APTR KeyHandle; // Keyboard subscription
-   std::unordered_set<struct rkVectorViewport *> PendingResizeMsgs;
-   std::unordered_map<struct rkVector *, LONG> InputSubscriptions;
-   std::set<struct rkVector *, OrderedVector> KeyboardSubscriptions;
-   std::vector<struct InputBoundary> InputBoundaries;
-   std::unordered_map<struct rkVectorViewport *, std::unordered_map<struct rkVector *, FUNCTION>> ResizeSubscriptions;
-   OBJECTID ButtonLock; // The vector currently holding a button lock
-   OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
-   LONG InputHandle;
-   LONG Cursor; // Current cursor image
-   UBYTE AdaptorType;
-  
-#endif
-} objVectorScene;
 
 // VectorScene methods
 
@@ -494,40 +472,72 @@ INLINE ERROR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) {
 }
 
 
+typedef class plVectorScene : public BaseClass {
+   public:
+   LARGE    RenderTime;           // Returns the rendering time of the last scene.
+   DOUBLE   Gamma;                // Private. Not currently implemented.
+   objVectorScene * HostScene;    // Refers to a top-level VectorScene object, if applicable.
+   objVector * Viewport;          // References the first object in the scene, which must be a VectorViewport object.
+   objBitmap * Bitmap;            // Target bitmap for drawing vectors.
+   struct KeyStore * Defs;        // Stores references to gradients, images, patterns etc
+   OBJECTID SurfaceID;            // May refer to a Surface object for enabling automatic rendering.
+   LONG     Flags;                // Optional flags.
+   LONG     PageWidth;            // The width of the page that contains the vector.
+   LONG     PageHeight;           // The height of the page that contains the vector.
+   LONG     SampleMethod;         // The sampling method to use when interpolating images and patterns.
+   // Action stubs
+
+   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+      struct acRedimension args = { X, Y, Z, Width, Height, Depth };
+      return Action(AC_Redimension, this, &args);
+   }
+   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+      struct acResize args = { Width, Height, Depth };
+      return Action(AC_Resize, this, &args);
+   }
+} objVectorScene;
+
 // VectorImage class definition
 
 #define VER_VECTORIMAGE (1.000000)
 
-typedef struct rkVectorImage {
-   OBJECT_HEADER
-   DOUBLE X;                      // Starting horizontal coordinate
-   DOUBLE Y;                      // Starting vertical coordinate
-   struct rkPicture * Picture;
-   struct rkBitmap * Bitmap;
-   LONG   Units;                  // VUNIT constant, defines the coordinate system for (X,Y)
-   LONG   Dimensions;
-   LONG   SpreadMethod;
-   LONG   AspectRatio;            // Defines how the referenced image should fit in the boundary of its target shape.
+typedef class plVectorImage : public BaseClass {
+   public:
+   DOUBLE X;                // Apply a horizontal offset to the image, the origin of which is determined by the #Units value.
+   DOUBLE Y;                // Apply a vertical offset to the image, the origin of which is determined by the #Units value.
+   objPicture * Picture;    // Refers to a @Picture from which the source #Bitmap is acquired.
+   objBitmap * Bitmap;      // Reference to a source bitmap for the rendering algorithm.
+   LONG   Units;            // Declares the coordinate system to use for the #X and #Y values.
+   LONG   Dimensions;       // Dimension flags define whether individual dimension fields contain fixed or relative values.
+   LONG   SpreadMethod;     // Defines the drawing mode.
+   LONG   AspectRatio;      // Flags that affect the aspect ratio of the image within its target vector.
 } objVectorImage;
 
 // VectorPattern class definition
 
 #define VER_VECTORPATTERN (1.000000)
 
-typedef struct rkVectorPattern {
-   OBJECT_HEADER
-   DOUBLE X;                              // Starting horizontal coordinate
-   DOUBLE Y;                              // Starting vertical coordinate
-   DOUBLE Width;                          // Width of the canvas
-   DOUBLE Height;                         // Height of the canvas
-   DOUBLE Opacity;                        // Level of opacity from 0 - 1.0
-   struct rkVectorScene * Scene;          // Internal scene
-   struct rkVectorViewport * Viewport;    // Internal viewport
-   struct rkVectorPattern * Inherit;      // Reference to another pattern from which to inherit attributes
-   LONG   SpreadMethod;                   // Behaviour to use when pattern bounds do not match the vector path.
-   LONG   Units;                          // VUNIT constant
-   LONG   ContentUnits;                   // VUNIT constant
-   LONG   Dimensions;
+typedef class plVectorPattern : public BaseClass {
+   public:
+   DOUBLE X;                        // X coordinate for the pattern.
+   DOUBLE Y;                        // Y coordinate for the pattern.
+   DOUBLE Width;                    // Width of the pattern tile.
+   DOUBLE Height;                   // Height of the pattern tile.
+   DOUBLE Opacity;                  // The opacity of the pattern.
+   objVectorScene * Scene;          // Refers to the internal @VectorScene that will contain the rendered pattern.
+   objVectorViewport * Viewport;    // Refers to the viewport that contains the pattern.
+   objVectorPattern * Inherit;      // Inherit attributes from a VectorPattern referenced here.
+   LONG   SpreadMethod;             // The behaviour to use when the pattern bounds do not match the vector path.
+   LONG   Units;                    // Defines the coordinate system for fields X, Y, Width and Height.
+   LONG   ContentUnits;             // Private. Not yet implemented.
+   LONG   Dimensions;               // Dimension flags are stored here.
 
 #ifdef PRV_VECTORPATTERN
    struct VectorMatrix *Matrices;
@@ -540,64 +550,56 @@ typedef struct rkVectorPattern {
 
 #define VER_VECTORGRADIENT (1.000000)
 
-typedef struct rkVectorGradient {
-   OBJECT_HEADER
-   DOUBLE X1;                            // Starting X coordinate of the gradient 'line'
-   DOUBLE Y1;                            // Starting Y coordinate of the gradient 'line'
-   DOUBLE X2;                            // Ending X of the gradient 'line'
-   DOUBLE Y2;                            // Ending Y of the gradient 'line'
-   DOUBLE CenterX;                       // Center X coordinate of radial gradient shapes.
-   DOUBLE CenterY;                       // Center Y coordinate of radial gradient shapes.
-   DOUBLE FX;                            // Focal X coordinate for radial gradient shapes.
-   DOUBLE FY;                            // Focal Y coordinate for radial gradient shapes.
-   DOUBLE Radius;                        // The size of a radial gradient radius.
-   struct rkVectorGradient * Inherit;    // Reference to another gradient from which to inherit attributes.
-   LONG   SpreadMethod;                  // Defines the spread method to use for gradient fills.
-   LONG   Units;                         // Defines the coordinate system for (x1,y1),(x2,y2)
-   LONG   Type;
-   LONG   Flags;                         // Optional flags.
-   LONG   TotalStops;                    // The total number of records in the Stops array.
+typedef class plVectorGradient : public BaseClass {
+   public:
+   DOUBLE X1;                      // Initial X coordinate for the gradient.
+   DOUBLE Y1;                      // Initial Y coordinate for the gradient.
+   DOUBLE X2;                      // Final X coordinate for the gradient.
+   DOUBLE Y2;                      // Final Y coordinate for the gradient.
+   DOUBLE CenterX;                 // The horizontal center point of the gradient.
+   DOUBLE CenterY;                 // The vertical center point of the gradient.
+   DOUBLE FX;                      // The horizontal focal point for radial gradients.
+   DOUBLE FY;                      // The vertical focal point for radial gradients.
+   DOUBLE Radius;                  // The radius of the gradient.
+   objVectorGradient * Inherit;    // Inherit attributes from the VectorGradient referenced here.
+   LONG   SpreadMethod;            // The behaviour to use when the gradient bounds do not match the vector path.
+   LONG   Units;                   // Defines the coordinate system for fields X1, Y1, X2 and Y2.
+   LONG   Type;                    // Specifies the type of gradient (e.g. RADIAL, LINEAR)
+   LONG   Flags;                   // Dimension flags are stored here.
+   LONG   TotalStops;              // Total number of stops defined in the Stops array.
+   // Action stubs
 
-#ifdef PRV_VECTORGRADIENT
-   struct GradientStop *Stops;  // An array of gradient stop colours.
-   struct VectorMatrix *Matrices;
-   class GradientColours *Colours;
-   STRING ID;
-   LONG NumericID;
-   WORD ChangeCounter;
-  
-#endif
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
 } objVectorGradient;
 
 // FilterEffect class definition
 
 #define VER_FILTEREFFECT (1.000000)
 
-typedef struct rkFilterEffect {
-   OBJECT_HEADER
-   struct rkFilterEffect * Next;    // Next filter in the chain.
-   struct rkFilterEffect * Prev;    // Previous filter in the chain.
-   struct rkBitmap * Target;        // Target bitmap for rendering the effect.
-   struct rkFilterEffect * Input;   // The effect uses another effect as an input.
-   struct rkFilterEffect * Mix;     // Reference to an additional effect for mixing, e.g. compositing
-   DOUBLE X;                        // Primitive x coordinate.
-   DOUBLE Y;                        // Primitive y coordinate.
-   DOUBLE Width;                    // Primitive width.
-   DOUBLE Height;                   // Primitive height.
-   LONG   Dimensions;               // Primitive dimensions.
-   LONG   SourceType;               // Desired source input.
-   LONG   MixType;                  // Optional input for mixing.
+typedef class plFilterEffect : public BaseClass {
+   public:
+   objFilterEffect * Next;    // Next filter in the chain.
+   objFilterEffect * Prev;    // Previous filter in the chain.
+   objBitmap * Target;        // Target bitmap for rendering the effect.
+   objFilterEffect * Input;   // Reference to another effect to be used as an input source.
+   objFilterEffect * Mix;     // Reference to another effect to be used a mixer with Input.
+   DOUBLE X;                  // Primitive X coordinate for the effect.
+   DOUBLE Y;                  // Primitive Y coordinate for the effect.
+   DOUBLE Width;              // Primitive width of the effect area.
+   DOUBLE Height;             // Primitive height of the effect area.
+   LONG   Dimensions;         // Dimension flags are stored here.
+   LONG   SourceType;         // Specifies an input source for the effect algorithm, if required.
+   LONG   MixType;            // If a secondary mix input is required for the effect, specify it here.
+   // Action stubs
 
-#ifdef PRV_FILTEREFFECT
-   struct rkVectorFilter *Filter; // Direct reference to the parent filter
-   UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
-  
-#endif
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
+   inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
 } objFilterEffect;
 
 struct MergeSource {
-   LONG SourceType;                   // The type of the required source.
-   struct rkFilterEffect * Effect;    // Effect pointer if the SourceType is REFERENCE.
+   LONG SourceType;             // The type of the required source.
+   objFilterEffect * Effect;    // Effect pointer if the SourceType is REFERENCE.
 };
 
 // ImageFX class definition
@@ -644,38 +646,24 @@ struct MergeSource {
 
 #define VER_VECTORFILTER (1.000000)
 
-typedef struct rkVectorFilter {
-   OBJECT_HEADER
-   DOUBLE X;                           // Left-most position of filter area
-   DOUBLE Y;                           // Top-most position of filter area
-   DOUBLE Width;                       // Width of filter area
-   DOUBLE Height;                      // Height of filter area
-   DOUBLE Opacity;                     // Level of opacity from 0 - 1.0
-   struct rkVectorFilter * Inherit;    // Reference to another pattern from which to inherit attributes
-   LONG   ResX;                        // Width of the intermediate images in pixels
-   LONG   ResY;                        // Height of the intermediate images in pixels
-   LONG   Units;                       // VUNIT constant
-   LONG   PrimitiveUnits;              // VUNIT constant
-   LONG   Dimensions;                  // Flags for detailing area values
-   LONG   ColourSpace;                 // Operating colour space for RGB values
+typedef class plVectorFilter : public BaseClass {
+   public:
+   DOUBLE X;                     // X coordinate for the filter.
+   DOUBLE Y;                     // Y coordinate for the filter.
+   DOUBLE Width;                 // The width of the filter area.  Can be expressed as a fixed or relative coordinate.
+   DOUBLE Height;                // The height of the filter area.  Can be expressed as a fixed or relative coordinate.
+   DOUBLE Opacity;               // The opacity of the filter.
+   objVectorFilter * Inherit;    // Inherit attributes from a VectorFilter referenced here.
+   LONG   ResX;                  // Width of the intermediate images, measured in pixels.
+   LONG   ResY;                  // Height of the intermediate images, measured in pixels.
+   LONG   Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
+   LONG   PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
+   LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or relative values.
+   LONG   ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
+   // Action stubs
 
-#ifdef PRV_VECTORFILTER
-   rkVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
-   rkVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
-   struct rkVectorScene *SourceScene; // Internal scene for rendering SourceGraphic
-   struct rkVectorScene *Scene;       // Scene that the filter belongs to.
-   objBitmap *SourceGraphic;          // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
-   objBitmap *BkgdBitmap;             // Target bitmap supplied by Scene.acDraw()
-   objFilterEffect *ActiveEffect;     // Current effect being processed by the pipeline.
-   objFilterEffect *Effects;          // Pointer to the first effect in the chain.
-   objFilterEffect *LastEffect;
-   std::vector<std::unique_ptr<filter_bitmap>> Bank;
-   ClipRectangle VectorClip;          // Clipping region of the vector client (reflects the vector bounds)
-   UBYTE BankIndex;
-   bool Rendered;
-   bool Disabled;
-  
-#endif
+   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
 } objVectorFilter;
 
 // VectorText class definition
@@ -726,53 +714,9 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
 
 #define VER_VECTORVIEWPORT (1.000000)
 
-#define SHAPE_PUBLIC \
-   struct rkVector *Child; \
-   struct rkVectorScene *Scene; \
-   struct rkVector *Next; \
-   struct rkVector *Prev; \
-   OBJECTPTR Parent; \
-   struct VectorMatrix *Matrices; \
-   DOUBLE StrokeOpacity; \
-   DOUBLE FillOpacity; \
-   DOUBLE Opacity; \
-   DOUBLE MiterLimit; \
-   DOUBLE InnerMiterLimit; \
-   DOUBLE DashOffset; \
-   LONG   Visibility; \
-   LONG   Flags; \
-   LONG   Cursor; \
-   LONG   PathQuality; \
-   LONG   ColourSpace;
-  
 // Vector class definition
 
 #define VER_VECTOR (1.000000)
-
-typedef struct rkVector {
-   OBJECT_HEADER
-   struct rkVector * Child;         // The first child vector, or NULL.
-   struct rkVectorScene * Scene;    // Short-cut to the top-level VectorScene.
-   struct rkVector * Next;          // The next vector in the branch, or NULL.
-   struct rkVector * Prev;          // The previous vector in the branch, or NULL.
-   OBJECTPTR Parent;                // The parent vector, or NULL if this is the top-most vector.
-   struct VectorMatrix * Matrices;  // A list of transform matrices to apply to the vector.
-   DOUBLE    StrokeOpacity;         // Defines the opacity of the path stroke.
-   DOUBLE    FillOpacity;           // The opacity to use when filling the vector.
-   DOUBLE    Opacity;               // An overall opacity value for the vector.
-   DOUBLE    MiterLimit;            // Imposes a limit on the ratio of the miter length to the StrokeWidth.
-   DOUBLE    InnerMiterLimit;       // A special limit to apply when the MITER_ROUND line-join effect is in use.
-   DOUBLE    DashOffset;            // For the DashArray, applies an initial dash offset.
-   LONG      Visibility;            // Controls the visibility of a vector and its children.
-   LONG      Flags;                 // Optional flags.
-   LONG      Cursor;                // The mouse cursor to display when the pointer is within the vector's boundary.
-   LONG      PathQuality;           // Defines the quality of rendered path outlines.
-   LONG      ColourSpace;           // Desired colour space to use when blending colours.
-
-#ifdef PRV_VECTOR
- SHAPE_PRIVATE 
-#endif
-} objVector;
 
 // Vector methods
 
@@ -852,13 +796,99 @@ INLINE ERROR vecFreeMatrix(APTR Ob, struct VectorMatrix * Matrix) {
 }
 
 
+typedef class plVector : public BaseClass {
+   public:
+   objVector * Child;                 // The first child vector, or NULL.
+   objVectorScene * Scene;            // Short-cut to the top-level @VectorScene.
+   objVector * Next;                  // The next vector in the branch, or NULL.
+   objVector * Prev;                  // The previous vector in the branch, or NULL.
+   OBJECTPTR Parent;                  // The parent of the vector, or NULL if this is the top-most vector.
+   struct VectorMatrix * Matrices;    // A linked list of transform matrices that have been applied to the vector.
+   DOUBLE    StrokeOpacity;           // Defines the opacity of the path stroke.
+   DOUBLE    FillOpacity;             // The opacity to use when filling the vector.
+   DOUBLE    Opacity;                 // Defines an overall opacity for the vector's graphics.
+   DOUBLE    MiterLimit;              // Imposes a limit on the ratio of the miter length to the StrokeWidth.
+   DOUBLE    InnerMiterLimit;         // Private. No internal documentation exists for this feature.
+   DOUBLE    DashOffset;              // The distance into the dash pattern to start the dash.  Can be a negative number.
+   LONG      Visibility;              // Controls the visibility of a vector and its children.
+   LONG      Flags;                   // Optional flags.
+   LONG      Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
+   LONG      PathQuality;             // Defines the quality of a path when it is rendered.
+   LONG      ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
+
+#ifdef PRV_VECTOR
+   DOUBLE FinalX, FinalY;
+   DOUBLE BX1, BY1, BX2, BY2;
+   DOUBLE FillGradientAlpha, StrokeGradientAlpha;
+   DOUBLE StrokeWidth;
+   agg::path_storage BasePath;
+   agg::trans_affine Transform;
+   RGB8 rgbStroke, rgbFill;
+   objVectorFilter *Filter;
+   objVectorViewport *ParentView;
+   CSTRING FilterString, StrokeString, FillString;
+   STRING ID;
+   void   (*GeneratePath)(objVector *);
+   agg::rasterizer_scanline_aa<> *StrokeRaster;
+   agg::rasterizer_scanline_aa<> *FillRaster;
+   objVectorClip     *ClipMask;
+   objVectorGradient *StrokeGradient, *FillGradient;
+   objVectorImage    *FillImage, *StrokeImage;
+   objVectorPattern  *FillPattern, *StrokePattern;
+   objVectorTransition *Transition;
+   objVector *Morph;
+   DashedStroke *DashArray;
+   GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
+   FRGB StrokeColour, FillColour;
+   std::vector<FeedbackSubscription> *FeedbackSubscriptions;
+   std::vector<InputSubscription> *InputSubscriptions;
+   std::vector<KeyboardSubscription> *KeyboardSubscriptions;
+   LONG   InputMask;
+   LONG   NumericID;
+   LONG   PathLength;
+   UBYTE  MorphFlags;
+   UBYTE  FillRule;
+   UBYTE  ClipRule;
+   UBYTE  Dirty;
+   UBYTE  TabOrder;
+   UBYTE  EnableBkgd:1;
+   UBYTE  DisableFillColour:1;
+   UBYTE  ButtonLock:1;
+   UBYTE  RelativeStrokeWidth:1;
+   UBYTE  DisableHitTesting:1;
+   UBYTE  ResizeSubscription:1;
+   agg::line_join_e  LineJoin;
+   agg::line_cap_e   LineCap;
+   agg::inner_join_e InnerJoin;
+   // Methods
+   DOUBLE fixed_stroke_width();
+  
+#endif
+   // Action stubs
+
+   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
+   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
+   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC_Draw, this, &args);
+   }
+   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
+   inline ERROR hide() { return Action(AC_Hide, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
+   inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
+   // NewOwner
+
+   inline ERROR show() { return Action(AC_Show, this, NULL); }
+} objVector;
+
 struct VectorBase {
-   ERROR (*_DrawPath)(struct rkBitmap *, APTR, DOUBLE, APTR, APTR);
+   ERROR (*_DrawPath)(objBitmap *, APTR, DOUBLE, OBJECTPTR, OBJECTPTR);
    void (*_FreePath)(APTR);
    ERROR (*_GenerateEllipse)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR);
    ERROR (*_GeneratePath)(CSTRING, APTR);
    ERROR (*_GenerateRectangle)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR);
-   void (*_ReadPainter)(APTR, CSTRING, struct FRGB *, struct rkVectorGradient **, struct rkVectorImage **, struct rkVectorPattern **);
+   void (*_ReadPainter)(OBJECTPTR, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
    void (*_TranslatePath)(APTR, DOUBLE, DOUBLE);
    void (*_MoveTo)(APTR, DOUBLE, DOUBLE);
    void (*_LineTo)(APTR, DOUBLE, DOUBLE);
@@ -870,7 +900,7 @@ struct VectorBase {
    void (*_ClosePath)(APTR);
    void (*_RewindPath)(APTR);
    LONG (*_GetVertex)(APTR, DOUBLE *, DOUBLE *);
-   ERROR (*_ApplyPath)(APTR, APTR);
+   ERROR (*_ApplyPath)(APTR, OBJECTPTR);
    ERROR (*_Rotate)(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
    ERROR (*_Translate)(struct VectorMatrix *, DOUBLE, DOUBLE);
    ERROR (*_Skew)(struct VectorMatrix *, DOUBLE, DOUBLE);
@@ -913,14 +943,14 @@ struct VectorBase {
 //****************************************************************************
 
 #ifdef PRV_VECTORSCENE
-__inline__ bool OrderedVector::operator()(const struct rkVector *a, const struct rkVector *b) const {
-   if (a->TabOrder == b->TabOrder) return a->Head.UID < b->Head.UID;
+__inline__ bool OrderedVector::operator()(const objVector *a, const objVector *b) const {
+   if (a->TabOrder == b->TabOrder) return a->UID < b->UID;
    else return a->TabOrder < b->TabOrder;
 }
 #endif
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
-   Colour->Head.ClassID = ID_VECTORCOLOUR;
+   Colour->ClassID = ID_VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
    Colour->Blue  = Blue;

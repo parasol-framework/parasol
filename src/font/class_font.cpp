@@ -49,10 +49,10 @@ Please note that if special effects and transforms are desired then use the @Vec
 
 *****************************************************************************/
 
-static BitmapCache * check_bitmap_cache(objFont *, LONG);
-static ERROR cache_truetype_font(objFont *, CSTRING);
-static ERROR SET_Point(objFont *, Variable *);
-static ERROR SET_Style(objFont *, CSTRING );
+static BitmapCache * check_bitmap_cache(extFont *, LONG);
+static ERROR cache_truetype_font(extFont *, CSTRING);
+static ERROR SET_Point(extFont *, Variable *);
+static ERROR SET_Style(extFont *, CSTRING );
 
 const char * get_ft_error(FT_Error err)
 {
@@ -78,10 +78,10 @@ FieldNotSet: The Bitmap and/or String field has not been set.
 
 *****************************************************************************/
 
-static ERROR draw_bitmap_font(objFont *);
-static ERROR draw_vector_font(objFont *);
+static ERROR draw_bitmap_font(extFont *);
+static ERROR draw_vector_font(extFont *);
 
-static ERROR FONT_Draw(objFont *Self, APTR Void)
+static ERROR FONT_Draw(extFont *Self, APTR Void)
 {
    if (!(Self->Flags & FTF_SCALABLE)) {
       return draw_bitmap_font(Self);
@@ -91,7 +91,7 @@ static ERROR FONT_Draw(objFont *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR FONT_Free(objFont *Self, APTR Void)
+static ERROR FONT_Free(extFont *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -142,7 +142,7 @@ static ERROR FONT_Free(objFont *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR FONT_Init(objFont *Self, APTR Void)
+static ERROR FONT_Init(extFont *Self, APTR Void)
 {
    parasol::Log log;
    LONG diff, style;
@@ -352,7 +352,7 @@ static ERROR FONT_Init(objFont *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR FONT_NewObject(objFont *Self, APTR Void)
+static ERROR FONT_NewObject(extFont *Self, APTR Void)
 {
    update_dpi(); // A good time to check the DPI is whenever a new font is created.
 
@@ -413,7 +413,7 @@ convenience - we recommend that you set the Style field for determining font sty
 
 *****************************************************************************/
 
-static ERROR GET_Bold(objFont *Self, LONG *Value)
+static ERROR GET_Bold(extFont *Self, LONG *Value)
 {
    if (Self->Flags & FTF_BOLD) *Value = TRUE;
    else if (StrSearch("bold", Self->prvStyle, 0) != -1) *Value = TRUE;
@@ -421,9 +421,9 @@ static ERROR GET_Bold(objFont *Self, LONG *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_Bold(objFont *Self, LONG Value)
+static ERROR SET_Bold(extFont *Self, LONG Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       // If the font is initialised, setting the bold style is implicit
       return SET_Style(Self, "Bold");
    }
@@ -478,13 +478,13 @@ default value is 0x1b in the ASCII character set.
 
 *****************************************************************************/
 
-static ERROR GET_EscapeChar(objFont *Self, STRING *Value)
+static ERROR GET_EscapeChar(extFont *Self, STRING *Value)
 {
    *Value = Self->prvEscape;
    return ERR_Okay;
 }
 
-static ERROR SET_EscapeChar(objFont *Self, CSTRING Value)
+static ERROR SET_EscapeChar(extFont *Self, CSTRING Value)
 {
    if (Value) Self->prvEscape[0] = *Value;
    else Self->prvEscape[0] = 0x1b; // Revert to default
@@ -521,7 +521,7 @@ useful for pairing bitmap fonts with a scalable equivalent.
 
 *****************************************************************************/
 
-static ERROR SET_Face(objFont *Self, CSTRING Value)
+static ERROR SET_Face(extFont *Self, CSTRING Value)
 {
    LONG i, j, k;
 
@@ -593,7 +593,7 @@ Flags:  Optional flags.
 
 *****************************************************************************/
 
-static ERROR SET_Flags(objFont *Self, LONG Value)
+static ERROR SET_Flags(extFont *Self, LONG Value)
 {
    Self->Flags = (Self->Flags & 0xff000000) | (Value & 0x00ffffff);
    return ERR_Okay;
@@ -609,7 +609,7 @@ a font that has been loaded by the FreeType library (FT_Face).
 
 *****************************************************************************/
 
-static ERROR GET_FreeTypeFace(objFont *Self, APTR *Handle)
+static ERROR GET_FreeTypeFace(extFont *Self, APTR *Handle)
 {
    if (Self->Cache) *Handle = Self->Cache->Face;
    else *Handle = NULL;
@@ -661,7 +661,7 @@ convenience only - we recommend that you set the Style field for determining fon
 
 *****************************************************************************/
 
-static ERROR GET_Italic(objFont *Self, LONG *Value)
+static ERROR GET_Italic(extFont *Self, LONG *Value)
 {
    if (Self->Flags & FTF_ITALIC) *Value = TRUE;
    else if (StrSearch("italic", Self->prvStyle, 0) != -1) *Value = TRUE;
@@ -669,9 +669,9 @@ static ERROR GET_Italic(objFont *Self, LONG *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_Italic(objFont *Self, LONG Value)
+static ERROR SET_Italic(extFont *Self, LONG Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       // If the font is initialised, setting the italic style is implicit
       return SET_Style(Self, "Italic");
    }
@@ -694,7 +694,7 @@ will be taken into account in the resulting figure.
 
 *****************************************************************************/
 
-static ERROR GET_LineCount(objFont *Self, LONG *Value)
+static ERROR GET_LineCount(extFont *Self, LONG *Value)
 {
    if (!Self->prvLineCount) calc_lines(Self);
    *Value = Self->prvLineCount;
@@ -724,9 +724,9 @@ This feature is ideal for use when distributing custom fonts with an application
 
 *****************************************************************************/
 
-static ERROR SET_Path(objFont *Self, CSTRING Value)
+static ERROR SET_Path(extFont *Self, CSTRING Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) {
+   if (!Self->initialised()) {
       if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
       if (Value) Self->Path = StrClone(Value);
       return ERR_Okay;
@@ -753,13 +753,13 @@ Please note that the use of translucency will always have an impact on the time 
 
 *****************************************************************************/
 
-static ERROR GET_Opacity(objFont *Self, DOUBLE *Value)
+static ERROR GET_Opacity(extFont *Self, DOUBLE *Value)
 {
    *Value = (Self->Colour.Alpha * 100)>>8;
    return ERR_Okay;
 }
 
-static ERROR SET_Opacity(objFont *Self, DOUBLE Value)
+static ERROR SET_Opacity(extFont *Self, DOUBLE Value)
 {
    if (Value >= 100) Self->Colour.Alpha = 255;
    else if (Value <= 0) Self->Colour.Alpha = 0;
@@ -799,7 +799,7 @@ drop the font to point 8.  This does not impact upon scalable fonts, which can b
 
 *****************************************************************************/
 
-static ERROR GET_Point(objFont *Self, Variable *Value)
+static ERROR GET_Point(extFont *Self, Variable *Value)
 {
    if (Value->Type & FD_PERCENTAGE) return ERR_NoSupport;
 
@@ -809,7 +809,7 @@ static ERROR GET_Point(objFont *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_Point(objFont *Self, Variable *Value)
+static ERROR SET_Point(extFont *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE value;
@@ -828,7 +828,7 @@ static ERROR SET_Point(objFont *Self, Variable *Value)
 
    if (value < 1) value = 1;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       if (Self->Cache) {
          unload_glyph_cache(Self); // Remove any existing glyph reference
          Self->Point = value;
@@ -854,7 +854,7 @@ character from the font.
 
 *****************************************************************************/
 
-static ERROR SET_String(objFont *Self, CSTRING Value)
+static ERROR SET_String(extFont *Self, CSTRING Value)
 {
    if (!StrCompare(Value, Self->String, 0, STR_MATCH_CASE|STR_MATCH_LEN)) return ERR_Okay;
 
@@ -915,7 +915,7 @@ names.
 
 *****************************************************************************/
 
-static ERROR SET_Style(objFont *Self, CSTRING Value)
+static ERROR SET_Style(extFont *Self, CSTRING Value)
 {
    if ((!Value) or (!Value[0])) StrCopy("Regular", Self->prvStyle, sizeof(Self->prvStyle));
    else StrCopy(Value, Self->prvStyle, sizeof(Self->prvStyle));
@@ -929,14 +929,14 @@ Tabs: Private. Not implemented.
 
 *****************************************************************************/
 
-static ERROR GET_Tabs(objFont *Self, WORD **Tabs, LONG *Elements)
+static ERROR GET_Tabs(extFont *Self, WORD **Tabs, LONG *Elements)
 {
    *Tabs = Self->prvTabs;
    *Elements = Self->prvTotalTabs;
    return ERR_Okay;
 }
 
-static ERROR SET_Tabs(objFont *Self, WORD *Tabs, LONG Elements)
+static ERROR SET_Tabs(extFont *Self, WORD *Tabs, LONG Elements)
 {
    if (!Tabs) return ERR_NullArgs;
    if (Elements > 0xff) return ERR_BufferOverflow;
@@ -995,7 +995,7 @@ this to work, or a width of zero will be returned.
 
 *****************************************************************************/
 
-static ERROR GET_Width(objFont *Self, LONG *Value)
+static ERROR GET_Width(extFont *Self, LONG *Value)
 {
    if (!Self->String) {
       *Value = 0;
@@ -1062,7 +1062,7 @@ the string will be drawn.
 
 *****************************************************************************/
 
-static ERROR GET_YOffset(objFont *Self, LONG *Value)
+static ERROR GET_YOffset(extFont *Self, LONG *Value)
 {
    if (Self->prvLineCount < 1) calc_lines(Self);
 
@@ -1082,7 +1082,7 @@ static ERROR GET_YOffset(objFont *Self, LONG *Value)
 //****************************************************************************
 // For use by draw_vector_font() only.
 
-static void draw_vector_outline(objFont *Self, objBitmap *Bitmap, font_glyph *src, LONG dxcoord, LONG dycoord, const RGB8 *Colour)
+static void draw_vector_outline(extFont *Self, objBitmap *Bitmap, font_glyph *src, LONG dxcoord, LONG dycoord, const RGB8 *Colour)
 {
    RGB8 rgb;
    UBYTE  *data;
@@ -1159,7 +1159,7 @@ static void draw_vector_outline(objFont *Self, objBitmap *Bitmap, font_glyph *sr
 
 //****************************************************************************
 
-static ERROR draw_vector_font(objFont *Self)
+static ERROR draw_vector_font(extFont *Self)
 {
    parasol::Log log(__FUNCTION__);
    ULONG unicode;
@@ -1221,7 +1221,7 @@ static ERROR draw_vector_font(objFont *Self)
    LONG prevglyph = 0;
    LONG startx    = dxcoord;
    LONG charclip  = Self->WrapEdge - (Self->prvChar['.'].Advance * 3);
-   ULONG ucolour = bmpGetColourRGB(Bitmap, &Self->Underline);
+   ULONG ucolour  = Bitmap->getColour(Self->Underline);
 
    while (*str) {
       if (*str IS '\n') { // Reset the font to a new line
@@ -1284,7 +1284,7 @@ static ERROR draw_vector_font(objFont *Self)
 
          if ((unicode IS (ULONG)Self->prvEscape[0]) and (Self->EscapeCallback)) {
             str += charlen;
-            auto callback = (ERROR (*)(objFont *, CSTRING, LONG *, LONG *, LONG *))Self->EscapeCallback;
+            auto callback = (ERROR (*)(extFont *, CSTRING, LONG *, LONG *, LONG *))Self->EscapeCallback;
             LONG advance = 0;
             error = callback(Self, str, &advance, &dxcoord, &dycoord);
 
@@ -1460,7 +1460,7 @@ static ERROR draw_vector_font(objFont *Self)
 // All resources that are allocated in this routine must be untracked.
 // Assumes a cache lock is held on being called.
 
-static ERROR cache_truetype_font(objFont *Self, CSTRING Path)
+static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
 {
    parasol::Log log(__FUNCTION__);
    font_cache *fc;
@@ -1542,7 +1542,7 @@ static ERROR cache_truetype_font(objFont *Self, CSTRING Path)
 
 //****************************************************************************
 
-static ERROR generate_vector_outline(objFont *Self, font_glyph *Glyph)
+static ERROR generate_vector_outline(extFont *Self, font_glyph *Glyph)
 {
    // Stroker version
    FT_Stroker stroker;
@@ -1593,7 +1593,7 @@ static ERROR generate_vector_outline(objFont *Self, font_glyph *Glyph)
 
 static const UBYTE bias[26] = { 9,3,6,6,9,6,3,6,9,1,1,6,6,9,9,3,1,9,9,9,6,3,3,1,3,1 };
 
-static font_glyph * get_glyph(objFont *Self, ULONG Unicode, bool GetBitmap)
+static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1727,7 +1727,7 @@ static font_glyph * get_glyph(objFont *Self, ULONG Unicode, bool GetBitmap)
 
 //****************************************************************************
 
-static ERROR draw_bitmap_font(objFont *Self)
+static ERROR draw_bitmap_font(extFont *Self)
 {
    parasol::Log log(__FUNCTION__);
    objBitmap *bitmap;
@@ -1776,12 +1776,12 @@ static ERROR draw_bitmap_font(objFont *Self)
       else dxcoord = Self->X + Self->AlignWidth - linewidth;
    }
 
-   ULONG colour  = bmpGetColourRGB(bitmap, &Self->Colour);
-   ULONG ucolour = bmpGetColourRGB(bitmap, &Self->Underline);
+   ULONG colour  = bitmap->getColour(Self->Colour);
+   ULONG ucolour = bitmap->getColour(Self->Underline);
 
    if (Self->Outline.Alpha > 0) {
       Self->BmpCache->get_outline();
-      ocolour = bmpGetColourRGB(bitmap, &Self->Outline);
+      ocolour = bitmap->getColour(Self->Outline);
    }
    else ocolour = 0;
 
@@ -1851,7 +1851,7 @@ static ERROR draw_bitmap_font(objFont *Self)
 
          if ((unicode IS (ULONG)Self->prvEscape[0]) and (Self->EscapeCallback)) {
             str += charlen;
-            auto callback = (ERROR (*)(objFont *, STRING, LONG *, LONG *, LONG *))Self->EscapeCallback;
+            auto callback = (ERROR (*)(extFont *, STRING, LONG *, LONG *, LONG *))Self->EscapeCallback;
             LONG advance = 0;
             error = callback(Self, str, &advance, &dxcoord, &dycoord);
 
@@ -2107,7 +2107,7 @@ static ERROR draw_bitmap_font(objFont *Self)
 
 //****************************************************************************
 
-static void unload_glyph_cache(objFont *Font)
+static void unload_glyph_cache(extFont *Font)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -2200,7 +2200,7 @@ static ERROR add_font_class(void)
       FID_FileDescription|TSTR, "Font",
       FID_Actions|TPTR,         clFontActions,
       FID_Fields|TARRAY,        clFontFields,
-      FID_Size|TLONG,           sizeof(objFont),
+      FID_Size|TLONG,           sizeof(extFont),
       FID_Path|TSTR,            MOD_PATH,
       TAGEND));
 }

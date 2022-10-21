@@ -15,6 +15,8 @@
 #include <parasol/modules/network.h>
 #endif
 
+typedef class plHTTP objHTTP;
+
 // Output mode.
 
 #define HOM_DATA_FEED 0
@@ -122,87 +124,62 @@
 
 #define VER_HTTP (1.000000)
 
-typedef struct rkHTTP {
-   OBJECT_HEADER
-   DOUBLE   DataTimeout;     // Timeout for receiving data, measured in seconds
-   DOUBLE   ConnectTimeout;  // Timeout for initial connection, measured in seconds
-   LARGE    Index;           // Current read/write index, relative to content length so always starts from zero
-   LARGE    ContentLength;   // Content length as reported in the content length response field, -1 if streamed or unknown
-   LARGE    Size;            // Content size to use when uploading data
-   STRING   Host;            // Host / Domain
-   STRING   Realm;
-   STRING   Path;            // Path for file retrieval
-   STRING   OutputFile;      // Target file for downloaded content
-   STRING   InputFile;       // Source file for uploads
-   STRING   UserAgent;       // User agent to pass in the HTTP headers
-   APTR     UserData;        // User-specific data for the HTTP object
-   OBJECTID InputObjectID;   // An object to send HTTP content
-   OBJECTID OutputObjectID;  // An object to receive HTTP content
-   LONG     Method;          // HTTP Request: GET, HEAD, POST, PUT..
-   LONG     Port;            // Socket port number, usually port 80
-   LONG     ObjectMode;      // Either DataFeed or Write mode
-   LONG     Flags;           // Optional flags
-   LONG     Status;          // Status code recieved in the HTML response header
-   ERROR    Error;           // Result of the operation
-   LONG     Datatype;        // Datatype to use when sending HTTP data to a target object
-   LONG     CurrentState;    // Current state of the http get operation
-   STRING   ProxyServer;     // If using a proxy server, this is the name or IP address of the server
-   LONG     ProxyPort;       // The port of the proxy server
-   LONG     BufferSize;      // Preferred buffer size for things like outgoing operations (sending data)
+typedef class plHTTP : public BaseClass {
+   public:
+   DOUBLE   DataTimeout;     // The data timeout value, relevant when receiving or sending data.
+   DOUBLE   ConnectTimeout;  // The initial connection timeout value, measured in seconds.
+   LARGE    Index;           // Indicates download progress in terms of bytes received.
+   LARGE    ContentLength;   // The byte length of incoming or outgoing content.
+   LARGE    Size;            // Set this field to define the length of a data transfer when issuing a POST command.
+   STRING   Host;            // The targeted HTTP server is specified here, either by name or IP address.
+   STRING   Realm;           // Identifies the realm during HTTP authentication.
+   STRING   Path;            // The HTTP path targeted at the host server.
+   STRING   OutputFile;      // To download HTTP content to a file, set a file path here.
+   STRING   InputFile;       // To upload HTTP content from a file, set a file path here.
+   STRING   UserAgent;       // Specifies the name of the user-agent string that is sent in HTTP requests.
+   APTR     UserData;        // An unused field value that is useful for storing private data.
+   OBJECTID InputObjectID;   // Allows data to be sent from an object on execution of a POST command.
+   OBJECTID OutputObjectID;  // Incoming data can be sent to the object referenced in this field.
+   LONG     Method;          // The HTTP instruction to execute is defined here (defaults to GET).
+   LONG     Port;            // The HTTP port to use when targeting a server.
+   LONG     ObjectMode;      // The access mode used when passing data to a targeted object.
+   LONG     Flags;           // Optional flags.
+   LONG     Status;          // Indicates the HTTP status code returned on completion of an HTTP request.
+   ERROR    Error;           // The error code received for the most recently executed HTTP command.
+   LONG     Datatype;        // The default datatype format to use when passing data to a target object.
+   LONG     CurrentState;    // Indicates the current state of an HTTP object during its interaction with an HTTP server.
+   STRING   ProxyServer;     // The targeted HTTP server is specified here, either by name or IP address.
+   LONG     ProxyPort;       // The port to use when communicating with the proxy server.
+   LONG     BufferSize;      // Indicates the preferred buffer size for data operations.
+   // Action stubs
 
-#ifdef PRV_HTTP
-   FUNCTION Incoming;
-   FUNCTION Outgoing;
-   FUNCTION AuthCallback;
-   FUNCTION StateChanged;
-   std::unordered_map<std::string, std::string> *Args;
-   std::unordered_map<std::string, std::string> *Headers;
-   STRING Response;         // Response header buffer
-   STRING URI;              // Temporary string, used only when the user reads the URI
-   STRING Username;
-   STRING Password;
-   STRING AuthNonce;
-   STRING AuthOpaque;
-   STRING AuthPath;
-   STRING ContentType;
-   UBYTE  *RecvBuffer;      // Receive buffer - aids downloading if HTF_RECVBUFFER is defined
-   UBYTE  *WriteBuffer;
-   LONG   WriteSize;
-   LONG   WriteOffset;
-   APTR   Buffer;           // Temporary buffer for storing outgoing data
-   struct rkFile *flOutput;
-   struct rkFile *flInput;
-   objNetSocket *Socket;    // Socket over which the communication is taking place
-   UBYTE  *Chunk;           // Chunk buffer
-   LONG   ChunkSize;        // Size of the chunk buffer
-   LONG   ChunkBuffered;    // Number of bytes buffered, cannot exceed ChunkSize
-   LONG   ChunkLen;         // Length of the current chunk being processed (applies when reading the chunk data)
-   LONG   ChunkIndex;
-   TIMER  TimeoutManager;
-   LARGE  LastReceipt;      // Last time (microseconds) at which data was received
-   LARGE  TotalSent;        // Total number of bytes sent - exists for assisting debugging only
-   OBJECTID DialogWindow;
-   LONG   RecvSize;
-   LONG   ResponseIndex;    // Next element to write to in 'Buffer'
-   LONG   SearchIndex;      // Current position of the CRLFCRLF search.
-   LONG   ResponseSize;
-   WORD   InputPos;         // File name parsing position in InputFile
-   UBYTE  RedirectCount;
-   UBYTE  AuthCNonce[10];
-   UBYTE  AuthQOP[12];
-   UBYTE  AuthAlgorithm[12];
-   UBYTE  AuthRetries;
-   UWORD  Connecting:1;
-   UWORD  AuthAttempt:1;
-   UWORD  AuthPreset:1;
-   UWORD  AuthDigest:1;
-   UWORD  SecurePath:1;
-   UWORD  Tunneling:1;
-   UWORD  Chunked:1;
-   UWORD  MultipleInput:1;
-   UWORD  ProxyDefined:1;   // TRUE if the ProxyServer has been manually set by the user
-  
-#endif
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+      struct acSetVar args = { FieldName, Value };
+      return Action(AC_SetVar, this, &args);
+   }
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline LONG writeResult(CPTR Buffer, LONG Bytes) {
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!Action(AC_Write, this, &write)) return write.Result;
+      else return 0;
+   }
 } objHTTP;
 
 #endif

@@ -33,14 +33,14 @@ immediately sent.
 <header>Server-Client Connections</>
 
 To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the #Port value
-on which to listen for new clients.  If multiple connections from a single client IP address are allowed, you should
-also set the MULTICONNECT flag.
+on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the
+`MULTICONNECT` flag.
 
 When a new connection is detected, the #Feedback function will be called as `Feedback(*NetSocket, *ClientSocket, LONG State)`
 
 The NetSocket parameter refers to the original NetSocket object, @ClientSocket applies if a client connection is
-involved and the State value will be set to NTC_CONNECTED.  If a client disconnects, the #Feedback function will be
-called in the same manner but with a State value of NTC_DISCONNECTED.
+involved and the State value will be set to `NTC_CONNECTED`.  If a client disconnects, the #Feedback function will be
+called in the same manner but with a State value of `NTC_DISCONNECTED`.
 
 Information on all active connections can be read from the #Clients field.  This contains a linked list of IP
 addresses and their connections to the server port.
@@ -64,19 +64,19 @@ static LONG glMaxWriteLen = 16 * 1024;
 static void client_connect(HOSTHANDLE, APTR);
 #endif
 
-static void client_server_incoming(SOCKET_HANDLE, rkNetSocket *);
-static void client_server_outgoing(SOCKET_HANDLE, rkNetSocket *);
+static void client_server_incoming(SOCKET_HANDLE, extNetSocket *);
+static void client_server_outgoing(SOCKET_HANDLE, extNetSocket *);
 static void clientsocket_incoming(HOSTHANDLE, APTR);
 static void clientsocket_outgoing(HOSTHANDLE, APTR);
-static void free_client(objNetSocket *, rkNetClient *);
-static void free_client_socket(objNetSocket *, objClientSocket *, BYTE);
-static void server_client_connect(SOCKET_HANDLE, objNetSocket *);
-static void free_socket(objNetSocket *);
-static ERROR write_queue(objNetSocket *, NetQueue *, CPTR, LONG);
+static void free_client(extNetSocket *, NetClient *);
+static void free_client_socket(extNetSocket *, extClientSocket *, BYTE);
+static void server_client_connect(SOCKET_HANDLE, extNetSocket *);
+static void free_socket(extNetSocket *);
+static ERROR write_queue(extNetSocket *, NetQueue *, CPTR, LONG);
 
 //****************************************************************************
 
-static ERROR NETSOCKET_ActionNotify(objNetSocket *Self, struct acActionNotify *Args)
+static ERROR NETSOCKET_ActionNotify(extNetSocket *Self, struct acActionNotify *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -127,9 +127,9 @@ Failed: The connect failed for some other reason.
 *****************************************************************************/
 
 static void connect_name_resolved_nl(objNetLookup *, ERROR, CSTRING, IPAddress *, LONG);
-static void connect_name_resolved(objNetSocket *, ERROR, CSTRING, IPAddress *, LONG);
+static void connect_name_resolved(extNetSocket *, ERROR, CSTRING, IPAddress *, LONG);
 
-static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
+static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
 {
    parasol::Log log;
 
@@ -165,7 +165,7 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
          }
       }
 
-      Self->NetLookup->Callback = make_function_stdc(connect_name_resolved_nl);
+      ((extNetLookup *)Self->NetLookup)->Callback = make_function_stdc(connect_name_resolved_nl);
       if (nlResolveName(Self->NetLookup, Self->Address) != ERR_Okay) {
          return log.warning(Self->Error = ERR_HostNotFound);
       }
@@ -179,10 +179,10 @@ static ERROR NETSOCKET_Connect(objNetSocket *Self, struct nsConnect *Args)
 
 static void connect_name_resolved_nl(objNetLookup *NetLookup, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
 {
-   connect_name_resolved((objNetSocket *)CurrentContext(), Error, HostName, IPs, TotalIPs);
+   connect_name_resolved((extNetSocket *)CurrentContext(), Error, HostName, IPs, TotalIPs);
 }
 
-static void connect_name_resolved(objNetSocket *Socket, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
+static void connect_name_resolved(extNetSocket *Socket, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
 {
    parasol::Log log(__FUNCTION__);
    struct sockaddr_in server_address;
@@ -245,7 +245,7 @@ static void connect_name_resolved(objNetSocket *Socket, ERROR Error, CSTRING Hos
 //****************************************************************************
 // Action: DataFeed
 
-static ERROR NETSOCKET_DataFeed(objNetSocket *Self, struct acDataFeed *Args)
+static ERROR NETSOCKET_DataFeed(extNetSocket *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
@@ -267,7 +267,7 @@ Failed: Shutdown operation failed.
 
 *****************************************************************************/
 
-static ERROR NETSOCKET_Disable(objNetSocket *Self, APTR Void)
+static ERROR NETSOCKET_Disable(extNetSocket *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -299,7 +299,7 @@ be issued for each socket connection.
 If only one socket connection needs to be disconnected, please use #DisconnectSocket().
 
 -INPUT-
-obj(NetClient) Client: The client to be disconnected.
+struct(*NetClient) Client: The client to be disconnected.
 
 -ERRORS-
 Okay
@@ -308,7 +308,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR NETSOCKET_DisconnectClient(objNetSocket *Self, struct nsDisconnectClient *Args)
+static ERROR NETSOCKET_DisconnectClient(extNetSocket *Self, struct nsDisconnectClient *Args)
 {
    if ((!Args) or (!Args->Client)) return ERR_NullArgs;
    free_client(Self, Args->Client);
@@ -333,17 +333,17 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR NETSOCKET_DisconnectSocket(objNetSocket *Self, struct nsDisconnectSocket *Args)
+static ERROR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct nsDisconnectSocket *Args)
 {
    if ((!Args) or (!Args->Socket)) return ERR_NullArgs;
-   free_client_socket(Self, Args->Socket, TRUE);
+   free_client_socket(Self, (extClientSocket *)(Args->Socket), TRUE);
    return ERR_Okay;
 }
 
 //****************************************************************************
 // Action: Free
 
-static ERROR NETSOCKET_Free(objNetSocket *Self, APTR Void)
+static ERROR NETSOCKET_Free(extNetSocket *Self, APTR Void)
 {
 #ifdef ENABLE_SSL
    sslDisconnect(Self);
@@ -367,7 +367,7 @@ static ERROR NETSOCKET_Free(objNetSocket *Self, APTR Void)
 // If a netsocket object is about to be freed, ensure that we are not using the netsocket object in one of our message
 // handlers.  We can still delay the free request in any case.
 
-static ERROR NETSOCKET_FreeWarning(objNetSocket *Self, APTR Void)
+static ERROR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -375,7 +375,7 @@ static ERROR NETSOCKET_FreeWarning(objNetSocket *Self, APTR Void)
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
          log.msg("NetSocket in use, cannot free yet (request delayed).");
          Self->Terminating = TRUE;
-         DelayMsg(AC_Free, Self->Head.UID, NULL);
+         DelayMsg(AC_Free, Self->UID, NULL);
       }
       return ERR_InUse;
    }
@@ -401,7 +401,7 @@ Failed
 
 *****************************************************************************/
 
-static ERROR NETSOCKET_GetLocalIPAddress(objNetSocket *Self, struct nsGetLocalIPAddress *Args)
+static ERROR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIPAddress *Args)
 {
    parasol::Log log;
 
@@ -434,7 +434,7 @@ static ERROR NETSOCKET_GetLocalIPAddress(objNetSocket *Self, struct nsGetLocalIP
 //****************************************************************************
 // Action: Init()
 
-static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
+static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
 {
    parasol::Log log;
    ERROR error;
@@ -570,7 +570,7 @@ static ERROR NETSOCKET_Init(objNetSocket *Self, APTR Void)
 //****************************************************************************
 // Action: NewObject
 
-static ERROR NETSOCKET_NewObject(objNetSocket *Self, APTR Void)
+static ERROR NETSOCKET_NewObject(extNetSocket *Self, APTR Void)
 {
    Self->SocketHandle = NOHANDLE;
    Self->Error        = ERR_Okay;
@@ -602,7 +602,7 @@ Failed: A permanent failure has occurred and socket has been closed.
 
 *****************************************************************************/
 
-static ERROR NETSOCKET_Read(objNetSocket *Self, struct acRead *Args)
+static ERROR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
 {
    parasol::Log log;
 
@@ -658,7 +658,7 @@ AllocMemory: A message buffer could not be allocated.
 
 *****************************************************************************/
 
-static ERROR NETSOCKET_ReadMsg(objNetSocket *Self, struct nsReadMsg *Args)
+static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
 {
    parasol::Log log;
 
@@ -796,7 +796,7 @@ and automatically send it once the first connection has been made.
 
 *****************************************************************************/
 
-static ERROR NETSOCKET_Write(objNetSocket *Self, struct acWrite *Args)
+static ERROR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
 {
    parasol::Log log;
 
@@ -868,7 +868,7 @@ OutOfRange
 
 *****************************************************************************/
 
-static ERROR NETSOCKET_WriteMsg(objNetSocket *Self, struct nsWriteMsg *Args)
+static ERROR NETSOCKET_WriteMsg(extNetSocket *Self, struct nsWriteMsg *Args)
 {
    parasol::Log log;
 
@@ -905,7 +905,7 @@ connection.
 
 *****************************************************************************/
 
-static ERROR SET_Address(objNetSocket *Self, CSTRING Value)
+static ERROR SET_Address(extNetSocket *Self, CSTRING Value)
 {
    if (Self->Address) { FreeResource(Self->Address); Self->Address = NULL; }
    if (Value) Self->Address = StrClone(Value);
@@ -966,7 +966,7 @@ the new value in the #State field.
 
 *****************************************************************************/
 
-static ERROR GET_Feedback(objNetSocket *Self, FUNCTION **Value)
+static ERROR GET_Feedback(extNetSocket *Self, FUNCTION **Value)
 {
    if (Self->Feedback.Type != CALL_NONE) {
       *Value = &Self->Feedback;
@@ -975,7 +975,7 @@ static ERROR GET_Feedback(objNetSocket *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_Feedback(objNetSocket *Self, FUNCTION *Value)
+static ERROR SET_Feedback(extNetSocket *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->Feedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
@@ -1007,7 +1007,7 @@ longer be called.  All other error codes are ignored.
 
 *****************************************************************************/
 
-static ERROR GET_Incoming(objNetSocket *Self, FUNCTION **Value)
+static ERROR GET_Incoming(extNetSocket *Self, FUNCTION **Value)
 {
    if (Self->Incoming.Type != CALL_NONE) {
       *Value = &Self->Incoming;
@@ -1016,7 +1016,7 @@ static ERROR GET_Incoming(objNetSocket *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_Incoming(objNetSocket *Self, FUNCTION *Value)
+static ERROR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->Incoming.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
@@ -1045,7 +1045,7 @@ The Outgoing field is ineffective if the NetSocket is in server mode (target a c
 
 *****************************************************************************/
 
-static ERROR GET_Outgoing(objNetSocket *Self, FUNCTION **Value)
+static ERROR GET_Outgoing(extNetSocket *Self, FUNCTION **Value)
 {
    if (Self->Incoming.Type != CALL_NONE) {
       *Value = &Self->Incoming;
@@ -1054,7 +1054,7 @@ static ERROR GET_Outgoing(objNetSocket *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_Outgoing(objNetSocket *Self, FUNCTION *Value)
+static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
 {
    parasol::Log log;
 
@@ -1066,7 +1066,7 @@ static ERROR SET_Outgoing(objNetSocket *Self, FUNCTION *Value)
       Self->Outgoing = *Value;
       if (Self->Outgoing.Type IS CALL_SCRIPT) SubscribeAction(Self->Outgoing.Script.Script, AC_Free);
 
-      if (Self->Head.Flags & NF_INITIALISED) {
+      if (Self->initialised()) {
          if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC_CONNECTED)) {
             // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
 
@@ -1100,7 +1100,7 @@ OutQueueSize: The number of bytes on the socket's outgoing queue.
 
 *****************************************************************************/
 
-static ERROR GET_OutQueueSize(objNetSocket *Self, LONG *Value)
+static ERROR GET_OutQueueSize(extNetSocket *Self, LONG *Value)
 {
    *Value = Self->WriteQueue.Length;
    return ERR_Okay;
@@ -1116,13 +1116,13 @@ SocketHandle: Platform specific reference to the network socket handle.
 
 *****************************************************************************/
 
-static ERROR GET_SocketHandle(objNetSocket *Self, APTR *Value)
+static ERROR GET_SocketHandle(extNetSocket *Self, APTR *Value)
 {
    *Value = (APTR)(MAXINT)Self->SocketHandle;
    return ERR_Okay;
 }
 
-static ERROR SET_SocketHandle(objNetSocket *Self, APTR Value)
+static ERROR SET_SocketHandle(extNetSocket *Self, APTR Value)
 {
    // The user can set SocketHandle prior to initialisation in order to create a NetSocket object that is linked to a
    // socket created from outside the core platform code base.
@@ -1139,7 +1139,7 @@ State: The current connection state of the netsocket object.
 
 *****************************************************************************/
 
-static ERROR SET_State(objNetSocket *Self, LONG Value)
+static ERROR SET_State(extNetSocket *Self, LONG Value)
 {
    parasol::Log log;
 
@@ -1164,7 +1164,7 @@ static ERROR SET_State(objNetSocket *Self, LONG Value)
 
          if (Self->Feedback.Type IS CALL_STDC) {
             parasol::SwitchContext context(Self->Feedback.StdC.Context);
-            auto routine = (void (*)(objNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
+            auto routine = (void (*)(extNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
             if (routine) routine(Self, NULL, Self->State);
          }
          else if (Self->Feedback.Type IS CALL_SCRIPT) {
@@ -1223,7 +1223,7 @@ is not encrypted, a value of zero is returned to indicate that the connection is
 
 *****************************************************************************/
 
-static ERROR GET_ValidCert(objNetSocket *Self, LONG *Value)
+static ERROR GET_ValidCert(extNetSocket *Self, LONG *Value)
 {
 #ifdef ENABLE_SSL
    if ((Self->SSL) and (Self->State IS NTC_CONNECTED)) {
@@ -1239,7 +1239,7 @@ static ERROR GET_ValidCert(objNetSocket *Self, LONG *Value)
 
 //****************************************************************************
 
-static void free_socket(objNetSocket *Self)
+static void free_socket(extNetSocket *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1264,7 +1264,7 @@ static void free_socket(objNetSocket *Self)
    if (Self->WriteQueue.Buffer) { FreeResource(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = NULL; }
    if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = NULL; }
 
-   if (!(Self->Head.Flags & NF_FREE)) {
+   if (!Self->terminating()) {
       if (Self->State != NTC_DISCONNECTED) {
          log.traceBranch("Changing state to disconnected.");
          SetLong(Self, FID_State, NTC_DISCONNECTED);
@@ -1279,7 +1279,7 @@ static void free_socket(objNetSocket *Self)
 
 //****************************************************************************
 
-static ERROR write_queue(objNetSocket *Self, NetQueue *Queue, CPTR Message, LONG Length)
+static ERROR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG Length)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1335,25 +1335,25 @@ static ERROR write_queue(objNetSocket *Self, NetQueue *Queue, CPTR Message, LONG
 // reliable method of managing recursion problems, but burdens the message queue.
 
 #ifdef _WIN32
-void win32_netresponse(Head *SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERROR Error)
+void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERROR Error)
 {
    parasol::Log log(__FUNCTION__);
 
-   objNetSocket *Socket;
+   extNetSocket *Socket;
    objClientSocket *ClientSocket;
 
    if (SocketObject->ClassID IS ID_CLIENTSOCKET) {
       ClientSocket = (objClientSocket *)SocketObject;
-      Socket = ClientSocket->Client->NetSocket;
+      Socket = (extNetSocket *)ClientSocket->Client->NetSocket;
    }
    else {
-      Socket = (objNetSocket *)SocketObject;
+      Socket = (extNetSocket *)SocketObject;
       ClientSocket = NULL;
    }
 
    #ifdef DEBUG
    static const CSTRING msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
-   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->Head.UID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
+   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
    #endif
 
    parasol::SwitchContext context(Socket);
@@ -1521,7 +1521,7 @@ static ERROR init_netsocket(void)
       FID_Actions|TPTR,   clNetSocketActions,
       FID_Methods|TARRAY, clNetSocketMethods,
       FID_Fields|TARRAY,  clSocketFields,
-      FID_Size|TLONG,     sizeof(objNetSocket),
+      FID_Size|TLONG,     sizeof(extNetSocket),
       FID_Path|TSTR,      MOD_PATH,
       TAGEND) != ERR_Okay) return ERR_CreateObject;
 

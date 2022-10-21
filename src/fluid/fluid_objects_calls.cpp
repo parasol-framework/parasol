@@ -39,7 +39,7 @@ static int object_call(lua_State *Lua)
 
                if (resultcount > 0) {
                   OBJECTPTR obj;
-                  if ((obj = (OBJECTPTR)access_object(object))) {
+                  if ((obj = access_object(object))) {
                      error = Action(action_id, obj, argbuffer);
                      release = TRUE;
                   }
@@ -100,7 +100,7 @@ static int object_call(lua_State *Lua)
 
                if (resultcount > 0) {
                   OBJECTPTR obj;
-                  if ((obj = (OBJECTPTR)access_object(object))) {
+                  if ((obj = access_object(object))) {
                      error = Action(action_id, obj, argbuffer);
                      release = TRUE;
                   }
@@ -134,7 +134,7 @@ static int object_call(lua_State *Lua)
       }
    }
 
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    if ((error >= ERR_ExceptionThreshold) and (prv->Catch)) {
       char msg[180];
       CSTRING error_msg = GetErrorMsg(error);
@@ -280,7 +280,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
                if (object->prvObject) {
                   ((OBJECTPTR *)(argbuffer + j))[0] = object->prvObject;
                }
-               else if ((ptr_obj = (OBJECTPTR)access_object(object))) {
+               else if ((ptr_obj = access_object(object))) {
                   ((OBJECTPTR *)(argbuffer + j))[0] = ptr_obj;
                   release_object(object);
                }
@@ -298,11 +298,11 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
                if (!AllocMemory(sizeof(FUNCTION), MEM_DATA, &func, NULL)) {
                   if (type IS LUA_TSTRING) {
                      lua_getglobal(Lua, lua_tostring(Lua, n));
-                     SET_FUNCTION_SCRIPT(*func, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                     SET_FUNCTION_SCRIPT(*func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                   }
                   else {
                      lua_pushvalue(Lua, n);
-                     SET_FUNCTION_SCRIPT(*func, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                     SET_FUNCTION_SCRIPT(*func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                   }
 
                   ((FUNCTION **)(argbuffer + j))[0] = func;
@@ -463,7 +463,7 @@ static LONG get_results(lua_State *Lua, const FunctionField *args, const BYTE *A
          }
          else if (type & FD_RESULT) {
             if (type & FD_OBJECT) {
-               OBJECTPTR obj = (OBJECTPTR)((APTR *)(ArgBuf+of))[0];
+               auto obj = (OBJECTPTR)((APTR *)(ArgBuf+of))[0];
 
                RMSG("Result-Arg: %s, Value: %p (Object)", args[i].Name, obj);
 

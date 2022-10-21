@@ -5,7 +5,7 @@ typedef unsigned int WSW_SOCKET; // type of socket handle for these wrapper proc
 struct sockaddr;
 struct hostent;
 
-void win32_netresponse(struct Head *, WSW_SOCKET, int, int);
+void win32_netresponse(struct BaseClass *, WSW_SOCKET, int, int);
 void win_net_processing(int, void *);
 WSW_SOCKET win_accept(void *, WSW_SOCKET, struct sockaddr *, int *);
 int win_bind(WSW_SOCKET, const struct sockaddr *, int);

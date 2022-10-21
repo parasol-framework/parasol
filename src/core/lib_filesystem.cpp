@@ -369,7 +369,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
 
    LONG len = StrLength(Path);
    if (Path[len-1] IS ':') {
-      parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 8000);
+      parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 8000);
       if (volumes.granted()) {
          ConfigGroups *groups;
          if (!GetPointer(glVolumes, FID_Data, &groups)) {
@@ -464,7 +464,7 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
          if (!cfgReadValue(config, Path+6, "Class", &str)) {
             if (Command) {
                cfgWriteValue(config, Path+6, Mode, Command);
-               error = acSaveSettings(&config->Head);
+               error = acSaveSettings(config);
             }
             else { // If no command is provided, remove the command linked to this mode
                if (!GetPointer(config, FID_Data, &groups)) {
@@ -473,7 +473,7 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
                      if (!StrMatch(Path+6, group.c_str())) {
                         if (keys.contains(Mode)) {
                            cfgDeleteGroup(config, group.c_str());
-                           error = acSaveSettings(&config->Head);
+                           error = acSaveSettings(config);
                            break;
                         }
                      }
@@ -484,16 +484,16 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
          }
          else error = ERR_Search; // Class is not registered
 
-         acFree(&config->Head);
+         acFree(config);
       }
    }
    else if (!(error = IdentifyFile(Path, Mode, IDF_SECTION, &class_id, NULL, &group))) {
       log.msg("Linking file under group '%s'", group);
       if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, assoc_path, TAGEND))) {
          if (!(error = cfgWriteValue(config, group, Mode, Command))) {
-            error = acSaveSettings(&config->Head);
+            error = acSaveSettings(config);
          }
-         acFree(&config->Head);
+         acFree(config);
       }
    }
    else {
@@ -510,10 +510,10 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
          if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, assoc_path, TAGEND))) {
             if (!(error = cfgWriteValue(config, ext, "Match", extbuf))) {
                if (!(error = cfgWriteValue(config, ext, Mode, Command))) {
-                  error = acSaveSettings(&config->Head);
+                  error = acSaveSettings(config);
                }
             }
-            acFree(&config->Head);
+            acFree(config);
          }
       }
       else {
@@ -938,7 +938,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
       error = ERR_Okay;
 
-      parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes);
+      parasol::ScopedObjectLock<objConfig> volumes(glVolumes);
       if (volumes.granted()) {
          ConfigGroups *groups;
          if (!GetPointer(glVolumes, FID_Data, &groups)) {
@@ -1056,7 +1056,7 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
       }
       else error = ERR_NoData;
 
-      acFree(&cfgprog->Head);
+      acFree(cfgprog);
    }
 
    return error;
@@ -1383,7 +1383,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
          if (!acRead(file, Buffer, BufferSize, BytesRead)) error = ERR_Okay;
          else error = ERR_Read;
 
-         acFree(&file->Head);
+         acFree(file);
       }
       else error = ERR_File;
 
@@ -1409,7 +1409,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
       LONG result;
       if (!acRead(file, Buffer, BufferSize, &result)) {
          if (BytesRead) *BytesRead = result;
-         acFree(&file->Head);
+         acFree(file);
          return ERR_Okay;
       }
       else {
@@ -2439,11 +2439,11 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
                close(handle);
                log.warning("Not enough space on device (" PF64() "/" PF64() " < " PF64() ")", device->BytesFree, device->DeviceSize, (LARGE)feedback.Size);
                error = ERR_OutOfSpace;
-               acFree(&device->Head);
+               acFree(device);
                goto exit;
             }
          }
-         acFree(&device->Head);
+         acFree(device);
       }
 
       if ((dhandle = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE|WIN32OPEN, permissions)) IS -1) {
@@ -2535,8 +2535,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
 
 exit:
-   if (srcfile) acFree(&srcfile->Head);
-   if (destfile) acFree(&destfile->Head);
+   if (srcfile) acFree(srcfile);
+   if (destfile) acFree(destfile);
    FreeResource(src);
    return error;
 }
@@ -3172,7 +3172,7 @@ ERROR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
    // Device information is stored in the SystemVolumes object
 
    {
-      parasol::ScopedObjectLock<objConfig> volumes((OBJECTPTR)glVolumes, 8000);
+      parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 8000);
       if (volumes.granted()) {
          ULONG pathend;
          STRING resolve = NULL;
@@ -3484,7 +3484,7 @@ ERROR load_datatypes(void)
          return log.warning(ERR_CreateObject);
       }
 
-      if (glDatatypes) acFree(&glDatatypes->Head);
+      if (glDatatypes) acFree(glDatatypes);
       glDatatypes = datatypes;
    }
 

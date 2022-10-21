@@ -9,7 +9,7 @@ objVectorViewport * get_parent_view(objVector *Vector)
    else {
       auto scan = get_parent(Vector);
       while (scan) {
-         if (scan->Head.SubID IS ID_VECTORVIEWPORT) {
+         if (scan->SubID IS ID_VECTORVIEWPORT) {
             Vector->ParentView = (objVectorViewport *)scan;
             return Vector->ParentView;
          }
@@ -26,7 +26,7 @@ objVectorViewport * get_parent_view(objVector *Vector)
 
 void gen_vector_tree(objVector *Vector)
 {
-   if (!(Vector->Head.Flags & NF_INITIALISED)) return;
+   if (!Vector->initialised()) return;
 
    if (Vector->Dirty) {
       std::vector<objVector *> list;
@@ -55,20 +55,20 @@ void gen_vector_path(objVector *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Vector->GeneratePath) and (Vector->Head.SubID != ID_VECTORVIEWPORT) and (Vector->Head.SubID != ID_VECTORGROUP)) return;
+   if ((!Vector->GeneratePath) and (Vector->SubID != ID_VECTORVIEWPORT) and (Vector->SubID != ID_VECTORGROUP)) return;
 
    parasol::SwitchContext context(Vector);
 
-   log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Head.Class->ClassName, Vector->Head.UID, Vector->Dirty, Vector->ParentView ? Vector->ParentView->Head.UID : 0);
+   log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Class->ClassName, Vector->UID, Vector->Dirty, Vector->ParentView ? Vector->ParentView->UID : 0);
 
    auto parent_view = get_parent_view(Vector);
 
-   if (Vector->Head.SubID IS ID_VECTORGROUP) {
+   if (Vector->SubID IS ID_VECTORGROUP) {
       Vector->Transform.reset();
       apply_parent_transforms(Vector, Vector->Transform);
       return;
    }
-   else if (Vector->Head.SubID IS ID_VECTORVIEWPORT) {
+   else if (Vector->SubID IS ID_VECTORVIEWPORT) {
       auto view = (objVectorViewport *)Vector;
 
       DOUBLE parent_width, parent_height;
@@ -109,10 +109,10 @@ void gen_vector_path(objVector *Vector)
 
          if ((!parent_width) or (!parent_height)) {
             // NB: It is perfectly legal, even if unlikely, that a viewport has a width/height of zero.
-            log.msg("Size of parent viewport #%d is %.2fx%.2f, dimensions $%.8x", parent_view->Head.UID, parent_view->vpFixedWidth, parent_view->vpFixedHeight, parent_view->vpDimensions);
+            log.msg("Size of parent viewport #%d is %.2fx%.2f, dimensions $%.8x", parent_view->UID, parent_view->vpFixedWidth, parent_view->vpFixedHeight, parent_view->vpDimensions);
          }
 
-         parent_id = parent_view->Head.UID;
+         parent_id = parent_view->UID;
 
          // The user's values for destination (x,y) need to be taken into account. <svg x="" y=""/>
 
@@ -125,7 +125,7 @@ void gen_vector_path(objVector *Vector)
       else {
          parent_width  = Vector->Scene->PageWidth;
          parent_height = Vector->Scene->PageHeight;
-         parent_id     = Vector->Scene->Head.UID;
+         parent_id     = Vector->Scene->UID;
          // SVG requirement: top level viewport always located at (0,0)
          view->FinalX = 0;
          view->FinalY = 0;
@@ -181,7 +181,7 @@ void gen_vector_path(objVector *Vector)
       }
 
       log.trace("Vector: #%d, Dimensions: $%.8x, Parent: #%d %.2fw %.2fh, Target: %.2fw %.2fh, Viewbox: %.2f %.2f %.2f %.2f",
-         Vector->Head.UID, view->vpDimensions, parent_id, parent_width, parent_height, target_width, target_height, view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight);
+         Vector->UID, view->vpDimensions, parent_id, parent_width, parent_height, target_width, target_height, view->vpViewX, view->vpViewY, view->vpViewWidth, view->vpViewHeight);
 
       // This part computes the alignment of the viewbox (source) within the viewport's target area.
       // AspectRatio choices affect this, e.g. "xMinYMin slice".  Note that alignment specifically impacts
@@ -227,10 +227,10 @@ void gen_vector_path(objVector *Vector)
 
       if (((Vector->Transform.shx) or (Vector->Transform.shy)) and
           ((view->vpOverflowX != VIS_VISIBLE) or (view->vpOverflowY != VIS_VISIBLE))) {
-         log.trace("A clip path will be created for viewport #%d.", Vector->Head.UID);
+         log.trace("A clip path will be created for viewport #%d.", Vector->UID);
          if (!view->vpClipMask) {
             CreateObject(ID_VECTORCLIP, NF_INTEGRAL, &view->vpClipMask,
-               FID_Owner|TLONG, Vector->Head.UID,
+               FID_Owner|TLONG, Vector->UID,
                TAGEND);
          }
          if (view->vpClipMask) {
@@ -242,18 +242,18 @@ void gen_vector_path(objVector *Vector)
       else if (view->vpClipMask) { acFree(view->vpClipMask); view->vpClipMask = NULL; }
 
       log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f",
-         Vector->Head.UID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
+         Vector->UID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
 
       Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
 
-      if (Vector->Scene->ResizeSubscriptions.contains(view)) {
-         Vector->Scene->PendingResizeMsgs.insert(view);
+      if (((extVectorScene *)Vector->Scene)->ResizeSubscriptions.contains(view)) {
+         ((extVectorScene *)Vector->Scene)->PendingResizeMsgs.insert(view);
       }
    }
-   else if (Vector->Head.ClassID IS ID_VECTOR) {
+   else if (Vector->ClassID IS ID_VECTOR) {
       Vector->FinalX = 0;
       Vector->FinalY = 0;
-      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->Head.SubID != ID_VECTORTEXT)) {
+      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->SubID != ID_VECTORTEXT)) {
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);
 
@@ -269,8 +269,8 @@ void gen_vector_path(objVector *Vector)
 
          Vector->GeneratePath((objVector *)Vector);
 
-         if ((Vector->Morph) and (Vector->Morph->Head.ClassID IS ID_VECTOR)) {
-            if ((Vector->Head.SubID IS ID_VECTORTEXT) and (!(Vector->MorphFlags & VMF_STRETCH))) {
+         if ((Vector->Morph) and (Vector->Morph->ClassID IS ID_VECTOR)) {
+            if ((Vector->SubID IS ID_VECTORTEXT) and (!(Vector->MorphFlags & VMF_STRETCH))) {
                // Do nothing for VectorText because it applies morph and transition effects during base path generation.
             }
             else {
@@ -286,13 +286,13 @@ void gen_vector_path(objVector *Vector)
                      Vector->BasePath.translate(0, -by1 - ((by2 - by1) * 0.5));
                   }
                   else if (Vector->MorphFlags & VMF_Y_MIN) {
-                     if (Vector->Head.SubID != ID_VECTORTEXT) {
+                     if (Vector->SubID != ID_VECTORTEXT) {
                         bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
                         Vector->BasePath.translate(0, -by1 -(by2 - by1));
                      }
                   }
                   else { // VMF_Y_MAX
-                     if (Vector->Head.SubID IS ID_VECTORTEXT) { // Only VectorText needs to be reset for yMax
+                     if (Vector->SubID IS ID_VECTORTEXT) { // Only VectorText needs to be reset for yMax
                         bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
                         Vector->BasePath.translate(0, -by1);
                      }
@@ -301,7 +301,7 @@ void gen_vector_path(objVector *Vector)
                   agg::trans_single_path trans_path;
                   trans_path.add_path(morph->BasePath);
                   trans_path.preserve_x_scale(true); // The default is true.  Switching to false produces a lot of scrunching and extending
-                  if (morph->Head.SubID IS ID_VECTORPATH) { // Enforcing a fixed length along the path effectively causes a resize.
+                  if (morph->SubID IS ID_VECTORPATH) { // Enforcing a fixed length along the path effectively causes a resize.
                      if (((objVectorPath *)morph)->PathLength > 0) trans_path.base_length(((objVectorPath *)morph)->PathLength);
                   }
 
@@ -316,8 +316,8 @@ void gen_vector_path(objVector *Vector)
       // VectorText transform support is handled after base-path generation.  This is because vector text can be
       // aligned, for which the width and height of the base-path must be known.
 
-      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->Head.SubID IS ID_VECTORTEXT)) {
-         get_text_xy((rkVectorText *)Vector); // Sets FinalX/Y
+      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->SubID IS ID_VECTORTEXT)) {
+         get_text_xy((objVectorText *)Vector); // Sets FinalX/Y
 
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);
@@ -398,15 +398,15 @@ void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform)
    parasol::Log log(__FUNCTION__);
 
    for (auto scan=Start; scan; scan=(objVector *)get_parent(scan)) {
-      if (scan->Head.ClassID != ID_VECTOR) continue;
+      if (scan->ClassID != ID_VECTOR) continue;
 
-      if (scan->Head.SubID IS ID_VECTORVIEWPORT) {
+      if (scan->SubID IS ID_VECTORVIEWPORT) {
          // When a viewport is encountered we need to make special considerations as to its viewbox, which affects both
          // position and scaling of all children.  Alignment is another factor that is taken care of here.
 
          auto view = (objVectorViewport *)scan;
 
-         DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->Head.UID, view->FinalX, view->FinalY);
+         DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->UID, view->FinalX, view->FinalY);
 
          if ((view->vpViewX) or (view->vpViewY)) {
             AGGTransform.tx -= view->vpViewX;
@@ -415,7 +415,7 @@ void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform)
 
          if ((view->vpXScale != 1.0) or (view->vpYScale != 1.0)) {
             if (std::isnan(view->vpXScale) or std::isnan(view->vpYScale)) {
-               log.warning("[%d] Invalid viewport scale values: %f, %f", view->Head.UID, view->vpXScale, view->vpYScale);
+               log.warning("[%d] Invalid viewport scale values: %f, %f", view->UID, view->vpXScale, view->vpYScale);
             }
             else {
                DBG_TRANSFORM("Viewport scales this vector to %.2f %.2f", view->vpXScale, view->vpYScale);
@@ -432,7 +432,7 @@ void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform)
          AGGTransform.ty += view->FinalY + view->vpAlignY;
       }
       else {
-         log.trace("Parent vector #%d x/y: %.2f %.2f", scan->Head.UID, scan->FinalX, scan->FinalY);
+         log.trace("Parent vector #%d x/y: %.2f %.2f", scan->UID, scan->FinalX, scan->FinalY);
 
          AGGTransform.tx += scan->FinalX;
          AGGTransform.ty += scan->FinalY;
