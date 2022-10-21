@@ -354,8 +354,8 @@ extern void gen_vector_tree(objVector *);
 extern void send_feedback(objVector *, LONG);
 extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, UBYTE);
-extern ERROR render_filter(objVectorFilter *, objVectorViewport *, objVector *, objBitmap *, objBitmap **);
-extern objBitmap * get_source_graphic(objVectorFilter *);
+extern ERROR render_filter(extVectorFilter *, objVectorViewport *, objVector *, objBitmap *, objBitmap **);
+extern objBitmap * get_source_graphic(extVectorFilter *);
 
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glFocusLock;

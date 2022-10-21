@@ -26,7 +26,7 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
 {
    parasol::Log log(__FUNCTION__);
 
-   GradientColours *cols = Vector.FillGradient->Colours;
+   GradientColours *cols = ((extVectorGradient *)Vector.FillGradient)->Colours;
    if (!cols) {
       if (Vector.FillGradient->Inherit) cols = ((extVectorGradient *)Vector.FillGradient->Inherit)->Colours;
       if (!cols) {
@@ -63,7 +63,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
 {
    parasol::Log log(__FUNCTION__);
 
-   GradientColours *cols = Vector.StrokeGradient->Colours;
+   GradientColours *cols = ((extVectorGradient *)Vector.StrokeGradient)->Colours;
    if (!cols) {
       if (Vector.StrokeGradient->Inherit) cols = ((extVectorGradient *)Vector.StrokeGradient->Inherit)->Colours;
       if (!cols) {

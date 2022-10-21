@@ -1039,7 +1039,7 @@ private:
       if (Vector.FillGradient) {
          if (auto table = get_fill_gradient_table(Vector, State.mOpacity * Vector.FillOpacity)) {
             draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Vector.FillGradient->Units IS VUNIT_USERSPACE, State),
-               view_width(), view_height(), *Vector.FillGradient, table, mRenderBase, Raster, 0);
+               view_width(), view_height(), *((extVectorGradient *)Vector.FillGradient), table, mRenderBase, Raster, 0);
          }
       }
 
@@ -1057,8 +1057,8 @@ private:
 
       if (Vector.StrokeGradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
-            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Vector.StrokeGradient->Units IS VUNIT_USERSPACE, State),
-               view_width(), view_height(), *Vector.StrokeGradient, table, mRenderBase, Raster, Vector.fixed_stroke_width());
+            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.StrokeGradient)->Units IS VUNIT_USERSPACE, State),
+               view_width(), view_height(), *((extVectorGradient *)Vector.StrokeGradient), table, mRenderBase, Raster, Vector.fixed_stroke_width());
          }
       }
       else if (Vector.StrokePattern) {
@@ -1141,7 +1141,7 @@ private:
             #endif
 
             objBitmap *bmp;
-            if (!render_filter(shape->Filter, mView, shape, mBitmap, &bmp)) {
+            if (!render_filter(filter, mView, shape, mBitmap, &bmp)) {
                bmp->Opacity = (filter->Opacity < 1.0) ? (255.0 * filter->Opacity) : 255;
                gfxCopyArea(bmp, mBitmap, BAF_BLEND|BAF_COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
             }
