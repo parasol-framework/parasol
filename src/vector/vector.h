@@ -183,6 +183,16 @@ public:
 
 #include <parasol/modules/vector.h>
 
+class extVectorGradient : public objVectorGradient {
+   public:
+   struct GradientStop *Stops;  // An array of gradient stop colours.
+   struct VectorMatrix *Matrices;
+   class GradientColours *Colours;
+   STRING ID;
+   LONG NumericID;
+   WORD ChangeCounter;
+};
+
 class extVectorFilter : public objVectorFilter {
    public:
    objVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
@@ -285,17 +295,15 @@ typedef class plVectorTransition : public BaseClass {
    public:
    LONG TotalStops; // Total number of stops registered.
 
-#ifdef PRV_VECTOR
    struct TransitionStop Stops[MAX_TRANSITION_STOPS];
    bool Dirty:1;
-#endif
 } objVectorTransition;
 
 //****************************************************************************
 
 class GradientColours {
    public:
-      GradientColours(objVectorGradient *, DOUBLE);
+      GradientColours(extVectorGradient *, DOUBLE);
       GRADIENT_TABLE table;
 };
 

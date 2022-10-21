@@ -28,7 +28,7 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
 
    GradientColours *cols = Vector.FillGradient->Colours;
    if (!cols) {
-      if (Vector.FillGradient->Inherit) cols = Vector.FillGradient->Inherit->Colours;
+      if (Vector.FillGradient->Inherit) cols = ((extVectorGradient *)Vector.FillGradient->Inherit)->Colours;
       if (!cols) {
          log.warning("No colour table referenced in fill gradient %p for vector #%d.", Vector.FillGradient, Vector.UID);
          return NULL;
@@ -65,7 +65,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
 
    GradientColours *cols = Vector.StrokeGradient->Colours;
    if (!cols) {
-      if (Vector.StrokeGradient->Inherit) cols = Vector.StrokeGradient->Inherit->Colours;
+      if (Vector.StrokeGradient->Inherit) cols = ((extVectorGradient *)Vector.StrokeGradient->Inherit)->Colours;
       if (!cols) {
          log.warning("No colour table referenced in stroke gradient %p for vector #%d.", Vector.FillGradient, Vector.UID);
          return NULL;
@@ -101,7 +101,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
 // Constructor for the GradientColours class.  This expects to be called whenever the Gradient class updates the
 // Stops array.
 
-GradientColours::GradientColours(objVectorGradient *Gradient, DOUBLE Alpha)
+GradientColours::GradientColours(extVectorGradient *Gradient, DOUBLE Alpha)
 {
    LONG stop, i1, i2, i;
    GradientStop *stops = Gradient->Stops;
@@ -137,7 +137,7 @@ GradientColours::GradientColours(objVectorGradient *Gradient, DOUBLE Alpha)
 
 //****************************************************************************
 
-static ERROR VECTORGRADIENT_Free(objVectorGradient *Self, APTR Void)
+static ERROR VECTORGRADIENT_Free(extVectorGradient *Self, APTR Void)
 {
    if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
    if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
@@ -155,7 +155,7 @@ static ERROR VECTORGRADIENT_Free(objVectorGradient *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR VECTORGRADIENT_Init(objVectorGradient *Self, APTR Void)
+static ERROR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -179,7 +179,7 @@ static ERROR VECTORGRADIENT_Init(objVectorGradient *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR VECTORGRADIENT_NewObject(objVectorGradient *Self, APTR Void)
+static ERROR VECTORGRADIENT_NewObject(extVectorGradient *Self, APTR Void)
 {
    Self->SpreadMethod = VSPREAD_PAD;
    Self->Type    = VGT_LINEAR;
@@ -204,7 +204,7 @@ the gradient type requires it (such as the radial type).  By default, the center
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_CenterX(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_GET_CenterX(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->CenterX;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_CX)) val = val * 100.0;
@@ -213,7 +213,7 @@ static ERROR VECTORGRADIENT_GET_CenterX(objVectorGradient *Self, Variable *Value
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_CenterX(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_SET_CenterX(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -240,7 +240,7 @@ the gradient type requires it (such as the radial type).  By default, the center
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_CenterY(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_GET_CenterY(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->CenterY;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_CY)) val = val * 100.0;
@@ -249,7 +249,7 @@ static ERROR VECTORGRADIENT_GET_CenterY(objVectorGradient *Self, Variable *Value
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_CenterY(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_SET_CenterY(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -281,7 +281,7 @@ center of the gradient.
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_FX(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_GET_FX(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->FX;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_FX)) val = val * 100.0;
@@ -290,7 +290,7 @@ static ERROR VECTORGRADIENT_GET_FX(objVectorGradient *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_FX(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_SET_FX(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -317,7 +317,7 @@ center of the gradient.
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_FY(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_GET_FY(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->FY;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_FY)) val = val * 100.0;
@@ -326,7 +326,7 @@ static ERROR VECTORGRADIENT_GET_FY(objVectorGradient *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_FY(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_SET_FY(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -352,13 +352,13 @@ existing object name and automatically assigned ID's for identifiers.
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_ID(objVectorGradient *Self, STRING *Value)
+static ERROR VECTORGRADIENT_GET_ID(extVectorGradient *Self, STRING *Value)
 {
    *Value = Self->ID;
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_ID(objVectorGradient *Self, CSTRING Value)
+static ERROR VECTORGRADIENT_SET_ID(extVectorGradient *Self, CSTRING Value)
 {
    if (Self->ID) FreeResource(Self->ID);
 
@@ -383,7 +383,7 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_SET_Inherit(objVectorGradient *Self, objVectorGradient *Value)
+static ERROR VECTORGRADIENT_SET_Inherit(extVectorGradient *Self, extVectorGradient *Value)
 {
    if (Value) {
       if (Value->ClassID IS ID_VECTORGRADIENT) Self->Inherit = Value;
@@ -404,13 +404,13 @@ represented by a VectorMatrix structure, and are linked in the order in which th
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Matrices(objVectorGradient *Self, VectorMatrix **Value)
+static ERROR VECTORGRADIENT_GET_Matrices(extVectorGradient *Self, VectorMatrix **Value)
 {
    *Value = Self->Matrices;
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Matrices(objVectorGradient *Self, VectorMatrix *Value)
+static ERROR VECTORGRADIENT_SET_Matrices(extVectorGradient *Self, VectorMatrix *Value)
 {
    if (!Value) {
       auto hook = &Self->Matrices;
@@ -457,13 +457,13 @@ If NumericID is set by the client, then any value in #ID will be immediately cle
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_NumericID(objVectorGradient *Self, LONG *Value)
+static ERROR VECTORGRADIENT_GET_NumericID(extVectorGradient *Self, LONG *Value)
 {
    *Value = Self->NumericID;
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_NumericID(objVectorGradient *Self, LONG Value)
+static ERROR VECTORGRADIENT_SET_NumericID(extVectorGradient *Self, LONG Value)
 {
    Self->NumericID = Value;
    if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
@@ -481,7 +481,7 @@ The Radius value has no effect if the gradient is linear.
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Radius(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_GET_Radius(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_RADIUS)) val = val * 100.0;
@@ -490,7 +490,7 @@ static ERROR VECTORGRADIENT_GET_Radius(objVectorGradient *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Radius(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -526,14 +526,14 @@ to define a start and end point for interpolating the gradient colours.
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Stops(objVectorGradient *Self, GradientStop **Value, LONG *Elements)
+static ERROR VECTORGRADIENT_GET_Stops(extVectorGradient *Self, GradientStop **Value, LONG *Elements)
 {
    *Value    = Self->Stops;
    *Elements = Self->TotalStops;
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Stops(objVectorGradient *Self, GradientStop *Value, LONG Elements)
+static ERROR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, LONG Elements)
 {
    if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
 
@@ -570,7 +570,7 @@ A transform can be applied to the gradient by setting this field with an SVG com
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_SET_Transform(objVectorGradient *Self, CSTRING Commands)
+static ERROR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Commands)
 {
    parasol::Log log;
 
@@ -622,7 +622,7 @@ Coordinate values can be expressed as percentages that are relative to the targe
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_X1(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_GET_X1(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->X1;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_X1)) val = val * 100.0;
@@ -631,7 +631,7 @@ static ERROR VECTORGRADIENT_GET_X1(objVectorGradient *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_X1(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -659,7 +659,7 @@ Coordinate values can be expressed as percentages that are relative to the targe
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_X2(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_GET_X2(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->X2;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_X2)) val = val * 100.0;
@@ -668,7 +668,7 @@ static ERROR VECTORGRADIENT_GET_X2(objVectorGradient *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_X2(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_SET_X2(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -694,7 +694,7 @@ these values.
 
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Y1(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_GET_Y1(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Y1;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_Y1)) val = val * 100.0;
@@ -703,7 +703,7 @@ static ERROR VECTORGRADIENT_GET_Y1(objVectorGradient *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Y1(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_SET_Y1(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -731,7 +731,7 @@ Coordinate values can be expressed as percentages that are relative to the targe
 -END-
 *****************************************************************************/
 
-static ERROR VECTORGRADIENT_GET_Y2(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_GET_Y2(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Y2;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_Y2)) val = val * 100.0;
@@ -740,7 +740,7 @@ static ERROR VECTORGRADIENT_GET_Y2(objVectorGradient *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORGRADIENT_SET_Y2(objVectorGradient *Self, Variable *Value)
+static ERROR VECTORGRADIENT_SET_Y2(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -796,7 +796,7 @@ ERROR init_gradient(void) // The gradient is a definition type for creating grad
       FID_Category|TLONG,    CCF_GRAPHICS,
       FID_Actions|TPTR,      clVectorGradientActions,
       FID_Fields|TARRAY,     clGradientFields,
-      FID_Size|TLONG,        sizeof(objVectorGradient),
+      FID_Size|TLONG,        sizeof(extVectorGradient),
       FID_Path|TSTR,         "modules:vector",
       TAGEND));
 }

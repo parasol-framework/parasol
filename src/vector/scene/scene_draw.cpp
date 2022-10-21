@@ -652,7 +652,7 @@ static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMetho
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
 static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::trans_affine &Transform,
-   DOUBLE ViewWidth, DOUBLE ViewHeight, const objVectorGradient &Gradient,
+   DOUBLE ViewWidth, DOUBLE ViewHeight, const extVectorGradient &Gradient,
    GRADIENT_TABLE *Table,
    agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster,
@@ -1442,7 +1442,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       mRaster.add_path(mPath);
 
       if (FillStyle->ClassID IS ID_VECTORCOLOUR) {
-         objVectorColour *colour = (objVectorColour *)FillStyle;
+         auto colour = (objVectorColour *)FillStyle;
          agg::renderer_scanline_aa_solid solid(mRenderer);
          solid.color(agg::rgba(colour->Red, colour->Green, colour->Blue, colour->Alpha));
          agg::render_scanlines(mRaster, scanline, solid);
@@ -1452,7 +1452,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          draw_image(bounds, mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster, 0, 1.0);
       }
       else if (FillStyle->ClassID IS ID_VECTORGRADIENT) {
-         objVectorGradient &gradient = (objVectorGradient &)*FillStyle;
+         extVectorGradient &gradient = (extVectorGradient &)*FillStyle;
          draw_gradient(bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
       }
       else if (FillStyle->ClassID IS ID_VECTORPATTERN) {
@@ -1467,7 +1467,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          mRaster.reset();
          mRaster.add_path(stroke_path);
 
-         objVectorGradient &gradient = (objVectorGradient &)*StrokeStyle;
+         extVectorGradient &gradient = (extVectorGradient &)*StrokeStyle;
          draw_gradient(bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
       }
       else if (StrokeStyle->ClassID IS ID_VECTORPATTERN) {

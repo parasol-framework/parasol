@@ -567,16 +567,6 @@ typedef class plVectorGradient : public BaseClass {
    LONG   Type;                    // Specifies the type of gradient (e.g. RADIAL, LINEAR)
    LONG   Flags;                   // Dimension flags are stored here.
    LONG   TotalStops;              // Total number of stops defined in the Stops array.
-
-#ifdef PRV_VECTORGRADIENT
-   struct GradientStop *Stops;  // An array of gradient stop colours.
-   struct VectorMatrix *Matrices;
-   class GradientColours *Colours;
-   STRING ID;
-   LONG NumericID;
-   WORD ChangeCounter;
-  
-#endif
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
