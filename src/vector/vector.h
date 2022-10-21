@@ -72,12 +72,13 @@ extern struct DisplayBase *DisplayBase;
 extern struct FontBase *FontBase;
 
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
-typedef class plVectorClip objVectorClip;
-typedef class plVectorTransition objVectorTransition;
-typedef class plVectorText objVectorText;
+typedef class objVectorClip;
+typedef class objVectorTransition;
+typedef class objVectorText;
 typedef class extVector;
 typedef class extVectorScene;
 typedef class extFilterEffect;
+typedef class extVectorViewport;
 
 //****************************************************************************
 
@@ -185,6 +186,24 @@ public:
 
 #include <parasol/modules/vector.h>
 
+//****************************************************************************
+
+#define MAX_TRANSITION_STOPS 10
+
+struct TransitionStop { // Passed to the Stops field.
+   DOUBLE Offset;
+   struct VectorMatrix Matrix;
+   agg::trans_affine *AGGTransform;
+};
+
+class objVectorTransition : public BaseClass {
+   public:
+   LONG TotalStops; // Total number of stops registered.
+
+   TransitionStop Stops[MAX_TRANSITION_STOPS];
+   bool Dirty:1;
+};
+
 class extVectorGradient : public objVectorGradient {
    public:
    struct GradientStop *Stops;  // An array of gradient stop colours.
@@ -195,10 +214,17 @@ class extVectorGradient : public objVectorGradient {
    WORD ChangeCounter;
 };
 
+class extVectorPattern : public objVectorPattern {
+   public:
+   struct VectorMatrix *Matrices;
+   extVectorViewport *Viewport;
+   objBitmap *Bitmap;
+};
+
 class extVectorFilter : public objVectorFilter {
    public:
    extVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
-   objVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
+   extVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
    extVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
    extVectorScene *Scene;              // Scene that the filter belongs to.
    objBitmap *SourceGraphic;           // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
@@ -229,7 +255,7 @@ class extVector : public objVector {
    agg::trans_affine Transform;
    RGB8 rgbStroke, rgbFill;
    extVectorFilter *Filter;
-   objVectorViewport *ParentView;
+   extVectorViewport *ParentView;
    CSTRING FilterString, StrokeString, FillString;
    STRING ID;
    void   (*GeneratePath)(extVector *);
@@ -238,7 +264,7 @@ class extVector : public objVector {
    objVectorClip     *ClipMask;
    extVectorGradient *StrokeGradient, *FillGradient;
    objVectorImage    *FillImage, *StrokeImage;
-   objVectorPattern  *FillPattern, *StrokePattern;
+   extVectorPattern  *FillPattern, *StrokePattern;
    objVectorTransition *Transition;
    extVector *Morph;
    DashedStroke *DashArray;
@@ -283,11 +309,11 @@ class extVectorScene : public objVectorScene {
    class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
    APTR KeyHandle; // Keyboard subscription
-   std::unordered_set<objVectorViewport *> PendingResizeMsgs;
+   std::unordered_set<extVectorViewport *> PendingResizeMsgs;
    std::unordered_map<extVector *, LONG> InputSubscriptions;
    std::set<extVector *, TabOrderedVector> KeyboardSubscriptions;
    std::vector<struct InputBoundary> InputBoundaries;
-   std::unordered_map<objVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
+   std::unordered_map<extVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
@@ -298,7 +324,7 @@ class extVectorScene : public objVectorScene {
 //****************************************************************************
 // NB: Considered a shape (can be transformed).
 
-typedef class plVectorViewport : public extVector {
+class extVectorViewport : public extVector {
    public:
    FUNCTION vpDragCallback;
    DOUBLE vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
@@ -312,52 +338,30 @@ typedef class plVectorViewport : public extVector {
    LONG  vpAspectRatio;
    UBYTE vpDragging:1;
    UBYTE vpOverflowX, vpOverflowY;
-} objVectorViewport;
+};
 
 //****************************************************************************
 
-typedef class plVectorPoly : public extVector {
+class objVectorPoly : public extVector {
    public:
    struct VectorPoint *Points;
    LONG TotalPoints;
    bool Closed:1;      // Polygons are closed (TRUE) and Polylines are open (FALSE)
-} objVectorPoly;
+};
 
-//****************************************************************************
-
-typedef class plVectorPath : public extVector {
+class objVectorPath : public extVector {
    public:
    std::vector<PathCommand> Commands;
    agg::path_storage *CustomPath;
-} objVectorPath;
+};
 
-//****************************************************************************
-
-typedef class plVectorRectangle : public extVector {
+class objVectorRectangle : public extVector {
    public:
    DOUBLE rX, rY;
    DOUBLE rWidth, rHeight;
    DOUBLE rRoundX, rRoundY;
    LONG   rDimensions;
-} objVectorRectangle;
-
-//****************************************************************************
-
-#define MAX_TRANSITION_STOPS 10
-
-struct TransitionStop { // Passed to the Stops field.
-   DOUBLE Offset;
-   struct VectorMatrix Matrix;
-   agg::trans_affine *AGGTransform;
 };
-
-typedef class plVectorTransition : public BaseClass {
-   public:
-   LONG TotalStops; // Total number of stops registered.
-
-   struct TransitionStop Stops[MAX_TRANSITION_STOPS];
-   bool Dirty:1;
-} objVectorTransition;
 
 //****************************************************************************
 
@@ -367,7 +371,7 @@ class GradientColours {
       GRADIENT_TABLE table;
 };
 
-typedef class plVectorClip : public extVector {
+class objVectorClip : public extVector {
    public:
    UBYTE *ClipData;
    agg::path_storage *ClipPath; // Internally generated path
@@ -375,7 +379,9 @@ typedef class plVectorClip : public extVector {
    extVector *TargetVector;
    LONG ClipUnits;
    LONG ClipSize;
-} objVectorClip;
+};
+
+//****************************************************************************
 
 extern CSTRING get_name(OBJECTPTR);
 extern CSTRING read_numseq(CSTRING, ...);
@@ -414,7 +420,7 @@ extern void gen_vector_tree(extVector *);
 extern void send_feedback(extVector *, LONG);
 extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, UBYTE);
-extern ERROR render_filter(extVectorFilter *, objVectorViewport *, extVector *, objBitmap *, objBitmap **);
+extern ERROR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
 extern objBitmap * get_source_graphic(extVectorFilter *);
 
 extern const FieldDef clAspectRatio[];
@@ -614,12 +620,12 @@ public:
 inline static DOUBLE get_parent_width(const objVector *Vector)
 {
    auto eVector = (const extVector *)Vector;
-   if (eVector->ParentView) {
-      if ((eVector->ParentView->vpDimensions & DMF_WIDTH) or
-          ((eVector->ParentView->vpDimensions & DMF_X) and (eVector->ParentView->vpDimensions & DMF_X_OFFSET))) {
-         return eVector->ParentView->vpFixedWidth;
+   if (auto view = (extVectorViewport *)eVector->ParentView) {
+      if ((view->vpDimensions & DMF_WIDTH) or
+          ((view->vpDimensions & DMF_X) and (view->vpDimensions & DMF_X_OFFSET))) {
+         return view->vpFixedWidth;
       }
-      else if (eVector->ParentView->vpViewWidth > 0) return eVector->ParentView->vpViewWidth;
+      else if (view->vpViewWidth > 0) return view->vpViewWidth;
       else return eVector->Scene->PageWidth;
    }
    else if (eVector->Scene) return eVector->Scene->PageWidth;
@@ -629,12 +635,12 @@ inline static DOUBLE get_parent_width(const objVector *Vector)
 inline static DOUBLE get_parent_height(const objVector *Vector)
 {
    auto eVector = (const extVector *)Vector;
-   if (eVector->ParentView) {
-      if ((eVector->ParentView->vpDimensions & DMF_HEIGHT) or
-          ((eVector->ParentView->vpDimensions & DMF_Y) and (eVector->ParentView->vpDimensions & DMF_Y_OFFSET))) {
-         return eVector->ParentView->vpFixedHeight;
+   if (auto view = (extVectorViewport *)eVector->ParentView) {
+      if ((view->vpDimensions & DMF_HEIGHT) or
+          ((view->vpDimensions & DMF_Y) and (view->vpDimensions & DMF_Y_OFFSET))) {
+         return view->vpFixedHeight;
       }
-      else if (eVector->ParentView->vpViewHeight > 0) return eVector->ParentView->vpViewHeight;
+      else if (view->vpViewHeight > 0) return view->vpViewHeight;
       else return eVector->Scene->PageHeight;
    }
    else if (eVector->Scene) return eVector->Scene->PageHeight;

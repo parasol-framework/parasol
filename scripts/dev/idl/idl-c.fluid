@@ -783,6 +783,9 @@ function class(Name, Options, Blueprint, Private, Custom)
    local class = registerClass(Name)
    class.name = Name -- The name defined by class() has priority over any name defined by method()
    class.src = Options.src
+   if Options.base then
+      class.base = "obj" .. Options.base
+   end
    class.references = { }
 
    glActiveRefs = class.references
@@ -880,7 +883,7 @@ function class(Name, Options, Blueprint, Private, Custom)
    -- INLINE ERROR [Prefix][Method]([Args]) { }
 
    if (class.methods != nil) then
-      local pfx = class.methodPrefix
+      local pfx  = class.methodPrefix
       local lpfx = pfx:lower()
 
       if (glFeedback == 'verbose') then
@@ -924,9 +927,9 @@ function class(Name, Options, Blueprint, Private, Custom)
          end
 
          if (method.params != nil) and (#method.params > 0) then
-            local def = '' -- struct definition
-            local values = '' -- struct values
-            local call = 'APTR Ob' -- Inline function parameters
+            local def     = '' -- struct definition
+            local values  = '' -- struct values
+            local call    = 'APTR Ob' -- Inline function parameters
             local results = false
             for _, param in ipairs(method.params) do
                def = def .. param.basicType .. ' ' .. pName(param) .. '; '
@@ -936,7 +939,7 @@ function class(Name, Options, Blueprint, Private, Custom)
 
                if nz(values) then values = values .. ', ' end
                if (param.resultValue) then
-                  values = values .. '0'
+                  values  = values .. '0'
                   results = true
                else
                   values = values .. pName(param)
@@ -1353,7 +1356,6 @@ function outputClassHeader(class, Private, Custom)
 
       if physicalFields then
          priority("typedef class pl" .. class.name ..  " obj" .. class.name .. ";")
-
          output("typedef class pl" .. class.name ..  " : public BaseClass {")
          output("   public:")
 
@@ -1410,6 +1412,11 @@ function outputClassHeader(class, Private, Custom)
             end
          end
 
+         output("} obj" .. class.name .. ";")
+         output()
+      elseif class.base then
+         priority("typedef class pl" .. class.name ..  " obj" .. class.name .. ";")
+         output("typedef class pl" .. class.name ..  " : public " .. class.base .. " {")
          output("} obj" .. class.name .. ";")
          output()
       end

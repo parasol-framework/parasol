@@ -518,8 +518,8 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          if (Self->Flags & SVF_AUTOSCALE) {
             // If auto-scale is enabled, access the top-level viewport and set the Width and Height to 100%
 
-            objVector *view = Self->Scene->Viewport;
-            while ((view) and (view->SubID != ID_VECTORVIEWPORT)) view = view->Next;
+            auto view = Self->Scene->Viewport;
+            while ((view) and (view->SubID != ID_VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
             if (view) SetFields(view, FID_Width|TDOUBLE|TPERCENT, 100.0, FID_Height|TDOUBLE|TPERCENT, 100.0, TAGEND);
          }
       }
