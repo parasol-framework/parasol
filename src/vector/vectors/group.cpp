@@ -19,7 +19,7 @@ static ERROR init_group(void)
       FID_SubClassID|TLONG,     ID_VECTORGROUP,
       FID_Name|TSTRING,         "VectorGroup",
       FID_Category|TLONG,       CCF_GRAPHICS,
-      FID_Size|TLONG,           sizeof(objVector),
+      FID_Size|TLONG,           sizeof(extVector),
       FID_Path|TSTR,            MOD_PATH,
       TAGEND));
 }

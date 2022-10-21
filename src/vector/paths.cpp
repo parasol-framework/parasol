@@ -3,7 +3,7 @@
 
 //********************************************************************************************************************
 
-objVectorViewport * get_parent_view(objVector *Vector)
+objVectorViewport * get_parent_view(extVector *Vector)
 {
    if (Vector->ParentView) return Vector->ParentView;
    else {
@@ -13,7 +13,7 @@ objVectorViewport * get_parent_view(objVector *Vector)
             Vector->ParentView = (objVectorViewport *)scan;
             return Vector->ParentView;
          }
-         else if (scan->Parent->ClassID IS ID_VECTOR) scan = (objVector *)(scan->Parent);
+         else if (scan->Parent->ClassID IS ID_VECTOR) scan = (extVector *)(scan->Parent);
          else return NULL;
       }
    }
@@ -24,19 +24,19 @@ objVectorViewport * get_parent_view(objVector *Vector)
 // This 'safe' version of gen_vector_path() checks that all parent vectors have been refreshed if they are marked
 // as dirty.  Generation of the paths is top-down.
 
-void gen_vector_tree(objVector *Vector)
+void gen_vector_tree(extVector *Vector)
 {
    if (!Vector->initialised()) return;
 
    if (Vector->Dirty) {
       std::vector<objVector *> list;
-      for (auto scan=Vector->Parent; scan; scan=((objVector *)scan)->Parent) {
+      for (auto scan=(objVector *)Vector->Parent; scan; scan=(objVector *)scan->Parent) {
          if (scan->ClassID != ID_VECTOR) break;
-         list.push_back((objVector *)scan);
+         list.push_back(scan);
       }
 
       std::for_each(list.rbegin(), list.rend(), [](auto v) {
-         gen_vector_path(v);
+         gen_vector_path((extVector *)v);
       });
    }
 
@@ -51,7 +51,7 @@ void gen_vector_tree(objVector *Vector)
 // computed from old information and likely to produce the wrong result.  Use gen_vector_tree() to avoid
 // such problems.
 
-void gen_vector_path(objVector *Vector)
+void gen_vector_path(extVector *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -267,16 +267,16 @@ void gen_vector_path(objVector *Vector)
       if (Vector->Dirty & RC_BASE_PATH) {
          Vector->BasePath.free_all();
 
-         Vector->GeneratePath((objVector *)Vector);
+         Vector->GeneratePath(Vector);
 
          if ((Vector->Morph) and (Vector->Morph->ClassID IS ID_VECTOR)) {
             if ((Vector->SubID IS ID_VECTORTEXT) and (!(Vector->MorphFlags & VMF_STRETCH))) {
                // Do nothing for VectorText because it applies morph and transition effects during base path generation.
             }
             else {
-               auto morph = (objVector *)Vector->Morph;
+               auto morph = (extVector *)Vector->Morph;
 
-               if (morph->Dirty) gen_vector_path((objVector *)morph);
+               if (morph->Dirty) gen_vector_path(morph);
 
                if (morph->BasePath.total_vertices()) {
                   DOUBLE bx1, bx2, by1, by2;
@@ -364,15 +364,13 @@ void gen_vector_path(objVector *Vector)
 
          if (Vector->DashArray) {
             Vector->DashArray->path.attach(Vector->BasePath);
-
-            configure_stroke((objVector &)*Vector, Vector->DashArray->stroke);
-
+            configure_stroke(*Vector, Vector->DashArray->stroke);
             agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> stroke_path(Vector->DashArray->stroke, Vector->Transform);
             Vector->StrokeRaster->add_path(stroke_path);
          }
          else {
             agg::conv_stroke<agg::path_storage> stroked_path(Vector->BasePath);
-            configure_stroke((objVector &)*Vector, stroked_path);
+            configure_stroke(*Vector, stroked_path);
             agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> stroke_path(stroked_path, Vector->Transform);
             Vector->StrokeRaster->add_path(stroke_path);
          }
@@ -393,11 +391,11 @@ void gen_vector_path(objVector *Vector)
 // Apply all transforms in the correct SVG order to a target agg::trans_affine object.  The process starts with the
 // vector passed in to the function, and proceeds upwards through the parent nodes.
 
-void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform)
+void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
 {
    parasol::Log log(__FUNCTION__);
 
-   for (auto scan=Start; scan; scan=(objVector *)get_parent(scan)) {
+   for (auto scan=Start; scan; scan=(extVector *)get_parent(scan)) {
       if (scan->ClassID != ID_VECTOR) continue;
 
       if (scan->SubID IS ID_VECTORVIEWPORT) {

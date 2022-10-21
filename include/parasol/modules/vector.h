@@ -432,12 +432,6 @@ typedef class plVectorColour : public BaseClass {
    DOUBLE Alpha;  // The alpha component value.
 } objVectorColour;
 
-#ifdef PRV_VECTORSCENE
-struct OrderedVector {
-   bool operator()(const objVector *a, const objVector *b) const;
-};
-#endif
-   
 // VectorScene class definition
 
 #define VER_VECTORSCENE (1.000000)
@@ -815,55 +809,6 @@ typedef class plVector : public BaseClass {
    LONG      Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
    LONG      PathQuality;             // Defines the quality of a path when it is rendered.
    LONG      ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
-
-#ifdef PRV_VECTOR
-   DOUBLE FinalX, FinalY;
-   DOUBLE BX1, BY1, BX2, BY2;
-   DOUBLE FillGradientAlpha, StrokeGradientAlpha;
-   DOUBLE StrokeWidth;
-   agg::path_storage BasePath;
-   agg::trans_affine Transform;
-   RGB8 rgbStroke, rgbFill;
-   objVectorFilter *Filter;
-   objVectorViewport *ParentView;
-   CSTRING FilterString, StrokeString, FillString;
-   STRING ID;
-   void   (*GeneratePath)(objVector *);
-   agg::rasterizer_scanline_aa<> *StrokeRaster;
-   agg::rasterizer_scanline_aa<> *FillRaster;
-   objVectorClip     *ClipMask;
-   objVectorGradient *StrokeGradient, *FillGradient;
-   objVectorImage    *FillImage, *StrokeImage;
-   objVectorPattern  *FillPattern, *StrokePattern;
-   objVectorTransition *Transition;
-   objVector *Morph;
-   DashedStroke *DashArray;
-   GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
-   FRGB StrokeColour, FillColour;
-   std::vector<FeedbackSubscription> *FeedbackSubscriptions;
-   std::vector<InputSubscription> *InputSubscriptions;
-   std::vector<KeyboardSubscription> *KeyboardSubscriptions;
-   LONG   InputMask;
-   LONG   NumericID;
-   LONG   PathLength;
-   UBYTE  MorphFlags;
-   UBYTE  FillRule;
-   UBYTE  ClipRule;
-   UBYTE  Dirty;
-   UBYTE  TabOrder;
-   UBYTE  EnableBkgd:1;
-   UBYTE  DisableFillColour:1;
-   UBYTE  ButtonLock:1;
-   UBYTE  RelativeStrokeWidth:1;
-   UBYTE  DisableHitTesting:1;
-   UBYTE  ResizeSubscription:1;
-   agg::line_join_e  LineJoin;
-   agg::line_cap_e   LineCap;
-   agg::inner_join_e InnerJoin;
-   // Methods
-   DOUBLE fixed_stroke_width();
-  
-#endif
    // Action stubs
 
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
@@ -888,7 +833,7 @@ struct VectorBase {
    ERROR (*_GenerateEllipse)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR);
    ERROR (*_GeneratePath)(CSTRING, APTR);
    ERROR (*_GenerateRectangle)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR);
-   void (*_ReadPainter)(OBJECTPTR, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
+   void (*_ReadPainter)(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
    void (*_TranslatePath)(APTR, DOUBLE, DOUBLE);
    void (*_MoveTo)(APTR, DOUBLE, DOUBLE);
    void (*_LineTo)(APTR, DOUBLE, DOUBLE);
@@ -941,13 +886,6 @@ struct VectorBase {
 #endif
 
 //****************************************************************************
-
-#ifdef PRV_VECTORSCENE
-__inline__ bool OrderedVector::operator()(const objVector *a, const objVector *b) const {
-   if (a->TabOrder == b->TabOrder) return a->UID < b->UID;
-   else return a->TabOrder < b->TabOrder;
-}
-#endif
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
    Colour->ClassID = ID_VECTORCOLOUR;

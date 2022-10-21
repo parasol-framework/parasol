@@ -16,7 +16,7 @@ Waves can be used in Parasol's SVG implementation by using the &lt;parasol:wave/
 
 *****************************************************************************/
 
-typedef class plVectorWave : public objVector {
+typedef class plVectorWave : public extVector {
    public:
    DOUBLE wX, wY;
    DOUBLE wWidth, wHeight;
@@ -189,7 +189,7 @@ static ERROR WAVE_MoveToPoint(objVectorWave *Self, struct acMoveToPoint *Args)
 
 static ERROR WAVE_NewObject(objVectorWave *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(objVector *))&generate_wave;
+   Self->GeneratePath = (void (*)(extVector *))&generate_wave;
    Self->wFrequency = 1.0;
    Self->wAmplitude = 1.0;
    Self->wDecay = 1.0;
