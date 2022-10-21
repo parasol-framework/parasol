@@ -23,9 +23,8 @@ typedef class plVectorGradient objVectorGradient;
 typedef class plFilterEffect objFilterEffect;
 typedef class plVectorFilter objVectorFilter;
 typedef class plVector objVector;
-
 typedef class plVectorViewport objVectorViewport;
-  
+
 // Options for drawing arcs.
 
 #define ARC_LARGE 0x00000001
@@ -374,52 +373,6 @@ struct VectorMatrix {
    DOUBLE TranslateY;             // Matrix value F
 };
 
-// VectorPath class definition
-
-#define VER_VECTORPATH (1.000000)
-
-// VectorPath methods
-
-#define MT_VPAddCommand -30
-#define MT_VPRemoveCommand -31
-#define MT_VPSetCommand -32
-#define MT_VPGetCommand -33
-#define MT_VPSetCommandList -34
-
-struct vpAddCommand { struct PathCommand * Commands; LONG Size;  };
-struct vpRemoveCommand { LONG Index; LONG Total;  };
-struct vpSetCommand { LONG Index; struct PathCommand * Command; LONG Size;  };
-struct vpGetCommand { LONG Index; struct PathCommand * Command;  };
-struct vpSetCommandList { APTR Commands; LONG Size;  };
-
-INLINE ERROR vpAddCommand(APTR Ob, struct PathCommand * Commands, LONG Size) {
-   struct vpAddCommand args = { Commands, Size };
-   return(Action(MT_VPAddCommand, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR vpRemoveCommand(APTR Ob, LONG Index, LONG Total) {
-   struct vpRemoveCommand args = { Index, Total };
-   return(Action(MT_VPRemoveCommand, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR vpSetCommand(APTR Ob, LONG Index, struct PathCommand * Command, LONG Size) {
-   struct vpSetCommand args = { Index, Command, Size };
-   return(Action(MT_VPSetCommand, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR vpGetCommand(APTR Ob, LONG Index, struct PathCommand ** Command) {
-   struct vpGetCommand args = { Index, 0 };
-   ERROR error = Action(MT_VPGetCommand, (OBJECTPTR)Ob, &args);
-   if (Command) *Command = args.Command;
-   return(error);
-}
-
-INLINE ERROR vpSetCommandList(APTR Ob, APTR Commands, LONG Size) {
-   struct vpSetCommandList args = { Commands, Size };
-   return(Action(MT_VPSetCommandList, (OBJECTPTR)Ob, &args));
-}
-
-
 // VectorColour class definition
 
 #define VER_VECTORCOLOUR (1.000000)
@@ -471,7 +424,7 @@ typedef class plVectorScene : public BaseClass {
    LARGE    RenderTime;           // Returns the rendering time of the last scene.
    DOUBLE   Gamma;                // Private. Not currently implemented.
    objVectorScene * HostScene;    // Refers to a top-level VectorScene object, if applicable.
-   objVector * Viewport;          // References the first object in the scene, which must be a VectorViewport object.
+   objVectorViewport * Viewport;  // References the first object in the scene, which must be a VectorViewport object.
    objBitmap * Bitmap;            // Target bitmap for drawing vectors.
    struct KeyStore * Defs;        // Stores references to gradients, images, patterns etc
    OBJECTID SurfaceID;            // May refer to a Surface object for enabling automatic rendering.
@@ -520,24 +473,17 @@ typedef class plVectorImage : public BaseClass {
 
 typedef class plVectorPattern : public BaseClass {
    public:
-   DOUBLE X;                        // X coordinate for the pattern.
-   DOUBLE Y;                        // Y coordinate for the pattern.
-   DOUBLE Width;                    // Width of the pattern tile.
-   DOUBLE Height;                   // Height of the pattern tile.
-   DOUBLE Opacity;                  // The opacity of the pattern.
-   objVectorScene * Scene;          // Refers to the internal @VectorScene that will contain the rendered pattern.
-   objVectorViewport * Viewport;    // Refers to the viewport that contains the pattern.
-   objVectorPattern * Inherit;      // Inherit attributes from a VectorPattern referenced here.
-   LONG   SpreadMethod;             // The behaviour to use when the pattern bounds do not match the vector path.
-   LONG   Units;                    // Defines the coordinate system for fields X, Y, Width and Height.
-   LONG   ContentUnits;             // Private. Not yet implemented.
-   LONG   Dimensions;               // Dimension flags are stored here.
-
-#ifdef PRV_VECTORPATTERN
-   struct VectorMatrix *Matrices;
-   objBitmap *Bitmap;
-  
-#endif
+   DOUBLE X;                      // X coordinate for the pattern.
+   DOUBLE Y;                      // Y coordinate for the pattern.
+   DOUBLE Width;                  // Width of the pattern tile.
+   DOUBLE Height;                 // Height of the pattern tile.
+   DOUBLE Opacity;                // The opacity of the pattern.
+   objVectorScene * Scene;        // Refers to the internal @VectorScene that will contain the rendered pattern.
+   objVectorPattern * Inherit;    // Inherit attributes from a VectorPattern referenced here.
+   LONG   SpreadMethod;           // The behaviour to use when the pattern bounds do not match the vector path.
+   LONG   Units;                  // Defines the coordinate system for fields X, Y, Width and Height.
+   LONG   ContentUnits;           // Private. Not yet implemented.
+   LONG   Dimensions;             // Dimension flags are stored here.
 } objVectorPattern;
 
 // VectorGradient class definition
@@ -660,54 +606,6 @@ typedef class plVectorFilter : public BaseClass {
    inline ERROR init() { return Action(AC_Init, this, NULL); }
 } objVectorFilter;
 
-// VectorText class definition
-
-#define VER_VECTORTEXT (1.000000)
-
-// VectorText methods
-
-#define MT_VTDeleteLine -30
-
-struct vtDeleteLine { LONG Line;  };
-
-INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
-   struct vtDeleteLine args = { Line };
-   return(Action(MT_VTDeleteLine, (OBJECTPTR)Ob, &args));
-}
-
-
-// VectorWave class definition
-
-#define VER_VECTORWAVE (1.000000)
-
-// VectorRectangle class definition
-
-#define VER_VECTORRECTANGLE (1.000000)
-
-// VectorPolygon class definition
-
-#define VER_VECTORPOLYGON (1.000000)
-
-// VectorShape class definition
-
-#define VER_VECTORSHAPE (1.000000)
-
-// VectorSpiral class definition
-
-#define VER_VECTORSPIRAL (1.000000)
-
-// VectorEllipse class definition
-
-#define VER_VECTORELLIPSE (1.000000)
-
-// VectorClip class definition
-
-#define VER_VECTORCLIP (1.000000)
-
-// VectorViewport class definition
-
-#define VER_VECTORVIEWPORT (1.000000)
-
 // Vector class definition
 
 #define VER_VECTOR (1.000000)
@@ -826,6 +724,103 @@ typedef class plVector : public BaseClass {
 
    inline ERROR show() { return Action(AC_Show, this, NULL); }
 } objVector;
+
+// VectorPath class definition
+
+#define VER_VECTORPATH (1.000000)
+
+// VectorPath methods
+
+#define MT_VPAddCommand -30
+#define MT_VPRemoveCommand -31
+#define MT_VPSetCommand -32
+#define MT_VPGetCommand -33
+#define MT_VPSetCommandList -34
+
+struct vpAddCommand { struct PathCommand * Commands; LONG Size;  };
+struct vpRemoveCommand { LONG Index; LONG Total;  };
+struct vpSetCommand { LONG Index; struct PathCommand * Command; LONG Size;  };
+struct vpGetCommand { LONG Index; struct PathCommand * Command;  };
+struct vpSetCommandList { APTR Commands; LONG Size;  };
+
+INLINE ERROR vpAddCommand(APTR Ob, struct PathCommand * Commands, LONG Size) {
+   struct vpAddCommand args = { Commands, Size };
+   return(Action(MT_VPAddCommand, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR vpRemoveCommand(APTR Ob, LONG Index, LONG Total) {
+   struct vpRemoveCommand args = { Index, Total };
+   return(Action(MT_VPRemoveCommand, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR vpSetCommand(APTR Ob, LONG Index, struct PathCommand * Command, LONG Size) {
+   struct vpSetCommand args = { Index, Command, Size };
+   return(Action(MT_VPSetCommand, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR vpGetCommand(APTR Ob, LONG Index, struct PathCommand ** Command) {
+   struct vpGetCommand args = { Index, 0 };
+   ERROR error = Action(MT_VPGetCommand, (OBJECTPTR)Ob, &args);
+   if (Command) *Command = args.Command;
+   return(error);
+}
+
+INLINE ERROR vpSetCommandList(APTR Ob, APTR Commands, LONG Size) {
+   struct vpSetCommandList args = { Commands, Size };
+   return(Action(MT_VPSetCommandList, (OBJECTPTR)Ob, &args));
+}
+
+
+// VectorText class definition
+
+#define VER_VECTORTEXT (1.000000)
+
+// VectorText methods
+
+#define MT_VTDeleteLine -30
+
+struct vtDeleteLine { LONG Line;  };
+
+INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
+   struct vtDeleteLine args = { Line };
+   return(Action(MT_VTDeleteLine, (OBJECTPTR)Ob, &args));
+}
+
+
+// VectorWave class definition
+
+#define VER_VECTORWAVE (1.000000)
+
+// VectorRectangle class definition
+
+#define VER_VECTORRECTANGLE (1.000000)
+
+// VectorPolygon class definition
+
+#define VER_VECTORPOLYGON (1.000000)
+
+// VectorShape class definition
+
+#define VER_VECTORSHAPE (1.000000)
+
+// VectorSpiral class definition
+
+#define VER_VECTORSPIRAL (1.000000)
+
+// VectorEllipse class definition
+
+#define VER_VECTORELLIPSE (1.000000)
+
+// VectorClip class definition
+
+#define VER_VECTORCLIP (1.000000)
+
+// VectorViewport class definition
+
+#define VER_VECTORVIEWPORT (1.000000)
+
+typedef class plVectorViewport : public objVector {
+} objVectorViewport;
 
 struct VectorBase {
    ERROR (*_DrawPath)(objBitmap *, APTR, DOUBLE, OBJECTPTR, OBJECTPTR);

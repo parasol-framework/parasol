@@ -3,14 +3,14 @@
 
 //********************************************************************************************************************
 
-objVectorViewport * get_parent_view(extVector *Vector)
+extVectorViewport * get_parent_view(extVector *Vector)
 {
    if (Vector->ParentView) return Vector->ParentView;
    else {
       auto scan = get_parent(Vector);
       while (scan) {
          if (scan->SubID IS ID_VECTORVIEWPORT) {
-            Vector->ParentView = (objVectorViewport *)scan;
+            Vector->ParentView = (extVectorViewport *)scan;
             return Vector->ParentView;
          }
          else if (scan->Parent->ClassID IS ID_VECTOR) scan = (extVector *)(scan->Parent);
@@ -69,7 +69,7 @@ void gen_vector_path(extVector *Vector)
       return;
    }
    else if (Vector->SubID IS ID_VECTORVIEWPORT) {
-      auto view = (objVectorViewport *)Vector;
+      auto view = (extVectorViewport *)Vector;
 
       DOUBLE parent_width, parent_height;
       OBJECTID parent_id;
@@ -402,7 +402,7 @@ void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
          // When a viewport is encountered we need to make special considerations as to its viewbox, which affects both
          // position and scaling of all children.  Alignment is another factor that is taken care of here.
 
-         auto view = (objVectorViewport *)scan;
+         auto view = (extVectorViewport *)scan;
 
          DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->UID, view->FinalX, view->FinalY);
 

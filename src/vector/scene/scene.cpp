@@ -698,13 +698,13 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
 // are taken into account through use of BX1,BY1,BX2,BY2.  The list is sorted starting from the background to the
 // foreground.
 
-void get_viewport_at_xy_scan(extVector *Vector, std::vector<std::vector<objVectorViewport *>> &Collection, DOUBLE X, DOUBLE Y, LONG Branch)
+void get_viewport_at_xy_scan(extVector *Vector, std::vector<std::vector<extVectorViewport *>> &Collection, DOUBLE X, DOUBLE Y, LONG Branch)
 {
    if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
 
    for (auto scan=Vector; scan; scan=(extVector *)scan->Next) {
       if (scan->SubID IS ID_VECTORVIEWPORT) {
-         auto vp = (objVectorViewport *)scan;
+         auto vp = (extVectorViewport *)scan;
 
          if (vp->Dirty) gen_vector_path(vp);
 
@@ -719,9 +719,9 @@ void get_viewport_at_xy_scan(extVector *Vector, std::vector<std::vector<objVecto
 
 //********************************************************************************************************************
 
-objVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y)
+extVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y)
 {
-   std::vector<std::vector<objVectorViewport *>> viewports;
+   std::vector<std::vector<extVectorViewport *>> viewports;
    get_viewport_at_xy_scan((extVector *)Scene->Viewport, viewports, X, Y, 0);
 
    // From front to back, determine the first path that the (X,Y) point resides in.
@@ -742,7 +742,7 @@ objVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y
 
    // No child viewports were hit, revert to main
 
-   return (objVectorViewport *)Scene->Viewport;
+   return (extVectorViewport *)Scene->Viewport;
 }
 
 //********************************************************************************************************************
@@ -751,7 +751,7 @@ static void process_resize_msgs(extVectorScene *Self)
 {
    if (Self->PendingResizeMsgs.size() > 0) {
       for (auto it=Self->PendingResizeMsgs.begin(); it != Self->PendingResizeMsgs.end(); it++) {
-         objVectorViewport *view = *it;
+         extVectorViewport *view = *it;
 
          auto list = Self->ResizeSubscriptions[view];
          for (auto &sub : list) {
@@ -760,7 +760,7 @@ static void process_resize_msgs(extVectorScene *Self)
             auto func = sub.second;
             if (func.Type IS CALL_STDC) {
                parasol::SwitchContext ctx(func.StdC.Context);
-               auto callback = (ERROR (*)(objVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE))func.StdC.Routine;
+               auto callback = (ERROR (*)(extVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE))func.StdC.Routine;
                result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight);
             }
             else if (func.Type IS CALL_SCRIPT) {

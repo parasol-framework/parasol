@@ -120,8 +120,8 @@
     <field>
       <name>Viewport</name>
       <comment>Refers to the viewport that contains the pattern.</comment>
-      <access read="R">Read</access>
-      <type class="VectorViewport">*VectorViewport</type>
+      <access read="G">Get</access>
+      <type>OBJECTPTR</type>
       <description>
 <p>The Viewport refers to a <class name="VectorViewport">VectorViewport</class> object that is created to host the vectors for the rendered pattern.  If the Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.</p>
       </description>

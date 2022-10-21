@@ -1063,6 +1063,9 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
          FID_HostScene|TPTR,     Self->Scene,
          TAGEND);
 
+      objVectorViewport *viewport;
+      GetPointer(pattern, FID_Viewport, &viewport);
+
       bool client_set_viewbox = false;
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
@@ -1092,7 +1095,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
 
             case SVF_ID:       id = val; break;
 
-            case SVF_OVERFLOW: SetString((OBJECTPTR)pattern->Viewport, FID_Overflow, val); break;
+            case SVF_OVERFLOW: SetString(viewport, FID_Overflow, val); break;
 
             case SVF_OPACITY:  set_double(pattern, FID_Opacity, val); break;
 
@@ -1109,7 +1112,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
                client_set_viewbox = true;
                pattern->ContentUnits = VUNIT_USERSPACE;
                read_numseq(val, &vx, &vy, &vwidth, &vheight, TAGEND);
-               SetFields((OBJECTPTR)pattern->Viewport,
+               SetFields(viewport,
                   FID_ViewX|TDOUBLE,      vx,
                   FID_ViewY|TDOUBLE,      vy,
                   FID_ViewWidth|TDOUBLE,  vwidth,
@@ -1130,7 +1133,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
       }
 
       /*if (!client_set_viewbox) {
-         SetFields(pattern->Viewport,
+         SetFields(viewport,
             FID_ViewX|TDOUBLE,   0,
             FID_ViewY|TDOUBLE,   0,
             FID_ViewWidth|TDOUBLE,  vwidth,
@@ -1142,7 +1145,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
          svgState state;
          reset_state(&state);
-         process_children(Self, XML, &state, Tag->Child, (OBJECTPTR)pattern->Viewport);
+         process_children(Self, XML, &state, Tag->Child, viewport);
          if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, pattern);
       }
       else {

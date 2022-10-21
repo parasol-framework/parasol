@@ -26,7 +26,7 @@ contains the pattern content.
 
 *****************************************************************************/
 
-static ERROR PATTERN_Draw(objVectorPattern *Self, struct acDraw *Args)
+static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
 {
    parasol::Log log;
 
@@ -41,8 +41,8 @@ static ERROR PATTERN_Draw(objVectorPattern *Self, struct acDraw *Args)
    else if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->Bitmap,
       FID_Width|TLONG,  Self->Scene->PageWidth,
       FID_Height|TLONG, Self->Scene->PageHeight,
+      FID_Flags|TLONG,  BMF_ALPHA_CHANNEL,
       FID_BitsPerPixel|TLONG, 32,
-      FID_Flags|TLONG, BMF_ALPHA_CHANNEL,
       TAGEND)) return ERR_CreateObject;
 
    ClearMemory(Self->Bitmap->Data, Self->Bitmap->LineWidth * Self->Bitmap->Height);
@@ -54,7 +54,7 @@ static ERROR PATTERN_Draw(objVectorPattern *Self, struct acDraw *Args)
 
 //****************************************************************************
 
-static ERROR PATTERN_Free(objVectorPattern *Self, APTR Void)
+static ERROR PATTERN_Free(extVectorPattern *Self, APTR Void)
 {
    VectorMatrix *next;
    for (auto scan=Self->Matrices; scan; scan=next) {
@@ -71,7 +71,7 @@ static ERROR PATTERN_Free(objVectorPattern *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR PATTERN_Init(objVectorPattern *Self, APTR Void)
+static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -103,7 +103,7 @@ static ERROR PATTERN_Init(objVectorPattern *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR PATTERN_NewObject(objVectorPattern *Self, APTR Void)
+static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
 {
    if (!NewObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Scene)) {
       if (!NewObject(ID_VECTORVIEWPORT, 0, &Self->Viewport)) {
@@ -139,7 +139,7 @@ then the dimension is calculated relative to the nearest bounding box or viewpor
 
 *****************************************************************************/
 
-static ERROR PATTERN_GET_Height(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_GET_Height(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->Height;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_HEIGHT)) val = val * 100.0;
@@ -148,7 +148,7 @@ static ERROR PATTERN_GET_Height(objVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR PATTERN_SET_Height(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_SET_Height(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -176,7 +176,7 @@ penalty.
 
 *****************************************************************************/
 
-static ERROR PATTERN_SET_Inherit(objVectorPattern *Self, objVectorPattern *Value)
+static ERROR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value)
 {
    if (Value) {
       if (Value->ClassID IS ID_VECTORPATTERN) {
@@ -199,13 +199,13 @@ represented by a VectorMatrix structure, and are linked in the order in which th
 
 *****************************************************************************/
 
-static ERROR VECTORPATTERN_GET_Matrices(objVectorPattern *Self, VectorMatrix **Value)
+static ERROR VECTORPATTERN_GET_Matrices(extVectorPattern *Self, VectorMatrix **Value)
 {
    *Value = Self->Matrices;
    return ERR_Okay;
 }
 
-static ERROR VECTORPATTERN_SET_Matrices(objVectorPattern *Self, VectorMatrix *Value)
+static ERROR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Value)
 {
    if (!Value) {
       auto hook = &Self->Matrices;
@@ -250,7 +250,7 @@ is 1.0.
 
 *****************************************************************************/
 
-static ERROR PATTERN_SET_Opacity(objVectorPattern *Self, DOUBLE Value)
+static ERROR PATTERN_SET_Opacity(extVectorPattern *Self, DOUBLE Value)
 {
    if (Value < 0.0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
@@ -279,7 +279,7 @@ A transform can be applied to the pattern by setting this field with an SVG comp
 
 *****************************************************************************/
 
-static ERROR PATTERN_SET_Transform(objVectorPattern *Self, CSTRING Commands)
+static ERROR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
 {
    parasol::Log log;
 
@@ -323,6 +323,16 @@ Viewport: Refers to the viewport that contains the pattern.
 The Viewport refers to a @VectorViewport object that is created to host the vectors for the rendered pattern.  If the
 Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.
 
+*****************************************************************************/
+
+static ERROR PATTERN_GET_Viewport(extVectorPattern *Self, extVectorViewport **Value)
+{
+   *Value = Self->Viewport;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
 -FIELD-
 Width: Width of the pattern tile.
 
@@ -331,7 +341,7 @@ then the dimension is calculated relative to the nearest bounding box or viewpor
 
 *****************************************************************************/
 
-static ERROR PATTERN_GET_Width(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_GET_Width(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->Width;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_WIDTH)) val = val * 100.0;
@@ -340,7 +350,7 @@ static ERROR PATTERN_GET_Width(objVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR PATTERN_SET_Width(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_SET_Width(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -366,7 +376,7 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 
 *****************************************************************************/
 
-static ERROR PATTERN_GET_X(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_GET_X(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->X;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_X)) val = val * 100.0;
@@ -375,7 +385,7 @@ static ERROR PATTERN_GET_X(objVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR PATTERN_SET_X(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_SET_X(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -402,7 +412,7 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 
 *****************************************************************************/
 
-static ERROR PATTERN_GET_Y(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_GET_Y(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->Y;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_Y)) val = val * 100.0;
@@ -411,7 +421,7 @@ static ERROR PATTERN_GET_Y(objVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR PATTERN_SET_Y(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_SET_Y(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -472,7 +482,6 @@ static const FieldArray clPatternFields[] = {
    { "Height",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Height, (APTR)PATTERN_SET_Height },
    { "Opacity",      FDF_DOUBLE|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Opacity },
    { "Scene",        FDF_INTEGRAL|FDF_R,         0, NULL, NULL },
-   { "Viewport",     FDF_OBJECT|FDF_R,           0, NULL, NULL },
    { "Inherit",      FDF_OBJECT|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_RW,            (MAXINT)&clPatternSpread, NULL, NULL },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clPatternUnits, NULL, NULL },
@@ -482,6 +491,7 @@ static const FieldArray clPatternFields[] = {
    // Virtual fields
    { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"VectorMatrix", (APTR)VECTORPATTERN_GET_Matrices, (APTR)VECTORPATTERN_SET_Matrices },
    { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)PATTERN_SET_Transform },
+   { "Viewport",     FDF_VIRTUAL|FDF_OBJECT|FDF_R, ID_VECTORVIEWPORT, (APTR)PATTERN_GET_Viewport, NULL },
    END_FIELD
 };
 
@@ -494,7 +504,7 @@ ERROR init_pattern(void) // The pattern is a definition type for creating patter
       FID_Actions|TPTR,      clPatternActions,
       FID_Fields|TARRAY,     clPatternFields,
       FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Size|TLONG,        sizeof(objVectorPattern),
+      FID_Size|TLONG,        sizeof(extVectorPattern),
       FID_Path|TSTR,         "modules:vector",
       TAGEND));
 }
