@@ -451,7 +451,7 @@ static ERROR VECTORSCENE_SearchByID(extVectorScene *Self, struct scSearchByID *A
    if (!Args) return ERR_NullArgs;
    Args->Result = NULL;
 
-   extVector *vector = (extVector *)Self->Viewport;
+   auto vector = (extVector *)Self->Viewport;
    while (vector) {
       //log.msg("Search","%.3d: %p <- #%d -> %p Child %p", vector->Index, vector->Prev, vector->UID, vector->Next, vector->Child);
 cont:
@@ -672,7 +672,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
       }
 
       if ((no_focus) or (lost_focus_to_child) or (was_child_now_primary)) {
-         parasol::ScopedObjectLock<objVector> vec(fgv, 1000);
+         parasol::ScopedObjectLock<extVector> vec(fgv, 1000);
          if (vec.granted()) {
             send_feedback((extVector *)fgv, focus_event);
             focus_event = FM_CHILD_HAS_FOCUS;
@@ -685,7 +685,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
    for (auto const fv : glFocusList) {
       if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
          parasol::ScopedObjectLock<extVector> vec(fv, 1000);
-         if (vec.granted()) send_feedback((extVector *)fv, FM_LOST_FOCUS);
+         if (vec.granted()) send_feedback(fv, FM_LOST_FOCUS);
       }
       else break;
    }

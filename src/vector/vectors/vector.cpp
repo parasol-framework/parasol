@@ -177,7 +177,7 @@ FieldNotSet: The vector's scene graph is not associated with a Surface.
 static ERROR VECTOR_Draw(extVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
-      if (Self->Dirty) gen_vector_tree((extVector *)Self);
+      if (Self->Dirty) gen_vector_tree(Self);
 
 #if 0
       // Retrieve bounding box, post-transformations.
@@ -365,7 +365,8 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
    if (!Self->Scene) return log.warning(ERR_NotInitialised);
 
    if (Self->GeneratePath) { // Path generation must be supported by the vector.
-      if (Self->Dirty) gen_vector_tree((extVector *)Self);
+      if (Self->Dirty) gen_vector_tree(Self);
+
       if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
       std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, -1000000, -1000000 };
@@ -391,7 +392,7 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
       return ERR_Okay;
    }
    else if (Self->SubID IS ID_VECTORVIEWPORT) {
-      if (Self->Dirty) gen_vector_tree((extVector *)Self);
+      if (Self->Dirty) gen_vector_tree(Self);
 
       auto view = (objVectorViewport *)Self;
       Args->X      = view->vpBX1;
@@ -629,7 +630,8 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Self->Dirty) gen_vector_tree((extVector *)Self);
+   if (Self->Dirty) gen_vector_tree(Self);
+
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
    if (Self->SubID IS ID_VECTORVIEWPORT) {
@@ -742,7 +744,7 @@ static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
       Self->Next->Prev = Self->Prev;
       extVector *scan = Self;
       while ((i > 0) and (scan->Next)) {
-         scan =  (extVector *)scan->Next;
+         scan = (extVector *)scan->Next;
          i--;
       }
       if ((!Self->Prev) and (scan != Self)) {
@@ -970,7 +972,8 @@ static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
 
    if ((!Args) or (Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Self->Dirty) gen_vector_tree((extVector *)Self);
+   if (Self->Dirty) gen_vector_tree(Self);
+
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
    Self->BasePath.rewind(0);
@@ -1342,7 +1345,7 @@ static ERROR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
    if (def->Object->ClassID IS ID_VECTORFILTER) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->FilterString = StrClone(Value);
-      Self->Filter = (objVectorFilter *)def->Object;
+      Self->Filter = (extVectorFilter *)def->Object;
       return ERR_Okay;
    }
    else return log.warning(ERR_InvalidValue);
@@ -1879,7 +1882,8 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    if (!Self->GeneratePath) return log.warning(ERR_Mismatch); // Path generation must be supported by the vector.
 
-   if (Self->Dirty) gen_vector_tree((extVector *)Self);
+   if (Self->Dirty) gen_vector_tree(Self);
+
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
    char seq[4096] = "";
@@ -2312,7 +2316,7 @@ static ERROR init_vector(void)
       FID_Actions|TPTR,   clVectorActions,
       FID_Methods|TARRAY, clVectorMethods,
       FID_Fields|TARRAY,  clVectorFields,
-      FID_Size|TLONG,     sizeof(objVector),
+      FID_Size|TLONG,     sizeof(extVector),
       FID_Path|TSTR,      "modules:vector",
       TAGEND));
 }

@@ -276,7 +276,7 @@ void gen_vector_path(extVector *Vector)
             else {
                auto morph = (extVector *)Vector->Morph;
 
-               if (morph->Dirty) gen_vector_path((extVector *)morph);
+               if (morph->Dirty) gen_vector_path(morph);
 
                if (morph->BasePath.total_vertices()) {
                   DOUBLE bx1, bx2, by1, by2;
