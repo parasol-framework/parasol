@@ -1266,7 +1266,7 @@ private:
                      state.mTransform      = view->Transform;
                      state.mApplyTransform = true;
 
-                     draw_vectors((extVector *)view->FillPattern->Viewport, state);
+                     draw_vectors(view->FillPattern->Viewport, state);
 
                      state.mTransform      = s_transform;
                      state.mApplyTransform = s_apply;
@@ -1329,7 +1329,7 @@ private:
                      auto transform = shape->Transform * state.mTransform;
 
                      if (shape->DashArray) {
-                        configure_stroke((extVector &)*shape, shape->DashArray->stroke);
+                        configure_stroke(*shape, shape->DashArray->stroke);
                         agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> final_path(shape->DashArray->stroke, transform);
 
                         agg::rasterizer_scanline_aa raster;
@@ -1338,7 +1338,7 @@ private:
                      }
                      else {
                         agg::conv_stroke<agg::path_storage> stroked_path(shape->BasePath);
-                        configure_stroke((extVector &)*shape, stroked_path);
+                        configure_stroke(*shape, stroked_path);
                         agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> final_path(stroked_path, transform);
 
                         agg::rasterizer_scanline_aa raster;

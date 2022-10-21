@@ -364,15 +364,13 @@ void gen_vector_path(extVector *Vector)
 
          if (Vector->DashArray) {
             Vector->DashArray->path.attach(Vector->BasePath);
-
-            configure_stroke((extVector &)*Vector, Vector->DashArray->stroke);
-
+            configure_stroke(*Vector, Vector->DashArray->stroke);
             agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> stroke_path(Vector->DashArray->stroke, Vector->Transform);
             Vector->StrokeRaster->add_path(stroke_path);
          }
          else {
             agg::conv_stroke<agg::path_storage> stroked_path(Vector->BasePath);
-            configure_stroke((extVector &)*Vector, stroked_path);
+            configure_stroke(*Vector, stroked_path);
             agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> stroke_path(stroked_path, Vector->Transform);
             Vector->StrokeRaster->add_path(stroke_path);
          }
