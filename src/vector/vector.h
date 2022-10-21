@@ -222,12 +222,11 @@ class extFilterEffect : public objFilterEffect {
 class extVector : public objVector {
    public:
 };
-
-struct OrderedVector {
+struct TabOrderedVector {
    bool operator()(const extVector *a, const extVector *b) const;
 };
 
-__inline__ bool OrderedVector::operator()(const extVector *a, const extVector *b) const {
+__inline__ bool TabOrderedVector::operator()(const extVector *a, const extVector *b) const {
    if (a->TabOrder == b->TabOrder) return a->UID < b->UID;
    else return a->TabOrder < b->TabOrder;
 }
@@ -240,7 +239,7 @@ class extVectorScene : public objVectorScene {
    APTR KeyHandle; // Keyboard subscription
    std::unordered_set<objVectorViewport *> PendingResizeMsgs;
    std::unordered_map<extVector *, LONG> InputSubscriptions;
-   std::set<extVector *, OrderedVector> KeyboardSubscriptions;
+   std::set<extVector *, TabOrderedVector> KeyboardSubscriptions;
    std::vector<struct InputBoundary> InputBoundaries;
    std::unordered_map<objVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
@@ -379,10 +378,9 @@ extern std::vector<extVector *> glFocusList; // The first reference is the most 
 //********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
-template <class T>
-inline static void mark_dirty(T *Vector, const UBYTE Flags)
+inline static void mark_dirty(objVector *Vector, const UBYTE Flags)
 {
-   Vector->Dirty |= Flags;
+   ((extVector *)Vector)->Dirty |= Flags;
    for (auto scan=(extVector *)Vector->Child; scan; scan=(extVector *)scan->Next) {
       if ((scan->Dirty & Flags) == Flags) continue;
       mark_dirty(scan, Flags);
@@ -405,10 +403,9 @@ inline static agg::path_storage basic_path(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUB
 //********************************************************************************************************************
 // Call reset_path() when the shape of the vector requires recalculation.
 
-template <class T>
-inline static void reset_path(T *Vector)
+inline static void reset_path(objVector *Vector)
 {
-   Vector->Dirty |= RC_BASE_PATH;
+   ((extVector *)Vector)->Dirty |= RC_BASE_PATH;
    mark_dirty(Vector, RC_FINAL_PATH);
 }
 
@@ -416,8 +413,7 @@ inline static void reset_path(T *Vector)
 // Call reset_final_path() when the base path is still valid and the vector is affected by a transform or coordinate
 // translation.
 
-template <class T>
-inline static void reset_final_path(T *Vector)
+inline static void reset_final_path(objVector *Vector)
 {
    mark_dirty(Vector, RC_FINAL_PATH);
 }
@@ -569,31 +565,33 @@ public:
 // These functions expect to be called during path generation via gen_vector_path().  If this is not the case, ensure
 // that Dirty field markers are cleared beforehand.
 
-template <class T> inline static DOUBLE get_parent_width(const T *Vector)
+inline static DOUBLE get_parent_width(const objVector *Vector)
 {
-   if (Vector->ParentView) {
-      if ((Vector->ParentView->vpDimensions & DMF_WIDTH) or
-          ((Vector->ParentView->vpDimensions & DMF_X) and (Vector->ParentView->vpDimensions & DMF_X_OFFSET))) {
-         return Vector->ParentView->vpFixedWidth;
+   auto eVector = (const extVector *)Vector;
+   if (eVector->ParentView) {
+      if ((eVector->ParentView->vpDimensions & DMF_WIDTH) or
+          ((eVector->ParentView->vpDimensions & DMF_X) and (eVector->ParentView->vpDimensions & DMF_X_OFFSET))) {
+         return eVector->ParentView->vpFixedWidth;
       }
-      else if (Vector->ParentView->vpViewWidth > 0) return Vector->ParentView->vpViewWidth;
-      else return Vector->Scene->PageWidth;
+      else if (eVector->ParentView->vpViewWidth > 0) return eVector->ParentView->vpViewWidth;
+      else return eVector->Scene->PageWidth;
    }
-   else if (Vector->Scene) return Vector->Scene->PageWidth;
+   else if (eVector->Scene) return eVector->Scene->PageWidth;
    else return 0;
 }
 
-template <class T> inline static DOUBLE get_parent_height(const T *Vector)
+inline static DOUBLE get_parent_height(const objVector *Vector)
 {
-   if (Vector->ParentView) {
-      if ((Vector->ParentView->vpDimensions & DMF_HEIGHT) or
-          ((Vector->ParentView->vpDimensions & DMF_Y) and (Vector->ParentView->vpDimensions & DMF_Y_OFFSET))) {
-         return Vector->ParentView->vpFixedHeight;
+   auto eVector = (const extVector *)Vector;
+   if (eVector->ParentView) {
+      if ((eVector->ParentView->vpDimensions & DMF_HEIGHT) or
+          ((eVector->ParentView->vpDimensions & DMF_Y) and (eVector->ParentView->vpDimensions & DMF_Y_OFFSET))) {
+         return eVector->ParentView->vpFixedHeight;
       }
-      else if (Vector->ParentView->vpViewHeight > 0) return Vector->ParentView->vpViewHeight;
-      else return Vector->Scene->PageHeight;
+      else if (eVector->ParentView->vpViewHeight > 0) return eVector->ParentView->vpViewHeight;
+      else return eVector->Scene->PageHeight;
    }
-   else if (Vector->Scene) return Vector->Scene->PageHeight;
+   else if (eVector->Scene) return eVector->Scene->PageHeight;
    else return 0;
 }
 
