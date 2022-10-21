@@ -22,7 +22,7 @@ definition.  This will ensure that the VectorGradient is de-allocated when the s
 // Return a gradient table for a vector with its opacity multiplier applied.  The table is cached with the vector so
 // that it does not need to be recalculated when required again.
 
-GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
+GRADIENT_TABLE * get_fill_gradient_table(extVector &Vector, DOUBLE Opacity)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -59,7 +59,7 @@ GRADIENT_TABLE * get_fill_gradient_table(objVector &Vector, DOUBLE Opacity)
    }
 }
 
-GRADIENT_TABLE * get_stroke_gradient_table(objVector &Vector)
+GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 {
    parasol::Log log(__FUNCTION__);
 

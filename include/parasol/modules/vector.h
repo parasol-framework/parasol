@@ -432,12 +432,6 @@ typedef class plVectorColour : public BaseClass {
    DOUBLE Alpha;  // The alpha component value.
 } objVectorColour;
 
-#ifdef PRV_VECTORSCENE
-struct OrderedVector {
-   bool operator()(const objVector *a, const objVector *b) const;
-};
-#endif
-   
 // VectorScene class definition
 
 #define VER_VECTORSCENE (1.000000)
@@ -828,7 +822,7 @@ typedef class plVector : public BaseClass {
    objVectorViewport *ParentView;
    CSTRING FilterString, StrokeString, FillString;
    STRING ID;
-   void   (*GeneratePath)(objVector *);
+   void   (*GeneratePath)(extVector *);
    agg::rasterizer_scanline_aa<> *StrokeRaster;
    agg::rasterizer_scanline_aa<> *FillRaster;
    objVectorClip     *ClipMask;
@@ -836,7 +830,7 @@ typedef class plVector : public BaseClass {
    objVectorImage    *FillImage, *StrokeImage;
    objVectorPattern  *FillPattern, *StrokePattern;
    objVectorTransition *Transition;
-   objVector *Morph;
+   extVector *Morph;
    DashedStroke *DashArray;
    GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
    FRGB StrokeColour, FillColour;
@@ -941,13 +935,6 @@ struct VectorBase {
 #endif
 
 //****************************************************************************
-
-#ifdef PRV_VECTORSCENE
-__inline__ bool OrderedVector::operator()(const objVector *a, const objVector *b) const {
-   if (a->TabOrder == b->TabOrder) return a->UID < b->UID;
-   else return a->TabOrder < b->TabOrder;
-}
-#endif
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
    Colour->ClassID = ID_VECTORCOLOUR;

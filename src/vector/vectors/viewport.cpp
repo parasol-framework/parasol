@@ -32,7 +32,7 @@ static ERROR drag_callback(objVectorViewport *Viewport, const InputEvent *Events
    static DOUBLE glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
    static DOUBLE glDragOriginX = 0, glDragOriginY = 0;
 
-   if (Viewport->Dirty) gen_vector_tree((objVector *)Viewport);
+   if (Viewport->Dirty) gen_vector_tree((extVector *)Viewport);
 
    for (auto event=Events; event; event=event->Next) {
       // Process events that support consolidation first.
@@ -155,7 +155,7 @@ static ERROR VECTORVIEWPORT_Move(objVectorViewport *Self, struct acMove *Args)
    Self->vpTargetX += Args->DeltaX;
    Self->vpTargetY += Args->DeltaY;
 
-   mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
+   mark_dirty((extVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
    return ERR_Okay;
 }
 
@@ -179,7 +179,7 @@ static ERROR VECTORVIEWPORT_MoveToPoint(objVectorViewport *Self, struct acMoveTo
       Self->vpTargetY = Args->Y;
    }
 
-   mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
+   mark_dirty((extVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
    return ERR_Okay;
 }
 
@@ -215,7 +215,7 @@ static ERROR VECTORVIEWPORT_Resize(objVectorViewport *Self, struct acResize *Arg
 
    if (Self->vpTargetWidth < 1) Self->vpTargetWidth = 1;
    if (Self->vpTargetHeight < 1) Self->vpTargetHeight = 1;
-   mark_dirty((objVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
+   mark_dirty((extVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
    return ERR_Okay;
 }
 
@@ -231,7 +231,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 static ERROR VIEW_GET_AbsX(objVectorViewport *Self, LONG *Value)
 {
-   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (Self->Dirty) gen_vector_tree((extVector *)Self);
 
    *Value = Self->vpBX1;
    return ERR_Okay;
@@ -249,7 +249,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 static ERROR VIEW_GET_AbsY(objVectorViewport *Self, LONG *Value)
 {
-   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (Self->Dirty) gen_vector_tree((extVector *)Self);
 
    *Value = Self->vpBY1;
    return ERR_Okay;
@@ -297,7 +297,7 @@ static ERROR VIEW_GET_Dimensions(objVectorViewport *Self, LONG *Value)
 static ERROR VIEW_SET_Dimensions(objVectorViewport *Self, LONG Value)
 {
    Self->vpDimensions = Value;
-   mark_dirty((objVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
 
@@ -366,7 +366,7 @@ static ERROR VIEW_GET_Height(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
 
-   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (Self->Dirty) gen_vector_tree((extVector *)Self);
 
    if (Self->vpDimensions & DMF_FIXED_HEIGHT) { // Working with a fixed dimension
       if (Value->Type & FD_PERCENTAGE) {
@@ -419,7 +419,7 @@ static ERROR VIEW_SET_Height(objVectorViewport *Self, Variable *Value)
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
       Self->vpTargetHeight = val;
    }
-   mark_dirty((objVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
 
@@ -516,7 +516,7 @@ static ERROR VIEW_SET_ViewHeight(objVectorViewport *Self, DOUBLE Value)
 {
    if (Value > 0.0) {
       Self->vpViewHeight = Value;
-      mark_dirty((objVector *)Self, RC_ALL);
+      mark_dirty((extVector *)Self, RC_ALL);
       return ERR_Okay;
    }
    else return ERR_InvalidValue;
@@ -541,7 +541,7 @@ static ERROR VIEW_GET_ViewX(objVectorViewport *Self, DOUBLE *Value)
 static ERROR VIEW_SET_ViewX(objVectorViewport *Self, DOUBLE Value)
 {
    Self->vpViewX = Value;
-   mark_dirty((objVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
 
@@ -565,7 +565,7 @@ static ERROR VIEW_SET_ViewWidth(objVectorViewport *Self, DOUBLE Value)
 {
    if (Value > 0.0) {
       Self->vpViewWidth = Value;
-      mark_dirty((objVector *)Self, RC_ALL);
+      mark_dirty((extVector *)Self, RC_ALL);
       return ERR_Okay;
    }
    else return ERR_InvalidValue;
@@ -590,7 +590,7 @@ static ERROR VIEW_GET_ViewY(objVectorViewport *Self, DOUBLE *Value)
 static ERROR VIEW_SET_ViewY(objVectorViewport *Self, DOUBLE Value)
 {
    Self->vpViewY = Value;
-   mark_dirty((objVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
 
@@ -607,7 +607,7 @@ static ERROR VIEW_GET_Width(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
 
-   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (Self->Dirty) gen_vector_tree((extVector *)Self);
 
    if (Self->vpDimensions & DMF_FIXED_WIDTH) { // Working with a fixed dimension
       if (Value->Type & FD_PERCENTAGE) {
@@ -659,7 +659,7 @@ static ERROR VIEW_SET_Width(objVectorViewport *Self, Variable *Value)
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
       Self->vpTargetWidth = val;
    }
-   mark_dirty((objVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
 
@@ -680,7 +680,7 @@ static ERROR VIEW_GET_X(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE width, value;
 
-   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (Self->Dirty) gen_vector_tree((extVector *)Self);
 
    if (Self->vpDimensions & DMF_FIXED_X) value = Self->vpTargetX;
    else if (Self->vpDimensions & DMF_RELATIVE_X) {
@@ -721,7 +721,7 @@ static ERROR VIEW_SET_X(objVectorViewport *Self, Variable *Value)
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
       Self->vpTargetX = val;
    }
-   mark_dirty((objVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
 
@@ -743,7 +743,7 @@ static ERROR VIEW_GET_XOffset(objVectorViewport *Self, Variable *Value)
    DOUBLE width;
    DOUBLE value = 0;
 
-   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (Self->Dirty) gen_vector_tree((extVector *)Self);
 
    if (Self->vpDimensions & DMF_FIXED_X_OFFSET) value = Self->vpTargetXO;
    else if (Self->vpDimensions & DMF_RELATIVE_X_OFFSET) {
@@ -786,7 +786,7 @@ static ERROR VIEW_SET_XOffset(objVectorViewport *Self, Variable *Value)
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X_OFFSET) & (~DMF_RELATIVE_X_OFFSET);
       Self->vpTargetXO = val;
    }
-   mark_dirty((objVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
 
@@ -807,7 +807,7 @@ static ERROR VIEW_GET_Y(objVectorViewport *Self, Variable *Value)
 {
    DOUBLE value, height;
 
-   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (Self->Dirty) gen_vector_tree((extVector *)Self);
 
    if (Self->vpDimensions & DMF_FIXED_Y) value = Self->vpTargetY;
    else if (Self->vpDimensions & DMF_RELATIVE_Y) {
@@ -848,7 +848,7 @@ static ERROR VIEW_SET_Y(objVectorViewport *Self, Variable *Value)
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
       Self->vpTargetY = val;
    }
-   mark_dirty((objVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
 
@@ -870,7 +870,7 @@ static ERROR VIEW_GET_YOffset(objVectorViewport *Self, Variable *Value)
    DOUBLE height;
    DOUBLE value = 0;
 
-   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (Self->Dirty) gen_vector_tree((extVector *)Self);
 
    if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) value = Self->vpTargetYO;
    else if (Self->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
@@ -912,7 +912,7 @@ static ERROR VIEW_SET_YOffset(objVectorViewport *Self, Variable *Value)
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y_OFFSET) & (~DMF_RELATIVE_Y_OFFSET);
       Self->vpTargetYO = val;
    }
-   mark_dirty((objVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
 

@@ -451,7 +451,7 @@ static ERROR VECTORSCENE_SearchByID(extVectorScene *Self, struct scSearchByID *A
    if (!Args) return ERR_NullArgs;
    Args->Result = NULL;
 
-   objVector *vector = Self->Viewport;
+   extVector *vector = (extVector *)Self->Viewport;
    while (vector) {
       //log.msg("Search","%.3d: %p <- #%d -> %p Child %p", vector->Index, vector->Prev, vector->UID, vector->Next, vector->Child);
 cont:
@@ -460,13 +460,13 @@ cont:
          return ERR_Okay;
       }
 
-      if (vector->Child) vector = vector->Child;
-      else if (vector->Next) vector = vector->Next;
+      if (vector->Child) vector = (extVector *)vector->Child;
+      else if (vector->Next) vector = (extVector *)vector->Next;
       else {
-         while ((vector = (objVector *)get_parent(vector))) { // Unwind back up the stack, looking for the first Parent with a Next field.
+         while ((vector = get_parent(vector))) { // Unwind back up the stack, looking for the first Parent with a Next field.
             if (vector->ClassID != ID_VECTOR) return ERR_Search;
             if (vector->Next) {
-               vector = vector->Next;
+               vector = (extVector *)vector->Next;
                goto cont;
             }
          }
@@ -629,7 +629,7 @@ VectorViewport object is initialised.
 // Also sends LostFocus notifications to vectors that previously had the focus.
 // The glFocusList maintains the current focus state, with the most foreground vector at the beginning.
 
-void apply_focus(extVectorScene *Scene, objVector *Vector)
+void apply_focus(extVectorScene *Scene, extVector *Vector)
 {
    if (!Vector) return;
 
@@ -637,9 +637,9 @@ void apply_focus(extVectorScene *Scene, objVector *Vector)
 
    if ((!glFocusList.empty()) and (Vector IS glFocusList.front())) return;
 
-   std::vector<objVector *> focus_gained; // The first reference is the most foreground object
+   std::vector<extVector *> focus_gained; // The first reference is the most foreground object
 
-   for (auto scan=Vector; scan; scan=(objVector *)scan->Parent) {
+   for (auto scan=Vector; scan; scan=(extVector *)scan->Parent) {
       if (scan->ClassID IS ID_VECTOR) {
          focus_gained.emplace_back(scan);
       }
@@ -674,7 +674,7 @@ void apply_focus(extVectorScene *Scene, objVector *Vector)
       if ((no_focus) or (lost_focus_to_child) or (was_child_now_primary)) {
          parasol::ScopedObjectLock<objVector> vec(fgv, 1000);
          if (vec.granted()) {
-            send_feedback(fgv, focus_event);
+            send_feedback((extVector *)fgv, focus_event);
             focus_event = FM_CHILD_HAS_FOCUS;
          }
       }
@@ -684,8 +684,8 @@ void apply_focus(extVectorScene *Scene, objVector *Vector)
 
    for (auto const fv : glFocusList) {
       if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
-         parasol::ScopedObjectLock<objVector> vec(fv, 1000);
-         if (vec.granted()) send_feedback(fv, FM_LOST_FOCUS);
+         parasol::ScopedObjectLock<extVector> vec(fv, 1000);
+         if (vec.granted()) send_feedback((extVector *)fv, FM_LOST_FOCUS);
       }
       else break;
    }
@@ -698,22 +698,22 @@ void apply_focus(extVectorScene *Scene, objVector *Vector)
 // are taken into account through use of BX1,BY1,BX2,BY2.  The list is sorted starting from the background to the
 // foreground.
 
-void get_viewport_at_xy_scan(objVector *Vector, std::vector<std::vector<objVectorViewport *>> &Collection, DOUBLE X, DOUBLE Y, LONG Branch)
+void get_viewport_at_xy_scan(extVector *Vector, std::vector<std::vector<objVectorViewport *>> &Collection, DOUBLE X, DOUBLE Y, LONG Branch)
 {
    if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
 
-   for (auto scan=Vector; scan; scan=scan->Next) {
+   for (auto scan=Vector; scan; scan=(extVector *)scan->Next) {
       if (scan->SubID IS ID_VECTORVIEWPORT) {
          auto vp = (objVectorViewport *)scan;
 
-         if (vp->Dirty) gen_vector_path((objVector *)vp);
+         if (vp->Dirty) gen_vector_path(vp);
 
          if ((X >= vp->vpBX1) and (Y >= vp->vpBY1) and (X < vp->vpBX2) and (Y < vp->vpBY2)) {
             Collection[Branch].emplace_back(vp);
          }
       }
 
-      if (scan->Child) get_viewport_at_xy_scan(scan->Child, Collection, X, Y, Branch + 1);
+      if (scan->Child) get_viewport_at_xy_scan((extVector *)scan->Child, Collection, X, Y, Branch + 1);
    }
 }
 
@@ -722,7 +722,7 @@ void get_viewport_at_xy_scan(objVector *Vector, std::vector<std::vector<objVecto
 objVectorViewport * get_viewport_at_xy(extVectorScene *Scene, DOUBLE X, DOUBLE Y)
 {
    std::vector<std::vector<objVectorViewport *>> viewports;
-   get_viewport_at_xy_scan((objVector *)Scene->Viewport, viewports, X, Y, 0);
+   get_viewport_at_xy_scan((extVector *)Scene->Viewport, viewports, X, Y, 0);
 
    // From front to back, determine the first path that the (X,Y) point resides in.
 
@@ -784,7 +784,7 @@ static void process_resize_msgs(extVectorScene *Self)
 //********************************************************************************************************************
 // Receiver for keyboard events
 
-static ERROR vector_keyboard_events(objVector *Vector, const evKey *Event)
+static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
 {
    for (auto it=Vector->KeyboardSubscriptions->begin(); it != Vector->KeyboardSubscriptions->end(); ) {
       ERROR result;
@@ -866,7 +866,7 @@ static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
 
 //********************************************************************************************************************
 
-static void send_input_events(objVector *Vector, InputEvent *Event)
+static void send_input_events(extVector *Vector, InputEvent *Event)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -900,7 +900,7 @@ static void send_input_events(objVector *Vector, InputEvent *Event)
 
 //********************************************************************************************************************
 
-static void send_enter_event(objVector *Vector, const InputEvent *Event, DOUBLE X = 0, DOUBLE Y = 0)
+static void send_enter_event(extVector *Vector, const InputEvent *Event, DOUBLE X = 0, DOUBLE Y = 0)
 {
    InputEvent event = {
       .Next        = NULL,
@@ -922,7 +922,7 @@ static void send_enter_event(objVector *Vector, const InputEvent *Event, DOUBLE 
 
 //********************************************************************************************************************
 
-static void send_left_event(objVector *Vector, const InputEvent *Event, DOUBLE X = 0, DOUBLE Y = 0)
+static void send_left_event(extVector *Vector, const InputEvent *Event, DOUBLE X = 0, DOUBLE Y = 0)
 {
    InputEvent event = {
       .Next        = NULL,
@@ -944,7 +944,7 @@ static void send_left_event(objVector *Vector, const InputEvent *Event, DOUBLE X
 
 //********************************************************************************************************************
 
-static void send_wheel_event(extVectorScene *Scene, objVector *Vector, const InputEvent *Event)
+static void send_wheel_event(extVectorScene *Scene, extVector *Vector, const InputEvent *Event)
 {
    InputEvent event = {
       .Next        = NULL,
@@ -989,18 +989,18 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
       // Focus management - clicking with the LMB can result in a change of focus.
 
       if ((input->Flags & JTYPE_BUTTON) and (input->Type IS JET_LMB) and (input->Value IS 1)) {
-         apply_focus(Self, (objVector *)get_viewport_at_xy(Self, input->X, input->Y));
+         apply_focus(Self, (extVector *)get_viewport_at_xy(Self, input->X, input->Y));
       }
 
       if (input->Type IS JET_WHEEL) {
          if (Self->ActiveVector) {
-            parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
+            parasol::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             if (lock.granted()) send_wheel_event(Self, lock.obj, input);
          }
       }
       else if (input->Type IS JET_LEFT_SURFACE) {
          if (Self->ActiveVector) {
-            parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
+            parasol::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
       }
@@ -1011,7 +1011,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
          else target = Self->ActiveVector;
 
          if (target) {
-            parasol::ScopedObjectLock<objVector> lock(target);
+            parasol::ScopedObjectLock<extVector> lock(target);
             if (lock.granted()) {
                InputEvent event = *input;
                event.Next = NULL;
@@ -1047,7 +1047,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                if (!in_bounds) continue;
             }
 
-            parasol::ScopedObjectLock<objVector> lock(bounds.VectorID);
+            parasol::ScopedObjectLock<extVector> lock(bounds.VectorID);
             if (!lock.granted()) continue;
             auto vector = lock.obj;
 
@@ -1078,7 +1078,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
                if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
                   if ((Self->ActiveVector) and (Self->ActiveVector != vector->UID)) {
-                     parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
+                     parasol::ScopedObjectLock<extVector> lock(Self->ActiveVector);
                      if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
                   }
 
@@ -1098,7 +1098,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
          // cursor left its area.
 
          if ((Self->ActiveVector) and (!processed)) {
-            parasol::ScopedObjectLock<objVector> lock(Self->ActiveVector);
+            parasol::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             Self->ActiveVector = 0;
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }

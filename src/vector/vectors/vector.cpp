@@ -26,14 +26,14 @@ unless otherwise documented.
 
 *********************************************************************************************************************/
 
-static std::unordered_map<objVector *, FUNCTION> glResizeSubscriptions; // Temporary cache for holding subscriptions.
+static std::unordered_map<extVector *, FUNCTION> glResizeSubscriptions; // Temporary cache for holding subscriptions.
 static std::mutex glResizeLock;
 
-static ERROR VECTOR_Push(objVector *, struct vecPush *);
+static ERROR VECTOR_Push(extVector *, struct vecPush *);
 
 //********************************************************************************************************************
 
-static void debug_tree(objVector *Vector, LONG &Level)
+static void debug_tree(extVector *Vector, LONG &Level)
 {
    parasol::Log log(__FUNCTION__);
    char indent[Level + 1];
@@ -44,7 +44,7 @@ static void debug_tree(objVector *Vector, LONG &Level)
    for (i=0; i < Level; i++) indent[i] = ' '; // Indenting
    indent[i] = 0;
 
-   for (auto v=Vector; v; v=(objVector *)v->Next) {
+   for (auto v=Vector; v; v=(extVector *)v->Next) {
       if (FindField(v, FID_Dimensions, NULL)) {
          GetFieldVariable(v, "$Dimensions", buffer, sizeof(buffer));
       }
@@ -53,7 +53,7 @@ static void debug_tree(objVector *Vector, LONG &Level)
       if (v->Child) {
          parasol::Log blog(__FUNCTION__);
          blog.branch("Vector #%d%s %s %s %s", v->UID, indent, v->Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
-         debug_tree(v->Child, Level);
+         debug_tree((extVector *)v->Child, Level);
       }
       else log.msg("Vector #%d%s %s %s %s", v->UID, indent, v->Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
    }
@@ -64,7 +64,7 @@ static void debug_tree(objVector *Vector, LONG &Level)
 //********************************************************************************************************************
 // Determine the parent object, based on the owner.
 
-void set_parent(objVector *Self, OBJECTID OwnerID)
+void set_parent(extVector *Self, OBJECTID OwnerID)
 {
    // Objects that don't belong to the Vector class will be ignored (i.e. they won't appear in the tree).
 
@@ -80,16 +80,16 @@ void set_parent(objVector *Self, OBJECTID OwnerID)
 
    if (Self->Parent->ClassID IS ID_VECTOR) {
       if ((!Self->Prev) and (!Self->Next)) {
-         if (((objVector *)Self->Parent)->Child) { // Insert at the end
-            auto end = ((objVector *)Self->Parent)->Child;
+         if (((extVector *)Self->Parent)->Child) { // Insert at the end
+            auto end = ((extVector *)Self->Parent)->Child;
             while (end->Next) end = end->Next;
             end->Next = Self;
             Self->Prev = end;
          }
-         else ((objVector *)Self->Parent)->Child = Self;
+         else ((extVector *)Self->Parent)->Child = Self;
       }
 
-      Self->Scene = ((objVector *)Self->Parent)->Scene;
+      Self->Scene = ((extVector *)Self->Parent)->Scene;
    }
    else if (Self->Parent->ClassID IS ID_VECTORSCENE) {
       if ((!Self->Prev) and (!Self->Next)) {
@@ -108,7 +108,7 @@ void set_parent(objVector *Self, OBJECTID OwnerID)
 
 //********************************************************************************************************************
 
-static ERROR VECTOR_ActionNotify(objVector *Self, struct acActionNotify *Args)
+static ERROR VECTOR_ActionNotify(extVector *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) {
       if ((Self->ClipMask) and (Args->ObjectID IS Self->ClipMask->UID)) Self->ClipMask = NULL;
@@ -141,7 +141,7 @@ Okay:
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Debug(objVector *Self, APTR Void)
+static ERROR VECTOR_Debug(extVector *Self, APTR Void)
 {
    LONG level = 0;
    debug_tree(Self, level);
@@ -154,7 +154,7 @@ Disable: Disabling a vector can be used to trigger style changes and prevent use
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Disable(objVector *Self, APTR Void)
+static ERROR VECTOR_Disable(extVector *Self, APTR Void)
 {
    // It is up to the client to monitor the Disable action if any reaction is required.
    Self->Flags |= VF_DISABLED;
@@ -174,10 +174,10 @@ FieldNotSet: The vector's scene graph is not associated with a Surface.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Draw(objVector *Self, struct acDraw *Args)
+static ERROR VECTOR_Draw(extVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
-      if (Self->Dirty) gen_vector_tree((objVector *)Self);
+      if (Self->Dirty) gen_vector_tree((extVector *)Self);
 
 #if 0
       // Retrieve bounding box, post-transformations.
@@ -212,7 +212,7 @@ Enable: Reverses the effects of disabling the vector.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Enable(objVector *Self, APTR Void)
+static ERROR VECTOR_Enable(extVector *Self, APTR Void)
 {
   // It is up to the client to subscribe to the Enable action if any activity needs to take place.
   Self->Flags &= ~VF_DISABLED;
@@ -221,7 +221,7 @@ static ERROR VECTOR_Enable(objVector *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VECTOR_Free(objVector *Self, APTR Args)
+static ERROR VECTOR_Free(extVector *Self, APTR Args)
 {
    Self->~objVector();
 
@@ -239,7 +239,7 @@ static ERROR VECTOR_Free(objVector *Self, APTR Args)
    if (Self->Prev) Self->Prev->Next = Self->Next;
    if ((Self->Parent) and (!Self->Prev)) {
       if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = Self->Next;
-      else ((objVector *)Self->Parent)->Child = Self->Next;
+      else ((extVector *)Self->Parent)->Child = Self->Next;
    }
    if (Self->Child) Self->Child->Parent = NULL;
 
@@ -299,7 +299,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_FreeMatrix(objVector *Self, struct vecFreeMatrix *Args)
+static ERROR VECTOR_FreeMatrix(extVector *Self, struct vecFreeMatrix *Args)
 {
    if ((!Args) or (!Args->Matrix)) return ERR_NullArgs;
 
@@ -356,7 +356,7 @@ NotPossible: The vector does not support path generation.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
+static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
 {
    parasol::Log log;
 
@@ -365,7 +365,7 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
    if (!Self->Scene) return log.warning(ERR_NotInitialised);
 
    if (Self->GeneratePath) { // Path generation must be supported by the vector.
-      if (Self->Dirty) gen_vector_tree((objVector *)Self);
+      if (Self->Dirty) gen_vector_tree((extVector *)Self);
       if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
       std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, -1000000, -1000000 };
@@ -382,7 +382,7 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
          bounding_rect_single(path, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
       }
 
-      if (Args->Flags & VBF_INCLUSIVE) calc_full_boundary(Self->Child, bounds, true);
+      if (Args->Flags & VBF_INCLUSIVE) calc_full_boundary((extVector *)Self->Child, bounds, true);
 
       Args->X      = bounds[0];
       Args->Y      = bounds[1];
@@ -391,7 +391,7 @@ static ERROR VECTOR_GetBoundary(objVector *Self, struct vecGetBoundary *Args)
       return ERR_Okay;
    }
    else if (Self->SubID IS ID_VECTORVIEWPORT) {
-      if (Self->Dirty) gen_vector_tree((objVector *)Self);
+      if (Self->Dirty) gen_vector_tree((extVector *)Self);
 
       auto view = (objVectorViewport *)Self;
       Args->X      = view->vpBX1;
@@ -409,7 +409,7 @@ Hide: Changes the vector's visibility setting to hidden.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Hide(objVector *Self, APTR Void)
+static ERROR VECTOR_Hide(extVector *Self, APTR Void)
 {
    Self->Visibility = VIS_HIDDEN;
    return ERR_Okay;
@@ -417,7 +417,7 @@ static ERROR VECTOR_Hide(objVector *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VECTOR_Init(objVector *Self, APTR Void)
+static ERROR VECTOR_Init(extVector *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -433,14 +433,14 @@ static ERROR VECTOR_Init(objVector *Self, APTR Void)
 
    if (auto parent = Self->Parent) {
       if (parent->ClassID IS ID_VECTOR) {
-         auto parent_shape = (objVector *)parent;
+         auto parent_shape = (extVector *)parent;
          Self->Scene = parent_shape->Scene;
 
          // Check if this object is already present in the parent's branch.
          auto scan = parent_shape->Child;
          while (scan) {
             if (scan IS Self) break;
-            scan = (objVector *)scan->Next;
+            scan = (extVector *)scan->Next;
          }
 
          if (!scan) {
@@ -493,7 +493,7 @@ MoveToBack: Move a vector to the back of its stack.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_MoveToBack(objVector *Self, APTR Void)
+static ERROR VECTOR_MoveToBack(extVector *Self, APTR Void)
 {
    struct vecPush push = { -32768 };
    return VECTOR_Push(Self, &push);
@@ -505,7 +505,7 @@ MoveToFront: Move a vector to the front of its stack.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_MoveToFront(objVector *Self, APTR Void)
+static ERROR VECTOR_MoveToFront(extVector *Self, APTR Void)
 {
    struct vecPush push = { 32767 };
    return VECTOR_Push(Self, &push);
@@ -513,7 +513,7 @@ static ERROR VECTOR_MoveToFront(objVector *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
+static ERROR VECTOR_NewObject(extVector *Self, APTR Void)
 {
    new (Self) objVector;
    Self->StrokeOpacity = 1.0;
@@ -536,7 +536,7 @@ static ERROR VECTOR_NewObject(objVector *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VECTOR_NewOwner(objVector *Self, struct acNewOwner *Args)
+static ERROR VECTOR_NewOwner(extVector *Self, struct acNewOwner *Args)
 {
    parasol::Log log;
 
@@ -576,7 +576,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_NewMatrix(objVector *Self, struct vecNewMatrix *Args)
+static ERROR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -623,13 +623,13 @@ NoSupport: The vector type does not support path generation.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_PointInPath(objVector *Self, struct vecPointInPath *Args)
+static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 {
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (Self->Dirty) gen_vector_tree((extVector *)Self);
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
    if (Self->SubID IS ID_VECTORVIEWPORT) {
@@ -709,7 +709,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
+static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
 {
    parasol::Log log;
 
@@ -719,17 +719,17 @@ static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
       if (!Self->Prev) return ERR_Okay; // Return if the vector is at the top of its branch
 
       LONG i = -Args->Position;
-      Self->Prev->Next = Self->Next;
-      if (Self->Next) Self->Next->Prev = Self->Prev;
+      Self->Prev->Next =  (extVector *)Self->Next;
+      if (Self->Next) Self->Next->Prev =  (extVector *)Self->Prev;
       auto scan = Self;
       while ((i > 0) and (scan->Prev)) {
-         scan = scan->Prev;
+         scan = (extVector *)scan->Prev;
          i--;
       }
       Self->Next = scan;
       Self->Prev = scan->Prev;
       if (!Self->Prev) {
-         if (scan->Parent->ClassID IS ID_VECTOR) ((objVector *)scan->Parent)->Child = Self;
+         if (scan->Parent->ClassID IS ID_VECTOR) ((extVector *)scan->Parent)->Child = Self;
          else if (scan->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)scan->Parent)->Viewport = Self;
          Self->Parent = scan->Parent;
       }
@@ -740,13 +740,13 @@ static ERROR VECTOR_Push(objVector *Self, struct vecPush *Args)
       LONG i = Args->Position;
       if (Self->Prev) Self->Prev->Next = Self->Next;
       Self->Next->Prev = Self->Prev;
-      objVector *scan = Self;
+      extVector *scan = Self;
       while ((i > 0) and (scan->Next)) {
-         scan = scan->Next;
+         scan =  (extVector *)scan->Next;
          i--;
       }
       if ((!Self->Prev) and (scan != Self)) {
-         if (Self->Parent->ClassID IS ID_VECTOR) ((objVector *)Self->Parent)->Child = Self->Next;
+         if (Self->Parent->ClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self->Next;
          else if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = Self->Next;
       }
       Self->Prev = scan;
@@ -763,7 +763,7 @@ Show: Changes the vector's visibility setting to visible.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTOR_Show(objVector *Self, APTR Void)
+static ERROR VECTOR_Show(extVector *Self, APTR Void)
 {
    Self->Visibility = VIS_VISIBLE;
    return ERR_Okay;
@@ -795,7 +795,7 @@ NullArgs:
 
 ****************************************************************************/
 
-static ERROR VECTOR_SubscribeFeedback(objVector *Self, struct vecSubscribeFeedback *Args)
+static ERROR VECTOR_SubscribeFeedback(extVector *Self, struct vecSubscribeFeedback *Args)
 {
    parasol::Log log;
 
@@ -855,7 +855,7 @@ Function: A call to gfxSubscribeInput() failed.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SubscribeInput(objVector *Self, struct vecSubscribeInput *Args)
+static ERROR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Args)
 {
    parasol::Log log;
 
@@ -923,7 +923,7 @@ Function: A call to gfxSubscribeInput() failed.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SubscribeKeyboard(objVector *Self, struct vecSubscribeKeyboard *Args)
+static ERROR VECTOR_SubscribeKeyboard(extVector *Self, struct vecSubscribeKeyboard *Args)
 {
    parasol::Log log;
 
@@ -964,13 +964,13 @@ NullArgs:
 
 ****************************************************************************/
 
-static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
+static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
 {
    parasol::Log log;
 
    if ((!Args) or (Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (Self->Dirty) gen_vector_tree((extVector *)Self);
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
    Self->BasePath.rewind(0);
@@ -979,7 +979,7 @@ static ERROR VECTOR_TracePath(objVector *Self, struct vecTracePath *Args)
    LONG cmd = -1;
 
   if (Args->Callback->Type IS CALL_STDC) {
-      auto routine = ((void (*)(objVector *, LONG, LONG, DOUBLE, DOUBLE))(Args->Callback->StdC.Routine));
+      auto routine = ((void (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE))(Args->Callback->StdC.Routine));
 
       parasol::SwitchContext context(GetParentContext());
 
@@ -1035,13 +1035,13 @@ terms of outcome, the ClipRule works similarly to #FillRule.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_ClipRule(objVector *Self, LONG *Value)
+static ERROR VECTOR_GET_ClipRule(extVector *Self, LONG *Value)
 {
    *Value = Self->ClipRule;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_ClipRule(objVector *Self, LONG Value)
+static ERROR VECTOR_SET_ClipRule(extVector *Self, LONG Value)
 {
    Self->ClipRule = Value;
    return ERR_Okay;
@@ -1068,7 +1068,7 @@ It is a pre-requisite that the associated @VectorScene has been linked to a @Sur
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_Cursor(objVector *Self, LONG Value)
+static ERROR VECTOR_SET_Cursor(extVector *Self, LONG Value)
 {
    Self->Cursor = Value;
 
@@ -1112,7 +1112,7 @@ then the list of values is repeated to yield an even number of values.  Thus `5,
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_DashArray(objVector *Self, DOUBLE **Value, LONG *Elements)
+static ERROR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Elements)
 {
    if (Self->DashArray) {
       *Value    = Self->DashArray->values.data();
@@ -1125,7 +1125,7 @@ static ERROR VECTOR_GET_DashArray(objVector *Self, DOUBLE **Value, LONG *Element
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_DashArray(objVector *Self, DOUBLE *Value, LONG Elements)
+static ERROR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
 {
    if (Self->DashArray) { delete Self->DashArray; Self->DashArray = NULL; }
 
@@ -1166,7 +1166,7 @@ negative then the shift will be to the right.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_DashOffset(objVector *Self, DOUBLE Value)
+static ERROR VECTOR_SET_DashOffset(extVector *Self, DOUBLE Value)
 {
    Self->DashOffset = Value;
    if (Self->DashArray) {
@@ -1190,13 +1190,13 @@ sub-classes will ignore the option if used.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_EnableBkgd(objVector *Self, LONG *Value)
+static ERROR VECTOR_GET_EnableBkgd(extVector *Self, LONG *Value)
 {
    *Value = Self->EnableBkgd;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_EnableBkgd(objVector *Self, LONG Value)
+static ERROR VECTOR_SET_EnableBkgd(extVector *Self, LONG Value)
 {
    if (Value) Self->EnableBkgd = TRUE;
    else Self->EnableBkgd = FALSE;
@@ -1213,13 +1213,13 @@ The painter used for filling a vector path can be defined through this field.  T
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Fill(objVector *Self, CSTRING *Value)
+static ERROR VECTOR_GET_Fill(extVector *Self, CSTRING *Value)
 {
    *Value = Self->FillString;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_Fill(objVector *Self, CSTRING Value)
+static ERROR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 {
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
    Self->FillString = StrClone(Value);
@@ -1240,14 +1240,14 @@ If the Alpha component is set to zero then the FillColour will be ignored by the
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_FillColour(objVector *Self, FLOAT **Value, LONG *Elements)
+static ERROR VECTOR_GET_FillColour(extVector *Self, FLOAT **Value, LONG *Elements)
 {
    *Value = (FLOAT *)&Self->FillColour;
    *Elements = 4;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_FillColour(objVector *Self, FLOAT *Value, LONG Elements)
+static ERROR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->FillColour.Red   = Value[0];
@@ -1273,13 +1273,13 @@ the #Opacity to determine a final opacity value for the render.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_FillOpacity(objVector *Self, DOUBLE *Value)
+static ERROR VECTOR_GET_FillOpacity(extVector *Self, DOUBLE *Value)
 {
    *Value = Self->FillOpacity;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_FillOpacity(objVector *Self, DOUBLE Value)
+static ERROR VECTOR_SET_FillOpacity(extVector *Self, DOUBLE Value)
 {
    parasol::Log log;
 
@@ -1304,13 +1304,13 @@ The Filter value can be in the format `ID` or `url(#ID)` according to client pre
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Filter(objVector *Self, CSTRING *Value)
+static ERROR VECTOR_GET_Filter(extVector *Self, CSTRING *Value)
 {
    *Value = Self->FilterString;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_Filter(objVector *Self, CSTRING Value)
+static ERROR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -1359,13 +1359,13 @@ interpretation of "inside" is not so obvious.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_FillRule(objVector *Self, LONG *Value)
+static ERROR VECTOR_GET_FillRule(extVector *Self, LONG *Value)
 {
    *Value = Self->FillRule;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_FillRule(objVector *Self, LONG Value)
+static ERROR VECTOR_SET_FillRule(extVector *Self, LONG Value)
 {
    Self->FillRule = Value;
    return ERR_Okay;
@@ -1380,13 +1380,13 @@ existing object name and automatically assigned ID's for identifiers.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_ID(objVector *Self, STRING *Value)
+static ERROR VECTOR_GET_ID(extVector *Self, STRING *Value)
 {
    *Value = Self->ID;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_ID(objVector *Self, CSTRING Value)
+static ERROR VECTOR_SET_ID(extVector *Self, CSTRING Value)
 {
    if (Self->ID) FreeResource(Self->ID);
 
@@ -1419,7 +1419,7 @@ path.
 
 // See the AGG bezier_div demo to get a better understanding of what is affected by this field value.
 
-static ERROR VECTOR_GET_InnerJoin(objVector *Self, LONG *Value)
+static ERROR VECTOR_GET_InnerJoin(extVector *Self, LONG *Value)
 {
    if (Self->InnerJoin IS agg::inner_miter)      *Value = VIJ_MITER;
    else if (Self->InnerJoin IS agg::inner_round) *Value = VIJ_ROUND;
@@ -1430,7 +1430,7 @@ static ERROR VECTOR_GET_InnerJoin(objVector *Self, LONG *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_InnerJoin(objVector *Self, LONG Value)
+static ERROR VECTOR_SET_InnerJoin(extVector *Self, LONG Value)
 {
    switch(Value) {
       case VIJ_MITER: Self->InnerJoin = agg::inner_miter; break;
@@ -1457,7 +1457,7 @@ of a stroked path.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_LineCap(objVector *Self, LONG *Value)
+static ERROR VECTOR_GET_LineCap(extVector *Self, LONG *Value)
 {
    if (Self->LineCap IS agg::butt_cap)         *Value = VLC_BUTT;
    else if (Self->LineCap IS agg::square_cap)  *Value = VLC_SQUARE;
@@ -1467,7 +1467,7 @@ static ERROR VECTOR_GET_LineCap(objVector *Self, LONG *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_LineCap(objVector *Self, LONG Value)
+static ERROR VECTOR_SET_LineCap(extVector *Self, LONG Value)
 {
    switch(Value) {
       case VLC_BUTT:    Self->LineCap = agg::butt_cap; break;
@@ -1489,7 +1489,7 @@ that are being stroked.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_LineJoin(objVector *Self, LONG *Value)
+static ERROR VECTOR_GET_LineJoin(extVector *Self, LONG *Value)
 {
    if (Self->LineJoin IS agg::miter_join)        *Value = VLJ_MITER;
    else if (Self->LineJoin IS agg::round_join)   *Value = VLJ_ROUND;
@@ -1502,7 +1502,7 @@ static ERROR VECTOR_GET_LineJoin(objVector *Self, LONG *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_LineJoin(objVector *Self, LONG Value)
+static ERROR VECTOR_SET_LineJoin(extVector *Self, LONG Value)
 {
    switch (Value) {
       case VLJ_MITER:        Self->LineJoin = agg::miter_join; break;
@@ -1525,13 +1525,13 @@ refer to the @VectorClip class for further information.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Mask(objVector *Self, objVectorClip **Value)
+static ERROR VECTOR_GET_Mask(extVector *Self, objVectorClip **Value)
 {
    *Value = Self->ClipMask;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_Mask(objVector *Self, objVectorClip *Value)
+static ERROR VECTOR_SET_Mask(extVector *Self, objVectorClip *Value)
 {
    parasol::Log log;
 
@@ -1582,7 +1582,7 @@ them for theta less than approximately 29 degrees, and a limit of 10.0 converts 
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_MiterLimit(objVector *Self, DOUBLE Value)
+static ERROR VECTOR_SET_MiterLimit(extVector *Self, DOUBLE Value)
 {
    parasol::Log log;
 
@@ -1606,13 +1606,13 @@ best utilised.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Morph(objVector *Self, objVector **Value)
+static ERROR VECTOR_GET_Morph(extVector *Self, extVector **Value)
 {
    *Value = Self->Morph;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_Morph(objVector *Self, objVector *Value)
+static ERROR VECTOR_SET_Morph(extVector *Self, extVector *Value)
 {
    parasol::Log log;
 
@@ -1642,13 +1642,13 @@ MorphFlags: Optional flags that affect morphing.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_MorphFlags(objVector *Self, LONG *Value)
+static ERROR VECTOR_GET_MorphFlags(extVector *Self, LONG *Value)
 {
    *Value = Self->MorphFlags;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_MorphFlags(objVector *Self, LONG Value)
+static ERROR VECTOR_SET_MorphFlags(extVector *Self, LONG Value)
 {
     Self->MorphFlags = Value;
     return ERR_Okay;
@@ -1673,7 +1673,7 @@ UnsupportedOwner: The referenced vector does not share the same owner.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_Next(objVector *Self, objVector *Value)
+static ERROR VECTOR_SET_Next(extVector *Self, extVector *Value)
 {
    parasol::Log log;
 
@@ -1692,7 +1692,7 @@ static ERROR VECTOR_SET_Next(objVector *Self, objVector *Value)
    if (Value->Parent) { // Patch into the parent if we are at the start of the branch
       Self->Parent = Value->Parent;
       if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = Self;
-      else if (Self->Parent->ClassID IS ID_VECTOR) ((objVector *)Self->Parent)->Child = Self;
+      else if (Self->Parent->ClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
    }
 
    return ERR_Okay;
@@ -1710,13 +1710,13 @@ If NumericID is set by the client, then any value in #ID will be immediately cle
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_NumericID(objVector *Self, LONG *Value)
+static ERROR VECTOR_GET_NumericID(extVector *Self, LONG *Value)
 {
    *Value = Self->NumericID;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_NumericID(objVector *Self, LONG Value)
+static ERROR VECTOR_SET_NumericID(extVector *Self, LONG Value)
 {
    Self->NumericID = Value;
    if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
@@ -1734,7 +1734,7 @@ calculated as `#FillOpacity * Opacity`.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_Opacity(objVector *Self, DOUBLE Value)
+static ERROR VECTOR_SET_Opacity(extVector *Self, DOUBLE Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->Opacity = Value;
@@ -1776,7 +1776,7 @@ UnsupportedOwner: The referenced vector does not share the same owner.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
+static ERROR VECTOR_SET_Prev(extVector *Self, extVector *Value)
 {
    parasol::Log log;
 
@@ -1793,7 +1793,7 @@ static ERROR VECTOR_SET_Prev(objVector *Self, objVector *Value)
          Self->Next->Parent = Self->Parent;
       }
       else if (Self->Parent->ClassID IS ID_VECTOR) {
-         ((objVector *)Self->Parent)->Child = Self->Next;
+         ((extVector *)Self->Parent)->Child = Self->Next;
          Self->Next->Parent = Self->Parent;
       }
       Self->Parent = NULL;
@@ -1824,7 +1824,7 @@ The dimension values refer to the current location and size of the viewport.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_ResizeEvent(objVector *Self, FUNCTION *Value)
+static ERROR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
 {
    Self->ResizeSubscription = true;
    if ((Self->Scene) and (Self->ParentView)) {
@@ -1873,13 +1873,13 @@ of the previous command).
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Sequence(objVector *Self, STRING *Value)
+static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 {
    parasol::Log log;
 
    if (!Self->GeneratePath) return log.warning(ERR_Mismatch); // Path generation must be supported by the vector.
 
-   if (Self->Dirty) gen_vector_tree((objVector *)Self);
+   if (Self->Dirty) gen_vector_tree((extVector *)Self);
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
    char seq[4096] = "";
@@ -1965,13 +1965,13 @@ the ~ReadPainter() function in the Vector module.  Please refer to it for furthe
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Stroke(objVector *Self, CSTRING *Value)
+static ERROR VECTOR_GET_Stroke(extVector *Self, CSTRING *Value)
 {
    *Value = Self->StrokeString;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_Stroke(objVector *Self, STRING Value)
+static ERROR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    Self->StrokeString = StrClone(Value);
@@ -1991,14 +1991,14 @@ This field is complemented by the #StrokeOpacity and #Stroke fields.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_StrokeColour(objVector *Self, FLOAT **Value, LONG *Elements)
+static ERROR VECTOR_GET_StrokeColour(extVector *Self, FLOAT **Value, LONG *Elements)
 {
    *Value = (FLOAT *)&Self->StrokeColour;
    *Elements = 4;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_StrokeColour(objVector *Self, FLOAT *Value, LONG Elements)
+static ERROR VECTOR_SET_StrokeColour(extVector *Self, FLOAT *Value, LONG Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->StrokeColour.Red   = Value[0];
@@ -2023,13 +2023,13 @@ rendering.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_StrokeOpacity(objVector *Self, DOUBLE *Value)
+static ERROR VECTOR_GET_StrokeOpacity(extVector *Self, DOUBLE *Value)
 {
    *Value = Self->StrokeOpacity;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_StrokeOpacity(objVector *Self, DOUBLE Value)
+static ERROR VECTOR_SET_StrokeOpacity(extVector *Self, DOUBLE Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->StrokeOpacity = Value;
@@ -2050,7 +2050,7 @@ The size of the stroke is also affected by scaling factors imposed by transforms
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_StrokeWidth(objVector *Self, Variable *Value)
+static ERROR VECTOR_GET_StrokeWidth(extVector *Self, Variable *Value)
 {
    DOUBLE val;
 
@@ -2065,7 +2065,7 @@ static ERROR VECTOR_GET_StrokeWidth(objVector *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_StrokeWidth(objVector *Self, Variable *Value)
+static ERROR VECTOR_SET_StrokeWidth(extVector *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -2097,13 +2097,13 @@ When two vectors share the same priority, preference is given to the older of th
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_TabOrder(objVector *Self, LONG *Value)
+static ERROR VECTOR_GET_TabOrder(extVector *Self, LONG *Value)
 {
    *Value = Self->TabOrder;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_TabOrder(objVector *Self, LONG Value)
+static ERROR VECTOR_SET_TabOrder(extVector *Self, LONG Value)
 {
    if ((Value >= 1) and (Value <= 255)) {
       Self->TabOrder = Value;
@@ -2125,13 +2125,13 @@ and @VectorWave are able to take full advantage of this feature.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Transition(objVector *Self, objVectorTransition **Value)
+static ERROR VECTOR_GET_Transition(extVector *Self, objVectorTransition **Value)
 {
    *Value = Self->Transition;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_Transition(objVector *Self, objVectorTransition *Value)
+static ERROR VECTOR_SET_Transition(extVector *Self, objVectorTransition *Value)
 {
    parasol::Log log;
 
@@ -2165,7 +2165,7 @@ Visibility: Controls the visibility of a vector and its children.
 //********************************************************************************************************************
 // For sending events to the client
 
-void send_feedback(objVector *Vector, LONG Event)
+void send_feedback(extVector *Vector, LONG Event)
 {
    if (!Vector->initialised()) return;
    if (!Vector->FeedbackSubscriptions) return;
@@ -2178,7 +2178,7 @@ void send_feedback(objVector *Vector, LONG Event)
 
          if (sub.Callback.Type IS CALL_STDC) {
             parasol::SwitchContext ctx(sub.Callback.StdC.Context);
-            auto callback = (ERROR (*)(objVector *, LONG))sub.Callback.StdC.Routine;
+            auto callback = (ERROR (*)(extVector *, LONG))sub.Callback.StdC.Routine;
             result = callback(Vector, Event);
          }
          else if (sub.Callback.Type IS CALL_SCRIPT) {
