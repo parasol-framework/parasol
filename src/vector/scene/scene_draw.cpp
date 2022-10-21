@@ -396,7 +396,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
 
 static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
    LONG SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
-   objVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+   extVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
    DOUBLE dwidth, dheight;
@@ -1456,7 +1456,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          draw_gradient(bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
       }
       else if (FillStyle->ClassID IS ID_VECTORPATTERN) {
-         draw_pattern(bounds, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (objVectorPattern &)*FillStyle, mRenderer, mRaster);
+         draw_pattern(bounds, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*FillStyle, mRenderer, mRaster);
       }
       else log.warning("The FillStyle is not supported.");
    }
@@ -1474,7 +1474,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
          mRaster.reset();
          mRaster.add_path(stroke_path);
-         draw_pattern(bounds, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (objVectorPattern &)*StrokeStyle, mRenderer, mRaster);
+         draw_pattern(bounds, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*StrokeStyle, mRenderer, mRaster);
       }
       else if (StrokeStyle->ClassID IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*StrokeStyle;

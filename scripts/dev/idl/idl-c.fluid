@@ -880,7 +880,7 @@ function class(Name, Options, Blueprint, Private, Custom)
    -- INLINE ERROR [Prefix][Method]([Args]) { }
 
    if (class.methods != nil) then
-      local pfx = class.methodPrefix
+      local pfx  = class.methodPrefix
       local lpfx = pfx:lower()
 
       if (glFeedback == 'verbose') then
@@ -924,9 +924,9 @@ function class(Name, Options, Blueprint, Private, Custom)
          end
 
          if (method.params != nil) and (#method.params > 0) then
-            local def = '' -- struct definition
-            local values = '' -- struct values
-            local call = 'APTR Ob' -- Inline function parameters
+            local def     = '' -- struct definition
+            local values  = '' -- struct values
+            local call    = 'APTR Ob' -- Inline function parameters
             local results = false
             for _, param in ipairs(method.params) do
                def = def .. param.basicType .. ' ' .. pName(param) .. '; '
@@ -936,7 +936,7 @@ function class(Name, Options, Blueprint, Private, Custom)
 
                if nz(values) then values = values .. ', ' end
                if (param.resultValue) then
-                  values = values .. '0'
+                  values  = values .. '0'
                   results = true
                else
                   values = values .. pName(param)

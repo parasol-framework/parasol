@@ -195,6 +195,12 @@ class extVectorGradient : public objVectorGradient {
    WORD ChangeCounter;
 };
 
+class extVectorPattern : public objVectorPattern {
+   public:
+   struct VectorMatrix *Matrices;
+   objBitmap *Bitmap;
+};
+
 class extVectorFilter : public objVectorFilter {
    public:
    extVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
@@ -238,7 +244,7 @@ class extVector : public objVector {
    objVectorClip     *ClipMask;
    extVectorGradient *StrokeGradient, *FillGradient;
    objVectorImage    *FillImage, *StrokeImage;
-   objVectorPattern  *FillPattern, *StrokePattern;
+   extVectorPattern  *FillPattern, *StrokePattern;
    objVectorTransition *Transition;
    extVector *Morph;
    DashedStroke *DashArray;

@@ -386,10 +386,6 @@ typedef class plVectorViewport objVectorViewport;
     int(VUNIT) Units              # VUNIT constant
     int(VUNIT) ContentUnits       # VUNIT constant
     int(DMF) Dimensions
-  ]],
-  [[
-   struct VectorMatrix *Matrices;
-   objBitmap *Bitmap;
   ]])
 
   class("VectorGradient", { src="defs/gradient.cpp", output="defs/gradient_def.c" }, [[

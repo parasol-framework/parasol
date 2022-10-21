@@ -1226,7 +1226,7 @@ static ERROR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 {
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
    Self->FillString = StrClone(Value);
-   vecReadPainter(Self->Scene, Value, &Self->FillColour, (objVectorGradient **)&Self->FillGradient, &Self->FillImage, &Self->FillPattern);
+   vecReadPainter(Self->Scene, Value, &Self->FillColour, (objVectorGradient **)&Self->FillGradient, &Self->FillImage, (objVectorPattern **)&Self->FillPattern);
    return ERR_Okay;
 }
 
@@ -1979,7 +1979,7 @@ static ERROR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    Self->StrokeString = StrClone(Value);
-   vecReadPainter(Self->Scene, Value, &Self->StrokeColour, (objVectorGradient **)&Self->StrokeGradient, &Self->StrokeImage, &Self->StrokePattern);
+   vecReadPainter(Self->Scene, Value, &Self->StrokeColour, (objVectorGradient **)&Self->StrokeGradient, &Self->StrokeImage, (objVectorPattern **)&Self->StrokePattern);
    return ERR_Okay;
 }
 

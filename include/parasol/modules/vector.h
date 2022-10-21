@@ -532,12 +532,6 @@ typedef class plVectorPattern : public BaseClass {
    LONG   Units;                    // Defines the coordinate system for fields X, Y, Width and Height.
    LONG   ContentUnits;             // Private. Not yet implemented.
    LONG   Dimensions;               // Dimension flags are stored here.
-
-#ifdef PRV_VECTORPATTERN
-   struct VectorMatrix *Matrices;
-   objBitmap *Bitmap;
-  
-#endif
 } objVectorPattern;
 
 // VectorGradient class definition
