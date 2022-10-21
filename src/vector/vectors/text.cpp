@@ -156,7 +156,7 @@ public:
    }
 };
 
-typedef class plVectorText : public objVector {
+typedef class plVectorText : public extVector {
    public:
    FUNCTION txValidateInput;
    DOUBLE txInlineSize; // Enables word-wrapping
@@ -204,8 +204,8 @@ static void generate_text(objVectorText *);
 static void generate_text_bitmap(objVectorText *);
 static void key_event(objVectorText *, evKey *, LONG);
 static void reset_font(objVectorText *);
-static ERROR text_input_events(objVector *, const InputEvent *);
-static ERROR text_focus_event(objVector *, LONG);
+static ERROR text_input_events(extVector *, const InputEvent *);
+static ERROR text_focus_event(extVector *, LONG);
 
 //****************************************************************************
 
@@ -354,7 +354,7 @@ static ERROR VECTORTEXT_NewObject(objVectorText *Self, APTR Void)
    new (&Self->txCursor) TextCursor;
 
    StrCopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
-   Self->GeneratePath = (void (*)(objVector *))&generate_text;
+   Self->GeneratePath = (void (*)(extVector *))&generate_text;
    Self->StrokeWidth  = 0.0;
    Self->txWeight     = DEFAULT_WEIGHT;
    Self->txFontSize   = 10 * 4.0 / 3.0;
@@ -499,7 +499,7 @@ static ERROR TEXT_SET_DX(objVectorText *Self, DOUBLE *Values, LONG Elements)
    if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDX, NULL)) {
       CopyMemory(Values, Self->txDX, Elements * sizeof(DOUBLE));
       Self->txTotalDX = Elements;
-      reset_path((objVector *)Self);
+      reset_path(Self);
       return ERR_Okay;
    }
    else return ERR_AllocMemory;
@@ -527,7 +527,7 @@ static ERROR TEXT_SET_DY(objVectorText *Self, DOUBLE *Values, LONG Elements)
    if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDY, NULL)) {
       CopyMemory(Values, Self->txDY, Elements * sizeof(DOUBLE));
       Self->txTotalDY = Elements;
-      reset_path((objVector *)Self);
+      reset_path(Self);
       return ERR_Okay;
    }
    else return ERR_AllocMemory;
@@ -640,7 +640,7 @@ static ERROR TEXT_GET_LetterSpacing(objVectorText *Self, DOUBLE *Value)
 static ERROR TEXT_SET_LetterSpacing(objVectorText *Self, DOUBLE Value)
 {
    Self->txLetterSpacing = Value;
-   reset_path((objVector *)Self);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -719,7 +719,7 @@ static ERROR TEXT_GET_InlineSize(objVectorText *Self, DOUBLE *Value)
 static ERROR TEXT_SET_InlineSize(objVectorText *Self, DOUBLE Value)
 {
    Self->txInlineSize = Value;
-   reset_path((objVector *)Self);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -794,7 +794,7 @@ static ERROR TEXT_GET_Spacing(objVectorText *Self, DOUBLE *Value)
 static ERROR TEXT_SET_Spacing(objVectorText *Self, DOUBLE Value)
 {
    Self->txSpacing = Value;
-   reset_path((objVector *)Self);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -813,7 +813,7 @@ static ERROR TEXT_GET_StartOffset(objVectorText *Self, DOUBLE *Value)
 static ERROR TEXT_SET_StartOffset(objVectorText *Self, DOUBLE Value)
 {
    Self->txStartOffset = Value;
-   reset_path((objVector *)Self);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -911,7 +911,7 @@ static ERROR TEXT_SET_Rotate(objVectorText *Self, DOUBLE *Values, LONG Elements)
    if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txRotate, NULL)) {
       CopyMemory(Values, Self->txRotate, Elements * sizeof(DOUBLE));
       Self->txTotalRotate = Elements;
-      reset_path((objVector *)Self);
+      reset_path(Self);
       return ERR_Okay;
    }
    else return ERR_AllocMemory;
@@ -997,7 +997,7 @@ static ERROR TEXT_SET_String(objVectorText *Self, CSTRING Value)
    }
    else Self->txLines.emplace_back("");
 
-   reset_path((objVector *)Self);
+   reset_path(Self);
    if (Self->txCursor.vector) Self->txCursor.validatePosition(Self);
    return ERR_Okay;
 }
@@ -1082,7 +1082,7 @@ static ERROR TEXT_SET_Weight(objVectorText *Self, LONG Value)
 {
    if ((Value >= 100) and (Value <= 900)) {
       Self->txWeight = Value;
-      reset_path((objVector *)Self);
+      reset_path(Self);
       return ERR_Okay;
    }
    else return ERR_OutOfRange;
@@ -1130,7 +1130,7 @@ static void generate_text(objVectorText *Vector)
    FT_Face ftface;
    if ((GetPointer(Vector->txFont, FID_FreetypeFace, &ftface)) or (!ftface)) return;
 
-   objVector *morph = Vector->Morph;
+   auto morph = Vector->Morph;
    DOUBLE start_x, start_y, end_vx, end_vy;
    DOUBLE path_scale = 1.0;
    if (morph) {
@@ -1140,7 +1140,7 @@ static void generate_text(objVectorText *Vector)
       }
       else {
          if (morph->Dirty) { // Regenerate the target path if necessary
-            gen_vector_path((objVector *)morph);
+            gen_vector_path(morph);
             morph->Dirty = 0;
          }
 
@@ -1846,7 +1846,7 @@ static void add_line(objVectorText *Self, std::string String, LONG Offset, LONG 
 
 //****************************************************************************
 
-static ERROR text_focus_event(objVector *Vector, LONG Event)
+static ERROR text_focus_event(extVector *Vector, LONG Event)
 {
    objVectorText *Self = (objVectorText *)CurrentContext();
 
@@ -1889,7 +1889,7 @@ static ERROR text_focus_event(objVector *Vector, LONG Event)
 
 //****************************************************************************
 
-static ERROR text_input_events(objVector *Vector, const InputEvent *Events)
+static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
 {
    objVectorText *Self = (objVectorText *)CurrentContext();
 
@@ -1901,7 +1901,7 @@ static ERROR text_input_events(objVector *Vector, const InputEvent *Events)
 
          agg::trans_affine transform;
          if (Self->txLines.size() > 1) {
-            apply_parent_transforms((objVector *)Self, transform);
+            apply_parent_transforms(Self, transform);
          }
 
          DOUBLE shortest_dist = 100000000000;

@@ -272,11 +272,11 @@ void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
 // values.  NOTE: This function performs a full traversal (siblings and children) and this may extend beyond the
 // viewport's visible boundary.
 
-void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds, bool IncludeSiblings, bool IncludeTransforms)
+void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool IncludeSiblings, bool IncludeTransforms)
 {
    if (!Vector) return;
 
-   for (; Vector; Vector=(objVector *)Vector->Next) {
+   for (; Vector; Vector=(extVector *)Vector->Next) {
       if (Vector->Dirty) gen_vector_path(Vector);
 
       if (Vector->SubID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
@@ -322,7 +322,7 @@ void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
          }
       }
 
-      if (Vector->Child) calc_full_boundary((objVector *)Vector->Child, Bounds, true, IncludeTransforms);
+      if (Vector->Child) calc_full_boundary((extVector *)Vector->Child, Bounds, true, IncludeTransforms);
 
       if (!IncludeSiblings) break;
    }
@@ -353,7 +353,7 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
          break;
       }
       else if (Vector->ClassID IS ID_VECTOR) {
-         objVector *shape = (objVector *)Vector;
+         auto shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, get_name(shape));
          if (shape->Child) debug_tree_ptrs(Header, shape->Child, Level);
          Vector = shape->Next;

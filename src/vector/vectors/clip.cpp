@@ -18,12 +18,12 @@ to be shared by multiple vector objects within the same scene.
 //****************************************************************************
 // NB: Considered a shape (can be transformed)
 
-static void draw_clips(objVectorClip *Self, objVector *Branch,
+static void draw_clips(objVectorClip *Self, extVector *Branch,
    agg::rasterizer_scanline_aa<> &Rasterizer,
    agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid)
 {
    agg::scanline_p8 sl;
-   for (auto scan=Branch; scan; scan=(objVector *)scan->Next) {
+   for (auto scan=Branch; scan; scan=(extVector *)scan->Next) {
       if (scan->ClassID IS ID_VECTOR) {
          agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, scan->Transform);
          Rasterizer.reset();
@@ -31,7 +31,7 @@ static void draw_clips(objVectorClip *Self, objVector *Branch,
          agg::render_scanlines(Rasterizer, sl, Solid);
       }
 
-      if (scan->Child) draw_clips(Self, (objVector *)scan->Child, Rasterizer, Solid);
+      if (scan->Child) draw_clips(Self, (extVector *)scan->Child, Rasterizer, Solid);
    }
 }
 
@@ -55,7 +55,7 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
       bounding_rect_single(*Self->ClipPath, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
    }
 
-   if (Self->Child) calc_full_boundary((objVector *)Self->Child, bounds);
+   if (Self->Child) calc_full_boundary((extVector *)Self->Child, bounds);
 
    if (bounds[0] >= 1000000) return ERR_Okay; // Return if there are no valid paths.
 
@@ -109,7 +109,7 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
 
    // Every child vector of the VectorClip that exports a path will be rendered to the mask.
 
-   if (Self->Child) draw_clips(Self, (objVector *)Self->Child, rasterizer, solid);
+   if (Self->Child) draw_clips(Self, (extVector *)Self->Child, rasterizer, solid);
 
    // Internal paths can only be set by other vector classes, such as VectorViewport.
 

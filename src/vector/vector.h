@@ -75,6 +75,7 @@ typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
 typedef class plVectorClip objVectorClip;
 typedef class plVectorTransition objVectorTransition;
 typedef class plVectorText objVectorText;
+typedef class extVector;
 typedef class extVectorScene;
 typedef class extFilterEffect;
 
@@ -196,7 +197,7 @@ class extVectorGradient : public objVectorGradient {
 
 class extVectorFilter : public objVectorFilter {
    public:
-   objVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
+   extVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
    objVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
    extVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
    extVectorScene *Scene;              // Scene that the filter belongs to.
@@ -218,6 +219,64 @@ class extFilterEffect : public objFilterEffect {
    UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
 };
 
+class extVector : public objVector {
+   public:
+   DOUBLE FinalX, FinalY;
+   DOUBLE BX1, BY1, BX2, BY2;
+   DOUBLE FillGradientAlpha, StrokeGradientAlpha;
+   DOUBLE StrokeWidth;
+   agg::path_storage BasePath;
+   agg::trans_affine Transform;
+   RGB8 rgbStroke, rgbFill;
+   extVectorFilter *Filter;
+   objVectorViewport *ParentView;
+   CSTRING FilterString, StrokeString, FillString;
+   STRING ID;
+   void   (*GeneratePath)(extVector *);
+   agg::rasterizer_scanline_aa<> *StrokeRaster;
+   agg::rasterizer_scanline_aa<> *FillRaster;
+   objVectorClip     *ClipMask;
+   extVectorGradient *StrokeGradient, *FillGradient;
+   objVectorImage    *FillImage, *StrokeImage;
+   objVectorPattern  *FillPattern, *StrokePattern;
+   objVectorTransition *Transition;
+   extVector *Morph;
+   DashedStroke *DashArray;
+   GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
+   FRGB StrokeColour, FillColour;
+   std::vector<FeedbackSubscription> *FeedbackSubscriptions;
+   std::vector<InputSubscription> *InputSubscriptions;
+   std::vector<KeyboardSubscription> *KeyboardSubscriptions;
+   LONG   InputMask;
+   LONG   NumericID;
+   LONG   PathLength;
+   UBYTE  MorphFlags;
+   UBYTE  FillRule;
+   UBYTE  ClipRule;
+   UBYTE  Dirty;
+   UBYTE  TabOrder;
+   UBYTE  EnableBkgd:1;
+   UBYTE  DisableFillColour:1;
+   UBYTE  ButtonLock:1;
+   UBYTE  RelativeStrokeWidth:1;
+   UBYTE  DisableHitTesting:1;
+   UBYTE  ResizeSubscription:1;
+   agg::line_join_e  LineJoin;
+   agg::line_cap_e   LineCap;
+   agg::inner_join_e InnerJoin;
+   // Methods
+   DOUBLE fixed_stroke_width();
+};
+
+struct TabOrderedVector {
+   bool operator()(const extVector *a, const extVector *b) const;
+};
+
+__inline__ bool TabOrderedVector::operator()(const extVector *a, const extVector *b) const {
+   if (a->TabOrder == b->TabOrder) return a->UID < b->UID;
+   else return a->TabOrder < b->TabOrder;
+}
+
 class extVectorScene : public objVectorScene {
    public:
    DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
@@ -225,10 +284,10 @@ class extVectorScene : public objVectorScene {
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
    APTR KeyHandle; // Keyboard subscription
    std::unordered_set<objVectorViewport *> PendingResizeMsgs;
-   std::unordered_map<objVector *, LONG> InputSubscriptions;
-   std::set<objVector *, OrderedVector> KeyboardSubscriptions;
+   std::unordered_map<extVector *, LONG> InputSubscriptions;
+   std::set<extVector *, TabOrderedVector> KeyboardSubscriptions;
    std::vector<struct InputBoundary> InputBoundaries;
-   std::unordered_map<objVectorViewport *, std::unordered_map<objVector *, FUNCTION>> ResizeSubscriptions;
+   std::unordered_map<objVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
@@ -239,7 +298,7 @@ class extVectorScene : public objVectorScene {
 //****************************************************************************
 // NB: Considered a shape (can be transformed).
 
-typedef class plVectorViewport : public objVector {
+typedef class plVectorViewport : public extVector {
    public:
    FUNCTION vpDragCallback;
    DOUBLE vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
@@ -257,7 +316,7 @@ typedef class plVectorViewport : public objVector {
 
 //****************************************************************************
 
-typedef class plVectorPoly : public objVector {
+typedef class plVectorPoly : public extVector {
    public:
    struct VectorPoint *Points;
    LONG TotalPoints;
@@ -266,7 +325,7 @@ typedef class plVectorPoly : public objVector {
 
 //****************************************************************************
 
-typedef class plVectorPath : public objVector {
+typedef class plVectorPath : public extVector {
    public:
    std::vector<PathCommand> Commands;
    agg::path_storage *CustomPath;
@@ -274,7 +333,7 @@ typedef class plVectorPath : public objVector {
 
 //****************************************************************************
 
-typedef class plVectorRectangle : public objVector {
+typedef class plVectorRectangle : public extVector {
    public:
    DOUBLE rX, rY;
    DOUBLE rWidth, rHeight;
@@ -308,12 +367,12 @@ class GradientColours {
       GRADIENT_TABLE table;
 };
 
-typedef class plVectorClip : public objVector {
+typedef class plVectorClip : public extVector {
    public:
    UBYTE *ClipData;
    agg::path_storage *ClipPath; // Internally generated path
    agg::rendering_buffer ClipRenderer;
-   objVector *TargetVector;
+   extVector *TargetVector;
    LONG ClipUnits;
    LONG ClipSize;
 } objVectorClip;
@@ -342,34 +401,33 @@ extern ERROR init_vectorscene(void);
 
 extern ERROR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERROR scene_input_events(const InputEvent *, LONG);
-extern GRADIENT_TABLE * get_fill_gradient_table(objVector &, DOUBLE);
-extern GRADIENT_TABLE * get_stroke_gradient_table(objVector &);
-extern void apply_parent_transforms(objVector *Start, agg::trans_affine &AGGTransform);
+extern GRADIENT_TABLE * get_fill_gradient_table(extVector &, DOUBLE);
+extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
+extern void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform);
 extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
 extern void calc_aspectratio(CSTRING, LONG, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
-extern void calc_full_boundary(objVector *, std::array<DOUBLE, 4> &, bool IncludeSiblings = true, bool IncludeTransforms = true);
+extern void calc_full_boundary(extVector *, std::array<DOUBLE, 4> &, bool IncludeSiblings = true, bool IncludeTransforms = true);
 extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
-extern void gen_vector_path(objVector *);
-extern void gen_vector_tree(objVector *);
-extern void send_feedback(objVector *, LONG);
+extern void gen_vector_path(extVector *);
+extern void gen_vector_tree(extVector *);
+extern void send_feedback(extVector *, LONG);
 extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, UBYTE);
-extern ERROR render_filter(extVectorFilter *, objVectorViewport *, objVector *, objBitmap *, objBitmap **);
+extern ERROR render_filter(extVectorFilter *, objVectorViewport *, extVector *, objBitmap *, objBitmap **);
 extern objBitmap * get_source_graphic(extVectorFilter *);
 
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glFocusLock;
-extern std::vector<objVector *> glFocusList; // The first reference is the most foreground object with the focus
+extern std::vector<extVector *> glFocusList; // The first reference is the most foreground object with the focus
 
 //********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
-template <class T>
-inline static void mark_dirty(T *Vector, const UBYTE Flags)
+inline static void mark_dirty(objVector *Vector, const UBYTE Flags)
 {
-   Vector->Dirty |= Flags;
-   for (auto scan=(objVector *)Vector->Child; scan; scan=(objVector *)scan->Next) {
+   ((extVector *)Vector)->Dirty |= Flags;
+   for (auto scan=(extVector *)Vector->Child; scan; scan=(extVector *)scan->Next) {
       if ((scan->Dirty & Flags) == Flags) continue;
       mark_dirty(scan, Flags);
    }
@@ -391,10 +449,9 @@ inline static agg::path_storage basic_path(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUB
 //********************************************************************************************************************
 // Call reset_path() when the shape of the vector requires recalculation.
 
-template <class T>
-inline static void reset_path(T *Vector)
+inline static void reset_path(objVector *Vector)
 {
-   Vector->Dirty |= RC_BASE_PATH;
+   ((extVector *)Vector)->Dirty |= RC_BASE_PATH;
    mark_dirty(Vector, RC_FINAL_PATH);
 }
 
@@ -402,8 +459,7 @@ inline static void reset_path(T *Vector)
 // Call reset_final_path() when the base path is still valid and the vector is affected by a transform or coordinate
 // translation.
 
-template <class T>
-inline static void reset_final_path(T *Vector)
+inline static void reset_final_path(objVector *Vector)
 {
    mark_dirty(Vector, RC_FINAL_PATH);
 }
@@ -555,31 +611,33 @@ public:
 // These functions expect to be called during path generation via gen_vector_path().  If this is not the case, ensure
 // that Dirty field markers are cleared beforehand.
 
-template <class T> inline static DOUBLE get_parent_width(const T *Vector)
+inline static DOUBLE get_parent_width(const objVector *Vector)
 {
-   if (Vector->ParentView) {
-      if ((Vector->ParentView->vpDimensions & DMF_WIDTH) or
-          ((Vector->ParentView->vpDimensions & DMF_X) and (Vector->ParentView->vpDimensions & DMF_X_OFFSET))) {
-         return Vector->ParentView->vpFixedWidth;
+   auto eVector = (const extVector *)Vector;
+   if (eVector->ParentView) {
+      if ((eVector->ParentView->vpDimensions & DMF_WIDTH) or
+          ((eVector->ParentView->vpDimensions & DMF_X) and (eVector->ParentView->vpDimensions & DMF_X_OFFSET))) {
+         return eVector->ParentView->vpFixedWidth;
       }
-      else if (Vector->ParentView->vpViewWidth > 0) return Vector->ParentView->vpViewWidth;
-      else return Vector->Scene->PageWidth;
+      else if (eVector->ParentView->vpViewWidth > 0) return eVector->ParentView->vpViewWidth;
+      else return eVector->Scene->PageWidth;
    }
-   else if (Vector->Scene) return Vector->Scene->PageWidth;
+   else if (eVector->Scene) return eVector->Scene->PageWidth;
    else return 0;
 }
 
-template <class T> inline static DOUBLE get_parent_height(const T *Vector)
+inline static DOUBLE get_parent_height(const objVector *Vector)
 {
-   if (Vector->ParentView) {
-      if ((Vector->ParentView->vpDimensions & DMF_HEIGHT) or
-          ((Vector->ParentView->vpDimensions & DMF_Y) and (Vector->ParentView->vpDimensions & DMF_Y_OFFSET))) {
-         return Vector->ParentView->vpFixedHeight;
+   auto eVector = (const extVector *)Vector;
+   if (eVector->ParentView) {
+      if ((eVector->ParentView->vpDimensions & DMF_HEIGHT) or
+          ((eVector->ParentView->vpDimensions & DMF_Y) and (eVector->ParentView->vpDimensions & DMF_Y_OFFSET))) {
+         return eVector->ParentView->vpFixedHeight;
       }
-      else if (Vector->ParentView->vpViewHeight > 0) return Vector->ParentView->vpViewHeight;
-      else return Vector->Scene->PageHeight;
+      else if (eVector->ParentView->vpViewHeight > 0) return eVector->ParentView->vpViewHeight;
+      else return eVector->Scene->PageHeight;
    }
-   else if (Vector->Scene) return Vector->Scene->PageHeight;
+   else if (eVector->Scene) return eVector->Scene->PageHeight;
    else return 0;
 }
 
@@ -633,12 +691,12 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 //********************************************************************************************************************
 // Find the first parent of the targeted vector.  Returns NULL if no valid parent is found.
 
-inline static objVector * get_parent(const objVector *Vector)
+inline static extVector * get_parent(const extVector *Vector)
 {
    if (Vector->ClassID != ID_VECTOR) return NULL;
    while (Vector) {
-      if (!Vector->Parent) Vector = Vector->Prev; // Scan back to the first sibling to find the parent
-      else if (Vector->Parent->ClassID IS ID_VECTOR) return (objVector *)(Vector->Parent);
+      if (!Vector->Parent) Vector = (extVector *)Vector->Prev; // Scan back to the first sibling to find the parent
+      else if (Vector->Parent->ClassID IS ID_VECTOR) return (extVector *)(Vector->Parent);
       else return NULL;
    }
 
@@ -682,7 +740,7 @@ inline int isPow2(ULONG x)
 //********************************************************************************************************************
 
 template <class T>
-void configure_stroke(objVector &Vector, T &Stroke)
+void configure_stroke(extVector &Vector, T &Stroke)
 {
    Stroke.width(Vector.fixed_stroke_width());
 
@@ -734,7 +792,7 @@ extern void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
 extern ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 extern ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
 extern ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
-extern void  vecReadPainter(OBJECTPTR, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
+extern void  vecReadPainter(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
 extern ERROR vecResetMatrix(struct VectorMatrix *);
 extern void  vecRewindPath(class SimpleVector *);
 extern ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);

@@ -15,7 +15,7 @@ The Superformula is documented in detail at Wikipedia: http://en.wikipedia.org/w
 
 #define DEFAULT_VERTICES (360 * 4)
 
-typedef class clVectorShape : public objVector {
+typedef class clVectorShape : public extVector {
    public:
    DOUBLE Radius;
    DOUBLE CX, CY;
@@ -152,7 +152,7 @@ static ERROR SUPER_NewObject(objVectorShape *Self, APTR Void)
    Self->Phi = 2;
    Self->Vertices = DEFAULT_VERTICES;
    Self->Close = TRUE;
-   Self->GeneratePath = (void (*)(objVector *))&generate_supershape;
+   Self->GeneratePath = (void (*)(extVector *))&generate_supershape;
    return ERR_Okay;
 }
 

@@ -246,15 +246,15 @@ private:
 
 //****************************************************************************
 
-static bool check_dirty(objVector *Shape) {
+static bool check_dirty(extVector *Shape) {
    while (Shape) {
       if (Shape->ClassID != ID_VECTOR) return true;
       if (Shape->Dirty) return true;
 
       if (Shape->Child) {
-         if (check_dirty(Shape->Child)) return true;
+         if (check_dirty((extVector *)Shape->Child)) return true;
       }
-      Shape = Shape->Next;
+      Shape = (extVector *)Shape->Next;
    }
    return false;
 }
@@ -262,12 +262,12 @@ static bool check_dirty(objVector *Shape) {
 //****************************************************************************
 // Return the correct transformation matrix for a fill operation.
 
-static const agg::trans_affine build_fill_transform(objVector &Vector, bool Userspace,  VectorState &State)
+static const agg::trans_affine build_fill_transform(extVector &Vector, bool Userspace,  VectorState &State)
 {
    if (Userspace) { // Userspace: The vector's (x,y) position is ignored, but its transforms and all parent transforms will apply.
       agg::trans_affine transform;
       apply_transforms(Vector, transform);
-      apply_parent_transforms((objVector *)get_parent(&Vector), transform);
+      apply_parent_transforms(get_parent(&Vector), transform);
       return transform;
    }
    else if (State.mApplyTransform) { // BoundingBox with a real-time transform
@@ -447,7 +447,7 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
    }
 
    // Redraw the pattern source if any part of the definition is marked as dirty.
-   if ((check_dirty(Pattern.Scene->Viewport)) or (!Pattern.Bitmap)) {
+   if ((check_dirty((extVector *)Pattern.Scene->Viewport)) or (!Pattern.Bitmap)) {
       if (acDraw(&Pattern) != ERR_Okay) return;
    }
 
@@ -973,7 +973,7 @@ public:
          Scene->InputBoundaries.clear();
 
          VectorState state;
-         draw_vectors(Scene->Viewport, state);
+         draw_vectors((extVector *)Scene->Viewport, state);
 
          // Visually debug input boundaries
          //for (auto const &bounds : Scene->InputBoundaries) {
@@ -996,7 +996,7 @@ private:
       else return mView->Scene->PageHeight;
    }
 
-   void render_fill(VectorState &State, objVector &Vector, agg::rasterizer_scanline_aa<> &Raster) {
+   void render_fill(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster) {
       // Think of the vector's path as representing a mask for the fill algorithm.  Any transforms applied to
       // an image/gradient fill are independent of the path.
 
@@ -1049,7 +1049,7 @@ private:
       }
    }
 
-   void render_stroke(VectorState &State, objVector &Vector, agg::rasterizer_scanline_aa<> &Raster) {
+   void render_stroke(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster) {
       if (Vector.Scene->Gamma != 1.0) Raster.gamma(agg::gamma_power(Vector.Scene->Gamma));
 
       if (Vector.FillRule IS VFR_NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
@@ -1102,8 +1102,8 @@ private:
 
    // This is the main routine for parsing the vector tree for drawing.
 
-   void draw_vectors(objVector *CurrentVector, VectorState &ParentState) {
-      for (auto shape=CurrentVector; shape; shape=(objVector *)shape->Next) {
+   void draw_vectors(extVector *CurrentVector, VectorState &ParentState) {
+      for (auto shape=CurrentVector; shape; shape=(extVector *)shape->Next) {
          parasol::Log log(__FUNCTION__);
          VectorState state = VectorState(ParentState);
 
@@ -1266,13 +1266,13 @@ private:
                      state.mTransform      = view->Transform;
                      state.mApplyTransform = true;
 
-                     draw_vectors((objVector *)view->FillPattern->Viewport, state);
+                     draw_vectors(view->FillPattern->Viewport, state);
 
                      state.mTransform      = s_transform;
                      state.mApplyTransform = s_apply;
                   }
 
-                  if (view->Child) draw_vectors((objVector *)view->Child, state);
+                  if (view->Child) draw_vectors((extVector *)view->Child, state);
 
                   state.mClipMask = saved_mask;
 
@@ -1329,7 +1329,7 @@ private:
                      auto transform = shape->Transform * state.mTransform;
 
                      if (shape->DashArray) {
-                        configure_stroke((objVector &)*shape, shape->DashArray->stroke);
+                        configure_stroke(*shape, shape->DashArray->stroke);
                         agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> final_path(shape->DashArray->stroke, transform);
 
                         agg::rasterizer_scanline_aa raster;
@@ -1338,7 +1338,7 @@ private:
                      }
                      else {
                         agg::conv_stroke<agg::path_storage> stroked_path(shape->BasePath);
-                        configure_stroke((objVector &)*shape, stroked_path);
+                        configure_stroke(*shape, stroked_path);
                         agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> final_path(stroked_path, transform);
 
                         agg::rasterizer_scanline_aa raster;
@@ -1397,7 +1397,7 @@ private:
                auto saved_mask = state.mClipMask;
                if (shape->ClipMask) state.mClipMask = shape->ClipMask;
 
-               draw_vectors((objVector *)shape->Child, state);
+               draw_vectors((extVector *)shape->Child, state);
 
                state.mClipMask = saved_mask;
             }

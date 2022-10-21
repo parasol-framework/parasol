@@ -89,7 +89,7 @@ static ERROR RECTANGLE_MoveToPoint(objVectorRectangle *Self, struct acMoveToPoin
 
 static ERROR RECTANGLE_NewObject(objVectorRectangle *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(objVector *))&generate_rectangle;
+   Self->GeneratePath = (void (*)(extVector *))&generate_rectangle;
    return ERR_Okay;
 }
 

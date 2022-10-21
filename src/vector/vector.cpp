@@ -25,7 +25,7 @@ static OBJECTPTR modDisplay = NULL;
 static OBJECTPTR modFont = NULL;
 
 std::recursive_mutex glFocusLock;
-std::vector<objVector *> glFocusList; // The first reference is the most foreground object with the focus
+std::vector<extVector *> glFocusList; // The first reference is the most foreground object with the focus
 
 static ERROR init_clip(void);
 static ERROR init_ellipse(void);
