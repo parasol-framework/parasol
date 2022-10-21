@@ -31,7 +31,7 @@ It is a requirement that VectorFilter objects are owned by the @VectorScene they
 //#define DEBUG_FILTER_BITMAP
 //#define EXPORT_FILTER_BITMAP
 
-static ERROR get_source_bitmap(objVectorFilter *, objBitmap **, UBYTE, objFilterEffect *, bool);
+static ERROR get_source_bitmap(extVectorFilter *, objBitmap **, UBYTE, objFilterEffect *, bool);
 
 //********************************************************************************************************************
 
@@ -52,7 +52,7 @@ static ERROR get_source_bitmap(objVectorFilter *, objBitmap **, UBYTE, objFilter
 // reflects the size of the clipping region.  The bitmap's size reflects the Filter's (X,Y), (Width,Height) values in
 // accordance with the unit setting.
 
-static ERROR get_banked_bitmap(objVectorFilter *Self, objBitmap **BitmapResult)
+static ERROR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -83,7 +83,7 @@ static ERROR get_banked_bitmap(objVectorFilter *Self, objBitmap **BitmapResult)
 // reference will be returned.  Otherwise a new bitmap is allocated and rendered with the effect.  The bitmap must
 // not be freed as they are permanently maintained until the VectorFilter is destroyed.
 
-static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, UBYTE SourceType, objFilterEffect *Effect, bool Premultiply)
+static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, UBYTE SourceType, objFilterEffect *Effect, bool Premultiply)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -198,7 +198,7 @@ static ERROR get_source_bitmap(objVectorFilter *Self, objBitmap **BitmapResult, 
 // TODO: It would be efficient to hook into the dirty markers of the client vector so that re-rendering
 // occurs only in the event that the client has been modified.
 
-objBitmap * get_source_graphic(objVectorFilter *Self)
+objBitmap * get_source_graphic(extVectorFilter *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -267,7 +267,7 @@ objBitmap * get_source_graphic(objVectorFilter *Self)
 
 //********************************************************************************************************************
 
-static ERROR set_clip_region(objVectorFilter *Self, objVectorViewport *Viewport, objVector *Vector)
+static ERROR set_clip_region(extVectorFilter *Self, objVectorViewport *Viewport, extVector *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -352,7 +352,7 @@ static ERROR set_clip_region(objVectorFilter *Self, objVectorViewport *Viewport,
 //********************************************************************************************************************
 // Main rendering routine for filter effects.  Called by the scene graph renderer whenever a vector uses a filter.
 
-ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVector *Vector, objBitmap *BkgdBitmap, objBitmap **Output)
+ERROR render_filter(extVectorFilter *Self, objVectorViewport *Viewport, extVector *Vector, objBitmap *BkgdBitmap, objBitmap **Output)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -388,7 +388,7 @@ ERROR render_filter(objVectorFilter *Self, objVectorViewport *Viewport, objVecto
    // being rendered to independent bitmaps in threads, then composited at the last stage.
 
    objBitmap *out = NULL;
-   for (auto e = Self->Effects; e; e = e->Next) {
+   for (auto e = Self->Effects; e; e = (extFilterEffect *)e->Next) {
       log.extmsg("Effect: %s #%u, Pipelined: %c; Use Count: %d", e->Class->ClassName, e->UID, e->UsageCount > 0 ? 'Y' : 'N', e->UsageCount);
 
       Self->ActiveEffect = e;
@@ -439,7 +439,7 @@ Clear: Removes all filter effects.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORFILTER_Clear(objVectorFilter *Self, APTR Void)
+static ERROR VECTORFILTER_Clear(extVectorFilter *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -454,20 +454,20 @@ static ERROR VECTORFILTER_Clear(objVectorFilter *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VECTORFILTER_Free(objVectorFilter *Self, APTR Void)
+static ERROR VECTORFILTER_Free(extVectorFilter *Self, APTR Void)
 {
    acClear(Self);
 
    if (Self->SourceGraphic) { acFree(Self->SourceGraphic); Self->SourceGraphic = NULL; }
    if (Self->SourceScene)   { acFree(Self->SourceScene);   Self->SourceScene = NULL; }
 
-   Self->~objVectorFilter();
+   Self->~extVectorFilter();
    return ERR_Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR VECTORFILTER_Init(objVectorFilter *Self, APTR Void)
+static ERROR VECTORFILTER_Init(extVectorFilter *Self, APTR Void)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -476,7 +476,7 @@ static ERROR VECTORFILTER_Init(objVectorFilter *Self, APTR Void)
       return log.warning(ERR_OutOfRange);
    }
 
-   Self->Scene = (objVectorScene *)GetObjectPtr(Self->ownerID());
+   Self->Scene = (extVectorScene *)GetObjectPtr(Self->ownerID());
    if (Self->Scene->ClassID != ID_VECTORSCENE) return log.warning(ERR_UnsupportedOwner);
 
    return ERR_Okay;
@@ -484,12 +484,12 @@ static ERROR VECTORFILTER_Init(objVectorFilter *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VECTORFILTER_NewChild(objVectorFilter *Self, struct acNewChild *Args)
+static ERROR VECTORFILTER_NewChild(extVectorFilter *Self, struct acNewChild *Args)
 {
    if (!Args) return ERR_NullArgs;
 
    if (Args->Object->ClassID IS ID_FILTEREFFECT) {
-      auto effect = (objFilterEffect *)Args->Object;
+      auto effect = (extFilterEffect *)Args->Object;
 
       if (!Self->Effects) Self->Effects = effect;
       else if (Self->LastEffect) Self->LastEffect->Next = effect;
@@ -504,9 +504,9 @@ static ERROR VECTORFILTER_NewChild(objVectorFilter *Self, struct acNewChild *Arg
 
 //********************************************************************************************************************
 
-static ERROR VECTORFILTER_NewObject(objVectorFilter *Self, APTR Void)
+static ERROR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
 {
-   new (Self) objVectorFilter;
+   new (Self) extVectorFilter;
    Self->Units          = VUNIT_BOUNDING_BOX;
    Self->PrimitiveUnits = VUNIT_UNDEFINED;
    Self->Opacity        = 1.0;
@@ -554,11 +554,11 @@ is allocated and must be freed once no longer in use.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORFILTER_GET_EffectXML(objVectorFilter *Self, CSTRING *Value)
+static ERROR VECTORFILTER_GET_EffectXML(extVectorFilter *Self, CSTRING *Value)
 {
    std::stringstream ss;
 
-   for (auto e = Self->Effects; e; e = e->Next) {
+   for (auto e = Self->Effects; e; e = (extFilterEffect *)e->Next) {
       ss << "<";
       CSTRING def;
       if (!GetField(e, FID_XMLDef, &def)) {
@@ -587,7 +587,7 @@ If width or height is not specified, the effect is as if a value of 120% were sp
 
 *********************************************************************************************************************/
 
-static ERROR VECTORFILTER_GET_Height(objVectorFilter *Self, struct Variable *Value)
+static ERROR VECTORFILTER_GET_Height(extVectorFilter *Self, struct Variable *Value)
 {
    DOUBLE val = Self->Height;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -596,7 +596,7 @@ static ERROR VECTORFILTER_GET_Height(objVectorFilter *Self, struct Variable *Val
    return ERR_Okay;
 }
 
-static ERROR VECTORFILTER_SET_Height(objVectorFilter *Self, Variable *Value)
+static ERROR VECTORFILTER_SET_Height(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -625,7 +625,7 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 
 *********************************************************************************************************************/
 
-static ERROR VECTORFILTER_SET_Inherit(objVectorFilter *Self, objVectorFilter *Value)
+static ERROR VECTORFILTER_SET_Inherit(extVectorFilter *Self, extVectorFilter *Value)
 {
    if (Value) {
       if (Value->ClassID IS ID_VECTORFILTER) Self->Inherit = Value;
@@ -644,7 +644,7 @@ is 1.0.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORFILTER_SET_Opacity(objVectorFilter *Self, DOUBLE Value)
+static ERROR VECTORFILTER_SET_Opacity(extVectorFilter *Self, DOUBLE Value)
 {
    if (Value < 0.0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
@@ -692,7 +692,7 @@ If width or height is not specified, the effect is as if a value of 120% were sp
 
 *********************************************************************************************************************/
 
-static ERROR VECTORFILTER_GET_Width(objVectorFilter *Self, Variable *Value)
+static ERROR VECTORFILTER_GET_Width(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->Width;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -701,7 +701,7 @@ static ERROR VECTORFILTER_GET_Width(objVectorFilter *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORFILTER_SET_Width(objVectorFilter *Self, Variable *Value)
+static ERROR VECTORFILTER_SET_Width(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -733,7 +733,7 @@ If X or Y is not specified, the effect is as if a value of -10% were specified.
 
 *********************************************************************************************************************/
 
-static ERROR VECTORFILTER_GET_X(objVectorFilter *Self, Variable *Value)
+static ERROR VECTORFILTER_GET_X(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->X;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_X)) val = val * 100.0;
@@ -742,7 +742,7 @@ static ERROR VECTORFILTER_GET_X(objVectorFilter *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORFILTER_SET_X(objVectorFilter *Self, Variable *Value)
+static ERROR VECTORFILTER_SET_X(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -772,7 +772,7 @@ If X or Y is not specified, the effect is as if a value of -10% were specified.
 -END-
 *********************************************************************************************************************/
 
-static ERROR VECTORFILTER_GET_Y(objVectorFilter *Self, Variable *Value)
+static ERROR VECTORFILTER_GET_Y(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->Y;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_Y)) val = val * 100.0;
@@ -781,7 +781,7 @@ static ERROR VECTORFILTER_GET_Y(objVectorFilter *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR VECTORFILTER_SET_Y(objVectorFilter *Self, Variable *Value)
+static ERROR VECTORFILTER_SET_Y(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -843,7 +843,7 @@ ERROR init_filter(void)
       FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
       FID_Actions|TPTR,      clVectorFilterActions,
       FID_Fields|TARRAY,     clFilterFields,
-      FID_Size|TLONG,        sizeof(objVectorFilter),
+      FID_Size|TLONG,        sizeof(extVectorFilter),
       FID_Path|TSTR,         "modules:vector",
       TAGEND)) return ERR_CreateObject;
 

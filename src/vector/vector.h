@@ -75,6 +75,7 @@ typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
 typedef class plVectorClip objVectorClip;
 typedef class plVectorTransition objVectorTransition;
 typedef class plVectorText objVectorText;
+typedef class extFilterEffect;
 
 //****************************************************************************
 
@@ -181,6 +182,30 @@ public:
 #define TB_NOISE 1
 
 #include <parasol/modules/vector.h>
+
+class extVectorFilter : public objVectorFilter {
+   public:
+   extVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
+   objVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
+   extVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
+   extVectorScene *Scene;              // Scene that the filter belongs to.
+   objBitmap *SourceGraphic;           // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
+   objBitmap *BkgdBitmap;              // Target bitmap supplied by Scene.acDraw()
+   extFilterEffect *ActiveEffect;      // Current effect being processed by the pipeline.
+   extFilterEffect *Effects;           // Pointer to the first effect in the chain.
+   extFilterEffect *LastEffect;
+   std::vector<std::unique_ptr<filter_bitmap>> Bank;
+   ClipRectangle VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
+   UBYTE BankIndex;
+   bool Rendered;
+   bool Disabled;
+};
+
+class extFilterEffect : public objFilterEffect {
+   public:
+   extVectorFilter *Filter; // Direct reference to the parent filter
+   UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
+};
 
 class extVectorScene : public objVectorScene {
    public:

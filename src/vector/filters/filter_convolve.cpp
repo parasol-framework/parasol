@@ -61,7 +61,7 @@ UnitX/Y is considerably smaller than a device pixel.
 
 //********************************************************************************************************************
 
-typedef class rkConvolveEffect : public objFilterEffect {
+typedef class rkConvolveEffect : public extFilterEffect {
    public:
    DOUBLE UnitX, UnitY;
    DOUBLE Divisor;

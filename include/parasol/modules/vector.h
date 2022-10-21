@@ -600,12 +600,6 @@ typedef class plFilterEffect : public BaseClass {
    LONG   Dimensions;         // Dimension flags are stored here.
    LONG   SourceType;         // Specifies an input source for the effect algorithm, if required.
    LONG   MixType;            // If a secondary mix input is required for the effect, specify it here.
-
-#ifdef PRV_FILTEREFFECT
-   objVectorFilter *Filter; // Direct reference to the parent filter
-   UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
-  
-#endif
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -676,24 +670,6 @@ typedef class plVectorFilter : public BaseClass {
    LONG   PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
    LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or relative values.
    LONG   ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
-
-#ifdef PRV_VECTORFILTER
-   objVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
-   objVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
-   objVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
-   objVectorScene *Scene;              // Scene that the filter belongs to.
-   objBitmap *SourceGraphic;           // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
-   objBitmap *BkgdBitmap;              // Target bitmap supplied by Scene.acDraw()
-   objFilterEffect *ActiveEffect;      // Current effect being processed by the pipeline.
-   objFilterEffect *Effects;           // Pointer to the first effect in the chain.
-   objFilterEffect *LastEffect;
-   std::vector<std::unique_ptr<filter_bitmap>> Bank;
-   ClipRectangle VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
-   UBYTE BankIndex;
-   bool Rendered;
-   bool Disabled;
-  
-#endif
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }

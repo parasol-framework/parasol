@@ -14,7 +14,7 @@ The FloodFX class is an output-only effect that fills its target area with a sin
 
 *********************************************************************************************************************/
 
-typedef class rkFloodFX : public objFilterEffect {
+typedef class plFloodFX : public extFilterEffect {
    public:
    FRGB   Colour;
    RGB8   ColourRGB;
@@ -44,7 +44,7 @@ static ERROR FLOODFX_Draw(objFloodFX *Self, struct acDraw *Args)
    auto &filter = Self->Filter;
 
    std::array<DOUBLE, 4> bounds = { filter->ClientViewport->vpFixedWidth, filter->ClientViewport->vpFixedHeight, 0, 0 };
-   calc_full_boundary((objVector *)filter->ClientVector, bounds, false, false);
+   calc_full_boundary(filter->ClientVector, bounds, false, false);
    const DOUBLE b_x = trunc(bounds[0]);
    const DOUBLE b_y = trunc(bounds[1]);
    const DOUBLE b_width  = bounds[2] - bounds[0];

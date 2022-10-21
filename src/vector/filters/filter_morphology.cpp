@@ -26,7 +26,7 @@ equal to the alpha channel.
 
 *********************************************************************************************************************/
 
-typedef class rkMorphFX : public objFilterEffect {
+typedef class rkMorphFX : public extFilterEffect {
    public:
    LONG RadiusX, RadiusY;
    UBYTE Operator;

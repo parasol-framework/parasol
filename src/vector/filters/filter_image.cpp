@@ -24,7 +24,7 @@ Width and Height.  The placement and scaling of the referenced image is controll
 
 *********************************************************************************************************************/
 
-typedef class rkImageFX : public objFilterEffect {
+typedef class rkImageFX : public extFilterEffect {
    public:
    objBitmap *Bitmap;    // Bitmap containing source image data.
    objPicture *Picture;  // Origin picture if loading a source file.
@@ -45,7 +45,7 @@ static ERROR IMAGEFX_Draw(objImageFX *Self, struct acDraw *Args)
    auto &filter = Self->Filter;
 
    std::array<DOUBLE, 4> bounds = { filter->ClientViewport->vpFixedWidth, filter->ClientViewport->vpFixedHeight, 0, 0 };
-   calc_full_boundary((objVector *)filter->ClientVector, bounds, false, false);
+   calc_full_boundary(filter->ClientVector, bounds, false, false);
    const DOUBLE b_x = trunc(bounds[0]);
    const DOUBLE b_y = trunc(bounds[1]);
    const DOUBLE b_width  = bounds[2] - bounds[0];

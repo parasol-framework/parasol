@@ -36,7 +36,7 @@ and A.
 #define s_curve(t) (t * t * (3.0 - 2.0 * t))
 #define lerp(t, a, b) (a + t * (b - a))
 
-typedef class rkTurbulenceFX : public objFilterEffect {
+typedef class rkTurbulenceFX : public extFilterEffect {
    public:
    DOUBLE Gradient[GSIZE][LSIZE][GSUBSIZE];
    LONG Lattice[LSIZE];
@@ -189,7 +189,7 @@ static ERROR TURBULENCEFX_Draw(objTurbulenceFX *Self, struct acDraw *Args)
 
    if (Self->Stitch) {
       std::array<DOUBLE, 4> bounds = { Self->Filter->ClientViewport->vpFixedWidth, Self->Filter->ClientViewport->vpFixedHeight, 0, 0 };
-      calc_full_boundary((objVector *)Self->Filter->ClientVector, bounds, false, false);
+      calc_full_boundary(Self->Filter->ClientVector, bounds, false, false);
       const DOUBLE tile_width  = bounds[2] - bounds[0];
       const DOUBLE tile_height = bounds[3] - bounds[1];
 

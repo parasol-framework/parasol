@@ -1159,7 +1159,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState
 {
    parasol::Log log(__FUNCTION__);
    ERROR error;
-   OBJECTPTR vector;
+   objVector *vector;
 
    if (!(error = NewObject(VectorID, 0, &vector))) {
       SetOwner(vector, Parent);
@@ -1170,7 +1170,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState
       process_attrib(Self, XML, Tag, vector);
 
       if (!acInit(vector)) {
-         // Process child tags
+         // Process child tags, if any
 
          for (auto child=Tag->Child; child; child=child->Next) {
             if (child->Attrib->Name) {

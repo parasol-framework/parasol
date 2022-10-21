@@ -12,16 +12,16 @@ The documented fields and actions here are integral to all effects that utilise 
 
 *********************************************************************************************************************/
 
-static ERROR FILTEREFFECT_Free(objFilterEffect *Self, APTR Void)
+static ERROR FILTEREFFECT_Free(extFilterEffect *Self, APTR Void)
 {
    if (Self->Filter) {
-      for (auto e = Self->Filter->Effects; (e) and (Self->UsageCount > 0); e = e->Next) {
+      for (auto e = Self->Filter->Effects; (e) and (Self->UsageCount > 0); e = (extFilterEffect *)e->Next) {
          if (e->Input IS Self) { e->Input = NULL; Self->UsageCount--; }
          if (e->Mix IS Self) { e->Mix = NULL; Self->UsageCount--; }
       }
 
-      if (Self->Filter->Effects IS Self) Self->Filter->Effects = Self->Next;
-      if (Self->Filter->LastEffect IS Self) Self->Filter->LastEffect = Self->Prev;
+      if (Self->Filter->Effects IS Self) Self->Filter->Effects = (extFilterEffect *)Self->Next;
+      if (Self->Filter->LastEffect IS Self) Self->Filter->LastEffect = (extFilterEffect *)Self->Prev;
    }
 
    if (Self->Prev) Self->Prev->Next = Self->Next;
@@ -32,11 +32,11 @@ static ERROR FILTEREFFECT_Free(objFilterEffect *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR FILTEREFFECT_Init(objFilterEffect *Self, APTR Void)
+static ERROR FILTEREFFECT_Init(extFilterEffect *Self, APTR Void)
 {
    parasol::Log log;
 
-   Self->Filter = (objVectorFilter *)GetObjectPtr(Self->ownerID());
+   Self->Filter = (extVectorFilter *)GetObjectPtr(Self->ownerID());
    if (Self->Filter->ClassID != ID_VECTORFILTER) return log.warning(ERR_UnsupportedOwner);
 
    // If the client didn't specify a source input, figure out what to use.
@@ -45,7 +45,7 @@ static ERROR FILTEREFFECT_Init(objFilterEffect *Self, APTR Void)
       if (Self->Prev) {
          Self->SourceType = VSF_REFERENCE;
          Self->Input = Self->Prev;
-         Self->Input->UsageCount++;
+         ((extFilterEffect *)Self->Input)->UsageCount++;
          log.msg("Using effect %s #%d as an input.", Self->Input->Class->ClassName, Self->Input->UID);
       }
       else {
@@ -63,10 +63,10 @@ MoveToBack: Move an effect to the back of the VectorFilter's list order.
 -END-
 *********************************************************************************************************************/
 
-static ERROR FILTEREFFECT_MoveToBack(objFilterEffect *Self, APTR Void)
+static ERROR FILTEREFFECT_MoveToBack(extFilterEffect *Self, APTR Void)
 {
    if (Self->Filter->Effects != Self) {
-      if (Self->Filter->LastEffect IS Self) Self->Filter->LastEffect = Self->Prev;
+      if (Self->Filter->LastEffect IS Self) Self->Filter->LastEffect = (extFilterEffect *)Self->Prev;
 
       if (Self->Prev) Self->Prev->Next = Self->Next;
       if (Self->Next) Self->Next->Prev = Self->Prev;
@@ -88,7 +88,7 @@ MoveToBack: Move an effect to the front of the VectorFilter's list order.
 *********************************************************************************************************************/
 
 
-static ERROR FILTEREFFECT_MoveToFront(objFilterEffect *Self, APTR Void)
+static ERROR FILTEREFFECT_MoveToFront(extFilterEffect *Self, APTR Void)
 {
    if (Self->Next) {
       if (Self->Prev) Self->Prev->Next = Self->Next;
@@ -106,7 +106,7 @@ static ERROR FILTEREFFECT_MoveToFront(objFilterEffect *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR FILTEREFFECT_NewObject(objFilterEffect *Self, APTR Void)
+static ERROR FILTEREFFECT_NewObject(extFilterEffect *Self, APTR Void)
 {
    Self->SourceType = VSF_PREVIOUS; // Use previous effect as input, or SourceGraphic if no previous effect.
    return ERR_Okay;
@@ -130,7 +130,7 @@ previous effect if available, otherwise the source graphic is used.
 
 *********************************************************************************************************************/
 
-static ERROR FILTEREFFECT_SET_Input(objFilterEffect *Self, objFilterEffect *Value)
+static ERROR FILTEREFFECT_SET_Input(extFilterEffect *Self, extFilterEffect *Value)
 {
    parasol::Log log;
 
@@ -138,7 +138,7 @@ static ERROR FILTEREFFECT_SET_Input(objFilterEffect *Self, objFilterEffect *Valu
 
    Self->SourceType = VSF_REFERENCE;
    Self->Input      = Value;
-   Self->Input->UsageCount++;
+   ((extFilterEffect *)Self->Input)->UsageCount++;
    return ERR_Okay;
 }
 
@@ -151,7 +151,7 @@ The (Width,Height) field values define the dimensions of the effect within the t
 
 *********************************************************************************************************************/
 
-static ERROR FILTEREFFECT_GET_Height(objFilterEffect *Self, Variable *Value)
+static ERROR FILTEREFFECT_GET_Height(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val = Self->Height;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_HEIGHT)) val = val * 100.0;
@@ -160,7 +160,7 @@ static ERROR FILTEREFFECT_GET_Height(objFilterEffect *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR FILTEREFFECT_SET_Height(objFilterEffect *Self, Variable *Value)
+static ERROR FILTEREFFECT_SET_Height(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -189,7 +189,7 @@ This field is the SVG equivalent to `in2`.  It does nothing if the effect does n
 
 *********************************************************************************************************************/
 
-static ERROR FILTEREFFECT_SET_Mix(objFilterEffect *Self, objFilterEffect *Value)
+static ERROR FILTEREFFECT_SET_Mix(extFilterEffect *Self, extFilterEffect *Value)
 {
    parasol::Log log;
 
@@ -197,7 +197,7 @@ static ERROR FILTEREFFECT_SET_Mix(objFilterEffect *Self, objFilterEffect *Value)
 
    Self->MixType = VSF_REFERENCE;
    Self->Mix     = Value;
-   Self->Mix->UsageCount++;
+   ((extFilterEffect *)Self->Mix)->UsageCount++;
    return ERR_Okay;
 }
 
@@ -224,7 +224,7 @@ The (Width,Height) field values define the dimensions of the effect within the t
 
 *********************************************************************************************************************/
 
-static ERROR FILTEREFFECT_GET_Width(objFilterEffect *Self, Variable *Value)
+static ERROR FILTEREFFECT_GET_Width(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val = Self->Width;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_WIDTH)) val = val * 100.0;
@@ -233,7 +233,7 @@ static ERROR FILTEREFFECT_GET_Width(objFilterEffect *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR FILTEREFFECT_SET_Width(objFilterEffect *Self, Variable *Value)
+static ERROR FILTEREFFECT_SET_Width(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -259,7 +259,7 @@ The (X,Y) field values define the offset of the effect within the target clippin
 
 *********************************************************************************************************************/
 
-static ERROR FILTEREFFECT_GET_X(objFilterEffect *Self, Variable *Value)
+static ERROR FILTEREFFECT_GET_X(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val = Self->X;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_X)) val = val * 100.0;
@@ -268,7 +268,7 @@ static ERROR FILTEREFFECT_GET_X(objFilterEffect *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR FILTEREFFECT_SET_X(objFilterEffect *Self, Variable *Value)
+static ERROR FILTEREFFECT_SET_X(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -295,7 +295,7 @@ The (X,Y) field values define the offset of the effect within the target clippin
 
 *********************************************************************************************************************/
 
-static ERROR FILTEREFFECT_GET_Y(objFilterEffect *Self, Variable *Value)
+static ERROR FILTEREFFECT_GET_Y(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val = Self->Y;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_Y)) val = val * 100.0;
@@ -304,7 +304,7 @@ static ERROR FILTEREFFECT_GET_Y(objFilterEffect *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR FILTEREFFECT_SET_Y(objFilterEffect *Self, Variable *Value)
+static ERROR FILTEREFFECT_SET_Y(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -352,7 +352,7 @@ ERROR init_filtereffect(void)
       FID_Flags|TLONG,          CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
       FID_Actions|TPTR,         clFilterEffectActions,
       FID_Fields|TARRAY,        clFilterEffectFields,
-      FID_Size|TLONG,           sizeof(objFilterEffect),
+      FID_Size|TLONG,           sizeof(extFilterEffect),
       FID_Path|TSTR,            MOD_PATH,
       TAGEND)) return ERR_CreateObject;
 
