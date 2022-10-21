@@ -220,7 +220,7 @@ static ERROR VECTORPATH_AddCommand(objVectorPath *Self, struct vpAddCommand *Arg
 
    if ((!Args) or (!Args->Commands)) return log.warning(ERR_NullArgs);
 
-   LONG total_cmds = Args->Size / sizeof(PathCommand);
+   const LONG total_cmds = Args->Size / sizeof(PathCommand);
 
    if ((total_cmds <= 0) or (total_cmds > 1000000)) return log.warning(ERR_Args);
 
@@ -326,7 +326,7 @@ static ERROR VECTORPATH_SetCommand(objVectorPath *Self, struct vpSetCommand *Arg
    if ((!Args) or (!Args->Command)) return ERR_NullArgs;
    if (Args->Index < 0) return log.warning(ERR_OutOfRange);
 
-   LONG total_cmds = Args->Size / sizeof(PathCommand);
+   const LONG total_cmds = Args->Size / sizeof(PathCommand);
    if ((size_t)Args->Index + total_cmds > Self->Commands.size()) Self->Commands.resize(Args->Index + total_cmds);
 
    PathCommand *list = Args->Command;
@@ -368,7 +368,7 @@ static ERROR VECTORPATH_SetCommandList(objVectorPath *Self, struct vpSetCommandL
 
    if (!Self->initialised()) return log.warning(ERR_NotInitialised);
 
-   LONG total_cmds = Args->Size / sizeof(PathCommand);
+   const LONG total_cmds = Args->Size / sizeof(PathCommand);
    if ((total_cmds < 0) or (total_cmds > 1000000)) return log.warning(ERR_Args);
 
    Self->Commands.clear();
