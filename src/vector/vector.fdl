@@ -471,22 +471,6 @@ struct OrderedVector {
     int(VUNIT) PrimitiveUnits # VUNIT constant
     int Dimensions            # Flags for detailing area values
     int(VCS) ColourSpace      # Operating colour space for RGB values
-  ]],
-  [[
-   objVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
-   objVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
-   objVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
-   objVectorScene *Scene;              // Scene that the filter belongs to.
-   objBitmap *SourceGraphic;           // An internal rendering of the vector client, used for SourceGraphic and SourceAlpha.
-   objBitmap *BkgdBitmap;              // Target bitmap supplied by Scene.acDraw()
-   objFilterEffect *ActiveEffect;      // Current effect being processed by the pipeline.
-   objFilterEffect *Effects;           // Pointer to the first effect in the chain.
-   objFilterEffect *LastEffect;
-   std::vector<std::unique_ptr<filter_bitmap>> Bank;
-   ClipRectangle VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
-   UBYTE BankIndex;
-   bool Rendered;
-   bool Disabled;
   ]])
 
   // VectorText method ID's start high enough to give a cushion from inherited Vector methods.
