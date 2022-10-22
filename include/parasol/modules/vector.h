@@ -15,15 +15,15 @@
 #include <parasol/modules/display.h>
 #endif
 
-typedef class plVectorColour objVectorColour;
-typedef class plVectorScene objVectorScene;
-typedef class plVectorImage objVectorImage;
-typedef class plVectorPattern objVectorPattern;
-typedef class plVectorGradient objVectorGradient;
-typedef class plFilterEffect objFilterEffect;
-typedef class plVectorFilter objVectorFilter;
-typedef class plVector objVector;
-typedef class plVectorViewport objVectorViewport;
+class objVectorColour;
+class objVectorScene;
+class objVectorImage;
+class objVectorPattern;
+class objVectorGradient;
+class objFilterEffect;
+class objVectorFilter;
+class objVector;
+class objVectorViewport;
 
 // Options for drawing arcs.
 
@@ -377,13 +377,13 @@ struct VectorMatrix {
 
 #define VER_VECTORCOLOUR (1.000000)
 
-typedef class plVectorColour : public BaseClass {
+class objVectorColour : public BaseClass {
    public:
    DOUBLE Red;    // The red component value.
    DOUBLE Green;  // The green component value.
    DOUBLE Blue;   // The blue component value.
    DOUBLE Alpha;  // The alpha component value.
-} objVectorColour;
+};
 
 // VectorScene class definition
 
@@ -419,7 +419,7 @@ INLINE ERROR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) {
 }
 
 
-typedef class plVectorScene : public BaseClass {
+class objVectorScene : public BaseClass {
    public:
    LARGE    RenderTime;           // Returns the rendering time of the last scene.
    DOUBLE   Gamma;                // Private. Not currently implemented.
@@ -449,13 +449,13 @@ typedef class plVectorScene : public BaseClass {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-} objVectorScene;
+};
 
 // VectorImage class definition
 
 #define VER_VECTORIMAGE (1.000000)
 
-typedef class plVectorImage : public BaseClass {
+class objVectorImage : public BaseClass {
    public:
    DOUBLE X;                // Apply a horizontal offset to the image, the origin of which is determined by the #Units value.
    DOUBLE Y;                // Apply a vertical offset to the image, the origin of which is determined by the #Units value.
@@ -465,13 +465,13 @@ typedef class plVectorImage : public BaseClass {
    LONG   Dimensions;       // Dimension flags define whether individual dimension fields contain fixed or relative values.
    LONG   SpreadMethod;     // Defines the drawing mode.
    LONG   AspectRatio;      // Flags that affect the aspect ratio of the image within its target vector.
-} objVectorImage;
+};
 
 // VectorPattern class definition
 
 #define VER_VECTORPATTERN (1.000000)
 
-typedef class plVectorPattern : public BaseClass {
+class objVectorPattern : public BaseClass {
    public:
    DOUBLE X;                      // X coordinate for the pattern.
    DOUBLE Y;                      // Y coordinate for the pattern.
@@ -484,13 +484,13 @@ typedef class plVectorPattern : public BaseClass {
    LONG   Units;                  // Defines the coordinate system for fields X, Y, Width and Height.
    LONG   ContentUnits;           // Private. Not yet implemented.
    LONG   Dimensions;             // Dimension flags are stored here.
-} objVectorPattern;
+};
 
 // VectorGradient class definition
 
 #define VER_VECTORGRADIENT (1.000000)
 
-typedef class plVectorGradient : public BaseClass {
+class objVectorGradient : public BaseClass {
    public:
    DOUBLE X1;                      // Initial X coordinate for the gradient.
    DOUBLE Y1;                      // Initial Y coordinate for the gradient.
@@ -510,13 +510,13 @@ typedef class plVectorGradient : public BaseClass {
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-} objVectorGradient;
+};
 
 // FilterEffect class definition
 
 #define VER_FILTEREFFECT (1.000000)
 
-typedef class plFilterEffect : public BaseClass {
+class objFilterEffect : public BaseClass {
    public:
    objFilterEffect * Next;    // Next filter in the chain.
    objFilterEffect * Prev;    // Previous filter in the chain.
@@ -535,7 +535,7 @@ typedef class plFilterEffect : public BaseClass {
    inline ERROR init() { return Action(AC_Init, this, NULL); }
    inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
    inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
-} objFilterEffect;
+};
 
 struct MergeSource {
    LONG SourceType;             // The type of the required source.
@@ -586,7 +586,7 @@ struct MergeSource {
 
 #define VER_VECTORFILTER (1.000000)
 
-typedef class plVectorFilter : public BaseClass {
+class objVectorFilter : public BaseClass {
    public:
    DOUBLE X;                     // X coordinate for the filter.
    DOUBLE Y;                     // Y coordinate for the filter.
@@ -604,7 +604,7 @@ typedef class plVectorFilter : public BaseClass {
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-} objVectorFilter;
+};
 
 // Vector class definition
 
@@ -688,7 +688,7 @@ INLINE ERROR vecFreeMatrix(APTR Ob, struct VectorMatrix * Matrix) {
 }
 
 
-typedef class plVector : public BaseClass {
+class objVector : public BaseClass {
    public:
    objVector * Child;                 // The first child vector, or NULL.
    objVectorScene * Scene;            // Short-cut to the top-level @VectorScene.
@@ -723,7 +723,7 @@ typedef class plVector : public BaseClass {
    // NewOwner
 
    inline ERROR show() { return Action(AC_Show, this, NULL); }
-} objVector;
+};
 
 // VectorPath class definition
 
@@ -819,8 +819,8 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
 
 #define VER_VECTORVIEWPORT (1.000000)
 
-typedef class plVectorViewport : public objVector {
-} objVectorViewport;
+class objVectorViewport : public objVector {
+};
 
 struct VectorBase {
    ERROR (*_DrawPath)(objBitmap *, APTR, DOUBLE, OBJECTPTR, OBJECTPTR);
@@ -889,7 +889,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
    Colour->Blue  = Blue;
    Colour->Alpha = Alpha;
 }
-  
+
 #define SVF_A 0x0002b606
 #define SVF_ACHROMATOMALY 0xc3f37036
 #define SVF_ACHROMATOPSIA 0xc3f56170

@@ -1355,8 +1355,8 @@ function outputClassHeader(class, Private, Custom)
       end
 
       if physicalFields then
-         priority("typedef class pl" .. class.name ..  " obj" .. class.name .. ";")
-         output("typedef class pl" .. class.name ..  " : public BaseClass {")
+         priority("class obj" .. class.name .. ";") -- Forward declaration
+         output("class obj" .. class.name ..  " : public BaseClass {")
          output("   public:")
 
          local max_len = 3 + class.longestFieldType + 1 + 2
@@ -1412,12 +1412,12 @@ function outputClassHeader(class, Private, Custom)
             end
          end
 
-         output("} obj" .. class.name .. ";")
+         output("};")
          output()
       elseif class.base then
-         priority("typedef class pl" .. class.name ..  " obj" .. class.name .. ";")
-         output("typedef class pl" .. class.name ..  " : public " .. class.base .. " {")
-         output("} obj" .. class.name .. ";")
+         priority("typedef class obj" .. class.name .. ";")
+         output("class obj" .. class.name ..  " : public " .. class.base .. " {")
+         output("};")
          output()
       end
    end
