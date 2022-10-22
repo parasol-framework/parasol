@@ -886,8 +886,8 @@ EXTERN(void) jpeg_CreateCompress JPP((j_compress_ptr cinfo, int version, LONG st
 EXTERN(void) jpeg_CreateDecompress JPP((j_decompress_ptr cinfo, int version, LONG structsize));
 EXTERN(void) jpeg_destroy_compress JPP((j_compress_ptr cinfo));
 EXTERN(void) jpeg_destroy_decompress JPP((j_decompress_ptr cinfo));
-EXTERN(void) jpeg_stdio_dest JPP((j_compress_ptr, struct plFile *));
-EXTERN(void) jpeg_stdio_src JPP((j_decompress_ptr, struct plFile *));
+EXTERN(void) jpeg_stdio_dest JPP((j_compress_ptr, class objFile *));
+EXTERN(void) jpeg_stdio_src JPP((j_decompress_ptr, class objFile *));
 EXTERN(void) jpeg_set_defaults JPP((j_compress_ptr cinfo));
 EXTERN(void) jpeg_set_colorspace JPP((j_compress_ptr cinfo, J_COLOR_SPACE colorspace));
 EXTERN(void) jpeg_default_colorspace JPP((j_compress_ptr cinfo));

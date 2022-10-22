@@ -1,12 +1,5 @@
 
-#define PRV_VECTOR
-#define PRV_VECTORSCENE
-#define PRV_VECTORPATTERN
-#define PRV_VECTORGRADIENT
-#define PRV_VECTORFILTER
-#define PRV_VECTORPATH
 #define PRV_VECTOR_MODULE
-#define PRV_FILTEREFFECT
 
 #define DBG_TRANSFORM(args...) //log.trace(args)
 

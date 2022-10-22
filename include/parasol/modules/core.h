@@ -19,17 +19,17 @@
 #include <unordered_map>
 #endif
 
-typedef class plStorageDevice objStorageDevice;
-typedef class plFile objFile;
-typedef class plConfig objConfig;
-typedef class plScript objScript;
-typedef class plMetaClass objMetaClass;
-typedef class plTask objTask;
-typedef class plThread objThread;
-typedef class plModule objModule;
-typedef class plTime objTime;
-typedef class plCompression objCompression;
-typedef class plCompressedStream objCompressedStream;
+class objStorageDevice;
+class objFile;
+class objConfig;
+class objScript;
+class objMetaClass;
+class objTask;
+class objThread;
+class objModule;
+class objTime;
+class objCompression;
+class objCompressedStream;
 
 #ifdef _WIN32
 
@@ -2520,7 +2520,7 @@ INLINE ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 
 #define VER_STORAGEDEVICE (1.000000)
 
-typedef class plStorageDevice : public BaseClass {
+class objStorageDevice : public BaseClass {
    public:
    LARGE DeviceFlags;    // These read-only flags identify the type of device and its features.
    LARGE DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
@@ -2532,7 +2532,7 @@ typedef class plStorageDevice : public BaseClass {
    STRING prvVolume;
   
 #endif
-} objStorageDevice;
+};
 
 // File class definition
 
@@ -2602,7 +2602,7 @@ INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, LONG Flags) {
 }
 
 
-typedef class plFile : public BaseClass {
+class objFile : public BaseClass {
    public:
    LARGE    Position; // The current read/write byte position in a file.
    LONG     Flags;    // File flags and options.
@@ -2681,7 +2681,7 @@ typedef class plFile : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
-} objFile;
+};
 
 // Config class definition
 
@@ -2768,7 +2768,7 @@ INLINE ERROR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
 }
 
 
-typedef class plConfig : public BaseClass {
+class objConfig : public BaseClass {
    public:
    STRING Path;         // Set this field to the location of the source configuration file.
    STRING KeyFilter;    // Set this field to enable key filtering.
@@ -2795,7 +2795,7 @@ typedef class plConfig : public BaseClass {
       return Action(AC_SaveToObject, this, &args);
    }
    inline ERROR sort() { return Action(AC_Sort, this, NULL); }
-} objConfig;
+};
 
 INLINE ERROR cfgWriteInt(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG Integer)
 {
@@ -2869,7 +2869,7 @@ INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
 }
 
 
-typedef class plScript : public BaseClass {
+class objScript : public BaseClass {
    public:
    OBJECTID TargetID;  // Reference to the default container that new script objects will be initialised to.
    LONG     Flags;     // Optional flags.
@@ -2915,7 +2915,7 @@ typedef class plScript : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-} objScript;
+};
 
 // MetaClass class definition
 
@@ -2936,7 +2936,7 @@ INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass *
 }
 
 
-typedef class plMetaClass : public BaseClass {
+class objMetaClass : public BaseClass {
    public:
    DOUBLE  ClassVersion;                // The version number of the class.
    struct MethodArray * Methods;        // Set this field to define the methods supported by the class.
@@ -2966,7 +2966,7 @@ typedef class plMetaClass : public BaseClass {
     WORD OriginalFieldTotal;
   
 #endif
-} objMetaClass;
+};
 
 // Task class definition
 
@@ -3009,7 +3009,7 @@ INLINE ERROR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) {
 #define taskCloseInstance(obj) Action(MT_TaskCloseInstance,(obj),0)
 
 
-typedef class plTask : public BaseClass {
+class objTask : public BaseClass {
    public:
    DOUBLE TimeOut;    // Limits the amount of time to wait for a launched process to return.
    LONG   Flags;      // Optional flags.
@@ -3092,7 +3092,7 @@ typedef class plTask : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
-} objTask;
+};
 
 // Thread class definition
 
@@ -3117,7 +3117,7 @@ INLINE ERROR thWait(APTR Ob, LONG TimeOut) {
 }
 
 
-typedef class plThread : public BaseClass {
+class objThread : public BaseClass {
    public:
    APTR  Data;       // Pointer to initialisation data for the thread.
    LONG  DataSize;   // The size of the buffer referenced in the Data field.
@@ -3133,7 +3133,7 @@ typedef class plThread : public BaseClass {
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-} objThread;
+};
 
 // Private task list control structure.
 
@@ -3179,7 +3179,7 @@ INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) {
 }
 
 
-typedef class plModule : public BaseClass {
+class objModule : public BaseClass {
    public:
    DOUBLE Version;                          // Minimum required version number.
    const struct Function * FunctionList;    // Refers to a list of public functions exported by the module.
@@ -3207,7 +3207,7 @@ typedef class plModule : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-} objModule;
+};
 
 // Time class definition
 
@@ -3220,7 +3220,7 @@ typedef class plModule : public BaseClass {
 #define tmSetTime(obj) Action(MT_TmSetTime,(obj),0)
 
 
-typedef class plTime : public BaseClass {
+class objTime : public BaseClass {
    public:
    LARGE SystemTime;    // Represents the system time when the time object was last queried.
    LONG  Year;          // Year (-ve for BC, +ve for AD).
@@ -3237,7 +3237,7 @@ typedef class plTime : public BaseClass {
 
    inline ERROR query() { return Action(AC_Query, this, NULL); }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-} objTime;
+};
 
 // Compression class definition
 
@@ -3344,7 +3344,7 @@ INLINE ERROR cmpFind(APTR Ob, CSTRING Path, LONG Flags, struct CompressedItem **
 }
 
 
-typedef class plCompression : public BaseClass {
+class objCompression : public BaseClass {
    public:
    LARGE    TotalOutput;     // The total number of bytes that have been output during the compression or decompression of streamed data.
    OBJECTID OutputID;        // Resulting messages will be sent to the object referred to in this field.
@@ -3384,13 +3384,13 @@ typedef class plCompression : public BaseClass {
 
    inline ERROR flush() { return Action(AC_Flush, this, NULL); }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-} objCompression;
+};
 
 // CompressedStream class definition
 
 #define VER_COMPRESSEDSTREAM (1.000000)
 
-typedef class plCompressedStream : public BaseClass {
+class objCompressedStream : public BaseClass {
    public:
    LARGE     TotalOutput; // A live counter of total bytes that have been output by the stream.
    OBJECTPTR Input;      // An input object that will supply data for decompression.
@@ -3405,7 +3405,7 @@ typedef class plCompressedStream : public BaseClass {
    gz_header Header;
   
 #endif
-} objCompressedStream;
+};
 
 
 INLINE ERROR GetLarge(OBJECTPTR Object, ULONG FieldID, LARGE *Value) {
