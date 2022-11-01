@@ -87,7 +87,7 @@ extern "C" void program(void)
    // Process arguments
 
    STRING *Args;
-   if ((!GetPointer(glTask, FID_ArgsList, &Args)) AND (Args)) {
+   if ((!GetPointer(glTask, FID_ArgsList, &Args)) and (Args)) {
       for (i=0; Args[i]; i++) {
          if (!StrMatch(Args[i], "--help")) {
             // Print help for the user
@@ -202,7 +202,7 @@ exit:
 
    if (glDirectory) {
       for (i=0; glDirectory[i]; i++);
-      while ((i > 0) AND (glDirectory[i-1] != '/')) i--;
+      while ((i > 0) and (glDirectory[i-1] != '/')) i--;
       glDirectory[i] = 0;
 
       OBJECTPTR file;
@@ -308,7 +308,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
                argname = argbuffer+1; // Skip the first byte... reserved for '+'
                argbuffer[0] = '+'; // Append arg indicator
                for (i=0; glArgs[i]; i++) {
-                  for (j=0; (glArgs[i][j]) AND (glArgs[i][j] != '=') AND (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
+                  for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
                   argname[j] = 0;
 
                   if (glArgs[i][j] IS '=') {
@@ -324,14 +324,14 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
                         }
 
                         i++;
-                        while ((glArgs[i]) AND (glArgs[i][0] != '}')) {
+                        while ((glArgs[i]) and (glArgs[i][0] != '}')) {
                            SetVar(run, argbuffer, glArgs[i]);
                            i++;
                         }
                      }
                      else if (glArgs[i][j] IS '"') {
                         j++;
-                        for (k=j; (glArgs[i][k]) AND (glArgs[i][k] != '"'); k++);
+                        for (k=j; (glArgs[i][k]) and (glArgs[i][k] != '"'); k++);
                         if (glArgs[i][k] IS '"') glArgs[i][k] = 0;
                         SetVar(run, argname, glArgs[i]+j);
                      }
@@ -366,7 +366,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
             argname = argbuffer+1; // Skip the first byte... reserved for '+'
             argbuffer[0] = '+'; // Append arg indicator
             for (i=0; glArgs[i]; i++) {
-               for (j=0; (glArgs[i][j]) AND (glArgs[i][j] != '=') AND (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
+               for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
                argname[j] = 0;
 
                if (glArgs[i][j] IS '=') {
@@ -380,7 +380,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
                      }
 
                      i++;
-                     while ((glArgs[i]) AND (glArgs[i][0] != '}')) {
+                     while ((glArgs[i]) and (glArgs[i][0] != '}')) {
                         SetVar(glScript, argbuffer, glArgs[i]);
                         i++;
                      }
@@ -389,7 +389,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
                   }
                   else if (glArgs[i][j] IS '"') {
                      j++;
-                     for (k=j; (glArgs[i][k]) AND (glArgs[i][k] != '"'); k++);
+                     for (k=j; (glArgs[i][k]) and (glArgs[i][k] != '"'); k++);
                      if (glArgs[i][k] IS '"') glArgs[i][k] = 0;
                      SetVar(glScript, argname, glArgs[i]+j);
                   }
@@ -448,7 +448,7 @@ static ERROR decompress_archive(STRING Location)
    if (!(error = PrivateObject(ID_COMPRESSION, 0, &compress, FID_Path|TSTR, Location, TAGEND))) {
       if (!(error = AllocMemory(sizeof(STR_UNPACK) + len + sizeof(STR_MAIN) + 2, MEM_STRING, &glDirectory, NULL))) {
          for (i=0; STR_UNPACK[i]; i++) glDirectory[i] = STR_UNPACK[i];
-         for (j=len; (j > 1) AND (Location[j-1] != '/') AND (Location[j-1] != '\\') AND (Location[j-1] != ':'); j--);
+         for (j=len; (j > 1) and (Location[j-1] != '/') and (Location[j-1] != '\\') and (Location[j-1] != ':'); j--);
          while (Location[j]) {
             glDirectory[i++] = Location[j];
             j++;

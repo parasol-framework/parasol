@@ -321,13 +321,13 @@ public:
 
 //********************************************************************************************************************
 
-typedef class rkColourEffect : public extFilterEffect {
+class objColourFX : public extFilterEffect {
    public:
    DOUBLE Values[CM_SIZE];
    ColourMatrix *Matrix;
    LONG TotalValues;
    UBYTE Mode;
-} objColourFX;
+};
 
 /*********************************************************************************************************************
 -ACTION-

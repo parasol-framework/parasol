@@ -10,7 +10,7 @@ blending algorithm.
 
 *********************************************************************************************************************/
 
-typedef class rkCompositeFX : public extFilterEffect {
+class objCompositeFX : public extFilterEffect {
    public:
    DOUBLE K1, K2, K3, K4; // For the arithmetic operator
    LONG Operator; // OP constant
@@ -43,7 +43,7 @@ typedef class rkCompositeFX : public extFilterEffect {
       }
    }
 
-} objCompositeFX;
+};
 
 //********************************************************************************************************************
 // Porter/Duff Compositing routines

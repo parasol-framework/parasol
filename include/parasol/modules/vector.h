@@ -394,6 +394,7 @@ class objVectorColour : public BaseClass {
 #define MT_ScAddDef -1
 #define MT_ScSearchByID -2
 #define MT_ScFindDef -3
+#define MT_ScDebug -4
 
 struct scAddDef { CSTRING Name; OBJECTPTR Def;  };
 struct scSearchByID { LONG ID; OBJECTPTR Result;  };
@@ -417,6 +418,8 @@ INLINE ERROR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) {
    if (Def) *Def = args.Def;
    return(error);
 }
+
+#define scDebug(obj) Action(MT_ScDebug,(obj),0)
 
 
 class objVectorScene : public BaseClass {
@@ -545,6 +548,10 @@ struct MergeSource {
 // ImageFX class definition
 
 #define VER_IMAGEFX (1.000000)
+
+// SourceFX class definition
+
+#define VER_SOURCEFX (1.000000)
 
 // BlurFX class definition
 
@@ -720,8 +727,6 @@ class objVector : public BaseClass {
    inline ERROR init() { return Action(AC_Init, this, NULL); }
    inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
    inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
-   // NewOwner
-
    inline ERROR show() { return Action(AC_Show, this, NULL); }
 };
 
@@ -889,7 +894,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
    Colour->Blue  = Blue;
    Colour->Alpha = Alpha;
 }
-
+  
 #define SVF_A 0x0002b606
 #define SVF_ACHROMATOMALY 0xc3f37036
 #define SVF_ACHROMATOPSIA 0xc3f56170

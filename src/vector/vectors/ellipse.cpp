@@ -9,13 +9,13 @@ The VectorEllipse class provides the necessary functionality for elliptical path
 
 *****************************************************************************/
 
-typedef class plVectorEllipse : public extVector {
+class objVectorEllipse : public extVector {
    public:
    DOUBLE eCX, eCY;
    DOUBLE eRadiusX, eRadiusY;
    LONG eDimensions;
    LONG eVertices;
-} objVectorEllipse;
+};
 
 //****************************************************************************
 

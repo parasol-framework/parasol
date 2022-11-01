@@ -1245,7 +1245,6 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
    // Sanitise the Flags field
 
    if (Self->BitsPerPixel < 32) Self->Flags &= ~BMF_ALPHA_CHANNEL;
-   Self->Flags &= ~BMF_NO_DATA;
 
    //log.msg("Red: %.2x/%d/%d , Green: %.2x/%d/%d",
    //   Self->prvColourFormat.RedMask,   Self->prvColourFormat.RedShift,   Self->prvColourFormat.RedPos,
@@ -1780,7 +1779,7 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
       }
       else return log.warning(ERR_AllocMemory);
    }
-   else return log.warning(ERR_FieldNotSet);
+   else return log.warning(ERR_UndefinedField);
 
 setfields:
    Self->Width         = width;

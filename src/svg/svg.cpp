@@ -102,7 +102,7 @@ static ERROR save_svg_transform(VectorMatrix *, char *, LONG);
 static ERROR set_property(extSVG *, OBJECTPTR, ULONG, objXML *, const XMLTag *, CSTRING);
 static ERROR xtag_animatemotion(extSVG *, objXML *, const XMLTag *, OBJECTPTR Parent);
 static ERROR xtag_animatetransform(extSVG *, objXML *, const XMLTag *, OBJECTPTR);
-static ERROR xtag_default(extSVG *, ULONG, objXML *, svgState *, const XMLTag *, OBJECTPTR, OBJECTPTR *);
+static ERROR xtag_default(extSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR, OBJECTPTR *);
 static ERROR xtag_defs(extSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR);
 static void  xtag_group(extSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR, OBJECTPTR *);
 static ERROR xtag_image(extSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR, OBJECTPTR *);

@@ -16,7 +16,7 @@ Waves can be used in Parasol's SVG implementation by using the &lt;parasol:wave/
 
 *****************************************************************************/
 
-typedef class plVectorWave : public extVector {
+class objVectorWave : public extVector {
    public:
    DOUBLE wX, wY;
    DOUBLE wWidth, wHeight;
@@ -28,7 +28,7 @@ typedef class plVectorWave : public extVector {
    LONG   wDimensions;
    UBYTE  wClose;
    UBYTE  wStyle;
-} objVectorWave;
+};
 
 //****************************************************************************
 

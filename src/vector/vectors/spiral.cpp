@@ -11,7 +11,7 @@ point.
 
 #define MAX_SPIRAL_VERTICES 65536
 
-typedef class plVectorSpiral : public extVector {
+class objVectorSpiral : public extVector {
    public:
    DOUBLE Scale;
    DOUBLE Offset;
@@ -19,7 +19,7 @@ typedef class plVectorSpiral : public extVector {
    DOUBLE CX, CY;
    DOUBLE Step;
    LONG Dimensions;
-} objVectorSpiral;
+};
 
 //****************************************************************************
 

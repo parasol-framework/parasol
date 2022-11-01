@@ -31,7 +31,7 @@ void DrawLine(objBitmap *Bitmap, WORD x1, WORD y1, WORD x2, WORD y2, ULONG Colou
       dy2   = m << 1;
       dz2   = n << 1;
 
-      if ((l >= m) AND (l >= n)) {
+      if ((l >= m) and (l >= n)) {
          err_1 = dy2 - l;
          err_2 = dz2 - l;
          for (i = 0; i < l; i++) {
@@ -50,7 +50,7 @@ void DrawLine(objBitmap *Bitmap, WORD x1, WORD y1, WORD x2, WORD y2, ULONG Colou
              err_2 += dz2;
              drawx += x_inc;
          }
-      } else if ((m >= l) AND (m >= n)) {
+      } else if ((m >= l) and (m >= n)) {
          err_1 = dx2 - m;
          err_2 = dz2 - m;
          for (i = 0; i < m; i++) {
@@ -120,7 +120,7 @@ void DrawUCLine(objBitmap *Bitmap, WORD x1, WORD y1, WORD x2, WORD y2, ULONG Col
    dy2   = m << 1;
    dz2   = n << 1;
 
-   if ((l >= m) AND (l >= n)) {
+   if ((l >= m) and (l >= n)) {
        err_1 = dy2 - l;
        err_2 = dz2 - l;
        for (i = 0; i < l; i++) {
@@ -137,7 +137,7 @@ void DrawUCLine(objBitmap *Bitmap, WORD x1, WORD y1, WORD x2, WORD y2, ULONG Col
             err_2 += dz2;
             drawx += x_inc;
         }
-    } else if ((m >= l) AND (m >= n)) {
+    } else if ((m >= l) and (m >= n)) {
         err_1 = dx2 - m;
         err_2 = dz2 - m;
         for (i = 0; i < m; i++) {
@@ -202,7 +202,7 @@ void DrawRGBLine(objBitmap *Bitmap, WORD x1, WORD y1, WORD x2, WORD y2,
    dy2   = m << 1;
    dz2   = n << 1;
 
-   if ((l >= m) AND (l >= n)) {
+   if ((l >= m) and (l >= n)) {
        err_1 = dy2 - l;
        err_2 = dz2 - l;
        for (i = 0; i < l; i++) {
@@ -219,7 +219,7 @@ void DrawRGBLine(objBitmap *Bitmap, WORD x1, WORD y1, WORD x2, WORD y2,
             err_2 += dz2;
             drawx += x_inc;
         }
-    } else if ((m >= l) AND (m >= n)) {
+    } else if ((m >= l) and (m >= n)) {
         err_1 = dx2 - m;
         err_2 = dz2 - m;
         for (i = 0; i < m; i++) {
@@ -283,7 +283,7 @@ void DrawUCRGBLine(objBitmap *Bitmap, WORD x1, WORD y1, WORD x2, WORD y2,
    dy2 = m << 1;
    dz2 = n << 1;
 
-   if ((l >= m) AND (l >= n)) {
+   if ((l >= m) and (l >= n)) {
        err_1 = dy2 - l;
        err_2 = dz2 - l;
        for (i = 0; i < l; i++) {
@@ -300,7 +300,7 @@ void DrawUCRGBLine(objBitmap *Bitmap, WORD x1, WORD y1, WORD x2, WORD y2,
             err_2 += dz2;
             drawx += x_inc;
         }
-    } else if ((m >= l) AND (m >= n)) {
+    } else if ((m >= l) and (m >= n)) {
         err_1 = dx2 - m;
         err_2 = dz2 - m;
         for (i = 0; i < m; i++) {

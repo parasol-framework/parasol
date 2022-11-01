@@ -1,7 +1,7 @@
 /*********************************************************************************************************************
 
 -CLASS-
-FilterEffect: FilterEffect is a base class for managing effects hosted by the VectorFilter class.
+FilterEffect: FilterEffect is a support class for managing effects hosted by the VectorFilter class.
 
 The FilterEffect class provides base-class functionality for effect classes.  FilterEffect objects mut not be
 instantiated directly by the client.
@@ -36,8 +36,7 @@ static ERROR FILTEREFFECT_Init(extFilterEffect *Self, APTR Void)
 {
    parasol::Log log;
 
-   Self->Filter = (extVectorFilter *)GetObjectPtr(Self->ownerID());
-   if (Self->Filter->ClassID != ID_VECTORFILTER) return log.warning(ERR_UnsupportedOwner);
+   if (!Self->Filter) return log.warning(ERR_UnsupportedOwner);
 
    // If the client didn't specify a source input, figure out what to use.
 
@@ -87,7 +86,6 @@ MoveToBack: Move an effect to the front of the VectorFilter's list order.
 -END-
 *********************************************************************************************************************/
 
-
 static ERROR FILTEREFFECT_MoveToFront(extFilterEffect *Self, APTR Void)
 {
    if (Self->Next) {
@@ -109,6 +107,16 @@ static ERROR FILTEREFFECT_MoveToFront(extFilterEffect *Self, APTR Void)
 static ERROR FILTEREFFECT_NewObject(extFilterEffect *Self, APTR Void)
 {
    Self->SourceType = VSF_PREVIOUS; // Use previous effect as input, or SourceGraphic if no previous effect.
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR FILTEREFFECT_NewOwner(extFilterEffect *Self, struct acNewOwner *Args)
+{
+   if ((Args) and (Args->ClassID IS ID_VECTORFILTER)) {
+      Self->Filter = (extVectorFilter *)GetObjectPtr(Args->NewOwnerID);
+   }
    return ERR_Okay;
 }
 

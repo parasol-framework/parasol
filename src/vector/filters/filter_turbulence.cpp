@@ -36,7 +36,7 @@ and A.
 #define s_curve(t) (t * t * (3.0 - 2.0 * t))
 #define lerp(t, a, b) (a + t * (b - a))
 
-typedef class rkTurbulenceFX : public extFilterEffect {
+class objTurbulenceFX : public extFilterEffect {
    public:
    DOUBLE Gradient[GSIZE][LSIZE][GSUBSIZE];
    LONG Lattice[LSIZE];
@@ -148,8 +148,7 @@ typedef class rkTurbulenceFX : public extFilterEffect {
       if (Type IS TB_NOISE) return ((sum * 255.0) + 255.0) * 0.5;
       else return sum * 255.0;
    }
-
-} objTurbulenceFX;
+};
 
 //********************************************************************************************************************
 

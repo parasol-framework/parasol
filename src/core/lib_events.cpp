@@ -135,8 +135,8 @@ LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event)
    if (!Group) return 0;
 
    LARGE event_id = ((LARGE)(Group & 0xff))<<58;
-   if ((SubGroup) AND (SubGroup[0] != '*')) event_id |= ((LARGE)(StrHash(SubGroup, FALSE) & 0x00ffffff)) <<32;
-   if ((Event) AND (Event[0] != '*')) event_id |= StrHash(Event, FALSE);
+   if ((SubGroup) and (SubGroup[0] != '*')) event_id |= ((LARGE)(StrHash(SubGroup, FALSE) & 0x00ffffff)) <<32;
+   if ((Event) and (Event[0] != '*')) event_id |= StrHash(Event, FALSE);
 
    log.traceBranch("Group: %d, SubGroup: %s, Event: %s, Result: $%.8x%.8x", Group, SubGroup, Event, (LONG)((event_id>>32)& 0xffffffff), (LONG)(event_id & 0xffffffff));
 

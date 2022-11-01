@@ -77,6 +77,18 @@
     </method>
 
     <method>
+      <name>Debug</name>
+      <comment>Internal functionality for debugging.</comment>
+      <prototype>ERROR scDebug(OBJECTPTR Object)</prototype>
+      <description>
+<p>This internal method prints comprehensive debugging information to the log.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
       <name>FindDef</name>
       <comment>Search for a vector definition by name.</comment>
       <prototype>ERROR scFindDef(OBJECTPTR Object, CSTRING Name, OBJECTPTR * Def)</prototype>

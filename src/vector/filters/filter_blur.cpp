@@ -73,10 +73,10 @@ UBYTE const stack_blur_tables<T>::g_stack_blur8_shr[255] =
    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24
 };
 
-typedef class rkBlurFX : public objFilterEffect {
+class objBlurFX : public extFilterEffect {
    public:
    DOUBLE SX, SY;
-} objBlurFX;
+};
 
 //********************************************************************************************************************
 // This is the stack blur algorithm originally implemented in AGG.  It is intended to produce a near identical output

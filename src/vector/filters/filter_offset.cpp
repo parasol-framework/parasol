@@ -10,10 +10,10 @@ of `(XOffset,YOffset)`.
 
 *********************************************************************************************************************/
 
-typedef class rkOffsetFX : public extFilterEffect {
+class objOffsetFX : public extFilterEffect {
    public:
    LONG XOffset, YOffset;
-} objOffsetFX;
+};
 
 //********************************************************************************************************************
 

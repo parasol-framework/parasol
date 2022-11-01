@@ -59,7 +59,7 @@ static ERROR CLIPBOARD_ActionNotify(objClipboard *Self, struct acActionNotify *A
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
    if (Args->ActionID IS AC_Free) {
-      if ((Self->RequestHandler.Type IS CALL_SCRIPT) AND (Self->RequestHandler.Script.Script->UID IS Args->ObjectID)) {
+      if ((Self->RequestHandler.Type IS CALL_SCRIPT) and (Self->RequestHandler.Script.Script->UID IS Args->ObjectID)) {
          Self->RequestHandler.Type = CALL_NONE;
       }
    }
@@ -112,7 +112,7 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
 
 #ifdef _WIN32
    // Add the file to the host clipboard
-   if ((!(Self->Flags & CLF_DRAG_DROP)) AND (!error)) {
+   if ((!(Self->Flags & CLF_DRAG_DROP)) and (!error)) {
       parasol::ScopedAccessMemory<ClipHeader> header(Self->ClusterID, MEM_READ_WRITE, 3000);
       if (header.granted()) {
          auto clips = (ClipEntry *)(header.ptr + 1);
@@ -406,8 +406,8 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
          CSTRING str = (STRING)Args->Buffer;
 
          LONG bytes = 0;
-         for (chars=0; (str[bytes]) AND (bytes < Args->Size); chars++) {
-            for (++bytes; (bytes < Args->Size) AND ((str[bytes] & 0xc0) IS 0x80); bytes++);
+         for (chars=0; (str[bytes]) and (bytes < Args->Size); chars++) {
+            for (++bytes; (bytes < Args->Size) and ((str[bytes] & 0xc0) IS 0x80); bytes++);
          }
 
         if (!AllocMemory((chars+1) * sizeof(WORD), MEM_DATA|MEM_NO_CLEAR, &utf16, NULL)) {
@@ -449,7 +449,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       }
       else return log.warning(ERR_Failed);
    }
-   else if ((Args->DataType IS DATA_REQUEST) AND (Self->Flags & CLF_DRAG_DROP))  {
+   else if ((Args->DataType IS DATA_REQUEST) and (Self->Flags & CLF_DRAG_DROP))  {
       if (Self->RequestHandler.Type) {
          auto request = (struct dcRequest *)Args->Buffer;
          log.branch("Data request from #%d received for item %d, datatype %d", Args->ObjectID, request->Item, request->Preference[0]);
@@ -735,7 +735,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
    if (!StrCompare("File(", Args->Field, 0, 0)) {
       // Extract the datatype
 
-      for (j=0, i=6; (Args->Field[i]) AND (Args->Field[i] != ',') AND (Args->Field[i] != ')'); i++) datatype[j++] = Args->Field[i];
+      for (j=0, i=6; (Args->Field[i]) and (Args->Field[i] != ',') and (Args->Field[i] != ')'); i++) datatype[j++] = Args->Field[i];
       datatype[j] = 0;
 
       // Convert the datatype string into its equivalent value
@@ -749,9 +749,9 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
       }
 
       if (Args->Field[i] IS ',') i++;
-      while ((Args->Field[i]) AND (Args->Field[i] <= 0x20)) i++;
+      while ((Args->Field[i]) and (Args->Field[i] <= 0x20)) i++;
 
-      for (j=0; (Args->Field[i]) AND (Args->Field[i] != ')'); i++) index[j++] = Args->Field[i];
+      for (j=0; (Args->Field[i]) and (Args->Field[i] != ')'); i++) index[j++] = Args->Field[i];
       index[j] = 0;
 
       ClipHeader *header;
@@ -770,14 +770,14 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 
          if (clip) {
             LONG i = StrToInt(index);
-            if ((i >= 0) AND (i < clip->TotalItems)) {
+            if ((i >= 0) and (i < clip->TotalItems)) {
                if (clip->Files) {
                   STRING files;
                   if (!AccessMemory(clip->Files, MEM_READ, 3000, &files)) {
                      // Find the file path that we're looking for
 
                      LONG j = 0;
-                     while ((i) AND (j < clip->FilesLen)) {
+                     while ((i) and (j < clip->FilesLen)) {
                         for (; files[j]; j++);
                         if (j < clip->FilesLen) j++; // Skip null byte separator
                         i--;
@@ -805,7 +805,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
    }
    else if (!StrCompare("Items(", Args->Field, 0, 0)) {
       // Extract the datatype
-      for (j=0, i=6; (Args->Field[i]) AND (Args->Field[i] != ')'); i++) datatype[j++] = Args->Field[i];
+      for (j=0, i=6; (Args->Field[i]) and (Args->Field[i] != ')'); i++) datatype[j++] = Args->Field[i];
       datatype[j] = 0;
 
       // Convert the datatype string into its equivalent value

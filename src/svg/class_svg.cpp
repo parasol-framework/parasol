@@ -256,13 +256,13 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
    if (!Self->Viewport) return log.warning(ERR_NoData);
 
-   if ((Args->ClassID) AND (Args->ClassID != ID_SVG)) {
+   if ((Args->ClassID) and (Args->ClassID != ID_SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
-      if ((!GetPointer(mc, FID_ActionTable, &routine)) AND (routine)) {
-         if ((routine[AC_SaveToObject]) AND (routine[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
+      if ((!GetPointer(mc, FID_ActionTable, &routine)) and (routine)) {
+         if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
             return routine[AC_SaveToObject](Self, Args);
          }
-         else if ((routine[AC_SaveImage]) AND (routine[AC_SaveImage] != (APTR)SVG_SaveImage)) {
+         else if ((routine[AC_SaveImage]) and (routine[AC_SaveImage] != (APTR)SVG_SaveImage)) {
             struct acSaveImage saveimage = { .DestID = Args->DestID };
             return routine[AC_SaveImage](Self, &saveimage);
          }
@@ -300,17 +300,17 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                }
 
                LONG dim;
-               if ((!error) AND (!(error = GetLong(Self->Viewport, FID_Dimensions, &dim)))) {
-                  if ((dim & (DMF_RELATIVE_X|DMF_FIXED_X)) AND (!GetDouble(Self->Viewport, FID_X, &x)))
+               if ((!error) and (!(error = GetLong(Self->Viewport, FID_Dimensions, &dim)))) {
+                  if ((dim & (DMF_RELATIVE_X|DMF_FIXED_X)) and (!GetDouble(Self->Viewport, FID_X, &x)))
                      set_dimension(xml, index, "x", x, dim & DMF_RELATIVE_X);
 
-                  if ((dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) AND (!GetDouble(Self->Viewport, FID_Y, &y)))
+                  if ((dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) and (!GetDouble(Self->Viewport, FID_Y, &y)))
                      set_dimension(xml, index, "y", y, dim & DMF_RELATIVE_Y);
 
-                  if ((dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) AND (!GetDouble(Self->Viewport, FID_Width, &width)))
+                  if ((dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) and (!GetDouble(Self->Viewport, FID_Width, &width)))
                      set_dimension(xml, index, "width", width, dim & DMF_RELATIVE_WIDTH);
 
-                  if ((dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) AND (!GetDouble(Self->Viewport, FID_Height, &height)))
+                  if ((dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) and (!GetDouble(Self->Viewport, FID_Height, &height)))
                      set_dimension(xml, index, "height", height, dim & DMF_RELATIVE_HEIGHT);
                }
 
@@ -394,7 +394,7 @@ The recommended frame rate is 60, as this will match the majority of modern disp
 
 static ERROR SET_FrameRate(extSVG *Self, LONG Value)
 {
-   if ((Value >= 20) AND (Value <= 1000)) {
+   if ((Value >= 20) and (Value <= 1000)) {
       Self->FrameRate = Value;
       return ERR_Okay;
    }
@@ -421,7 +421,7 @@ static ERROR SET_Path(extSVG *Self, CSTRING Value)
    if (Self->Path)   { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Folder) { FreeResource(Self->Folder); Self->Folder = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       if (!(Self->Path = StrClone(Value))) return ERR_AllocMemory;
    }
    return ERR_Okay;
@@ -468,7 +468,7 @@ static ERROR SET_Target(extSVG *Self, OBJECTPTR Value)
    }
    else {
       auto owner_id = Value->ownerID();
-      while ((owner_id) AND (GetClassID(owner_id) != ID_VECTORSCENE)) {
+      while ((owner_id) and (GetClassID(owner_id) != ID_VECTORSCENE)) {
          owner_id = GetOwnerID(owner_id);
       }
 
