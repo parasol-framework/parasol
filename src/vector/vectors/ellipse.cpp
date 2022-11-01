@@ -34,11 +34,6 @@ static void generate_ellipse(objVectorEllipse *Vector)
       if (Vector->eDimensions & DMF_RELATIVE_RADIUS_Y) ry *= view_height;
    }
 
-   if (Vector->eDimensions & (DMF_RELATIVE_RADIUS_X|DMF_RELATIVE_RADIUS_Y)) {
-      if (Vector->eDimensions & DMF_RELATIVE_RADIUS_X) rx *= get_parent_width(Vector);
-      if (Vector->eDimensions & DMF_RELATIVE_RADIUS_Y) ry *= get_parent_height(Vector);;
-   }
-
    DOUBLE scale = Vector->Transform.scale();
 
    ULONG steps;
