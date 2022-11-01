@@ -211,7 +211,7 @@ int main(int argc, CSTRING *argv)
          }
 
          LONG type;
-         if ((AnalysePath(glTargetFile, &type) != ERR_Okay) OR (type != LOC_FILE)) {
+         if ((AnalysePath(glTargetFile, &type) != ERR_Okay) or (type != LOC_FILE)) {
             print("File '%s' does not exist.", glTargetFile);
          }
          else exec_source(glTargetFile, glTime, glProcedure);

@@ -275,7 +275,7 @@ double: The previous volume setting is returned by this function, regardless of 
 
 static DOUBLE sndSetTaskVolume(DOUBLE Volume)
 {
-   if ((Volume < 0) OR (Volume > 100)) {
+   if ((Volume < 0) or (Volume > 100)) {
       return glTaskVolume * 100.0;
    }
    else {

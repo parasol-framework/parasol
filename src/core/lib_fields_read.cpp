@@ -159,7 +159,7 @@ UnsupportedField: The Field is not supported by the object's class.
 ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
 {
    parasol::Log log(__FUNCTION__);
-   if ((!Object) OR (!Result)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Result)) return log.warning(ERR_NullArgs);
 
    ULONG type = FieldID>>32;
    FieldID = FieldID & 0xffffffff;
@@ -225,7 +225,7 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Object) OR (!Result) OR (!Elements)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Result) or (!Elements)) return log.warning(ERR_NullArgs);
 
    LONG req_type = FieldID>>32;
    FieldID = FieldID & 0xffffffff;
@@ -234,7 +234,7 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
 
    Field *field;
    if ((field = lookup_id(Object, FieldID, &Object))) {
-      if ((!(field->Flags & FD_READ)) OR (!(field->Flags & FD_ARRAY))) {
+      if ((!(field->Flags & FD_READ)) or (!(field->Flags & FD_ARRAY))) {
          if (!field->Name) log.warning("Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
          else log.warning("Illegal attempt to read field %s.", field->Name);
          return ERR_NoFieldAccess;
@@ -397,7 +397,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
 {
    parasol::Log log("GetVariable");
 
-   if ((!Object) OR (!FieldName) OR (!Buffer) OR (BufferSize < 2)) {
+   if ((!Object) or (!FieldName) or (!Buffer) or (BufferSize < 2)) {
       return log.warning(ERR_Args);
    }
 

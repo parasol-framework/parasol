@@ -215,7 +215,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
 
          if (len > 0) {
             error = SEND(Self, Self->SocketHandle, (BYTE *)Self->WriteQueue.Buffer + Self->WriteQueue.Index, &len, 0);
-            if ((error) OR (!len)) break;
+            if ((error) or (!len)) break;
             log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->UID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
             Self->WriteQueue.Index += len;
          }
@@ -233,7 +233,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
 
    // Before feeding new data into the queue, the current buffer must be empty.
 
-   if ((!Self->WriteQueue.Buffer) OR (Self->WriteQueue.Index >= Self->WriteQueue.Length)) {
+   if ((!Self->WriteQueue.Buffer) or (Self->WriteQueue.Index >= Self->WriteQueue.Length)) {
       if (Self->Outgoing.Type) {
          if (Self->Outgoing.Type IS CALL_STDC) {
             auto routine = (ERROR (*)(extNetSocket *))Self->Outgoing.StdC.Routine;

@@ -175,7 +175,7 @@ extern "C" void program(void)
       }
    }
 
-   if ((AnalysePath(scriptfile, &i) != ERR_Okay) OR (i != LOC_FILE)) {
+   if ((AnalysePath(scriptfile, &i) != ERR_Okay) or (i != LOC_FILE)) {
       print("File '%s' does not exist.", scriptfile);
       goto exit;
    }

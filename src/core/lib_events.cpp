@@ -82,7 +82,7 @@ ERROR BroadcastEvent(APTR Event, LONG EventSize)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Event) OR ((size_t)EventSize < sizeof(rkEvent))) return ERR_NullArgs;
+   if ((!Event) or ((size_t)EventSize < sizeof(rkEvent))) return ERR_NullArgs;
 
    LONG groupmask = 1<<((((rkEvent *)Event)->EventID>>56) & 0xff);
 
@@ -174,7 +174,7 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Callback) OR (!EventID) OR (!Handle)) return ERR_NullArgs;
+   if ((!Callback) or (!EventID) or (!Handle)) return ERR_NullArgs;
 
    if (Callback->Type != CALL_STDC) return ERR_Args; // Currently only StdC callbacks are accepted.
 
@@ -259,7 +259,7 @@ ERROR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSiz
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Message) OR ((size_t)MsgSize < sizeof(rkEvent))) return ERR_Okay;
+   if ((!Message) or ((size_t)MsgSize < sizeof(rkEvent))) return ERR_Okay;
 
    rkEvent *eventmsg = (rkEvent *)Message;
 

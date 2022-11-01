@@ -286,7 +286,7 @@ static ERROR MODULE_GetVar(objModule *Self, struct acGetVar *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Buffer) OR (!Args->Field)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer) or (!Args->Field)) return log.warning(ERR_NullArgs);
    if (Args->Size < 2) return log.warning(ERR_Args);
    if (!Self->Vars) return ERR_UnsupportedField;
 
@@ -365,7 +365,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
          for (i=0; (Self->Name[i]) and (Self->Name[i] != ':'); i++);
          path[0] = 0;
 
-         if ((Self->Name[0] IS '/') OR (Self->Name[i] IS ':')) {
+         if ((Self->Name[0] IS '/') or (Self->Name[i] IS ':')) {
             log.trace("Module location is absolute.");
             StrCopy(Self->Name, path, sizeof(path));
 
@@ -573,11 +573,11 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
       // The module version fields can give clues as to whether the table is corrupt or not.
 
       if (table) {
-         if ((table->ModVersion > 500) OR (table->ModVersion < 0)) {
+         if ((table->ModVersion > 500) or (table->ModVersion < 0)) {
             log.warning("Corrupt module version number %d for module '%s'", (LONG)master->ModVersion, path);
             goto exit;
          }
-         else if ((table->HeaderVersion < MODULE_HEADER_V1) OR (table->HeaderVersion > MODULE_HEADER_V1 + 256)) {
+         else if ((table->HeaderVersion < MODULE_HEADER_V1) or (table->HeaderVersion > MODULE_HEADER_V1 + 256)) {
             log.warning("Invalid module header $%.8x", table->HeaderVersion);
             goto exit;
          }
@@ -775,10 +775,10 @@ static ERROR MODULE_ResolveSymbol(objModule *Self, struct modResolveSymbol *Args
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
-   if ((!Self->Master) OR (!Self->Master->LibraryBase)) return ERR_FieldNotSet;
+   if ((!Self->Master) or (!Self->Master->LibraryBase)) return ERR_FieldNotSet;
 
    if ((Args->Address = winGetProcAddress(Self->Master->LibraryBase, Args->Name))) {
       return ERR_Okay;
@@ -788,7 +788,7 @@ static ERROR MODULE_ResolveSymbol(objModule *Self, struct modResolveSymbol *Args
       return ERR_NotFound;
    }
 #elif __unix__
-   if ((!Self->Master) OR (!Self->Master->LibraryBase)) return ERR_FieldNotSet;
+   if ((!Self->Master) or (!Self->Master->LibraryBase)) return ERR_FieldNotSet;
 
    if ((Args->Address = dlsym(Self->Master->LibraryBase, Args->Name))) {
       return ERR_Okay;
@@ -813,7 +813,7 @@ static ERROR MODULE_SetVar(objModule *Self, struct acSetVar *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Field)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Field)) return ERR_NullArgs;
    if (!Args->Field[0]) return ERR_EmptyString;
 
    if (!Self->Vars) {
@@ -1004,7 +1004,7 @@ APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!JumpType) OR (!FList)) log.warning("JumpTable() Invalid arguments.");
+   if ((!JumpType) or (!FList)) log.warning("JumpTable() Invalid arguments.");
 
    if (JumpType & MHF_STRUCTURE) {
       LONG size = 0;
@@ -1036,7 +1036,7 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 
       WORD i = 0;
       while (String1[i]) {
-         if ((String1[i] IS ':') OR (String1[i] IS '/')) {
+         if ((String1[i] IS ':') or (String1[i] IS '/')) {
             String1 += i + 1;  // Increment string's position
             i = 0;             // Reset the counter
          }
@@ -1045,7 +1045,7 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 
       i = 0;
       while (String2[i] != 0) {
-         if ((String2[i] IS ':') OR (String2[i] IS '/')) {
+         if ((String2[i] IS ':') or (String2[i] IS '/')) {
             String2 += i + 1;
             i = 0;
          }
@@ -1057,7 +1057,7 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
       while ((*String1 != '.') and (*String1 != 0)) {
          char ch1 = *String1;
          char ch2 = *String2;
-         if ((ch2 IS '.') OR (ch2 IS 0)) return FALSE;
+         if ((ch2 IS '.') or (ch2 IS 0)) return FALSE;
          if ((ch1 >= 'a') and (ch1 <= 'z')) ch1 -= 0x20;
          if ((ch2 >= 'a') and (ch2 <= 'z')) ch2 -= 0x20;
          if (ch1 != ch2) return FALSE;
@@ -1067,7 +1067,7 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
       // If we get this far then both strings match up to the end of String1, so now we need to check if String2 has
       // also terminated at the same point.
 
-      if ((*String2 IS '.') OR (*String2 IS 0)) return TRUE;
+      if ((*String2 IS '.') or (*String2 IS 0)) return TRUE;
    }
 
    return FALSE;

@@ -158,7 +158,7 @@ void handle_button_press(XEvent *xevent)
 
    log.traceBranch("Button: %d", xevent->xbutton.button);
 
-   if ((xevent->xbutton.button IS 4) OR (xevent->xbutton.button IS 5)) {
+   if ((xevent->xbutton.button IS 4) or (xevent->xbutton.button IS 5)) {
       // Mouse wheel movement
       if (xevent->xbutton.button IS 4) value = -9;
       else value = 9;
@@ -568,7 +568,7 @@ void handle_key_press(XEvent *xevent)
    LONG flags = KQ_PRESSED;
 
    if (xevent->xkey.state & LockMask) flags |= KQ_CAPS_LOCK;
-   if (((value >= K_NP_0) and (value <= K_NP_DIVIDE)) OR (value IS K_NP_ENTER)) {
+   if (((value >= K_NP_0) and (value <= K_NP_DIVIDE)) or (value IS K_NP_ENTER)) {
       flags |= KQ_NUM_PAD;
    }
 
@@ -587,7 +587,7 @@ void handle_key_press(XEvent *xevent)
    }
 
    if ((value) or (unicode != 0xffffffff)) {
-     if ((unicode < 0x20) OR (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
+     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
       evKey key = {
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
@@ -655,8 +655,8 @@ void handle_key_release(XEvent *xevent)
       else if (value IS K_R_ALT)     glKeyFlags &= ~KQ_R_ALT;
    }
 
-  if ((value) OR (unicode != 0xffffffff)) {
-     if ((unicode < 0x20) OR (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
+  if ((value) or (unicode != 0xffffffff)) {
+     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
       evKey key = {
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,

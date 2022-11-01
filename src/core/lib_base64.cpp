@@ -44,7 +44,7 @@ LONG StrBase64Encode(const void *Input, LONG InputSize, STRING Output, LONG Outp
    UBYTE in[3], out[4];
    LONG i, len, pos, io;
 
-   if ((!Input) OR (!Output) OR (OutputSize < 1)) return 0;
+   if ((!Input) or (!Output) or (OutputSize < 1)) return 0;
 
    UBYTE *inbuf = (UBYTE *)Input;
    for (pos=0,io=0; inbuf[pos]; ) {
@@ -101,7 +101,7 @@ Args
 
 ERROR StrBase64Decode(struct rkBase64Decode *State, CSTRING Input, LONG InputSize, APTR Output, LONG *Written)
 {
-   if ((!State) OR (!Input) OR (!Output) OR (!Written)) return ERR_NullArgs;
+   if ((!State) or (!Input) or (!Output) or (!Written)) return ERR_NullArgs;
    if (InputSize < 4) return ERR_Args;
 
    if (!State->Initialised) {
