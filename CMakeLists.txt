@@ -2,8 +2,9 @@
 #
 # Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
 # Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug
-#                  For Windows, add -G"MinGW Makefiles"
-#                  To target a local folder, add -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=parasol-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE
+#                  ^ For Windows builds -G"MinGW Makefiles" must be added.
+#                    To target a local folder, use -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
 #
 # Build:   cmake --build release -j 8 -- -O
 # Install: sudo cmake --install release
