@@ -2266,6 +2266,12 @@ struct BaseClass { // Must be 64-bit aligned
       return MemFlags;
    }
 
+   inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
+      auto oid = this->OwnerID;
+      while ((oid) and (oid != ID)) oid = GetOwnerID(oid);
+      return oid ? true : false;
+   }
+
 } __attribute__ ((aligned (8)));
 
 #define ClassName(a) ((a)->Class->Name)

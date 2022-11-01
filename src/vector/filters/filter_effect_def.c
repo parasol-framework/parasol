@@ -77,6 +77,7 @@ static const struct ActionArray clFilterEffectActions[] = {
    { AC_MoveToBack, (APTR)FILTEREFFECT_MoveToBack },
    { AC_MoveToFront, (APTR)FILTEREFFECT_MoveToFront },
    { AC_NewObject, (APTR)FILTEREFFECT_NewObject },
+   { AC_NewOwner, (APTR)FILTEREFFECT_NewOwner },
    { 0, 0 }
 };
 

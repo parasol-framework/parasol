@@ -18,6 +18,7 @@
       <class>MergeFX</class>
       <class>MorphologyFX</class>
       <class>OffsetFX</class>
+      <class>SourceFX</class>
       <class>TurbulenceFX</class>
       <class>Vector</class>
       <class>VectorClip</class>

@@ -24,13 +24,13 @@ Width and Height.  The placement and scaling of the referenced image is controll
 
 *********************************************************************************************************************/
 
-typedef class rkImageFX : public extFilterEffect {
+class objImageFX : public extFilterEffect {
    public:
    objBitmap *Bitmap;    // Bitmap containing source image data.
    objPicture *Picture;  // Origin picture if loading a source file.
    LONG AspectRatio;     // Aspect ratio flags.
    LONG ResampleMethod;  // Resample method.
-} objImageFX;
+};
 
 /*********************************************************************************************************************
 -ACTION-
@@ -43,56 +43,14 @@ static ERROR IMAGEFX_Draw(objImageFX *Self, struct acDraw *Args)
    parasol::Log log(__FUNCTION__);
 
    auto &filter = Self->Filter;
-
-   std::array<DOUBLE, 4> bounds = { filter->ClientViewport->vpFixedWidth, filter->ClientViewport->vpFixedHeight, 0, 0 };
-   calc_full_boundary(filter->ClientVector, bounds, false, false);
-   const DOUBLE b_x = trunc(bounds[0]);
-   const DOUBLE b_y = trunc(bounds[1]);
-   const DOUBLE b_width  = bounds[2] - bounds[0];
-   const DOUBLE b_height = bounds[3] - bounds[1];
-
-   DOUBLE target_x, target_y, target_width, target_height;
-   if (filter->Units IS VUNIT_BOUNDING_BOX) {
-      if (filter->Dimensions & DMF_FIXED_X) target_x = b_x;
-      else if (filter->Dimensions & DMF_RELATIVE_X) target_x = trunc(b_x + (filter->X * b_width));
-      else target_x = b_x;
-
-      if (filter->Dimensions & DMF_FIXED_Y) target_y = b_y;
-      else if (filter->Dimensions & DMF_RELATIVE_Y) target_y = trunc(b_y + (filter->Y * b_height));
-      else target_y = b_y;
-
-      if (filter->Dimensions & DMF_FIXED_WIDTH) target_width = filter->Width * b_width;
-      else if (filter->Dimensions & DMF_RELATIVE_WIDTH) target_width = filter->Width * b_width;
-      else target_width = b_width;
-
-      if (filter->Dimensions & DMF_FIXED_HEIGHT) target_height = filter->Height * b_height;
-      else if (filter->Dimensions & DMF_RELATIVE_HEIGHT) target_height = filter->Height * b_height;
-      else target_height = b_height;
-   }
-   else { // USERSPACE
-      if (filter->Dimensions & DMF_FIXED_X) target_x = trunc(filter->X);
-      else if (filter->Dimensions & DMF_RELATIVE_X) target_x = trunc(filter->X * filter->ClientViewport->vpFixedWidth);
-      else target_x = b_x;
-
-      if (filter->Dimensions & DMF_FIXED_Y) target_y = trunc(filter->Y);
-      else if (filter->Dimensions & DMF_RELATIVE_Y) target_y = trunc(filter->Y * filter->ClientViewport->vpFixedHeight);
-      else target_y = b_y;
-
-      if (filter->Dimensions & DMF_FIXED_WIDTH) target_width = filter->Width;
-      else if (filter->Dimensions & DMF_RELATIVE_WIDTH) target_width = filter->Width * filter->ClientViewport->vpFixedWidth;
-      else target_width = filter->ClientViewport->vpFixedWidth;
-
-      if (filter->Dimensions & DMF_FIXED_HEIGHT) target_height = filter->Height;
-      else if (filter->Dimensions & DMF_RELATIVE_HEIGHT) target_height = filter->Height * filter->ClientViewport->vpFixedHeight;
-      else target_height = filter->ClientViewport->vpFixedHeight;
-   }
+   auto target = calc_target_area(Self);
 
    // The image's x,y,width,height default to (0,0,100%,100%) of the target region.
 
-   DOUBLE img_x = target_x;
-   DOUBLE img_y = target_y;
-   DOUBLE img_width = target_width;
-   DOUBLE img_height = target_height;
+   DOUBLE img_x = target.x;
+   DOUBLE img_y = target.y;
+   DOUBLE img_width = target.width;
+   DOUBLE img_height = target.height;
 
    if (filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
       // In this mode image dimensions typically remain at the default, i.e. (0,0,100%,100%) of the target.
@@ -102,24 +60,22 @@ static ERROR IMAGEFX_Draw(objImageFX *Self, struct acDraw *Args)
       // "Any length values within the filter definitions represent fractions or percentages of the bounding box
       // on the referencing element."
 
-      const DOUBLE container_width = b_width;
-      const DOUBLE container_height = b_height;
-      if (Self->Dimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) img_x = trunc(target_x + (Self->X * container_width));
-      if (Self->Dimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) img_y = trunc(target_y + (Self->Y * container_height));
-      if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) img_width = Self->Width * container_width;
-      if (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) img_height = Self->Height * container_height;
+      if (Self->Dimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) img_x = trunc(target.x + (Self->X * target.bound_width));
+      if (Self->Dimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) img_y = trunc(target.y + (Self->Y * target.bound_height));
+      if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) img_width = Self->Width * target.bound_width;
+      if (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) img_height = Self->Height * target.bound_height;
    }
    else {
-      if (Self->Dimensions & DMF_RELATIVE_X)   img_x = target_x + (Self->X * target_width);
+      if (Self->Dimensions & DMF_RELATIVE_X)   img_x = target.x + (Self->X * target.width);
       else if (Self->Dimensions & DMF_FIXED_X) img_x = Self->X;
 
-      if (Self->Dimensions & DMF_RELATIVE_Y)   img_y = target_y + (Self->Y * target_height);
+      if (Self->Dimensions & DMF_RELATIVE_Y)   img_y = target.y + (Self->Y * target.height);
       else if (Self->Dimensions & DMF_FIXED_Y) img_y = Self->Y;
 
-      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   img_width = target_width * Self->Width;
+      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   img_width = target.width * Self->Width;
       else if (Self->Dimensions & DMF_FIXED_WIDTH) img_width = Self->Width;
 
-      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   img_height = target_height * Self->Height;
+      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   img_height = target.height * Self->Height;
       else if (Self->Dimensions & DMF_FIXED_HEIGHT) img_height = Self->Height;
    }
 
@@ -137,10 +93,10 @@ static ERROR IMAGEFX_Draw(objImageFX *Self, struct acDraw *Args)
    agg::pixfmt_psl pixSource(*Self->Bitmap);
 
    agg::path_storage path;
-   path.move_to(target_x, target_y);
-   path.line_to(target_x + target_width, target_y);
-   path.line_to(target_x + target_width, target_y + target_height);
-   path.line_to(target_x, target_y + target_height);
+   path.move_to(target.x, target.y);
+   path.line_to(target.x + target.width, target.y);
+   path.line_to(target.x + target.width, target.y + target.height);
+   path.line_to(target.x, target.y + target.height);
    path.close_polygon();
 
    renderBase.attach(pixDest);
@@ -365,7 +321,7 @@ ERROR init_imagefx(void)
       FID_SubClassID|TLONG,  ID_IMAGEFX,
       FID_Name|TSTRING,      "ImageFX",
       FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
+      FID_Flags|TLONG,       CLF_PRIVATE_ONLY,
       FID_Actions|TPTR,      clImageFXActions,
       FID_Fields|TARRAY,     clImageFXFields,
       FID_Size|TLONG,        sizeof(objImageFX),

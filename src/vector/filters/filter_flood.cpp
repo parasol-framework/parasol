@@ -14,13 +14,13 @@ The FloodFX class is an output-only effect that fills its target area with a sin
 
 *********************************************************************************************************************/
 
-typedef class plFloodFX : public extFilterEffect {
+class objFloodFX : public extFilterEffect {
    public:
    FRGB   Colour;
    RGB8   ColourRGB;
    RGB8   LinearRGB;
    DOUBLE Opacity;
-} objFloodFX;
+};
 
 //********************************************************************************************************************
 
@@ -42,49 +42,7 @@ static ERROR FLOODFX_Draw(objFloodFX *Self, struct acDraw *Args)
    parasol::Log log;
 
    auto &filter = Self->Filter;
-
-   std::array<DOUBLE, 4> bounds = { filter->ClientViewport->vpFixedWidth, filter->ClientViewport->vpFixedHeight, 0, 0 };
-   calc_full_boundary(filter->ClientVector, bounds, false, false);
-   const DOUBLE b_x = trunc(bounds[0]);
-   const DOUBLE b_y = trunc(bounds[1]);
-   const DOUBLE b_width  = bounds[2] - bounds[0];
-   const DOUBLE b_height = bounds[3] - bounds[1];
-
-   DOUBLE target_x, target_y, target_width, target_height;
-   if (filter->Units IS VUNIT_BOUNDING_BOX) {
-      if (filter->Dimensions & DMF_FIXED_X) target_x = b_x;
-      else if (filter->Dimensions & DMF_RELATIVE_X) target_x = trunc(b_x + (filter->X * b_width));
-      else target_x = b_x;
-
-      if (filter->Dimensions & DMF_FIXED_Y) target_y = b_y;
-      else if (filter->Dimensions & DMF_RELATIVE_Y) target_y = trunc(b_y + (filter->Y * b_height));
-      else target_y = b_y;
-
-      if (filter->Dimensions & DMF_FIXED_WIDTH) target_width = filter->Width * b_width;
-      else if (filter->Dimensions & DMF_RELATIVE_WIDTH) target_width = filter->Width * b_width;
-      else target_width = b_width;
-
-      if (filter->Dimensions & DMF_FIXED_HEIGHT) target_height = filter->Height * b_height;
-      else if (filter->Dimensions & DMF_RELATIVE_HEIGHT) target_height = filter->Height * b_height;
-      else target_height = b_height;
-   }
-   else { // USERSPACE
-      if (filter->Dimensions & DMF_FIXED_X) target_x = trunc(filter->X);
-      else if (filter->Dimensions & DMF_RELATIVE_X) target_x = trunc(filter->X * filter->ClientViewport->vpFixedWidth);
-      else target_x = b_x;
-
-      if (filter->Dimensions & DMF_FIXED_Y) target_y = trunc(filter->Y);
-      else if (filter->Dimensions & DMF_RELATIVE_Y) target_y = trunc(filter->Y * filter->ClientViewport->vpFixedHeight);
-      else target_y = b_y;
-
-      if (filter->Dimensions & DMF_FIXED_WIDTH) target_width = filter->Width;
-      else if (filter->Dimensions & DMF_RELATIVE_WIDTH) target_width = filter->Width * filter->ClientViewport->vpFixedWidth;
-      else target_width = filter->ClientViewport->vpFixedWidth;
-
-      if (filter->Dimensions & DMF_FIXED_HEIGHT) target_height = filter->Height;
-      else if (filter->Dimensions & DMF_RELATIVE_HEIGHT) target_height = filter->Height * filter->ClientViewport->vpFixedHeight;
-      else target_height = filter->ClientViewport->vpFixedHeight;
-   }
+   auto target = calc_target_area(Self);
 
    // Draw to destination.  No anti-aliasing is applied.
 
@@ -104,10 +62,10 @@ static ERROR FLOODFX_Draw(objFloodFX *Self, struct acDraw *Args)
    renderBase.attach(format);
 
    agg::path_storage path;
-   path.move_to(target_x, target_y);
-   path.line_to(target_x + target_width, target_y);
-   path.line_to(target_x + target_width, target_y + target_height);
-   path.line_to(target_x, target_y + target_height);
+   path.move_to(target.x, target.y);
+   path.line_to(target.x + target.width, target.y);
+   path.line_to(target.x + target.width, target.y + target.height);
+   path.line_to(target.x, target.y + target.height);
    path.close_polygon();
 
    agg::renderer_scanline_bin_solid< agg::renderer_base<agg::pixfmt_psl> > solid_render(renderBase);

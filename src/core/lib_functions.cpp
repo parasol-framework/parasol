@@ -1444,11 +1444,12 @@ ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG
             auto mem = glPrivateMemory.find(id);
             if (mem IS glPrivateMemory.end()) continue;
 
-            OBJECTPTR child;
-            if (((child = mem->second.Object)) and (!(child->Flags & NF_INTEGRAL))) {
-               List[i].ObjectID = child->UID;
-               List[i].ClassID  = child->ClassID;
-               if (++i >= *Count) break;
+            if (auto child = mem->second.Object) {
+               if (!(child->Flags & NF_INTEGRAL)) {
+                  List[i].ObjectID = child->UID;
+                  List[i].ClassID  = child->ClassID;
+                  if (++i >= *Count) break;
+               }
             }
          }
       }

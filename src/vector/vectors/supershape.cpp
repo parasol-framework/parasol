@@ -15,7 +15,7 @@ The Superformula is documented in detail at Wikipedia: http://en.wikipedia.org/w
 
 #define DEFAULT_VERTICES (360 * 4)
 
-typedef class clVectorShape : public extVector {
+class objVectorShape : public extVector {
    public:
    DOUBLE Radius;
    DOUBLE CX, CY;
@@ -26,7 +26,7 @@ typedef class clVectorShape : public extVector {
    LONG Repeat;
    UBYTE Close;
    UBYTE Mod;
-} objVectorShape;
+};
 
 //****************************************************************************
 

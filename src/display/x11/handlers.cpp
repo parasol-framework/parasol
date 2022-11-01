@@ -114,7 +114,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             break;
       }
 
-      if ((XRandRBase) AND (xrNotify(&xevent))) {
+      if ((XRandRBase) and (xrNotify(&xevent))) {
          // If randr indicates that the display has been resized, we must adjust the system display to match.  Refer to
          // SetDisplay() for more information.
 
@@ -568,11 +568,11 @@ void handle_key_press(XEvent *xevent)
    LONG flags = KQ_PRESSED;
 
    if (xevent->xkey.state & LockMask) flags |= KQ_CAPS_LOCK;
-   if (((value >= K_NP_0) AND (value <= K_NP_DIVIDE)) OR (value IS K_NP_ENTER)) {
+   if (((value >= K_NP_0) and (value <= K_NP_DIVIDE)) OR (value IS K_NP_ENTER)) {
       flags |= KQ_NUM_PAD;
    }
 
-   if ((value) AND (value < ARRAYSIZE(KeyHeld))) {
+   if ((value) and (value < ARRAYSIZE(KeyHeld))) {
       if (KeyHeld[value]) flags |= KQ_REPEAT;
       else KeyHeld[value] = 1;
 
@@ -642,7 +642,7 @@ void handle_key_release(XEvent *xevent)
    LONG value = xkeysym_to_pkey(sym);
    LONG flags = KQ_RELEASED;
 
-   if ((value) AND (value < ARRAYSIZE(KeyHeld))) {
+   if ((value) and (value < ARRAYSIZE(KeyHeld))) {
       KeyHeld[value] = 0;
 
       if (value IS K_L_COMMAND)      glKeyFlags &= ~KQ_L_COMMAND;

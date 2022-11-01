@@ -989,6 +989,7 @@
 #define FID_Weight 0x24d3ea4dLL
 
 #define FID_Bias 0x7c949844LL
+#define FID_Def 0x0b8869b4LL
 #define FID_Divisor 0x12ffda05LL
 #define FID_EdgeMode 0xbb10b09fLL
 #define FID_MatrixRows 0x64419145LL
@@ -997,6 +998,7 @@
 #define FID_PreserveAlpha 0xf9b49d57LL
 #define FID_ResX 0x7c9d4fa7LL
 #define FID_ResY 0x7c9d4fa8LL
+#define FID_SourceName 0xb837c737LL
 #define FID_TargetX 0xcfb0ab64LL
 #define FID_TargetY 0xcfb0ab65LL
 #define FID_UnitX 0x108252ddLL

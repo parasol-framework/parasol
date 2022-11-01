@@ -20,6 +20,7 @@ OBJECTPTR clVectorGradient = NULL, clVectorImage = NULL, clVectorPattern = NULL,
 OBJECTPTR clVectorSpiral = NULL, clVectorShape = NULL, clVectorTransition = NULL, clImageFX = NULL;
 OBJECTPTR clBlurFX = NULL, clColourFX = NULL, clCompositeFX = NULL, clConvolveFX = NULL, clFilterEffect = NULL;
 OBJECTPTR clFloodFX = NULL, clMergeFX = NULL, clMorphologyFX = NULL, clOffsetFX = NULL, clTurbulenceFX = NULL;
+OBJECTPTR clSourceFX = NULL;
 
 static OBJECTPTR modDisplay = NULL;
 static OBJECTPTR modFont = NULL;
@@ -73,6 +74,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Effects
    if ((error = init_filtereffect())) return error;
    if ((error = init_imagefx())) return error;
+   if ((error = init_sourcefx())) return error;
    if ((error = init_blurfx())) return error;
    if ((error = init_colourfx())) return error;
    if ((error = init_compositefx())) return error;
@@ -111,6 +113,7 @@ ERROR CMDExpunge(void)
    if (clVectorTransition) { acFree(clVectorTransition); clVectorTransition = NULL; }
    if (clFilterEffect)     { acFree(clFilterEffect);     clFilterEffect = NULL; }
    if (clImageFX)          { acFree(clImageFX);          clImageFX = NULL; }
+   if (clSourceFX)         { acFree(clSourceFX);         clSourceFX = NULL; }
    if (clBlurFX)           { acFree(clBlurFX);           clBlurFX = NULL; }
    if (clColourFX)         { acFree(clColourFX);         clColourFX = NULL; }
    if (clCompositeFX)      { acFree(clCompositeFX);      clCompositeFX = NULL; }

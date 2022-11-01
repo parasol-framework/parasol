@@ -9,8 +9,6 @@ typedef unsigned char UBYTE;
 #define DEBUG_CODE(x)
 
 #define IS  ==
-#define AND &&
-#define OR  ||
 
 static LPDIRECTSOUNDBUFFER glPrimaryBuffer = 0;
 
@@ -101,7 +99,7 @@ const char * dsInitDevice(int mixRate)
 
    // If the DirectSound DLL hasn't been loaded yet, load it and get the address for DirectSoundCreate.
 
-   if ((dsModule IS NULL) OR (dsDirectSoundCreate IS NULL) ) {
+   if ((dsModule IS NULL) or (dsDirectSoundCreate IS NULL) ) {
       if ((dsModule = LoadLibrary("dsound.dll")) IS NULL) {
          return "Couldn't load dsound.dll";
       }
@@ -358,7 +356,7 @@ const char * sndCreateBuffer(objSound *File, void *Wave, int BufferLength, int S
    dsbdesc.dwFlags       = DSBCAPS_GETCURRENTPOSITION2|DSBCAPS_GLOBALFOCUS|DSBCAPS_CTRLVOLUME|DSBCAPS_CTRLPAN|DSBCAPS_CTRLFREQUENCY;
    dsbdesc.dwBufferBytes = BufferLength;
    dsbdesc.lpwfxFormat   = (LPWAVEFORMATEX)Wave;
-   if ((IDirectSound_CreateSoundBuffer(glDirectSound, &dsbdesc, &Sound->SoundBuffer, NULL) != DS_OK) OR (!Sound->SoundBuffer)) {
+   if ((IDirectSound_CreateSoundBuffer(glDirectSound, &dsbdesc, &Sound->SoundBuffer, NULL) != DS_OK) or (!Sound->SoundBuffer)) {
       sndFree(Sound);
       return "CreateSoundBuffer() failed to create WAVE audio buffer.";
    }
@@ -424,7 +422,7 @@ void sndPlay(PlatformData *Sound, int Loop, int Offset)
    int length1;
    unsigned char *write1;
 
-   if ((!Sound) OR (!Sound->SoundBuffer)) return;
+   if ((!Sound) or (!Sound->SoundBuffer)) return;
    if (Offset < 0) Offset = 0;
    if (Offset >= (int)Sound->SampleLength) return;
 
@@ -458,7 +456,7 @@ void sndPlay(PlatformData *Sound, int Loop, int Offset)
 
    // Play the sound
 
-   if ((Sound->Loop) OR (Sound->Stream)) {
+   if ((Sound->Loop) or (Sound->Stream)) {
       IDirectSoundBuffer_Play(Sound->SoundBuffer, 0, 0, DSBPLAY_LOOPING);
    }
    else IDirectSoundBuffer_Play(Sound->SoundBuffer, 0, 0, 0);
@@ -480,12 +478,12 @@ int sndStreamAudio(PlatformData *Sound)
    if (IDirectSoundBuffer_GetCurrentPosition(Sound->SoundBuffer, &Sound->BufferPos, NULL) IS DS_OK) {
       lockstart = -1;
       locklength = 0;
-      if ((Sound->Fill IS FILL_FIRST) AND (Sound->BufferPos >= Sound->BufferLength>>1)) {
+      if ((Sound->Fill IS FILL_FIRST) and (Sound->BufferPos >= Sound->BufferLength>>1)) {
          Sound->Fill = FILL_SECOND;
          lockstart  = 0;
          locklength = Sound->BufferLength>>1;
       }
-      else if ((Sound->Fill IS FILL_SECOND) AND (Sound->BufferPos < Sound->BufferLength>>1)) {
+      else if ((Sound->Fill IS FILL_SECOND) and (Sound->BufferPos < Sound->BufferLength>>1)) {
          Sound->Fill = FILL_FIRST;
          lockstart  = Sound->BufferLength>>1;
          locklength = Sound->BufferLength - (Sound->BufferLength>>1);
@@ -494,7 +492,7 @@ int sndStreamAudio(PlatformData *Sound)
       if (lockstart != -1) {
          // Set the SampleEnd to zero if the sample does not terminate in this current buffer segment.
 
-         if ((Sound->Stop > 1) AND (Sound->SampleEnd > 0)) Sound->SampleEnd = 0;
+         if ((Sound->Stop > 1) and (Sound->SampleEnd > 0)) Sound->SampleEnd = 0;
 
          // Load more data if we have entered the next audio buffer section
 
@@ -535,7 +533,7 @@ int sndStreamAudio(PlatformData *Sound)
 
       // Send a stop signal if we have reached the end of the sample data
 
-      if ((!Sound->Loop) AND (Sound->Stop > 1) AND (Sound->BufferPos >= Sound->SampleEnd)) {
+      if ((!Sound->Loop) and (Sound->Stop > 1) and (Sound->BufferPos >= Sound->SampleEnd)) {
          IDirectSoundBuffer_Stop(Sound->SoundBuffer);
          return 1;
       }

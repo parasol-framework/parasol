@@ -26,11 +26,11 @@ equal to the alpha channel.
 
 *********************************************************************************************************************/
 
-typedef class rkMorphFX : public extFilterEffect {
+class objMorphologyFX : public extFilterEffect {
    public:
    LONG RadiusX, RadiusY;
    UBYTE Operator;
-} objMorphologyFX;
+};
 
 /*********************************************************************************************************************
 -ACTION-

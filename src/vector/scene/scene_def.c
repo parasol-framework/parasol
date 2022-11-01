@@ -36,6 +36,7 @@ static const struct MethodArray clVectorSceneMethods[] = {
    { -1, (APTR)VECTORSCENE_AddDef, "AddDef", maAddDef, sizeof(struct scAddDef) },
    { -2, (APTR)VECTORSCENE_SearchByID, "SearchByID", maSearchByID, sizeof(struct scSearchByID) },
    { -3, (APTR)VECTORSCENE_FindDef, "FindDef", maFindDef, sizeof(struct scFindDef) },
+   { -4, (APTR)VECTORSCENE_Debug, "Debug", 0, 0 },
    { 0, 0, 0, 0, 0 }
 };
 
