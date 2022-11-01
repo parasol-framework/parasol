@@ -240,7 +240,7 @@ ERROR MODULEMASTER_Free(ModuleMaster *Self, APTR Void)
 
    // Free the module's segment/code area
 
-   if ((Self->NoUnload IS FALSE) AND (!(Self->Flags & MHF_STATIC))) {
+   if ((Self->NoUnload IS FALSE) and (!(Self->Flags & MHF_STATIC))) {
       free_module(Self->LibraryBase);
       Self->LibraryBase = NULL;
    }
@@ -324,7 +324,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
    OBJECTPTR context = NULL;
 
    i = StrLength(Self->Name);
-   while ((i > 0) AND (Self->Name[i-1] != ':') AND (Self->Name[i-1] != '/') AND (Self->Name[i-1] != '\\')) i--;
+   while ((i > 0) and (Self->Name[i-1] != ':') and (Self->Name[i-1] != '/') and (Self->Name[i-1] != '\\')) i--;
    StrCopy(Self->Name+i, name, sizeof(name));
 
    log.trace("Finding module %s (%s)", Self->Name, name);
@@ -362,7 +362,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
          table = Self->Header;
       }
       else {
-         for (i=0; (Self->Name[i]) AND (Self->Name[i] != ':'); i++);
+         for (i=0; (Self->Name[i]) and (Self->Name[i] != ':'); i++);
          path[0] = 0;
 
          if ((Self->Name[0] IS '/') OR (Self->Name[i] IS ':')) {
@@ -420,7 +420,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib/", path+i, sizeof(path-i));
 
                #ifdef __ANDROID__
-                  if ((Self->Name[0] IS 'l') AND (Self->Name[1] IS 'i') AND (Self->Name[2] IS 'b'));
+                  if ((Self->Name[0] IS 'l') and (Self->Name[1] IS 'i') and (Self->Name[2] IS 'b'));
                   else for (j=0; "lib"[j]; j++) path[i++] = "lib"[j]; // Packaged Android modules have to begin with 'lib'
                #endif
 
@@ -452,7 +452,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
          len = StrLength(path);
          ext = len;
-         while ((ext > 0) AND (path[ext] != '.') AND (path[ext] != ':') AND (path[ext] != '\\') AND (path[ext] != '/')) ext--;
+         while ((ext > 0) and (path[ext] != '.') and (path[ext] != ':') and (path[ext] != '\\') and (path[ext] != '/')) ext--;
 
          if (path[ext] IS '.') {
             if (StrMatch(".dll", path+ext) != ERR_Okay) { len=ext; ext = -1; }
@@ -877,7 +877,7 @@ static ERROR GET_IDL(objModule *Self, CSTRING *Value)
 {
    parasol::Log log;
 
-   if ((Self->Master) AND (Self->Master->Header)) {
+   if ((Self->Master) and (Self->Master->Header)) {
       *Value = Self->Master->Header->Definitions;
       log.trace("No IDL for module %s", Self->Name);
       return ERR_Okay;
@@ -969,8 +969,8 @@ static ERROR SET_Name(objModule *Self, CSTRING Name)
    if (!Name) return ERR_Okay;
 
    WORD i;
-   for (i=0; (Name[i]) AND ((size_t)i < sizeof(Self->Name)-1); i++) {
-      if ((Name[i] >= 'A') AND (Name[i] <= 'Z')) Self->Name[i] = Name[i] - 'A' + 'a';
+   for (i=0; (Name[i]) and ((size_t)i < sizeof(Self->Name)-1); i++) {
+      if ((Name[i] >= 'A') and (Name[i] <= 'Z')) Self->Name[i] = Name[i] - 'A' + 'a';
       else Self->Name[i] = Name[i];
    }
    Self->Name[i] = 0;
@@ -1031,7 +1031,7 @@ APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
 
 static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 {
-   if ((String1) AND (String2)) {
+   if ((String1) and (String2)) {
       // Skip past any : or / folder characters
 
       WORD i = 0;
@@ -1054,12 +1054,12 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 
       // Loop until String1 reaches termination
 
-      while ((*String1 != '.') AND (*String1 != 0)) {
+      while ((*String1 != '.') and (*String1 != 0)) {
          char ch1 = *String1;
          char ch2 = *String2;
          if ((ch2 IS '.') OR (ch2 IS 0)) return FALSE;
-         if ((ch1 >= 'a') AND (ch1 <= 'z')) ch1 -= 0x20;
-         if ((ch2 >= 'a') AND (ch2 <= 'z')) ch2 -= 0x20;
+         if ((ch1 >= 'a') and (ch1 <= 'z')) ch1 -= 0x20;
+         if ((ch2 >= 'a') and (ch2 <= 'z')) ch2 -= 0x20;
          if (ch1 != ch2) return FALSE;
          String1++; String2++;
       }

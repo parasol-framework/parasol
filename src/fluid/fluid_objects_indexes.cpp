@@ -198,7 +198,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       char buffer[1024];
       if (!(error = GetFieldVariable(obj, FName, buffer, sizeof(buffer)))) lua_pushstring(Lua, buffer);
    }
-   else if ((FName[0] IS 'i') AND (FName[1] IS 'd') AND (!FName[2])) {
+   else if ((FName[0] IS 'i') and (FName[1] IS 'd') and (!FName[2])) {
       // Note that if the object actually has a defined ID field in its structure, the Lua code can read it
       // by using an uppercase 'ID'.
       lua_pushnumber(Lua, obj->UID);
@@ -207,7 +207,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       if (field->Flags & FD_ARRAY) {
          if (field->Flags & FD_RGB) {
             STRING rgb;
-            if ((!(error = GetString(src, field->FieldID, &rgb))) AND (rgb)) {
+            if ((!(error = GetString(src, field->FieldID, &rgb))) and (rgb)) {
                lua_pushstring(Lua, rgb);
             }
          }
@@ -295,7 +295,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       char buffer[8192];
 
       // Assume this is a custom variable field since FindField() failed
-      if ((!(error = GetVar(obj, FName, buffer, sizeof(buffer)))) AND (buffer[0])) {
+      if ((!(error = GetVar(obj, FName, buffer, sizeof(buffer)))) and (buffer[0])) {
          lua_pushstring(Lua, buffer);
       }
       else if (error IS ERR_NoSupport) {
@@ -319,7 +319,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
       char bufname[80];
       WORD i;
       bufname[0] = '@';
-      for (i=1; ((size_t)i < sizeof(bufname)) AND (FName[i]); i++) bufname[i] = FName[i];
+      for (i=1; ((size_t)i < sizeof(bufname)) and (FName[i]); i++) bufname[i] = FName[i];
       bufname[i] = 0;
       return SetFieldEval(obj, bufname, lua_tostring(Lua, ValueIndex));
    }
@@ -348,7 +348,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                   ClearMemory(values, sizeof(LONG) * total);
                   for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
                      LONG index = lua_tointeger(Lua, -2) - 1;
-                     if ((index >= 0) AND (index < total)) {
+                     if ((index >= 0) and (index < total)) {
                         values[index] = lua_tointeger(Lua, -1);
                      }
                   }
@@ -359,7 +359,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                   ClearMemory(values, sizeof(CSTRING) * total);
                   for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
                      LONG index = lua_tointeger(Lua, -2) - 1;
-                     if ((index >= 0) AND (index < total)) {
+                     if ((index >= 0) and (index < total)) {
                         values[index] = lua_tostring(Lua, -1);
                      }
                   }
@@ -376,7 +376,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
 
                      for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
                         LONG index = lua_tointeger(Lua, -2) - 1;
-                        if ((index >= 0) AND (index < total)) {
+                        if ((index >= 0) and (index < total)) {
                            APTR sti = structbuf + (aligned_size * index);
                            LONG type = lua_type(Lua, -1);
                            if (type IS LUA_TTABLE) {

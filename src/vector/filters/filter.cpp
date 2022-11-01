@@ -31,7 +31,13 @@ It is a requirement that VectorFilter objects are owned by the @VectorScene they
 //#define DEBUG_FILTER_BITMAP
 //#define EXPORT_FILTER_BITMAP
 
+struct target {
+   DOUBLE bound_x, bound_y, bound_width, bound_height;
+   DOUBLE x, y, width, height;
+};
+
 static ERROR get_source_bitmap(extVectorFilter *, objBitmap **, UBYTE, objFilterEffect *, bool);
+static target calc_target_area(extFilterEffect *Effect);
 
 //********************************************************************************************************************
 
@@ -42,10 +48,67 @@ static ERROR get_source_bitmap(extVectorFilter *, objBitmap **, UBYTE, objFilter
 #include "filter_flood.cpp"
 #include "filter_image.cpp"
 #include "filter_offset.cpp"
+#include "filter_source.cpp"
 #include "filter_colourmatrix.cpp"
 #include "filter_convolve.cpp"
 #include "filter_turbulence.cpp"
 #include "filter_morphology.cpp"
+
+//********************************************************************************************************************
+
+static target calc_target_area(extFilterEffect *Effect)
+{
+   auto &filter = Effect->Filter;
+   target Target;
+
+   std::array<DOUBLE, 4> bounds = { filter->ClientViewport->vpFixedWidth, filter->ClientViewport->vpFixedHeight, 0, 0 };
+   calc_full_boundary(filter->ClientVector, bounds, false, false);
+   const DOUBLE b_x = trunc(bounds[0]);
+   const DOUBLE b_y = trunc(bounds[1]);
+   const DOUBLE b_width  = bounds[2] - bounds[0];
+   const DOUBLE b_height = bounds[3] - bounds[1];
+
+   if (filter->Units IS VUNIT_BOUNDING_BOX) {
+      if (filter->Dimensions & DMF_FIXED_X) Target.x = b_x;
+      else if (filter->Dimensions & DMF_RELATIVE_X) Target.x = trunc(b_x + (filter->X * b_width));
+      else Target.x = b_x;
+
+      if (filter->Dimensions & DMF_FIXED_Y) Target.y = b_y;
+      else if (filter->Dimensions & DMF_RELATIVE_Y) Target.y = trunc(b_y + (filter->Y * b_height));
+      else Target.y = b_y;
+
+      if (filter->Dimensions & DMF_FIXED_WIDTH) Target.width = filter->Width * b_width;
+      else if (filter->Dimensions & DMF_RELATIVE_WIDTH) Target.width = filter->Width * b_width;
+      else Target.width = b_width;
+
+      if (filter->Dimensions & DMF_FIXED_HEIGHT) Target.height = filter->Height * b_height;
+      else if (filter->Dimensions & DMF_RELATIVE_HEIGHT) Target.height = filter->Height * b_height;
+      else Target.height = b_height;
+   }
+   else { // USERSPACE
+      if (filter->Dimensions & DMF_FIXED_X) Target.x = trunc(filter->X);
+      else if (filter->Dimensions & DMF_RELATIVE_X) Target.x = trunc(filter->X * filter->ClientViewport->vpFixedWidth);
+      else Target.x = b_x;
+
+      if (filter->Dimensions & DMF_FIXED_Y) Target.y = trunc(filter->Y);
+      else if (filter->Dimensions & DMF_RELATIVE_Y) Target.y = trunc(filter->Y * filter->ClientViewport->vpFixedHeight);
+      else Target.y = b_y;
+
+      if (filter->Dimensions & DMF_FIXED_WIDTH) Target.width = filter->Width;
+      else if (filter->Dimensions & DMF_RELATIVE_WIDTH) Target.width = filter->Width * filter->ClientViewport->vpFixedWidth;
+      else Target.width = filter->ClientViewport->vpFixedWidth;
+
+      if (filter->Dimensions & DMF_FIXED_HEIGHT) Target.height = filter->Height;
+      else if (filter->Dimensions & DMF_RELATIVE_HEIGHT) Target.height = filter->Height * filter->ClientViewport->vpFixedHeight;
+      else Target.height = filter->ClientViewport->vpFixedHeight;
+   }
+
+   Target.bound_x = b_x;
+   Target.bound_y = b_y;
+   Target.bound_width = b_width;
+   Target.bound_height = b_height;
+   return Target;
+}
 
 //********************************************************************************************************************
 // Return a bitmap from the bank.  In order to save memory, bitmap data is managed internally so that it always
@@ -476,8 +539,7 @@ static ERROR VECTORFILTER_Init(extVectorFilter *Self, APTR Void)
       return log.warning(ERR_OutOfRange);
    }
 
-   Self->Scene = (extVectorScene *)GetObjectPtr(Self->ownerID());
-   if (Self->Scene->ClassID != ID_VECTORSCENE) return log.warning(ERR_UnsupportedOwner);
+   if (!Self->Scene) return log.warning(ERR_UnsupportedOwner);
 
    return ERR_Okay;
 }
@@ -516,6 +578,16 @@ static ERROR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
    Self->Height         = 1.2;
    Self->ColourSpace    = VCS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
    Self->Dimensions     = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR VECTORFILTER_NewOwner(extVectorFilter *Self, struct acNewOwner *Args)
+{
+   if ((Args) and (Args->ClassID IS ID_VECTORSCENE)) {
+      Self->Scene = (extVectorScene *)GetObjectPtr(Args->NewOwnerID);
+   }
    return ERR_Okay;
 }
 

@@ -27,6 +27,7 @@ static const struct ActionArray clVectorFilterActions[] = {
    { AC_Init, (APTR)VECTORFILTER_Init },
    { AC_NewChild, (APTR)VECTORFILTER_NewChild },
    { AC_NewObject, (APTR)VECTORFILTER_NewObject },
+   { AC_NewOwner, (APTR)VECTORFILTER_NewOwner },
    { 0, 0 }
 };
 

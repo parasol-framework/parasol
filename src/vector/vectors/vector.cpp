@@ -33,7 +33,7 @@ static ERROR VECTOR_Push(extVector *, struct vecPush *);
 
 //********************************************************************************************************************
 
-static void debug_tree(extVector *Vector, LONG &Level)
+void debug_tree(extVector *Vector, LONG &Level)
 {
    parasol::Log log(__FUNCTION__);
    char indent[Level + 1];
@@ -45,17 +45,17 @@ static void debug_tree(extVector *Vector, LONG &Level)
    indent[i] = 0;
 
    for (auto v=Vector; v; v=(extVector *)v->Next) {
+      buffer[0] = 0;
       if (FindField(v, FID_Dimensions, NULL)) {
          GetFieldVariable(v, "$Dimensions", buffer, sizeof(buffer));
       }
-      else buffer[0] = 0;
 
-      if (v->Child) {
+      if ((v->ClassID IS ID_VECTOR) and (v->Child)) {
          parasol::Log blog(__FUNCTION__);
-         blog.branch("Vector #%d%s %s %s %s", v->UID, indent, v->Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
+         blog.branch("#%d%s %s %s %s", v->UID, indent, v->Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
          debug_tree((extVector *)v->Child, Level);
       }
-      else log.msg("Vector #%d%s %s %s %s", v->UID, indent, v->Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
+      else log.msg("#%d%s %s %s %s", v->UID, indent, v->Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
    }
 
    Level--;
@@ -221,7 +221,7 @@ static ERROR VECTOR_Enable(extVector *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR VECTOR_Free(extVector *Self, APTR Args)
+static ERROR VECTOR_Free(extVector *Self, APTR Void)
 {
    Self->~extVector();
 

@@ -210,13 +210,13 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
 
    StrCopy(StrTranslateText(days[dayofweek]), day, sizeof(day));
 
-   if ((Time->Month > 0) AND (Time->Month <= 12)) StrCopy(StrTranslateText(months[Time->Month]), month, sizeof(month));
+   if ((Time->Month > 0) and (Time->Month <= 12)) StrCopy(StrTranslateText(months[Time->Month]), month, sizeof(month));
    else StrCopy("-------", month, sizeof(month));
 
    BufferSize--; // -1 so that we don't have to worry about the null terminator
    str = Buffer;
    pos = 0;
-   for (i=0; (Format[i]) AND (pos < BufferSize); i++) {
+   for (i=0; (Format[i]) and (pos < BufferSize); i++) {
       if (Format[i] IS '\\') {
          if (Format[i+1]) {
             str[pos++] = Format[i+1];
@@ -287,7 +287,7 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
       else if (Format[i] IS 'y') {
          // Year
 
-         if ((Format[i+1] IS 'y') AND (Format[i+2] != 'y')) {
+         if ((Format[i+1] IS 'y') and (Format[i+2] != 'y')) {
             WORD tmp = Time->Year % 100;
             if (tmp < 10) str[pos++] = '0';
             pos += IntToStr(tmp, str + pos, BufferSize-pos);
@@ -305,33 +305,33 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
          //      Ddd  = Short name caps
          //      Dddd = Long name caps
 
-         if ((Format[i+1] != 'd') AND (Format[i+2] != 'D')) { // d
+         if ((Format[i+1] != 'd') and (Format[i+2] != 'D')) { // d
             if (Format[i] IS 'D') str[pos++] = *day;
             else pos += IntToStr(Time->Day, str + pos, BufferSize-pos);
          }
-         else if ((Format[i+2] != 'd') AND (Format[i+2] != 'D')) { // dd
+         else if ((Format[i+2] != 'd') and (Format[i+2] != 'D')) { // dd
             i++;
             if (Time->Day < 10) str[pos++] = '0';
             pos += IntToStr(Time->Day, str + pos, BufferSize-pos);
          }
-         else if ((Format[i+3] != 'd') AND (Format[i+3] != 'D')) { // ddd
+         else if ((Format[i+3] != 'd') and (Format[i+3] != 'D')) { // ddd
             if (Format[i] IS 'D') {
                if (Format[i+1] IS 'D') {
-                  for (j=0; (j < 3) AND (day[j]) AND (pos < BufferSize-pos); j++) str[pos++] = UCase(day[j]);
+                  for (j=0; (j < 3) and (day[j]) and (pos < BufferSize-pos); j++) str[pos++] = UCase(day[j]);
                }
                else  pos += UTF8Copy(day, str+pos, 3, BufferSize-pos);
             }
-            else for (j=0; (j < 3) AND (day[j]) AND (pos < BufferSize-pos); j++) str[pos++] = LCase(day[j]);
+            else for (j=0; (j < 3) and (day[j]) and (pos < BufferSize-pos); j++) str[pos++] = LCase(day[j]);
             i += 2;
          }
-         else if ((Format[i+4] != 'd') AND (Format[i+4] != 'D')) { // dddd
+         else if ((Format[i+4] != 'd') and (Format[i+4] != 'D')) { // dddd
             if (Format[i] IS 'D') {
                if (Format[i+1] IS 'D') {
-                  for (j=0; (day[j]) AND (pos < BufferSize-pos); j++) str[pos++] = UCase(day[j]);
+                  for (j=0; (day[j]) and (pos < BufferSize-pos); j++) str[pos++] = UCase(day[j]);
                }
                else pos += StrCopy(day, str+pos, BufferSize-pos);
             }
-            else for (j=0; (day[j]) AND (pos < BufferSize-pos); j++) str[pos++] = LCase(day[j]);
+            else for (j=0; (day[j]) and (pos < BufferSize-pos); j++) str[pos++] = LCase(day[j]);
 
             i += 3;
          }
@@ -344,34 +344,34 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
          //        Mmm  = Short name caps
          //        Mmmm = Long name caps
 
-         if ((Format[i+1] != 'm') AND (Format[i+2] != 'M')) { // m
+         if ((Format[i+1] != 'm') and (Format[i+2] != 'M')) { // m
             pos += IntToStr(Time->Month, str + pos, BufferSize-pos);
          }
-         else if ((Format[i+2] != 'm') AND (Format[i+2] != 'M')) { // mm
+         else if ((Format[i+2] != 'm') and (Format[i+2] != 'M')) { // mm
             i++;
             if (Time->Month < 10) str[pos++] = '0';
             pos += IntToStr(Time->Month, str + pos, BufferSize-pos);
          }
-         else if ((Format[i+3] != 'm') AND (Format[i+3] != 'M')) { // mmm
+         else if ((Format[i+3] != 'm') and (Format[i+3] != 'M')) { // mmm
             if (Format[i] IS 'M') {
                if (Format[i+1] IS 'M') {
-                  for (j=0; (j < 3) AND (month[j]) AND (pos < BufferSize-pos); j++) {
+                  for (j=0; (j < 3) and (month[j]) and (pos < BufferSize-pos); j++) {
                      str[pos++] = UCase(month[j]);
                   }
                }
                else pos += UTF8Copy(month, str+pos, 3, BufferSize-pos);
             }
-            else for (j=0; (j < 3) AND (month[j]) AND (pos < BufferSize-pos); j++) str[pos++] = LCase(month[j]);
+            else for (j=0; (j < 3) and (month[j]) and (pos < BufferSize-pos); j++) str[pos++] = LCase(month[j]);
             i += 2;
          }
-         else if ((Format[i+4] != 'm') AND (Format[i+4] != 'M')) { // mmmm
+         else if ((Format[i+4] != 'm') and (Format[i+4] != 'M')) { // mmmm
             if (Format[i] IS 'M') {
                if (Format[i+1] IS 'M') {
-                  for (j=0; (month[j]) AND (pos < BufferSize-pos); j++) str[pos++] = UCase(month[j]);
+                  for (j=0; (month[j]) and (pos < BufferSize-pos); j++) str[pos++] = UCase(month[j]);
                }
                else pos += StrCopy(month, str+pos, BufferSize-pos);
             }
-            else for (j=0; (month[j]) AND (pos < BufferSize-pos); j++) str[pos++] = LCase(month[j]);
+            else for (j=0; (month[j]) and (pos < BufferSize-pos); j++) str[pos++] = LCase(month[j]);
 
             i += 3;
          }
@@ -424,10 +424,10 @@ static CSTRING find_datepart(CSTRING Date, struct datepart *Part)
    while (*Date) {
       ch = *Date;
       if (is_alpha(ch)) {
-         if ((ch >= '0') AND (ch <= '9')) {
+         if ((ch >= '0') and (ch <= '9')) {
             Part->String = Date;
             Part->Number = StrToInt(Date);
-            for (i=0; (*Date >= '0') AND (*Date <= '9'); i++) Date++;
+            for (i=0; (*Date >= '0') and (*Date <= '9'); i++) Date++;
 
             if (i >= 4) Part->Type = DP_YEAR;
             else if (Part->Number > 31) Part->Type = DP_YEAR;
@@ -671,7 +671,7 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
             }
             else if (datepart[2].Type IS DP_YEAR) {
                read_ordering(ordering);
-               if ((ordering[0] != DP_YEAR) AND (ordering[1] != DP_YEAR)) {
+               if ((ordering[0] != DP_YEAR) and (ordering[1] != DP_YEAR)) {
                   datepart[0].Type = ordering[0];
                   datepart[1].Type = ordering[1];
                }
@@ -735,23 +735,23 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
       // Time parsing.  The time must be defined as HH:NN:SS - seconds are optional.  Use of pm or am following
       // the time is allowed, otherwise a 24 hour clock is assumed.
 
-      while ((*str) AND ((*str < '0') OR (*str > '9'))) str++;
+      while ((*str) and ((*str < '0') OR (*str > '9'))) str++;
       Output->Hour = StrToInt(str);
       if (Output->Hour >= 24) Output->Hour = 0;
-      while ((*str >= '0') AND (*str <= '9')) str++;
+      while ((*str >= '0') and (*str <= '9')) str++;
       if (*str IS ':') {
          str++;
-         if ((*str >= '0') AND (*str <= '9')) {
+         if ((*str >= '0') and (*str <= '9')) {
             Output->Minute = StrToInt(str);
             if (Output->Minute >= 60) Output->Minute = 0;
-            while ((*str >= '0') AND (*str <= '9')) str++;
+            while ((*str >= '0') and (*str <= '9')) str++;
             if (*str IS ':') {
                str++;
                Output->Second = StrToInt(str);
                if (Output->Second >= 60) Output->Second = 0;
-               while ((*str >= '0') AND (*str <= '9')) str++;
+               while ((*str >= '0') and (*str <= '9')) str++;
             }
-            while ((*str) AND (*str <= 0x20)) str++;
+            while ((*str) and (*str <= 0x20)) str++;
 
             // AM/PM check to convert to 24 hour clock
 
@@ -861,7 +861,7 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
                   code[0] = LCASE(code[0]);
                   code[1] = LCASE(code[1]);
                   for (i=0; i < ARRAYSIZE(glLanguages); i++) {
-                     if ((glLanguages[i].Two[0] IS code[0]) AND (glLanguages[i].Two[1] IS code[1])) {
+                     if ((glLanguages[i].Two[0] IS code[0]) and (glLanguages[i].Two[1] IS code[1])) {
                         code[0] = glLanguages[i].Three[0];
                         code[1] = glLanguages[i].Three[1];
                         code[2] = glLanguages[i].Three[2];
@@ -916,9 +916,9 @@ Syntax
 
 INLINE char read_nibble(CSTRING Str)
 {
-   if ((*Str >= '0') AND (*Str <= '9')) return (*Str - '0');
-   else if ((*Str >= 'A') AND (*Str <= 'F')) return ((*Str - 'A')+10);
-   else if ((*Str >= 'a') AND (*Str <= 'f')) return ((*Str - 'a')+10);
+   if ((*Str >= '0') and (*Str <= '9')) return (*Str - '0');
+   else if ((*Str >= 'A') and (*Str <= 'F')) return ((*Str - 'A')+10);
+   else if ((*Str >= 'a') and (*Str <= 'f')) return ((*Str - 'a')+10);
    else return -1;
 }
 
@@ -930,7 +930,7 @@ ERROR StrToColour(CSTRING Colour, struct RGB8 *RGB)
       Colour++;
       char nibbles[8];
       UBYTE n = 0;
-      while ((*Colour) AND (n < ARRAYSIZE(nibbles))) nibbles[n++] = read_nibble(Colour++);
+      while ((*Colour) and (n < ARRAYSIZE(nibbles))) nibbles[n++] = read_nibble(Colour++);
 
       if (n IS 3) {
          RGB->Red   = nibbles[0]<<4;
@@ -954,15 +954,15 @@ ERROR StrToColour(CSTRING Colour, struct RGB8 *RGB)
    }
    else {
       RGB->Red = StrToInt(Colour);
-      while ((*Colour) AND (*Colour != ',')) { Colour++; if (*Colour IS '%') RGB->Red = (RGB->Red * 255) / 100; } if (*Colour) Colour++;
+      while ((*Colour) and (*Colour != ',')) { Colour++; if (*Colour IS '%') RGB->Red = (RGB->Red * 255) / 100; } if (*Colour) Colour++;
       RGB->Green = StrToInt(Colour);
-      while ((*Colour) AND (*Colour != ',')) { Colour++; if (*Colour IS '%') RGB->Green = (RGB->Green * 255) / 100; } if (*Colour) Colour++;
+      while ((*Colour) and (*Colour != ',')) { Colour++; if (*Colour IS '%') RGB->Green = (RGB->Green * 255) / 100; } if (*Colour) Colour++;
       RGB->Blue = StrToInt(Colour);
-      while ((*Colour) AND (*Colour != ',')) { Colour++; if (*Colour IS '%') RGB->Blue = (RGB->Blue * 255) / 100; } if (*Colour) Colour++;
-      while ((*Colour) AND (*Colour <= 0x20)) Colour++;
+      while ((*Colour) and (*Colour != ',')) { Colour++; if (*Colour IS '%') RGB->Blue = (RGB->Blue * 255) / 100; } if (*Colour) Colour++;
+      while ((*Colour) and (*Colour <= 0x20)) Colour++;
       if (*Colour) {
          RGB->Alpha = StrToInt(Colour);
-         while ((*Colour >= '0') AND (*Colour <= '9')) Colour++;
+         while ((*Colour >= '0') and (*Colour <= '9')) Colour++;
          if (*Colour IS '%') RGB->Alpha = (RGB->Alpha * 255) / 100;
       }
       else RGB->Alpha = 255;
@@ -995,7 +995,7 @@ DOUBLE StrToFloat(CSTRING String)
 
    // Ignore any leading characters
 
-   while ((*String != '-') AND (*String != '.') AND ((*String < '0') OR (*String > '9'))) {
+   while ((*String != '-') and (*String != '.') and ((*String < '0') OR (*String > '9'))) {
       if (!*String) return 0;
       String++;
    }
@@ -1013,18 +1013,18 @@ DOUBLE StrToFloat(CSTRING String)
       }
       else neg = FALSE;
 
-      while ((*String >= '0') AND (*String <= '9')) String++;
+      while ((*String >= '0') and (*String <= '9')) String++;
    }
 
    // Check for decimal place
 
    if (*String IS '.') {
       String++;
-      if ((*String >= '0') AND (*String <= '9')) {
+      if ((*String >= '0') and (*String <= '9')) {
          LONG number;
          if ((number = StrToInt(String))) {
              LONG factor = 1;
-             while ((*String >= '0') AND (*String <= '9')) {
+             while ((*String >= '0') and (*String <= '9')) {
                 factor = factor * 10;
                 String++;
              }
@@ -1035,7 +1035,7 @@ DOUBLE StrToFloat(CSTRING String)
       }
    }
 
-   if ((neg) AND (result > 0)) result = -result;
+   if ((neg) and (result > 0)) result = -result;
 
    return result;
 }
@@ -1075,29 +1075,29 @@ LARGE StrToHex(CSTRING String)
    if (!String) return 0;
 
    while (*String) {
-      if ((*String >= '0') AND (*String <= '9')) break;
-      if ((*String >= 'A') AND (*String <= 'F')) break;
-      if ((*String >= 'a') AND (*String <= 'f')) break;
+      if ((*String >= '0') and (*String <= '9')) break;
+      if ((*String >= 'A') and (*String <= 'F')) break;
+      if ((*String >= 'a') and (*String <= 'f')) break;
       if (*String IS '$') break;
       if (*String IS '#') break;
       String++;
    }
 
-   if ((String[0] IS '0') AND ((String[1] IS 'X') OR (String[1] IS 'x'))) String += 2;
+   if ((String[0] IS '0') and ((String[1] IS 'X') OR (String[1] IS 'x'))) String += 2;
    else if (String[0] IS '$') String++;
    else if (String[0] IS '#') String++;
 
    LARGE result = 0;
    while (*String) {
-      if ((*String >= '0') AND (*String <= '9')) {
+      if ((*String >= '0') and (*String <= '9')) {
          result <<= 4;
          result += *String - '0';
       }
-      else if ((*String >= 'a') AND (*String <= 'f')) {
+      else if ((*String >= 'a') and (*String <= 'f')) {
          result <<= 4;
          result += *String - 'a' + 10;
       }
-      else if ((*String >= 'A') AND (*String <= 'F')) {
+      else if ((*String >= 'A') and (*String <= 'F')) {
          result <<= 4;
          result += *String - 'A' + 10;
       }
@@ -1161,7 +1161,7 @@ LARGE StrToInt(CSTRING str)
    CSTRING start = str;
    LARGE number = 0;
    while (*str) {
-      if ((*str >= '0') AND (*str <= '9')) {
+      if ((*str >= '0') and (*str <= '9')) {
          number *= 10LL;
          number += (*str - '0');
       }
@@ -1201,22 +1201,22 @@ static void read_ordering(char *ordering_out)
       ordering_loaded = FALSE;
 
       if (!StrReadLocale("ShortDate", &str)) {
-         for (; (*str) AND (stage < 3); str++) {
-            if(((*str IS 'y') OR (*str IS 'Y')) AND (!seen_y)) {
+         for (; (*str) and (stage < 3); str++) {
+            if(((*str IS 'y') OR (*str IS 'Y')) and (!seen_y)) {
                ordering[stage++] = DP_YEAR;
                seen_y = TRUE;
             }
-            else if (((*str IS 'm') OR (*str IS 'M')) AND (!seen_m)) {
+            else if (((*str IS 'm') OR (*str IS 'M')) and (!seen_m)) {
                ordering[stage++] = DP_MONTH;
                seen_m = TRUE;
             }
-            else if (((*str IS 'd') OR (*str IS 'D')) AND (!seen_d)) {
+            else if (((*str IS 'd') OR (*str IS 'D')) and (!seen_d)) {
                ordering[stage++] = DP_DAY;
                seen_d = TRUE;
             }
          }
 
-         if ((seen_y) AND (seen_m) AND (seen_d)) {
+         if ((seen_y) and (seen_m) and (seen_d)) {
             log.msg("Date ordering loaded: %s", ordering);
             ordering_loaded = TRUE;
          }

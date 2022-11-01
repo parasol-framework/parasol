@@ -203,7 +203,7 @@ static void sort_class_db(void)
       for (LONG i=h; i < glClassDB->Total; i++) {
          LONG j;
          auto temp = offsets[i];
-         for (j=i; (j >= h) AND (((ClassItem *)((BYTE *)glClassDB + offsets[j-h]))->ClassID > ((ClassItem *)((BYTE *)glClassDB + temp))->ClassID); j -= h) {
+         for (j=i; (j >= h) and (((ClassItem *)((BYTE *)glClassDB + offsets[j-h]))->ClassID > ((ClassItem *)((BYTE *)glClassDB + temp))->ClassID); j -= h) {
             offsets[j] = offsets[j - h];
          }
          offsets[j] = temp;
@@ -272,7 +272,7 @@ ERROR CLASS_Init(objMetaClass *Self, APTR Void)
    //
    // If neither ID is specified, the hash is derived from the name and then applied to both SubClassID and BaseClassID.
 
-   if ((Self->BaseClassID) AND (!Self->SubClassID)) {
+   if ((Self->BaseClassID) and (!Self->SubClassID)) {
       Self->SubClassID = StrHash(Self->ClassName, FALSE);
       //Self->SubClassID = Self->BaseClassID;
    }
@@ -293,7 +293,7 @@ ERROR CLASS_Init(objMetaClass *Self, APTR Void)
    // there is a reference for it, so if it returns NULL then it is obvious that the base class is not installed on the
    // user's system.
 
-   if ((Self->BaseClassID) AND (Self->SubClassID != Self->BaseClassID)) {
+   if ((Self->BaseClassID) and (Self->SubClassID != Self->BaseClassID)) {
       if ((base = (objMetaClass *)FindClass(Self->BaseClassID))) {
          log.trace("Using baseclass $%.8x (%s) for %s", Self->BaseClassID, base->ClassName, Self->ClassName);
          if (!Self->FileDescription) Self->FileDescription = base->FileDescription;
@@ -319,7 +319,7 @@ ERROR CLASS_Init(objMetaClass *Self, APTR Void)
          // Note: Sub-classes can define their own custom methods independent of the base class, but care must be taken
          // to use a large enough cushion to prevent an overlap of method ID's.
 
-         if ((Self->Methods) AND (base->Methods)) {
+         if ((Self->Methods) and (base->Methods)) {
             if (Self->TotalMethods < base->TotalMethods) { // Expand the method table to match the base class.
                if (!ReallocMemory(Self->Methods, sizeof(MethodArray) * (base->TotalMethods+1), (APTR *)&Self->Methods, NULL)) {
                   Self->TotalMethods = base->TotalMethods;
@@ -337,7 +337,7 @@ ERROR CLASS_Init(objMetaClass *Self, APTR Void)
                Self->Methods[i].Size = base->Methods[i].Size;
             }
          }
-         else if ((!Self->Methods) AND (base->Methods)) { // Copy methods from the base-class
+         else if ((!Self->Methods) and (base->Methods)) { // Copy methods from the base-class
             if (!AllocMemory(sizeof(MethodArray) * (base->TotalMethods + 1), MEM_DATA, (APTR *)&Self->Methods, NULL)) {
                CopyMemory(base->Methods, Self->Methods, sizeof(MethodArray) * (base->TotalMethods + 1));
                Self->TotalMethods = base->TotalMethods;
@@ -415,7 +415,7 @@ static ERROR SET_Actions(objMetaClass *Self, const ActionArray *Actions)
 
    for (auto i=0; Actions[i].ActionCode; i++) {
       auto code = Actions[i].ActionCode;
-      if ((code < AC_END) AND (code > 0) AND (code != AC_OwnerDestroyed)) {
+      if ((code < AC_END) and (code > 0) and (code != AC_OwnerDestroyed)) {
          Self->ActionTable[code].PerformAction = (ERROR (*)(OBJECTPTR, APTR))Actions[i].Routine;
       }
    }
@@ -570,7 +570,7 @@ static ERROR GET_IDL(objMetaClass *Self, CSTRING *Value)
 {
    if (!Self->initialised()) return ERR_NotInitialised;
 
-   if ((Self->Master) AND (Self->Master->Header)) {
+   if ((Self->Master) and (Self->Master->Header)) {
       *Value = Self->Master->Header->Definitions;
       return ERR_Okay;
    }
@@ -1113,8 +1113,8 @@ static void copy_field(objMetaClass *Class, const FieldArray *Source, Field *Des
       #ifdef _LP64
          if (Offset[0] & 0x7) {
             Offset[0] = (Offset[0] + 7) & (~0x7);
-            if (((fieldflags & FDF_R) AND (!Dest->GetValue)) OR
-                ((fieldflags & FDF_W) AND (!Dest->SetValue))) {
+            if (((fieldflags & FDF_R) and (!Dest->GetValue)) OR
+                ((fieldflags & FDF_W) and (!Dest->SetValue))) {
                log.warning("Misaligned 64-bit pointer '%s' in class '%s'.", Dest->Name, Class->ClassName);
             }
          }
@@ -1128,8 +1128,8 @@ static void copy_field(objMetaClass *Class, const FieldArray *Source, Field *Des
    else if (fieldflags & FD_FUNCTION) Offset[0] += sizeof(FUNCTION);
    else if (fieldflags & (FD_DOUBLE|FD_LARGE)) {
       if (Offset[0] & 0x7) {
-         if (((fieldflags & FDF_R) AND (!Dest->GetValue)) OR
-             ((fieldflags & FDF_W) AND (!Dest->SetValue))) {
+         if (((fieldflags & FDF_R) and (!Dest->GetValue)) OR
+             ((fieldflags & FDF_W) and (!Dest->SetValue))) {
             log.warning("Misaligned 64-bit field '%s' in class '%s'.", Dest->Name, Class->ClassName);
          }
       }
@@ -1177,7 +1177,7 @@ ERROR sort_class_fields(objMetaClass *Class, Field *fields)
       for (; h > 0; h /= 3) {
          for (i=h; i < Class->TotalFields; i++) {
             auto temp = sort[i];
-            for (j=i; (j >= h) AND (sort[j - h]->FieldID > temp->FieldID); j -= h) {
+            for (j=i; (j >= h) and (sort[j - h]->FieldID > temp->FieldID); j -= h) {
                sort[j] = sort[j - h];
             }
             sort[j] = temp;
@@ -1302,7 +1302,7 @@ ERROR write_class_item(ClassItem *item)
    log.traceBranch("Record Index: %d", glClassDB->Total);
 
    OBJECTPTR file = NULL;
-   if ((!glClassFileID) AND (!write_attempted)) {
+   if ((!glClassFileID) and (!write_attempted)) {
       write_attempted = TRUE;
       LONG flags = FL_WRITE;
       if (AnalysePath(glClassBinPath, NULL) != ERR_Okay) flags |= FL_NEW;
@@ -1486,7 +1486,7 @@ ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path
    ULONG class_id = StrHash(Name, FALSE);
    if (ParentID IS class_id) ParentID = 0; // Parent ID should only be set if the class is a genuine child of another class
 
-   if ((!glClassDB) AND (glSharedControl->ClassesMID)) {
+   if ((!glClassDB) and (glSharedControl->ClassesMID)) {
       if (AccessMemory(glSharedControl->ClassesMID, MEM_READ|MEM_NO_BLOCK, 2000, (APTR *)&glClassDB) != ERR_Okay) {
          return log.warning(ERR_AccessMemory);
       }
@@ -1518,13 +1518,13 @@ ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path
             // we rewrite the path to fit the Android system.
 
             i = StrLength(Path);
-            while ((i > 0) AND (Path[i] != '/') AND (Path[i] != '\\') AND (Path[i] != ':')) i--;
+            while ((i > 0) and (Path[i] != '/') and (Path[i] != '\\') and (Path[i] != ':')) i--;
             if (i > 0) i++; // Skip folder separator.
 
-            for (pathlen=0; (Path[i+pathlen]) AND ((size_t)pathlen < sizeof(modpath)-1); pathlen++) modpath[pathlen] = Path[i+pathlen];
+            for (pathlen=0; (Path[i+pathlen]) and ((size_t)pathlen < sizeof(modpath)-1); pathlen++) modpath[pathlen] = Path[i+pathlen];
             modpath[pathlen++] = 0;
          #else
-            for (pathlen=0; (Path[pathlen]) AND ((size_t)pathlen < sizeof(modpath)-1); pathlen++) modpath[pathlen] = Path[pathlen];
+            for (pathlen=0; (Path[pathlen]) and ((size_t)pathlen < sizeof(modpath)-1); pathlen++) modpath[pathlen] = Path[pathlen];
             modpath[pathlen++] = 0;
          #endif
       }
@@ -1680,7 +1680,7 @@ static Field * lookup_id_byclass(objMetaClass *Class, ULONG FieldID, objMetaClas
       if (field[i].FieldID < FieldID) floor = i + 1;
       else if (field[i].FieldID > FieldID) ceiling = i;
       else {
-         while ((i > 0) AND (field[i-1].FieldID IS FieldID)) i--;
+         while ((i > 0) and (field[i-1].FieldID IS FieldID)) i--;
          *Result = Class;
          return field+i;
       }

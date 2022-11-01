@@ -119,8 +119,7 @@ static void process_children(extSVG *Self, objXML *XML, svgState *State, const X
    OBJECTPTR sibling = NULL;
    for (auto child=Tag; child; child=child->Next) {
       if (child->Attrib->Name) {
-         ULONG hash = StrHash(child->Attrib->Name, FALSE);
-         xtag_default(Self, hash, XML, State, child, Vector, &sibling);
+         xtag_default(Self, XML, State, child, Vector, &sibling);
       }
    }
 }
@@ -490,6 +489,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
             DOUBLE matrix[MAX_DIM * MAX_DIM];
             LONG m = 0;
             while ((*val) and (m < ARRAYSIZE(matrix))) {
+               matrix[m] = 0;
                val = read_numseq(val, &matrix[m], TAGEND);
                m++;
             }
@@ -498,14 +498,14 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
          }
 
          case SVF_DIVISOR: {
-            DOUBLE divisor;
+            DOUBLE divisor = 0;
             read_numseq(val, &divisor, TAGEND);
             SetDouble(fx, FID_Divisor, divisor);
             break;
          }
 
          case SVF_BIAS: {
-            DOUBLE bias;
+            DOUBLE bias = 0;
             read_numseq(val, &bias, TAGEND);
             SetDouble(fx, FID_Bias, bias);
             break;
@@ -522,7 +522,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
             break;
 
          case SVF_KERNELUNITLENGTH: {
-            DOUBLE kx, ky;
+            DOUBLE kx = 1, ky = 1;
             read_numseq(val, &kx, &ky, TAGEND);
             if (kx < 1) kx = 1;
             if (ky < 1) ky = kx;
@@ -823,12 +823,82 @@ static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XM
 }
 
 //********************************************************************************************************************
+// This code replaces feImage elements where the href refers to a resource name.
 
-static ERROR parse_fe_image(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_source(extSVG *Self, objXML *XML, svgState *State, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
+   if (NewObject(ID_SOURCEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   bool required = false;
+   CSTRING ref = NULL;
+
+   ERROR error = ERR_Okay;
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      auto val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      switch(StrHash(Tag->Attrib[a].Name, false)) {
+         case SVF_X: set_double(fx, FID_X, val); break;
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+         case SVF_PRESERVEASPECTRATIO: SetLong(fx, FID_AspectRatio, parse_aspect_ratio(val)); break;
+         case SVF_XLINK_HREF: ref = val; break;
+         case SVF_EXTERNALRESOURCESREQUIRED: required = StrMatch("true", val) IS ERR_Okay; break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+   OBJECTPTR vector = NULL;
+   if (ref) {
+      if (scFindDef(Self->Scene, ref, &vector) != ERR_Okay) {
+         // The reference is not an existing vector but should be a pre-registered declaration that would allow
+         // us to create it.  Note that creation only occurs once.  Subsequent use of the ID will result in the
+         // live reference being found.
+
+         auto ti = find_href_tag(Self, ref);
+         if (ti != -1) {
+            xtag_default(Self, XML, State, XML->Tags[ti], Self->Scene, &vector);
+         }
+         else log.warning("Element id '%s' not found.", ref);
+      }
+
+      if (vector) {
+         SetString(fx, FID_SourceName, ref);
+         if (!(error = acInit(fx))) return ERR_Okay;
+      }
+      else error = ERR_Search;
+   }
+   else error = ERR_UndefinedField;
+
+   acFree(fx);
+   if (required) return log.warning(error);
+   return ERR_Okay; // Default behaviour is not to force a failure despite the error.
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState *State, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+
+   // Check if the client has specified an href that refers to a pattern name instead of an image file.  In that
+   // case we need to divert to the SourceFX parser.
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      if ((!StrMatch("xlink:href", Tag->Attrib[a].Name)) or (!StrMatch("href", Tag->Attrib[a].Name))) {
+         if ((Tag->Attrib[a].Value) and (Tag->Attrib[a].Value[0] IS '#')) {
+            return parse_fe_source(Self, XML, State, Filter, Tag);
+         }
+         break;
+      }
+   }
+
+   objFilterEffect *fx;
    if (NewObject(ID_IMAGEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
@@ -866,20 +936,11 @@ static ERROR parse_fe_image(extSVG *Self, objVectorFilter *Filter, const XMLTag 
             if (!StrMatch("true", val)) image_required = true;
             break;
 
-         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
-
          case SVF_RESULT: parse_result(Self, fx, val); break;
       }
    }
 
-   if ((path) and (path[0] IS '#')) {
-      // TODO: Image renders a segment of the scene graph to an independent bitmap instead of loading a picture.
-      // The process is equivalent to the 'use' instruction.
-
-      log.warning("xlink:href not yet supported.");
-
-   }
-   else if (path) {
+   if (path) {
       // Check for security risks in the path.
 
       if ((path[0] IS '/') or ((path[0] IS '.') and (path[1] IS '.') and (path[2] IS '/'))) {
@@ -918,7 +979,7 @@ static ERROR parse_fe_image(extSVG *Self, objVectorFilter *Filter, const XMLTag 
 
 //********************************************************************************************************************
 
-static void xtag_filter(extSVG *Self, objXML *XML, const XMLTag *Tag)
+static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1017,7 +1078,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, const XMLTag *Tag)
                   case SVF_FEFLOOD:             parse_fe_flood(Self, filter, tag); break;
                   case SVF_FETURBULENCE:        parse_fe_turbulence(Self, filter, tag); break;
                   case SVF_FEMORPHOLOGY:        parse_fe_morphology(Self, filter, tag); break;
-                  case SVF_FEIMAGE:             parse_fe_image(Self, filter, tag); break;
+                  case SVF_FEIMAGE:             parse_fe_image(Self, XML, State, filter, tag); break;
                   case SVF_FEDISPLACEMENTMAP:
                   case SVF_FETILE:
                   case SVF_FECOMPONENTTRANSFER:
@@ -1146,7 +1207,8 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
          svgState state;
          reset_state(&state);
          process_children(Self, XML, &state, Tag->Child, viewport);
-         if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, pattern);
+         add_id(Self, Tag, id);
+         scAddDef(Self->Scene, id, pattern);
       }
       else {
          acFree(pattern);
@@ -1164,6 +1226,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState
    ERROR error;
    objVector *vector;
 
+   *Result = NULL;
    if (!(error = NewObject(VectorID, 0, &vector))) {
       SetOwner(vector, Parent);
       svgState state = *State;
@@ -1216,11 +1279,13 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState
 
 //****************************************************************************
 
-static ERROR xtag_default(extSVG *Self, ULONG Hash, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static ERROR xtag_default(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
-   switch(Hash) {
+   log.traceBranch("%s", Tag->Attrib->Name);
+
+   switch(StrHash(Tag->Attrib->Name, false)) {
       case SVF_USE:              xtag_use(Self, XML, State, Tag, Parent); break;
       case SVF_G:                xtag_group(Self, XML, State, Tag, Parent, Vector); break;
       case SVF_SVG:              xtag_svg(Self, XML, State, Tag, Parent, Vector); break;
@@ -1240,7 +1305,7 @@ static ERROR xtag_default(extSVG *Self, ULONG Hash, objXML *XML, svgState *State
       case SVF_LINEARGRADIENT:   xtag_lineargradient(Self, Tag); break;
       case SVF_SYMBOL:           xtag_symbol(Self, XML, Tag); break;
       case SVF_ANIMATETRANSFORM: xtag_animatetransform(Self, XML, Tag, Parent); break;
-      case SVF_FILTER:           xtag_filter(Self, XML, Tag); break;
+      case SVF_FILTER:           xtag_filter(Self, XML, State, Tag); break;
       case SVF_DEFS:             xtag_defs(Self, XML, State, Tag, Parent); break;
       case SVF_CLIPPATH:         xtag_clippath(Self, XML, Tag); break;
       case SVF_STYLE:            xtag_style(Self, XML, Tag); break;
@@ -1291,7 +1356,7 @@ static ERROR xtag_default(extSVG *Self, ULONG Hash, objXML *XML, svgState *State
 
       case SVF_DESC: break; // Ignore descriptions
 
-      default: log.warning("Failed to interpret tag <%s/> ($%.8x) @ line %d", Tag->Attrib->Name, Hash, Tag->LineNo); return ERR_NoSupport;
+      default: log.warning("Failed to interpret tag <%s/> @ line %d", Tag->Attrib->Name, Tag->LineNo); return ERR_NoSupport;
    }
 
    return ERR_Okay;
@@ -1412,7 +1477,8 @@ static void def_image(extSVG *Self, const XMLTag *Tag)
          if (pic) {
             SetPointer(image, FID_Picture, pic);
             if (!acInit(image)) {
-               if (add_id(Self, Tag, id)) scAddDef(Self->Scene, id, image);
+               add_id(Self, Tag, id);
+               scAddDef(Self->Scene, id, image);
             }
             else {
                acFree(image);
@@ -1510,15 +1576,16 @@ static ERROR xtag_defs(extSVG *Self, objXML *XML, svgState *State, const XMLTag 
          case SVF_LINEARGRADIENT:  xtag_lineargradient(Self, child); break;
          case SVF_PATTERN:         process_pattern(Self, XML, child); break;
          case SVF_IMAGE:           def_image(Self, child); break;
-         case SVF_FILTER:          xtag_filter(Self, XML, child); break;
+         case SVF_FILTER:          xtag_filter(Self, XML, State, child); break;
          case SVF_CLIPPATH:        xtag_clippath(Self, XML, child); break;
          case SVF_PARASOL_TRANSITION: xtag_pathtransition(Self, XML, child); break;
 
-         default: { // Anything not immediately recognised is added if it has an 'id' attribute.
+         default: {
+            // Anything not immediately recognised is added to the dictionary if it has an 'id' attribute.
+            // No object is instantiated -- this is left to the referencee.
             for (LONG a=1; a < child->TotalAttrib; a++) {
                if (!StrMatch("id", child->Attrib[a].Name)) {
                   add_id(Self, child, child->Attrib[a].Value);
-                  //if (add_id(Self, child, child->Attrib[a].Value)) scAddDef(Self->Scene, StrValue, Vector);
                   break;
                }
             }
@@ -1736,7 +1803,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
    }
 
    OBJECTPTR vector = NULL;
-   XMLTag *tagref = XML->Tags[ti];
+   auto tagref = XML->Tags[ti];
 
    svgState state = *State;
    set_state(&state, Tag); // Apply all attribute values to the current state.
@@ -1833,7 +1900,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
          if (acInit(vector) != ERR_Okay) { acFree(vector); return; }
 
          OBJECTPTR sibling = NULL;
-         xtag_default(Self, StrHash(tagref->Attrib->Name, FALSE), XML, &state, tagref, vector, &sibling);
+         xtag_default(Self, XML, &state, tagref, vector, &sibling);
       }
    }
 }
@@ -1859,7 +1926,7 @@ static void xtag_group(extSVG *Self, objXML *XML, svgState *State, const XMLTag 
    OBJECTPTR sibling = NULL;
    for (auto child = Tag->Child; child; child=child->Next) {
       if (child->Attrib->Name) {
-         xtag_default(Self, StrHash(child->Attrib->Name, FALSE), XML, &state, child, group, &sibling);
+         xtag_default(Self, XML, &state, child, group, &sibling);
       }
    }
 
@@ -1981,13 +2048,11 @@ static void xtag_svg(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
    OBJECTPTR sibling = NULL;
    for (auto child=Tag->Child; child; child=child->Next) {
       if (child->Attrib->Name) {
-         ULONG hash = StrHash(child->Attrib->Name, FALSE);
+         log.traceBranch("Processing <%s/>", child->Attrib->Name);
 
-         log.trace("Processing <%s/>", child->Attrib->Name);
-
-         switch(hash) {
+         switch(StrHash(child->Attrib->Name, FALSE)) {
             case SVF_DEFS: xtag_defs(Self, XML, &state, child, viewport); break;
-            default:       xtag_default(Self, hash, XML, &state, child, viewport, &sibling);  break;
+            default:       xtag_default(Self, XML, &state, child, viewport, &sibling);  break;
          }
       }
    }
@@ -2201,11 +2266,9 @@ static void process_attrib(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTP
          if (Tag->Attrib[t].Name[j] IS ':') continue;
       }
 
-      ULONG hash = StrHash(Tag->Attrib[t].Name, FALSE);
+      log.trace("%s = %.40s", Tag->Attrib[t].Name, Tag->Attrib[t].Value);
 
-      log.trace("%s | %.8x = %.40s", Tag->Attrib[t].Name, hash, Tag->Attrib[t].Value);
-
-      if (auto error = set_property(Self, Vector, hash, XML, Tag, Tag->Attrib[t].Value)) {
+      if (auto error = set_property(Self, Vector, StrHash(Tag->Attrib[t].Name, false), XML, Tag, Tag->Attrib[t].Value)) {
          if (Vector->SubID != ID_VECTORGROUP) {
             log.warning("Failed to set field '%s' with '%s' in %s; Error %s", Tag->Attrib[t].Name, Tag->Attrib[t].Value, Vector->Class->ClassName, GetErrorMsg(error));
          }
@@ -2766,7 +2829,8 @@ static ERROR set_property(extSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
 
       case SVF_ID:
          SetString(Vector, FID_ID, StrValue);
-         if (add_id(Self, Tag, StrValue)) scAddDef(Self->Scene, StrValue, Vector);
+         add_id(Self, Tag, StrValue);
+         scAddDef(Self->Scene, StrValue, Vector);
          SetName(Vector, StrValue);
          break;
 

@@ -61,7 +61,7 @@ UnitX/Y is considerably smaller than a device pixel.
 
 //********************************************************************************************************************
 
-typedef class rkConvolveEffect : public extFilterEffect {
+class objConvolveFX : public extFilterEffect {
    public:
    DOUBLE UnitX, UnitY;
    DOUBLE Divisor;
@@ -72,6 +72,9 @@ typedef class rkConvolveEffect : public extFilterEffect {
    LONG MatrixSize;
    bool PreserveAlpha;
    DOUBLE Matrix[MAX_DIM * MAX_DIM];
+
+   objConvolveFX() : UnitX(1), UnitY(1), Divisor(0), Bias(0), TargetX(-1), TargetY(-1),
+      MatrixColumns(3), MatrixRows(3), EdgeMode(EM_DUPLICATE), MatrixSize(9), PreserveAlpha(false) { }
 
    inline UBYTE * getPixel(objBitmap *Bitmap, LONG X, LONG Y) const {
       if ((X >= Bitmap->Clip.Left) and (X < Bitmap->Clip.Right) and
@@ -191,7 +194,7 @@ typedef class rkConvolveEffect : public extFilterEffect {
          output += (InputBitmap->Clip.Right - InputBitmap->Clip.Left)<<2;
       }
    }
-} objConvolveFX;
+};
 
 //********************************************************************************************************************
 
@@ -282,18 +285,17 @@ static ERROR CONVOLVEFX_Init(objConvolveFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
+static ERROR CONVOLVEFX_Free(objConvolveFX *Self, APTR Void)
+{
+   Self->~objConvolveFX();
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
 static ERROR CONVOLVEFX_NewObject(objConvolveFX *Self, APTR Void)
 {
-   Self->UnitX         = 1;
-   Self->UnitY         = 1;
-   Self->TargetX       = -1;
-   Self->TargetY       = -1;
-   Self->MatrixColumns = 3;
-   Self->MatrixRows    = 3;
-   Self->Divisor       = 0;
-   Self->Bias          = 0;
-   Self->EdgeMode      = EM_DUPLICATE;
-   Self->PreserveAlpha = false;
+   new (Self) objConvolveFX;
    return ERR_Okay;
 }
 

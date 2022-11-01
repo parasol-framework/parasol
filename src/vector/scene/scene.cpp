@@ -148,16 +148,9 @@ static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
 
    // If the resource does not belong to the Scene object, this can lead to invalid pointer references
 
-   if (def->OwnerID != Self->UID) {
-      OBJECTID owner_id = def->OwnerID;
-      while ((owner_id) and (owner_id != Self->UID)) {
-         owner_id = GetOwnerID(owner_id);
-      }
-
-      if (!owner_id) {
-         log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->UID, def->OwnerID);
-         return ERR_UnsupportedOwner;
-      }
+   if (!def->hasOwner(Self->UID)) {
+      log.warning("The %s must belong to VectorScene #%d, but is owned by object #%d.", def->Class->ClassName, Self->UID, def->OwnerID);
+      return ERR_UnsupportedOwner;
    }
 
    // TODO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
@@ -171,13 +164,47 @@ static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
       }
    }
    else if (!VarGet(Self->Defs, Args->Name, &data, NULL)) { // Check that the definition name is unique.
-      log.msg("The vector definition name '%s' is already in use.", Args->Name);
+      log.extmsg("The vector definition name '%s' is already in use.", Args->Name);
       return ERR_ResourceExists;
    }
 
    VectorDef vd;
    vd.Object = def;
    VarSet(Self->Defs, Args->Name, &vd, sizeof(vd));
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+Debug: Internal functionality for debugging.
+
+This internal method prints comprehensive debugging information to the log.
+
+-ERRORS-
+Okay:
+
+*********************************************************************************************************************/
+
+static ERROR VECTORSCENE_Debug(extVectorScene *Self, APTR Void)
+{
+   parasol::Log log("debug_tree");
+
+   ChildEntry list[128];
+   LONG count = ARRAYSIZE(list);
+   do {
+      if (!ListChildren(Self->UID, FALSE, list, &count)) {
+         for (LONG i=0; i < count; i++) {
+            auto obj = GetObjectPtr(list[i].ObjectID);
+            if (obj IS Self->Viewport) continue;
+            log.msg("#%d %s %s", list[i].ObjectID, obj->Class->ClassName, GetName(obj) ? GetName(obj) : "");
+         }
+
+      }
+   } while (count IS ARRAYSIZE(list));
+
+   LONG level = 0;
+   debug_tree((extVector *)Self->Viewport, level);
    return ERR_Okay;
 }
 

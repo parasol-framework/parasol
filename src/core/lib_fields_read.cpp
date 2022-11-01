@@ -35,7 +35,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
       if (field[i].FieldID < FieldID) floor = i + 1;
       else if (field[i].FieldID > FieldID) ceiling = i;
       else {
-         while ((i > 0) AND (field[i-1].FieldID IS FieldID)) i--;
+         while ((i > 0) and (field[i-1].FieldID IS FieldID)) i--;
          return field+i;
       }
    }
@@ -43,7 +43,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
    if (mc->Flags & CLF_PROMOTE_INTEGRAL) {
       for (LONG i=0; mc->Children[i] != 0xff; i++) {
          OBJECTPTR child;
-         if ((!copy_field_to_buffer(Object, mc->prvFields + mc->Children[i], FT_POINTER, &child, NULL, NULL)) AND (child)) {
+         if ((!copy_field_to_buffer(Object, mc->prvFields + mc->Children[i], FT_POINTER, &child, NULL, NULL)) and (child)) {
             objMetaClass *childclass = (objMetaClass *)(child->Class);
             field = childclass->prvFields;
 
@@ -54,7 +54,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
                if (field[j].FieldID < FieldID) floor = j + 1;
                else if (field[j].FieldID > FieldID) ceiling = j;
                else {
-                  while ((j > 0) AND (field[j-1].FieldID IS FieldID)) j--;
+                  while ((j > 0) and (field[j-1].FieldID IS FieldID)) j--;
                   *Result = child;
                   return field+j;
                }
@@ -436,7 +436,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
       if (c IS '.') {
          WORD j;
          // Flagref == fieldname\0flagname\0
-         for (j=0; ((size_t)j < sizeof(flagref)-1) AND (fname[j]); j++) flagref[j] = fname[j];
+         for (j=0; ((size_t)j < sizeof(flagref)-1) and (fname[j]); j++) flagref[j] = fname[j];
          flagref[i] = 0; // Middle termination
          flagref[j] = 0; // End termination
          fname = flagref;
@@ -444,7 +444,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          break;
       }
       else {
-         if ((c >= 'A') AND (c <= 'Z')) c = c - 'A' + 'a';
+         if ((c >= 'A') and (c <= 'Z')) c = c - 'A' + 'a';
          hash = ((hash<<5) + hash) + c;
       }
    }
@@ -463,14 +463,14 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          if (!(error = copy_field_to_buffer(Object, field, FD_POINTER|FD_STRING, &str, ext, NULL))) {
             if (checkdefined) {
                if (field->Flags & FD_STRING) {
-                  if ((str) AND (str[0])) Buffer[0] = '1'; // A string needs only one char (of any kind) to be considered to be defined
+                  if ((str) and (str[0])) Buffer[0] = '1'; // A string needs only one char (of any kind) to be considered to be defined
                   else Buffer[0] = '0';
                }
                else Buffer[0] = '1';
                Buffer[1] = 0;
             }
             else if (str) {
-               for (i=0; (str[i]) AND (i < BufferSize - 1); i++) Buffer[i] = str[i];
+               for (i=0; (str[i]) and (i < BufferSize - 1); i++) Buffer[i] = str[i];
                Buffer[i] = 0;
             }
             else Buffer[0] = 0;
@@ -485,7 +485,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          LARGE large;
 
          if (!(error = copy_field_to_buffer(Object, field, FD_LARGE, &large, ext, NULL))) {
-            if ((ext) AND (field->Flags & (FD_FLAGS|FD_LOOKUP))) {
+            if ((ext) and (field->Flags & (FD_FLAGS|FD_LOOKUP))) {
                Buffer[0] = '0';
                Buffer[1] = 0;
 
@@ -511,7 +511,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                      LONG pos = 0;
                      while (lookup->Name) {
                         if (large & lookup->Value) {
-                           if ((pos) AND (pos < BufferSize-1)) Buffer[pos++] = '|';
+                           if ((pos) and (pos < BufferSize-1)) Buffer[pos++] = '|';
                            pos += StrCopy(lookup->Name, Buffer+pos, BufferSize-pos);
                         }
                         lookup++;
@@ -679,7 +679,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
 
       if (Option) { // If an option is specified, treat it as an array index.
          LONG index = StrToInt(Option);
-         if ((index >= 0) AND (index < array_size)) {
+         if ((index >= 0) and (index < array_size)) {
             if (srcflags & FD_LONG) data = (BYTE *)data + (sizeof(LONG) * index);
             else if (srcflags & (FD_LARGE|FD_DOUBLE))   data = (BYTE *)data + (sizeof(DOUBLE) * index);
             else if (srcflags & (FD_POINTER|FD_STRING)) data = (BYTE *)data + (sizeof(APTR) * index);
@@ -696,21 +696,21 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
             LONG *array = (LONG *)data;
             for (i=0; i < array_size; i++) {
                pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
-               if (((size_t)pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
+               if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
          else if (srcflags & FD_BYTE) {
             UBYTE *array = (UBYTE *)data;
             for (i=0; i < array_size; i++) {
                pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
-               if (((size_t)pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
+               if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
          else if (srcflags & FD_DOUBLE) {
             DOUBLE *array = (DOUBLE *)data;
             for (i=0; i < array_size; i++) {
                pos += StrFormat(strGetField+pos, sizeof(strGetField)-pos, "%f", *array++);
-               if (((size_t)pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
+               if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
          strGetField[pos] = 0;

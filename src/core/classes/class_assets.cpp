@@ -100,7 +100,7 @@ ERROR add_asset_class(void)
    }
 
    classname = NULL;
-   if ((openinfo->Flags & OPF_OPTIONS) AND (openinfo->Options)) {
+   if ((openinfo->Flags & OPF_OPTIONS) and (openinfo->Options)) {
       for (i=0; openinfo->Options[i].Tag != TAGEND; i++) {
          switch (openinfo->Options[i].Tag) {
             case TOI_ANDROID_CLASS: {
@@ -175,7 +175,7 @@ ERROR add_asset_class(void)
 
 void free_asset_class(void)
 {
-   if ((glAssetManager) AND (glAssetManagerFree)) {
+   if ((glAssetManager) and (glAssetManagerFree)) {
       JNIEnv *env = GetResourcePtr(RES_JNI_ENV);
       if (env) (*env)->DeleteGlobalRef(env, glAssetManager);
    }
@@ -510,7 +510,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    i = len;
    if ((Path[i-1] IS '/') OR (Path[i-1] IS '\\')) i--;
-   while ((i > 0) AND (Path[i-1] != '/') AND (Path[i-1] != '\\') AND (Path[i-1] != ':')) i--;
+   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
    i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
 
    if (Info->Flags & RDF_FOLDER) {
@@ -631,7 +631,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
    ERROR error = ERR_Okay;
    LONG insert = StrCopy(Path+LEN_ASSETS, assetpath, sizeof(assetpath)-2);
    if (assetpath[insert-1] != '/') assetpath[insert++] = '/';
-   while ((filename = AAssetDir_getNextFileName(dir)) AND (!error)) {
+   while ((filename = AAssetDir_getNextFileName(dir)) and (!error)) {
       entry = NULL;
 
       StrCopy(filename, assetpath+insert, sizeof(assetpath)-insert-1);

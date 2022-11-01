@@ -24,10 +24,10 @@ its vector description on top.
 
 *********************************************************************************************************************/
 
-typedef class rkMergeFX : public extFilterEffect {
+class objMergeFX : public extFilterEffect {
    public:
    std::vector<MergeSource> List;
-} objMergeFX;
+};
 
 /*********************************************************************************************************************
 -ACTION-

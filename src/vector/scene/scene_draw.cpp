@@ -1,4 +1,4 @@
-//****************************************************************************
+//********************************************************************************************************************
 // This class holds the current state as the vector scene is parsed for drawing.  It is most useful for managing use of
 // the 'inherit' attribute values.
 
@@ -42,7 +42,7 @@ public:
       { }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 namespace agg {
 class span_reflect_y
@@ -107,7 +107,7 @@ private:
    int m_x;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class span_reflect_x
 {
@@ -244,7 +244,7 @@ private:
 };
 } // namespace
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static bool check_dirty(extVector *Shape) {
    while (Shape) {
@@ -259,7 +259,7 @@ static bool check_dirty(extVector *Shape) {
    return false;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Return the correct transformation matrix for a fill operation.
 
 static const agg::trans_affine build_fill_transform(extVector &Vector, bool Userspace,  VectorState &State)
@@ -277,7 +277,7 @@ static const agg::trans_affine build_fill_transform(extVector &Vector, bool User
    else return Vector.Transform; // Default BoundingBox: The vector's position, transforms, and parent transforms apply.
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void setRasterClip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG Width, LONG Height)
 {
@@ -294,7 +294,7 @@ void setRasterClip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG W
    Raster.add_path(clip);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
 {
@@ -324,7 +324,7 @@ void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // A generic drawing function for VMImage and VMPattern, this is used to fill vectors with bitmap images.
 
 static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
@@ -475,7 +475,7 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
    drawBitmap(SampleMethod, RenderBase, Raster, Pattern.Bitmap, Pattern.SpreadMethod, Pattern.Opacity, &transform);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Use for drawing stroked paths with texture brushes.  Source images should have width of ^2 if maximum efficiency
 // is desired.
 
@@ -647,7 +647,7 @@ static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMetho
    drawBitmap(SampleMethod, RenderBase, Raster, Image.Bitmap, Image.SpreadMethod, Alpha, &transform);
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 // Gradient fills
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
@@ -1416,7 +1416,7 @@ private:
    }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 // For direct vector drawing
 
 void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)
@@ -1494,6 +1494,8 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       else log.warning("The StrokeStyle is not supported.");
    }
 }
+
+//********************************************************************************************************************
 
 void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap)
 {

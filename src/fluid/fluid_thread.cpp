@@ -104,7 +104,7 @@ static ERROR thread_script_callback(objThread *Thread)
    parasol::Log log("thread");
    thread_callback *cb;
 
-   if ((!GetPointer(Thread, FID_Data, &cb)) AND (cb)) {
+   if ((!GetPointer(Thread, FID_Data, &cb)) and (cb)) {
       objScript *script;
       if (!AccessObject(cb->mainScriptID, 4000, &script)) {
          auto prv = (prvFluid *)script->ChildPrivate;
@@ -154,7 +154,7 @@ static int thread_action(lua_State *Lua)
    // If an obj.new() lock is still present, detach it first because ActionThread() is going to attempt to lock the
    // object with AccessPrivateObject() and a timeout error will occur otherwise.
 
-   if ((object->NewLock) AND (!object->Detached)) {
+   if ((object->NewLock) and (!object->Detached)) {
       object->Detached = TRUE;
       object->NewLock = FALSE;
       release_object(object);
@@ -179,7 +179,7 @@ static int thread_action(lua_State *Lua)
    OBJECTPTR obj;
    ERROR error = ERR_Okay;
 
-   if ((glActions[action_id].Args) AND (glActions[action_id].Size)) {
+   if ((glActions[action_id].Args) and (glActions[action_id].Size)) {
       argsize = glActions[action_id].Size;
       args = glActions[action_id].Args;
    }
@@ -222,7 +222,7 @@ static int thread_action(lua_State *Lua)
       else error = log.warning(ERR_AccessObject);
    }
 
-   if ((error) AND (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
+   if ((error) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
    lua_pushinteger(Lua, error);
    return 1;
 }
@@ -248,17 +248,17 @@ static int thread_method(lua_State *Lua)
             luaL_error(Lua, "Failed to resolve class %d", object->ClassID);
          }
 
-         if ((!GetFieldArray(mc, FID_Methods, &table, &total_methods)) AND (table)) {
+         if ((!GetFieldArray(mc, FID_Methods, &table, &total_methods)) and (table)) {
             BYTE found = FALSE;
             for (i=1; i < total_methods+1; i++) {
-               if ((table[i].Name) AND (!StrMatch(table[i].Name, method))) { found = TRUE; break; }
+               if ((table[i].Name) and (!StrMatch(table[i].Name, method))) { found = TRUE; break; }
             }
 
             if (found) {
                // If an obj.new() lock is still present, detach it first because ActionThread() is going to attempt to
                // lock the object with AccessPrivateObject() and a timeout error will occur otherwise.
 
-               if ((object->NewLock) AND (!object->Detached)) {
+               if ((object->NewLock) and (!object->Detached)) {
                   object->Detached = TRUE;
                   object->NewLock = FALSE;
                   release_object(object);
@@ -323,7 +323,7 @@ static int thread_method(lua_State *Lua)
                   else error = log.warning(ERR_AccessObject);
                }
 
-               if ((error) AND (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
+               if ((error) and (callback.Type)) luaL_unref(Lua, LUA_REGISTRYINDEX, callback.Script.ProcedureID);
                lua_pushinteger(Lua, error);
                return 1;
             }

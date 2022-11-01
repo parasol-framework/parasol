@@ -57,7 +57,7 @@ extern OBJECTPTR clVectorScene, clVectorViewport, clVectorGroup, clVectorColour;
 extern OBJECTPTR clVectorEllipse, clVectorRectangle, clVectorPath, clVectorWave;
 extern OBJECTPTR clVectorFilter, clVectorPolygon, clVectorText, clVectorClip;
 extern OBJECTPTR clVectorGradient, clVectorImage, clVectorPattern, clVector;
-extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX;
+extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX, clSourceFX;
 extern OBJECTPTR clBlurFX, clColourFX, clCompositeFX, clConvolveFX, clFilterEffect;
 extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX;
 
@@ -133,6 +133,9 @@ public:
    };
 
    objBitmap * get_bitmap(LONG Width, LONG Height, ClipRectangle &Clip, bool Debug) {
+      if (Width < Clip.Right) Width = Clip.Right;
+      if (Height < Clip.Bottom) Height = Clip.Bottom;
+
       if (Bitmap) {
          Bitmap->Width = Width;
          Bitmap->Height = Height;
@@ -247,25 +250,25 @@ class extVector : public objVector {
    agg::path_storage BasePath;
    agg::trans_affine Transform;
    RGB8 rgbStroke, rgbFill;
-   extVectorFilter *Filter;
-   extVectorViewport *ParentView;
    CSTRING FilterString, StrokeString, FillString;
    STRING ID;
    void   (*GeneratePath)(extVector *);
-   agg::rasterizer_scanline_aa<> *StrokeRaster;
-   agg::rasterizer_scanline_aa<> *FillRaster;
-   objVectorClip     *ClipMask;
-   extVectorGradient *StrokeGradient, *FillGradient;
-   objVectorImage    *FillImage, *StrokeImage;
-   extVectorPattern  *FillPattern, *StrokePattern;
+   agg::rasterizer_scanline_aa<>     *StrokeRaster;
+   agg::rasterizer_scanline_aa<>     *FillRaster;
+   std::vector<FeedbackSubscription> *FeedbackSubscriptions;
+   std::vector<InputSubscription>    *InputSubscriptions;
+   std::vector<KeyboardSubscription> *KeyboardSubscriptions;
+   extVectorFilter     *Filter;
+   extVectorViewport   *ParentView;
+   objVectorClip       *ClipMask;
+   extVectorGradient   *StrokeGradient, *FillGradient;
+   objVectorImage      *FillImage, *StrokeImage;
+   extVectorPattern    *FillPattern, *StrokePattern;
    objVectorTransition *Transition;
-   extVector *Morph;
-   DashedStroke *DashArray;
+   extVector           *Morph;
+   DashedStroke        *DashArray;
    GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
    FRGB StrokeColour, FillColour;
-   std::vector<FeedbackSubscription> *FeedbackSubscriptions;
-   std::vector<InputSubscription> *InputSubscriptions;
-   std::vector<KeyboardSubscription> *KeyboardSubscriptions;
    LONG   InputMask;
    LONG   NumericID;
    LONG   PathLength;
@@ -394,10 +397,12 @@ extern ERROR init_mergefx(void);
 extern ERROR init_morphfx(void);
 extern ERROR init_offsetfx(void);
 extern ERROR init_pattern(void);
+extern ERROR init_sourcefx(void);
 extern ERROR init_transition(void);
 extern ERROR init_turbulencefx(void);
 extern ERROR init_vectorscene(void);
 
+extern void debug_tree(extVector *, LONG &);
 extern ERROR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERROR scene_input_events(const InputEvent *, LONG);
 extern GRADIENT_TABLE * get_fill_gradient_table(extVector &, DOUBLE);
@@ -717,7 +722,7 @@ static bool point_in_rectangle(agg::vertex_d X, agg::vertex_d Y, agg::vertex_d Z
     return (is_left(X, Y, P) > 0) and (is_left(Y, Z, P) > 0) and (is_left(Z, W, P) > 0) and (is_left(W, X, P) > 0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 inline double fastPow(double a, double b) {
    union {
@@ -729,7 +734,7 @@ inline double fastPow(double a, double b) {
    return u.d;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 inline int isPow2(ULONG x)
 {

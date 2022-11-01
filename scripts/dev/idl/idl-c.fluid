@@ -24,6 +24,7 @@ glActionStubs = {
    FreeWarning   = "",
    NewChild      = "",
    NewObject     = "",
+   NewOwner      = "",
    ReleaseObject = "",
    AccessObject  = "",
 
@@ -1415,7 +1416,7 @@ function outputClassHeader(class, Private, Custom)
          output("};")
          output()
       elseif class.base then
-         priority("typedef class obj" .. class.name .. ";")
+         priority("class obj" .. class.name .. ";")
          output("class obj" .. class.name ..  " : public " .. class.base .. " {")
          output("};")
          output()
