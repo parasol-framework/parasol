@@ -311,7 +311,7 @@ static struct xrMode * xrGetDisplayMode(LONG Index)
    static struct xrMode mode;
    LONG i, j;
 
-   if ((Index < 0) OR (Index >= glActualCount)) {
+   if ((Index < 0) or (Index >= glActualCount)) {
       log.warning("Index %d not within range 0 - %d", Index, glActualCount);
       return NULL;
    }

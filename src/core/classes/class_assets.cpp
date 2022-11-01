@@ -125,7 +125,7 @@ ERROR add_asset_class(void)
       JNIEnv *env = GetResourcePtr(RES_JNI_ENV);
       glAssetManagerFree = TRUE;
 
-      if ((!env) OR (!classname)) {
+      if ((!env) or (!classname)) {
          log.warning("Android env and class name must be defined when opening the Core.");
          return ERR_Failed;
       }
@@ -502,14 +502,14 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    for (len=0; Path[len]; len++);
 
-   if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) Info->Flags |= RDF_FOLDER;
+   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Info->Flags |= RDF_FOLDER;
    else if (dir) Info->Flags |= RDF_FOLDER;
    else Info->Flags |= RDF_FILE|RDF_SIZE;
 
    // Extract the file name
 
    i = len;
-   if ((Path[i-1] IS '/') OR (Path[i-1] IS '\\')) i--;
+   if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) i--;
    while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
    i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
 

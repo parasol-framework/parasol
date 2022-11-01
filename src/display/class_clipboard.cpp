@@ -104,7 +104,7 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if ((!Args->Path) OR (!Args->Path[0])) return log.warning(ERR_MissingPath);
+   if ((!Args->Path) or (!Args->Path[0])) return log.warning(ERR_MissingPath);
 
    log.branch("Cluster: %d, Path: %s", Self->ClusterID, Args->Path);
 
@@ -217,7 +217,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Objects) OR (!Args->Objects[0])) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Objects) or (!Args->Objects[0])) return log.warning(ERR_NullArgs);
 
    log.branch();
 
@@ -292,7 +292,7 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->String)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->String)) return log.warning(ERR_NullArgs);
    if (!Args->String[0]) return ERR_Okay;
 
 #ifdef _WIN32
@@ -510,7 +510,7 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Datatype)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Datatype)) return log.warning(ERR_NullArgs);
 
    log.branch("Cluster: %d, Datatype: $%x", Self->ClusterID, Args->Datatype);
 
@@ -598,7 +598,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       WORD index, i;
 
       if (!Args->Datatype) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
-         if ((Args->Index < 0) OR (Args->Index >= MAX_CLIPS)) {
+         if ((Args->Index < 0) or (Args->Index >= MAX_CLIPS)) {
             ReleaseMemory(header);
             return ERR_OutOfRange;
          }
@@ -724,7 +724,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if ((!Args->Field) OR (!Args->Buffer) OR (Args->Size < 1)) {
+   if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) {
       return log.warning(ERR_Args);
    }
 
@@ -846,7 +846,7 @@ static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
 {
    parasol::Log log;
 
-   if ((!Self->ClusterID) OR (Self->Flags & CLF_DRAG_DROP)) {
+   if ((!Self->ClusterID) or (Self->Flags & CLF_DRAG_DROP)) {
       // Create a new grouping for this clipboard.  It will be possible for any other clipboard to attach
       // itself to this memory block if the ID is known.
 

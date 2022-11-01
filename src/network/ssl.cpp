@@ -237,7 +237,7 @@ static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
       #ifdef __linux__
          RegisterFD((HOSTHANDLE)Socket, RFD_WRITE|RFD_REMOVE|RFD_SOCKET, &ssl_handshake_write, Self);
       #elif _WIN32
-         if ((Self->WriteSocket) OR (Self->Outgoing.Type != CALL_NONE) OR (Self->WriteQueue.Buffer)) {
+         if ((Self->WriteSocket) or (Self->Outgoing.Type != CALL_NONE) or (Self->WriteQueue.Buffer)) {
             // Do nothing, we are already listening for writes
          }
          else win_socketstate((WSW_SOCKET)Socket, -1, FALSE); // Turn off write listening

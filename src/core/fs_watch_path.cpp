@@ -122,7 +122,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
    UBYTE buffer[2048];
    LONG count = 0;
    LONG buffersize = 0;
-   while (((result = read(FD, buffer+buffersize, sizeof(buffer)-buffersize)) > 0) OR (buffersize > 0)) {
+   while (((result = read(FD, buffer+buffersize, sizeof(buffer)-buffersize)) > 0) or (buffersize > 0)) {
       if (result > 0) buffersize += result;
 
       struct inotify_event *event = (struct inotify_event *)buffer;
@@ -247,7 +247,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
    parasol::Log log(__FUNCTION__);
 
    static THREADVAR BYTE recursion = FALSE; // Recursion avoidance is essential for correct queuing
-   if ((recursion) OR (!File->prvWatch)) return;
+   if ((recursion) or (!File->prvWatch)) return;
    recursion = TRUE;
 
    AdjustLogLevel(2);

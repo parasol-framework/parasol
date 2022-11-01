@@ -169,7 +169,7 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
    char day[32], month[32], buffer[80];
    WORD pos, i, j;
 
-   if ((!Buffer) OR (BufferSize < 1) OR (!Format)) return ERR_Args;
+   if ((!Buffer) or (BufferSize < 1) or (!Format)) return ERR_Args;
 
    if (!Time) {
       if (!glTime) {
@@ -296,7 +296,7 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
 
          while (Format[i+1] IS 'y') i++;
       }
-      else if ((Format[i] IS 'd') OR (Format[i] IS 'D')) {
+      else if ((Format[i] IS 'd') or (Format[i] IS 'D')) {
          // Day: d    = Single digit
          //      D    = Day of Week character
          //      dd   = Double digit
@@ -336,7 +336,7 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
             i += 3;
          }
       }
-      else if ((Format[i] IS 'm') OR (Format[i] IS 'M')) {
+      else if ((Format[i] IS 'm') or (Format[i] IS 'M')) {
          // Month: m    = Single digit
          //        mm   = Double digit
          //        mmm  = Short name
@@ -441,7 +441,7 @@ static CSTRING find_datepart(CSTRING Date, struct datepart *Part)
                // Check for match with 3-letter prefix of month string
 
                if (!StrCompare(months[i], Date, 3, 0)) {
-                  if ((Date[3] <= 0x20) OR (!StrCompare(months[i], Date, 0, 0))) {
+                  if ((Date[3] <= 0x20) or (!StrCompare(months[i], Date, 0, 0))) {
                      Part->String  = Date;
                      Part->Number  = i;
                      Part->Type    = DP_MONTH;
@@ -480,7 +480,7 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
    struct DateTime time;
    CSTRING str;
 
-   if ((!Date) OR (!Output)) return ERR_NullArgs;
+   if ((!Date) or (!Output)) return ERR_NullArgs;
 
    #warning Use of glTime is not thread safe
    if (!glTime) {
@@ -501,7 +501,7 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
       add_days(Output, -1);
       return ERR_Okay;
    }
-   else if ((!StrMatch("today", Date)) OR (!StrMatch("now", Date))) {
+   else if ((!StrMatch("today", Date)) or (!StrMatch("now", Date))) {
       Output->Year   = glTime->Year;
       Output->Month  = glTime->Month;
       Output->Day    = glTime->Day;
@@ -549,7 +549,7 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
 
       Date += 4;
       while (*Date) {
-         if ((*Date IS '+') OR (*Date IS '-')) {
+         if ((*Date IS '+') or (*Date IS '-')) {
             Output->Year += StrToInt(Date);
             break;
          }
@@ -631,7 +631,7 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
    else if (numparts IS 3) {
       UBYTE empty, missing;
 
-      if ((!datepart[0].Type) OR (!datepart[1].Type) OR (!datepart[2].Type)) {
+      if ((!datepart[0].Type) or (!datepart[1].Type) or (!datepart[2].Type)) {
          missing = DP_DAY|DP_MONTH|DP_YEAR;
          for (i=0, empty=0; i < 3; i++) {
             if (!datepart[i].Type) empty++;
@@ -705,12 +705,12 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
    }
    else return ERR_InvalidData;
 
-   if ((time.Month < 1) OR (time.Month > 12)) {
+   if ((time.Month < 1) or (time.Month > 12)) {
       log.trace("Invalid month value %d in date: %s", time.Month, Date);
       return ERR_InvalidData;
    }
 
-   if ((time.Day < 1) OR (time.Day > 31)) {
+   if ((time.Day < 1) or (time.Day > 31)) {
       log.trace("Invalid day value %d in date: %s", time.Day, Date);
       return ERR_InvalidData;
    }
@@ -735,7 +735,7 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
       // Time parsing.  The time must be defined as HH:NN:SS - seconds are optional.  Use of pm or am following
       // the time is allowed, otherwise a 24 hour clock is assumed.
 
-      while ((*str) and ((*str < '0') OR (*str > '9'))) str++;
+      while ((*str) and ((*str < '0') or (*str > '9'))) str++;
       Output->Hour = StrToInt(str);
       if (Output->Hour >= 24) Output->Hour = 0;
       while ((*str >= '0') and (*str <= '9')) str++;
@@ -755,11 +755,11 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
 
             // AM/PM check to convert to 24 hour clock
 
-            if ((!StrCompare("am", str, 2, 0)) OR (!StrCompare("a.m", str, 3, 0))) {
+            if ((!StrCompare("am", str, 2, 0)) or (!StrCompare("a.m", str, 3, 0))) {
                if (Output->Hour >= 12) Output->Hour = 0;
                str += 2;
             }
-            else if ((!StrCompare("pm", str, 2, 0)) OR (!StrCompare("p.m", str, 3, 0))) {
+            else if ((!StrCompare("pm", str, 2, 0)) or (!StrCompare("p.m", str, 3, 0))) {
                if (Output->Hour < 12) Output->Hour += 12;
                str += 2;
             }
@@ -768,10 +768,10 @@ ERROR StrReadDate(CSTRING Date, struct DateTime *Output)
             // -0200 for example.
 
             while (*str) {
-               if ((*str IS '+') OR (*str IS '-')) {
+               if ((*str IS '+') or (*str IS '-')) {
                   char tz[5];
                   for (i=1; i < 4; i++) {
-                     if ((str[i] < '0') OR (str[i] > '9')) break;
+                     if ((str[i] < '0') or (str[i] > '9')) break;
                      tz[i-1] = str[i];
                   }
                   if (i IS 4) {
@@ -834,7 +834,7 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Key) OR (!Value)) return ERR_NullArgs;
+   if ((!Key) or (!Value)) return ERR_NullArgs;
 
    #ifdef __ANDROID__
       // Android doesn't have locale.cfg, we have to load that information from the system.
@@ -924,7 +924,7 @@ INLINE char read_nibble(CSTRING Str)
 
 ERROR StrToColour(CSTRING Colour, struct RGB8 *RGB)
 {
-   if ((!Colour) OR (!RGB)) return ERR_NullArgs;
+   if ((!Colour) or (!RGB)) return ERR_NullArgs;
 
    if (*Colour IS '#') {
       Colour++;
@@ -995,7 +995,7 @@ DOUBLE StrToFloat(CSTRING String)
 
    // Ignore any leading characters
 
-   while ((*String != '-') and (*String != '.') and ((*String < '0') OR (*String > '9'))) {
+   while ((*String != '-') and (*String != '.') and ((*String < '0') or (*String > '9'))) {
       if (!*String) return 0;
       String++;
    }
@@ -1083,7 +1083,7 @@ LARGE StrToHex(CSTRING String)
       String++;
    }
 
-   if ((String[0] IS '0') and ((String[1] IS 'X') OR (String[1] IS 'x'))) String += 2;
+   if ((String[0] IS '0') and ((String[1] IS 'X') or (String[1] IS 'x'))) String += 2;
    else if (String[0] IS '$') String++;
    else if (String[0] IS '#') String++;
 
@@ -1149,7 +1149,7 @@ LARGE StrToInt(CSTRING str)
    // Ignore any leading characters
 
    BYTE neg = FALSE;
-   while ((*str < '0') OR (*str > '9')) {
+   while ((*str < '0') or (*str > '9')) {
       if (*str IS 0) return 0;
       if (*str IS '-') neg = TRUE;
       if (*str IS '+') neg = FALSE;
@@ -1202,15 +1202,15 @@ static void read_ordering(char *ordering_out)
 
       if (!StrReadLocale("ShortDate", &str)) {
          for (; (*str) and (stage < 3); str++) {
-            if(((*str IS 'y') OR (*str IS 'Y')) and (!seen_y)) {
+            if(((*str IS 'y') or (*str IS 'Y')) and (!seen_y)) {
                ordering[stage++] = DP_YEAR;
                seen_y = TRUE;
             }
-            else if (((*str IS 'm') OR (*str IS 'M')) and (!seen_m)) {
+            else if (((*str IS 'm') or (*str IS 'M')) and (!seen_m)) {
                ordering[stage++] = DP_MONTH;
                seen_m = TRUE;
             }
-            else if (((*str IS 'd') OR (*str IS 'D')) and (!seen_d)) {
+            else if (((*str IS 'd') or (*str IS 'D')) and (!seen_d)) {
                ordering[stage++] = DP_DAY;
                seen_d = TRUE;
             }

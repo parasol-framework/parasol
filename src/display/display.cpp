@@ -153,7 +153,7 @@ static LONG test_x11(STRING Path)
          // If the error was EINTR, the connect was interrupted and we should try again.
 
          if ((err IS EINTR)) return ERR_Okay;
-         else if ((err IS EWOULDBLOCK) OR (err IS EINPROGRESS)) return ERR_Okay;
+         else if ((err IS EWOULDBLOCK) or (err IS EINPROGRESS)) return ERR_Okay;
          else {
             log.msg("Connect Error: %s", strerror(err));
             return ERR_Failed;

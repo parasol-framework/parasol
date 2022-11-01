@@ -124,7 +124,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 
          if (len > 0) {
             error = SEND(Socket, ClientSocket->SocketHandle, (BYTE *)ClientSocket->WriteQueue.Buffer + ClientSocket->WriteQueue.Index, &len, 0);
-            if ((error) OR (!len)) break;
+            if ((error) or (!len)) break;
             log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Socket->UID, len, ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index);
             ClientSocket->WriteQueue.Index += len;
          }
@@ -142,7 +142,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 
    // Before feeding new data into the queue, the current buffer must be empty.
 
-   if ((!ClientSocket->WriteQueue.Buffer) OR (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Length)) {
+   if ((!ClientSocket->WriteQueue.Buffer) or (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Length)) {
       if (ClientSocket->Outgoing.Type) {
          if (ClientSocket->Outgoing.Type IS CALL_STDC) {
             ERROR (*routine)(extNetSocket *, extClientSocket *);
@@ -267,7 +267,7 @@ Failed: A permanent failure has occurred and socket has been closed.
 static ERROR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 {
    parasol::Log log;
-   if ((!Args) OR (!Args->Buffer)) return log.error(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer)) return log.error(ERR_NullArgs);
    if (Self->SocketHandle IS NOHANDLE) return log.error(ERR_Disconnected);
    Self->ReadCalled = TRUE;
    if (!Args->Length) { Args->Result = 0; return ERR_Okay; }
@@ -441,10 +441,10 @@ static ERROR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    LONG len = Args->Length;
    ERROR error = SEND((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, &len, 0);
 
-   if ((error) OR (len < Args->Length)) {
+   if ((error) or (len < Args->Length)) {
       if (error) log.trace("SEND() Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
       else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
-      if ((error IS ERR_DataSize) OR (error IS ERR_BufferOverflow) OR (len > 0))  {
+      if ((error IS ERR_DataSize) or (error IS ERR_BufferOverflow) or (len > 0))  {
          write_queue((extNetSocket *)(Self->Client->NetSocket), &Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
@@ -483,8 +483,8 @@ static ERROR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteCl
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Message) OR (Args->Length < 1)) return log.error(ERR_Args);
-   if ((Args->Length < 1) OR (Args->Length > NETMSG_SIZE_LIMIT)) return log.error(ERR_OutOfRange);
+   if ((!Args) or (!Args->Message) or (Args->Length < 1)) return log.error(ERR_Args);
+   if ((Args->Length < 1) or (Args->Length > NETMSG_SIZE_LIMIT)) return log.error(ERR_OutOfRange);
 
    log.traceBranch("Message: %p, Length: %d", Args->Message, Args->Length);
 

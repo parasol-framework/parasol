@@ -96,7 +96,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
 
             cmdline[0] = '"';
             ULONG i = get_exe(cmdline+1, sizeof(cmdline));
-            if ((!i) OR (i >= sizeof(cmdline)-30)) return(ERR_Failed);
+            if ((!i) or (i >= sizeof(cmdline)-30)) return(ERR_Failed);
             i++;
 
             i += StrCopy("\" --relaunch", cmdline+i, sizeof(cmdline)-i);

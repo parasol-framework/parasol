@@ -1050,7 +1050,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
          //else {
 
             if (Self->x11.XShmImage IS FALSE) {
-               log.msg("Allocating a memory based XImage.");
+               log.extmsg("Allocating a memory based XImage.");
                if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->memflags()|Self->DataFlags, &Self->Data, &Self->DataMID)) {
                   Self->prvAFlags |= BF_DATA;
 
@@ -1238,7 +1238,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
    }
 
    if ((!(Self->Flags & BMF_NO_DATA)) and (Self->Flags & BMF_CLEAR)) {
-      log.msg("Clearing Bitmap...");
+      log.trace("Clearing Bitmap...");
       acClear(Self);
    }
 
@@ -1490,12 +1490,12 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
          LONG new_height = nearestPower(Self->Height);
 
          if (new_width != Self->Width) {
-            LogMsg("Extending bitmap width from %d to %d for OpenGL.", Self->Width, new_width);
+            log.msg("Extending bitmap width from %d to %d for OpenGL.", Self->Width, new_width);
             Self->Width = new_width;
          }
 
          if (new_height != Self->Height) {
-            LogMsg("Extending bitmap height from %d to %d for OpenGL.", Self->Height, new_height);
+            log.msg("Extending bitmap height from %d to %d for OpenGL.", Self->Height, new_height);
             Self->Height = new_height;
          }
       }
