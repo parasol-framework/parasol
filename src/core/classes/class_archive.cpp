@@ -9,9 +9,9 @@ Please refer to it for further information on licensing.
 -CLASS-
 FileArchive: Creates simple read-only volumes backed by compressed archives.
 
-The FileArchive class is an internal support class that makes it possible to create virtual file system volumes that
-are based on compressed file archives.  There is no need for client programs to instantiate a FileArchive to make use
-of this functionality.  Instead, create a @Compression object that declares the path of the source archive file and an
+The FileArchive class makes it possible to create virtual file system volumes that are based on compressed file
+archives.  It is not necessary for client programs to instantiate a FileArchive to make use of this functionality.
+Instead, create a @Compression object that declares a Path to the source archive file and set an
 ArchiveName for reference.  In the example below, also take note of the use of NF_UNTRACKED to prevent the
 @Compression object from being automatically collected when it goes out of scope:
 
@@ -48,39 +48,24 @@ using namespace parasol;
 #define LEN_ARCHIVE 8 // "archive:" length
 
 struct prvFileArchive {
-   ZipFile Info;
+   ZipFile  Info;
    z_stream Stream;
-   objFile *FileStream;
-   objCompressedStream *CompressedStream;
-   APTR OutputBuffer;
-   UBYTE Inflating:1;
+   objFile  *FileStream;
+   objCompression *Archive;
+   UBYTE    InputBuffer[SIZE_COMPRESSION_BUFFER];
+   UBYTE    OutputBuffer[SIZE_COMPRESSION_BUFFER];
+   UBYTE    *ReadPtr;      // Current position within OutputBuffer
+   LONG     InputLength;
+   bool     Inflating;
 };
 
-static objCompression *glArchives = NULL;
+static std::unordered_map<ULONG, objCompression *> glArchives;
 
 static ERROR close_folder(DirInfo *);
 static ERROR open_folder(DirInfo *);
-static ERROR get_info(CSTRING Path, FileInfo *, LONG InfoSize);
+static ERROR get_info(CSTRING, FileInfo *, LONG);
 static ERROR scan_folder(DirInfo *);
-static ERROR test_path(CSTRING, LONG, LONG *);
-
-static ERROR convert_error(z_stream *Stream, LONG Result) __attribute__((unused));
-static ERROR convert_error(z_stream *Stream, LONG Result)
-{
-   parasol::Log log;
-
-   if (Stream->msg) log.warning("%s", Stream->msg);
-   else log.warning("Zip error: %d", Result);
-
-   switch(Result) {
-      case Z_STREAM_ERROR:  return ERR_Failed;
-      case Z_DATA_ERROR:    return ERR_InvalidData;
-      case Z_MEM_ERROR:     return ERR_Memory;
-      case Z_BUF_ERROR:     return ERR_BufferOverflow;
-      case Z_VERSION_ERROR: return ERR_WrongVersion;
-      default:              return ERR_Failed;
-   }
-}
+static ERROR test_path(STRING, LONG, LONG *);
 
 //****************************************************************************
 // Return the portion of the string that follows the last discovered '/' or '\'
@@ -88,7 +73,7 @@ static ERROR convert_error(z_stream *Stream, LONG Result)
 INLINE CSTRING name_from_path(CSTRING Path)
 {
    for (LONG i=0; Path[i]; i++) {
-      if ((Path[i] IS '/') OR (Path[i] IS '\\')) {
+      if ((Path[i] IS '/') or (Path[i] IS '\\')) {
          Path = Path + i + 1;
          i = -1;
       }
@@ -97,37 +82,73 @@ INLINE CSTRING name_from_path(CSTRING Path)
 }
 
 //****************************************************************************
+
+static void reset_state(objFile *Self)
+{
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
+
+   if (prv->Inflating) { inflateEnd(&prv->Stream); prv->Inflating = false; }
+
+   prv->Stream.avail_in = 0;
+   prv->ReadPtr = NULL;
+   Self->Position = 0;
+}
+
+//****************************************************************************
+
+static ERROR seek_to_item(objFile *Self)
+{
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
+   ZipFile *item = &prv->Info;
+
+   acSeekStart(prv->FileStream, item->Offset + HEAD_EXTRALEN);
+   prv->ReadPtr = NULL;
+
+   UWORD extra_len = read_word(prv->FileStream);
+   ULONG stream_start = item->Offset + HEAD_LENGTH + item->NameLen + extra_len;
+   if (acSeekStart(prv->FileStream, stream_start) != ERR_Okay) return ERR_Seek;
+
+   if (item->CompressedSize > 0) {
+      Self->Flags |= FL_FILE;
+
+      if (item->DeflateMethod IS 0) { // The file is stored rather than compressed
+         Self->Size = item->CompressedSize;
+         return ERR_Okay;
+      }
+      else if ((item->DeflateMethod IS 8) and (!inflateInit2(&prv->Stream, -MAX_WBITS))) {
+         prv->Inflating = true;
+         Self->Size = item->OriginalSize;
+         return ERR_Okay;
+      }
+      else return ERR_Failed;
+   }
+   else { // Folder or empty file
+      if (item->IsFolder) Self->Flags |= FL_FOLDER;
+      else Self->Flags |= FL_FILE;
+      Self->Size = 0;
+      return ERR_Okay;
+   }
+}
+
+//****************************************************************************
 // Insert a new compression object as an archive.
 
 extern void add_archive(objCompression *Compression)
 {
-   if (glArchives) Compression->NextArchive = glArchives;
-
-   glArchives = Compression;
+   glArchives[Compression->ArchiveHash] = Compression;
 }
 
 //****************************************************************************
 
 extern void remove_archive(objCompression *Compression)
 {
-   if (glArchives IS Compression) {
-      glArchives = Compression->NextArchive;
-   }
-   else {
-      objCompression *scan;
-      for (scan=glArchives; scan; scan=scan->NextArchive) {
-         if (scan->NextArchive IS Compression) {
-            scan->NextArchive = Compression->NextArchive;
-            break;
-         }
-      }
-   }
+   glArchives.erase(Compression->ArchiveHash);
 }
 
 //****************************************************************************
 // Return the archive referenced by 'archive:[NAME]/...'
 
-extern objCompression * find_archive(CSTRING Path, CSTRING *FilePath)
+extern objCompression * find_archive(CSTRING Path, std::string &FilePath)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -138,102 +159,57 @@ extern objCompression * find_archive(CSTRING Path, CSTRING *FilePath)
    CSTRING path = Path + LEN_ARCHIVE;
    ULONG hash = 5381;
    char c;
-   while ((c = *path++) AND (c != '/') AND (c != '\\')) {
-      if ((c >= 'A') AND (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
+   while ((c = *path++) and (c != '/') and (c != '\\')) {
+      if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
       else hash = (hash<<5) + hash + c;
    }
 
-   if (FilePath) {
-      if (c) *FilePath = path;
-      else *FilePath = NULL;
+   if (glArchives.contains(hash)) {
+      FilePath.assign(path);
+      return glArchives[hash];
    }
-
-   // Find the compression object with the referenced hash.
-
-   objCompression *cmp = glArchives;
-   while (cmp) {
-      if (cmp->ArchiveHash IS hash) {
-         log.trace("Found matching archive for %s", Path);
-         return cmp;
-      }
-      cmp = cmp->NextArchive;
+   else {
+      log.warning("No match for path '%s'", Path);
+      return NULL;
    }
-
-   log.warning("No match for path %s", Path);
-   return NULL;
 }
 
 //****************************************************************************
 
 static ERROR ARCHIVE_Activate(objFile *Self, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
+   parasol::Log log;
 
-   log.trace("Activating archive object...");
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
 
-   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
+   if (!prv->Archive) return log.warning(ERR_SystemCorrupt);
 
-   CSTRING file_path;
-   objCompression *cmp = find_archive(Self->Path, &file_path);
+   if (prv->FileStream) return ERR_Okay; // Already activated
 
-   if (!cmp) return log.warning(ERR_Search);
+   log.msg("Allocating file stream for item %s", prv->Info.Name);
 
-   ERROR error;
-   if (!prv->FileStream) {
-      if (!CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&prv->FileStream,
-            FID_Location|TSTR, cmp->Location,
-            FID_Flags|TLONG,   FL_READ,
-            TAGEND)) {
+   if (!CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&prv->FileStream,
+         FID_Name|TSTR,   "ArchiveFileStream",
+         FID_Path|TSTR,   prv->Archive->Path,
+         FID_Flags|TLONG, FL_READ,
+         TAGEND)) {
 
-         ZipFile *item = cmp->prvFiles;
-         while (item) {
-            if (!StrCompare(file_path, item->Name, 0, STR_WILDCARD)) break;
-            else item = (ZipFile *)item->Next;
-         }
-
-         acSeekStart(prv->FileStream, item->Offset + HEAD_EXTRALEN);
-
-         UWORD extralen = read_word(prv->FileStream);
-         ULONG stream_start = item->Offset + HEAD_LENGTH + item->NameLen + extralen;
-         if (acSeekStart(prv->FileStream, stream_start) != ERR_Okay) {
-            error = log.warning(ERR_Seek);
-         }
-         else if (item->CompressedSize > 0) {
-            Self->Flags |= FL_FILE;
-
-            if (item->DeflateMethod IS 0) { // The file is stored rather than compressed
-               Self->Size = item->CompressedSize;
-               error = ERR_Okay;
-            }
-            else if ((item->DeflateMethod IS 8) AND (!inflateInit2(&prv->Stream, -MAX_WBITS))) {
-               prv->Inflating = TRUE;
-               error = ERR_Okay;
-            }
-            else error = ERR_Failed;
-         }
-         else { // Folder or empty file
-            if (item->IsFolder) Self->Flags |= FL_FOLDER;
-            else Self->Flags |= FL_FILE;
-            error = ERR_Okay;
-         }
-      }
-      else error = ERR_File;
+      ERROR error = seek_to_item(Self);
+      if (error) log.warning(error);
+      return error;
    }
-   else error = ERR_Okay;
-
-   return error;
+   else return ERR_File;
 }
 
 //****************************************************************************
 
 static ERROR ARCHIVE_Free(objFile *Self, APTR Void)
 {
-   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (prv) {
-      if (prv->FileStream) { acFree(&prv->FileStream->Head); prv->FileStream = NULL; }
-      if (prv->CompressedStream) { acFree(&prv->CompressedStream->Head); prv->CompressedStream = NULL; }
-      if (prv->OutputBuffer) { FreeResource(prv->OutputBuffer); prv->OutputBuffer = NULL; }
+      if (prv->FileStream) { acFree(prv->FileStream); prv->FileStream = NULL; }
+      if (prv->Inflating)  { inflateEnd(&prv->Stream); prv->Inflating = false; }
    }
 
    return ERR_Okay;
@@ -243,7 +219,7 @@ static ERROR ARCHIVE_Free(objFile *Self, APTR Void)
 
 static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
+   parasol::Log log;
 
    if (!Self->Path) return ERR_FieldNotSet;
 
@@ -251,39 +227,46 @@ static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
 
    if (Self->Flags & (FL_NEW|FL_WRITE)) return log.warning(ERR_ReadOnly);
 
-   ERROR error = ERR_Failed;
-   if (!AllocMemory(sizeof(prvFileArchive), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
-      LONG len;
-      for (len=0; Self->Path[len]; len++);
-
-      if (Self->Path[len-1] IS ':') { // Nothing is referenced
+   ERROR error = ERR_Search;
+   if (!AllocMemory(sizeof(prvFileArchive), Self->memflags(), &Self->ChildPrivate, NULL)) {
+      if (Self->Path[StrLength(Self->Path)-1] IS ':') { // Nothing is referenced
          return ERR_Okay;
       }
       else {
-         CSTRING file_path;
-         objCompression *cmp = find_archive(Self->Path, &file_path);
+         std::string file_path;
 
-         if (cmp) {
-            ZipFile *item = cmp->prvFiles;
-            while (item) {
-               if (!StrCompare(file_path, item->Name, 0, STR_WILDCARD)) break;
-               else item = (ZipFile *)item->Next;
+         auto prv = (prvFileArchive *)(Self->ChildPrivate);
+         prv->Archive = find_archive(Self->Path, file_path);
+
+         if (prv->Archive) {
+            // TODO: This is a slow scan and could be improved if a hashed directory structure was
+            // generated during add_archive() first; then we could perform a quick lookup here.
+
+            ZipFile *item;
+            for (item=prv->Archive->prvFiles; item; item=(ZipFile *)item->Next) {
+               if (!StrCompare(file_path.c_str(), item->Name, 0, STR_CASE|STR_MATCH_LEN)) break;
+            }
+
+            if ((!item) and (Self->Flags & FL_APPROXIMATE)) {
+               file_path.append(".*");
+               for (item=prv->Archive->prvFiles; item; item=(ZipFile *)item->Next) {
+                  if (!StrCompare(file_path.c_str(), item->Name, 0, STR_WILDCARD)) break;
+               }
             }
 
             if (item) {
-               ((prvFileArchive *)(Self->Head.ChildPrivate))->Info = *item;
-               error = acActivate((OBJECTPTR)Self);
-               if (!error) error = acQuery((OBJECTPTR)Self);
+               ((prvFileArchive *)(Self->ChildPrivate))->Info = *item;
+               if (!(error = acActivate(Self))) {
+                  error = acQuery(Self);
+               }
             }
-            else error = ERR_Search;
          }
-         else error = ERR_Search;
       }
    }
    else error = ERR_AllocMemory;
 
    if (error) {
-      if (Self->Head.ChildPrivate) { FreeResource(Self->Head.ChildPrivate); Self->Head.ChildPrivate = NULL; }
+      if (Self->ChildPrivate) { FreeResource(Self->ChildPrivate); Self->ChildPrivate = NULL; }
    }
 
    return error;
@@ -293,20 +276,19 @@ static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
 
 static ERROR ARCHIVE_Query(objFile *Self, APTR Void)
 {
-   prvFileArchive *prv = (prvFileArchive *)(Self->Head.ChildPrivate);
+   auto prv = (prvFileArchive *)(Self->ChildPrivate);
 
    // Activate the source if this hasn't been done already.
 
    ERROR error;
    if (!prv->FileStream) {
-      error = acActivate((OBJECTPTR)Self);
+      error = acActivate(Self);
       if (error) return error;
    }
 
-   ZipFile *item = &prv->Info;
-
    // If security flags are present, convert them to file system permissions.
 
+   ZipFile *item = &prv->Info;
    if (item->Flags & ZIP_SECURITY) {
       LONG permissions = 0;
       if (item->Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
@@ -329,17 +311,15 @@ static ERROR ARCHIVE_Query(objFile *Self, APTR Void)
 
 //****************************************************************************
 
-#define MIN_OUTPUT_SIZE ((32 * 1024) + 2048)
-
 static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   parasol::Log log;
 
-   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    else if (Args->Length == 0) return ERR_Okay;
    else if (Args->Length < 0) return ERR_OutOfRange;
 
-   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (prv->Info.DeflateMethod IS 0) {
       ERROR error = acRead(prv->FileStream, Args->Buffer, Args->Length, &Args->Result);
@@ -347,77 +327,82 @@ static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
       return error;
    }
    else {
-      LONG inputsize = prv->Info.CompressedSize < 1024 ? prv->Info.CompressedSize : 1024;
-      UBYTE inputstream[inputsize];
-      LONG length;
-
-      if (!prv->Inflating) {
-         Args->Result = 0;
-         return ERR_Okay;
-      }
-
-      // Output preparation
-
       Args->Result = 0;
-      APTR output = Args->Buffer;
-      LONG outputsize = Args->Length;
-      if (outputsize < MIN_OUTPUT_SIZE) {
-         // An internal buffer will need to be allocated if the one supplied to Read() is not large enough.
-         outputsize = MIN_OUTPUT_SIZE;
-         if (!(output = prv->OutputBuffer)) {
-            if (AllocMemory(MIN_OUTPUT_SIZE, MEM_DATA|MEM_NO_CLEAR, &prv->OutputBuffer, NULL)) return ERR_AllocMemory;
-            output = prv->OutputBuffer;
+
+      auto zf = &prv->Info;
+
+      //log.trace("Decompressing %d bytes to %d, buffer size %d", zf->CompressedSize, zf->OriginalSize, Args->Length);
+
+      if ((prv->Inflating) and (!prv->Stream.avail_in)) { // Initial setup
+         struct acRead read = {
+            .Buffer = prv->InputBuffer,
+            .Length = (zf->CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf->CompressedSize : SIZE_COMPRESSION_BUFFER
+         };
+
+         if (Action(AC_Read, prv->FileStream, &read)) return ERR_Read;
+         if (read.Result <= 0) return ERR_Read;
+
+         prv->ReadPtr          = prv->OutputBuffer;
+         prv->InputLength      = zf->CompressedSize - read.Result;
+         prv->Stream.next_in   = prv->InputBuffer;
+         prv->Stream.avail_in  = read.Result;
+         prv->Stream.next_out  = prv->OutputBuffer;
+         prv->Stream.avail_out = SIZE_COMPRESSION_BUFFER;
+      }
+
+      while (true) {
+         // Output any buffered data to the client first
+         if (prv->ReadPtr < (UBYTE *)prv->Stream.next_out) {
+            LONG len = (LONG)(prv->Stream.next_out - (Bytef *)prv->ReadPtr);
+            if (len > Args->Length) len = Args->Length;
+            CopyMemory(prv->ReadPtr, (char *)Args->Buffer + Args->Result, len);
+            prv->ReadPtr   += len;
+            Args->Result   += len;
+            Self->Position += len;
+         }
+
+         // Stop if necessary
+
+         if (prv->Stream.total_out IS zf->OriginalSize) break; // All data decompressed
+         if (Args->Result >= Args->Length) return ERR_Okay;
+         if (!prv->Inflating) return ERR_Okay;
+
+         // Reset the output buffer and decompress more data
+
+         prv->Stream.next_out  = prv->OutputBuffer;
+         prv->Stream.avail_out = SIZE_COMPRESSION_BUFFER;
+
+         LONG result = inflate(&prv->Stream, (prv->Stream.avail_in) ? Z_SYNC_FLUSH : Z_FINISH);
+
+         prv->ReadPtr = prv->OutputBuffer;
+
+         if ((result) and (result != Z_STREAM_END)) {
+            return convert_zip_error(&prv->Stream, result);
+         }
+
+         // Read more data from the source if necessary
+
+         if ((prv->Stream.avail_in <= 0) and (prv->InputLength > 0) and (result != Z_STREAM_END)) {
+            struct acRead read = { .Buffer = prv->InputBuffer };
+
+            if (prv->InputLength < SIZE_COMPRESSION_BUFFER) read.Length = prv->InputLength;
+            else read.Length = SIZE_COMPRESSION_BUFFER;
+
+            if (Action(AC_Read, prv->FileStream, &read)) return ERR_Read;
+            if (read.Result <= 0) return ERR_Read;
+
+            prv->InputLength -= read.Result;
+            prv->Stream.next_in  = prv->InputBuffer;
+            prv->Stream.avail_in = read.Result;
          }
       }
 
-      // The outer loop tries to fill the entirety of the client buffer.
-
-      LONG out_offset = 0;
-      ERROR error = ERR_Okay;
-      while ((Args->Result < (LONG)prv->Info.OriginalSize) AND (Args->Result < Args->Length)) {
-
-         if (acRead(prv->FileStream, inputstream, inputsize, &length)) return log.warning(ERR_Read);
-
-         if (length <= 0) return ERR_Okay;
-
-         // Inner loop processes all of the read data.
-
-         prv->Stream.next_in  = inputstream;
-         prv->Stream.avail_in = length;
-
-         LONG result = Z_OK;
-         while ((result IS Z_OK) AND (prv->Stream.avail_in > 0) AND (out_offset < outputsize)) {
-            prv->Stream.next_out  = (Bytef *)output + out_offset;
-            prv->Stream.avail_out = outputsize;
-            result = inflate(&prv->Stream, Z_SYNC_FLUSH);
-
-            if ((result) AND (result != Z_STREAM_END)) {
-               error = convert_error(&prv->Stream, result);
-               break;
-            }
-
-            LONG total_output = outputsize - prv->Stream.avail_out;
-
-            if (output IS Args->Buffer) { // Decompression is direct to the client buffer.
-               out_offset += total_output;
-            }
-            else { // Decompression is to the temporary buffer.
-               CopyMemory(output, (BYTE *)Args->Buffer + Args->Result, total_output);
-            }
-
-            Args->Result += total_output;
-
-            if (result IS Z_STREAM_END) {
-               // Decompression is complete
-               log.trace("Decompression complete.  Output %d bytes.", out_offset);
-               prv->Inflating = FALSE;
-               error = ERR_Okay;
-               break;
-            }
-         }
+      if (prv->Inflating) {
+         inflateEnd(&prv->Stream);
+         prv->Inflating = false;
       }
 
-      return error;
+      return ERR_Okay;
    }
 }
 
@@ -425,30 +410,40 @@ static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
 
 static ERROR ARCHIVE_Seek(objFile *Self, struct acSeek *Args)
 {
-   parasol::Log log(__FUNCTION__);
-   LONG pos;
+   parasol::Log log;
+   LARGE pos;
 
-   if (Args->Position IS SEEK_START) pos = Args->Offset;
-   else if (Args->Position IS SEEK_END) pos = Self->Size - Args->Offset;
-   else if (Args->Position IS SEEK_CURRENT) pos = Self->Position + Args->Offset;
+   log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, Args->Position);
+
+   if (Args->Position IS SEEK_START) pos = F2T(Args->Offset);
+   else if (Args->Position IS SEEK_END) pos = Self->Size - F2T(Args->Offset);
+   else if (Args->Position IS SEEK_CURRENT) pos = Self->Position + F2T(Args->Offset);
    else return log.warning(ERR_Args);
 
-   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
-   ERROR error = acSeek(prv->CompressedStream, Args->Position, Args->Offset);
-   if (!error) {
-      if (pos < 0) pos = 0;
-      else if (pos > Self->Size) pos = Self->Size;
-      Self->Position = pos;
+   if (pos < 0) return log.warning(ERR_OutOfRange);
+
+   if (pos < Self->Position) { // The position must be reset to zero if we need to backtrack
+      reset_state(Self);
+
+      ERROR error = seek_to_item(Self);
+      if (error) return log.warning(error);
    }
 
-   return error;
+   UBYTE buffer[2048];
+   while (Self->Position < pos) {
+      struct acRead read = { .Buffer = buffer, .Length = (LONG)(pos - Self->Position) };
+      if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
+      if (Action(AC_Read, Self, &read)) return ERR_Decompression;
+   }
+
+   return ERR_Okay;
 }
 
 //****************************************************************************
 
 static ERROR ARCHIVE_Write(objFile *Self, struct acWrite *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   parasol::Log log;
    return log.warning(ERR_NoSupport);
 }
 
@@ -456,7 +451,7 @@ static ERROR ARCHIVE_Write(objFile *Self, struct acWrite *Args)
 
 static ERROR ARCHIVE_GET_Size(objFile *Self, LARGE *Value)
 {
-   auto prv = (prvFileArchive *)Self->Head.ChildPrivate;
+   auto prv = (prvFileArchive *)Self->ChildPrivate;
    if (prv) {
       *Value = prv->Info.OriginalSize;
       return ERR_Okay;
@@ -469,9 +464,10 @@ static ERROR ARCHIVE_GET_Size(objFile *Self, LARGE *Value)
 
 static ERROR open_folder(DirInfo *Dir)
 {
+   std::string file_path;
    Dir->prvIndex = 0;
    Dir->prvTotal = 0;
-   Dir->prvHandle = find_archive(Dir->prvResolvedPath, NULL);
+   Dir->prvHandle = find_archive(Dir->prvResolvedPath, file_path);
    if (!Dir->prvHandle) return ERR_DoesNotExist;
    return ERR_Okay;
 }
@@ -486,8 +482,8 @@ static ERROR scan_folder(DirInfo *Dir)
    // Retrieve the file path, skipping the "archive:name/" part.
 
    CSTRING path = Dir->prvResolvedPath + LEN_ARCHIVE + 1;
-   while ((*path) AND (*path != '/') AND (*path != '\\')) path++;
-   if ((*path IS '/') OR (*path IS '\\')) path++;
+   while ((*path) and (*path != '/') and (*path != '\\')) path++;
+   if ((*path IS '/') or (*path IS '\\')) path++;
 
    log.traceBranch("Path: \"%s\", Flags: $%.8x", path, Dir->prvFlags);
 
@@ -496,12 +492,10 @@ static ERROR scan_folder(DirInfo *Dir)
    ZipFile *zf = archive->prvFiles;
    if (Dir->prvIndexPtr) zf = (ZipFile *)Dir->prvIndexPtr;
 
-   for (; zf; zf = (ZipFile *)zf->Next) {
+   for (; zf; zf=(ZipFile *)zf->Next) {
       if (*path) {
          if (StrCompare(path, zf->Name, 0, 0) != ERR_Okay) continue;
       }
-
-      log.trace("%s: %s, $%.8x", path, zf->Name, zf->Flags);
 
       // Single folders will appear as 'ABCDEF/'
       // Single files will appear as 'ABCDEF.ABC' (no slash)
@@ -515,11 +509,11 @@ static ERROR scan_folder(DirInfo *Dir)
 
       {
          LONG i;
-         for (i=path_len; (zf->Name[i]) AND (zf->Name[i] != '/') AND (zf->Name[i] != '\\'); i++);
+         for (i=path_len; (zf->Name[i]) and (zf->Name[i] != '/') and (zf->Name[i] != '\\'); i++);
          if (zf->Name[i]) continue;
       }
 
-      if ((Dir->prvFlags & RDF_FILE) AND (!zf->IsFolder)) {
+      if ((Dir->prvFlags & RDF_FILE) and (!zf->IsFolder)) {
 
          if (Dir->prvFlags & RDF_PERMISSIONS) {
             Dir->Info->Flags |= RDF_PERMISSIONS;
@@ -549,7 +543,7 @@ static ERROR scan_folder(DirInfo *Dir)
          return ERR_Okay;
       }
 
-      if ((Dir->prvFlags & RDF_FOLDER) AND (zf->IsFolder)) {
+      if ((Dir->prvFlags & RDF_FOLDER) and (zf->IsFolder)) {
          Dir->Info->Flags |= RDF_FOLDER;
 
          LONG i = StrCopy(name_from_path(zf->Name), Dir->Info->Name, MAX_FILENAME-2);
@@ -584,16 +578,17 @@ static ERROR close_folder(DirInfo *Dir)
 
 static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
+   parasol::Log log(__FUNCTION__);
    CompressedItem *item;
    objCompression *cmp;
-   CSTRING file_path;
+   std::string file_path;
    ERROR error;
 
-   if ((cmp = find_archive(Path, &file_path))) {
-      struct cmpFind find = { .Path=file_path, .Flags=STR_CASE|STR_MATCH_LEN };
-      if ((error = Action(MT_CmpFind, &cmp->Head, &find))) {
-         return error;
-      }
+   log.traceBranch("%s", Path);
+
+   if ((cmp = find_archive(Path, file_path))) {
+      struct cmpFind find = { .Path=file_path.c_str(), .Flags=STR_CASE|STR_MATCH_LEN };
+      if ((error = Action(MT_CmpFind, cmp, &find))) return error;
       item = find.Item;
    }
    else return ERR_DoesNotExist;
@@ -610,8 +605,8 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    LONG len = StrLength(Path);
    LONG i = len;
-   if ((Path[i-1] IS '/') OR (Path[i-1] IS '\\')) i--;
-   while ((i > 0) AND (Path[i-1] != '/') AND (Path[i-1] != '\\') AND (Path[i-1] != ':')) i--;
+   if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) i--;
+   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
    i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
 
    if (Info->Flags & RDF_FOLDER) {
@@ -632,27 +627,37 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 //****************************************************************************
 // Test an archive: location.
 
-static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
+static ERROR test_path(STRING Path, LONG Flags, LONG *Type)
 {
    parasol::Log log(__FUNCTION__);
 
    log.traceBranch("%s", Path);
 
-   CSTRING file_path;
+   std::string file_path;
    objCompression *cmp;
-   if (!(cmp = find_archive(Path, &file_path))) {
-      return ERR_DoesNotExist;
-   }
+   if (!(cmp = find_archive(Path, file_path))) return ERR_DoesNotExist;
 
-   if ((!file_path) OR (!file_path[0])) {
+   if (file_path.empty()) {
       *Type = LOC_VOLUME;
       return ERR_Okay;
    }
 
    CompressedItem *item;
-   ERROR error;
-   if ((error = cmpFind(cmp, file_path, STR_CASE|STR_MATCH_LEN, &item))) {
-      log.trace("cmpFind() did not find %s, %s", file_path, GetErrorMsg(error));
+   ERROR error = cmpFind(cmp, file_path.c_str(), STR_CASE|STR_MATCH_LEN, &item);
+
+   if ((error) and (Flags & RSF_APPROXIMATE)) {
+      file_path.append(".*");
+      if (!(error = cmpFind(cmp, file_path.c_str(), STR_CASE|STR_WILDCARD, &item))) {
+         // Point the path to the discovered item
+         LONG i;
+         for (i=0; (Path[i] != '/') and (Path[i]); i++);
+         if (Path[i] IS '/') StrCopy(item->Path, Path + i + 1, MAX_FILENAME);
+      }
+   }
+
+   if (error) {
+      log.trace("cmpFind() did not find %s, %s", file_path.c_str(), GetErrorMsg(error));
+
       if (error IS ERR_Search) return ERR_DoesNotExist;
       else return error;
    }

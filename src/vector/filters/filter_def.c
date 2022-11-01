@@ -15,19 +15,19 @@ static const struct FieldDef clVectorFilterPrimitiveUnits[] = {
 };
 
 static const struct FieldDef clVectorFilterColourSpace[] = {
+   { "Inherit", 0x00000000 },
    { "SRGB", 0x00000001 },
    { "LinearRGB", 0x00000002 },
-   { "Inherit", 0x00000003 },
    { NULL, 0 }
 };
 
 static const struct ActionArray clVectorFilterActions[] = {
    { AC_Clear, (APTR)VECTORFILTER_Clear },
-   { AC_DataFeed, (APTR)VECTORFILTER_DataFeed },
-   { AC_Draw, (APTR)VECTORFILTER_Draw },
    { AC_Free, (APTR)VECTORFILTER_Free },
    { AC_Init, (APTR)VECTORFILTER_Init },
+   { AC_NewChild, (APTR)VECTORFILTER_NewChild },
    { AC_NewObject, (APTR)VECTORFILTER_NewObject },
+   { AC_NewOwner, (APTR)VECTORFILTER_NewOwner },
    { 0, 0 }
 };
 

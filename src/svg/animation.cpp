@@ -1,8 +1,10 @@
 
 //****************************************************************************
 
-static ERROR animation_timer(objSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
+static ERROR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
 {
+   if (!SVG->Animations) return ERR_Okay;
+
    for (auto anim=SVG->Animations; anim; anim=anim->Next) {
       if (anim->ValueCount < 2) continue; // Skip animation if no From and To list is specified.
       if (anim->EndTime) continue;
@@ -23,7 +25,7 @@ restart:
 
          if (frame >= 1.0) { // Check if the sequence has ended.
             anim->RepeatIndex++;
-            if ((anim->RepeatCount < 0) OR (anim->RepeatIndex <= anim->RepeatCount)) {
+            if ((anim->RepeatCount < 0) or (anim->RepeatIndex <= anim->RepeatCount)) {
                anim->StartTime = 0;
                goto restart;
             }
@@ -34,7 +36,7 @@ restart:
          }
 
          // RepeatDuration prevents the animation from running past a fixed number of seconds since it started.
-         if ((anim->RepeatDuration > 0) AND ((DOUBLE)(current_time - anim->StartTime) / 1000.0 > anim->RepeatDuration)) {
+         if ((anim->RepeatDuration > 0) and ((DOUBLE)(current_time - anim->StartTime) / 1000.0 > anim->RepeatDuration)) {
             anim->EndTime = current_time; // End the animation.
             frame = 1.0;
          }
@@ -45,6 +47,10 @@ restart:
          if (anim->Transform) { // Animated transform
             objVector *vector;
             if (!AccessObject(anim->TargetVector, 1000, &vector)) {
+               if (!anim->Matrix) {
+                  vecNewMatrix(vector, &anim->Matrix);
+               }
+
                switch(anim->Transform) {
                   case AT_TRANSLATE: break;
                   case AT_SCALE: break;
@@ -62,7 +68,8 @@ restart:
                      DOUBLE new_cx    = from_cx + ((to_cx - from_cx) * ratio);
                      DOUBLE new_cy    = from_cy + ((to_cy - from_cy) * ratio);
 
-                     vecRotate(vector, new_angle, new_cx, new_cy);
+                     vecResetMatrix(anim->Matrix);
+                     vecRotate(anim->Matrix, new_angle, new_cx, new_cy);
                      break;
                   }
                   case AT_SKEW_X: break;
@@ -82,7 +89,7 @@ restart:
    if (SVG->FrameCallback.Type != CALL_NONE) {
       if (SVG->FrameCallback.Type IS CALL_STDC) {
          parasol::SwitchContext context(SVG->FrameCallback.StdC.Context);
-         auto routine = (void (*)(rkSVG *))SVG->FrameCallback.StdC.Routine;
+         auto routine = (void (*)(extSVG *))SVG->FrameCallback.StdC.Routine;
          routine(SVG);
       }
       else if (SVG->FrameCallback.Type IS CALL_SCRIPT) {
@@ -91,7 +98,7 @@ restart:
             const ScriptArg args[] = {
                { "SVG", FD_OBJECTPTR, { .Address = SVG } }
             };
-            scCallback(script, SVG->FrameCallback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, SVG->FrameCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
    }

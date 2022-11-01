@@ -3,18 +3,14 @@
 -MODULE-
 Core: The core library provides system calls and controls for the Parasol system.
 
-The Parasol Core is a function library that provides the features typically found in a system kernel, but with an
-abstraction layer that allows it to work on multiple platforms.  It also features an extensive object oriented
-programming interface.
+The Parasol Core is a system library that provides a universal API that works on multiple platforms.  It follows an
+object oriented design with granular resource tracking to minimise resource usage and memory leaks.
 
-The portability of the core has been safe-guarded by keeping the functions as generalised as possible for potential host
-environments.  It is vital that when writing application code for a target platform, the temptation to use the host's
-functions are avoided.  Making direct calls to the host platform will lower the level of compatibility with other
-platforms that are supported by Parasol.
+The portability of the core has been safe-guarded by keeping the functions as generalised as possible.  When writing
+code for a target platform it will be possible for the application to be completely sandboxed if the host's system
+calls are avoided.
 
-For summarised information about how the system works, please refer to the introductory manuals which cover all aspects
-of the design and object orientation in the system.  All of the information provided in this manual is technical and
-intended for reference.
+This documentation is intended for technical reference and is not suitable as an introductory guide to the framework.
 
 -END-
 
@@ -31,6 +27,7 @@ intended for reference.
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <forward_list>
 
 #ifdef _WIN32
 #include <time.h>
@@ -114,7 +111,7 @@ extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
 static ERROR open_shared_control(BYTE);
 static ERROR init_shared_control(void);
 static ERROR load_modules(void);
-static ERROR init_filesystem(void);
+static ERROR init_filesystem(std::forward_list<CSTRING> &);
 
 #ifdef _WIN32
 static WINHANDLE glSharedControlID = 0; // Shared memory ID.
@@ -146,8 +143,8 @@ static void print_class_list(void)
    LONG *offsets = CL_OFFSETS(glClassDB);
    for (WORD i=0; i < glClassDB->Total; i++) {
       ClassItem *item = (ClassItem *)(((BYTE *)glClassDB) + offsets[i]);
-      for (WORD j=0; (item->Name[j]) AND (pos < sizeof(buffer)-2); j++) buffer[pos++] = item->Name[j];
-      if ((i < glClassDB->Total-1) AND (pos < sizeof(buffer)-1)) buffer[pos++] = ' ';
+      for (WORD j=0; (item->Name[j]) and (pos < sizeof(buffer)-2); j++) buffer[pos++] = item->Name[j];
+      if ((i < glClassDB->Total-1) and (pos < sizeof(buffer)-1)) buffer[pos++] = ' ';
    }
    buffer[pos] = 0;
    log.trace("Total: %d, %s", glClassDB->Total, buffer);
@@ -177,7 +174,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          BYTE hold_priority;
       #endif
    #endif
-   rkTask *localtask;
+   objTask *localtask;
    LONG i;
    OBJECTPTR SystemTask;
    ERROR error;
@@ -191,11 +188,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (glProcessID) {
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
-   }
-
-   if (glTotalHeaders != ERH_END) {
-      fprintf(stderr, "ERH_END != glTotalHeaders\n");
-      return NULL;
    }
 
    if (alloc_private_lock(TL_GENERIC, 0)) return NULL; // A misc. internal mutex, strictly not recursive.
@@ -326,7 +318,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          LONG len;
          if (winGetExeDirectory(sizeof(glRootPath), glRootPath)) {
             len = StrLength(glRootPath);
-            while ((len > 1) AND (glRootPath[len-1] != '/') AND (glRootPath[len-1] != '\\') AND (glRootPath[len-1] != ':')) len--;
+            while ((len > 1) and (glRootPath[len-1] != '/') and (glRootPath[len-1] != '\\') and (glRootPath[len-1] != ':')) len--;
             glRootPath[len] = 0;
          }
          else if ((!winGetCurrentDirectory(sizeof(glRootPath), glRootPath))) {
@@ -379,7 +371,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Android sets an important JNI pointer on initialisation.
 
-   if ((Info->Flags & OPF_OPTIONS) AND (Info->Options)) {
+   if ((Info->Flags & OPF_OPTIONS) and (Info->Options)) {
       for (LONG i=0; Info->Options[i].Tag != TAGEND; i++) {
          switch (Info->Options[i].Tag) {
             case TOI_ANDROID_ENV: {
@@ -393,7 +385,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    // Check if the privileged flag has been set, which means "don't drop administration privileges if my binary is known to be suid".
 
 #if defined(__unix__) && !defined(__ANDROID__)
-   if ((Info->Flags & OPF_PRIVILEGED) AND (geteuid() != getuid())) {
+   if ((Info->Flags & OPF_PRIVILEGED) and (geteuid() != getuid())) {
       glPrivileged = TRUE;
    }
 #endif
@@ -405,59 +397,69 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    //   initialisation.  Useful for relaunching the system from a new disk location with new glSemaphore stuff - module
    //   references etc.
 
+   std::forward_list<CSTRING> volumes;
+
    CSTRING newargs[Info->ArgCount];
    LONG na = 0;
    solo = FALSE;
    if (Info->Flags & OPF_ARGS) {
       for (i=1; i < Info->ArgCount; i++) {
-         if (!StrMatch(Info->Args[i], "--log-memory")) {
+         auto arg = Info->Args[i];
+         if ((arg[0] != '-') or (arg[1] != '-')) { newargs[na++] = arg; continue; }
+         arg += 2; // Skip '--' as this prepends all Core arguments
+
+         if (!StrMatch(arg, "log-memory")) {
             glShowPrivate = TRUE;
             glShowPublic  = TRUE;
             glDebugMemory = TRUE;
          }
-         else if (!StrMatch(Info->Args[i], "--log-shared-memory")) {
+         else if (!StrMatch(arg, "log-shared-memory")) {
             glShowPublic = TRUE;
          }
-         else if (!StrMatch(Info->Args[i], "--instance")) {
+         else if (!StrMatch(arg, "instance")) {
             if (i < Info->ArgCount-1) {
                glInstanceID = StrToInt(Info->Args[i+1]);
                i++;
             }
          }
-         else if (!StrCompare(Info->Args[i], "--gfx-driver=", 13, 0)) {
-            StrCopy(Info->Args[i]+13, glDisplayDriver, sizeof(glDisplayDriver));
+         else if (!StrCompare(arg, "gfx-driver=", 11, 0)) {
+            StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
          }
-         else if (!StrMatch(Info->Args[i], "--global"))      Info->Flags |= OPF_GLOBAL_INSTANCE;
-         else if (!StrMatch(Info->Args[i], "--solo"))        solo = TRUE;
-         else if (!StrMatch(Info->Args[i], "--sync"))        glSync = TRUE;
-         else if (!StrMatch(Info->Args[i], "--log-none"))    glLogLevel = 0;
-         else if (!StrMatch(Info->Args[i], "--log-error"))   glLogLevel = 1;
-         else if (!StrMatch(Info->Args[i], "--log-warn"))    glLogLevel = 2;
-         else if (!StrMatch(Info->Args[i], "--log-warning")) glLogLevel = 2;
-         else if (!StrMatch(Info->Args[i], "--log-info"))    glLogLevel = 4; // Levels 3/4 are for applications (no internal detail)
-         else if (!StrMatch(Info->Args[i], "--log-api"))     glLogLevel = 5; // Default level for API messages
-         else if (!StrMatch(Info->Args[i], "--log-extapi"))  glLogLevel = 6;
-         else if (!StrMatch(Info->Args[i], "--log-debug"))   glLogLevel = 7;
-         else if (!StrMatch(Info->Args[i], "--log-all"))     glLogLevel = 9; // 9 is the absolute maximum
-         else if (!StrMatch(Info->Args[i], "--time"))        glTimeLog = PreciseTime();
+         else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
+            volumes.emplace_front(Info->Args[++i]);
+         }
+         else if (!StrMatch(arg, "global"))      Info->Flags |= OPF_GLOBAL_INSTANCE;
+         else if (!StrMatch(arg, "solo"))        solo = TRUE;
+         else if (!StrMatch(arg, "sync"))        glSync = TRUE;
+         else if (!StrMatch(arg, "log-none"))    glLogLevel = 0;
+         else if (!StrMatch(arg, "log-error"))   glLogLevel = 1;
+         else if (!StrMatch(arg, "log-warn"))    glLogLevel = 2;
+         else if (!StrMatch(arg, "log-warning")) glLogLevel = 2;
+         else if (!StrMatch(arg, "log-info"))    glLogLevel = 4; // Levels 3/4 are for applications (no internal detail)
+         else if (!StrMatch(arg, "log-api"))     glLogLevel = 5; // Default level for API messages
+         else if (!StrMatch(arg, "log-extapi"))  glLogLevel = 6;
+         else if (!StrMatch(arg, "log-debug"))   glLogLevel = 7;
+         else if (!StrMatch(arg, "log-trace"))   glLogLevel = 9;
+         else if (!StrMatch(arg, "log-all"))     glLogLevel = 9; // 9 is the absolute maximum
+         else if (!StrMatch(arg, "time"))        glTimeLog = PreciseTime();
          #if defined(__unix__) && !defined(__ANDROID__)
-         else if (!StrMatch(Info->Args[i], "--holdpriority")) hold_priority = TRUE;
+         else if (!StrMatch(arg, "holdpriority")) hold_priority = TRUE;
          #endif
          // Define the user: volume.  If the user folder does not exist then we create it so that the volume can be made.
          //
          // Note: In the volumes config file, 'user' is a special section that can define a name for the user folder other
          // than 'ParasolXX'.  This is useful for customised distributions.  If the folder is named as 'default' then no
          // user-specific folder is assigned.
-         else if (!StrCompare("--home=", Info->Args[i], 7, 0)) glUserHomeFolder = Info->Args[i] + 7;
-         else newargs[na++] = Info->Args[i];
+         else if (!StrCompare("home=", arg, 7, 0)) glUserHomeFolder = arg + 7;
+         else newargs[na++] = arg;
       }
 
       if (glLogLevel > 2) {
          char cmdline[160];
          size_t pos = 0;
-         for (LONG i=0; (i < Info->ArgCount) AND (pos < sizeof(cmdline)-1); i++) {
+         for (LONG i=0; (i < Info->ArgCount) and (pos < sizeof(cmdline)-1); i++) {
             if (i > 0) cmdline[pos++] = ' ';
-            for (LONG j=0; (Info->Args[i][j]) AND (pos < sizeof(cmdline)-1); j++) {
+            for (LONG j=0; (Info->Args[i][j]) and (pos < sizeof(cmdline)-1); j++) {
                cmdline[pos++] = Info->Args[i][j];
             }
          }
@@ -609,6 +611,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    // Determine shared addresses
 
    glSharedBlocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
+   glSortedBlocks = (SortedAddress *)ResolveAddress(glSharedControl, glSharedControl->SortedBlocksOffset);
    shSemaphores   = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
    shTasks        = (TaskList *)ResolveAddress(glSharedControl, glSharedControl->TaskOffset);
 
@@ -683,14 +686,14 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       }
 
       if (i IS MAX_TASKS) {
-         for (i=0; (i < MAX_TASKS) AND (shTasks[i].ProcessID); i++); // Find an empty slot
+         for (i=0; (i < MAX_TASKS) and (shTasks[i].ProcessID); i++); // Find an empty slot
 
          // If all slots are in use, check if there are any dead slots (pre-allocated slots that haven't been assigned
          // to a process due to execution errors or whatever).
 
          if (i IS MAX_TASKS) {
             for (i=0; i < MAX_TASKS; i++) {
-               if ((shTasks[i].ProcessID)) { // AND ((PreciseTime()/1000LL) - shTasks[i].CreationTime > 1000)) {
+               if ((shTasks[i].ProcessID)) { // and ((PreciseTime()/1000LL) - shTasks[i].CreationTime > 1000)) {
                   if ((!shTasks[i].TaskID))  {
                      ClearMemory(shTasks + i, sizeof(shTasks[0]));
                      break;
@@ -710,7 +713,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
                            break;
                         }
                      #else
-                        if ((kill(shTasks[i].ProcessID, 0) IS -1) AND (errno IS ESRCH)) {
+                        if ((kill(shTasks[i].ProcessID, 0) IS -1) and (errno IS ESRCH)) {
                            ClearMemory(shTasks + i, sizeof(shTasks[0]));
                            break;
                         }
@@ -787,17 +790,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
 #endif
-   log.msg("Public Offsets: %d, %d, %d", glSharedControl->BlocksOffset, glSharedControl->SemaphoreOffset, glSharedControl->TaskOffset);
 
-   // Private memory block handling
-
-   glMemRegSize = 1000;
-   log.msg("Allocating an initial private memory register of %d entries.", glMemRegSize);
-   if (!(glPrivateMemory = (PrivateAddress *)malloc(sizeof(PrivateAddress) * glMemRegSize))) {
-      if (Info->Flags & OPF_ERROR) Info->Error = ERR_AllocMemory;
-      CloseCore();
-      return NULL;
-   }
+   init_metaclass();
 
    // Allocate the page management table for public memory blocks.
 
@@ -842,6 +836,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    ManageAction(AC_Free, (APTR)MGR_Free);
    ManageAction(AC_Rename, (APTR)MGR_Rename);
    ManageAction(AC_Seek, (APTR)MGR_Seek);
+   ManageAction(AC_Signal, (APTR)MGR_Signal);
 
    if (!(glClassMap = VarNew(0, KSF_THREAD_SAFE))) {
       fprintf(stderr, "Failed to allocate glClassMap.\n");
@@ -900,7 +895,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       #endif
    }
 
-   if (init_filesystem()) {
+   if (init_filesystem(volumes)) {
       KERR("Failed to initialise the filesystem.");
       CloseCore();
       return NULL;
@@ -928,20 +923,20 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       localtask->Flags |= TSF_DUMMY;
 
       if (Info->Flags & OPF_NAME) {
-         SetField((OBJECTPTR)localtask, FID_Name|TSTRING, Info->Name);
+         SetField(localtask, FID_Name|TSTRING, Info->Name);
          StrCopy(Info->Name, glProgName, sizeof(glProgName));
       }
 
-      if (Info->Flags & OPF_AUTHOR)    SetField((OBJECTPTR)localtask, FID_Author|TSTR, Info->Author);
-      if (Info->Flags & OPF_COPYRIGHT) SetField((OBJECTPTR)localtask, FID_Copyright|TSTR, Info->Copyright);
-      if (Info->Flags & OPF_DATE)      SetField((OBJECTPTR)localtask, FID_Date|TSTR, Info->Date);
+      if (Info->Flags & OPF_AUTHOR)    SetField(localtask, FID_Author|TSTR, Info->Author);
+      if (Info->Flags & OPF_COPYRIGHT) SetField(localtask, FID_Copyright|TSTR, Info->Copyright);
+      if (Info->Flags & OPF_DATE)      SetField(localtask, FID_Date|TSTR, Info->Date);
 
-      if (!acInit(&localtask->Head)) {
+      if (!acInit(localtask)) {
          // NB: The glCurrentTask and glCurrentTaskID variables are set on task initialisation
 
-         if (na > 0) SetArray(&localtask->Head, FID_Parameters, newargs, na);
+         if (na > 0) SetArray(localtask, FID_Parameters, newargs, na);
 
-         if (!acActivate(&localtask->Head)) {
+         if (!acActivate(localtask)) {
 
          }
          else {
@@ -1026,7 +1021,9 @@ EXPORT void CleanSystem(LONG Flags)
 
 #define MAGICKEY 0x58392712
 
-static LONG glMemorySize = sizeof(SharedControl) + (sizeof(PublicAddress) * MAX_BLOCKS) +
+static LONG glMemorySize = sizeof(SharedControl) +
+                           (sizeof(PublicAddress) * MAX_BLOCKS) +
+                           (sizeof(SortedAddress) * MAX_BLOCKS) +
                            (sizeof(SemaphoreEntry) * MAX_SEMAPHORES) +
                            (sizeof(WaitLock) * MAX_WAITLOCKS) +
                            (sizeof(TaskList) * MAX_TASKS);
@@ -1184,16 +1181,16 @@ static ERROR open_shared_control(BYTE GlobalInstance)
       // Initialise/Reset the memory if we created it, OR it can be determined that a crash has occurred on previous
       // execution and all shared memory allocations need to be destroyed.
 
-      if ((init) OR (glSharedControl->MagicKey != MAGICKEY)) {
+      if ((init) or (glSharedControl->MagicKey != MAGICKEY)) {
          KMSG("Initialisation of glSharedControl is required.\n");
          init_shared_control();
       }
       else if (glSharedControl->GlobalInstance) {
          KMSG("Checking existing glSharedControl is valid (instance PID %d).\n", glSharedControl->GlobalInstance);
 
-         UBYTE cleanup = FALSE;
+         bool cleanup = false;
 
-         if ((kill(glSharedControl->GlobalInstance, 0) IS -1) AND (errno IS ESRCH)) cleanup = TRUE;
+         if ((kill(glSharedControl->GlobalInstance, 0) IS -1) and (errno IS ESRCH)) cleanup = true;
 
          if (cleanup) {
             // The global instance no longer exists - this indicates that a crash occurred and the IPC's weren't
@@ -1284,12 +1281,15 @@ static ERROR init_shared_control(void)
    glSharedControl->MessageIDCount   = 1;
    glSharedControl->ClassIDCount     = 1;
    glSharedControl->GlobalIDCount    = 1;
-   glSharedControl->ThreadIDCount    = 0;
+   glSharedControl->ThreadIDCount    = 1;
 
    LONG offset = sizeof(SharedControl);
 
    glSharedControl->BlocksOffset = offset;
    offset += sizeof(PublicAddress) * glSharedControl->MaxBlocks;
+
+   glSharedControl->SortedBlocksOffset = offset;
+   offset += sizeof(SortedAddress) * glSharedControl->MaxBlocks;
 
    glSharedControl->SemaphoreOffset = offset;
    offset += sizeof(SemaphoreEntry) * MAX_SEMAPHORES;
@@ -1305,9 +1305,8 @@ static ERROR init_shared_control(void)
    // Allocate public locks (for sharing between processes)
 
    #ifdef __unix__
-      UBYTE i;
       KMSG("Initialising %d global locks\n", PL_END-1);
-      for (i=1; i < PL_END; i++) {
+      for (UBYTE i=1; i < PL_END; i++) {
          if (alloc_public_lock(i, ALF_RECURSIVE)) { CloseCore(); return ERR_Failed; };
       }
    #endif
@@ -1381,9 +1380,8 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 
    if (!shTasks) return;
 
-   WORD j, index;
    TaskList *task = NULL;
-   for (j=0; j < MAX_TASKS; j++) {
+   for (WORD j=0; j < MAX_TASKS; j++) {
       if (shTasks[j].ProcessID IS ProcessID) {
          task = &shTasks[j];
          break;
@@ -1397,21 +1395,21 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 
    if (glCodeIndex != CP_PRINT_CONTEXT) {
       if (Signal) {
-         if ((Signal > 0) AND (Signal < ARRAYSIZE(signals))) {
+         if ((Signal > 0) and (Signal < ARRAYSIZE(signals))) {
             LOGE("  Signal ID:      %s", signals[Signal]);
          }
          else LOGE("  Signal ID:      %d", Signal);
       }
       glCodeIndex = CP_PRINT_CONTEXT;
 
-      if ((ProcessID IS glProcessID) AND (tlContext != &glTopContext)) {
+      if ((ProcessID IS glProcessID) and (tlContext != &glTopContext)) {
          LONG class_id;
          STRING classname;
          if ((class_id = tlContext->Object->ClassID)) {
             classname = ResolveClassID(tlContext->Object->ClassID);
          }
          else classname = "None";
-         LOGE("  Object Context: #%d / %p [Class: %s / $%.8x]", tlContext->Object->UniqueID, tlContext->Object, classname, tlContext->Object->ClassID);
+         LOGE("  Object Context: #%d / %p [Class: %s / $%.8x]", tlContext->Object->UID, tlContext->Object, classname, tlContext->Object->ClassID);
       }
 
       glPageFault = 0;
@@ -1442,9 +1440,9 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_PUBLIC_MEMORY(4000)) {
          // Print memory locking information
 
-         PublicAddress *memblocks = ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
+         auto memblocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
 
-         for (index=0; index < glSharedControl->MaxBlocks; index++) {
+         for (LONG index=0; index < glSharedControl->MaxBlocks; index++) {
             if (!memblocks[index].MemoryID) continue;
 
             if (memblocks[index].ProcessLockID IS ProcessID) {
@@ -1469,7 +1467,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
          // Print semaphore locking information
 
          SemaphoreEntry *semlist = ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-         for (index=1; index < MAX_SEMAPHORES; index++) {
+         for (LONG index=1; index < MAX_SEMAPHORES; index++) {
             for (j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
                if (semlist[index].Processes[j].ProcessID IS ProcessID) {
                   LOGE("  Semaphore[%.4d]:  Access: %d,  Blocking: %d", index, semlist[index].Processes[j].AccessCount, semlist[index].Processes[j].BlockCount);
@@ -1499,11 +1497,10 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 #ifdef _WIN32
    fd = stderr;
 #else
-   if ((glFullOS) AND (Signal != SIGINT)) {
+   if ((glFullOS) and (Signal != SIGINT)) {
       snprintf(filename, sizeof(filename), "/tmp/%d-exception.txt", ProcessID);
       if (!(fd = fopen(filename, "w+"))) {
-         // Failure, use stderr
-         fd = stderr;
+         fd = stderr; // Failure, use stderr
       }
    }
    else fd = stderr;
@@ -1528,14 +1525,14 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       else fprintf(fd, "  Process ID:     %d (Self)\n", task->ProcessID);
       fprintf(fd, "  Message Queue:  %d\n", task->MessageID);
       if (Signal) {
-         if ((Signal > 0) AND (Signal < ARRAYSIZE(signals))) {
+         if ((Signal > 0) and (Signal < ARRAYSIZE(signals))) {
             fprintf(fd, "  Signal ID:      %s\n", signals[Signal]);
          }
          else fprintf(fd, "  Signal ID:      %d\n", Signal);
       }
       glCodeIndex = CP_PRINT_CONTEXT;
 
-      if ((ProcessID IS glProcessID) AND (tlContext->Object)) {
+      if ((ProcessID IS glProcessID) and (tlContext->Object)) {
          LONG class_id;
          CSTRING classname;
          if (tlContext != &glTopContext) {
@@ -1548,7 +1545,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
             classname = "None";
             class_id = 0;
          }
-         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", tlContext->Object->UniqueID, tlContext->Object, classname, tlContext->Object->ClassID);
+         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", tlContext->Object->UID, tlContext->Object, classname, tlContext->Object->ClassID);
       }
 
       glPageFault = 0;
@@ -1579,10 +1576,9 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_PUBLIC_MEMORY(4000)) {
          // Print memory locking information
 
-         PublicAddress *memblocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
+         auto memblocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
 
-         LONG index;
-         for (index=0; index < glSharedControl->MaxBlocks; index++) {
+         for (LONG index=0; index < glSharedControl->MaxBlocks; index++) {
             if (!memblocks[index].MemoryID) continue;
 
             if (memblocks[index].ProcessLockID IS ProcessID) {
@@ -1605,7 +1601,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if (!LOCK_SEMAPHORES(4000)) {
          // Print semaphore locking information
 
-         SemaphoreEntry *semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+         auto semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
 
          for (LONG index=1; index < MAX_SEMAPHORES; index++) {
             if (semlist[index].InstanceID IS glInstanceID) {
@@ -1693,7 +1689,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    parasol::Log log("Core");
 
    if (glCrashStatus > 1) {
-      if ((glCodeIndex) AND (glCodeIndex IS glLastCodeIndex)) {
+      if ((glCodeIndex) and (glCodeIndex IS glLastCodeIndex)) {
          fprintf(stderr, "Unable to recover - exiting immediately.\n");
          exit(255);
       }
@@ -1706,7 +1702,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    // Analyse the type of signal that has occurred and respond appropriately
 
    if (glCrashStatus IS 0) {
-      if (((SignalNumber IS SIGQUIT) OR (SignalNumber IS SIGHUP)))  {
+      if (((SignalNumber IS SIGQUIT) or (SignalNumber IS SIGHUP)))  {
          log.msg("Termination request - SIGQUIT or SIGHUP.");
          SendMessage(glTaskMessageMID, MSGID_QUIT, 0, NULL, 0);
          glCrashStatus = 1;
@@ -1716,13 +1712,13 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
       if (glLogLevel >= 5) {
          log.msg("Process terminated.\n");
       }
-      else if ((SignalNumber > 0) AND (SignalNumber < ARRAYSIZE(signals))) {
+      else if ((SignalNumber > 0) and (SignalNumber < ARRAYSIZE(signals))) {
          fprintf(stderr, "\nProcess terminated, signal %s.\n\n", signals[SignalNumber]);
       }
       else fprintf(stderr, "\nProcess terminated, signal %d.\n\n", SignalNumber);
 
-      if ((SignalNumber IS SIGILL) OR (SignalNumber IS SIGFPE) OR
-          (SignalNumber IS SIGSEGV) OR (SignalNumber IS SIGBUS)) {
+      if ((SignalNumber IS SIGILL) or (SignalNumber IS SIGFPE) OR
+          (SignalNumber IS SIGSEGV) or (SignalNumber IS SIGBUS)) {
          glPageFault = Info->si_addr;
       }
       else glPageFault = 0;
@@ -1758,16 +1754,14 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 {
 #if 0
    parasol:Log log(__FUNCTION__);
-   rkTask *task;
-   LONG childprocess, status, result, i;
 
-   childprocess = Info->si_pid;
+   LONG childprocess = Info->si_pid;
 
    // Get the return code
 
-   status = 0;
+   LONG status = 0;
    waitpid(Info->si_pid, &status, WNOHANG);
-   result = WEXITSTATUS(status);
+   LONG result = WEXITSTATUS(status);
 
    log.warning("Process #%d exited, return-code %d.", childprocess, result);
 
@@ -1775,11 +1769,12 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    //
    // !!! TODO: The slow methodology of this loop needs attention !!!
 
-   for (i=0; i < glNextPrivateAddress; i++) {
-      if (!(glPrivateMemory[i].Flags & MEM_OBJECT)) continue;
+   for (const auto & mem : glPrivateMemory) {
+      if (!(mem.Flags & MEM_OBJECT)) continue;
 
-      if ((task = glPrivateMemory[i].Address)) {
-         if ((task->Head.ClassID IS ID_TASK) AND (task->ProcessID IS childprocess)) {
+      objTask *task;
+      if ((task = mem.Address)) {
+         if ((task->ClassID IS ID_TASK) and (task->ProcessID IS childprocess)) {
             task->ReturnCode    = result;
             task->ReturnCodeSet = TRUE;
             break;
@@ -1822,7 +1817,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
    if (!glProcessID) return 1;
 
    if (glCrashStatus > 1) {
-      if ((glCodeIndex) AND (glCodeIndex IS glLastCodeIndex)) {
+      if ((glCodeIndex) and (glCodeIndex IS glLastCodeIndex)) {
          fprintf(stderr, "Unable to recover - exiting immediately.\n");
          fflush(NULL);
          return 1;
@@ -1838,7 +1833,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
          else fprintf(stderr, "\n\nCRASH!");
 
          fprintf(stderr, "\n%s (%s), at address: %p\n", ExceptionTable[Code], (Continuable) ? "Continuable" : "Fatal", Address);
-         if ((Code IS EXP_ACCESS_VIOLATION) AND (Info)) {
+         if ((Code IS EXP_ACCESS_VIOLATION) and (Info)) {
             CSTRING type;
             if (Info[0] IS 1) type = "write";
             else if (Info[0] IS 0) type = "read";
@@ -1881,7 +1876,7 @@ static ERROR load_modules(void)
    //
    //   ULONG Hash
    //   LONG  Size
-   //   UBYTE Path[]
+   //   char  Path[]
 
    OBJECTPTR file;
    ERROR error;
@@ -1889,12 +1884,9 @@ static ERROR load_modules(void)
       if (!AccessMemory(glSharedControl->ModulesMID, MEM_READ, 2000, (APTR *)&glModules)) {
          return ERR_Okay;
       }
-      else return log.warning(ERH_LoadModules, ERR_AccessMemory);
+      else return log.warning(ERR_AccessMemory);
    }
-   else if (!CreateObject(ID_FILE, 0, &file,
-         FID_Path|TSTR,   glModuleBinPath,
-         FID_Flags|TLONG, FL_READ,
-         TAGEND)) {
+   else if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, glModuleBinPath, FID_Flags|TLONG, FL_READ, TAGEND)) {
       LONG size;
       if (!(error = GetLong(file, FID_Size, &size))) {
          if (!(error = AllocMemory(size, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID))) {
@@ -1918,18 +1910,18 @@ static ERROR load_modules(void)
 
    DirInfo *dir;
    if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
-      while ((!ScanDir(dir)) AND (pos < (sizeof(modules)-256))) {
+      while ((!ScanDir(dir)) and (pos < (sizeof(modules)-256))) {
          FileInfo *folder = dir->Info;
          if (folder->Flags & RDF_FILE) {
-            ModuleItem *item = (ModuleItem *)(modules + pos);
+            auto item = (ModuleItem *)(modules + pos);
 
             #ifdef __ANDROID__
-               UBYTE modname[60];
+               char modname[60];
                CSTRING foldername = folder->Name;
 
                // Android modules are in the format "libcategory_modname.so"
 
-               if ((foldername[0] IS 'l') AND (foldername[1] IS 'i') AND (foldername[2] IS 'b')) {
+               if ((foldername[0] IS 'l') and (foldername[1] IS 'i') and (foldername[2] IS 'b')) {
                   foldername += 3;
 
                   // Skip category if one is specified, since we just want the module's short name.
@@ -1941,21 +1933,21 @@ static ERROR load_modules(void)
                      }
                   }
 
-                  for (i=0; foldername[i] AND (foldername[i] != '.') AND (i < sizeof(modname)); i++) modname[i] = foldername[i];
+                  for (i=0; foldername[i] and (foldername[i] != '.') and (i < sizeof(modname)); i++) modname[i] = foldername[i];
                   modname[i] = 0;
 
                   item->Hash = StrHash(modname, FALSE);
 
                   pos += sizeof(ModuleItem);
                   pos += StrCopy("modules:", modules+pos, sizeof(modules)-pos-1);
-                  for (i=0; folder->Name[i] AND (folder->Name[i] != '.') AND (pos < sizeof(modules)-1); i++) modules[pos++] = folder->Name[i]; // Copy everything up to the extension.
+                  for (i=0; folder->Name[i] and (folder->Name[i] != '.') and (pos < sizeof(modules)-1); i++) modules[pos++] = folder->Name[i]; // Copy everything up to the extension.
                   modules[pos++] = 0; // Include the null byte.
                }
                else continue;  // Anything not starting with 'lib' is ignored.
             #else
                char modname[60];
 
-               for (i=0; folder->Name[i] AND (folder->Name[i] != '.') AND (i < (LONG)sizeof(modname)); i++) modname[i] = folder->Name[i];
+               for (i=0; folder->Name[i] and (folder->Name[i] != '.') and (i < (LONG)sizeof(modname)); i++) modname[i] = folder->Name[i];
                modname[i] = 0;
 
                item->Hash = StrHash(modname, FALSE);
@@ -1974,7 +1966,7 @@ static ERROR load_modules(void)
       FreeResource(dir);
    }
 
-   if ((total > 0) AND (!(error = AllocMemory(sizeof(ModuleHeader) + (total * sizeof(LONG)) + pos, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID)))) {
+   if ((total > 0) and (!(error = AllocMemory(sizeof(ModuleHeader) + (total * sizeof(LONG)) + pos, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID)))) {
       glModules->Total = total;
 
       // Generate the offsets
@@ -1995,7 +1987,7 @@ static ERROR load_modules(void)
       for (; h > 0; h /= 3) {
          for (LONG i=h; i < total; i++) {
             LONG temp = offsets[i];
-            for (j=i; (j >= h) AND (((ModuleItem *)((char *)glModules + offsets[j-h]))->Hash > ((ModuleItem *)((char *)glModules + temp))->Hash); j -= h) {
+            for (j=i; (j >= h) and (((ModuleItem *)((char *)glModules + offsets[j-h]))->Hash > ((ModuleItem *)((char *)glModules + temp))->Hash); j -= h) {
                offsets[j] = offsets[j - h];
             }
             offsets[j] = temp;
@@ -2087,7 +2079,7 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 
 //****************************************************************************
 
-static ERROR init_filesystem(void)
+static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
 {
    parasol::Log log("Core");
    LONG i;
@@ -2106,23 +2098,23 @@ static ERROR init_filesystem(void)
 
    ERROR error;
    if (!(error = NewObject(ID_CONFIG, NF_NO_TRACK, (OBJECTPTR *)&glVolumes))) {
-      SetName(&glVolumes->Head, "SystemVolumes");
+      SetName(glVolumes, "SystemVolumes");
+      if (acInit(glVolumes) != ERR_Okay) {
+         acFree(glVolumes);
+         return log.warning(ERR_CreateObject);
+      }
 
       #ifndef __ANDROID__ // For security reasons we do not use an external volume file for the Android build.
          {
+            char volpath[120];
             #ifdef _WIN32
-               StrFormat(buffer, sizeof(buffer), "%sconfig\\volumes.cfg", glSystemPath);
+               StrFormat(volpath, sizeof(volpath), "%sconfig\\volumes.cfg", glSystemPath);
             #else
-               StrFormat(buffer, sizeof(buffer), "%sconfig/volumes.cfg", glSystemPath);
+               StrFormat(volpath, sizeof(volpath), "%sconfig/volumes.cfg", glSystemPath);
             #endif
-            SetString(glVolumes, FID_Path, buffer);
+            cfgMergeFile(glVolumes, volpath);
          }
       #endif
-
-      if (acInit(&glVolumes->Head) != ERR_Okay) {
-         acFree(&glVolumes->Head);
-         return PostError(ERR_CreateObject);
-      }
 
       // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the
       // default settings for a fixed installation are:
@@ -2132,14 +2124,14 @@ static ERROR init_filesystem(void)
       // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
       #ifdef _WIN32
-         SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user", TAGEND);
-         SetVolume(AST_NAME, "system", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
+         SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/filemanager", TAGEND);
+         SetVolume(AST_NAME, "system", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
 
          if (glModulePath[0]) {
-            SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
+            SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
          }
          else {
-            SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool", TAGEND);
+            SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
          }
       #elif __unix__
          // If device volumes are already set by the user, do not attempt to discover such devices.
@@ -2158,16 +2150,16 @@ static ERROR init_filesystem(void)
             }
          }
 */
-         SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "users/user",  TAGEND);
-         SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE, AST_ICON, "programs/tool",  TAGEND);
+         SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/filemanager",  TAGEND);
+         SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE, AST_ICON, "misc/brick",  TAGEND);
 
          if (glModulePath[0]) {
-            SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool",  TAGEND);
+            SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick",  TAGEND);
          }
          else {
             char path[200];
             StrFormat(path, sizeof(path), "%slib/parasol/", glRootPath);
-            SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/tool",  TAGEND);
+            SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick",  TAGEND);
          }
 
          if (!hd_set) {
@@ -2181,26 +2173,28 @@ static ERROR init_filesystem(void)
       // Configure some standard volumes.
 
       #ifdef __ANDROID__
-         SetVolume(AST_NAME, "assets", AST_PATH, "CLASS:FileAssets", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
-         SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         SetVolume(AST_NAME, "assets", AST_PATH, "EXT:FileAssets", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
+         SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "misc/openbook", TAGEND);
+         SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/cog",  TAGEND);
       #else
-         SetVolume(AST_NAME, "templates", AST_PATH, "system:scripts/templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
-         SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/empty",  TAGEND);
+         SetVolume(AST_NAME, "templates", AST_PATH, "scripts:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "misc/openbook", TAGEND);
+         SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/cog",  TAGEND);
          if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
             SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
          }
          else SetVolume(AST_NAME, "bin", AST_PATH, "parasol:", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
       #endif
 
-      SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash",  TAGEND);
-      SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/charset",  TAGEND);
+      SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash", TAGEND);
+      SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/font",  TAGEND);
+      SetVolume(AST_NAME, "scripts", AST_PATH, "system:scripts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/source",  TAGEND);
       SetVolume(AST_NAME, "styles", AST_PATH, "system:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
+      SetVolume(AST_NAME, "icons", AST_PATH, "EXT:widget", AST_FLAGS, VOLUME_HIDDEN, AST_ICON,  "misc/picture", TAGEND); // Refer to widget module for actual configuration
 
       // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
       // the Core.
 
-      if ((glOpenInfo->Flags & OPF_OPTIONS) AND (glOpenInfo->Options)) {
+      if ((glOpenInfo->Flags & OPF_OPTIONS) and (glOpenInfo->Options)) {
          for (i=0; glOpenInfo->Options[i].Tag != TAGEND; i++) {
             switch (glOpenInfo->Options[i].Tag) {
                case TOI_LOCAL_CACHE: {
@@ -2216,7 +2210,7 @@ static ERROR init_filesystem(void)
       }
 
       if (!glUserHomeFolder) {
-         if ((cfgReadValue(glVolumes, "User", "Name", &glUserHomeFolder) != ERR_Okay) OR (!glUserHomeFolder)) glUserHomeFolder = "parasol";
+         if ((cfgReadValue(glVolumes, "User", "Name", &glUserHomeFolder) != ERR_Okay) or (!glUserHomeFolder)) glUserHomeFolder = "parasol";
       }
 
       if (!StrMatch("default", glUserHomeFolder)) {
@@ -2229,13 +2223,13 @@ static ERROR init_filesystem(void)
       else {
          #ifdef __unix__
             STRING homedir, logname;
-            if ((homedir = getenv("HOME")) AND (homedir[0]) AND (StrMatch("/", homedir) != ERR_Okay)) {
+            if ((homedir = getenv("HOME")) and (homedir[0]) and (StrMatch("/", homedir) != ERR_Okay)) {
                log.msg("Home folder is \"%s\".", homedir);
-               for (i=0; (homedir[i]) AND (i < (LONG)sizeof(buffer)-1); i++) buffer[i] = homedir[i];
-               while ((i > 0) AND (buffer[i-1] IS '/')) i--;
+               for (i=0; (homedir[i]) and (i < (LONG)sizeof(buffer)-1); i++) buffer[i] = homedir[i];
+               while ((i > 0) and (buffer[i-1] IS '/')) i--;
                i += StrFormat(buffer+i, sizeof(buffer)-i, "/.%s%d/", glUserHomeFolder, F2T(VER_CORE));
             }
-            else if ((logname = getenv("LOGNAME")) AND (logname[0])) {
+            else if ((logname = getenv("LOGNAME")) and (logname[0])) {
                log.msg("Login name for home folder is \"%s\".", logname);
                i = StrFormat(buffer, sizeof(buffer), "config:users/%s/", logname);
                buffer[i] = 0;
@@ -2254,7 +2248,7 @@ static ERROR init_filesystem(void)
             }
             else {
                i = StrCopy("config:users/", buffer, 0);
-               if ((winGetUserName(buffer+i, sizeof(buffer)-i) AND (buffer[i]))) {
+               if ((winGetUserName(buffer+i, sizeof(buffer)-i) and (buffer[i]))) {
                   while (buffer[i]) i++;
                   buffer[i++] = '/';
                   buffer[i] = 0;
@@ -2270,7 +2264,7 @@ static ERROR init_filesystem(void)
 
          if (StrMatch("config:users/default/", buffer) != ERR_Okay) {
             LONG location_type = 0;
-            if ((AnalysePath(buffer, &location_type) != ERR_Okay) OR (location_type != LOC_DIRECTORY)) {
+            if ((AnalysePath(buffer, &location_type) != ERR_Okay) or (location_type != LOC_DIRECTORY)) {
                buffer[i-1] = 0;
                SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
                   CopyFile("config:users/default/", buffer, NULL);
@@ -2390,17 +2384,17 @@ static ERROR init_filesystem(void)
                         // Extract mount point
 
                         i = 0;
-                        while ((*str) AND (*str > 0x20)) {
+                        while ((*str) and (*str > 0x20)) {
                            if (i < (LONG)sizeof(devpath)-1) devpath[i++] = *str;
                            str++;
                         }
                         devpath[i] = 0;
 
-                        while ((*str) AND (*str <= 0x20)) str++;
-                        for (i=0; (*str) AND (*str > 0x20) AND (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
+                        while ((*str) and (*str <= 0x20)) str++;
+                        for (i=0; (*str) and (*str > 0x20) and (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
                         mount[i] = 0;
 
-                        if ((mount[0] IS '/') AND (!mount[1]));
+                        if ((mount[0] IS '/') and (!mount[1]));
                         else {
                            IntToStr(driveno++, drivename+5, 3);
                            SetVolume(AST_NAME, drivename, AST_DEVICE_PATH, devpath, AST_PATH, mount, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
@@ -2408,16 +2402,16 @@ static ERROR init_filesystem(void)
                      }
 
                      // Next line
-                     while ((*str) AND (*str != '\n')) str++;
-                     while ((*str) AND (*str <= 0x20)) str++;
+                     while ((*str) and (*str != '\n')) str++;
+                     while ((*str) and (*str <= 0x20)) str++;
                   }
                   FreeResource(buffer);
                }
-               else PostError(ERR_AllocMemory);
+               else log.warning(ERR_AllocMemory);
 
                close(file);
             }
-            else PostError(ERR_File);
+            else log.warning(ERR_File);
          }
          else log.msg("Not scanning for hard disks because user has defined drive1.");
 
@@ -2461,6 +2455,18 @@ static ERROR init_filesystem(void)
    // Create the 'archive' volume (non-essential)
 
    create_archive_volume();
+
+   for (auto vol : Volumes) {
+      char name[120], path[MAX_FILENAME];
+      size_t n, p, v;
+      for (n=0, v=0; vol[v] and (vol[v] != '=') and (n < sizeof(name)-1); v++) name[n++] = vol[v];
+      name[n] = 0;
+      if (vol[v++] IS '=') {
+         for (p=0; vol[v] and (p < sizeof(path)-1); v++) path[p++] = vol[v];
+         path[p] = 0;
+         SetVolume(AST_NAME, name, AST_PATH, path, AST_FLAGS, VOLUME_PRIORITY, TAGEND);
+      }
+   }
 
    return ERR_Okay;
 }

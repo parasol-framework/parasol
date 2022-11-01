@@ -1,8 +1,8 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 This code was originally ported from Javascript.  The source code license follows.
 
-******************************************************************************
+**********************************************************************************************************************
 
 ColourMatrix Class v2.1
 released under MIT License (X11)
@@ -31,25 +31,23 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
-*****************************************************************************/
+**********************************************************************************************************************
+
+-CLASS-
+ColourFX: Support for applying colour transformation effects.
+
+Use ColourFX to perform colour transformations on an input source.  A #Mode must be selected and any required #Values
+defined prior to rendering.
+
+SVG requires that the calculations are performed on non-premultiplied colour values.  If the input graphics consists
+of premultiplied colour values, those values are automatically converted into non-premultiplied colour values for
+this operation.
+
+*********************************************************************************************************************/
 
 #include <array>
 
-//****************************************************************************
-
 #define CM_SIZE 20
-
-enum { // Colour modes
-   CM_MATRIX=1,
-   CM_SATURATE,
-   CM_HUE_ROTATE,
-   CM_LUMINANCE_ALPHA,
-   CM_CONTRAST,
-   CM_BRIGHTNESS,
-   CM_HUE,
-   CM_DESATURATE,
-   CM_COLOURISE
-};
 
 static const DOUBLE LUMA_R = 0.212671;
 static const DOUBLE LUMA_G = 0.71516;
@@ -72,6 +70,10 @@ public:
 
    ColourMatrix(const MATRIX Matrix) : preHue(0), postHue(0) {
       matrix = Matrix;
+   }
+
+   ColourMatrix(const DOUBLE *Values) : preHue(0), postHue(0) {
+      for (auto i=0; i < CM_SIZE; i++) matrix[i] = Values[i];
    }
 
    ColourMatrix() : preHue(0), postHue(0) {
@@ -113,14 +115,13 @@ public:
       });
    }
 
-   /* s: Typical values come in the range 0.0 ... 2.0
-            0.0 means 0% Saturation
-            0.5 means 50% Saturation
-            1.0 is 100% Saturation (aka no change)
-            2.0 is 200% Saturation
-
-         Other values outside of this range are possible: -1.0 will invert the hue but keep the luminance
-   */
+   // s: Typical values come in the range 0.0 ... 2.0
+   //    0.0 means 0% Saturation
+   //    0.5 means 50% Saturation
+   //    1.0 is 100% Saturation (aka no change)
+   //    2.0 is 200% Saturation
+   //
+   //    Other values outside of this range are possible: -1.0 will invert the hue but keep the luminance
 
    void adjustSaturation(DOUBLE s) {
       apply(MATRIX {
@@ -131,15 +132,13 @@ public:
       });
    }
 
-   /* Changes the contrast
-      s: Typical values come in the range -1.0 ... 1.0
-            -1.0 means no contrast (grey)
-            0 means no change
-            1.0 is high contrast
-   */
+   // Changes the contrast
+   // s: Typical values come in the range -1.0 ... 1.0
+   //    -1.0 means no contrast (grey)
+   //       0 means no change
+   //     1.0 is high contrast
 
-   void adjustContrast(DOUBLE r, DOUBLE g = NAN, DOUBLE b = NAN)
-   {
+   void adjustContrast(DOUBLE r, DOUBLE g = NAN, DOUBLE b = NAN) {
       if (isnan(g)) g = r;
       if (isnan(b)) b = r;
       r += 1;
@@ -153,8 +152,7 @@ public:
       });
    }
 
-   void adjustBrightness(DOUBLE r, DOUBLE g = NAN, DOUBLE b = NAN)
-   {
+   void adjustBrightness(DOUBLE r, DOUBLE g = NAN, DOUBLE b = NAN) {
       if (isnan(g)) g = r;
       if (isnan(b)) b = r;
       apply(MATRIX {
@@ -165,8 +163,7 @@ public:
       });
    }
 
-   void adjustHue(DOUBLE degrees)
-   {
+   void adjustHue(DOUBLE degrees) {
        degrees *= DEG2RAD;
        DOUBLE ccos = cos(degrees);
        DOUBLE csin = sin(degrees);
@@ -178,8 +175,7 @@ public:
        });
    }
 
-   void rotateHue(DOUBLE degrees)
-   {
+   void rotateHue(DOUBLE degrees) {
       if (!initHue()) {
          apply(preHue->matrix);
          rotateBlue(degrees);
@@ -196,8 +192,7 @@ public:
       });
    }
 
-   void adjustAlphaContrast(DOUBLE amount)
-   {
+   void adjustAlphaContrast(DOUBLE amount) {
        amount += 1;
        apply(MATRIX {
           1, 0, 0, 0, 0,
@@ -211,30 +206,30 @@ public:
    // the G and B channels.  Values greater than 1 will tend to over-expose the image.  Lowering the amount parameter < 1
    // will allow you to tint the image.
 
-   void colourise(DOUBLE r, DOUBLE g, DOUBLE b, DOUBLE amount=1)
-   {
-       DOUBLE inv_amount = (1.0 - amount);
+   void colourise(DOUBLE r, DOUBLE g, DOUBLE b, DOUBLE amount = 1) {
+      if (amount > 1) amount = 1;
+      else if (amount < 0) amount = 0;
 
-       apply(MATRIX {
-          (inv_amount + ((amount * r) * LUMA_R)), ((amount * r) * LUMA_G), ((amount * r) * LUMA_B), 0, 0,
-          ((amount * g) * LUMA_R), (inv_amount + ((amount * g) * LUMA_G)), ((amount * g) * LUMA_B), 0, 0,
-          ((amount * b) * LUMA_R), ((amount * b) * LUMA_G), (inv_amount + ((amount * b) * LUMA_B)), 0, 0,
-          0, 0, 0, 1, 0
-       });
+      DOUBLE inv_amount = (1.0 - amount);
+
+      apply(MATRIX {
+         (inv_amount + ((amount * r) * LUMA_R)), ((amount * r) * LUMA_G), ((amount * r) * LUMA_B), 0, 0,
+         ((amount * g) * LUMA_R), (inv_amount + ((amount * g) * LUMA_G)), ((amount * g) * LUMA_B), 0, 0,
+         ((amount * b) * LUMA_R), ((amount * b) * LUMA_G), (inv_amount + ((amount * b) * LUMA_B)), 0, 0,
+         0, 0, 0, 1, 0
+      });
    }
 
-   void average(DOUBLE r=ONETHIRD, DOUBLE g=ONETHIRD, DOUBLE b=ONETHIRD)
-   {
-       apply(MATRIX {
-          r, g, b, 0, 0,
-          r, g, b, 0, 0,
-          r, g, b, 0, 0,
-          0, 0, 0, 1, 0
-       });
+   void average(DOUBLE r=ONETHIRD, DOUBLE g=ONETHIRD, DOUBLE b=ONETHIRD) {
+      apply(MATRIX {
+         r, g, b, 0, 0,
+         r, g, b, 0, 0,
+         r, g, b, 0, 0,
+         0, 0, 0, 1, 0
+      });
    }
 
-   void invertAlpha()
-   {
+   void invertAlpha() {
       apply(MATRIX {
          1, 0, 0, 0, 0,
          0, 1, 0, 0, 0,
@@ -254,8 +249,7 @@ public:
       rotateColour(degrees, 1, 0);
    }
 
-   void rotateColour(DOUBLE degrees, LONG x, LONG y)
-   {
+   void rotateColour(DOUBLE degrees, LONG x, LONG y) {
       degrees *= DEG2RAD;
       auto mat = IDENTITY;
       mat[x + x * 5] = mat[y + y * 5] = cos(degrees);
@@ -264,18 +258,15 @@ public:
       apply(mat);
    }
 
-   void shearRed(DOUBLE green, DOUBLE blue)
-   {
+   void shearRed(DOUBLE green, DOUBLE blue) {
       shearColour( 0, 1, green, 2, blue );
    }
 
-   void shearGreen(DOUBLE red, DOUBLE blue)
-   {
+   void shearGreen(DOUBLE red, DOUBLE blue) {
       shearColour( 1, 0, red, 2, blue );
    }
 
-   void shearBlue(DOUBLE red, DOUBLE green)
-   {
+   void shearBlue(DOUBLE red, DOUBLE green) {
       shearColour( 2, 0, red, 1, green );
    }
 
@@ -298,8 +289,7 @@ public:
       values[3] = a;
    }
 
-   ERROR initHue()
-   {
+   ERROR initHue() {
       const DOUBLE greenRotation = 39.182655;
       UBYTE init = false;
 
@@ -329,29 +319,44 @@ public:
    }
 };
 
-/*****************************************************************************
-** Internal: apply_cmatrix()
-*/
+//********************************************************************************************************************
 
-static void apply_cmatrix(objVectorFilter *Self, struct effect *Effect)
+class objColourFX : public extFilterEffect {
+   public:
+   DOUBLE Values[CM_SIZE];
+   ColourMatrix *Matrix;
+   LONG TotalValues;
+   UBYTE Mode;
+};
+
+/*********************************************************************************************************************
+-ACTION-
+Draw: Render the effect to the target bitmap.
+-END-
+*********************************************************************************************************************/
+
+static ERROR COLOURFX_Draw(objColourFX *Self, struct acDraw *Args)
 {
-   objBitmap *bmp = Effect->Bitmap;
-   if (bmp->BytesPerPixel != 4) return;
-   if (!Effect->Colour.Matrix) return;
+   if (Self->Target->BytesPerPixel != 4) return ERR_Failed;
+   if (!Self->Matrix) return ERR_Failed;
 
-   const UBYTE A = bmp->ColourFormat->AlphaPos>>3;
-   const UBYTE R = bmp->ColourFormat->RedPos>>3;
-   const UBYTE G = bmp->ColourFormat->GreenPos>>3;
-   const UBYTE B = bmp->ColourFormat->BluePos>>3;
+   const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
+   const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
+   const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
+   const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
 
-   ColourMatrix &matrix = *Effect->Colour.Matrix;
+   ColourMatrix &matrix = *Self->Matrix;
 
-   UBYTE *data = bmp->Data + (bmp->Clip.Left<<2) + (bmp->Clip.Top * bmp->LineWidth);
+   objBitmap *inBmp;
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
 
-   for (LONG y=0; y < bmp->Clip.Bottom - bmp->Clip.Top; y++) {
-      UBYTE *pixel = data + (bmp->LineWidth * y);
-      for (LONG x=0; x < bmp->Clip.Right - bmp->Clip.Left; x++) {
+   auto out_line = (UBYTE *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
 
+   UBYTE *in_line = inBmp->Data + (inBmp->Clip.Left<<2) + (inBmp->Clip.Top * inBmp->LineWidth);
+   for (LONG y=0; y < inBmp->Clip.Bottom - inBmp->Clip.Top; y++) {
+      UBYTE *pixel = in_line;
+      UBYTE *out = out_line;
+      for (LONG x=0; x < inBmp->Clip.Right - inBmp->Clip.Left; x++) {
          DOUBLE a = pixel[A];
          DOUBLE r = pixel[R];
          DOUBLE g = pixel[G];
@@ -362,102 +367,206 @@ static void apply_cmatrix(objVectorFilter *Self, struct effect *Effect)
          LONG b2 = 0.5 + (r * matrix[10]) + (g * matrix[11]) + (b * matrix[12]) + (a * matrix[13]) + matrix[14];
          LONG a2 = 0.5 + (r * matrix[15]) + (g * matrix[16]) + (b * matrix[17]) + (a * matrix[18]) + matrix[19];
 
-         if (a2 < 0) pixel[A] = 0;
-         else if (a2 > 255) pixel[A] = 255;
-         else pixel[A] = a2;
+         if (a2 < 0) out[A] = 0;
+         else if (a2 > 255) out[A] = 255;
+         else out[A] = a2;
 
-         if (r2 < 0)   pixel[R] = 0;
-         else if (r2 > 255) pixel[R] = 255;
-         else pixel[R] = r2;
+         if (r2 < 0)   out[R] = 0;
+         else if (r2 > 255) out[R] = 255;
+         else out[R] = r2;
 
-         if (g2 < 0) pixel[G] = 0;
-         else if (g2 > 255) pixel[G] = 255;
-         else pixel[G] = g2;
+         if (g2 < 0) out[G] = 0;
+         else if (g2 > 255) out[G] = 255;
+         else out[G] = g2;
 
-         if (b2 < 0) pixel[B] = 0;
-         else if (b2 > 255) pixel[B] = 255;
-         else pixel[B] = b2;
+         if (b2 < 0) out[B] = 0;
+         else if (b2 > 255) out[B] = 255;
+         else out[B] = b2;
 
          pixel += 4;
+         out += 4;
       }
+      out_line += Self->Target->LineWidth;
+      in_line += inBmp->LineWidth;
    }
+
+   return ERR_Okay;
 }
 
-//****************************************************************************
-// Create a new colour matrix effect.
+//********************************************************************************************************************
 
-static ERROR create_cmatrix(objVectorFilter *Self, struct XMLTag *Tag)
+static ERROR COLOURFX_Free(objColourFX *Self, APTR Void)
 {
-   struct effect *effect;
-   if (!(effect = add_effect(Self, FE_COLOURMATRIX))) return ERR_AllocMemory;
+   if (Self->Matrix) { delete Self->Matrix; Self->Matrix = NULL; }
+   return ERR_Okay;
+}
 
-   MATRIX m = IDENTITY;
-   for (LONG a=1; a < Tag->TotalAttrib; a++) {
-      CSTRING val = Tag->Attrib[a].Value;
-      if (!val) continue;
+//********************************************************************************************************************
 
-      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
-      switch(hash) {
-         case SVF_TYPE: {
-            switch(StrHash(val, FALSE)) {
-               case SVF_MATRIX:        effect->Colour.Mode = CM_MATRIX; break;
-               case SVF_SATURATE:      effect->Colour.Mode = CM_SATURATE; break;
-               case SVF_HUEROTATE:     effect->Colour.Mode = CM_HUE_ROTATE; break;
-               case SVF_LUMINANCETOALPHA: effect->Colour.Mode = CM_LUMINANCE_ALPHA; break;
-               // These are special modes that are not included by SVG
-               case SVF_CONTRAST:      effect->Colour.Mode = CM_CONTRAST; break;
-               case SVF_BRIGHTNESS:    effect->Colour.Mode = CM_BRIGHTNESS; break;
-               case SVF_HUE:           effect->Colour.Mode = CM_HUE; break;
-               case SVF_COLOURISE:     effect->Colour.Mode = CM_COLOURISE; break;
-               case SVF_DESATURATE:    effect->Colour.Mode = CM_DESATURATE; break;
-               // These are special modes that are not included by SVG
-               case SVF_PROTANOPIA:    effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.567,0.433,0,0,0, 0.558,0.442,0,0,0, 0,0.242,0.758,0,0, 0,0,0,1,0 }; break;
-               case SVF_PROTANOMALY:   effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.817,0.183,0,0,0, 0.333,0.667,0,0,0, 0,0.125,0.875,0,0, 0,0,0,1,0 }; break;
-               case SVF_DEUTERANOPIA:  effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.625,0.375,0,0,0, 0.7,0.3,0,0,0, 0,0.3,0.7,0,0, 0,0,0,1,0 }; break;
-               case SVF_DEUTERANOMALY: effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.8,0.2,0,0,0, 0.258,0.742,0,0,0, 0,0.142,0.858,0,0, 0,0,0,1,0 }; break;
-               case SVF_TRITANOPIA:    effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.95,0.05,0,0,0, 0,0.433,0.567,0,0, 0,0.475,0.525,0,0, 0,0,0,1,0 }; break;
-               case SVF_TRITANOMALY:   effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.967,0.033,0,0,0, 0,0.733,0.267,0,0, 0,0.183,0.817,0,0, 0,0,0,1,0 }; break;
-               case SVF_ACHROMATOPSIA: effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0,0,0,1,0 }; break;
-               case SVF_ACHROMATOMALY: effect->Colour.Mode = CM_MATRIX; m = MATRIX { 0.618,0.320,0.062,0,0, 0.163,0.775,0.062,0,0, 0.163,0.320,0.516,0,0, 0,0,0,1,0 }; break;
+static ERROR COLOURFX_Init(objColourFX *Self, APTR Void)
+{
+   parasol::Log log;
 
-               default:
-                  LogErrorMsg("Unrecognised colour matrix type '%s'", val);
-                  return ERR_Failed;
-            }
-            break;
-         }
-
-         case SVF_VALUES: {
-            for (LONG i=0; (*val) AND (i < CM_SIZE); i++) {
-               DOUBLE dbl;
-               val = read_numseq(val, &dbl, TAGEND);
-               m[i] = dbl;
-            }
-            break;
-         }
-
-         default: fe_default(Self, effect, hash, val); break;
-      }
-   }
+   if (!Self->SourceType) return log.warning(ERR_UndefinedField);
 
    // If a special colour mode was selected, convert the provided value(s) to the matrix format.
 
    ColourMatrix *matrix;
 
-   switch (effect->Colour.Mode) {
-      case CM_SATURATE:        matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustSaturation(m[0]); break;
-      case CM_HUE_ROTATE:      matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->rotateHue(m[0]); break;
-      case CM_LUMINANCE_ALPHA: matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->luminance2Alpha(); break;
-      case CM_CONTRAST:        matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustContrast(m[0]); break;
-      case CM_BRIGHTNESS:      matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustBrightness(m[0]); break;
-      case CM_HUE:             matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustHue(m[0]); break;
-      case CM_COLOURISE:       matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->colourise(m[0], m[1], m[2], m[3] < 0.001 ? 1.0 : m[3]); break;
-      case CM_DESATURATE:      matrix = new (std::nothrow) ColourMatrix(); if (matrix) matrix->adjustSaturation(0); break;
-      default:                 matrix = new (std::nothrow) ColourMatrix(m); break;
+   switch (Self->Mode) {
+      case CM_SATURATE:
+         matrix = new (std::nothrow) ColourMatrix();
+         if (matrix) matrix->adjustSaturation(Self->Values[0]);
+         break;
+
+      case CM_HUE_ROTATE:
+         matrix = new (std::nothrow) ColourMatrix();
+         if (matrix) matrix->rotateHue(Self->Values[0]);
+         break;
+
+      case CM_LUMINANCE_ALPHA:
+         matrix = new (std::nothrow) ColourMatrix();
+         if (matrix) matrix->luminance2Alpha();
+         break;
+
+      case CM_CONTRAST:
+         matrix = new (std::nothrow) ColourMatrix();
+         if (matrix) matrix->adjustContrast(Self->Values[0]);
+         break;
+
+      case CM_BRIGHTNESS:
+         matrix = new (std::nothrow) ColourMatrix();
+         if (matrix) matrix->adjustBrightness(Self->Values[0]);
+         break;
+
+      case CM_HUE:
+         matrix = new (std::nothrow) ColourMatrix();
+         if (matrix) matrix->adjustHue(Self->Values[0]);
+         break;
+
+      case CM_COLOURISE:
+         matrix = new (std::nothrow) ColourMatrix();
+         if (matrix) matrix->colourise(Self->Values[0], Self->Values[1], Self->Values[2], Self->Values[3] < 0.001 ? 1.0 : Self->Values[3]);
+         break;
+
+      case CM_DESATURATE:
+         matrix = new (std::nothrow) ColourMatrix();
+         if (matrix) matrix->adjustSaturation(0);
+         break;
+
+      case CM_NONE:
+      default:
+         matrix = new (std::nothrow) ColourMatrix(Self->Values);
+         break;
    }
 
-   if (!matrix) return ERR_AllocMemory;
-   effect->Colour.Matrix = matrix; // Will be deleted in free_effect_resources()
+   if (!matrix) return log.warning(ERR_AllocMemory);
+   else Self->Matrix = matrix;
 
    return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Mode: Defines the algorithm that will process the input source.
+Lookup: CM
+
+*********************************************************************************************************************/
+
+static ERROR COLOURFX_GET_Mode(objColourFX *Self, LONG *Value)
+{
+   *Value = Self->Mode;
+   return ERR_Okay;
+}
+
+static ERROR COLOURFX_SET_Mode(objColourFX *Self, LONG Value)
+{
+   Self->Mode = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Values: A list of input values for the algorithm defined by #Mode.
+
+The meaning of the input values is dependent on the selected #Mode.  Each mode documents the total number of values
+that must be defined for them to work properly.
+
+When values are not defined, they default to 0.
+
+*********************************************************************************************************************/
+
+static ERROR COLOURFX_GET_Values(objColourFX *Self, DOUBLE **Array, LONG *Elements)
+{
+   *Array = Self->Values;
+   *Elements = Self->TotalValues;
+   return ERR_Okay;
+}
+
+static ERROR COLOURFX_SET_Values(objColourFX *Self, DOUBLE *Array, LONG Elements)
+{
+   if (Elements > ARRAYSIZE(Self->Values)) return ERR_InvalidValue;
+   CopyMemory(Array, Self->Values, Elements * sizeof(DOUBLE));
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+XMLDef: Returns an SVG compliant XML string that describes the effect.
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR COLOURFX_GET_XMLDef(objColourFX *Self, STRING *Value)
+{
+   std::stringstream stream;
+
+   stream << "feColorMatrix";
+
+   *Value = StrClone(stream.str().c_str());
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+#include "filter_colourmatrix_def.c"
+
+static const FieldDef clMode[] = {
+   { "None",           CM_NONE },
+   { "Saturate",       CM_SATURATE },
+   { "HueRotate",      CM_HUE_ROTATE },
+   { "LuminanceAlpha", CM_LUMINANCE_ALPHA },
+   { "Contrast",       CM_CONTRAST },
+   { "Brightness",     CM_BRIGHTNESS },
+   { "Hue",            CM_HUE },
+   { "Desaturate",     CM_DESATURATE },
+   { "Colourise",      CM_COLOURISE },
+   { NULL, 0 }
+};
+
+static const FieldArray clColourFXFields[] = {
+   { "Mode",   FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RI,  (MAXINT)&clMode, (APTR)COLOURFX_GET_Mode, (APTR)COLOURFX_SET_Mode },
+   { "Values", FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RI, 0, (APTR)COLOURFX_GET_Values, (APTR)COLOURFX_SET_Values },
+   { "XMLDef", FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R,  0, (APTR)COLOURFX_GET_XMLDef, NULL },
+   END_FIELD
+};
+
+//********************************************************************************************************************
+
+ERROR init_colourfx(void)
+{
+   return(CreateObject(ID_METACLASS, 0, &clColourFX,
+      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
+      FID_SubClassID|TLONG,  ID_COLOURFX,
+      FID_Name|TSTRING,      "ColourFX",
+      FID_Category|TLONG,    CCF_GRAPHICS,
+      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
+      FID_Actions|TPTR,      clColourFXActions,
+      FID_Fields|TARRAY,     clColourFXFields,
+      FID_Size|TLONG,        sizeof(objColourFX),
+      FID_Path|TSTR,         MOD_PATH,
+      TAGEND));
 }

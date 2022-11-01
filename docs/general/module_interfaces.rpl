@@ -2,9 +2,9 @@
 
 <info>
  <title>Module Interfaces</title>
- <author>Rocklyte Systems</author>
- <keywords>rocklyte, sdk, api, library, module, function, call, library</keywords>
- <description>Overview of Rocklyte's module interface design.</description>
+ <author>Paul Manias</author>
+ <keywords>sdk, api, library, module, function, call, library</keywords>
+ <description>Overview of Parasol's module interface design.</description>
 </info>
 
 <include src="inc_style.rpl"/>
@@ -13,17 +13,15 @@
 
 <startpage title="Module Interfaces"/>
 
-<p>The Rocklyte SDK uses an API system that has been designed for multi-platform development. In this section we'll give you an introduction as to how this system works, and further on in the manual you will be able to learn how to create modules of your own devising. Please note that we tend not use the term 'API', as 'module' is more reflective of the system's modular design, but the terms are effectively one and the same.</p>
+<p>The Parasol Framework uses an API system that has been designed for multi-platform development. In this section we'll give you an introduction as to how this system works, and further on in the manual you will be able to learn how to create modules of your own devising. Please note that we tend not use the term 'API', as 'module' is more reflective of the system's modular design, but the terms are effectively one and the same.</p>
 
 <h2>Background</h2>
 
-<p>Rocklyte's module system has been designed to allow code to be shared between programs. The system keeps track of how many times the module has been opened.  If the open count is reduced to zero, it is possible to 'expunge' the code from memory when resources are running low.  Modules support version and revision numbers that can be checked on load, and information on a module's author, revision date and copyright can be stored and retrieved.</p>
+<p>Parasol's module system has been designed to allow code to be shared between programs. The system keeps track of how many times the module has been opened.  If the open count is reduced to zero, it is possible to 'expunge' the code from memory when resources are running low.  Modules support version and revision numbers that can be checked on load, and information on a module's author, revision date and copyright can be stored and retrieved.</p>
 
 <p>Modules are stored in the system:modules/ folder.  File extensions depend on the targetted binary system - Linux based modules have a '.so' extension and Windows modules use '.dll'.</p>
 
 <p>Modules are compiled into binary formats that are native to the targetted system. For instance, Linux modules are compiled in ELF format, while Windows modules are compiled in DLL format. This means that modules are not portable between systems unless there is a conversion mechanism for foreign executable formats. In future, a standard file format for binaries may be adopted to solve this problem.</p>
-
-<p>Modules that are created by developers for the purpose of use within the Rocklyte community can register their creation with Rocklyte Systems.  This procedure ensures that naming conflicts are avoided, as well as lessening the chances of duplication of effort. Module interfaces are also checked to make sure that they comply with existing standards before they are accepted, which provides an assurance to other developers that the module design does not deviate from accepted practice. The registration process is free of charge.</p>
 
 <h2>Opening a Module</h2>
 

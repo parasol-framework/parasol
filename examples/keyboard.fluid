@@ -22,5 +22,5 @@ A basic demonstration of receiving keyboard input.
    text.acShow()
    win.acShow()
 
-   processMessages(-1)
+   processing.sleep()
 

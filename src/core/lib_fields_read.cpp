@@ -24,7 +24,7 @@ static THREADVAR char strGetField[400]; // Buffer for retrieving unlisted field 
 
 Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
 {
-   rkMetaClass *mc = (rkMetaClass *)(Object->Class);
+   objMetaClass *mc = (objMetaClass *)(Object->Class);
    Field *field = mc->prvFields;
    *Result = Object;
 
@@ -35,7 +35,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
       if (field[i].FieldID < FieldID) floor = i + 1;
       else if (field[i].FieldID > FieldID) ceiling = i;
       else {
-         while ((i > 0) AND (field[i-1].FieldID IS FieldID)) i--;
+         while ((i > 0) and (field[i-1].FieldID IS FieldID)) i--;
          return field+i;
       }
    }
@@ -43,8 +43,8 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
    if (mc->Flags & CLF_PROMOTE_INTEGRAL) {
       for (LONG i=0; mc->Children[i] != 0xff; i++) {
          OBJECTPTR child;
-         if ((!copy_field_to_buffer(Object, mc->prvFields + mc->Children[i], FT_POINTER, &child, NULL, NULL)) AND (child)) {
-            rkMetaClass *childclass = (rkMetaClass *)(child->Class);
+         if ((!copy_field_to_buffer(Object, mc->prvFields + mc->Children[i], FT_POINTER, &child, NULL, NULL)) and (child)) {
+            objMetaClass *childclass = (objMetaClass *)(child->Class);
             field = childclass->prvFields;
 
             LONG floor = 0;
@@ -54,7 +54,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
                if (field[j].FieldID < FieldID) floor = j + 1;
                else if (field[j].FieldID > FieldID) ceiling = j;
                else {
-                  while ((j > 0) AND (field[j-1].FieldID IS FieldID)) j--;
+                  while ((j > 0) and (field[j-1].FieldID IS FieldID)) j--;
                   *Result = child;
                   return field+j;
                }
@@ -104,7 +104,7 @@ Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Source) // Read-on
    /*if (Object->ClassID IS ID_METACLASS) {
       // If FindField() is called on a meta-class, the fields declared for that class will be inspected rather than
       // the metaclass itself.
-      return lookup_id_byclass((rkMetaClass *)Object, FieldID, (rkMetaClass **)Source);
+      return lookup_id_byclass((objMetaClass *)Object, FieldID, (objMetaClass **)Source);
    }
    else*/ return lookup_id(Object, FieldID, Source);
 }
@@ -159,7 +159,7 @@ UnsupportedField: The Field is not supported by the object's class.
 ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
 {
    parasol::Log log(__FUNCTION__);
-   if ((!Object) OR (!Result)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Result)) return log.warning(ERR_NullArgs);
 
    ULONG type = FieldID>>32;
    FieldID = FieldID & 0xffffffff;
@@ -225,7 +225,7 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Object) OR (!Result) OR (!Elements)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Result) or (!Elements)) return log.warning(ERR_NullArgs);
 
    LONG req_type = FieldID>>32;
    FieldID = FieldID & 0xffffffff;
@@ -234,7 +234,7 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
 
    Field *field;
    if ((field = lookup_id(Object, FieldID, &Object))) {
-      if ((!(field->Flags & FD_READ)) OR (!(field->Flags & FD_ARRAY))) {
+      if ((!(field->Flags & FD_READ)) or (!(field->Flags & FD_ARRAY))) {
          if (!field->Name) log.warning("Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
          else log.warning("Illegal attempt to read field %s.", field->Name);
          return ERR_NoFieldAccess;
@@ -340,7 +340,7 @@ ERROR GetFields(OBJECTPTR Object, ...)
          if (!error) error = copy_field_to_buffer(source, field, fieldflags, value, NULL, NULL);
       }
       else {
-         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((rkMetaClass *)Object->Class)->ClassName);
+         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((objMetaClass *)Object->Class)->ClassName);
          error = ERR_UnsupportedField;
       }
    }
@@ -397,7 +397,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
 {
    parasol::Log log("GetVariable");
 
-   if ((!Object) OR (!FieldName) OR (!Buffer) OR (BufferSize < 2)) {
+   if ((!Object) or (!FieldName) or (!Buffer) or (BufferSize < 2)) {
       return log.warning(ERR_Args);
    }
 
@@ -436,7 +436,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
       if (c IS '.') {
          WORD j;
          // Flagref == fieldname\0flagname\0
-         for (j=0; ((size_t)j < sizeof(flagref)-1) AND (fname[j]); j++) flagref[j] = fname[j];
+         for (j=0; ((size_t)j < sizeof(flagref)-1) and (fname[j]); j++) flagref[j] = fname[j];
          flagref[i] = 0; // Middle termination
          flagref[j] = 0; // End termination
          fname = flagref;
@@ -444,7 +444,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          break;
       }
       else {
-         if ((c >= 'A') AND (c <= 'Z')) c = c - 'A' + 'a';
+         if ((c >= 'A') and (c <= 'Z')) c = c - 'A' + 'a';
          hash = ((hash<<5) + hash) + c;
       }
    }
@@ -463,14 +463,14 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          if (!(error = copy_field_to_buffer(Object, field, FD_POINTER|FD_STRING, &str, ext, NULL))) {
             if (checkdefined) {
                if (field->Flags & FD_STRING) {
-                  if ((str) AND (str[0])) Buffer[0] = '1'; // A string needs only one char (of any kind) to be considered to be defined
+                  if ((str) and (str[0])) Buffer[0] = '1'; // A string needs only one char (of any kind) to be considered to be defined
                   else Buffer[0] = '0';
                }
                else Buffer[0] = '1';
                Buffer[1] = 0;
             }
             else if (str) {
-               for (i=0; (str[i]) AND (i < BufferSize - 1); i++) Buffer[i] = str[i];
+               for (i=0; (str[i]) and (i < BufferSize - 1); i++) Buffer[i] = str[i];
                Buffer[i] = 0;
             }
             else Buffer[0] = 0;
@@ -485,7 +485,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          LARGE large;
 
          if (!(error = copy_field_to_buffer(Object, field, FD_LARGE, &large, ext, NULL))) {
-            if ((ext) AND (field->Flags & (FD_FLAGS|FD_LOOKUP))) {
+            if ((ext) and (field->Flags & (FD_FLAGS|FD_LOOKUP))) {
                Buffer[0] = '0';
                Buffer[1] = 0;
 
@@ -501,7 +501,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                      lookup++;
                   }
                }
-               else log.warning("No lookup table for field '%s', class '%s'.", fname, ((rkMetaClass *)Object->Class)->ClassName);
+               else log.warning("No lookup table for field '%s', class '%s'.", fname, ((objMetaClass *)Object->Class)->ClassName);
 
                return ERR_Okay;
             }
@@ -511,7 +511,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                      LONG pos = 0;
                      while (lookup->Name) {
                         if (large & lookup->Value) {
-                           if ((pos) AND (pos < BufferSize-1)) Buffer[pos++] = '|';
+                           if ((pos) and (pos < BufferSize-1)) Buffer[pos++] = '|';
                            pos += StrCopy(lookup->Name, Buffer+pos, BufferSize-pos);
                         }
                         lookup++;
@@ -557,7 +557,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
             }
             else {
                Buffer[0] = '#';
-               IntToStr(obj->UniqueID, Buffer+1, BufferSize-1);
+               IntToStr(obj->UID, Buffer+1, BufferSize-1);
             }
          }
          else StrCopy("0", Buffer, BufferSize);
@@ -579,9 +579,9 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
          if (!Action(AC_GetVar, Object, &var)) {
             return ERR_Okay;
          }
-         else log.msg("Could not find field %s from object %p (%s).", FieldName, Object, ((rkMetaClass *)Object->Class)->ClassName);
+         else log.msg("Could not find field %s from object %p (%s).", FieldName, Object, ((objMetaClass *)Object->Class)->ClassName);
       }
-      else log.warning("Could not find field %s from object %p (%s).", FieldName, Object, ((rkMetaClass *)Object->Class)->ClassName);
+      else log.warning("Could not find field %s from object %p (%s).", FieldName, Object, ((objMetaClass *)Object->Class)->ClassName);
 
       return ERR_UnsupportedField;
    }
@@ -594,7 +594,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
 {
    parasol::Log log("GetField");
 
-   //log.msg("[%s:%d] Name: %s, Flags: $%x", ((rkMetaClass *)Object->Class)->Name, Object->UniqueID, Field->Name, DestFlags);
+   //log.msg("[%s:%d] Name: %s, Flags: $%x", ((objMetaClass *)Object->Class)->Name, Object->UID, Field->Name, DestFlags);
 
    BYTE value[16]; // 128 bits of space
    APTR data;
@@ -679,7 +679,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
 
       if (Option) { // If an option is specified, treat it as an array index.
          LONG index = StrToInt(Option);
-         if ((index >= 0) AND (index < array_size)) {
+         if ((index >= 0) and (index < array_size)) {
             if (srcflags & FD_LONG) data = (BYTE *)data + (sizeof(LONG) * index);
             else if (srcflags & (FD_LARGE|FD_DOUBLE))   data = (BYTE *)data + (sizeof(DOUBLE) * index);
             else if (srcflags & (FD_POINTER|FD_STRING)) data = (BYTE *)data + (sizeof(APTR) * index);
@@ -696,21 +696,21 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
             LONG *array = (LONG *)data;
             for (i=0; i < array_size; i++) {
                pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
-               if (((size_t)pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
+               if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
          else if (srcflags & FD_BYTE) {
             UBYTE *array = (UBYTE *)data;
             for (i=0; i < array_size; i++) {
                pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
-               if (((size_t)pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
+               if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
          else if (srcflags & FD_DOUBLE) {
             DOUBLE *array = (DOUBLE *)data;
             for (i=0; i < array_size; i++) {
                pos += StrFormat(strGetField+pos, sizeof(strGetField)-pos, "%f", *array++);
-               if (((size_t)pos < sizeof(strGetField)-2) AND (i+1 < array_size)) strGetField[pos++] = ',';
+               if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
          strGetField[pos] = 0;
@@ -773,8 +773,8 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
       else if (srcflags & (FD_INTEGRAL|FD_OBJECT)) {
          OBJECTPTR object = *((OBJECTPTR *)data);
          if (object) {
-            if (DestFlags & FD_LONG)       *((LONG *)Result)  = object->UniqueID;
-            else if (DestFlags & FD_LARGE) *((LARGE *)Result) = object->UniqueID;
+            if (DestFlags & FD_LONG)       *((LONG *)Result)  = object->UID;
+            else if (DestFlags & FD_LARGE) *((LARGE *)Result) = object->UID;
             else goto mismatch;
          }
          else goto mismatch;
@@ -789,6 +789,6 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
    return ERR_Okay;
 
 mismatch:
-   log.warning("Mismatch while reading %s.%s (field $%.8x, requested $%.8x).", ((rkMetaClass *)Object->Class)->ClassName, Field->Name, Field->Flags, DestFlags);
+   log.warning("Mismatch while reading %s.%s (field $%.8x, requested $%.8x).", ((objMetaClass *)Object->Class)->ClassName, Field->Name, Field->Flags, DestFlags);
    return ERR_FieldTypeMismatch;
 }

@@ -19,8 +19,10 @@ static int object_call(lua_State *Lua)
    ERROR error = ERR_Okay;
    LONG results = 0;
    BYTE release = FALSE;
+   CSTRING action_name = NULL;
    if (action_id >= 0) {
-      if ((glActions[action_id].Args) AND (glActions[action_id].Size)) {
+      action_name = glActions[action_id].Name;
+      if ((glActions[action_id].Args) and (glActions[action_id].Size)) {
          BYTE argbuffer[glActions[action_id].Size+8]; // +8 for overflow protection in build_args()
 
          LONG resultcount;
@@ -37,7 +39,7 @@ static int object_call(lua_State *Lua)
 
                if (resultcount > 0) {
                   OBJECTPTR obj;
-                  if ((obj = (OBJECTPTR)access_object(object))) {
+                  if ((obj = access_object(object))) {
                      error = Action(action_id, obj, argbuffer);
                      release = TRUE;
                   }
@@ -81,8 +83,9 @@ static int object_call(lua_State *Lua)
    }
    else { // Method
       auto methods = (MethodArray *)lua_touserdata(Lua, lua_upvalueindex(3));
+      action_name = methods->Name;
 
-      if ((methods->Args) AND (methods->Size)) {
+      if ((methods->Args) and (methods->Size)) {
          BYTE argbuffer[methods->Size+8]; // +8 for overflow protection in build_args()
 
          LONG resultcount;
@@ -97,7 +100,7 @@ static int object_call(lua_State *Lua)
 
                if (resultcount > 0) {
                   OBJECTPTR obj;
-                  if ((obj = (OBJECTPTR)access_object(object))) {
+                  if ((obj = access_object(object))) {
                      error = Action(action_id, obj, argbuffer);
                      release = TRUE;
                   }
@@ -131,10 +134,14 @@ static int object_call(lua_State *Lua)
       }
    }
 
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
-   if ((error >= ERR_ExceptionThreshold) AND (prv->Catch)) {
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   if ((error >= ERR_ExceptionThreshold) and (prv->Catch)) {
+      char msg[180];
+      CSTRING error_msg = GetErrorMsg(error);
       prv->CaughtError = error;
-      luaL_error(prv->Lua, GetErrorMsg(error));
+      if (!action_name) action_name = "Unnamed";
+      StrFormat(msg, sizeof(msg), "%s.%s() failed: %s", object->Class->ClassName, action_name, error_msg);
+      luaL_error(prv->Lua, msg);
    }
 
    return results;
@@ -159,14 +166,14 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
    LONG i, n;
    LONG resultcount = 0;
    LONG j = 0;
-   for (i=0,n=1; (args[i].Name) AND (j < ArgsSize) AND (top > 0); i++,n++,top--) {
+   for (i=0,n=1; (args[i].Name) and (j < ArgsSize) and (top > 0); i++,n++,top--) {
       LONG type = lua_type(Lua, n);
 
       if (args[i].Type & FD_RESULT) resultcount = resultcount + 1;
 
       //log.trace("Processing arg %s, type $%.8x", args[i].Name, args[i].Type);
 
-      if ((args[i].Type & FD_BUFFER) OR (args[i+1].Type & FD_BUFSIZE)) {
+      if ((args[i].Type & FD_BUFFER) or (args[i+1].Type & FD_BUFSIZE)) {
          #ifdef _LP64
             j = ALIGN64(j);
          #endif
@@ -247,13 +254,13 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
          #ifdef _LP64
             j = ALIGN64(j);
          #endif
-         if ((type IS LUA_TSTRING) OR (type IS LUA_TNUMBER)) {
+         if ((type IS LUA_TSTRING) or (type IS LUA_TNUMBER)) {
             ((CSTRING *)(argbuffer + j))[0] = lua_tostring(Lua, n);
          }
          else if (type <= 0) {
             ((CSTRING *)(argbuffer + j))[0] = NULL;
          }
-         else if ((type IS LUA_TUSERDATA) OR (type IS LUA_TLIGHTUSERDATA)) {
+         else if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
             luaL_error(Lua, "Arg #%d (%s) requires a string and not untyped pointer.", i, args[i].Name);
          }
          else luaL_error(Lua, "Arg #%d (%s) requires a string, got %s '%s'.", i, args[i].Name, lua_typename(Lua, type), lua_tostring(Lua, n));
@@ -273,7 +280,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
                if (object->prvObject) {
                   ((OBJECTPTR *)(argbuffer + j))[0] = object->prvObject;
                }
-               else if ((ptr_obj = (OBJECTPTR)access_object(object))) {
+               else if ((ptr_obj = access_object(object))) {
                   ((OBJECTPTR *)(argbuffer + j))[0] = ptr_obj;
                   release_object(object);
                }
@@ -285,17 +292,17 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
             else ((OBJECTPTR *)(argbuffer + j))[0] = NULL;
          }
          else if (args[i].Type & FD_FUNCTION) {
-            if ((type IS LUA_TSTRING) OR (type IS LUA_TFUNCTION)) {
+            if ((type IS LUA_TSTRING) or (type IS LUA_TFUNCTION)) {
                FUNCTION *func;
 
                if (!AllocMemory(sizeof(FUNCTION), MEM_DATA, &func, NULL)) {
                   if (type IS LUA_TSTRING) {
                      lua_getglobal(Lua, lua_tostring(Lua, n));
-                     SET_FUNCTION_SCRIPT(*func, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                     SET_FUNCTION_SCRIPT(*func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                   }
                   else {
                      lua_pushvalue(Lua, n);
-                     SET_FUNCTION_SCRIPT(*func, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                     SET_FUNCTION_SCRIPT(*func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                   }
 
                   ((FUNCTION **)(argbuffer + j))[0] = func;
@@ -331,7 +338,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
          j += sizeof(APTR);
       }
       else if (args[i].Type & FD_LONG) {
-         if ((type IS LUA_TUSERDATA) OR (type IS LUA_TLIGHTUSERDATA)) {
+         if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
             struct object *obj;
             if ((obj = (struct object *)get_meta(Lua, n, "Fluid.obj"))) {
                ((LONG *)(argbuffer + j))[0] = obj->ObjectID;
@@ -429,7 +436,7 @@ static LONG get_results(lua_State *Lua, const FunctionField *args, const BYTE *A
             RMSG("Result-Arg: %s, Struct: %p", args[i].Name, ptr_struct);
             if (ptr_struct) {
                if (type & FD_RESOURCE) {
-                  push_struct(Lua->Script, ptr_struct, args[i].Name, (type & FD_ALLOC) ? TRUE : FALSE, TRUE);
+                  push_struct(Lua->Script, ptr_struct, args[i].Name, (type & FD_ALLOC) ? TRUE : FALSE, FALSE);
                }
                else {
                   if (named_struct_to_table(Lua, args[i].Name, ptr_struct) != ERR_Okay) {
@@ -456,7 +463,7 @@ static LONG get_results(lua_State *Lua, const FunctionField *args, const BYTE *A
          }
          else if (type & FD_RESULT) {
             if (type & FD_OBJECT) {
-               OBJECTPTR obj = (OBJECTPTR)((APTR *)(ArgBuf+of))[0];
+               auto obj = (OBJECTPTR)((APTR *)(ArgBuf+of))[0];
 
                RMSG("Result-Arg: %s, Value: %p (Object)", args[i].Name, obj);
 

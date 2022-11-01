@@ -12,11 +12,11 @@ obtained from http://www.ijg.org.
 
 *****************************************************************************/
 
-#include "../picture/picture.h"
-
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/display.h>
+
+#include "../picture/picture.h"
 
 extern "C" {
 #include "lib/jpeglib.h"
@@ -29,16 +29,16 @@ static struct DisplayBase *DisplayBase = NULL;
 static OBJECTPTR clJPEG = NULL;
 static OBJECTPTR modDisplay = NULL;
 
-static ERROR JPEG_Activate(objPicture *, APTR);
-static ERROR JPEG_Init(objPicture *, APTR);
-static ERROR JPEG_Query(objPicture *, APTR);
-static ERROR JPEG_SaveImage(objPicture *, struct acSaveImage *);
+static ERROR JPEG_Activate(prvPicture *, APTR);
+static ERROR JPEG_Init(prvPicture *, APTR);
+static ERROR JPEG_Query(prvPicture *, APTR);
+static ERROR JPEG_SaveImage(prvPicture *, struct acSaveImage *);
 
-static void decompress_jpeg(objPicture *, objBitmap *, struct jpeg_decompress_struct *);
+static void decompress_jpeg(prvPicture *, objBitmap *, struct jpeg_decompress_struct *);
 
 //****************************************************************************
 
-static ERROR JPEG_Activate(objPicture *Self, APTR Void)
+static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
    objBitmap *bmp;
@@ -48,14 +48,14 @@ static ERROR JPEG_Activate(objPicture *Self, APTR Void)
 
    // Return if the picture object has already been activated
 
-   if (Self->Bitmap->Head.Flags & NF_INITIALISED) return ERR_Okay;
+   if (Self->Bitmap->initialised()) return ERR_Okay;
 
    if (!Self->prvFile) {
       if (GetString(Self, FID_Location, &location) != ERR_Okay) return log.warning(ERR_GetField);
 
       if (CreateObject(ID_FILE, 0, &Self->prvFile,
-            FID_Location|TSTRING, location,
-            FID_Flags|TLONG,      FL_READ|FL_APPROXIMATE,
+            FID_Location|TSTR, location,
+            FID_Flags|TLONG,   FL_READ|FL_APPROXIMATE,
             TAGEND) != ERR_Okay) {
          log.warning("Failed to open file \"%s\".", location);
          return ERR_File;
@@ -123,7 +123,7 @@ static ERROR JPEG_Activate(objPicture *Self, APTR Void)
    return ERR_Okay;
 }
 
-static void decompress_jpeg(objPicture *Self, objBitmap *Bitmap, struct jpeg_decompress_struct *Cinfo)
+static void decompress_jpeg(prvPicture *Self, objBitmap *Bitmap, struct jpeg_decompress_struct *Cinfo)
 {
    parasol::Log log;
    RGB8 rgb;
@@ -176,7 +176,7 @@ static void decompress_jpeg(objPicture *Self, objBitmap *Bitmap, struct jpeg_dec
 ** Picture: Init
 */
 
-static ERROR JPEG_Init(objPicture *Self, APTR Void)
+static ERROR JPEG_Init(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
    UBYTE *buffer;
@@ -214,13 +214,13 @@ static ERROR JPEG_Init(objPicture *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR JPEG_Query(objPicture *Self, APTR Void)
+static ERROR JPEG_Query(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
    struct jpeg_decompress_struct *cinfo;
    struct jpeg_error_mgr jerr;
 
-   log.branch("");
+   log.branch();
 
    if (!Self->prvFile) {
       STRING path;
@@ -261,11 +261,11 @@ static ERROR JPEG_Query(objPicture *Self, APTR Void)
 ** Picture: SaveImage
 */
 
-static ERROR JPEG_SaveImage(objPicture *Self, struct acSaveImage *Args)
+static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    objFile *file = NULL;
 

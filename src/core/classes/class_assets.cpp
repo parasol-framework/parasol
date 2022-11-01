@@ -92,7 +92,7 @@ ERROR add_asset_class(void)
    CSTRING classname;
    LONG i;
 
-   log.branch("");
+   log.branch();
 
    if (!(openinfo = GetResourcePtr(RES_OPENINFO))) {
       log.warning("No OpenInfo structure set during Core initialisation.");
@@ -100,7 +100,7 @@ ERROR add_asset_class(void)
    }
 
    classname = NULL;
-   if ((openinfo->Flags & OPF_OPTIONS) AND (openinfo->Options)) {
+   if ((openinfo->Flags & OPF_OPTIONS) and (openinfo->Options)) {
       for (i=0; openinfo->Options[i].Tag != TAGEND; i++) {
          switch (openinfo->Options[i].Tag) {
             case TOI_ANDROID_CLASS: {
@@ -125,7 +125,7 @@ ERROR add_asset_class(void)
       JNIEnv *env = GetResourcePtr(RES_JNI_ENV);
       glAssetManagerFree = TRUE;
 
-      if ((!env) OR (!classname)) {
+      if ((!env) or (!classname)) {
          log.warning("Android env and class name must be defined when opening the Core.");
          return ERR_Failed;
       }
@@ -154,7 +154,7 @@ ERROR add_asset_class(void)
          FID_Actions|TPTR,      clActions,
          FID_Methods|TARRAY,    clMethods,
          FID_Fields|TARRAY,     clFields,
-         FID_Path|TSTR,         "modules:filesystem",
+         FID_Path|TSTR,         "modules:core",
          TAGEND) != ERR_Okay) {
       return ERR_CreateObject;
    }
@@ -175,7 +175,7 @@ ERROR add_asset_class(void)
 
 void free_asset_class(void)
 {
-   if ((glAssetManager) AND (glAssetManagerFree)) {
+   if ((glAssetManager) and (glAssetManagerFree)) {
       JNIEnv *env = GetResourcePtr(RES_JNI_ENV);
       if (env) (*env)->DeleteGlobalRef(env, glAssetManager);
    }
@@ -216,7 +216,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
 
    // Allocate private structure
 
-   if (!AllocMemory(sizeof(prvFileAsset), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvFileAsset), Self->memflags(), &Self->ChildPrivate, NULL)) {
       LONG len;
       for (len=0; Self->Path[len]; len++);
 
@@ -239,13 +239,13 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
             return ERR_Okay;
          }
          else {
-            FreeResource(Self->Head.ChildPrivate);
-            Self->Head.ChildPrivate = NULL;
+            FreeResource(Self->ChildPrivate);
+            Self->ChildPrivate = NULL;
             return ERR_DoesNotExist;
          }
       }
       else {
-         prv = Self->Head.ChildPrivate;
+         prv = Self->ChildPrivate;
 
          // Check that the location exists / open the file.
 
@@ -257,8 +257,8 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
             else log.warning("Failed to open asset file \"%s\"", Self->Path+LEN_ASSETS);
          }
 
-         FreeResource(Self->Head.ChildPrivate);
-         Self->Head.ChildPrivate = NULL;
+         FreeResource(Self->ChildPrivate);
+         Self->ChildPrivate = NULL;
          return ERR_Failed;
       }
    }
@@ -279,7 +279,7 @@ static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
    parasol::Log log(__FUNCTION__);
    prvFileAsset *prv;
 
-   if (!(prv = Self->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
    if (!(Self->Flags & FL_READ)) return log.warning(ERR_FileReadFlag);
 
    Args->Result = AAsset_read(prv->Asset, Args->Buffer, Args->Length);
@@ -317,7 +317,7 @@ static ERROR ASSET_Seek(objFile *Self, struct acSeek *Args)
    prvFileAsset *prv;
    LONG method;
 
-   if (!(prv = Self->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 
    if (Args->Position IS POS_START) method = SEEK_SET;
    else if (Args->Position IS POS_END) method = SEEK_END;
@@ -359,7 +359,7 @@ static ERROR GET_Size(objFile *Self, LARGE *Value)
 {
    prvFileAsset *prv;
 
-   if (!(prv = Self->Head.ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 
    if (prv->Asset) {
       *Value = AAsset_getLength(prv->Asset);
@@ -502,15 +502,15 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    for (len=0; Path[len]; len++);
 
-   if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) Info->Flags |= RDF_FOLDER;
+   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Info->Flags |= RDF_FOLDER;
    else if (dir) Info->Flags |= RDF_FOLDER;
    else Info->Flags |= RDF_FILE|RDF_SIZE;
 
    // Extract the file name
 
    i = len;
-   if ((Path[i-1] IS '/') OR (Path[i-1] IS '\\')) i--;
-   while ((i > 0) AND (Path[i-1] != '/') AND (Path[i-1] != '\\') AND (Path[i-1] != ':')) i--;
+   if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) i--;
+   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
    i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
 
    if (Info->Flags & RDF_FOLDER) {
@@ -631,7 +631,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
    ERROR error = ERR_Okay;
    LONG insert = StrCopy(Path+LEN_ASSETS, assetpath, sizeof(assetpath)-2);
    if (assetpath[insert-1] != '/') assetpath[insert++] = '/';
-   while ((filename = AAssetDir_getNextFileName(dir)) AND (!error)) {
+   while ((filename = AAssetDir_getNextFileName(dir)) and (!error)) {
       entry = NULL;
 
       StrCopy(filename, assetpath+insert, sizeof(assetpath)-insert-1);

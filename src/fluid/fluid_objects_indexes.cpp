@@ -15,7 +15,7 @@ static int object_newindex(lua_State *Lua)
             ERROR error = set_object_field(Lua, obj, fieldname, 3);
             release_object(object);
             if (error >= ERR_ExceptionThreshold) {
-               auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+               auto prv = (prvFluid *)Lua->Script->ChildPrivate;
                prv->CaughtError = error;
                luaL_error(Lua, GetErrorMsg(error));
             }
@@ -127,7 +127,7 @@ static int object_set(lua_State *Lua)
       lua_pushinteger(Lua, error);
 
       if (error >= ERR_ExceptionThreshold) {
-         auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->CaughtError = error;
          luaL_error(prv->Lua, GetErrorMsg(error));
       }
@@ -164,7 +164,7 @@ static int object_setvar(lua_State *Lua)
          lua_pushinteger(Lua, error);
 
          if (error >= ERR_ExceptionThreshold) {
-            auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+            auto prv = (prvFluid *)Lua->Script->ChildPrivate;
             if (prv->Catch) {
                prv->CaughtError = error;
                luaL_error(prv->Lua, GetErrorMsg(error));
@@ -198,16 +198,16 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       char buffer[1024];
       if (!(error = GetFieldVariable(obj, FName, buffer, sizeof(buffer)))) lua_pushstring(Lua, buffer);
    }
-   else if ((FName[0] IS 'i') AND (FName[1] IS 'd') AND (!FName[2])) {
+   else if ((FName[0] IS 'i') and (FName[1] IS 'd') and (!FName[2])) {
       // Note that if the object actually has a defined ID field in its structure, the Lua code can read it
       // by using an uppercase 'ID'.
-      lua_pushnumber(Lua, obj->UniqueID);
+      lua_pushnumber(Lua, obj->UID);
    }
    else if ((field = FindField(obj, StrHash(FName, FALSE), &src))) {
       if (field->Flags & FD_ARRAY) {
          if (field->Flags & FD_RGB) {
             STRING rgb;
-            if ((!(error = GetString(src, field->FieldID, &rgb))) AND (rgb)) {
+            if ((!(error = GetString(src, field->FieldID, &rgb))) and (rgb)) {
                lua_pushstring(Lua, rgb);
             }
          }
@@ -235,7 +235,13 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
          APTR result;
          if (field->Arg) {
             if (!(error = GetPointer(src, field->FieldID, &result))) {
-               named_struct_to_table(Lua, (CSTRING)field->Arg, result);
+               if (result) {
+                  if (field->Flags & FD_RESOURCE) {
+                      push_struct(Lua->Script, result, (CSTRING)field->Arg, (field->Flags & FD_ALLOC) ? TRUE : FALSE, TRUE);
+                  }
+                  else named_struct_to_table(Lua, (CSTRING)field->Arg, result);
+               }
+               else lua_pushnil(Lua);
             }
          }
          else {
@@ -289,7 +295,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       char buffer[8192];
 
       // Assume this is a custom variable field since FindField() failed
-      if ((!(error = GetVar(obj, FName, buffer, sizeof(buffer)))) AND (buffer[0])) {
+      if ((!(error = GetVar(obj, FName, buffer, sizeof(buffer)))) and (buffer[0])) {
          lua_pushstring(Lua, buffer);
       }
       else if (error IS ERR_NoSupport) {
@@ -313,7 +319,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
       char bufname[80];
       WORD i;
       bufname[0] = '@';
-      for (i=1; ((size_t)i < sizeof(bufname)) AND (FName[i]); i++) bufname[i] = FName[i];
+      for (i=1; ((size_t)i < sizeof(bufname)) and (FName[i]); i++) bufname[i] = FName[i];
       bufname[i] = 0;
       return SetFieldEval(obj, bufname, lua_tostring(Lua, ValueIndex));
    }
@@ -342,7 +348,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                   ClearMemory(values, sizeof(LONG) * total);
                   for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
                      LONG index = lua_tointeger(Lua, -2) - 1;
-                     if ((index >= 0) AND (index < total)) {
+                     if ((index >= 0) and (index < total)) {
                         values[index] = lua_tointeger(Lua, -1);
                      }
                   }
@@ -353,7 +359,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                   ClearMemory(values, sizeof(CSTRING) * total);
                   for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
                      LONG index = lua_tointeger(Lua, -2) - 1;
-                     if ((index >= 0) AND (index < total)) {
+                     if ((index >= 0) and (index < total)) {
                         values[index] = lua_tostring(Lua, -1);
                      }
                   }
@@ -362,7 +368,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                else if (field->Flags & FD_STRUCT) {
                   // Array structs can be set if the Lua table consists of Fluid.struct types.
 
-                  auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+                  auto prv = (prvFluid *)Lua->Script->ChildPrivate;
                   struct structentry *def;
                   if (!VarGet(prv->Structs, (CSTRING)field->Arg, &def, NULL)) {
                      LONG aligned_size = ALIGN64(def->Size);
@@ -370,7 +376,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
 
                      for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
                         LONG index = lua_tointeger(Lua, -2) - 1;
-                        if ((index >= 0) AND (index < total)) {
+                        if ((index >= 0) and (index < total)) {
                            APTR sti = structbuf + (aligned_size * index);
                            LONG type = lua_type(Lua, -1);
                            if (type IS LUA_TTABLE) {
@@ -407,13 +413,13 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
          if (type IS LUA_TSTRING) {
             FUNCTION func;
             lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
-            SET_FUNCTION_SCRIPT(func, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            SET_FUNCTION_SCRIPT(func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return SetFunction(src, field->FieldID, &func);
          }
          else if (type IS LUA_TFUNCTION) {
             FUNCTION func;
             lua_pushvalue(Lua, ValueIndex);
-            SET_FUNCTION_SCRIPT(func, &Lua->Script->Head, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            SET_FUNCTION_SCRIPT(func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return SetFunction(src, field->FieldID, &func);
          }
          else return ERR_FieldTypeMismatch;

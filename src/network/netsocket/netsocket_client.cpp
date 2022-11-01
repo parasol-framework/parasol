@@ -7,13 +7,15 @@
 static void client_connect(SOCKET_HANDLE Void, APTR Data)
 {
    parasol::Log log(__FUNCTION__);
-   objNetSocket *Self = (objNetSocket *)Data;
+   extNetSocket *Self = (extNetSocket *)Data;
 
    log.trace("Connection from server received.");
 
    LONG result = EHOSTUNREACH; // Default error in case getsockopt() fails
    socklen_t optlen = sizeof(result);
    getsockopt(Self->SocketHandle, SOL_SOCKET, SO_ERROR, &result, &optlen);
+
+   parasol::SwitchContext context(Self);
 
    // Remove the write callback
 
@@ -66,13 +68,15 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 ** This function is called from win32_netresponse() and is managed outside of the normal message queue.
 */
 
-static void client_server_incoming(SOCKET_HANDLE FD, rkNetSocket *Data)
+static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
 {
    parasol::Log log(__FUNCTION__);
-   objNetSocket *Self = Data;
+   extNetSocket *Self = Data;
+
+   parasol::SwitchContext context(Self);
 
    if (Self->Terminating) {
-      log.trace("[NetSocket:%d] Socket terminating...", Self->Head.UniqueID);
+      log.trace("[NetSocket:%d] Socket terminating...", Self->UID);
       if (Self->SocketHandle != NOHANDLE) free_socket(Self);
       return;
    }
@@ -91,12 +95,12 @@ static void client_server_incoming(SOCKET_HANDLE FD, rkNetSocket *Data)
 #endif
 
    if (Self->IncomingRecursion) {
-      log.trace("[NetSocket:%d] Recursion detected on handle " PF64(), Self->Head.UniqueID, (MAXINT)FD);
+      log.trace("[NetSocket:%d] Recursion detected on handle " PF64(), Self->UID, (MAXINT)FD);
       if (Self->IncomingRecursion < 2) Self->IncomingRecursion++; // Indicate that there is more data to be received
       return;
    }
 
-   log.traceBranch("[NetSocket:%d] Socket: " PF64(), Self->Head.UniqueID, (MAXINT)FD);
+   log.traceBranch("[NetSocket:%d] Socket: " PF64(), Self->UID, (MAXINT)FD);
 
    Self->InUse++;
    Self->IncomingRecursion++;
@@ -109,7 +113,7 @@ restart:
    ERROR error = ERR_Okay;
    if (Self->Incoming.Type) {
       if (Self->Incoming.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(objNetSocket *))Self->Incoming.StdC.Routine;
+         auto routine = (ERROR (*)(extNetSocket *))Self->Incoming.StdC.Routine;
          if (routine) {
             parasol::SwitchContext context(Self->Incoming.StdC.Context);
             error = routine(Self);
@@ -120,15 +124,12 @@ restart:
          const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
 
          if ((script = Self->Incoming.Script.Script)) {
-            if (!scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args))) {
-               GetLong(script, FID_Error, &error);
-            }
-            else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+            if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
       }
 
       if (error IS ERR_Terminate) log.trace("Termination of socket requested by channel subscriber.");
-      else if (!Self->ReadCalled) log.warning("[NetSocket:%d] Subscriber did not call Read()", Self->Head.UniqueID);
+      else if (!Self->ReadCalled) log.warning("[NetSocket:%d] Subscriber did not call Read()", Self->UID);
    }
 
    if (!Self->ReadCalled) {
@@ -169,10 +170,10 @@ restart:
 ** to the write queue.
 */
 
-static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
+static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
 {
    parasol::Log log(__FUNCTION__);
-   objNetSocket *Self = Data;
+   extNetSocket *Self = Data;
 
    if (Self->Terminating) return;
 
@@ -187,6 +188,8 @@ static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
       log.trace("Recursion detected.");
       return;
    }
+
+   parasol::SwitchContext context(Self);
 
    log.traceBranch("");
 
@@ -212,8 +215,8 @@ static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
 
          if (len > 0) {
             error = SEND(Self, Self->SocketHandle, (BYTE *)Self->WriteQueue.Buffer + Self->WriteQueue.Index, &len, 0);
-            if ((error) OR (!len)) break;
-            log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->Head.UniqueID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
+            if ((error) or (!len)) break;
+            log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->UID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
             Self->WriteQueue.Index += len;
          }
 
@@ -230,10 +233,10 @@ static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
 
    // Before feeding new data into the queue, the current buffer must be empty.
 
-   if ((!Self->WriteQueue.Buffer) OR (Self->WriteQueue.Index >= Self->WriteQueue.Length)) {
+   if ((!Self->WriteQueue.Buffer) or (Self->WriteQueue.Index >= Self->WriteQueue.Length)) {
       if (Self->Outgoing.Type) {
          if (Self->Outgoing.Type IS CALL_STDC) {
-            auto routine = (ERROR (*)(objNetSocket *))Self->Outgoing.StdC.Routine;
+            auto routine = (ERROR (*)(extNetSocket *))Self->Outgoing.StdC.Routine;
             if (routine) {
                parasol::SwitchContext context(Self->Outgoing.StdC.Context);
                error = routine(Self);
@@ -243,10 +246,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
             OBJECTPTR script;
             const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
             if ((script = Self->Outgoing.Script.Script)) {
-               if (!scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args))) {
-                  GetLong(script, FID_Error, &error);
-               }
-               else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+               if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
             }
          }
 
@@ -257,7 +257,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, rkNetSocket *Data)
       // we don't tax the system resources.
 
       if ((Self->Outgoing.Type IS CALL_NONE) AND (!Self->WriteQueue.Buffer)) {
-         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->Head.UniqueID, Self->SocketHandle);
+         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->UID, Self->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
          #elif _WIN32

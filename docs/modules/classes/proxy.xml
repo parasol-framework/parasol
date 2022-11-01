@@ -12,7 +12,7 @@
     <idstring>ID_PROXY</idstring>
     <category>Network</category>
     <include>modules/proxy.h</include>
-    <copyright>Paul Manias © 2005-2020</copyright>
+    <copyright>Paul Manias © 2005-2022</copyright>
     <description>
 <p>The proxy server class provides a global management service for a user's proxy servers.  You can alter proxy settings manually or present the user with a dialog box to edit and create new proxies.  Scanning functions are also provided with filtering, allowing you to scan for proxies that should be used with the user's network connection.</p>
 <p>Proxy objects are designed to work similarly to database recordsets. Creating a new proxy object will allow you to create a new proxy record if all required fields are set and the object is saved.</p>
@@ -86,8 +86,8 @@
 </pre>
       </description>
       <result>
-        <error code="NoSearchResult">No matching proxy was discovered.</error>
         <error code="Okay">A proxy was discovered.</error>
+        <error code="NoSearchResult">No matching proxy was discovered.</error>
       </result>
     </method>
 
@@ -99,8 +99,8 @@
 <p>This method continues searches that have been initiated by the <method>Find</method> method. If a proxy is found that matches the filter, ERR_Okay is returned and the details of the proxy object will reflect the data of the discovered record. ERR_NoSearchResult is returned if there are no more matching proxies.</p>
       </description>
       <result>
-        <error code="NoSearchResult">No matching proxy was discovered.</error>
         <error code="Okay">A proxy was discovered.</error>
+        <error code="NoSearchResult">No matching proxy was discovered.</error>
       </result>
     </method>
 
@@ -220,44 +220,6 @@
     </field>
 
   </fields>
-  <types>
-    <constants lookup="IPADDR" comment="Address types for the IPAddress structure.">
-      <const name="V4"/>
-      <const name="V6"/>
-    </constants>
-
-    <constants lookup="NSF">
-      <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
-      <const name="SSL">Use Secure Sockets Layer for all communication.</const>
-      <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
-      <const name="DEBUG">Print extra log messages.</const>
-      <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
-    </constants>
-
-    <constants lookup="NTC" comment="NetSocket states">
-      <const name="DISCONNECTED">There is no connection.</const>
-      <const name="CONNECTING">A connection is being established.</const>
-      <const name="CONNECTING_SSL">An SSL connection is being established.</const>
-      <const name="CONNECTED">There is an active connection at present.</const>
-    </constants>
-
-  </types>
   <structs>
-    <struct name="IPAddress">
-      <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
-      <field name="Type" type="LONG" lookup="IPADDR"></field>
-      <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
-    </struct>
-
-    <struct name="rkNetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
-      <field name="IP" type="char" size="8">IP address in 4/8-byte format</field>
-      <field name="Next" type="struct rkNetClient *">Next client in the chain</field>
-      <field name="Prev" type="struct rkNetClient *">Previous client in the chain</field>
-      <field name="NetSocket" type="struct rkNetSocket *">Reference to the parent socket</field>
-      <field name="Sockets" type="struct rkClientSocket *">Pointer to a list of sockets opened with this client.</field>
-      <field name="UserData" type="APTR">Free for user data storage.</field>
-      <field name="TotalSockets" type="LONG">Count of all created sockets</field>
-    </struct>
-
   </structs>
 </book>

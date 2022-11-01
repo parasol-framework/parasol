@@ -6,12 +6,40 @@ if (gui == nil) then
       fonts = { },
       colours = { },
       interface = { },
-      rgb = { }
+      rgb = { },
+      counter = 0,
+      iconThemes = {
+         default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+         carbon  = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+         yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke={ r=60, g=30, b=30, a=90 } },
+         orange  = { first={ r=0xFD,g=0xC8,b=0x30 }, last={ r=0xF3,g=0x73,b=0x35 } },
+         blue    = { first={ r=0x4b,g=0x6c,b=0xb7 }, last={ r=0x18,g=0x28,b=0x48 } },
+         ocean   = { first={ r=0xA8,g=0xC0,b=0xFF }, last={ r=0x3F,g=0x2B,b=0x96 } },
+         green   = { first={ r=0x7e,g=0x9d,b=0x13 }, last={ r=0x00,g=0x65,b=0x32 } },
+         red     = { first={ r=0xf5,g=0xaf,b=0x19 }, last={ r=0xf1,g=0x27,b=0x11 } },
+         indigo  = { first={ r=0xad,g=0x53,b=0x89 }, last={ r=0x3c,g=0x10,b=0x53 } },
+         rose    = { first={ r=0xff,g=0xc3,b=0xa0 }, last={ r=0xFF,g=0xAF,b=0xBD } },
+         pink    = { first={ r=0xff,g=0xdd,b=0xe1 }, last={ r=0xee,g=0x9c,b=0xa7 } },
+         grey    = { first={ r=100,g=100,b=100 }, last={ r=70,g=70,b=70 } },
+         pearl   = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
+      }
    }
 
+   gui.colours.rgb = function(Name)
+      if not gui.colours[Name] then error('Invalid colour name "' .. Name .. '"') end
+      return 'rgb(' .. gui.colours[Name] .. ')'
+   end
+
    do
-      local mSurface = mod.load('surface') // Temporarily load to ensure glStyle is available.
-      local xml = obj.find('glStyle')
+      local path = 'style:values.xml'
+      if mSys.AnalysePath(path) != ERR_Okay then
+         path = 'environment:config/values.xml'
+         if mSys.AnalysePath(path) != ERR_Okay then
+            path = 'styles:default/values.xml'
+         end
+      end
+
+      local xml = obj.new('xml', { path=path })
 
       if (xml != nil) then
          local total = 0
@@ -22,8 +50,8 @@ if (gui == nil) then
                if nz(name) then
                   err, font.face = xml.mtGetAttrib(TagIndex, 'face')
                   if nz(font.face) then
-                     err, font.size = xml.mtGetAttrib(TagIndex, 'size')
-                     err, font.colour = xml.mtGetAttrib(TagIndex, 'colour')
+                     err, font.size      = xml.mtGetAttrib(TagIndex, 'size')
+                     err, font.colour    = xml.mtGetAttrib(TagIndex, 'colour')
                      err, font.highlight = xml.mtGetAttrib(TagIndex, 'highlight')
                      gui.fonts[name] = font
                      total = total + 1
@@ -41,6 +69,10 @@ if (gui == nil) then
             err, gui.colours['highlight']     = xml.mtGetAttrib(index, 'highlight')
             err, gui.colours['colour']        = xml.mtGetAttrib(index, 'colour')
             err, gui.colours['widgetText']    = xml.mtGetAttrib(index, 'widgetText')
+            err, gui.colours['widgetBkgd']    = xml.mtGetAttrib(index, 'widgetBkgd')
+            err, gui.colours['widgetStroke']  = xml.mtGetAttrib(index, 'widgetStroke')
+            err, gui.colours['widgetStrokeFocus']   = xml.mtGetAttrib(index, 'widgetStrokeFocus')
+            err, gui.colours['widgetStrokeDisabled'] = xml.mtGetAttrib(index, 'widgetStrokeDisabled')
             err, gui.colours['button']        = xml.mtGetAttrib(index, 'button')
             err, gui.colours['buttonClick']   = xml.mtGetAttrib(index, 'buttonClick')
             err, gui.colours['menubar']       = xml.mtGetAttrib(index, 'menubar')
@@ -57,6 +89,7 @@ if (gui == nil) then
             err, gui.colours['textHighlight'] = xml.mtGetAttrib(index, 'textHighlight')
             err, gui.colours['window']        = xml.mtGetAttrib(index, 'window')
             err, gui.colours['boxedText']     = xml.mtGetAttrib(index, 'boxedText')
+            err, gui.colours['windowText']    = xml.mtGetAttrib(index, 'windowText')
          else
             error('No colours tag in style values.')
          end
@@ -75,6 +108,11 @@ if (gui == nil) then
             err, gui.interface['iconRatio']      = xml.mtGetAttrib(index, 'iconRatio')
             err, gui.interface['iconTheme']      = xml.mtGetAttrib(index, 'iconTheme')
             err, gui.interface['iconSize']       = xml.mtGetAttrib(index, 'iconSize')
+            for k, v in pairs(gui.interface) do
+               if string.match(v, '^%-?%d+$') then
+                  gui.interface[k] = tonumber(v)
+               end
+            end
          else
             error('No interface tag in style values.')
          end
@@ -83,8 +121,6 @@ if (gui == nil) then
       else
          error('Failed to retrieve style information.')
       end
-
-      mSurface = nil
    end
 end
 
@@ -92,10 +128,11 @@ end
 
 gui.getFontHeight = function(Font)
    if not Font.height then
-      local fnt = obj.new('font', { face=Font.face })
-      Font.height = fnt.maxHeight
+      local fnt = obj.new('font', { face=Font.face, point=Font.size })
+      Font.height = fnt.height
+      Font.maxHeight = fnt.maxHeight
    end
-   return Font.height
+   return Font.maxHeight, Font.height
 end
 
 ------------------------------------------------------------------------------
@@ -112,40 +149,6 @@ gui.bitmapColour = function(Bitmap, ColourName)
    local rgb = gui.rgb[ColourName]
    local err, col = Bitmap.mtGetColour(rgb.r, rgb.g, rgb.b, rgb.a)
    return col
-end
-
-------------------------------------------------------------------------------
--- Create a border inside a surface, suitable for a basic rectangular widget.  Options include:
---
---   fill:  Fill the box with the default solid colour or pattern.
---   style: Set to 'input', 'output' or 'text'.
---   updateMargins: Update the surface margins to accomodate the border thickness.
-
-gui.insideBorder = function(Surface, Options)
-   local thickness = 0
-   if (Options.style == 'input') then thickness = gui.pixel(gui.interface.inputBorder) end
-   if (Options.style == 'output') then thickness = gui.pixel(gui.interface.outputBorder) end
-   if (Options.style == 'text') then thickness = gui.pixel(gui.interface.inputBorder) end
-
-   if (thickness > 0) then
-      if (Options.updateMargins) then
-         box.leftMargin   = thickness
-         box.rightMargin  = thickness
-         box.topMargin    = thickness
-         box.bottomMargin = thickness
-      end
-   end
-
-   Surface.mtAddCallback(function(Surface, Bitmap)
-      for i=0,thickness-1 do
-         Bitmap.mtDrawRectangle(i, i, Surface.width-(i*2), Surface.height-(i*2), gui.bitmapColour(Bitmap, 'border'), 0)
-      end
-
-      if Options.fill then
-         Bitmap.mtDrawRectangle(thickness, thickness, Surface.width-(thickness*2), Surface.height-(thickness*2),
-            gui.bitmapColour(Bitmap, 'background'), BAF_FILL)
-      end
-   end)
 end
 
 ------------------------------------------------------------------------------
@@ -223,7 +226,7 @@ end
 -- Convert an RGB table to a SVG colour string
 
 gui.rgbToSVG = function(Value)
-   return string.format('rgb(%d,%d,%d,%d)', Value.r, Value.g, Value.b, Value.a)
+   return string.format('rgb(%d,%d,%d,%d)', Value.r, Value.g, Value.b, nz(Value.a,255))
 end
 
 ------------------------------------------------------------------------------
@@ -280,20 +283,27 @@ gui.hsvToRGB = function(Value)
 end
 
 ------------------------------------------------------------------------------
--- Convert RGB table to HSV
+-- Return the light value of an RGB colour (i.e. the V in HSV)
 
-gui.rgbToHSV = function(Value)
+gui.rgbValue = function(Value)
    local max = Value.b
    if Value.g > max then max = Value.g end
    if Value.r > max then max = Value.r end
+   return max
+end
 
-   local min = Value.b
-   if Value.g < min then min = Value.g end
-   if Value.r < min then min = Value.r end
+------------------------------------------------------------------------------
+-- Convert RGB table to HSV
 
+gui.rgbToHSV = function(Value)
+   local max = gui.rgbValue(Value)
    local hsv = { v = max }
-   local delta = max - min
    if max > 0 then
+      local min = Value.b
+      if Value.g < min then min = Value.g end
+      if Value.r < min then min = Value.r end
+
+      local delta = max - min
       hsv.s = delta / max
       if hsv.s == 0 then
          hsv.h = 0
@@ -316,6 +326,18 @@ gui.rgbToHSV = function(Value)
 end
 
 ------------------------------------------------------------------------------
+-- Call a client function for each vector in the tree
+
+gui.forVector = function(Vector, Function)
+   while (Vector != nil) do
+      Function(Vector)
+      local child = Vector.child
+      if (child != nil) then gui.forVector(child, Function) end
+      Vector = Vector.next
+   end
+end
+
+------------------------------------------------------------------------------
 
 gui.applyFill = function(Vector, Fill)
    while (Vector != nil) do
@@ -332,12 +354,14 @@ end
 ------------------------------------------------------------------------------
 -- Generate a simple gradient fill for vectors.
 
-gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units)
+gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, IgnoreClashes)
+   if not Name then error('A name for the gradient is required.') end
+
    local stops = { }
    local i = 0
    for _, col in pairs(Colours) do
       local vc = struct.new('GradientStop')
-      vc.offset    = nz(col.offset, i / #Colours)
+      vc.offset    = nz(col.offset, i / (#Colours-1))
       vc.rgb.red   = col.r / 255
       vc.rgb.green = col.g / 255
       vc.rgb.blue  = col.b / 255
@@ -351,9 +375,99 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units)
    end
 
    local gradient = Scene.new('VectorGradient', {
-      type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
+      name=Name, type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
    })
-   Scene.mtAddDef(Name, gradient)
+
+   if IgnoreClashes then -- Do not fail if a resource with the same name already exists (nb: will return nil).
+      local ex = catch(function()
+         Scene.mtAddDef(Name, gradient)
+      end)
+
+      if (ex) then
+         if (ex.code == ERR_ResourceExists) then
+            gradient.acFree()
+            return nil
+         else
+            error(ex)
+         end
+      end
+   else
+      Scene.mtAddDef(Name, gradient)
+   end
+
    return gradient
 end
 
+------------------------------------------------------------------------------
+-- Build an icon styled with the current theme and register it as a pattern.  The pattern can then be used as a fill,
+-- i.e. "url(#Path)".  Using it in a VectorRectangle is akin to a cached bitmap (fast), or apply to a VectorViewport
+-- for live rendering (higher quality transforms).
+
+gui.createIcon = function(Scene, Path, Size, Theme, Name)
+   if not Size then Size = 16 end
+   if not Path then error('No Path specified.') end
+   if not Name then Name = Path end
+   local lGradient = gui.iconThemes.default
+   local icon = { size=Size }
+
+   local defs = Scene.defs
+   if defs then -- Return if the icon pattern is already registered
+      if (mSys.VarGet(defs, Name) == ERR_Okay) then return end
+   end
+
+   if type(Theme) == 'table' then
+      lGradient = Theme
+   elseif type(Theme) == 'string' then
+      if gui.iconThemes[Theme] then
+         lGradient = gui.iconThemes[Theme]
+      else
+         error('gui.createIcon() theme ' .. Theme .. ' not recognised.')
+      end
+   end
+
+   gui.counter = gui.counter + 1
+   local gname   = 'icon_grd' .. gui.counter
+   icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size })
+   icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lGradient.first, lGradient.last }, 0, 0, 0, 1)
+   if string.find(Path, 'icons:') != 1 then
+      Path = 'icons:' .. Path .. '.svg'
+   end
+   icon.svg = obj.new('svg', { target=icon.pattern.viewport, path=Path })
+
+   gui.forVector(icon.pattern.viewport, function(Vector)
+      if (Vector.fill != 'none') then
+         Vector.fill = 'url(#' .. gname .. ')'
+      end
+
+      if (Vector.stroke != nil) then
+         Vector.stroke = 'url(#' .. gname .. ')'
+      elseif lGradient.stroke then
+         Vector.stroke = gui.rgbToSVG(lGradient.stroke)
+         Vector.strokeWidth = '1.5%'
+      end
+   end)
+
+   -- Adjust gradient size to match the viewport height.
+
+   local viewport = icon.pattern.viewport.child
+   if (viewport != nil) then
+      while (child != nil) do
+         if (child.class.id == ID_VECTORVIEWPORT) then
+            viewport = child
+            break
+         end
+      end
+
+      if (viewport.viewHeight < viewport.viewWidth) then
+         icon.gradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
+         icon.gradient.y2 = icon.gradient.y1 + viewport.viewWidth
+      else
+         icon.gradient.y1 = viewport.viewY
+         icon.gradient.y2 = viewport.viewY + viewport.viewHeight
+      end
+   end
+
+   check(Scene.mtAddDef(Name, icon.pattern))
+
+   return icon
+end

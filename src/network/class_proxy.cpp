@@ -29,11 +29,19 @@ each entry the proxy database.  You may change existing values of any proxy and 
 #define HKEY_PROXY "\\HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\"
 #endif
 
+class extProxy : public objProxy {
+   public:
+   char  GroupName[40];
+   char  FindPort[16];
+   BYTE  FindEnabled;
+   UBYTE Find:1;
+};
+
 static objConfig *glConfig = NULL; // NOT THREAD SAFE
 
-static ERROR find_proxy(objProxy *);
-static void clear_values(objProxy *);
-static ERROR get_record(objProxy *);
+static ERROR find_proxy(extProxy *);
+static void clear_values(extProxy *);
+static ERROR get_record(extProxy *);
 
 /*
 static void free_proxy(void)
@@ -56,13 +64,13 @@ Okay: Proxy deleted.
 
 *****************************************************************************/
 
-static ERROR PROXY_Delete(objProxy *Self, APTR Void)
+static ERROR PROXY_Delete(extProxy *Self, APTR Void)
 {
    parasol::Log log;
 
-   if ((!Self->Section[0]) OR (!Self->Record)) return log.error(ERR_Failed);
+   if ((!Self->GroupName[0]) or (!Self->Record)) return log.error(ERR_Failed);
 
-   log.branch("");
+   log.branch();
 
    if (Self->Host) {
       #ifdef _WIN32
@@ -72,10 +80,8 @@ static ERROR PROXY_Delete(objProxy *Self, APTR Void)
 
    if (glConfig) { acFree(glConfig); glConfig = NULL; }
 
-   if (!CreateObject(ID_CONFIG, NF_UNTRACKED, &glConfig,
-         FID_Path|TSTR,  "user:config/network/proxies.cfg",
-         TAGEND)) {
-      cfgDeleteSection(glConfig, Self->Section);
+   if (!CreateObject(ID_CONFIG, NF_UNTRACKED, &glConfig, FID_Path|TSTR, "user:config/network/proxies.cfg", TAGEND)) {
+      cfgDeleteGroup(glConfig, Self->GroupName);
       acSaveSettings(glConfig);
    }
 
@@ -94,7 +100,7 @@ The change will not come into effect until the proxy record is saved.
 
 *****************************************************************************/
 
-static ERROR PROXY_Disable(objProxy *Self, APTR Void)
+static ERROR PROXY_Disable(extProxy *Self, APTR Void)
 {
    Self->Enabled = FALSE;
    return ERR_Okay;
@@ -110,7 +116,7 @@ is saved.
 
 *****************************************************************************/
 
-static ERROR PROXY_Enable(objProxy *Self, APTR Void)
+static ERROR PROXY_Enable(extProxy *Self, APTR Void)
 {
    Self->Enabled = TRUE;
    return ERR_Okay;
@@ -146,11 +152,11 @@ NoSearchResult: No matching proxy was discovered.
 
 *****************************************************************************/
 
-static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
+static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
 {
    parasol::Log log;
 
-   log.trace("Port: %d, Enabled: %d", (Args) ? Args->Port : 0, (Args) ? Args->Enabled : -1);
+   log.traceBranch("Port: %d, Enabled: %d", (Args) ? Args->Port : 0, (Args) ? Args->Enabled : -1);
 
    // Remove the previous cache of the proxy database
 
@@ -158,137 +164,122 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
 
    // Load the current proxy database into the cache
 
-   if (!CreateObject(ID_CONFIG, NF_UNTRACKED, &glConfig,
-         FID_Path|TSTR, "user:config/network/proxies.cfg",
-         TAGEND)) {
-
+   if (!CreateObject(ID_CONFIG, NF_UNTRACKED, &glConfig, FID_Path|TSTR, "user:config/network/proxies.cfg", TAGEND)) {
       #ifdef _WIN32
-
-         CSTRING override, servers, section;
-         OBJECTPTR task;
-         BYTE bypass;
-         LONG port, total, j, i, index, lastsection, enabled;
-         CSTRING name, value;
-
          // Remove any existing host proxy settings
 
-         section = NULL;
-         for (i=0; i < glConfig->AmtEntries; i++) {
-            if (!StrMatch(section, glConfig->Entries[i].Section)) continue;
+         ConfigGroups *groups;
+         if (!GetPointer(glConfig, FID_Data, &groups)) {
+            std::stack <std::string> group_list;
+            for (auto& [group, keys] : groups[0]) {
+               if (keys.contains("Host")) group_list.push(group);
+            }
 
-            section = glConfig->Entries[i].Section;
-            lastsection = i;
-            do {
-               if (!StrMatch("Host", glConfig->Entries[i].Key)) {
-                  if (!cfgDeleteSection(glConfig, glConfig->Entries[i].Section)) {
-                     i = lastsection;
-                     break;
-                  }
-               }
-               i++;
-            } while ((i < glConfig->AmtEntries) AND (!StrMatch(section, glConfig->Entries[i].Section)));
+            while (group_list.size() > 0) {
+               cfgDeleteGroup(glConfig, group_list.top().c_str());
+               group_list.pop();
+            }
          }
 
          // Add the host system's current proxy settings
 
-         bypass = FALSE;
-         task = CurrentTask();
+         CSTRING value;
+         bool bypass = false;
+         auto task = CurrentTask();
          if (!taskGetEnv(task, HKEY_PROXY "ProxyEnable", &value)) {
-            enabled = StrToInt(value);
+            LONG enabled = StrToInt(value);
 
-               // If ProxyOverride is set and == <local> then you should bypass the proxy for local addresses.
+            // If ProxyOverride is set and == <local> then you should bypass the proxy for local addresses.
 
-               if (!taskGetEnv(task, HKEY_PROXY "ProxyOverride", &override)) {
-                  if (!StrMatch("<local>", override)) {
-                     bypass = TRUE;
+            CSTRING override;
+            if (!taskGetEnv(task, HKEY_PROXY "ProxyOverride", &override)) {
+               if (!StrMatch("<local>", override)) bypass = true;
+            }
+
+            CSTRING servers;
+            if ((!taskGetEnv(task, HKEY_PROXY "ProxyServer", &servers)) and (servers[0])) {
+               log.msg("Host has defined default proxies: %s", servers);
+
+               CSTRING name = NULL;
+               LONG port  = 0;
+               LONG i     = 0;
+               LONG index = 0;
+               while (true) {
+                  if (!StrCompare("ftp=", servers+i, 4, 0)) {
+                     name = "Windows FTP";
+                     port = 21;
+                     index = i + 4;
                   }
-               }
+                  else if (!StrCompare("http=", servers+i, 5, 0)) {
+                     name = "Windows HTTP";
+                     port = 80;
+                     index = i + 5;
+                  }
+                  else if (!StrCompare("https=", servers+i, 6, 0)) {
+                     name = "Windows HTTPS";
+                     port = 443;
+                     index = i + 6;
+                  }
+                  else {
+                     // If a string is set with no equals, it will be a global proxy server.  Looks like "something.com:80"
 
-               if ((!taskGetEnv(task, HKEY_PROXY "ProxyServer", &servers)) AND (servers[0])) {
-                  log.msg("Host has defined default proxies: %s", servers);
+                     LONG j;
+                     for (j=i; servers[j] and (servers[j] != ':'); j++) {
+                        if (servers[j] IS '=') break;
+                     }
 
-                  total = 0;
-                  port  = 0;
-                  name  = NULL;
-                  i     = 0;
-                  index = 0;
-                  while (TRUE) {
-                     if (!StrCompare("ftp=", servers+i, 4, 0)) {
-                        name = "Windows FTP";
-                        port = 21;
-                        index = i + 4;
-                     }
-                     else if (!StrCompare("http=", servers+i, 5, 0)) {
-                        name = "Windows HTTP";
-                        port = 80;
-                        index = i + 5;
-                     }
-                     else if (!StrCompare("https=", servers+i, 6, 0)) {
-                        name = "Windows HTTPS";
-                        port = 443;
-                        index = i + 6;
+                     if (servers[j] IS ':') {
+                        index = i;
+                        name = "Windows";
+                        port = 0; // Proxy applies to all ports
                      }
                      else {
-                        // If a string is set with no equals, it will be a global proxy server.  Looks like "something.com:80"
-
-                        for (j=i; servers[j] AND (servers[j] != ':'); j++) {
-                           if (servers[j] IS '=') break;
-                        }
-
-                        if (servers[j] IS ':') {
-                           index = i;
-                           name = "Windows";
-                           port = 0; // Proxy applies to all ports
-                        }
-                        else {
-                           name = NULL;
-                           port = -1;
-                        }
+                        name = NULL;
+                        port = -1;
                      }
-
-                     if ((name) AND (port != -1)) {
-                        LONG id, serverport;
-                        char section[32];
-                        char server[80];
-
-                        id = 0;
-                        cfgReadInt(glConfig, "ID", "Value", &id);
-                        id = id + 1;
-                        cfgWriteInt(glConfig, "ID", "Value", id);
-
-                        IntToStr(id, section, sizeof(section));
-
-                        size_t s;
-                        for (s=0; servers[index+s] AND (servers[index+s] != ':') AND (s < sizeof(server)-1); s++) server[s] = servers[index+s];
-                        server[s] = 0;
-
-                        if (servers[index+s] IS ':') {
-                           serverport = StrToInt(servers + index + s + 1);
-
-                           log.trace("Discovered proxy server %s, port %d", server, serverport);
-
-                           cfgWriteValue(glConfig, section, "Name", name);
-                           cfgWriteValue(glConfig, section, "Server", server);
-
-                           if (enabled > 0) {
-                              cfgWriteInt(glConfig, section, "Enabled", enabled);
-                           }
-                           else cfgWriteInt(glConfig, section, "Enabled", enabled);
-
-                           cfgWriteInt(glConfig, section, "Port", port);
-                           cfgWriteInt(glConfig, section, "ServerPort", serverport);
-                           cfgWriteInt(glConfig, section, "Host", 1); // Indicate that this proxy originates from host OS settings
-
-                           i = index + s;
-                        }
-                     }
-
-                     while ((servers[i]) AND (servers[i] != ';')) i++;
-
-                     if (!servers[i]) break;
-                     i++;
                   }
+
+                  if ((name) and (port != -1)) {
+                     LONG id, serverport;
+                     char group[32];
+                     char server[80];
+
+                     id = 0;
+                     cfgReadInt(glConfig, "ID", "Value", &id);
+                     id = id + 1;
+                     cfgWriteInt(glConfig, "ID", "Value", id);
+
+                     IntToStr(id, group, sizeof(group));
+
+                     size_t s;
+                     for (s=0; servers[index+s] and (servers[index+s] != ':') and (s < sizeof(server)-1); s++) server[s] = servers[index+s];
+                     server[s] = 0;
+
+                     if (servers[index+s] IS ':') {
+                        serverport = StrToInt(servers + index + s + 1);
+
+                        log.trace("Discovered proxy server %s, port %d", server, serverport);
+
+                        cfgWriteValue(glConfig, group, "Name", name);
+                        cfgWriteValue(glConfig, group, "Server", server);
+
+                        if (enabled > 0) cfgWriteInt(glConfig, group, "Enabled", enabled);
+                        else cfgWriteInt(glConfig, group, "Enabled", enabled);
+
+                        cfgWriteInt(glConfig, group, "Port", port);
+                        cfgWriteInt(glConfig, group, "ServerPort", serverport);
+                        cfgWriteInt(glConfig, group, "Host", 1); // Indicate that this proxy originates from host OS settings
+
+                        i = index + s;
+                     }
+                  }
+
+                  while ((servers[i]) and (servers[i] != ';')) i++;
+
+                  if (!servers[i]) break;
+                  i++;
                }
+            }
          }
          else log.msg("Host does not have proxies enabled (registry setting: %s)", HKEY_PROXY);
 
@@ -304,7 +295,7 @@ static ERROR PROXY_Find(objProxy *Self, struct prxFind *Args)
          Self->FindEnabled = -1;
       }
 
-      Self->Section[0] = 0;
+      Self->GroupName[0] = 0;
 
       return find_proxy(Self);
    }
@@ -327,7 +318,7 @@ NoSearchResult: No matching proxy was discovered.
 
 *****************************************************************************/
 
-static ERROR PROXY_FindNext(objProxy *Self, APTR Void)
+static ERROR PROXY_FindNext(extProxy *Self, APTR Void)
 {
    if (!Self->Find) return ERR_NoSearchResult; // Ensure that Find() was used to initiate a search
 
@@ -336,12 +327,9 @@ static ERROR PROXY_FindNext(objProxy *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR find_proxy(objProxy *Self)
+static ERROR find_proxy(extProxy *Self)
 {
    parasol::Log log(__FUNCTION__);
-   LONG i, j, num, id;
-   CSTRING str;
-   UBYTE match;
 
    clear_values(Self);
 
@@ -350,89 +338,71 @@ static ERROR find_proxy(objProxy *Self)
       return ERR_NoSearchResult;
    }
 
-   if (!Self->Find) { // This is the start of the search
-      Self->Find = TRUE;
-   }
+   if (!Self->Find) Self->Find = TRUE; // This is the start of the search
 
-   if (Self->Section[0]) { // Find the current section/record
-      log.trace("Finding current record.");
+   ConfigGroups *groups;
+   if (GetPointer(glConfig, FID_Data, &groups)) return ERR_NoData;
 
-      for (i=0; i < glConfig->AmtEntries; i++) {
-         if (!StrMatch(Self->Section, glConfig->Entries[i].Section)) break;
-      }
+   auto group = groups->begin();
 
-      // Move to the next section/record
-
-      log.trace("Moving to next record.");
-
-      for (; i < glConfig->AmtEntries; i++) {
-         if (StrMatch(Self->Section, glConfig->Entries[i].Section) != ERR_Okay) break;
+   if (Self->GroupName[0]) {
+      // Go to the next record
+      while (group != groups->end()) {
+         if (!group->first.compare(Self->GroupName)) { group++; break; }
+         else group++;
       }
    }
-   else i = 0;
 
-   log.trace("Finding next proxy in %d config entries.  Port: '%s', Enabled: %d", glConfig->AmtEntries, Self->FindPort, Self->FindEnabled);
 
-   while (i < glConfig->AmtEntries) {
-      match = TRUE;
+   log.trace("Finding next proxy.  Port: '%s', Enabled: %d", Self->FindPort, Self->FindEnabled);
 
-      log.trace("Section: %s", glConfig->Entries[i].Section);
+   while (group != groups->end()) {
+      bool match = true;
 
-      id = StrToInt(glConfig->Entries[i].Section);
-      if (id > 0) {
-         if (Self->FindPort[0]) {
-            // Does the port match for this proxy?
+      log.trace("Group: %s", group->first.c_str());
 
-            if (!cfgReadValue(glConfig, glConfig->Entries[i].Section, "Port", &str)) {
-               if ((str[0] IS '0') AND (!str[1])) {
-                  // Port is set to 'All' (0) so the match is automatic.
-               }
-               else {
-                  if (StrCompare(str, Self->FindPort, 0, STR_WILDCARD) != ERR_Okay) {
-                     log.trace("Port '%s' doesn't match requested port '%s'", str, Self->FindPort);
-                     match = FALSE;
-                  }
+      auto keys = group->second;
+
+      if (Self->FindPort[0]) { // Does the port match for this proxy?
+         if (keys.contains("Port")) {
+            auto port = keys["Port"];
+
+            if (!port.compare("0")) { } // Port is set to 'All' (0) so the match is automatic.
+            else {
+               if (StrCompare(port.c_str(), Self->FindPort, 0, STR_WILDCARD) != ERR_Okay) {
+                  log.trace("Port '%s' doesn't match requested port '%s'", port.c_str(), Self->FindPort);
+                  match = false;
                }
             }
          }
+      }
 
-         if ((match) AND (Self->FindEnabled != -1)) {
-            // Does the enabled status match for this proxy?
-
-            if (!cfgReadInt(glConfig, glConfig->Entries[i].Section, "Enabled", &num)) {
-               if (Self->FindEnabled != num) {
-                  log.trace("Enabled state of %d does not match requested state %d.", num, Self->FindEnabled);
-                  match = FALSE;
-               }
+      if ((match) and (Self->FindEnabled != -1)) { // Does the enabled status match for this proxy?
+         if (keys.contains("Enabled")) {
+            auto num = StrToInt(keys["Enabled"].c_str());
+            if (Self->FindEnabled != num) {
+               log.trace("Enabled state of %d does not match requested state %d.", num, Self->FindEnabled);
+               match = false;
             }
-         }
-
-         if ((match) AND (!cfgReadValue(glConfig, glConfig->Entries[i].Section, "NetworkFilter", &str))) {
-            // Do any of the currently connected networks match with the filter?
-
-            log.error("Network filters not supported yet.");
-
-         }
-
-         if ((match) AND (!cfgReadValue(glConfig, glConfig->Entries[i].Section, "GatewayFilter", &str))) {
-            // Do any connected gateways match with the filter?
-
-            log.error("Gateway filters not supported yet.");
-         }
-
-         if (match) {
-            log.trace("Found a matching proxy.");
-            StrCopy(glConfig->Entries[i].Section, Self->Section, sizeof(Self->Section));
-            return get_record(Self);
          }
       }
 
-      // Go to the next section
+      if ((match) and (keys.contains("NetworkFilter"))) {
+         // Do any of the currently connected networks match with the filter?
 
-      j = i++;
-      while (i < glConfig->AmtEntries) {
-         if (StrMatch(glConfig->Entries[j].Section, glConfig->Entries[i].Section) != ERR_Okay) break;
-         i++;
+         log.error("Network filters not supported yet.");
+      }
+
+      if ((match) and (keys.contains("GatewayFilter"))) {
+         // Do any connected gateways match with the filter?
+
+         log.error("Gateway filters not supported yet.");
+      }
+
+      if (match) {
+         log.trace("Found a matching proxy.");
+         StrCopy(group->first.c_str(), Self->GroupName, sizeof(Self->GroupName));
+         return get_record(Self);
       }
    }
 
@@ -444,7 +414,7 @@ static ERROR find_proxy(objProxy *Self)
 
 //****************************************************************************
 
-static ERROR PROXY_Free(objProxy *Self, APTR Void)
+static ERROR PROXY_Free(extProxy *Self, APTR Void)
 {
    clear_values(Self);
    return ERR_Okay;
@@ -452,16 +422,16 @@ static ERROR PROXY_Free(objProxy *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR PROXY_Init(objProxy *Self, APTR Void)
+static ERROR PROXY_Init(extProxy *Self, APTR Void)
 {
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static ERROR PROXY_NewObject(objProxy *Self, APTR Void)
+static ERROR PROXY_NewObject(extProxy *Self, APTR Void)
 {
-   Self->Section[0] = 0;
+   Self->GroupName[0] = 0;
    Self->Enabled = TRUE;
    Self->Port = 80;
    return ERR_Okay;
@@ -482,14 +452,14 @@ administrator to define proxy settings as the default for all users by copying t
 
 *****************************************************************************/
 
-static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
+static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 {
    parasol::Log log;
    objConfig *config;
    objFile *file;
    ERROR error;
 
-   if ((!Self->Server) OR (!Self->ServerPort)) return log.error(ERR_FieldNotSet);
+   if ((!Self->Server) or (!Self->ServerPort)) return log.error(ERR_FieldNotSet);
 
    log.branch("Host: %d", Self->Host);
 
@@ -500,7 +470,7 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
          if (Self->Enabled) taskSetEnv(task, HKEY_PROXY "ProxyEnable", "1");
          else taskSetEnv(task, HKEY_PROXY "ProxyEnable", "0");
 
-         if ((!Self->Server) OR (!Self->Server[0])) {
+         if ((!Self->Server) or (!Self->Server[0])) {
             log.trace("Clearing proxy server value.");
             taskSetEnv(task, HKEY_PROXY "ProxyServer", "");
          }
@@ -572,34 +542,34 @@ static ERROR PROXY_SaveSettings(objProxy *Self, APTR Void)
    }
 
    if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR,  "user:config/network/proxies.cfg", TAGEND)) {
-      if (Self->Section[0]) cfgDeleteSection(config, Self->Section);
+      if (Self->GroupName[0]) cfgDeleteGroup(config, Self->GroupName);
       else { // This is a new proxy
          LONG id = 0;
          cfgReadInt(config, "ID", "Value", &id);
          id = id + 1;
          cfgWriteInt(config, "ID", "Value", id);
 
-         IntToStr(id, Self->Section, sizeof(Self->Section));
+         IntToStr(id, Self->GroupName, sizeof(Self->GroupName));
          Self->Record = id;
       }
 
-      cfgWriteInt(config, Self->Section,   "Port",          Self->Port);
-      cfgWriteValue(config, Self->Section, "NetworkFilter", Self->NetworkFilter);
-      cfgWriteValue(config, Self->Section, "GatewayFilter", Self->GatewayFilter);
-      cfgWriteValue(config, Self->Section, "Username",      Self->Username);
-      cfgWriteValue(config, Self->Section, "Password",      Self->Password);
-      cfgWriteValue(config, Self->Section, "Name",          Self->ProxyName);
-      cfgWriteValue(config, Self->Section, "Server",        Self->Server);
-      cfgWriteInt(config, Self->Section,   "ServerPort",    Self->ServerPort);
-      cfgWriteInt(config, Self->Section,   "Enabled",       Self->Enabled);
+      cfgWriteInt(config, Self->GroupName,   "Port",          Self->Port);
+      cfgWriteValue(config, Self->GroupName, "NetworkFilter", Self->NetworkFilter);
+      cfgWriteValue(config, Self->GroupName, "GatewayFilter", Self->GatewayFilter);
+      cfgWriteValue(config, Self->GroupName, "Username",      Self->Username);
+      cfgWriteValue(config, Self->GroupName, "Password",      Self->Password);
+      cfgWriteValue(config, Self->GroupName, "Name",          Self->ProxyName);
+      cfgWriteValue(config, Self->GroupName, "Server",        Self->Server);
+      cfgWriteInt(config, Self->GroupName,   "ServerPort",    Self->ServerPort);
+      cfgWriteInt(config, Self->GroupName,   "Enabled",       Self->Enabled);
 
       if (!CreateObject(ID_FILE, 0, &file,
-            FID_Path|TSTR,  "user:config/network/proxies.cfg",
+            FID_Path|TSTR,         "user:config/network/proxies.cfg",
             FID_Permissions|TLONG, PERMIT_USER_READ|PERMIT_USER_WRITE,
             FID_Flags|TLONG,       FL_NEW|FL_WRITE,
             TAGEND)) {
 
-         error = acSaveToObject(config, file->Head.UniqueID, 0);
+         error = acSaveToObject(config, file->UID, 0);
          acFree(file);
       }
       else error = ERR_CreateObject;
@@ -621,14 +591,12 @@ results of searches performed by the #Find() method.
 
 ****************************************************************************/
 
-static ERROR SET_GatewayFilter(objProxy *Self, CSTRING Value)
+static ERROR SET_GatewayFilter(extProxy *Self, CSTRING Value)
 {
    if (Self->GatewayFilter) { FreeResource(Self->GatewayFilter); Self->GatewayFilter = NULL; }
 
-   if ((Value) AND (Value[0])) {
-      if (!(Self->GatewayFilter = StrClone(Value))) {
-         return ERR_AllocMemory;
-      }
+   if ((Value) and (Value[0])) {
+      if (!(Self->GatewayFilter = StrClone(Value))) return ERR_AllocMemory;
    }
 
    return ERR_Okay;
@@ -650,7 +618,7 @@ The Port defines the port that the proxy server is supporting, e.g. port 80 for 
 
 ****************************************************************************/
 
-static ERROR SET_Port(objProxy *Self, LONG Value)
+static ERROR SET_Port(extProxy *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->Port = Value;
@@ -671,11 +639,11 @@ This filter must not be set if the proxy needs to work on an unnamed network.
 
 ****************************************************************************/
 
-static ERROR SET_NetworkFilter(objProxy *Self, CSTRING Value)
+static ERROR SET_NetworkFilter(extProxy *Self, CSTRING Value)
 {
    if (Self->NetworkFilter) { FreeResource(Self->NetworkFilter); Self->NetworkFilter = NULL; }
 
-   if ((Value) AND (Value[0])) {
+   if ((Value) and (Value[0])) {
       if (!(Self->NetworkFilter = StrClone(Value))) return ERR_AllocMemory;
    }
 
@@ -693,11 +661,11 @@ proxy server.
 
 ****************************************************************************/
 
-static ERROR SET_Username(objProxy *Self, CSTRING Value)
+static ERROR SET_Username(extProxy *Self, CSTRING Value)
 {
    if (Self->Username) { FreeResource(Self->Username); Self->Username = NULL; }
 
-   if ((Value) AND (Value[0])) {
+   if ((Value) and (Value[0])) {
       if (!(Self->Username = StrClone(Value))) return ERR_AllocMemory;
    }
 
@@ -715,11 +683,11 @@ the proxy.
 
 ****************************************************************************/
 
-static ERROR SET_Password(objProxy *Self, CSTRING Value)
+static ERROR SET_Password(extProxy *Self, CSTRING Value)
 {
    if (Self->Password) { FreeResource(Self->Password); Self->Password = NULL; }
 
-   if ((Value) AND (Value[0])) {
+   if ((Value) and (Value[0])) {
       if (!(Self->Password = StrClone(Value))) return ERR_AllocMemory;
    }
 
@@ -735,11 +703,11 @@ A proxy can be given a human readable name by setting this field.
 
 ****************************************************************************/
 
-static ERROR SET_ProxyName(objProxy *Self, CSTRING Value)
+static ERROR SET_ProxyName(extProxy *Self, CSTRING Value)
 {
    if (Self->ProxyName) { FreeResource(Self->ProxyName); Self->ProxyName = NULL; }
 
-   if ((Value) AND (Value[0])) {
+   if ((Value) and (Value[0])) {
       if (!(Self->ProxyName = StrClone(Value))) return ERR_AllocMemory;
    }
 
@@ -755,11 +723,11 @@ The domain name or IP address of the proxy server must be defined here.
 
 ****************************************************************************/
 
-static ERROR SET_Server(objProxy *Self, CSTRING Value)
+static ERROR SET_Server(extProxy *Self, CSTRING Value)
 {
    if (Self->Server) { FreeResource(Self->Server); Self->Server = NULL; }
 
-   if ((Value) AND (Value[0])) {
+   if ((Value) and (Value[0])) {
       if (!(Self->Server = StrClone(Value))) return ERR_AllocMemory;
    }
 
@@ -775,10 +743,10 @@ The port used to communicate with the proxy server must be defined here.
 
 ****************************************************************************/
 
-static ERROR SET_ServerPort(objProxy *Self, LONG Value)
+static ERROR SET_ServerPort(extProxy *Self, LONG Value)
 {
    parasol::Log log;
-   if ((Value > 0) AND (Value <= 65536)) {
+   if ((Value > 0) and (Value <= 65536)) {
       Self->ServerPort = Value;
       return ERR_Okay;
    }
@@ -795,7 +763,7 @@ discovered in searches unless
 
 ****************************************************************************/
 
-static ERROR SET_Enabled(objProxy *Self, LONG Value)
+static ERROR SET_Enabled(extProxy *Self, LONG Value)
 {
    if (Value) Self->Enabled = TRUE;
    else Self->Enabled = FALSE;
@@ -816,39 +784,39 @@ record is found and all record fields will be updated to reflect the data of tha
 
 ****************************************************************************/
 
-static ERROR SET_Record(objProxy *Self, LONG Value)
+static ERROR SET_Record(extProxy *Self, LONG Value)
 {
    clear_values(Self);
-   IntToStr(Value, Self->Section, sizeof(Self->Section));
+   IntToStr(Value, Self->GroupName, sizeof(Self->GroupName));
    return get_record(Self);
 }
 
 /****************************************************************************
-** The section field must be set to the record that you want before you call this function.
+** The group field must be set to the record that you want before you call this function.
 **
 ** Also not that you must have called clear_values() at some point before this function.
 */
 
-static ERROR get_record(objProxy *Self)
+static ERROR get_record(extProxy *Self)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.trace("Section: %s", Self->Section);
+   log.traceBranch("Group: %s", Self->GroupName);
 
-   Self->Record = StrToInt(Self->Section);
+   Self->Record = StrToInt(Self->GroupName);
 
    CSTRING str;
-   if (!cfgReadValue(glConfig, Self->Section, "Server", &str))   {
+   if (!cfgReadValue(glConfig, Self->GroupName, "Server", &str))   {
       Self->Server = StrClone(str);
-      if (!cfgReadValue(glConfig, Self->Section, "NetworkFilter", &str)) Self->NetworkFilter = StrClone(str);
-      if (!cfgReadValue(glConfig, Self->Section, "GatewayFilter", &str)) Self->GatewayFilter = StrClone(str);
-      if (!cfgReadValue(glConfig, Self->Section, "Username", &str))      Self->Username = StrClone(str);
-      if (!cfgReadValue(glConfig, Self->Section, "Password", &str))      Self->Password = StrClone(str);
-      if (!cfgReadValue(glConfig, Self->Section, "Name", &str))          Self->ProxyName = StrClone(str);
-      if (!cfgReadInt(glConfig, Self->Section, "Port", &Self->Port));
-      if (!cfgReadInt(glConfig, Self->Section, "ServerPort", &Self->ServerPort));
-      if (!cfgReadInt(glConfig, Self->Section, "Enabled", &Self->Enabled));
-      if (!cfgReadInt(glConfig, Self->Section, "Host", &Self->Host));
+      if (!cfgReadValue(glConfig, Self->GroupName, "NetworkFilter", &str)) Self->NetworkFilter = StrClone(str);
+      if (!cfgReadValue(glConfig, Self->GroupName, "GatewayFilter", &str)) Self->GatewayFilter = StrClone(str);
+      if (!cfgReadValue(glConfig, Self->GroupName, "Username", &str))      Self->Username = StrClone(str);
+      if (!cfgReadValue(glConfig, Self->GroupName, "Password", &str))      Self->Password = StrClone(str);
+      if (!cfgReadValue(glConfig, Self->GroupName, "Name", &str))          Self->ProxyName = StrClone(str);
+      if (!cfgReadInt(glConfig, Self->GroupName, "Port", &Self->Port));
+      if (!cfgReadInt(glConfig, Self->GroupName, "ServerPort", &Self->ServerPort));
+      if (!cfgReadInt(glConfig, Self->GroupName, "Enabled", &Self->Enabled));
+      if (!cfgReadInt(glConfig, Self->GroupName, "Host", &Self->Host));
       return ERR_Okay;
    }
    else return log.error(ERR_NotFound);
@@ -856,7 +824,7 @@ static ERROR get_record(objProxy *Self)
 
 /***************************************************************************/
 
-static void clear_values(objProxy *Self)
+static void clear_values(extProxy *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -896,7 +864,7 @@ static const FieldDef clPorts[] = {
    { NULL, 0 }
 };
 
-static const FieldArray clFields[] = {
+static const FieldArray clProxyFields[] = {
    { "NetworkFilter", FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_NetworkFilter },
    { "GatewayFilter", FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_GatewayFilter },
    { "Username",      FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Username },
@@ -910,24 +878,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-static const ActionArray clActions[] = {
-   { AC_Disable,      (APTR)PROXY_Disable },
-   { AC_Enable,       (APTR)PROXY_Enable },
-   { AC_Free,         (APTR)PROXY_Free },
-   { AC_Init,         (APTR)PROXY_Init },
-   { AC_NewObject,    (APTR)PROXY_NewObject },
-   { AC_SaveSettings, (APTR)PROXY_SaveSettings },
-   { 0, 0 }
-};
-
-static const FunctionField argsFind[] = { { "Port", FD_LONG }, { "Enabled", FD_LONG }, { NULL, 0 } };
-
-static const MethodArray clMethods[] = {
-   { MT_PrxDelete,    (APTR)PROXY_Delete,   "Delete",   NULL, 0 },
-   { MT_PrxFind,      (APTR)PROXY_Find,     "Find",     argsFind, sizeof(struct prxFind) },
-   { MT_PrxFindNext,  (APTR)PROXY_FindNext, "FindNext", NULL, 0 },
-   { 0, NULL, NULL, NULL, 0 }
-};
+#include "class_proxy_def.c"
 
 //****************************************************************************
 
@@ -935,12 +886,12 @@ ERROR init_proxy(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clProxy,
       FID_ClassVersion|TFLOAT, VER_PROXY,
-      FID_Name|TSTR,   "Proxy",
+      FID_Name|TSTR,      "Proxy",
       FID_Category|TLONG, CCF_NETWORK,
-      FID_Actions|TPTR,   clActions,
-      FID_Methods|TARRAY, clMethods,
-      FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(objProxy),
+      FID_Actions|TPTR,   clProxyActions,
+      FID_Methods|TARRAY, clProxyMethods,
+      FID_Fields|TARRAY,  clProxyFields,
+      FID_Size|TLONG,     sizeof(extProxy),
       FID_Path|TSTR,      MOD_PATH,
       TAGEND));
 }

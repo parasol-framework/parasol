@@ -7,8 +7,8 @@ Name: Objects
 #include "defs.h"
 #include <parasol/main.h>
 
-extern "C" ERROR CLASS_Free(rkMetaClass *, APTR);
-extern "C" ERROR CLASS_Init(rkMetaClass *, APTR);
+extern "C" ERROR CLASS_Free(objMetaClass *, APTR);
+extern "C" ERROR CLASS_Init(objMetaClass *, APTR);
 
 static LONG add_shared_object(OBJECTPTR, OBJECTID, WORD);
 
@@ -52,7 +52,7 @@ ERROR CreateObjectF(LARGE ClassID, LONG Flags, OBJECTPTR *argObject, va_list Lis
    parasol::Log log("CreateObject");
 
    if (glLogLevel > 2) {
-      rkMetaClass **ptr;
+      objMetaClass **ptr;
       if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
          log.branch("Class: %s", ptr[0]->ClassName);
       }
@@ -67,13 +67,13 @@ ERROR CreateObjectF(LARGE ClassID, LONG Flags, OBJECTPTR *argObject, va_list Lis
       if (!SetFieldsF(object, List)) {
          if (!(error = acInit(object))) {
             if (argObject) *argObject = object;
-            else if (object->UniqueID < 0) ReleaseObject(object);
+            else if (object->UID < 0) ReleaseObject(object);
             return ERR_Okay;
          }
       }
       else error = log.warning(ERR_SetField);
 
-      if (object->UniqueID < 0) {
+      if (object->UID < 0) {
          acFree(object);
          ReleaseObject(object);
       }
@@ -127,7 +127,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
    ULONG class_id = (ULONG)(ClassID & 0xffffffff);
    if ((!class_id) or (!Object)) return log.warning(ERR_NullArgs);
 
-   rkMetaClass *mc;
+   objMetaClass *mc;
    if (class_id IS ID_METACLASS) {
       mc = &glMetaClass;
       glMetaClass.ActionTable[AC_Free].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Free;
@@ -139,8 +139,8 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
          master_sorted = TRUE;
       }
    }
-   else if (!(mc = (rkMetaClass *)FindClass(class_id))) {
-      rkMetaClass **ptr;
+   else if (!(mc = (objMetaClass *)FindClass(class_id))) {
+      objMetaClass **ptr;
       if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
          log.function("Class %s was not found in the system.", ptr[0]->ClassName);
       }
@@ -152,7 +152,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
 
    Flags &= (NF_UNTRACKED|NF_INTEGRAL|NF_UNIQUE|NF_NAME|NF_PUBLIC|NF_CREATE_OBJECT); // Very important to eliminate any internal flags.
 
-   // If the object is to be a child of a larger object, turn off use of the UNTRACKED flag (otherwise the child will
+   // If the object is integral then turn off use of the UNTRACKED flag (otherwise the child will
    // end up being tracked to its task rather than its parent object).
 
    if (Flags & NF_INTEGRAL) Flags &= ~NF_UNTRACKED;
@@ -173,9 +173,9 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
    MEMORYID head_id = 0;
    ERROR error = ERR_Okay;
 
-   if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK, (APTR *)&head, &head_id)) {
+   if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK|(Flags & NF_UNTRACKED ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
       head->Stats     = (Stats *)ResolveAddress(head, mc->Size);
-      head->UniqueID  = head_id;
+      head->UID  = head_id;
       head->MemFlags |= MEM_NO_LOCK; // Prevents private memory allocations made by this class from being automatically locked.
       head->ClassID   = mc->BaseClassID;
       if (mc->BaseClassID IS mc->SubClassID) { // Object derived from a base class
@@ -185,7 +185,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
          head->SubID = mc->SubClassID;
       }
 
-      head->Class = (rkMetaClass *)mc;
+      head->Class = (objMetaClass *)mc;
       if ((glCurrentTaskID != SystemTaskID) and (!(mc->Flags & CLF_NO_OWNERSHIP))) {
          head->TaskID = glCurrentTaskID;
       }
@@ -264,7 +264,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
       }
 
       if (!error) {
-         ((rkMetaClass *)head->Class)->OpenCount++;
+         ((objMetaClass *)head->Class)->OpenCount++;
          if (mc->Base) mc->Base->OpenCount++;
 
          head->Flags &= ~NF_NEW_OBJECT;
@@ -323,7 +323,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
    ULONG class_id = (ULONG)(ClassID & 0xffffffff);
    if ((!class_id) or (!ObjectID)) return log.warning(ERR_NullArgs);
 
-   rkMetaClass *mc;
+   objMetaClass *mc;
    if (class_id IS ID_METACLASS) {
       mc = &glMetaClass;
       glMetaClass.ActionTable[AC_Free].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Free;
@@ -335,8 +335,8 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
          master_sorted = TRUE;
       }
    }
-   else if (!(mc = (rkMetaClass *)FindClass(class_id))) {
-      rkMetaClass **ptr;
+   else if (!(mc = (objMetaClass *)FindClass(class_id))) {
+      objMetaClass **ptr;
       if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
          log.function("Class %s was not found in the system.", ptr[0]->ClassName);
       }
@@ -374,7 +374,8 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
       if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, &sharelock)) {
          if (Flags & NF_UNIQUE) {
             OBJECTID search_id;
-            if ((!FastFindObject(Name, class_id, &search_id, 1, NULL)) and (search_id)) {
+            LONG count = 1;
+            if ((!FindObject(Name, class_id, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &search_id, &count)) and (search_id)) {
                *ObjectID = search_id;
                ReleaseMemoryID(RPM_SharedObjects);
                return ERR_ObjectExists; // Return ERR_ObjectExists so that the caller knows that the failure was not caused by an object creation error.
@@ -393,13 +394,13 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
       if (!AllocMemory(mc->Size + sizeof(Stats), MEM_PUBLIC|MEM_OBJECT, (void **)&head, &head_id)) {
          head->Stats = (Stats *)ResolveAddress(head, mc->Size);
          head->MemFlags |= MEM_PUBLIC;
-         head->UniqueID = head_id;
+         head->UID = head_id;
       }
       else error = ERR_AllocMemory;
    }
    else if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK, (APTR *)&head, &head_id)) {
       head->Stats = (Stats *)ResolveAddress(head, mc->Size);
-      head->UniqueID = head_id;
+      head->UID = head_id;
       head->MemFlags |= MEM_NO_LOCK; // Prevents private memory allocations made by this class from being automatically locked.
    }
    else error = ERR_AllocMemory;
@@ -506,7 +507,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
       // because this prevents the Core from expunging modules correctly during shutdown.
 
       if (!(Flags & NF_PUBLIC)) {
-         ((rkMetaClass *)head->Class)->OpenCount++;
+         ((objMetaClass *)head->Class)->OpenCount++;
          if (mc->Base) mc->Base->OpenCount++;
       }
 
@@ -615,7 +616,7 @@ CSTRING ResolveClassID(CLASSID ID)
 
 ERROR find_public_object_entry(SharedObjectHeader *Header, OBJECTID ObjectID, LONG *Position)
 {
-   SharedObject *array = (SharedObject *)ResolveAddress(Header, Header->Offset);
+   auto array = (SharedObject *)ResolveAddress(Header, Header->Offset);
 
    LONG floor   = 0;
    LONG ceiling = Header->NextEntry;
@@ -669,93 +670,91 @@ static ERROR add_shared_object(OBJECTPTR Object, OBJECTID ObjectID, WORD Flags)
 
    if (ObjectID >= 0) return log.warning(ERR_Args);
 
-   SharedObjectHeader *public_hdr;
-   if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, (void **)&public_hdr)) {
-      LONG j;
+   parasol::ScopedAccessMemory<SharedObjectHeader> lock(RPM_SharedObjects, MEM_READ_WRITE, 2000);
 
-      SharedObject *public_objects = (SharedObject *)ResolveAddress(public_hdr, public_hdr->Offset);
+   if (!lock.granted()) return log.warning(ERR_AccessMemory);
 
-      // If the table is at its limit, compact it first by eliminating entries that no longer contain any data.
+   auto hdr = lock.ptr;
+   auto objects = (SharedObject *)ResolveAddress(hdr, hdr->Offset);
 
-      if (public_hdr->NextEntry >= public_hdr->ArraySize) {
-         LONG last_entry = 0;
-         LONG entry_size = sizeof(SharedObject)>>1;
-         for (LONG i=0; i < public_hdr->ArraySize; i++) {
-            if (!public_objects[i].ObjectID) {
-               for (j=i+1; (j < public_hdr->ArraySize) and (!public_objects[j].ObjectID); j++);
-               if (j < public_hdr->ArraySize) {
-                  // Move the record at position j to position i
-                  for (LONG k=0; k < entry_size; k++) {
-                     ((WORD *)(public_objects+i))[k] = ((WORD *)(public_objects+j))[k];
-                  }
-                  // Kill the moved record at its previous position
-                  public_objects[j].ObjectID = 0;
-                  public_objects[j].OwnerID  = 0;
-                  last_entry = i;
+   // If the table is at its limit, compact it first by eliminating entries that no longer contain any data.
+
+   if (hdr->NextEntry >= hdr->ArraySize) {
+      LONG last_entry = 0;
+      LONG entry_size = sizeof(SharedObject)>>1;
+      for (LONG i=0; i < hdr->ArraySize; i++) {
+         if (!objects[i].ObjectID) {
+            LONG j;
+            for (j=i+1; (j < hdr->ArraySize) and (!objects[j].ObjectID); j++);
+            if (j < hdr->ArraySize) {
+               // Move the record at position j to position i
+               for (LONG k=0; k < entry_size; k++) {
+                  ((WORD *)(objects+i))[k] = ((WORD *)(objects+j))[k];
                }
-               else break;
+               // Kill the moved record at its previous position
+               objects[j].ObjectID = 0;
+               objects[j].OwnerID  = 0;
+               last_entry = i;
             }
-            else last_entry = i;
+            else break;
          }
-         if (last_entry < public_hdr->ArraySize-1) public_hdr->NextEntry = last_entry + 1;
-         else public_hdr->NextEntry = public_hdr->ArraySize;
-         log.msg("Public object array compressed from %d entries to %d entries.", public_hdr->ArraySize, public_hdr->NextEntry);
+         else last_entry = i;
       }
-
-      // If the table is at capacity, we must allocate more space for new records
-
-      if (public_hdr->NextEntry >= public_hdr->ArraySize) {
-         log.warning("The public object array is at capacity (%d blocks)", public_hdr->ArraySize);
-         ReleaseMemoryID(RPM_SharedObjects);
-         return ERR_ArrayFull;
-      }
-
-      // "Pull-back" the NextPublicObject position if there are null entries present at the tail-end of the array (occurs if objects are allocated then quickly freed).
-
-      while ((public_hdr->NextEntry > 0) and (public_objects[public_hdr->NextEntry-1].ObjectID IS 0)) {
-         public_hdr->NextEntry--;
-      }
-
-      // Add the entry to the next available space
-
-      public_objects[public_hdr->NextEntry].ObjectID = ObjectID;
-      public_objects[public_hdr->NextEntry].OwnerID  = Object->OwnerID;
-
-      if (((rkMetaClass *)(Object->Class))->Flags & CLF_NO_OWNERSHIP) {
-         public_objects[public_hdr->NextEntry].MessageMID = 0;
-      }
-      else public_objects[public_hdr->NextEntry].MessageMID = glTaskMessageMID;
-
-/* We should use this routine to set the message id, in case the object is going to be a child of another that is
-   public and belongs to a different task.
-
-      if (Object->TaskID IS glCurrentTaskID) {
-         public_objects[public_hdr->NextEntry].MessageMID = glTaskMessageMID;
-      }
-      else if (LOCK_TASKS() IS ERR_Okay) {
-         for (i=0; i < MAX_TASKS; i++) {
-            if (shTasks[i].TaskID IS Object->TaskID) {
-               public_objects[public_hdr->NextEntry].MessageMID = shTasks[i].MessageID;
-               break;
-            }
-         }
-         if (i IS MAX_TASKS) public_objects[public_hdr->NextEntry].MessageMID = glTaskMessageMID;
-         UNLOCK_TASKS();
-      }
-*/
-      if (Flags & NF_PUBLIC) public_objects[public_hdr->NextEntry].Address = NULL;
-      else public_objects[public_hdr->NextEntry].Address = Object;
-
-      public_objects[public_hdr->NextEntry].ClassID    = Object->ClassID;
-      public_objects[public_hdr->NextEntry].Name[0]    = 0;
-      public_objects[public_hdr->NextEntry].Flags      = Flags;
-      public_objects[public_hdr->NextEntry].InstanceID = glInstanceID;
-      public_hdr->NextEntry++;
-
-      ReleaseMemoryID(RPM_SharedObjects);
-      return ERR_Okay;
+      if (last_entry < hdr->ArraySize-1) hdr->NextEntry = last_entry + 1;
+      else hdr->NextEntry = hdr->ArraySize;
+      log.msg("Public object array compressed from %d entries to %d entries.", hdr->ArraySize, hdr->NextEntry);
    }
-   else return log.warning(ERR_AccessMemory);
+
+   // If the table is at capacity, we must allocate more space for new records
+
+   if (hdr->NextEntry >= hdr->ArraySize) {
+      log.warning("The public object array is at capacity (%d blocks)", hdr->ArraySize);
+      return ERR_ArrayFull;
+   }
+
+   // "Pull-back" the NextPublicObject position if there are null entries present at the tail-end of the array (occurs if objects are allocated then quickly freed).
+
+   while ((hdr->NextEntry > 0) and (objects[hdr->NextEntry-1].ObjectID IS 0)) {
+      hdr->NextEntry--;
+   }
+
+   // Add the entry to the next available space
+
+   objects[hdr->NextEntry].ObjectID = ObjectID;
+   objects[hdr->NextEntry].OwnerID  = Object->OwnerID;
+
+   if (((objMetaClass *)(Object->Class))->Flags & CLF_NO_OWNERSHIP) {
+      objects[hdr->NextEntry].MessageMID = 0;
+   }
+   else objects[hdr->NextEntry].MessageMID = glTaskMessageMID;
+
+/* We should use this routine to set the message ID in case the object is going to be a child of another that is
+public and belongs to a different task.
+
+   if (Object->TaskID IS glCurrentTaskID) {
+      objects[hdr->NextEntry].MessageMID = glTaskMessageMID;
+   }
+   else if (LOCK_TASKS() IS ERR_Okay) {
+      for (i=0; i < MAX_TASKS; i++) {
+         if (shTasks[i].TaskID IS Object->TaskID) {
+            objects[hdr->NextEntry].MessageMID = shTasks[i].MessageID;
+            break;
+         }
+      }
+      if (i IS MAX_TASKS) objects[hdr->NextEntry].MessageMID = glTaskMessageMID;
+      UNLOCK_TASKS();
+   }
+*/
+   if (Flags & NF_PUBLIC) objects[hdr->NextEntry].Address = NULL;
+   else objects[hdr->NextEntry].Address = Object;
+
+   objects[hdr->NextEntry].ClassID    = Object->ClassID;
+   objects[hdr->NextEntry].Name[0]    = 0;
+   objects[hdr->NextEntry].Flags      = Flags;
+   objects[hdr->NextEntry].InstanceID = glInstanceID;
+   hdr->NextEntry++;
+
+   return ERR_Okay;
 }
 
 //****************************************************************************

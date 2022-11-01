@@ -1,0 +1,117 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>VectorSpiral</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Extends the Vector class with support for spiral path generation.</comment>
+    <version>1</version>
+    <id>ab3e8003</id>
+    <idstring>ID_VECTORSPIRAL</idstring>
+    <category>Graphics</category>
+    <include>modules/vectorspiral.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>The VectorSpiral class provides the necessary functionality for generating spiral paths that extend from a central point.</p></description>
+    <source>
+      <file path="vectors/">spiral.cpp</file>
+    </source>
+  </info>
+
+  <fields>
+    <field>
+      <name>CenterX</name>
+      <comment>The horizontal center of the spiral.  Expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The horizontal center of the spiral is defined here as either a fixed or relative value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>CenterY</name>
+      <comment>The vertical center of the spiral.  Expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The vertical center of the spiral is defined here as either a fixed or relative value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Height</name>
+      <comment>The height (vertical diameter) of the spiral.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The height of the spiral is expressed as '<field>Radius</field> * 2.0'.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Offset</name>
+      <comment>Offset the generation of the path by a given value.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The generation of a spiral's path can be offset by specifying a positive value in the Offset field.  By default the Offset is set to zero.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>PathLength</name>
+      <comment>Calibrates the user agent's distance-along-a-path calculations with that of the author.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The author's computation of the total length of the path, in user units. This value is used to calibrate the user agent's own distance-along-a-path calculations with that of the author. The user agent will scale all distance-along-a-path computations by the ratio of PathLength to the user agent's own computed value for total path length.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Radius</name>
+      <comment>The radius of the spiral.  Expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The radius of the spiral is defined here as either a fixed or relative value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Scale</name>
+      <comment>The scale of the spiral, expressed as a multiplier.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The spiral path can be scaled by setting this field.  The points on the spiral will be scaled by being multiplied by the scale factor.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Step</name>
+      <comment>Determines the distance between each vertex in the spiral's path.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The Step value alters the distance between each vertex in the spiral path during its generation.  The default value is 0.1.  Using larger values will create a spiral with more visible corners due to the overall reduction in vertices.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>The width (horizontal diameter) of the spiral.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The width of the spiral is expressed as '<field>Radius</field> * 2.0'.</p>
+      </description>
+    </field>
+
+  </fields>
+  <structs>
+  </structs>
+</book>

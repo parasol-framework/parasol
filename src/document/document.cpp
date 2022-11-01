@@ -177,26 +177,150 @@ thickness, or text inside the cell will mix with the border.
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
 #include <parasol/modules/document.h>
-#include <parasol/modules/widget.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/display.h>
-#include <parasol/modules/surface.h>
 
 #include "hashes.h"
 
 struct CoreBase  *CoreBase;
-static struct SurfaceBase *SurfaceBase;
 static struct FontBase    *FontBase;
 static struct DisplayBase *DisplayBase;
 static OBJECTPTR clDocument = NULL;
-static OBJECTPTR modDisplay = NULL, modSurface = NULL, modFont = NULL, modDocument = NULL;
+static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL;
 static RGB8 glHighlight = { 220, 220, 255, 255 };
 static LONG glTranslateBufferSize = 0;
 static STRING glTranslateBuffer = NULL;
 
-#include "module_def.c"
-
 //****************************************************************************
+
+class extDocument : public objDocument {
+   public:
+   FUNCTION EventCallback;
+   objXML *XML;             // Source XML document
+   objXML *InsertXML;       // For temporary XML parsing by the InsertXML method
+   objXML *Templates;       // All templates for the current document are stored here
+   objXML *InjectXML;
+   struct KeyStore *Vars;
+   struct KeyStore *Params;
+   struct escCell *CurrentCell;      // Used to assist drawing, reflects the cell we are currently drawing within (if any)
+   STRING ParamBuffer;
+   STRING Temp;
+   STRING Buffer;
+   STRING Path;              // Optional file to load on Init()
+   STRING PageName;          // Page name to load from the Path
+   STRING Bookmark;          // Bookmark name processed from the Path
+   UBYTE  *Stream;           // Internal stream buffer
+   STRING WorkingPath;       // String storage for the WorkingPath field
+   APTR   prvKeyEvent;
+   OBJECTPTR CurrentObject;
+   OBJECTPTR UserDefaultScript;  // Allows the developer to define a custom default script.
+   OBJECTPTR DefaultScript;
+   struct DocSegment *Segments; // Pointer to an array of segments
+   struct SortSegment *SortSegments;
+   struct style_status Style;
+   struct style_status RestoreStyle;
+   struct XMLTag *InjectTag;
+   struct XMLTag *HeaderTag;
+   struct XMLTag *FooterTag;
+   struct XMLTag *PageTag;
+   struct XMLTag *BodyTag;
+   struct DocClip *Clips;
+   LONG SurfaceWidth, SurfaceHeight;
+   struct DocLink *Links;
+   struct DocEdit *EditDefs;
+   struct MouseOver *MouseOverChain;
+   struct docresource *Resources;
+   struct DocEdit *ActiveEditDef; // As for ActiveEditCell, but refers to the active editing definition
+   struct {
+      STRING *Attrib;
+      STRING String;
+   } *VArg;
+   struct {
+      // The Ref is a unique ID for the Type, so you can use it to find the tab in the document stream
+      LONG  Ref;             // For TT_OBJECT: ObjectID; TT_LINK: LinkID
+      LONG  XRef;            // For TT_OBJECT: SurfaceID (if found)
+      UBYTE Type;            // TT_LINK, TT_OBJECT
+      UBYTE Active:1;        // TRUE if the tabbable link is active/visible
+   } *Tabs;
+   struct DocTrigger * Triggers[DRT_MAX];
+   struct XMLTag * ArgNest[64];
+   struct EditCell *EditCells;
+   LONG   ArgNestIndex;
+   LONG   TabIndex;
+   LONG   MaxTabs;
+   LONG   UniqueID;          // Use for generating unique/incrementing ID's, e.g. cell ID
+   OBJECTID UserFocusID;
+   OBJECTID ViewID;          // View surface - this contains the page and serves as the page's scrolling area
+   OBJECTID PageID;          // Page surface - this holds the graphics content
+   LONG   MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
+   FLOAT  PageWidth;         // Width of the widest section of the document page.  Can be pre-defined for a fixed width.
+   LONG   InputHandle;
+   LONG   MaxClips;
+   LONG   TotalClips;
+   LONG   TotalLinks;       // Current total of assigned links
+   LONG   MaxLinks;         // Current size limit of the link array
+   LONG   LinkIndex;        // Currently selected link (mouse over)
+   LONG   ScrollWidth;
+   LONG   StreamLen;        // The length of the stream string (up to the termination character)
+   LONG   StreamSize;       // Allocated size of the stream buffer
+   LONG   SelectStart;      // Selection start (stream index)
+   LONG   SelectEnd;        // Selection end (stream index)
+   LONG   MaxSegments;      // Total number of segments available in the line array
+   LONG   SegCount;         // Total number of entries in the segments array
+   LONG   SortCount;        // Total number of entries in the sorted segments array
+   LONG   XPosition;        // Horizontal scrolling offset
+   LONG   YPosition;        // Vertical scrolling offset
+   LONG   AreaX, AreaY;
+   LONG   AreaWidth, AreaHeight;
+   LONG   TempSize;
+   LONG   BufferSize;
+   LONG   BufferIndex;
+   LONG   CalcWidth;
+   LONG   LoopIndex;
+   LONG   ElementCounter;     // Counter for element ID's
+   LONG   ClickX, ClickY;
+   LONG   ECIndex;            // EditCells table index
+   LONG   ECMax;              // Maximum number of entries currently available in the EditCells array
+   LONG   ObjectCache;
+   LONG   TemplatesModified;  // Track modifications to Self->Templates
+   LONG   BreakLoop;
+   LONG   GeneratedID;       // Unique ID that is regenerated on each load/refresh
+   LONG   ClickSegment;      // The index of the segment that the user clicked on
+   LONG   MouseOverSegment;  // The index of the segment that the mouse is currently positioned over
+   LONG   CursorIndex;       // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.  -1 if not in use
+   LONG   SelectIndex;       // The end of the selected text area, if text is selected.  Otherwise -1
+   LONG   SelectCharX;       // The X coordinate of the SelectIndex character
+   LONG   CursorCharX;       // The X coordinate of the CursorIndex character
+   LONG   PointerX;          // Current pointer X coordinate on the document surface
+   LONG   PointerY;
+   TIMER  FlashTimer;
+   LONG   ActiveEditCellID;  // If editing is active, this refers to the ID of the cell being edited
+   ULONG  ActiveEditCRC;     // CRC for cell editing area, used for managing onchange notifications
+   UWORD  Depth;             // Section depth - increases when layout_section() recurses, e.g. into tables
+   UWORD  ParagraphDepth;
+   UWORD  LinkID;
+   WORD   ArgIndex;
+   WORD   FocusIndex;        // Tab focus index
+   WORD   Invisible;         // This variable is incremented for sections within a hidden index
+   ULONG  RelPageWidth:1;    // Relative page width
+   ULONG  PointerLocked:1;
+   ULONG  ClickHeld:1;
+   ULONG  UpdateLayout:1;
+   ULONG  State:3;
+   ULONG  VScrollVisible:1;
+   ULONG  MouseOver:1;
+   ULONG  PageProcessed:1;
+   ULONG  NoWhitespace:1;
+   ULONG  HasFocus:1;
+   ULONG  CursorSet:1;
+   ULONG  LMB:1;
+   ULONG  EditMode:1;
+   ULONG  CursorState:1;   // TRUE if the edit cursor is on, FALSE if off.  Used for flashing of the cursor
+   UBYTE  Processing;
+   UBYTE  DrawIntercept;
+   UBYTE  InTemplate;
+   UBYTE  BkgdGfx;
+};
 
 enum {
    RT_OBJECT_TEMP=1,
@@ -221,7 +345,7 @@ struct docresource {
 
 struct tagroutine {
    ULONG TagHash;
-   void (*Routine)(objDocument *, objXML *, XMLTag *, XMLTag *, LONG *, LONG);
+   void (*Routine)(extDocument *, objXML *, XMLTag *, XMLTag *, LONG *, LONG);
    ULONG Flags;
 };
 
@@ -558,84 +682,86 @@ static const CSTRING strCodes[] = {
 ** Function prototypes.
 */
 
+#include "module_def.c"
+
 struct layout; // Pre-def
 
-static ERROR  activate_edit(objDocument *, LONG CellIndex, LONG CursorIndex);
-static ERROR  add_clip(objDocument *, SurfaceClip *, LONG, CSTRING Name, BYTE);
+static ERROR  activate_edit(extDocument *, LONG, LONG);
+static ERROR  add_clip(extDocument *, SurfaceClip *, LONG, CSTRING, BYTE);
 static ERROR  add_document_class(void);
-static LONG   add_drawsegment(objDocument *, LONG, LONG Stop, layout *, LONG, LONG, LONG, CSTRING);
-static void   add_link(objDocument *, UBYTE EscapeCode, APTR, LONG, LONG, LONG, LONG, CSTRING);
-static docresource * add_resource_id(objDocument *, LONG, LONG);
-static docresource * add_resource_ptr(objDocument *, APTR Address, LONG Type);
-static LONG   add_tabfocus(objDocument *, UBYTE, LONG);
-static void   add_template(objDocument *, objXML *, XMLTag *);
-static void   advance_tabfocus(objDocument *, BYTE);
-static LONG   calc_page_height(objDocument *, LONG, LONG, LONG);
-static void   calc_scroll(objDocument *);
-static void   check_mouse_click(objDocument *, LONG X, LONG Y);
-static void   check_mouse_pos(objDocument *, LONG, LONG);
-static void   check_mouse_release(objDocument *, LONG X, LONG Y);
-static ERROR  convert_xml_args(objDocument *, XMLAttrib *, LONG);
+static LONG   add_drawsegment(extDocument *, LONG, LONG Stop, layout *, LONG, LONG, LONG, CSTRING);
+static void   add_link(extDocument *, UBYTE, APTR, LONG, LONG, LONG, LONG, CSTRING);
+static docresource * add_resource_id(extDocument *, LONG, LONG);
+static docresource * add_resource_ptr(extDocument *, APTR, LONG);
+static LONG   add_tabfocus(extDocument *, UBYTE, LONG);
+static void   add_template(extDocument *, objXML *, XMLTag *);
+static void   advance_tabfocus(extDocument *, BYTE);
+static LONG   calc_page_height(extDocument *, LONG, LONG, LONG);
+static void   check_mouse_click(extDocument *, DOUBLE X, DOUBLE Y);
+static void   check_mouse_pos(extDocument *, DOUBLE, DOUBLE);
+static void   check_mouse_release(extDocument *, DOUBLE X, DOUBLE Y);
+static ERROR  consume_input_events(const InputEvent *, LONG);
+static ERROR  convert_xml_args(extDocument *, XMLAttrib *, LONG);
 static LONG   create_font(CSTRING, CSTRING, LONG);
-static void   deactivate_edit(objDocument *, BYTE);
-static void   deselect_text(objDocument *);
-static void   draw_background(objDocument *, objSurface *, objBitmap *);
-static void   draw_document(objDocument *, objSurface *, objBitmap *);
-static void   draw_border(objDocument *, objSurface *, objBitmap *);
-static void   exec_link(objDocument *, LONG Index);
-static ERROR  extract_script(objDocument *, CSTRING Link, OBJECTPTR *Script, CSTRING *Function, CSTRING *);
+static void   deactivate_edit(extDocument *, BYTE);
+static void   deselect_text(extDocument *);
+static void   draw_background(extDocument *, objSurface *, objBitmap *);
+static void   draw_document(extDocument *, objSurface *, objBitmap *);
+static void   draw_border(extDocument *, objSurface *, objBitmap *);
+static void   exec_link(extDocument *, LONG);
+static ERROR  extract_script(extDocument *, CSTRING, OBJECTPTR *, CSTRING *, CSTRING *);
 static void   error_dialog(CSTRING, CSTRING, ERROR);
-static LONG   find_segment(objDocument *, LONG Index, LONG);
-static LONG   find_tabfocus(objDocument *, UBYTE Type, LONG Reference);
+static LONG   find_segment(extDocument *, LONG, LONG);
+static LONG   find_tabfocus(extDocument *, UBYTE, LONG);
 static void   fix_command(STRING, STRING *);
-static ERROR  flash_cursor(objDocument *, LARGE, LARGE);
-static void   free_links(objDocument *);
+static ERROR  flash_cursor(extDocument *, LARGE, LARGE);
+static void   free_links(extDocument *);
 static CSTRING get_font_style(LONG);
-//static LONG   get_line_from_index(objDocument *, LONG Index);
+//static LONG   get_line_from_index(extDocument *, LONG Index);
 static LONG   getutf8(CSTRING, LONG *);
-static ERROR  insert_escape(objDocument *, LONG *, WORD, APTR, LONG);
-static void   insert_paragraph_end(objDocument *, LONG *);
-static void   insert_paragraph_start(objDocument *, LONG *, escParagraph *);
+static ERROR  insert_escape(extDocument *, LONG *, WORD, APTR, LONG);
+static void   insert_paragraph_end(extDocument *, LONG *);
+static void   insert_paragraph_start(extDocument *, LONG *, escParagraph *);
 static ERROR  insert_string(CSTRING, STRING, LONG, LONG, LONG);
-static ERROR  insert_text(objDocument *, LONG *, CSTRING, LONG, BYTE);
-static ERROR  insert_xml(objDocument *, objXML *, XMLTag *, LONG, UBYTE);
-static void   key_event(objDocument *, evKey *, LONG);
-static ERROR  keypress(objDocument *, LONG, LONG, LONG);
-static void   layout_doc(objDocument *);
-static LONG   layout_section(objDocument *, LONG, objFont **, LONG, LONG, LONG *, LONG *, LONG, LONG, LONG, LONG, BYTE *);
-static ERROR  load_doc(objDocument *, CSTRING, BYTE, BYTE);
+static ERROR  insert_text(extDocument *, LONG *, CSTRING, LONG, BYTE);
+static ERROR  insert_xml(extDocument *, objXML *, XMLTag *, LONG, UBYTE);
+static void   key_event(extDocument *, evKey *, LONG);
+static ERROR  keypress(extDocument *, LONG, LONG, LONG);
+static void   layout_doc(extDocument *);
+static LONG   layout_section(extDocument *, LONG, objFont **, LONG, LONG, LONG *, LONG *, LONG, LONG, LONG, LONG, BYTE *);
+static ERROR  load_doc(extDocument *, CSTRING, BYTE, BYTE);
 static objFont * lookup_font(LONG, CSTRING);
-static LONG   parse_tag(objDocument *, objXML *, XMLTag *, LONG *, LONG);
+static LONG   parse_tag(extDocument *, objXML *, XMLTag *, LONG *, LONG);
 #ifdef DEBUG
 static void   print_xmltree(XMLTag *, LONG *) __attribute__ ((unused));
 #endif
 #ifdef DBG_LINES
-static void print_sorted_lines(objDocument *) __attribute__ ((unused));
+static void print_sorted_lines(extDocument *) __attribute__ ((unused));
 #endif
-static ERROR  process_page(objDocument *, objXML *);
-static void   process_parameters(objDocument *, CSTRING);
-static void   redraw(objDocument *, BYTE);
-static ERROR  report_event(objDocument *, LARGE Event, APTR EventData, CSTRING StructName);
-static void   reset_cursor(objDocument *);
-static ERROR  resolve_fontx_by_index(objDocument *, LONG Index, LONG *CharX);
-static ERROR  resolve_font_pos(objDocument *, LONG Segment, LONG X, LONG *, LONG *BytePos);
-static LONG   safe_file_path(objDocument *, CSTRING Path);
+static ERROR  process_page(extDocument *, objXML *);
+static void   process_parameters(extDocument *, CSTRING);
+static void   redraw(extDocument *, BYTE);
+static ERROR  report_event(extDocument *, LARGE, APTR, CSTRING);
+static void   reset_cursor(extDocument *);
+static ERROR  resolve_fontx_by_index(extDocument *, LONG, LONG *);
+static ERROR  resolve_font_pos(extDocument *, LONG, LONG X, LONG *, LONG *);
+static LONG   safe_file_path(extDocument *, CSTRING);
 static ERROR  safe_translate(STRING, LONG, LONG);
-static void   set_focus(objDocument *, LONG, CSTRING);
-static void   set_object_style(objDocument *, OBJECTPTR);
-static void   show_bookmark(objDocument *, CSTRING);
-static void   style_check(objDocument *, LONG *Index);
-static void   tag_object(objDocument *, CSTRING, CLASSID, XMLTag *, objXML *, XMLTag *, XMLTag *, LONG *Index, LONG Flags, UBYTE *, UBYTE *, LONG *);
-static void   tag_xml_content(objDocument *, objXML *, XMLTag *, WORD);
-static ERROR  unload_doc(objDocument *, BYTE);
-static BYTE   valid_object(objDocument *, OBJECTPTR);
-static BYTE   valid_objectid(objDocument *, OBJECTID);
-static BYTE   view_area(objDocument *, LONG Left, LONG Top, LONG Right, LONG Bottom);
+static void   set_focus(extDocument *, LONG, CSTRING);
+static void   set_object_style(extDocument *, OBJECTPTR);
+static void   show_bookmark(extDocument *, CSTRING);
+static void   style_check(extDocument *, LONG *);
+static void   tag_object(extDocument *, CSTRING, CLASSID, XMLTag *, objXML *, XMLTag *, XMLTag *, LONG *, LONG, UBYTE *, UBYTE *, LONG *);
+static void   tag_xml_content(extDocument *, objXML *, XMLTag *, WORD);
+static ERROR  unload_doc(extDocument *, BYTE);
+static BYTE   valid_object(extDocument *, OBJECTPTR);
+static BYTE   valid_objectid(extDocument *, OBJECTID);
+static BYTE   view_area(extDocument *, LONG Left, LONG Top, LONG Right, LONG Bottom);
 static LONG   xml_content_len(XMLTag *) __attribute__ ((unused));
 static void   xml_extract_content(XMLTag *, char *, LONG *, BYTE) __attribute__ ((unused));
 
 #ifdef DBG_STREAM
-static void print_stream(objDocument *Self, STRING Stream) __attribute__ ((unused));
+static void print_stream(extDocument *Self, STRING Stream) __attribute__ ((unused));
 #endif
 
 struct FontEntry {
@@ -667,7 +793,7 @@ T * escape_data(UBYTE *Stream, LONG Index) {
 
 #define remove_cursor(a)           draw_cursor((a),FALSE)
 // Calculate the length of an escape sequence
-#define ESC_ELEMENTID(a)        (((LONG *)(a))[1])
+#define ESC_ELEMENTID(a)           (((LONG *)(a))[1])
 #define ESCAPE_CODE(stream, index) ((stream)[(index)+1]) // Escape codes are only 1 byte long
 #define ESCAPE_LEN(a)              ((((a)[2])<<8) | ((a)[3]))
 // Move to the next character - handles UTF8 only, no escape sequence handling
@@ -698,7 +824,6 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    GetPointer(argModule, FID_Master, &modDocument);
 
-   if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule("font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
 
@@ -728,7 +853,6 @@ ERROR CMDExpunge(void)
    if (glTranslateBuffer) { FreeResource(glTranslateBuffer); glTranslateBuffer = NULL; }
 
    if (modDisplay) { acFree(modDisplay);  modDisplay = NULL; }
-   if (modSurface) { acFree(modSurface);  modSurface = NULL; }
    if (modFont)    { acFree(modFont);     modFont = NULL; }
 
    if (clDocument) { acFree(clDocument);  clDocument = NULL; }
@@ -749,7 +873,7 @@ CharLength: Returns the length of any character or escape code in a document dat
 This function will compute the byte-length of any UTF-8 character sequence or escape code in a document's data stream.
 
 -INPUT-
-obj(Document) Document: The document to query.
+ext(Document) Document: The document to query.
 int Index: The byte index of the character to inspect.
 
 -RESULT-
@@ -759,7 +883,7 @@ int: The length of the character is returned, or 0 if an error occurs.
 
 *****************************************************************************/
 
-static LONG docCharLength(objDocument *Self, LONG Index)
+static LONG docCharLength(extDocument *Self, LONG Index)
 {
    if (!Self) return 0;
 
@@ -775,7 +899,7 @@ static LONG docCharLength(objDocument *Self, LONG Index)
 
 //****************************************************************************
 
-INLINE LONG find_cell(objDocument *Self, LONG ID, ULONG EditHash)
+INLINE LONG find_cell(extDocument *Self, LONG ID, ULONG EditHash)
 {
    UBYTE *stream;
    if (!(stream = (UBYTE *)Self->Stream)) return -1;
@@ -797,7 +921,7 @@ INLINE LONG find_cell(objDocument *Self, LONG ID, ULONG EditHash)
 
 //****************************************************************************
 
-INLINE DocEdit * find_editdef(objDocument *Self, ULONG Hash)
+INLINE DocEdit * find_editdef(extDocument *Self, ULONG Hash)
 {
    for (auto edit=Self->EditDefs; edit; edit=edit->Next) {
       if (edit->NameHash IS Hash) return edit;
@@ -808,13 +932,11 @@ INLINE DocEdit * find_editdef(objDocument *Self, ULONG Hash)
 
 //****************************************************************************
 
-INLINE void layout_doc_fast(objDocument *Self)
+INLINE void layout_doc_fast(extDocument *Self)
 {
-   drwForbidDrawing();
-      AdjustLogLevel(2);
-      layout_doc(Self);
-      AdjustLogLevel(-2);
-   drwPermitDrawing();
+   AdjustLogLevel(2);
+   layout_doc(Self);
+   AdjustLogLevel(-2);
 }
 
 #include "tags.cpp"
@@ -835,7 +957,7 @@ static ERROR add_document_class(void)
       FID_Actions|TPTR,        clDocumentActions,
       FID_Methods|TARRAY,      clDocumentMethods,
       FID_Fields|TARRAY,       clFields,
-      FID_Size|TLONG,          sizeof(objDocument),
+      FID_Size|TLONG,          sizeof(extDocument),
       FID_Path|TSTR,           MOD_PATH,
       FID_FileExtension|TSTR,  "*.rpl|*.ripple|*.rple",
       TAGEND);

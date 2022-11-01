@@ -18,8 +18,8 @@ Please refer to it for further information on licensing.
 
 CSTRING ProgName      = "Parasol";
 CSTRING ProgAuthor    = "Paul Manias";
-CSTRING ProgDate      = "March 2017";
-CSTRING ProgCopyright = "Paul Manias © 2000-2017";
+CSTRING ProgDate      = "February 2022";
+CSTRING ProgCopyright = "Paul Manias © 2000-2022";
 LONG   ProgDebug = 0;
 FLOAT  ProgCoreVersion = VER_CORE;
 
@@ -27,7 +27,7 @@ extern struct CoreBase *CoreBase;
 struct FileSystemBase *FileSystemBase;
 
 #define STR_UNPACK "temp:scripts/"
-#define STR_MAIN   "main.dml"
+#define STR_MAIN   "main.fluid"
 
 static OBJECTID TargetID = 0;
 static OBJECTID glSystemPointerID;
@@ -44,7 +44,7 @@ static ERROR PROGRAM_ActionNotify(OBJECTPTR, struct acActionNotify *);
 
 static const char Help[] = {
 "This command-line program will execute scripts written for the Parasol framework.  The core distribution\n\
-supports both DML (.dml) and Fluid (.fluid) scripts.  Quick start:\n\
+supports Fluid (.fluid) scripts.  Quick start:\n\
 \n\
    parasol [args] [script.ext] arg1 arg2 ...\n\
 \n\
@@ -87,7 +87,7 @@ extern "C" void program(void)
    // Process arguments
 
    STRING *Args;
-   if ((!GetPointer(glTask, FID_ArgsList, &Args)) AND (Args)) {
+   if ((!GetPointer(glTask, FID_ArgsList, &Args)) and (Args)) {
       for (i=0; Args[i]; i++) {
          if (!StrMatch(Args[i], "--help")) {
             // Print help for the user
@@ -133,7 +133,8 @@ extern "C" void program(void)
          }
          else if (!StrMatch(Args[i], "--target")) {
             if (Args[i+1]) {
-               if (FastFindObject(Args[i+1], 0, &TargetID, 1, NULL) != ERR_Okay) {
+               LONG count = 1;
+               if (FindObject(Args[i+1], 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &TargetID, &count) != ERR_Okay) {
                   print("Warning - could not find target object \"%s\".", Args[i+1]);
                }
                else LogMsg("Using target %d", TargetID);
@@ -174,7 +175,7 @@ extern "C" void program(void)
       }
    }
 
-   if ((AnalysePath(scriptfile, &i) != ERR_Okay) OR (i != LOC_FILE)) {
+   if ((AnalysePath(scriptfile, &i) != ERR_Okay) or (i != LOC_FILE)) {
       print("File '%s' does not exist.", scriptfile);
       goto exit;
    }
@@ -201,13 +202,11 @@ exit:
 
    if (glDirectory) {
       for (i=0; glDirectory[i]; i++);
-      while ((i > 0) AND (glDirectory[i-1] != '/')) i--;
+      while ((i > 0) and (glDirectory[i-1] != '/')) i--;
       glDirectory[i] = 0;
 
       OBJECTPTR file;
-      if (!PrivateObject(ID_FILE, 0, &file,
-            FID_Location|TSTRING, glDirectory,
-            TAGEND)) {
+      if (!PrivateObject(ID_FILE, 0, &file, FID_Path|TSTR, glDirectory, TAGEND)) {
          flDelete(file, 0);
          acFree(file);
       }
@@ -249,7 +248,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
             if (!acInit(pointer)) {
                OBJECTPTR script;
                if (!PrivateObject(ID_SCRIPT, 0, &script,
-                     FID_Location|TSTR, "templates:defaultvariables.dml",
+                     FID_Path|TSTR, "templates:defaultvariables.fluid",
                      FID_Target|TLONG,  TargetID,
                      TAGEND)) {
 
@@ -290,7 +289,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
    CLASSID class_id, subclass;
    if (!(error = IdentifyFile(ScriptFile, "Open", 0, &class_id, &subclass, NULL))) {
       if (class_id IS ID_COMPRESSION) {
-         // The DML source may be a compressed file that contains multiple script files.  This part of the routine will decompress the contents to "temp:scripts/".
+         // The Fluid source may be a compressed file that contains multiple script files.  This part of the routine will decompress the contents to "temp:scripts/".
 
          if (decompress_archive(ScriptFile) != ERR_Okay) {
             print("Failed to decompress the script archive.");
@@ -304,15 +303,12 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
 
          // The script is actually a reference to a data file, in which case we may be able to run it, if it has a file association.
 
-         if (!PrivateObject(ID_RUN, 0, &run,
-               FID_Location|TSTRING, ScriptFile,
-               TAGEND)) {
-
+         if (!PrivateObject(ID_RUN, 0, &run, FID_Location|TSTR, ScriptFile, TAGEND)) {
             if (glArgs) {
                argname = argbuffer+1; // Skip the first byte... reserved for '+'
                argbuffer[0] = '+'; // Append arg indicator
                for (i=0; glArgs[i]; i++) {
-                  for (j=0; (glArgs[i][j]) AND (glArgs[i][j] != '=') AND (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
+                  for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
                   argname[j] = 0;
 
                   if (glArgs[i][j] IS '=') {
@@ -328,14 +324,14 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
                         }
 
                         i++;
-                        while ((glArgs[i]) AND (glArgs[i][0] != '}')) {
+                        while ((glArgs[i]) and (glArgs[i][0] != '}')) {
                            SetVar(run, argbuffer, glArgs[i]);
                            i++;
                         }
                      }
                      else if (glArgs[i][j] IS '"') {
                         j++;
-                        for (k=j; (glArgs[i][k]) AND (glArgs[i][k] != '"'); k++);
+                        for (k=j; (glArgs[i][k]) and (glArgs[i][k] != '"'); k++);
                         if (glArgs[i][k] IS '"') glArgs[i][k] = 0;
                         SetVar(run, argname, glArgs[i]+j);
                      }
@@ -361,7 +357,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
    if (!NewPrivateObject(subclass ? subclass : class_id, 0, &glScript)) {
       if (!TargetID) TargetID = CurrentTaskID();
 
-      SetFields(glScript, FID_Location|TSTR,  ScriptFile,
+      SetFields(glScript, FID_Path|TSTR,      ScriptFile,
                           FID_Target|TLONG,   TargetID,
                           FID_Procedure|TSTR, Procedure,
                           TAGEND);
@@ -370,7 +366,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
             argname = argbuffer+1; // Skip the first byte... reserved for '+'
             argbuffer[0] = '+'; // Append arg indicator
             for (i=0; glArgs[i]; i++) {
-               for (j=0; (glArgs[i][j]) AND (glArgs[i][j] != '=') AND (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
+               for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
                argname[j] = 0;
 
                if (glArgs[i][j] IS '=') {
@@ -384,7 +380,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
                      }
 
                      i++;
-                     while ((glArgs[i]) AND (glArgs[i][0] != '}')) {
+                     while ((glArgs[i]) and (glArgs[i][0] != '}')) {
                         SetVar(glScript, argbuffer, glArgs[i]);
                         i++;
                      }
@@ -393,7 +389,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
                   }
                   else if (glArgs[i][j] IS '"') {
                      j++;
-                     for (k=j; (glArgs[i][k]) AND (glArgs[i][k] != '"'); k++);
+                     for (k=j; (glArgs[i][k]) and (glArgs[i][k] != '"'); k++);
                      if (glArgs[i][k] IS '"') glArgs[i][k] = 0;
                      SetVar(glScript, argname, glArgs[i]+j);
                   }
@@ -449,13 +445,10 @@ static ERROR decompress_archive(STRING Location)
 
    ERROR error = ERR_Okay;
    OBJECTPTR compress;
-   if (!(error = PrivateObject(ID_COMPRESSION, 0, &compress,
-         FID_Location|TSTRING, Location,
-         TAGEND))) {
-
+   if (!(error = PrivateObject(ID_COMPRESSION, 0, &compress, FID_Path|TSTR, Location, TAGEND))) {
       if (!(error = AllocMemory(sizeof(STR_UNPACK) + len + sizeof(STR_MAIN) + 2, MEM_STRING, &glDirectory, NULL))) {
          for (i=0; STR_UNPACK[i]; i++) glDirectory[i] = STR_UNPACK[i];
-         for (j=len; (j > 1) AND (Location[j-1] != '/') AND (Location[j-1] != '\\') AND (Location[j-1] != ':'); j--);
+         for (j=len; (j > 1) and (Location[j-1] != '/') and (Location[j-1] != '\\') and (Location[j-1] != ':'); j--);
          while (Location[j]) {
             glDirectory[i++] = Location[j];
             j++;

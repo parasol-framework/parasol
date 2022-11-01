@@ -20,19 +20,19 @@ static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
 {
    parasol::Log log;
 
-   if ((Self->SpreadMethod <= 0) OR (Self->SpreadMethod >= VSPREAD_END)) {
+   if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
       return log.warning(ERR_OutOfRange);
    }
 
-   if ((Self->Units != VUNIT_BOUNDING_BOX) AND (Self->Units != VUNIT_USERSPACE)) {
+   if ((Self->Units != VUNIT_BOUNDING_BOX) and (Self->Units != VUNIT_USERSPACE)) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return log.warning(ERR_OutOfRange);
    }
 
    if (!Self->Bitmap) return log.warning(ERR_FieldNotSet);
 
-   if ((Self->Bitmap->BitsPerPixel != 24) AND (Self->Bitmap->BitsPerPixel != 32)) {
+   if ((Self->Bitmap->BitsPerPixel != 24) and (Self->Bitmap->BitsPerPixel != 32)) {
       return log.warning(ERR_NoSupport);
    }
 
@@ -43,12 +43,21 @@ static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
 
 static ERROR IMAGE_NewObject(objVectorImage *Self, APTR Void)
 {
-   Self->Units = VUNIT_BOUNDING_BOX;
+   Self->Units        = VUNIT_BOUNDING_BOX;
    Self->SpreadMethod = VSPREAD_PAD;
+   Self->AspectRatio  = ARF_X_MID|ARF_Y_MID|ARF_MEET; // SVG defaults
    return ERR_Okay;
 }
 
 /*****************************************************************************
+-FIELD-
+AspectRatio: Flags that affect the aspect ratio of the image within its target vector.
+Lookup: ARF
+
+Defining an aspect ratio allows finer control over the position and scale of the image within its target
+vector.
+
+<types lookup="ARF"/>
 
 -FIELD-
 Bitmap: Reference to a source bitmap for the rendering algorithm.
@@ -124,12 +133,14 @@ static const FieldDef clImageSpread[] = {
 };
 
 static const FieldDef clImageUnits[] = {
-   { "BoundingBox", VUNIT_BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
+   { "BoundingBox", VUNIT_BOUNDING_BOX }, // Coordinates are relative to the object's bounding box
    { "UserSpace",   VUNIT_USERSPACE },    // Coordinates are relative to the current viewport
    { NULL, 0 }
 };
 
 static const FieldDef clImageDimensions[] = {
+   { "FixedX",    DMF_FIXED_X },
+   { "FixedY",    DMF_FIXED_Y },
    { "RelativeX", DMF_RELATIVE_X },
    { "RelativeY", DMF_RELATIVE_Y },
    { NULL, 0 }
@@ -141,13 +152,14 @@ static const FieldArray clImageFields[] = {
    { "Picture",      FDF_OBJECT|FDF_RW, ID_PICTURE, NULL, (APTR)IMAGE_SET_Picture },
    { "Bitmap",       FDF_OBJECT|FDF_RW, ID_BITMAP,  NULL, (APTR)IMAGE_SET_Bitmap },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clImageUnits, NULL, NULL },
-   { "Dimensions",   FDF_LONGFLAGS|FDF_RW,      (MAXINT)&clImageDimensions, NULL, NULL },
+   { "Dimensions",   FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clImageDimensions, NULL, NULL },
    { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clImageSpread, NULL, NULL },
+   { "AspectRatio",  FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clAspectRatio, NULL, NULL },
  //{ "Src",          FDF_STRING|FDF_W, 0, NULL, (APTR)IMAGE_SET_Src },
    END_FIELD
 };
 
-static ERROR init_image(void) // The gradient is a definition type for creating gradients and not drawing.
+ERROR init_image(void) // The gradient is a definition type for creating gradients and not drawing.
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorImage,
       FID_BaseClassID|TLONG, ID_VECTORIMAGE,

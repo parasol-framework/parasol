@@ -2,9 +2,9 @@
 
 <info>
  <title>Installation Procedure</title>
- <author>Rocklyte Systems</author>
- <keywords>rocklyte, sdk, installation, install, overview, file, directory, archive</keywords>
- <description>Installation overview of the Rocklyte SDK.</description>
+ <author>Paul Manias</author>
+ <keywords>sdk, installation, install, overview, file, directory, archive</keywords>
+ <description>Installation overview of the Parasol Framework.</description>
 </info>
 
 <include src="inc_style.rpl"/>
@@ -21,7 +21,7 @@
 &gt; cd /c/sdk/modules/commands/run
 &gt; make
   gcc  -Wall -O2 -march=i586 -fno-strict-aliasing -I../../../include
-  -s -shared -o "/c/athene/system/modules/commands/run.dll" run.c
+  -s -shared -o "/c/parasol/system/modules/commands/run.dll" run.c
 &gt;</code></indent>
 
 <h2>Overview of Installed Directories and Files</h2>
@@ -39,7 +39,7 @@
 
 <h2>System Directory Structure</h2>
 
-<p>The following is an analysis of a complete Parasol framework installation.  The two most important folders are system/ and programs/, which can also be browsed as the system: and programs: volumes from the Rocklyte File Manager.  The programs: volume contains a pre-defined set of folders that exist to help organise the user's installed software base.  It also stores the desktop environment, themes, templates, commands and boot scripts.  The system: volume is more interesting to the developer and is described here:</p>
+<p>The following is an analysis of a complete Parasol framework installation.  The two most important folders are system/ and programs/, which can also be browsed as the system: and programs: volumes from the Parasol File Manager.  The programs: volume contains a pre-defined set of folders that exist to help organise the user's installed software base.  It also stores the desktop environment, themes, templates, commands and boot scripts.  The system: volume is more interesting to the developer and is described here:</p>
 
 <indent>
   <list type="custom">

@@ -8,9 +8,10 @@
     <version>1</version>
     <status>stable</status>
     <prefix>net</prefix>
-    <copyright>Paul Manias © 2005-2020</copyright>
+    <copyright>Paul Manias © 2005-2022</copyright>
     <classes>
       <class>ClientSocket</class>
+      <class>NetLookup</class>
       <class>NetSocket</class>
       <class>Proxy</class>
     </classes>
@@ -69,58 +70,11 @@
   </function>
 
   <function>
-    <name>ResolveAddress</name>
-    <comment>Resolves an IP address to a host name.</comment>
-    <prototype>ERROR netResolveAddress(CSTRING Address, LONG Flags, FUNCTION * Callback, LARGE ClientData)</prototype>
-    <input>
-      <param type="CSTRING" name="Address">IP address to be resolved, e.g. 123.111.94.82.</param>
-      <param type="LONG" name="Flags" lookup="NSF">Optional flags.</param>
-      <param type="FUNCTION *" name="Callback">This function will be called with the resolved IP address.</param>
-      <param type="LARGE" name="ClientData">Client data value to be passed to the Callback.</param>
-    </input>
-    <description>
-<p>ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant delay, the ResolveAddress() function supports asynchronous communication by default in order to avoid lengthy waiting periods.  If synchronous (blocking) operation is desired then the NSF_SYNCHRONOUS flag must be set prior to calling this method.</p>
-<p>The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is <code>Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)</code>.</p>
-<p>The Fluid prototype is as follows, with Addresses being passed as external arrays accessible via the array interface: <code>function Callback(ClientData, Error, HostName, Addresses)</code>.</p>
-    </description>
-    <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="Failed">General failure.</error>
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>ResolveName</name>
-    <comment>Resolves a domain name to an official host name and a list of IP addresses.</comment>
-    <prototype>ERROR netResolveName(CSTRING HostName, LONG Flags, FUNCTION * Callback, LARGE ClientData)</prototype>
-    <input>
-      <param type="CSTRING" name="HostName">The host name to be resolved.</param>
-      <param type="LONG" name="Flags" lookup="NSF">Optional flags.</param>
-      <param type="FUNCTION *" name="Callback">This function will be called with the resolved IP address.</param>
-      <param type="LARGE" name="ClientData">Client data value to be passed to the Callback.</param>
-    </input>
-    <description>
-<p>ResolveName() performs a domain name resolution, converting a domain name to an official host name and IP addresses.  The resolution process involves contacting a DNS server.  As this can potentially cause a significant delay, the ResolveName() function attempts to use asynchronous communication by default so that the function can return immediately.  If a synchronous (blocking) operation is desired then the NSF_SYNCHRONOUS flag must be set prior to calling this method and the routine will not return until it has a response.</p>
-<p>The function referenced in the Callback parameter will receive the results of the lookup.  Its C/C++ prototype is <code>Function(LARGE ClientData, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)</code>.</p>
-<p>The Fluid prototype is as follows, with Addresses being passed as external arrays accessible via the array interface: <code>function Callback(ClientData, Error, HostName, Addresses)</code>.</p>
-<p>If the Error received by the callback is anything other than ERR_Okay, the HostName and Addresses shall be set to NULL.  It is recommended that ClientData is used as the unique identifier for the original request in this situation.</p>
-    </description>
-    <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="Failed">General failure.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="Okay">Operation successful.</error>
-    </result>
-  </function>
-
-  <function>
     <name>SetSSL</name>
     <comment>Alters SSL settings on an initialised NetSocket object.</comment>
-    <prototype>ERROR netSetSSL(struct rkNetSocket * NetSocket, ...)</prototype>
+    <prototype>ERROR netSetSSL(objNetSocket * NetSocket, ...)</prototype>
     <input>
-      <param type="struct rkNetSocket *" name="NetSocket">The target NetSocket object.</param>
+      <param type="objNetSocket *" name="NetSocket">The target NetSocket object.</param>
       <param type="..." name="Tags">Series of tags terminated by TAGEND.</param>
     </input>
     <description>
@@ -128,8 +82,8 @@
 <p>If a failure occurs when executing a command, the execution of all further commands is aborted and the error code is returned immediately.</p>
     </description>
     <result type="ERROR">
-      <error code="NullArgs">Function call missing argument value(s)</error>
       <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -163,8 +117,8 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
 </pre>
     </description>
     <result type="ERROR">
-      <error code="Failed">General failure.</error>
       <error code="Okay">Operation successful.</error>
+      <error code="Failed">General failure.</error>
       <error code="Args">Invalid arguments passed to function.</error>
     </result>
   </function>
@@ -175,35 +129,85 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
       <const name="V6"/>
     </constants>
 
+    <constants lookup="NLF" comment="Options for NetLookup">
+      <const name="NO_CACHE">Contact the name service and do not use the local DNS cache.</const>
+    </constants>
+
     <constants lookup="NSF">
+      <const name="DEBUG">Print extra log messages.</const>
+      <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
       <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
       <const name="SSL">Use Secure Sockets Layer for all communication.</const>
-      <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
-      <const name="DEBUG">Print extra log messages.</const>
       <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
     </constants>
 
+    <constants lookup="NSL" comment="Tags for SetSSL().">
+      <const name="CONNECT">Initiate an SSL connection on this socket.</const>
+    </constants>
+
     <constants lookup="NTC" comment="NetSocket states">
-      <const name="DISCONNECTED">There is no connection.</const>
+      <const name="CONNECTED">There is an active connection at present.</const>
       <const name="CONNECTING">A connection is being established.</const>
       <const name="CONNECTING_SSL">An SSL connection is being established.</const>
-      <const name="CONNECTED">There is an active connection at present.</const>
+      <const name="DISCONNECTED">There is no connection.</const>
+    </constants>
+
+    <constants lookup="SCV" comment="These error codes for certificate validation match the OpenSSL error codes (X509 definitions)">
+      <const name="AKID_ISSUER_SERIAL_MISMATCH"/>
+      <const name="AKID_SKID_MISMATCH"/>
+      <const name="APPLICATION_VERIFICATION"/>
+      <const name="CERT_CHAIN_TOO_LONG"/>
+      <const name="CERT_HAS_EXPIRED"/>
+      <const name="CERT_NOT_YET_VALID"/>
+      <const name="CERT_REJECTED"/>
+      <const name="CERT_REVOKED"/>
+      <const name="CERT_SIGNATURE_FAILURE"/>
+      <const name="CERT_UNTRUSTED"/>
+      <const name="CRL_HAS_EXPIRED"/>
+      <const name="CRL_NOT_YET_VALID"/>
+      <const name="CRL_SIGNATURE_FAILURE"/>
+      <const name="DEPTH_ZERO_SELF_SIGNED_CERT"/>
+      <const name="ERROR_IN_CERT_NOT_AFTER_FIELD"/>
+      <const name="ERROR_IN_CERT_NOT_BEFORE_FIELD"/>
+      <const name="ERROR_IN_CRL_LAST_UPDATE_FIELD"/>
+      <const name="ERROR_IN_CRL_NEXT_UPDATE_FIELD"/>
+      <const name="INVALID_CA"/>
+      <const name="INVALID_PURPOSE"/>
+      <const name="KEYUSAGE_NO_CERTSIGN"/>
+      <const name="OK"/>
+      <const name="OUT_OF_MEM"/>
+      <const name="PATH_LENGTH_EXCEEDED"/>
+      <const name="SELF_SIGNED_CERT_IN_CHAIN"/>
+      <const name="SUBJECT_ISSUER_MISMATCH"/>
+      <const name="UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY"/>
+      <const name="UNABLE_TO_DECRYPT_CERT_SIGNATURE"/>
+      <const name="UNABLE_TO_DECRYPT_CRL_SIGNATURE"/>
+      <const name="UNABLE_TO_GET_CRL"/>
+      <const name="UNABLE_TO_GET_ISSUER_CERT"/>
+      <const name="UNABLE_TO_GET_ISSUER_CERT_LOCALLY"/>
+      <const name="UNABLE_TO_VERIFY_LEAF_SIGNATURE"/>
     </constants>
 
   </types>
   <structs>
+    <struct name="DNSEntry">
+      <field name="HostName" type="CSTRING"></field>
+      <field name="Addresses" type="struct IPAddress *">IP address list</field>
+      <field name="TotalAddresses" type="LONG">Total number of IP addresses</field>
+    </struct>
+
     <struct name="IPAddress">
       <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
       <field name="Type" type="LONG" lookup="IPADDR"></field>
       <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
     </struct>
 
-    <struct name="rkNetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
+    <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
       <field name="IP" type="char" size="8">IP address in 4/8-byte format</field>
-      <field name="Next" type="struct rkNetClient *">Next client in the chain</field>
-      <field name="Prev" type="struct rkNetClient *">Previous client in the chain</field>
-      <field name="NetSocket" type="struct rkNetSocket *">Reference to the parent socket</field>
-      <field name="Sockets" type="struct rkClientSocket *">Pointer to a list of sockets opened with this client.</field>
+      <field name="Next" type="struct NetClient *">Next client in the chain</field>
+      <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
+      <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
+      <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
       <field name="UserData" type="APTR">Free for user data storage.</field>
       <field name="TotalSockets" type="LONG">Count of all created sockets</field>
     </struct>

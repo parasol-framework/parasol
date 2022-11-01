@@ -49,22 +49,19 @@ static LONG scrUnsupported(void)
 FDEF argsAccessPointer[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsCompress[] = { { "Error", FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Level", FD_LONG }, { 0, 0 } };
 FDEF argsCopyArea[] = { { "Error", FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Dest", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
-FDEF argsCopyStretch[] = { { "Error", FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Dest", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { "DestWidth", FD_LONG }, { "DestHeight", FD_LONG }, { 0, 0 } };
 FDEF argsCopySurface[] = { { "Error", FD_ERROR }, { "BitmapSurface:Surface", FD_PTR|FD_STRUCT }, { "Bitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
 FDEF argsDecompress[] = { { "Error", FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "RetainData", FD_LONG }, { 0, 0 } };
-FDEF argsDrawEllipse[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Colour", FD_LONG }, { "Fill", FD_LONG }, { 0, 0 } };
 FDEF argsDrawLine[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "XEnd", FD_LONG }, { "YEnd", FD_LONG }, { "Colour", FD_LONG }, { 0, 0 } };
 FDEF argsDrawPixel[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_LONG }, { 0, 0 } };
 FDEF argsDrawRGBPixel[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "RGB:RGB", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsDrawRectangle[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Colour", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsFlipBitmap[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "Orientation", FD_LONG }, { 0, 0 } };
-FDEF argsFlood[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_LONG }, { 0, 0 } };
 FDEF argsGetColourFormat[] = { { "Void", FD_VOID }, { "ColourFormat:Format", FD_PTR|FD_STRUCT }, { "BitsPerPixel", FD_LONG }, { "RedMask", FD_LONG }, { "GreenMask", FD_LONG }, { "BlueMask", FD_LONG }, { "AlphaMask", FD_LONG }, { 0, 0 } };
 FDEF argsGetCursorInfo[] = { { "Error", FD_ERROR }, { "CursorInfo:Info", FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetCursorPos[] = { { "Error", FD_ERROR }, { "X", FD_LONG|FD_RESULT }, { "Y", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsGetDisplayInfo[] = { { "Error", FD_ERROR }, { "Display", FD_OBJECTID }, { "DisplayInfo:Info", FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetDisplayType[] = { { "Result", FD_LONG }, { 0, 0 } };
-FDEF argsGetInputMsg[] = { { "Error", FD_ERROR }, { "dcInputReady:Input", FD_PTR|FD_STRUCT }, { "Flags", FD_LONG }, { "InputMsg:Msg", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
+FDEF argsGetInputEvent[] = { { "Error", FD_ERROR }, { "dcInputReady:Input", FD_PTR|FD_STRUCT }, { "Flags", FD_LONG }, { "InputEvent:Msg", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 FDEF argsGetInputTypeName[] = { { "Result", FD_STR }, { "Type", FD_LONG }, { 0, 0 } };
 FDEF argsGetRelativeCursorPos[] = { { "Error", FD_ERROR }, { "Surface", FD_OBJECTID }, { "X", FD_LONG|FD_RESULT }, { "Y", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsLockCursor[] = { { "Error", FD_ERROR }, { "Surface", FD_OBJECTID }, { 0, 0 } };
@@ -106,7 +103,6 @@ Function JumpTable[] = {
    { scrUnsupported, "Resample", argsResample },
    { scrUnsupported, "GetColourFormat", argsGetColourFormat },
    { scrUnsupported, "CopyArea", argsCopyArea },
-   { scrUnsupported, "CopyStretch", argsCopyStretch },
    { scrUnsupported, "ReadRGBPixel", argsReadRGBPixel },
    { scrUnsupported, "ReadPixel", argsReadPixel },
    { scrUnsupported, "DrawRGBPixel", argsDrawRGBPixel },
@@ -117,11 +113,9 @@ Function JumpTable[] = {
    { scrUnsupported, "SetClipRegion", argsSetClipRegion },
    { scrUnsupported, "Compress", argsCompress },
    { scrUnsupported, "Decompress", argsDecompress },
-   { scrUnsupported, "Flood", argsFlood },
-   { scrUnsupported, "DrawEllipse", argsDrawEllipse },
    { scrUnsupported, "SubscribeInput", argsSubscribeInput },
    { scrUnsupported, "UnsubscribeInput", argsUnsubscribeInput },
-   { scrUnsupported, "GetInputMsg", argsGetInputMsg },
+   { scrUnsupported, "GetInputEvent", argsGetInputEvent },
    { scrUnsupported, "GetInputTypeName", argsGetInputTypeName },
    { scrUnsupported, "ScaleToDPI", argsScaleToDPI },
    { NULL, NULL, NULL }
@@ -159,7 +153,7 @@ static LONG test_x11(STRING Path)
          // If the error was EINTR, the connect was interrupted and we should try again.
 
          if ((err IS EINTR)) return ERR_Okay;
-         else if ((err IS EWOULDBLOCK) OR (err IS EINPROGRESS)) return ERR_Okay;
+         else if ((err IS EWOULDBLOCK) or (err IS EINPROGRESS)) return ERR_Okay;
          else {
             log.msg("Connect Error: %s", strerror(err));
             return ERR_Failed;

@@ -1,11 +1,9 @@
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define LUA_COMPILED "-- $FLUID:compiled"
 #define VER_FLUID 1.0
 #define SIZE_READ 1024
+
+#include <list>
 
 struct code_reader_handle {
    objFile *File;
@@ -32,31 +30,33 @@ struct eventsub {
 };
 
 struct prvFluid {
-   lua_State *Lua;     // Lua instance
+   lua_State *Lua;                   // Lua instance
    struct actionmonitor *ActionList; // Action subscriptions managed by subscribe()
-   struct eventsub *EventList; // Event subscriptions managed by subscribeEvent()
-   struct finput *InputList; // Managed by the input interface
-   struct datarequest *Requests; // For drag and drop requests
-   struct KeyStore *Structs;
-   struct KeyStore *Includes; // Stores the status of loaded include files.
+   struct eventsub *EventList;       // Event subscriptions managed by subscribeEvent()
+   struct finput *InputList;         // Managed by the input interface
+   struct datarequest *Requests;     // For drag and drop requests
+   KeyStore *Structs;
+   KeyStore *Includes;               // Stores the status of loaded include files.
    APTR   FocusEventHandle;
-   struct DateTime CacheDate;
-   ERROR  CaughtError; // Set to -1 to enable catching of ERROR results.
+   std::unordered_map<OBJECTID, LONG> *StateMap;
+   DateTime CacheDate;
+   ERROR  CaughtError;               // Set to -1 to enable catching of ERROR results.
    LONG   CachePermissions;
    LONG   LoadedSize;
    UBYTE  Recurse;
    UBYTE  SaveCompiled;
-   UWORD  Catch; // Operating within a catch() block if > 0
+   UWORD  Catch;                     // Operating within a catch() block if > 0
    UWORD  RequireCounter;
-   LONG   ErrorLine;   // Line at which the last error was thrown.
+   LONG   ErrorLine;                 // Line at which the last error was thrown.
 };
 
 struct array {
    struct structentry *StructDef; // Set if the array represents a known struct.
-   LONG Total;
-   LONG Type;
-   LONG TypeSize;
-   LONG ArraySize;    // Size of the array in bytes
+   LONG Total;        // Total number of elements
+   LONG Type;         // FD_BYTE, FD_LONG etc...
+   LONG TypeSize;     // Byte-size of the type, e.g. LARGE == 8 bytes
+   LONG ArraySize;    // Size of the array *in bytes*
+   LONG AlignedSize;  // For struct alignment
    UBYTE Allocated:1;
    UBYTE ReadOnly:1;
    union {
@@ -68,10 +68,12 @@ struct array {
       LONG   *ptrLong;
       WORD   *ptrWord;
       UBYTE  *ptrByte;
+      APTR   ptrVoid;
    };
 };
 
 // This structure is created & managed through the 'memory' interface
+// DEPRECATED
 
 struct memory {
    union {
@@ -119,6 +121,11 @@ struct fstruct {
    UBYTE Deallocate:1;  // Deallocate the struct when Lua collects this resource.
 };
 
+struct fprocessing {
+   DOUBLE Timeout;
+   std::list<ObjectSignal> *Signals;
+};
+
 struct metafield {
    ULONG ID;
    LONG GetFunction;
@@ -126,7 +133,7 @@ struct metafield {
 };
 
 struct fwidget {
-   struct rkMetaClass *Class;
+   objMetaClass *Class;
    struct metafield *Fields;
    lua_State *Lua;
    LONG InputMask;
@@ -159,8 +166,9 @@ struct finput {
    struct finput *Next;
    APTR KeyEvent;
    OBJECTID SurfaceID;
+   LONG InputHandle;
    LONG Callback;
-   LONG InputObject;
+   LONG InputValue;
    LONG Mask;
    BYTE Mode;
 };
@@ -193,7 +201,7 @@ struct module {
 
 struct object {
    OBJECTPTR prvObject;       // If the object is private we can have the address
-   struct rkMetaClass *Class; // Direct pointer to the module's class
+   objMetaClass *Class;       // Direct pointer to the module's class
    OBJECTID  ObjectID;        // If the object is referenced externally, access is managed by ID
    CLASSID   ClassID;         // Class identifier
    UBYTE     Detached:1;      // TRUE if the object is an external reference or is not to be garbage collected
@@ -237,7 +245,7 @@ void make_any_table(lua_State *, LONG Type, CSTRING, LONG Elements, CPTR ) __att
 void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, BYTE Cache);
 void make_table(lua_State *, LONG Type, LONG Elements, CPTR ) __attribute__((unused));
 int make_struct(lua_State *, CSTRING, CSTRING) __attribute__((unused));
-ERROR named_struct_to_table(lua_State *, CSTRING, APTR);
+ERROR named_struct_to_table(lua_State *, CSTRING, CPTR);
 void make_struct_ptr_table(lua_State *, CSTRING, LONG, CPTR *);
 void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
 void process_error(objScript *Self, CSTRING Procedure);
@@ -250,6 +258,7 @@ extern void register_input_class(lua_State *);
 extern void register_object_class(lua_State *);
 extern void register_module_class(lua_State *);
 extern void register_number_class(lua_State *);
+extern void register_processing_class(lua_State *);
 extern void register_struct_class(lua_State *);
 extern void register_thread_class(lua_State *);
 //static void register_widget_class(lua_State *);
@@ -259,6 +268,7 @@ ERROR struct_to_table(lua_State *, struct references *, struct structentry *, CP
 int fcmd_arg(lua_State *);
 int fcmd_catch(lua_State *);
 int fcmd_check(lua_State *);
+int fcmd_raise(lua_State *);
 int fcmd_get_execution_state(lua_State *);
 int fcmd_msg(lua_State *);
 int fcmd_print(lua_State *);
@@ -269,7 +279,6 @@ int fcmd_nz(lua_State *);
 int fcmd_require(lua_State *);
 int fcmd_subscribe_event(lua_State *);
 int fcmd_unsubscribe_event(lua_State *);
-int fcmd_processMessages(lua_State *);
 
 #ifdef __arm__
 extern void armExecFunction(APTR, APTR, LONG);
@@ -296,7 +305,3 @@ INLINE ULONG STRUCTHASH(CSTRING String)
    }
    return hash;
 }
-
-#ifdef __cplusplus
-}
-#endif

@@ -9,7 +9,7 @@
 
 inline OBJECTID getSurfaceID(Scintilla::Window* win)
 {
-   objScintilla *scintilla = (objScintilla *)win->GetID();
+   extScintilla *scintilla = (extScintilla *)win->GetID();
    return scintilla->SurfaceID;
 }
 
@@ -37,7 +37,7 @@ bool Scintilla::Window::HasFocus()
 
    LogF("Window::HasFocus()","");
 
-   if (!drwGetSurfaceInfo(getSurfaceID(this), &info)) {
+   if (!gfxGetSurfaceInfo(getSurfaceID(this), &info)) {
       if (info->Flags & RNF_HAS_FOCUS) return 1;
    }
 
@@ -55,7 +55,7 @@ Scintilla::PRectangle Scintilla::Window::GetPosition()
    // Before any size allocated pretend its 1000 wide so not scrolled
    Scintilla::PRectangle rc(0, 0, 1000, 1000);
 
-   if (!drwGetSurfaceInfo(getSurfaceID(this), &info)) {
+   if (!gfxGetSurfaceInfo(getSurfaceID(this), &info)) {
       rc.left   = info->AbsX;
       rc.top    = info->AbsY;
       rc.right  = info->AbsX + info->Width;
@@ -90,7 +90,7 @@ void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla:
 
    // Get the position of the other window
 
-   if (!drwGetSurfaceInfo(getSurfaceID(&relativeTo), &info)) {
+   if (!gfxGetSurfaceInfo(getSurfaceID(&relativeTo), &info)) {
       rc.left -= info->X;
       rc.top  -= info->Y;
    }
@@ -102,7 +102,7 @@ void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla:
 
 Scintilla::PRectangle Scintilla::Window::GetClientPosition()
 {
-   objScintilla *scintilla = (objScintilla *)this->GetID();
+   extScintilla *scintilla = (extScintilla *)this->GetID();
 
    //FMSG("Window::GetClientPosition()","%dx%d", scintilla->Surface.Width, scintilla->Surface.Height);
    return Scintilla::PRectangle(0, 0, scintilla->Surface.Width, scintilla->Surface.Height);
@@ -133,7 +133,7 @@ void Scintilla::Window::Show(bool show)
 
 void Scintilla::Window::InvalidateAll()
 {
-   objScintilla *scintilla = (objScintilla *)this->GetID();
+   auto scintilla = (extScintilla *)this->GetID();
 
    // Scintilla expects the invalidation to be buffered, so a delayed message is appropriate.
 
@@ -148,7 +148,7 @@ void Scintilla::Window::InvalidateAll()
 
 void Scintilla::Window::InvalidateRectangle(Scintilla::PRectangle rc)
 {
-   objScintilla *scintilla = (objScintilla *)this->GetID();
+   auto scintilla = (extScintilla *)this->GetID();
 
    if (scintilla->Visible IS FALSE) return;
 
@@ -176,7 +176,7 @@ void Scintilla::Window::SetFont(Scintilla::Font &)
 
 void Scintilla::Window::SetCursor(Cursor curs)
 {
-   APTR surface;
+   objSurface *surface;
    LONG cursorid;
 
    if (curs IS cursorLast) return;
@@ -193,7 +193,7 @@ void Scintilla::Window::SetCursor(Cursor curs)
    }
 
    if (wid) {
-      if (AccessObject(getSurfaceID(this), 500, &surface) IS ERR_Okay) {
+      if (!AccessObject(getSurfaceID(this), 500, &surface)) {
          SetLong(surface, FID_Cursor, cursorid);
          cursorLast = curs;
          ReleaseObject(surface);
@@ -207,6 +207,6 @@ void Scintilla::Window::SetCursor(Cursor curs)
 
 void Scintilla::Window::SetTitle(const char *s)
 {
-   objScintilla *scintilla = (objScintilla *)this->GetID();
+   extScintilla *scintilla = (extScintilla *)this->GetID();
    SetString(scintilla, FID_Title, (STRING)s);
 }

@@ -5,6 +5,9 @@
 #include <parasol/config.h>
 #endif
 
+#include <set>
+#include <functional>
+
 #define PRV_CORE
 #define PRV_CORE_MODULE
 #define PRV_THREAD
@@ -31,11 +34,6 @@
 #define RoundPageSize(size) ((size) + glPageSize - ((size) % glPageSize))
 
 //#define USE_GLOBAL_EVENTS 1 // Use a global locking system for resources in Windows (equivalent to Linux)
-
-// If AUTO_OBJECT_LOCK is enabled, objects will be automatically locked to prevent thread-clashes with prv_access().  It is used by Action() and similar functions.
-// NB: Turning this off will cause issues between threads unless they call the necessary locking functions.
-
-//#define AUTO_OBJECT_LOCK 1
 
 #define MAX_TASKS    50  // Maximum number of tasks allowed to run at once
 #define MAX_SEMLOCKS 40  // Maximum number of semaphore allocations per task
@@ -119,13 +117,33 @@ struct rkBase64Decode;
 struct FileInfo;
 struct DirInfo;
 struct CacheFile;
-struct rkFile;
-struct rkStorageDevice;
-struct rkConfig;
+class objFile;
+class objStorageDevice;
+class objConfig;
+class objMetaClass;
 struct ActionTable;
 struct FileFeedback;
 struct ResourceManager;
 struct MsgHandler;
+
+// Private memory management structures.
+
+class PrivateAddress {
+public:
+   union {
+      APTR      Address;
+      OBJECTPTR Object;
+   };
+   MEMORYID MemoryID;   // Unique identifier
+   OBJECTID OwnerID;    // The object that allocated this block.
+   ULONG    Size;       // 4GB max
+   volatile LONG ThreadLockID = 0;
+   WORD     Flags;
+   volatile WORD AccessCount = 0; // Total number of locks
+
+   PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, WORD aFlags) :
+      Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
+};
 
 struct rkWatchPath {
    LARGE      Custom;    // User's custom data pointer or value
@@ -140,28 +158,6 @@ struct rkWatchPath {
 };
 
 #define STAT_FOLDER 0x0001
-
-struct virtual_drive {
-   ULONG VirtualID;  // Hash name of the volume, not including the trailing colon
-   char Name[32];    // Volume name, including the trailing colon at the end
-   ULONG CaseSensitive:1;
-   ERROR (*ScanDir)(struct DirInfo *);
-   ERROR (*Rename)(STRING, STRING);
-   ERROR (*Delete)(STRING, FUNCTION *);
-   ERROR (*OpenDir)(struct DirInfo *);
-   ERROR (*CloseDir)(struct DirInfo *);
-   ERROR (*Obsolete)(CSTRING, struct DirInfo **, LONG);
-   ERROR (*TestPath)(CSTRING, LONG, LONG *);
-   ERROR (*WatchPath)(struct rkFile *);
-   void  (*IgnoreFile)(struct rkFile *);
-   ERROR (*GetInfo)(CSTRING, struct FileInfo *, LONG);
-   ERROR (*GetDeviceInfo)(CSTRING, struct rkStorageDevice *);
-   ERROR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
-   ERROR (*CreateFolder)(CSTRING, LONG);
-   ERROR (*SameFile)(CSTRING, CSTRING);
-   ERROR (*ReadLink)(STRING, STRING *);
-   ERROR (*CreateLink)(CSTRING, CSTRING);
-};
 
 #include "prototypes.h"
 
@@ -230,6 +226,28 @@ typedef struct ActionSubscription {
    CLASSID  ClassID;        // Class of the subscribed object
 } ActionSubscription;
 
+struct virtual_drive {
+   ULONG VirtualID;  // Hash name of the volume, not including the trailing colon
+   char Name[32];    // Volume name, including the trailing colon at the end
+   ULONG CaseSensitive:1;
+   ERROR (*ScanDir)(struct DirInfo *);
+   ERROR (*Rename)(STRING, STRING);
+   ERROR (*Delete)(STRING, FUNCTION *);
+   ERROR (*OpenDir)(struct DirInfo *);
+   ERROR (*CloseDir)(struct DirInfo *);
+   ERROR (*Obsolete)(CSTRING, struct DirInfo **, LONG);
+   ERROR (*TestPath)(CSTRING, LONG, LONG *);
+   ERROR (*WatchPath)(objFile *);
+   void  (*IgnoreFile)(objFile *);
+   ERROR (*GetInfo)(CSTRING, struct FileInfo *, LONG);
+   ERROR (*GetDeviceInfo)(CSTRING, objStorageDevice *);
+   ERROR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
+   ERROR (*CreateFolder)(CSTRING, LONG);
+   ERROR (*SameFile)(CSTRING, CSTRING);
+   ERROR (*ReadLink)(STRING, STRING *);
+   ERROR (*CreateLink)(CSTRING, CSTRING);
+};
+
 extern LONG glMaxDocViews, glTotalDocViews;
 extern const struct virtual_drive glFSDefault;
 extern LONG glVirtualTotal;
@@ -244,10 +262,10 @@ extern struct virtual_drive glVirtual[20];
 #define PAGE_TABLE_CHUNK     32
 #define MEMHEADER            12    // 8 bytes at start for MEMH and MemoryID, 4 at end for MEMT
 
-// **NOTE** A massive shared memory pool between all processes is very bad - it is a big security flaw.
+// Turning off USE_SHM means that the shared memory pool is available to all processes by default.
 
 #ifdef __ANDROID__
-  #undef USE_SHM
+  #undef USE_SHM // Should be using ashmem
   #define SHMKEY 0x0009f830 // Keep the key value low as we will be incrementing it
 
   #ifdef USE_SHM
@@ -354,17 +372,16 @@ struct SharedObject {
 ** This structure is used for internally timed broadcasting.
 */
 
-struct CoreTimer {
+class CoreTimer {
+public:
    LARGE     NextCall;       // Cycle when PreciseTime() reaches this value (us)
    LARGE     LastCall;       // PreciseTime() recorded at the last call (us)
    LARGE     Interval;       // The amount of microseconds to wait at each interval
-   struct CoreTimer *Next;
-   struct CoreTimer *Prev;
    OBJECTPTR Subscriber;     // The object that is subscribed (pointer, if private)
    OBJECTID  SubscriberID;   // The object that is subscribed
    FUNCTION  Routine;        // Routine to call if not using AC_Timer - ERROR Routine(OBJECTID, LONG, LONG);
    UBYTE     Cycle;
-   UBYTE     Locked;
+   bool      Locked;
 };
 
 /*****************************************************************************
@@ -433,7 +450,7 @@ struct MemoryMessage {
 ** Global data variables.
 */
 
-extern struct rkMetaClass glMetaClass;
+extern objMetaClass glMetaClass;
 extern LONG glEUID, glEGID, glUID, glGID;
 extern LONG glKeyState;
 extern char glSystemPath[SIZE_SYSTEM_PATH];
@@ -448,24 +465,24 @@ extern LARGE glTimeLog;
 extern char glAlphaNumeric[256];
 extern struct ModuleMaster  *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
 extern struct PublicAddress *glSharedBlocks;  // Locked with PL_PUBLICMEM
+extern struct SortedAddress *glSortedBlocks;
 extern struct SharedControl *glSharedControl; // Locked with PL_FORBID
 extern struct TaskList      *shTasks, *glTaskEntry; // Locked with PL_PROCESSES
 extern struct SemaphoreEntry *shSemaphores;     // Locked with PL_SEMAPHORES
 extern const struct ActionTable ActionTable[];  // Read only
 extern const struct Function    glFunctions[];  // Read only
-extern struct CoreTimer *glTimers;              // Locked with TL_TIMER
-extern struct PrivateAddress *glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array, so don't change this to a KeyStore.
-extern LONG glNextPrivateAddress;               // Locked with TL_PRIVATE_MEM
-extern LONG glPrivateBlockCount;                // Locked with TL_PRIVATE_MEM
+extern std::list<CoreTimer> glTimers;          // Locked with TL_TIMER
+extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
+extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with TL_PRIVATE_MEM.  Sorted with the most recent private memory first
+extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first
 extern struct MemoryPage   *glMemoryPages;      // Locked with TL_MEMORY_PAGES
 extern struct KeyStore *glObjectLookup;         // Locked with TL_OBJECT_LOOKUP
 extern struct ClassHeader  *glClassDB;          // Read-only.  Class database.
 extern struct ModuleHeader *glModules;          // Read-only.  Module database.
 extern struct OpenInfo *glOpenInfo;             // Read-only.  The OpenInfo structure initially passed to OpenCore()
-extern struct rkTask *glCurrentTask;            // Threads should use glCurrentTaskID to manage access.
+extern objTask *glCurrentTask;            // Threads should use glCurrentTaskID to manage access.
 extern CSTRING glMessages[ERR_END];       // Read-only table of error messages.
-extern CSTRING glHeaders[ERH_END];        // Read-only table of error headers.
-extern const LONG glTotalMessages, glTotalHeaders;
+extern const LONG glTotalMessages;
 extern LONG glTotalPages; // Read-only
 extern MEMORYID glTaskMessageMID;        // Read-only
 extern LONG glActionCount, glMemRegSize; // Read-only
@@ -481,36 +498,36 @@ extern LONG glPageSize; // Read only
 extern LONG glBufferSize;
 extern TIMER glCacheTimer;
 extern STRING glBuffer;
-extern LONG glX11FD;
 extern APTR glJNIEnv;
 extern struct ObjectContext glTopContext; // Read-only, not a threading concern.
 extern OBJECTPTR modIconv;
 extern OBJECTPTR glLocale;
 extern objTime *glTime;
 extern struct translate *glTranslate;
-extern struct rkConfig *glVolumes; // Volume management object, contains all FS volume names and their meta data.  Use AccessPrivateObject() to lock.
-extern struct rkConfig *glDatatypes;
+extern objConfig *glVolumes; // Volume management object, contains all FS volume names and their meta data.  Use AccessPrivateObject() to lock.
+extern objConfig *glDatatypes;
 extern struct KeyStore *glClassMap; // Register of all classes.
 extern struct KeyStore *glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern OBJECTID glClassFileID;
 extern CSTRING glIDL;
+extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 
 extern CSTRING glClassBinPath;
 extern CSTRING glModuleBinPath;
-extern struct rkMetaClass *ModuleMasterClass;
-extern struct rkMetaClass *ModuleClass;
-extern struct rkMetaClass *TaskClass;
-extern struct rkMetaClass *ThreadClass;
-extern struct rkMetaClass *TimeClass;
-extern struct rkMetaClass *ConfigClass;
-extern struct rkMetaClass *glFileClass;
-extern struct rkMetaClass *glStorageClass;
-extern struct rkMetaClass *glScriptClass;
-extern struct rkMetaClass *glArchiveClass;
-extern struct rkMetaClass *glCompressionClass;
-extern struct rkMetaClass *glCompressedStreamClass;
+extern objMetaClass *ModuleMasterClass;
+extern objMetaClass *ModuleClass;
+extern objMetaClass *TaskClass;
+extern objMetaClass *ThreadClass;
+extern objMetaClass *TimeClass;
+extern objMetaClass *ConfigClass;
+extern objMetaClass *glFileClass;
+extern objMetaClass *glStorageClass;
+extern objMetaClass *glScriptClass;
+extern objMetaClass *glArchiveClass;
+extern objMetaClass *glCompressionClass;
+extern objMetaClass *glCompressedStreamClass;
 #ifdef __ANDROID__
-extern struct rkMetaClass *glAssetClass;
+extern objMetaClass *glAssetClass;
 #endif
 extern BYTE fs_initialised;
 extern APTR glPageFault;
@@ -751,7 +768,6 @@ struct ziptail {
 #define MAX_FDS 40
 extern struct FDTable *glFDTable;
 extern WORD glTotalFDs, glLastFD;
-extern struct KeyStore *glCache;
 extern LONG glInotify;
 struct DocView { CSTRING Path; CSTRING Doc; };
 extern struct DocView *glDocView;
@@ -760,10 +776,10 @@ extern struct DocView *glDocView;
 
 /****************************************************************************/
 
-struct ModuleMaster {
-   OBJECT_HEADER
-   struct ModuleMaster *Next;  // Next module in list
-   struct ModuleMaster *Prev;  // Previous module in list
+class ModuleMaster : public BaseClass {
+   public:
+   class ModuleMaster *Next;   // Next module in list
+   class ModuleMaster *Prev;   // Previous module in list
    struct ModHeader  *Header;  // Pointer to module header - for memory resident modules only.
    struct CoreBase *CoreBase;  // Module's personal Core reference
    #ifdef __unix__
@@ -801,6 +817,7 @@ ERROR MGR_OwnerDestroyed(OBJECTPTR, APTR);
 ERROR MGR_Rename(OBJECTPTR, struct acRename *);
 ERROR MGR_Seek(OBJECTPTR, struct acSeek *);
 ERROR MGR_SetField(OBJECTPTR, struct acSetVar *);
+ERROR MGR_Signal(OBJECTPTR, APTR);
 
 //****************************************************************************
 
@@ -816,8 +833,8 @@ ERROR fs_closedir(struct DirInfo *);
 ERROR fs_createlink(CSTRING, CSTRING);
 ERROR fs_delete(STRING, FUNCTION *);
 ERROR fs_getinfo(CSTRING, struct FileInfo *, LONG);
-ERROR fs_getdeviceinfo(CSTRING, struct rkStorageDevice *);
-void  fs_ignore_file(struct rkFile *);
+ERROR fs_getdeviceinfo(CSTRING, objStorageDevice *);
+void  fs_ignore_file(objFile *);
 ERROR fs_makedir(CSTRING, LONG);
 ERROR fs_opendir(struct DirInfo *);
 ERROR fs_readlink(STRING, STRING *);
@@ -825,13 +842,14 @@ ERROR fs_rename(STRING, STRING);
 ERROR fs_samefile(CSTRING, CSTRING);
 ERROR fs_scandir(struct DirInfo *);
 ERROR fs_testpath(CSTRING, LONG, LONG *);
-ERROR fs_watch_path(struct rkFile *);
+ERROR fs_watch_path(objFile *);
 
 const struct virtual_drive * get_fs(CSTRING Path);
 void free_storage_class(void);
 
+ERROR convert_zip_error(struct z_stream_s *, LONG);
 ERROR check_cache(OBJECTPTR, LARGE TimeElapsed, LARGE TotalElapsed);
-ERROR get_class_cmd(CSTRING, struct rkConfig *, LONG, CLASSID, STRING *);
+ERROR get_class_cmd(CSTRING, objConfig *, LONG, CLASSID, STRING *);
 ERROR fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
 ERROR fs_copydir(STRING, STRING, struct FileFeedback *, FUNCTION *, BYTE);
 LONG  get_parent_permissions(CSTRING, LONG *, LONG *);
@@ -842,9 +860,10 @@ LONG  convert_fs_permissions(LONG);
 LONG  convert_permissions(LONG);
 void set_memory_manager(APTR, struct ResourceManager *);
 BYTE  strip_folder(STRING) __attribute__ ((unused));
-ERROR get_file_info(CSTRING, struct FileInfo *, LONG, STRING, LONG);
+ERROR get_file_info(CSTRING, struct FileInfo *, LONG);
 ERROR convert_errno(LONG Error, ERROR Default);
 void free_translate_buffer(void);
+void free_file_cache(void);
 
 EXPORT void Expunge(WORD);
 
@@ -863,7 +882,6 @@ ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 struct ModuleItem * find_module(ULONG);
 LONG   find_public_address(struct SharedControl *, APTR);
-LONG   find_private_mem_id(MEMORYID, const void *);
 ERROR  find_private_object_entry(OBJECTID, LONG *);
 ERROR  find_public_object_entry(struct SharedObjectHeader *, OBJECTID, LONG *);
 ERROR  find_public_mem_id(struct SharedControl *, MEMORYID, LONG *);
@@ -874,6 +892,7 @@ ERROR  free_ptr_args(APTR, const struct FunctionField *, WORD);
 void   free_public_resources(OBJECTID);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
+void   init_metaclass(void);
 ERROR  init_sleep(LONG OtherProcessID, LONG GlobalThreadID, LONG ResourceID, LONG ResourceType, WORD *);
 ERROR  load_classes(void);
 ERROR  local_copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
@@ -897,7 +916,7 @@ ERROR  resolve_args(APTR, const struct FunctionField *);
 APTR   resolve_public_address(struct PublicAddress *);
 void   scan_classes(void);
 void   set_object_flags(OBJECTPTR, LONG);
-ERROR  sort_class_fields(struct rkMetaClass *, struct Field *);
+ERROR  sort_class_fields(objMetaClass *, struct Field *);
 void   remove_threadpool(void);
 ERROR  threadpool_get(objThread **);
 void   threadpool_release(objThread *);
@@ -1103,59 +1122,7 @@ INLINE CSTRING GET_FIELD_NAME(ULONG FieldID)
 }
 
 /*****************************************************************************
-** These are fast in-line calls for object locking.  These functions attempt to quickly 'steal' the object lock if the
-** queue value was at zero.
 */
-
-#define INC_QUEUE(Object) __sync_add_and_fetch(&(Object)->Queue, 1)
-#define SUB_QUEUE(Object) __sync_sub_and_fetch(&(Object)->Queue, 1)
-
-/* // For debugging specific object locking issues only.
-INLINE BYTE INC_QUEUE(OBJECTPTR Object)
-{
-   BYTE result = __sync_add_and_fetch(&(Object)->Queue, 1);
-   if (Object->UniqueID IS 2435) LogF("@Add","%d", result);
-   return result;
-}
-
-INLINE BYTE SUB_QUEUE(OBJECTPTR Object)
-{
-   BYTE result = __sync_sub_and_fetch(&(Object)->Queue, 1);
-   if (Object->UniqueID IS 2435) LogF("@Sub","%d", result);
-   return result;
-}
-*/
-
-#define INC_SLEEP(Object) __sync_add_and_fetch(&(Object)->SleepQueue, 1)
-#define SUB_SLEEP(Object) __sync_sub_and_fetch(&(Object)->SleepQueue, 1)
-
-#ifdef AUTO_OBJECT_LOCK
-
-INLINE ERROR prv_access(OBJECTPTR Object)
-{
-   if (INC_QUEUE(Object) IS 1) {
-      Object->ThreadID = get_thread_id();
-      return ERR_Okay;
-   }
-   else {
-      if (Object->ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-      SUB_QUEUE(Object); // Put the lock count back to normal before AccessPrivateObject()
-      return AccessPrivateObject(Object, -1); // Can fail if object is marked for deletion.
-   }
-}
-
-INLINE void prv_release(OBJECTPTR Object)
-{
-   if (Object->SleepQueue > 0) ReleasePrivateObject(Object);
-   else SUB_QUEUE(Object);
-}
-
-#else
-
-INLINE ERROR prv_access(OBJECTPTR Object) { return ERR_Okay; }
-INLINE void prv_release(OBJECTPTR Object) { }
-
-#endif
 
 #ifdef  __cplusplus
 
@@ -1167,17 +1134,17 @@ class ScopedObjectAccess {
       ERROR error;
 
       ScopedObjectAccess(OBJECTPTR Object) {
-         error = prv_access(Object);
+         error = Object->threadLock();
          obj = Object;
       }
 
-      ~ScopedObjectAccess() { if (!error) prv_release(obj); }
+      ~ScopedObjectAccess() { if (!error) obj->threadRelease(); }
 
       bool granted() { return error == ERR_Okay; }
 
       void release() {
          if (!error) {
-            prv_release(obj);
+            obj->threadRelease();
             error = ERR_NotLocked;
          }
       }

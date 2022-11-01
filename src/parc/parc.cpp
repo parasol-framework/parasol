@@ -21,7 +21,7 @@ recommended that the process is terminated because the loss of system privileges
 #define PRV_PARC
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
-#include <parasol/modules/widget.h>
+//#include <parasol/modules/display.h>
 
 #define VER_PARC 1.0
 
@@ -30,8 +30,8 @@ static OBJECTPTR clParc = NULL;
 
 //****************************************************************************
 
-typedef struct rkParc {
-   OBJECT_HEADER
+typedef class rkParc : public BaseClass {
+   public:
    STRING   Message;    // Set to a suitable user error message when an error occurs
    OBJECTID OutputID;   // An object that will receive program output
    LONG     Flags;
@@ -106,10 +106,7 @@ static ERROR PARC_Activate(objParc *Self, APTR Void)
             // Run the default script as specified in "parc.xml".
 
             if (class_id IS ID_SCRIPT) {
-               if (!CreateObject(subclass_id ? subclass_id : class_id, NF_INTEGRAL, &Self->Script,
-                     FID_Location|TSTRING,  path,
-                     TAGEND)) {
-
+               if (!CreateObject(subclass_id ? subclass_id : class_id, NF_INTEGRAL, &Self->Script, FID_Path|TSTR, path, TAGEND)) {
                   error = acActivate(Self->Script);
                }
                else error = ERR_CreateObject;
@@ -217,7 +214,7 @@ static ERROR PARC_Init(objParc *Self, APTR Void)
    ERROR error;
 
    if (!CreateObject(ID_COMPRESSION, NF_INTEGRAL, &Self->Archive,
-         FID_Location|TSTR,    Self->Path,
+         FID_Path|TSTR,        Self->Path,
          FID_ArchiveName|TSTR, "parc",
          FID_Flags|TLONG,      CMF_READ_ONLY,
          TAGEND)) {

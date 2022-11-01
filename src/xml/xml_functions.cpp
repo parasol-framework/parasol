@@ -1,5 +1,5 @@
 
-static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
+static ERROR count_tags(extXML *Self, CSTRING Text, CSTRING *Result)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -155,7 +155,7 @@ static ERROR count_tags(objXML *Self, CSTRING Text, CSTRING *Result)
 //****************************************************************************
 // Convert a text string into XML tags.
 
-static ERROR txt_to_xml(objXML *Self, CSTRING Text)
+static ERROR txt_to_xml(extXML *Self, CSTRING Text)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -305,7 +305,7 @@ static ERROR txt_to_xml(objXML *Self, CSTRING Text)
 //****************************************************************************
 // Extracts the next tag from an XML string.  This function also recurses into itself.
 
-static CSTRING extract_tag_attrib(objXML *Self, CSTRING Str, LONG *AttribSize, WORD *TotalAttrib)
+static CSTRING extract_tag_attrib(extXML *Self, CSTRING Str, LONG *AttribSize, WORD *TotalAttrib)
 {
    CSTRING str = Str;
    LONG size = 0;
@@ -367,7 +367,7 @@ static CSTRING extract_tag_attrib(objXML *Self, CSTRING Str, LONG *AttribSize, W
 //****************************************************************************
 // Called by txt_to_xml() to extract the next tag from an XML string.  This function also recurses into itself.
 
-static ERROR extract_tag(objXML *Self, exttag *Status)
+static ERROR extract_tag(extXML *Self, exttag *Status)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -674,7 +674,7 @@ static ERROR extract_tag(objXML *Self, exttag *Status)
 
 //****************************************************************************
 
-static ERROR extract_content(objXML *Self, exttag *Status)
+static ERROR extract_content(extXML *Self, exttag *Status)
 {
    parasol::Log log(__FUNCTION__);
    XMLTag *tag;
@@ -1049,7 +1049,7 @@ static void sift_up(ListSort **lookup, LONG i, LONG heapsize)
 //****************************************************************************
 // Gets the nth sibling with the given name.
 
-static XMLTag * next_sibling(objXML *Self, XMLTag *Tag, LONG Index, STRING Name, LONG FlatScan)
+static XMLTag * next_sibling(extXML *Self, XMLTag *Tag, LONG Index, STRING Name, LONG FlatScan)
 {
    //FMSG("next_sibling","Index: %d, Name: %s, Flat: %d", Index, Name, FlatScan);
 
@@ -1103,9 +1103,9 @@ static XMLTag * next_sibling(objXML *Self, XMLTag *Tag, LONG Index, STRING Name,
 //   /menu/window/* (First child of the window tag)
 //   /menu/*[@id='5']
 
-static ERROR find_tag2(objXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback);
+static ERROR find_tag2(extXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback);
 
-static XMLTag * find_tag(objXML *Self, XMLTag *Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
+static XMLTag * find_tag(extXML *Self, XMLTag *Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1125,14 +1125,13 @@ static XMLTag * find_tag(objXML *Self, XMLTag *Tag, CSTRING XPath, CSTRING *Attr
    else return NULL;
 }
 
-static ERROR find_tag2(objXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
+static ERROR find_tag2(extXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
 {
    parasol::Log log("find_tag");
    char tagname[120];
    CSTRING filter_attrib_name;
    LONG pos, subscript, i, filter_attrib_name_len, filter_attrib_value_len, filter_attrib_svalue, attribwild, j;
    XMLTag *current;
-   ERROR error;
    char endchar;
 
    if (!(current = *Tag)) return log.warning(ERR_Args);
@@ -1380,100 +1379,100 @@ next_sibling: // Start of loop - yes, we are using gotos for this
    else current = next_sibling(Self, current, (subscript >= 0) ? subscript : 0, tagname, flatscan);
 
 matched_attrib:
+   if (!current) return ERR_Search;
 
-   if (current) {
-      XMLTag *scan;
+   XMLTag *scan;
+   if (!XPath[pos]) { // Matching tag found and there is nothing left to process
+      if (!Callback) {
+         *Tag = current;
+         return ERR_Okay; // End of query reached, successfully found tag
+      }
 
-      if (!XPath[pos]) { // Matching tag found and there is nothing left to process
-         if (Callback) {
-            if (Callback->Type IS CALL_STDC) {
-               auto routine = (ERROR (*)(objXML *, XMLTag *, CSTRING))Callback->StdC.Routine;
-               error = routine(Self, current, NULL);
-            }
-            else if (Callback->Type IS CALL_SCRIPT) {
-               OBJECTPTR script;
-               if ((script = Callback->Script.Script)) {
-                  const ScriptArg args[] = {
-                     { "XML",  FD_OBJECTPTR, { .Address = Self } },
-                     { "Tag",  FD_LONG,      { .Long = current->Index } },
-                     { "Attrib", FD_STRING,  { .Address = NULL } }
-                  };
-                  if (!scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args))) {
-                     GetLong(script, FID_Error, &error);
-                  }
-                  else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
-               }
-            }
-
-            if (error IS ERR_Terminate) {
-               *Tag = current;
-               return ERR_Terminate;
-            }
-            if (((subscript IS -2) or (subscript IS -1)) and ((current = current->Next))) goto next_sibling;
-         }
-         else {
-            *Tag = current;
-            return ERR_Okay; // End of query reached, successfully found tag
+      ERROR error = ERR_Okay;
+      if (Callback->Type IS CALL_STDC) {
+         auto routine = (ERROR (*)(extXML *, XMLTag *, CSTRING))Callback->StdC.Routine;
+         error = routine(Self, current, NULL);
+      }
+      else if (Callback->Type IS CALL_SCRIPT) {
+         OBJECTPTR script;
+         if ((script = Callback->Script.Script)) {
+            const ScriptArg args[] = {
+               { "XML",  FD_OBJECTPTR, { .Address = Self } },
+               { "Tag",  FD_LONG,      { .Long = current->Index } },
+               { "Attrib", FD_STRING,  { .Address = NULL } }
+            };
+            if (scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
       }
-      else if ((XPath[pos] IS '/') and (XPath[pos+1] IS '@')) {
-         if (Attrib) *Attrib = XPath + pos + 2;
+      else error = ERR_InvalidValue;
 
-         if (Callback) {
-            if (Callback->Type IS CALL_STDC) {
-               auto routine = (ERROR (*)(objXML *, XMLTag *, CSTRING))Callback->StdC.Routine;
-               error = routine(Self, current, NULL);
-            }
-            else if (Callback->Type IS CALL_SCRIPT) {
-               OBJECTPTR script;
-               if ((script = Callback->Script.Script)) {
-                  const ScriptArg args[] = {
-                     { "XML",  FD_OBJECTPTR, { .Address = Self } },
-                     { "Tag",  FD_LONG,      { .Long = current->Index } },
-                     { "Attrib", FD_STRING,  { .Address = (STRING)(Attrib ? Attrib[0] : NULL) } }
-                  };
-                  if (!scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args))) {
-                     GetLong(script, FID_Error, &error);
-                  }
-                  else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
-                  ReleaseObject(script);
-               }
-            }
-
-            if (error IS ERR_Terminate) {
-               *Tag = current;
-               return ERR_Terminate;
-            }
-            if (((subscript IS -2) or (subscript IS -1)) and ((current = current->Next))) goto next_sibling;
-         }
-         else {
-            *Tag = current;
-            return ERR_Okay;
-         }
+      if (error IS ERR_Terminate) {
+         *Tag = current;
+         return ERR_Terminate;
       }
-      else if ((scan = current->Child)) { // Move to next position in the XPath and scan child node
-         error = find_tag2(Self, &scan, XPath+pos, Attrib, Callback);
 
-         if (error IS ERR_Terminate) {
-            *Tag = current;
-            return ERR_Terminate;
-         }
-         else if ((error) or (Callback)) {
-            // Nothing matches in this subset of tags, or callbacks are in use.  Move to the next sibling if subscripts
-            // are not being used.
+      if (((subscript IS -2) or (subscript IS -1)) and ((current = current->Next))) goto next_sibling;
 
-            if (subscript < 0) {
-               current = current->Next;
-               goto next_sibling;
-            }
-         }
-         else *Tag = scan;
-      }
-      else error = ERR_Search;
+      return error;
    }
-   else error = ERR_Search;
+   else if ((XPath[pos] IS '/') and (XPath[pos+1] IS '@')) {
+      if (Attrib) *Attrib = XPath + pos + 2;
 
-   return error;
+      if (!Callback) {
+         *Tag = current;
+         return ERR_Okay;
+      }
+
+      ERROR error = ERR_Okay;
+      if (Callback->Type IS CALL_STDC) {
+         auto routine = (ERROR (*)(extXML *, XMLTag *, CSTRING))Callback->StdC.Routine;
+         error = routine(Self, current, NULL);
+      }
+      else if (Callback->Type IS CALL_SCRIPT) {
+         OBJECTPTR script;
+         if ((script = Callback->Script.Script)) {
+            const ScriptArg args[] = {
+               { "XML",  FD_OBJECTPTR, { .Address = Self } },
+               { "Tag",  FD_LONG,      { .Long = current->Index } },
+               { "Attrib", FD_STRING,  { .Address = (STRING)(Attrib ? Attrib[0] : NULL) } }
+            };
+            if (scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+            ReleaseObject(script);
+         }
+      }
+      else error = ERR_InvalidValue;
+
+      if (error IS ERR_Terminate) {
+         *Tag = current;
+         return ERR_Terminate;
+      }
+
+      if (((subscript IS -2) or (subscript IS -1)) and ((current = current->Next))) goto next_sibling;
+
+      return error;
+   }
+   else if ((scan = current->Child)) { // Move to next position in the XPath and scan child node
+      ERROR error = find_tag2(Self, &scan, XPath+pos, Attrib, Callback);
+
+      if (error IS ERR_Terminate) {
+         *Tag = current;
+         return ERR_Terminate;
+      }
+
+      if ((error) or (Callback)) {
+         // Nothing matches in this subset of tags, or callbacks are in use.  Move to the next sibling if subscripts
+         // are not being used.
+
+         if (subscript < 0) {
+            current = current->Next;
+            goto next_sibling;
+         }
+      }
+      else *Tag = scan;
+
+      return error;
+   }
+   else return ERR_Search;
 
 parse_error:
    log.msg("XPath unresolved: %s", XPath);
@@ -1482,7 +1481,7 @@ parse_error:
 
 //****************************************************************************
 
-static ERROR parse_source(objXML *Self)
+static ERROR parse_source(extXML *Self)
 {
    parasol::Log log(__FUNCTION__);
    CacheFile *filecache;
@@ -1538,7 +1537,7 @@ static ERROR parse_source(objXML *Self)
 //****************************************************************************
 // Extracts immediate content, does not recurse into child tags.
 
-static ERROR get_content(objXML *Self, XMLTag *Tag, STRING Buffer, LONG Size)
+static ERROR get_content(extXML *Self, XMLTag *Tag, STRING Buffer, LONG Size)
 {
    Buffer[0] = 0;
    if ((Tag = Tag->Child)) {
@@ -1562,7 +1561,7 @@ static ERROR get_content(objXML *Self, XMLTag *Tag, STRING Buffer, LONG Size)
 
 //****************************************************************************
 
-static void free_xml(objXML *Self)
+static void free_xml(extXML *Self)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
@@ -1572,7 +1571,7 @@ static void free_xml(objXML *Self)
 
 //**********************************************************************
 
-static void clear_tags(objXML *XML)
+static void clear_tags(extXML *XML)
 {
    for (LONG i=0; i < XML->TagCount; i++) {
       if (XML->Tags[i]) FreeResource(XML->Tags[i]);
@@ -1585,7 +1584,7 @@ static void clear_tags(objXML *XML)
 
 #warning TODO: Support processing of ENTITY declarations in the doctype.
 
-static void parse_doctype(objXML *Self, CSTRING Input)
+static void parse_doctype(extXML *Self, CSTRING Input)
 {
 
 }

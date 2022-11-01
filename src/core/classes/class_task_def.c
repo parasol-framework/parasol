@@ -15,6 +15,7 @@ static const struct MethodArray clTaskMethods[] = {
 };
 
 static const struct ActionArray clTaskActions[] = {
+   { AC_ActionNotify, (APTR)TASK_ActionNotify },
    { AC_Activate, (APTR)TASK_Activate },
    { AC_Free, (APTR)TASK_Free },
    { AC_GetVar, (APTR)TASK_GetVar },

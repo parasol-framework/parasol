@@ -1,43 +1,37 @@
 /*****************************************************************************
 
 -CLASS-
-Pointer: Used to support mouse pointers.
+Pointer: Interface for mouse cursor support.
 
-The Pointer class provides the computer user with a means of interacting with the graphical interface.  Traditionally
-the pointer is controlled by an attached mouse device, but the use of a keyboard, joystick or touch-screen is a
-possibility.  The Pointer class operates in 3 dimensions (X, Y, Z) and the Z axis is typically controlled by a mouse
-wheel.
+The Pointer class provides the user with a means of interacting with the graphical interface.  On a host system such
+as Windows, the pointer functionality will hook into the host's capabilities.  If the display is native then the
+pointer service will manage its own cursor exclusively.
 
-A pointer object should usually be created at boot-up unless you don't want a pointer in your system (e.g. for
-keyboard-only input).  Not creating a pointer will also mean that the system will not support user-click and
-user-movement management, unless you have some other means of achieving this. It is recommended that when creating a
-pointer at boot-up you give it a name of "SystemPointer".  This is a system-wide standard that makes it easier for
-other objects to find the pointing device.  If you give it a different name then the pointer will effectively be hidden
-from other objects.
-
-The Pointer class manages action-events such as UserMovement, UserClick and UserClickRelease.  These actions are called
-and passed to other objects on the desktop as appropriate.
+Internally, a system-wide pointer object is automatically created with a name of `SystemPointer`.  This should be
+used for all interactions with this service.
 
 -END-
 
 *****************************************************************************/
 
-static ERROR GET_ButtonOrder(objPointer *, CSTRING *);
-static ERROR GET_ButtonState(objPointer *, LONG *);
+#include "defs.h"
 
-static ERROR SET_ButtonOrder(objPointer *, CSTRING);
-static ERROR SET_MaxSpeed(objPointer *, LONG);
-static ERROR PTR_SET_X(objPointer *, LONG);
-static ERROR PTR_SET_Y(objPointer *, LONG);
+static ERROR GET_ButtonOrder(extPointer *, CSTRING *);
+static ERROR GET_ButtonState(extPointer *, LONG *);
+
+static ERROR SET_ButtonOrder(extPointer *, CSTRING);
+static ERROR SET_MaxSpeed(extPointer *, LONG);
+static ERROR PTR_SET_X(extPointer *, DOUBLE);
+static ERROR PTR_SET_Y(extPointer *, DOUBLE);
 
 #ifdef _WIN32
-static ERROR PTR_SetWinCursor(objPointer *, struct ptrSetWinCursor *);
+static ERROR PTR_SetWinCursor(extPointer *, struct ptrSetWinCursor *);
 static FunctionField mthSetWinCursor[]  = { { "Cursor", FD_LONG }, { NULL, 0 } };
 #endif
 
 #ifdef __xwindows__
-static ERROR PTR_GrabX11Pointer(objPointer *, struct ptrGrabX11Pointer *);
-static ERROR PTR_UngrabX11Pointer(objPointer *, APTR);
+static ERROR PTR_GrabX11Pointer(extPointer *, struct ptrGrabX11Pointer *);
+static ERROR PTR_UngrabX11Pointer(extPointer *, APTR);
 static FunctionField mthGrabX11Pointer[] = { { "Surface", FD_LONG }, { NULL, 0 } };
 #endif
 
@@ -46,24 +40,26 @@ static FLOAT glDefaultAcceleration = 0.8;
 static TIMER glRepeatTimer = 0;
 OBJECTID glOverTaskID = 0; // Task that owns the surface that the cursor is positioned over
 
-static ERROR repeat_timer(objPointer *, LARGE, LARGE);
-static void set_pointer_defaults(objPointer *);
-static WORD examine_chain(objPointer *, WORD, SurfaceControl *, WORD);
-static BYTE get_over_object(objPointer *);
-static void process_ptr_button(objPointer *, struct dcDeviceInput *);
-static void process_ptr_movement(objPointer *, struct dcDeviceInput *);
-static void process_ptr_wheel(objPointer *, struct dcDeviceInput *);
-static void send_inputmsg(InputMsg *input, InputSubscription *List);
+static ERROR repeat_timer(extPointer *, LARGE, LARGE);
+static void set_pointer_defaults(extPointer *);
+static WORD examine_chain(extPointer *, WORD, SurfaceControl *, WORD);
+static BYTE get_over_object(extPointer *);
+static void process_ptr_button(extPointer *, struct dcDeviceInput *);
+static void process_ptr_movement(extPointer *, struct dcDeviceInput *);
+static void process_ptr_wheel(extPointer *, struct dcDeviceInput *);
+static void send_inputmsg(InputEvent *input, InputSubscription *List);
 
 //****************************************************************************
 
-INLINE void call_userinput(CSTRING Debug, InputMsg *input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
-   LONG AbsX, LONG AbsY, LONG OverX, LONG OverY)
+INLINE void call_userinput(CSTRING Debug, InputEvent *input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
+   DOUBLE AbsX, DOUBLE AbsY, DOUBLE OverX, DOUBLE OverY)
 {
    InputSubscription *list;
 
    if ((glSharedControl->InputMID) and (!AccessMemory(glSharedControl->InputMID, MEM_READ, 1000, &list))) {
-      //log.trace("Type: %s, Value: %.2f, Recipient: %d, Over: %d, %dx%d %s", (input->Type < JET_END) ? glInputNames[input->Type] : (STRING)"", input->Value, RecipientID, OverID, AbsX, AbsY, Debug);
+      //parasol::Log log(__FUNCTION__);
+      //log.trace("Type: %s, Value: %.2f, Recipient: %d, Over: %d %.2fx%.2f, Abs: %.2fx%.2f %s",
+      //   (input->Type < JET_END) ? glInputNames[input->Type] : (CSTRING)"", input->Value, RecipientID, OverID, OverX, OverY, AbsX, AbsY, Debug);
 
       input->Mask        = glInputType[input->Type].Mask;
       input->Flags       = glInputType[input->Type].Flags | Flags;
@@ -79,49 +75,53 @@ INLINE void call_userinput(CSTRING Debug, InputMsg *input, LONG Flags, OBJECTID 
 }
 
 //****************************************************************************
+// Adds an input event to the glInput event list, then scans through the list of subscribers and alerts any processes
+// that match the filter.
 
-static void send_inputmsg(InputMsg *input, InputSubscription *List)
+static void send_inputmsg(InputEvent *Event, InputSubscription *List)
 {
    parasol::Log log(__FUNCTION__);
-   struct acDataFeed dc_inputready;
-   struct dcDisplayInputReady inputready;
 
    // Store the message in the input message queue
 
-   inputready.NextIndex   = glInput->IndexCounter++;
-   dc_inputready.ObjectID = glPointerID;
-   dc_inputready.DataType = DATA_INPUT_READY;
-   dc_inputready.Buffer   = &inputready;
-   dc_inputready.Size     = sizeof(inputready);
+   CopyMemory(Event, glInputEvents->Msgs + (glInputEvents->IndexCounter & INPUT_MASK), sizeof(*Event));
+   glInputEvents->IndexCounter++;
 
-   LONG msgindex = inputready.NextIndex & INPUT_MASK;
-   CopyMemory(input, glInput->Msgs+msgindex, sizeof(InputMsg));
+   // Alert processes that a new input event is ready.  This is a two part process as processes
+   // can have multiple subscriptions and we only want to wake them once.
 
+   std::unordered_set<LONG> wake_processes;
+
+   auto task = (objTask *)CurrentTask();
    for (LONG i=0; i < glSharedControl->InputTotal; i++) {
-      if ((!List[i].SurfaceID) or (List[i].SurfaceID IS input->RecipientID)) {
-         if ((List[i].Mask & input->Mask) != input->Mask) continue;
+      if ((List[i].SurfaceFilter) and (List[i].SurfaceFilter != Event->RecipientID)) continue;
+      if (!(List[i].InputMask & Event->Mask)) continue;
 
-         //log.trace("Object #%d, Surface #%d vs #%d, Mask: $%.8x vs $%.8x, MsgSent %d, Port %d", List[i].SubscriberID, List[i].SurfaceID, input->RecipientID, List[i].Mask, input->Mask, List[i].MsgSent, List[i].MsgPort);
+      //log.msg("Process %d, Surface #%d, Mask: $%.8x & $%.8x, Last Alerted @ " PF64(), List[i].ProcessID, Event->RecipientID, Event->Mask, List[i].InputMask, List[i].LastAlerted);
 
-         // Send an input ready message if the subscriber is known to be up to date with its messages.
+      // NB: When process ID's match we will instead process input events at the start of the next sleep cycle.
 
-         List[i].LastIndex = glInput->IndexCounter;
+      if (List[i].ProcessID != task->ProcessID) {
+         if (List[i].LastAlerted < glInputEvents->IndexCounter) {
+            wake_processes.insert(List[i].ProcessID);
+         }
+      }
 
-         if (List[i].MsgSent IS FALSE) {
-            inputready.SubIndex = i;
-            ERROR error = ActionMsgPort(AC_DataFeed, List[i].SubscriberID, &dc_inputready, List[i].MsgPort, -1);
-            List[i].MsgSent = TRUE;
+      List[i].LastAlerted = glInputEvents->IndexCounter;
+   }
 
-            if (error IS ERR_NoMatchingObject) { // Remove the subscriber if its message port no longer exists
-               log.warning("Subscriber #%d invalid, removing from input subscription array.", List[i].SubscriberID);
+   for (const auto & pid : wake_processes) {
+      if (WakeProcess(pid) IS ERR_Search) {
+         log.warning("Process #%d deceased, removing from input subscription array.", pid);
 
+         for (LONG i=glSharedControl->InputTotal-1; i >= 0; i--) {
+            if (pid IS List[i].ProcessID) {
                if (i+1 < glSharedControl->InputTotal) {
                   CopyMemory(List+i+1, List+i, sizeof(InputSubscription) * (glSharedControl->InputTotal - i - 1));
                }
                else ClearMemory(List+i, sizeof(List[i]));
 
-               i--; // Offset the subsequent i++ of the for loop
-               glSharedControl->InputTotal--;
+               __sync_fetch_and_sub(&glSharedControl->InputTotal, 1);
             }
          }
       }
@@ -133,7 +133,7 @@ static void send_inputmsg(InputMsg *input, InputSubscription *List)
 *****************************************************************************/
 
 #ifdef _WIN32
-static ERROR PTR_SetWinCursor(objPointer *Self, struct ptrSetWinCursor *Args)
+static ERROR PTR_SetWinCursor(extPointer *Self, struct ptrSetWinCursor *Args)
 {
    winSetCursor(GetWinCursor(Args->Cursor));
    Self->CursorID = Args->Cursor;
@@ -146,7 +146,7 @@ static ERROR PTR_SetWinCursor(objPointer *Self, struct ptrSetWinCursor *Args)
 */
 
 #ifdef __xwindows__
-static ERROR PTR_GrabX11Pointer(objPointer *Self, struct ptrGrabX11Pointer *Args)
+static ERROR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args)
 {
    APTR xwin;
    OBJECTPTR surface;
@@ -161,7 +161,7 @@ static ERROR PTR_GrabX11Pointer(objPointer *Self, struct ptrGrabX11Pointer *Args
    return ERR_Okay;
 }
 
-static ERROR PTR_UngrabX11Pointer(objPointer *Self, APTR Void)
+static ERROR PTR_UngrabX11Pointer(extPointer *Self, APTR Void)
 {
    XUngrabPointer(XDisplay, CurrentTime);
    return ERR_Okay;
@@ -173,7 +173,7 @@ static ERROR PTR_UngrabX11Pointer(objPointer *Self, APTR Void)
 -ACTION-
 DataFeed: This action can be used to send fake input to a pointer object.
 
-Fake input can be sent to a pointer object with the DATA_DEVICE_INPUT data type, as if the user was using the mouse.
+Fake input can be sent to a pointer object with the `DATA_DEVICE_INPUT` data type, as if the user was using the mouse.
 The data will be interpreted no differently to genuine user input from hardware.
 
 Note that if a button click is used in a device input message, the client must follow up with the equivalent release
@@ -183,7 +183,7 @@ flag for that button.
 
 *****************************************************************************/
 
-static ERROR PTR_DataFeed(objPointer *Self, struct acDataFeed *Args)
+static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
@@ -216,12 +216,12 @@ static ERROR PTR_DataFeed(objPointer *Self, struct acDataFeed *Args)
 
 //****************************************************************************
 
-static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
+static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 {
    parasol::Log log(__FUNCTION__);
-   InputMsg userinput;
+   InputEvent userinput;
    OBJECTID modal_id, target;
-   LONG absx, absy, buttonflag, bi;
+   LONG buttonflag, bi;
 
    ClearMemory(&userinput, sizeof(userinput));
    userinput.Value     = Input->Value;
@@ -259,10 +259,11 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
       }
 
       if (Self->Buttons[bi].LastClicked) {
-         if (!GetSurfaceAbs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
+         LONG absx, absy;
+         if (!get_surface_abs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
             uiflags |= Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
 
-            if ((ABS(Self->X - Self->LastReleaseX) > Self->ClickSlop) OR
+            if ((ABS(Self->X - Self->LastReleaseX) > Self->ClickSlop) or
                 (ABS(Self->Y - Self->LastReleaseY) > Self->ClickSlop)) {
                uiflags |= JTYPE_DRAGGED;
             }
@@ -286,7 +287,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
    // surface, or if no modal surface is defined.
 
    if (glOverTaskID) {
-      modal_id = drwGetModalSurface(glOverTaskID);
+      modal_id = gfxGetModalSurface(glOverTaskID);
 
       if (modal_id) {
          if (modal_id IS Self->OverObjectID) {
@@ -296,7 +297,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
             // Check if the OverObject is one of the children of modal_id.
 
             ERROR error;
-            error = drwCheckIfChild(modal_id, Self->OverObjectID);
+            error = gfxCheckIfChild(modal_id, Self->OverObjectID);
             if ((error IS ERR_True) or (error IS ERR_LimitedSuccess)) modal_id = 0;
          }
       }
@@ -306,7 +307,7 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
    // Button Press Handler
 
    if (userinput.Value > 0) {
-      log.trace("Button %d depressed @ " PF64() " Coords: %dx%d", bi, userinput.Timestamp, Self->X, Self->Y);
+      log.trace("Button %d depressed @ " PF64() " Coords: %.2fx%.2f", bi, userinput.Timestamp, Self->X, Self->Y);
 
       //if ((modal_id) and (modal_id != Self->OverObjectID)) {
       //   log.branch("Surface %d is modal, button click on %d cancelled.", modal_id, Self->OverObjectID);
@@ -375,13 +376,12 @@ static void process_ptr_button(objPointer *Self, struct dcDeviceInput *Input)
 
 //****************************************************************************
 
-static void process_ptr_wheel(objPointer *Self, struct dcDeviceInput *Input)
+static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 {
    InputSubscription *subs;
-   LONG i;
 
    if ((glSharedControl->InputMID) and (!AccessMemory(glSharedControl->InputMID, MEM_READ, 1000, &subs))) {
-      InputMsg msg;
+      InputEvent msg;
       msg.Type        = JET_WHEEL;
       msg.Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT | Input->Flags;
       msg.Mask        = JTYPE_EXT_MOVEMENT;
@@ -403,27 +403,27 @@ static void process_ptr_wheel(objPointer *Self, struct dcDeviceInput *Input)
    DOUBLE scrollrate = 0;
    DOUBLE wheel = Input->Value;
    if (wheel > 0) {
-      for (i=1; i <= wheel; i++) scrollrate += Self->WheelSpeed * i;
+      for (LONG i=1; i <= wheel; i++) scrollrate += Self->WheelSpeed * i;
    }
    else {
       wheel = -wheel;
-      for (i=1; i <= wheel; i++) scrollrate -= Self->WheelSpeed * i;
+      for (LONG i=1; i <= wheel; i++) scrollrate -= Self->WheelSpeed * i;
    }
 
-   struct acScroll scroll;
-   scroll.XChange = 0;
-   scroll.YChange = scrollrate / 100; //(wheel * Self->WheelSpeed) / 100;
-   scroll.ZChange = 0;
+   struct acScroll scroll = {
+      .DeltaX = 0,
+      .DeltaY = scrollrate / 100, //(wheel * Self->WheelSpeed) / 100
+      .DeltaZ = 0
+   };
    ActionMsg(AC_Scroll, Self->OverObjectID, &scroll);
 }
 
 //****************************************************************************
 
-static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
+static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 {
    parasol::Log log(__FUNCTION__);
-   InputMsg userinput;
-   LONG absx, absy;
+   InputEvent userinput;
 
    ClearMemory(&userinput, sizeof(userinput));
    userinput.Value     = Input->Value;
@@ -445,18 +445,18 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
       userinput.Value += Self->Y;
    }
 
-   BYTE moved = FALSE;
-   LONG current_x = Self->X;
-   LONG current_y = Self->Y;
+   bool moved = false;
+   DOUBLE current_x = Self->X;
+   DOUBLE current_y = Self->Y;
    switch (userinput.Type) {
-      case JET_ABS_X: current_x = F2T(userinput.Value); if (current_x != Self->X) moved = TRUE; break;
-      case JET_ABS_Y: current_y = F2T(userinput.Value); if (current_y != Self->Y) moved = TRUE; break;
+      case JET_ABS_X: current_x = userinput.Value; if (current_x != Self->X) moved = true; break;
+      case JET_ABS_Y: current_y = userinput.Value; if (current_y != Self->Y) moved = true; break;
    }
 
-   if (moved IS FALSE) {
+   if (!moved) {
       // Check if the surface that we're over has changed due to hide, show or movement of surfaces in the display.
 
-      if (get_over_object(Self)) moved = TRUE;
+      if (get_over_object(Self)) moved = true;
    }
 
    if (moved) {
@@ -471,7 +471,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
          }
       }
 
-      #ifdef __snap__
+      #ifdef __native__
 
          LONG xchange = current_x - Self->X;
          LONG ychange = current_y - Self->Y;
@@ -481,7 +481,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
 
             // Pointer cannot leave the surface that it is restricted to
 
-            if (!GetSurfaceAbs(Self->RestrictID, &absx, &absy, &width, &height)) {
+            if (!get_surface_abs(Self->RestrictID, &absx, &absy, &width, &height)) {
                if (current_x < absx) current_x = absx;
                if (current_y < absy) current_y = absy;
                if (current_x > (absx + width - 1))  current_x = absx + width - 1;
@@ -509,8 +509,8 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
          }
 
       #else
-         LONG xchange = current_x - Self->X;
-         LONG ychange = current_y - Self->Y;
+         DOUBLE xchange = current_x - Self->X;
+         DOUBLE ychange = current_y - Self->Y;
 
          Self->X = current_x;
          Self->Y = current_y;
@@ -523,7 +523,7 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
             call_userinput("Movement-Anchored", &userinput, 0, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
          }
          else {
-            struct acMoveToPoint moveto = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, MTF_X|MTF_Y };
+            struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF_X|MTF_Y };
             NotifySubscribers(Self, AC_MoveToPoint, &moveto, NULL, ERR_Okay);
 
             // Recalculate the OverObject due to cursor movement
@@ -541,11 +541,11 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
          // coordinates are worked out in relation to the clicked object by climbing the Surface object hierarchy.
 
          if (Self->DragSurface) {
-            LONG sx = Self->X + DRAG_XOFFSET;
-            LONG sy = Self->Y + DRAG_YOFFSET;
+            DOUBLE sx = Self->X + DRAG_XOFFSET;
+            DOUBLE sy = Self->Y + DRAG_YOFFSET;
             if (Self->DragParent) {
                LONG absx, absy;
-               if (!drwGetSurfaceCoords(Self->DragParent, NULL, NULL, &absx, &absy, NULL, NULL)) {
+               if (!gfxGetSurfaceCoords(Self->DragParent, NULL, NULL, &absx, &absy, NULL, NULL)) {
                   sx -= absx;
                   sy -= absy;
                }
@@ -554,7 +554,8 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
             acMoveToPointID(Self->DragSurface, sx, sy, 0, MTF_X|MTF_Y);
          }
 
-         if (!GetSurfaceAbs(Self->Buttons[0].LastClicked, &absx, &absy, 0, 0)) {
+         LONG absx, absy;
+         if (!get_surface_abs(Self->Buttons[0].LastClicked, &absx, &absy, 0, 0)) {
             LONG uiflags = Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
 
             // Send the movement message to the last clicked object
@@ -605,18 +606,16 @@ static void process_ptr_movement(objPointer *Self, struct dcDeviceInput *Input)
    }
 }
 
-/*****************************************************************************
-** Event: ptr_user_login()
-*/
+//****************************************************************************
 
-static void ptr_user_login(objPointer *Self, APTR Info, LONG Size)
+static void ptr_user_login(extPointer *Self, APTR Info, LONG Size)
 {
    set_pointer_defaults(Self);
 }
 
 //****************************************************************************
 
-static ERROR PTR_Free(objPointer *Self, APTR Void)
+static ERROR PTR_Free(extPointer *Self, APTR Void)
 {
    acHide(Self);
 
@@ -642,11 +641,11 @@ Hide: Hides the pointer from the display.
 -END-
 *****************************************************************************/
 
-static ERROR PTR_Hide(objPointer *Self, APTR Void)
+static ERROR PTR_Hide(extPointer *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    #ifdef __xwindows__
 /*
@@ -669,40 +668,31 @@ static ERROR PTR_Hide(objPointer *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR PTR_Init(objPointer *Self, APTR Void)
+static ERROR PTR_Init(extPointer *Self, APTR Void)
 {
    parasol::Log log;
    objBitmap *bitmap;
-
-   if (!modSurface) {
-      // The Surface module has to be tracked back to our task because it will open the display module (this causes a
-      // resource deadlock as the system can't establish which module to destroy first during expunge).  Also note that
-      // the module is terminated through resource tracking, we don't free it during our CMDExpunge() sequence for
-      // system integrity reasons.
-
-      parasol::SwitchContext ctx(CurrentTask());
-      if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) {
-         return ERR_InitModule;
-      }
-   }
 
    // Find the Surface object that we are associated with.  Note that it is okay if no surface is available at this
    // stage, but the host system must have a mechanism for setting the Surface field at a later stage or else
    // GetOverObject will not function.
 
    if (!Self->SurfaceID) {
-      Self->SurfaceID = GetOwner(Self);
+      Self->SurfaceID = Self->UID;
       while ((Self->SurfaceID) and (GetClassID(Self->SurfaceID) != ID_SURFACE)) {
          Self->SurfaceID = GetOwnerID(Self->SurfaceID);
       }
 
-      if (!Self->SurfaceID) FastFindObject("SystemSurface", NULL, &Self->SurfaceID, 1, NULL);
+      if (!Self->SurfaceID) {
+         LONG count = 1;
+         FindObject("SystemSurface", 0, FOF_INCLUDE_SHARED, &Self->SurfaceID, &count);
+      }
    }
 
    // Allocate a custom cursor bitmap
 
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->Head.Flags, &bitmap, &Self->BitmapID)) {
+   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &bitmap, &Self->BitmapID)) {
       SetFields(bitmap,
          FID_Name|TSTR,           "CustomCursor",
          FID_Width|TLONG,         MAX_CURSOR_WIDTH,
@@ -727,7 +717,7 @@ static ERROR PTR_Init(objPointer *Self, APTR Void)
    if (Self->MaxSpeed < 1) Self->MaxSpeed = 10;
    if (Self->Speed < 1)    Self->Speed    = 150;
 
-#ifdef __snap__
+#ifdef __native__
    init_mouse_driver();
 #endif
 
@@ -753,92 +743,38 @@ static ERROR PTR_Init(objPointer *Self, APTR Void)
 /*****************************************************************************
 
 -ACTION-
-Move: Moves the position of a pointer to a new location.
+Move: Moves the cursor to a new location.
 
-Calling the Move action allows you to move the position of the pointer to a new location instantly.  This has the effect
-of bypassing the normal set of routines for pointer movement (i.e. no UserMovement signals will be sent to applications
-to indicate the change).
--END-
+The Move action will move the cursor to a new location instantly.  This has the effect of bypassing the normal set
+of routines for pointer movement (i.e. no UserMovement signals will be sent to applications to indicate the
+change).
 
 *****************************************************************************/
 
-static ERROR PTR_Move(objPointer *Self, struct acMove *Args)
+static ERROR PTR_Move(extPointer *Self, struct acMove *Args)
 {
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_Args);
-   if ((!Args->XChange) and (!Args->YChange)) return ERR_Okay;
-   return acMoveToPoint(Self, Self->X + Args->XChange, Self->Y + Args->YChange, 0, MTF_X|MTF_Y);
-
-/*
-#ifdef __xwindows__
-   OBJECTPTR surface;
-
-   if (AccessObject(Self->SurfaceID, 3000, &surface) IS ERR_Okay) {
-      APTR xwin;
-
-      Self->X += Args->XChange;
-      Self->Y += Args->YChange;
-      if (Self->X < 0) Self->X = 0;
-      if (Self->Y < 0) Self->Y = 0;
-
-      GetPointer(surface, FID_WindowHandle, &xwin);
-      XWarpPointer(XDisplay, None, (Window)xwin, 0, 0, 0, 0, Self->X, Self->Y);
-      Self->HostX = Self->X;
-      Self->HostY = Self->Y;
-      ReleaseObject(surface);
-   }
-#elif __snap__
-   if (Self->Flags & PF_SOFTWARE) {
-      struct acMoveToPoint moveto;
-
-      Self->X += Args->XChange;
-      Self->Y += Args->YChange;
-      if (Self->X < 0) Self->X = 0;
-      if (Self->Y < 0) Self->Y = 0;
-      if (Self->X > glNucleus->VideoMode.XResolution - 1) Self->X = glNucleus->VideoMode.XResolution - 1;
-      if (Self->Y > glNucleus->VideoMode.YResolution - 1) Self->Y = glNucleus->VideoMode.YResolution - 1;
-
-      moveto.X = Self->X - Self->Cursors[Self->CursorID].HotX;
-      moveto.Y = Self->Y - Self->Cursors[Self->CursorID].HotY;
-      moveto.Z = 0;
-      moveto.Flags  = MTF_X|MTF_Y;
-      ActionMsg(AC_MoveToPoint, Self->CursorSurfaceID, &moveto);
-   }
-#elif _WIN32
-   OBJECTPTR surface;
-
-   if (AccessObject(Self->SurfaceID, 3000, &surface) IS ERR_Okay) {
-      Self->X += Args->XChange;
-      Self->Y += Args->YChange;
-      if (Self->X < 0) Self->X = 0;
-      if (Self->Y < 0) Self->Y = 0;
-
-      winSetCursorPos(Self->X, Self->Y);
-      Self->HostX = Self->X;
-      Self->HostY = Self->Y;
-      ReleaseObject(surface);
-   }
-#endif
-*/
-   return ERR_Okay;
+   if ((!Args->DeltaX) and (!Args->DeltaY)) return ERR_Okay;
+   return acMoveToPoint(Self, Self->X + Args->DeltaX, Self->Y + Args->DeltaY, 0, MTF_X|MTF_Y);
 }
 
 /*****************************************************************************
 
 -ACTION-
-MoveToPoint: Moves the position of a pointer to a new location.
+MoveToPoint: Moves the cursor to a new location..
 
-Calling the MoveToPoint action allows you to move the position of the pointer to a new location instantly.  This has the
-effect of bypassing the normal set of routines for pointer movement (i.e. no UserMovement signals will be sent to
-applications to indicate the change).
+The MoveToPoint action will move the cursor to a new location instantly.  This has the effect of bypassing the
+normal set of routines for pointer movement (i.e. no UserMovement signals will be sent to applications to
+indicate the change).
 
-You may subscribe to this action if you would like to listen for changes to the pointer's screen position.
+The client can subscribe to this action to listen for changes to the cursor's position.
 -END-
 
 *****************************************************************************/
 
-static ERROR PTR_MoveToPoint(objPointer *Self, struct acMoveToPoint *Args)
+static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 {
    parasol::Log log;
 
@@ -868,7 +804,7 @@ static ERROR PTR_MoveToPoint(objPointer *Self, struct acMoveToPoint *Args)
       }
       ReleaseObject(surface);
    }
-#elif __snap__
+#elif __native__
    if (Self->Flags & PF_SOFTWARE) {
       struct acMoveToPoint moveto;
       OBJECTPTR surface;
@@ -912,7 +848,7 @@ static ERROR PTR_MoveToPoint(objPointer *Self, struct acMoveToPoint *Args)
 
    // Customised notification (ensures that both X and Y coordinates are reported).
 
-   struct acMoveToPoint moveto = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, MTF_X|MTF_Y };
+   struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF_X|MTF_Y };
    NotifySubscribers(Self, AC_MoveToPoint, &moveto, NULL, ERR_Okay);
 
    return ERR_Okay|ERF_Notified;
@@ -920,9 +856,9 @@ static ERROR PTR_MoveToPoint(objPointer *Self, struct acMoveToPoint *Args)
 
 //****************************************************************************
 
-static ERROR PTR_NewObject(objPointer *Self, APTR Void)
+static ERROR PTR_NewObject(extPointer *Self, APTR Void)
 {
-#ifdef __snap__
+#ifdef __native__
    StrCopy("AutoDetect", Self->Device, sizeof(Self->Device));
 #endif
 
@@ -939,7 +875,7 @@ Refresh: Refreshes the pointer's cursor status.
 -END-
 *****************************************************************************/
 
-static ERROR PTR_Refresh(objPointer *Self, APTR Void)
+static ERROR PTR_Refresh(extPointer *Self, APTR Void)
 {
    // Calling OverObject will refresh the cursor image from the underlying surface object.  Incidentally, the point of
    // all this is to satisfy the Surface class' need to have the pointer refreshed if a surface's cursor ID is changed.
@@ -954,10 +890,10 @@ Reset: Resets the pointer settings back to the default.
 -END-
 *****************************************************************************/
 
-static ERROR PTR_Reset(objPointer *Self, APTR Void)
+static ERROR PTR_Reset(extPointer *Self, APTR Void)
 {
    parasol::Log log;
-   log.branch("");
+   log.branch();
 
    Self->Speed        = 150;
    Self->Acceleration = 0.50;
@@ -974,7 +910,7 @@ SaveToObject: Saves the current pointer settings to another object.
 -END-
 *****************************************************************************/
 
-static ERROR PTR_SaveToObject(objPointer *Self, struct acSaveToObject *Args)
+static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
    OBJECTPTR config;
@@ -1014,18 +950,18 @@ Show: Shows the pointer if it is not already on the display.
 -END-
 *****************************************************************************/
 
-static ERROR PTR_Show(objPointer *Self, APTR Void)
+static ERROR PTR_Show(extPointer *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    #ifdef __xwindows__
 /*
       APTR xwin;
       OBJECTPTR surface;
 
-      if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR_Okay) {
+      if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
          GetPointer(surface, FID_WindowHandle, &xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
@@ -1080,13 +1016,13 @@ Changes to this field will have an immediate impact on the pointing device's beh
 
 *****************************************************************************/
 
-static ERROR GET_ButtonOrder(objPointer *Self, CSTRING *Value)
+static ERROR GET_ButtonOrder(extPointer *Self, CSTRING *Value)
 {
    *Value = Self->ButtonOrder;
    return ERR_Okay;
 }
 
-static ERROR SET_ButtonOrder(objPointer *Self, CSTRING Value)
+static ERROR SET_ButtonOrder(extPointer *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -1141,7 +1077,7 @@ flags returned by this field are JD_LMB, JD_RMB and JD_MMB indicating left, righ
 
 *****************************************************************************/
 
-static ERROR GET_ButtonState(objPointer *Self, LONG *Value)
+static ERROR GET_ButtonState(extPointer *Self, LONG *Value)
 {
    LONG i;
    LONG state = 0;
@@ -1211,7 +1147,7 @@ movement at larger offsets than what is normal).  You can also set the value to 
 
 *****************************************************************************/
 
-static ERROR SET_MaxSpeed(objPointer *Self, LONG Value)
+static ERROR SET_MaxSpeed(extPointer *Self, LONG Value)
 {
    if (Value < 2) Self->MaxSpeed = 2;
    else if (Value > 200) Self->MaxSpeed = 200;
@@ -1278,9 +1214,9 @@ X: The horizontal position of the pointer within its parent display.
 
 *****************************************************************************/
 
-static ERROR PTR_SET_X(objPointer *Self, LONG Value)
+static ERROR PTR_SET_X(extPointer *Self, DOUBLE Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) acMoveToPoint(Self, Value, 0, 0, MTF_X);
+   if (Self->initialised()) acMoveToPoint(Self, Value, 0, 0, MTF_X);
    else Self->X = Value;
    return ERR_Okay;
 }
@@ -1293,44 +1229,51 @@ Y: The vertical position of the pointer within its parent display.
 
 *****************************************************************************/
 
-static ERROR PTR_SET_Y(objPointer *Self, LONG Value)
+static ERROR PTR_SET_Y(extPointer *Self, DOUBLE Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) acMoveToPoint(Self, 0, Value, 0, MTF_Y);
+   if (Self->initialised()) acMoveToPoint(Self, 0, Value, 0, MTF_Y);
    else Self->Y = Value;
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static void set_pointer_defaults(objPointer *Self)
+static void set_pointer_defaults(extPointer *Self)
 {
+   DOUBLE speed         = glDefaultSpeed;
+   DOUBLE acceleration  = glDefaultAcceleration;
+   DOUBLE maxspeed      = 100;
+   DOUBLE wheelspeed    = DEFAULT_WHEELSPEED;
+   DOUBLE doubleclick   = 0.36;
+   CSTRING buttonorder   = "123456789ABCDEF";
+
    OBJECTPTR config;
-   DOUBLE speed, acceleration, doubleclick, maxspeed, wheelspeed;
-   CSTRING buttonorder;
-
    if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/pointer.cfg", TAGEND)) {
-      if (cfgReadFloat(config, "POINTER", "Speed", &speed) != ERR_Okay)               speed         = glDefaultSpeed;
-      if (cfgReadFloat(config, "POINTER", "Acceleration", &acceleration) != ERR_Okay) acceleration  = glDefaultAcceleration;
-      if (cfgReadFloat(config, "POINTER", "MaxSpeed", &maxspeed) != ERR_Okay)         maxspeed      = 100;
-      if (cfgReadFloat(config, "POINTER", "WheelSpeed", &wheelspeed) != ERR_Okay)     wheelspeed    = DEFAULT_WHEELSPEED;
-      if (cfgReadFloat(config, "POINTER", "DoubleClick", &doubleclick) != ERR_Okay)   doubleclick   = 0.36;
-      if (cfgReadValue(config, "POINTER", "ButtonOrder", &buttonorder) != ERR_Okay)   buttonorder   = "123456789ABCDEF";
-
-      SetFields(Self, FID_Speed|TDOUBLE,        speed,
-                      FID_Acceleration|TDOUBLE, acceleration,
-                      FID_MaxSpeed|TDOUBLE,     maxspeed,
-                      FID_WheelSpeed|TFLOAT,    wheelspeed,
-                      FID_DoubleClick|TDOUBLE,  doubleclick,
-                      FID_ButtonOrder|TSTRING,  buttonorder,
-                      TAGEND);
-
+      DOUBLE dbl;
+      CSTRING str;
+      if (!cfgReadFloat(config, "POINTER", "Speed", &dbl)) speed = dbl;
+      if (!cfgReadFloat(config, "POINTER", "Acceleration", &dbl)) acceleration = dbl;
+      if (!cfgReadFloat(config, "POINTER", "MaxSpeed", &dbl)) maxspeed = dbl;
+      if (!cfgReadFloat(config, "POINTER", "WheelSpeed", &dbl)) wheelspeed = dbl;
+      if (!cfgReadFloat(config, "POINTER", "DoubleClick", &dbl)) doubleclick = dbl;
+      if (!cfgReadValue(config, "POINTER", "ButtonOrder", &str)) buttonorder = str;
       acFree(config);
    }
+
+   if (doubleclick < 0.2) doubleclick = 0.2;
+
+   SetFields(Self, FID_Speed|TDOUBLE,        speed,
+                   FID_Acceleration|TDOUBLE, acceleration,
+                   FID_MaxSpeed|TDOUBLE,     maxspeed,
+                   FID_WheelSpeed|TFLOAT,    wheelspeed,
+                   FID_DoubleClick|TDOUBLE,  doubleclick,
+                   FID_ButtonOrder|TSTRING,  buttonorder,
+                   TAGEND);
 }
 
 //****************************************************************************
 
-static BYTE get_over_object(objPointer *Self)
+static BYTE get_over_object(extPointer *Self)
 {
    parasol::Log log(__FUNCTION__);
    SurfaceControl *ctl;
@@ -1340,7 +1283,7 @@ static BYTE get_over_object(objPointer *Self)
    if (!glSharedControl->SurfacesMID) return FALSE;
 
    ERROR error = AccessMemory(glSharedControl->SurfacesMID, MEM_READ, 20, &ctl);
-   //list = drwAccessList(ARF_READ|ARF_NO_DELAY, &size);
+   //list = gfxAccessList(ARF_READ|ARF_NO_DELAY, &size);
 
    BYTE changed = FALSE;
    if (!error) {
@@ -1358,8 +1301,8 @@ static BYTE get_over_object(objPointer *Self)
       LONG i = examine_chain(Self, index, ctl, listend);
 
       OBJECTID li_objectid = list[i].SurfaceID;
-      LONG li_left = list[i].Left;
-      LONG li_top  = list[i].Top;
+      DOUBLE li_left = list[i].Left;
+      DOUBLE li_top  = list[i].Top;
       LONG cursor_image = list[i].Cursor; // Preferred cursor ID
       glOverTaskID = list[i].TaskID;   // Task that owns the surface
       ReleaseMemory(ctl);
@@ -1373,23 +1316,25 @@ static BYTE get_over_object(objPointer *Self)
          changed = TRUE;
 
          if ((glSharedControl->InputMID) and (!AccessMemory(glSharedControl->InputMID, MEM_READ, 500, &subs))) {
-            InputMsg input;
-            input.Type       = JET_LEFT_SURFACE;
-            input.Flags      = JTYPE_FEEDBACK;
-            input.Mask       = JTYPE_FEEDBACK;
-            input.Value      = Self->OverObjectID;
-            input.Timestamp  = PreciseTime();
-            input.DeviceID   = Self->Head.UniqueID;
-            input.RecipientID = Self->OverObjectID; // Recipient is the surface we are leaving
-            input.OverID     = li_objectid; // New surface (entering)
-            input.AbsX       = Self->X;
-            input.AbsY       = Self->Y;
-            input.X          = Self->X - li_left;
-            input.Y          = Self->Y - li_top;
+            InputEvent input = {
+               .Next        = NULL,
+               .Value       = (DOUBLE)Self->OverObjectID,
+               .Timestamp   = PreciseTime(),
+               .RecipientID = Self->OverObjectID, // Recipient is the surface we are leaving
+               .OverID      = li_objectid, // New surface (entering)
+               .AbsX        = Self->X,
+               .AbsY        = Self->Y,
+               .X           = Self->X - li_left,
+               .Y           = Self->Y - li_top,
+               .DeviceID    = Self->UID,
+               .Type        = JET_LEFT_SURFACE,
+               .Flags       = JTYPE_FEEDBACK,
+               .Mask        = JTYPE_FEEDBACK
+            };
             send_inputmsg(&input, subs);
 
-            input.Type       = JET_ENTERED_SURFACE;
-            input.Value      = li_objectid;
+            input.Type        = JET_ENTERED_SURFACE;
+            input.Value       = li_objectid;
             input.RecipientID = li_objectid; // Recipient is the surface we are entering
             send_inputmsg(&input, subs);
 
@@ -1418,16 +1363,15 @@ static BYTE get_over_object(objPointer *Self)
 
 //****************************************************************************
 
-static WORD examine_chain(objPointer *Self, WORD Index, SurfaceControl *Ctl, WORD ListEnd)
+static WORD examine_chain(extPointer *Self, WORD Index, SurfaceControl *Ctl, WORD ListEnd)
 {
    // NB: The reason why we traverse backwards is because we want to catch the front-most objects first.
 
    auto list = (SurfaceList *)((BYTE *)Ctl + Ctl->ArrayIndex);
    OBJECTID objectid = list[Index].SurfaceID;
-   LONG x = Self->X;
-   LONG y = Self->Y;
-   LONG i;
-   for (i=ListEnd-1; i >= 0; i--) {
+   DOUBLE x = Self->X;
+   DOUBLE y = Self->Y;
+   for (auto i=ListEnd-1; i >= 0; i--) {
       if ((list[i].ParentID IS objectid) and (list[i].Flags & RNF_VISIBLE)) {
          if ((x >= list[i].Left) and (x < list[i].Right) and (y >= list[i].Top) and (y < list[i].Bottom)) {
             for (ListEnd=i+1; list[ListEnd].Level > list[i].Level; ListEnd++); // Recalculate the ListEnd (optimisation)
@@ -1442,7 +1386,7 @@ static WORD examine_chain(objPointer *Self, WORD Index, SurfaceControl *Ctl, WOR
 //****************************************************************************
 // This timer is used for handling repeat-clicks.
 
-static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
+static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1450,26 +1394,25 @@ static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
 
    // The subscription is automatically removed if no buttons are held down
 
-   BYTE unsub;
+   bool unsub;
    InputSubscription *subs;
    if (!AccessMemory(glSharedControl->InputMID, MEM_READ, 500, &subs)) {
-      unsub = TRUE;
-      LONG i;
-      for (i=0; i < ARRAYSIZE(Self->Buttons); i++) {
+      unsub = true;
+      for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
          if (Self->Buttons[i].LastClicked) {
             LARGE time = PreciseTime();
             if (Self->Buttons[i].LastClickTime + 300000LL <= time) {
-               InputMsg input;
+               InputEvent input;
                ClearMemory(&input, sizeof(input));
 
-               LONG absx, absy;
+               LONG surface_x, surface_y;
                if (Self->Buttons[i].LastClicked IS Self->OverObjectID) {
                   input.X = Self->OverX;
                   input.Y = Self->OverY;
                }
-               else if (!GetSurfaceAbs(Self->Buttons[i].LastClicked, &absx, &absy, 0, 0)) {
-                  input.X = Self->X - absx;
-                  input.Y = Self->Y - absy;
+               else if (!get_surface_abs(Self->Buttons[i].LastClicked, &surface_x, &surface_y, 0, 0)) {
+                  input.X = Self->X - surface_x;
+                  input.Y = Self->Y - surface_y;
                }
                else {
                   input.X = Self->OverX;
@@ -1490,7 +1433,7 @@ static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
                send_inputmsg(&input, subs);
             }
 
-            unsub = FALSE;
+            unsub = false;
          }
       }
       ReleaseMemory(subs);
@@ -1503,7 +1446,7 @@ static ERROR repeat_timer(objPointer *Self, LARGE Elapsed, LARGE Unused)
 
 //****************************************************************************
 
-#ifdef __snap__
+#ifdef __native__
 // Mouse driver initialisation
 
 static ERROR init_mouse_driver(void)
@@ -1583,7 +1526,7 @@ static ERROR init_mouse_driver(void)
          log.msg("Setting open port %s, device %s to non-blocking.", glPorts[port].Name, glPorts[port].Device);
          fcntl(glPorts[port].FD, F_SETFL, fcntl(glPorts[port].FD, F_GETFL)|O_NONBLOCK);
          flush_mouse(port);
-         RegisterFD(glPorts[port].FD, RFD_READ, &read_mouseport, (APTR)Self->Head.UniqueID);
+         RegisterFD(glPorts[port].FD, RFD_READ, &read_mouseport, (APTR)Self->UID);
       }
    }
 
@@ -1605,11 +1548,11 @@ static ERROR init_mouse_driver(void)
 
    // Allocate the surface for software based cursor images
 
-   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->Head.Flags, &surface, &Self->CursorSurfaceID)) {
+   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->flags(), &surface, &Self->CursorSurfaceID)) {
       SetFields(surface,
          FID_Name|TSTR,    "Pointer",
          FID_Parent|TLONG, Self->SurfaceID,
-         FID_Owner|TLONG,  Self->Head.UniqueID,
+         FID_Owner|TLONG,  Self->UID,
          FID_X|TLONG,      -64,
          FID_Y|TLONG,      -64,
          FID_Width|TLONG,  MAX_CURSOR_WIDTH,
@@ -1617,7 +1560,7 @@ static ERROR init_mouse_driver(void)
          FID_Flags|TLONG,  RNF_CURSOR|RNF_PRECOPY|RNF_COMPOSITE,
          TAGEND);
       if (!acInit(surface)) {
-         drwAddCallback(surface, &DrawPointer);
+         gfxAddCallback(surface, &DrawPointer);
       }
       else { acFree(surface); Self->CursorSurfaceID = 0; }
 
@@ -1630,6 +1573,35 @@ static ERROR init_mouse_driver(void)
 #endif
 
 //****************************************************************************
+
+FieldDef CursorLookup[] = {
+   { "None",            0 },
+   { "Default",         PTR_DEFAULT },             // Values start from 1 and go up
+   { "SizeBottomLeft",  PTR_SIZE_BOTTOM_LEFT },
+   { "SizeBottomRight", PTR_SIZE_BOTTOM_RIGHT },
+   { "SizeTopLeft",     PTR_SIZE_TOP_LEFT },
+   { "SizeTopRight",    PTR_SIZE_TOP_RIGHT },
+   { "SizeLeft",        PTR_SIZE_LEFT },
+   { "SizeRight",       PTR_SIZE_RIGHT },
+   { "SizeTop",         PTR_SIZE_TOP },
+   { "SizeBottom",      PTR_SIZE_BOTTOM },
+   { "Crosshair",       PTR_CROSSHAIR },
+   { "Sleep",           PTR_SLEEP },
+   { "Sizing",          PTR_SIZING },
+   { "SplitVertical",   PTR_SPLIT_VERTICAL },
+   { "SplitHorizontal", PTR_SPLIT_HORIZONTAL },
+   { "Magnifier",       PTR_MAGNIFIER },
+   { "Hand",            PTR_HAND },
+   { "HandLeft",        PTR_HAND_LEFT },
+   { "HandRight",       PTR_HAND_RIGHT },
+   { "Text",            PTR_TEXT },
+   { "Paintbrush",      PTR_PAINTBRUSH },
+   { "Stop",            PTR_STOP },
+   { "Invisible",       PTR_INVISIBLE },
+   { "Custom",          PTR_CUSTOM },
+   { "Dragable",        PTR_DRAGGABLE },
+   { NULL, 0 }
+};
 
 static const ActionArray clPointerActions[] = {
    { AC_DataFeed,     (APTR)PTR_DataFeed },
@@ -1671,12 +1643,12 @@ static const FieldArray clPointerFields[] = {
    { "Acceleration", FDF_DOUBLE|FDF_RW,   0, NULL, NULL },
    { "DoubleClick",  FDF_DOUBLE|FDF_RW,   0, NULL, NULL },
    { "WheelSpeed",   FDF_DOUBLE|FDF_RW,   0, NULL, NULL },
-   { "X",            FDF_LONG|FDF_RW,     0, NULL, (APTR)PTR_SET_X },
-   { "Y",            FDF_LONG|FDF_RW,     0, NULL, (APTR)PTR_SET_Y },
+   { "X",            FDF_DOUBLE|FDF_RW,   0, NULL, (APTR)PTR_SET_X },
+   { "Y",            FDF_DOUBLE|FDF_RW,   0, NULL, (APTR)PTR_SET_Y },
+   { "OverX",        FDF_DOUBLE|FDF_R,    0, NULL, NULL },
+   { "OverY",        FDF_DOUBLE|FDF_R,    0, NULL, NULL },
+   { "OverZ",        FDF_DOUBLE|FDF_R,    0, NULL, NULL },
    { "MaxSpeed",     FDF_LONG|FDF_RW,     0, NULL, (APTR)SET_MaxSpeed },
-   { "OverX",        FDF_LONG|FDF_R,      0, NULL, NULL },
-   { "OverY",        FDF_LONG|FDF_R,      0, NULL, NULL },
-   { "OverZ",        FDF_LONG|FDF_R,      0, NULL, NULL },
    { "Input",        FDF_OBJECTID|FDF_RW, 0, NULL, NULL },
    { "Surface",      FDF_OBJECTID|FDF_RW, ID_SURFACE, NULL, NULL },
    { "Anchor",       FDF_OBJECTID|FDF_R,  ID_SURFACE, NULL, NULL },
@@ -1699,9 +1671,9 @@ static const FieldArray clPointerFields[] = {
 
 //****************************************************************************
 
-static ERROR create_pointer_class(void)
+ERROR create_pointer_class(void)
 {
-#ifdef __snap__
+#ifdef __native__
    struct utsname syslinux;
    WORD version, release;
    STRING str;
@@ -1735,7 +1707,7 @@ static ERROR create_pointer_class(void)
       FID_Actions|TPTR,   clPointerActions,
       FID_Methods|TARRAY, clPointerMethods,
       FID_Fields|TARRAY,  clPointerFields,
-      FID_Size|TLONG,     sizeof(objPointer),
+      FID_Size|TLONG,     sizeof(extPointer),
       FID_Flags|TLONG,    CLF_SHARED_ONLY,
       FID_Path|TSTR,      MOD_PATH,
       TAGEND));

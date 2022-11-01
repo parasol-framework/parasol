@@ -215,7 +215,7 @@ extern "C" ERROR add_module_class(void)
 static ERROR intercepted_master(ModuleMaster *Self, APTR Args)
 {
    if (Self->prvActions[tlContext->Action].PerformAction) {
-      return Self->prvActions[tlContext->Action].PerformAction((OBJECTPTR)Self, Args);
+      return Self->prvActions[tlContext->Action].PerformAction(Self, Args);
    }
    else return ERR_NoSupport;
 }
@@ -240,7 +240,7 @@ ERROR MODULEMASTER_Free(ModuleMaster *Self, APTR Void)
 
    // Free the module's segment/code area
 
-   if ((Self->NoUnload IS FALSE) AND (!(Self->Flags & MHF_STATIC))) {
+   if ((Self->NoUnload IS FALSE) and (!(Self->Flags & MHF_STATIC))) {
       free_module(Self->LibraryBase);
       Self->LibraryBase = NULL;
    }
@@ -267,7 +267,7 @@ static ERROR MODULE_Free(objModule *Self, APTR Void)
 
    if (Self->Master) {
       if (Self->Master->OpenCount > 0) Self->Master->OpenCount--;
-      if (Self->Master->Close)         Self->Master->Close((OBJECTPTR)Self);
+      if (Self->Master->Close)         Self->Master->Close(Self);
       Self->Master = NULL;
    }
 
@@ -286,7 +286,7 @@ static ERROR MODULE_GetVar(objModule *Self, struct acGetVar *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Buffer) OR (!Args->Field)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer) or (!Args->Field)) return log.warning(ERR_NullArgs);
    if (Args->Size < 2) return log.warning(ERR_Args);
    if (!Self->Vars) return ERR_UnsupportedField;
 
@@ -324,7 +324,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
    OBJECTPTR context = NULL;
 
    i = StrLength(Self->Name);
-   while ((i > 0) AND (Self->Name[i-1] != ':') AND (Self->Name[i-1] != '/') AND (Self->Name[i-1] != '\\')) i--;
+   while ((i > 0) and (Self->Name[i-1] != ':') and (Self->Name[i-1] != '/') and (Self->Name[i-1] != '\\')) i--;
    StrCopy(Self->Name+i, name, sizeof(name));
 
    log.trace("Finding module %s (%s)", Self->Name, name);
@@ -340,7 +340,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
       DEBUG_LINE
 
       if (!AccessObject(SystemTaskID, 5000, &Task)) {
-         SetOwner((OBJECTPTR)master, (OBJECTPTR)Task);
+         SetOwner(master, Task);
          ReleaseObject(Task);
       }
 
@@ -352,7 +352,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
       aflags |= AF_MODULEMASTER;
 
-      context = SetContext((OBJECTPTR)master);
+      context = SetContext(master);
 
       StrCopy(name, master->LibraryName, sizeof(master->LibraryName));
 
@@ -362,10 +362,10 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
          table = Self->Header;
       }
       else {
-         for (i=0; (Self->Name[i]) AND (Self->Name[i] != ':'); i++);
+         for (i=0; (Self->Name[i]) and (Self->Name[i] != ':'); i++);
          path[0] = 0;
 
-         if ((Self->Name[0] IS '/') OR (Self->Name[i] IS ':')) {
+         if ((Self->Name[0] IS '/') or (Self->Name[i] IS ':')) {
             log.trace("Module location is absolute.");
             StrCopy(Self->Name, path, sizeof(path));
 
@@ -420,7 +420,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
                if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib/", path+i, sizeof(path-i));
 
                #ifdef __ANDROID__
-                  if ((Self->Name[0] IS 'l') AND (Self->Name[1] IS 'i') AND (Self->Name[2] IS 'b'));
+                  if ((Self->Name[0] IS 'l') and (Self->Name[1] IS 'i') and (Self->Name[2] IS 'b'));
                   else for (j=0; "lib"[j]; j++) path[i++] = "lib"[j]; // Packaged Android modules have to begin with 'lib'
                #endif
 
@@ -452,7 +452,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
          len = StrLength(path);
          ext = len;
-         while ((ext > 0) AND (path[ext] != '.') AND (path[ext] != ':') AND (path[ext] != '\\') AND (path[ext] != '/')) ext--;
+         while ((ext > 0) and (path[ext] != '.') and (path[ext] != ':') and (path[ext] != '\\') and (path[ext] != '/')) ext--;
 
          if (path[ext] IS '.') {
             if (StrMatch(".dll", path+ext) != ERR_Okay) { len=ext; ext = -1; }
@@ -573,11 +573,11 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
       // The module version fields can give clues as to whether the table is corrupt or not.
 
       if (table) {
-         if ((table->ModVersion > 500) OR (table->ModVersion < 0)) {
+         if ((table->ModVersion > 500) or (table->ModVersion < 0)) {
             log.warning("Corrupt module version number %d for module '%s'", (LONG)master->ModVersion, path);
             goto exit;
          }
-         else if ((table->HeaderVersion < MODULE_HEADER_V1) OR (table->HeaderVersion > MODULE_HEADER_V1 + 256)) {
+         else if ((table->HeaderVersion < MODULE_HEADER_V1) or (table->HeaderVersion > MODULE_HEADER_V1 + 256)) {
             log.warning("Invalid module header $%.8x", table->HeaderVersion);
             goto exit;
          }
@@ -595,14 +595,14 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
 
          if (table->HeaderVersion >= MODULE_HEADER_V2) {
             if (table->Master) {
-               log.debug("Module already loaded as #%d, reverting to original ModuleMaster object.", table->Master->Head.UniqueID);
+               log.debug("Module already loaded as #%d, reverting to original ModuleMaster object.", table->Master->UID);
 
                SetContext(context);
                context = NULL;
 
                free_module(master->LibraryBase);
                master->LibraryBase = NULL;
-               acFree(&master->Head);
+               acFree(master);
 
                Self->Master = table->Master;
                master = table->Master;
@@ -634,7 +634,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
             mmname[2] = '_';
             for (i=0; (size_t) i < sizeof(mmname)-4; i++) mmname[i+3] = master->Name[i];
             mmname[i+3] = 0;
-            SetName((OBJECTPTR)master, mmname);
+            SetName(master, mmname);
          }
 #endif
       }
@@ -651,7 +651,7 @@ static ERROR MODULE_Init(objModule *Self, APTR Void)
             fix_core_table(modkb, table->CoreVersion);
 
             log.traceBranch("Initialising the module.");
-            error = master->Init((OBJECTPTR)Self, modkb);
+            error = master->Init(Self, modkb);
             if (error) goto exit;
          }
       }
@@ -686,7 +686,7 @@ open_module:
 
    if (master->Open) {
       log.trace("Opening %s module.", Self->Name);
-      if (master->Open((OBJECTPTR)Self) != ERR_Okay) {
+      if (master->Open(Self) != ERR_Okay) {
          log.warning(ERR_ModuleOpenFailed);
          goto exit;
       }
@@ -740,7 +740,7 @@ exit:
             master->Expunge();
          }
 
-         acFree(&master->Head);
+         acFree(master);
          Self->Master = NULL;
       }
    }
@@ -775,10 +775,10 @@ static ERROR MODULE_ResolveSymbol(objModule *Self, struct modResolveSymbol *Args
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
-   if ((!Self->Master) OR (!Self->Master->LibraryBase)) return ERR_FieldNotSet;
+   if ((!Self->Master) or (!Self->Master->LibraryBase)) return ERR_FieldNotSet;
 
    if ((Args->Address = winGetProcAddress(Self->Master->LibraryBase, Args->Name))) {
       return ERR_Okay;
@@ -788,7 +788,7 @@ static ERROR MODULE_ResolveSymbol(objModule *Self, struct modResolveSymbol *Args
       return ERR_NotFound;
    }
 #elif __unix__
-   if ((!Self->Master) OR (!Self->Master->LibraryBase)) return ERR_FieldNotSet;
+   if ((!Self->Master) or (!Self->Master->LibraryBase)) return ERR_FieldNotSet;
 
    if ((Args->Address = dlsym(Self->Master->LibraryBase, Args->Name))) {
       return ERR_Okay;
@@ -813,7 +813,7 @@ static ERROR MODULE_SetVar(objModule *Self, struct acSetVar *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Field)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Field)) return ERR_NullArgs;
    if (!Args->Field[0]) return ERR_EmptyString;
 
    if (!Self->Vars) {
@@ -877,7 +877,7 @@ static ERROR GET_IDL(objModule *Self, CSTRING *Value)
 {
    parasol::Log log;
 
-   if ((Self->Master) AND (Self->Master->Header)) {
+   if ((Self->Master) and (Self->Master->Header)) {
       *Value = Self->Master->Header->Definitions;
       log.trace("No IDL for module %s", Self->Name);
       return ERR_Okay;
@@ -969,8 +969,8 @@ static ERROR SET_Name(objModule *Self, CSTRING Name)
    if (!Name) return ERR_Okay;
 
    WORD i;
-   for (i=0; (Name[i]) AND ((size_t)i < sizeof(Self->Name)-1); i++) {
-      if ((Name[i] >= 'A') AND (Name[i] <= 'Z')) Self->Name[i] = Name[i] - 'A' + 'a';
+   for (i=0; (Name[i]) and ((size_t)i < sizeof(Self->Name)-1); i++) {
+      if ((Name[i] >= 'A') and (Name[i] <= 'Z')) Self->Name[i] = Name[i] - 'A' + 'a';
       else Self->Name[i] = Name[i];
    }
    Self->Name[i] = 0;
@@ -1004,12 +1004,13 @@ APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!JumpType) OR (!FList)) log.warning("JumpTable() Invalid arguments.");
+   if ((!JumpType) or (!FList)) log.warning("JumpTable() Invalid arguments.");
 
    if (JumpType & MHF_STRUCTURE) {
       LONG size = 0;
       LONG i;
       for (i=0; FList[i].Address; i++) size += sizeof(APTR);
+
       log.trace("%d functions have been detected in the function list.", i);
 
       void **functions;
@@ -1030,12 +1031,12 @@ APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
 
 static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 {
-   if ((String1) AND (String2)) {
+   if ((String1) and (String2)) {
       // Skip past any : or / folder characters
 
       WORD i = 0;
       while (String1[i]) {
-         if ((String1[i] IS ':') OR (String1[i] IS '/')) {
+         if ((String1[i] IS ':') or (String1[i] IS '/')) {
             String1 += i + 1;  // Increment string's position
             i = 0;             // Reset the counter
          }
@@ -1044,7 +1045,7 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 
       i = 0;
       while (String2[i] != 0) {
-         if ((String2[i] IS ':') OR (String2[i] IS '/')) {
+         if ((String2[i] IS ':') or (String2[i] IS '/')) {
             String2 += i + 1;
             i = 0;
          }
@@ -1053,12 +1054,12 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 
       // Loop until String1 reaches termination
 
-      while ((*String1 != '.') AND (*String1 != 0)) {
+      while ((*String1 != '.') and (*String1 != 0)) {
          char ch1 = *String1;
          char ch2 = *String2;
-         if ((ch2 IS '.') OR (ch2 IS 0)) return FALSE;
-         if ((ch1 >= 'a') AND (ch1 <= 'z')) ch1 -= 0x20;
-         if ((ch2 >= 'a') AND (ch2 <= 'z')) ch2 -= 0x20;
+         if ((ch2 IS '.') or (ch2 IS 0)) return FALSE;
+         if ((ch1 >= 'a') and (ch1 <= 'z')) ch1 -= 0x20;
+         if ((ch2 >= 'a') and (ch2 <= 'z')) ch2 -= 0x20;
          if (ch1 != ch2) return FALSE;
          String1++; String2++;
       }
@@ -1066,7 +1067,7 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
       // If we get this far then both strings match up to the end of String1, so now we need to check if String2 has
       // also terminated at the same point.
 
-      if ((*String2 IS '.') OR (*String2 IS 0)) return TRUE;
+      if ((*String2 IS '.') or (*String2 IS 0)) return TRUE;
    }
 
    return FALSE;

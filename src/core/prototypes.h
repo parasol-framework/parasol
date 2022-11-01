@@ -23,9 +23,8 @@ OBJECTPTR CurrentContext();
 ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, LONG * Elements);
 LONG AdjustLogLevel(LONG Adjust);
 void LogF(CSTRING Header, CSTRING Message, ...);
-ERROR FastFindObject(CSTRING Name, CLASSID ClassID, OBJECTID * Array, LONG ArraySize, LONG * Count);
-struct rkMetaClass * FindClass(CLASSID ClassID);
-ERROR FindObject(CSTRING Name, CLASSID ClassID, OBJECTID ** List, LONG * Count);
+ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * Array, LONG * Count);
+objMetaClass * FindClass(CLASSID ClassID);
 ERROR ReleaseObject(OBJECTPTR Object);
 ERROR FreeResource(const void * Address);
 ERROR FreeResourceID(MEMORYID ID);
@@ -35,7 +34,7 @@ ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
 ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
 ERROR GetFields(OBJECTPTR Object, ...);
 CSTRING GetName(OBJECTPTR Object);
-ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count);
+ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count);
 ERROR StrBase64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
 ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
 ERROR ManageAction(LONG Action, APTR Routine);
@@ -52,7 +51,6 @@ ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
 MEMORYID ReleaseMemory(APTR Address);
 CLASSID ResolveClassName(CSTRING Name);
 void SelfDestruct();
-ERROR LogError(LONG Header, ERROR Error);
 ERROR SendMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size);
 ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 OBJECTPTR SetContext(OBJECTPTR Object);
@@ -165,7 +163,7 @@ ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 ERROR SetDocView(CSTRING Path, CSTRING Document);
 CSTRING GetDocView(CSTRING Path);
 ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
-ERROR GetFileInfo(CSTRING Path, struct FileInfo * Info, LONG InfoSize);
+ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions);
 ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
 ERROR ScanDir(struct DirInfo * Info);
@@ -196,6 +194,7 @@ ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data,
 ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR * Data, LONG * DataSize);
 ERROR VarLock(struct KeyStore * Store, LONG Timeout);
 void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args);
+ERROR WakeProcess(LONG ProcessID);
 
 #ifdef  __cplusplus
 }

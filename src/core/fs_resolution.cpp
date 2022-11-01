@@ -13,21 +13,21 @@ This function will convert a file path to its resolved form, according to the ho
 system might resolve `drive1:documents/readme.txt` to `/documents/readme.txt`.  A Windows system might
 resolve the path to `c:\documents\readme.txt`.
 
-The resulting path is guaranteed to be absolute, meaning the use of sequences such as '..', '//' and './' will be
+The resulting path is guaranteed to be absolute, meaning the use of sequences such as `..`, `//` and `./` will be
 eliminated.
 
 If the path can be resolved to more than one file, the ResolvePath() method will attempt to guess the correct path by
-checking the validity of each possible location.  For instance, if resolving a path of "user:document.txt"
-and the "user:" volume refers to both "system:users/joebloggs/" and "system:users/default/", the routine will check
-both directories for the existence of the "document.txt" file to determine the correct location.  While helpful, this
-can cause problems if the intent is to create a new file.  To circumvent this feature, use the RSF_NO_FILE_CHECK
+checking the validity of each possible location.  For instance, if resolving a path of `user:document.txt`
+and the `user:` volume refers to both `system:users/joebloggs/` and `system:users/default/`, the routine will check
+both directories for the existence of the `document.txt` file to determine the correct location.  While helpful, this
+can cause problems if the intent is to create a new file.  To circumvent this feature, use the `RSF_NO_FILE_CHECK`
 setting in the Flags parameter.
 
 When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be
-treated as an approximation (i.e. file extensions can be ignored) then use the RSF_APPROXIMATE flag to tell the
+treated as an approximation (i.e. file extensions can be ignored) then use the `RSF_APPROXIMATE` flag to tell the
 function to ignore extensions for the purpose of file name matching.
 
-To resolve the location of executable programs on Unix systems, use the RSF_PATH flag.  This uses the PATH environment
+To resolve the location of executable programs on Unix systems, use the `RSF_PATH` flag.  This uses the PATH environment
 variable to resolve the file name specified in the Path parameter.
 
 The resolved path will be returned in the Result parameter as an allocated memory block.  It must be removed once it is
@@ -58,15 +58,14 @@ Loop:            The volume refers back to itself.
 
 static ERROR resolve(objConfig *, STRING, STRING, LONG);
 static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result);
-static THREADVAR UBYTE tlClassLoaded;
-#define SIZE_RESBUFFER 250
+static THREADVAR bool tlClassLoaded;
 
 ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 {
    parasol::Log log(__FUNCTION__);
    LONG i, loop;
-   char src[SIZE_RESBUFFER];
-   char dest[SIZE_RESBUFFER];
+   char src[MAX_FILENAME];
+   char dest[MAX_FILENAME];
 
    log.traceBranch("%s, Flags: $%.8x", Path, Flags);
 
@@ -74,7 +73,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 
    if (Result) *Result = NULL;
 
-   tlClassLoaded = FALSE;
+   tlClassLoaded = false;
 
    if (Path[0] IS '~') {
       Flags |= RSF_APPROXIMATE;
@@ -88,11 +87,11 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 
    // Check if the Path argument contains a volume character.  If it does not, make a clone of the string and return it.
 
-   UBYTE resolved = FALSE;
+   bool resolved = FALSE;
 #ifdef _WIN32
-   if ((LCASE(Path[0]) >= 'a') AND (LCASE(Path[0]) <= 'z') AND (Path[1] IS ':')) {
+   if ((LCASE(Path[0]) >= 'a') and (LCASE(Path[0]) <= 'z') and (Path[1] IS ':')) {
       resolved = TRUE; // Windows drive letter reference discovered
-      if ((Path[2] != '/') AND (Path[2] != '\\')) {
+      if ((Path[2] != '/') and (Path[2] != '\\')) {
          // Ensure that the path is correctly formed in order to pass test_path()
          src[0] = Path[0];
          src[1] = ':';
@@ -101,22 +100,22 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
          Path = src;
       }
    }
-   else if ((Path[0] IS '/') AND (Path[1] IS '/')) resolved = TRUE; // UNC path discovered
-   else if ((Path[0] IS '\\') AND (Path[1] IS '\\')) resolved = TRUE; // UNC path discovered
+   else if ((Path[0] IS '/') and (Path[1] IS '/')) resolved = TRUE; // UNC path discovered
+   else if ((Path[0] IS '\\') and (Path[1] IS '\\')) resolved = TRUE; // UNC path discovered
 
 #elif __unix__
-   if ((Path[0] IS '/') OR (Path[0] IS '\\')) resolved = TRUE;
+   if ((Path[0] IS '/') or (Path[0] IS '\\')) resolved = TRUE;
 #endif
 
    // Use the PATH environment variable to resolve the filename.  This can only be done if the path is relative
    // (ideally with no leading folder references).
 
-   if ((!resolved) AND (Flags & RSF_PATH)) {
+   if ((!resolved) and (Flags & RSF_PATH)) {
       if (!resolve_path_env(Path, Result)) return ERR_Okay;
    }
 
    if (!resolved) {
-      for (i=0; (Path[i]) AND (Path[i] != ':') AND (Path[i] != '/') AND (Path[i] != '\\'); i++);
+      for (i=0; (Path[i]) and (Path[i] != ':') and (Path[i] != '/') and (Path[i] != '\\'); i++);
       if (Path[i] != ':') resolved = TRUE;
    }
 
@@ -143,7 +142,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
    // Keep looping until the volume is resolved
 
    dest[0] = 0;
-   if (!AccessPrivateObject((OBJECTPTR)glVolumes, 4000)) {
+   if (!AccessPrivateObject(glVolumes, 4000)) {
       ERROR error = ERR_Failed;
       for (loop=10; loop > 0; loop--) {
          error = resolve(glVolumes, src, dest, Flags);
@@ -156,6 +155,10 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
             if (!(Flags & RSF_CHECK_VIRTUAL)) error = ERR_Okay;
 
             if (Result) {
+               if (Flags & RSF_APPROXIMATE) { // Ensure that the resolved path is accurate
+                  if (test_path(dest, RSF_APPROXIMATE)) error = ERR_FileNotFound;
+               }
+
                if (!(*Result = StrClone(dest))) error = ERR_AllocMemory;
             }
 
@@ -164,17 +167,17 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
          else if (error) break;
          else {
             #ifdef _WIN32 // UNC network path check
-               if (((dest[0] IS '\\') AND (dest[1] IS '\\')) OR ((dest[0] IS '/') AND (dest[1] IS '/'))) {
+               if (((dest[0] IS '\\') and (dest[1] IS '\\')) or ((dest[0] IS '/') and (dest[1] IS '/'))) {
                   goto resolved_path;
                }
             #endif
 
             // Check if the path has been resolved by looking for a ':' character
 
-            for (i=0; (dest[i]) AND (dest[i] != ':') AND (dest[i] != '/') AND (dest[i] != '\\'); i++);
+            for (i=0; (dest[i]) and (dest[i] != ':') and (dest[i] != '/') and (dest[i] != '\\'); i++);
 
             #ifdef _WIN32
-            if ((dest[i] IS ':') AND (i > 1)) {
+            if ((dest[i] IS ':') and (i > 1)) {
             #else
             if (dest[i] IS ':') {
             #endif
@@ -198,10 +201,10 @@ resolved_path:
          break;
       } // for()
 
-      ReleasePrivateObject((OBJECTPTR)glVolumes);
+      ReleasePrivateObject(glVolumes);
 
       if (loop > 0) { // Note that loop starts at 10 and decrements to zero
-         if ((!error) AND (!dest[0])) error = ERR_Failed;
+         if ((!error) and (!dest[0])) error = ERR_Failed;
          return error;
       }
       else return ERR_Loop;
@@ -226,13 +229,13 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 
    // If a path to the file isn't available, scan the PATH environment variable. In Unix the separator is :
 
-   if ((path = getenv("PATH")) AND (path[0])) {
+   if ((path = getenv("PATH")) and (path[0])) {
       LONG j = 0, k;
       while (path[j]) {
-         for (k=0; (path[j+k]) AND (path[j+k] != ':') AND ((size_t)k < sizeof(src)-1); k++) {
+         for (k=0; (path[j+k]) and (path[j+k] != ':') and ((size_t)k < sizeof(src)-1); k++) {
             src[k] = path[j+k];
          }
-         if ((k > 0) AND (src[k-1] != '/')) src[k++] = '/';
+         if ((k > 0) and (src[k-1] != '/')) src[k++] = '/';
 
          StrCopy(RelativePath, src+k, sizeof(src)-k);
 
@@ -263,16 +266,16 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 
    // If a path to the file isn't available, scan the PATH environment variable. In Windows the separator is ;
 
-   if ((path = getenv("PATH")) AND (path[0])) {
+   if ((path = getenv("PATH")) and (path[0])) {
       log.trace("Got PATH: %s", path);
 
       LONG j = 0, k;
       while (path[j]) {
-         for (k=0; (path[j+k]) AND (path[j+k] != ';') AND ((size_t)k < sizeof(src)-1); k++) {
+         for (k=0; (path[j+k]) and (path[j+k] != ';') and ((size_t)k < sizeof(src)-1); k++) {
             src[k] = path[j+k];
          }
          j += k;
-         if ((k > 0) AND (src[k-1] != '/')) src[k++] = '/';
+         if ((k > 0) and (src[k-1] != '/')) src[k++] = '/';
 
          StrCopy(RelativePath, src+k, sizeof(src)-k);
 
@@ -307,9 +310,9 @@ static ERROR resolve_object_path(STRING, STRING, STRING, LONG);
 static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 {
    parasol::Log log("ResolvePath");
-   char fullpath[SIZE_RESBUFFER];
-   char buffer[SIZE_RESBUFFER];
-   LONG i, j, k, pos, loop;
+   char fullpath[MAX_FILENAME];
+   char buffer[MAX_FILENAME];
+   LONG j, k, pos, loop;
    ERROR error;
 
    struct virtual_drive *vdrive;
@@ -325,17 +328,13 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 
    Source[pos-1] = 0; // Remove the volume symbol for the string comparison
    fullpath[0] = 0;
-   for (LONG i=0; i < Config->AmtEntries; i++) {
-      if ((!StrMatch("Name", Config->Entries[i].Key)) AND (!StrMatch(Config->Entries[i].Data, Source))) {
-         while ((i > 0) AND (!StrMatch(Config->Entries[i].Section, Config->Entries[i-1].Section))) i--;
-
-         for (LONG j=i; j < Config->AmtEntries; j++) {
-            if (!StrMatch("Path", Config->Entries[j].Key)) {
-               StrCopy(Config->Entries[j].Data, fullpath, sizeof(fullpath));
-               break;
-            }
+   ConfigGroups *groups;
+   if (!GetPointer(Config, FID_Data, &groups)) {
+      for (auto& [group, keys] : groups[0]) {
+         if (!StrMatch(keys["Name"].c_str(), Source)) {
+            StrCopy(keys["Path"].c_str(), fullpath, sizeof(fullpath));
+            break;
          }
-         break;
       }
    }
 
@@ -355,63 +354,63 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 
    STRING path = fullpath;
 
-   // Check if the CLASS: reference is used.  If so, respond by loading the class that handles the volume.  The class'
-   // module should then create a public object and set the volume's path with the format ":ObjectName".  We'll then
-   // discover it on our next recursive attempt.
+   // Check if the EXT: reference is used.  If so, respond by loading the module or class that handles the volume.
+   // The loaded code should replace the volume with the correct information for discovery on the next resolution phase.
 
-   if (!StrCompare("CLASS:", path, 6, STR_MATCH_CASE)) {
-      for (i=0; Source[i]; i++) Dest[i] = Source[i];  // Return an exact duplicate of the original source string
-      Dest[i] = 0;
+   if (!StrCompare("EXT:", path, 4, STR_MATCH_CASE)) {
+      StrCopy(Source, Dest, MAX_FILENAME); // Return an exact duplicate of the original source string
 
       if (get_virtual(Source)) return ERR_VirtualVolume;
 
-      if (tlClassLoaded) { // Already attempted to load this class on a previous occasion - we must fail
+      if (tlClassLoaded) { // Already attempted to load the module on a previous occasion - we must fail
          return ERR_Failed;
       }
 
-      FindClass(ResolveClassName(path + 6));
-      log.trace("Found virtual volume from class %s", path + 6);
-      tlClassLoaded = TRUE; // This setting will prevent recursion
+      // An external reference can refer to a module (preferred) or a class name.
+
+      OBJECTPTR mod;
+      if (!CreateObject(ID_MODULE, NF_INTEGRAL, &mod, FID_Name|TSTR, path + 4, TAGEND)) acFree(mod);
+      else FindClass(ResolveClassName(path + 4));
+
+      tlClassLoaded = true; // This setting will prevent recursion
       return ERR_VirtualVolume;
    }
 
    while (*path) {
       // Copy the resolved volume path to the destination buffer
 
-      for (k=0; (*path) AND (*path != '|') AND (k < SIZE_RESBUFFER-1);) {
-         if (*path IS ';') log.warning("Use of ';' obsolete, use | in path %s", fullpath);
-
+      for (k=0; (*path) and (*path != '|') and (k < MAX_FILENAME-1);) {
          if (k > 0) {
-            if ((*path IS '\\') AND (path[1] IS '\\')) path++; // Eliminate dual slashes - with an exception for UNC paths
-            else if ((*path IS '/') AND (path[1] IS '/')) path++;
+            if ((*path IS '\\') and (path[1] IS '\\')) path++; // Eliminate dual slashes - with an exception for UNC paths
+            else if ((*path IS '/') and (path[1] IS '/')) path++;
             else Dest[k++] = *path++;
          }
          else Dest[k++] = *path++;
       }
 
-      if ((Dest[k-1] != '/') AND (Dest[k-1] != '\\') AND (k < SIZE_RESBUFFER-1)) Dest[k++] = '/'; // Add a trailing slash if it is missing
+      if ((Dest[k-1] != '/') and (Dest[k-1] != '\\') and (k < MAX_FILENAME-1)) Dest[k++] = '/'; // Add a trailing slash if it is missing
 
       // Copy the rest of the source to the destination buffer
 
       j = pos;
-      while ((Source[j] IS '/') OR (Source[j] IS '\\')) j++;
-      while ((Source[j]) AND (k < SIZE_RESBUFFER-1)) Dest[k++] = Source[j++];
+      while ((Source[j] IS '/') or (Source[j] IS '\\')) j++;
+      while ((Source[j]) and (k < MAX_FILENAME-1)) Dest[k++] = Source[j++];
       Dest[k++] = 0;
 
       // Fully resolve the path to a system folder before testing it (e.g. "scripts:" to "parasol:scripts/" to "c:\parasol\scripts\" will be resolved through this recursion).
 
       #ifdef _WIN32
-         if ((Dest[1] IS ':') AND ((Dest[2] IS '/') OR (Dest[2] IS '\\'))) j = 0;
-         else if ((Dest[0] IS '/') AND (Dest[1] IS '/')) j = 0;
-         else if ((Dest[0] IS '\\') AND (Dest[1] IS '\\')) j = 0;
-         else for (j=0; (Dest[j]) AND (Dest[j] != ':') AND (Dest[j] != '/'); j++);
+         if ((Dest[1] IS ':') and ((Dest[2] IS '/') or (Dest[2] IS '\\'))) j = 0;
+         else if ((Dest[0] IS '/') and (Dest[1] IS '/')) j = 0;
+         else if ((Dest[0] IS '\\') and (Dest[1] IS '\\')) j = 0;
+         else for (j=0; (Dest[j]) and (Dest[j] != ':') and (Dest[j] != '/'); j++);
       #else
-         for (j=0; (Dest[j]) AND (Dest[j] != ':') AND (Dest[j] != '/'); j++);
+         for (j=0; (Dest[j]) and (Dest[j] != ':') and (Dest[j] != '/'); j++);
       #endif
 
       error = -1;
       for (loop=10; loop > 0; loop--) {
-         if ((Dest[j] IS ':') AND (j > 1)) { // Remaining ':' indicates more path resolution is required.
+         if ((Dest[j] IS ':') and (j > 1)) { // Remaining ':' indicates more path resolution is required.
             error = resolve(Config, Dest, buffer, Flags);
 
             if (!error) {
@@ -420,7 +419,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
                Dest[j] = 0;
 
                // Reexamine the result for the presence of a colon.
-               for (LONG j=0; (Dest[j]) AND (Dest[j] != ':') AND (Dest[j] != '/'); j++);
+               for (LONG j=0; (Dest[j]) and (Dest[j] != ':') and (Dest[j] != '/'); j++);
             }
             else break; // Path not resolved or virtual volume detected.
          }
@@ -475,10 +474,11 @@ static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG P
 
    if (Path[0]) {
       OBJECTID volume_id;
-      if (!FastFindObject(Path, 0, &volume_id, 1, NULL)) {
+      LONG count = 1;
+      if (!FindObject(Path, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &volume_id, &count)) {
          OBJECTPTR object;
          if (!AccessObject(volume_id, 5000, &object)) {
-            if ((!GetPointer(object, FID_ResolvePath, &resolve_virtual)) AND (resolve_virtual)) {
+            if ((!GetPointer(object, FID_ResolvePath, &resolve_virtual)) and (resolve_virtual)) {
                error = resolve_virtual(object, Source, Dest, PathSize);
             }
             ReleaseObject(object);

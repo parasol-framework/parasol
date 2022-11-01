@@ -4,7 +4,9 @@
 
 static ERROR exec_data_file(CSTRING TargetFile)
 {
-   LogMsg("Executing target '%s' using the Task class.", TargetFile);
+   parasol::Log log(__FUNCTION__);
+
+   log.msg("Executing target '%s' using the Task class.", TargetFile);
 
    CLASSID class_id;
    STRING command;
@@ -12,9 +14,7 @@ static ERROR exec_data_file(CSTRING TargetFile)
 
    if (!(error = IdentifyFile(TargetFile, "Open", 0, &class_id, NULL, &command))) {
       OBJECTPTR run;
-      if (!CreateObject(ID_TASK, 0, &run,
-            FID_Location|TSTR, command,
-            TAGEND)) {
+      if (!CreateObject(ID_TASK, 0, &run, FID_Location|TSTR, command, TAGEND)) {
          if (glArgs) {
             char argbuffer[100];
             STRING argname = argbuffer;
@@ -64,10 +64,11 @@ static ERROR exec_data_file(CSTRING TargetFile)
 
 ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
 {
+   parasol::Log log(__FUNCTION__);
    LONG i, j;
    ERROR error;
 
-   LogMsg("Identifying file '%s'", TargetFile);
+   log.msg("Identifying file '%s'", TargetFile);
 
    CLASSID class_id, subclass;
    if ((error = IdentifyFile(TargetFile, "Open", 0, &class_id, &subclass, NULL))) {
@@ -89,13 +90,13 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
 
             if (glRelaunched) return(ERR_Security);
 
-            LogMsg("Inappropriate integrity level %d (must be %d or higher), re-launching...\n", il, INTEGRITY_LEVEL_LOW);
+            log.msg("Inappropriate integrity level %d (must be %d or higher), re-launching...\n", il, INTEGRITY_LEVEL_LOW);
 
             BYTE cmdline[512];
 
             cmdline[0] = '"';
             ULONG i = get_exe(cmdline+1, sizeof(cmdline));
-            if ((!i) OR (i >= sizeof(cmdline)-30)) return(ERR_Failed);
+            if ((!i) or (i >= sizeof(cmdline)-30)) return(ERR_Failed);
             i++;
 
             i += StrCopy("\" --relaunch", cmdline+i, sizeof(cmdline)-i);
@@ -244,7 +245,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
          return(ERR_Failed);
       }
 
-      LogMsg("Script initialised.");
+      log.msg("Script initialised.");
       return(ERR_Okay);
    }
    else {

@@ -2,7 +2,7 @@
 #define MODULES_XML 1
 
 // Name:      xml.h
-// Copyright: Paul Manias © 2001-2020
+// Copyright: Paul Manias © 2001-2022
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -11,10 +11,12 @@
 
 #define MODVERSION_XML (1)
 
+typedef class plXML objXML;
+
 // For SetAttrib()
 
-#define XMS_UPDATE_ONLY -2
 #define XMS_NEW -1
+#define XMS_UPDATE_ONLY -2
 #define XMS_UPDATE -3
 
 // Options for the Sort method.
@@ -30,8 +32,8 @@
 #define XMF_STRIP_CONTENT 0x00000004
 #define XMF_LOWER_CASE 0x00000008
 #define XMF_UPPER_CASE 0x00000010
-#define XMF_READABLE 0x00000020
 #define XMF_INDENT 0x00000020
+#define XMF_READABLE 0x00000020
 #define XMF_LOCK_REMOVE 0x00000040
 #define XMF_STRIP_HEADERS 0x00000080
 #define XMF_NEW 0x00000100
@@ -81,29 +83,6 @@ typedef struct XMLTag {
 // XML class definition
 
 #define VER_XML (1.000000)
-
-typedef struct rkXML {
-   OBJECT_HEADER
-   STRING    Path;            // Location of the XML data file
-   struct XMLTag * * Tags;    // Array of tag pointers, in linear order.  Useful for looking up indexes.  NULL-terminated.
-   OBJECTPTR Source;          // Alternative data source to specifying a Path
-   LONG      TagCount;        // Total number of tags loaded into the array
-   LONG      Flags;           // Optional user flags
-   LONG      CurrentTag;      // Current Tag - used for certain operations
-   LONG      PrivateDataSize; // Extra data can be allocated per tag, according to the number of bytes specified here
-   LONG      RootIndex;       // Root tag index
-   LONG      Modified;        // Modification timestamp
-
-#ifdef PRV_XML
-   struct xml_cache *Cache; // Array of tag pointers, in linear order
-   STRING Statement;
-   ERROR  ParseError;
-   LONG   Balance;          // Indicates that the tag structure is correctly balanced if zero
-   UBYTE  ReadOnly:1;
-   LONG   LineNo;
-  
-#endif
-} objXML;
 
 // XML methods
 
@@ -256,7 +235,45 @@ INLINE ERROR xmlGetTag(APTR Ob, LONG Index, struct XMLTag ** Result) {
 }
 
 
-INLINE STRING XMLATTRIB(struct XMLTag *Tag, CSTRING Attrib) {
+typedef class plXML : public BaseClass {
+   public:
+   STRING    Path;            // Set this field if the XML document originates from a file source.
+   struct XMLTag * * Tags;    // Points to an array of tags loaded into an XML object.
+   OBJECTPTR Source;          // Set this field if the XML document is to be sourced from another object.
+   LONG      TagCount;        // Reflects the total number of tags in the XML Tags array.
+   LONG      Flags;           // Optional flags.
+   LONG      CurrentTag;      // Determines the index of the main tag to use when building XML strings.
+   LONG      PrivateDataSize; // Allocates a private data buffer for the owner's use against each XML tag.
+   LONG      RootIndex;       // Defines the root tag for queries into the XML tree.
+   LONG      Modified;        // A timestamp of when the XML data was last modified.
+   LONG      ParseError;      // Private
+   LONG      LineNo;          // Private
+   // Action stubs
+
+   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
+   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveToObject args = { { DestID }, { ClassID } };
+      return Action(AC_SaveToObject, this, &args);
+   }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+      struct acSetVar args = { FieldName, Value };
+      return Action(AC_SetVar, this, &args);
+   }
+} objXML;
+
+INLINE STRING XMLATTRIB(const XMLTag *Tag, CSTRING Attrib) {
    LONG i;
    for (i=0; i < Tag->TotalAttrib; i++) {
       if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
@@ -267,7 +284,7 @@ INLINE STRING XMLATTRIB(struct XMLTag *Tag, CSTRING Attrib) {
    return NULL;
 }
 
-INLINE BYTE XMLATTRIBCHECK(struct XMLTag *Tag, CSTRING Attrib) {
+INLINE BYTE XMLATTRIBCHECK(const XMLTag *Tag, CSTRING Attrib) {
    LONG i;
    for (i=0; i < Tag->TotalAttrib; i++) {
       if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
@@ -277,7 +294,7 @@ INLINE BYTE XMLATTRIBCHECK(struct XMLTag *Tag, CSTRING Attrib) {
    return FALSE;
 }
 
-INLINE struct XMLTag * XMLFIND(struct XMLTag **List, CSTRING Name) {
+INLINE const XMLTag * XMLFIND(const XMLTag **List, CSTRING Name) {
    while (*List) {
       if (!StrMatch((CSSTRING)Name, (CSSTRING)List[0]->Attrib->Name)) return List[0];
       List++;

@@ -1,24 +1,8 @@
 
-//****************************************************************************
+agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma(2.2);
+rgb_to_linear glLinearRGB;
 
-inline double fastPow(double a, double b) {
-   union {
-     double d;
-     int x[2];
-   } u = { a };
-   u.x[1] = (int)(b * (u.x[1] - 1072632447) + 1072632447);
-   u.x[0] = 0;
-   return u.d;
-}
-
-//****************************************************************************
-
-inline int isPow2(ULONG x)
-{
-   return ((x != 0) and !(x & (x - 1)));
-}
-
-//****************************************************************************
+//********************************************************************************************************************
 
 static CSTRING get_effect_name(UBYTE Effect) __attribute__ ((unused));
 static CSTRING get_effect_name(UBYTE Effect)
@@ -52,9 +36,9 @@ static CSTRING get_effect_name(UBYTE Effect)
    else return "Unknown";
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static const FieldDef clAspectRatio[] = {
+const FieldDef clAspectRatio[] = {
    { "XMin",  ARF_X_MIN },
    { "XMid",  ARF_X_MID },
    { "XMax",  ARF_X_MAX },
@@ -67,42 +51,9 @@ static const FieldDef clAspectRatio[] = {
    { NULL, 0 }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static FIELD FID_FreetypeFace;
-
-template <class T> static void mark_dirty(T *Vector, UBYTE Flags)
-{
-   Vector->Dirty |= Flags;
-   for (objVector *scan=(objVector *)Vector->Child; scan; scan=(objVector *)scan->Next) {
-      if ((scan->Dirty & Flags) == Flags) continue;
-      mark_dirty(scan, Flags);
-   }
-}
-
-//****************************************************************************
-// Call reset_path() when the shape of the vector requires recalculation.  If the position of the shape has changed,
-// you probably want to mark_dirty() with the RC_TRANSFORM option instead.
-
-template <class T> static void reset_path(T *Vector)
-{
-   Vector->Dirty |= RC_BASE_PATH;
-   mark_dirty(Vector, RC_FINAL_PATH);
-}
-
-//****************************************************************************
-// Call reset_final_path() when the base path is still valid and the vector is affected by a transform or coordinate
-// translation.
-
-template <class T> static void reset_final_path(T *Vector)
-{
-   mark_dirty(Vector, RC_FINAL_PATH);
-}
-
-//****************************************************************************
-
-static CSTRING get_name(OBJECTPTR) __attribute__ ((unused));
-static CSTRING get_name(OBJECTPTR Vector)
+CSTRING get_name(OBJECTPTR Vector)
 {
    if (!Vector) return "NULL";
 
@@ -132,105 +83,260 @@ static CSTRING get_name(OBJECTPTR Vector)
 }
 
 INLINE CSTRING get_name(objVector *Vector) {
-   return get_name(&Vector->Head);
+   return get_name(Vector);
 }
 
-//****************************************************************************
-// Calculate the target X/Y for a vector path based on an aspect ratio and source/target dimensions.
+//********************************************************************************************************************
+// Read a string-based series of vector commands and add them to Path.
 
-static void calc_alignment(CSTRING Caller, LONG AspectRatio,
+ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
+{
+   parasol::Log log(__FUNCTION__);
+
+   PathCommand path;
+
+   UBYTE cmd = 0;
+   while (*Value) {
+      if ((*Value >= 'a') and (*Value <= 'z')) cmd = *Value++;
+      else if ((*Value >= 'A') and (*Value <= 'Z')) cmd = *Value++;
+      else if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-') or (*Value IS '+')); // Use the previous command
+      else { Value++; continue; }
+
+      ClearMemory(&path, sizeof(path));
+
+      switch (cmd) {
+         case 'M': case 'm': // MoveTo
+            Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
+            if (cmd IS 'M') {
+               path.Type = PE_Move;
+               cmd = 'L'; // This is because the SVG standard requires that sequential coordinate pairs will be interpreted as line-to commands.
+            }
+            else {
+               path.Type = PE_MoveRel;
+               cmd = 'l';
+            }
+            path.Curved = FALSE;
+            break;
+
+         case 'L': case 'l': // LineTo
+            Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
+            if (cmd IS 'L') path.Type = PE_Line;
+            else path.Type = PE_LineRel;
+            path.Curved = FALSE;
+            break;
+
+         case 'V': case 'v': // Vertical LineTo
+            Value = read_numseq(Value, &path.Y, TAGEND);
+            if (cmd IS 'V') path.Type = PE_VLine;
+            else path.Type = PE_VLineRel;
+            path.Curved = FALSE;
+            break;
+
+         case 'H': case 'h': // Horizontal LineTo
+            Value = read_numseq(Value, &path.X, TAGEND);
+            if (cmd IS 'H') path.Type = PE_HLine;
+            else path.Type = PE_LineRel;
+            path.Curved = FALSE;
+            break;
+
+         case 'Q': case 'q': // Quadratic Curve To
+            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            if (cmd IS 'Q') path.Type = PE_QuadCurve;
+            else path.Type = PE_QuadCurveRel;
+            path.Curved = TRUE;
+            break;
+
+         case 'T': case 't': // Quadratic Smooth Curve To
+            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            if (cmd IS 'T') path.Type = PE_QuadSmooth;
+            else path.Type = PE_QuadSmoothRel;
+            path.Curved = TRUE;
+           break;
+
+         case 'C': case 'c': // Curve To
+            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X3, &path.Y3, &path.X, &path.Y, TAGEND);
+            if (cmd IS 'C') path.Type = PE_Curve;
+            else path.Type = PE_CurveRel;
+            path.Curved = TRUE;
+            break;
+
+         case 'S': case 's': // Smooth Curve To
+            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            if (cmd IS 'S') path.Type = PE_Smooth;
+            else path.Type = PE_SmoothRel;
+            path.Curved = TRUE;
+            break;
+
+         case 'A': case 'a': { // Arc
+            DOUBLE largearc, sweep;
+            Value = read_numseq(Value, &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y, TAGEND);
+            path.LargeArc = F2T(largearc);
+            path.Sweep = F2T(sweep);
+            if (cmd IS 'A') path.Type = PE_Arc;
+            else path.Type = PE_ArcRel;
+            path.Curved = TRUE;
+            break;
+         }
+
+         // W3C: When a subpath ends in a "closepath," it differs in behaviour from what happens when "manually" closing
+         // a subpath via a "lineto" command in how ‘stroke-linejoin’ and ‘stroke-linecap’ are implemented. With
+         // "closepath", the end of the final segment of the subpath is "joined" with the start of the initial segment
+         // of the subpath using the current value of ‘stroke-linejoin’. If you instead "manually" close the subpath
+         // via a "lineto" command, the start of the first segment and the end of the last segment are not joined but
+         // instead are each capped using the current value of ‘stroke-linecap’. At the end of the command, the new
+         // current point is set to the initial point of the current subpath.
+
+         case 'Z': case 'z': { // Close Path
+            path.Type = PE_ClosePath;
+            path.Curved = FALSE;
+            break;
+         }
+
+         default: {
+            log.warning("Invalid path command '%c'", *Value);
+            return ERR_Failed;
+         }
+      }
+
+      Path.push_back(path);
+   }
+
+   return (Path.size() >= 2) ? ERR_Okay : ERR_Failed;
+}
+
+//********************************************************************************************************************
+// Calculate the target X/Y for a vector path based on an aspect ratio and source/target dimensions.
+// Source* defines size of the source area and Target* defines the size of the projection to the display.
+
+void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
    DOUBLE TargetWidth, DOUBLE TargetHeight,
    DOUBLE SourceWidth, DOUBLE SourceHeight,
    DOUBLE *X, DOUBLE *Y, DOUBLE *XScale, DOUBLE *YScale)
 {
    parasol::Log log(Caller);
 
-   if (SourceWidth <= 0.000001) SourceWidth = TargetWidth; // Prevent division by zero errors.
+   // Prevent division by zero errors.  Note that the client can legitimately set these values to zero, so we cannot
+   // treat such situations as an error on the client's part.
+
+   if (TargetWidth <= 0.000001) TargetWidth = 0.1;
+   if (TargetHeight <= 0.000001) TargetHeight = 0.1;
+
+   // A Source size of 0 is acceptable and will be treated as equivalent to the target.
+
+   if (SourceWidth <= 0.000001) SourceWidth = TargetWidth;
    if (SourceHeight <= 0.000001) SourceHeight = TargetHeight;
 
-   if (AspectRatio & ARF_MEET) {
+   if (AspectRatio & (ARF_MEET|ARF_SLICE)) {
       DOUBLE xScale = TargetWidth / SourceWidth;
       DOUBLE yScale = TargetHeight / SourceHeight;
 
-      // Choose the smaller of the two scaling factors, so that the scaled graphics meet the edge of the viewport and do not exceed it.
-      if (yScale > xScale) yScale = xScale;
-      else if (xScale > yScale) xScale = yScale;
-      *XScale = xScale;
-      *YScale = yScale;
+      // MEET: Choose the smaller of the two scaling factors, so that the scaled graphics meet the edge of the
+      // viewport and do not exceed it.  SLICE: Choose the larger scale, expanding beyond the boundary on one axis.
 
+      if (AspectRatio & ARF_MEET) {
+         if (yScale > xScale) yScale = xScale;
+         else if (xScale > yScale) xScale = yScale;
+      }
+      else if (AspectRatio & ARF_SLICE) {
+         // Choose the larger of the two scaling factors.
+         if (yScale < xScale) yScale = xScale;
+         else if (xScale < yScale) xScale = yScale;
+      }
+
+      *XScale = xScale;
       if (AspectRatio & ARF_X_MIN) *X = 0;
       else if (AspectRatio & ARF_X_MID) *X = (TargetWidth - (SourceWidth * xScale)) * 0.5;
       else if (AspectRatio & ARF_X_MAX) *X = TargetWidth - (SourceWidth * xScale);
 
-      if (AspectRatio & ARF_Y_MIN) *Y = 0;
-      else if (AspectRatio & ARF_Y_MID) *Y = (TargetHeight - (SourceHeight * yScale)) * 0.5;
-      else if (AspectRatio & ARF_Y_MAX) *Y = TargetHeight - (SourceHeight * yScale);
-   }
-   else if (AspectRatio & ARF_SLICE) {
-      DOUBLE xScale = TargetWidth / SourceWidth;
-      DOUBLE yScale = TargetHeight / SourceHeight;
-
-      // Choose the larger of the two scaling factors.
-      if (yScale < xScale) yScale = xScale;
-      else if (xScale < yScale) xScale = yScale;
-      *XScale = xScale;
       *YScale = yScale;
-
-      if (AspectRatio & ARF_X_MIN) *X = 0;
-      else if (AspectRatio & ARF_X_MID) *X = (TargetWidth - (SourceWidth * xScale)) * 0.5;
-      else if (AspectRatio & ARF_X_MAX) *X = TargetWidth - (SourceWidth * xScale);
-
       if (AspectRatio & ARF_Y_MIN) *Y = 0;
       else if (AspectRatio & ARF_Y_MID) *Y = (TargetHeight - (SourceHeight * yScale)) * 0.5;
       else if (AspectRatio & ARF_Y_MAX) *Y = TargetHeight - (SourceHeight * yScale);
    }
-   else {
+   else { // ARF_NONE
       *X = 0;
-      *Y = 0;
       if ((TargetWidth >= 1.0) and (SourceWidth >= 1.0)) *XScale = TargetWidth / SourceWidth;
       else *XScale = 1.0;
 
+      *Y = 0;
       if ((TargetHeight >= 1.0) and (SourceHeight >= 1.0)) *YScale = TargetHeight / SourceHeight;
       else *YScale = 1.0;
    }
 
-   log.trace("Aspect: $%.8x, Target: %.0fx%.0f, View: %.0fx%.0f, AlignXY: %.2fx%.2f, Scale: %.2fx%.2f",
+   log.trace("ARF Aspect: $%.8x, Target: %.0fx%.0f, View: %.0fx%.0f, AlignXY: %.2fx%.2f, Scale: %.2fx%.2f",
       AspectRatio, TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
 }
 
-//****************************************************************************
-// Calculate the boundaries for a branch of the tree and return the combined maximum bound values.
+//********************************************************************************************************************
+// Calculate the boundaries for a branch of the tree, including transforms, and return the combined maximum bound
+// values.  NOTE: This function performs a full traversal (siblings and children) and this may extend beyond the
+// viewport's visible boundary.
 
-static void calc_full_boundary(objVector *Vector, std::array<DOUBLE, 4> &Bounds)
+void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool IncludeSiblings, bool IncludeTransforms)
 {
-   for (; Vector; Vector=(objVector *)Vector->Next) {
-      if ((!Vector->BasePath) and (Vector->Dirty)) {
-         gen_vector_path(Vector);
-         Vector->Dirty = 0;
-      }
+   if (!Vector) return;
 
-      if (Vector->Head.SubID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
-         if (Vector->BasePath) {
-            DOUBLE bx1, by1, bx2, by2;
-            agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->BasePath, *Vector->Transform);
-            bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+   for (; Vector; Vector=(extVector *)Vector->Next) {
+      if (Vector->Dirty) gen_vector_path(Vector);
+
+      if (Vector->SubID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
+         DOUBLE bx1, by1, bx2, by2;
+
+         if ((Vector->ClipMask) and (Vector->ClipMask->ClipPath)) {
+            if (IncludeTransforms) {
+               agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->ClipMask->ClipPath, Vector->Transform);
+               bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+            }
+            else bounding_rect_single(*Vector->ClipMask->ClipPath, 0, &bx1, &by1, &bx2, &by2);
 
             if (bx1 < Bounds[0]) Bounds[0] = bx1;
             if (by1 < Bounds[1]) Bounds[1] = by1;
             if (bx2 > Bounds[2]) Bounds[2] = bx2;
             if (by2 > Bounds[3]) Bounds[3] = by2;
          }
+         else if (Vector->BasePath.total_vertices()) {
+            if (IncludeTransforms) {
+               if (Vector->Transform.is_complex()) {
+                  auto simple_path = basic_path(Vector->BX1, Vector->BY1, Vector->BX2, Vector->BY2);
+                  agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->BasePath, Vector->Transform);
+                  bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
+
+                  if (bx1 < Bounds[0]) Bounds[0] = bx1;
+                  if (by1 < Bounds[1]) Bounds[1] = by1;
+                  if (bx2 > Bounds[2]) Bounds[2] = bx2;
+                  if (by2 > Bounds[3]) Bounds[3] = by2;
+               }
+               else {
+                  if (Vector->BX1 + Vector->Transform.tx < Bounds[0]) Bounds[0] = Vector->BX1 + Vector->Transform.tx;
+                  if (Vector->BY1 + Vector->Transform.ty < Bounds[1]) Bounds[1] = Vector->BY1 + Vector->Transform.ty;
+                  if (Vector->BX2 + Vector->Transform.tx > Bounds[2]) Bounds[2] = Vector->BX2 + Vector->Transform.tx;
+                  if (Vector->BY2 + Vector->Transform.ty > Bounds[3]) Bounds[3] = Vector->BY2 + Vector->Transform.ty;
+               }
+            }
+            else {
+               if (Vector->BX1 < Bounds[0]) Bounds[0] = Vector->BX1;
+               if (Vector->BY1 < Bounds[1]) Bounds[1] = Vector->BY1;
+               if (Vector->BX2 > Bounds[2]) Bounds[2] = Vector->BX2;
+               if (Vector->BY2 > Bounds[3]) Bounds[3] = Vector->BY2;
+            }
+         }
       }
 
-      if (Vector->Child) calc_full_boundary((objVector *)Vector->Child, Bounds);
+      if (Vector->Child) calc_full_boundary((extVector *)Vector->Child, Bounds, true, IncludeTransforms);
+
+      if (!IncludeSiblings) break;
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
+// For debugging next/prev/child pointers in the scene graph
+//
+// LONG level = 0;
+// debug_branch("Debug", &Self->Head, &level);
 
-static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level) __attribute__ ((unused));
+static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level) __attribute__ ((unused));
 
-static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
+static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 {
    parasol::Log log(Header);
    UBYTE spacing[*Level + 1];
@@ -243,14 +349,14 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
    while (Vector) {
       if (Vector->ClassID IS ID_VECTORSCENE) {
          log.msg("Scene: %p", Vector);
-         if (((objVectorScene *)Vector)->Viewport) debug_branch(Header, &(((objVectorScene *)Vector)->Viewport->Head), Level);
+         if (((objVectorScene *)Vector)->Viewport) debug_tree_ptrs(Header, (((objVectorScene *)Vector)->Viewport), Level);
          break;
       }
       else if (Vector->ClassID IS ID_VECTOR) {
-         objVector *shape = (objVector *)Vector;
+         auto shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, get_name(shape));
-         if (shape->Child) debug_branch(Header, &shape->Child->Head, Level);
-         Vector = &shape->Next->Head;
+         if (shape->Child) debug_tree_ptrs(Header, shape->Child, Level);
+         Vector = shape->Next;
       }
       else break;
    }
@@ -258,50 +364,19 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
    *Level = *Level - 1;
 }
 
-//****************************************************************************
-// Find the first parent of the targeted vector.  Returns NULL if no valid parent is found.
-
-INLINE OBJECTPTR get_parent(objVector *Vector)
-{
-   while (Vector) {
-      if (Vector->Head.ClassID != ID_VECTOR) break;
-      if (!Vector->Parent) Vector = Vector->Prev;
-      else return Vector->Parent;
-   }
-
-   return NULL;
-}
-
-//****************************************************************************
-// Creates a VectorTransform entry and attaches it to the target vector.
-
-template <class T> static VectorTransform * add_transform(T *Self, LONG Type)
-{
-   VectorTransform *transform;
-   if (!AllocMemory(sizeof(VectorTransform), MEM_DATA, &transform, NULL)) {
-      transform->Prev = NULL;
-      transform->Next = Self->Transforms;
-      if (Self->Transforms) Self->Transforms->Prev = transform;
-      Self->Transforms = transform;
-      transform->Type = Type;
-      return transform;
-   }
-   return NULL;
-}
-
-//****************************************************************************
+//********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
+DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
 {
-   BYTE isnumber = TRUE;
+   bool isnumber = true;
 
    *Percent = 0;
 
    while ((*Value) and (*Value <= 0x20)) Value++;
 
    CSTRING str = Value;
-   if (*str IS '-') str++;
+   if ((*str IS '-') or (*str IS '+')) str++;
 
    if ((((*str >= '0') and (*str <= '9')))) {
       while ((*str >= '0') and (*str <= '9')) str++;
@@ -311,7 +386,7 @@ static DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
          if ((*str >= '0') and (*str <= '9')) {
             while ((*str >= '0') and (*str <= '9')) str++;
          }
-         else isnumber = FALSE;
+         else isnumber = false;
       }
 
       DOUBLE multiplier = 1.0;
@@ -336,12 +411,13 @@ static DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
    else return 0;
 }
 
-/*****************************************************************************
-** The parser will break once the string value terminates, or an invalid character is encountered.  Parsed characters
-** include: 0 - 9 , ( ) - + SPACE
-*/
+//********************************************************************************************************************
+// The parser will break once the string value terminates, or an invalid character is encountered.  All unparseable
+// result values will be set to zero.
+//
+// Parsed characters include: 0 - 9 , ( ) - + SPACE
 
-static CSTRING read_numseq(CSTRING Value, ...)
+CSTRING read_numseq(CSTRING Value, ...)
 {
    va_list list;
    DOUBLE *result;
@@ -365,7 +441,9 @@ static CSTRING read_numseq(CSTRING Value, ...)
       else if (((*Value >= '0') and (*Value <= '9'))) {
          *result = StrToFloat(Value);
       }
-      else break;
+      else { // Invalid character or end-of-stream.
+         break;
+      }
 
       while ((*Value >= '0') and (*Value <= '9')) Value++;
 
@@ -377,39 +455,4 @@ static CSTRING read_numseq(CSTRING Value, ...)
 
    va_end(list);
    return Value;
-}
-
-//****************************************************************************
-
-template <class T> void configure_stroke(objVector &Vector, T &stroke)
-{
-   stroke.width(Vector.StrokeWidth);
-
-   if (Vector.LineJoin)  stroke.line_join(Vector.LineJoin); //miter, round, bevel
-   if (Vector.LineCap)   stroke.line_cap(Vector.LineCap); // butt, square, round
-   if (Vector.InnerJoin) stroke.inner_join(Vector.InnerJoin); // miter, round, bevel, jag
-
-   // AGG seems to have issues with using the correct cap at the end of closed polygons.  For the moment
-   // this hack is being used, but it can result in dashed lines being switched to the wrong line cap.  For illustration, use:
-   //
-   //   <polygon points="100,50 140,50 120,15.36" stroke="darkslategray" stroke-width="5" stroke-dasharray="20 20"
-   //     stroke-dashoffset="10" fill="lightslategray" stroke-linejoin="round" />
-
-   if (Vector.LineJoin) {
-      if (Vector.Head.SubID IS ID_VECTORPOLYGON) {
-         if (((objVectorPoly &)Vector).Closed) {
-            switch(Vector.LineJoin) {
-               case VLJ_MITER:        stroke.line_cap(agg::square_cap); break;
-               case VLJ_BEVEL:        stroke.line_cap(agg::square_cap); break;
-               case VLJ_MITER_REVERT: stroke.line_cap(agg::square_cap); break;
-               case VLJ_ROUND:        stroke.line_cap(agg::round_cap); break;
-               case VLJ_MITER_ROUND:  stroke.line_cap(agg::round_cap); break;
-               case VLJ_INHERIT: break;
-            }
-         }
-      }
-   }
-
-   if (Vector.MiterLimit > 0) stroke.miter_limit(Vector.MiterLimit);
-   if (Vector.InnerMiterLimit > 0) stroke.inner_miter_limit(Vector.InnerMiterLimit);
 }

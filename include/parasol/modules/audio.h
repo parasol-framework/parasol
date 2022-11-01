@@ -2,7 +2,7 @@
 #define MODULES_AUDIO 1
 
 // Name:      audio.h
-// Copyright: Paul Manias © 2002-2020
+// Copyright: Paul Manias © 2002-2022
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -10,6 +10,9 @@
 #endif
 
 #define MODVERSION_AUDIO (1)
+
+typedef class plAudio objAudio;
+typedef class plSound objSound;
 
 // Optional flags for the Audio object.
 
@@ -59,12 +62,12 @@
 
 // These audio bit formats are supported by AddSample and AddStream.
 
+#define SFM_BIG_ENDIAN 0x80000000
+#define SFM_U8_BIT_MONO 1
 #define SFM_S16_BIT_MONO 2
 #define SFM_U8_BIT_STEREO 3
-#define SFM_U8_BIT_MONO 1
-#define SFM_BIG_ENDIAN 0x80000000
-#define SFM_END 5
 #define SFM_S16_BIT_STEREO 4
+#define SFM_END 5
 
 // Loop modes for the AudioLoop structure.
 
@@ -241,55 +244,6 @@ typedef struct WAVEFormat {
 
 #define VER_AUDIO (1.000000)
 
-typedef struct rkAudio {
-   OBJECT_HEADER
-   DOUBLE Bass;
-   DOUBLE Treble;
-   LONG   OutputRate;
-   LONG   InputRate;
-   LONG   Quality;
-   LONG   Flags;          // Special flags
-   LONG   TotalChannels;  // Total number of channels allocated to the audio object
-   LONG   BitDepth;       // Typically 8 or 16 bit, reflects the active bit depth
-   LONG   Periods;
-   LONG   PeriodSize;
-
-#ifdef PRV_AUDIO
-   struct ChannelSet Channels[MAX_CHANNELSETS]; // Channels are grouped into sets, which are allocated on a per-task basis
-   struct AudioSample *Samples;
-   struct VolumeCtl *VolumeCtl;
-   MixRoutineSet      *MixRoutines;
-   MEMORYID BFMemoryMID;
-   MEMORYID BufferMemoryMID;
-   MEMORYID SamplesMID;
-   LONG     MixBufferSize;
-   LONG     TotalSamples;
-   TIMER    Timer;
-   APTR     BufferMemory;
-   APTR     MixBuffer;
-   FLOAT    *BFMemory;               // Byte/Float table memory
-   WORD     SampleBitSize;
-   WORD     MixBitSize;
-   LONG     MixElements;
-   UBYTE    Stereo;                  // TRUE/FALSE for active stereo mode
-   BYTE     Mute;
-   BYTE     MasterVolume;
-   BYTE     Initialising;
-   APTR     TaskRemovedHandle;
-   APTR     UserLoginHandle;
-#ifdef __linux__
-   UBYTE *AudioBuffer;
-   LONG  AudioBufferSize;
-   snd_pcm_t *Handle;
-   snd_mixer_t *MixHandle;
-#endif
-   MEMORYID VolumeCtlMID;
-   LONG VolumeCtlTotal;
-   char prvDevice[28];
-  
-#endif
-} objAudio;
-
 // Audio methods
 
 #define MT_SndOpenChannels -1
@@ -357,33 +311,94 @@ INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, LONG Flags, DOUBLE 
 }
 
 
+typedef class plAudio : public BaseClass {
+   public:
+   DOUBLE Bass;           // Sets the amount of bass to use for audio playback.
+   DOUBLE Treble;         // Sets the amount of treble to use for audio playback.
+   LONG   OutputRate;     // Determines the frequency to use for the output of audio data.
+   LONG   InputRate;      // Determines the frequency to use when recording audio data.
+   LONG   Quality;        // Determines the quality of the audio mixing.
+   LONG   Flags;          // Special audio flags can be set here.
+   LONG   TotalChannels;  // The total number of audio channels allocated by all processes.
+   LONG   BitDepth;       // The bit depth affects the overall quality of audio input and output.
+   LONG   Periods;        // Defines the number of periods that make up the internal audio buffer.
+   LONG   PeriodSize;     // Defines the byte size of each period allocated to the internal audio buffer.
+
+#ifdef PRV_AUDIO
+   struct ChannelSet Channels[MAX_CHANNELSETS]; // Channels are grouped into sets, which are allocated on a per-task basis
+   struct AudioSample *Samples;
+   struct VolumeCtl *VolumeCtl;
+   MixRoutineSet      *MixRoutines;
+   MEMORYID BFMemoryMID;
+   MEMORYID BufferMemoryMID;
+   MEMORYID SamplesMID;
+   LONG     MixBufferSize;
+   LONG     TotalSamples;
+   TIMER    Timer;
+   APTR     BufferMemory;
+   APTR     MixBuffer;
+   FLOAT    *BFMemory;               // Byte/Float table memory
+   WORD     SampleBitSize;
+   WORD     MixBitSize;
+   LONG     MixElements;
+   UBYTE    Stereo;                  // TRUE/FALSE for active stereo mode
+   BYTE     Mute;
+   BYTE     MasterVolume;
+   BYTE     Initialising;
+   APTR     TaskRemovedHandle;
+   APTR     UserLoginHandle;
+#ifdef __linux__
+   UBYTE *AudioBuffer;
+   LONG  AudioBufferSize;
+   snd_pcm_t *Handle;
+   snd_mixer_t *MixHandle;
+#endif
+   MEMORYID VolumeCtlMID;
+   LONG VolumeCtlTotal;
+   char prvDevice[28];
+  
+#endif
+   // Action stubs
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
+   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
+   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
+   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveToObject args = { { DestID }, { ClassID } };
+      return Action(AC_SaveToObject, this, &args);
+   }
+} objAudio;
+
 // Sound class definition
 
 #define VER_SOUND (1.000000)
 
-typedef struct rkSound {
-   OBJECT_HEADER
-   DOUBLE    Volume;       // Volume of sample (0 - 100%)
-   DOUBLE    Pan;          // Horizontal positioning for playback on stereo speakers (-100 to +100)
-   LONG      Priority;     // Priority over other sounds
-   LONG      Length;       // Length of sample data in bytes (also refer BufferLength)
-   LONG      Octave;       // Current octave to use for playing back notes (defaults to zero)
-   LONG      Flags;        // Sound flags
-   LONG      Frequency;    // Frequency of sampled sound (nb: does not affect playback - use the Playback field)
-   LONG      Playback;     // Frequency to use for sample playback
-   LONG      Compression;  // Compression rating (0% none, 100% high)
-   LONG      BytesPerSecond; // Bytes per second (Formula: Frequency * BytesPerSample)
-   LONG      BitsPerSample; // Usually set to 8 or 16 bit
-   OBJECTID  AudioID;      // Reference to an Audio object to use for audio output and input
-   LONG      LoopStart;    // Byte position of looping start
-   LONG      LoopEnd;      // Byte position of looping end
-   LONG      Stream;       // Streaming type (smart by default)
-   LONG      BufferLength; // Length of audio buffer in bytes (relevant if streaming)
-   OBJECTID  StreamFileID; // Object allocated for streaming
-   LONG      Position;     // Byte position to start playing from
+typedef class plSound : public BaseClass {
+   public:
+   DOUBLE    Volume;       // The volume to use when playing the sound sample.
+   DOUBLE    Pan;          // Determines the horizontal position of a sound when played through stereo speakers.
+   LONG      Priority;     // The priority of a sound in relation to other sound samples being played.
+   LONG      Length;       // Indicates the total byte-length of sample data.
+   LONG      Octave;       // The octave to use for sample playback.
+   LONG      Flags;        // Optional initialisation flags.
+   LONG      Frequency;    // The frequency of a sampled sound is specified here.
+   LONG      Playback;     // The playback frequency of the sound sample can be defined here.
+   LONG      Compression;  // Determines the amount of compression used when saving an audio sample.
+   LONG      BytesPerSecond; // The flow of bytes-per-second when the sample is played at normal frequency.
+   LONG      BitsPerSample; // Indicates the sample rate of the audio sample, typically 8 or 16 bit.
+   OBJECTID  AudioID;      // Refers to the audio object/device to use for playback.
+   LONG      LoopStart;    // The byte position at which sample looping begins.
+   LONG      LoopEnd;      // The byte position at which sample looping will end.
+   LONG      Stream;       // Defines the preferred streaming method for the sample.
+   LONG      BufferLength; // Defines the size of the buffer to use when streaming is enabled.
+   OBJECTID  StreamFileID; // Refers to a File object that is being streamed for playback.
+   LONG      Position;     // The current playback position.
    LONG      Handle;       // Audio handle acquired at the audio object [Private - Available to child classes]
-   LONG      ChannelIndex; // Channel handle that the sound was last played on
-   OBJECTPTR File;         // Private. The file holding the sample data; available to child classes only.
+   LONG      ChannelIndex; // Refers to the channel that the sound is playing through.
+   OBJECTPTR File;         // Refers to the file object that contains the audio data for playback.
 
 #ifdef PRV_SOUND
     struct KeyStore *Fields;
@@ -401,6 +416,35 @@ typedef struct rkSound {
     LONG     prvAlignment;          // Byte alignment value
   
 #endif
+   // Action stubs
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
+   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
+   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
+   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveToObject args = { { DestID }, { ClassID } };
+      return Action(AC_SaveToObject, this, &args);
+   }
+   inline ERROR seek(DOUBLE Offset, LONG Position) {
+      struct acSeek args = { Offset, Position };
+      return Action(AC_Seek, this, &args);
+   }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+      struct acSetVar args = { FieldName, Value };
+      return Action(AC_SetVar, this, &args);
+   }
 } objSound;
 
 struct AudioBase {

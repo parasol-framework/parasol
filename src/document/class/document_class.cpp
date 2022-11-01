@@ -10,7 +10,7 @@ features for creating complex documents and manuals.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Args)
+static ERROR DOCUMENT_ActionNotify(extDocument *Self, struct acActionNotify *Args)
 {
    parasol::Log log;
 
@@ -43,15 +43,14 @@ static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Arg
       Self->HasFocus = TRUE;
 
       if (!Self->prvKeyEvent) {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&key_event);
+         auto callback = make_function_stdc(key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
 
       if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "FocusNotify");
    }
    else if (Args->ActionID IS AC_Free) {
-      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->EventCallback.Type = CALL_NONE;
       }
    }
@@ -77,7 +76,7 @@ static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Arg
       struct acRedimension *redimension;
 
       if ((redimension = (struct acRedimension *)Args->Args)) {
-         drwGetSurfaceCoords(Self->SurfaceID, NULL, NULL, NULL, NULL, &Self->SurfaceWidth, &Self->SurfaceHeight);
+         gfxGetSurfaceCoords(Self->SurfaceID, NULL, NULL, NULL, NULL, &Self->SurfaceWidth, &Self->SurfaceHeight);
 
          log.traceBranch("Redimension: %dx%d", Self->SurfaceWidth, Self->SurfaceHeight);
 
@@ -100,11 +99,11 @@ static ERROR DOCUMENT_ActionNotify(objDocument *Self, struct acActionNotify *Arg
                      { "ViewWidth",  FD_LONG, { .Long = Self->AreaWidth } },
                      { "ViewHeight", FD_LONG, { .Long = Self->AreaHeight } }
                   };
-                  scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args));
+                  scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                }
             }
             else if (trigger->Function.Type IS CALL_STDC) {
-               auto routine = (void (*)(APTR, objDocument *, LONG Width, LONG Height))trigger->Function.StdC.Routine;
+               auto routine = (void (*)(APTR, extDocument *, LONG Width, LONG Height))trigger->Function.StdC.Routine;
                if (routine) {
                   parasol::SwitchContext context(trigger->Function.StdC.Context);
                   routine(trigger->Function.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight);
@@ -133,14 +132,14 @@ belong to the document object.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_Activate(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
 {
    parasol::Log log;
-   log.branch("");
+   log.branch();
 
    ChildEntry list[16];
    LONG count = ARRAYSIZE(list);
-   if (!ListChildren(Self->Head.UniqueID, list, &count)) {
+   if (!ListChildren(Self->UID, TRUE, list, &count)) {
       for (LONG i=0; i < count; i++) acActivateID(list[i].ObjectID);
    }
 
@@ -188,7 +187,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_AddListener(objDocument *Self, struct docAddListener *Args)
+static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args)
 {
    DocTrigger *trigger;
 
@@ -222,7 +221,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_ApplyFontStyle(objDocument *Self, struct docApplyFontStyle *Args)
+static ERROR DOCUMENT_ApplyFontStyle(extDocument *Self, struct docApplyFontStyle *Args)
 {
    parasol::Log log;
    objFont *font;
@@ -232,7 +231,7 @@ static ERROR DOCUMENT_ApplyFontStyle(objDocument *Self, struct docApplyFontStyle
 
    log.traceBranch("Apply font styling - Face: %s, Style: %s", style->Font->Face, style->Font->Style);
 
-   if (font->Head.Flags & NF_INITIALISED) {
+   if (font->initialised()) {
       font->Colour = style->FontColour;
       font->Underline = style->FontUnderline;
    }
@@ -272,7 +271,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_CallFunction(objDocument *Self, struct docCallFunction *Args)
+static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Args)
 {
    parasol::Log log;
 
@@ -299,11 +298,11 @@ data will be deleted from the object and the graphics will be automatically upda
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_Clear(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
    unload_doc(Self, 0);
    if (Self->XML) { acFree(Self->XML); Self->XML = NULL; }
    redraw(Self, FALSE);
@@ -318,7 +317,7 @@ Clipboard: Full support for clipboard activity is provided through this action.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_Clipboard(objDocument *Self, struct acClipboard *Args)
+static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 {
    parasol::Log log;
    OBJECTPTR file;
@@ -434,7 +433,7 @@ Mismatch:    The data type that was passed to the action is not supported by the
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_DataFeed(objDocument *Self, struct acDataFeed *Args)
+static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
@@ -456,13 +455,13 @@ static ERROR DOCUMENT_DataFeed(objDocument *Self, struct acDataFeed *Args)
          }
       }
 
-      log.trace("Appending data to XML #%d at tag index %d.", Self->XML->Head.UniqueID, Self->XML->TagCount);
+      log.trace("Appending data to XML #%d at tag index %d.", Self->XML->UID, Self->XML->TagCount);
 
       if (acDataXML(Self->XML, Args->Buffer) != ERR_Okay) {
          return log.warning(ERR_SetField);
       }
 
-      if (Self->Head.Flags & NF_INITIALISED) {
+      if (Self->initialised()) {
          // Document is initialised.  Refresh the document from the XML source.
 
          acRefresh(Self);
@@ -472,41 +471,6 @@ static ERROR DOCUMENT_DataFeed(objDocument *Self, struct acDataFeed *Args)
 
       }
 
-      return ERR_Okay;
-   }
-   else if (Args->DataType IS DATA_INPUT_READY) {
-      InputMsg *input, *scan;
-      ERROR inputerror;
-
-      while (!gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &input)) {
-         if (input->Flags & JTYPE_MOVEMENT) {
-            while (!(inputerror = gfxGetInputMsg((struct dcInputReady *)Args->Buffer, 0, &scan))) {
-               if (scan->Flags & JTYPE_MOVEMENT) input = scan;
-               else break;
-            }
-
-            if (input->OverID IS Self->PageID) Self->MouseOver = TRUE;
-            else Self->MouseOver = FALSE;
-
-            check_mouse_pos(Self, input->X, input->Y);
-
-            if (inputerror) break;
-            else input = scan;
-
-            // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
-         }
-
-         if (input->Type IS JET_LMB) {
-            if (input->Value > 0) {
-               Self->LMB = TRUE;
-               check_mouse_click(Self, input->X, input->Y);
-            }
-            else {
-               Self->LMB = FALSE;
-               check_mouse_release(Self, input->X, input->Y);
-            }
-         }
-      }
       return ERR_Okay;
    }
    else {
@@ -521,7 +485,7 @@ Disable: Disables object functionality.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_Disable(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Disable(extDocument *Self, APTR Void)
 {
    Self->Flags |= DCF_DISABLED;
    return ERR_Okay;
@@ -529,10 +493,10 @@ static ERROR DOCUMENT_Disable(objDocument *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR DOCUMENT_Draw(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
 {
    if (Self->SurfaceID) {
-      if (Self->Processing) DelayMsg(AC_Draw, Self->Head.UniqueID, NULL);
+      if (Self->Processing) DelayMsg(AC_Draw, Self->UID, NULL);
       else redraw(Self, FALSE);
       return ERR_Okay;
    }
@@ -562,7 +526,7 @@ Search: The cell was not found.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_Edit(objDocument *Self, struct docEdit *Args)
+static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -587,7 +551,7 @@ Enable: Enables object functionality.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_Enable(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Enable(extDocument *Self, APTR Void)
 {
    Self->Flags &= ~DCF_DISABLED;
    return ERR_Okay;
@@ -609,7 +573,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_FeedParser(objDocument *Self, struct docFeedParser *Args)
+static ERROR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
 {
    parasol::Log log;
 
@@ -650,7 +614,7 @@ Search: The index was not found.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_FindIndex(objDocument *Self, struct docFindIndex *Args)
+static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 {
    parasol::Log log;
 
@@ -704,7 +668,7 @@ Focus: Sets the user focus on the document page.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_Focus(objDocument *Self, APTR Args)
+static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
 {
    acFocusID(Self->PageID);
    return ERR_Okay;
@@ -712,13 +676,10 @@ static ERROR DOCUMENT_Focus(objDocument *Self, APTR Args)
 
 //****************************************************************************
 
-static ERROR DOCUMENT_Free(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 {
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->FlashTimer) { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
-
-   if ((Self->VScroll) and (Self->FreeVScroll)) { acFree(Self->VScroll); Self->VScroll = NULL; }
-   if ((Self->HScroll) and (Self->FreeHScroll)) { acFree(Self->HScroll); Self->HScroll = NULL; }
 
    if (Self->PageID)    { acFreeID(Self->PageID); Self->PageID = 0; }
    if (Self->ViewID)    { acFreeID(Self->ViewID); Self->ViewID = 0; }
@@ -742,7 +703,7 @@ static ERROR DOCUMENT_Free(objDocument *Self, APTR Void)
    }
 
    if (Self->PointerLocked) {
-      gfxRestoreCursor(PTR_DEFAULT, Self->Head.UniqueID);
+      gfxRestoreCursor(PTR_DEFAULT, Self->UID);
       Self->PointerLocked = FALSE;
    }
 
@@ -758,8 +719,7 @@ static ERROR DOCUMENT_Free(objDocument *Self, APTR Void)
    if (Self->Temp)        { FreeResource(Self->Temp); Self->Temp = NULL; }
    if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
    if (Self->Templates)   { acFree(Self->Templates); Self->Templates = NULL; }
-
-   gfxUnsubscribeInput(0);
+   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; };
 
    return ERR_Okay;
 }
@@ -770,7 +730,7 @@ GetVar: Script arguments can be retrieved through this action.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_GetVar(objDocument *Self, struct acGetVar *Args)
+static ERROR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
 {
    if ((!Args) or (!Args->Buffer) or (!Args->Field) or (Args->Size < 2)) return ERR_Args;
 
@@ -789,7 +749,7 @@ static ERROR DOCUMENT_GetVar(objDocument *Self, struct acGetVar *Args)
 
 //****************************************************************************
 
-static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 {
    parasol::Log log;
    ERROR error;
@@ -800,7 +760,7 @@ static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
 
    objSurface *surface;
    if (!AccessObject(Self->FocusID, 5000, &surface)) {
-      if (surface->Head.ClassID != ID_SURFACE) {
+      if (surface->ClassID != ID_SURFACE) {
          ReleaseObject(surface);
          return log.warning(ERR_WrongObjectType);
       }
@@ -883,7 +843,8 @@ static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
          TAGEND);
       if (!acInit(surface)) {
          drwAddCallback(surface, (APTR)&draw_document);
-         gfxSubscribeInput(Self->PageID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0);
+         auto callback = make_function_stdc(consume_input_events);
+         gfxSubscribeInput(&callback, Self->PageID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
          error = ERR_Okay;
       }
       else { acFree(surface); error = ERR_Init; Self->PageID = 0; }
@@ -897,67 +858,11 @@ static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
    acShowID(Self->ViewID);
    acShowID(Self->PageID);
 
-   // Scan for scrollbars
+   // TODO: Launch the scrollbar script with references to our Target, Page and View viewports
 
    if (!(Self->Flags & DCF_NO_SCROLLBARS)) {
-      if ((!Self->VScroll) or (!Self->HScroll)) {
-         ChildEntry list[16];
-         LONG count = ARRAYSIZE(list);
-         if (!ListChildren(Self->SurfaceID, list, &count)) {
-            for (--count; count >= 0; count--) {
-               if ((list[count].ObjectID > 0) and (list[count].ClassID IS (CLASSID)ID_SCROLLBAR)) {
-                  objScrollbar *scrollbar;
-                  if ((scrollbar = (objScrollbar *)GetObjectAddress(list[count].ObjectID))) {
-                     LONG direction;
-                     GetLong(scrollbar, FID_Direction, &direction);
 
-                     if ((direction IS SO_HORIZONTAL) and (!Self->HScroll)) {
-                        Self->HScroll = scrollbar;
-                     }
-                     else if ((direction IS SO_VERTICAL) and (!Self->VScroll)) {
-                        Self->VScroll = scrollbar;
-                     }
-                  }
-               }
-            }
-         }
-      }
 
-      if (!Self->VScroll) {
-         if (CreateObject(ID_SCROLLBAR, NF_INTEGRAL, &Self->VScroll,
-               FID_Name|TSTR,      "DocVScrollbar",
-               FID_Surface|TLONG,  Self->SurfaceID,
-               FID_Monitor|TLONG,  Self->PageID,   // Surface to monitor for wheel-scroll requests
-               FID_View|TLONG,     Self->ViewID,
-               FID_Direction|TSTR, "vertical",
-               FID_Object|TLONG,   Self->Head.UniqueID,
-               FID_Opacity|TLONG,  100,
-               TAGEND)) {
-            return ERR_CreateObject;
-         }
-         else Self->FreeVScroll = TRUE;
-      }
-
-      SURFACEINFO *info;
-      if (!drwGetSurfaceInfo(Self->VScroll->RegionID, &info)) {
-         Self->ScrollWidth = info->Width;
-      }
-      else Self->ScrollWidth = 16;
-
-      if (!Self->HScroll) {
-         if (CreateObject(ID_SCROLLBAR, NF_INTEGRAL, &Self->HScroll,
-               FID_Name|TSTR,       "DocHScrollbar",
-               FID_Surface|TLONG,   Self->SurfaceID,
-               FID_Monitor|TLONG,   Self->PageID,
-               FID_Direction|TSTR,  "horizontal",
-               FID_Object|TLONG,    Self->Head.UniqueID,
-               FID_Intersect|TLONG, (Self->VScroll) ? Self->VScroll->Head.UniqueID : 0,
-               FID_Opacity|TLONG,   100,
-               TAGEND)) {
-            return ERR_CreateObject;
-         }
-         else Self->FreeHScroll = TRUE;
-      }
    }
 
    // Flash the cursor via the timer
@@ -992,7 +897,6 @@ static ERROR DOCUMENT_Init(objDocument *Self, APTR Void)
    }
 
    redraw(Self, TRUE);
-   calc_scroll(Self);
    return ERR_Okay;
 }
 
@@ -1018,7 +922,7 @@ Search
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_HideIndex(objDocument *Self, struct docHideIndex *Args)
+static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
 {
    parasol::Log log(__FUNCTION__);
    LONG tab;
@@ -1040,8 +944,6 @@ static ERROR DOCUMENT_HideIndex(objDocument *Self, struct docHideIndex *Args)
                if (!index->Visible) return ERR_Okay; // It's already invisible!
 
                index->Visible = FALSE;
-
-               drwForbidDrawing();
 
                   AdjustLogLevel(2);
                   Self->UpdateLayout = TRUE;
@@ -1080,7 +982,6 @@ static ERROR DOCUMENT_HideIndex(objDocument *Self, struct docHideIndex *Args)
                      NEXT_CHAR(stream, i);
                   }
 
-               drwPermitDrawing();
                DRAW_PAGE(Self);
                return ERR_Okay;
             }
@@ -1117,7 +1018,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_InsertXML(objDocument *Self, struct docInsertXML *Args)
+static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 {
    parasol::Log log;
    ERROR error;
@@ -1196,7 +1097,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_InsertText(objDocument *Self, struct docInsertText *Args)
+static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1265,7 +1166,7 @@ static ERROR DOCUMENT_InsertText(objDocument *Self, struct docInsertText *Args)
 
 //****************************************************************************
 
-static ERROR DOCUMENT_NewObject(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 {
    Self->UniqueID = 1000;
    unload_doc(Self, 0);
@@ -1274,9 +1175,9 @@ static ERROR DOCUMENT_NewObject(objDocument *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR DOCUMENT_NewOwner(objDocument *Self, struct acNewOwner *Args)
+static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) {
+   if (!Self->initialised()) {
       OBJECTID owner_id = Args->NewOwnerID;
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
@@ -1314,7 +1215,7 @@ NoData: Operation successful, but no data was present for extraction.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_ReadContent(objDocument *Self, struct docReadContent *Args)
+static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1369,13 +1270,13 @@ Refresh: Reloads the document data from the original source location.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_Refresh(objDocument *Self, APTR Void)
+static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
 {
    parasol::Log log;
 
    if (Self->Processing) {
       log.msg("Recursion detected - refresh will be delayed.");
-      DelayMsg(AC_Refresh, Self->Head.UniqueID, NULL);
+      DelayMsg(AC_Refresh, Self->UID, NULL);
       return ERR_Okay;
    }
 
@@ -1387,9 +1288,8 @@ static ERROR DOCUMENT_Refresh(objDocument *Self, APTR Void)
 
          OBJECTPTR script;
          if ((script = trigger->Function.Script.Script)) {
-            ERROR error = scCallback(script, trigger->Function.Script.ProcedureID, NULL, 0);
-            if (!error) {
-               GetLong(script, FID_Error, &error);
+            ERROR error;
+            if (!scCallback(script, trigger->Function.Script.ProcedureID, NULL, 0, &error)) {
                if (error IS ERR_Skip) {
                   log.msg("The refresh request has been handled by an event trigger.");
                   return ERR_Okay;
@@ -1398,7 +1298,7 @@ static ERROR DOCUMENT_Refresh(objDocument *Self, APTR Void)
          }
       }
       else if (trigger->Function.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, objDocument *))trigger->Function.StdC.Routine;
+         auto routine = (void (*)(APTR, extDocument *))trigger->Function.StdC.Routine;
          if (routine) {
             parasol::SwitchContext context(trigger->Function.StdC.Context);
             routine(trigger->Function.StdC.Context, Self);
@@ -1453,7 +1353,7 @@ Args
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_RemoveContent(objDocument *Self, struct docRemoveContent *Args)
+static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *Args)
 {
    parasol::Log log;
 
@@ -1488,7 +1388,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_RemoveListener(objDocument *Self, struct docRemoveListener *Args)
+static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *Args)
 {
    if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR_NullArgs;
 
@@ -1527,7 +1427,7 @@ SaveToObject: Use this action to save edited information as an XML document file
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_SaveToObject(objDocument *Self, struct acSaveToObject *Args)
+static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
    OBJECTPTR Object;
@@ -1550,7 +1450,7 @@ ScrollToPoint: Scrolls a document object's graphical content.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_ScrollToPoint(objDocument *Self, struct acScrollToPoint *Args)
+static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -1569,7 +1469,6 @@ static ERROR DOCUMENT_ScrollToPoint(objDocument *Self, struct acScrollToPoint *A
    //log.msg("%d, %d / %d, %d", (LONG)Args->X, (LONG)Args->Y, Self->XPosition, Self->YPosition);
 
    acMoveToPointID(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF_X|MTF_Y);
-   calc_scroll(Self);
    return ERR_Okay;
 }
 
@@ -1600,7 +1499,7 @@ OutOfRange
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_SelectLink(objDocument *Self, struct docSelectLink *Args)
+static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
 {
    parasol::Log log;
 
@@ -1638,7 +1537,7 @@ SetVar: Passes variable parameters to loaded documents.
 -END-
 *****************************************************************************/
 
-static ERROR DOCUMENT_SetVar(objDocument *Self, struct acSetVar *Args)
+static ERROR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
 {
    // Please note that it is okay to set zero-length arguments
 
@@ -1674,7 +1573,7 @@ Search: The index could not be found.
 
 *****************************************************************************/
 
-static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
+static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 {
    parasol::Log log;
 
@@ -1698,8 +1597,6 @@ static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
                index->Visible = TRUE;
                if (index->ParentVisible) { // We are visible, but parents must also be visible to show content
                   // Show all objects and manage the ParentVisible status of any child indexes
-
-                  drwForbidDrawing();
 
                      AdjustLogLevel(2);
                      Self->UpdateLayout = TRUE;
@@ -1761,8 +1658,6 @@ static ERROR DOCUMENT_ShowIndex(objDocument *Self, struct docShowIndex *Args)
 
                         NEXT_CHAR(stream, i);
                      } // while
-
-                  drwPermitDrawing();
 
                   DRAW_PAGE(Self);
                }

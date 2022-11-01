@@ -1,5 +1,49 @@
 
 //****************************************************************************
+
+static LONG parse_aspect_ratio(CSTRING Value)
+{
+   while ((*Value) and (*Value <= 0x20)) Value++;
+
+   if (!StrMatch("none", Value)) return ARF_NONE;
+   else {
+      LONG flags = 0;
+      if (!StrCompare("xMin", Value, 4, 0)) { flags |= ARF_X_MIN; Value += 4; }
+      else if (!StrCompare("xMid", Value, 4, 0)) { flags |= ARF_X_MID; Value += 4; }
+      else if (!StrCompare("xMax", Value, 4, 0)) { flags |= ARF_X_MAX; Value += 4; }
+
+      if (!StrCompare("yMin", Value, 4, 0)) { flags |= ARF_Y_MIN; Value += 4; }
+      else if (!StrCompare("yMid", Value, 4, 0)) { flags |= ARF_Y_MID; Value += 4; }
+      else if (!StrCompare("yMax", Value, 4, 0)) { flags |= ARF_Y_MAX; Value += 4; }
+
+      while ((*Value) and (*Value <= 0x20)) Value++;
+
+      if (!StrCompare("meet", Value, 4, 0)) { flags |= ARF_MEET; }
+      else if (!StrCompare("slice", Value, 5, 0)) { flags |= ARF_SLICE; }
+      return flags;
+   }
+}
+
+//****************************************************************************
+
+static LONG shape_rendering_to_render_quality(CSTRING Value)
+{
+   parasol::Log log;
+
+   if (!StrMatch("auto", Value)) return RQ_AUTO;
+   else if (!StrMatch("optimize-speed", Value)) return RQ_FAST;
+   else if (!StrMatch("optimizeSpeed", Value)) return RQ_FAST;
+   else if (!StrMatch("crisp-edges", Value)) return RQ_CRISP;
+   else if (!StrMatch("crispEdges", Value)) return RQ_CRISP;
+   else if (!StrMatch("geometric-precision", Value)) return RQ_PRECISE;
+   else if (!StrMatch("geometricPrecision", Value)) return RQ_PRECISE;
+   else if (!StrMatch("best", Value)) return RQ_BEST;
+   else log.warning("Unknown shape-rendering value '%s'", Value);
+
+   return RQ_AUTO;
+}
+
+//****************************************************************************
 // Apply the current state values to a vector.
 
 static void apply_state(svgState *State, OBJECTPTR Vector)
@@ -14,15 +58,20 @@ static void apply_state(svgState *State, OBJECTPTR Vector)
    if (Vector->SubID IS ID_VECTORTEXT) {
       if (State->FontFamily) SetString(Vector, FID_Face, State->FontFamily);
       if (State->FontSize)   SetString(Vector, FID_FontSize, State->FontSize);
+      if (State->FontWeight) SetLong(Vector, FID_Weight, State->FontWeight);
    }
    if (State->FillOpacity >= 0.0) SetDouble(Vector, FID_FillOpacity, State->FillOpacity);
    if (State->Opacity >= 0.0) SetDouble(Vector, FID_Opacity, State->Opacity);
+
+   if (Vector->SubID != ID_VECTORTEXT) {
+      if (State->PathQuality != RQ_AUTO) SetLong(Vector, FID_PathQuality, State->PathQuality);
+   }
 }
 
 //****************************************************************************
 // Copy a tag's attributes to the current state.
 
-static void set_state(svgState *State, XMLTag *Tag)
+static void set_state(svgState *State, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -39,8 +88,25 @@ static void set_state(svgState *State, XMLTag *Tag)
          case SVF_STROKE_WIDTH: State->StrokeWidth = StrToFloat(val); break;
          case SVF_FONT_FAMILY:  State->FontFamily = val; break;
          case SVF_FONT_SIZE:    State->FontSize = val; break;
+         case SVF_FONT_WEIGHT: {
+            State->FontWeight = StrToFloat(val);
+            if (!State->FontWeight) {
+               switch(StrHash(val, FALSE)) {
+                  case SVF_NORMAL:  State->FontWeight = 400; break;
+                  case SVF_LIGHTER: State->FontWeight = 300; break; // -100 off the inherited weight
+                  case SVF_BOLD:    State->FontWeight = 700; break;
+                  case SVF_BOLDER:  State->FontWeight = 900; break; // +100 on the inherited weight
+                  case SVF_INHERIT: State->FontWeight = 400; break; // Not supported correctly yet.
+                  default:
+                     log.warning("No support for font-weight value '%s'", val); // Non-fatal
+                     State->FontWeight = 400;
+               }
+            }
+            break;
+         }
          case SVF_FILL_OPACITY: State->FillOpacity = StrToFloat(val); break;
          case SVF_OPACITY:      State->Opacity = StrToFloat(val); break;
+         case SVF_SHAPE_RENDERING: State->PathQuality = shape_rendering_to_render_quality(val);
       }
    }
 }
@@ -48,20 +114,19 @@ static void set_state(svgState *State, XMLTag *Tag)
 //****************************************************************************
 // Process all child elements that belong to the target Tag.
 
-static void process_children(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Vector)
+static void process_children(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Vector)
 {
    OBJECTPTR sibling = NULL;
    for (auto child=Tag; child; child=child->Next) {
       if (child->Attrib->Name) {
-         ULONG hash = StrHash(child->Attrib->Name, FALSE);
-         xtag_default(Self, hash, XML, State, child, Vector, &sibling);
+         xtag_default(Self, XML, State, child, Vector, &sibling);
       }
    }
 }
 
 //****************************************************************************
 
-static void xtag_pathtransition(objSVG *Self, objXML *XML, XMLTag *Tag)
+static void xtag_pathtransition(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -70,7 +135,7 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, XMLTag *Tag)
    OBJECTPTR trans;
    if (!NewObject(ID_VECTORTRANSITION, 0, &trans)) {
       SetFields(trans,
-         FID_Owner|TLONG, Self->Scene->Head.UniqueID, // All clips belong to the root page to prevent hierarchy issues.
+         FID_Owner|TLONG, Self->Scene->UID, // All clips belong to the root page to prevent hierarchy issues.
          FID_Name|TSTR,   "SVGTransition",
          TAGEND);
 
@@ -89,10 +154,10 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, XMLTag *Tag)
          if (stopcount >= 2) {
             Transition stops[stopcount];
             process_transition_stops(Self, Tag, stops);
-            SetArray((OBJECTPTR)trans, FID_Stops, stops, stopcount);
+            SetArray(trans, FID_Stops, stops, stopcount);
 
             if (!acInit(trans)) {
-               scAddDef(Self->Scene, id, (OBJECTPTR)trans);
+               scAddDef(Self->Scene, id, trans);
                return;
             }
          }
@@ -106,7 +171,7 @@ static void xtag_pathtransition(objSVG *Self, objXML *XML, XMLTag *Tag)
 
 //****************************************************************************
 
-static void xtag_clippath(objSVG *Self, objXML *XML, XMLTag *Tag)
+static void xtag_clippath(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -117,7 +182,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, XMLTag *Tag)
 
    if (!NewObject(ID_VECTORCLIP, 0, &clip)) {
       SetFields(clip,
-         FID_Owner|TLONG, Self->Scene->Head.UniqueID, // All clips belong to the root page to prevent hierarchy issues.
+         FID_Owner|TLONG, Self->Scene->UID, // All clips belong to the root page to prevent hierarchy issues.
          FID_Name|TSTR,   "SVGClip",
          FID_Units|TLONG, VUNIT_BOUNDING_BOX,
          TAGEND);
@@ -142,7 +207,7 @@ static void xtag_clippath(objSVG *Self, objXML *XML, XMLTag *Tag)
             // Valid child elements for clip-path are: circle, ellipse, line, path, polygon, polyline, rect, text, use, animate
 
             process_children(Self, XML, &state, Tag->Child, clip);
-            scAddDef(Self->Scene, id, (OBJECTPTR)clip);
+            scAddDef(Self->Scene, id, clip);
          }
          else acFree(clip);
       }
@@ -153,9 +218,768 @@ static void xtag_clippath(objSVG *Self, objXML *XML, XMLTag *Tag)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static void xtag_filter(objSVG *Self, objXML *XML, XMLTag *Tag)
+static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_BLURFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_STDDEVIATION: { // Y is optional, if not set then it is equivalent to X.
+            DOUBLE x = -1, y = -1;
+            read_numseq(val, &x, &y, TAGEND);
+            if (x > 0) SetDouble(fx, FID_SX, x);
+            if (y > 0) SetDouble(fx, FID_SY, y);
+            break;
+         }
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_OFFSETFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_DX: SetLong(fx, FID_XOffset, StrToInt(val)); break;
+         case SVF_DY: SetLong(fx, FID_YOffset, StrToInt(val)); break;
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_MERGEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_X: set_double(fx, FID_X, val); break;
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+      }
+   }
+
+   if (auto child = Tag->Child) {
+      LONG count = 0;
+      while (child) { count++; child = child->Next; }
+
+      MergeSource list[count];
+
+      LONG i = 0;
+      child = Tag->Child;
+      while (child) {
+         if (!StrMatch("feMergeNode", child->Attrib->Name)) {
+            for (LONG a=1; a < child->TotalAttrib; a++) {
+               if (!StrMatch("in", child->Attrib[a].Name)) {
+                  switch (StrHash(child->Attrib[a].Value, FALSE)) {
+                     case SVF_SOURCEGRAPHIC:   list[i++] = { .SourceType = VSF_GRAPHIC }; break;
+                     case SVF_SOURCEALPHA:     list[i++] = { .SourceType = VSF_ALPHA }; break;
+                     case SVF_BACKGROUNDIMAGE: list[i++] = { .SourceType = VSF_BKGD }; break;
+                     case SVF_BACKGROUNDALPHA: list[i++] = { .SourceType = VSF_BKGD_ALPHA }; break;
+                     case SVF_FILLPAINT:       list[i++] = { .SourceType = VSF_FILL }; break;
+                     case SVF_STROKEPAINT:     list[i++] = { .SourceType = VSF_STROKE }; break;
+                     default:  {
+                        if (auto ref = child->Attrib[a].Value) {
+                           while ((*ref) and (*ref <= 0x20)) ref++;
+                           if (Self->Effects.contains(ref)) {
+                              list[i++] = { .SourceType = VSF_REFERENCE, .Effect = Self->Effects[ref] };
+                           }
+                           else log.warning("Invalid 'in' reference '%s'", ref);
+                        }
+                        else log.warning("'in' reference is an empty string.");
+
+                        break;
+                     }
+                  }
+               }
+               else log.warning("Invalid feMergeNode attribute '%s'", child->Attrib[a].Name);
+            }
+         }
+         else log.warning("Unrecognised feMerge child node '%s'", child->Attrib->Name);
+
+         child = child->Next;
+      }
+
+      if (SetArray(fx, FID_SourceList, list, i)) {
+         acFree(fx);
+         return log.warning(ERR_SetField);
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return log.warning(ERR_Init);
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   #define CM_SIZE 20
+   typedef std::array<DOUBLE, CM_SIZE> MATRIX;
+
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_COLOURFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   MATRIX m;
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_TYPE: {
+            LONG mode = 0;
+            switch(StrHash(val, FALSE)) {
+               case SVF_NONE:          mode = CM_NONE; break;
+               case SVF_MATRIX:        mode = CM_MATRIX; break;
+               case SVF_SATURATE:      mode = CM_SATURATE; break;
+               case SVF_HUEROTATE:     mode = CM_HUE_ROTATE; break;
+               case SVF_LUMINANCETOALPHA: mode = CM_LUMINANCE_ALPHA; break;
+               // These are special modes that are not included by SVG
+               case SVF_CONTRAST:      mode = CM_CONTRAST; break;
+               case SVF_BRIGHTNESS:    mode = CM_BRIGHTNESS; break;
+               case SVF_HUE:           mode = CM_HUE; break;
+               case SVF_COLOURISE:     mode = CM_COLOURISE; break;
+               case SVF_DESATURATE:    mode = CM_DESATURATE; break;
+               // Colour blindness modes
+               case SVF_PROTANOPIA:    mode = CM_MATRIX; m = MATRIX { 0.567,0.433,0,0,0, 0.558,0.442,0,0,0, 0,0.242,0.758,0,0, 0,0,0,1,0 }; break;
+               case SVF_PROTANOMALY:   mode = CM_MATRIX; m = MATRIX { 0.817,0.183,0,0,0, 0.333,0.667,0,0,0, 0,0.125,0.875,0,0, 0,0,0,1,0 }; break;
+               case SVF_DEUTERANOPIA:  mode = CM_MATRIX; m = MATRIX { 0.625,0.375,0,0,0, 0.7,0.3,0,0,0, 0,0.3,0.7,0,0, 0,0,0,1,0 }; break;
+               case SVF_DEUTERANOMALY: mode = CM_MATRIX; m = MATRIX { 0.8,0.2,0,0,0, 0.258,0.742,0,0,0, 0,0.142,0.858,0,0, 0,0,0,1,0 }; break;
+               case SVF_TRITANOPIA:    mode = CM_MATRIX; m = MATRIX { 0.95,0.05,0,0,0, 0,0.433,0.567,0,0, 0,0.475,0.525,0,0, 0,0,0,1,0 }; break;
+               case SVF_TRITANOMALY:   mode = CM_MATRIX; m = MATRIX { 0.967,0.033,0,0,0, 0,0.733,0.267,0,0, 0,0.183,0.817,0,0, 0,0,0,1,0 }; break;
+               case SVF_ACHROMATOPSIA: mode = CM_MATRIX; m = MATRIX { 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0,0,0,1,0 }; break;
+               case SVF_ACHROMATOMALY: mode = CM_MATRIX; m = MATRIX { 0.618,0.320,0.062,0,0, 0.163,0.775,0.062,0,0, 0.163,0.320,0.516,0,0, 0,0,0,1,0 }; break;
+
+               default:
+                  log.warning("Unrecognised colour matrix type '%s'", val);
+                  acFree(fx);
+                  return ERR_InvalidValue;
+            }
+
+            SetLong(fx, FID_Mode, mode);
+            if (mode IS CM_MATRIX) SetArray(fx, FID_Values|TDOUBLE, &m, ARRAYSIZE(m));
+            break;
+         }
+
+         case SVF_VALUES: {
+            LONG i;
+            for (i=0; (*val) and (i < CM_SIZE); i++) {
+               DOUBLE dbl;
+               val = read_numseq(val, &dbl, TAGEND);
+               m[i] = dbl;
+            }
+            SetArray(fx, FID_Values|TDOUBLE, &m, i);
+            break;
+         }
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_CONVOLVEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_ORDER: {
+            DOUBLE ox = 0, oy = 0;
+            read_numseq(val, &ox, &oy, TAGEND);
+            if (ox < 1) ox = 3;
+            if (oy < 1) oy = ox;
+            SetFields(fx, FID_MatrixColumns|TLONG, F2T(ox),
+                          FID_MatrixRows|TLONG,    F2T(oy),
+                          TAGEND);
+            break;
+         }
+
+         case SVF_KERNELMATRIX: {
+            #define MAX_DIM 9
+            DOUBLE matrix[MAX_DIM * MAX_DIM];
+            LONG m = 0;
+            while ((*val) and (m < ARRAYSIZE(matrix))) {
+               matrix[m] = 0;
+               val = read_numseq(val, &matrix[m], TAGEND);
+               m++;
+            }
+            SetArray(fx, FID_Matrix|TDOUBLE, &matrix, m);
+            break;
+         }
+
+         case SVF_DIVISOR: {
+            DOUBLE divisor = 0;
+            read_numseq(val, &divisor, TAGEND);
+            SetDouble(fx, FID_Divisor, divisor);
+            break;
+         }
+
+         case SVF_BIAS: {
+            DOUBLE bias = 0;
+            read_numseq(val, &bias, TAGEND);
+            SetDouble(fx, FID_Bias, bias);
+            break;
+         }
+
+         case SVF_TARGETX: SetLong(fx, FID_TargetX, StrToInt(val)); break;
+
+         case SVF_TARGETY: SetLong(fx, FID_TargetY, StrToInt(val)); break;
+
+         case SVF_EDGEMODE:
+            if (!StrMatch("duplicate", val)) SetLong(fx, FID_EdgeMode, EM_DUPLICATE);
+            else if (!StrMatch("wrap", val)) SetLong(fx, FID_EdgeMode, EM_WRAP);
+            else if (!StrMatch("none", val)) SetLong(fx, FID_EdgeMode, EM_NONE);
+            break;
+
+         case SVF_KERNELUNITLENGTH: {
+            DOUBLE kx = 1, ky = 1;
+            read_numseq(val, &kx, &ky, TAGEND);
+            if (kx < 1) kx = 1;
+            if (ky < 1) ky = kx;
+            SetDouble(fx, FID_UnitX, kx);
+            SetDouble(fx, FID_UnitY, ky);
+            break;
+         }
+
+         // The modifications will apply to R,G,B only when preserveAlpha is true.
+         case SVF_PRESERVEALPHA:
+            SetLong(fx, FID_PreserveAlpha, (!StrMatch("true", val)) or (!StrMatch("1", val)));
+            break;
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_COMPOSITEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_MODE:
+         case SVF_OPERATOR: {
+            switch (StrHash(val, FALSE)) {
+               // SVG Operator types
+               case SVF_NORMAL:
+               case SVF_OVER: SetLong(fx, FID_Operator, OP_OVER); break;
+               case SVF_IN:   SetLong(fx, FID_Operator, OP_IN); break;
+               case SVF_OUT:  SetLong(fx, FID_Operator, OP_OUT); break;
+               case SVF_ATOP: SetLong(fx, FID_Operator, OP_ATOP); break;
+               case SVF_XOR:  SetLong(fx, FID_Operator, OP_XOR); break;
+               case SVF_ARITHMETIC: SetLong(fx, FID_Operator, OP_ARITHMETIC); break;
+               // SVG Mode types
+               case SVF_SCREEN:   SetLong(fx, FID_Operator, OP_SCREEN); break;
+               case SVF_MULTIPLY: SetLong(fx, FID_Operator, OP_MULTIPLY); break;
+               case SVF_LIGHTEN:  SetLong(fx, FID_Operator, OP_LIGHTEN); break;
+               case SVF_DARKEN:   SetLong(fx, FID_Operator, OP_DARKEN); break;
+               // Parasol modes
+               case SVF_INVERTRGB:  SetLong(fx, FID_Operator, OP_INVERT_RGB); break;
+               case SVF_INVERT:     SetLong(fx, FID_Operator, OP_INVERT); break;
+               case SVF_CONTRAST:   SetLong(fx, FID_Operator, OP_CONTRAST); break;
+               case SVF_DODGE:      SetLong(fx, FID_Operator, OP_DODGE); break;
+               case SVF_BURN:       SetLong(fx, FID_Operator, OP_BURN); break;
+               case SVF_HARDLIGHT:  SetLong(fx, FID_Operator, OP_HARD_LIGHT); break;
+               case SVF_SOFTLIGHT:  SetLong(fx, FID_Operator, OP_SOFT_LIGHT); break;
+               case SVF_DIFFERENCE: SetLong(fx, FID_Operator, OP_DIFFERENCE); break;
+               case SVF_EXCLUSION:  SetLong(fx, FID_Operator, OP_EXCLUSION); break;
+               case SVF_PLUS:       SetLong(fx, FID_Operator, OP_PLUS); break;
+               case SVF_MINUS:      SetLong(fx, FID_Operator, OP_MINUS); break;
+               case SVF_OVERLAY:    SetLong(fx, FID_Operator, OP_OVERLAY); break;
+               default:
+                  log.warning("Composite operator '%s' not recognised.", val);
+                  acFree(fx);
+                  return ERR_InvalidValue;
+            }
+            break;
+         }
+
+         case SVF_K1: {
+            DOUBLE k1;
+            read_numseq(val, &k1, TAGEND);
+            SetDouble(fx, FID_K1, k1);
+            break;
+         }
+
+         case SVF_K2: {
+            DOUBLE k2;
+            read_numseq(val, &k2, TAGEND);
+            SetDouble(fx, FID_K2, k2);
+            break;
+         }
+
+         case SVF_K3: {
+            DOUBLE k3;
+            read_numseq(val, &k3, TAGEND);
+            SetDouble(fx, FID_K3, k3);
+            break;
+         }
+
+         case SVF_K4: {
+            DOUBLE k4;
+            read_numseq(val, &k4, TAGEND);
+            SetDouble(fx, FID_K4, k4);
+            break;
+         }
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
+
+         case SVF_IN2: parse_input(Self, fx, val, FID_MixType, FID_Mix); break;
+
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_FLOODFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   ERROR error = ERR_Okay;
+   for (LONG a=1; (a < Tag->TotalAttrib) and (!error); a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_FLOOD_COLOR:
+         case SVF_FLOOD_COLOUR: {
+            FRGB rgb;
+            vecReadPainter(NULL, val, &rgb, NULL, NULL, NULL);
+            error = SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
+            break;
+         }
+
+         case SVF_FLOOD_OPACITY: {
+            DOUBLE opacity;
+            read_numseq(val, &opacity, TAGEND);
+            error = SetDouble(fx, FID_Opacity, opacity);
+            break;
+         }
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+   if (!error) return acInit(fx);
+   else {
+      acFree(fx);
+      return log.warning(error);
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_TURBULENCEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_BASEFREQUENCY: {
+            DOUBLE bfx = -1, bfy = -1;
+            read_numseq(val, &bfx, &bfy, TAGEND);
+            if (bfx < 0) bfx = 0;
+            if (bfy < 0) bfy = bfx;
+            SetFields(fx, FID_FX|TDOUBLE, bfx, FID_FY|TDOUBLE, bfy, TAGEND);
+            break;
+         }
+
+         case SVF_NUMOCTAVES: SetLong(fx, FID_Octaves, StrToInt(val)); break;
+
+         case SVF_SEED: SetLong(fx, FID_Seed, StrToInt(val)); break;
+
+         case SVF_STITCHTILES:
+            if (!StrMatch("stitch", val)) SetLong(fx, FID_Stitch, TRUE);
+            else SetLong(fx, FID_Stitch, FALSE);
+            break;
+
+         case SVF_TYPE:
+            if (!StrMatch("fractalNoise", val)) SetLong(fx, FID_Type, TB_NOISE);
+            else SetLong(fx, FID_Type, 0);
+            break;
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_MORPHOLOGYFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_RADIUS: {
+            DOUBLE x = -1, y = -1;
+            read_numseq(val, &x, &y, TAGEND);
+            if (x > 0) SetLong(fx, FID_RadiusX, F2T(x));
+            if (y > 0) SetLong(fx, FID_RadiusY, F2T(y));
+            break;
+         }
+
+         case SVF_OPERATOR: SetString(fx, FID_Operator, val); break;
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
+
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+// This code replaces feImage elements where the href refers to a resource name.
+
+static ERROR parse_fe_source(extSVG *Self, objXML *XML, svgState *State, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_SOURCEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   bool required = false;
+   CSTRING ref = NULL;
+
+   ERROR error = ERR_Okay;
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      auto val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      switch(StrHash(Tag->Attrib[a].Name, false)) {
+         case SVF_X: set_double(fx, FID_X, val); break;
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+         case SVF_PRESERVEASPECTRATIO: SetLong(fx, FID_AspectRatio, parse_aspect_ratio(val)); break;
+         case SVF_XLINK_HREF: ref = val; break;
+         case SVF_EXTERNALRESOURCESREQUIRED: required = StrMatch("true", val) IS ERR_Okay; break;
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+   OBJECTPTR vector = NULL;
+   if (ref) {
+      if (scFindDef(Self->Scene, ref, &vector) != ERR_Okay) {
+         // The reference is not an existing vector but should be a pre-registered declaration that would allow
+         // us to create it.  Note that creation only occurs once.  Subsequent use of the ID will result in the
+         // live reference being found.
+
+         auto ti = find_href_tag(Self, ref);
+         if (ti != -1) {
+            xtag_default(Self, XML, State, XML->Tags[ti], Self->Scene, &vector);
+         }
+         else log.warning("Element id '%s' not found.", ref);
+      }
+
+      if (vector) {
+         SetString(fx, FID_SourceName, ref);
+         if (!(error = acInit(fx))) return ERR_Okay;
+      }
+      else error = ERR_Search;
+   }
+   else error = ERR_UndefinedField;
+
+   acFree(fx);
+   if (required) return log.warning(error);
+   return ERR_Okay; // Default behaviour is not to force a failure despite the error.
+}
+
+//********************************************************************************************************************
+
+static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState *State, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+
+   // Check if the client has specified an href that refers to a pattern name instead of an image file.  In that
+   // case we need to divert to the SourceFX parser.
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      if ((!StrMatch("xlink:href", Tag->Attrib[a].Name)) or (!StrMatch("href", Tag->Attrib[a].Name))) {
+         if ((Tag->Attrib[a].Value) and (Tag->Attrib[a].Value[0] IS '#')) {
+            return parse_fe_source(Self, XML, State, Filter, Tag);
+         }
+         break;
+      }
+   }
+
+   objFilterEffect *fx;
+   if (NewObject(ID_IMAGEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   bool image_required = false;
+   CSTRING path = NULL;
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_X: set_double(fx, FID_X, val); break;
+
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IMAGE_RENDERING: {
+            if (!StrMatch("optimizeSpeed", val)) SetLong(fx, FID_ResampleMethod, VSM_BILINEAR);
+            else if (!StrMatch("optimizeQuality", val)) SetLong(fx, FID_ResampleMethod, VSM_LANCZOS3);
+            else if (!StrMatch("auto", val));
+            else if (!StrMatch("inherit", val));
+            else log.warning("Unrecognised image-rendering option '%s'", val);
+            break;
+         }
+
+         case SVF_PRESERVEASPECTRATIO: SetLong(fx, FID_AspectRatio, parse_aspect_ratio(val)); break;
+
+         case SVF_XLINK_HREF: path = val; break;
+
+         case SVF_EXTERNALRESOURCESREQUIRED: // If true and the image cannot be loaded, return a fatal error code.
+            if (!StrMatch("true", val)) image_required = true;
+            break;
+
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+   if (path) {
+      // Check for security risks in the path.
+
+      if ((path[0] IS '/') or ((path[0] IS '.') and (path[1] IS '.') and (path[2] IS '/'))) {
+         acFree(fx);
+         return log.warning(ERR_InvalidValue);
+      }
+      else {
+         for (UWORD i=0; path[i]; i++) {
+            if (path[i] IS '/') {
+               while (path[i+1] IS '.') i++;
+               if (path[i+1] IS '/') {
+                  return log.warning(ERR_InvalidValue);
+               }
+            }
+            else if (path[i] IS ':') {
+               acFree(fx);
+               return log.warning(ERR_InvalidValue);
+            }
+         }
+      }
+
+      if (auto fl = folder(Self)) {
+         std::string comp_path = std::string(fl) + path;
+         SetString(fx, FID_Path, comp_path.c_str());
+      }
+      else SetString(fx, FID_Path, path);
+   }
+
+   if (auto error = acInit(fx)) {
+      acFree(fx);
+      if (image_required) return error;
+      else return ERR_Okay;
+   }
+   else return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -164,11 +988,10 @@ static void xtag_filter(objSVG *Self, objXML *XML, XMLTag *Tag)
 
    if (!NewObject(ID_VECTORFILTER, 0, &filter)) {
       SetFields(filter,
-         FID_Owner|TLONG,       Self->Scene->Head.UniqueID,
+         FID_Owner|TLONG,       Self->Scene->UID,
          FID_Name|TSTR,         "SVGFilter",
          FID_Units|TLONG,       VUNIT_BOUNDING_BOX,
-         FID_ColourSpace|TLONG, CS_LINEAR_RGB,
-         FID_Path|TSTR,         Self->Path,
+         FID_ColourSpace|TLONG, VCS_LINEAR_RGB,
          TAGEND);
 
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -176,7 +999,7 @@ static void xtag_filter(objSVG *Self, objXML *XML, XMLTag *Tag)
          if (!val) continue;
 
          LONG j;
-         for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
+         for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
          if (Tag->Attrib[a].Name[j] IS ':') continue;
 
          switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
@@ -185,23 +1008,34 @@ static void xtag_filter(objSVG *Self, objXML *XML, XMLTag *Tag)
                else if (!StrMatch("objectBoundingBox", val)) filter->Units = VUNIT_BOUNDING_BOX;
                break;
 
-            case SVF_ID:
-               id = val;
-               add_id(Self, Tag, val);
-               break;
+            case SVF_ID:      if (add_id(Self, Tag, val)) id = val; break;
+
             case SVF_X:       set_double(filter, FID_X, val); break;
+
             case SVF_Y:       set_double(filter, FID_Y, val); break;
+
             case SVF_WIDTH:   set_double(filter, FID_Width, val); break;
+
             case SVF_HEIGHT:  set_double(filter, FID_Height, val); break;
+
             case SVF_OPACITY: set_double(filter, FID_Opacity, val); break;
-            case SVF_COLOR_INTERPOLATION_FILTERS: // The default is linearRGB
-               if (!StrMatch("auto", val)) SetLong(filter, FID_ColourSpace, CS_LINEAR_RGB);
-               else if (!StrMatch("sRGB", val)) SetLong(filter, FID_ColourSpace, CS_SRGB);
-               else if (!StrMatch("linearRGB", val)) SetLong(filter, FID_ColourSpace, CS_LINEAR_RGB);
-               else if (!StrMatch("inherit", val)) SetLong(filter, FID_ColourSpace, CS_INHERIT);
+
+            case SVF_FILTERRES: {
+               DOUBLE x = 0, y = 0;
+               read_numseq(val, &x, &y, TAGEND);
+               SetFields(filter, FID_ResX|TLONG, F2T(x), FID_ResY|TLONG, F2T(y), TAGEND);
                break;
+            }
+
+            case SVF_COLOR_INTERPOLATION_FILTERS: // The default is linearRGB
+               if (!StrMatch("auto", val)) SetLong(filter, FID_ColourSpace, VCS_LINEAR_RGB);
+               else if (!StrMatch("sRGB", val)) SetLong(filter, FID_ColourSpace, VCS_SRGB);
+               else if (!StrMatch("linearRGB", val)) SetLong(filter, FID_ColourSpace, VCS_LINEAR_RGB);
+               else if (!StrMatch("inherit", val)) SetLong(filter, FID_ColourSpace, VCS_INHERIT);
+               break;
+
             case SVF_PRIMITIVEUNITS:
-               if (!StrMatch("userSpaceOnUse", val)) filter->PrimitiveUnits = VUNIT_USERSPACE;
+               if (!StrMatch("userSpaceOnUse", val)) filter->PrimitiveUnits = VUNIT_USERSPACE; // Default
                else if (!StrMatch("objectBoundingBox", val)) filter->PrimitiveUnits = VUNIT_BOUNDING_BOX;
                break;
 
@@ -224,25 +1058,58 @@ static void xtag_filter(objSVG *Self, objXML *XML, XMLTag *Tag)
          }
       }
 
-      if ((id) AND (!acInit(filter))) {
+      if ((id) and (!acInit(filter))) {
          SetName(filter, id);
+
          if (Tag->Child) {
-            STRING xml_str;
-            if (!xmlGetString(XML, Tag->Child->Index, XMF_INCLUDE_SIBLINGS, &xml_str)) {
-               acDataXML(filter, xml_str);
-               FreeResource(xml_str);
+            for (auto tag = Tag->Child; tag; tag=tag->Next) {
+               log.trace("Parsing filter element '%s'", tag->Attrib->Name);
+
+               switch(StrHash(tag->Attrib->Name, FALSE)) {
+                  case SVF_FEBLUR:              parse_fe_blur(Self, filter, tag); break;
+                  case SVF_FEGAUSSIANBLUR:      parse_fe_blur(Self, filter, tag); break;
+                  case SVF_FEOFFSET:            parse_fe_offset(Self, filter, tag); break;
+                  case SVF_FEMERGE:             parse_fe_merge(Self, filter, tag); break;
+                  case SVF_FECOLORMATRIX:       // American spelling
+                  case SVF_FECOLOURMATRIX:      parse_fe_colour_matrix(Self, filter, tag); break;
+                  case SVF_FECONVOLVEMATRIX:    parse_fe_convolve_matrix(Self, filter, tag); break;
+                  case SVF_FEBLEND:             // Blend and composite share the same code.
+                  case SVF_FECOMPOSITE:         parse_fe_composite(Self, filter, tag); break;
+                  case SVF_FEFLOOD:             parse_fe_flood(Self, filter, tag); break;
+                  case SVF_FETURBULENCE:        parse_fe_turbulence(Self, filter, tag); break;
+                  case SVF_FEMORPHOLOGY:        parse_fe_morphology(Self, filter, tag); break;
+                  case SVF_FEIMAGE:             parse_fe_image(Self, XML, State, filter, tag); break;
+                  case SVF_FEDISPLACEMENTMAP:
+                  case SVF_FETILE:
+                  case SVF_FECOMPONENTTRANSFER:
+                  case SVF_FEDIFFUSELIGHTING:
+                  case SVF_FESPECULARLIGHTING:
+                  case SVF_FEDISTANTLIGHT:
+                  case SVF_FEPOINTLIGHT:
+                  case SVF_FESPOTLIGHT:
+                     log.warning("Filter element '%s' is not currently supported.", tag->Attrib->Name);
+                     break;
+
+                  default:
+                     log.warning("Filter element '%s' not recognised.", tag->Attrib->Name);
+                     break;
+               }
             }
          }
 
-         scAddDef(Self->Scene, id, (OBJECTPTR)filter);
+         Self->Effects.clear();
+
+         scAddDef(Self->Scene, id, filter);
       }
       else acFree(filter);
    }
 }
 
 //****************************************************************************
+// NB: In bounding-box mode, the default view-box is 0 0 1 1, where 1 is equivalent to 100% of the target space.
+// If the client sets a custom view-box then the dimensions are fixed, and no scaling will apply.
 
-static void process_pattern(objSVG *Self, objXML *XML, XMLTag *Tag)
+static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorPattern *pattern;
@@ -254,14 +1121,19 @@ static void process_pattern(objSVG *Self, objXML *XML, XMLTag *Tag)
          FID_Name|TSTR,          "SVGPattern",
          FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
          FID_SpreadMethod|TLONG, VSPREAD_REPEAT,
+         FID_HostScene|TPTR,     Self->Scene,
          TAGEND);
 
+      objVectorViewport *viewport;
+      GetPointer(pattern, FID_Viewport, &viewport);
+
+      bool client_set_viewbox = false;
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
          if (!val) continue;
 
          LONG j;
-         for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
+         for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
          if (Tag->Attrib[a].Name[j] IS ':') continue;
 
          switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
@@ -282,22 +1154,30 @@ static void process_pattern(objSVG *Self, objXML *XML, XMLTag *Tag)
 
             case SVF_PATTERNTRANSFORM: SetString(pattern, FID_Transform, val); break;
 
-            case SVF_ID:     id = val; break;
-            case SVF_X:      set_double(pattern, FID_X, val); break;
-            case SVF_Y:      set_double(pattern, FID_Y, val); break;
-            case SVF_WIDTH:  set_double(pattern->Scene, FID_PageWidth, val); break;
-            case SVF_HEIGHT: set_double(pattern->Scene, FID_PageHeight, val); break;
+            case SVF_ID:       id = val; break;
 
-            case SVF_OPACITY: set_double(pattern, FID_Opacity, val); break;
+            case SVF_OVERFLOW: SetString(viewport, FID_Overflow, val); break;
+
+            case SVF_OPACITY:  set_double(pattern, FID_Opacity, val); break;
+
+            case SVF_X:        set_double(pattern, FID_X, val); break;
+
+            case SVF_Y:        set_double(pattern, FID_Y, val); break;
+
+            case SVF_WIDTH:    set_double(pattern, FID_Width, val); break;
+
+            case SVF_HEIGHT:   set_double(pattern, FID_Height, val); break;
 
             case SVF_VIEWBOX: {
-               DOUBLE x=0, y=0, width=0, height=0;
-               read_numseq(val, &x, &y, &width, &height, TAGEND);
-               SetFields(pattern->Viewport,
-                  FID_ViewX|TDOUBLE,      x,
-                  FID_ViewY|TDOUBLE,      y,
-                  FID_ViewWidth|TDOUBLE,  width,
-                  FID_ViewHeight|TDOUBLE, height,
+               DOUBLE vx=0, vy=0, vwidth=1, vheight=1; // Default view-box for bounding-box mode
+               client_set_viewbox = true;
+               pattern->ContentUnits = VUNIT_USERSPACE;
+               read_numseq(val, &vx, &vy, &vwidth, &vheight, TAGEND);
+               SetFields(viewport,
+                  FID_ViewX|TDOUBLE,      vx,
+                  FID_ViewY|TDOUBLE,      vy,
+                  FID_ViewWidth|TDOUBLE,  vwidth,
+                  FID_ViewHeight|TDOUBLE, vheight,
                   TAGEND);
                break;
             }
@@ -313,13 +1193,22 @@ static void process_pattern(objSVG *Self, objXML *XML, XMLTag *Tag)
          log.trace("Failed to create a valid definition.");
       }
 
+      /*if (!client_set_viewbox) {
+         SetFields(viewport,
+            FID_ViewX|TDOUBLE,   0,
+            FID_ViewY|TDOUBLE,   0,
+            FID_ViewWidth|TDOUBLE,  vwidth,
+            FID_ViewHeight|TDOUBLE, vheight,
+            TAGEND);
+      }*/
+
       if (!acInit(pattern)) {
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
          svgState state;
          reset_state(&state);
-         process_children(Self, XML, &state, Tag->Child, (OBJECTPTR)pattern->Viewport);
-         scAddDef(Self->Scene, id, (OBJECTPTR)pattern);
+         process_children(Self, XML, &state, Tag->Child, viewport);
          add_id(Self, Tag, id);
+         scAddDef(Self->Scene, id, pattern);
       }
       else {
          acFree(pattern);
@@ -330,13 +1219,14 @@ static void process_pattern(objSVG *Self, objXML *XML, XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState *State, XMLTag *Tag,
+static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState *State, const XMLTag *Tag,
    OBJECTPTR Parent, OBJECTPTR *Result)
 {
    parasol::Log log(__FUNCTION__);
    ERROR error;
-   OBJECTPTR vector;
+   objVector *vector;
 
+   *Result = NULL;
    if (!(error = NewObject(VectorID, 0, &vector))) {
       SetOwner(vector, Parent);
       svgState state = *State;
@@ -346,7 +1236,7 @@ static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState
       process_attrib(Self, XML, Tag, vector);
 
       if (!acInit(vector)) {
-         // Process child tags
+         // Process child tags, if any
 
          for (auto child=Tag->Child; child; child=child->Next) {
             if (child->Attrib->Name) {
@@ -360,7 +1250,7 @@ static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState
                            char buffer[8192];
                            if (!xmlGetContent(XML, child->Index, buffer, sizeof(buffer))) {
                               LONG ws;
-                              for (ws=0; (buffer[ws]) AND (buffer[ws] <= 0x20); ws++); // All leading whitespace is ignored.
+                              for (ws=0; (buffer[ws]) and (buffer[ws] <= 0x20); ws++); // All leading whitespace is ignored.
                               SetString(vector, FID_String, buffer + ws);
                            }
                            else log.msg("Failed to retrieve content for <text> @ line %d", Tag->LineNo);
@@ -389,19 +1279,21 @@ static ERROR process_shape(objSVG *Self, CLASSID VectorID, objXML *XML, svgState
 
 //****************************************************************************
 
-static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static ERROR xtag_default(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
-   switch(Hash) {
-      case SVF_USE:     xtag_use(Self, XML, State, Tag, Parent); break;
-      case SVF_G:       xtag_group(Self, XML, State, Tag, Parent, Vector); break;
-      case SVF_SVG:     xtag_svg(Self, XML, State, Tag, Parent, Vector); break;
-      case SVF_RECT:    process_shape(Self, ID_VECTORRECTANGLE, XML, State, Tag, Parent, Vector); break;
-      case SVF_ELLIPSE: process_shape(Self, ID_VECTORELLIPSE, XML, State, Tag, Parent, Vector); break;
-      case SVF_CIRCLE:  process_shape(Self, ID_VECTORELLIPSE, XML, State, Tag, Parent, Vector); break;
-      case SVF_PATH:    process_shape(Self, ID_VECTORPATH, XML, State, Tag, Parent, Vector); break;
-      case SVF_POLYGON: process_shape(Self, ID_VECTORPOLYGON, XML, State, Tag, Parent, Vector); break;
+   log.traceBranch("%s", Tag->Attrib->Name);
+
+   switch(StrHash(Tag->Attrib->Name, false)) {
+      case SVF_USE:              xtag_use(Self, XML, State, Tag, Parent); break;
+      case SVF_G:                xtag_group(Self, XML, State, Tag, Parent, Vector); break;
+      case SVF_SVG:              xtag_svg(Self, XML, State, Tag, Parent, Vector); break;
+      case SVF_RECT:             process_shape(Self, ID_VECTORRECTANGLE, XML, State, Tag, Parent, Vector); break;
+      case SVF_ELLIPSE:          process_shape(Self, ID_VECTORELLIPSE, XML, State, Tag, Parent, Vector); break;
+      case SVF_CIRCLE:           process_shape(Self, ID_VECTORELLIPSE, XML, State, Tag, Parent, Vector); break;
+      case SVF_PATH:             process_shape(Self, ID_VECTORPATH, XML, State, Tag, Parent, Vector); break;
+      case SVF_POLYGON:          process_shape(Self, ID_VECTORPOLYGON, XML, State, Tag, Parent, Vector); break;
       case SVF_PARASOL_SPIRAL:   process_shape(Self, ID_VECTORSPIRAL, XML, State, Tag, Parent, Vector); break;
       case SVF_PARASOL_WAVE:     process_shape(Self, ID_VECTORWAVE, XML, State, Tag, Parent, Vector); break;
       case SVF_PARASOL_SHAPE:    process_shape(Self, ID_VECTORSHAPE, XML, State, Tag, Parent, Vector); break;
@@ -413,10 +1305,11 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
       case SVF_LINEARGRADIENT:   xtag_lineargradient(Self, Tag); break;
       case SVF_SYMBOL:           xtag_symbol(Self, XML, Tag); break;
       case SVF_ANIMATETRANSFORM: xtag_animatetransform(Self, XML, Tag, Parent); break;
-      case SVF_FILTER:           xtag_filter(Self, XML, Tag); break;
+      case SVF_FILTER:           xtag_filter(Self, XML, State, Tag); break;
       case SVF_DEFS:             xtag_defs(Self, XML, State, Tag, Parent); break;
       case SVF_CLIPPATH:         xtag_clippath(Self, XML, Tag); break;
       case SVF_STYLE:            xtag_style(Self, XML, Tag); break;
+      case SVF_PATTERN:          process_pattern(Self, XML, Tag); break;
 
       case SVF_TITLE:
          if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
@@ -424,7 +1317,7 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
             char buffer[8192];
             if (!xmlGetContent(XML, Tag->Index, buffer, sizeof(buffer))) {
                LONG ws;
-               for (ws=0; buffer[ws] AND (buffer[ws] <= 0x20); ws++); // All leading whitespace is ignored.
+               for (ws=0; buffer[ws] and (buffer[ws] <= 0x20); ws++); // All leading whitespace is ignored.
                Self->Title = StrClone(buffer+ws);
             }
          }
@@ -446,12 +1339,12 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
                char buffer[8192];
                STRING str;
                LONG ws = 0;
-               if ((!GetString(*Vector, FID_String, &str)) AND (str)) {
+               if ((!GetString(*Vector, FID_String, &str)) and (str)) {
                   ws = StrCopy(str, buffer, sizeof(buffer));
                }
 
                if (!xmlGetContent(XML, Tag->Index, buffer + ws, sizeof(buffer) - ws)) {
-                  if (!ws) while (buffer[ws] AND (buffer[ws] <= 0x20)) ws++; // All leading whitespace is ignored.
+                  if (!ws) while (buffer[ws] and (buffer[ws] <= 0x20)) ws++; // All leading whitespace is ignored.
                   else ws = 0;
                   SetString(*Vector, FID_String, buffer + ws);
                }
@@ -463,7 +1356,7 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
 
       case SVF_DESC: break; // Ignore descriptions
 
-      default: log.warning("Failed to interpret tag <%s/> ($%.8x) @ line %d", Tag->Attrib->Name, Hash, Tag->LineNo); return ERR_NoSupport;
+      default: log.warning("Failed to interpret tag <%s/> @ line %d", Tag->Attrib->Name, Tag->LineNo); return ERR_NoSupport;
    }
 
    return ERR_Okay;
@@ -471,7 +1364,7 @@ static ERROR xtag_default(objSVG *Self, ULONG Hash, objXML *XML, svgState *State
 
 //****************************************************************************
 
-static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
+static ERROR load_pic(extSVG *Self, CSTRING Path, objPicture **Picture)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -485,10 +1378,10 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
       val += 5;
       if (!StrCompare("image/", val, 6, 0)) { // Has to be an image type
          val += 6;
-         while ((*val) AND (*val != ';')) val++;
+         while ((*val) and (*val != ';')) val++;
          if (!StrCompare(";base64", val, 7, 0)) { // Is it base 64?
             val += 7;
-            while ((*val) AND (*val != ',')) val++;
+            while ((*val) and (*val != ',')) val++;
             if (*val IS ',') val++;
 
             rkBase64Decode state;
@@ -522,8 +1415,8 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
 
    if (!error) {
       error = CreateObject(ID_PICTURE, 0, Picture,
-            FID_Owner|TLONG,        Self->Scene->Head.UniqueID,
-            FID_Location|TSTR,      Path,
+            FID_Owner|TLONG,        Self->Scene->UID,
+            FID_Path|TSTR,          Path,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
             TAGEND);
@@ -541,7 +1434,7 @@ static ERROR load_pic(objSVG *Self, CSTRING Path, objPicture **Picture)
 //****************************************************************************
 // Definition images are stored once, allowing them to be used multiple times via Fill and Stroke references.
 
-static void def_image(objSVG *Self, XMLTag *Tag)
+static void def_image(extSVG *Self, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objVectorImage *image;
@@ -550,7 +1443,7 @@ static void def_image(objSVG *Self, XMLTag *Tag)
 
    if (!NewObject(ID_VECTORIMAGE, 0, &image)) {
       SetFields(image,
-         FID_Owner|TLONG,        Self->Scene->Head.UniqueID,
+         FID_Owner|TLONG,        Self->Scene->UID,
          FID_Name|TSTR,          "SVGImage",
          FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
          FID_SpreadMethod|TLONG, VSPREAD_PAD,
@@ -573,7 +1466,7 @@ static void def_image(objSVG *Self, XMLTag *Tag)
             default: {
                // Check if this was a reference to some other namespace (ignorable).
                LONG i;
-               for (i=0; val[i] AND (val[i] != ':'); i++);
+               for (i=0; val[i] and (val[i] != ':'); i++);
                if (val[i] != ':') log.warning("Failed to parse attrib '%s' in <image/> tag @ line %d", Tag->Attrib[a].Name, Tag->LineNo);
                break;
             }
@@ -585,7 +1478,7 @@ static void def_image(objSVG *Self, XMLTag *Tag)
             SetPointer(image, FID_Picture, pic);
             if (!acInit(image)) {
                add_id(Self, Tag, id);
-               scAddDef(Self->Scene, id, (OBJECTPTR)image);
+               scAddDef(Self->Scene, id, image);
             }
             else {
                acFree(image);
@@ -606,12 +1499,12 @@ static void def_image(objSVG *Self, XMLTag *Tag)
 
 //****************************************************************************
 
-static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static ERROR xtag_image(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
-   STRING ratio = NULL;
-   BYTE width_set = FALSE;
-   BYTE height_set = FALSE;
+   LONG ratio = 0;
+   bool width_set = false;
+   bool height_set = false;
    svgState state = *State;
    objPicture *pic = NULL;
 
@@ -620,14 +1513,13 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag,
          load_pic(Self, Tag->Attrib[a].Value, &pic);
       }
       else if (!StrMatch("preserveAspectRatio", Tag->Attrib[a].Name)) {
-         // none, defer, xMinYMin, xMidyMin, xMaxYMin, xMinYMid, xMidYMid, xMaxYMid, xMinYMax, xMidYMax, xMaxYMax
-         ratio = Tag->Attrib[a].Value;
+         ratio = parse_aspect_ratio(Tag->Attrib[a].Value);
       }
       else if (!StrMatch("width", Tag->Attrib[a].Name)) {
-         width_set = TRUE;
+         width_set = true;
       }
       else if (!StrMatch("height", Tag->Attrib[a].Name)) {
-         height_set = TRUE;
+         height_set = true;
       }
    }
 
@@ -639,12 +1531,13 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag,
             FID_Picture|TPTR,       pic,
             FID_SpreadMethod|TLONG, VSPREAD_PAD,
             FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
+            FID_AspectRatio|TLONG,  ratio,
             TAGEND)) {
 
          char id[32] = "img";
-         IntToStr(image->Head.UniqueID, id+3, sizeof(id)-3);
+         IntToStr(image->UID, id+3, sizeof(id)-3);
          SetOwner(pic, image); // It's best if the pic belongs to the image.
-         scAddDef(Self->Scene, id, (OBJECTPTR)image);
+         scAddDef(Self->Scene, id, image);
 
          char fillname[256];
          StrFormat(fillname, sizeof(fillname), "url(#%s)", id);
@@ -668,7 +1561,7 @@ static ERROR xtag_image(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag,
 
 //****************************************************************************
 
-static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_defs(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -683,11 +1576,13 @@ static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, 
          case SVF_LINEARGRADIENT:  xtag_lineargradient(Self, child); break;
          case SVF_PATTERN:         process_pattern(Self, XML, child); break;
          case SVF_IMAGE:           def_image(Self, child); break;
-         case SVF_FILTER:          xtag_filter(Self, XML, child); break;
+         case SVF_FILTER:          xtag_filter(Self, XML, State, child); break;
          case SVF_CLIPPATH:        xtag_clippath(Self, XML, child); break;
          case SVF_PARASOL_TRANSITION: xtag_pathtransition(Self, XML, child); break;
 
-         default: { // Anything not immediately recognised is added if it has an 'id' attribute.
+         default: {
+            // Anything not immediately recognised is added to the dictionary if it has an 'id' attribute.
+            // No object is instantiated -- this is left to the referencee.
             for (LONG a=1; a < child->TotalAttrib; a++) {
                if (!StrMatch("id", child->Attrib[a].Name)) {
                   add_id(Self, child, child->Attrib[a].Value);
@@ -704,13 +1599,13 @@ static ERROR xtag_defs(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, 
 
 //****************************************************************************
 
-static ERROR xtag_style(objSVG *Self, objXML *XML, XMLTag *Tag)
+static ERROR xtag_style(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    ERROR error = ERR_Okay;
    CSTRING type = XMLATTRIB(Tag, "type");
 
-   if ((type) AND (StrMatch("text/css", type) != ERR_Okay)) {
+   if ((type) and (StrMatch("text/css", type) != ERR_Okay)) {
       log.warning("Unsupported stylesheet '%s'", type);
       return ERR_NoSupport;
    }
@@ -763,7 +1658,7 @@ static ERROR xtag_style(objSVG *Self, objXML *XML, XMLTag *Tag)
 // When a use element is encountered, it looks for the associated symbol ID and then processes the XML child tags that
 // belong to it.
 
-static void xtag_symbol(objSVG *Self, objXML *XML, XMLTag *Tag)
+static void xtag_symbol(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    log.traceBranch("Tag: %p", Tag);
@@ -777,11 +1672,11 @@ static void xtag_symbol(objSVG *Self, objXML *XML, XMLTag *Tag)
 ** Most vector shapes can be morphed to the path of another vector.
 */
 
-static void xtag_morph(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
+static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Parent) OR (Parent->ClassID != ID_VECTOR)) {
+   if ((!Parent) or (Parent->ClassID != ID_VECTOR)) {
       log.traceWarning("Unable to apply morph to non-vector parent object.");
       return;
    }
@@ -811,13 +1706,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
             break;
 
          case SVF_ALIGN:
-            if (!StrCompare("xMin", val, 4, 0)) { flags |= VMF_X_MIN; val += 4; }
-            else if (!StrCompare("xMid", val, 4, 0)) { flags |= VMF_X_MID; val += 4; }
-            else if (!StrCompare("xMax", val, 4, 0)) { flags |= VMF_X_MAX; val += 4; }
-            while ((*val) AND (*val <= 0x20)) val++;
-            if (!StrCompare("yMin", val, 4, 0)) { flags |= VMF_Y_MIN; val += 4; }
-            else if (!StrCompare("yMid", val, 4, 0)) { flags |= VMF_Y_MID; val += 4; }
-            else if (!StrCompare("yMax", val, 4, 0)) { flags |= VMF_Y_MAX; val += 4; }
+            flags |= parse_aspect_ratio(val);
             break;
       }
    }
@@ -829,8 +1718,13 @@ static void xtag_morph(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
 
    // Find the matching element with matching ID
 
-   svgID *id = find_href(Self, ref);
-   if (!id) {
+   auto uri = uri_name(ref);
+   if (uri.empty()) {
+      log.warning("Invalid URI string '%s' at line %d", ref, Tag->LineNo);
+      return;
+   }
+
+   if (!Self->IDs.contains(uri)) {
       log.warning("Unable to find element '%s' referenced at line %d", ref, Tag->LineNo);
       return;
    }
@@ -843,7 +1737,7 @@ static void xtag_morph(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
       }
    }
 
-   XMLTag *tagref = XML->Tags[id->TagIndex];
+   XMLTag *tagref = XML->Tags[Self->IDs[uri].TagIndex];
 
    CLASSID class_id = 0;
    switch (StrHash(tagref->Attrib[0].Name, FALSE)) {
@@ -868,11 +1762,11 @@ static void xtag_morph(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
       OBJECTPTR shape;
       svgState state;
       reset_state(&state);
-      process_shape(Self, class_id, XML, &state, tagref, &Self->Scene->Head, &shape);
+      process_shape(Self, class_id, XML, &state, tagref, Self->Scene, &shape);
       SetPointer(Parent, FID_Morph, shape);
       if (transvector) SetPointer(Parent, FID_Transition, transvector);
       SetLong(Parent, FID_MorphFlags, flags);
-      scAddDef(Self->Scene, id->ID, shape);
+      scAddDef(Self->Scene, uri.c_str(), shape);
    }
 }
 
@@ -883,13 +1777,14 @@ static void xtag_morph(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
 // non-exposed DOM tree which had the 'use' element as its parent and all of the 'use' element's ancestors as its
 // higher-level ancestors.
 
-static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent)
+static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
    CSTRING ref = NULL;
 
-   for (LONG a=1; (a < Tag->TotalAttrib) AND (!ref); a++) {
+   for (LONG a=1; (a < Tag->TotalAttrib) and (!ref); a++) {
       switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
+         case SVF_HREF: // SVG2
          case SVF_XLINK_HREF: ref = Tag->Attrib[a].Value; break;
       }
    }
@@ -901,25 +1796,25 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
 
    // Find the matching element with matching ID
 
-   svgID *id = find_href(Self, ref);
-   if (!id) {
+   auto ti = find_href_tag(Self, ref);
+   if (ti IS -1) {
       log.warning("Unable to find element '%s'", ref);
       return;
    }
 
    OBJECTPTR vector = NULL;
-   XMLTag *tagref = XML->Tags[id->TagIndex];
+   auto tagref = XML->Tags[ti];
 
    svgState state = *State;
    set_state(&state, Tag); // Apply all attribute values to the current state.
 
-   if ((!StrMatch("symbol", tagref->Attrib->Name)) OR (!StrMatch("svg", tagref->Attrib->Name))) {
+   if ((!StrMatch("symbol", tagref->Attrib->Name)) or (!StrMatch("svg", tagref->Attrib->Name))) {
       // SVG spec requires that we create a VectorGroup and then create a Viewport underneath that.  However if there
       // are no attributes to apply to the group then there is no sense in creating an empty one.
 
       OBJECTPTR group;
-      UBYTE need_group = FALSE;
-      for (LONG a=1; (a < Tag->TotalAttrib) AND (!need_group); a++) {
+      bool need_group = false;
+      for (LONG a=1; (a < Tag->TotalAttrib) and (!need_group); a++) {
          switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
             case SVF_X: case SVF_Y: case SVF_WIDTH: case SVF_HEIGHT: break;
             default: need_group = TRUE; break;
@@ -934,15 +1829,11 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
          }
       }
 
-
-
-
-
       if (NewObject(ID_VECTORVIEWPORT, 0, &vector)) return;
       SetOwner(vector, Parent);
       SetFields(vector, FID_Width|TPERCENT|TDOUBLE, 100.0, FID_Height|TPERCENT|TDOUBLE, 100.0, TAGEND); // SVG default
 
-      // Apply attributes from 'use'
+      // Apply attributes from 'use' to the group and/or viewport
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val;
          if (!(val = Tag->Attrib[a].Value)) continue;
@@ -993,14 +1884,15 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
 
       // Add all child elements in <symbol> to the viewport.
 
-      if ((id->TagIndex >= 0) AND (id->TagIndex < XML->TagCount)) {
+      if ((ti >= 0) and (ti < XML->TagCount)) {
          log.traceBranch("Processing all child elements within %s", ref);
-         process_children(Self, XML, &state, XML->Tags[id->TagIndex]->Child, vector);
+         process_children(Self, XML, &state, XML->Tags[ti]->Child, vector);
       }
-      else log.trace("Element TagIndex %d is out of range.", id->TagIndex);
+      else log.trace("Element TagIndex %d is out of range.", ti);
    }
-   else { // SVG requires that the 'use' element is converted to a 'g' and that the 'use' attributes are applied to it.
-      if (!NewObject(ID_VECTORGROUP, 0, &vector)) {
+   else {
+      // Rather than creating a vanilla group with a child viewport, this optimal approach creates the viewport only.
+      if (!NewObject(ID_VECTORVIEWPORT, 0, &vector)) {
          SetOwner(vector, Parent);
          apply_state(&state, vector);
          process_attrib(Self, XML, Tag, vector); // Apply 'use' attributes to the group.
@@ -1008,14 +1900,14 @@ static void xtag_use(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
          if (acInit(vector) != ERR_Okay) { acFree(vector); return; }
 
          OBJECTPTR sibling = NULL;
-         xtag_default(Self, StrHash(tagref->Attrib->Name, FALSE), XML, &state, tagref, vector, &sibling);
+         xtag_default(Self, XML, &state, tagref, vector, &sibling);
       }
    }
 }
 
 //****************************************************************************
 
-static void xtag_group(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static void xtag_group(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1034,10 +1926,7 @@ static void xtag_group(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, 
    OBJECTPTR sibling = NULL;
    for (auto child = Tag->Child; child; child=child->Next) {
       if (child->Attrib->Name) {
-         ULONG hash = StrHash(child->Attrib->Name, FALSE);
-         switch(hash) {
-            default: xtag_default(Self, hash, XML, &state, child, group, &sibling);  break;
-         }
+         xtag_default(Self, XML, &state, child, group, &sibling);
       }
    }
 
@@ -1050,7 +1939,7 @@ static void xtag_group(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, 
 ** Refer to section 7.9 of the SVG Specification for more information.
 */
 
-static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
+static void xtag_svg(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, OBJECTPTR *Vector)
 {
    parasol::Log log(__FUNCTION__);
    LONG a;
@@ -1101,37 +1990,29 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
 
          case SVF_X: set_double(viewport, FID_X, val); break;
          case SVF_Y: set_double(viewport, FID_Y, val); break;
-         case SVF_WIDTH: set_double(viewport, FID_Width, val); break;
-         case SVF_HEIGHT: set_double(viewport, FID_Height, val); break;
-         case SVF_PRESERVEASPECTRATIO: {
-            LONG flags = 0;
-            while ((*val) AND (*val <= 0x20)) val++;
-            if (!StrMatch("none", val)) flags = ARF_NONE;
-            else {
-               if (!StrCompare("xMin", val, 4, 0)) { flags |= ARF_X_MIN; val += 4; }
-               else if (!StrCompare("xMid", val, 4, 0)) { flags |= ARF_X_MID; val += 4; }
-               else if (!StrCompare("xMax", val, 4, 0)) { flags |= ARF_X_MAX; val += 4; }
 
-               if (!StrCompare("yMin", val, 4, 0)) { flags |= ARF_Y_MIN; val += 4; }
-               else if (!StrCompare("yMid", val, 4, 0)) { flags |= ARF_Y_MID; val += 4; }
-               else if (!StrCompare("yMax", val, 4, 0)) { flags |= ARF_Y_MAX; val += 4; }
-
-               while ((*val) AND (*val <= 0x20)) val++;
-
-               if (!StrCompare("meet", val, 4, 0)) { flags |= ARF_MEET; }
-               else if (!StrCompare("slice", val, 5, 0)) { flags |= ARF_SLICE; }
-            }
-            SetLong(viewport, FID_AspectRatio, flags);
+         case SVF_WIDTH:
+            set_double(viewport, FID_Width, val);
+            SetLong(viewport, FID_OverflowX, VOF_HIDDEN);
             break;
-         }
+
+         case SVF_HEIGHT:
+            set_double(viewport, FID_Height, val);
+            SetLong(viewport, FID_OverflowY, VOF_HIDDEN);
+            break;
+
+         case SVF_PRESERVEASPECTRATIO:
+            SetLong(viewport, FID_AspectRatio, parse_aspect_ratio(val));
+            break;
 
          case SVF_ID:
             SetString(viewport, FID_ID, val);
             add_id(Self, Tag, val);
+            SetName(viewport, val);
             break;
 
          case SVF_ENABLE_BACKGROUND:
-            if ((!StrMatch("true", val)) OR (!StrMatch("1", val))) SetLong(viewport, FID_EnableBkgd, TRUE);
+            if ((!StrMatch("true", val)) or (!StrMatch("1", val))) SetLong(viewport, FID_EnableBkgd, TRUE);
             break;
 
          case SVF_XMLNS: break; // Ignored
@@ -1154,7 +2035,7 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
          default: {
             // Check if this was a reference to some other namespace (ignorable).
             LONG i;
-            for (i=0; val[i] AND (val[i] != ':'); i++);
+            for (i=0; val[i] and (val[i] != ':'); i++);
             if (val[i] != ':') {
                log.warning("Failed to parse attrib '%s' in <svg/> tag @ line %d", Tag->Attrib[a].Name, Tag->LineNo);
             }
@@ -1167,13 +2048,11 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
    OBJECTPTR sibling = NULL;
    for (auto child=Tag->Child; child; child=child->Next) {
       if (child->Attrib->Name) {
-         ULONG hash = StrHash(child->Attrib->Name, FALSE);
+         log.traceBranch("Processing <%s/>", child->Attrib->Name);
 
-         log.trace("Processing <%s/>", child->Attrib->Name);
-
-         switch(hash) {
+         switch(StrHash(child->Attrib->Name, FALSE)) {
             case SVF_DEFS: xtag_defs(Self, XML, &state, child, viewport); break;
-            default:       xtag_default(Self, hash, XML, &state, child, viewport, &sibling);  break;
+            default:       xtag_default(Self, XML, &state, child, viewport, &sibling);  break;
          }
       }
    }
@@ -1186,7 +2065,7 @@ static void xtag_svg(objSVG *Self, objXML *XML, svgState *State, XMLTag *Tag, OB
 // <animateTransform attributeType="XML" attributeName="transform" type="rotate" from="0,150,150" to="360,150,150"
 //   begin="0s" dur="5s" repeatCount="indefinite"/>
 
-static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_animatetransform(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
 {
    parasol::Log log(__FUNCTION__);
    svgAnimation anim;
@@ -1195,7 +2074,7 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, XMLTag *Tag, OBJEC
 
    ClearMemory(&anim, sizeof(anim));
    anim.Replace = FALSE;
-   anim.TargetVector = Parent->UniqueID;
+   anim.TargetVector = Parent->UID;
 
    CSTRING value;
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -1275,11 +2154,11 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, XMLTag *Tag, OBJEC
          // Similar to from and to, this is a series of values that are interpolated over the time line.
          case SVF_VALUES: {
             LONG s, v = 0;
-            while ((*value) AND (v < MAX_VALUES)) {
+            while ((*value) and (v < MAX_VALUES)) {
                STRING copy;
-               while ((*value) AND (*value <= 0x20)) value++;
+               while ((*value) and (*value <= 0x20)) value++;
                CSTRING str = value;
-               for (s=0; (str[s]) AND (str[s] != ';'); s++);
+               for (s=0; (str[s]) and (str[s] != ';'); s++);
                if (!AllocMemory(s+1, MEM_STRING, &copy, NULL)) {
                   CopyMemory(str, copy, s);
                   copy[s] = 0;
@@ -1341,7 +2220,7 @@ static ERROR xtag_animatetransform(objSVG *Self, objXML *XML, XMLTag *Tag, OBJEC
 //****************************************************************************
 // <animateMotion from="0,0" to="100,100" dur="4s" fill="freeze"/>
 
-static ERROR xtag_animatemotion(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Parent)
+static ERROR xtag_animatemotion(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
 {
    Self->Animated = TRUE;
 
@@ -1372,7 +2251,7 @@ static ERROR xtag_animatemotion(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPT
 
 //****************************************************************************
 
-static void process_attrib(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Vector)
+static void process_attrib(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Vector)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1383,18 +2262,16 @@ static void process_attrib(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Vec
 
       {
          LONG j;
-         for (j=0; Tag->Attrib[t].Name[j] AND (Tag->Attrib[t].Name[j] != ':'); j++);
+         for (j=0; Tag->Attrib[t].Name[j] and (Tag->Attrib[t].Name[j] != ':'); j++);
          if (Tag->Attrib[t].Name[j] IS ':') continue;
       }
 
-      ULONG hash = StrHash(Tag->Attrib[t].Name, FALSE);
+      log.trace("%s = %.40s", Tag->Attrib[t].Name, Tag->Attrib[t].Value);
 
-      log.trace("%s | %.8x = %.40s", Tag->Attrib[t].Name, hash, Tag->Attrib[t].Value);
-
-      // Analyse the value to determine if it is a string or number
-
-      if (set_property(Self, Vector, hash, XML, Tag, Tag->Attrib[t].Value)) {
-         log.warning("Failed to set field '%s' with '%s' of %s", Tag->Attrib[t].Name, Tag->Attrib[t].Value, Vector->Class->ClassName);
+      if (auto error = set_property(Self, Vector, StrHash(Tag->Attrib[t].Name, false), XML, Tag, Tag->Attrib[t].Value)) {
+         if (Vector->SubID != ID_VECTORGROUP) {
+            log.warning("Failed to set field '%s' with '%s' in %s; Error %s", Tag->Attrib[t].Name, Tag->Attrib[t].Value, Vector->Class->ClassName, GetErrorMsg(error));
+         }
       }
    }
 }
@@ -1402,7 +2279,7 @@ static void process_attrib(objSVG *Self, objXML *XML, XMLTag *Tag, OBJECTPTR Vec
 //****************************************************************************
 // Apply all attributes in a rule to a target tag.
 
-static void apply_rule(objSVG *Self, objXML *XML, KatanaArray *Properties, XMLTag *Tag)
+static void apply_rule(extSVG *Self, objXML *XML, KatanaArray *Properties, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1493,7 +2370,7 @@ static void apply_rule(objSVG *Self, objXML *XML, KatanaArray *Properties, XMLTa
 //****************************************************************************
 // Scan and apply all stylesheet selectors to the loaded XML document.
 
-static void process_rule(objSVG *Self, objXML *XML, KatanaRule *Rule)
+static void process_rule(extSVG *Self, objXML *XML, KatanaRule *Rule)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1571,13 +2448,13 @@ static void process_rule(objSVG *Self, objXML *XML, KatanaRule *Rule)
 
 //****************************************************************************
 
-static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XML, XMLTag *Tag, CSTRING StrValue)
+static ERROR set_property(extSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XML, const XMLTag *Tag, CSTRING StrValue)
 {
    parasol::Log log(__FUNCTION__);
    DOUBLE num;
 
    // Ignore stylesheet attributes
-   if ((Hash IS SVF_CLASS) OR (Hash IS SVF_ID)) return ERR_Okay;
+   if (Hash IS SVF_CLASS) return ERR_Okay;
 
    switch(Vector->SubID) {
       case ID_VECTORVIEWPORT: {
@@ -1843,7 +2720,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
             case SVF_SPIRAL: field_id = FID_Spiral; break;
             case SVF_REPEAT: field_id = FID_Repeat; break;
             case SVF_CLOSE:
-               if ((!StrMatch("true", StrValue)) OR (!StrMatch("1", StrValue))) SetLong(Vector, FID_Close, TRUE);
+               if ((!StrMatch("true", StrValue)) or (!StrMatch("1", StrValue))) SetLong(Vector, FID_Close, TRUE);
                else SetLong(Vector, FID_Close, FALSE);
                break;
          }
@@ -1877,11 +2754,21 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_Y2: field_id = FID_Y2; break;
       case SVF_WIDTH:  field_id = FID_Width; break;
       case SVF_HEIGHT: field_id = FID_Height; break;
+
       case SVF_TRANSITION: {
          OBJECTPTR trans = NULL;
          if (!scFindDef(Self->Scene, StrValue, &trans)) SetPointer(Vector, FID_Transition, trans);
          else log.warning("Unable to find element '%s' referenced at line %d", StrValue, Tag->LineNo);
          break;
+      }
+
+      case SVF_COLOUR_INTERPOLATION:
+      case SVF_COLOR_INTERPOLATION: {
+         if (!StrMatch("auto", StrValue)) SetLong(Vector, FID_ColourSpace, VCS_SRGB);
+         else if (!StrMatch("sRGB", StrValue)) SetLong(Vector, FID_ColourSpace, VCS_SRGB);
+         else if (!StrMatch("linearRGB", StrValue)) SetLong(Vector, FID_ColourSpace, VCS_LINEAR_RGB);
+         else if (!StrMatch("inherit", StrValue)) SetLong(Vector, FID_ColourSpace, VCS_INHERIT);
+         else log.warning("Invalid color-interpolation value '%s' at line %d", StrValue, Tag->LineNo);
       }
 
       case SVF_STROKE_LINEJOIN: {
@@ -1943,6 +2830,8 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_ID:
          SetString(Vector, FID_ID, StrValue);
          add_id(Self, Tag, StrValue);
+         scAddDef(Self->Scene, StrValue, Vector);
+         SetName(Vector, StrValue);
          break;
 
       case SVF_NUMERIC_ID:       SetString(Vector, FID_NumericID, StrValue); break;
@@ -1960,12 +2849,20 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_COLOR:            SetString(Vector, FID_Fill, StrValue); break;
       case SVF_FILL:             SetString(Vector, FID_Fill, StrValue); break;
       case SVF_TRANSFORM: {
-         if (Vector->ClassID IS ID_VECTOR) vecTransform((objVector *)Vector, StrValue);
+         if (Vector->ClassID IS ID_VECTOR) {
+            VectorMatrix *matrix;
+            if (!vecNewMatrix((objVector *)Vector, &matrix)) {
+               vecParseTransform(matrix, StrValue);
+            }
+            else log.warning("Failed to create vector transform matrix.");
+         }
          break;
       }
       case SVF_STROKE_DASHARRAY: SetString(Vector, FID_DashArray, StrValue); break;
       case SVF_OPACITY:          SetString(Vector, FID_Opacity, StrValue); break;
       case SVF_FILL_OPACITY:     SetDouble(Vector, FID_FillOpacity, StrToFloat(StrValue)); break;
+      case SVF_SHAPE_RENDERING:  SetLong(Vector, FID_PathQuality, shape_rendering_to_render_quality(StrValue)); break;
+
       case SVF_STROKE_WIDTH:            field_id = FID_StrokeWidth; break;
       case SVF_STROKE_OPACITY:          SetString(Vector, FID_StrokeOpacity, StrValue); break;
       case SVF_STROKE_MITERLIMIT:       SetString(Vector, FID_MiterLimit, StrValue); break;
@@ -1974,13 +2871,13 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
       case SVF_STROKE_DASHOFFSET:       field_id = FID_DashOffset; break;
 
       case SVF_MASK: {
-         svgID *id = find_href(Self, StrValue);
-         if (!id) {
+         auto ti = find_href_tag(Self, StrValue);
+         if (ti IS -1) {
             log.warning("Unable to find mask '%s'", StrValue);
             return ERR_Search;
          }
 
-         // We need to add code that converts the content of a <mask> tag into a VectorFilter, because masking can be
+         // TODO: We need to add code that converts the content of a <mask> tag into a VectorFilter, because masking can be
          // achieved through filters.  There is no need for a dedicated masking class for this task.
          break;
       }
@@ -1997,7 +2894,7 @@ static ERROR set_property(objSVG *Self, OBJECTPTR Vector, ULONG Hash, objXML *XM
          break;
       }
 
-      default: return ERR_Failed;
+      default: return ERR_UnsupportedField;
    }
 
    if (field_id) {

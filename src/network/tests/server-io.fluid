@@ -7,6 +7,7 @@ This test checks connectivity and I/O with a server by sending a simple HTTP req
 //=====================================================================================================================
 
 function testHTTP()
+   local proc = processing.new({ timeout = 5.0 })
    local netsocket
    netsocket = obj.new('netsocket', {
       feedback = function(Socket, Client, State)
@@ -22,14 +23,14 @@ function testHTTP()
 
          elseif (string.lower(state) == 'disconnected') then
             print('Disconnected from server.')
-            mSys.SendMessage(0, MSGID_QUIT)
+            proc.signal()
          else
             print('Unknown netsocket state: ' .. state)
          end
       end,
       incoming = function(Socket, Script)
          print('Incoming data...')
-         local buffer = string.rep(nil, 1024)
+         local buffer = string.rep(' ', 1024)
          local err, read_len = netsocket.acRead(buffer)
          if (err == ERR_Okay) then
             print(buffer:sub(1,read_len))
@@ -37,13 +38,12 @@ function testHTTP()
       end
    } )
 
-   if (netsocket) then
-      netsocket.mtConnect('parasol.ws', 80)
-      local elapsed, err = processMessages(5000)
-      if (err == ERR_TimeOut) then error('Failed to complete the test (timeout).') end
-   else
-      error('Failed to create NetSocket object.')
-   end
+   assert(netsocket, 'Failed to create NetSocket object.')
+
+   netsocket.mtConnect('parasol.ws', 80)
+
+   local err = proc.sleep()
+   assert(err == ERR_Okay, 'Failed to complete the test: ' .. mSys.GetErrorMsg(err))
 end
 
 //=====================================================================================================================

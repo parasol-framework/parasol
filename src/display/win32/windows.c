@@ -1,12 +1,12 @@
-
 // Cygwin users: libuuid-devel will interfere with the resolution of IID_Unknown if installed.
 // Removing lib/libuuid.la and lib/uuid.dll.a will resolve the compilation issue.
 
+//#define DEBUG
 //#define DBGMSG
 //#define DBGMOUSE
 
-#define _WIN32_WINNT 0x0500 // Allow Windows 2000 function calls
-#define WINVER 0x0500
+#define _WIN32_WINNT 0x0600 // Allow Windows Vista function calls
+#define WINVER 0x0600
 
 #include <parasol/system/keys.h>
 #include <windows.h>
@@ -23,8 +23,6 @@
 #include <math.h>
 
 #include "windows.h"
-
-#define MSG(...) //fprintf(stderr, __VA_ARGS__)
 
 typedef unsigned char UBYTE;
 
@@ -59,8 +57,31 @@ struct winextra {
 #define WM_ICONNOTIFY (WM_USER + 101)
 #define ID_TRAY 100
 
+enum {
+   CT_DATA=0,
+   CT_AUDIO,
+   CT_IMAGE,
+   CT_FILE,
+   CT_OBJECT,
+   CT_TEXT,
+   CT_END      // End
+};
+
+#define CLIP_DATA    (1<<CT_DATA)   // 1
+#define CLIP_AUDIO   (1<<CT_AUDIO)  // 2
+#define CLIP_IMAGE   (1<<CT_IMAGE)  // 4
+#define CLIP_FILE    (1<<CT_FILE)   // 8
+#define CLIP_OBJECT  (1<<CT_OBJECT) // 16
+#define CLIP_TEXT    (1<<CT_TEXT)   // 32
+
 #define HIDA_GetPIDLFolder(pida) (LPCITEMIDLIST)(((LPBYTE)pida)+(pida)->aoffset[0])
 #define HIDA_GetPIDLItem(pida, i) (LPCITEMIDLIST)(((LPBYTE)pida)+(pida)->aoffset[i+1])
+
+#ifdef DEBUG
+#define MSG(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define MSG(...)
+#endif
 
 static HANDLE glHeap = NULL;
 static BYTE glOleInit = 0;
@@ -77,8 +98,7 @@ enum { // From core.h
    DATA_REQUEST,   // Make a request for item data
    DATA_RECEIPT,   // Receipt for item data, in response to an earlier request
    DATA_FILE,      // File location (the data will reflect the complete file path)
-   DATA_CONTENT,   // Document content (between XML tags) - sent by document objects only
-   DATA_INPUT_READY // Device input that has been transformed into user input
+   DATA_CONTENT    // Document content (between XML tags) - sent by document objects only
 };
 
 typedef struct rkDropTarget {
@@ -115,6 +135,13 @@ void RepaintWindow(int, int, int, int, int);
 void KillMessageHook(void);
 static LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
 
+void report_windows_clip_text(void *);
+void report_windows_clip_utf16(void *);
+void report_windows_files(LPIDA, int);
+void report_windows_hdrop(LPIDA, int);
+
+void winCopyClipboard(void);
+
 static HWND glMainScreen = 0;
 static char glCursorEntry = FALSE;
 static HCURSOR glDefaultCursor = 0;
@@ -122,6 +149,13 @@ static HWND glDeferredActiveWindow = 0;
 char glTrayIcon = FALSE, glTaskBar = TRUE, glStickToFront = FALSE;
 struct WinCursor *glCursors = 0;
 HCURSOR glCurrentCursor = 0;
+static BYTE glScreenClassInit = 0;
+static DWORD glIgnoreClip = 0;
+static UINT fmtShellIDList = 0;
+static UINT fmtPasteSucceeded = 0;
+static UINT fmtPerformedDropEffect = 0;
+static UINT fmtPreferredDropEffect = 0;
+static UINT fmtParasolClip = 0;
 
 #ifdef DBGMSG
 static struct {
@@ -224,6 +258,18 @@ void winGetCoords(HWND Window, int *WinX, int *WinY, int *WinWidth, int *WinHeig
       if (ClientWidth)  *ClientWidth  = 0;
       if (ClientHeight) *ClientHeight = 0;
    }
+}
+
+//****************************************************************************
+
+HDC winGetDC(HWND Window)
+{
+   return GetDC(Window);
+}
+
+void winReleaseDC(HWND Window, HDC DC)
+{
+   ReleaseDC(Window, DC);
 }
 
 //****************************************************************************
@@ -433,7 +479,7 @@ void winInitCursors(struct WinCursor *Cursor, int Total)
 
 //****************************************************************************
 
-void winSetCursorPos(int X, int Y)
+void winSetCursorPos(double X, double Y)
 {
    POINT point;
    if (glMainScreen) {
@@ -618,8 +664,7 @@ static void HandleWheel(HWND window, WPARAM wparam, LPARAM lparam)
 
    int surface_id;
    if ((surface_id = winLookupSurfaceID(window))) {
-      double delta;
-      delta = -((FLOAT)GET_WHEEL_DELTA_WPARAM(wparam) / (FLOAT)WHEEL_DELTA) * 3;
+      double delta = -((DOUBLE)GET_WHEEL_DELTA_WPARAM(wparam) / (DOUBLE)WHEEL_DELTA) * 3.0;
       MsgWheelMovement(surface_id, delta);
    }
 }
@@ -676,9 +721,9 @@ static void HandleKeyPress(WPARAM value)
          }
          else {
             GetWindowRect(GetDesktopWindow(), &desktop);
-         	 width = desktop.right - desktop.left + (left * 2);
-         	 height = (desktop.bottom - desktop.top) + ((winrect.bottom - winrect.top) - (client.bottom - client.top));
-         	 ShowWindow(glMainScreen, SW_RESTORE);
+            width = desktop.right - desktop.left + (left * 2);
+            height = (desktop.bottom - desktop.top) + ((winrect.bottom - winrect.top) - (client.bottom - client.top));
+            ShowWindow(glMainScreen, SW_RESTORE);
             SetWindowPos(glMainScreen, HWND_TOPMOST, -left, -top, width, height, 0);
          }
       }
@@ -713,7 +758,7 @@ static void HandleKeyPress(WPARAM value)
       if ((value >= 0x60) && (value < 0x70)) flags |= KQ_NUM_PAD;
       if (LOWORD(GetKeyState(VK_CAPITAL)) IS 1) flags |= KQ_CAPS_LOCK;
       if (keyconv[value]) MsgKeyPress(flags|glQualifiers, keyconv[value], printable[0]);
-      else MSG("No equivalent key value for MS key %d.\n", value);
+      else MSG("No equivalent key value for MS key %d.\n", (int)value);
    }
    else MSG("GetKeyboardState() failed.\n");
 }
@@ -758,17 +803,32 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
    int i;
    for (i=0; wincmd[i].code; i++) {
       if (msgcode IS wincmd[i].code) {
-         fprintf(stderr, "WinProc: %s, $%.8x, $%.8x, Window: %p\n", wincmd[i].name, wParam, (int)lParam, window);
+         fprintf(stderr, "WinProc: %s, $%.8x, $%.8x, Window: %p\n", wincmd[i].name, (int)wParam, (int)lParam, window);
          break;
       }
    }
 
    if (!wincmd[i].code) {
-      fprintf(stderr, "WinProc: %d, $%.8x, $%.8x, Window: %p\n", msgcode, wParam, (int)lParam, window);
+      fprintf(stderr, "WinProc: %d, $%.8x, $%.8x, Window: %p\n", msgcode, (int)wParam, (int)lParam, window);
    }
 #endif
 
    switch (msgcode) {
+      case WM_CLIPBOARDUPDATE:
+         // Clipboard content has changed by some other application.  NOTE: It is common for some
+         // applications to open and close the clipboard multiple times in succession, and this
+         // causes multiple event triggers.  This problem is combated using intervals.
+
+         // TODO: A better methodology would be to use a 1 second timer delay to process the clipboard
+
+         if (GetTickCount() - glIgnoreClip < 2000) {
+            return 1;
+         }
+         else {
+            winCopyClipboard();
+            return 0;
+         }
+
       case WM_TIMER:
          MsgTimer(); // Calls ProcessMessages()
          return 0;
@@ -838,7 +898,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          return MA_NOACTIVATE;
 
       case WM_ACTIVATEAPP:
-         MSG("WM_ACTIVATEAPP: Focus: %d\n", wParam);
+         MSG("WM_ACTIVATEAPP: Focus: %d\n", (int)wParam);
          if (wParam) {
             // We have the focus
             MsgFocusState(winLookupSurfaceID(window), TRUE);
@@ -899,6 +959,12 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          int wx, wy, wwidth, wheight, cx, cy;
          winGetCoords(window, &wx, &wy, &wwidth, &wheight, &cx, &cy, &cwidth, &cheight);
          MsgResizedWindow(winLookupSurfaceID(window), wx, wy, wwidth, wheight, cx, cy, cwidth, cheight);
+         return 0;
+      }
+
+      case WM_WINDOWPOSCHANGING: {
+         LPWINDOWPOS winpos = (LPWINDOWPOS)lParam;
+         winpos->flags |= SWP_NOCOPYBITS|SWP_NOREDRAW;
          return 0;
       }
 
@@ -1082,6 +1148,12 @@ int winCreateScreenClass(void)
 {
    WNDCLASSEX winclass;
 
+   if (!fmtShellIDList) fmtShellIDList = RegisterClipboardFormat(CFSTR_SHELLIDLIST);
+   if (!fmtPasteSucceeded) fmtPasteSucceeded = RegisterClipboardFormat(CFSTR_PASTESUCCEEDED);
+   if (!fmtPerformedDropEffect) fmtPerformedDropEffect = RegisterClipboardFormat(CFSTR_PERFORMEDDROPEFFECT);
+   if (!fmtPreferredDropEffect) fmtPreferredDropEffect = RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT);
+   if (!fmtParasolClip) fmtParasolClip = RegisterClipboardFormat("Parasol");
+
    if (!glCancelAutoPlayMsg) {
       glCancelAutoPlayMsg = RegisterWindowMessage(TEXT("QueryCancelAutoPlay"));
    }
@@ -1101,7 +1173,17 @@ int winCreateScreenClass(void)
    winclass.lpszClassName = "ScreenClass";
    winclass.hIconSm       = NULL;
 
-   if (RegisterClassEx(&winclass)) return 1;
+   if (RegisterClassEx(&winclass)) {
+      glScreenClassInit = 1;
+
+      if (!glOleInit) {
+         HRESULT result = OleInitialize(NULL);
+         if (result IS S_OK) glOleInit = 1; // 1 = Successful initialisation
+         else if (result IS S_FALSE) glOleInit = 2; // 2 = Attempted initialisation failed.
+      }
+
+      return 1;
+   }
    else return 0;
 }
 
@@ -1225,6 +1307,8 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
    SetWindowLong(Window, WE_BORDERLESS, Borderless);
 
    if ((Desktop) AND (!glMainScreen)) glMainScreen = Window;
+
+   AddClipboardFormatListener(Window);
 
    winInitDragDrop(Window);
 
@@ -1593,28 +1677,6 @@ LONG winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphama
 void winGetError(LONG Error, char *Buffer, LONG BufferSize)
 {
    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, Error, 0, Buffer, BufferSize, 0);
-}
-
-//****************************************************************************
-
-void winDrawEllipse(HDC hdc, LONG left, LONG top, LONG bottom, LONG right, LONG fill, UBYTE *rgb)
-{
-   HPEN pen, oldpen;
-   HBRUSH brush, oldbrush;
-
-   if ((pen = CreatePen(PS_SOLID, 1, RGB(rgb[0], rgb[1], rgb[2])))) {
-      if ((oldpen = SelectObject(hdc, pen))) {
-         if ((brush = CreateSolidBrush(RGB(rgb[0],rgb[1],rgb[2])))) {
-            if ((oldbrush = SelectObject(hdc, brush))) {
-               Ellipse(hdc, left, top, bottom, right);
-               SelectObject(hdc, oldbrush);
-            }
-            DeleteObject(brush);
-         }
-         SelectObject(hdc, oldpen);
-      }
-      DeleteObject(pen);
-   }
 }
 
 //****************************************************************************
@@ -2334,27 +2396,11 @@ static LONG winInitDragDrop(HWND Window)
       glDropTarget->tb_pDragFile = NULL;
    }
 
-   HRESULT result = OleInitialize(NULL);
-   if (result IS S_OK) glOleInit = 1;
-   else if (result IS S_FALSE) glOleInit = 2;
-
    if (RegisterDragDrop(Window, &glDropTarget->idt) != S_OK) {
       MSG("RegisterDragDrop() failed.\n");
    }
 
    return ERR_Okay;
-}
-
-/*****************************************************************************
-** Construction
-*/
-
-void winFreeDragDrop(void)
-{
-   if (glDropTarget) {
-      RKDT_Release(glDropTarget);
-      glDropTarget = NULL;
-   }
 }
 
 /*****************************************************************************
@@ -2366,4 +2412,248 @@ int winGetData(char *Preference, struct WinDT **OutData, int *OutTotal)
    if ((!Preference) OR (!OutData) OR (!OutTotal)) return ERR_NullArgs;
    if (!glDropTarget) return ERR_Failed;
    return get_data(glDropTarget, Preference, OutData, OutTotal);
+}
+
+//*****************************************************************************
+
+void winClearClipboard(void)
+{
+   if (OpenClipboard(NULL)) {
+      EmptyClipboard();
+      CloseClipboard();
+   }
+}
+
+//*****************************************************************************
+// Called from clipAddFile(), clipAddText() etc
+
+int winAddClip(int Datatype, void *Data, int Size, int Cut)
+{
+   UINT format;
+   HGLOBAL hdata;
+   char * pdata;
+
+   MSG("winAddClip()\n");
+
+   switch(Datatype) {
+      case CLIP_DATA:   return ERR_NoSupport; break;
+      case CLIP_AUDIO:  format = CF_WAVE; break;
+      case CLIP_IMAGE:  format = CF_BITMAP; break;
+      case CLIP_FILE:   format = CF_HDROP; Size += sizeof(DROPFILES); break;
+      case CLIP_OBJECT: return ERR_NoSupport; break;
+      case CLIP_TEXT:   format = CF_UNICODETEXT; break;
+      default:
+         return ERR_NoSupport;
+   }
+
+   if (OpenClipboard(NULL)) {
+      int error;
+
+      EmptyClipboard();
+
+      if ((hdata = GlobalAlloc(GMEM_DDESHARE, Size))) {
+         if ((pdata = (char *)GlobalLock(hdata))) {
+            memcpy(pdata, Data, Size);
+            GlobalUnlock(hdata);
+
+            glIgnoreClip = GetTickCount();
+
+            SetClipboardData(format, hdata);
+            error = ERR_Okay;
+         }
+         else error = ERR_Lock;
+      }
+      else error = ERR_AllocMemory;
+
+      CloseClipboard();
+      return error;
+   }
+   else return ERR_Failed;
+
+   return ERR_NoSupport;
+}
+
+//*****************************************************************************
+
+void winGetClip(int Datatype)
+{
+   UINT format;
+
+   switch (Datatype) {
+      case CLIP_DATA:   return; break;
+      case CLIP_AUDIO:  format = CF_WAVE; break;
+      case CLIP_IMAGE:  format = CF_BITMAP; break;
+      case CLIP_FILE:   format = CF_HDROP; break;
+      case CLIP_OBJECT: return; break;
+      case CLIP_TEXT:   format = CF_UNICODETEXT; break;
+      default:
+         return;
+   }
+
+   GetClipboardData(CF_UNICODETEXT);
+}
+
+//*****************************************************************************
+// Data is incoming from the clipboard, either from other apps or our own.
+
+void winCopyClipboard(void)
+{
+   void *pdata;
+   IDataObject *pDataObj;
+   IEnumFORMATETC *pEnumFmt;
+   FORMATETC fmt;
+
+   if (!glOleInit) {
+      MSG("OLE not initialised.\n");
+      return;
+   }
+
+   MSG("winCopyClipboard()\n");
+
+   glIgnoreClip = GetTickCount(); // Needed to avoid automated successive calls to this function.
+
+   HRESULT result; // Other apps can block the clipboard, so we need to be able to reattempt access.
+	for (int attempt=0; attempt < 8; attempt++) {
+      result = OleGetClipboard(&pDataObj);
+      if (result IS S_OK) break;
+      Sleep(1);
+	}
+
+   if (result IS S_OK) {
+      // Enumerate the formats supported by this clip.  It is assumed that the formats
+      // that are encountered first have priority.
+
+      if (pDataObj->lpVtbl->EnumFormatEtc(pDataObj, DATADIR_GET, &pEnumFmt) IS S_OK) {
+         while (pEnumFmt->lpVtbl->Next(pEnumFmt, 1, &fmt, NULL) IS S_OK) {
+            if (fmt.cfFormat IS CF_UNICODETEXT) {
+               FORMATETC fmt = { CF_UNICODETEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
+               STGMEDIUM stgm;
+               if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &stgm) IS S_OK) {
+                  if ((pdata = GlobalLock(stgm.hGlobal))) {
+                     report_windows_clip_utf16(pdata);
+                     GlobalUnlock(stgm.hGlobal);
+                  }
+                  ReleaseStgMedium(&stgm);
+               }
+               break;
+            }
+            else if ((fmt.cfFormat IS CF_TEXT) OR (fmt.cfFormat IS CF_OEMTEXT) OR (fmt.cfFormat IS CF_DSPTEXT)) {
+               FORMATETC fmt = { CF_TEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
+               STGMEDIUM stgm;
+               if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &stgm) IS S_OK) {
+                  if ((pdata = GlobalLock(stgm.hGlobal))) {
+                     report_windows_clip_utf16(pdata);
+                     GlobalUnlock(stgm.hGlobal);
+                  }
+                  ReleaseStgMedium(&stgm);
+               }
+               break;
+            }
+            else if (fmt.cfFormat IS CF_HDROP) {
+               FORMATETC fmt = { CF_HDROP, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
+               STGMEDIUM stgm, effect;
+               LPIDA pida;
+               DWORD *effect_data;
+               char cut_operation = 0;
+
+               if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &stgm) IS S_OK) {
+                  FORMATETC fmt = { fmtPreferredDropEffect, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
+                  if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &effect) IS S_OK) {
+                     if ((effect_data = (DWORD *)GlobalLock(effect.hGlobal))) {
+                        if (*effect_data IS DROPEFFECT_MOVE) cut_operation = 1;
+                        GlobalUnlock(effect.hGlobal);
+                     }
+                     ReleaseStgMedium(&effect);
+                  }
+
+                  if ((pida = (LPIDA)GlobalLock(stgm.hGlobal))) {
+                     report_windows_hdrop(pida, cut_operation);
+                     GlobalUnlock(stgm.hGlobal);
+                  }
+               }
+               break;
+            }
+            else if (fmt.cfFormat IS fmtShellIDList) {
+               // List of files found
+               FORMATETC fmt = { fmtShellIDList, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
+               STGMEDIUM stgm, effect;
+               LPIDA pida;
+               DWORD *effect_data;
+               char cut_operation = 0;
+
+               if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &stgm) IS S_OK) {
+                  FORMATETC fmt = { fmtPreferredDropEffect, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
+                  if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &effect) IS S_OK) {
+                     if ((effect_data = (DWORD *)GlobalLock(effect.hGlobal))) {
+                        if (*effect_data IS DROPEFFECT_MOVE) cut_operation = 1;
+                        GlobalUnlock(effect.hGlobal);
+                     }
+                     ReleaseStgMedium(&effect);
+                  }
+
+                  if ((pida = (LPIDA)GlobalLock(stgm.hGlobal))) {
+                     report_windows_files(pida, cut_operation);
+                     GlobalUnlock(stgm.hGlobal);
+                  }
+                  ReleaseStgMedium(&stgm);
+                }
+                break;
+            }
+         }
+         pEnumFmt->lpVtbl->Release(pEnumFmt);
+      }
+      else MSG("EnumFormatEtc() failed.\n");
+
+      pDataObj->lpVtbl->Release(pDataObj);
+   }
+   else MSG("OleGetClipboard() failed.\n");
+}
+
+//*****************************************************************************
+
+int winExtractFile(LPIDA pida, int Index, char *Result, int Size)
+{
+   TCHAR path[MAX_PATH];
+
+   if (Index >= (int)pida->cidl) return 0;
+
+   LPCITEMIDLIST list;
+   list = HIDA_GetPIDLFolder(pida);
+   if (SHGetPathFromIDList(list, path)) {
+      int pos, j;
+      for (pos=0; (path[pos]) AND (pos < Size-1); pos++) Result[pos] = path[pos];
+
+      list = HIDA_GetPIDLItem(pida, Index);
+      if (SHGetPathFromIDList(list, path)) {
+         for (j=0; path[j]; j++);
+         while ((j > 0) AND (path[j-1] != '/') AND (path[j-1] != '\\')) j--;
+
+         while ((path[j]) AND (pos < Size-1)) Result[pos++] = path[j++];
+         Result[pos] = 0;
+
+         return 1;
+      }
+      else return 0;
+   }
+   else return 0;
+}
+
+//*****************************************************************************
+
+void winTerminate(void)
+{
+   if (glDropTarget) {
+      RKDT_Release(glDropTarget);
+      glDropTarget = NULL;
+   }
+
+   if (glScreenClassInit) {
+      UnregisterClass("ScreenClass", GetModuleHandle(NULL));
+      glScreenClassInit = 0;
+   }
+
+   if (glOleInit IS 1) {
+      OleUninitialize();
+      glOleInit = 0;
+   }
 }

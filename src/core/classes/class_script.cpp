@@ -32,9 +32,9 @@ static ERROR SET_String(objScript *, CSTRING);
 
 INLINE CSTRING check_bom(CSTRING Value)
 {
-   if ((Value[0] IS 0xef) AND (Value[1] IS 0xbb) AND (Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
-   else if ((Value[0] IS 0xfe) AND (Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
-   else if ((Value[0] IS 0xff) AND (Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
+   if ((Value[0] IS 0xef) and (Value[1] IS 0xbb) and (Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
+   else if ((Value[0] IS 0xfe) and (Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
+   else if ((Value[0] IS 0xff) and (Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
    return Value;
 }
 
@@ -99,6 +99,63 @@ static ERROR SCRIPT_DerefProcedure(objScript *Self, struct scDerefProcedure *Arg
 /*****************************************************************************
 
 -METHOD-
+Callback: An internal method for managing callbacks.
+
+Private
+
+-INPUT-
+large ProcedureID: An identifier for the target procedure.
+cstruct(*ScriptArg) Args: Optional CSV string containing arguments to pass to the procedure.
+int TotalArgs: The total number of arguments in the Args parameter.
+&int Error: The error code returned from the script, if any.
+
+-ERRORS-
+Okay:
+Args:
+
+-END-
+
+*****************************************************************************/
+
+static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
+{
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+   if ((Args->TotalArgs < 0) or (Args->TotalArgs > 1024)) return log.warning(ERR_Args);
+
+   LARGE save_id = Self->ProcedureID;
+   CSTRING save_name = Self->Procedure;
+   Self->ProcedureID = Args->ProcedureID;
+   Self->Procedure = NULL;
+
+   const ScriptArg *saveargs = Self->ProcArgs;
+   Self->ProcArgs  = Args->Args;
+
+   LONG savetotal = Self->TotalArgs;
+   Self->TotalArgs = Args->TotalArgs;
+   auto saved_error = Self->Error;
+   auto saved_error_msg = Self->ErrorString;
+   Self->ErrorString = NULL;
+   Self->Error = ERR_Okay;
+
+   ERROR error = acActivate(Self);
+
+   Args->Error = Self->Error;
+   Self->Error = saved_error;
+   Self->ProcedureID = save_id;
+   Self->Procedure = save_name;
+   Self->ProcArgs  = saveargs;
+   Self->TotalArgs = savetotal;
+   if (Self->ErrorString) FreeResource(Self->ErrorString);
+   Self->ErrorString = saved_error_msg;
+
+   return error;
+}
+
+/*****************************************************************************
+
+-METHOD-
 Exec: Executes a procedure in the script.
 
 Use the Exec method to execute a named procedure in a script, optionally passing that procedure a series of arguments.
@@ -119,7 +176,7 @@ of ScriptArg structures.  The following example illustrates such a list:
 
 <pre>
 struct ScriptArg args[] = {
-   { "Object",       FD_OBJECTID, { .Long = Self->Head.UniqueID } },
+   { "Object",       FD_OBJECTID, { .Long = Self->UID } },
    { "Output",       FD_PTR,      { .Address = output } },
    { "OutputLength", FD_LONG,     { .Long = len } }
 };
@@ -166,68 +223,20 @@ static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if ((Args->TotalArgs < 0) OR (Args->TotalArgs > 32)) return log.warning(ERR_Args);
+   if ((Args->TotalArgs < 0) or (Args->TotalArgs > 32)) return log.warning(ERR_Args);
 
    LARGE save_id = Self->ProcedureID;
    CSTRING save_name = Self->Procedure;
    Self->ProcedureID = 0;
    Self->Procedure = Args->Procedure;
 
-   const struct ScriptArg *saveargs = Self->ProcArgs;
+   const ScriptArg *saveargs = Self->ProcArgs;
    Self->ProcArgs  = Args->Args;
 
    LONG savetotal = Self->TotalArgs;
    Self->TotalArgs = Args->TotalArgs;
 
-   ERROR error = acActivate(&Self->Head);
-
-   Self->ProcedureID = save_id;
-   Self->Procedure = save_name;
-   Self->ProcArgs  = saveargs;
-   Self->TotalArgs = savetotal;
-
-   return error;
-}
-
-/*****************************************************************************
-
--METHOD-
-Callback: An internal method for managing callbacks.
-
-Private
-
--INPUT-
-large ProcedureID: An identifier for the target procedure.
-cstruct(*ScriptArg) Args: Optional CSV string containing arguments to pass to the procedure.
-int TotalArgs: The total number of arguments in the Args parameter.
-
--ERRORS-
-Okay:
-Args:
-
--END-
-
-*****************************************************************************/
-
-static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
-{
-   parasol::Log log;
-
-   if (!Args) return log.warning(ERR_NullArgs);
-   if ((Args->TotalArgs < 0) OR (Args->TotalArgs > 1024)) return log.warning(ERR_Args);
-
-   LARGE save_id = Self->ProcedureID;
-   CSTRING save_name = Self->Procedure;
-   Self->ProcedureID = Args->ProcedureID;
-   Self->Procedure = NULL;
-
-   const struct ScriptArg *saveargs = Self->ProcArgs;
-   Self->ProcArgs  = Args->Args;
-
-   LONG savetotal = Self->TotalArgs;
-   Self->TotalArgs = Args->TotalArgs;
-
-   ERROR error = acActivate(&Self->Head);
+   ERROR error = acActivate(Self);
 
    Self->ProcedureID = save_id;
    Self->Procedure = save_name;
@@ -284,10 +293,8 @@ static ERROR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Arg
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Procedure) OR (!Args->Procedure[0])) return log.warning(ERR_NullArgs);
-
+   if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR_NullArgs);
    Args->ProcedureID = StrHash(Args->Procedure, 0);
-
    return ERR_Okay;
 }
 
@@ -301,7 +308,7 @@ static ERROR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Buffer) OR (!Args->Field)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Buffer) or (!Args->Field)) return ERR_NullArgs;
    if (Args->Size < 2) return log.warning(ERR_Args);
 
    CSTRING arg = VarGetString(Self->Vars, Args->Field);
@@ -323,11 +330,11 @@ static ERROR SCRIPT_Init(objScript *Self, APTR Void)
    parasol::Log log;
 
    if (!Self->TargetID) { // Define the target if it has not been set already
-      log.debug("Target not set, defaulting to owner #%d.", Self->Head.OwnerID);
-      Self->TargetID = Self->Head.OwnerID;
+      log.debug("Target not set, defaulting to owner #%d.", Self->ownerID());
+      Self->TargetID = Self->ownerID();
    }
 
-   if (Self->Head.SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
+   if (Self->SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
 
    return ERR_NoSupport;
 }
@@ -371,7 +378,7 @@ static ERROR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
 
    // It is acceptable to set zero-length string values (this has its uses in some scripts).
 
-   if ((!Args) OR (!Args->Field) OR (!Args->Value)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Field) or (!Args->Value)) return ERR_NullArgs;
    if (!Args->Field[0]) return ERR_NullArgs;
 
    log.trace("%s = %s", Args->Field, Args->Value);
@@ -427,6 +434,10 @@ will be set to -1.
 
 -FIELD-
 Error: If a script fails during execution, an error code may be readable here.
+
+On execution of a script, the Error value is reset to ERR_Okay and will be updated if the script fails.  Be mindful
+that if a script is likely to be executed recursively then the first thrown error will have priority and be
+propagated through the call stack.
 
 -FIELD-
 ErrorString: A human readable error string may be declared here following a script execution failure.
@@ -507,7 +518,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
    if (Self->Path) {
       // If the location has already been set, throw the value to SetVar instead.
 
-      if ((Value) AND (*Value)) {
+      if ((Value) and (*Value)) {
          return acSetVar(Self, "Path", Value);
       }
    }
@@ -517,12 +528,12 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
       if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
 
       LONG i, j, len;
-      if ((Value) AND (*Value)) {
+      if ((Value) and (*Value)) {
          if (!StrCompare("STRING:", Value, 7, 0)) {
             return SET_String(Self, Value + 7);
          }
 
-         for (len=0; (Value[len]) AND (Value[len] != ';'); len++);
+         for (len=0; (Value[len]) and (Value[len] != ';'); len++);
 
          if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (APTR *)&Self->Path, NULL)) {
             for (i=0; i < len; i++) Self->Path[i] = Value[i];
@@ -534,8 +545,8 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
                char buffer[800], arg[100], argval[400];
 
                i++;
-               while ((Value[i]) AND (Value[i] <= 0x20)) i++;
-               for (j=0; (Value[i]) AND (Value[i] > 0x20) AND (Value[i] != ';'); j++) buffer[j] = Value[i++];
+               while ((Value[i]) and (Value[i] <= 0x20)) i++;
+               for (j=0; (Value[i]) and (Value[i] > 0x20) and (Value[i] != ';'); j++) buffer[j] = Value[i++];
                buffer[j] = 0;
                if (buffer[0]) SET_Procedure(Self, buffer);
 
@@ -545,18 +556,18 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
                   i++;
 
                   while (Value[i]) {
-                     while ((Value[i]) AND (Value[i] <= 0x20)) i++;
+                     while ((Value[i]) and (Value[i] <= 0x20)) i++;
                      while (Value[i] IS ',') {
                         i++;
-                        while ((Value[i]) AND (Value[i] <= 0x20)) i++;
+                        while ((Value[i]) and (Value[i] <= 0x20)) i++;
                      }
 
                      // Extract arg name
 
-                     for (j=0; (Value[i] != ',') AND (Value[i] != '=') AND (Value[i] > 0x20); j++) arg[j] = Value[i++];
+                     for (j=0; (Value[i] != ',') and (Value[i] != '=') and (Value[i] > 0x20); j++) arg[j] = Value[i++];
                      arg[j] = 0;
 
-                     while ((Value[i]) AND (Value[i] <= 0x20)) i++;
+                     while ((Value[i]) and (Value[i] <= 0x20)) i++;
 
                      // Extract arg value
 
@@ -564,14 +575,14 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
                      argval[1] = 0;
                      if (Value[i] IS '=') {
                         i++;
-                        while ((Value[i]) AND (Value[i] <= 0x20)) i++;
+                        while ((Value[i]) and (Value[i] <= 0x20)) i++;
                         if (Value[i] IS '"') {
                            i++;
-                           for (j=0; (Value[i]) AND (Value[i] != '"'); j++) argval[j] = Value[i++];
+                           for (j=0; (Value[i]) and (Value[i] != '"'); j++) argval[j] = Value[i++];
                            argval[j] = 0;
                         }
                         else {
-                           for (j=0; (Value[i]) AND (Value[i] != ','); j++) argval[j] = Value[i++];
+                           for (j=0; (Value[i]) and (Value[i] != ','); j++) argval[j] = Value[i++];
                            argval[j] = 0;
                         }
                      }
@@ -595,7 +606,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
 static ERROR SET_Name(objScript *Self, CSTRING Name)
 {
    if (Name) {
-      SetName(&Self->Head, Name);
+      SetName(Self, Name);
       struct acSetVar args = { .Field = "Name", .Value = Name };
       return SCRIPT_SetVar(Self, &args);
    }
@@ -607,7 +618,7 @@ static ERROR SET_Name(objScript *Self, CSTRING Name)
 PRIVATE: Owner
 
 This field is implemented locally because the owner is temporarily modified during script activation (the owner is set
-to the user's task).  Our implementation returns the true owner during this time, which affects DML and Fluid code that
+to the user's task).  Our implementation returns the true owner during this time, which affects Fluid code that
 attempts to reference script.owner.  This does not affect the Core's view of the owner or C calls to GetOwner() because
 they read the OwnerID field directly.
 
@@ -619,7 +630,7 @@ script activation - something to try when we have the time?
 static ERROR GET_Owner(objScript *Self, OBJECTID *Value)
 {
    if (Self->ScriptOwnerID) *Value = Self->ScriptOwnerID;
-   else *Value = GetOwner(Self);
+   else *Value = Self->ownerID();
    return ERR_Okay;
 }
 
@@ -630,7 +641,7 @@ static ERROR SET_Owner(objScript *Self, OBJECTID Value)
    if (Value) {
       OBJECTPTR newowner;
       if (!AccessObject(Value, 2000, &newowner)) {
-         SetOwner(&Self->Head, newowner);
+         SetOwner(Self, newowner);
          ReleaseObject(newowner);
          return ERR_Okay;
       }
@@ -650,10 +661,6 @@ specific routine whenever the script is activated with the Activate action.
 
 If this field is not set, the first procedure in the script, or the 'main' procedure (as defined by the script type) is
 executed by default.
-
-A special feature in DML allows the use of XPaths for running code at a specific point in the source.  Ensure that the
-xpath string starts with a forward slash and this special run-case will be enabled.  The target does not necessarily
-need to start with a 'dml' tag, although this is recommended.
 
 *****************************************************************************/
 
@@ -779,13 +786,11 @@ static ERROR GET_TotalArgs(objScript *Self, LONG *Value)
 PRIVATE: Variables
 *****************************************************************************/
 
-static ERROR GET_Variables(objScript *Self, struct KeyStore **Value)
+static ERROR GET_Variables(objScript *Self, KeyStore **Value)
 {
    if (!Self->Vars) {
-      OBJECTPTR context = SetContext(&Self->Head);
-         Self->Vars = VarNew(0, 0);
-      SetContext(context);
-
+      parasol::SwitchContext ctx(Self);
+      Self->Vars = VarNew(0, 0);
       if (!Self->Vars) return ERR_AllocMemory;
    }
 
@@ -824,12 +829,9 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
       // Determine if an absolute path has been indicated
 
       UBYTE path = FALSE;
-      if (Self->Path[0] IS '/') {
-         path = TRUE;
-      }
+      if (Self->Path[0] IS '/') path = TRUE;
       else {
-        LONG j;
-        for (j=0; (Self->Path[j]) AND (Self->Path[j] != '/') AND (Self->Path[j] != '\\'); j++) {
+        for (LONG j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
             if (Self->Path[j] IS ':') {
                path = TRUE;
                break;
@@ -840,21 +842,18 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
       LONG k;
       LONG j = 0;
       for (k=0; Self->Path[k]; k++) {
-         if ((Self->Path[k] IS ':') OR (Self->Path[k] IS '/') OR (Self->Path[k] IS '\\')) j = k+1;
+         if ((Self->Path[k] IS ':') or (Self->Path[k] IS '/') or (Self->Path[k] IS '\\')) j = k+1;
       }
 
       STRING workingpath;
-      if (path) {
-         // Extract absolute path
-
+      if (path) { // Extract absolute path
+         parasol::SwitchContext ctx(Self);
          char save = Self->Path[j];
          Self->Path[j] = 0;
-         OBJECTPTR context = SetContext(&Self->Head);
-            Self->WorkingPath = StrClone(Self->Path);
-         SetContext(context);
+         Self->WorkingPath = StrClone(Self->Path);
          Self->Path[j] = save;
       }
-      else if ((!GetString(CurrentTask(), FID_Path, &workingpath)) AND (workingpath)) {
+      else if ((!GetString(CurrentTask(), FID_Path, &workingpath)) and (workingpath)) {
          char buf[1024];
 
          // Using ResolvePath() can help to determine relative paths such as "../path/file"
@@ -867,11 +866,10 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          }
          else StrFormat(buf, sizeof(buf), "%s", workingpath);
 
-         OBJECTPTR context = SetContext(&Self->Head);
+         parasol::SwitchContext ctx(Self);
          if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
             Self->WorkingPath = StrClone(workingpath);
          }
-         SetContext(context);
       }
       else log.warning("No working path.");
    }
@@ -891,7 +889,7 @@ static ERROR SET_WorkingPath(objScript *Self, STRING Value)
 
 #include "class_script_def.c"
 
-static const struct FieldArray clScriptFields[] = {
+static const FieldArray clScriptFields[] = {
    { "Target",        FDF_OBJECTID|FDF_RW,  0, NULL, NULL },
    { "Flags",         FDF_LONGFLAGS|FDF_RI, (MAXINT)&clScriptFlags, NULL, NULL },
    { "Error",         FDF_LONG|FDF_R,       0, NULL, NULL },

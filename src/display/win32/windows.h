@@ -27,7 +27,7 @@ void win32RedrawWindow(HWND, HDC, int X, int Y, int Width,
    int BPP, void *Data, int RedMask, int GreenMask, int BlueMask, int AlphaMask, int Opacity);
 void MsgKeyPress(int, int, int);
 void MsgKeyRelease(int, int);
-void MsgMovement(int, int, int, int, int);
+void MsgMovement(int, double, double, int, int);
 void MsgWheelMovement(int, float);
 void MsgButtonPress(int, int);
 void MsgFocusState(int SurfaceID, int State);
@@ -71,7 +71,7 @@ void winMoveToBack(HWND);
 void winMoveToFront(HWND);
 int winReadKey(char *, char *, char *, int);
 int winResizeWindow(HWND, int, int, int, int);
-void winSetCursorPos(int X, int Y);
+void winSetCursorPos(double X, double Y);
 void winShowCursor(int);
 void winSetCursor(HCURSOR);
 void winSetSurfaceID(HWND, int);
@@ -79,7 +79,9 @@ int winSettings(int);
 void winSetWindowTitle(HWND, const char *);
 int winShowWindow(HWND, int);
 void winUpdateWindow(HWND);
-
+void winTerminate(void);
+HDC winGetDC(HWND);
+void winReleaseDC(HWND, HDC);
 void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes);
 int winGetData(char *Preference, struct WinDT **OutData, int *OutTotal);
 

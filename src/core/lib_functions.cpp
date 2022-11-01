@@ -123,23 +123,23 @@ ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
       }
 
       char buffer[MAX_NAME_LEN+1];
-      for (i=0; (Name[i]) AND (i < MAX_NAME_LEN); i++) { // Change the Name string to all-lower case and build a hash
+      for (i=0; (Name[i]) and (i < MAX_NAME_LEN); i++) { // Change the Name string to all-lower case
          char c = Name[i];
-         if ((c >= 'A') AND (c <= 'Z')) c = c - 'A' + 'a';
+         if ((c >= 'A') and (c <= 'Z')) c = c - 'A' + 'a';
          buffer[i] = c;
       }
       buffer[i] = 0;
 
       SharedObjectHeader *header;
       if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
+         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
 
          for (LONG i=0; i < header->NextEntry; i++) {
-            if ((list[i].ObjectID) AND ((!list[i].InstanceID) OR (list[i].InstanceID IS glInstanceID))) {
+            if ((list[i].ObjectID) and ((!list[i].InstanceID) or (list[i].InstanceID IS glInstanceID))) {
                for (j=0; list[i].Name[j]; j++) {
                   if (list[i].Name[j] != buffer[j]) break;
                }
-               if ((!list[i].Name[j]) AND (!buffer[j])) {
+               if ((!list[i].Name[j]) and (!buffer[j])) {
                   ReleaseMemoryID(RPM_SharedObjects);
                   return ERR_True;
                }
@@ -164,10 +164,10 @@ ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
 
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         LONG pos;
          LONG result = ERR_False;
-         if ((pos = find_private_mem_id(ObjectID, NULL)) != -1) {
-            if (((OBJECTPTR)glPrivateMemory[pos].Address)->Flags & NF_UNLOCK_FREE);
+         auto mem = glPrivateMemory.find(ObjectID);
+         if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
+            if (mem->second.Object->Flags & NF_UNLOCK_FREE);
             else result = ERR_True;
          }
          return result;
@@ -226,7 +226,7 @@ Args:
 
 ERROR CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
-   if ((!Src) OR (!Dest)) return ERR_NullArgs;
+   if ((!Src) or (!Dest)) return ERR_NullArgs;
    if (Length < 0) return ERR_Args;
    if (Src IS Dest) return ERR_Okay;
 
@@ -302,277 +302,7 @@ obj: Returns a pointer to the current Task object or NULL if failure.
 
 OBJECTPTR CurrentTask(void)
 {
-   return (OBJECTPTR)glCurrentTask;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-FastFindObject: Searches for objects by name.
-Category: Objects
-
-The FastFindObject() function is an optimised implementation of the ~FindObject() function.  Use it to search for
-objects in the system by their name and/or class.  Unlike ~FindObject(), which will return an allocated memory block
-that lists all of the objects that were found, FastFindObject() requires a pre-allocated buffer to write the results
-to.  This saves the cost of allocation time, which can be expensive in some situations.
-
-The following code example is a typical illustration of this function's use.  It finds the most recent object created
-with a given name:
-
-<pre>
-OBJECTID id;
-FastFindObject("SystemPointer", ID_POINTER, &id, 1, NULL);
-</pre>
-
-If FastFindObject() cannot find any objects with the name that you are looking for, it will return an error code.
-
-The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object
-is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being
-searched for.  Preference is also given to objects that have been created by the calling process, thus foreign objects
-are pushed towards the beginning of the array.
-
--INPUT-
-cstr Name:     The name of an object to search for.
-cid ClassID:   Set to a class ID to filter the results down to a specific class type.
-&oid Array:    Pointer to the array that will store the results.
-int ArraySize: Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.
-&int Count:    This parameter will be updated with the total number of objects stored in Array.  Can be NULL if not required.
-
--ERRORS-
-Okay: At least one object was found and stored in the supplied array.
-Args:
-Search: No objects matching the given name could be found.
-AccessMemory: Access to the RPM_SharedObjects memory block was denied.
-LockFailed:
-EmptyString:
-DoesNotExist:
--END-
-
-*****************************************************************************/
-
-ERROR FastFindObject(CSTRING InitialName, CLASSID ClassID, OBJECTID *Array, LONG ArraySize, LONG *ObjectCount)
-{
-   parasol::Log log(__FUNCTION__);
-   SharedObjectHeader *header;
-   SharedObject *entry;
-   LONG i;
-
-   if ((!Array) OR (ArraySize < 1)) return log.warning(ERR_Args);
-
-   if (ObjectCount) *ObjectCount = 0;
-   LONG count = 0;
-
-   if ((!InitialName) AND (ClassID)) {
-      // Private object search
-
-      ThreadLock lock(TL_PRIVATE_MEM, 4000);
-      if (lock.granted()) {
-         for (LONG i=0; i < glNextPrivateAddress; i++) {
-            OBJECTPTR object;
-            if ((glPrivateMemory[i].Flags & MEM_OBJECT) AND (object = (OBJECTPTR)glPrivateMemory[i].Address)) {
-               if (ClassID IS object->ClassID) {
-                  if (count < ArraySize) {
-                     Array[count] = object->UniqueID;
-                     count++;
-                  }
-                  else if (Array[count-1] < object->UniqueID) {
-                     Array[count-1] = object->UniqueID;
-                  }
-               }
-            }
-         }
-      }
-      else return log.warning(ERR_LockFailed);
-
-      // Public object search
-
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         entry = (SharedObject *)ResolveAddress(header, header->Offset);
-         for (LONG i=0; i < header->NextEntry; i++) {
-            if ((entry[i].ObjectID) AND (ClassID IS entry[i].ClassID)) {
-               if ((!entry[i].InstanceID) OR (entry[i].InstanceID IS glInstanceID)) {
-                  if (count < ArraySize) {
-                     Array[count] = entry[i].ObjectID;
-                     count++;
-                  }
-                  else if (Array[count-1] > entry[i].ObjectID) {
-                     Array[count-1] = entry[i].ObjectID;
-                  }
-               }
-            }
-         }
-         ReleaseMemoryID(RPM_SharedObjects);
-      }
-      else return log.warning(ERR_AccessMemory);
-
-      // Sort the list so that the highest number is at the top and the lowest number is at the bottom.
-
-      if (count > 0) {
-         if (ObjectCount) *ObjectCount = count;
-
-         for (LONG i=0; i < count-1; i++) {
-            if (Array[i] < Array[i+1]) {
-               OBJECTID swap = Array[i];
-               Array[i] = Array[i+1];
-               Array[i+1] = swap;
-               i = -1;
-            }
-         }
-
-         return ERR_Okay;
-      }
-      else {
-         log.extmsg("Could not find any object for class $%.8x.", ClassID);
-         return ERR_Search;
-      }
-   }
-   else if (InitialName) {
-      if (!InitialName[0]) return log.warning(ERR_EmptyString);
-
-      // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for
-      // an object of name "#1234".
-
-      BYTE number = FALSE;
-      if (InitialName[0] IS '#') number = TRUE;
-      else {
-         // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
-         // it is illegal for a name to consist entirely of figures).
-
-         LONG i = (InitialName[0] IS '-') ? 1 : 0;
-         for (; InitialName[i]; i++) {
-            if (InitialName[i] < '0') break;
-            if (InitialName[i] > '9') break;
-         }
-         if (!InitialName[i]) number = TRUE;
-      }
-
-      if (number) {
-         OBJECTID objectid;
-         if ((objectid = (OBJECTID)StrToInt(InitialName))) {
-            if (!CheckObjectExists(objectid, NULL)) {
-               *Array = objectid;
-               if (ObjectCount) *ObjectCount = 1;
-               return ERR_Okay;
-            }
-            else return ERR_Search;
-         }
-         else return ERR_Search;
-      }
-
-      if (!StrMatch("owner", InitialName)) {
-         if ((tlContext != &glTopContext) AND (tlContext->Object->OwnerID)) {
-            if (!CheckObjectExists(tlContext->Object->OwnerID, NULL)) {
-               *Array = tlContext->Object->OwnerID;
-               if (ObjectCount) *ObjectCount = 1;
-               return ERR_Okay;
-            }
-            else return ERR_DoesNotExist;
-         }
-         else return ERR_DoesNotExist;
-      }
-
-      struct sortlist {
-         OBJECTID id;           // The ID of the object
-         MEMORYID messagemid;   // MessageMID of the task that created the object, for sort purposes
-      } objlist[ArraySize];
-
-      // Private object search
-
-      {
-         ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-         if (lock.granted()) {
-            OBJECTPTR *list;
-            LONG list_size;
-            if (!VarGet(glObjectLookup, InitialName, (APTR *)&list, &list_size)) {
-               list_size = list_size / sizeof(OBJECTPTR);
-               for (LONG i=0; i < list_size; i++) {
-                  OBJECTPTR object = list[i];
-                  if ((object) AND ((!ClassID) OR (ClassID IS object->ClassID))) {
-                     if (count < ArraySize) {
-                        objlist[count].id = object->UniqueID;
-                        objlist[count].messagemid = glTaskMessageMID;
-                        count++;
-                     }
-                     else if (objlist[count-1].id < object->UniqueID) {
-                        objlist[count-1].id = object->UniqueID;
-                        objlist[count-1].messagemid = glTaskMessageMID;
-                     }
-                  }
-
-                  i++;
-               }
-            }
-         }
-      }
-
-      // Public object search.  When looking for publicly named objects we need to keep them arranged so that preference
-      // is given to objects that this process created.  This causes some mild overhead but is vital for ensuring
-      // that programs aren't confused when they use identically named objects.
-
-      ULONG hash = 5381;
-      char name[MAX_NAME_LEN+1];
-      for (i=0; (InitialName[i]) AND (i < MAX_NAME_LEN - 1); i++) {
-         char c = InitialName[i];
-         if ((c >= 'A') AND (c <= 'Z')) c = c - 'A' + 'a';
-         name[i] = c;
-         hash = ((hash<<5) + hash) + c;
-      }
-      name[i] = 0;
-
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         SharedObject *entry = (SharedObject *)ResolveAddress(header, header->Offset);
-         for (LONG i=0; i < header->NextEntry; i++) {
-            if (entry[i].ObjectID) {
-               if ((!entry[i].InstanceID) OR (entry[i].InstanceID IS glInstanceID)) {
-                  if ((ClassID) AND (ClassID != entry[i].ClassID));
-                  else if (entry[i].Name[0] IS name[0]) {
-                     if (!StrCompare(entry[i].Name, name, 0, STR_CASE|STR_MATCH_LEN)) {
-                        if (count < ArraySize) {
-                           objlist[count].id = entry[i].ObjectID;
-                           objlist[count].messagemid = entry[i].MessageMID;
-                           count++;
-                        }
-                        else if (objlist[count-1].id > entry[i].ObjectID) {
-                           // The discovered object has a more recent ID than the last entry in the list, so replace it
-                           // (assuming that it won't replace something that was created from our own task space).
-
-                           if ((objlist[count-1].messagemid IS glTaskMessageMID) AND (entry[i].MessageMID != glTaskMessageMID)) continue;
-                           objlist[count-1].id = entry[i].ObjectID;
-                           objlist[count-1].messagemid = entry[i].MessageMID;
-                        }
-                     }
-                  }
-               }
-            }
-         }
-
-         ReleaseMemoryID(RPM_SharedObjects);
-
-         if (count > 0) {
-            if (ObjectCount) *ObjectCount = count;
-
-            for (LONG i=0; i < count - 1; i++) {
-               // Smaller ID's are more recent, so they bubble down the list.  Object's created in our own task space
-               // are also given preference.
-
-               if ((objlist[i].id < objlist[i+1].id) OR
-                  ((objlist[i].messagemid IS glTaskMessageMID) AND (objlist[i+1].messagemid != glTaskMessageMID))) {
-                  struct sortlist swap = objlist[i];
-                  objlist[i] = objlist[i+1];
-                  objlist[i+1] = swap;
-                  i = -1;
-               }
-            }
-
-            for (LONG i=0; i < count; i++) Array[i] = objlist[i].id;
-
-            return ERR_Okay;
-         }
-         else return ERR_Search;
-      }
-      else return log.warning(ERR_AccessMemory);
-   }
-   else return log.warning(ERR_NullArgs);
+   return glCurrentTask;
 }
 
 /*****************************************************************************
@@ -597,7 +327,7 @@ obj(MetaClass): Returns a pointer to the MetaClass structure that has been found
 
 *****************************************************************************/
 
-rkMetaClass * FindClass(CLASSID ClassID)
+objMetaClass * FindClass(CLASSID ClassID)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -610,7 +340,7 @@ rkMetaClass * FindClass(CLASSID ClassID)
    else {
       // A simple KeyGet() works for base-classes and sub-classes because the hash map is indexed by class name.
 
-      rkMetaClass **ptr;
+      objMetaClass **ptr;
       if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
          return ptr[0];
       }
@@ -636,7 +366,7 @@ rkMetaClass * FindClass(CLASSID ClassID)
          if ((mod = find_module(ClassID))) path = (STRING)(mod + 1);
       }
 
-      rkMetaClass *mc = NULL;
+      objMetaClass *mc = NULL;
       if (path) {
          // Load the module from the associated location and then find the class that it contains.  If the module fails,
          // we keep on looking for other installed modules that may handle the class.
@@ -660,71 +390,207 @@ rkMetaClass * FindClass(CLASSID ClassID)
 /*****************************************************************************
 
 -FUNCTION-
-FindObject: Searches for objects by name and class.
+FindObject: Searches for objects by name.
 Category: Objects
 
-The FindObject() function is used to search for objects in the system by name and class type.  If the function cannot
-find any object with the name or class that you are looking for, then it will return an error code.  If it does find
-one or more matching objects, then a complete list of them will be returned in an allocated memory block.
+The FindObject() function searches for all objects that match a given name and can filter by class.  A pre-allocated
+buffer is required for the output of the results.
 
-The List is sorted so that the oldest object is placed at the start of the list, and the most recent is placed at the
-end.  This will assist you in situations where you may be looking for the oldest or youngest object that has the
-particular name that you have searched for.
+The following example is a typical illustration of this function's use.  It finds the most recent object created
+with a given name:
 
-The List is terminated with a NULL entry.
+<pre>
+OBJECTID id;
+LONG count = 1;
+FindObject("SystemPointer", ID_POINTER, 0, &id, &count);
+</pre>
 
-The List is returned as an allocated memory block - please use ~FreeResource() to deallocate it.
+If FindObject() cannot find any matching objects then it will return an error code.
+
+The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object
+is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being
+searched for.  Preference is also given to objects that have been created by the calling process, thus foreign objects
+are pushed towards the end of the array.
 
 -INPUT-
-cstr Name: The name of the object that you are looking for.
-cid ClassID: Setting this field to a class ID will filter the results down to a specific class type.
-&!ptr(oid) List: On success, a memory block containing a list of ObjectID's will be placed in this variable.
-&int Count: The total number of objects listed in the List array will be stored in this variable.
+cstr Name:     The name of an object to search for.
+cid ClassID:   Optional.  Set to a class ID to filter the results down to a specific class type.
+int(FOF) Flags: Optional flags.
+buf(array(oid)) Array:    Pointer to the array that will store the results.
+&arraysize Count: Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.
 
 -ERRORS-
-Okay:         One or more objects have been found and are listed.
-Search:       There are no objects in the system with the given name or class type.
-NullArgs:
-Memory:       The function failed to allocate enough memory for the List array.
-AccessMemory: The function failed to gain access to the PublicObjects structure (internal error).
+Okay: At least one object was found and stored in the supplied array.
+Args:
+Search: No objects matching the given name could be found.
+AccessMemory: Access to the RPM_SharedObjects memory block was denied.
+LockFailed:
+EmptyString:
+DoesNotExist:
+-END-
 
 *****************************************************************************/
 
-ERROR FindObject(CSTRING InitialName, CLASSID ClassID, OBJECTID **List, LONG *ObjectCount)
+ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Array, LONG *Count)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!ObjectCount) OR (!List)) return log.warning(ERR_NullArgs);
+   if ((!Array) or (!InitialName) or (!Count)) return ERR_NullArgs;
+   if (*Count < 1) return log.warning(ERR_Args);
+   if (!InitialName[0]) return log.warning(ERR_EmptyString);
 
-   OBJECTID array[500];
-   ERROR error;
-   if (!(error = FastFindObject(InitialName, ClassID, array, ARRAYSIZE(array), ObjectCount))) {
-      OBJECTID *alloc;
-      if (!AllocMemory(sizeof(OBJECTID) * (ObjectCount[0] + 1), MEM_NO_CLEAR, (APTR *)&alloc, NULL)) {
-         CopyMemory(array, alloc, sizeof(OBJECTID) * ObjectCount[0]);
-         alloc[*ObjectCount] = 0; // Terminate the array
-         *List = alloc;
-         return ERR_Okay;
+   if (Flags & FOF_SMART_NAMES) {
+      // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for
+      // an object of name "#1234".
+
+      BYTE number = FALSE;
+      if (InitialName[0] IS '#') number = TRUE;
+      else {
+         // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
+         // it is illegal for a name to consist entirely of digits).
+
+         LONG i = (InitialName[0] IS '-') ? 1 : 0;
+         for (; InitialName[i]; i++) {
+            if (InitialName[i] < '0') break;
+            if (InitialName[i] > '9') break;
+         }
+         if (!InitialName[i]) number = TRUE;
       }
-      else return log.warning(ERR_AllocMemory);
+
+      if (number) {
+         OBJECTID objectid;
+         if ((objectid = (OBJECTID)StrToInt(InitialName))) {
+            if (!CheckObjectExists(objectid, NULL)) {
+               *Array = objectid;
+               *Count = 1;
+               return ERR_Okay;
+            }
+            else return ERR_Search;
+         }
+         else return ERR_Search;
+      }
+
+      if (!StrMatch("owner", InitialName)) {
+         if ((tlContext != &glTopContext) and (tlContext->Object->OwnerID)) {
+            if (!CheckObjectExists(tlContext->Object->OwnerID, NULL)) {
+               *Array = tlContext->Object->OwnerID;
+               *Count = 1;
+               return ERR_Okay;
+            }
+            else return ERR_DoesNotExist;
+         }
+         else return ERR_DoesNotExist;
+      }
    }
-   else return error;
+
+   class sortobj {
+      public: OBJECTID id; MEMORYID messagemid;
+      sortobj(OBJECTID a, MEMORYID b) : id(a), messagemid(b) { };
+   };
+
+   std::list<sortobj> objlist;
+
+   // Private object search
+
+   {
+      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
+      if (lock.granted()) {
+         OBJECTPTR *list;
+         LONG list_size;
+         if (!VarGet(glObjectLookup, InitialName, (APTR *)&list, &list_size)) {
+            list_size = list_size / sizeof(OBJECTPTR);
+            for (LONG i=0; i < list_size; i++) {
+               OBJECTPTR object = list[i];
+               if ((object) and ((!ClassID) or (ClassID IS object->ClassID))) {
+                  if (objlist.size() < (size_t)Count[0]) {
+                     objlist.emplace_back(object->UID, glTaskMessageMID);
+                  }
+                  else if (objlist.back().id < object->UID) {
+                     objlist.back().id = object->UID;
+                     objlist.back().messagemid = glTaskMessageMID;
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   if ((Flags & FOF_INCLUDE_SHARED) and (objlist.size() < (size_t)Count[0])) {
+      // Public object search.  When looking for publicly named objects we need to keep them arranged so that preference
+      // is given to objects that this process created.  This causes some mild overhead but is vital for ensuring
+      // that programs aren't confused when they use identically named objects.
+
+      LONG i;
+      char name[MAX_NAME_LEN+1];
+      for (i=0; (InitialName[i]) and (i < MAX_NAME_LEN - 1); i++) {
+         char c = InitialName[i];
+         if ((c >= 'A') and (c <= 'Z')) name[i] = c - 'A' + 'a';
+         else name[i] = c;
+      }
+      name[i] = 0;
+
+      SharedObjectHeader *header;
+      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
+         auto entry = (SharedObject *)ResolveAddress(header, header->Offset);
+         for (LONG i=0; i < header->NextEntry; i++) {
+            if (!entry[i].ObjectID) continue;
+            if ((!entry[i].InstanceID) or (entry[i].InstanceID IS glInstanceID)) {
+               if ((ClassID) and (ClassID != entry[i].ClassID));
+               else if (entry[i].Name[0] IS name[0]) {
+                  if (!StrCompare(entry[i].Name, name, 0, STR_CASE|STR_MATCH_LEN)) {
+                     if (objlist.size() < (size_t)Count[0]) {
+                        objlist.emplace_back(entry[i].ObjectID, entry[i].MessageMID);
+                     }
+                     else if (objlist.back().id > entry[i].ObjectID) {
+                        // The discovered object has a more recent ID than the last entry in the list, so replace it
+                        // (assuming that it won't replace something that was created from our own task space).
+
+                        if ((objlist.back().messagemid IS glTaskMessageMID) and (entry[i].MessageMID != glTaskMessageMID)) continue;
+                        objlist.back().id = entry[i].ObjectID;
+                        objlist.back().messagemid = entry[i].MessageMID;
+                     }
+                  }
+               }
+            }
+         }
+
+         ReleaseMemoryID(RPM_SharedObjects);
+      }
+      else return log.warning(ERR_AccessMemory);
+   }
+
+   if (objlist.size() > 0) {
+      if (objlist.size() IS 1) {
+         Array[0] = objlist.front().id;
+      }
+      else {
+         objlist.sort([](const sortobj &a, const sortobj &b) {
+            return ((a.id < b.id) or ((a.messagemid IS glTaskMessageMID) and (b.messagemid != glTaskMessageMID)));
+         });
+
+         LONG i = 0;
+         for (const auto & obj : objlist) Array[i++] = obj.id;
+      }
+
+      *Count = objlist.size();
+      return ERR_Okay;
+   }
+   else return ERR_Search;
 }
 
 /*****************************************************************************
 
 -FUNCTION-
-FindPrivateObject: Searches for objects by name.
+FindPrivateObject: Search for an object by name.
 Category: Objects
 
-The FindPrivateObject() function is provided as a simple implementation of the FastFindObject() function.  This
-implementation is specifically limited to finding private objects by name only.  It is capable of returning only
-one object address in its search results.  Unlike FastFindObject(), this function returns directly accessible
-object addresses that may be used immediately after a successful search.
+The FindPrivateObject() function is a simple implementation of ~FindObject().  It differs in being limited
+to finding private objects without class filtering, and can only return one result as a pointer.
+Care may need to be taken if using this function to access objects that are shared between threads.
 
-If multiple objects with the same name exists, the most recently created object will be returned by this function.
+The most recently created object is returned by this function if there are objects sharing the same name.
 
-If you require more advanced functionality for object searches, please use the FastFindObject() function.
+For more advanced functionality in object searches please use the ~FindObject() function.
 
 -INPUT-
 cstr Name:   The name of the object to find.
@@ -743,7 +609,7 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!InitialName) OR (!Object)) return log.warning(ERR_NullArgs);
+   if ((!InitialName) or (!Object)) return log.warning(ERR_NullArgs);
 
    *Object = NULL;
 
@@ -752,17 +618,17 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
    // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for an
    // object of name "#1234".
 
-   UBYTE number = FALSE;
-   if (InitialName[0] IS '#') number = TRUE;
+   bool number = false;
+   if (InitialName[0] IS '#') number = true;
    else {
       // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
       // it is illegal for a name to consist entirely of figures).
 
       LONG i;
       for (i=0; InitialName[i]; i++) {
-         if (((InitialName[i] < '0') OR (InitialName[i] > '9')) AND (InitialName[i] != '-')) break;
+         if (((InitialName[i] < '0') or (InitialName[i] > '9')) and (InitialName[i] != '-')) break;
       }
-      if (!InitialName[i]) number = TRUE;
+      if (!InitialName[i]) number = true;
    }
 
    if (number) {
@@ -770,46 +636,30 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
       if ((objectid = (OBJECTID)StrToInt(InitialName))) {
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
-            LONG i;
-            if ((i = find_private_mem_id(objectid, NULL)) != -1) {
-               *Object = (OBJECTPTR)glPrivateMemory[i].Address;
+            auto mem = glPrivateMemory.find(objectid);
+            if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
+               *Object = mem->second.Object;
                return ERR_Okay;
             }
-            else return ERR_Search;
          }
          else return log.warning(ERR_LockFailed);
       }
-      else return ERR_Search;
+      return ERR_Search;
    }
    else if (!StrMatch("owner", InitialName)) {
-      if ((tlContext != &glTopContext) AND (tlContext->Object->OwnerID)) {
+      if ((tlContext != &glTopContext) and (tlContext->Object->OwnerID)) {
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
-            LONG i;
-            if ((i = find_private_mem_id(tlContext->Object->OwnerID, NULL)) != -1) {
-               *Object = (OBJECTPTR)glPrivateMemory[i].Address;
-               return ERR_Okay;
+            auto mem = glPrivateMemory.find(tlContext->Object->OwnerID);
+            if (mem != glPrivateMemory.end()) {
+               if ((*Object = mem->second.Object)) {
+                  return ERR_Okay;
+               }
             }
-            else return ERR_Search;
          }
          else return log.warning(ERR_LockFailed);
       }
-      else return ERR_Search;
-   }
-
-   // Copy the name to our buffer in lower case
-
-   char name[MAX_NAME_LEN+1];
-   ULONG hash = 5381;
-   {
-      LONG i;
-      for (i=0; (InitialName[i]) AND (i < MAX_NAME_LEN - 1); i++) {
-         char c = InitialName[i];
-         if ((c >= 'A') AND (c <= 'Z')) c = c - 'A' + 'a';
-         name[i] = c;
-         hash = ((hash<<5) + hash) + c;
-      }
-      name[i] = 0;
+      return ERR_Search;
    }
 
    ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
@@ -818,10 +668,10 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
       OBJECTPTR *list;
       if (!VarGet(glObjectLookup, InitialName, (APTR *)&list, &list_size)) {
          // Return the most recently created object, i.e. the one at the end of the list.
-         for (i = (list_size / sizeof(OBJECTPTR)) - 1; i >= 0; i--) {
+         for (i=(list_size / sizeof(OBJECTPTR)) - 1; i >= 0; i--) {
             if (list[i]) {
                *Object = list[i];
-               break;
+               return ERR_Okay;
             }
          }
       }
@@ -848,7 +698,7 @@ mem: A memory ID that refers to the feed list is returned, or NULL if no subscri
 
 MEMORYID GetFeedList(OBJECTPTR Object)
 {
-   if ((Object) AND (Object->Stats)) {
+   if ((Object) and (Object->Stats)) {
       return Object->Stats->MID_FeedList;
    }
    else return 0;
@@ -860,17 +710,17 @@ MEMORYID GetFeedList(OBJECTPTR Object)
 GetClassID: Returns the class ID of an object.
 Category: Objects
 
-This function can be used on any valid object ID to retrieve the ID of its class.  This is the quickest way to
+Call this function with any valid object ID to learn the identifier for its base class.  This is the quickest way to
 retrieve the class of an object without having to gain exclusive access to the object first.
 
-Please note that if you already have access to an object through an address pointer, the quickest way to learn of its
-class is to read the ClassID field in the object header.
+Note that if the object's pointer is already known, the quickest way to learn of its class is to read the ClassID
+field in the object header.
 
 -INPUT-
 oid Object: The object to be examined.
 
 -RESULT-
-cid: Returns the class ID of the object or NULL if failure.
+cid: Returns the base class ID of the object or NULL if failure.
 
 *****************************************************************************/
 
@@ -883,9 +733,9 @@ CLASSID GetClassID(OBJECTID ObjectID)
    OBJECTPTR object;
    if (ObjectID < 0) {
       SharedObjectHeader *header;
-      LONG id;
+      CLASSID id;
       if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         SharedObject *shared_obj = (SharedObject *)ResolveAddress(header, header->Offset);
+         auto shared_obj = (SharedObject *)ResolveAddress(header, header->Offset);
          LONG pos;
          if (!find_public_object_entry(header, ObjectID, &pos)) id = shared_obj[pos].ClassID;
          else {
@@ -922,7 +772,7 @@ cstr: A human readable string for the error code is returned.  By default error 
 
 CSTRING GetErrorMsg(ERROR Code)
 {
-   if ((Code < glTotalMessages) AND (Code > 0)) {
+   if ((Code < glTotalMessages) and (Code > 0)) {
       return glMessages[Code];
    }
    else if (!Code) return "Operation successful.";
@@ -1214,7 +1064,7 @@ LONG GetMsgPort(OBJECTID ObjectID)
    else if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
       LONG pos;
       if (!find_public_object_entry(header, ObjectID, &pos)) {
-         SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
+         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
          LONG msgport = list[pos].MessageMID;
          ReleaseMemoryID(RPM_SharedObjects);
          return msgport ? msgport : glTaskMessageMID;
@@ -1246,7 +1096,7 @@ cstr: A string containing the object name is returned.  If the object has no nam
 
 CSTRING GetName(OBJECTPTR Object)
 {
-   if ((Object) AND (Object->Stats)) return Object->Stats->Name;
+   if ((Object) and (Object->Stats)) return Object->Stats->Name;
    else return "";
 }
 
@@ -1271,10 +1121,11 @@ OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
 {
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
-      for (LONG i=0; i < glNextPrivateAddress; i++) {
-         if ((glPrivateMemory[i].Flags & MEM_OBJECT) AND (glPrivateMemory[i].Address)) {
-            if (((OBJECTPTR)glPrivateMemory[i].Address)->UniqueID IS ObjectID) {
-               return (OBJECTPTR)glPrivateMemory[i].Address;
+      auto mem = glPrivateMemory.find(ObjectID);
+      if (mem != glPrivateMemory.end()) {
+         if ((mem->second.Flags & MEM_OBJECT) and (mem->second.Object)) {
+            if (mem->second.Object->UID IS ObjectID) {
+               return mem->second.Object;
             }
          }
       }
@@ -1311,7 +1162,7 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
       if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
          LONG pos;
          if (!find_public_object_entry(header, ObjectID, &pos)) {
-            SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
+            auto list = (SharedObject *)ResolveAddress(header, header->Offset);
             ownerid = list[pos].OwnerID;
          }
          ReleaseMemoryID(RPM_SharedObjects);
@@ -1320,9 +1171,9 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
    else {
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         LONG pos;
-         if ((pos = find_private_mem_id(ObjectID, NULL)) != -1) {
-            return ((OBJECTPTR)glPrivateMemory[pos].Address)->OwnerID;
+         auto mem = glPrivateMemory.find(ObjectID);
+         if (mem != glPrivateMemory.end()) {
+            if (mem->second.Object) return mem->second.Object->OwnerID;
          }
       }
    }
@@ -1377,8 +1228,6 @@ LARGE GetResource(LONG Resource)
       case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
       case RES_GLOBAL_INSTANCE: return glSharedControl->GlobalInstance;
       case RES_PRIVILEGED:      return glPrivileged;
-      case RES_PARENT_CONTEXT:  if (tlContext->Stack) return (MAXINT)tlContext->Stack->Object;
-                                else return 0;
       case RES_KEY_STATE:       return glKeyState;
       case RES_LOG_LEVEL:       return glLogLevel;
       case RES_SHARED_BLOCKS:   return (MAXINT)glSharedBlocks;
@@ -1393,6 +1242,14 @@ LARGE GetResource(LONG Resource)
       case RES_THREAD_ID:       return (MAXINT)get_thread_id();
       case RES_CORE_IDL:        return (MAXINT)glIDL;
       case RES_DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
+
+      case RES_PARENT_CONTEXT: {
+         // Return the first parent context that differs to the current context.  This avoids any confusion
+         // arising from the the current object making calls to itself.
+         auto parent = tlContext->Stack;
+         while ((parent) and (parent->Object IS tlContext->Object)) parent = parent->Stack;
+         return parent ? (MAXINT)parent->Object : 0;
+      }
 
 #ifdef __linux__
       // NB: This value is not cached.  Although unlikely, it is feasible that the total amount of physical RAM could
@@ -1424,7 +1281,7 @@ LARGE GetResource(LONG Resource)
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
 
-               while ((i < result) AND (str[i] != '\n')) i++;
+               while ((i < result) and (str[i] != '\n')) i++;
                i++;
             }
          }
@@ -1492,20 +1349,18 @@ cstruct(*SystemState): A read-only SystemState structure is returned.
 
 const SystemState * GetSystemState(void)
 {
-   static LONG initialised = FALSE;
+   static bool initialised = false;
    static SystemState state;
 
    if (!initialised) {
-      initialised = TRUE;
+      initialised = true;
 
       state.ConsoleFD     = glConsoleFD;
       state.CoreVersion   = VER_CORE;
       state.CoreRevision  = REV_CORE;
       state.InstanceID    = glInstanceID;
       state.ErrorMessages = glMessages;
-      state.ErrorHeaders  = glHeaders;
       state.TotalErrorMessages = ARRAYSIZE(glMessages);
-      state.TotalErrorHeaders  = ARRAYSIZE(glHeaders);
       state.RootPath   = glRootPath;
       state.SystemPath = glSystemPath;
       state.ModulePath = glModulePath;
@@ -1538,13 +1393,13 @@ argument must point to a LONG value that indicates the size of the array that yo
 ListChildren() function will update the Count variable so that it reflects the total number of children that were
 written to the array.
 
-Objects that are specially marked with the CHILD flag are not returned in the resulting list; such objects are
-considered to be private extensions of the targeted parent.
+Objects marked with the INTEGRAL flag are not returned as they are private members of the targeted object.
 
 -INPUT-
 oid Object: The ID of the object that you wish to examine.
+int IncludeShared: If TRUE, shared objects will be included in the list at a penalty to performance.
 buf(array(resource(ChildEntry))) List: Must refer to an array of ChildEntry structures.
-&arraysize Count:  The integer that this argument refers to must be set with a value that indicates the size of the supplied list array.  Before returning, this argument will be updated with the total number of entries listed in the array.
+&arraysize Count:  Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.
 
 -ERRORS-
 Okay: Zero or more children were found and listed.
@@ -1553,49 +1408,47 @@ NullArgs
 
 *****************************************************************************/
 
-ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
+ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG *Count)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!ObjectID) OR (!List) OR (!Count)) return log.warning(ERR_NullArgs);
-   if ((*Count < 0) OR (*Count > 3000)) return log.warning(ERR_Args);
+   if ((!ObjectID) or (!List) or (!Count)) return log.warning(ERR_NullArgs);
+   if ((*Count < 0) or (*Count > 3000)) return log.warning(ERR_Args);
+
+   log.trace("#%d, List: %p, Array Size: %d", ObjectID, List, *Count);
 
    ERROR error = ERR_Okay;
    LONG i = 0;
 
-   // Build the list of public objects
-   // TODO: Optimisation.  Most objects also won't have public children, making this redundant.
-
-   SharedObjectHeader *header;
-   if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-      SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
-      for (LONG j=0; j < header->NextEntry; j++) {
-         if ((list[j].OwnerID IS ObjectID) AND (!(list[j].Flags & NF_INTEGRAL))) {
-            List[i].ObjectID = list[j].ObjectID;
-            List[i].ClassID  = list[j].ClassID;
-            i++;
-            if (i >= *Count) break;
+   if (IncludeShared) {
+      SharedObjectHeader *header;
+      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
+         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
+         for (LONG j=0; j < header->NextEntry; j++) {
+            if ((list[j].OwnerID IS ObjectID) and (!(list[j].Flags & NF_INTEGRAL))) {
+               List[i].ObjectID = list[j].ObjectID;
+               List[i].ClassID  = list[j].ClassID;
+               if (++i >= *Count) break;
+            }
          }
+         ReleaseMemoryID(RPM_SharedObjects);
       }
-      ReleaseMemoryID(RPM_SharedObjects);
    }
 
    // Build the list of private objects
-   // TODO: Optimisation; all private addresses are being scanned.
 
    if (i < *Count) {
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) {
-         for (LONG j=0; j < glNextPrivateAddress; j++) {
-            if ((glPrivateMemory[j].Flags & MEM_OBJECT) AND (glPrivateMemory[j].ObjectID IS ObjectID)) {
-               OBJECTPTR object;
-               if ((object = (OBJECTPTR)glPrivateMemory[j].Address)) {
-                  if (!(object->Flags & NF_INTEGRAL)) {
-                     List[i].ObjectID = object->UniqueID;
-                     List[i].ClassID  = object->ClassID;
-                     i++;
-                     if (i >= *Count) break;
-                  }
+         for (const auto id : glObjectChildren[ObjectID]) {
+            auto mem = glPrivateMemory.find(id);
+            if (mem IS glPrivateMemory.end()) continue;
+
+            if (auto child = mem->second.Object) {
+               if (!(child->Flags & NF_INTEGRAL)) {
+                  List[i].ObjectID = child->UID;
+                  List[i].ClassID  = child->ClassID;
+                  if (++i >= *Count) break;
                }
             }
          }
@@ -1636,7 +1489,7 @@ ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
       LONG memlocks = 0;
       struct ListTasks *list;
       for (LONG i=0; i < MAX_TASKS; i++) {
-         if ((shTasks[i].ProcessID) AND (shTasks[i].TaskID) AND (shTasks[i].MessageID)) {
+         if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
             if (Flags & LTF_CURRENT_PROCESS) {
                if (shTasks[i].TaskID != glCurrentTaskID) continue;
             }
@@ -1652,8 +1505,8 @@ ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
          *Detail = list;
 
          LONG j = 0;
-         for (LONG i=0; (i < MAX_TASKS) AND (j < taskcount); i++) {
-            if ((shTasks[i].ProcessID) AND (shTasks[i].TaskID) AND (shTasks[i].MessageID)) {
+         for (LONG i=0; (i < MAX_TASKS) and (j < taskcount); i++) {
+            if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
                if (Flags & LTF_CURRENT_PROCESS) {
                   if (shTasks[i].TaskID != glCurrentTaskID) continue;
                }
@@ -1781,7 +1634,8 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
 #endif
 {
    parasol::Log log(__FUNCTION__);
-   UBYTE i;
+
+   // Note that FD's < -1 are permitted for the registering of functions marked with RFD_ALWAYS_CALL
 
 #ifdef _WIN32
    if (FD IS (HOSTHANDLE)-1) return log.warning(ERR_Args);
@@ -1797,29 +1651,29 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
    }
 
    if (Flags & RFD_REMOVE) {
-      if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT;
+      if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL;
 
-      for (LONG i=0; i < glTotalFDs; i++) {
-         if ((glFDTable[i].FD IS FD) AND ((glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) & Flags)) {
+      for (LONG i=glTotalFDs-1; i >= 0; i--) {
+         if ((glFDTable[i].FD IS FD) and ((glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)) & Flags)) {
             // If the routine address was specified with the remove option, the routine must match.
 
-            if ((Routine) AND (glFDTable[i].Routine != Routine)) continue;
+            if ((Routine) and (glFDTable[i].Routine != Routine)) continue;
 
             if (i+1 < glTotalFDs) {
                CopyMemory(glFDTable+i+1, glFDTable+i, sizeof(FDTable) * (glTotalFDs-i-1));
             }
 
             glTotalFDs--;
-            i = -1; // Repeat loop to catch multiple FD registrations
          }
       }
       return ERR_Okay;
    }
 
-   if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_REMOVE))) Flags |= RFD_READ;
+   if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_REMOVE|RFD_ALWAYS_CALL))) Flags |= RFD_READ;
 
+   LONG i;
    for (i=0; i < glTotalFDs; i++) {
-      if ((glFDTable[i].FD IS FD) AND (Flags & (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)))) break;
+      if ((glFDTable[i].FD IS FD) and (Flags & (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)))) break;
    }
 
    if (i >= MAX_FDS) return log.warning(ERR_ArrayFull);
@@ -1829,7 +1683,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
 #ifdef _WIN32
    // Nothing to do for Win32
 #else
-   if (!Routine) fcntl(FD, F_SETFL, fcntl(FD, F_GETFL) | O_NONBLOCK); // Ensure that the FD is non-blocking
+   if ((!Routine) and (FD > 0)) fcntl(FD, F_SETFL, fcntl(FD, F_GETFL) | O_NONBLOCK); // Ensure that the FD is non-blocking
 #endif
 
    glFDTable[i].FD      = FD;
@@ -1902,11 +1756,11 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Object) OR (!Owner)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Owner)) return log.warning(ERR_NullArgs);
 
-   if (Object->OwnerID IS Owner->UniqueID) return ERR_Okay;
+   if (Object->OwnerID IS Owner->UID) return ERR_Okay;
 
-   if (((rkMetaClass *)Object->Class)->Flags & CLF_NO_OWNERSHIP) {
+   if (((objMetaClass *)Object->Class)->Flags & CLF_NO_OWNERSHIP) {
       log.traceWarning("Cannot set the object owner as CLF_NO_OWNERSHIP is set in its class.");
       return ERR_Okay;
    }
@@ -1916,13 +1770,15 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       return ERR_Args;
    }
 
-   // Send a child alert to the owner.  If the owner sends back an error, then we return immediately.
+   //log.msg("Object: %d, New Owner: %d, Current Owner: %d", Object->UID, Owner->UID, Object->OwnerID);
+
+   // Send a new child alert to the owner.  If the owner returns an error then we return immediately.
 
    ScopedObjectAccess objlock(Object);
 
    if (!CheckAction(Owner, AC_NewChild)) {
       ERROR error;
-      struct acNewChild newchild = { .NewChildID = Object->UniqueID };
+      struct acNewChild newchild = { .Object = Object };
       if ((error = Action(AC_NewChild, Owner, &newchild)) != ERR_NoSupport) {
          if (error != ERR_Okay) { // If the owner has passed the object through to another owner, return ERR_Okay, otherwise error.
             if (error IS ERR_OwnerPassThrough) return ERR_Okay;
@@ -1932,37 +1788,43 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
    }
 
    struct acNewOwner newowner = {
-      .NewOwnerID = Owner->UniqueID, // Send a owner alert to the object
+      .NewOwnerID = Owner->UID, // Send a owner alert to the object
       .ClassID    = Owner->ClassID
    };
    Action(AC_NewOwner, Object, &newowner);
 
    // Make the change
 
-   //if (Object->OwnerID) FMSG("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UniqueID, Object->OwnerID, Owner->UniqueID);
+   //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
 
-   if (Object->Flags & NF_FOREIGN_OWNER) {
+   if (Object->Flags & NF_FOREIGN_OWNER) { // Remove subscription to AC_OwnerDestroyed
       OBJECTPTR obj;
       if (!AccessObject(Object->OwnerID, 3000, &obj)) {
-         OBJECTPTR context = SetContext(Object);
+         auto context = SetContext(Object);
          UnsubscribeAction(obj, AC_OwnerDestroyed);
          SetContext(context);
          ReleaseObject(obj);
       }
    }
 
-   Object->OwnerID = Owner->UniqueID;
-
-   if (Object->UniqueID < 0) {
-      SharedObjectHeader *header;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
+   if (Object->UID < 0) { // Public object
+      ScopedAccessMemory<SharedObjectHeader> header(RPM_SharedObjects, MEM_READ, 2000);
+      if (header.granted()) {
          LONG pos;
-         if (!find_public_object_entry(header, Object->UniqueID, &pos)) {
-            SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
-            list[pos].OwnerID = Owner->UniqueID;
+         if (!find_public_object_entry(header.ptr, Object->UID, &pos)) {
+            auto list = (SharedObject *)ResolveAddress(header.ptr, header.ptr->Offset);
+
+            if (Object->OwnerID) { // Remove reference from the now previous owner
+               auto it = glObjectChildren.find(Object->OwnerID);
+               if (it != glObjectChildren.end()) it->second.erase(Object->UID);
+            }
+
+            Object->OwnerID = Owner->UID;
+            list[pos].OwnerID = Owner->UID;
          }
-         ReleaseMemoryID(RPM_SharedObjects);
+         else return log.warning(ERR_Search);
       }
+      else return log.warning(ERR_AccessMemory);
 
       // Track the object's memory header to the new owner
 
@@ -1970,30 +1832,40 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       if (lock.granted()) {
          LONG i;
          if ((i = find_public_address(glSharedControl, Object)) != -1) {
-            glSharedBlocks[i].ObjectID = Owner->UniqueID;
+            glSharedBlocks[i].ObjectID = Owner->UID;
          }
+         else return log.warning(ERR_Search);
       }
+      else return log.warning(ERR_Lock);
    }
    else {
       { // Track the object's memory header to the new owner
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
-            LONG pos;
-            if ((pos = find_private_mem_id(Object->UniqueID, Object)) != -1) {
-               glPrivateMemory[pos].ObjectID = Owner->UniqueID;
-            }
-            else log.warning("Failed to find private object %p / #%d.", Object, Object->UniqueID);
+            auto mem = glPrivateMemory.find(Object->UID);
+            if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
+            mem->second.OwnerID = Owner->UID;
+
+            // Remove reference from the now previous owner
+            if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UID);
+
+            Object->OwnerID = Owner->UID;
+
+            glObjectChildren[Owner->UID].insert(Object->UID);
          }
+         else return log.warning(ERR_Lock);
       }
 
       // If the owner is public and belongs to another task, subscribe to the FreeResources action so
       // that we can receive notification when the owner is destroyed.
+      //
+      // TODO: Would it be better if public object termination was broadcast via events and processes could
+      // check their own glObjectChildren for any references?
 
-      if ((Owner->UniqueID < 0) AND (Owner->TaskID) AND (Owner->TaskID != glCurrentTaskID) AND (Owner->TaskID != SystemTaskID)) {
-         log.msg("Owner %d is in task %d, will monitor for termination.", Owner->UniqueID, Owner->TaskID);
-         OBJECTPTR context = SetContext(Object);
+      if ((Owner->UID < 0) and (Owner->TaskID) and (Owner->TaskID != glCurrentTaskID) and (Owner->TaskID != SystemTaskID)) {
+         log.msg("Owner %d is in task %d, will monitor for termination.", Owner->UID, Owner->TaskID);
+         parasol::SwitchContext ctx(Object);
          SubscribeAction(Owner, AC_OwnerDestroyed);
-         SetContext(context);
          Object->Flags |= NF_FOREIGN_OWNER;
       }
    }
@@ -2089,45 +1961,45 @@ AccessMemory: The function could not gain access to the shared objects table (in
 
 *****************************************************************************/
 
-ERROR SetName(OBJECTPTR Object, CSTRING String)
+ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 {
    parasol::Log log(__FUNCTION__);
    SharedObjectHeader *header;
    LONG i, pos;
 
-   if ((!Object) OR (!String)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
 
    ScopedObjectAccess objlock(Object);
 
    // Remove any existing name first.
 
-   if ((Object->Stats->Name[0]) AND (Object->UniqueID > 0)) {
+   if ((Object->Stats->Name[0]) and (Object->UID > 0)) {
       ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
       if (lock.granted()) remove_object_hash(Object);
    }
 
-   BYTE illegal = FALSE;
+   bool illegal = false;
    char c;
-   for (i=0; ((c = String[i])) AND (i < (MAX_NAME_LEN-1)); i++) {
-      if ((c >= 'A') AND (c <= 'Z')) {
+   for (i=0; ((c = NewName[i])) and (i < (MAX_NAME_LEN-1)); i++) {
+      if ((c >= 'A') and (c <= 'Z')) {
          c = c - 'A' + 'a';
       }
-      else if (((c >= 'a') AND (c <= 'z')) OR ((c >= '0') AND (c <= '9')) OR ((c IS '_'))) {
+      else if (((c >= 'a') and (c <= 'z')) or ((c >= '0') and (c <= '9')) or ((c IS '_'))) {
       }
       else {
          // Anything that is not alphanumeric is not permitted in the object name.
          if (!illegal) {
-            illegal = TRUE;
-            log.warning("Illegal character '%c' in proposed name '%s'", c, String);
-            c = '_';
+            illegal = true;
+            log.msg("Illegal character '%c' in proposed name '%s'", c, NewName);
          }
+         c = '_';
       }
 
       Object->Stats->Name[i] = c;
    }
    Object->Stats->Name[i] = 0;
 
-   if (Object->UniqueID >= 0) {
+   if (Object->UID >= 0) {
       if (Object->Stats->Name[0]) {
          ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
          if (lock.granted()) {
@@ -2146,13 +2018,14 @@ ERROR SetName(OBJECTPTR Object, CSTRING String)
             }
             else VarSet(glObjectLookup, Object->Stats->Name, &Object, sizeof(OBJECTPTR));
          }
+         else return log.warning(ERR_Lock);
       }
       return ERR_Okay;
    }
    else if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, (void **)&header)) {
-      if (!find_public_object_entry(header, Object->UniqueID, &pos)) {
-         SharedObject *list = (SharedObject *)ResolveAddress(header, header->Offset);
-         for (i=0; (Object->Stats->Name[i]) AND (i < (MAX_NAME_LEN-1)); i++) {
+      if (!find_public_object_entry(header, Object->UID, &pos)) {
+         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
+         for (i=0; (Object->Stats->Name[i]) and (i < (MAX_NAME_LEN-1)); i++) {
             list[pos].Name[i] = Object->Stats->Name[i];
          }
          list[pos].Name[i] = 0;
@@ -2198,8 +2071,8 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
       case RP_ROOT_PATH:
          if (Path) {
             WORD i;
-            for (i=0; (Path[i]) AND ((size_t)i < sizeof(glRootPath)-2); i++) glRootPath[i] = Path[i];
-            if ((glRootPath[i-1] != '/') AND (glRootPath[i-1] != '\\')) {
+            for (i=0; (Path[i]) and ((size_t)i < sizeof(glRootPath)-2); i++) glRootPath[i] = Path[i];
+            if ((glRootPath[i-1] != '/') and (glRootPath[i-1] != '\\')) {
                #ifdef _WIN32
                   glRootPath[i++] = '\\';
                #else
@@ -2213,8 +2086,8 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
       case RP_SYSTEM_PATH:
          if (Path) {
             WORD i;
-            for (i=0; (Path[i]) AND ((size_t)i < sizeof(glSystemPath)-2); i++) glSystemPath[i] = Path[i];
-            if ((glSystemPath[i-1] != '/') AND (glSystemPath[i-1] != '\\')) {
+            for (i=0; (Path[i]) and ((size_t)i < sizeof(glSystemPath)-2); i++) glSystemPath[i] = Path[i];
+            if ((glSystemPath[i-1] != '/') and (glSystemPath[i-1] != '\\')) {
                #ifdef _WIN32
                   glSystemPath[i++] = '\\';
                #else
@@ -2228,8 +2101,8 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
       case RP_MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
          if (Path) {
             WORD i;
-            for (i=0; (Path[i]) AND ((size_t)i < sizeof(glModulePath)-2); i++) glModulePath[i] = Path[i];
-            if ((glModulePath[i-1] != '/') AND (glModulePath[i-1] != '\\')) {
+            for (i=0; (Path[i]) and ((size_t)i < sizeof(glModulePath)-2); i++) glModulePath[i] = Path[i];
+            if ((glModulePath[i-1] != '/') and (glModulePath[i-1] != '\\')) {
                #ifdef _WIN32
                   glModulePath[i++] = '\\';
                #else
@@ -2297,7 +2170,7 @@ LARGE SetResource(LONG Resource, LARGE Value)
          break;
 
       case RES_LOG_LEVEL:
-         if ((Value >= 0) AND (Value <= 9)) glLogLevel = Value;
+         if ((Value >= 0) and (Value <= 9)) glLogLevel = Value;
          break;
 
       case RES_LOG_DEPTH: tlDepth = Value; break;
@@ -2313,10 +2186,6 @@ LARGE SetResource(LONG Resource, LARGE Value)
          break;
 
       case RES_JNI_ENV: glJNIEnv = L64PTR(Value); break;
-
-#ifdef __unix__
-      case RES_X11_FD: glX11FD = Value; break;
-#endif
 
       case RES_PRIVILEGED_USER:
 #ifdef __unix__
@@ -2373,11 +2242,11 @@ ERROR SetSubscriptionPriority(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subs
    LONG i, error, memflags;
    APTR context;
 
-   if ((!Object) OR (!ActionID) OR (!SubscriberID)) return ERR_Args;
+   if ((!Object) or (!ActionID) or (!SubscriberID)) return ERR_Args;
 
    if (AccessMemory(Object->Stats->ActionSubscriptions.ID, MEM_READ_WRITE, 2000, (APTR *)&list) IS ERR_Okay) {
-      for (i=0; (i < Object->Stats->SubscriptionSize) AND (list[i].ActionID); i++) {
-         if ((list[i].ActionID IS ActionID) AND (list[i].SubscriberID IS Subscriber->UniqueID)) break;
+      for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
+         if ((list[i].ActionID IS ActionID) and (list[i].SubscriberID IS Subscriber->UID)) break;
       }
 
       if (i >= Object->Stats->SubscriptionSize) {
@@ -2389,7 +2258,7 @@ ERROR SetSubscriptionPriority(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subs
 
          if (error IS ERR_Okay) {
             if (AccessMemory(newlistid, MEM_READ_WRITE, 2000, (APTR *)&newlist) IS ERR_Okay) {
-               for (i=0; (list[i].ActionID) AND (i < Object->Stats->SubscriptionSize); i++) {
+               for (i=0; (list[i].ActionID) and (i < Object->Stats->SubscriptionSize); i++) {
                   newlist[i].ActionID       = list[i].ActionID;
                   newlist[i].SubscriberID   = list[i].SubscriberID;
                   newlist[i].MessagePortMID = list[i].MessagePortMID;
@@ -2416,7 +2285,7 @@ ERROR SetSubscriptionPriority(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subs
       }
 
       list[i].ActionID       = ActionID;
-      list[i].SubscriberID   = Subscriber->UniqueID;
+      list[i].SubscriberID   = Subscriber->UID;
       list[i].ClassID        = Subscriber->ClassID;
       list[i].MessagePortMID = glTaskMessageMID;
 
@@ -2467,7 +2336,7 @@ ERROR SubscribeFeed(OBJECTPTR Object)
 
    ScopedObjectAccess objlock(Object);
 
-   log.traceBranch("%s: %d", ((rkMetaClass *)Object->Class)->ClassName, Object->UniqueID);
+   log.traceBranch("%s: %d", ((objMetaClass *)Object->Class)->ClassName, Object->UID);
 
    if (Object->Flags & NF_PUBLIC) memflags = Object->MemFlags|MEM_PUBLIC;
    else memflags = Object->MemFlags;
@@ -2477,7 +2346,7 @@ ERROR SubscribeFeed(OBJECTPTR Object)
    if (!Object->Stats->MID_FeedList) { // Allocate a feed list for the first time
       if (!AllocMemory(sizeof(FeedSubscription)*2, MEM_NO_CLEAR|memflags, NULL, &Object->Stats->MID_FeedList)) {
          if (!AccessMemory(Object->Stats->MID_FeedList, MEM_WRITE, 2000, (APTR *)&list)) {
-            list[0].SubscriberID   = tlContext->Object->UniqueID;
+            list[0].SubscriberID   = tlContext->Object->UID;
             list[0].MessagePortMID = glTaskMessageMID;
             list[0].ClassID        = tlContext->Object->ClassID;
             list[1].SubscriberID   = 0;
@@ -2499,7 +2368,7 @@ ERROR SubscribeFeed(OBJECTPTR Object)
 
             for (i=0; list[i].SubscriberID; i++) newlist[i] = list[i];
 
-            newlist[i].SubscriberID   = tlContext->Object->UniqueID;
+            newlist[i].SubscriberID   = tlContext->Object->UID;
             newlist[i].MessagePortMID = glTaskMessageMID;
             newlist[i].ClassID        = tlContext->Object->ClassID;
             newlist[i+1].SubscriberID   = 0;
@@ -2537,7 +2406,7 @@ A callback function must be provided that follows this prototype: `ERROR Functio
 The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime
 parameter is set to the ~PreciseTime() value just prior to the Callback being called.  The callback function
 can return ERR_Terminate at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks
-should call check(ERR_Terminate) to perform the equivalent of this behaviour.
+should call `check(ERR_Terminate)` to perform the equivalent of this behaviour.
 
 To change the interval, call ~UpdateTimer() with the new value.  To release a timer subscription, call
 ~UpdateTimer() with the resulting SubscriptionID and an Interval of zero.
@@ -2550,14 +2419,14 @@ other timer subscriptions that are waiting to be processed.
 -INPUT-
 double Interval:   The total number of seconds to wait between timer calls.
 ptr(func) Callback: A callback function is required that will be called on each time cycle.
-&ptr Subscription: The subscription will be assigned an identifier that is returned in this parameter.
+&ptr Subscription: Optional.  The subscription will be assigned an identifier that is returned in this parameter.
 
 -ERRORS-
 Okay:
 NullArgs:
 Args:
 ArrayFull: The task's timer array is at capacity - no more subscriptions can be granted.
-BadState: The subscriber is marked for termination.
+InvalidState: The subscriber is marked for termination.
 SystemLocked:
 
 *****************************************************************************/
@@ -2566,16 +2435,14 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Interval) OR (!Callback)) return log.warning(ERR_NullArgs);
+   if ((!Interval) or (!Callback)) return log.warning(ERR_NullArgs);
    if (Interval < 0) return log.warning(ERR_Args);
 
    OBJECTPTR subscriber = tlContext->Object;
-   if (subscriber->Flags & (NF_FREE|NF_FREE_MARK)) return ERR_BadState;
+   if (subscriber->collecting()) return log.warning(ERR_InvalidState);
 
-   if (glLogLevel >= 7) {
-      if (Callback->Type IS CALL_SCRIPT) log.branch("Interval: %.3fs", Interval);
-      else log.branch("Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
-   }
+   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Interval: %.3fs", Interval);
+   else log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
 
    ThreadLock lock(TL_TIMER, 200);
    if (lock.granted()) {
@@ -2585,37 +2452,29 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
          // interruptions that occur per second.
       }
 
-      CoreTimer *timer;
-      if ((timer = (CoreTimer *)malloc(sizeof(CoreTimer)))) {
-         LARGE subscribed    = PreciseTime();
-         timer->SubscriberID = subscriber->UniqueID;
-         timer->Interval     = usInterval;
-         timer->LastCall     = subscribed;
-         timer->NextCall     = subscribed + usInterval;
-         timer->Routine      = *Callback;
-         timer->Locked       = FALSE;
-         timer->Cycle        = glTimerCycle - 1;
+      auto it = glTimers.emplace(glTimers.end());
+      LARGE subscribed = PreciseTime();
+      it->SubscriberID = subscriber->UID;
+      it->Interval     = usInterval;
+      it->LastCall     = subscribed;
+      it->NextCall     = subscribed + usInterval;
+      it->Routine      = *Callback;
+      it->Locked       = false;
+      it->Cycle        = glTimerCycle - 1;
 
-         if (subscriber->UniqueID > 0) timer->Subscriber = subscriber;
-         else timer->Subscriber = NULL;
+      if (subscriber->UID > 0) it->Subscriber = subscriber;
+      else it->Subscriber = NULL;
 
-         // For resource tracking purposes it is important for us to keep a record of the subscription so that
-         // we don't treat the object address as valid when it's been removed from the system.
+      // For resource tracking purposes it is important for us to keep a record of the subscription so that
+      // we don't treat the object address as valid when it's been removed from the system.
 
-         subscriber->Flags |= NF_TIMER_SUB;
+      subscriber->Flags |= NF_TIMER_SUB;
 
-         if (Subscription) *Subscription = timer;
+      if (Subscription) *Subscription = &*it;
 
-         timer->Prev = NULL;
-         timer->Next = glTimers;
-         if (glTimers) glTimers->Prev = timer;
-         glTimers = timer;
-
-         return ERR_Okay;
-      }
-      else return ERR_AllocMemory;
+      return ERR_Okay;
    }
-   else return ERR_SystemLocked;
+   else return log.warning(ERR_SystemLocked);
 }
 
 /*****************************************************************************
@@ -2623,7 +2482,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 -FUNCTION-
 PreciseTime: Returns the current system time, in microseconds.
 
-This function returns the current 'system time', in microseconds (1 millionth of a second).  The value is monotonic
+This function returns the current 'system time' in microseconds (1 millionth of a second).  The value is monotonic
 if the host platform allows it (typically expressed as the amount of time that has elapsed since the system was
 switched on).  The benefit of monotonic time is that it is unaffected by changes to the system clock, such as daylight
 savings adjustments or manual changes by the user.
@@ -2670,7 +2529,7 @@ ERROR UnsubscribeFeed(OBJECTPTR Object)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.trace("%s: %d", ((rkMetaClass *)Object->Class)->ClassName, Object->UniqueID);
+   log.trace("%s: %d", ((objMetaClass *)Object->Class)->ClassName, Object->UID);
 
    if (!Object) return log.warning(ERR_NullArgs);
 
@@ -2681,7 +2540,7 @@ ERROR UnsubscribeFeed(OBJECTPTR Object)
    FeedSubscription *list;
    if (!AccessMemory(Object->Stats->MID_FeedList, MEM_READ_WRITE, 2000, (APTR *)&list)) {
       for (LONG i=0; list[i].SubscriberID; i++) {
-         if (list[i].SubscriberID IS tlContext->Object->UniqueID) {
+         if (list[i].SubscriberID IS tlContext->Object->UID) {
             while (list[i+1].SubscriberID) { // Compact the list
                list[i] = list[i+1];
                i++;
@@ -2733,11 +2592,11 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 
    if (!Subscription) return log.warning(ERR_NullArgs);
 
-   if (glLogLevel >= 7) log.function("Subscription: %p, Interval: %.4f", Subscription, Interval);
+   log.msg(VLF_EXTAPI|VLF_BRANCH|VLF_FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
    ThreadLock lock(TL_TIMER, 200);
    if (lock.granted()) {
-      CoreTimer *timer = (CoreTimer *)Subscription;
+      auto timer = (CoreTimer *)Subscription;
       if (Interval < 0) {
          // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)
          LARGE usInterval = -((LARGE)(Interval * 1000000.0));
@@ -2758,16 +2617,19 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
             return log.warning(ERR_AlreadyLocked);
          }
 
-         if (timer->Next) timer->Next->Prev = timer->Prev;
-         if (timer->Prev) timer->Prev->Next = timer->Next;
-         if (glTimers IS timer) glTimers = timer->Next;
          lock.release();
 
          if (timer->Routine.Type IS CALL_SCRIPT) {
             scDerefProcedure(timer->Routine.Script.Script, &timer->Routine);
          }
 
-         free(timer);
+         for (auto it=glTimers.begin(); it != glTimers.end(); it++) {
+            if (timer IS &(*it)) {
+               glTimers.erase(it);
+               break;
+            }
+         }
+
          return ERR_Okay;
       }
    }
@@ -2796,18 +2658,18 @@ int MicroSeconds: The number of microseconds to wait for.  Please note that a mi
 
 void WaitTime(LONG Seconds, LONG MicroSeconds)
 {
-   BYTE processmsg;
+   bool processmsg;
 
    if (!tlMainThread) {
-      processmsg = FALSE; // Child threads never process messages.
+      processmsg = false; // Child threads never process messages.
       if (Seconds < 0) Seconds = -Seconds;
       if (MicroSeconds < 0) MicroSeconds = -MicroSeconds;
     }
    else {
       // If the Seconds or MicroSeconds arguments are negative, turn off the ProcessMessages() support.
-      processmsg = TRUE;
-      if (Seconds < 0) { Seconds = -Seconds; processmsg = FALSE; }
-      if (MicroSeconds < 0) { MicroSeconds = -MicroSeconds; processmsg = FALSE; }
+      processmsg = true;
+      if (Seconds < 0) { Seconds = -Seconds; processmsg = false; }
+      if (MicroSeconds < 0) { MicroSeconds = -MicroSeconds; processmsg = false; }
    }
 
    while (MicroSeconds >= 1000000) {
@@ -2817,10 +2679,10 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
 
    if (processmsg) {
       LARGE current = PreciseTime() / 1000LL;
-      LARGE end = current + (Seconds * 1000) + (MicroSeconds/1000);
+      LARGE end = current + (Seconds * 1000) + (MicroSeconds / 1000);
       do {
          if (ProcessMessages(0, end - current) IS ERR_Terminate) break;
-         current = (PreciseTime()/1000LL);
+         current = (PreciseTime() / 1000LL);
       } while (current < end);
    }
    else {
@@ -2830,7 +2692,7 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
          nano.tv_nsec = MicroSeconds * 100;
          while (nanosleep(&nano, &nano) == -1) continue;
       #elif _WIN32
-         winSleep((Seconds * 1000) + (MicroSeconds/1000));
+         winSleep((Seconds * 1000) + (MicroSeconds / 1000));
       #else
          #warn Platform needs support for WaitTime()
       #endif
@@ -2844,7 +2706,7 @@ void remove_object_hash(OBJECTPTR Object)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (Object->UniqueID < 0) return; // Public objects not supported by this function
+   if (Object->UID < 0) return; // Public objects not supported by this function
 
    OBJECTPTR *list;
    LONG list_size;
@@ -2874,12 +2736,12 @@ void set_object_flags(OBJECTPTR Object, LONG Flags)
 
    Object->Flags = Flags;
 
-   if (Object->UniqueID < 0) {
+   if (Object->UID < 0) {
       SharedObjectHeader *header;
       if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         SharedObject *pubobj = (SharedObject *)ResolveAddress(header, header->Offset);
+         auto pubobj = (SharedObject *)ResolveAddress(header, header->Offset);
          LONG index;
-         if (!find_public_object_entry(header, Object->UniqueID, &index)) {
+         if (!find_public_object_entry(header, Object->UID, &index)) {
             pubobj[index].Flags = Flags;
          }
          ReleaseMemoryID(RPM_SharedObjects);

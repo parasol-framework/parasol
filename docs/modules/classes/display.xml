@@ -12,7 +12,7 @@
     <idstring>ID_DISPLAY</idstring>
     <category>Graphics</category>
     <include>modules/display.h</include>
-    <copyright>Paul Manias 2003-2020</copyright>
+    <copyright>Paul Manias 2003-2022</copyright>
     <description>
 <p>A Display object represents an area of displayable video memory.  Although it is a very complex structure, it is fairly simple to initialise.  In fact it is possible to initialise a display using an empty structure and accept all the user defaults (which we recommended if possible).  For more demanding applications however you may often need to specify a few fields.  Before doing so, make sure that you understand how each field operates and what implications setting them may bring.  Where possible try to avoid setting field values, as the user default should always be considered as acceptable.</p>
 <p>It is perfectly acceptable to initialise multiple display objects and add them to the viewport, but due to memory restrictions, chances of failure could be high when doing this in certain environments.  When programming for Parasol, it is recommended that the utilisation of display objects is avoided in favour of using the <class name="Surface">Surface</class> class. which is much lighter on memory usage.</p>
@@ -41,8 +41,8 @@
 <p>This action does nothing if the display is in hosted mode.</p>
       </description>
       <result>
-        <error code="NoSupport">The display or graphics card does not support DPMS.</error>
         <error code="Okay">The display was disabled.</error>
+        <error code="NoSupport">The display or graphics card does not support DPMS.</error>
       </result>
     </action>
 
@@ -132,10 +132,10 @@
       <comment>Presents a display object to the user.</comment>
       <description>
 <p>This method presents a display object to the user.  On a hosted platform, this will result in a window appearing on screen.  By default the window will be hosted within a window border which may contain regular window gadgets such as a titlebar and buttons for close, maximise and minimise operations.  The position of the window is determined by the <field>X</field> and <field>Y</field> fields.  In Parasol's native platform, the user's screen display will be altered to match the required resolution and the graphics of the display's <field>Bitmap</field> object will take up the entirety of the screen.</p>
-<p>If the BORDERLESS flag has been set in the <field>Flags</field> field, the window will appear without the surrounding border and gadgets normally associated with new windows.</p>
+<p>If the <code>BORDERLESS</code> flag has been set in the <field>Flags</field> field, the window will appear without the surrounding border and gadgets normally associated with new windows.</p>
 <p>In Microsoft Windows, the <field>LeftMargin</field>, <field>RightMargin</field>, <field>TopMargin</field> and <field>BottomMargin</field> fields will be updated to reflect the position of the client area within the hosted window.  In X11 these field values are all set to zero.</p>
 <p>If the window is minimised at the time this action is called, the window will be restored to its original position if the code for the host platform supports this capability.</p>
-<p>The VISIBLE flag in the <field>Flags</field> field will be set if the Show operation is successful.</p>
+<p>The <code>VISIBLE</code> flag in the <field>Flags</field> field will be set if the Show operation is successful.</p>
       </description>
     </action>
 
@@ -177,9 +177,9 @@
 <p>Only the original owner of the display object is allowed to change the display settings.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Failed">Failed to switch to the requested display mode.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Failed">Failed to switch to the requested display mode.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -195,13 +195,13 @@
       </input>
       <description>
 <p>The SetGamma method controls the gamma correction levels for the display.  Gamma levels for the red, green and blue colour components can be set at floating point precision.  The default gamma level for each component is 1.0; the minimum value is 0.0 and the maximum value is 100.</p>
-<p>Optional flags include GMF_SAVE.  This option will save the requested settings as the user default when future displays are opened.</p>
+<p>Optional flags include <code>GMF_SAVE</code>.  This option will save the requested settings as the user default when future displays are opened.</p>
 <p>If you would like to know the default gamma correction settings for a display, please refer to the <field>Gamma</field> field.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="NoSupport">The graphics hardware does not support gamma correction.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NoSupport">The graphics hardware does not support gamma correction.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -219,8 +219,8 @@
 <p>Call SetGammaLinear to update a target display's gamma values with a linear algorithm that takes input from Red, Green and Blue parameters provided by the client.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -242,8 +242,8 @@
 <p>This method does not work on hosted platforms.  All parameters passed to this method are optional (set a value to zero if it should not be changed).</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -261,8 +261,8 @@
 <p>If a display is hosted in a desktop window, it may be possible to enforce size restrictions that prevent the window from being shrunk below, or expanded beyond a certain size.  This feature is platform dependent and ERR_NoSupport will be returned if it is not implemented.</p>
       </description>
       <result>
-        <error code="NoSupport">The host platform does not support this feature.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NoSupport">The host platform does not support this feature.</error>
       </result>
     </method>
 
@@ -278,8 +278,8 @@
 <p>This method has no visible effect on RGB pixel displays.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -291,8 +291,8 @@
 <p>This method waits for the strobe to reach the vertical blank area at the bottom of the display.  Not all graphics hardware will support this method.  If this is the case, WaitVBL() will return immediately with ERR_NoSupport.</p>
       </description>
       <result>
-        <error code="NoSupport">This request is not supported.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NoSupport">This request is not supported.</error>
       </result>
     </method>
 
@@ -694,66 +694,43 @@
 
   </fields>
   <types>
-    <constants lookup="CSRF" comment="Flags for CopySurface().">
-      <const name="ALPHA">Enable alpha blending if the source is in 32-bit colour format with an alpha channel.</const>
-      <const name="TRANSLUCENT">Perform a translucent copy operation, using the strength value specified in the Surface Opacity field.</const>
-      <const name="OFFSET">Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.</const>
-      <const name="CLIP">Enable clipping of the source coordinates.</const>
-      <const name="TRANSPARENT">Enable transparent copying, whereby colours matching the source's Colour field will be ignored.</const>
-      <const name="DEFAULT_FORMAT">Ignore the colour format defined in the source surface (if any) and generate a default format based on the BitsPerPixel value.</const>
-    </constants>
-
-    <constants lookup="ACF" comment="Acceleration flags for GetDisplayInfo().">
-      <const name="VIDEO_BLIT">Video blitting is supported for this display.</const>
-      <const name="SOFTWARE_BLIT">Software blitting is used (or forced) for this display.</const>
-    </constants>
-
-    <constants lookup="BMF" comment="Bitmap flags">
-      <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
-      <const name="FIXED_DEPTH">Prevent changing of bitmap depth after initialisation (e.g. via acResize()).</const>
-      <const name="QUERIED">Automatically set after a Query on the bitmap.</const>
-      <const name="ACCELERATED_3D">3D video acceleration is available.</const>
-      <const name="ALPHA_CHANNEL">For 32-bit images, indicates that an alpha channel is present.</const>
-      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the ColourRGB field is set and support exists in functions such as CopyArea().</const>
-      <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
-      <const name="ACCELERATED_2D">2D video acceleration is available.</const>
-      <const name="CLEAR">Clear graphics on initialisation and when resizing.</const>
-      <const name="COMPRESSED">The bitmap data is compressed.</const>
-      <const name="USER">User flag allows tagging of bitmaps for special meaning; not used internally.</const>
-      <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
-      <const name="BLANK_PALETTE">Forces a blank/black palette on initialisation.</const>
-      <const name="INVERSE_ALPHA">Indicates reverse alpha blending, higher values are transparent.</const>
-      <const name="MASK">Declare the Bitmap as a 1 or 8 bit mask.  Must be set in conjunction with the BitsPerPixel field on initialisation.</const>
-    </constants>
-
     <constants lookup="DPMS" comment="Possible modes for the Display class' DPMS field.">
       <const name="DEFAULT">Use the default DPMS mode as defined by the display driver.</const>
       <const name="OFF">Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).</const>
-      <const name="SUSPEND">Puts the display into suspend mode (blanks the display output while maintaining normal power levels).</const>
       <const name="STANDBY">Puts the display into standby (reduced power) mode.</const>
-    </constants>
-
-    <constants lookup="FLIP" comment="Flags for the bitmap Flip method.">
-      <const name="HORIZONTAL">Flip the bitmap from top to bottom.</const>
-      <const name="VERTICAL">Flip the bitmap from left to right.</const>
-    </constants>
-
-    <constants lookup="CSTF" comment="Flags for CopyStretch().">
-      <const name="BICUBIC">Cubic scaling.</const>
-      <const name="BRESENHAM">Smooth bresenham.</const>
-      <const name="CLAMP">Pixels that are past the edge of the source material will have a default alpha value of 0 unless the CLAMP flag is used, in which case the value is approximated with a bias of 255 if not otherwise calculable.</const>
-      <const name="GOOD_QUALITY">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
-      <const name="CUBIC">Cubic scaling.</const>
-      <const name="NEIGHBOUR">Nearest neighbour scaling</const>
-      <const name="FILTER_SOURCE">If the source bitmap is temporary and will not be required after the stretch operation, you have the option of setting this flag.  By doing so, the stretch routine will pass the source image through a simple filter so that it can improve the resulting image.  This option is available at a speed cost and is best used in conjunction with bilinear resizing.</const>
-      <const name="BILINEAR">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
+      <const name="SUSPEND">Puts the display into suspend mode (blanks the display output while maintaining normal power levels).</const>
     </constants>
 
     <constants lookup="DT" comment="Flags for GetDisplayType().">
-      <const name="NATIVE">The display is native (supported by internal drivers).</const>
-      <const name="X11">The display is driven by the X Window System (X11, X.Org, XFree86)</const>
-      <const name="WINDOWS">The display is driven by Microsoft Windows drivers.</const>
       <const name="GLES">The display is driven by OpenGLES.</const>
+      <const name="NATIVE">The display is native (supported by internal drivers).</const>
+      <const name="WINDOWS">The display is driven by Microsoft Windows drivers.</const>
+      <const name="X11">The display is driven by the X Window System (X11, X.Org, XFree86)</const>
+    </constants>
+
+    <constants lookup="GMF" comment="Flags for gamma operations.">
+      <const name="SAVE">Save the provided settings permanently.</const>
+    </constants>
+
+    <constants lookup="SCR" comment="Display flags.">
+      <const name="ALPHA_BLEND">Enables alpha channel blending (if display is hosted and 32-bit).</const>
+      <const name="AUTO_SAVE">Saves settings to the global display state when the object is freed.</const>
+      <const name="BIT_6">Display is limited to 6-bit output per colour gun.</const>
+      <const name="BORDERLESS">If display is hosted, create it as a popup / borderless window.</const>
+      <const name="BUFFER">Set if you would like a complementing buffer in video RAM.</const>
+      <const name="COMPOSITE">Enables alpha channel blending (if display is hosted and 32-bit).</const>
+      <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
+      <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
+      <const name="FLIPPABLE">If SCR_BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
+      <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
+      <const name="HOSTED">The display is a desktop hosted window.</const>
+      <const name="MAXIMISE">Special win32 flag.</const>
+      <const name="MAXSIZE">For GetDisplayInfo() only, indicates that the width and height values indicate the display's maximum size.</const>
+      <const name="NO_ACCELERATION">2D graphics card acceleration is not available.</const>
+      <const name="POWERSAVE">Power saving is active (read-only).</const>
+      <const name="READ_ONLY">Synonym for MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</const>
+      <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
+      <const name="VISIBLE">Set if the screen is on display.</const>
     </constants>
 
     <constants lookup="SMF" comment="Flags for the Display class SetMonitor() method.">
@@ -761,124 +738,7 @@
       <const name="BIT_6">The device is limited to 6-bit colour production in real terms.</const>
     </constants>
 
-    <constants lookup="GMF" comment="Flags for gamma operations.">
-      <const name="SAVE">Save the provided settings permanently.</const>
-    </constants>
-
-    <constants lookup="HOST">
-      <const name="TRAY_ICON">All new displays are represented in the system tray when this option is active.</const>
-      <const name="TASKBAR">The hosted display is given a taskbar button.</const>
-      <const name="STICK_TO_FRONT">The hosted display sticks to the front.</const>
-      <const name="TRANSLUCENCE">Change the alpha channel level for the entire window.</const>
-      <const name="TRANSPARENT">Defines an RGB colour that is to be used as transparent.</const>
-    </constants>
-
-    <constants lookup="PF" comment="Flags for the Pointer class.">
-      <const name="UNUSED"/>
-      <const name="VISIBLE">Indicates that the pointer is currently visible.  Read-only.</const>
-      <const name="ANCHOR">Allow the pointer to be anchored.</const>
-    </constants>
-
-    <constants lookup="CRF" comment="Flags for the SetCursor() function.">
-      <const name="LMB">Release the cursor after the left mouse button is held and released.</const>
-      <const name="NO_BUTTONS">Set the cursor only on the condition that the user is not holding down any buttons.  ERR_NothingDone is returned if the user has a button held down.</const>
-      <const name="MMB">Release the cursor after the middle mouse button is held and released.</const>
-      <const name="BUFFER">Use of the BUFFER option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the SetCursor() function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the ANCHOR option.</const>
-      <const name="RMB">Release the cursor after the right mouse button is held and released.</const>
-      <const name="RESTRICT">Similar to the anchor option, but allows the pointer to move within the surface referred to by ObjectID.</const>
-    </constants>
-
-    <constants lookup="BAF" comment="Instructions for basic graphics operations.">
-      <const name="COPY">Special CopyArea() option that avoids blending when the destination pixel is empty.</const>
-      <const name="BLEND">Enable alpha blending to the destination if the source supports an alpha channel.</const>
-      <const name="FILL">For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture.</const>
-      <const name="DITHER">Perform dithering if the colour formats differ between the source and destination.</const>
-    </constants>
-
-    <constants lookup="BMP" comment="Bitmap types">
-      <const name="PLANAR">Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.</const>
-      <const name="CHUNKY">Chunky pixel mode (default).</const>
-    </constants>
-
-    <constants lookup="SCR" comment="Display flags.">
-      <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
-      <const name="BIT_6">Display is limited to 6-bit output per colour gun.</const>
-      <const name="AUTO_SAVE">Saves settings to the global display state when the object is freed.</const>
-      <const name="MAXSIZE">For GetDisplayInfo() only, indicates that the width and height values indicate the display's maximum size.</const>
-      <const name="NO_ACCELERATION">2D graphics card acceleration is not available.</const>
-      <const name="VISIBLE">Set if the screen is on display.</const>
-      <const name="COMPOSITE">Enables alpha channel blending (if display is hosted and 32-bit).</const>
-      <const name="READ_ONLY">Synonym for MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</const>
-      <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
-      <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
-      <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
-      <const name="BORDERLESS">If display is hosted, create it as a popup / borderless window.</const>
-      <const name="HOSTED">The display is a desktop hosted window.</const>
-      <const name="BUFFER">Set if you would like a complementing buffer in video RAM.</const>
-      <const name="POWERSAVE">Power saving is active (read-only).</const>
-      <const name="ALPHA_BLEND">Enables alpha channel blending (if display is hosted and 32-bit).</const>
-      <const name="MAXIMISE">Special win32 flag.</const>
-      <const name="FLIPPABLE">If SCR_BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
-    </constants>
-
   </types>
   <structs>
-    <struct name="CursorInfo">
-      <field name="Width" type="LONG">Maximum cursor width for custom cursors</field>
-      <field name="Height" type="LONG">Maximum cursor height for custom cursors</field>
-      <field name="Flags" type="LONG">Currently unused</field>
-      <field name="BitsPerPixel" type="WORD">Preferred bits-per-pixel setting for custom cursors</field>
-    </struct>
-
-    <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
-      <field name="RedShift" type="UBYTE">Right shift value</field>
-      <field name="GreenShift" type="UBYTE"></field>
-      <field name="BlueShift" type="UBYTE"></field>
-      <field name="AlphaShift" type="UBYTE"></field>
-      <field name="RedMask" type="UBYTE">The unshifted mask value (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE"></field>
-      <field name="BlueMask" type="UBYTE"></field>
-      <field name="AlphaMask" type="UBYTE"></field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value</field>
-      <field name="GreenPos" type="UBYTE"></field>
-      <field name="BluePos" type="UBYTE"></field>
-      <field name="AlphaPos" type="UBYTE"></field>
-    </struct>
-
-    <struct name="DisplayInfo" typeName="DISPLAYINFO">
-      <field name="Display" type="OBJECTID">Object ID related to the display</field>
-      <field name="Flags" type="LONG" lookup="SCR">Display flags</field>
-      <field name="Width" type="WORD">Pixel width of the display</field>
-      <field name="Height" type="WORD">Pixel height of the display</field>
-      <field name="BitsPerPixel" type="WORD">Bits per pixel</field>
-      <field name="BytesPerPixel" type="WORD">Bytes per pixel</field>
-      <field name="AccelFlags" type="LARGE" lookup="ACF">Flags describing supported hardware features.</field>
-      <field name="AmtColours" type="LONG">Total number of supported colours.</field>
-      <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
-      <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>
-      <field name="MaxRefresh" type="FLOAT">Maximum refresh rate</field>
-      <field name="RefreshRate" type="FLOAT">Recommended refresh rate</field>
-      <field name="Index" type="LONG">Display mode ID (internal)</field>
-      <field name="HDensity" type="LONG">Horizontal pixel density per inch.</field>
-      <field name="VDensity" type="LONG">Vertical pixel density per inch.</field>
-    </struct>
-
-    <struct name="BitmapSurface" typeName="BITMAPSURFACE">
-      <field name="Data" type="APTR">Pointer to the bitmap graphics data.</field>
-      <field name="Width" type="WORD">Pixel width of the bitmap.</field>
-      <field name="Height" type="WORD">Pixel height of the bitmap.</field>
-      <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
-      <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
-      <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
-      <field name="Version" type="UBYTE">Version of this structure.</field>
-      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
-      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
-      <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
-      <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
-      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
-      <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
-    </struct>
-
   </structs>
 </book>

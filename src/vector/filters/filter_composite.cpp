@@ -1,310 +1,792 @@
+/*********************************************************************************************************************
 
-enum {
-   OP_OVER=0, OP_IN, OP_OUT, OP_ATOP, OP_XOR, OP_ARITHMETIC, OP_NORMAL, OP_SCREEN, OP_MULTIPLY, OP_LIGHTEN, OP_DARKEN,
-   OP_INVERTRGB, OP_INVERT, OP_CONTRAST, OP_DODGE, OP_BURN, OP_HARDLIGHT, OP_SOFTLIGHT, OP_DIFFERENCE, OP_EXCLUSION,
-   OP_PLUS, OP_MINUS, OP_OVERLAY
+-CLASS-
+CompositeFX: Composite two sources together with a mixing algorithm.
+
+This filter combines the Input and Mix sources using either one of the Porter-Duff compositing operations, or a colour
+blending algorithm.
+
+-END-
+
+*********************************************************************************************************************/
+
+class objCompositeFX : public extFilterEffect {
+   public:
+   DOUBLE K1, K2, K3, K4; // For the arithmetic operator
+   LONG Operator; // OP constant
+
+   template <class CompositeOp>
+   void doMix(objBitmap *InBitmap, objBitmap *MixBitmap, UBYTE *Dest, UBYTE *In, UBYTE *Mix) {
+      const UBYTE A = Target->ColourFormat->AlphaPos>>3;
+      const UBYTE R = Target->ColourFormat->RedPos>>3;
+      const UBYTE G = Target->ColourFormat->GreenPos>>3;
+      const UBYTE B = Target->ColourFormat->BluePos>>3;
+
+      LONG height = Target->Clip.Bottom - Target->Clip.Top;
+      LONG width  = Target->Clip.Right - Target->Clip.Left;
+      if (InBitmap->Clip.Right - InBitmap->Clip.Left < width) width = InBitmap->Clip.Right - InBitmap->Clip.Left;
+      if (InBitmap->Clip.Bottom - InBitmap->Clip.Top < height) height = InBitmap->Clip.Bottom - InBitmap->Clip.Top;
+
+      for (LONG y=0; y < height; y++) {
+         auto dp = Dest;
+         auto sp = In;
+         auto mp = Mix;
+         for (LONG x=0; x < width; x++) {
+            CompositeOp::blend(dp, sp, mp, A, R, G, B);
+            dp += 4;
+            sp += 4;
+            mp += 4;
+         }
+         Dest += Target->LineWidth;
+         In   += InBitmap->LineWidth;
+         Mix  += MixBitmap->LineWidth;
+      }
+   }
+
 };
 
-template <class DrawOp>
-void doComposite(struct effect *Effect, objBitmap *SrcBitmap, UBYTE *Dest, UBYTE *Src, LONG Width, LONG Height)
-{
-   const UBYTE A = Effect->Bitmap->ColourFormat->AlphaPos>>3;
-   const UBYTE R = Effect->Bitmap->ColourFormat->RedPos>>3;
-   const UBYTE G = Effect->Bitmap->ColourFormat->GreenPos>>3;
-   const UBYTE B = Effect->Bitmap->ColourFormat->BluePos>>3;
+//********************************************************************************************************************
+// Porter/Duff Compositing routines
+// For reference, this Wikipedia page explains it best: https://en.wikipedia.org/wiki/Alpha_compositing
+//
+// D = Dest; S = Source; M = Mix (equates to Dest as a pixel source)
 
-   for (LONG y=0; y < Height; y++) {
-      UBYTE *dp = Dest;
-      UBYTE *sp = Src;
-      for (LONG x=0; x < Width; x++) {
-         DrawOp::blend_pix(dp, sp[R], sp[G], sp[B], sp[A], 255);
-         dp += 4;
-         sp += 4;
+struct composite_over {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if (!M[A]) ((ULONG *)D)[0] = ((ULONG *)S)[0];
+      else if (!S[A]) ((ULONG *)D)[0] = ((ULONG *)M)[0];
+      else {
+         const ULONG dA = S[A] + M[A] - ((S[A] * M[A] + 0xff)>>8);
+         const ULONG sA = S[A] + (S[A] >> 7); // 0..255 -> 0..256
+         const ULONG cA = 256 - sA;
+         const ULONG mA = M[A] + (M[A] >> 7); // 0..255 -> 0..256
+
+         D[R] = ((S[R] * sA + ((M[R] * mA * cA)>>8))>>8) * 255 / dA;
+         D[G] = ((S[G] * sA + ((M[G] * mA * cA)>>8))>>8) * 255 / dA;
+         D[B] = ((S[B] * sA + ((M[B] * mA * cA)>>8))>>8) * 255 / dA;
+         D[A] = dA;
       }
-      Dest += Effect->Bitmap->LineWidth;
-      Src  += SrcBitmap->LineWidth;
    }
+};
+
+struct composite_in {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if (M[A] IS 255) ((ULONG *)D)[0] = ((ULONG *)S)[0];
+      else {
+         D[R] = S[R];
+         D[G] = S[G];
+         D[B] = S[B];
+         D[A] = (S[A] * M[A] + 0xff)>>8;
+      }
+   }
+};
+
+struct composite_out {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if (!M[A]) ((ULONG *)D)[0] = ((ULONG *)S)[0];
+      else {
+         D[R] = S[R];
+         D[G] = S[G];
+         D[B] = S[B];
+         D[A] = (S[A] * (0xff - M[A]) + 0xff)>>8;
+      }
+   }
+};
+
+// Mix alpha has priority.  Source alpha is ignored except for blending.
+
+struct composite_atop {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if (auto alpha = M[A]) {
+         const UBYTE csalpha = 0xff - S[A];
+         D[R] = (S[R] * alpha + M[R] * csalpha + 0xff) >> 8;
+         D[G] = (S[G] * alpha + M[G] * csalpha + 0xff) >> 8;
+         D[B] = (S[B] * alpha + M[B] * csalpha + 0xff) >> 8;
+         D[A] = alpha;
+      }
+   }
+};
+
+struct composite_xor {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      const UBYTE s1a = 0xff - S[A];
+      const UBYTE d1a = 0xff - M[A];
+      D[R] = ((M[R] * s1a + S[R] * d1a + 0xff) >> 8);
+      D[G] = ((M[G] * s1a + S[G] * d1a + 0xff) >> 8);
+      D[B] = ((M[B] * s1a + S[B] * d1a + 0xff) >> 8);
+      D[A] = (S[A] + M[A] - ((S[A] * M[A] + (0xff>>1)) >> (8 - 1)));
+   }
+};
+
+//********************************************************************************************************************
+// Blending algorithms, refer to https://en.wikipedia.org/wiki/Blend_modes
+
+struct blend_screen {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      D[R] = (UBYTE)(S[R] + M[R] - ((S[R] * M[R] + 0Xff) >> 8));
+      D[G] = (UBYTE)(S[G] + M[G] - ((S[G] * M[G] + 0Xff) >> 8));
+      D[B] = (UBYTE)(S[B] + M[B] - ((S[B] * M[B] + 0Xff) >> 8));
+      D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0Xff) >> 8));
+   }
+};
+
+struct blend_multiply {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         const UBYTE s1a = 0xff - S[A];
+         const UBYTE d1a = 0xff - M[A];
+         D[R] = (UBYTE)((S[R] * M[R] + (S[R] * d1a) + (M[R] * s1a) + 0xff) >> 8);
+         D[G] = (UBYTE)((S[G] * M[G] + (S[G] * d1a) + (M[G] * s1a) + 0xff) >> 8);
+         D[B] = (UBYTE)((S[B] * M[B] + (S[B] * d1a) + (M[B] * s1a) + 0xff) >> 8);
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_darken {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         UBYTE d1a = 0xff - D[A];
+         UBYTE s1a = 0xff - S[A];
+         UBYTE da  = D[A];
+
+         D[R] = (UBYTE)((agg::sd_min(S[R] * da, M[R] * S[A]) + S[R] * d1a + M[R] * s1a + 0xff) >> 8);
+         D[G] = (UBYTE)((agg::sd_min(S[G] * da, M[G] * S[A]) + S[G] * d1a + M[G] * s1a + 0xff) >> 8);
+         D[B] = (UBYTE)((agg::sd_min(S[B] * da, M[B] * S[A]) + S[B] * d1a + M[B] * s1a + 0xff) >> 8);
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_lighten {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         UBYTE d1a = 0xff - D[A];
+         UBYTE s1a = 0xff - S[A];
+
+         D[R] = (UBYTE)((agg::sd_max(S[R] * M[A], M[R] * S[A]) + S[R] * d1a + M[R] * s1a + 0xff) >> 8);
+         D[G] = (UBYTE)((agg::sd_max(S[G] * M[A], M[G] * S[A]) + S[G] * d1a + M[G] * s1a + 0xff) >> 8);
+         D[B] = (UBYTE)((agg::sd_max(S[B] * M[A], M[B] * S[A]) + S[B] * d1a + M[B] * s1a + 0xff) >> 8);
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_dodge {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         LONG d1a  = 0xff - M[A];
+         LONG s1a  = 0xff - S[A];
+         LONG drsa = M[G] * S[A];
+         LONG dgsa = M[B] * S[A];
+         LONG dbsa = M[B] * S[A];
+         LONG srda = S[R] * M[A];
+         LONG sgda = S[G] * M[A];
+         LONG sbda = S[B] * M[A];
+         LONG sada = S[A] * M[A];
+
+         D[R] = (UBYTE)((srda + drsa >= sada) ?
+             (sada + S[R] * d1a + M[R] * s1a + 0xff) >> 8 :
+             drsa / (0xff - (S[R] << 8) / S[A]) + ((S[R] * d1a + M[R] * s1a + 0xff) >> 8));
+
+         D[G] = (UBYTE)((sgda + dgsa >= sada) ?
+             (sada + S[G] * d1a + M[G] * s1a + 0xff) >> 8 :
+             dgsa / (0xff - (S[G] << 8) / S[A]) + ((S[G] * d1a + M[G] * s1a + 0xff) >> 8));
+
+         D[B] = (UBYTE)((sbda + dbsa >= sada) ?
+             (sada + S[B] * d1a + M[B] * s1a + 0xff) >> 8 :
+             dbsa / (0xff - (S[B] << 8) / S[A]) + ((S[B] * d1a + M[B] * s1a + 0xff) >> 8));
+
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_contrast {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      LONG d2a = M[A] >> 1;
+      UBYTE s2a = S[A] >> 1;
+
+      int r = (int)((((M[R] - d2a) * int((S[R] - s2a)*2 + 0xff)) >> 8) + d2a);
+      int g = (int)((((M[G] - d2a) * int((S[G] - s2a)*2 + 0xff)) >> 8) + d2a);
+      int b = (int)((((M[B] - d2a) * int((S[B] - s2a)*2 + 0xff)) >> 8) + d2a);
+
+      r = (r < 0) ? 0 : r;
+      g = (g < 0) ? 0 : g;
+      b = (b < 0) ? 0 : b;
+
+      D[R] = (UBYTE)((r > M[A]) ? M[A] : r);
+      D[G] = (UBYTE)((g > M[A]) ? M[A] : g);
+      D[B] = (UBYTE)((b > M[A]) ? M[A] : b);
+   }
+};
+
+struct blend_overlay {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         UBYTE d1a = 0xff - M[A];
+         UBYTE s1a = 0xff - S[A];
+         UBYTE sada = S[A] * M[A];
+
+         D[R] = (UBYTE)(((2*M[R] < M[A]) ?
+             2*S[R]*M[R] + S[R]*d1a + M[R]*s1a :
+             sada - 2*(M[A] - M[R])*(S[A] - S[R]) + S[R]*d1a + M[R]*s1a + 0xff) >> 8);
+
+         D[G] = (UBYTE)(((2*M[G] < M[A]) ?
+             2*S[G]*M[G] + S[G]*d1a + M[G]*s1a :
+             sada - 2*(M[A] - M[G])*(S[A] - S[G]) + S[G]*d1a + M[G]*s1a + 0xff) >> 8);
+
+         D[B] = (UBYTE)(((2*M[B] < M[A]) ?
+             2*S[B]*M[B] + S[B]*d1a + M[B]*s1a :
+             sada - 2*(M[A] - M[B])*(S[A] - S[B]) + S[B]*d1a + M[B]*s1a + 0xff) >> 8);
+
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_burn {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         const UBYTE d1a = 0xff - D[A];
+         const UBYTE s1a = 0xff - S[A];
+         const LONG drsa = M[R] * S[A];
+         const LONG dgsa = M[G] * S[A];
+         const LONG dbsa = M[B] * S[A];
+         const LONG srda = S[R] * M[A];
+         const LONG sgda = S[G] * M[A];
+         const LONG sbda = S[B] * M[A];
+         const LONG sada = S[A] * M[A];
+
+         D[R] = (UBYTE)(((srda + drsa <= sada) ?
+             S[R] * d1a + M[R] * s1a :
+             S[A] * (srda + drsa - sada) / S[R] + S[R] * d1a + M[R] * s1a + 0xff) >> 8);
+
+         D[G] = (UBYTE)(((sgda + dgsa <= sada) ?
+             S[G] * d1a + M[G] * s1a :
+             S[A] * (sgda + dgsa - sada) / S[G] + S[G] * d1a + M[G] * s1a + 0xff) >> 8);
+
+         D[B] = (UBYTE)(((sbda + dbsa <= sada) ?
+             S[B] * d1a + M[B] * s1a :
+             S[A] * (sbda + dbsa - sada) / S[B] + S[B] * d1a + M[B] * s1a + 0xff) >> 8);
+
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_hard_light {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         UBYTE d1a  = 0xff - D[A];
+         UBYTE s1a  = 0xff - S[A];
+         UBYTE sada = S[A] * M[A];
+
+         D[R] = (UBYTE)(((2*S[R] < S[A]) ?
+             2*S[R]*M[R] + S[R]*d1a + M[R]*s1a :
+             sada - 2*(M[A] - M[R])*(S[A] - S[R]) + S[R]*d1a + M[R]*s1a + 0xff) >> 8);
+
+         D[G] = (UBYTE)(((2*S[G] < S[A]) ?
+             2*S[G]*M[G] + S[G]*d1a + M[G]*s1a :
+             sada - 2*(M[A] - M[G])*(S[A] - S[G]) + S[G]*d1a + M[G]*s1a + 0xff) >> 8);
+
+         D[B] = (UBYTE)(((2*S[B] < S[A]) ?
+             2*S[B]*M[B] + S[B]*d1a + M[B]*s1a :
+             sada - 2*(M[A] - M[B])*(S[A] - S[B]) + S[B]*d1a + M[B]*s1a + 0xff) >> 8);
+
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_soft_light {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         double xr = double(D[R]) / 0xff;
+         double xg = double(D[G]) / 0xff;
+         double xb = double(D[B]) / 0xff;
+         double da = double(D[A] ? D[A] : 1) / 0xff;
+
+         if(2*S[R] < S[A])   xr = xr*(S[A] + (1 - xr/da)*(2*S[R] - S[A])) + S[R]*(1 - da) + xr*(1 - S[A]);
+         else if(8*xr <= da) xr = xr*(S[A] + (1 - xr/da)*(2*S[R] - S[A])*(3 - 8*xr/da)) + S[R]*(1 - da) + xr*(1 - S[A]);
+         else                xr = (xr*S[A] + (sqrt(xr/da)*da - xr)*(2*S[R] - S[A])) + S[R]*(1 - da) + xr*(1 - S[A]);
+
+         if(2*S[G] < S[A])   xg = xg*(S[A] + (1 - xg/da)*(2*S[G] - S[A])) + S[G]*(1 - da) + xg*(1 - S[A]);
+         else if(8*xg <= da) xg = xg*(S[A] + (1 - xg/da)*(2*S[G] - S[A])*(3 - 8*xg/da)) + S[G]*(1 - da) + xg*(1 - S[A]);
+         else                xg = (xg*S[A] + (sqrt(xg/da)*da - xg)*(2*S[G] - S[A])) + S[G]*(1 - da) + xg*(1 - S[A]);
+
+         if(2*S[B] < S[A])   xb = xb*(S[A] + (1 - xb/da)*(2*S[B] - S[A])) + S[B]*(1 - da) + xb*(1 - S[A]);
+         else if(8*xb <= da) xb = xb*(S[A] + (1 - xb/da)*(2*S[B] - S[A])*(3 - 8*xb/da)) + S[B]*(1 - da) + xb*(1 - S[A]);
+         else                xb = (xb*S[A] + (sqrt(xb/da)*da - xb)*(2*S[B] - S[A])) + S[B]*(1 - da) + xb*(1 - S[A]);
+
+         D[R] = (UBYTE)agg::uround(xr * 0xff);
+         D[G] = (UBYTE)agg::uround(xg * 0xff);
+         D[B] = (UBYTE)agg::uround(xb * 0xff);
+         D[A] = (UBYTE)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_difference {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         D[R] = (UBYTE)(S[R] + M[R] - ((2 * agg::sd_min(S[R]*M[A], M[R]*S[A]) + 0xff) >> 8));
+         D[G] = (UBYTE)(S[G] + M[G] - ((2 * agg::sd_min(S[G]*M[A], M[G]*S[A]) + 0xff) >> 8));
+         D[B] = (UBYTE)(S[B] + M[B] - ((2 * agg::sd_min(S[B]*M[A], M[B]*S[A]) + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_exclusion {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         const UBYTE d1a = 0xff - D[A];
+         const UBYTE s1a = 0xff - S[A];
+         D[R] = (UBYTE)((S[R]*M[A] + M[R]*S[A] - 2*S[R]*M[R] + S[R]*d1a + M[R]*s1a + 0xff) >> 8);
+         D[G] = (UBYTE)((S[G]*M[A] + M[G]*S[A] - 2*S[G]*M[G] + S[G]*d1a + M[G]*s1a + 0xff) >> 8);
+         D[B] = (UBYTE)((S[B]*M[A] + M[B]*S[A] - 2*S[B]*M[B] + S[B]*d1a + M[B]*s1a + 0xff) >> 8);
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_plus {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         const UBYTE xr = D[R] + S[R];
+         const UBYTE xg = D[G] + S[G];
+         const UBYTE xb = D[B] + S[B];
+         const UBYTE xa = D[A] + S[A];
+         D[R] = (xr > 0xff) ? (UBYTE)0xff : xr;
+         D[G] = (xg > 0xff) ? (UBYTE)0xff : xg;
+         D[B] = (xb > 0xff) ? (UBYTE)0xff : xb;
+         D[A] = (xa > 0xff) ? (UBYTE)0xff : xa;
+      }
+   }
+};
+
+struct blend_minus {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         const UBYTE xr = D[R] - S[R];
+         const UBYTE xg = D[G] - S[G];
+         const UBYTE xb = D[B] - S[B];
+         D[R] = (xr > 0xff) ? 0 : xr;
+         D[G] = (xg > 0xff) ? 0 : xg;
+         D[B] = (xb > 0xff) ? 0 : xb;
+         D[A] = (UBYTE)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
+         //D[A] = (UBYTE)(0xff - (((0xff - S[A]) * (0xff - D[A]) + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_invert {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if ((S[A]) or (M[A])) {
+         const UBYTE xr = ((M[A] - D[R]) * S[A] + 0xff) >> 8;
+         const UBYTE xg = ((M[A] - D[G]) * S[A] + 0xff) >> 8;
+         const UBYTE xb = ((M[A] - D[B]) * S[A] + 0xff) >> 8;
+         const UBYTE s1a = 0xff - S[A];
+         D[R] = (UBYTE)(xr + ((D[R] * s1a + 0xff) >> 8));
+         D[G] = (UBYTE)(xg + ((D[G] * s1a + 0xff) >> 8));
+         D[B] = (UBYTE)(xb + ((D[B] * s1a + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+      }
+   }
+};
+
+struct blend_invert_rgb {
+   static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      if (S[A]) {
+         UBYTE xr = ((M[A] - D[R]) * S[R] + 0xff) >> 8;
+         UBYTE xg = ((M[A] - D[G]) * S[G] + 0xff) >> 8;
+         UBYTE xb = ((M[A] - D[B]) * S[B] + 0xff) >> 8;
+         UBYTE s1a = 0xff - S[A];
+         D[R] = (UBYTE)(xr + ((D[R] * s1a + 0xff) >> 8));
+         D[G] = (UBYTE)(xg + ((D[G] * s1a + 0xff) >> 8));
+         D[B] = (UBYTE)(xb + ((D[B] * s1a + 0xff) >> 8));
+         D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
+      }
+   }
+};
+
+/*********************************************************************************************************************
+-ACTION-
+Draw: Render the effect to the target bitmap.
+-END-
+*********************************************************************************************************************/
+
+static ERROR COMPOSITEFX_Draw(objCompositeFX *Self, struct acDraw *Args)
+{
+   parasol::Log log;
+
+   if (Self->Target->BytesPerPixel != 4) return ERR_Failed;
+
+   objBitmap *inBmp;
+
+   UBYTE *dest = Self->Target->Data + (Self->Target->Clip.Left * 4) + (Self->Target->Clip.Top * Self->Target->LineWidth);
+
+   switch (Self->Operator) {
+      case OP_OVER: {
+         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+            objBitmap *mixBmp;
+            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               Self->doMix<composite_over>(inBmp, mixBmp, dest, in, mix);
+            }
+         }
+         break;
+      }
+
+      case OP_IN: {
+         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+            objBitmap *mixBmp;
+            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               Self->doMix<composite_in>(inBmp, mixBmp, dest, in, mix);
+            }
+         }
+         break;
+      }
+
+      case OP_OUT: {
+         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+            objBitmap *mixBmp;
+            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               Self->doMix<composite_out>(inBmp, mixBmp, dest, in, mix);
+            }
+         }
+         break;
+      }
+
+      case OP_ATOP: {
+         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+            objBitmap *mixBmp;
+            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               Self->doMix<composite_atop>(inBmp, mixBmp, dest, in, mix);
+            }
+         }
+         break;
+      }
+
+      case OP_XOR: {
+         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+            objBitmap *mixBmp;
+            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               Self->doMix<composite_xor>(inBmp, mixBmp, dest, in, mix);
+            }
+         }
+         break;
+      }
+
+      case OP_ARITHMETIC: {
+         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+            objBitmap *mixBmp;
+            LONG height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
+            LONG width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
+            if (inBmp->Clip.Right - inBmp->Clip.Left < width) width = inBmp->Clip.Right - inBmp->Clip.Left;
+            if (inBmp->Clip.Bottom - inBmp->Clip.Top < height) height = inBmp->Clip.Bottom - inBmp->Clip.Top;
+
+            const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
+            const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
+            const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
+            const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
+
+            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
+               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               for (LONG y=0; y < height; y++) {
+                  auto dp = dest;
+                  auto sp = in;
+                  auto mp = mix;
+                  for (LONG x=0; x < width; x++) {
+                     if ((mp[A]) or (sp[A])) {
+                        // Scale RGB to 0 - 1.0 and premultiply the values.
+                        #define SCALE (1.0 / 255.0)
+                        #define DESCALE 255.0
+                        const DOUBLE sA = DOUBLE(sp[A]) * SCALE;
+                        const DOUBLE sR = DOUBLE(sp[R]) * SCALE * sA;
+                        const DOUBLE sG = DOUBLE(sp[G]) * SCALE * sA;
+                        const DOUBLE sB = DOUBLE(sp[B]) * SCALE * sA;
+
+                        const DOUBLE mA = DOUBLE(mp[A]) * SCALE;
+                        const DOUBLE mR = DOUBLE(mp[R]) * SCALE * mA;
+                        const DOUBLE mG = DOUBLE(mp[G]) * SCALE * mA;
+                        const DOUBLE mB = DOUBLE(mp[B]) * SCALE * mA;
+
+                        DOUBLE dA = (Self->K1 * sA * mA) + (Self->K2 * sA) + (Self->K3 * mA) + Self->K4;
+
+                        if (dA > 0.0) {
+                           if (dA > 1.0) dA = 1.0;
+
+                           DOUBLE demul = 1.0 / dA;
+                           LONG dr = F2T(((Self->K1 * sR * mR) + (Self->K2 * sR) + (Self->K3 * mR) + Self->K4) * demul * DESCALE);
+                           LONG dg = F2T(((Self->K1 * sG * mG) + (Self->K2 * sG) + (Self->K3 * mG) + Self->K4) * demul * DESCALE);
+                           LONG db = F2T(((Self->K1 * sB * mB) + (Self->K2 * sB) + (Self->K3 * mB) + Self->K4) * demul * DESCALE);
+
+                           if (dr > 0xff) dp[R] = 0xff;
+                           else if (dr < 0) dp[R] = 0;
+                           else dp[R] = dr;
+
+                           if (dg > 0xff) dp[G] = 0xff;
+                           else if (dg < 0) dp[G] = 0;
+                           else dp[G] = dg;
+
+                           if (db > 0xff) dp[B] = 0xff;
+                           else if (db < 0) dp[B] = 0;
+                           else dp[B] = db;
+
+                           dp[A] = F2T(dA * DESCALE);
+                        }
+                     }
+
+                     dp += 4;
+                     sp += 4;
+                     mp += 4;
+                  }
+                  dest += Self->Target->LineWidth;
+                  in   += inBmp->LineWidth;
+                  mix  += mixBmp->LineWidth;
+               }
+            }
+         }
+         break;
+      }
+
+      default: { // These mix routines use pre-multiplied content.
+         if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, true)) {
+            objBitmap *mixBmp;
+            if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, true)) {
+               UBYTE *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
+               UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+               #pragma GCC diagnostic ignored "-Wswitch"
+               switch(Self->Operator) {
+                  case OP_MULTIPLY:    Self->doMix<blend_multiply>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_SCREEN:      Self->doMix<blend_screen>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_DARKEN:      Self->doMix<blend_darken>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_LIGHTEN:     Self->doMix<blend_lighten>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_OVERLAY:     Self->doMix<blend_overlay>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_BURN:        Self->doMix<blend_burn>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_DODGE:       Self->doMix<blend_dodge>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_HARD_LIGHT:  Self->doMix<blend_hard_light>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_SOFT_LIGHT:  Self->doMix<blend_soft_light>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_DIFFERENCE:  Self->doMix<blend_difference>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_EXCLUSION:   Self->doMix<blend_exclusion>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_PLUS:        Self->doMix<blend_plus>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_MINUS:       Self->doMix<blend_minus>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_CONTRAST:    Self->doMix<blend_contrast>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_INVERT:      Self->doMix<blend_invert>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP_INVERT_RGB:  Self->doMix<blend_invert_rgb>(inBmp, mixBmp, dest, in, mix); break;
+               }
+
+                bmpDemultiply(mixBmp);
+            }
+            bmpDemultiply(inBmp);
+         }
+
+         break;
+      }
+   }
+
+   return ERR_Okay;
 }
 
-/*****************************************************************************
-** Internal: apply_composite()
-*/
+//********************************************************************************************************************
 
-static void apply_composite(objVectorFilter *Self, struct effect *Effect)
+static ERROR COMPOSITEFX_Init(objCompositeFX *Self, APTR Void)
 {
-   objBitmap *bmp = Effect->Bitmap;
-   if (bmp->BytesPerPixel != 4) return;
+   parasol::Log log;
 
-   objBitmap *srcbmp;
-
-   if (!get_bitmap(Self, &srcbmp, Effect->Composite.Source, Effect->Composite.Input)) {
-      UBYTE *dest = bmp->Data    + (bmp->Clip.Left * bmp->BytesPerPixel)       + (bmp->Clip.Top * bmp->LineWidth);
-      UBYTE *src  = srcbmp->Data + (srcbmp->Clip.Left * srcbmp->BytesPerPixel) + (srcbmp->Clip.Top * srcbmp->LineWidth);
-
-      LONG height = bmp->Clip.Bottom - bmp->Clip.Top;
-      LONG width  = bmp->Clip.Right - bmp->Clip.Left;
-      if (srcbmp->Clip.Right-srcbmp->Clip.Left < width) width = srcbmp->Clip.Right - srcbmp->Clip.Left;
-      if (srcbmp->Clip.Bottom-srcbmp->Clip.Top < height) height = srcbmp->Clip.Bottom - srcbmp->Clip.Top;
-
-      premultiply_bitmap(srcbmp);
-      premultiply_bitmap(bmp);
-
-      const UBYTE A = bmp->ColourFormat->AlphaPos>>3;
-      const UBYTE R = bmp->ColourFormat->RedPos>>3;
-      const UBYTE G = bmp->ColourFormat->GreenPos>>3;
-      const UBYTE B = bmp->ColourFormat->BluePos>>3;
-
-      if (Effect->Composite.Operator IS OP_OVER) {
-         for (LONG y=0; y < height; y++) {
-            UBYTE *dp = dest;
-            UBYTE *sp = src;
-            for (LONG x=0; x < width; x++) {
-               if (dp[3]) {
-                  dp[R] = dp[R] + (((sp[R] - dp[R]) * sp[A])>>8);
-                  dp[G] = dp[G] + (((sp[G] - dp[G]) * sp[A])>>8);
-                  dp[B] = dp[B] + (((sp[B] - dp[B]) * sp[A])>>8);
-                  dp[A] = dp[A] + ((sp[A] * (255 - dp[A]))>>8);
-               }
-               else {
-                  dp[R] = sp[R];
-                  dp[G] = sp[G];
-                  dp[B] = sp[B];
-                  dp[A] = sp[A];
-               }
-
-               dp += 4;
-               sp += 4;
-            }
-            dest += bmp->LineWidth;
-            src  += srcbmp->LineWidth;
-         }
-      }
-      else if (Effect->Composite.Operator IS OP_IN) {
-         for (LONG y=0; y < height; y++) {
-            UBYTE *dp = dest;
-            UBYTE *sp = src;
-            for (LONG x=0; x < width; x++) {
-               dp[R] = (sp[R] * dp[A] + 0xff)>>8;
-               dp[G] = (sp[G] * dp[A] + 0xff)>>8;
-               dp[B] = (sp[B] * dp[A] + 0xff)>>8;
-               dp[A] = (sp[A] * dp[A] + 0xff)>>8;
-               dp += 4;
-               sp += 4;
-            }
-            dest += bmp->LineWidth;
-            src  += srcbmp->LineWidth;
-         }
-      }
-      else if (Effect->Composite.Operator IS OP_OUT) {
-         doComposite<agg::comp_op_rgba_src_out <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_ATOP) {
-         doComposite<agg::comp_op_rgba_src_atop <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_XOR) {
-         doComposite<agg::comp_op_rgba_xor <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_ARITHMETIC) {
-         DOUBLE k1=Effect->Composite.K1, k2=Effect->Composite.K2, k3=Effect->Composite.K3, k4=Effect->Composite.K4;
-         k1 = k1 * (1.0 / 255.0);
-         k4 = k4 * 255.0;
-
-         for (LONG y=0; y < height; y++) {
-            UBYTE *dp = dest;
-            UBYTE *sp = src;
-            for (LONG x=0; x < width; x++) {
-               #define i1(c) sp[c]
-               #define i2(c) dp[c]
-               LONG dr = (k1 * i1(R) * i2(R)) + (k2 * i1(R)) + (k3 * i2(R)) + k4;
-               LONG dg = (k1 * i1(G) * i2(G)) + (k2 * i1(G)) + (k3 * i2(G)) + k4;
-               LONG db = (k1 * i1(B) * i2(B)) + (k2 * i1(B)) + (k3 * i2(B)) + k4;
-               LONG da = (k1 * i1(A) * i2(A)) + (k2 * i1(A)) + (k3 * i2(A)) + k4;
-               if (dr > 0xff) dp[R] = 0xff;
-               else if (dr < 0) dp[R] = 0;
-               else dp[R] = dr;
-
-               if (dg > 0xff) dp[G] = 0xff;
-               else if (dg < 0) dp[G] = 0;
-               else dp[G] = dg;
-
-               if (db > 0xff) dp[B] = 0xff;
-               else if (db < 0) dp[B] = 0;
-               else dp[B] = db;
-
-               if (da > 0xff) dp[A] = 0xff;
-               else if (da < 0) dp[A] = 0;
-               else dp[A] = da;
-
-               dp += 4;
-               sp += 4;
-            }
-            dest += bmp->LineWidth;
-            src  += srcbmp->LineWidth;
-         }
-      }
-      else if (Effect->Composite.Operator IS OP_MULTIPLY) {
-         doComposite<agg::comp_op_rgba_multiply <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_SCREEN) {
-         doComposite<agg::comp_op_rgba_screen <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_DARKEN) {
-         doComposite<agg::comp_op_rgba_multiply <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_LIGHTEN) {
-         doComposite<agg::comp_op_rgba_multiply <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_OVERLAY) {
-         doComposite<agg::comp_op_rgba_overlay <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_BURN) {
-         doComposite<agg::comp_op_rgba_color_burn <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_DODGE) {
-         doComposite<agg::comp_op_rgba_color_dodge <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_HARDLIGHT) {
-         doComposite<agg::comp_op_rgba_hard_light <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_SOFTLIGHT) {
-         doComposite<agg::comp_op_rgba_soft_light <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_DIFFERENCE) {
-         doComposite<agg::comp_op_rgba_difference <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_EXCLUSION) {
-         doComposite<agg::comp_op_rgba_exclusion <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_PLUS) {
-         doComposite<agg::comp_op_rgba_plus <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_MINUS) {
-         doComposite<agg::comp_op_rgba_minus <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_CONTRAST) {
-         doComposite<agg::comp_op_rgba_multiply <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_INVERT) {
-         doComposite<agg::comp_op_rgba_invert <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-      else if (Effect->Composite.Operator IS OP_INVERTRGB) {
-         doComposite<agg::comp_op_rgba_invert_rgb <agg::rgba8, agg::order_bgra>>(Effect, srcbmp, dest, src, width, height);
-      }
-
-      demultiply_bitmap(srcbmp);
-      demultiply_bitmap(bmp);
-   }
-}
-
-//****************************************************************************
-// Create a new composite filter.
-
-static ERROR create_composite(objVectorFilter *Self, struct XMLTag *Tag)
-{
-   struct effect *effect;
-
-   if (!(effect = add_effect(Self, FE_COMPOSITE))) return ERR_AllocMemory;
-   effect->Composite.Operator = OP_OVER;
-
-   for (LONG a=1; a < Tag->TotalAttrib; a++) {
-      CSTRING val = Tag->Attrib[a].Value;
-      if (!val) continue;
-
-      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
-      switch(hash) {
-         case SVF_IN: {
-            switch (StrHash(val, FALSE)) {
-               case SVF_SOURCEGRAPHIC:   effect->Composite.Source = VSF_GRAPHIC; break;
-               case SVF_SOURCEALPHA:     effect->Composite.Source = VSF_ALPHA; break;
-               case SVF_BACKGROUNDIMAGE: effect->Composite.Source = VSF_BKGD; break;
-               case SVF_BACKGROUNDALPHA: effect->Composite.Source = VSF_BKGD_ALPHA; break;
-               case SVF_FILLPAINT:       effect->Composite.Source = VSF_FILL; break;
-               case SVF_STROKEPAINT:     effect->Composite.Source = VSF_STROKE; break;
-               default:  {
-                  struct effect *e;
-                  if ((e = find_effect(Self, val))) {
-                     if (e != effect) {
-                        effect->Composite.Source = VSF_REFERENCE;
-                        effect->Composite.Input = e;
-                     }
-                  }
-                  break;
-               }
-            }
-            break;
-         }
-
-         case SVF_IN2: { // 'In2' is usually the BackgroundImage that 'in' will be copied over.
-            switch (StrHash(val, FALSE)) {
-               case SVF_SOURCEGRAPHIC:   effect->Source = VSF_GRAPHIC; break;
-               case SVF_SOURCEALPHA:     effect->Source = VSF_ALPHA; break;
-               case SVF_BACKGROUNDIMAGE: effect->Source = VSF_BKGD; break;
-               case SVF_BACKGROUNDALPHA: effect->Source = VSF_BKGD_ALPHA; break;
-               case SVF_FILLPAINT:       effect->Source = VSF_FILL; break;
-               case SVF_STROKEPAINT:     effect->Source = VSF_STROKE; break;
-               default:  {
-                  struct effect *e;
-                  if ((e = find_effect(Self, val))) {
-                     if (e != effect) {
-                        effect->Source = VSF_REFERENCE;
-                        effect->Input = e;
-                     }
-                  }
-                  break;
-               }
-            }
-            break;
-         }
-
-         case SVF_MODE:
-         case SVF_OPERATOR: {
-            switch (StrHash(val, FALSE)) {
-               // SVG Operator types
-               case SVF_OVER: effect->Composite.Operator = OP_OVER; break;
-               case SVF_IN:   effect->Composite.Operator = OP_IN; break;
-               case SVF_OUT:  effect->Composite.Operator = OP_OUT; break;
-               case SVF_ATOP: effect->Composite.Operator = OP_ATOP; break;
-               case SVF_XOR:  effect->Composite.Operator = OP_XOR; break;
-               case SVF_ARITHMETIC: effect->Composite.Operator = OP_ARITHMETIC; break;
-               // SVG Mode types
-               case SVF_NORMAL:   effect->Composite.Operator = OP_NORMAL; break;
-               case SVF_SCREEN:   effect->Composite.Operator = OP_SCREEN; break;
-               case SVF_MULTIPLY: effect->Composite.Operator = OP_MULTIPLY; break;
-               case SVF_LIGHTEN:  effect->Composite.Operator = OP_LIGHTEN; break;
-               case SVF_DARKEN:   effect->Composite.Operator = OP_DARKEN; break;
-               // Parasol modes
-               case SVF_INVERTRGB:  effect->Composite.Operator = OP_INVERTRGB; break;
-               case SVF_INVERT:     effect->Composite.Operator = OP_INVERT; break;
-               case SVF_CONTRAST:   effect->Composite.Operator = OP_CONTRAST; break;
-               case SVF_DODGE:      effect->Composite.Operator = OP_DODGE; break;
-               case SVF_BURN:       effect->Composite.Operator = OP_BURN; break;
-               case SVF_HARDLIGHT:  effect->Composite.Operator = OP_HARDLIGHT; break;
-               case SVF_SOFTLIGHT:  effect->Composite.Operator = OP_SOFTLIGHT; break;
-               case SVF_DIFFERENCE: effect->Composite.Operator = OP_DIFFERENCE; break;
-               case SVF_EXCLUSION:  effect->Composite.Operator = OP_EXCLUSION; break;
-               case SVF_PLUS:       effect->Composite.Operator = OP_PLUS; break;
-               case SVF_MINUS:      effect->Composite.Operator = OP_MINUS; break;
-               case SVF_OVERLAY:    effect->Composite.Operator = OP_OVERLAY; break;
-               default:
-                  LogErrorMsg("Composite operator '%s' not recognised.", val);
-                  remove_effect(Self, effect);
-                  return ERR_InvalidValue;
-            }
-            break;
-         }
-
-         case SVF_K1: read_numseq(val, &effect->Composite.K1, TAGEND); break;
-         case SVF_K2: read_numseq(val, &effect->Composite.K2, TAGEND); break;
-         case SVF_K3: read_numseq(val, &effect->Composite.K3, TAGEND); break;
-         case SVF_K4: read_numseq(val, &effect->Composite.K4, TAGEND); break;
-         default: fe_default(Self, effect, hash, val); break;
-      }
-   }
-
-   if (!effect->Composite.Source) {
-      LogErrorMsg("Composite element requires 'in2' attribute.");
+   if (!Self->MixType) {
+      log.warning("A mix input is required.");
       return ERR_FieldNotSet;
    }
 
    return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR COMPOSITEFX_NewObject(objCompositeFX *Self, APTR Void)
+{
+   Self->Operator = OP_OVER;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+K1: Input value for the arithmetic operation.
+
+*********************************************************************************************************************/
+
+static ERROR COMPOSITEFX_GET_K1(objCompositeFX *Self, DOUBLE *Value)
+{
+   *Value = Self->K1;
+   return ERR_Okay;
+}
+
+static ERROR COMPOSITEFX_SET_K1(objCompositeFX *Self, DOUBLE Value)
+{
+   Self->K1 = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+K2: Input value for the arithmetic operation.
+
+*********************************************************************************************************************/
+
+static ERROR COMPOSITEFX_GET_K2(objCompositeFX *Self, DOUBLE *Value)
+{
+   *Value = Self->K2;
+   return ERR_Okay;
+}
+
+static ERROR COMPOSITEFX_SET_K2(objCompositeFX *Self, DOUBLE Value)
+{
+   Self->K2 = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+K3: Input value for the arithmetic operation.
+
+*********************************************************************************************************************/
+
+static ERROR COMPOSITEFX_GET_K3(objCompositeFX *Self, DOUBLE *Value)
+{
+   *Value = Self->K3;
+   return ERR_Okay;
+}
+
+static ERROR COMPOSITEFX_SET_K3(objCompositeFX *Self, DOUBLE Value)
+{
+   Self->K3 = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+K4: Input value for the arithmetic operation.
+
+*********************************************************************************************************************/
+
+static ERROR COMPOSITEFX_GET_K4(objCompositeFX *Self, DOUBLE *Value)
+{
+   *Value = Self->K4;
+   return ERR_Okay;
+}
+
+static ERROR COMPOSITEFX_SET_K4(objCompositeFX *Self, DOUBLE Value)
+{
+   Self->K4 = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Operator: The compositing algorithm to use for rendering.
+Lookup: OP
+
+Setting the Operator will determine the algorithm that is used for compositing.  The default is `OVER`.
+
+*********************************************************************************************************************/
+
+static ERROR COMPOSITEFX_GET_Operator(objCompositeFX *Self, LONG *Value)
+{
+   *Value = Self->Operator;
+   return ERR_Okay;
+}
+
+static ERROR COMPOSITEFX_SET_Operator(objCompositeFX *Self, LONG Value)
+{
+   Self->Operator = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+XMLDef: Returns an SVG compliant XML string that describes the filter.
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR COMPOSITEFX_GET_XMLDef(objCompositeFX *Self, STRING *Value)
+{
+   *Value = StrClone("feComposite");
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+#include "filter_composite_def.c"
+
+static const FieldDef clCompositeOperator[] = {
+   { "Over",       OP_OVER },
+   { "In",         OP_IN },
+   { "Out",        OP_OUT },
+   { "Atop",       OP_ATOP },
+   { "Xor",        OP_XOR },
+   { "Arithmetic", OP_ARITHMETIC },
+   { "Screen",     OP_SCREEN },
+   { "Multiply",   OP_MULTIPLY },
+   { "Lighten",    OP_LIGHTEN },
+   { "Darken",     OP_DARKEN },
+   { "InvertRGB",  OP_INVERT_RGB },
+   { "Invert",     OP_INVERT },
+   { "Contrast",   OP_CONTRAST },
+   { "Dodge",      OP_DODGE },
+   { "Burn",       OP_BURN },
+   { "HardLight",  OP_HARD_LIGHT },
+   { "SoftLight",  OP_SOFT_LIGHT },
+   { "Difference", OP_DIFFERENCE },
+   { "Exclusion",  OP_EXCLUSION },
+   { "Plus",       OP_PLUS },
+   { "Minus",      OP_MINUS },
+   { "Subtract",   OP_SUBTRACT },
+   { "Overlay",    OP_OVERLAY },
+   { NULL, 0 }
+};
+
+static const FieldArray clCompositeFXFields[] = {
+   { "Operator", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clCompositeOperator, (APTR)COMPOSITEFX_GET_Operator, (APTR)COMPOSITEFX_SET_Operator },
+   { "K1",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          0, (APTR)COMPOSITEFX_GET_K1, (APTR)COMPOSITEFX_SET_K1 },
+   { "K2",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          0, (APTR)COMPOSITEFX_GET_K2, (APTR)COMPOSITEFX_SET_K2 },
+   { "K3",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          0, (APTR)COMPOSITEFX_GET_K3, (APTR)COMPOSITEFX_SET_K3 },
+   { "K4",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          0, (APTR)COMPOSITEFX_GET_K4, (APTR)COMPOSITEFX_SET_K4 },
+   { "XMLDef",   FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)COMPOSITEFX_GET_XMLDef, NULL },
+   END_FIELD
+};
+
+//********************************************************************************************************************
+
+ERROR init_compositefx(void)
+{
+   return(CreateObject(ID_METACLASS, 0, &clCompositeFX,
+      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
+      FID_SubClassID|TLONG,  ID_COMPOSITEFX,
+      FID_Name|TSTRING,      "CompositeFX",
+      FID_Category|TLONG,    CCF_GRAPHICS,
+      FID_Actions|TPTR,      clCompositeFXActions,
+      FID_Fields|TARRAY,     clCompositeFXFields,
+      FID_Size|TLONG,        sizeof(objCompositeFX),
+      FID_Path|TSTR,         MOD_PATH,
+      TAGEND));
 }

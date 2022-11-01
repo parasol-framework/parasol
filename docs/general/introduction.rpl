@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 
 <info>
- <title>Introducing the Rocklyte SDK</title>
- <author>Rocklyte Systems</author>
- <keywords>rocklyte, sdk, api, library, engine, programming, introduction</keywords>
- <description>Introduction to the Rocklyte SDK</description>
+ <title>Introducing the Parasol Framework</title>
+ <author>Paul Manias</author>
+ <keywords>sdk, api, library, engine, programming, introduction</keywords>
+ <description>Introduction to the Parasol Framework</description>
 </info>
 
 <include src="inc_style.rpl"/>
@@ -13,7 +13,7 @@
 
 <startpage title="Introducing the Parasol framework"/>
 
-<p><i>NOTICE: This manual is still in development.  There are a number of errors and navigation issues that are in the process of being fixed.  Please check the Rocklyte downloads page for further updates.</i></p>
+<p><i>NOTICE: This manual is still in development.  There are a number of errors and navigation issues that are in the process of being fixed.</i></p>
 
 <p>The Parasol framework is a multi-platform development kit that provides an insulated API for programmers to create works that are completely platform neutral.  It works with traditional compiled languages such as C and C++, allowing programmers to write code that will compile to Windows or Linux without the need for special exceptions.  Individuals and businesses can write programs for our system and deploy them to users from a single code base and save on maintaining code for multiple operating systems.</p>
 
@@ -26,8 +26,7 @@
 <li>Run-Time debug output can be printed to the console for easy debugging.</li>
 <li>Resource usage at run-time is minimised with the aid of load-on-demand processing features.</li>
 <li>Dynamic resource tracking helps minimise errors.  Memory and resource leaks are automatically identified during execution and alerted to the developer.</li>
-<li>Use DML scripts to define application interfaces (as easy as writing an HTML document).</li>
-<li>Use Fluid scripts to write programs in multi-platform compatible byte code.  Fluid is based on Lua, a very fast and popular scripting language in the gaming community.</li>
+<li>Use Fluid scripts to write programs in multi-platform compatible code.  Fluid is based on Lua, a very fast and popular scripting language in the gaming community.</li>
 <li>Includes RIPPLE - The Runtime Interpreted Page Layout Engine.  RIPPLE provides the same layout capabilities as HTML (and more!), but with an overhead of less than 200Kb.  The SDK Manual provides a working example of RIPPLE for you to check out this new and exciting layout engine.</li>
 <li>An optimised vector graphics engine is included and SVG is supported as a standard feature.</li>
 <li>Database support is included with SQLite, based on the SQL92 standard query language.</li>
@@ -47,11 +46,11 @@
 
 <svg src="../images/architecture.svg" align="horizontal" layout="left|right" northgap="20" southgap="30"/>
 
-<p>As a software developer using our SDK you would normally work within the developer space shown in the diagram, either creating the necessary modules, scripts and classes to generate an object oriented program, or you might write a standard executable program using the available tools. If you are creating a truly modular and object-oriented piece of software then you will need to work within Athene, which means you will need to write object scripts to generate the program interface. If you are creating an executable or using Fluid, then you can work with or without Athene as the end-result will be a stand-alone program.</p>
+<p>As a software developer using our SDK you would normally work within the developer space shown in the diagram, either creating the necessary modules, scripts and classes to generate an object oriented program, or you might write a standard executable program using the available tools.  If you are creating an executable then the Parasol environment will be localised as a stand-alone program.</p>
 
 <h2>Getting Started</h2>
 
-<p>In order to get a full installation working you will require: A standard installation of the Parasol framework on your development system; the GCC compiler; and the manual that you are reading now. Please note that our officially supported languages are C/C++, DML, RIPPLE and Fluid (Lua).  If you would prefer to use another language then you will need to seek third party support for it. For more information on the installation process, refer to the <a href="installation_procedure.rpl">Installation Procedure</a> section of this manual.</p>
+<p>In order to get a full installation working you will require: A standard installation of the Parasol framework on your development system; the GCC compiler; and the manual that you are reading now. Please note that our officially supported languages are C/C++, RIPPLE and Fluid (Lua).  If you would prefer to use another language then you will need to seek third party support for it. For more information on the installation process, refer to the <a href="installation_procedure.rpl">Installation Procedure</a> section of this manual.</p>
 
 <p>We recommend reading this manual thoroughly, look at some of the existing source code and then refer to the technical documents whenever you need a thorough understanding of how any part of the system works.</p>
 

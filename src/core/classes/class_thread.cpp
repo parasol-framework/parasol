@@ -15,8 +15,7 @@ The following code illustrates how to create a temporary thread that is automati
 thread_entry() function has completed:
 
 <pre>
-static ERROR thread_entry(objThread *Thread)
-{
+static ERROR thread_entry(objThread *Thread) {
    return ERR_Okay;
 }
 
@@ -49,6 +48,8 @@ within the thread routine.
 
 #define THREADPOOL_MAX 6
 
+static void thread_entry_cleanup(void *);
+
 static LONG glActionThreadsIndex = 0;
 static struct {
    objThread *Thread;
@@ -78,8 +79,8 @@ ERROR threadpool_get(objThread **Result)
 
       if (!thread) { // Allocate a new thread.
          if (!(error = NewPrivateObject(ID_THREAD, NF_UNTRACKED, (OBJECTPTR *)&thread))) {
-            SetName(&thread->Head, "ActionThread");
-            if (!(error = acInit(&thread->Head))) {
+            SetName(thread, "ActionThread");
+            if (!(error = acInit(thread))) {
                LONG i;
                if ((i = glActionThreadsIndex) < THREADPOOL_MAX) { // Record the thread in the pool, if there is room for it.
                   glActionThreads[i].Thread = thread;
@@ -87,7 +88,7 @@ ERROR threadpool_get(objThread **Result)
                   glActionThreadsIndex++;
                }
             }
-            else { acFree(&thread->Head); thread = NULL; }
+            else { acFree(thread); thread = NULL; }
          }
       }
    }
@@ -105,7 +106,7 @@ void threadpool_release(objThread *Thread)
 {
    parasol::Log log;
 
-   log.traceBranch("Thread: #%d, Total: %d", Thread->Head.UniqueID, glActionThreadsIndex);
+   log.traceBranch("Thread: #%d, Total: %d", Thread->UID, glActionThreadsIndex);
 
    ThreadLock lock(TL_THREADPOOL, 2000);
    if (lock.granted()) {
@@ -119,7 +120,7 @@ void threadpool_release(objThread *Thread)
       // If the thread object is not pooled, assume it was allocated dynamically from threadpool_get() and destroy it.
 
       lock.release();
-      acFree(&Thread->Head);
+      acFree(Thread);
    }
 }
 
@@ -137,7 +138,7 @@ void remove_threadpool(void)
       for (LONG i=0; i < glActionThreadsIndex; i++) {
          if (glActionThreads[i].Thread) {
             if (glActionThreads[i].InUse) log.warning("Pooled thread #%d is still in use on shutdown.", i);
-            acFree(&glActionThreads[i].Thread->Head);
+            acFree(glActionThreads[i].Thread);
             glActionThreads[i].Thread = NULL;
             glActionThreads[i].InUse = FALSE;
          }
@@ -169,7 +170,7 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
                { "Error",    FD_LONG,      { .Long = msg->Error } },
                { "Key",      FD_LONG,      { .Long = msg->Key } }
             };
-            scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args));
+            scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             ReleasePrivateObject(script);
          }
       }
@@ -180,6 +181,7 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
 
 //****************************************************************************
 // Called whenever a MSGID_THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
+// This is NOT called if the developer did not define a Callback reference.
 
 ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -188,7 +190,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
 
    objThread *thread;
    if (!AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
-      thread->prv.Active = FALSE;
+      thread->prv.Active = FALSE; // Because marking the thread as inactive is not done until the message is received by the core program
 
       if (thread->prv.Callback.Type IS CALL_STDC) {
          auto callback = (void (*)(objThread *))thread->prv.Callback.StdC.Routine;
@@ -199,17 +201,17 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
          if ((script = thread->prv.Callback.Script.Script)) {
             if (!AccessPrivateObject(script, 5000)) {
                const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = thread } } };
-               scCallback(script, thread->prv.Callback.Script.ProcedureID, args, ARRAYSIZE(args));
+               scCallback(script, thread->prv.Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                ReleasePrivateObject(script);
             }
          }
       }
 
-      if (thread->Flags & THF_AUTO_FREE) acFree(&thread->Head);
+      if (thread->Flags & THF_AUTO_FREE) acFree(thread);
 
-      ReleaseObject((OBJECTPTR)thread);
+      ReleaseObject(thread);
    }
-   else LogCode(ERR_AccessObject);
+   else return ERR_AccessObject;
 
    return ERR_Okay;
 }
@@ -217,12 +219,20 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
 //****************************************************************************
 // This is the entry point for all threads.
 
+THREADVAR BYTE tlThreadCrashed;
+THREADVAR objThread *tlThreadRef;
+
 #ifdef _WIN32
 static int thread_entry(objThread *Self)
 #elif __unix__
 static void * thread_entry(objThread *Self)
 #endif
 {
+   // Note that the Active flag will have been set to true prior to entry.
+   tlThreadCrashed = TRUE;
+   tlThreadRef = Self;
+   pthread_cleanup_push(&thread_entry_cleanup, Self);
+
    if (Self->Flags & THF_MSG_HANDLER) {
       tlThreadReadMsg  = Self->prv.Msgs[0];
       tlThreadWriteMsg = Self->prv.Msgs[1];
@@ -232,10 +242,8 @@ static void * thread_entry(objThread *Self)
 
    if (Self->prv.Routine.Type) {
       // Replace the default dummy context with one that pertains to the thread
-      ObjectContext thread_ctx = { .Stack = tlContext, .Object = &Self->Head, .Field = NULL, .Action = 0 };
+      ObjectContext thread_ctx = { .Stack = tlContext, .Object = Self, .Field = NULL, .Action = 0 };
       tlContext = &thread_ctx;
-
-      Self->prv.Active = TRUE;
 
       if (Self->prv.Routine.Type IS CALL_STDC) {
          auto routine = (ERROR (*)(objThread *))Self->prv.Routine.StdC.Routine;
@@ -246,7 +254,7 @@ static void * thread_entry(objThread *Self)
          if ((script = Self->prv.Routine.Script.Script)) {
             if (!AccessPrivateObject(script, 5000)) {
                const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
-               scCallback(script, Self->prv.Routine.Script.ProcedureID, args, ARRAYSIZE(args));
+               scCallback(script, Self->prv.Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                ReleasePrivateObject(script);
             }
          }
@@ -256,40 +264,56 @@ static void * thread_entry(objThread *Self)
          while (!ProcessMessages(0, -1));
       }
 
-      tlContext = &glTopContext; // Revert back to the dummy context
+      tlThreadRef = NULL;
 
-      if (Self->prv.Callback.Type) {
-         // A message needs to be placed on the process' message queue with a reference to the thread object
-         // so the callback can be processed by the main program thread.  See msg_threadcallback()
+      if (!AccessPrivateObject(Self, 10000)) {
+         NotifySubscribers(Self, AC_Signal, NULL, 0, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
 
-         ThreadMessage msg;
-         msg.ThreadID = Self->Head.UniqueID;
-         SendMessage(0, MSGID_THREAD_CALLBACK, MSF_ADD, &msg, sizeof(msg));
+         if (Self->prv.Callback.Type) {
+            // A message needs to be placed on the process' message queue with a reference to the thread object
+            // so the callback can be processed by the main program thread.  See msg_threadcallback()
 
-         //Self->prv.Active = FALSE; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
-      }
-      else if (Self->Flags & THF_AUTO_FREE) {
-         Self->prv.Active = FALSE;
-         if (!AccessPrivateObject((OBJECTPTR)Self, 10000)) {
-            acFree(&Self->Head);
-            ReleasePrivateObject((OBJECTPTR)Self);
+            ThreadMessage msg;
+            msg.ThreadID = Self->UID;
+            SendMessage(0, MSGID_THREAD_CALLBACK, MSF_ADD|MSF_WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
+
+            //Self->prv.Active = FALSE; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
          }
+         else if (Self->Flags & THF_AUTO_FREE) {
+            Self->prv.Active = FALSE;
+            acFree(Self);
+         }
+         else Self->prv.Active = FALSE;
+
+         ReleasePrivateObject(Self);
       }
-      else Self->prv.Active = FALSE;
+
+      // Please note that the Thread object/memory should be presumed terminated from this point
+
+      tlContext = &glTopContext; // Revert back to the dummy context
    }
 
-   // EXIT
+   tlThreadCrashed = FALSE;
+   pthread_cleanup_pop(TRUE);
+   return 0;
+}
 
-   if (Self->Flags & THF_MSG_HANDLER) {
-      tlThreadReadMsg  = 0;
-      tlThreadWriteMsg = 0;
+//****************************************************************************
+// Cleanup on completion of a thread.  Note that this will also run in the event that the thread throws an exception.
+
+static void thread_entry_cleanup(void *Arg)
+{
+   if (tlThreadCrashed) {
+      LogF("!Parasol","A thread in this program has crashed.");
+      if (tlThreadRef) tlThreadRef->prv.Active = FALSE;
    }
+
+   tlThreadReadMsg  = 0;
+   tlThreadWriteMsg = 0;
 
    #ifdef _WIN32
       free_threadlock();
    #endif
-
-   return 0;
 }
 
 /*****************************************************************************
@@ -303,6 +327,8 @@ static ERROR THREAD_Activate(objThread *Self, APTR Void)
    parasol::Log log;
 
    if (Self->prv.Active) return ERR_NothingDone;
+
+   Self->prv.Active = TRUE;
 
 #ifdef __unix__
    pthread_attr_t attr;
@@ -318,7 +344,6 @@ static ERROR THREAD_Activate(objThread *Self, APTR Void)
       strerror_r(errno, errstr, sizeof(errstr));
       log.warning("pthread_create() failed with error: %s.", errstr);
       pthread_attr_destroy(&attr);
-      return ERR_Failed;
    }
 
 #elif _WIN32
@@ -326,12 +351,13 @@ static ERROR THREAD_Activate(objThread *Self, APTR Void)
    if ((Self->prv.Handle = winCreateThread((APTR)&thread_entry, Self, Self->StackSize, &Self->prv.ThreadID))) {
       return ERR_Okay;
    }
-   else return log.warning(ERR_Failed);
 
 #else
    #error Platform support for threads is required.
 #endif
 
+   Self->prv.Active = FALSE;
+   return log.warning(ERR_Failed);
 }
 
 /*****************************************************************************
@@ -339,7 +365,7 @@ static ERROR THREAD_Activate(objThread *Self, APTR Void)
 Deactivate: Stops a thread.
 
 Deactivating an active thread will cause it to stop immediately.  Stopping a thread in this manner is dangerous and
-should only be attempted if the circumstances require it.
+could result in an unstable application.
 -END-
 *****************************************************************************/
 
@@ -394,9 +420,18 @@ static ERROR THREAD_Free(objThread *Self, APTR Void)
 
 static ERROR THREAD_FreeWarning(objThread *Self, APTR Void)
 {
+   parasol::Log log;
    if (Self->prv.Active) {
-      Self->Flags |= THF_AUTO_FREE;
-      return ERR_InUse;
+      log.warning("Attempt to free an active thread.  Process will wait for the thread to terminate.");
+      struct thWait wait = { 60 * 1000 };
+      Action(MT_ThWait, Self, &wait);
+
+      if (Self->prv.Active) {
+         log.warning("Thread still in use - marking it for automatic termination.");
+         Self->Flags |= THF_AUTO_FREE;
+         return ERR_InUse;
+      }
+      else return ERR_Okay;
    }
    else return ERR_Okay;
 }
@@ -492,21 +527,17 @@ static ERROR THREAD_SetData(objThread *Self, struct thSetData *Args)
 -METHOD-
 Wait: Waits for a thread to be completed.
 
-Call the Wait method to wait for a thread to complete its activity.  Because waiting for a thread will normally cause
-the caller to halt all processing, the MsgInterval parameter can be used to make periodic calls to ~ProcessMessages()
-every X milliseconds.  If the MsgInterval is set to -1 then no periodic message checks will be made.
-
-Limitations: Android and OSX implementations do not currently support the TimeOut or MsgInterval parameters.
+Call the Wait method to wait for a thread to complete its activity.  Incoming messages will continue to be processed
+by ~ProcessMessages() while waiting.
 
 -INPUT-
 int TimeOut: A timeout value measured in milliseconds.
-int MsgInterval: Check for incoming messages every X milliseconds.
 
 -ERRORS-
-Okay
+Okay: The thread is no longer active.
 NullArgs
 Args: The TimeOut value is invalid.
-TimeOut: The timeout was reached before the thread completed.
+TimeOut: The timeout was reached before the thread was terminated.
 -END-
 
 *****************************************************************************/
@@ -516,52 +547,9 @@ static ERROR THREAD_Wait(objThread *Self, struct thWait *Args)
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if (Args->TimeOut < 0) return log.warning(ERR_Args);
-   if (Args->MsgInterval < -1) return log.warning(ERR_Args);
 
-#ifdef __ANDROID__
-   pthread_join(Self->prv.PThread, NULL);
-   return ERR_Okay;
-#elif __APPLE__
-   // TODO: Simulation of pthread_timedjoin_np() is possible by creating locked semaphores for the threads, then
-   // wait on the semaphore here for the lock to be released.
-   pthread_join(Self->prv.PThread, NULL);
-   return ERR_Okay;
-#else
-   LARGE current_time = (PreciseTime()/1000LL);
-   LARGE end_time = current_time + Args->TimeOut;
-
-    __sync_add_and_fetch(&Self->prv.Waiting, 1);
-
-    do {
-      LONG time_left = end_time - current_time;
-
-      if (Args->MsgInterval != -1) { // -1 means do not use message intervals.
-         if (time_left > Args->MsgInterval) time_left = Args->MsgInterval;
-      }
-      #ifdef _WIN32
-      if (!winWaitThread(Self->prv.Handle, Args->TimeOut)) {
-      #else
-      APTR result;
-      struct timespec timeout = {
-         .tv_sec = time_left / 1000,
-         .tv_nsec = (time_left % 1000) * 1000000 // 1 in 1,000,000,000
-      };
-      if (!pthread_timedjoin_np(Self->prv.PThread, &result, &timeout)) {
-      #endif
-         __sync_sub_and_fetch(&Self->prv.Waiting, 1);
-         return ERR_Okay;
-      }
-      else break;
-
-      if (ProcessMessages(0, 0) IS ERR_Terminate) break;
-
-      current_time = (PreciseTime() / 1000LL);
-   } while (current_time < end_time);
-
-   __sync_sub_and_fetch(&Self->prv.Waiting, 1);
-   return ERR_TimeOut;
-#endif
+   ObjectSignal sig[2] = { { .Object = Self }, { 0 } };
+   return WaitForObjects(PMF_SYSTEM_NO_BREAK, Args->TimeOut, sig);
 }
 
 /*****************************************************************************
@@ -684,7 +672,7 @@ static const FieldArray clFields[] = {
 extern "C" ERROR add_thread_class(void)
 {
    if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&ThreadClass)) {
-      if (!SetFields((OBJECTPTR)ThreadClass,
+      if (!SetFields(ThreadClass,
             FID_ClassVersion|TFLOAT, VER_THREAD,
             FID_Name|TSTR,      "Thread",
             FID_Category|TLONG, CCF_SYSTEM,
@@ -694,7 +682,7 @@ extern "C" ERROR add_thread_class(void)
             FID_Size|TLONG,     sizeof(objThread),
             FID_Path|TSTR,      "modules:core",
             TAGEND)) {
-         return acInit(&ThreadClass->Head);
+         return acInit(ThreadClass);
       }
       else return ERR_SetField;
    }

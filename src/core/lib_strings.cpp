@@ -583,7 +583,7 @@ StrCompare: Compares strings to see if they are identical.
 
 This function compares two strings against each other.  If the strings match then it returns ERR_Okay, otherwise it
 returns ERR_False.  By default the function is not case sensitive, but you can turn on case sensitivity by
-specifying the STR_CASE flag.
+specifying the `STR_CASE` flag.
 
 If you set the Length to 0, the function will compare both strings for differences until a string terminates.  If all
 characters matched up until the termination, ERR_Okay will be returned regardless of whether or not one of the strings
@@ -592,13 +592,13 @@ happened to be longer than the other.
 If the Length is not 0, then the comparison will stop once the specified number of characters to match has been
 reached.  If one of the strings terminates before the specified Length is matched, ERR_False will be returned.
 
-If the STR_MATCH_LEN flag is specified, you can force the function into returning an ERR_Okay code only on the
+If the `STR_MATCH_LEN` flag is specified, you can force the function into returning an ERR_Okay code only on the
 condition that both strings are of matching lengths.  This flag is typically specified if the Length argument has
 been set to 0.
 
-If the STR_WILDCARD flag is set, the first string that is passed may contain wild card characters, which gives special
+If the `STR_WILDCARD` flag is set, the first string that is passed may contain wild card characters, which gives special
 meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance
-"ABC*" would match to "ABCDEF" and "1?3" would match to "1x3".
+`ABC*` would match to `ABCDEF` and `1?3` would match to `1x3`.
 
 -INPUT-
 cstr String1: Pointer to the first string.
@@ -1271,9 +1271,11 @@ AllocMemory: Memory for the resulting string could not be allocated.
 
 ERROR StrReplace(CSTRING Source, CSTRING Keyword, CSTRING Replacement, STRING *Result, LONG CaseSensitive)
 {
+   parasol::Log log(__FUNCTION__);
+
    *Result = NULL;
 
-   if ((!Source) or (!Keyword) or (!Result)) return LogError(ERH_StrReplace, ERR_NullArgs);
+   if ((!Source) or (!Keyword) or (!Result)) return log.warning(ERR_NullArgs);
 
    if (!Replacement) Replacement = "";
 
@@ -1340,7 +1342,8 @@ int: Returns the byte position of the first occurrence of the Keyword within the
 LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
 {
    if ((!String) or (!Keyword)) {
-      LogError(ERH_StrSearch, ERR_NullArgs);
+      parasol::Log log(__FUNCTION__);
+      log.warning(ERR_NullArgs);
       return -1;
    }
 
@@ -1626,7 +1629,7 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
    parasol::Log log(__FUNCTION__);
    LONG pos, i, j;
 
-   if ((!Buffer) or (BufferLength < 3)) return LogError(ERH_Strings, ERR_Args);
+   if ((!Buffer) or (BufferLength < 3)) return log.warning(ERR_Args);
 
    // Quick check for translation symbols
 
@@ -1751,14 +1754,17 @@ ERROR StrEvaluate(STRING Buffer, LONG BufferLength, LONG Flags, OBJECTID OwnerID
 
                if (name[0]) {
                   if (!StrMatch(name, "self")) {
-                     objectid = GetUniqueID(CurrentContext());
+                     objectid = CurrentContext()->UID;
                   }
                   else if ((!StrMatch(name, "container")) or (!StrMatch(name, "owner"))) {
-                     if (!OwnerID) OwnerID = GetOwner(CurrentContext());
+                     if (!OwnerID) OwnerID = CurrentContext()->ownerID();
                      objectid = OwnerID;
                   }
-                  else if (!StrMatch(name, "task")) objectid = glCurrentTask->Head.UniqueID;
-                  else FastFindObject(name, 0, &objectid, 1, 0);
+                  else if (!StrMatch(name, "task")) objectid = glCurrentTask->UID;
+                  else {
+                     LONG count = 1;
+                     FindObject(name, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &objectid, &count);
+                  }
                }
 
                if (objectid) {
@@ -1871,122 +1877,115 @@ LONG StrTranslateRefresh(void)
    parasol::Log log(__FUNCTION__);
    struct translate *translate;
    objConfig *config;
-   SharedControl *sharectl;
    MEMORYID memoryid;
    CSTRING language;
-   WORD j, len;
 
-   log.branch("");
+   log.branch();
 
    refresh_locale();
-   if (!StrReadLocale("language", &language)) {
-      log.msg("Language: %s", language);
+   if (StrReadLocale("language", &language)) {
+      log.msg("User's preferred language not specified.");
+      return FALSE;
+   }
+   log.msg("Language: %s", language);
 
-      if (glTranslate) {
-         if (!StrMatch(language, glTranslate->Language)) {
-            log.msg("Language unchanged.");
-            return FALSE;
-         }
+   if (glTranslate) {
+      if (!StrMatch(language, glTranslate->Language)) {
+         log.msg("Language unchanged.");
+         return FALSE;
       }
+   }
 
-      char path[80];
-      LONG i = StrCopy("config:translations/", path, sizeof(path));
-      for (j=0; (language[j]) and ((size_t)i < sizeof(path)-1); j++) {
-         if ((language[j] >= 'A') and (language[j] <= 'Z')) path[i++] = language[j] - 'A' + 'a';
-         else path[i++] = language[j];
-      }
-      StrCopy(".cfg", path+i, sizeof(path)-i);
+   char path[80];
+   LONG i = StrCopy("config:translations/", path, sizeof(path));
+   for (LONG j=0; (language[j]) and ((size_t)i < sizeof(path)-1); j++) {
+      if ((language[j] >= 'A') and (language[j] <= 'Z')) path[i++] = language[j] - 'A' + 'a';
+      else path[i++] = language[j];
+   }
+   StrCopy(".cfg", path+i, sizeof(path)-i);
 
-      // Load the translation file
+   // Load the translation file
 
-      if (!CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config,
-            FID_Path|TSTR,   path,
-            FID_Flags|TLONG, CNF_FILE_EXISTS,
-            TAGEND)) {
+   if (!CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, path, TAGEND)) {
+      // Count the string lengths to figure out how much memory we need
 
-         auto amtentries = config->AmtEntries;
-         auto entries = config->Entries;
-         if (amtentries) {
-            // Count the string lengths to figure out how much memory we need
+      LONG total_keys = 0;
+      ConfigGroups *sections;
+      if ((!GetLong(config, FID_TotalKeys, &total_keys)) and (!GetPointer(config, FID_Data, &sections))) {
+         LONG size = sizeof(struct translate) + (sizeof(STRING) * total_keys);
 
-            LONG size = sizeof(struct translate) + (sizeof(STRING) * amtentries);
-
-            LONG total = 0;
-            for (i=0; i < amtentries; i++) {
-               if (entries[i].Data[0]) {
-                  for (len=0; entries[i].Key[len]; len++);
-                  size += len;
-                  for (len=0; entries[i].Data[len]; len++);
-                  size += len;
-                  size += 2; // Two trailing null bytes for the strings
+         LONG total = 0;
+         for (auto& [section, keys] : sections[0]) {
+            for (auto& [k, v] : keys) {
+               if (not v.empty()) {
+                  size += k.size() + v.size() + 2; // Two trailing null bytes for the strings
                   total++;
                }
             }
+         }
 
-            if (!AllocMemory(size, MEM_UNTRACKED|MEM_PUBLIC|MEM_NO_BLOCKING, (APTR *)&translate, &memoryid)) {
-               translate->Replaced = FALSE;
-               translate->Total = total;
-               StrCopy(language, translate->Language, sizeof(translate->Language));
-               auto array = (LONG *)(translate + 1);
-               auto str = (STRING)(array + total);
-               auto strbuf = (MAXINT)(array + total);
+         if (!AllocMemory(size, MEM_UNTRACKED|MEM_PUBLIC|MEM_NO_BLOCKING, (APTR *)&translate, &memoryid)) {
+            translate->Replaced = FALSE;
+            translate->Total = total;
+            StrCopy(language, translate->Language, sizeof(translate->Language));
+            auto array  = (LONG *)(translate + 1);
+            auto str    = (STRING)(array + total);
+            auto strbuf = (MAXINT)(array + total);
 
-               for (i=0; i < amtentries; i++) {
-                  if (entries[i].Data[0]) {
+            for (auto& [section, keys] : sections[0]) {
+               for (auto& [k, v] : keys) {
+                  if (not v.empty()) {
                      *array = (MAXINT)str - strbuf;
                      array++;
 
-                     for (j=0; entries[i].Key[j]; j++) *str++ = entries[i].Key[j];
-                     *str++ = 0;
-                     for (j=0; entries[i].Data[j]; j++) *str++ = entries[i].Data[j];
-                     *str++ = 0;
+                     str += StrCopy(k.c_str(), str, COPY_ALL) + 1;
+                     str += StrCopy(v.c_str(), str, COPY_ALL) + 1;
                   }
                }
-
-               // Sorting
-
-               array = (LONG *)(translate + 1);
-               for (i=total/2; i >= 0; i--) sift((STRING)(array+total), array, i, total);
-
-               LONG heapsize = total;
-               for (i=heapsize; i > 0; i--) {
-                  auto temp = array[0];
-                  array[0] = array[i-1];
-                  array[i-1] = temp;
-                  sift((STRING)(array+total), array, 0, --heapsize);
-               }
-
-               // If in debug mode, print out any duplicate strings
-
-               if (GetResource(RES_LOG_LEVEL) > 3) {
-                  array = (LONG *)(translate + 1);
-                  str = (STRING)(array + total);
-                  for (i=0; i < total-1; i++) {
-                     if (!StrCompare(str+array[i], str+array[i+1], 0, STR_MATCH_LEN)) {
-                        log.warning("Duplicate string \"%s\"", str+array[i]);
-                     }
-                  }
-               }
-
-               // Update the global translation table
-
-               if (glTranslate) {
-                  // Mark the old table as replaced
-                  glTranslate->Replaced = TRUE;
-                  FreeResource(glTranslate); // Mark the memory for deletion
-                  ReleaseMemory(glTranslate);
-               }
-
-               sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
-               sharectl->TranslationMID = memoryid;
-               glTranslate = translate;
-               glTranslateMID = memoryid;
-               acFree(&config->Head);
-
-               return TRUE;
             }
+
+            // Sorting
+
+            array = (LONG *)(translate + 1);
+            for (i=total/2; i >= 0; i--) sift((STRING)(array+total), array, i, total);
+
+            LONG heapsize = total;
+            for (i=heapsize; i > 0; i--) {
+               auto temp = array[0];
+               array[0] = array[i-1];
+               array[i-1] = temp;
+               sift((STRING)(array+total), array, 0, --heapsize);
+            }
+
+            // If in debug mode, print out any duplicate strings
+
+            if (GetResource(RES_LOG_LEVEL) > 3) {
+               array = (LONG *)(translate + 1);
+               str = (STRING)(array + total);
+               for (i=0; i < total-1; i++) {
+                  if (!StrCompare(str+array[i], str+array[i+1], 0, STR_MATCH_LEN)) {
+                     log.warning("Duplicate string \"%s\"", str+array[i]);
+                  }
+               }
+            }
+
+            // Update the global translation table
+
+            if (glTranslate) {
+               glTranslate->Replaced = TRUE;
+               FreeResource(glTranslate);
+               ReleaseMemory(glTranslate);
+            }
+
+            auto sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
+            sharectl->TranslationMID = memoryid;
+            glTranslate = translate;
+            glTranslateMID = memoryid;
+            acFree(config);
+
+            return TRUE;
          }
-         acFree(&config->Head);
+         acFree(config);
       }
       else {
          // If there is no translation file for this language, revert to no translation table (which will give the user English).
@@ -1994,17 +1993,13 @@ LONG StrTranslateRefresh(void)
          if (glTranslate) {
             glTranslate->Replaced = TRUE;
             ReleaseMemoryID(glTranslateMID);
-            FreeResourceID(glTranslateMID); // Mark the memory for deletion
+            FreeResourceID(glTranslateMID);
             glTranslate = NULL;
             glTranslateMID = 0;
          }
-         sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
+         auto sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
          sharectl->TranslationMID = 0;
       }
-   }
-   else {
-      log.msg("User's preferred language not specified.");
-      return FALSE;
    }
 
    return FALSE;

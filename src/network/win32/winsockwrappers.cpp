@@ -85,7 +85,7 @@ static const struct {
    { WSAEFAULT,             ERR_InvalidData },
    { WSAEINVAL,             ERR_Args },
    { WSAEMFILE,             ERR_OutOfSpace },
-   { WSAEWOULDBLOCK,        ERR_BadState },
+   { WSAEWOULDBLOCK,        ERR_InvalidState },
    { WSAEINPROGRESS,        ERR_Busy },
    { WSAEALREADY,           ERR_Busy },
    { WSAENOTSOCK,           ERR_Args },
@@ -140,7 +140,7 @@ void winCloseResolveHandle(void *Handle)
 
 //****************************************************************************
 
-struct hostent * win_gethostbyaddr(struct IPAddress *Address)
+struct hostent * win_gethostbyaddr(const struct IPAddress *Address)
 {
    if (Address->Type IS IPADDR_V4) return gethostbyaddr((const char *)&Address->Data, 4, AF_INET);
    else return gethostbyaddr((const char *)&Address->Data, 16, AF_INET6);
@@ -175,7 +175,7 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
             WSAAsyncSelect(info->SocketHandle, glNetWindow, WM_NETWORK, info->Flags & (~FD_READ));
          }
 
-         if (info->Reference) win32_netresponse((struct Head *)info->Reference, info->SocketHandle, state, error);
+         if (info->Reference) win32_netresponse((struct BaseClass *)info->Reference, info->SocketHandle, state, error);
          else printf("win_messages() Missing reference for FD %d, state %d\n", info->SocketHandle, state);
 
          if ((resub) AND (!glSocketsDisabled)) {

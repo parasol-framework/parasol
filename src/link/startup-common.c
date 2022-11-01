@@ -1,7 +1,7 @@
 
 //****************************************************************************
 
-void print(CSTRING text, ...)
+extern "C" void print(CSTRING text, ...)
 {
    va_list arg;
    va_start(arg, text);

@@ -251,7 +251,7 @@ static LONG HandleSampleEnd(objAudio *Self, struct AudioChannel *Channel)
                }
             }
             else {
-               log.warning("Failed to stream data from object #%d.", stream->UniqueID);
+               log.warning("Failed to stream data from object #%d.", stream->UID);
                Channel->State = CHS_FINISHED;
             }
 

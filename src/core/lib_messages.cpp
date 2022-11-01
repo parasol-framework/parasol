@@ -33,7 +33,7 @@ Name: Messages
 
 #include "defs.h"
 
-static void wake_task(LONG Index, CSTRING);
+static ERROR wake_task(LONG Index, CSTRING);
 #ifdef _WIN32
 static ERROR sleep_task(LONG, BYTE);
 #else
@@ -274,10 +274,10 @@ message, then it is removed from the queue without being processed. Message hand
 will stop processing the queue and returns immediately with ERR_Okay.
 
 If a message with a MSGID_QUIT ID is found on the queue, then the function returns immediately with the error code
-ERR_Terminate.  This indicates that you must stop the program as soon as possible and exit gracefully.
+ERR_Terminate.  The program must respond to the terminate request by exiting immediately.
 
 -INPUT-
-int Flags:   Optional flags are specified here (currently no flags are provided).
+int(PMF) Flags:   Optional flags are specified here (currently no flags are provided).
 int TimeOut: A TimeOut value, measured in milliseconds.  If zero, the function will return as soon as all messages on the queue are processed.  If less than zero, the function does not return until a request for termination is received or a user message requires processing.
 
 -ERRORS-
@@ -294,6 +294,9 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if ((!tlMainThread) and (!tlThreadWriteMsg)) return log.warning(ERR_OutsideMainThread);
+
+   // Ensure that all resources allocated by sub-routines are assigned to the Task object by default.
+   parasol::SwitchContext ctx(glCurrentTask);
 
    // This recursion blocker prevents ProcessMessages() from being called to breaking point.  Excessive nesting can
    // occur on occasions where ProcessMessages() sends an action to an object that performs some activity before it
@@ -391,7 +394,8 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 
                ThreadLock lock(TL_MSGHANDLER, 5000);
                if (lock.granted()) {
-                  for (MsgHandler *handler=glMsgHandlers; handler; handler=handler->Next) {
+                  // Message handlers will execute within the context of the main task and not the function's context
+                  for (auto handler=glMsgHandlers; handler; handler=handler->Next) {
                      if ((!handler->MsgType) or (handler->MsgType IS msg->Type)) {
                         ERROR result = ERR_NoSupport;
                         if (handler->Function.Type IS CALL_STDC) {
@@ -409,10 +413,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
                                  { "Data",     FD_PTR|FD_BUFFER,  { .Address  = msg + 1} },
                                  { "Size",     FD_LONG|FD_BUFSIZE, { .Long = msg->Size } }
                               };
-                              if (!scCallback(script, handler->Function.Script.ProcedureID, args, ARRAYSIZE(args))) {
-                                 GetLong(script, FID_Error, &result);
-                              }
-                              else result = ERR_Terminate; // Fatal error in attempting to execute the procedure
+                              if (scCallback(script, handler->Function.Script.ProcedureID, args, ARRAYSIZE(args), &result)) result = ERR_Terminate;
                            }
                         }
                         else log.warning("Handler uses function type %d, not understood.", handler->Function.Type);
@@ -434,7 +435,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
             }
          }
 
-         if ((glTaskState IS TSTATE_STOPPING) or (breaking)) {
+         if (((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))) or (breaking)) {
             log.trace("Breaking message loop.");
             break;
          }
@@ -455,11 +456,12 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 
       glTimerCycle++;
 timer_cycle:
-      if ((glTaskState != TSTATE_STOPPING) and (!thread_lock(TL_TIMER, 200))) {
+      if ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK)));
+      else if (!thread_lock(TL_TIMER, 200)) {
          LARGE current_time = PreciseTime();
-         for (CoreTimer *timer=glTimers; timer; timer=timer->Next) {
-            if (current_time < timer->NextCall) continue;
-            if (timer->Cycle IS glTimerCycle) continue;
+         for (auto timer=glTimers.begin(); timer != glTimers.end(); ) {
+            if (current_time < timer->NextCall) { timer++; continue; }
+            if (timer->Cycle IS glTimerCycle) { timer++; continue; }
 
             LARGE elapsed = current_time - timer->LastCall;
 
@@ -470,17 +472,23 @@ timer_cycle:
 
             //log.trace("Subscriber: %d, Interval: %d, Time: " PF64(), timer->SubscriberID, timer->Interval, current_time);
 
-            timer->Locked = TRUE; // Prevents termination of the structure irrespective of having a TL_TIMER lock.
+            timer->Locked = true; // Prevents termination of the structure irrespective of having a TL_TIMER lock.
 
-            UBYTE relock = FALSE;
+            bool relock = false;
             if (timer->Routine.Type IS CALL_STDC) { // C/C++ callback
                OBJECTPTR subscriber;
-               if (!AccessObject(timer->SubscriberID, 50, &subscriber)) {
+               if (!timer->SubscriberID) { // Internal subscriptions like process_janitor() don't have a subscriber
+                  auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
+                  thread_unlock(TL_TIMER);
+                  relock = true;
+                  error = routine(NULL, elapsed, current_time);
+               }
+               else if (!AccessObject(timer->SubscriberID, 50, &subscriber)) {
                   parasol::SwitchContext context(subscriber);
 
                   auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
                   thread_unlock(TL_TIMER);
-                  relock = TRUE;
+                  relock = true;
 
                   error = routine(subscriber, elapsed, current_time);
 
@@ -498,20 +506,24 @@ timer_cycle:
                   };
 
                   thread_unlock(TL_TIMER);
-                  relock = TRUE;
+                  relock = true;
 
-                  if (!scCallback(script, timer->Routine.Script.ProcedureID, scargs, ARRAYSIZE(scargs))) {
-                     error = script->Error;
-                  }
-                  else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+                  if (scCallback(script, timer->Routine.Script.ProcedureID, scargs, ARRAYSIZE(scargs), &error)) error = ERR_Terminate;
                }
                else error = ERR_SystemCorrupt;
             }
             else error = ERR_Terminate;
 
-            timer->Locked = FALSE;
+            timer->Locked = false;
 
-            if (error IS ERR_Terminate) UpdateTimer(timer, 0);
+            if (error IS ERR_Terminate) {
+               if (timer->Routine.Type IS CALL_SCRIPT) {
+                  scDerefProcedure(timer->Routine.Script.Script, &timer->Routine);
+               }
+
+               timer = glTimers.erase(timer);
+            }
+            else timer++;
 
             if (relock) goto timer_cycle;
          } // for
@@ -519,7 +531,7 @@ timer_cycle:
          thread_unlock(TL_TIMER);
       }
 
-      // This routine pulls out all messages and processes them
+      // This sub-routine consumes all of the queued messages
 
       WORD msgcount = 0;
       BYTE repass = FALSE;
@@ -528,7 +540,7 @@ timer_cycle:
          BYTE msgfound = FALSE;
          if (!AccessMemory(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&msgbuffer)) {
             if (msgbuffer->Count) {
-               TaskMessage *scanmsg = (TaskMessage *)msgbuffer->Buffer;
+               auto scanmsg = (TaskMessage *)msgbuffer->Buffer;
                TaskMessage *prevmsg = NULL;
 
                #ifdef DEBUG
@@ -607,7 +619,7 @@ timer_cycle:
 
          ThreadLock lock(TL_MSGHANDLER, 5000);
          if (lock.granted()) {
-            for (MsgHandler *handler=glMsgHandlers; handler; handler=handler->Next) {
+            for (auto handler=glMsgHandlers; handler; handler=handler->Next) {
                if ((!handler->MsgType) or (handler->MsgType IS msg->Type)) {
                   ERROR result = ERR_NoSupport;
                   if (handler->Function.Type IS CALL_STDC) {
@@ -625,10 +637,7 @@ timer_cycle:
                            { "Data",     FD_PTR|FD_BUFFER, { .Address = msg + 1} },
                            { "Size",     FD_LONG|FD_BUFSIZE, { .Long = msg->Size } }
                         };
-                        if (!scCallback(script, handler->Function.Script.ProcedureID, args, ARRAYSIZE(args))) {
-                           GetLong(script, FID_Error, &result);
-                        }
-                        else result = ERR_Terminate; // Fatal error in attempting to execute the procedure
+                        if (scCallback(script, handler->Function.Script.ProcedureID, args, ARRAYSIZE(args), &result)) result = ERR_Terminate;
                      }
                   }
                   else log.warning("Handler uses function type %d, not understood.", handler->Function.Type);
@@ -675,7 +684,7 @@ timer_cycle:
       #endif
 
       LARGE wait = 0;
-      if ((repass) or (breaking) or (glTaskState IS TSTATE_STOPPING));
+      if ((repass) or (breaking) or ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))));
       else if (timeout_end > 0) {
          // Wait for someone to communicate with us, or stall until an interrupt is due.
 
@@ -683,8 +692,8 @@ timer_cycle:
          {
             ThreadLock lock(TL_TIMER, 200);
             if (lock.granted()) {
-               for (CoreTimer *timer = glTimers; timer; timer=timer->Next) {
-                  if (timer->NextCall < sleep_time) sleep_time = timer->NextCall;
+               for (const auto &timer : glTimers) {
+                  if (timer.NextCall < sleep_time) sleep_time = timer.NextCall;
                }
             }
          }
@@ -698,7 +707,7 @@ timer_cycle:
       #ifdef _WIN32
          if (tlMainThread) {
             tlMessageBreak = TRUE;  // Break if the host OS sends us a native message
-            sleep_task(wait/1000LL, FALSE); // Event if wait is zero, we still need to clear FD's and call FD hooks
+            sleep_task(wait / 1000LL, FALSE); // Even if wait is zero, we still need to clear FD's and call FD hooks
             tlMessageBreak = FALSE;
 
             if (wait) {
@@ -710,18 +719,17 @@ timer_cycle:
          else {
          }
       #else
-         sleep_task(wait/1000LL); // Event if wait is zero, we still need to clear FD's and call FD hooks
+         sleep_task(wait / 1000LL); // Event if wait is zero, we still need to clear FD's and call FD hooks
       #endif
 
       // Continue the loop?
 
       if (repass) continue; // There are messages left unprocessed
-      if ((glTaskState IS TSTATE_STOPPING) or (breaking)) {
+      else if (((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))) or (breaking)) {
          log.trace("Breaking message loop.");
          break;
       }
-
-      if (PreciseTime() >= timeout_end) {
+      else if (PreciseTime() >= timeout_end) {
          if (TimeOut) {
             log.trace("Breaking message loop - timeout of %dms.", TimeOut);
             if (timeout_end > 0) returncode = ERR_TimeOut;
@@ -731,7 +739,7 @@ timer_cycle:
 
    } while (1);
 
-   if (glTaskState IS TSTATE_STOPPING) returncode = ERR_Terminate;
+   if ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))) returncode = ERR_Terminate;
 
    if (msg) FreeResource(msg);
 
@@ -880,7 +888,7 @@ static void view_messages(MessageHeader *Header)
 
    log.warning("Count: %d, Next: %d", Header->Count, Header->NextEntry);
 
-   TaskMessage *msg = (TaskMessage *)Header->Buffer;
+   auto msg = (TaskMessage *)Header->Buffer;
    WORD count = 0;
    while (count < Header->Count) {
       if (msg->Type) {
@@ -902,7 +910,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
 
    if (glLogLevel >= 9) log.function("MessageMID: %d, Type: %d, Data: %p, Size: %d", MessageMID, Type, Data, Size);
 
-   if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d, context #%d.", MessageMID, tlContext->Object->UniqueID);
+   if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d, context #%d.", MessageMID, tlContext->Object->UID);
 
    if ((!Type) or (Size < 0)) return log.warning(ERR_Args);
 
@@ -1007,8 +1015,8 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
             #endif
             */
 
-            TaskMessage *srcmsg  = (TaskMessage *)header->Buffer;
-            TaskMessage *destmsg = (TaskMessage *)buffer->Buffer;
+            auto srcmsg  = (TaskMessage *)header->Buffer;
+            auto destmsg = (TaskMessage *)buffer->Buffer;
             for (buffer->Count=0; buffer->Count < header->Count;) {
                if (srcmsg->Type) {
                   CopyMemory(srcmsg, destmsg, sizeof(TaskMessage) + srcmsg->DataSize);
@@ -1075,6 +1083,100 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
 }
 
 /*****************************************************************************
+
+-FUNCTION-
+WaitForObjects: Process incoming messages while waiting on objects to complete their activities.
+
+The WaitForObjects() function acts as a front-end to ~ProcessMessages(), with the extension of being
+able to wait for a series of objects that must signal an end to their activities.  An object can be signalled via
+the Signal() action.  Termination of a monitored object is also treated as a signal.  The function will return once
+ALL of the objects are signalled or a time-out occurs.
+
+Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the
+object will not be monitored.
+
+-INPUT-
+int Flags:   Optional flags are specified here (currently no flags are provided).
+int TimeOut: A time-out value measured in milliseconds.  If this value is negative then the function will not return until an incoming message or signal breaks it.
+struct(*ObjectSignal) ObjectSignals: A null-terminated array of objects to monitor for signals.
+
+-ERRORS-
+Okay
+NullArgs
+Failed
+Recursion
+OutsideMainThread
+
+-END-
+
+*****************************************************************************/
+
+ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
+{
+   // Refer to the Task class for the message interception routines
+   parasol::Log log(__FUNCTION__);
+
+   if (!ObjectSignals) return log.warning(ERR_NullArgs);
+
+   if (!glWFOList.empty()) return log.warning(ERR_Recursion);
+
+   // Message processing is only possible from the main thread (for system design and synchronisation reasons)
+   if ((!tlMainThread) and (!tlThreadWriteMsg)) return log.warning(ERR_OutsideMainThread);
+
+   log.branch("Flags: $%.8x, Timeout: %d, Signals: %p", Flags, TimeOut, ObjectSignals);
+
+   parasol::SwitchContext ctx(glCurrentTask);
+
+   ERROR error = ERR_Okay;
+   glWFOList.clear();
+   for (LONG i=0; ((error IS ERR_Okay) and (ObjectSignals[i].Object)); i++) {
+      parasol::ScopedObjectLock<OBJECTPTR> lock(ObjectSignals[i].Object); // For thread safety
+
+      // Refer to TASK_ActionNotify() for notification handling and clearing of signals
+      if (ObjectSignals[i].Object->Flags & NF_SIGNALLED) {
+         // Objects that have already been signalled do not require monitoring
+         ObjectSignals[i].Object->Flags &= ~NF_SIGNALLED;
+      }
+      else if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
+         log.debug("Monitoring object #%d", ObjectSignals[i].Object->UID);
+         if (SubscribeAction(ObjectSignals[i].Object, AC_Signal)) error = ERR_Failed;
+         glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
+      }
+      else error = ERR_Failed;
+   }
+
+   if (!error) {
+      if (TimeOut < 0) {
+         if (glWFOList.empty()) error = ProcessMessages(Flags, 0);
+         else error = ProcessMessages(Flags, -1);
+      }
+      else {
+         auto current_time = PreciseTime();
+         auto end_time = current_time + (TimeOut * 1000LL);
+         while ((not glWFOList.empty()) and (current_time < end_time) and (!error)) {
+            log.debug("Waiting on %d objects.", (LONG)glWFOList.size());
+            error = ProcessMessages(Flags, (end_time - current_time) / 1000LL);
+            current_time = PreciseTime();
+         }
+      }
+
+      if ((!error) and (not glWFOList.empty())) error = ERR_TimeOut;
+   }
+
+   if (not glWFOList.empty()) { // Clean up if there are dangling subscriptions
+      for (auto &ref : glWFOList) {
+         parasol::ScopedObjectLock<OBJECTPTR> lock(ref.second.Object); // For thread safety
+         UnsubscribeAction(ref.second.Object, AC_Free);
+         UnsubscribeAction(ref.second.Object, AC_Signal);
+      }
+      glWFOList.clear();
+   }
+
+   if ((error > ERR_ExceptionThreshold) and (error != ERR_TimeOut)) log.warning(error);
+   return error;
+}
+
+/*****************************************************************************
 ** This is the equivalent internal routine to SendMessage(), for the purpose of sending messages to other threads.
 */
 
@@ -1122,12 +1224,9 @@ ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
    return error;
 }
 
-/*****************************************************************************
-** Internal: write_nonblock()
-**
-** Simplifies the process of writing to an FD that is set to non-blocking mode (typically a socket or pipe).  An
-** end-time is required so that a timeout will be signalled if the reader isn't keeping the buffer clear.
-*/
+//****************************************************************************
+// Simplifies the process of writing to an FD that is set to non-blocking mode (typically a socket or pipe).  An
+// end-time is required so that a timeout will be signalled if the reader isn't keeping the buffer clear.
 
 #ifdef __unix__
 ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
@@ -1238,6 +1337,41 @@ ERROR UpdateMessage(APTR Queue, LONG MessageID, LONG Type, APTR Buffer, LONG Buf
 }
 
 /*****************************************************************************
+
+-FUNCTION-
+WakeProcess: Wake a sleeping process to check for queued activities.  For internal use only.
+
+Intended for internal use only.  Forcibly waking a process is necessary for the processing of activities that do not
+follow typical IPC methodologies.
+
+-INPUT-
+int ProcessID: Reference to a process identifier for the host platform.
+
+-ERRORS-
+Okay
+NullArgs
+Search: The referenced process was not found.
+
+-END-
+
+*****************************************************************************/
+
+ERROR WakeProcess(LONG ProcessID)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!ProcessID) return log.warning(ERR_NullArgs);
+
+   for (LONG i=0; i < MAX_TASKS; i++) {
+      if (shTasks[i].ProcessID IS ProcessID) {
+         return wake_task(i, __func__);
+      }
+   }
+
+   return log.warning(ERR_Search);
+}
+
+/*****************************************************************************
 ** Function: sleep_task() - Unix version
 */
 
@@ -1251,15 +1385,16 @@ ERROR sleep_task(LONG Timeout)
       return ERR_Failed;
    }
    else if (tlPublicLockCount > 0) {
-      log.warning("You cannot sleep while still holding %d global locks!", tlPublicLockCount);
+      log.warning("Cannot sleep while holding %d global locks.", tlPublicLockCount);
       return ERR_Okay;
    }
    else if (tlPrivateLockCount != 0) {
       char buffer[120];
-      WORD pos = 0;
-      for (LONG i=0; (i < glNextPrivateAddress) and ((size_t)pos < sizeof(buffer)-1); i++) {
-         if (glPrivateMemory[i].AccessCount > 0) {
-            pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%d.%d ", glPrivateMemory[i].MemoryID, glPrivateMemory[i].AccessCount);
+      size_t pos = 0;
+      for (const auto & [ id, mem ] : glPrivateMemory) {
+         if (mem.AccessCount > 0) {
+            pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%d.%d ", mem.MemoryID, mem.AccessCount);
+            if (pos >= sizeof(buffer)-1) break;
          }
       }
 
@@ -1283,11 +1418,7 @@ ERROR sleep_task(LONG Timeout)
          //log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
          if (glFDTable[i].FD > maxfd) maxfd = glFDTable[i].FD;
 
-         if (glFDTable[i].FD IS glX11FD) {
-            // This sub-routine is required for managing X11's FD, which doesn't seem to wake our task if we call select() while there is data sitting
-            // in the FD (you can test this by running Exodus for X11).  Therefore we process the FD before going to sleep.  This is a bit of a stop gap
-            // measure until we figure out what is wrong with the FD (assuming there is some other way to fix it).
-
+         if (glFDTable[i].Flags & RFD_ALWAYS_CALL) {
             if (glFDTable[i].Routine) glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
          }
          else if (glFDTable[i].Flags & RFD_RECALL) {
@@ -1307,7 +1438,7 @@ ERROR sleep_task(LONG Timeout)
                glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
 
                if (glFDTable[i].Flags & RFD_RECALL) {
-                  // If the RECALL flag was reapplied by the subscriber, we need to employ a reduced timeout so that the subscriber doesn't get 'stuck'.
+                  // If the RECALL flag was re-applied by the subscriber, we need to employ a reduced timeout so that the subscriber doesn't get 'stuck'.
 
                   if (Timeout > 10) Timeout = 10;
                }
@@ -1385,11 +1516,10 @@ ERROR sleep_task(LONG Timeout)
    else if (result IS -1) {
       if (errno IS EINTR); // Interrupt caught during sleep
       else if (errno IS EBADF) {
-         struct stat info;
-
          // At least one of the file descriptors is invalid - it is most likely that the file descriptor was closed and the
          // code responsible did not de-register the descriptor.
 
+         struct stat info;
          for (LONG i=0; i < glTotalFDs; i++) {
             if (fstat(glFDTable[i].FD, &info) < 0) {
                if (errno IS EBADF) {
@@ -1426,10 +1556,11 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
    }
    else if (tlPrivateLockCount != 0) {
       char buffer[120];
-      WORD pos = 0;
-      for (LONG i=0; (i < glNextPrivateAddress) and ((size_t)pos < sizeof(buffer)-1); i++) {
-         if (glPrivateMemory[i].AccessCount > 0) {
-            pos += snprintf(buffer+pos, sizeof(buffer)-pos, "#%d +%d ", glPrivateMemory[i].MemoryID, glPrivateMemory[i].AccessCount);
+      size_t pos = 0;
+      for (const auto & [ id, mem ] : glPrivateMemory) {
+         if (mem.AccessCount > 0) {
+            pos += snprintf(buffer+pos, sizeof(buffer)-pos, "#%d +%d ", mem.MemoryID, mem.AccessCount);
+            if (pos >= sizeof(buffer)-1) break;
          }
       }
 
@@ -1445,10 +1576,10 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       Timeout = -1; // A value of -1 means to wait indefinitely
       time_end = 0x7fffffffffffffffLL;
    }
-   else time_end = (PreciseTime()/1000LL) + Timeout;
+   else time_end = (PreciseTime() / 1000LL) + Timeout;
 
    while (1) {
-      // About this process: it will wait until either:
+      // This subroutine will wait until either:
       //   Something is received on a registered WINHANDLE
       //   The thread-lock is released by another task (see wake_task).
       //   A window message is received (if tlMessageBreak is TRUE)
@@ -1469,9 +1600,12 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          for (LONG i=0; i < glTotalFDs; i++) {
             if (glFDTable[i].Flags & RFD_SOCKET) continue; // Ignore network socket FDs (triggered as normal windows messages)
 
-            log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", (LONG)(MAXINT)glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
+            //log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", (LONG)(MAXINT)glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
 
-            if (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) {
+            if (glFDTable[i].Flags & RFD_ALWAYS_CALL) {
+               if (glFDTable[i].Routine) glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
+            }
+            else if (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) {
                lookup[total] = i;
                handles[total++] = glFDTable[i].FD;
             }
@@ -1483,9 +1617,9 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          }
       }
 
-      if (Timeout > 0) log.trace("Sleeping on %d handles for up to %dms.  MsgBreak: %d", total, Timeout, tlMessageBreak);
+      //if (Timeout > 0) log.trace("Sleeping on %d handles for up to %dms.  MsgBreak: %d", total, Timeout, tlMessageBreak);
 
-      LONG sleeptime = time_end - (PreciseTime()/1000LL);
+      LONG sleeptime = time_end - (PreciseTime() / 1000LL);
       if (sleeptime < 0) sleeptime = 0;
 
       i = winWaitForObjects(total, handles, sleeptime, tlMessageBreak);
@@ -1506,7 +1640,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          }
       }
       else if ((i > 1) and (i < total)) {
-         log.trace("WaitForObjects() Handle: %d (%d) of %d, Timeout: %d, Break: %d", i, lookup[i], total, Timeout, tlMessageBreak);
+         //log.trace("WaitForObjects() Handle: %d (%d) of %d, Timeout: %d, Break: %d", i, lookup[i], total, Timeout, tlMessageBreak);
 
          // Process only the handle routine that was signalled: NOTE: This is potentially an issue if the handle is early on in the list and is being frequently
          // signalled - it will mean that the other handles aren't going to get signalled until the earlier one stops being signalled.
@@ -1538,7 +1672,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          break; // Message in windows message queue that needs to be processed, so break
       }
 
-      LARGE systime = (PreciseTime()/1000LL);
+      LARGE systime = (PreciseTime() / 1000LL);
       if (systime < time_end) Timeout = time_end - systime;
       else break;
    }
@@ -1548,32 +1682,30 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
 
 #endif // _WIN32
 
-/*****************************************************************************
-** This function complements sleep_task().  It is useful for waking the main thread of a process when it is waiting for
-** new messages to come in.
-**
-** It's not a good idea to call wake_task() while locks are active because the Core might choose to instantly switch
-** to the foreign task when we wake it up.  Having a lock would then increase the likelihood of delays and time-outs.
-*/
+//****************************************************************************
+// This function complements sleep_task().  It is useful for waking the main thread of a process when it is waiting for
+// new messages to come in.
+//
+// It's not a good idea to call wake_task() while locks are active because the Core might choose to instantly switch
+// to the foreign task when we wake it up.  Having a lock would then increase the likelihood of delays and time-outs.
 
 #ifdef __unix__ // TLS data for the wake_task() socket.
 static pthread_key_t keySocket;
 static pthread_once_t keySocketOnce = PTHREAD_ONCE_INIT;
-#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 static void thread_socket_free(void *Socket) { close(PTR_TO_HOST(Socket)); }
 static void thread_socket_init(void) { pthread_key_create(&keySocket, thread_socket_free); }
 #endif
 
-void wake_task(LONG TaskIndex, CSTRING Caller)
+ERROR wake_task(LONG TaskIndex, CSTRING Caller)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (TaskIndex < 0) return;
-   if (!shTasks[TaskIndex].ProcessID) return;
+   if (TaskIndex < 0) return ERR_Args;
+   if (!shTasks[TaskIndex].ProcessID) return ERR_Args;
 
    if (tlPublicLockCount > 0) {
-      if (glProgramStage != STAGE_SHUTDOWN) log.warning("[Process %d] Warning: Do not call me when holding %d global locks.  (Caller: %s) - Try function trace.", glProcessID, tlPublicLockCount, Caller);
+      if (glProgramStage != STAGE_SHUTDOWN) log.warning("[Process %d] Illegal call from %s() while holding %d global locks.", glProcessID, Caller, tlPublicLockCount);
    }
 
 #ifdef __unix__
@@ -1591,7 +1723,6 @@ void wake_task(LONG TaskIndex, CSTRING Caller)
    // discovered to cause problems.  The use of pthread keys also ensures that the socket FD is automatically closed
    // when the thread is removed.
 
-   #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
    #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
    HOSTHANDLE tlSendSocket;
    pthread_once(&keySocketOnce, thread_socket_init);
@@ -1602,7 +1733,7 @@ void wake_task(LONG TaskIndex, CSTRING Caller)
       }
       else {
          log.warning("Failed to create a new socket communication point.");
-         return;
+         return ERR_SystemCall;
       }
    }
 
@@ -1622,4 +1753,6 @@ void wake_task(LONG TaskIndex, CSTRING Caller)
    wake_waitlock(shTasks[TaskIndex].Lock, shTasks[TaskIndex].ProcessID, 1);
 
 #endif
+
+   return ERR_Okay;
 }

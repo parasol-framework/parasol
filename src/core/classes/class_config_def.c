@@ -2,34 +2,31 @@
 
 static const struct FieldDef clConfigFlags[] = {
    { "StripQuotes", 0x00000001 },
-   { "LockRecords", 0x00000004 },
-   { "New", 0x00000010 },
-   { "FileExists", 0x00000008 },
    { "AutoSave", 0x00000002 },
+   { "OptionalFiles", 0x00000004 },
+   { "New", 0x00000008 },
    { NULL, 0 }
 };
 
-FDEF maReadValue[] = { { "Section", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR|FD_RESULT }, { 0, 0 } };
-FDEF maReadInt[] = { { "Section", FD_STR }, { "Key", FD_STR }, { "Integer", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF maWriteValue[] = { { "Section", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR }, { 0, 0 } };
-FDEF maDeleteIndex[] = { { "Index", FD_LONG }, { 0, 0 } };
-FDEF maDeleteSection[] = { { "Section", FD_STR }, { 0, 0 } };
-FDEF maGetSectionFromIndex[] = { { "Index", FD_LONG }, { "Section", FD_STR|FD_RESULT }, { 0, 0 } };
+FDEF maReadValue[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR|FD_RESULT }, { 0, 0 } };
+FDEF maReadIValue[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR|FD_RESULT }, { 0, 0 } };
+FDEF maWriteValue[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR }, { 0, 0 } };
+FDEF maDeleteKey[] = { { "Group", FD_STR }, { "Key", FD_STR }, { 0, 0 } };
+FDEF maDeleteGroup[] = { { "Group", FD_STR }, { 0, 0 } };
+FDEF maGetGroupFromIndex[] = { { "Index", FD_LONG }, { "Group", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maSortByKey[] = { { "Key", FD_STR }, { "Descending", FD_LONG }, { 0, 0 } };
-FDEF maReadFloat[] = { { "Section", FD_STR }, { "Key", FD_STR }, { "Float", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
 FDEF maMergeFile[] = { { "Path", FD_STR }, { 0, 0 } };
-FDEF maMerge[] = { { "ConfigID", FD_OBJECTID }, { 0, 0 } };
-FDEF maSet[] = { { "Section", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR }, { 0, 0 } };
+FDEF maMerge[] = { { "Source", FD_OBJECTPTR }, { 0, 0 } };
+FDEF maSet[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR }, { 0, 0 } };
 
 static const struct MethodArray clConfigMethods[] = {
    { -1, (APTR)CONFIG_ReadValue, "ReadValue", maReadValue, sizeof(struct cfgReadValue) },
-   { -2, (APTR)CONFIG_ReadInt, "ReadInt", maReadInt, sizeof(struct cfgReadInt) },
+   { -2, (APTR)CONFIG_ReadIValue, "ReadIValue", maReadIValue, sizeof(struct cfgReadIValue) },
    { -3, (APTR)CONFIG_WriteValue, "WriteValue", maWriteValue, sizeof(struct cfgWriteValue) },
-   { -4, (APTR)CONFIG_DeleteIndex, "DeleteIndex", maDeleteIndex, sizeof(struct cfgDeleteIndex) },
-   { -5, (APTR)CONFIG_DeleteSection, "DeleteSection", maDeleteSection, sizeof(struct cfgDeleteSection) },
-   { -6, (APTR)CONFIG_GetSectionFromIndex, "GetSectionFromIndex", maGetSectionFromIndex, sizeof(struct cfgGetSectionFromIndex) },
+   { -4, (APTR)CONFIG_DeleteKey, "DeleteKey", maDeleteKey, sizeof(struct cfgDeleteKey) },
+   { -5, (APTR)CONFIG_DeleteGroup, "DeleteGroup", maDeleteGroup, sizeof(struct cfgDeleteGroup) },
+   { -6, (APTR)CONFIG_GetGroupFromIndex, "GetGroupFromIndex", maGetGroupFromIndex, sizeof(struct cfgGetGroupFromIndex) },
    { -7, (APTR)CONFIG_SortByKey, "SortByKey", maSortByKey, sizeof(struct cfgSortByKey) },
-   { -8, (APTR)CONFIG_ReadFloat, "ReadFloat", maReadFloat, sizeof(struct cfgReadFloat) },
    { -9, (APTR)CONFIG_MergeFile, "MergeFile", maMergeFile, sizeof(struct cfgMergeFile) },
    { -10, (APTR)CONFIG_Merge, "Merge", maMerge, sizeof(struct cfgMerge) },
    { -11, (APTR)CONFIG_Set, "Set", maSet, sizeof(struct cfgSet) },
@@ -37,16 +34,14 @@ static const struct MethodArray clConfigMethods[] = {
 };
 
 static const struct ActionArray clConfigActions[] = {
-   { AC_AccessObject, (APTR)CONFIG_AccessObject },
    { AC_Clear, (APTR)CONFIG_Clear },
+   { AC_DataFeed, (APTR)CONFIG_DataFeed },
    { AC_Flush, (APTR)CONFIG_Flush },
    { AC_Free, (APTR)CONFIG_Free },
-   { AC_GetVar, (APTR)CONFIG_GetVar },
    { AC_Init, (APTR)CONFIG_Init },
-   { AC_ReleaseObject, (APTR)CONFIG_ReleaseObject },
+   { AC_NewObject, (APTR)CONFIG_NewObject },
    { AC_SaveSettings, (APTR)CONFIG_SaveSettings },
    { AC_SaveToObject, (APTR)CONFIG_SaveToObject },
-   { AC_SetVar, (APTR)CONFIG_SetVar },
    { AC_Sort, (APTR)CONFIG_Sort },
    { 0, 0 }
 };

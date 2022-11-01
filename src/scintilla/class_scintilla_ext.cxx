@@ -84,7 +84,7 @@ void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
 ** This is the main entry point, we're called from the Init action here.
 */
 
-ScintillaParasol::ScintillaParasol(int SurfaceID, struct rkScintilla *Scintilla)
+ScintillaParasol::ScintillaParasol(int SurfaceID, extScintilla *Scintilla)
 :  scintilla(Scintilla), surfaceid(SurfaceID)
 {
    lastkeytrans[0] = 0;
@@ -159,12 +159,11 @@ void ScintillaParasol::AddToPopUp(const char *label, int cmD, bool enabled)
 void ScintillaParasol::SetVerticalScrollPos()
 {
    parasol::Log log(__FUNCTION__);
-   struct scUpdateScroll scroll;
 
    log.traceBranch("%d", topLine);
 
    DwellEnd(true); // Cancel any current mouse hover
-
+/*
    if (!scintilla->ScrollLocked) {
       scroll.ViewSize = -1;
       scroll.PageSize = -1;
@@ -173,6 +172,7 @@ void ScintillaParasol::SetVerticalScrollPos()
       if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
       else ActionMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
    }
+*/
 }
 
 //****************************************************************************
@@ -180,18 +180,18 @@ void ScintillaParasol::SetVerticalScrollPos()
 void ScintillaParasol::SetHorizontalScrollPos()
 {
    parasol::Log log(__FUNCTION__);
-   struct scUpdateScroll scroll;
 
    log.traceBranch("%d", xOffset);
 
    DwellEnd(true); // Cancel any current mouse hover
-
+/*
    scroll.ViewSize = -1;
    scroll.PageSize = -1;
    scroll.Position = xOffset;
    scroll.Unit     = vs.lineHeight;
    if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
    else ActionMsg(MT_ScUpdateScroll, scintilla->HScrollID, &scroll);
+*/
 }
 
 /*****************************************************************************
@@ -202,11 +202,9 @@ void ScintillaParasol::SetHorizontalScrollPos()
 bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 {
    parasol::Log log(__FUNCTION__);
-   struct scUpdateScroll scroll;
-   LONG lines;
 
    if (scintilla->ScrollLocked) return FALSE;
-
+#if 0
    // Note: Sometimes Scintilla will attempt to change the scrollbars in the middle of surface redrawing.  This can
    // cause problems, so message delays are used in those cases.
 
@@ -247,7 +245,7 @@ bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 
    if (glBitmap) DelayMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
    else ActionMsg(MT_ScUpdateScroll, scintilla->VScrollID, &scroll);
-
+#endif
    return TRUE;
 }
 
@@ -422,7 +420,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 
          // Event report has to be delayed, as we otherwise get interference in the drawing process.
          scintilla->ReportEventFlags |= SEF_CURSOR_POS;
-         DelayMsg(MT_SciReportEvent, scintilla->Head.UniqueID, NULL);
+         DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
       }
    }
    else if (code IS SCN_STYLENEEDED) {
@@ -447,7 +445,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       log.trace("[MODIFYATTEMPTRO]");
 
       scintilla->ReportEventFlags |= SEF_FAIL_RO;
-      DelayMsg(MT_SciReportEvent, scintilla->Head.UniqueID, NULL);
+      DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
    }
    else if (code IS SCN_CHARADDED) {
       // This is sent when the user types an ordinary text character (as opposed to a command character) that is
@@ -485,7 +483,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       }
 
       scintilla->ReportEventFlags |= SEF_NEW_CHAR;
-      DelayMsg(MT_SciReportEvent, scintilla->Head.UniqueID, NULL);
+      DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
    }
    else if (code IS SCN_SAVEPOINTREACHED) {
       // The document is unmodified (recently saved)
@@ -766,7 +764,7 @@ void ScintillaParasol::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
       // means that the clipping area needs to be extended, and we're not able to do that from inside a Draw() call.
       // The simplest solution is to send a new draw message to the parent surface, telling it to redraw the entire area.
 
-      DelayMsg(AC_Draw, TargetSurface->Head.UniqueID, NULL);
+      DelayMsg(AC_Draw, TargetSurface->UID, NULL);
    }
 
    this->paintState = notPainting;

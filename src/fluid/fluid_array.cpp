@@ -60,7 +60,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
 {
    parasol::Log log(__FUNCTION__);
    objScript *Self = Lua->Script;
-   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   auto prv = (prvFluid *)Self->ChildPrivate;
 
    FieldType &= (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRING|FD_STRUCT|FD_FLOAT|FD_LONG|FD_WORD|FD_BYTE);
 
@@ -74,6 +74,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    struct structentry *sdef = NULL;
    if (FieldType & FD_STRUCT) {
       if (!StructName) { lua_pushnil(Lua); return; }
+
       {
          char struct_name[60];
          LONG i;
@@ -146,12 +147,13 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
 
    struct array *a;
    if ((a = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + cache_size + struct_nsize))) {
-      a->Total     = Total;
-      a->Type      = FieldType;
-      a->ArraySize = array_size;
-      a->StructDef = sdef;
-      a->TypeSize  = type_size;
-      a->ReadOnly  = (FieldType & FD_READ) ? TRUE : FALSE;
+      a->Total       = Total;
+      a->Type        = FieldType;
+      a->ArraySize   = array_size;
+      a->StructDef   = sdef;
+      a->TypeSize    = type_size;
+      a->AlignedSize = ALIGN64(type_size);
+      a->ReadOnly    = (FieldType & FD_READ) ? TRUE : FALSE;
 
       if ((Cache) and (List) and (Total > 0)) {
          a->ptrPointer = (APTR *)(a + 1);
@@ -199,6 +201,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
 
 static int array_new(lua_State *Lua)
 {
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    CSTRING type;
    if ((type = lua_tostring(Lua, 2))) {
       parasol::Log log(__FUNCTION__);
@@ -231,6 +234,7 @@ static int array_new(lua_State *Lua)
       }
       else if ((total = lua_tointeger(Lua, 1))) {
          LONG fieldtype;
+         CSTRING struct_name = NULL;
          switch (StrHash(type, 0)) {
             case HASH_LONG:
             case HASH_INTEGER: fieldtype = FD_LONG; break;
@@ -244,11 +248,19 @@ static int array_new(lua_State *Lua)
             case HASH_PTR:
             case HASH_POINTER: fieldtype = FD_POINTER; break;
             default:
-               luaL_argerror(Lua, 2, "Unrecognised type specified.");
-               return 0;
+               // Check if the type refers to a struct
+               structentry *def;
+               if ((prv->Structs) and (!VarGet(prv->Structs, type, &def, NULL))) {
+                  fieldtype   = FD_STRUCT;
+                  struct_name = type;
+               }
+               else {
+                  luaL_error(Lua, "Unrecognised type '%s' specified.", type);
+                  return 0;
+               }
          }
 
-         make_array(Lua, fieldtype, NULL, NULL, total, TRUE);
+         make_array(Lua, fieldtype, struct_name, NULL, total, TRUE);
          return 1;
       }
       else luaL_argerror(Lua, 1, "Array type required.");
@@ -327,7 +339,12 @@ static int array_get(lua_State *Lua)
 
          index--; // Convert Lua index to C index
          switch(a->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
-            case FD_STRUCT:  if (struct_to_table(Lua, NULL, a->StructDef, a->ptrPointer[index]) != ERR_Okay) lua_pushnil(Lua); break;
+            case FD_STRUCT:
+               // Arrays of structs are presumed to be in sequence, as opposed to an array of pointers to structs.
+               if (struct_to_table(Lua, NULL, a->StructDef, a->ptrByte + (index * a->AlignedSize)) != ERR_Okay) {
+                  lua_pushnil(Lua);
+               }
+               break;
             case FD_STRING:  lua_pushstring(Lua, a->ptrString[index]); break;
             case FD_POINTER: lua_pushlightuserdata(Lua, a->ptrPointer[index]); break;
             case FD_FLOAT:   lua_pushnumber(Lua, a->ptrFloat[index]); break;
@@ -565,12 +582,14 @@ static int array_len(lua_State *Lua)
 
 void register_array_class(lua_State *Lua)
 {
-   static const struct luaL_reg functions[] = {
+   parasol::Log log;
+
+   static const struct luaL_Reg functions[] = {
       { "new",  array_new },
       { NULL, NULL }
    };
 
-   static const struct luaL_reg methods[] = {
+   static const struct luaL_Reg methods[] = {
       { "__index",    array_get },
       { "__newindex", array_set },
       { "__len",      array_len },
@@ -578,7 +597,7 @@ void register_array_class(lua_State *Lua)
       { NULL, NULL }
    };
 
-   MSG("Registering array interface.");
+   log.trace("Registering array interface.");
 
    luaL_newmetatable(Lua, "Fluid.array");
    lua_pushstring(Lua, "__index");

@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>VectorPolygon</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Extends the Vector class with support for generating polygons.</comment>
+    <version>1</version>
+    <id>2a04dc00</id>
+    <idstring>ID_VECTORPOLYGON</idstring>
+    <category>Graphics</category>
+    <include>modules/vectorpolygon.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>The VectorPolygon class provides support for three different types of vector:</p>
+<p>* Closed-point polygons consisting of at least 3 points. * Open polygons consisting of at least 3 points (a 'polyline' in SVG). * Single lines consisting of two points only (a 'line' in SVG).</p>
+<p>To create a polyline, set the <field>Closed</field> field to FALSE (defaults to TRUE).  To create a line, set the Closed field to FALSE and set only two points (<field>X1</field>,<field>Y1</field>) and (<field>X2</field>,<field>Y2</field>)</p></description>
+    <source>
+      <file path="vectors/">polygon.cpp</file>
+    </source>
+  </info>
+
+  <fields>
+    <field>
+      <name>Closed</name>
+      <comment>If TRUE, the polygon will be closed between the start and end points.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Set the Closed field to TRUE to ensure that the polygon is closed between the start and end points.  This behaviour is the default.  If FALSE, the polygon will not be closed, which results in the equivalent of the SVG polyline type.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>PathLength</name>
+      <comment>Calibrates the user agent's distance-along-a-path calculations with that of the author.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The author's computation of the total length of the path, in user units. This value is used to calibrate the user agent's own distance-along-a-path calculations with that of the author. The user agent will scale all distance-along-a-path computations by the ratio of PathLength to the user agent's own computed value for total path length.  This feature potentially affects calculations for text on a path, motion animation and various stroke operations.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Points</name>
+      <comment>A series of (X,Y) coordinates that define the polygon.</comment>
+      <access write="S">Set</access>
+      <type>STRING</type>
+      <description>
+<p>The Points field can be set with a series of (X,Y) coordinates that will define the polygon's shape.  A minimum of two numbered pairs will be required to define a valid polygon.  Each point must be separated with either white-space or a comma.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>PointsArray</name>
+      <comment>A series of numbered pairs that define the polygon.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>APTR []</type>
+      <description>
+<p>The PointsArray field can be set with a <struct>VectorPoint</struct> array that defines the shape of a polygon.  A minimum of two points is required for the shape to be valid.  The <struct>VectorPoint</struct> structure consists of the following fields:</p>
+<struct lookup="VectorPoint"/>
+      </description>
+    </field>
+
+    <field>
+      <name>TotalPoints</name>
+      <comment>The total number of coordinates defined in the Points field.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>TotalPoints is a read-only field value that reflects the total number of coordinates that have been set in the <field>Points</field> array.  The minimum value is 2.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X1</name>
+      <comment>Defines the X coordinate of the first point.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field defines the X coordinate of the first point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
+<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X2</name>
+      <comment>Defines the X coordinate of the second point.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field defines the X coordinate of the second point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
+<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Y1</name>
+      <comment>Defines the Y coordinate of the first point.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field defines the Y coordinate of the first point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
+<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Y2</name>
+      <comment>Defines the Y coordinate of the second point.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field defines the Y coordinate of the second point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
+<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+      </description>
+    </field>
+
+  </fields>
+  <structs>
+    <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
+      <field name="X" type="DOUBLE">The X coordinate of this point.</field>
+      <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
+      <field name="XRelative" type="UBYTE">TRUE if the X value is relative to its viewport (between 0 and 1.0).</field>
+      <field name="YRelative" type="UBYTE">TRUE if the Y value is relative to its viewport (between 0 and 1.0).</field>
+    </struct>
+
+  </structs>
+</book>

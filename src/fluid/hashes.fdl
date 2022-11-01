@@ -74,5 +74,8 @@ header({ }, function()
     "UNSUBSCRIBE",
     "SUBSCRIBE",
     "NEW",
-    "LOCK")
+    "TIMEOUT",
+    "SIGNALS",
+    "LOCK",
+    "STATE")
 end)

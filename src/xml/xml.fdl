@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="XML", copyright="Paul Manias © 2001-2020", version=1.0 }, function()
+module({ name="XML", copyright="Paul Manias © 2001-2022", version=1.0 }, function()
   const("XMS", { comment="For SetAttrib()" }, {
     NEW         = "-1: Adds a new attribute.  Note that if the attribute already exists, this will result in at least two attributes of the same name in the tag.  Use XMS_DEFINE if this is undesirable.",
     UPDATE_ONLY = "-2: SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  ERR_Search is returned if the attribute cannot be found.",
@@ -95,18 +95,12 @@ module({ name="XML", copyright="Paul Manias © 2001-2020", version=1.0 }, functi
     int PrivateDataSize   # Extra data can be allocated per tag, according to the number of bytes specified here
     int RootIndex         # Root tag index
     int Modified          # Modification timestamp
-  ]],
-  [[
-   struct xml_cache *Cache; // Array of tag pointers, in linear order
-   STRING Statement;
-   ERROR  ParseError;
-   LONG   Balance;          // Indicates that the tag structure is correctly balanced if zero
-   UBYTE  ReadOnly:1;
-   LONG   LineNo;
+    int ParseError        # Private
+    int LineNo            # Private
   ]])
 
   c_insert([[
-INLINE STRING XMLATTRIB(struct XMLTag *Tag, CSTRING Attrib) {
+INLINE STRING XMLATTRIB(const XMLTag *Tag, CSTRING Attrib) {
    LONG i;
    for (i=0; i < Tag->TotalAttrib; i++) {
       if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
@@ -117,7 +111,7 @@ INLINE STRING XMLATTRIB(struct XMLTag *Tag, CSTRING Attrib) {
    return NULL;
 }
 
-INLINE BYTE XMLATTRIBCHECK(struct XMLTag *Tag, CSTRING Attrib) {
+INLINE BYTE XMLATTRIBCHECK(const XMLTag *Tag, CSTRING Attrib) {
    LONG i;
    for (i=0; i < Tag->TotalAttrib; i++) {
       if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
@@ -127,7 +121,7 @@ INLINE BYTE XMLATTRIBCHECK(struct XMLTag *Tag, CSTRING Attrib) {
    return FALSE;
 }
 
-INLINE struct XMLTag * XMLFIND(struct XMLTag **List, CSTRING Name) {
+INLINE const XMLTag * XMLFIND(const XMLTag **List, CSTRING Name) {
    while (*List) {
       if (!StrMatch((CSSTRING)Name, (CSSTRING)List[0]->Attrib->Name)) return List[0];
       List++;

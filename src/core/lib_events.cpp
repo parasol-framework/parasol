@@ -66,7 +66,7 @@ typedef struct rkEvent {
 </pre>
 
 This document does not describe the available system events.  For more information about them, please refer to the
-System Events Reference Manual in the API documentation.
+System Events Reference manual.
 
 -INPUT-
 ptr Event: Pointer to an event structure.
@@ -82,7 +82,7 @@ ERROR BroadcastEvent(APTR Event, LONG EventSize)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Event) OR ((size_t)EventSize < sizeof(rkEvent))) return ERR_NullArgs;
+   if ((!Event) or ((size_t)EventSize < sizeof(rkEvent))) return ERR_NullArgs;
 
    LONG groupmask = 1<<((((rkEvent *)Event)->EventID>>56) & 0xff);
 
@@ -135,8 +135,8 @@ LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event)
    if (!Group) return 0;
 
    LARGE event_id = ((LARGE)(Group & 0xff))<<58;
-   if ((SubGroup) AND (SubGroup[0] != '*')) event_id |= ((LARGE)(StrHash(SubGroup, FALSE) & 0x00ffffff)) <<32;
-   if ((Event) AND (Event[0] != '*')) event_id |= StrHash(Event, FALSE);
+   if ((SubGroup) and (SubGroup[0] != '*')) event_id |= ((LARGE)(StrHash(SubGroup, FALSE) & 0x00ffffff)) <<32;
+   if ((Event) and (Event[0] != '*')) event_id |= StrHash(Event, FALSE);
 
    log.traceBranch("Group: %d, SubGroup: %s, Event: %s, Result: $%.8x%.8x", Group, SubGroup, Event, (LONG)((event_id>>32)& 0xffffffff), (LONG)(event_id & 0xffffffff));
 
@@ -174,7 +174,7 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Callback) OR (!EventID) OR (!Handle)) return ERR_NullArgs;
+   if ((!Callback) or (!EventID) or (!Handle)) return ERR_NullArgs;
 
    if (Callback->Type != CALL_STDC) return ERR_Args; // Currently only StdC callbacks are accepted.
 
@@ -188,7 +188,7 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
       event->EventID   = EventID;
       event->Callback  = (void (*)(APTR, APTR, LONG))Callback->StdC.Routine;
       event->Group     = ((EventID>>56) & 0xff);
-      event->ContextID = context->UniqueID;
+      event->ContextID = context->UID;
       event->Next      = glEventList;
       event->Prev      = NULL;
       event->Custom    = Custom;
@@ -259,11 +259,11 @@ ERROR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSiz
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Message) OR ((size_t)MsgSize < sizeof(rkEvent))) return ERR_Okay;
+   if ((!Message) or ((size_t)MsgSize < sizeof(rkEvent))) return ERR_Okay;
 
    rkEvent *eventmsg = (rkEvent *)Message;
 
-   log.branch("Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
+   log.msg(VLF_EXTAPI|VLF_BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
       (LONG)(eventmsg->EventID & 0xffffffff));
 
    struct eventsub *event;

@@ -1,9 +1,11 @@
 --$FLUID:Include
 
-module({ name="Network", copyright="Paul Manias © 2005-2020", version=1.0, prefix="net", status="stable" }, function()
+module({ name="Network", copyright="Paul Manias © 2005-2022", version=1.0, prefix="net", status="stable" }, function()
   restrict(function()
     loadFile(glPath .. 'common.fdl')
   end)
+
+  cpp_include("<unordered_set>", "<map>", "<mutex>")
 
   c_insert([[
 
@@ -30,12 +32,21 @@ typedef LONG SOCKET_HANDLE;
     int Pad             # Unused padding for 64-bit alignment
   ]])
 
+  struct("DNSEntry", { }, [[
+    cstr HostName
+    ptr(struct(IPAddress)) Addresses # IP address list
+    int  TotalAddresses              # Total number of IP addresses
+  ]])
+
   flags("NSF", { },
     "SERVER: Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.",
     "SSL: Use Secure Sockets Layer for all communication.",
     "MULTI_CONNECT: Allow multiple connections from the same IP when in server mode.",
     "SYNCHRONOUS: Use synchronous (blocking) network calls.",
     "DEBUG: Print extra log messages.")
+
+  flags("NLF", { comment="Options for NetLookup" },
+    "NO_CACHE: Contact the name service and do not use the local DNS cache.")
 
   enum("NTC", { start=0, comment="NetSocket states" },
     "DISCONNECTED: There is no connection.",
@@ -74,6 +85,16 @@ typedef LONG SOCKET_HANDLE;
     { id=2, name="WriteClientMsg" }
   })
 
+  struct("NetClient", { comment="Simple data storage class utilised by NetSocket to represent a client machine/IP." }, [[
+    char(8) IP                     # IP address in 4/8-byte format
+    ptr(struct(NetClient)) Next    # Next client in the chain
+    ptr(struct(NetClient)) Prev    # Previous client in the chain
+    obj(NetSocket) NetSocket       # Reference to the parent socket
+    obj(ClientSocket) Sockets      # Pointer to a list of sockets opened with this client.
+    ptr UserData                   # Free for user data storage.
+    int TotalSockets               # Count of all created sockets
+  ]])
+
   class("ClientSocket", {
       src="clientsocket/clientsocket.cpp",
       output="clientsocket/clientsocket_def.c",
@@ -83,41 +104,21 @@ typedef LONG SOCKET_HANDLE;
     large ConnectTime                # System time for the creation of this socket
     obj(ClientSocket) Prev           # Previous socket in the chain
     obj(ClientSocket) Next           # Next socket in the chain
-    ptr(struct(rkNetClient)) Client  # Parent client structure
+    ptr(struct(NetClient)) Client  # Parent client structure
     ptr  UserData                    # Free for user data storage.
     func Outgoing                    # Callback for data being sent over the socket
     func Incoming                    # Callback for data being received from the socket
     int  MsgLen                      # Length of the current incoming message
     bit(int) ReadCalled              # TRUE if the Read action has been called
-  ]],
-  [[
-   union {
-      SOCKET_HANDLE SocketHandle;
-      SOCKET_HANDLE Handle;
-   };
-   struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
-   struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
-   UBYTE OutgoingRecursion;
-   UBYTE InUse;
   ]])
 
-  struct("rkNetClient", { comment="Simple data storage class utilised by NetSocket to represent a client machine/IP." }, [[
-    char(8) IP                     # IP address in 4/8-byte format
-    ptr(struct(rkNetClient)) Next  # Next client in the chain
-    ptr(struct(rkNetClient)) Prev  # Previous client in the chain
-    obj(NetSocket) NetSocket       # Reference to the parent socket
-    obj(ClientSocket) Sockets      # Pointer to a list of sockets opened with this client.
-    ptr UserData                   # Free for user data storage.
-    int TotalSockets               # Count of all created sockets
-  ]])
-
-  methods("proxy", "Prx", {
+  methods("proxy", "prx", {
     { id=1, name="Delete" },
     { id=2, name="Find" },
     { id=3, name="FindNext" }
   })
 
-  class("Proxy", { src="class_proxy.cpp" }, [[
+  class("Proxy", { src="class_proxy.cpp", output="class_proxy_def.c" }, [[
     str NetworkFilter
     str GatewayFilter
     str Username
@@ -129,12 +130,18 @@ typedef LONG SOCKET_HANDLE;
     int Enabled
     int Record
     int Host
-  ]], // If adding further fields, you must update get_record() and clear_values()
-  [[
-   char Section[40];
-   char FindPort[16];
-   BYTE  FindEnabled;
-   UBYTE Find:1;
+  ]]) -- If adding further fields, you must update get_record() and clear_values()
+
+  methods("NetLookup", "nl", {
+    { id=1, name="ResolveName" },
+    { id=2, name="ResolveAddress" },
+    { id=3, name="BlockingResolveName" },
+    { id=4, name="BlockingResolveAddress" }
+  })
+
+  class("NetLookup", { src="class_netlookup.cpp", output="class_netlookup_def.c" }, [[
+    large UserData   # Optional user data storage
+    int(NLF) Flags   # Optional flags
   ]])
 
   methods("NetSocket", "ns", {
@@ -147,7 +154,7 @@ typedef LONG SOCKET_HANDLE;
   })
 
   class("NetSocket", { src="netsocket/netsocket.cpp", output="netsocket/netsocket_def.c" }, [[
-    ptr(struct(rkNetClient)) Clients # ServerMode - Attached clients
+    ptr(struct(NetClient)) Clients # ServerMode - Attached clients
     ptr UserData      # Pointer to user data that can be used during events
     str Address       # Connect the socket to this remote address (if client)
     int(NTC) State    # Connection state
@@ -158,41 +165,6 @@ typedef LONG SOCKET_HANDLE;
     int Backlog       # Server connection backlog if in server mode
     int ClientLimit   # Limit the number of connected clients to this value
     int MsgLimit      # Limit the size of messages to this value
-  ]],
-  [[
-   SOCKET_HANDLE SocketHandle;   // Handle of the socket
-   FUNCTION Outgoing;
-   FUNCTION Incoming;
-   FUNCTION Feedback;
-   struct rkNetClient *LastClient;
-   struct NetQueue WriteQueue;
-   struct NetQueue ReadQueue;
-   UBYTE  ReadCalled:1;          // The Read() action sets this to TRUE whenever called.
-   UBYTE  IPV6:1;
-   UBYTE  Terminating:1;         // Set to TRUE when the NetSocket is marked for deletion.
-   UBYTE  ExternalSocket:1;      // Set to TRUE if the SocketHandle field was set manually by the client.
-   UBYTE  InUse;                 // Recursion counter to signal that the object is doing something.
-   UBYTE  SSLBusy;               // Tracks the current actions of SSL handshaking.
-   UBYTE  IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
-   UBYTE  OutgoingRecursion;
-   #ifdef _WIN32
-      #ifdef NO_NETRECURSION
-         WORD WinRecursion; // For win32_netresponse()
-      #endif
-      union {
-         void (*ReadSocket)(SOCKET_HANDLE, struct rkNetSocket *);
-         void (*ReadClientSocket)(SOCKET_HANDLE, objClientSocket *);
-      };
-      union {
-         void (*WriteSocket)(SOCKET_HANDLE, struct rkNetSocket *);
-         void (*WriteClientSocket)(SOCKET_HANDLE, objClientSocket *);
-      };
-   #endif
-   #ifdef ENABLE_SSL
-      SSL *SSL;
-      SSL_CTX *CTX;
-      BIO *BIO;
-   #endif
   ]])
 
   const("SCV", { comment="These error codes for certificate validation match the OpenSSL error codes (X509 definitions)" }, {
@@ -247,7 +219,5 @@ INLINE ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR 
     "HostToLong",
     "ShortToHost",
     "LongToHost",
-    "SetSSL",
-    "ResolveName",
-    "ResolveAddress")
+    "SetSSL")
 end)

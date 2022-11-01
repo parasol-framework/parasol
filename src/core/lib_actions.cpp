@@ -32,7 +32,7 @@ static ActionSubscription * lock_subscribers(OBJECTPTR Object)
 {
    ActionSubscription *list;
 
-   if (Object->UniqueID < 0) {
+   if (Object->UID < 0) {
       if (Object->Stats->ActionSubscriptions.ID) {
          if (!AccessMemory(Object->Stats->ActionSubscriptions.ID, MEM_READ, 2000, (APTR *)&list)) {
             return list;
@@ -46,7 +46,7 @@ static ActionSubscription * lock_subscribers(OBJECTPTR Object)
 
 INLINE void unlock_subscribers(OBJECTPTR Object)
 {
-   if (Object->UniqueID < 0) ReleaseMemoryID(Object->Stats->ActionSubscriptions.ID);
+   if (Object->UID < 0) ReleaseMemoryID(Object->Stats->ActionSubscriptions.ID);
 }
 
 //****************************************************************************
@@ -57,7 +57,7 @@ CSTRING action_name(OBJECTPTR Object, LONG ActionID)
       if (ActionID < AC_END) return ActionTable[ActionID].Name;
       else return "Action";
    }
-   else if ((Object) AND (Object->Class) AND (Object->Class->Methods)) {
+   else if ((Object) and (Object->Class) and (Object->Class->Methods)) {
       return Object->Class->Methods[-ActionID].Name;
    }
    else return "Method";
@@ -69,13 +69,13 @@ CSTRING action_name(OBJECTPTR Object, LONG ActionID)
 
 struct thread_data {
    OBJECTPTR Object;
-   ACTIONID ActionID;
-   LONG Key;
-   FUNCTION Callback;
-   BYTE Parameters;
+   ACTIONID  ActionID;
+   LONG      Key;
+   FUNCTION  Callback;
+   BYTE      Parameters;
 };
 
-static ERROR thread_action(rkThread *Thread)
+static ERROR thread_action(objThread *Thread)
 {
    ERROR error;
    thread_data *data = (thread_data *)Thread->Data;
@@ -123,37 +123,60 @@ static void free_private_children(OBJECTPTR Object)
 
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
-      for (LONG i=glNextPrivateAddress-1; i >= 0; i--) {
-         if ((glPrivateMemory[i].ObjectID IS Object->UniqueID) AND (glPrivateMemory[i].Address)) {
-            if (glPrivateMemory[i].Flags & MEM_DELETE) continue; // Ignore blocks already marked for deletion
+      {
+         const auto children = glObjectChildren[Object->UID]; // Take an immutable copy of the resource list
 
-            if (!(glPrivateMemory[i].Flags & MEM_OBJECT)) {
-               if (glLogLevel >= 3) {
-                  if (glPrivateMemory[i].Flags & MEM_STRING) {
-                     log.warning("Unfreed string \"%.40s\"", (CSTRING)glPrivateMemory[i].Address);
-                  }
-                  else if (glPrivateMemory[i].Flags & MEM_MANAGED) {
-                     ResourceManager **res = (ResourceManager **)((char *)glPrivateMemory[i].Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
-                     if (res[0]) {
-                        log.warning("Unfreed %s resource at %p.", res[0]->Name, glPrivateMemory[i].Address);
-                     }
-                     else log.warning("Unfreed resource at %p.", glPrivateMemory[i].Address);
-                  }
-                  else log.warning("Unfreed memory block %p, Size %d", glPrivateMemory[i].Address, glPrivateMemory[i].Size);
-               }
-               if (FreeResource(glPrivateMemory[i].Address) != ERR_Okay) log.warning("Error freeing tracked address %p", glPrivateMemory[i].Address);
+         for (const auto id : children) {
+            auto it = glPrivateMemory.find(id);
+            if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
+            auto &mem = it->second;
+
+            if ((mem.Flags & MEM_DELETE) or (!mem.Object)) continue;
+
+            if (mem.Object->OwnerID != Object->UID) {
+               log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UID, mem.Object->OwnerID, Object->UID);
+               continue;
             }
-            else {
-               OBJECTPTR child = (OBJECTPTR)glPrivateMemory[i].Address;
-               if (!(child->Flags & NF_UNLOCK_FREE)) {
-                  if (child->Flags & NF_INTEGRAL) {
-                     log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", child->UniqueID, ResolveClassID(child->ClassID), Object->Class->ClassName, Object->UniqueID);
-                  }
-                  acFree(child);
+
+            if (!(mem.Object->Flags & NF_UNLOCK_FREE)) {
+               if (mem.Object->Flags & NF_INTEGRAL) {
+                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->ClassID), Object->Class->ClassName, Object->UID);
                }
+               acFree(mem.Object);
             }
          }
       }
+
+      {
+         const auto list = glObjectMemory[Object->UID]; // Take an immutable copy of the resource list
+
+         for (const auto id : list) {
+            auto it = glPrivateMemory.find(id);
+            if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
+            auto &mem = it->second;
+
+            if ((mem.Flags & MEM_DELETE) or (!mem.Address)) continue;
+
+            if (glLogLevel >= 3) {
+               if (mem.Flags & MEM_STRING) {
+                  log.warning("Unfreed string \"%.40s\"", (CSTRING)mem.Address);
+               }
+               else if (mem.Flags & MEM_MANAGED) {
+                  auto res = (ResourceManager **)((char *)mem.Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
+                  if (res[0]) {
+                     log.warning("Unfreed %s resource at %p.", res[0]->Name, mem.Address);
+                  }
+                  else log.warning("Unfreed resource at %p.", mem.Address);
+               }
+               else log.warning("Unfreed memory block %p, Size %d", mem.Address, mem.Size);
+            }
+
+            if (FreeResource(mem.Address) != ERR_Okay) log.warning("Error freeing tracked address %p", mem.Address);
+         }
+      }
+
+      glObjectChildren.erase(Object->UID);
+      glObjectMemory.erase(Object->UID);
    }
 }
 
@@ -163,10 +186,12 @@ static void free_public_children(OBJECTPTR Object)
 {
    parasol::Log log;
 
+   if (!(Object->Flags & NF_HAS_SHARED_RESOURCES)) return;
+
    ScopedSysLock lock(PL_PUBLICMEM, 5000);
    if (lock.granted()) {
       for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].ObjectID IS Object->UniqueID) AND (glSharedBlocks[i].MemoryID)) {
+         if ((glSharedBlocks[i].ObjectID IS Object->UID) and (glSharedBlocks[i].MemoryID)) {
             if (glSharedBlocks[i].Flags & MEM_DELETE) continue; // Ignore blocks already marked for deletion
 
             OBJECTPTR child;
@@ -175,9 +200,9 @@ static void free_public_children(OBJECTPTR Object)
                FreeResourceID(glSharedBlocks[i].MemoryID);
             }
             else if (!page_memory(glSharedBlocks + i, (APTR *)&child)) {
-               OBJECTID id = child->UniqueID;
-               if (!(child->Flags & (NF_UNLOCK_FREE|NF_FREE_MARK))) {
-                  child->Flags |= NF_FREE_MARK;
+               OBJECTID id = child->UID;
+               if (!(child->Flags & (NF_UNLOCK_FREE|NF_COLLECT))) {
+                  child->Flags |= NF_COLLECT;
                   if (child->Flags & NF_INTEGRAL) log.warning("Found unfreed object #%d (class $%.8x).", id, child->ClassID);
                   unpage_memory(child);
                   lock.release();
@@ -258,25 +283,25 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    if (!argObject) return log.warning(ERR_NullArgs);
 
-   auto obj = (OBJECTPTR)argObject;
-   OBJECTID object_id = obj->UniqueID;
+   auto obj = argObject;
+   OBJECTID object_id = obj->UID;
 
-   prv_access(obj);
+   obj->threadLock();
 
    // If the object is private, check that the task making this call has ownership of its memory.  If not, we must fail
    // as foreign exclusive access does not allow use of Action().
 
    #ifdef DEBUG
-   if ((ActionID != AC_AccessObject) AND (ActionID != AC_ReleaseObject)) {
+   if ((ActionID != AC_AccessObject) and (ActionID != AC_ReleaseObject)) {
       if (!(obj->Flags & NF_PUBLIC)) {
-         if ((obj->TaskID) AND (glCurrentTaskID != obj->TaskID) AND (obj->TaskID != SystemTaskID)) {
+         if ((obj->TaskID) and (glCurrentTaskID != obj->TaskID) and (obj->TaskID != SystemTaskID)) {
             if (object_id < 0) {
                log.warning("Public object #%d corrupt - missing the NF_PUBLIC flag ($%.8x)", object_id, obj->Flags);
-               prv_release(obj);
+               obj->threadRelease();
                return ERR_ObjectCorrupt;
             }
             log.warning("Cannot execute action %s on non-public object #%d, class $%.8x (belongs to task %d, I am %d).", action_name(obj, ActionID), object_id, obj->ClassID, obj->TaskID, glCurrentTaskID);
-            prv_release(obj);
+            obj->threadRelease();
             return ERR_IllegalActionAttempt;
          }
       }
@@ -290,7 +315,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    obj->ActionDepth++;
 
-   rkMetaClass *cl = obj->Class;
+   objMetaClass *cl = obj->Class;
    auto log_depth = tlDepth;
 
    ERROR error;
@@ -304,21 +329,21 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
       if (ActionID > glActionCount) error = log.warning(ERR_IllegalActionID);
       else if (ManagedActions[ActionID]) error = ManagedActions[ActionID](obj, Parameters);
       else if (cl->ActionTable[ActionID].PerformAction) error = cl->ActionTable[ActionID].PerformAction(obj, Parameters);
-      else if ((cl->Base) AND (cl->Base->ActionTable[ActionID].PerformAction)) {
+      else if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) {
          error = cl->Base->ActionTable[ActionID].PerformAction(obj, Parameters);
       }
       else error = ERR_NoAction;
    }
    else { // Method call
-      if ((cl->Methods) AND (cl->Methods[-ActionID].Routine)) {
+      if ((cl->Methods) and (cl->Methods[-ActionID].Routine)) {
          // Note that sub-classes may return ERR_NoAction if propagation to the base class is desirable.
          auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Methods[-ActionID].Routine;
          error = routine(obj, Parameters);
       }
       else error = ERR_NoAction;
 
-      if ((error IS ERR_NoAction) AND (cl->Base)) {  // If this is a child, check the base class
-         if ((cl->Base->Methods) AND (cl->Base->Methods[-ActionID].Routine)) {
+      if ((error IS ERR_NoAction) and (cl->Base)) {  // If this is a child, check the base class
+         if ((cl->Base->Methods) and (cl->Base->Methods[-ActionID].Routine)) {
             auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Base->Methods[-ActionID].Routine;
             error = routine(obj, Parameters);
          }
@@ -379,7 +404,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    if (ActionID != AC_Free) obj->ActionDepth--;
 
-   prv_release(obj);
+   obj->threadRelease();
    tlContext = tlContext->Stack;
 
    if (log_depth != tlDepth) {
@@ -492,7 +517,7 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!ActionID) OR (ActionID >= AC_END)) {
+   if ((!ActionID) or (ActionID >= AC_END)) {
       log.warning("Invalid arguments: Action: %d, Object: %d", ActionID, ObjectID);
       return ERR_Args;
    }
@@ -559,10 +584,10 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
 #endif
 
    ERROR error;
-   if ((MessageMID IS glTaskMessageMID) AND (delay IS FALSE)) {
+   if ((MessageMID IS glTaskMessageMID) and (delay IS FALSE)) {
       OBJECTPTR object;
       if (!(error = AccessObject(ObjectID, 1000, &object))) {
-         if ((ObjectID > 0) AND ((thread_msg = object->ThreadMsg) != tlThreadWriteMsg)) {
+         if ((ObjectID > 0) and ((thread_msg = object->ThreadMsg) != tlThreadWriteMsg)) {
             // The object belongs to a separate internal thread, so release the object and let the other thread handle it.
             ReleaseObject(object);
          }
@@ -618,7 +643,7 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
             }
          }
 
-         rkMetaClass *Class;
+         objMetaClass *Class;
          if ((Class = FindClass(ClassID))) {
             if ((-ActionID) < Class->TotalMethods) {
                fields   = Class->Methods[-ActionID].Args;
@@ -649,7 +674,7 @@ retry:
    else error = SendMessage(MessageMID, MSGID_ACTION, 0, &msg.Action, msgsize);
 
    if (error) {
-      if ((error IS ERR_MemoryDoesNotExist) AND (ObjectID < 0)) {
+      if ((error IS ERR_MemoryDoesNotExist) and (ObjectID < 0)) {
          // If the message queue does not exist for a shared object, the object can still remain in memory if it is
          // untracked - so try to execute the action directly.
 
@@ -699,7 +724,7 @@ retry:
    // Wait for the other task to send back a result if we are required to do so.  If the task disappears or does not
    // respond within 10 seconds we cancel the wait and return a time-out error.
 
-   if ((wait IS TRUE) AND (glTaskMessageMID != MessageMID)) {
+   if ((wait IS TRUE) and (glTaskMessageMID != MessageMID)) {
       msgAction receive;
       if (!GetMessage(glTaskMessageMID, MSGID_ACTION_RESULT, MSF_WAIT, &receive, msgsize + sizeof(Message))) {
          LONG j;
@@ -816,28 +841,28 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
    if (!argObject) return log.warning(ERR_NullArgs);
    if (ActionID > glActionCount) return log.warning(ERR_IllegalActionID);
 
-   OBJECTPTR obj = (OBJECTPTR)argObject;
-   OBJECTID object_id = obj->UniqueID;
-   rkMetaClass *sysclass = obj->Class;
+   auto obj = argObject;
+   OBJECTID object_id = obj->UID;
+   objMetaClass *sysclass = obj->Class;
 
-   prv_access(obj);
+   obj->threadLock();
 
    // If the object is private, check that the task making this call has ownership of its memory.  If not, we must fail
    // as foreign exclusive access does not allow use of Action().
 
-   if ((ActionID != AC_AccessObject) AND (ActionID != AC_ReleaseObject)) {
+   if ((ActionID != AC_AccessObject) and (ActionID != AC_ReleaseObject)) {
       if (!(obj->Flags & NF_PUBLIC)) {
-         if ((obj->TaskID) AND (glCurrentTaskID != obj->TaskID) AND (obj->TaskID != SystemTaskID)) {
+         if ((obj->TaskID) and (glCurrentTaskID != obj->TaskID) and (obj->TaskID != SystemTaskID)) {
             if (object_id < 0) {
                log.warning("Public object #%d corrupt - missing the NF_PUBLIC flag ($%.8x)", object_id, obj->Flags);
-               prv_release(obj);
+               obj->threadRelease();
                return ERR_ObjectCorrupt;
             }
             if (ActionID > 0) {
                log.warning("Cannot execute action %s on non-public object #%d, class $%.8x (belongs to task %d, I am %d).", ActionTable[ActionID].Name, object_id, obj->ClassID, obj->TaskID, glCurrentTaskID);
             }
             else log.warning("Cannot execute method %s on non-public object #%d (belongs to task %d, I am %d).", sysclass->Methods[-ActionID].Name, object_id, obj->TaskID, glCurrentTaskID);
-            prv_release(obj);
+            obj->threadRelease();
             return ERR_IllegalActionAttempt;
          }
       }
@@ -849,7 +874,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
       fields   = ActionTable[ActionID].Args;
       argssize = ActionTable[ActionID].Size;
    }
-   else if ((sysclass->Base) AND ((-ActionID) < sysclass->Base->TotalMethods)) { // The base class takes precedence for the correct definition of method arguments. Sub-classes should typically avoid declaration of method arguments.
+   else if ((sysclass->Base) and ((-ActionID) < sysclass->Base->TotalMethods)) { // The base class takes precedence for the correct definition of method arguments. Sub-classes should typically avoid declaration of method arguments.
       fields   = sysclass->Base->Methods[-ActionID].Args;
       argssize = sysclass->Base->Methods[-ActionID].Size;
    }
@@ -859,7 +884,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
    }
    else {
       log.warning("Illegal method ID %d executed on class %s.", ActionID, sysclass->ClassName);
-      prv_release(obj);
+      obj->threadRelease();
       return ERR_IllegalMethodID;
    }
 
@@ -867,7 +892,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
       // Calling ActionTags() on an action that does not declare arguments makes no sense and is not supported (use
       // Action() instead)
       log.warning("Do not call ActionTags() on an action that does not declare arguments. Use Action() instead.");
-      prv_release(obj);
+      obj->threadRelease();
       return ERR_IllegalActionAttempt;
    }
 
@@ -875,7 +900,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 
    struct ObjectContext new_context = {
       .Stack  = tlContext,
-      .Object = (OBJECTPTR)obj,
+      .Object = obj,
       .Field  = NULL,
       .Action = (WORD)ActionID
    };
@@ -935,7 +960,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 
       // If this is a child, check the base class
 
-      if (((error IS ERR_NoAction) /*OR (!error)*/) AND (sysclass->Base)) {
+      if (((error IS ERR_NoAction) /*OR (!error)*/) and (sysclass->Base)) {
          if (sysclass->Base->Methods) {
             if (sysclass->Base->Methods[-ActionID].Routine) {
                routine = (ERROR (*)(OBJECTPTR, APTR))sysclass->Base->Methods[-ActionID].Routine;
@@ -1003,7 +1028,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
    // Put the context settings back
 
    if (ActionID != AC_Free) obj->ActionDepth--;
-   prv_release(obj);
+   obj->threadRelease();
    tlContext = tlContext->Stack;
    return error;
 }
@@ -1052,9 +1077,9 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!ActionID) OR (!Object)) return ERR_NullArgs;
+   if ((!ActionID) or (!Object)) return ERR_NullArgs;
 
-   log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p, Key: %d", ActionID, Object->UniqueID, Parameters, Callback, Key);
+   log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p, Key: %d", ActionID, Object->UID, Parameters, Callback, Key);
 
    __sync_add_and_fetch(&Object->ThreadPending, 1);
 
@@ -1067,7 +1092,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
       BYTE call_data[sizeof(thread_data) + SIZE_ACTIONBUFFER];
       BYTE free_args = FALSE;
       const FunctionField *args = NULL;
-      rkMetaClass *metaclass;
+      objMetaClass *metaclass;
 
       if (Parameters) {
          if (ActionID > 0) {
@@ -1116,9 +1141,9 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
             .Data = call,
             .Size = argssize
          };
-         Action(MT_ThSetData, &thread->Head, &setdata);
+         Action(MT_ThSetData, thread, &setdata);
 
-         error = Action(AC_Activate, &thread->Head, NULL);
+         error = Action(AC_Activate, thread, NULL);
       }
 
       if (error) {
@@ -1163,9 +1188,9 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((Object) AND (ActionID)) {
+   if ((Object) and (ActionID)) {
       if (Object->ClassID IS ID_METACLASS) {
-         if (((rkMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
+         if (((objMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
          else return ERR_False;
       }
       else if (Object->Class) {
@@ -1330,7 +1355,7 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
    if ((list = lock_subscribers(Object))) {
       struct acActionNotify notify = {
          .ActionID = ActionID,
-         .ObjectID = Object->UniqueID,
+         .ObjectID = Object->UID,
          .Args     = Parameters,
          .Error    = ErrorCode
       };
@@ -1354,19 +1379,19 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
          for (LONG i=0; i < count; i++) {
             ERROR error = ERR_Okay;
             if (Flags & NSF_LOCAL_TASK) { // The LOCALTASK option means that only objects that are within the local task's address space will be sent the message.
-               if ((shadow[i].MessagePortMID) AND (glTaskMessageMID) AND (shadow[i].MessagePortMID != glTaskMessageMID)) {
+               if ((shadow[i].MessagePortMID) and (glTaskMessageMID) and (shadow[i].MessagePortMID != glTaskMessageMID)) {
                   //log.warning("Subscriber %d skipped, belongs to port %d (we are %d).", shadow[i].SubscriberID, shadow[i].MessagePortMID, glTaskMessageMID);
                   continue;
                }
             }
             else if (Flags & NSF_OTHER_TASKS) {
-               if (!((shadow[i].MessagePortMID) AND (glTaskMessageMID) AND (shadow[i].MessagePortMID != glTaskMessageMID))) {
+               if (!((shadow[i].MessagePortMID) and (glTaskMessageMID) and (shadow[i].MessagePortMID != glTaskMessageMID))) {
                   continue;
                }
             }
 
             if (Flags & NSF_EXCLUSIVE) {
-               if ((shadow[i].MessagePortMID) AND (glTaskMessageMID) AND (shadow[i].MessagePortMID != glTaskMessageMID)) {
+               if ((shadow[i].MessagePortMID) and (glTaskMessageMID) and (shadow[i].MessagePortMID != glTaskMessageMID)) {
                   // Use this routine for objects that belong to foreign tasks.  This involves sending a message to the
                   // other Task to perform the ActionNotify process, then we wait for it to respond before continuing.
 
@@ -1385,8 +1410,8 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
 
             // If the message port or the object does not exist, remove the object from the list.
 
-            if ((error IS ERR_MemoryDoesNotExist) OR (error IS ERR_NoMatchingObject) OR (error IS ERR_MarkedForDeletion)) {
-               log.trace("Removing object #%d (port %d) from #%d's notification list (%s).", shadow[i].SubscriberID, shadow[i].MessagePortMID, Object->UniqueID, glMessages[error]);
+            if ((error IS ERR_MemoryDoesNotExist) or (error IS ERR_NoMatchingObject) or (error IS ERR_MarkedForDeletion)) {
+               log.trace("Removing object #%d (port %d) from #%d's notification list (%s).", shadow[i].SubscriberID, shadow[i].MessagePortMID, Object->UID, glMessages[error]);
                UnsubscribeActionByID(Object, 0, shadow[i].SubscriberID);
             }
          }
@@ -1486,9 +1511,9 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
 
    if (!Object) return log.warning(ERR_NullArgs);
 
-   if (Object IS &glMetaClass.Head) return ERR_NoSupport; // Monitoring the MetaClass is prohibited.
+   if (Object IS &glMetaClass) return ERR_NoSupport; // Monitoring the MetaClass is prohibited.
 
-   prv_access(Object);
+   Object->threadLock();
 
    LONG memflags;
    if (Object->Flags & NF_PUBLIC) memflags = Object->MemFlags|MEM_PUBLIC;
@@ -1505,14 +1530,14 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
       OBJECTPTR context = SetContext(Object);
       if (count < 10) count = 10; // Allocate at least 10 slots
 
-      if (Object->UniqueID < 0) {
+      if (Object->UID < 0) {
          error = AllocMemory(sizeof(ActionSubscription) * count, memflags, NULL, &Object->Stats->ActionSubscriptions.ID);
       }
       else error = AllocMemory(sizeof(ActionSubscription) * count, memflags, &Object->Stats->ActionSubscriptions.Ptr, NULL);
 
       if (error) {
          SetContext(context);
-         prv_release(Object);
+         Object->threadRelease();
          return log.warning(ERR_AllocMemory);
       }
 
@@ -1541,8 +1566,8 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
          // Scan the subscription array.  If the subscription already exists (the action ID and subscriber ID are
          // identical), we move it to the bottom of the list.
 
-         for (i=0; (i < Object->Stats->SubscriptionSize) AND (list[i].ActionID); i++) {
-            if ((list[i].ActionID IS actionid) AND (list[i].SubscriberID IS tlContext->Object->UniqueID)) {
+         for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
+            if ((list[i].ActionID IS actionid) and (list[i].SubscriberID IS tlContext->Object->UID)) {
                if (warntag IS SUB_WARN_EXISTS) {
                   // Return ERR_Exists to warn the caller that there is already a subscription against this action.
                   // We will not shift the subscription to the front of the queue.
@@ -1551,13 +1576,13 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
                }
                else if (warntag IS SUB_FAIL_EXISTS) { // Return ERR_Exists immediately
                   unlock_subscribers(Object);
-                  prv_release(Object);
+                  Object->threadRelease();
                   return ERR_Exists;
                }
 
                // Check if there are other actions in front of this location
-               if ((i < Object->Stats->SubscriptionSize-1) AND (list[i+1].ActionID)) {
-                  for (j=i; (j < Object->Stats->SubscriptionSize-1) AND (list[j].ActionID); j++);
+               if ((i < Object->Stats->SubscriptionSize-1) and (list[i+1].ActionID)) {
+                  for (j=i; (j < Object->Stats->SubscriptionSize-1) and (list[j].ActionID); j++);
                   // Shift the actions down a notch
                   CopyMemory(list+i+1, list+i, sizeof(ActionSubscription) * (Object->Stats->SubscriptionSize - i));
                   i = j; // Set the insertion point to the end of the list
@@ -1567,9 +1592,9 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
          }
 
          if (i >= Object->Stats->SubscriptionSize) { // Enlarge the size of the object's subscription list
-            log.debug("Extending array for object %d to %d entries.", Object->UniqueID, Object->Stats->SubscriptionSize);
+            log.debug("Extending array for object %d to %d entries.", Object->UID, Object->Stats->SubscriptionSize);
             if (glLogLevel >= 5) { // Report any dead subscribers if we're in log mode
-               for (i=0; (i < Object->Stats->SubscriptionSize) AND (list[i].ActionID); i++) {
+               for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
                   if (CheckObjectExists(list[i].SubscriberID, 0) != ERR_True) {
                      log.warning("Dead subscriber @ index %d, Action %d, Object %d - Fix your code!", i, list[i].ActionID, list[i].SubscriberID);
                   }
@@ -1582,7 +1607,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
                parasol::SwitchContext context(Object);
 
                MEMORYID newlistid;
-               if (Object->UniqueID < 0) error = AllocMemory(sizeof(ActionSubscription)*(Object->Stats->SubscriptionSize+10), memflags, (APTR *)&newlist, &newlistid);
+               if (Object->UID < 0) error = AllocMemory(sizeof(ActionSubscription)*(Object->Stats->SubscriptionSize+10), memflags, (APTR *)&newlist, &newlistid);
                else error = AllocMemory(sizeof(ActionSubscription)*(Object->Stats->SubscriptionSize+10), memflags, (APTR *)&newlist, NULL);
 
                if (!error) {
@@ -1590,7 +1615,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
 
                   unlock_subscribers(Object);
 
-                  if (Object->UniqueID < 0) {
+                  if (Object->UID < 0) {
                      FreeResourceID(Object->Stats->ActionSubscriptions.ID);
                      Object->Stats->ActionSubscriptions.ID = newlistid;
                   }
@@ -1607,25 +1632,25 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
             if (error) {
                unlock_subscribers(Object);
                va_end(vlist);
-               prv_release(Object);
+               Object->threadRelease();
                return log.warning(ERR_AllocMemory);
             }
          }
 
          list[i].ActionID       = actionid;
-         list[i].SubscriberID   = tlContext->Object->UniqueID;
+         list[i].SubscriberID   = tlContext->Object->UID;
          list[i].ClassID        = tlContext->Object->ClassID;
          list[i].MessagePortMID = glTaskMessageMID;
 
          if (actionid > 0) {
             i = actionid>>5;
-            if ((i >= 0) AND (i < ARRAYSIZE(Object->Stats->NotifyFlags))) {
+            if ((i >= 0) and (i < ARRAYSIZE(Object->Stats->NotifyFlags))) {
                Object->Stats->NotifyFlags[i] |= 1<<(actionid & 31);
             }
          }
          else {
             i = (-actionid)>>5;
-            if ((i >= 0) AND (i < ARRAYSIZE(Object->Stats->MethodFlags))) {
+            if ((i >= 0) and (i < ARRAYSIZE(Object->Stats->MethodFlags))) {
                Object->Stats->MethodFlags[i] |= 1<<((-actionid) & 31);
             }
          }
@@ -1635,12 +1660,12 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
    }
    else {
       va_end(vlist);
-      prv_release(Object);
+      Object->threadRelease();
       return log.warning(ERR_AccessMemory);
    }
 
    va_end(vlist);
-   prv_release(Object);
+   Object->threadRelease();
    return warnerror;
 }
 
@@ -1669,7 +1694,7 @@ AccessMemory: Access to the internal subscription array was denied.
 
 ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 {
-   return UnsubscribeActionByID(Object, ActionID, tlContext->Object->UniqueID);
+   return UnsubscribeActionByID(Object, ActionID, tlContext->Object->UID);
 }
 
 ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID SubscriberID)
@@ -1678,9 +1703,9 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
 
    if (!Object) return log.warning(ERR_NullArgs);
 
-   prv_access(Object);
+   Object->threadLock();
 
-   //log.msg("UnsubscribeAction(%d, Subscriber %d, Action %d)", Object->UniqueID, ActionID);
+   //log.msg("UnsubscribeAction(%d, Subscriber %d, Action %d)", Object->UID, ActionID);
 
    ActionSubscription *list;
    if ((list = lock_subscribers(Object))) {
@@ -1688,7 +1713,7 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
 
       LONG j = 0;
       for (LONG i=0; i < Object->Stats->SubscriptionSize; i++) {
-         if ((list[i].SubscriberID IS SubscriberID) AND ((!ActionID) OR (ActionID IS list[i].ActionID))) {
+         if ((list[i].SubscriberID IS SubscriberID) and ((!ActionID) or (ActionID IS list[i].ActionID))) {
             list[i].ActionID = 0;
          }
          else if (list[i].ActionID) { // Compact the array by moving the current entry back a few places, then clear the reference.
@@ -1704,12 +1729,12 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
       // If there is nothing left in this list, destroy it
 
       if (!list[0].ActionID) {
-         //log.msg("Object %d list empty - removing list.", Object->UniqueID);
+         //log.msg("Object %d list empty - removing list.", Object->UID);
          unlock_subscribers(Object);
 
          parasol::SwitchContext context(Object);
 
-         if (Object->UniqueID < 0) {
+         if (Object->UID < 0) {
             FreeResourceID(Object->Stats->ActionSubscriptions.ID);
             Object->Stats->ActionSubscriptions.ID = 0;
          }
@@ -1725,7 +1750,7 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
       else unlock_subscribers(Object);
    }
 
-   prv_release(Object);
+   Object->threadRelease();
    return ERR_Okay;
 }
 
@@ -1736,20 +1761,20 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
 ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 {
    parasol::Log log("Free");
-   rkMetaClass *mc;
+   objMetaClass *mc;
 
    Object->ActionDepth--; // See Action() regarding this
 
    if (!(mc = Object->Class)) {
-      log.trace("Object %p #%d is missing its class pointer.", Object, Object->UniqueID);
+      log.trace("Object %p #%d is missing its class pointer.", Object, Object->UID);
       return log.warning(ERR_ObjectCorrupt)|ERF_Notified;
    }
 
    // Check to see if the object is currently locked from AccessObject().  If it is, we mark it for deletion so that we
    // can safely get rid of it during ReleaseObject().
 
-   if ((Object->Locked) OR (Object->ThreadPending)) {
-      log.debug("Object #%d locked; marking for deletion.", Object->UniqueID);
+   if ((Object->Locked) or (Object->ThreadPending)) {
+      log.debug("Object #%d locked; marking for deletion.", Object->UID);
       set_object_flags(Object, Object->Flags|NF_UNLOCK_FREE);
       return ERR_Okay|ERF_Notified;
    }
@@ -1763,15 +1788,15 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    if (Object->ActionDepth > 0) { // Free() is being called while the object itself is still in use.  This can be an issue with private objects that haven't been locked with AccessObject().
       log.trace("Free() attempt while object is in use.");
-      if (!(Object->Flags & NF_FREE_MARK)) {
-         set_object_flags(Object, Object->Flags|NF_FREE_MARK);
-         ActionMsg(AC_Free, Object->UniqueID, NULL, 0, -1);
+      if (!(Object->Flags & NF_COLLECT)) {
+         set_object_flags(Object, Object->Flags|NF_COLLECT);
+         ActionMsg(AC_Free, Object->UID, NULL, 0, -1);
       }
       return ERR_Okay|ERF_Notified;
    }
 
-   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", ((rkMetaClass *)Object)->ClassName, Object->OwnerID);
-   else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((rkModule *)Object)->Name, Object->OwnerID);
+   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", ((objMetaClass *)Object)->ClassName, Object->OwnerID);
+   else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((objModule *)Object)->Name, Object->OwnerID);
    else if (Object->Stats->Name[0])       log.branch("Name: %s, Owner: %d", Object->Stats->Name, Object->OwnerID);
    else log.branch("Owner: %d", Object->OwnerID);
 
@@ -1780,7 +1805,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    if (mc->ActionTable[AC_FreeWarning].PerformAction) {
       if (mc->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
-         if ((Object->Flags & (NF_FREE_MARK|NF_FREE))) {
+         if (Object->collecting()) {
             // If the object is marked for deletion then it is not possible to avoid destruction (this prevents objects
             // from locking up the shutdown process).
 
@@ -1793,7 +1818,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    if (mc->Base) { // Sub-class detected, so call the base class
       if (mc->Base->ActionTable[AC_FreeWarning].PerformAction) {
          if (mc->Base->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
-            if ((Object->Flags & (NF_FREE_MARK|NF_FREE))) {
+            if (Object->collecting()) {
                // If the object is marked for deletion then it is not possible to avoid destruction (this prevents
                // objects from locking up the shutdown process).
                log.msg("Object will be destroyed despite being in use.");
@@ -1828,7 +1853,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    if (Object->Stats->MID_FeedList) { FreeResourceID(Object->Stats->MID_FeedList); Object->Stats->MID_FeedList = 0; }
 
    if (Object->Stats->ActionSubscriptions.ID) { // Close the action subscription list
-      if (Object->UniqueID < 0) FreeResourceID(Object->Stats->ActionSubscriptions.ID);
+      if (Object->UID < 0) FreeResourceID(Object->Stats->ActionSubscriptions.ID);
       else if (FreeResource(Object->Stats->ActionSubscriptions.Ptr)) log.warning("Invalid ActionSubscriptions address %p.", Object->Stats->ActionSubscriptions.Ptr);
 
       Object->Stats->ActionSubscriptions.Ptr = NULL;
@@ -1847,42 +1872,35 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    if (Object->Flags & NF_TIMER_SUB) {
       ThreadLock lock(TL_TIMER, 200);
       if (lock.granted()) {
-         CoreTimer *timer, *next;
-         for (timer=glTimers; timer; timer=next) {
-            next = timer->Next;
-            if (timer->SubscriberID IS Object->UniqueID) {
-               log.warning("%s object #%d has an unfreed timer subscription.", mc->ClassName, Object->UniqueID);
-
-               if (timer->Next) timer->Next->Prev = timer->Prev;
-               if (timer->Prev) timer->Prev->Next = timer->Next;
-               if (glTimers IS timer) glTimers = timer->Next;
-               free(timer);
+         for (auto it=glTimers.begin(); it != glTimers.end(); ) {
+            if (it->SubscriberID IS Object->UID) {
+               log.warning("%s object #%d has an unfreed timer subscription, routine %p, interval " PF64(), mc->ClassName, Object->UID, &it->Routine, it->Interval);
+               it = glTimers.erase(it);
             }
+            else it++;
          }
       }
    }
 
-   if (Object->Flags & NF_PUBLIC) remove_shared_object(Object->UniqueID);  // If the object is shared, remove it from the shared list
+   if (Object->Flags & NF_PUBLIC) remove_shared_object(Object->UID);  // If the object is shared, remove it from the shared list
 
    if (!(Object->Flags & NF_PUBLIC)) { // Decrement the counters associated with the class that this object belongs to.
-      if ((mc->Base) AND (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
+      if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
       if (mc->OpenCount > 0) mc->OpenCount--;
    }
 
-   if ((glObjectLookup) AND (Object->Stats->Name[0])) { // Remove the object from the name lookup list
+   if ((glObjectLookup) and (Object->Stats->Name[0])) { // Remove the object from the name lookup list
       ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) {
-         remove_object_hash(Object);
-      }
+      if (lock.granted()) remove_object_hash(Object);
    }
 
-   if (Object->UniqueID < 0) {
-      FreeResourceID(Object->UniqueID);
+   if (Object->UID < 0) {
+      FreeResourceID(Object->UID);
    }
    else {
       // Clear the object header.  This helps to raise problems in any areas of code that may attempt to use the object
       // after it has been destroyed.
-      ClearMemory(Object, sizeof(Head));
+      ClearMemory(Object, sizeof(BaseClass));
       FreeResource(Object);
    }
 
@@ -1899,15 +1917,15 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
 
    if (!Object->Stats) return log.warning(ERR_NoStats);
 
-   rkMetaClass *baseclass;
+   objMetaClass *baseclass;
    if (!(baseclass = Object->Class)) return log.warning(ERR_LostClass);
 
    if (Object->ClassID != baseclass->BaseClassID) {
-      log.warning("Cannot initialise object #%d - the Object.ClassID ($%.8x) does not match the Class.BaseClassID ($%.8x)", Object->UniqueID, Object->ClassID, baseclass->BaseClassID);
+      log.warning("Cannot initialise object #%d - the Object.ClassID ($%.8x) does not match the Class.BaseClassID ($%.8x)", Object->UID, Object->ClassID, baseclass->BaseClassID);
       return ERR_ObjectCorrupt;
    }
 
-   if (Object->Flags & NF_INITIALISED) {  // Initialising twice does not cause an error, but send a warning and return
+   if (Object->initialised()) {  // Initialising twice does not cause an error, but send a warning and return
       log.warning(ERR_DoubleInit);
       return ERR_Okay;
    }
@@ -1944,7 +1962,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
       //
       // ERR_UseSubClass: Similar to ERR_NoSupport, but avoids scanning of sub-classes that aren't loaded in memory.
 
-      rkMetaClass * sublist[16];
+      objMetaClass * sublist[16];
       LONG sli = -1;
 
       while (Object->Class) {
@@ -1977,14 +1995,14 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
          else return ERR_Okay;
 
          if (sli IS -1) {
-            // Initialise a list of all known sub-classes for querying in sequence.
+            // Initialise a list of all sub-classes already in memory for querying in sequence.
             sli = 0;
             LONG i = 0;
-            rkMetaClass **ptr;
+            objMetaClass **ptr;
             CSTRING key = NULL;
-            while ((i < ARRAYSIZE(sublist)-1) AND (!VarIterate(glClassMap, key, &key, (APTR *)&ptr, NULL))) {
-               rkMetaClass *mc = ptr[0];
-               if ((Object->ClassID IS mc->BaseClassID) AND (mc->BaseClassID != mc->SubClassID)) {
+            while ((i < ARRAYSIZE(sublist)-1) and (!VarIterate(glClassMap, key, &key, (APTR *)&ptr, NULL))) {
+               objMetaClass *mc = ptr[0];
+               if ((Object->ClassID IS mc->BaseClassID) and (mc->BaseClassID != mc->SubClassID)) {
                   sublist[i++] = mc;
                }
             }
@@ -2003,20 +2021,20 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
    Object->Class = baseclass;  // Put back the original to retain integrity
    Object->SubID = Object->Class->SubClassID;
 
-   // If the base class and its immediate sub-classes failed, check the object for a Location field and check the data
+   // If the base class and its loaded sub-classes failed, check the object for a Path field and check the data
    // against sub-classes that are not currently in memory.
    //
    // This is the only way we can support the automatic loading of sub-classes without causing undue load on CPU and
    // memory resources (loading each sub-class into memory just to check whether or not the data is supported is overkill).
 
-   CSTRING location;
+   CSTRING path;
    if (use_subclass) { // If ERR_UseSubClass was set and the sub-class was not registered, do not call IdentifyFile()
       log.warning("ERR_UseSubClass was used but no suitable sub-class was registered.");
    }
-   else if ((error IS ERR_NoSupport) AND (!GetField(Object, FID_Location|TSTR, &location)) AND (location)) {
+   else if ((error IS ERR_NoSupport) and (!GetField(Object, FID_Path|TSTR, &path)) and (path)) {
       CLASSID classid;
-      if (!IdentifyFile(location, NULL, 0, &classid, &Object->SubID, NULL)) {
-         if ((classid IS Object->ClassID) AND (Object->SubID)) {
+      if (!IdentifyFile(path, NULL, 0, &classid, &Object->SubID, NULL)) {
+         if ((classid IS Object->ClassID) and (Object->SubID)) {
             log.msg("Searching for subclass $%.8x", Object->SubID);
             if ((Object->Class = FindClass(Object->SubID))) {
                if (Object->Class->ActionTable[AC_Init].PerformAction) {
@@ -2035,7 +2053,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
             else log.warning("Failed to load module for class #%d.", Object->SubID);
          }
       }
-      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", location, Object->Class->ClassName, classid);
+      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->Class->ClassName, classid);
 
       Object->Class = baseclass;  // Put back the original to retain object integrity
       Object->SubID = baseclass->SubClassID;
@@ -2051,7 +2069,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
 ERROR MGR_OwnerDestroyed(OBJECTPTR Object, APTR Void)
 {
    parasol::Log log("OwnerDestroyed");
-   log.function("Owner %d has been destroyed.", Object->UniqueID);
+   log.function("Owner %d has been destroyed.", Object->UID);
    acFree(Object);
    return ERR_Okay;
 }
@@ -2090,8 +2108,8 @@ ERROR MGR_Seek(OBJECTPTR Object, struct acSeek *Args)
       if (Object->Class->ActionTable[AC_Seek].PerformAction) {
          // Check and correct the Pos and Mode if SEEK_END
 
-         if ((Args->Position IS SEEK_END) AND (Args->Offset < 0)) Args->Offset = -Args->Offset;
-         else if ((Args->Position IS SEEK_START) AND (Args->Position < 0)) return log.warning(ERR_Args);
+         if ((Args->Position IS SEEK_END) and (Args->Offset < 0)) Args->Offset = -Args->Offset;
+         else if ((Args->Position IS SEEK_START) and (Args->Position < 0)) return log.warning(ERR_Args);
          return Object->Class->ActionTable[AC_Seek].PerformAction(Object, Args);
       }
       else error = ERR_NoSupport;
@@ -2099,4 +2117,14 @@ ERROR MGR_Seek(OBJECTPTR Object, struct acSeek *Args)
    else error = ERR_LostClass;
 
    return log.warning(error);
+}
+
+/*****************************************************************************
+** Action: Signal
+*/
+
+ERROR MGR_Signal(OBJECTPTR Object, APTR Void)
+{
+   Object->Flags |= NF_SIGNALLED;
+   return ERR_Okay;
 }

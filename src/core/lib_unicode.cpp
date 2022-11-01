@@ -9,12 +9,12 @@ Name: Unicode
 -FUNCTION-
 UTF8CharOffset: Retrieves the byte position of a character in a UTF-8 string.
 
-This function is used for determining the actual byte position of a character within a UTF-8 string, where Offset is a
+Determines the true byte position of a character within a UTF-8 string, where Offset is a
 column number.
 
 -INPUT-
 cstr String: A null-terminated UTF-8 string.
-int Offset: The character number that you need a byte offset for.
+int Offset: The character number to translate to a byte offset.
 
 -RESULT-
 int: Returns the byte offset of the character.
@@ -26,7 +26,7 @@ LONG UTF8CharOffset(CSTRING String, LONG Index)
    if (!String) return 0;
 
    LONG offset = 0;
-   while ((String[offset]) AND (Index > 0)) {
+   while ((String[offset]) and (Index > 0)) {
       for (++offset; ((String[offset] & 0xc0) IS 0x80); offset++);
       Index--;
    }
@@ -51,7 +51,7 @@ int: Returns the number of bytes used to create the UTF-8 character referred to 
 
 LONG UTF8CharLength(CSTRING String)
 {
-   if ((!String) OR (!*String)) return 0;
+   if ((!String) or (!*String)) return 0;
 
    LONG total;
    for (total=1; ((String[total] & 0xc0) IS 0x80); total++);
@@ -87,7 +87,7 @@ LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size)
 {
    if (!Dest) return 0;
    if (Size < 1) return 0;
-   if ((Chars < 0) OR (!String)) {
+   if ((Chars < 0) or (!String)) {
       Dest[0] = 0;
       return 0;
    }
@@ -174,7 +174,7 @@ LONG UTF8OffsetToChar(CSTRING String, LONG Offset)
    if (!String) return 0;
 
    LONG pos = 0;
-   while ((Offset) AND (String[pos])) {
+   while ((Offset) and (String[pos])) {
       for (++pos; ((String[pos] & 0xc0) IS 0x80); pos++);
       Offset--;
    }
@@ -339,7 +339,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
    LONG len, in, out;
    size_t inleft, outleft;
 
-   if ((!String) OR (initfailed)) {
+   if ((!String) or (initfailed)) {
       if (glIconvBuffer) {
          // Calling this function with a NULL String is an easy/valid way to free the internal buffer
          FreeResource(glIconvBuffer);
@@ -367,7 +367,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
          modResolveSymbol(modIconv, "libiconv_close", (APTR *)&iconv_close);
          modResolveSymbol(modIconv, "libiconv", (APTR *)&iconv);
 
-         if ((!iconv) OR (!iconv_open) OR (!iconv_close)) {
+         if ((!iconv) or (!iconv_open) or (!iconv_close)) {
             acFree(modIconv);
             modIconv = NULL;
             tlContext = context;
@@ -404,7 +404,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
          // Initialise iconv
 
          enchash = StrHash(Encoding, 0);
-         if ((glIconv) AND (enchash IS icvhash)); // Correct iconv encoding is already loaded.
+         if ((glIconv) and (enchash IS icvhash)); // Correct iconv encoding is already loaded.
          else {
             if (glIconv) iconv_close(glIconv);
 

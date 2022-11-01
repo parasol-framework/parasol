@@ -127,13 +127,6 @@ struct("FRGB", { comment="64-bit floating point RGB colour value." }, [[
     float Alpha # Alpha component value
   ]])
 
-struct("DRGB", { type="DRGB", comment="64-bit floating point RGB colour value." }, [[
-    double Red    # Red component value
-    double Green  # Green component value
-    double Blue   # Blue component value
-    double Alpha  # Alpha component value
-  ]])
-
 struct("RGB8", { type="RGB8", comment="8-bit RGB colour value." }, [[
     uchar Red    # Red component value
     uchar Green  # Green component value
@@ -178,7 +171,14 @@ struct("ColourFormat", { type="colourformat" }, [[
 
 struct("ClipRectangle", { comment="Generic structure for rectangular clipping." }, [[
     int Left     # Left-most coordinate
+    int Top      # Top coordinate
     int Right    # Right-most coordinate
     int Bottom   # Bottom coordinate
+  ]])
+
+struct("Edges", { comment="Generic structure for declaring edge coordinates." }, [[
+    int Left     # Left-most coordinate
     int Top      # Top coordinate
+    int Right    # Right-most coordinate
+    int Bottom   # Bottom coordinate
   ]])

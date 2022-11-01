@@ -122,15 +122,15 @@ static ERROR SET_Volume(objStorageDevice *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if (Self->Head.Flags & NF_INITIALISED) return log.warning(ERR_Immutable);
+   if (Self->initialised()) return log.warning(ERR_Immutable);
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       LONG len;
-      for (len=0; (Value[len]) AND (Value[len] != ':'); len++);
+      for (len=0; (Value[len]) and (Value[len] != ':'); len++);
 
       if (Self->prvVolume) FreeResource(Self->prvVolume);
 
-      if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (APTR *)&Self->prvVolume, NULL)) {
+      if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (APTR *)&Self->prvVolume, NULL)) {
          CopyMemory(Value, Self->prvVolume, len);
          Self->prvVolume[len] = ':';
          Self->prvVolume[len+1] = 0;

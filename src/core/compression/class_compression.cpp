@@ -132,12 +132,34 @@ void FreeFromLL(CompressedFile *a, CompressedFile *b, CompressedFile **c)
 
 //****************************************************************************
 
+ERROR convert_zip_error(struct z_stream_s *Stream, LONG Result)
+{
+   parasol::Log log;
+
+   ERROR error;
+   switch(Result) {
+      case Z_STREAM_ERROR:  error = ERR_Failed;
+      case Z_DATA_ERROR:    error = ERR_InvalidData;
+      case Z_MEM_ERROR:     error = ERR_Memory;
+      case Z_BUF_ERROR:     error = ERR_BufferOverflow;
+      case Z_VERSION_ERROR: error = ERR_WrongVersion;
+      default:              error = ERR_Failed;
+   }
+
+   if (Stream->msg) log.warning("%s", Stream->msg);
+   else log.warning("Zip error %d: %s", Result, GetErrorMsg(error));
+
+   return error;
+}
+
+//****************************************************************************
+
 static ERROR COMPRESSION_ActionNotify(objCompression *Self, struct acActionNotify *Args)
 {
    if (!Args) return ERR_NullArgs;
 
    if (Args->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) AND (Self->Feedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UID IS Args->ObjectID)) {
          Self->Feedback.Type = CALL_NONE;
       }
    }
@@ -181,7 +203,7 @@ static ERROR COMPRESSION_CompressBuffer(objCompression *Self, struct cmpCompress
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Input) OR (Args->InputSize <= 0) OR (!Args->Output) OR (Args->OutputSize <= 8)) {
+   if ((!Args) or (!Args->Input) or (Args->InputSize <= 0) or (!Args->Output) or (Args->OutputSize <= 8)) {
       return log.warning(ERR_Args);
    }
 
@@ -329,7 +351,7 @@ static ERROR COMPRESSION_CompressStream(objCompression *Self, struct cmpCompress
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Input) OR (!Args->Callback)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Input) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
    if (!Self->Deflating) return log.warning(ERR_Failed);
 
@@ -394,9 +416,7 @@ static ERROR COMPRESSION_CompressStream(objCompression *Self, struct cmpCompress
                   { "Output", FD_BUFFER, { .Address = output } },
                   { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = len } }
                };
-               error = scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args));
-               if (!error) GetLong(script, FID_Error, &error);
-               else error = ERR_Failed;
+               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
             }
             else error = ERR_Terminate;
          }
@@ -444,7 +464,7 @@ static ERROR COMPRESSION_CompressStreamEnd(objCompression *Self, struct cmpCompr
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Callback)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
    if (!Self->Deflating) return ERR_Okay;
 
    APTR output;
@@ -467,10 +487,10 @@ static ERROR COMPRESSION_CompressStreamEnd(objCompression *Self, struct cmpCompr
 
    ERROR error;
    LONG err = Z_OK;
-   while ((Self->Stream.avail_out IS 0) AND (err IS Z_OK)) {
+   while ((Self->Stream.avail_out IS 0) and (err IS Z_OK)) {
       Self->Stream.next_out  = (Bytef *)output;
       Self->Stream.avail_out = outputsize;
-      if ((err = deflate(&Self->Stream, Z_FINISH)) AND (err != Z_STREAM_END)) {
+      if ((err = deflate(&Self->Stream, Z_FINISH)) and (err != Z_STREAM_END)) {
          error = log.warning(ERR_BufferOverflow);
          break;
       }
@@ -490,17 +510,16 @@ static ERROR COMPRESSION_CompressStreamEnd(objCompression *Self, struct cmpCompr
             { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = (LONG)(outputsize - Self->Stream.avail_out) } }
          };
          if (script) {
-            error = scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args));
-            if (!error) GetLong(script, FID_Error, &error);
-            else error = ERR_Failed;
+            if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
          }
          else error = ERR_Terminate;
       }
+      else error = ERR_Okay;
    }
 
    // Free the output buffer if it is quite large
 
-   if ((Self->OutputBuffer) AND (Self->OutputSize > 64 * 1024)) {
+   if ((Self->OutputBuffer) and (Self->OutputSize > 64 * 1024)) {
       FreeResource(Self->OutputBuffer);
       Self->OutputBuffer = NULL;
       Self->OutputSize = 0;
@@ -593,7 +612,7 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Input) OR (!Args->Callback)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Input) or (!Args->Callback)) return log.warning(ERR_NullArgs);
    if (!Self->Inflating) return ERR_Okay; // Decompression is complete
 
    APTR output;
@@ -622,23 +641,13 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
 
    ERROR error = ERR_Okay;
    LONG result = Z_OK;
-   while ((result IS Z_OK) AND (Self->Stream.avail_in > 0)) {
+   while ((result IS Z_OK) and (Self->Stream.avail_in > 0)) {
       Self->Stream.next_out  = (Bytef *)output;
       Self->Stream.avail_out = outputsize;
       result = inflate(&Self->Stream, Z_SYNC_FLUSH);
 
-      if ((result) AND (result != Z_STREAM_END)) {
-         if (Self->Stream.msg) log.warning("%s", Self->Stream.msg);
-         else log.warning("Zip error: %d", result);
-
-         switch(result) {
-            case Z_STREAM_ERROR:  error = ERR_Failed; break;
-            case Z_DATA_ERROR:    error = ERR_InvalidData; break;
-            case Z_MEM_ERROR:     error = ERR_Memory; break;
-            case Z_BUF_ERROR:     error = ERR_BufferOverflow; break;
-            case Z_VERSION_ERROR: error = ERR_WrongVersion; break;
-            default:              error = ERR_Failed;
-         }
+      if ((result) and (result != Z_STREAM_END)) {
+         error = convert_zip_error(&Self->Stream, result);
          break;
       }
 
@@ -661,9 +670,7 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
                   { "Output",       FD_BUFFER, { .Address = output } },
                   { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = len } }
                };
-               error = scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args));
-               if (!error) GetLong(script, FID_Error, &error);
-               else error = ERR_Failed;
+               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
             }
             else error = ERR_Terminate;
          }
@@ -675,8 +682,7 @@ static ERROR COMPRESSION_DecompressStream(objCompression *Self, struct cmpDecomp
 
       if (error) break;
 
-      if (result IS Z_STREAM_END) {
-         // Decompression is complete
+      if (result IS Z_STREAM_END) { // Decompression is complete
          Self->Inflating = FALSE;
          Self->TotalOutput = Self->Stream.total_out;
          break;
@@ -710,7 +716,7 @@ static ERROR COMPRESSION_DecompressStreamEnd(objCompression *Self, struct cmpDec
 
    if (Self->Inflating IS FALSE) return ERR_Okay;
 
-   if ((!Args) OR (!Args->Callback)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
    Self->TotalOutput = Self->Stream.total_out;
    inflateEnd(&Self->Stream);
@@ -753,36 +759,33 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Location) OR (!*Args->Location)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Location) or (!*Args->Location)) return log.warning(ERR_NullArgs);
    if (!Self->FileIO) return log.warning(ERR_MissingPath);
 
    if (Self->Flags & CMF_READ_ONLY) return log.warning(ERR_NoPermission);
 
-   if (Self->Head.SubID) return log.warning(ERR_NoSupport);
+   if (Self->SubID) return log.warning(ERR_NoSupport);
 
    if (Self->OutputID) {
-      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Compressing \"%s\" to \"%s\".\n", Args->Location, Self->Location);
+      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Compressing \"%s\" to \"%s\".\n", Args->Location, Self->Path);
       print(Self, (CSTRING)Self->prvOutput);
    }
 
-   LONG i;
+   CSTRING src = Args->Location;
    CSTRING path;
    BYTE incdir = FALSE;
    if (!Args->Path) path = "";
-   else {
-      // Accept the path by default but check it for illegal symbols just in case
-
+   else { // Accept the path by default but check it for illegal symbols just in case
       path = Args->Path;
 
-      if (*path IS '/') {
-         // Special mode: prefix Args->Location folder name to the root path
+      if (*path IS '/') { // Special mode: prefix src folder name to the root path
          incdir = TRUE;
          path++;
       }
 
-      for (i=0; path[i]; i++) {
-         if ((path[i] IS '*') OR (path[i] IS '?') OR (path[i] IS '"') OR
-             (path[i] IS ':') OR (path[i] IS '|') OR (path[i] IS '<') OR
+      for (LONG i=0; path[i]; i++) {
+         if ((path[i] IS '*') or (path[i] IS '?') or (path[i] IS '"') or
+             (path[i] IS ':') or (path[i] IS '|') or (path[i] IS '<') or
              (path[i] IS '>')) {
             log.warning("Illegal characters in path: %s", path);
             if (Self->OutputID) {
@@ -795,47 +798,43 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
       }
    }
 
-   log.branch("Location: %s, Path: %s", Args->Location, path);
+   log.branch("Location: %s, Path: %s", src, path);
 
    Self->prvFileIndex = 0;
 
-   for (i=0; Args->Location[i]; i++);
-   if ((Args->Location[i-1] IS '/') OR (Args->Location[i-1] IS '\\') OR (Args->Location[i-1] IS ':')) {
-      // The source is a folder
-
-      if ((*path) OR (incdir)) {
+   LONG i = StrLength(src);
+   if ((src[i-1] IS '/') or (src[i-1] IS '\\') or (src[i-1] IS ':')) { // The source is a folder
+      if ((*path) or (incdir)) {
          // This subroutine creates a path custom string if the inclusive folder name option is on, or if the path is
          // missing a terminating slash character.
 
          LONG inclen = 0;
          if (incdir) {
             i -= 1;
-            while ((i > 0) AND (Args->Location[i-1] != '/') AND (Args->Location[i-1] != '\\') AND (Args->Location[i-1] != ':')) {
+            while ((i > 0) and (src[i-1] != '/') and (src[i-1] != '\\') and (src[i-1] != ':')) {
                inclen++;
                i--;
             }
          }
 
-         LONG pathlen;
-         for (pathlen=0; path[pathlen]; pathlen++);
+         LONG pathlen = StrLength(path);
 
-         if ((inclen) OR ((path[pathlen-1] != '/') AND (path[pathlen-1] != '\\'))) {
+         if ((inclen) or ((path[pathlen-1] != '/') and (path[pathlen-1] != '\\'))) {
             char newpath[inclen+1+pathlen+2];
 
             LONG j = 0;
-            if (inclen > 0) {
-               while (Args->Location[i]) newpath[j++] = Args->Location[i++];
-            }
+            if (inclen > 0) j = StrCopy(src+i, newpath, COPY_ALL);
 
-            for (i=0; path[i]; i++) newpath[j++] = path[i];
-            if ((j > 0) AND (newpath[j-1] != '/') AND (newpath[j-1] != '\\')) newpath[j++] = '/';
+            CopyMemory(path, newpath+j, pathlen);
+            j += pathlen;
+            if ((j > 0) and (newpath[j-1] != '/') and (newpath[j-1] != '\\')) newpath[j++] = '/';
             newpath[j] = 0;
 
-            return compress_folder(Self, Args->Location, newpath);
+            return compress_folder(Self, src, newpath);
          }
       }
 
-      return compress_folder(Self, Args->Location, path);
+      return compress_folder(Self, src, path);
    }
 
    ERROR error = ERR_Okay;
@@ -843,41 +842,33 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
    // Check the location string for wildcards, * and ?
 
    BYTE wildcard = FALSE;
-   LONG len, pathlen;
-   for (len=0; Args->Location[len]; len++);
+   LONG pathlen;
+   LONG len = StrLength(src);
    for (pathlen=len; pathlen > 0; pathlen--) {
-      if ((Args->Location[pathlen-1] IS '*') OR (Args->Location[pathlen-1] IS '?')) wildcard = TRUE;
-      else if ((Args->Location[pathlen-1] IS ':') OR (Args->Location[pathlen-1] IS '/') OR (Args->Location[pathlen-1] IS '\\')) break;
+      if ((src[pathlen-1] IS '*') or (src[pathlen-1] IS '?')) wildcard = TRUE;
+      else if ((src[pathlen-1] IS ':') or (src[pathlen-1] IS '/') or (src[pathlen-1] IS '\\')) break;
    }
 
    if (wildcard IS FALSE) {
-      return compress_file(Self, Args->Location, path, FALSE);
+      return compress_file(Self, src, path, FALSE);
    }
    else {
       char filename[len-pathlen+1];
-      char dirlocation[len+1];
+      CopyMemory(src + pathlen, filename, len - pathlen + 1); // Extract the file name without the path
 
-      // Extract the file name from the location (drop the path)
-
-      LONG j;
-      for (j=0; Args->Location[pathlen+j]; j++) filename[j] = Args->Location[pathlen+j];
-      filename[j] = 0;
-
-      // Extract the path from the location (drop the file name)
-
-      for (j=0; j < pathlen; j++) dirlocation[j] = Args->Location[j];
-      dirlocation[j] = 0;
+      char srcfolder[len+1];
+      CopyMemory(src, srcfolder, pathlen); // Extract the path without the file name
+      srcfolder[pathlen] = 0;
 
       DirInfo *dir;
-      if (!OpenDir(dirlocation, RDF_FILE, &dir)) {
+      if (!OpenDir(srcfolder, RDF_FILE, &dir)) {
          while (!ScanDir(dir)) {
             FileInfo *scan = dir->Info;
             if (!StrCompare(filename, scan->Name, 0, STR_WILDCARD)) {
-               for (len=0; scan->Name[len]; len++);
+               len = StrLength(scan->Name);
                char folder[pathlen+len+1];
-               for (j=0; j < pathlen; j++) folder[j] = Args->Location[j];
-               for (j=0; scan->Name[j]; j++) folder[pathlen+j] = scan->Name[j];
-               folder[pathlen+j] = 0;
+               CopyMemory(src, folder, pathlen);
+               CopyMemory(scan->Name, folder+pathlen, len+1);
                error = compress_file(Self, folder, path, FALSE);
             }
          }
@@ -901,10 +892,10 @@ static ERROR COMPRESSION_CompressFile(objCompression *Self, struct cmpCompressFi
 -METHOD-
 DecompressBuffer: Decompresses data originating from the CompressBuffer method.
 
-This method is used to decompress data that has been packed using the #CompressBuffer() method.  You need
-to provide a pointer to the compressed information and an output buffer large enough to accept the decompressed
-information.  If the output buffer is not large enough to contain the data, the method will write out as much
-information as it can and then return with an error code of ERR_BufferOverflow.
+This method is used to decompress data that has been packed using the #CompressBuffer() method.  A pointer to the
+compressed data and an output buffer large enough to contain the decompressed data are required.  If the output buffer
+is not large enough to contain the data, the method will write out as much information as it can and then return with
+an error code of ERR_BufferOverflow.
 
 -INPUT-
 buf(ptr) Input: Pointer to the compressed data.
@@ -923,7 +914,7 @@ static ERROR COMPRESSION_DecompressBuffer(objCompression *Self, struct cmpDecomp
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Input) OR (!Args->Output) OR (Args->OutputSize <= 0)) {
+   if ((!Args) or (!Args->Input) or (!Args->Output) or (Args->OutputSize <= 0)) {
       return log.warning(ERR_NullArgs);
    }
 
@@ -992,7 +983,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
    // Validate arguments
 
-   if ((!Args) OR (!Args->Path)) {
+   if ((!Args) or (!Args->Path)) {
       if (Self->OutputID) {
          StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply a Path setting that refers to a compressed file archive.\n");
          print(Self, (CSTRING)Self->prvOutput);
@@ -1010,7 +1001,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
       return log.warning(ERR_NullArgs);
    }
 
-   if ((!*Args->Path) OR (!*Args->Dest)) {
+   if ((!*Args->Path) or (!*Args->Dest)) {
       if (Self->OutputID) {
          StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply valid Path and Destination settings.\n");
          print(Self, (CSTRING)Self->prvOutput);
@@ -1030,12 +1021,12 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
    // If the object belongs to a Compression sub-class, return ERR_NoSupport
 
-   if (Self->Head.SubID) return ERR_NoSupport;
+   if (Self->SubID) return ERR_NoSupport;
 
    // Tell the user what we are doing
 
    if (Self->OutputID) {
-      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Decompressing archive \"%s\" with path \"%s\" to \"%s\".\n", Self->Location, Args->Path, Args->Dest);
+      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Decompressing archive \"%s\" with path \"%s\" to \"%s\".\n", Self->Path, Args->Path, Args->Dest);
       print(Self, (CSTRING)Self->prvOutput);
    }
 
@@ -1043,14 +1034,11 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
    log.branch("%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, Self->Permissions);
 
-   UWORD i, pos;
-
-   char location[400];
-   for (pos=0; (Args->Dest[pos]) AND (pos < sizeof(location)-1); pos++) location[pos] = Args->Dest[pos];
-   location[pos] = 0;
+   char destpath[400];
+   UWORD pos = StrCopy(Args->Dest, destpath, sizeof(destpath));
 
    UWORD pathend = 0;
-   for (i=0; Args->Path[i]; i++) if ((Args->Path[i] IS '/') OR (Args->Path[i] IS '\\')) pathend = i + 1;
+   for (UWORD i=0; Args->Path[i]; i++) if ((Args->Path[i] IS '/') or (Args->Path[i] IS '\\')) pathend = i + 1;
 
    ERROR error      = ERR_Okay;
    UWORD inflateend = FALSE;
@@ -1060,8 +1048,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
    CompressionFeedback feedback;
    ClearMemory(&feedback, sizeof(feedback));
 
-   ZipFile *zf;
-   for (zf=Self->prvFiles; zf; zf=(ZipFile *)zf->Next) {
+   for (auto zf=Self->prvFiles; zf; zf=(ZipFile *)zf->Next) {
       log.trace("Found %s", zf->Name);
       if (!StrCompare(Args->Path, zf->Name, 0, STR_WILDCARD)) {
          log.trace("Extracting \"%s\"", zf->Name);
@@ -1075,18 +1062,16 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
          // correct file name.
 
          UWORD j = pos;
-         if ((location[j-1] IS '/') OR (location[j-1] IS '\\') OR (location[j-1] IS ':')) {
-            for (i=pathend; zf->Name[i]; i++) {
-               location[j++] = zf->Name[i];
-            }
-            location[j] = 0;
+         if ((destpath[j-1] IS '/') or (destpath[j-1] IS '\\') or (destpath[j-1] IS ':')) {
+            for (UWORD i=pathend; zf->Name[i]; i++) destpath[j++] = zf->Name[i];
+            destpath[j] = 0;
          }
 
          // If the destination is a folder that already exists, skip this compression entry
 
-         if ((location[j-1] IS '/') OR (location[j-1] IS '\\')) {
+         if ((destpath[j-1] IS '/') or (destpath[j-1] IS '\\')) {
             LONG result;
-            if ((!AnalysePath(location, &result)) AND (result IS LOC_DIRECTORY)) {
+            if ((!AnalysePath(destpath, &result)) and (result IS LOC_DIRECTORY)) {
                Self->prvFileIndex++;
                continue;
             }
@@ -1103,13 +1088,13 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
          feedback.FeedbackID     = FDB_DECOMPRESS_FILE;
          feedback.Index          = Self->prvFileIndex;
          feedback.Path           = zf->Name;
-         feedback.Dest           = location;
+         feedback.Dest           = destpath;
          feedback.OriginalSize   = zf->OriginalSize;
          feedback.CompressedSize = zf->CompressedSize;
          feedback.Progress       = 0;
 
          error = send_feedback(Self, &feedback);
-         if ((error IS ERR_Terminate) OR (error IS ERR_Cancelled)) {
+         if ((error IS ERR_Terminate) or (error IS ERR_Cancelled)) {
             error = ERR_Cancelled;
             goto exit;
          }
@@ -1149,14 +1134,14 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                   struct acRead read = { .Buffer = Self->prvInput, .Length = SIZE_COMPRESSION_BUFFER-1 };
                   if (!(error = Action(AC_Read, Self->FileIO, &read))) {
                      Self->prvInput[read.Result] = 0;
-                     DeleteFile(location, NULL);
-                     error = CreateLink(location, (CSTRING)Self->prvInput);
+                     DeleteFile(destpath, NULL);
+                     error = CreateLink(destpath, (CSTRING)Self->prvInput);
                      if (error IS ERR_NoSupport) error = ERR_Okay;
                   }
 
                   if (error) goto exit;
                }
-               else if ((zf->DeflateMethod IS 8) AND (inflateInit2(&Self->prvZip, -MAX_WBITS) IS ERR_Okay)) {
+               else if ((zf->DeflateMethod IS 8) and (inflateInit2(&Self->prvZip, -MAX_WBITS) IS ERR_Okay)) {
                   // Decompressing a link
 
                   inflateend = TRUE;
@@ -1177,15 +1162,15 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
                   err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
 
-                  if ((err != ERR_Okay) AND (err != Z_STREAM_END)) {
-                     if (Self->prvZip.msg) log.error("%s", Self->prvZip.msg);
+                  if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
+                     if (Self->prvZip.msg) log.warning("%s", Self->prvZip.msg);
                      error = ERR_Failed;
                      goto exit;
                   }
 
                   Self->prvOutput[zf->OriginalSize] = 0; // !!! We should terminate according to the amount of data decompressed
-                  DeleteFile(location, NULL);
-                  error = CreateLink(location, (CSTRING)Self->prvOutput);
+                  DeleteFile(destpath, NULL);
+                  error = CreateLink(destpath, (CSTRING)Self->prvOutput);
                   if (error IS ERR_NoSupport) error = ERR_Okay;
 
                   inflateEnd(&Self->prvZip);
@@ -1218,11 +1203,11 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
             else permissions = Self->Permissions;
 
             if ((error = CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&file,
-                  FID_Location|TSTRING,  location,
+                  FID_Path|TSTR,         destpath,
                   FID_Flags|TLONG,       FL_NEW|FL_WRITE,
                   FID_Permissions|TLONG, permissions,
                   TAGEND)) != ERR_Okay) {
-               log.warning("Error %d creating file \"%s\".", error, location);
+               log.warning("Error %d creating file \"%s\".", error, destpath);
                goto exit;
             }
 
@@ -1231,7 +1216,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
             Self->prvZip.next_out  = 0;
             Self->prvZip.avail_out = 0;
 
-            if ((zf->CompressedSize > 0) AND (file->Flags & FL_FILE)) {
+            if ((zf->CompressedSize > 0) and (file->Flags & FL_FILE)) {
                if (zf->DeflateMethod IS 0) {
                   // This routine is used if the file is stored rather than compressed
 
@@ -1244,9 +1229,9 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                      .Length = (inputlen < SIZE_COMPRESSION_BUFFER) ? inputlen : SIZE_COMPRESSION_BUFFER
                   };
 
-                  while ((!(error = Action(AC_Read, Self->FileIO, &read))) AND (read.Result > 0)) {
+                  while ((!(error = Action(AC_Read, Self->FileIO, &read))) and (read.Result > 0)) {
                      struct acWrite write = { .Buffer = Self->prvInput, .Length = read.Result };
-                     if (Action(AC_Write, &file->Head, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
+                     if (Action(AC_Write, file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
 
                      inputlen -= read.Result;
                      if (inputlen <= 0) break;
@@ -1256,7 +1241,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
                   if (error) goto exit;
                }
-               else if ((zf->DeflateMethod IS 8) AND (inflateInit2(&Self->prvZip, -MAX_WBITS) IS ERR_Okay)) {
+               else if ((zf->DeflateMethod IS 8) and (inflateInit2(&Self->prvZip, -MAX_WBITS) IS ERR_Okay)) {
                   // Decompressing a file
 
                   log.trace("Inflating file from %d -> %d bytes @ offset %d.", zf->CompressedSize, zf->OriginalSize, zf->Offset);
@@ -1283,8 +1268,8 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                   while (err IS ERR_Okay) {
                      err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
 
-                     if ((err != ERR_Okay) AND (err != Z_STREAM_END)) {
-                        if (Self->prvZip.msg) log.error("%s", Self->prvZip.msg);
+                     if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
+                        if (Self->prvZip.msg) log.warning("%s", Self->prvZip.msg);
                         error = ERR_Failed;
                         goto exit;
                      }
@@ -1295,7 +1280,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
                         .Buffer = Self->prvOutput,
                         .Length = (LONG)(SIZE_COMPRESSION_BUFFER - Self->prvZip.avail_out)
                      };
-                     if (Action(AC_Write, &file->Head, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
+                     if (Action(AC_Write, file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
 
                      // Exit if all data has been written out
 
@@ -1311,7 +1296,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
                      // Read more data if necessary
 
-                     if ((Self->prvZip.avail_in <= 0) AND (inputlen > 0)) {
+                     if ((Self->prvZip.avail_in <= 0) and (inputlen > 0)) {
                         if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                         else read.Length = SIZE_COMPRESSION_BUFFER;
 
@@ -1335,7 +1320,7 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
             flSetDate(file, feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, 0);
 
-            acFree(&file->Head);
+            acFree(file);
             file = NULL;
          }
 
@@ -1355,9 +1340,9 @@ static ERROR COMPRESSION_DecompressFile(objCompression *Self, struct cmpDecompre
 
 exit:
    if (inflateend) inflateEnd(&Self->prvZip);
-   if (file) acFree(&file->Head);
+   if (file) acFree(file);
 
-   if ((error IS ERR_Okay) AND (Self->prvFileIndex <= 0)) {
+   if ((error IS ERR_Okay) and (Self->prvFileIndex <= 0)) {
       log.msg("No files matched the path \"%s\".", Args->Path);
       error = ERR_Search;
    }
@@ -1396,10 +1381,10 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Path) OR (!Args->Path[0])) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Path) or (!Args->Path[0])) return log.warning(ERR_NullArgs);
    if (!Args->Object) return log.warning(ERR_NullArgs);
    if (!Self->FileIO) return log.warning(ERR_MissingPath);
-   if (Self->Head.SubID) return ERR_NoSupport; // Object belongs to a Compression sub-class
+   if (Self->SubID) return ERR_NoSupport; // Object belongs to a Compression sub-class
 
    log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, Self->Permissions);
 
@@ -1411,7 +1396,7 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
 
    ZipFile *list;
    LONG total_scanned = 0;
-   for (list=Self->prvFiles; (list); list=(ZipFile *)list->Next) {
+   for (list=Self->prvFiles; list; list=(ZipFile *)list->Next) {
       total_scanned++;
       if (StrCompare(Args->Path, list->Name, 0, STR_WILDCARD)) continue;
       else break;
@@ -1471,7 +1456,7 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
                if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                else read.Length = SIZE_COMPRESSION_BUFFER;
 
-               while ((!(error = Action(AC_Read, Self->FileIO, &read))) AND (read.Result > 0)) {
+               while ((!(error = Action(AC_Read, Self->FileIO, &read))) and (read.Result > 0)) {
                   struct acWrite write = { .Buffer = Self->prvInput, .Length = read.Result };
                   if (Action(AC_Write, Args->Object, &write) != ERR_Okay) { error = ERR_Write; goto exit; }
 
@@ -1483,7 +1468,7 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
 
                if (error) goto exit;
             }
-            else if ((list->DeflateMethod IS 8) AND (inflateInit2(&Self->prvZip, -MAX_WBITS) IS ERR_Okay)) {
+            else if ((list->DeflateMethod IS 8) and (inflateInit2(&Self->prvZip, -MAX_WBITS) IS ERR_Okay)) {
                // Decompressing a file
 
                inflateend = TRUE;
@@ -1508,8 +1493,8 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
                while (err IS ERR_Okay) {
                   err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
 
-                  if ((err != ERR_Okay) AND (err != Z_STREAM_END)) {
-                     if (Self->prvZip.msg) log.error("%s", Self->prvZip.msg);
+                  if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
+                     if (Self->prvZip.msg) log.warning("%s", Self->prvZip.msg);
                      error = ERR_Decompression;
                      goto exit;
                   }
@@ -1533,7 +1518,7 @@ static ERROR COMPRESSION_DecompressObject(objCompression *Self, struct cmpDecomp
 
                   // Read more data if necessary
 
-                  if ((Self->prvZip.avail_in <= 0) AND (inputlen > 0)) {
+                  if ((Self->prvZip.avail_in <= 0) and (inputlen > 0)) {
                      if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                      else read.Length = SIZE_COMPRESSION_BUFFER;
 
@@ -1604,12 +1589,11 @@ static ERROR COMPRESSION_Find(objCompression *Self, struct cmpFind *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Path)) return log.warning(ERR_NullArgs);
-
-   if (Self->Head.SubID) return ERR_NoSupport;
+   if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
+   if (Self->SubID) return ERR_NoSupport;
 
    log.traceBranch("Path: %s, Flags: $%.8x", Args->Path, Args->Flags);
-   for (ZipFile *item = Self->prvFiles; item; item = (ZipFile *)item->Next) {
+   for (auto item = Self->prvFiles; item; item = (ZipFile *)item->Next) {
       if (StrCompare(Args->Path, item->Name, 0, Args->Flags)) continue;
 
       zipfile_to_item(item, &glFindMeta);
@@ -1628,7 +1612,7 @@ Flush: Flushes all pending actions.
 
 static ERROR COMPRESSION_Flush(objCompression *Self, APTR Void)
 {
-   if (Self->Head.SubID) return ERR_Okay;
+   if (Self->SubID) return ERR_Okay;
 
    Self->prvZip.avail_in = 0;
 
@@ -1651,11 +1635,11 @@ static ERROR COMPRESSION_Flush(objCompression *Self, APTR Void)
 
       // Ignore the second of two consecutive flushes:
 
-      if ((!length) AND (zerror IS Z_BUF_ERROR)) zerror = ERR_Okay;
+      if ((!length) and (zerror IS Z_BUF_ERROR)) zerror = ERR_Okay;
 
-      done = ((Self->prvZip.avail_out != 0) OR (zerror IS Z_STREAM_END));
+      done = ((Self->prvZip.avail_out != 0) or (zerror IS Z_STREAM_END));
 
-      if ((zerror != ERR_Okay) AND (zerror != Z_STREAM_END)) break;
+      if ((zerror != ERR_Okay) and (zerror != Z_STREAM_END)) break;
    }
 
    acFlush(Self->FileIO);
@@ -1667,19 +1651,15 @@ static ERROR COMPRESSION_Flush(objCompression *Self, APTR Void)
 
 static ERROR COMPRESSION_Free(objCompression *Self, APTR Void)
 {
-   // Write the end of file signature for the zip file if we have been making modifications to it.
-
-   write_eof(Self);
+   write_eof(Self); // Write the end of file signature if modifications have been made.
 
    if (Self->ArchiveHash)  {
       remove_archive(Self);
       Self->ArchiveHash = 0;
    }
 
-   // Free memory and resources
-
-   ZipFile *chain, *next;
-   for (chain=Self->prvFiles; chain != NULL; chain=next) {
+   ZipFile *next;
+   for (auto chain=Self->prvFiles; chain != NULL; chain=next) {
       next = (ZipFile *)chain->Next;
       FreeResource(chain);
    }
@@ -1689,7 +1669,7 @@ static ERROR COMPRESSION_Free(objCompression *Self, APTR Void)
    if (Self->prvInput)     { FreeResource(Self->prvInput); Self->prvInput = NULL; }
    if (Self->prvOutput)    { FreeResource(Self->prvOutput); Self->prvOutput = NULL; }
    if (Self->FileIO)       { acFree(Self->FileIO); Self->FileIO = NULL; }
-   if (Self->Location)     { FreeResource(Self->Location); Self->Location = NULL; }
+   if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
 
    return ERR_Okay;
 }
@@ -1701,7 +1681,7 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
    parasol::Log log;
    STRING path;
 
-   GetString(Self, FID_Location, &path);
+   GetString(Self, FID_Path, &path);
 
    if (!path) {
       // If no location has been set, assume that the developer only wants to use the buffer or stream compression routines.
@@ -1712,8 +1692,8 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
       // If the NEW flag is set then create a new archive, destroying any file already at that location
 
       if (!CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
-            FID_Location|TSTRING, path,
-            FID_Flags|TLONG,      FL_READ|FL_WRITE|FL_NEW,
+            FID_Path|TSTR,   path,
+            FID_Flags|TLONG, FL_READ|FL_WRITE|FL_NEW,
             TAGEND)) {
 
          return ERR_Okay;
@@ -1732,22 +1712,22 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
       BYTE exists;
       LONG type;
 
-      if ((!AnalysePath(path, &type)) AND (type IS LOC_FILE)) exists = TRUE;
+      if ((!AnalysePath(path, &type)) and (type IS LOC_FILE)) exists = TRUE;
       else exists = FALSE;
 
       if (exists) {
          error = CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
-            FID_Location|TSTRING, path,
-            FID_Flags|TLONG,      FL_READ|FL_APPROXIMATE|((Self->Flags & CMF_READ_ONLY) ? 0 : FL_WRITE),
+            FID_Path|TSTR,   path,
+            FID_Flags|TLONG, FL_READ|FL_APPROXIMATE|((Self->Flags & CMF_READ_ONLY) ? 0 : FL_WRITE),
             TAGEND);
 
          // Try switching to read-only access if we were denied permission.
 
-         if ((error IS ERR_NoPermission) AND (!(Self->Flags & CMF_READ_ONLY))) {
+         if ((error IS ERR_NoPermission) and (!(Self->Flags & CMF_READ_ONLY))) {
             log.trace("Trying read-only access...");
             if (!(error = CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
-                  FID_Location|TSTRING, path,
-                  FID_Flags|TLONG,      FL_READ|FL_APPROXIMATE,
+                  FID_Path|TSTR,   path,
+                  FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
                   TAGEND))) {
                Self->Flags |= CMF_READ_ONLY;
             }
@@ -1755,9 +1735,7 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
       }
       else error = ERR_DoesNotExist;
 
-      if (!error) {
-         // Test the given location to see if it matches our supported file format (pkzip).
-
+      if (!error) { // Test the given location to see if it matches our supported file format (pkzip).
          struct acRead read = { Self->Header, sizeof(Self->Header) };
          if (Action(AC_Read, Self->FileIO, &read) != ERR_Okay) return log.warning(ERR_Read);
 
@@ -1767,15 +1745,15 @@ static ERROR COMPRESSION_Init(objCompression *Self, APTR Void)
 
          // Check for a pkzip header
 
-         if ((Self->Header[0] IS 0x50) AND (Self->Header[1] IS 0x4b) AND
-             (Self->Header[2] IS 0x03) AND (Self->Header[3] IS 0x04)) {
+         if ((Self->Header[0] IS 0x50) and (Self->Header[1] IS 0x4b) and
+             (Self->Header[2] IS 0x03) and (Self->Header[3] IS 0x04)) {
             error = fast_scan_zip(Self);
             if (error != ERR_Okay) return log.warning(error);
             else return error;
          }
          else return ERR_NoSupport;
       }
-      else if ((!exists) AND (Self->Flags & CMF_CREATE_FILE)) {
+      else if ((!exists) and (Self->Flags & CMF_CREATE_FILE)) {
          // Create a new file if the requested location does not exist
 
          log.msg("Creating a new file because the location does not exist.");
@@ -1852,15 +1830,15 @@ static ERROR COMPRESSION_RemoveFile(objCompression *Self, struct cmpRemoveFile *
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Path)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
 
-   if (Self->Head.SubID) return ERR_NoSupport;
+   if (Self->SubID) return ERR_NoSupport;
 
    // Search for the file(s) in our archive that match the given name and delete them.
 
    log.msg("%s", Args->Path);
 
-   ZipFile *filelist = Self->prvFiles;
+   auto filelist = Self->prvFiles;
    while (filelist) {
       if (!StrCompare(Args->Path, filelist->Name, 0, STR_WILDCARD)) {
          // Delete the file from the archive
@@ -1913,29 +1891,29 @@ static ERROR COMPRESSION_Scan(objCompression *Self, struct cmpScan *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Callback)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Self->Head.SubID) return ERR_NoSupport;
+   if (Self->SubID) return ERR_NoSupport;
 
    log.traceBranch("Folder: \"%s\", Filter: \"%s\"", Args->Folder, Args->Filter);
 
    LONG folder_len = 0;
    if (Args->Folder) {
       folder_len = StrLength(Args->Folder);
-      if ((folder_len > 0) AND (Args->Folder[folder_len-1] IS '/')) folder_len--;
+      if ((folder_len > 0) and (Args->Folder[folder_len-1] IS '/')) folder_len--;
    }
 
    ERROR error = ERR_Okay;
 
-   for (ZipFile *item = Self->prvFiles; item; item = (ZipFile *)item->Next) {
+   for (auto item = Self->prvFiles; item; item = (ZipFile *)item->Next) {
       log.trace("Item: %s", item->Name);
 
       if (Args->Folder) {
          LONG name_len = StrLength(item->Name);
          if (name_len > folder_len) {
             if (!StrCompare(Args->Folder, item->Name, 0, 0)) {
-               if ((folder_len > 0) AND (item->Name[folder_len] != '/')) continue;
-               if ((item->Name[folder_len] IS '/') AND (!item->Name[folder_len+1])) continue;
+               if ((folder_len > 0) and (item->Name[folder_len] != '/')) continue;
+               if ((item->Name[folder_len] IS '/') and (!item->Name[folder_len+1])) continue;
 
                // Skip this item if it is within other sub-folders.
 
@@ -1950,7 +1928,7 @@ static ERROR COMPRESSION_Scan(objCompression *Self, struct cmpScan *Args)
          else continue;
       }
 
-      if ((Args->Filter) AND (Args->Filter[0])) {
+      if ((Args->Filter) and (Args->Filter[0])) {
          if (!StrCompare(Args->Filter, item->Name, 0, STR_WILDCARD)) break;
          else continue;
       }
@@ -1971,9 +1949,7 @@ static ERROR COMPRESSION_Scan(objCompression *Self, struct cmpScan *Args)
                   { "Compression", FD_OBJECTPTR, { .Address = Self } },
                   { "CompressedItem:Item", FD_STRUCT|FD_PTR, { .Address = &meta } }
                };
-               error = scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args));
-               if (!error) GetLong(script, FID_Error, &error);
-               else error = ERR_Failed;
+               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
             }
             else error = ERR_Terminate;
          }
@@ -2029,13 +2005,13 @@ static const FieldArray clFields[] = {
    { "WindowBits",         FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_WindowBits },
    // Virtual fields
    { "ArchiveName",      FDF_STRING|FDF_W,       0, NULL, (APTR)SET_ArchiveName },
-   { "Location",         FDF_STRING|FDF_RW,      0, (APTR)GET_Location, (APTR)SET_Location },
+   { "Path",             FDF_STRING|FDF_RW,      0, (APTR)GET_Path, (APTR)SET_Path },
    { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
    { "FeedbackInfo",     FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"CompressionFeedback", (APTR)GET_FeedbackInfo, NULL },
    { "Header",           FDF_POINTER|FDF_R,      0, (APTR)GET_Header,   NULL },
    { "Password",         FDF_STRING|FDF_RW,      0, (APTR)GET_Password, (APTR)SET_Password },
    { "Size",             FDF_LARGE|FDF_R,        0, (APTR)GET_Size, NULL },
-   { "Src",              FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
+   { "Src",              FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
    { "UncompressedSize", FDF_LARGE|FDF_R,        0, (APTR)GET_UncompressedSize, NULL },
    END_FIELD
 };
@@ -2044,7 +2020,7 @@ extern "C" ERROR add_compression_class(void)
 {
    return(CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glCompressionClass,
       FID_ClassVersion|TFLOAT,  VER_COMPRESSION,
-      FID_Name|TSTRING,         "Compression",
+      FID_Name|TSTR,            "Compression",
       FID_FileExtension|TSTR,   "*.zip",
       FID_FileDescription|TSTR, "ZIP File",
       FID_FileHeader|TSTR,      "[0:$504b0304]",

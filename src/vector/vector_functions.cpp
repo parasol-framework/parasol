@@ -16,32 +16,23 @@ functions for creating paths and rendering them to bitmaps.
 
 *****************************************************************************/
 
-class SimpleVector {
-public:
-   agg::path_storage mPath;
-   agg::renderer_base<agg::pixfmt_rkl> mRenderer;
-   agg::rasterizer_scanline_aa<> mRaster; // For rendering the scene.  Stores a copy of the path, and other values.
-
-   SimpleVector() { }
-
-   // Refer to scene_draw.cpp for DrawPath()
-   void DrawPath(objBitmap *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-};
+//#include "vector.h"
+#include "colours.cpp"
 
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
 
-static void simplevector_free(APTR Address) {
+void simplevector_free(APTR Address) {
 
 }
 
-static struct ResourceManager glResourceSimpleVector = {
+static ResourceManager glResourceSimpleVector = {
    "SimpleVector",
    &simplevector_free
 };
 
-void set_memory_manager(APTR Address, struct ResourceManager *Manager)
+void set_memory_manager(APTR Address, ResourceManager *Manager)
 {
-   struct ResourceManager **address_mgr = (struct ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(struct ResourceManager *));
+   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
    address_mgr[0] = Manager;
 }
 
@@ -87,16 +78,15 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR vecApplyPath(class SimpleVector *Vector, objVectorPath *VectorPath)
+ERROR vecApplyPath(class SimpleVector *Vector, objVectorPath *VectorPath)
 {
    if ((!Vector) or (!VectorPath)) return ERR_NullArgs;
-   if (VectorPath->Head.SubID != ID_VECTORPATH) return ERR_Args;
+   if (VectorPath->SubID != ID_VECTORPATH) return ERR_Args;
 
    SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
 
    if (VectorPath->CustomPath) { delete VectorPath->CustomPath; VectorPath->CustomPath = NULL; }
    VectorPath->CustomPath = new (std::nothrow) agg::path_storage(Vector->mPath);
-
    return ERR_Okay;
 }
 
@@ -119,7 +109,7 @@ int(ARC) Flags: Optional flags.
 
 *****************************************************************************/
 
-static void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags)
+void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags)
 {
    Vector->mPath.arc_to(RX, RY, Angle, (Flags & ARC_LARGE) ? 1 : 0, (Flags & ARC_SWEEP) ? 1 : 0, X, Y);
 }
@@ -140,7 +130,7 @@ ptr Path:  The vector path to modify.
 
 *****************************************************************************/
 
-static void vecClosePath(SimpleVector *Vector)
+void vecClosePath(SimpleVector *Vector)
 {
    Vector->mPath.close_polygon();
 }
@@ -162,7 +152,7 @@ double Y: The vertical end point for the curve3 command.
 
 *****************************************************************************/
 
-static void vecCurve3(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
+void vecCurve3(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
 {
    Vector->mPath.curve3(CtrlX, CtrlY, X, Y);
 }
@@ -186,7 +176,7 @@ double Y: The vertical end point for the curve4 command.
 
 *****************************************************************************/
 
-static void vecCurve4(SimpleVector *Vector, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y)
+void vecCurve4(SimpleVector *Vector, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y)
 {
    Vector->mPath.curve4(CtrlX1, CtrlY1, CtrlX2, CtrlY2, X, Y);
 }
@@ -218,7 +208,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
+ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
    OBJECTPTR FillStyle)
 {
    parasol::Log log(__FUNCTION__);
@@ -247,7 +237,7 @@ ptr Path: Pointer to the path to deallocate.
 
 *****************************************************************************/
 
-static void vecFreePath(APTR Path)
+void vecFreePath(APTR Path)
 {
    if (!Path) return;
    // NB: Refer to the deallocator for SimpleVector for anything relating to additional resource deallocation.
@@ -272,7 +262,7 @@ int: The internal command value for the vertex will be returned.
 
 *****************************************************************************/
 
-static LONG vecGetVertex(SimpleVector *Vector, DOUBLE *X, DOUBLE *Y)
+LONG vecGetVertex(SimpleVector *Vector, DOUBLE *X, DOUBLE *Y)
 {
    return Vector->mPath.vertex(X, Y);
 }
@@ -300,12 +290,14 @@ AllocMemory
 
 *****************************************************************************/
 
-static ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
+ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
 {
-   if (!Path) return ERR_NullArgs;
+   parasol::Log log(__FUNCTION__);
 
-   SimpleVector *vector = new_simplevector();
-   if (!vector) return ERR_AllocMemory;
+   if (!Path) return log.warning(ERR_NullArgs);
+
+   auto vector = new_simplevector();
+   if (!vector) return log.warning(ERR_CreateResource);
 
 #if 0
    // Bezier curves can produce a reasonable approximation of an ellipse, but in practice there is
@@ -371,12 +363,14 @@ AllocMemory
 
 *****************************************************************************/
 
-static ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
+ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
 {
-   if (!Path) return ERR_NullArgs;
+   parasol::Log log(__FUNCTION__);
 
-   SimpleVector *vector = new_simplevector();
-   if (!vector) return ERR_AllocMemory;
+   if (!Path) return log.warning(ERR_NullArgs);
+
+   auto vector = new_simplevector();
+   if (!vector) return log.warning(ERR_CreateResource);
 
    vector->mPath.move_to(X, Y);
    vector->mPath.line_to(X+Width, Y);
@@ -432,27 +426,27 @@ AllocMemory
 
 *****************************************************************************/
 
-static ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
+ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
 {
    if (!Path) return ERR_NullArgs;
 
    ERROR error;
-   PathCommand *paths;
-   LONG total;
 
    if (!Sequence) {
-      SimpleVector *vector = new_simplevector();
+      auto vector = new_simplevector();
       if (vector) *Path = vector;
       else error = ERR_AllocMemory;
    }
-   else if (!(error = read_path(&paths, &total, Sequence))) {
-      SimpleVector *vector = new_simplevector();
-      if (vector) {
-         convert_to_aggpath(paths, total, &vector->mPath);
-         *Path = vector;
+   else {
+      std::vector<PathCommand> paths;
+      if (!(error = read_path(paths, Sequence))) {
+         auto vector = new_simplevector();
+         if (vector) {
+            convert_to_aggpath(paths, &vector->mPath);
+            *Path = vector;
+         }
+         else error = ERR_AllocMemory;
       }
-      else error = ERR_AllocMemory;
-      FreeResource(paths);
    }
 
    return error;
@@ -473,9 +467,256 @@ double Y: The line end point on the vertical plane.
 
 *****************************************************************************/
 
-static void vecLineTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void vecLineTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
    Vector->mPath.line_to(X, Y);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+MoveTo: Alter a path by setting a move-to command at the current vertex position.
+
+This function will set a move-to command at the current vertex.  It then increments the vertex position for the next
+path command.
+
+The move-to command is used to move the pen to a new coordinate without drawing a line.
+
+-INPUT-
+ptr Path: The vector path to modify.
+double X: The horizontal end point for the command.
+double Y: The vertical end point for the command.
+
+*****************************************************************************/
+
+void vecMoveTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+{
+   Vector->mPath.move_to(X, Y);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+Multiply: Combines a matrix with a series of matrix values.
+
+This function uses matrix multiplication to combine a set of values with a VectorMatrix structure.
+
+-INPUT-
+struct(*VectorMatrix) Matrix: The target transformation matrix.
+double ScaleX: Matrix value A.
+double ShearY: Matrix value B.
+double ShearX: Matrix value C.
+double ScaleY: Matrix value D.
+double TranslateX: Matrix value E.
+double TranslateY: Matrix value F.
+
+-ERRORS-
+Okay:
+NullArgs:
+-END-
+
+*****************************************************************************/
+
+ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX,
+   DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)
+{
+   if (!Matrix) {
+      parasol::Log log(__FUNCTION__);
+      return log.warning(ERR_NullArgs);
+   }
+
+   auto &d = *Matrix;
+   DOUBLE t0    = (d.ScaleX * ScaleX) + (d.ShearY * ShearX);
+   DOUBLE t2    = (d.ShearX * ScaleX) + (d.ScaleY * ShearX);
+   DOUBLE t4    = (d.TranslateX * ScaleX) + (d.TranslateY * ShearX) + TranslateX;
+   d.ShearY     = (d.ScaleX * ShearY) + (d.ShearY * ScaleY);
+   d.ScaleY     = (d.ShearX * ShearY) + (d.ScaleY * ScaleY);
+   d.TranslateY = (d.TranslateX * ShearY) + (d.TranslateY * ScaleY) + TranslateY;
+   d.ScaleX     = t0;
+   d.ShearX     = t2;
+   d.TranslateX = t4;
+
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+MultiplyMatrix: Combines a source matrix with a target.
+
+This function uses matrix multiplication to combine a Source matrix with a Target.
+
+-INPUT-
+struct(*VectorMatrix) Target: The target transformation matrix.
+struct(*VectorMatrix) Source: The source transformation matrix.
+
+-ERRORS-
+Okay:
+NullArgs:
+-END-
+
+*****************************************************************************/
+
+ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
+{
+   if ((!Target) or (!Source)) {
+      parasol::Log log(__FUNCTION__);
+      return log.warning(ERR_NullArgs);
+   }
+
+   auto &d = *Target;
+   auto &s = *Source;
+   DOUBLE t0  = (d.ScaleX * s.ScaleX) + (d.ShearY * s.ShearX);
+   DOUBLE t2  = (d.ShearX * s.ScaleX) + (d.ScaleY * s.ShearX);
+   DOUBLE t4  = (d.TranslateX * s.ScaleX) + (d.TranslateY * s.ShearX) + s.TranslateX;
+   d.ShearY     = (d.ScaleX * s.ShearY) + (d.ShearY * s.ScaleY);
+   d.ScaleY     = (d.ShearX * s.ShearY) + (d.ScaleY * s.ScaleY);
+   d.TranslateY = (d.TranslateX * s.ShearY) + (d.TranslateY * s.ScaleY) + s.TranslateY;
+   d.ScaleX     = t0;
+   d.ShearX     = t2;
+   d.TranslateX = t4;
+
+   if (Target->Vector) mark_dirty(Target->Vector, RC_TRANSFORM);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+ParseTransform: Parse an SVG transformation string and apply the values to a matrix.
+
+This function parses a sequence of transform instructions and applies them to a matrix.
+
+The string must be written using SVG guidelines for the transform attribute.  For example,
+`skewX(20) rotate(45 50 50)` would be valid.  Transform instructions are applied in reverse, as per the standard.
+
+Note that any existing transforms applied to the matrix will be cancelled as a result of calling this function.
+If existing matrix values need to be retained, create a fresh matrix and use ~Multiply() to combine them.
+
+-INPUT-
+struct(*VectorMatrix) Matrix: The target transformation matrix.
+cstr Transform: The transform to apply, expressed as a string instruction.
+
+-ERRORS-
+Okay:
+NullArgs:
+-END-
+
+*****************************************************************************/
+
+ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
+{
+   if ((!Matrix) or (!Commands)) {
+      parasol::Log log(__FUNCTION__);
+      return log.warning(ERR_NullArgs);
+   }
+
+   enum { M_MUL, M_TRANSLATE, M_ROTATE, M_SCALE, M_SKEW };
+   class cmd {
+      public:
+      BYTE type;
+      DOUBLE sx, sy, shx, shy, tx, ty;
+      DOUBLE angle;
+      cmd(BYTE pType) : type(pType), sx(0), sy(0), shx(0), shy(0), tx(0), ty(0), angle(0) {};
+   };
+
+   std::vector<cmd> list;
+
+   auto str = Commands;
+   while (*str) {
+      if ((*str >= 'a') and (*str <= 'z')) {
+         if (!StrCompare(str, "matrix", 6, 0)) {
+            cmd m(M_MUL);
+            str = read_numseq(str+6, &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "translate", 9, 0)) {
+            cmd m(M_TRANSLATE);
+            str = read_numseq(str+9, &m.tx, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "rotate", 6, 0)) {
+            cmd m(M_ROTATE);
+            str = read_numseq(str+6, &m.angle, &m.tx, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "scale", 5, 0)) {
+            cmd m(M_SCALE);
+            m.tx = 1.0;
+            m.ty = DBL_EPSILON;
+            str = read_numseq(str+5, &m.tx, &m.ty, TAGEND);
+            if (m.ty IS DBL_EPSILON) m.ty = m.tx;
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "skewX", 5, 0)) {
+            cmd m(M_SKEW);
+            m.ty = 0;
+            str = read_numseq(str+5, &m.tx, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else if (!StrCompare(str, "skewY", 5, 0)) {
+            cmd m(M_SKEW);
+            m.tx = 0;
+            str = read_numseq(str+5, &m.ty, TAGEND);
+            list.push_back(std::move(m));
+         }
+         else str++;
+      }
+      else str++;
+   }
+
+   Matrix->ScaleX = 1.0;
+   Matrix->ShearY = 0;
+   Matrix->ShearX = 0;
+   Matrix->ScaleY = 1.0;
+   Matrix->TranslateX = 0;
+   Matrix->TranslateY = 0;
+
+   std::for_each(list.rbegin(), list.rend(), [&](auto m) {
+      switch (m.type) {
+         case M_MUL: {
+            auto &d = *Matrix;
+            auto &s = m;
+            DOUBLE t0    = (d.ScaleX * s.sx) + (d.ShearY * s.shx);
+            DOUBLE t2    = (d.ShearX * s.sx) + (d.ScaleY * s.shx);
+            DOUBLE t4    = (d.TranslateX * s.sx) + (d.TranslateY * s.shx) + s.tx;
+            d.ShearY     = (d.ScaleX * s.shy) + (d.ShearY * s.sy);
+            d.ScaleY     = (d.ShearX * s.shy) + (d.ScaleY * s.sy);
+            d.TranslateY = (d.TranslateX * s.shy) + (d.TranslateY * s.sy) + s.ty;
+            d.ScaleX     = t0;
+            d.ShearX     = t2;
+            d.TranslateX = t4;
+            break;
+         }
+
+         case M_TRANSLATE:
+            Matrix->TranslateX += m.tx;
+            Matrix->TranslateY += m.ty;
+            break;
+
+         case M_ROTATE: {
+            vecRotate(Matrix, m.angle, m.tx, m.ty);
+            break;
+         }
+
+         case M_SCALE:
+            Matrix->ScaleX     *= m.tx;
+            Matrix->ShearX     *= m.tx;
+            Matrix->TranslateX *= m.tx;
+            Matrix->ShearY     *= m.ty;
+            Matrix->ScaleY     *= m.ty;
+            Matrix->TranslateY *= m.ty;
+            break;
+
+         case M_SKEW:
+            vecSkew(Matrix, m.tx, m.ty);
+            break;
+      }
+   });
+
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -486,25 +727,25 @@ ReadPainter: Parses a painter string into its colour, gradient and image values.
 This function will parse an SVG style IRI into its equivalent internal lookup values.  The results can then be
 processed for rendering a stroke or fill operation in the chosen style.
 
-Colours can be referenced using one of three methods.  Colour names such as 'orange' and 'red' are accepted.  Hexadecimal
-RGB values are supported in the format '#RRGGBBAA'.  Floating point RGB is supported as 'rgb(r,g,b,a)' whereby the
+Colours can be referenced using one of three methods.  Colour names such as `orange` and `red` are accepted.  Hexadecimal
+RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is supported as `rgb(r,g,b,a)` whereby the
 component values range between 0.0 and 1.0.
 
 A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has
-been registered with the given Vector object.  If Vector is NULL then it will not be possible to find the reference.
+been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference.
 Any failure to lookup a reference will be silently discarded.
 
 -INPUT-
-obj Vector: Optional.  Required if url() references are to be resolved.
+obj(VectorScene) Scene: Optional.  Required if url() references are to be resolved.
 cstr IRI: The IRI string to be translated.
-struct(*DRGB) RGB: A colour will be returned here if specified in the IRI.
+struct(*FRGB) RGB: A colour will be returned here if specified in the IRI.
 &obj(VectorGradient) Gradient: A VectorGradient will be returned here if specified in the IRI.
 &obj(VectorImage) Image: A VectorImage will be returned here if specified in the IRI.
 &obj(VectorPattern) Pattern: A VectorPattern will be returned here if specified in the IRI.
 
 *****************************************************************************/
 
-static void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, struct DRGB *RGB, objVectorGradient **Gradient,
+void vecReadPainter(objVectorScene *Scene, CSTRING IRI, FRGB *RGB, objVectorGradient **Gradient,
    objVectorImage **Image, objVectorPattern **Pattern)
 {
    parasol::Log log(__FUNCTION__);
@@ -512,23 +753,29 @@ static void vecReadPainter(OBJECTPTR Vector, CSTRING IRI, struct DRGB *RGB, objV
 
    if (!IRI) return;
 
-   if (RGB) RGB->Alpha = 0; // Nullify the colour
+   if (RGB)      RGB->Alpha = 0; // Nullify the colour
    if (Gradient) *Gradient = NULL;
-   if (Image) *Image = NULL;
-   if (Pattern) *Pattern = NULL;
+   if (Image)    *Image    = NULL;
+   if (Pattern)  *Pattern  = NULL;
 
-   //FMSG("vecReadPainter()","%s", IRI);
+   log.trace("IRI: %s", IRI);
 
 next:
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
    if (!StrCompare("url(", IRI, 4, 0)) {
-      if (!Vector) return;
-      objVectorScene *scene;
+      if (!Scene) {
+         log.trace("No Scene specified to enable URL() reference.");
+         return;
+      }
 
-      if (Vector->ClassID IS ID_VECTOR) scene = ((objVector *)Vector)->Scene;
-      else if (Vector->ClassID IS ID_VECTORSCENE) scene = (objVectorScene *)Vector;
-      else return;
+      if (Scene->ClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
+      else if (Scene->ClassID != ID_VECTORSCENE) {
+         log.warning("The Scene is invalid.");
+         return;
+      }
+
+      if (Scene->HostScene) Scene = Scene->HostScene;
 
       IRI += 4;
       if (*IRI IS '#') {
@@ -539,8 +786,8 @@ next:
          for (i=0; (IRI[i] != ')') and (IRI[i]) and (i < sizeof(name)-1); i++) name[i] = IRI[i];
          name[i] = 0;
 
-         struct VectorDef *def;
-         if (!VarGet(scene->Defs, name, &def, NULL)) {
+         VectorDef *def;
+         if (!VarGet(Scene->Defs, name, &def, NULL)) {
             if (def->Object->ClassID IS ID_VECTORGRADIENT) {
                if (Gradient) *Gradient = (objVectorGradient *)def->Object;
             }
@@ -564,7 +811,7 @@ next:
             return;
          }
 
-         log.warning("Failed to lookup IRI: %s", IRI);
+         log.warning("Failed to lookup IRI '%s' in scene #%d", name, Scene->UID);
       }
       else log.warning("Invalid IRI: %s", IRI);
    }
@@ -610,21 +857,21 @@ next:
       else if (RGB->Blue < 0) RGB->Blue = 0;
    }
    else if (*IRI IS '#') {
-      struct RGB8 rgb;
+      RGB8 rgb;
       StrToColour(IRI, &rgb);
-      RGB->Red   = (DOUBLE)rgb.Red   * (1.0 / 255.0);
-      RGB->Green = (DOUBLE)rgb.Green * (1.0 / 255.0);
-      RGB->Blue  = (DOUBLE)rgb.Blue  * (1.0 / 255.0);
-      RGB->Alpha = (DOUBLE)rgb.Alpha * (1.0 / 255.0);
+      RGB->Red   = (FLOAT)rgb.Red   * (1.0 / 255.0);
+      RGB->Green = (FLOAT)rgb.Green * (1.0 / 255.0);
+      RGB->Blue  = (FLOAT)rgb.Blue  * (1.0 / 255.0);
+      RGB->Alpha = (FLOAT)rgb.Alpha * (1.0 / 255.0);
    }
    else {
       ULONG hash = StrHash(IRI, FALSE);
       for (WORD i=0; i < ARRAYSIZE(glNamedColours); i++) {
          if (glNamedColours[i].Hash IS hash) {
-            RGB->Red   = (DOUBLE)glNamedColours[i].Red * (1.0/255.0);
-            RGB->Green = (DOUBLE)glNamedColours[i].Green * (1.0/255.0);
-            RGB->Blue  = (DOUBLE)glNamedColours[i].Blue * (1.0/255.0);
-            RGB->Alpha = (DOUBLE)glNamedColours[i].Alpha * (1.0/255.0);
+            RGB->Red   = (FLOAT)glNamedColours[i].Red * (1.0 / 255.0);
+            RGB->Green = (FLOAT)glNamedColours[i].Green * (1.0 / 255.0);
+            RGB->Blue  = (FLOAT)glNamedColours[i].Blue * (1.0 / 255.0);
+            RGB->Alpha = (FLOAT)glNamedColours[i].Alpha * (1.0 / 255.0);
             return;
          }
       }
@@ -636,23 +883,35 @@ next:
 /*****************************************************************************
 
 -FUNCTION-
-MoveTo: Alter a path by setting a move-to command at the current vertex position.
+ResetMatrix: Resets a transformation matrix to its default state.
 
-This function will set an move-to command at the current vertex.  It then increments the vertex position for the next
-path command.
-
-The move-to command is used to move the pen to a new coordinate without drawing a line.
+Call ResetMatrix() to reset a transformation matrix to its default state, undoing all former transform operations.
 
 -INPUT-
-ptr Path: The vector path to modify.
-double X: The horizontal end point for the command.
-double Y: The vertical end point for the command.
+struct(*VectorMatrix) Matrix: The target transformation matrix.
+
+-ERRORS-
+Okay:
+NullArgs:
 
 *****************************************************************************/
 
-static void vecMoveTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+ERROR vecResetMatrix(VectorMatrix *Matrix)
 {
-   Vector->mPath.move_to(X, Y);
+   if (!Matrix) {
+      parasol::Log log(__FUNCTION__);
+      return log.warning(ERR_NullArgs);
+   }
+
+   Matrix->ScaleX     = 1.0;
+   Matrix->ScaleY     = 1.0;
+   Matrix->ShearX     = 0;
+   Matrix->ShearY     = 0;
+   Matrix->TranslateX = 0;
+   Matrix->TranslateY = 0;
+
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -670,9 +929,152 @@ ptr Path: The vector path to rewind.
 
 *****************************************************************************/
 
-static void vecRewindPath(SimpleVector *Vector)
+void vecRewindPath(SimpleVector *Vector)
 {
    if (Vector) Vector->mPath.rewind(0);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+Rotate: Applies a rotation transformation to a matrix.
+
+This function will apply a rotation transformation to a matrix.  By default, rotation will occur around point (0,0)
+unless CenterX and CenterY values are specified.
+
+-INPUT-
+struct(*VectorMatrix) Matrix: The target transformation matrix.
+double Angle: Angle of rotation, in degrees.
+double CenterX: Center of rotation on the horizontal axis.
+double CenterY: Center of rotation on the vertical axis.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+*****************************************************************************/
+
+ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)
+{
+   if (!Matrix) {
+      parasol::Log log(__FUNCTION__);
+      return log.warning(ERR_NullArgs);
+   }
+
+   Matrix->TranslateX -= CenterX;
+   Matrix->TranslateY -= CenterY;
+
+   DOUBLE ca = cos(Angle * DEG2RAD);
+   DOUBLE sa = sin(Angle * DEG2RAD);
+   DOUBLE t0 = (Matrix->ScaleX * ca) - (Matrix->ShearY * sa);
+   DOUBLE t2 = (Matrix->ShearX * ca) - (Matrix->ScaleY * sa);
+   DOUBLE t4 = (Matrix->TranslateX  * ca) - (Matrix->TranslateY * sa);
+   Matrix->ShearY     = (Matrix->ScaleX * sa) + (Matrix->ShearY * ca);
+   Matrix->ScaleY     = (Matrix->ShearX * sa) + (Matrix->ScaleY * ca);
+   Matrix->TranslateY = (Matrix->TranslateX * sa) + (Matrix->TranslateY * ca);
+   Matrix->ScaleX     = t0;
+   Matrix->ShearX     = t2;
+   Matrix->TranslateX = t4;
+
+   Matrix->TranslateX += CenterX;
+   Matrix->TranslateY += CenterY;
+
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+Scale: Scale the size of the vector by (x,y)
+
+This function will perform a scale operation on a matrix.  Values of less than 1.0 will shrink the affected vector
+path, while values greater than 1.0 will enlarge it.
+
+Scaling is relative to position (0,0).  If the width and height of the vector path needs to be transformed without
+affecting its top-left position, the client must translate the path to (0,0) around its center point.  The path
+should then be scaled before being transformed back to its original top-left coordinate.
+
+The scale operation can also be used to flip a vector path if negative values are used.  For instance, a value of
+-1.0 on the x axis would result in a 1:1 flip across the horizontal.
+
+-INPUT-
+struct(*VectorMatrix) Matrix: The target transformation matrix.
+double X: The scale factor on the x-axis.
+double Y: The scale factor on the y-axis.
+
+-ERRORS-
+Okay
+NullArgs
+
+*****************************************************************************/
+
+ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+{
+   if (!Matrix) {
+      parasol::Log log(__FUNCTION__);
+      return log.warning(ERR_NullArgs);
+   }
+
+   Matrix->ScaleX     *= X;
+   Matrix->ShearX     *= X;
+   Matrix->TranslateX *= X;
+   Matrix->ShearY     *= Y;
+   Matrix->ScaleY     *= Y;
+   Matrix->TranslateY *= Y;
+
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+Skew: Skews the matrix along the horizontal and/or vertical axis.
+
+The Skew function applies a skew transformation to the horizontal and/or vertical axis of the matrix.
+Valid X and Y values are in the range of -90 < Angle < 90.
+
+-INPUT-
+struct(*VectorMatrix) Matrix: The target transformation matrix.
+double X: The angle to skew along the horizontal.
+double Y: The angle to skew along the vertical.
+
+-ERRORS-
+Okay:
+NullArgs:
+OutOfRange: At least one of the angles is out of the allowable range.
+-END-
+
+*****************************************************************************/
+
+ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!Matrix) return log.warning(ERR_NullArgs);
+
+   if ((X > -90) and (X < 90)) {
+      VectorMatrix skew = {
+         .ScaleX = 1.0, .ShearY = 0, .ShearX = tan(X * DEG2RAD),
+         .ScaleY = 1.0, .TranslateX = 0, .TranslateY = 0
+      };
+
+      vecMultiplyMatrix(Matrix, &skew);
+   }
+   else return log.warning(ERR_OutOfRange);
+
+   if ((Y > -90) and (Y < 90)) {
+      VectorMatrix skew = {
+         .ScaleX = 1.0, .ShearY = tan(Y * DEG2RAD), .ShearX = 0,
+         .ScaleY = 1.0, .TranslateX = 0, .TranslateY = 0
+      };
+
+      vecMultiplyMatrix(Matrix, &skew);
+   }
+   else return log.warning(ERR_OutOfRange);
+
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -692,8 +1094,9 @@ double Y: The vertical end point for the smooth3 command.
 
 *****************************************************************************/
 
-static void vecSmooth3(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void vecSmooth3(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
+   if (!Vector) return;
    Vector->mPath.curve3(X, Y);
 }
 
@@ -717,9 +1120,43 @@ double Y: The vertical end point for the smooth4 instruction.
 
 *****************************************************************************/
 
-static void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
+void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
 {
+   if (!Vector) return;
    Vector->mPath.curve4(CtrlX, CtrlY, X, Y);
+}
+
+/*****************************************************************************
+
+-FUNCTION-
+Translate: Translates the vector by (X,Y).
+
+This function will translate the matrix in the direction of the provided (X,Y) values.
+
+-INPUT-
+struct(*VectorMatrix) Matrix: The target transformation matrix.
+double X: Translation along the x-axis.
+double Y: Translation along the y-axis.
+
+-ERRORS-
+Okay:
+NullArgs:
+-END-
+
+*****************************************************************************/
+
+ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+{
+   if (!Matrix) {
+      parasol::Log log(__FUNCTION__);
+      return log.warning(ERR_NullArgs);
+   }
+
+   Matrix->TranslateX += X;
+   Matrix->TranslateY += Y;
+
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -738,9 +1175,8 @@ double Y: Translate the path vertically by the given value.
 
 *****************************************************************************/
 
-static void vecTranslatePath(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void vecTranslatePath(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
    if (!Vector) return;
-
    Vector->mPath.translate_all_paths(X, Y);
 }

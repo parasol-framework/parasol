@@ -1,0 +1,18 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg width="800" height="800px" viewBox="0 0 800 800"  version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <rect fill="white" x="0" y="0" width="100%" height="100%"/>
+  <polygon points="20,50 60,50 40,15.36" stroke="darkslategray" stroke-width="15" stroke-opacity="0.5" fill="lightslategray" fill-opacity="0.5" stroke-linejoin="round" />
+  <polygon points="100,50 140,50 120,15.36" stroke="darkslategray" stroke-width="5" stroke-dasharray="20 20" stroke-dashoffset="10" fill="lightslategray" stroke-linejoin="round" />
+  <polygon points="20,110 60,110 40,75.36" stroke="darkslategray" stroke-width="15" stroke-dasharray="20 20" stroke-dashoffset="10" fill="none" stroke-linejoin="round" stroke-linecap="round" />
+  <polygon points="100,110 140,110 120,75.36" stroke="darkslategray" stroke-width="12" stroke-dasharray="20 20" stroke-dashoffset="-10" fill="none" stroke-linecap="round" />
+  <polygon points="20,170 60,170 40,135.36" stroke="darkslategray" stroke-width="23" stroke-opacity="0.5" stroke-dasharray="20 20" stroke-dashoffset="-10" fill="none" stroke-linecap="round" />
+  <polygon points="100,170 140,170 120,135.36" stroke="darkslategray" stroke-width="15" stroke-dasharray="40 40 1 40" fill="lightslategray" stroke-linecap="round" />
+  <polygon points="220,50 260,50 240,15.36" stroke="darkslategray" stroke-width="10" stroke-opacity="0.5" fill="lightslategray" fill-opacity="0.5" stroke-linejoin="round" />
+  <polygon points="220,26.9 260,26.9 240,61.54" stroke="darkslategray" stroke-width="10" stroke-opacity="0.5" fill="lightslategray" fill-opacity="0.5" stroke-linejoin="round" />
+  <polygon points="220,110 260,110 240,75.36" stroke="darkslategray" stroke-width="5" stroke-dasharray="20 20" stroke-dashoffset="10" fill="lightslategray" fill-opacity="0.5" stroke-linecap="round" stroke-linejoin="round" />
+  <polygon points="220,86.9 260,86.9 240,121.54" stroke="darkslategray" stroke-width="5" stroke-dasharray="20 20" stroke-dashoffset="10" fill="lightslategray" fill-opacity="0.5" stroke-linecap="round" stroke-linejoin="round" />
+  <polygon points="220,170 260,170 240,135.36" stroke="darkslategray" stroke-width="5" stroke-dasharray="0.1 17 6 17" stroke-dashoffset="0" fill="lightslategray" fill-opacity="0.5" stroke-linecap="round" stroke-linejoin="round" />
+  <polygon points="220,146.9 260,146.9 240,181.54" stroke="darkslategray" stroke-width="5" stroke-dasharray="0.1 17 6 17" stroke-dashoffset="0" fill="lightslategray" fill-opacity="0.5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

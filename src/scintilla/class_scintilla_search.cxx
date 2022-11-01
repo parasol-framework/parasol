@@ -46,12 +46,12 @@ ScintillaSearch: Provides search functionality for use on Scintilla objects.
 #include "ScintillaBase.h"
 
 #include <parasol/main.h>
-#include <parasol/modules/surface.h>
+#include <parasol/modules/display.h>
 
 #include "scintillaparasol.h"
 #include <parasol/modules/scintilla.h>
 
-#define SCICALL     Self->Scintilla->API->SendScintilla
+#define SCICALL     ((extScintilla *)(Self->Scintilla))->API->SendScintilla
 
 /*****************************************************************************
 
@@ -175,11 +175,11 @@ static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
    parasol::Log log;
 
    if (!Self->Scintilla) { // Find our parent surface
-      OBJECTID owner_id = GetOwner(Self);
+      OBJECTID owner_id = Self->ownerID();
       while ((owner_id) AND (GetClassID(owner_id) != ID_SCINTILLA)) {
          owner_id = GetOwnerID(owner_id);
       }
-      if (owner_id) Self->Scintilla = (struct rkScintilla *)GetObjectPtr(owner_id);
+      if (owner_id) Self->Scintilla = (objScintilla *)GetObjectPtr(owner_id);
       else return log.warning(ERR_UnsupportedOwner);
    }
 
@@ -209,7 +209,7 @@ Search: The string could not be found.
 
 *****************************************************************************/
 
-static ERROR SEARCH_Next(struct rkScintillaSearch *Self, struct ssNext *Args)
+static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 {
    parasol::Log log;
 

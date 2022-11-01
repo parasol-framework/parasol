@@ -27,11 +27,40 @@ function testKerning()
    if (width1 != width2) then error('StringWidth() of ' .. width1 .. ' != CharWidth() of ' .. width2) end
 end
 
+function testGetList()
+
+end
+
+function testStringSize()
+
+end
+
+function testStringWidth()
+
+end
+
+function testConvertCoords()
+
+end
+
+function testSelectFont()
+   local err, path = mFont.selectFont("Open Sans", "Regular", 12, nil)
+   assert(err == ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
+
+   -- This will fail because a fixed Open Sans isn't available and no wildcard was specified
+   local err, path = mFont.selectFont("Open Sans", "Regular", 12, FTF_REQUIRE_FIXED)
+   assert(err != ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
+
+   local err, path = mFont.selectFont("Open Sans,*", "Regular", 12, FTF_PREFER_FIXED)
+   assert(err == ERR_Okay, "SelectFont() returned error " .. mSys.GetErrorMsg(err))
+end
+
 //=====================================================================================================================
 
    return {
       tests = {
-        'testKerning'
+        --'testKerning'
+        'testGetList', 'testStringSize', 'testStringWidth', 'testConvertCoords', 'testSelectFont'
       },
       init = nil,
       cleanup = function()

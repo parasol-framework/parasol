@@ -1,5 +1,5 @@
 
-static void process_movement(Window Window, LONG X, LONG Y);
+void process_movement(Window Window, LONG X, LONG Y);
 
 static inline OBJECTID get_display(Window Window)
 {
@@ -21,17 +21,18 @@ static inline OBJECTID get_display(Window Window)
 
 //****************************************************************************
 
-static void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
+void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 {
+   parasol::Log log("X11Mgr");
    XEvent xevent;
-   OBJECTID surface_id, display_id, owner_id, *list;
+   OBJECTID surface_id, display_id, *list;
    WORD i;
 
    if (!XDisplay) return;
 
    while (XPending(XDisplay)) {
      XNextEvent(XDisplay, &xevent);
-     //FMSG("Event", "%d", xevent.type);
+     //log.trace("Event %d", xevent.type);
      switch (xevent.type) {
          case ButtonPress:      handle_button_press(&xevent); break;
          case ButtonRelease:    handle_button_release(&xevent); break;
@@ -46,14 +47,14 @@ static void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
          case FocusIn:
             if ((display_id = get_display(xevent.xany.window))) {
                surface_id = GetOwnerID(display_id);
-               FMSG("XFocusIn","Surface: %d", surface_id);
+               log.trace("XFocusIn Surface: %d", surface_id);
                acFocusID(surface_id);
             }
-            else FMSG("XFocusIn","Failed to get window display ID.");
+            else log.trace("XFocusIn Failed to get window display ID.");
             break;
 
          case FocusOut:
-            FMSG("XFocusOut()","");
+            log.traceBranch("XFocusOut");
             if (!AccessMemory(RPM_FocusList, MEM_READ_WRITE, 1000, &list)) {
                for (i=0; list[i]; i++) {
                   acLostFocusID(list[i]);
@@ -67,18 +68,37 @@ static void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             if ((Atom)xevent.xclient.data.l[0] == XWADeleteWindow) {
                if ((display_id = get_display(xevent.xany.window))) {
                   surface_id = GetOwnerID(display_id);
-                  if ((owner_id = GetOwnerID(surface_id))) {
-                     if (GetClassID(owner_id) IS ID_WINDOW) {
-                        ActionMsg(MT_WinClose, owner_id, NULL);
+                  const WindowHook hook(surface_id, WH_CLOSE);
+
+                  if (glWindowHooks.contains(hook)) {
+                     auto func = &glWindowHooks[hook];
+                     ERROR result;
+
+                     if (func->Type IS CALL_STDC) {
+                        parasol::SwitchContext ctx(func->StdC.Context);
+                        auto callback = (ERROR (*)(OBJECTID))func->StdC.Routine;
+                        result = callback(surface_id);
+                     }
+                     else if (func->Type IS CALL_SCRIPT) {
+                        ScriptArg args[] = {
+                           { "SurfaceID", FDF_OBJECTID, { .Long = surface_id } }
+                        };
+                        scCallback(func->Script.Script, func->Script.ProcedureID, args, ARRAYSIZE(args), &result);
+                     }
+                     else result = ERR_Okay;
+
+                     if (result IS ERR_Terminate) glWindowHooks.erase(hook);
+                     else if (result IS ERR_Cancelled) {
+                        log.msg("Window closure cancelled by client.");
                         break;
                      }
                   }
 
-                  LogErrorMsg("Freeing surface %d from display %d.", surface_id, display_id);
+                  log.msg("Freeing surface %d from display %d.", surface_id, display_id);
                   acFreeID(surface_id);
                }
                else {
-                  LogMsg("Failed to retrieve display ID for window $%x.", (unsigned int)xevent.xany.window);
+                  log.msg("Failed to retrieve display ID for window $%x.", (unsigned int)xevent.xany.window);
                   XDestroyWindow(XDisplay, (Window)xevent.xany.window);
                }
             }
@@ -94,12 +114,12 @@ static void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             break;
       }
 
-      if ((XRandRBase) AND (xrNotify(&xevent))) {
+      if ((XRandRBase) and (xrNotify(&xevent))) {
          // If randr indicates that the display has been resized, we must adjust the system display to match.  Refer to
          // SetDisplay() for more information.
 
          XRRScreenChangeNotifyEvent *notify;
-         objDisplay *display;
+         extDisplay *display;
          objSurface *surface;
 
          notify = (XRRScreenChangeNotifyEvent *)&xevent;
@@ -128,16 +148,17 @@ static void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
 //****************************************************************************
 
-static void handle_button_press(XEvent *xevent)
+void handle_button_press(XEvent *xevent)
 {
+   parasol::Log log(__FUNCTION__);
    struct acDataFeed feed;
    struct dcDeviceInput input;
    objPointer *pointer;
    DOUBLE value;
 
-   FMSG("~handle_button_press()","Button: %d", xevent->xbutton.button);
+   log.traceBranch("Button: %d", xevent->xbutton.button);
 
-   if ((xevent->xbutton.button IS 4) OR (xevent->xbutton.button IS 5)) {
+   if ((xevent->xbutton.button IS 4) or (xevent->xbutton.button IS 5)) {
       // Mouse wheel movement
       if (xevent->xbutton.button IS 4) value = -9;
       else value = 9;
@@ -149,7 +170,6 @@ static void handle_button_press(XEvent *xevent)
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
       ActionMsg(AC_DataFeed, glPointerID, &feed);
-      LOGRETURN();
       return;
    }
 
@@ -185,17 +205,19 @@ static void handle_button_press(XEvent *xevent)
    }
 
    XFlush(XDisplay);
-   LOGRETURN();
 }
 
 //****************************************************************************
 
-static void handle_button_release(XEvent *xevent)
+void handle_button_release(XEvent *xevent)
 {
-   FMSG("~handle_button_release()","Button: %d", xevent->xbutton.button);
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Button: %d", xevent->xbutton.button);
 
    if (!glPointerID) {
-      if (FastFindObject("SystemPointer", NULL, &glPointerID, 1, NULL) != ERR_Okay) return;
+      LONG count = 1;
+      if (FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count) != ERR_Okay) return;
    }
 
    struct dcDeviceInput input;
@@ -233,22 +255,22 @@ static void handle_button_release(XEvent *xevent)
    XFlush(XDisplay);
 
    XSetInputFocus(XDisplay, xevent->xany.window, RevertToNone, CurrentTime);
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
-static void handle_stack_change(XCirculateEvent *xevent)
+void handle_stack_change(XCirculateEvent *xevent)
 {
-   MSG("Window %d stack position has changed.", (int)xevent->window);
+   parasol::Log log(__FUNCTION__);
+   log.trace("Window %d stack position has changed.", (int)xevent->window);
 }
 
 //****************************************************************************
 
-static void handle_configure_notify(XConfigureEvent *xevent)
+void handle_configure_notify(XConfigureEvent *xevent)
 {
-   objDisplay *display;
+   parasol::Log log(__FUNCTION__);
+   extDisplay *display;
    OBJECTID display_id;
 
    LONG x = xevent->x;
@@ -264,7 +286,7 @@ static void handle_configure_notify(XConfigureEvent *xevent)
       height = event.xconfigure.height;
    }
 
-   FMSG("XConfigureNotify()","Win: %d, Pos: %dx%d,%dx%d", (int)xevent->window, x, y, width, height);
+   log.traceBranch("Win: %d, Pos: %dx%d,%dx%d", (int)xevent->window, x, y, width, height);
 
    if ((display_id = get_display(xevent->window))) {
       // Delete expose events that were generated by X11 during the resize
@@ -294,19 +316,20 @@ static void handle_configure_notify(XConfigureEvent *xevent)
 
          // Notification occurs with the display and surface released so as to reduce the potential for dead-locking.
 
-         FMSG("XConfigureNotify","Sending redimension notification: %dx%d,%dx%d", absx, absy, width, height);
+         log.trace("Sending redimension notification: %dx%d,%dx%d", absx, absy, width, height);
 
          resize_feedback(&feedback, display_id, absx, absy, width, height);
       }
-      else LogErrorMsg("Failed to get display ID for window %u.", (ULONG)xevent->window);
+      else log.warning("Failed to get display ID for window %u.", (ULONG)xevent->window);
    }
-   else LogErrorMsg("Failed to get display ID.");
+   else log.warning("Failed to get display ID.");
 }
 
 //****************************************************************************
 
-static void handle_exposure(XExposeEvent *event)
+void handle_exposure(XExposeEvent *event)
 {
+   parasol::Log log(__FUNCTION__);
    OBJECTID display_id;
 
    if ((display_id = get_display(event->window))) {
@@ -316,15 +339,14 @@ static void handle_exposure(XExposeEvent *event)
       while (XCheckWindowEvent(XDisplay, event->window, ExposureMask, &xevent) IS True);
       struct drwExpose region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF_CHILDREN };
       DelayMsg(MT_DrwExpose, surface_id, &region); // Redraw everything
-      return;
    }
-   else LogErrorMsg("XEvent.Expose: Failed to find a Surface ID for window %u.", (ULONG)event->window);
+   else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (ULONG)event->window);
 }
 
 //****************************************************************************
 // XK symbols are defined in X11/keysymdef.h
 
-static LONG xkeysym_to_pkey(KeySym KSym)
+LONG xkeysym_to_pkey(KeySym KSym)
 {
    switch(KSym) {
       case XK_A: return K_A;
@@ -517,8 +539,9 @@ static LONG xkeysym_to_pkey(KeySym KSym)
 ** Refer: man page XKeyEvent
 */
 
-static void handle_key_press(XEvent *xevent)
+void handle_key_press(XEvent *xevent)
 {
+   parasol::Log log(__FUNCTION__);
    ULONG unicode = 0;
    KeySym mod_sym; // A KeySym is an encoding of a symbol on the cap of a key.  See X11/keysym.h
    static XComposeStatus glXComposeStatus = { 0, 0 };
@@ -533,23 +556,23 @@ static void handle_key_press(XEvent *xevent)
    else if ((mod_sym = XkbKeycodeToKeysym(XDisplay, xevent->xkey.keycode, 0, xevent->xkey.state & ShiftMask ? 1 : 0)) != NoSymbol) {
    }
    else {
-      FMSG("handle_key_press","Failed to convert keycode to keysym.");
+      log.trace("Failed to convert keycode to keysym.");
       return;
    }
 
    KeySym sym = XkbKeycodeToKeysym(XDisplay, xevent->xkey.keycode, 0, 0);
 
-   FMSG("~handle_key_press()","XCode: $%x, XSym: $%x, ModSym: $%x, XState: $%x", xevent->xkey.keycode, (int)sym, (int)mod_sym, xevent->xkey.state);
+   log.traceBranch("XCode: $%x, XSym: $%x, ModSym: $%x, XState: $%x", xevent->xkey.keycode, (int)sym, (int)mod_sym, xevent->xkey.state);
 
    LONG value = xkeysym_to_pkey(sym);
    LONG flags = KQ_PRESSED;
 
    if (xevent->xkey.state & LockMask) flags |= KQ_CAPS_LOCK;
-   if (((value >= K_NP_0) AND (value <= K_NP_DIVIDE)) OR (value IS K_NP_ENTER)) {
+   if (((value >= K_NP_0) and (value <= K_NP_DIVIDE)) or (value IS K_NP_ENTER)) {
       flags |= KQ_NUM_PAD;
    }
 
-   if ((value) AND (value < ARRAYSIZE(KeyHeld))) {
+   if ((value) and (value < ARRAYSIZE(KeyHeld))) {
       if (KeyHeld[value]) flags |= KQ_REPEAT;
       else KeyHeld[value] = 1;
 
@@ -564,7 +587,7 @@ static void handle_key_press(XEvent *xevent)
    }
 
    if ((value) or (unicode != 0xffffffff)) {
-     if ((unicode < 0x20) OR (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
+     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
       evKey key = {
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
@@ -573,14 +596,14 @@ static void handle_key_press(XEvent *xevent)
       };
       BroadcastEvent(&key, sizeof(key));
    }
-
-   LOGRETURN();
 }
 
 //****************************************************************************
 
-static void handle_key_release(XEvent *xevent)
+void handle_key_release(XEvent *xevent)
 {
+   parasol::Log log(__FUNCTION__);
+
    // Check if the key is -really- released (when keys are held down, X11 annoyingly generates a stream of release
    // events until it is really released).
 
@@ -591,7 +614,7 @@ static void handle_key_release(XEvent *xevent)
           (peekevent.xkey.keycode IS xevent->xkey.keycode) AND
           ((peekevent.xkey.time - xevent->xkey.time) < 2)) {
          // The key is held and repeated, so do not release it
-         FMSG("handle_key_release","XKey $%x is held and repeated, not releasing.", xevent->xkey.keycode);
+         log.trace("XKey $%x is held and repeated, not releasing.", xevent->xkey.keycode);
          return;
       }
    }
@@ -610,7 +633,7 @@ static void handle_key_release(XEvent *xevent)
    else if ((mod_sym = XkbKeycodeToKeysym(XDisplay, xevent->xkey.keycode, 0, xevent->xkey.state & ShiftMask ? 1 : 0)) != NoSymbol) {
    }
    else {
-      FMSG("handle_key_release","XLookupString() failed to convert keycode to keysym.");
+      log.trace("XLookupString() failed to convert keycode to keysym.");
       return;
    }
 
@@ -619,7 +642,7 @@ static void handle_key_release(XEvent *xevent)
    LONG value = xkeysym_to_pkey(sym);
    LONG flags = KQ_RELEASED;
 
-   if ((value) AND (value < ARRAYSIZE(KeyHeld))) {
+   if ((value) and (value < ARRAYSIZE(KeyHeld))) {
       KeyHeld[value] = 0;
 
       if (value IS K_L_COMMAND)      glKeyFlags &= ~KQ_L_COMMAND;
@@ -632,8 +655,8 @@ static void handle_key_release(XEvent *xevent)
       else if (value IS K_R_ALT)     glKeyFlags &= ~KQ_R_ALT;
    }
 
-  if ((value) OR (unicode != 0xffffffff)) {
-     if ((unicode < 0x20) OR (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
+  if ((value) or (unicode != 0xffffffff)) {
+     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
       evKey key = {
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
@@ -646,14 +669,14 @@ static void handle_key_release(XEvent *xevent)
 
 //****************************************************************************
 
-static void handle_enter_notify(XCrossingEvent *xevent)
+void handle_enter_notify(XCrossingEvent *xevent)
 {
    process_movement(xevent->window, xevent->x_root, xevent->y_root);
 }
 
 //****************************************************************************
 
-static void handle_motion_notify(XMotionEvent *xevent)
+void handle_motion_notify(XMotionEvent *xevent)
 {
    // If the user is moving the X11 pointer quite rapidly, a queue of motion events can build up very quickly.  Our
    // solution to this is to read all the motion events up to the most recent one, because we're only interested in the
@@ -667,7 +690,7 @@ static void handle_motion_notify(XMotionEvent *xevent)
 
 //****************************************************************************
 
-static void process_movement(Window Window, LONG X, LONG Y)
+void process_movement(Window Window, LONG X, LONG Y)
 {
    objPointer *pointer;
 

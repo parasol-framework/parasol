@@ -30,68 +30,68 @@ static const struct FieldDef clHTTPMethod[] = {
 
 static const struct FieldDef clHTTPObjectMode[] = {
    { "DataFeed", 0x00000000 },
-   { "ReadWrite", 0x00000001 },
    { "Read", 0x00000001 },
+   { "ReadWrite", 0x00000001 },
    { "Write", 0x00000001 },
    { NULL, 0 }
 };
 
 static const struct FieldDef clHTTPFlags[] = {
-   { "Moved", 0x00000004 },
-   { "Raw", 0x00000040 },
-   { "NoHead", 0x00000010 },
-   { "DebugSocket", 0x00000080 },
    { "Resume", 0x00000001 },
-   { "SSL", 0x00000400 },
    { "Message", 0x00000002 },
-   { "RecvBuffer", 0x00000100 },
+   { "Moved", 0x00000004 },
    { "Redirected", 0x00000008 },
-   { "Debug", 0x00000200 },
+   { "NoHead", 0x00000010 },
    { "NoDialog", 0x00000020 },
+   { "Raw", 0x00000040 },
+   { "DebugSocket", 0x00000080 },
+   { "RecvBuffer", 0x00000100 },
+   { "Debug", 0x00000200 },
+   { "SSL", 0x00000400 },
    { NULL, 0 }
 };
 
 static const struct FieldDef clHTTPStatus[] = {
-   { "EntityTooLarge", 0x0000019d },
+   { "Continue", 0x00000064 },
+   { "SwitchProtocols", 0x00000065 },
+   { "Okay", 0x000000c8 },
+   { "Created", 0x000000c9 },
+   { "Accepted", 0x000000ca },
+   { "UnverifiedContent", 0x000000cb },
    { "NoContent", 0x000000cc },
-   { "TempRedirect", 0x00000133 },
+   { "ResetContent", 0x000000cd },
+   { "PartialContent", 0x000000ce },
+   { "MultipleChoices", 0x0000012c },
+   { "MovedPermanently", 0x0000012d },
+   { "Found", 0x0000012e },
    { "SeeOther", 0x0000012f },
+   { "NotModified", 0x00000130 },
+   { "UseProxy", 0x00000131 },
+   { "TempRedirect", 0x00000133 },
+   { "BadRequest", 0x00000190 },
+   { "Unauthorised", 0x00000191 },
+   { "PaymentRequired", 0x00000192 },
+   { "Forbidden", 0x00000193 },
+   { "NotFound", 0x00000194 },
+   { "MethodNotAllowed", 0x00000195 },
+   { "NotAcceptable", 0x00000196 },
+   { "ProxyAuthentication", 0x00000197 },
+   { "RequestTimeout", 0x00000198 },
+   { "Conflict", 0x00000199 },
+   { "Gone", 0x0000019a },
+   { "LengthRequired", 0x0000019b },
+   { "PreconditionFailed", 0x0000019c },
+   { "EntityTooLarge", 0x0000019d },
+   { "UriTooLong", 0x0000019e },
+   { "UnsupportedMedia", 0x0000019f },
    { "OutOfRange", 0x000001a0 },
    { "ExpectationFailed", 0x000001a1 },
-   { "RequestTimeout", 0x00000198 },
-   { "Unauthorised", 0x00000191 },
-   { "Continue", 0x00000064 },
-   { "NotFound", 0x00000194 },
-   { "VersionUnsupported", 0x000001f9 },
-   { "UnsupportedMedia", 0x0000019f },
-   { "MultipleChoices", 0x0000012c },
-   { "Gone", 0x0000019a },
-   { "ProxyAuthentication", 0x00000197 },
-   { "LengthRequired", 0x0000019b },
-   { "BadRequest", 0x00000190 },
-   { "Accepted", 0x000000ca },
-   { "MovedPermanently", 0x0000012d },
-   { "PreconditionFailed", 0x0000019c },
-   { "UseProxy", 0x00000131 },
-   { "NotImplemented", 0x000001f5 },
-   { "ServiceUnavailable", 0x000001f7 },
-   { "Okay", 0x000000c8 },
    { "ServerError", 0x000001f4 },
+   { "NotImplemented", 0x000001f5 },
    { "BadGateway", 0x000001f6 },
+   { "ServiceUnavailable", 0x000001f7 },
    { "GatewayTimeout", 0x000001f8 },
-   { "Found", 0x0000012e },
-   { "ResetContent", 0x000000cd },
-   { "NotAcceptable", 0x00000196 },
-   { "Created", 0x000000c9 },
-   { "NotModified", 0x00000130 },
-   { "SwitchProtocols", 0x00000065 },
-   { "PaymentRequired", 0x00000192 },
-   { "UnverifiedContent", 0x000000cb },
-   { "Forbidden", 0x00000193 },
-   { "MethodNotAllowed", 0x00000195 },
-   { "PartialContent", 0x000000ce },
-   { "UriTooLong", 0x0000019e },
-   { "Conflict", 0x00000199 },
+   { "VersionUnsupported", 0x000001f9 },
    { NULL, 0 }
 };
 
@@ -111,7 +111,7 @@ static const struct FieldDef clHTTPDatatype[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clHTTPState[] = {
+static const struct FieldDef clHTTPCurrentState[] = {
    { "ReadingHeader", 0x00000000 },
    { "Authenticating", 0x00000001 },
    { "Authenticated", 0x00000002 },
@@ -137,4 +137,4 @@ static const struct ActionArray clHTTPActions[] = {
 };
 
 #undef MOD_IDL
-#define MOD_IDL "c.HTS:ENTITY_TOO_LARGE=0x19d,NO_CONTENT=0xcc,TEMP_REDIRECT=0x133,SEE_OTHER=0x12f,OUT_OF_RANGE=0x1a0,EXPECTATION_FAILED=0x1a1,REQUEST_TIMEOUT=0x198,UNAUTHORISED=0x191,CONTINUE=0x64,NOT_FOUND=0x194,VERSION_UNSUPPORTED=0x1f9,UNSUPPORTED_MEDIA=0x19f,NOT_MODIFIED=0x130,GONE=0x19a,PROXY_AUTHENTICATION=0x197,LENGTH_REQUIRED=0x19b,BAD_REQUEST=0x190,RESET_CONTENT=0xcd,MOVED_PERMANENTLY=0x12d,PRECONDITION_FAILED=0x19c,USE_PROXY=0x131,CONFLICT=0x199,URI_TOO_LONG=0x19e,CREATED=0xc9,SERVER_ERROR=0x1f4,BAD_GATEWAY=0x1f6,GATEWAY_TIMEOUT=0x1f8,METHOD_NOT_ALLOWED=0x195,FORBIDDEN=0x193,NOT_ACCEPTABLE=0x196,NOT_IMPLEMENTED=0x1f5,PAYMENT_REQUIRED=0x192,SWITCH_PROTOCOLS=0x65,ACCEPTED=0xca,UNVERIFIED_CONTENT=0xcb,SERVICE_UNAVAILABLE=0x1f7,MULTIPLE_CHOICES=0x12c,PARTIAL_CONTENT=0xce,OKAY=0xc8,FOUND=0x12e\nc.HTM:MOVE=0xe,SUBSCRIBE=0x15,B_COPY=0x7,B_DELETE=0x8,B_MOVE=0x9,PROP_FIND=0x12,COPY=0xc,UNSUBSCRIBE=0x17,DELETE=0x4,UNLOCK=0x16,NOTIFY=0xf,POLL=0x11,B_PROP_PATCH=0xb,PROP_PATCH=0x13,B_PROP_FIND=0xa,GET=0x0,SEARCH=0x14,LOCK=0xd,MK_COL=0x6,POST=0x1,OPTIONS=0x10,TRACE=0x5,PUT=0x2,HEAD=0x3\nc.HOM:READ=0x1,DATA_FEED=0x0,READ_WRITE=0x1,WRITE=0x1\nc.HTF:MOVED=0x4,RAW=0x40,NO_HEAD=0x10,DEBUG_SOCKET=0x80,RESUME=0x1,SSL=0x400,MESSAGE=0x2,RECV_BUFFER=0x100,REDIRECTED=0x8,DEBUG=0x200,NO_DIALOG=0x20\nc.HGS:READING_HEADER=0x0,SENDING_CONTENT=0x3,TERMINATED=0x7,READING_CONTENT=0x5,AUTHENTICATED=0x2,END=0x8,SEND_COMPLETE=0x4,COMPLETED=0x6,AUTHENTICATING=0x1\n"
+#define MOD_IDL "c.HGS:AUTHENTICATED=0x2,AUTHENTICATING=0x1,COMPLETED=0x6,END=0x8,READING_CONTENT=0x5,READING_HEADER=0x0,SENDING_CONTENT=0x3,SEND_COMPLETE=0x4,TERMINATED=0x7\nc.HOM:DATA_FEED=0x0,READ=0x1,READ_WRITE=0x1,WRITE=0x1\nc.HTF:DEBUG=0x200,DEBUG_SOCKET=0x80,MESSAGE=0x2,MOVED=0x4,NO_DIALOG=0x20,NO_HEAD=0x10,RAW=0x40,RECV_BUFFER=0x100,REDIRECTED=0x8,RESUME=0x1,SSL=0x400\nc.HTM:B_COPY=0x7,B_DELETE=0x8,B_MOVE=0x9,B_PROP_FIND=0xa,B_PROP_PATCH=0xb,COPY=0xc,DELETE=0x4,GET=0x0,HEAD=0x3,LOCK=0xd,MK_COL=0x6,MOVE=0xe,NOTIFY=0xf,OPTIONS=0x10,POLL=0x11,POST=0x1,PROP_FIND=0x12,PROP_PATCH=0x13,PUT=0x2,SEARCH=0x14,SUBSCRIBE=0x15,TRACE=0x5,UNLOCK=0x16,UNSUBSCRIBE=0x17\nc.HTS:ACCEPTED=0xca,BAD_GATEWAY=0x1f6,BAD_REQUEST=0x190,CONFLICT=0x199,CONTINUE=0x64,CREATED=0xc9,ENTITY_TOO_LARGE=0x19d,EXPECTATION_FAILED=0x1a1,FORBIDDEN=0x193,FOUND=0x12e,GATEWAY_TIMEOUT=0x1f8,GONE=0x19a,LENGTH_REQUIRED=0x19b,METHOD_NOT_ALLOWED=0x195,MOVED_PERMANENTLY=0x12d,MULTIPLE_CHOICES=0x12c,NOT_ACCEPTABLE=0x196,NOT_FOUND=0x194,NOT_IMPLEMENTED=0x1f5,NOT_MODIFIED=0x130,NO_CONTENT=0xcc,OKAY=0xc8,OUT_OF_RANGE=0x1a0,PARTIAL_CONTENT=0xce,PAYMENT_REQUIRED=0x192,PRECONDITION_FAILED=0x19c,PROXY_AUTHENTICATION=0x197,REQUEST_TIMEOUT=0x198,RESET_CONTENT=0xcd,SEE_OTHER=0x12f,SERVER_ERROR=0x1f4,SERVICE_UNAVAILABLE=0x1f7,SWITCH_PROTOCOLS=0x65,TEMP_REDIRECT=0x133,UNAUTHORISED=0x191,UNSUPPORTED_MEDIA=0x19f,UNVERIFIED_CONTENT=0xcb,URI_TOO_LONG=0x19e,USE_PROXY=0x131,VERSION_UNSUPPORTED=0x1f9\n"

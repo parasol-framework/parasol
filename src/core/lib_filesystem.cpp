@@ -57,6 +57,8 @@ typedef int HANDLE;
 
 #include <stdarg.h>
 #include <errno.h>
+#include <map>
+#include <mutex>
 
 #ifdef _WIN32
  #include <io.h>
@@ -84,12 +86,62 @@ typedef int HANDLE;
 #endif
 
 //****************************************************************************
+
+class CacheFileIndex {
+public:
+   std::string path;
+   LARGE timestamp;
+   LARGE size;
+
+   CacheFileIndex(std::string Path, LARGE Timestamp, LARGE Size) {
+      path      = Path;
+      timestamp = Timestamp;
+      size      = Size;
+   }
+
+   bool operator==(const CacheFileIndex &other) const {
+      return (path == other.path && timestamp == other.timestamp && size == other.size);
+   }
+};
+
+namespace std {
+   template <>
+   struct hash<CacheFileIndex>
+   {
+      std::size_t operator()(const CacheFileIndex& k) const {
+         return ((std::hash<std::string>()(k.path)
+            ^ (std::hash<LARGE>()(k.timestamp) << 1)) >> 1)
+            ^ (std::hash<LARGE>()(k.size) << 1);
+      }
+   };
+}
+
+static std::unordered_map<CacheFileIndex, CacheFile *> glCache;
+static std::mutex glCacheLock;
+
+//****************************************************************************
+// Called during shutdown
+
+void free_file_cache(void)
+{
+   parasol::Log log(__FUNCTION__);
+
+   log.branch();
+
+   const std::lock_guard<std::mutex> lock(glCacheLock);
+
+   for (auto it=glCache.begin(); it != glCache.end(); it = glCache.erase(it)) {
+      FreeResource(it->second);
+   }
+}
+
+//****************************************************************************
 // Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
 
 static virtual_drive * get_virtual(CSTRING Path)
 {
    LONG len;
-   for (len=0; (Path[len]) AND (Path[len] != ':'); len++); // The Path may end with a NULL terminator or a colon
+   for (len=0; (Path[len]) and (Path[len] != ':'); len++); // The Path may end with a NULL terminator or a colon
    if ((size_t)len < sizeof(glVirtual[0].Name)) {
       for (LONG i=0; i < glVirtualTotal; i++) {
          if (glVirtual[i].Name[len] IS ':') {
@@ -104,7 +156,7 @@ static virtual_drive * get_virtual(CSTRING Path)
 
 extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
 {
-   if ((!Callback) OR (!Feedback)) return FFR_OKAY;
+   if ((!Callback) or (!Feedback)) return FFR_OKAY;
 
    if (Callback->Type IS CALL_STDC) {
       auto routine = (LONG (*)(FileFeedback *))Callback->StdC.Routine;
@@ -121,11 +173,13 @@ extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
             { "FeedbackID", FD_LONG,  { .Long    = Feedback->FeedbackID } }
          };
 
-         ERROR error = scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args));
+         ERROR error;
+         if (scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
+
          if (!error) {
             CSTRING *results;
             LONG size;
-            if ((!GetFieldArray(script, FID_Results, (APTR *)&results, &size)) AND (size > 0)) {
+            if ((!GetFieldArray(script, FID_Results, (APTR *)&results, &size)) and (size > 0)) {
                return StrToInt(results[0]);
             }
             else return FFR_OKAY;
@@ -182,10 +236,10 @@ const virtual_drive * get_fs(CSTRING Path)
 
    LONG len;
    ULONG hash = 5381;
-   for (len=0; (Path[len]) AND (Path[len] != ':'); len++) {
+   for (len=0; (Path[len]) and (Path[len] != ':'); len++) {
       char c = Path[len];
-      if ((c IS '/') OR (c IS '\\')) return (const virtual_drive *)&glVirtual[0]; // If a slash is encountered early, the path belongs to the local FS
-      if ((c >= 'A') AND (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
+      if ((c IS '/') or (c IS '\\')) return (const virtual_drive *)&glVirtual[0]; // If a slash is encountered early, the path belongs to the local FS
+      if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
       else hash = (hash<<5) + hash + c;
    }
 
@@ -193,7 +247,7 @@ const virtual_drive * get_fs(CSTRING Path)
 
    if ((size_t)len < sizeof(glVirtual[0].Name)) {
       for (LONG i=0; i < glVirtualTotal; i++) {
-         if ((hash IS glVirtual[i].VirtualID) AND (glVirtual[i].Name[len] IS ':')) {
+         if ((hash IS glVirtual[i].VirtualID) and (glVirtual[i].Name[len] IS ':')) {
             if (!StrCompare(glVirtual[i].Name, Path, len, 0)) return glVirtual+i;
          }
       }
@@ -203,6 +257,7 @@ const virtual_drive * get_fs(CSTRING Path)
 }
 
 //****************************************************************************
+// Assigned to a timer for the purpose of checking up on the expiry of cached files.
 
 ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
 {
@@ -210,22 +265,21 @@ ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
 
    log.branch("Scanning file cache for unused entries...");
 
-   CSTRING key = NULL;
-   CacheFile **ptr;
-   while (!VarIterate(glCache, key, &key, (APTR *)&ptr, NULL)) {
-      CacheFile *cache = ptr[0];
-      if ((CurrentTime - cache->LastUse >= 60LL * 1000000LL) AND (cache->Locks <= 0)) {
-         log.msg("Removing expired cache file: %.80s", cache->Path);
-         VarSet(glCache, key, NULL, 0);
-         FreeResource(cache);
+   const std::lock_guard<std::mutex> lock(glCacheLock);
+   for (auto it=glCache.begin(); it != glCache.end(); ) {
+      if ((CurrentTime - it->second->LastUse >= 60LL * 1000000LL) and (it->second->Locks <= 0)) {
+         log.msg("Removing expired cache file: %.80s", it->second->Path);
+         FreeResource(it->second);
+         it = glCache.erase(it);
       }
+      else it++;
    }
 
-   if (glCache) return ERR_Okay;
-   else {
+   if (glCache.empty()) {
       glCacheTimer = 0;
       return ERR_Terminate;
    }
+   else return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -314,21 +368,19 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
    }
 
    LONG len = StrLength(Path);
-
    if (Path[len-1] IS ':') {
-      if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
-         for (LONG i=0; i < glVolumes->AmtEntries; i++) {
-            if ((glVolumes->Entries[i].Key[0] IS 'N') AND (glVolumes->Entries[i].Key[1] IS 'a') AND (glVolumes->Entries[i].Key[2] IS 'm') AND (glVolumes->Entries[i].Key[3] IS 'e') AND (glVolumes->Entries[i].Key[4] IS 0)) {
-               if (!StrCompare(Path, glVolumes->Entries[i].Data, len-1, 0)) {
-                  if (!glVolumes->Entries[i].Data[len-1]) {
-                     if (PathType) *PathType = LOC_VOLUME;
-                     ReleasePrivateObject((OBJECTPTR)glVolumes);
-                     return ERR_Okay;
-                  }
+      parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 8000);
+      if (volumes.granted()) {
+         ConfigGroups *groups;
+         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+            for (auto& [group, keys] : groups[0]) {
+               if ((!StrCompare(Path, keys["Name"].c_str(), len-1, 0)) and
+                   (keys["Name"].size() IS (size_t)len-1)) {
+                  if (PathType) *PathType = LOC_VOLUME;
+                  return ERR_Okay;
                }
             }
          }
-         ReleasePrivateObject((OBJECTPTR)glVolumes);
       }
       return ERR_DoesNotExist;
    }
@@ -349,7 +401,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
       return error;
    }
    else {
-      log.traceWarning("ResolvePath() indicates that the path does not exist.");
+      log.trace("Path '%s' does not exist.", Path);
       return ERR_DoesNotExist;
    }
 }
@@ -391,10 +443,10 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
    objConfig *config;
    CLASSID class_id;
    CSTRING assoc_path, ext;
-   STRING section;
+   STRING group;
    ERROR error;
 
-   if ((!Path) OR (!Mode)) return ERR_NullArgs;
+   if ((!Path) or (!Mode)) return ERR_NullArgs;
 
    log.branch("Mode: %s, Path: %s, Command: %.30s", Mode, Path, Command);
 
@@ -406,48 +458,42 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
    else assoc_path = "user:config/associations.cfg";
 
    if (!StrCompare("CLASS:", Path, sizeof("CLASS:")-1, 0)) {
-      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config,
-            FID_Path|TSTR, assoc_path,
-            TAGEND))) {
+      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, assoc_path, TAGEND))) {
+         ConfigGroups *groups;
          CSTRING str;
          if (!cfgReadValue(config, Path+6, "Class", &str)) {
             if (Command) {
                cfgWriteValue(config, Path+6, Mode, Command);
-               error = acSaveSettings(&config->Head);
+               error = acSaveSettings(config);
             }
-            else {
-               // If no command is provided, remove the command linked to this mode
-               LONG i;
-               for (i=0; i < config->AmtEntries; i++) {
-                  if (!StrMatch(Path+6, config->Entries[i].Section)) {
-                     while (!StrMatch(Path+6, config->Entries[i].Section)) {
-                        if (!StrMatch(Mode, config->Entries[i].Key)) break;
-                        i++;
+            else { // If no command is provided, remove the command linked to this mode
+               if (!GetPointer(config, FID_Data, &groups)) {
+                  error = ERR_Okay;
+                  for (auto& [group, keys] : *groups) {
+                     if (!StrMatch(Path+6, group.c_str())) {
+                        if (keys.contains(Mode)) {
+                           cfgDeleteGroup(config, group.c_str());
+                           error = acSaveSettings(config);
+                           break;
+                        }
                      }
-                     break;
                   }
                }
-               if (i < config->AmtEntries) {
-                  cfgDeleteIndex(config, i);
-                  error = acSaveSettings(&config->Head);
-               }
-               else error = ERR_Okay;
+               else error = ERR_GetField;
             }
          }
          else error = ERR_Search; // Class is not registered
 
-         acFree(&config->Head);
+         acFree(config);
       }
    }
-   else if (!(error = IdentifyFile(Path, Mode, IDF_SECTION, &class_id, NULL, &section))) {
-      log.msg("Linking file under section '%s'", section);
-      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config,
-            FID_Path|TSTR, assoc_path,
-            TAGEND))) {
-         if (!(error = cfgWriteValue(config, section, Mode, Command))) {
-            error = acSaveSettings(&config->Head);
+   else if (!(error = IdentifyFile(Path, Mode, IDF_SECTION, &class_id, NULL, &group))) {
+      log.msg("Linking file under group '%s'", group);
+      if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, assoc_path, TAGEND))) {
+         if (!(error = cfgWriteValue(config, group, Mode, Command))) {
+            error = acSaveSettings(config);
          }
-         acFree(&config->Head);
+         acFree(config);
       }
    }
    else {
@@ -461,16 +507,13 @@ ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)
       else extbuf[0] = 0;
 
       if (extbuf[0]) {
-         if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config,
-               FID_Path|TSTR, assoc_path,
-               TAGEND))) {
-
+         if (!(error = CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, assoc_path, TAGEND))) {
             if (!(error = cfgWriteValue(config, ext, "Match", extbuf))) {
                if (!(error = cfgWriteValue(config, ext, Mode, Command))) {
-                  error = acSaveSettings(&config->Head);
+                  error = acSaveSettings(config);
                }
             }
-            acFree(&config->Head);
+            acFree(config);
          }
       }
       else {
@@ -509,7 +552,7 @@ NullArgs
 
 ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
 {
-   if ((!PathA) OR (!PathB)) return ERR_NullArgs;
+   if ((!PathA) or (!PathB)) return ERR_NullArgs;
 
    STRING path1, path2;
    ERROR error;
@@ -526,7 +569,7 @@ ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
    v1 = get_fs(path1);
    v2 = get_fs(path2);
 
-   if ((!v1->CaseSensitive) AND (!v2->CaseSensitive)) {
+   if ((!v1->CaseSensitive) and (!v2->CaseSensitive)) {
       error = StrCompare(path1, path2, 0, STR_MATCH_LEN);
    }
    else error = StrCompare(path1, path2, 0, STR_MATCH_LEN|STR_MATCH_CASE);
@@ -555,12 +598,12 @@ ERROR fs_samefile(CSTRING Path1, CSTRING Path2)
 #ifdef __unix__
    struct stat64 stat1, stat2;
 
-   if ((!stat64(Path1, &stat1)) AND (!stat64(Path2, &stat2))) {
+   if ((!stat64(Path1, &stat1)) and (!stat64(Path2, &stat2))) {
       if ((stat1.st_ino IS stat2.st_ino)
-            AND (stat1.st_dev IS stat2.st_dev)
-            AND (stat1.st_mode IS stat2.st_mode)
-            AND (stat1.st_uid IS stat2.st_uid)
-            AND (stat1.st_gid IS stat2.st_gid)) {
+            and (stat1.st_dev IS stat2.st_dev)
+            and (stat1.st_mode IS stat2.st_mode)
+            and (stat1.st_uid IS stat2.st_uid)
+            and (stat1.st_gid IS stat2.st_gid)) {
          return ERR_True;
       }
       else return ERR_False;
@@ -596,7 +639,7 @@ CSTRING ResolveGroupID(LONG GroupID)
    LONG i;
 
    if ((info = getgrgid(GroupID))) {
-      for (i=0; (info->gr_name[i]) AND ((size_t)i < sizeof(group)-1); i++) group[i] = info->gr_name[i];
+      for (i=0; (info->gr_name[i]) and ((size_t)i < sizeof(group)-1); i++) group[i] = info->gr_name[i];
       group[i] = 0;
       return group;
    }
@@ -634,7 +677,7 @@ CSTRING ResolveUserID(LONG UserID)
    LONG i;
 
    if ((info = getpwuid(UserID))) {
-      for (i=0; (info->pw_name[i]) AND ((size_t)i < sizeof(user)-1); i++) user[i] = info->pw_name[i];
+      for (i=0; (info->pw_name[i]) and ((size_t)i < sizeof(user)-1); i++) user[i] = info->pw_name[i];
       user[i] = 0;
       return user;
    }
@@ -746,7 +789,7 @@ ERROR CreateLink(CSTRING From, CSTRING To)
    STRING src, dest;
    LONG err;
 
-   if ((!From) OR (!To)) return ERR_NullArgs;
+   if ((!From) or (!To)) return ERR_NullArgs;
 
    log.branch("From: %.40s, To: %s", From, To);
 
@@ -864,78 +907,45 @@ void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions)
    glDefaultPermissions = Permissions;
 }
 
-/*****************************************************************************
+//****************************************************************************
+// Internal function for getting information from files, particularly virtual volumes.  If you know that a path
+// refers directly to the client's filesystem then you can revert to calling fs_getinfo() instead.
 
--FUNCTION-
-GetFileInfo: Private. Returns meta information for a specific file or folder path.
-
-NOTE: Although this function is currently considered deprecated, its virtual function (GetInfo) is still in use
-internally.
-
-The GetFileInfo() function provides the means for obtaining basic information from files and folders.
-A FileInfo structure must be provided that will hold the results following successful analysis of the file.
-
-Path approximation is supported, so the supplied Path does not need to be a precise file reference.
-
--INPUT-
-cstr Path: The path of the file or folder to analyse.
-buf(struct(FileInfo)) Info: Pointer to a FileInfo structure for holding the results.
-structsize InfoSize: The size of the Info structure, in bytes.
-
--ERRORS-
-Okay
-Args
-FileNotFound
--END-
-
-*****************************************************************************/
-
-static THREADVAR char infobuffer[MAX_FILENAME];
-
-ERROR GetFileInfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
+ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
-   return get_file_info(Path, Info, InfoSize, infobuffer, sizeof(infobuffer));
-}
-
-ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize, STRING NameBuffer, LONG BufferSize)
-{
-   parasol::Log log("GetFileInfo");
+   parasol::Log log(__FUNCTION__);
    LONG i, len;
    ERROR error;
 
-   if ((!Path) OR (!Path[0]) OR (!Info) OR (InfoSize <= 0)) return log.warning(ERR_Args);
+   if ((!Path) or (!Path[0]) or (!Info) or (InfoSize <= 0)) return log.warning(ERR_Args);
 
+   char NameBuffer[MAX_FILENAME];
    ClearMemory(Info, InfoSize);
    Info->Name = NameBuffer;
 
    // Check if the location is a volume with no file reference
 
-   for (len=0; (Path[len]) AND (Path[len] != ':'); len++);
+   for (len=0; (Path[len]) and (Path[len] != ':'); len++);
 
-   if ((Path[len] IS ':') AND (!Path[len+1])) {
+   if ((Path[len] IS ':') and (!Path[len+1])) {
       const virtual_drive *vfs = get_fs(Path);
 
       Info->Flags = RDF_VOLUME;
 
-      for (i=0; (i < BufferSize-1) AND (Path[i]) AND (Path[i] != ':'); i++) NameBuffer[i] = Path[i];
+      for (i=0; (i < MAX_FILENAME-1) and (Path[i]) and (Path[i] != ':'); i++) NameBuffer[i] = Path[i];
       LONG pos = i;
       NameBuffer[i] = 0;
 
       error = ERR_Okay;
-      if (!AccessPrivateObject((OBJECTPTR)glVolumes, 3000)) {
-         ConfigEntry *entries;
-         if ((entries = glVolumes->Entries)) {
-            for (LONG i=0; i < glVolumes->AmtEntries; i++) {
-               if ((!StrMatch("Name", entries[i].Key)) AND (!StrMatch(NameBuffer, entries[i].Data))) {
-                  while ((i > 0) AND (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
 
-                  STRING section = entries[i].Section;
-                  for (; i < glVolumes->AmtEntries; i++) {
-                     if (StrMatch(entries[i].Section, section)) break; // Check if section has ended
-
-                     if (!StrMatch("Hidden", entries[i].Key)) {
-                        if ((!StrMatch("Yes", entries[i].Data)) OR (!StrMatch("1", entries[i].Data))) Info->Flags |= RDF_HIDDEN;
-                     }
+      parasol::ScopedObjectLock<objConfig> volumes(glVolumes);
+      if (volumes.granted()) {
+         ConfigGroups *groups;
+         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+            for (auto& [group, keys] : groups[0]) {
+               if (!StrMatch(NameBuffer, keys["Name"].c_str())) {
+                  if (keys.contains("Hidden")) {
+                     if ((!StrMatch("Yes", keys["Hidden"].c_str())) or (!keys["Hidden"].compare("1"))) Info->Flags |= RDF_HIDDEN;
                   }
 
                   break;
@@ -943,8 +953,6 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize, STRING NameBuff
             }
          }
          else error = ERR_FileNotFound;
-
-         ReleasePrivateObject((OBJECTPTR)glVolumes);
       }
       else error = ERR_AccessObject;
 
@@ -1008,7 +1016,7 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!String) OR (!Command)) return ERR_NullArgs;
+   if ((!String) or (!Command)) return ERR_NullArgs;
 
    if (StrCompare("[PROG:", String, sizeof("[PROG:")-1, 0) != ERR_Okay) return ERR_StringFormat;
 
@@ -1017,41 +1025,38 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
    LONG i;
    char buffer[400];
    LONG cmdindex = sizeof("[PROG:") - 1;
-   for (i=0; String[cmdindex] AND (String[cmdindex] != ']'); i++) buffer[i] = String[cmdindex++];
+   for (i=0; String[cmdindex] and (String[cmdindex] != ']'); i++) buffer[i] = String[cmdindex++];
    buffer[i] = 0;
 
    log.traceBranch("Command references program '%s'", buffer);
 
    if (String[cmdindex] IS ']') cmdindex++;
-   while ((String[cmdindex]) AND (String[cmdindex] <= 0x20)) cmdindex++;
+   while ((String[cmdindex]) and (String[cmdindex] <= 0x20)) cmdindex++;
 
    objConfig *cfgprog;
    ERROR error;
-   if (!(error = CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&cfgprog,
-         FID_Path|TSTR, "config:software/programs.cfg",
-         TAGEND))) {
-
-      ConfigEntry *entries;
-      if ((entries = cfgprog->Entries)) {
+   if (!(error = CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&cfgprog, FID_Path|TSTR, "config:software/programs.cfg", TAGEND))) {
+      ConfigGroups *groups;
+      if (!GetPointer(cfgprog, FID_Data, &groups)) {
          error = ERR_Failed;
-         for (LONG i=0; i < cfgprog->AmtEntries; i++) {
-            if (!StrMatch(buffer, entries[i].Section)) {
+         for (auto& [group, keys] : groups[0]) {
+            if (!StrMatch(buffer, group.c_str())) {
                CSTRING cmd, args;
-               if (!cfgReadValue(cfgprog, entries[i].Section, "CommandFile", &cmd)) {
-                  if (cfgReadValue(cfgprog, entries[i].Section, "Args", &args)) args = "";
+               if (!cfgReadValue(cfgprog, group.c_str(), "CommandFile", &cmd)) {
+                  if (cfgReadValue(cfgprog, group.c_str(), "Args", &args)) args = "";
                   StrFormat(buffer, sizeof(buffer), "\"%s\" %s %s", cmd, args, String + cmdindex);
 
                   *Command = StrClone(buffer);
                   error = ERR_Okay;
                }
-               else log.warning("CommandFile value not present for section %s", entries[i].Section);
+               else log.warning("CommandFile value not present for group %s", group.c_str());
                break;
             }
          }
       }
       else error = ERR_NoData;
 
-      acFree(&cfgprog->Head);
+      acFree(cfgprog);
    }
 
    return error;
@@ -1062,15 +1067,15 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
 -FUNCTION-
 LoadFile: Loads files into a local cache for fast file processing.
 
-The LoadFile() function provides the convenience of a simplified data loading mechanism, combined with a caching
-feature to speed up future file loading calls.
+The LoadFile() function loads complete files into memory and caches the content for use by other areas of the system
+or application.
 
-This function first checks that the requested file has not already been cached by an earlier call to LoadFile().  If
-the file is cached but the source has been written since that occasion, the routine considers it a cache miss and will
-proceed on to the file loading routine.  If the file is cached, the &CacheFile structure is returned immediately.
+This function will first determine if the requested file has already been cached.  If this is true then the &CacheFile
+structure is returned immediately.  Note that if the file was previously cached but then modified, this will be treated
+as a cache miss and the file will be loaded into a new buffer.
 
-If the file is not cached, it is loaded into a readable memory buffer which is referenced by the Data field of the
-Cache structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files.
+File content will be loaded into a readable memory buffer that is referenced by the Data field of the
+&CacheFile structure.  A hidden null byte is appended at the end of the buffer to assist the processing of text files.
 Other pieces of information about the file can be derived from the &CacheFile meta data.
 
 Calls to LoadFile() must be matched with a call to ~UnloadFile() to decrement the cache counter. When the counter
@@ -1094,78 +1099,55 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Path) OR (!Cache)) return ERR_NullArgs;
-
-   if (!glCache) {
-      if (!(glCache = VarNew(0, KSF_THREAD_SAFE|KSF_UNTRACKED|KSF_CASE|KSF_AUTO_REMOVE))) {
-         return ERR_AllocMemory;
-      }
-   }
+   if ((!Path) or (!Cache)) return ERR_NullArgs;
 
    // Check if the file is already cached.  If it is, check that the file hasn't been written since the last time it was cached.
 
    STRING path;
    ERROR error;
-   if ((error = ResolvePath(Path, RSF_APPROXIMATE, &path)) != ERR_Okay) {
-      return error;
-   }
+   if ((error = ResolvePath(Path, RSF_APPROXIMATE, &path)) != ERR_Okay) return error;
 
-   CacheFile **ptr;
-   if (!VarGet(glCache, path, (APTR *)&ptr, NULL)) {
-      FileInfo info;
-      char filename[MAX_FILENAME];
+   const std::lock_guard<std::mutex> lock(glCacheLock);
 
-      log.function("%.80s [Exists]", path);
+   log.branch("%.80s, Flags: $%.8x", path, Flags);
 
-      if (Flags & LDF_IGNORE_STATUS) {
-         *Cache = ptr[0];
-         if (!(Flags & LDF_CHECK_EXISTS)) ptr[0]->Locks++;
-         FreeResource(path);
-         return ERR_Okay;
-      }
-      else if (!get_file_info(path, &info, sizeof(info), filename, sizeof(filename))) {
-         if ((info.Size IS ptr[0]->Size) AND (info.TimeStamp IS ptr[0]->TimeStamp)) {
-            *Cache = ptr[0];
-            if (!(Flags & LDF_CHECK_EXISTS)) ptr[0]->Locks++;
-            FreeResource(path);
-            return ERR_Okay;
-         }
-         else log.msg("Failed to match on size (" PF64() " == " PF64() ") or timestamp (" PF64() " == " PF64() ")", info.Size, ptr[0]->Size, info.TimeStamp, ptr[0]->TimeStamp);
-      }
-      else log.msg("Failed to get file info.");
-   }
-
-   // If the user just wanted to check for the existence of the file in the cache, return a search failure here.
-
-   if (Flags & LDF_CHECK_EXISTS) return ERR_Search;
-
-   // Load the file and create a new cache entry
-
-   log.branch("%.80s [Loading]", path);
-
-   CacheFile *cache = NULL;
    OBJECTPTR file = NULL;
-   if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-         FID_Path|TSTR,   Path,
-         FID_Flags|TLONG, FL_READ|FL_APPROXIMATE|FL_FILE,
-         TAGEND)) {
-
+   if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path, FID_Flags|TLONG, FL_READ|FL_FILE, TAGEND)) {
       LARGE timestamp, file_size;
       GetLarge(file, FID_Size, &file_size);
       GetLarge(file, FID_TimeStamp, &timestamp);
+
+      CacheFileIndex index(path, timestamp, file_size);
+
+      if (glCache.contains(index)) {
+         acFree(file);
+         FreeResource(path);
+
+         auto cf = glCache[index];
+         *Cache = cf;
+         if (!(Flags & LDF_CHECK_EXISTS)) cf->Locks++;
+         return ERR_Okay;
+      }
+
+      // If the client just wanted to check for the existence of the file, do not proceed in loading it.
+
+      if (Flags & LDF_CHECK_EXISTS) {
+         acFree(file);
+         FreeResource(path);
+         return ERR_Search;
+      }
 
       LONG pathlen = StrLength(path) + 1;
 
       // An additional byte is allocated below so that a null terminator can be attached to the end of the buffer
       // (assists with text file processing).
 
+      CacheFile *cache;
       if (!AllocMemory(sizeof(CacheFile) + pathlen + file_size + 1, MEM_NO_CLEAR|MEM_UNTRACKED, (APTR *)&cache, NULL)) {
          ClearMemory(cache, sizeof(CacheFile));
          cache->Path = (STRING)(cache + 1);
-         if (file_size) {
-            cache->Data = cache->Path + pathlen;
-            ((STRING)cache->Data)[file_size] = 0; // Null terminator is added to help with text file processing
-         }
+         cache->Data = cache->Path + pathlen;
+         ((STRING)cache->Data)[file_size] = 0; // Null terminator is added to help with text file processing
          cache->Locks     = 1;
          cache->Size      = file_size;
          cache->TimeStamp = timestamp;
@@ -1174,33 +1156,32 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
          CopyMemory(path, cache->Path, pathlen);
          FreeResource(path);
 
-         if (!file_size) error = ERR_Okay;
-         else {
+         if (file_size) {
             LONG result;
-            if ((!acRead(file, cache->Data, file_size, &result)) AND (file_size IS result)) {
-               if (VarSet(glCache, cache->Path, &cache, sizeof(APTR))) {
-                  *Cache = cache;
-                  acFree(file);
-
-                  FUNCTION call;
-                  SET_FUNCTION_STDC(call, (APTR)&check_cache);
-                  if (!glCacheTimer) {
-                     parasol::SwitchContext context(CurrentTask());
-                     SubscribeTimer(60, &call, &glCacheTimer);
-                  }
-
-                  return ERR_Okay;
-               }
-               else error = PostError(ERR_Failed);
-            }
-            else error = ERR_Read;
+            error = acRead(file, cache->Data, file_size, &result);
+            if ((!error) and (file_size != result)) error = ERR_Read;
          }
+
+         if (!error) {
+            glCache[index] = cache;
+            *Cache = cache;
+            acFree(file);
+
+            if (!glCacheTimer) {
+               parasol::SwitchContext context(CurrentTask());
+               auto call = make_function_stdc(check_cache);
+               SubscribeTimer(60, &call, &glCacheTimer);
+            }
+
+            return ERR_Okay;
+         }
+
+         FreeResource(cache);
       }
       else error = ERR_AllocMemory;
    }
    else error = ERR_CreateObject;
 
-   if (cache) FreeResource(cache);
    if (file) acFree(file);
    FreeResource(path);
    return error;
@@ -1237,10 +1218,10 @@ ERROR CreateFolder(CSTRING Path, LONG Permissions)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Path) OR (!*Path)) return log.warning(ERR_NullArgs);
+   if ((!Path) or (!*Path)) return log.warning(ERR_NullArgs);
 
    if (glDefaultPermissions) Permissions = glDefaultPermissions;
-   else if ((!Permissions) OR (Permissions & PERMIT_INHERIT)) {
+   else if ((!Permissions) or (Permissions & PERMIT_INHERIT)) {
       Permissions |= get_parent_permissions(Path, NULL, NULL);
       if (!Permissions) Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_EXEC|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_GROUP_EXEC; // If no permissions are set, give current user full access
    }
@@ -1310,7 +1291,7 @@ ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Source) OR (!Dest)) return ERR_NullArgs;
+   if ((!Source) or (!Dest)) return ERR_NullArgs;
 
    log.branch("%s to %s", Source, Dest);
    return fs_copy(Source, Dest, Callback, TRUE);
@@ -1349,8 +1330,10 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 {
    parasol::Log log(__FUNCTION__);
 
+   log.traceBranch("Path: %s, Buffer Size: %d", Path, BufferSize);
+
 #if defined(__unix__) || defined(_WIN32)
-   if ((!Path) OR (BufferSize <= 0) OR (!Buffer)) return ERR_Args;
+   if ((!Path) or (BufferSize <= 0) or (!Buffer)) return ERR_Args;
 
    BYTE approx;
    if (*Path IS '~') {
@@ -1400,7 +1383,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
          if (!acRead(file, Buffer, BufferSize, BytesRead)) error = ERR_Okay;
          else error = ERR_Read;
 
-         acFree(&file->Head);
+         acFree(file);
       }
       else error = ERR_File;
 
@@ -1426,7 +1409,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
       LONG result;
       if (!acRead(file, Buffer, BufferSize, &result)) {
          if (BytesRead) *BytesRead = result;
-         acFree(&file->Head);
+         acFree(file);
          return ERR_Okay;
       }
       else {
@@ -1474,8 +1457,8 @@ ERROR test_path(STRING Path, LONG Flags)
    for (j=0; Path[j]; j++) if (Path[j] IS '/') Path[j] = '\\';
 #endif
 
-   for (len=0; Path[len]; len++);
-   if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) {
+   len = StrLength(Path);
+   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) {
       // This code handles testing for folder locations
 
       #ifdef __unix__
@@ -1556,7 +1539,7 @@ ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Perm
    OBJECTPTR file;
    ERROR error;
 
-   log.branch("Object: %d, Dest: %s", Object->UniqueID, Path);
+   log.branch("Object: %d, Dest: %s", Object->UID, Path);
 
    if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
          FID_Path|TSTR,         Path,
@@ -1564,12 +1547,12 @@ ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Perm
          FID_Permissions|TLONG, Permissions,
          TAGEND))) {
 
-      error = acSaveImage(Object, file->UniqueID, ClassID);
+      error = acSaveImage(Object, file->UID, ClassID);
 
       acFree(file);
       return error;
    }
-   else return log.warning(ERH_Function, ERR_CreateFile);
+   else return log.warning(ERR_CreateFile);
 }
 
 /*****************************************************************************
@@ -1599,9 +1582,9 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Object) OR (!Path)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Path)) return log.warning(ERR_NullArgs);
 
-   log.branch("#%d to %s", Object->UniqueID, Path);
+   log.branch("#%d to %s", Object->UID, Path);
 
    OBJECTPTR file;
    ERROR error;
@@ -1611,7 +1594,7 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
          FID_Permissions|TLONG, Permissions,
          TAGEND))) {
 
-      error = acSaveToObject(Object, file->UniqueID, 0);
+      error = acSaveToObject(Object, file->UID, 0);
 
       acFree(file);
       return error;
@@ -1624,8 +1607,7 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
 -FUNCTION-
 SetDocView: Associates document display templates against certain file paths.
 
-Use SetDocView() to link document templates with file paths.  Document templates are returned as tags when
-~GetFileInfo() is used on paths that match those passed to this function.  Document templates are used by the
+Use SetDocView() to link document templates with file paths.  Document templates are used by the
 FileView feature to switch to document mode whenever a matching location is on display.
 
 -INPUT-
@@ -1648,7 +1630,7 @@ ERROR SetDocView(CSTRING Path, CSTRING Document)
 
    log.trace("Path: %s, Doc: %s", Path, Document);
 
-   if ((!Path) OR (!Path[0])) return log.warning(ERR_NullArgs);
+   if ((!Path) or (!Path[0])) return log.warning(ERR_NullArgs);
 
    // Allocate the array for path storage
 
@@ -1674,7 +1656,7 @@ ERROR SetDocView(CSTRING Path, CSTRING Document)
       FreeResource(glDocView[i].Path);
       glDocView[i].Path = NULL;
       glDocView[i].Doc  = NULL;
-      if ((!Document) OR (!Document[0])) return ERR_Okay;
+      if ((!Document) or (!Document[0])) return ERR_Okay;
    }
    else if (glTotalDocViews IS glMaxDocViews) {
       if (!ReallocMemory(glDocView, sizeof(glDocView[0]) * (glMaxDocViews + MAX_DOCVIEWS), (APTR *)&glDocView, NULL)) {
@@ -1732,7 +1714,7 @@ CSTRING GetDocView(CSTRING Path)
 -FUNCTION-
 UnloadFile: Unloads files from the file cache.
 
-This function unloads cached files from the system by decrementing the cache counters until they reach zero.
+This function unloads cached files that have been previously loaded with the ~LoadFile() function.
 
 -INPUT-
 resource(CacheFile) Cache: A pointer to a CacheFile structure returned from LoadFile().
@@ -1742,21 +1724,17 @@ resource(CacheFile) Cache: A pointer to a CacheFile structure returned from Load
 
 void UnloadFile(CacheFile *Cache)
 {
-   parasol::Log log(__FUNCTION__);
    if (!Cache) return;
 
-   log.function("%.80s", Cache->Path);
+   parasol::Log log(__FUNCTION__);
 
-   Cache->LastUse = PreciseTime();
-   Cache->Locks--;
-   if (Cache->Locks <= 0) {
-#if 0
-      if (max_mem_exceeded) {
-         VarSet(glCache, Cache->Path, NULL, 0);
-         FreeResource(Cache);
-      }
-#endif
-   }
+   log.function("%.80s, Locks: %d", Cache->Path, Cache->Locks);
+
+   const std::lock_guard<std::mutex> lock(glCacheLock);
+
+   if (Cache->Locks > 0) Cache->Locks--;
+
+   // Cache entries are never removed here because this determination is handled by check_cache().
 }
 
 //****************************************************************************
@@ -1779,7 +1757,7 @@ ERROR findfile(STRING Path)
    LONG namelen, len;
    char save;
 
-   if ((!Path) OR (Path[0] IS ':')) return ERR_Args;
+   if ((!Path) or (Path[0] IS ':')) return ERR_Args;
 
    // Return if the file exists at the specified Path and is not a folder
 
@@ -1788,7 +1766,7 @@ ERROR findfile(STRING Path)
    }
 
    for (len=0; Path[len]; len++);
-   while ((len > 0) AND (Path[len-1] != ':') AND (Path[len-1] != '/') AND (Path[len-1] != '\\')) len--;
+   while ((len > 0) and (Path[len-1] != ':') and (Path[len-1] != '/') and (Path[len-1] != '\\')) len--;
    for (namelen=0; Path[len+namelen]; namelen++);
 
    save = Path[len];
@@ -1810,11 +1788,11 @@ ERROR findfile(STRING Path)
       Path[len] = save;
 
       while ((entry = readdir(dir))) {
-         if ((entry->d_name[0] IS '.') AND (entry->d_name[1] IS 0)) continue;
-         if ((entry->d_name[0] IS '.') AND (entry->d_name[1] IS '.') AND (entry->d_name[2] IS 0)) continue;
+         if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
+         if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-         if ((!StrCompare(Path+len, entry->d_name, 0, 0)) AND
-             ((entry->d_name[namelen] IS '.') OR (!entry->d_name[namelen]))) {
+         if ((!StrCompare(Path+len, entry->d_name, 0, 0)) and
+             ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
             StrCopy(entry->d_name, Path+len, COPY_ALL);
 
             // If it turns out that the Path is a folder, ignore it
@@ -1843,14 +1821,12 @@ ERROR findfile(STRING Path)
       Path[len] = save;
 
       if ((bytes = syscall(SYS_getdents, dir, buffer, sizeof(buffer))) > 0) {
-
          for (entry = (struct olddirent *)buffer; (size_t)entry < (size_t)(buffer + bytes); entry = (struct olddirent *)(((BYTE *)entry) + entry->d_reclen)) {
+            if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
+            if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-            if ((entry->d_name[0] IS '.') AND (entry->d_name[1] IS 0)) continue;
-            if ((entry->d_name[0] IS '.') AND (entry->d_name[1] IS '.') AND (entry->d_name[2] IS 0)) continue;
-
-            if ((!StrCompare(Path+len, entry->d_name, 0, NULL)) AND
-                ((entry->d_name[namelen] IS '.') OR (!entry->d_name[namelen]))) {
+            if ((!StrCompare(Path+len, entry->d_name, 0, NULL)) and
+                ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
                StrCopy(entry->d_name, Path+len, COPY_ALL);
 
                // If it turns out that the Path is a folder, ignore it
@@ -1879,7 +1855,7 @@ ERROR findfile(STRING Path)
 
 ERROR findfile(STRING Path)
 {
-   if ((!Path) OR (Path[0] IS ':')) return ERR_Args;
+   if ((!Path) or (Path[0] IS ':')) return ERR_Args;
 
    // Find a file with the standard Path
 
@@ -1899,10 +1875,8 @@ ERROR findfile(STRING Path)
    char buffer[130];
    APTR handle = NULL;
    if ((handle = winFindFile(Path, &handle, buffer))) {
-      while ((len > 0) AND (Path[len-1] != ':') AND (Path[len-1] != '/') AND (Path[len-1] != '\\')) len--;
-      LONG i;
-      for (i=0; buffer[i]; i++) Path[len+i] = buffer[i];
-      Path[len+i] = 0;
+      while ((len > 0) and (Path[len-1] != ':') and (Path[len-1] != '/') and (Path[len-1] != '\\')) len--;
+      StrCopy(buffer, Path+len, COPY_ALL);
       winFindClose(handle);
       return ERR_Okay;
    }
@@ -1987,7 +1961,7 @@ ERROR check_paths(CSTRING Path, LONG Permissions)
       CopyMemory(Path, path, i);
 
       while (i > 0) {
-         if ((path[i-1] IS ':') OR (path[i-1] IS '/') OR (path[i-1] IS '\\')) {
+         if ((path[i-1] IS ':') or (path[i-1] IS '/') or (path[i-1] IS '\\')) {
             path[i] = 0;
             return CreateFolder(path, Permissions);
          }
@@ -2021,7 +1995,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    BYTE srcdir;
    ERROR error;
 
-   if ((!Source) OR (!Source[0]) OR (!Dest) OR (!Dest[0])) return log.warning(ERR_NullArgs);
+   if ((!Source) or (!Source[0]) or (!Dest) or (!Dest[0])) return log.warning(ERR_NullArgs);
 
    log.traceBranch("\"%s\" to \"%s\"", Source, Dest);
 
@@ -2046,17 +2020,17 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    // Check if the source is a folder
 
    for (srclen=0; src[srclen]; srclen++);
-   if ((src[srclen-1] IS '/') OR (src[srclen-1] IS '\\')) srcdir = TRUE;
+   if ((src[srclen-1] IS '/') or (src[srclen-1] IS '\\')) srcdir = TRUE;
    else srcdir = FALSE;
 
    // If the destination is a folder, we need to copy the name of the source to create the new file or dir.
 
-   if ((dest[destlen-1] IS '/') OR (dest[destlen-1] IS '\\') OR (dest[destlen-1] IS ':')) {
+   if ((dest[destlen-1] IS '/') or (dest[destlen-1] IS '\\') or (dest[destlen-1] IS ':')) {
       len = srclen;
-      if ((src[len-1] IS '/') OR (src[len-1] IS '\\') OR (src[len-1] IS ':')) len--;
-      while ((len > 0) AND (src[len-1] != '/') AND (src[len-1] != '\\') AND (src[len-1] != ':')) len--;
+      if ((src[len-1] IS '/') or (src[len-1] IS '\\') or (src[len-1] IS ':')) len--;
+      while ((len > 0) and (src[len-1] != '/') and (src[len-1] != '\\') and (src[len-1] != ':')) len--;
 
-      while (((size_t)destlen < sizeof(dest)-1) AND (src[len]) AND (src[len] != '/') AND (src[len] != '\\')) dest[destlen++] = src[len++];
+      while (((size_t)destlen < sizeof(dest)-1) and (src[len]) and (src[len] != '/') and (src[len] != '\\')) dest[destlen++] = src[len++];
       dest[destlen] = 0;
    }
 
@@ -2081,7 +2055,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    feedback.Path = src;
    feedback.Dest = dest;
 
-   if ((srcvirtual->VirtualID != 0xffffffff) OR (destvirtual->VirtualID != 0xffffffff)) {
+   if ((srcvirtual->VirtualID != 0xffffffff) or (destvirtual->VirtualID != 0xffffffff)) {
       APTR data;
       LONG bufsize, result;
 
@@ -2094,7 +2068,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
             FID_Flags|TLONG, FL_READ,
             TAGEND)) {
 
-         if ((Move) AND (srcvirtual IS destvirtual)) {
+         if ((Move) and (srcvirtual IS destvirtual)) {
             // If the source and destination use the same virtual volume, execute the move method.
 
             error = flMove(srcfile, Dest, NULL);
@@ -2160,7 +2134,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       // Use a reasonably small read buffer so that we can provide continuous feedback
 
-      bufsize = ((Callback) AND (Callback->Type)) ? 65536 : 65536 * 2;
+      bufsize = ((Callback) and (Callback->Type)) ? 65536 : 65536 * 2;
 
       // This routine is designed to handle streams - where either the source is a stream or the destination is a stream.
 
@@ -2221,7 +2195,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
             if (error) break;
 
-            if ((Callback) AND (Callback->Type)) {
+            if ((Callback) and (Callback->Type)) {
                if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
 
                result = CALL_FEEDBACK(Callback, &feedback);
@@ -2237,7 +2211,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       }
       else error = log.warning(ERR_AllocMemory);
 
-      if ((Move) AND (!error)) {
+      if ((Move) and (!error)) {
          flDelete(srcfile, 0);
       }
 
@@ -2254,7 +2228,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
    else result = lstat64(src, &stinfo);
 
-   if ((!result) AND (S_ISLNK(stinfo.st_mode))) {
+   if ((!result) and (S_ISLNK(stinfo.st_mode))) {
       BYTE linkto[512];
 
       if (srcdir) src[srclen-1] = 0;
@@ -2262,7 +2236,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       if ((i = readlink(src, linkto, sizeof(linkto)-1)) != -1) {
          linkto[i] = 0;
 
-         if ((Callback) AND (Callback->Type)) {
+         if ((Callback) and (Callback->Type)) {
             result = CALL_FEEDBACK(Callback, &feedback);
             if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
             else if (result IS FFR_SKIP) { error = ERR_Okay; goto exit; }
@@ -2289,7 +2263,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
         error = ERR_Read;
       }
 
-      if ((Move) AND (!error)) { // Delete the source
+      if ((Move) and (!error)) { // Delete the source
          error = DeleteFile(src, NULL);
       }
 
@@ -2305,7 +2279,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       error = ERR_Okay;
 
-      if ((Callback) AND (Callback->Type)) {
+      if ((Callback) and (Callback->Type)) {
          result = CALL_FEEDBACK(Callback, &feedback);
          if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
          else if (result IS FFR_SKIP) goto exit;
@@ -2336,7 +2310,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          if (glForceGID != -1) gid = glForceGID;
          if (glForceUID != -1) uid = glForceUID;
 
-         if ((uid != -1) OR (gid != -1)) chown(dest, uid, gid);
+         if ((uid != -1) or (gid != -1)) chown(dest, uid, gid);
 
          goto exit; // success
       }
@@ -2405,7 +2379,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
 
    if (!Move) { // (If Move is enabled, we would have already sent feedback during the earlier rename() attempt
-      if ((Callback) AND (Callback->Type)) {
+      if ((Callback) and (Callback->Type)) {
          result = CALL_FEEDBACK(Callback, &feedback);
          if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
          else if (result IS FFR_SKIP) { error = ERR_Okay; goto exit; }
@@ -2465,11 +2439,11 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
                close(handle);
                log.warning("Not enough space on device (" PF64() "/" PF64() " < " PF64() ")", device->BytesFree, device->DeviceSize, (LARGE)feedback.Size);
                error = ERR_OutOfSpace;
-               acFree(&device->Head);
+               acFree(device);
                goto exit;
             }
          }
-         acFree(&device->Head);
+         acFree(device);
       }
 
       if ((dhandle = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE|WIN32OPEN, permissions)) IS -1) {
@@ -2493,7 +2467,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       if (parentpermissions & PERMIT_GROUPID) gid = -1;
       if (parentpermissions & PERMIT_USERID) uid = -1;
 
-      if ((uid != -1) OR (gid != -1)) fchown(dhandle, uid, gid);
+      if ((uid != -1) or (gid != -1)) fchown(dhandle, uid, gid);
 
 #endif
 
@@ -2504,7 +2478,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
          // Use a reasonably small read buffer so that we can provide continuous feedback
 
-         LONG bufsize = ((Callback) AND (Callback->Type)) ? 65536 : 524288;
+         LONG bufsize = ((Callback) and (Callback->Type)) ? 65536 : 524288;
          error = ERR_Okay;
          if (!AllocMemory(bufsize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL)) {
             while ((len = read(handle, data, bufsize)) > 0) {
@@ -2521,7 +2495,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
                }
 
 
-               if ((Callback) AND (Callback->Type)) {
+               if ((Callback) and (Callback->Type)) {
                   feedback.Position += len;
                   if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
                   result = CALL_FEEDBACK(Callback, &feedback);
@@ -2543,7 +2517,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          // If the sticky bits were set, we need to set them again because Linux sneakily turns off those bits when a
          // file is written (for security reasons).
 
-         if ((!error) AND (permissions & (S_ISUID|S_ISGID))) {
+         if ((!error) and (permissions & (S_ISUID|S_ISGID))) {
             fchmod(dhandle, permissions);
          }
 #endif
@@ -2556,13 +2530,13 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
    else error = log.warning(ERR_FileNotFound);
 
-   if ((Move) AND (!error)) { // Delete the source
+   if ((Move) and (!error)) { // Delete the source
       error = DeleteFile(src, NULL);
    }
 
 exit:
-   if (srcfile) acFree(&srcfile->Head);
-   if (destfile) acFree(&destfile->Head);
+   if (srcfile) acFree(srcfile);
+   if (destfile) acFree(destfile);
    FreeResource(src);
    return error;
 }
@@ -2583,12 +2557,12 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
    for (srclen=0; Source[srclen]; srclen++);
    for (destlen=0; Dest[destlen]; destlen++);
 
-   if ((Source[srclen-1] != '/') AND (Source[srclen-1] != '\\') AND (Source[srclen-1] != ':')) {
+   if ((Source[srclen-1] != '/') and (Source[srclen-1] != '\\') and (Source[srclen-1] != ':')) {
       Source[srclen++] = '/';
       Source[srclen] = 0;
    }
 
-   if ((Dest[destlen-1] != '/') AND (Dest[destlen-1] != '\\') AND (Dest[destlen-1] != ':')) {
+   if ((Dest[destlen-1] != '/') and (Dest[destlen-1] != '\\') and (Dest[destlen-1] != ':')) {
       Dest[destlen++] = '/';
       Dest[destlen] = 0;
    }
@@ -2599,11 +2573,11 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
       while (!(error = ScanDir(dir))) {
          FileInfo *file = dir->Info;
          if (file->Flags & RDF_LINK) {
-            if ((vsrc->ReadLink) AND (vdest->CreateLink)) {
+            if ((vsrc->ReadLink) and (vdest->CreateLink)) {
                StrCopy(file->Name, Source+srclen, COPY_ALL);
                StrCopy(file->Name, Dest+destlen, COPY_ALL);
 
-               if ((Callback) AND (Callback->Type)) {
+               if ((Callback) and (Callback->Type)) {
                   Feedback->Path = Source;
                   Feedback->Dest = Dest;
                   LONG result = CALL_FEEDBACK(Callback, Feedback);
@@ -2633,7 +2607,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
          else if (file->Flags & RDF_FOLDER) {
             StrCopy(file->Name, Dest+destlen, COPY_ALL);
 
-            if ((Callback) AND (Callback->Type)) {
+            if ((Callback) and (Callback->Type)) {
                Feedback->Path = Source;
                Feedback->Dest = Dest;
                LONG result = CALL_FEEDBACK(Callback, Feedback);
@@ -2686,19 +2660,18 @@ LONG get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
    // Make a copy of the location
 
    folder[0] = 0;
-   for (i=0; (Path[i]) AND ((size_t)i < sizeof(folder)); i++) folder[i] = Path[i];
+   for (i=0; (Path[i]) and ((size_t)i < sizeof(folder)); i++) folder[i] = Path[i];
    if (i > 0) {
       i--;
-      if ((folder[i] IS '/') OR (folder[i] IS '\\') OR (folder[i] IS ':')) i--;
+      if ((folder[i] IS '/') or (folder[i] IS '\\') or (folder[i] IS ':')) i--;
    }
 
    while (i > 0) {
-      while ((i > 0) AND (folder[i] != '/') AND (folder[i] != '\\') AND (folder[i] != ':')) i--;
+      while ((i > 0) and (folder[i] != '/') and (folder[i] != '\\') and (folder[i] != ':')) i--;
       folder[i+1] = 0;
 
       FileInfo info;
-      char filename[MAX_FILENAME];
-      if ((i > 0) AND (!get_file_info(folder, &info, sizeof(info), filename, sizeof(filename)))) {
+      if ((i > 0) and (!get_file_info(folder, &info, sizeof(info)))) {
          //log.msg("%s [$%.8x]", Path, info.Permissions);
          if (UserID) *UserID = info.UserID;
          if (GroupID) *GroupID = info.GroupID;
@@ -2719,7 +2692,7 @@ BYTE strip_folder(STRING Path)
    LONG i;
    for (i=0; Path[i]; i++);
    if (i > 1) {
-      if ((Path[i-1] IS '/') OR (Path[i-1] IS '\\')) {
+      if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) {
          Path[i-1] = 0;
          return TRUE;
       }
@@ -2769,7 +2742,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
    LONG len;
 
    for (len=0; Path[len]; len++);
-   if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) Path[len-1] = 0;
+   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Path[len-1] = 0;
 
    #ifdef _WIN32
       FileFeedback feedback;
@@ -2777,7 +2750,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
 
       StrCopy(Path, buffer, sizeof(buffer));
 
-      if ((Callback) AND (Callback->Type)) {
+      if ((Callback) and (Callback->Type)) {
          ClearMemory(&feedback, sizeof(feedback));
          feedback.FeedbackID = FBK_DELETE_FILE;
          feedback.Path = buffer;
@@ -2794,7 +2767,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
 
          StrCopy(Path, buffer, sizeof(buffer));
 
-         if ((Callback) AND (Callback->Type)) {
+         if ((Callback) and (Callback->Type)) {
             ClearMemory(&feedback, sizeof(feedback));
             feedback.FeedbackID = FBK_DELETE_FILE;
             feedback.Path = buffer;
@@ -2824,8 +2797,8 @@ ERROR fs_scandir(DirInfo *Dir)
    if (pathbuf[path_end-1] != '/') pathbuf[path_end++] = '/';
 
    while ((de = readdir((DIR *)Dir->prvHandle))) {
-      if ((de->d_name[0] IS '.') AND (de->d_name[1] IS 0)) continue;
-      if ((de->d_name[0] IS '.') AND (de->d_name[1] IS '.') AND (de->d_name[2] IS 0)) continue;
+      if ((de->d_name[0] IS '.') and (de->d_name[1] IS 0)) continue;
+      if ((de->d_name[0] IS '.') and (de->d_name[1] IS '.') and (de->d_name[2] IS 0)) continue;
 
       StrCopy(de->d_name, pathbuf + path_end, sizeof(pathbuf) - path_end);
 
@@ -2852,7 +2825,7 @@ ERROR fs_scandir(DirInfo *Dir)
 
       j = StrCopy(de->d_name, file->Name, MAX_FILENAME);
 
-      if ((file->Flags & RDF_FOLDER) AND (Dir->prvFlags & RDF_QUALIFY)) {
+      if ((file->Flags & RDF_FOLDER) and (Dir->prvFlags & RDF_QUALIFY)) {
          file->Name[j++] = '/';
          file->Name[j] = 0;
       }
@@ -2972,11 +2945,11 @@ ERROR fs_closedir(DirInfo *Dir)
 
    log.trace("Dir: %p, VirtualID: %d", Dir, Dir->prvVirtualID);
 
-   if ((!Dir->prvVirtualID) OR (Dir->prvVirtualID IS DEFAULT_VIRTUALID)) {
+   if ((!Dir->prvVirtualID) or (Dir->prvVirtualID IS DEFAULT_VIRTUALID)) {
       #ifdef __unix__
          if (Dir->prvHandle) closedir((DIR *)Dir->prvHandle);
       #elif _WIN32
-         if ((Dir->prvHandle != (WINHANDLE)-1) AND (Dir->prvHandle)) {
+         if ((Dir->prvHandle != (WINHANDLE)-1) and (Dir->prvHandle)) {
             winFindClose(Dir->prvHandle);
          }
       #else
@@ -3057,7 +3030,7 @@ ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
 
 ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 {
-   parasol::Log log("GetFileInfo");
+   parasol::Log log(__FUNCTION__);
 
 #ifdef __unix__
    // In order to tell if a folder is a symbolic link or not, we have to remove any trailing slash...
@@ -3065,7 +3038,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
    char path_ref[256];
    LONG len = StrCopy(Path, path_ref, sizeof(path_ref));
    if ((size_t)len >= sizeof(path_ref)-1) return ERR_BufferOverflow;
-   if ((path_ref[len-1] IS '/') OR (path_ref[len-1] IS '\\')) path_ref[len-1] = 0;
+   if ((path_ref[len-1] IS '/') or (path_ref[len-1] IS '\\')) path_ref[len-1] = 0;
 
    // Get the file info.  Use lstat64() and if it turns out that the file is a symbolic link, set the RDF_LINK flag
    // and then switch to stat64().
@@ -3089,7 +3062,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
    // Extract file/folder name
 
    LONG i = len;
-   while ((i > 0) AND (path_ref[i-1] != '/') AND (path_ref[i-1] != '\\') AND (path_ref[i-1] != ':')) i--;
+   while ((i > 0) and (path_ref[i-1] != '/') and (path_ref[i-1] != '\\') and (path_ref[i-1] != ':')) i--;
    i = StrCopy(path_ref + i, Info->Name, MAX_FILENAME-2);
 
    if (Info->Flags & RDF_FOLDER) {
@@ -3156,16 +3129,16 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 
    for (len=0; Path[len]; len++);
 
-   if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) Info->Flags |= RDF_FOLDER|RDF_TIME;
+   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Info->Flags |= RDF_FOLDER|RDF_TIME;
    else if (dir) Info->Flags |= RDF_FOLDER|RDF_TIME;
    else Info->Flags |= RDF_FILE|RDF_SIZE|RDF_TIME;
 
    // Extract the file name
 
    i = len;
-   if ((Path[i-1] IS '/') OR (Path[i-1] IS '\\')) i--;
+   if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) i--;
 
-   while ((i > 0) AND (Path[i-1] != '/') AND (Path[i-1] != '\\') AND (Path[i-1] != ':')) i--;
+   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
 
    i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
 
@@ -3195,93 +3168,78 @@ ERROR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
 
    STRING location;
    ERROR error;
-   LONG j, pathend;
-   BYTE match;
 
    // Device information is stored in the SystemVolumes object
 
-   if (!AccessPrivateObject((OBJECTPTR)glVolumes, 8000)) {
-      STRING resolve = NULL;
-      location = NULL;
+   {
+      parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 8000);
+      if (volumes.granted()) {
+         ULONG pathend;
+         STRING resolve = NULL;
+         location = NULL;
 
 restart:
-      for (pathend=0; (Path[pathend]) AND (Path[pathend] != ':'); pathend++);
+         for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
 
-      ConfigEntry *entries = glVolumes->Entries;
-      for (LONG i=0; i < glVolumes->AmtEntries; i++) {
-         if (StrMatch("Name", entries[i].Key) != ERR_Okay) continue;
+         ConfigGroups *groups;
+         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+            for (auto& [group, keys] : groups[0]) {
+               if (not keys.contains("Name")) continue;
+               auto& name = keys["Name"];
 
-         match = FALSE;
-         for (j=0; (entries[i].Data[j]) AND (j < pathend); j++) {
-            if (LCASE(Path[j]) != LCASE(entries[i].Data[j])) break;
-         }
-         if ((j IS pathend) AND ((!entries[i].Data[j]) OR (entries[i].Data[j] IS ':'))) match = TRUE;
-
-         if (match) {
-            // We've got the volume, now look for a device entry to tell us what device this is.
-
-            while ((i > 0) AND (!StrMatch(entries[i].Section, entries[i-1].Section))) i--;
-
-            STRING section = entries[i].Section;
-            while ((i < glVolumes->AmtEntries) AND (!StrMatch(section, entries[i].Section))) {
-               if (!StrMatch("Path", entries[i].Key)) {
-                  if (!StrCompare("CLASS:", entries[i].Data, 6, 0)) {
-                     // Device is a virtual volume
-                     Info->DeviceFlags |= DEVICE_SOFTWARE;
-                  }
+               bool match = false;
+               ULONG j;
+               for (j=0; (j < (ULONG)name.size()) and (j < pathend); j++) {
+                  if (LCASE(Path[j]) != LCASE(name[j])) break;
                }
-               else if (!StrMatch("Device", entries[i].Key)) {
-                  if (!StrMatch("disk", entries[i].Data)) {
-                     Info->DeviceFlags |= DEVICE_FLOPPY_DISK|DEVICE_REMOVABLE|DEVICE_READ|DEVICE_WRITE;
-                  }
-                  else if (!StrMatch("hd", entries[i].Data)) {
-                     Info->DeviceFlags |= DEVICE_HARD_DISK|DEVICE_READ|DEVICE_WRITE;
-                  }
-                  else if (!StrMatch("cd", entries[i].Data)) {
-                     Info->DeviceFlags |= DEVICE_COMPACT_DISC|DEVICE_REMOVABLE|DEVICE_READ;
-                  }
-                  else if (!StrMatch("usb", entries[i].Data)) {
-                     Info->DeviceFlags |= DEVICE_USB|DEVICE_REMOVABLE;
-                  }
-                  else log.msg("Device '%s' unknown.", entries[i].Data);
+               if ((j IS pathend) and ((j IS (ULONG)name.size()) or (name[j] IS ':'))) match = true;
+
+               if (!match) continue;
+
+               if (keys.contains("Path")) {
+                  if (!keys["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
                }
-               i++;
+
+               if (keys.contains("Device")) {
+                  auto& device = keys["Device"];
+                  if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE_FLOPPY_DISK|DEVICE_REMOVABLE|DEVICE_READ|DEVICE_WRITE;
+                  else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE_HARD_DISK|DEVICE_READ|DEVICE_WRITE;
+                  else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE_COMPACT_DISC|DEVICE_REMOVABLE|DEVICE_READ;
+                  else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE_USB|DEVICE_REMOVABLE;
+                  else log.warning("Device '%s' unrecognised.", device.c_str());
+               }
             }
-            break;
          }
-      }
 
-      if (!Info->DeviceFlags) {
-         // Unable to find a device reference for the volume, so try to resolve the path and try again.
+         if (!Info->DeviceFlags) {
+            // Unable to find a device reference for the volume, so try to resolve the path and try again.
 
-         if (resolve) {
-            // We've done what we can - drop through
+            if (resolve) {
+               // We've done what we can - drop through
 
-            #ifdef _WIN32
-             // On win32 we can get the drive information from the drive letter
-             #warning TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
-            #endif
+               #ifdef _WIN32
+                // On win32 we can get the drive information from the drive letter
+                #warning TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
+               #endif
 
-            location = resolve;
-            resolve = NULL;
-         }
-         else {
-            if (ResolvePath(Path, RSF_NO_FILE_CHECK, &resolve) != ERR_Okay) {
-               if (resolve) FreeResource(resolve);
-               ReleasePrivateObject((OBJECTPTR)glVolumes);
-               return ERR_ResolvePath;
+               location = resolve;
+               resolve = NULL;
             }
+            else {
+               if (ResolvePath(Path, RSF_NO_FILE_CHECK, &resolve) != ERR_Okay) {
+                  if (resolve) FreeResource(resolve);
+                  return ERR_ResolvePath;
+               }
 
-            Path = resolve;
-            goto restart;
+               Path = resolve;
+               goto restart;
+            }
          }
+
+         if (resolve) FreeResource(resolve);
       }
-
-      if (resolve) FreeResource(resolve);
-
-      ReleasePrivateObject((OBJECTPTR)glVolumes);
+      else return log.warning(ERR_AccessObject);
    }
-   else return log.warning(ERR_AccessObject);
 
    // Assume that the device is read/write if the device type cannot be assessed
 
@@ -3299,16 +3257,16 @@ restart:
    if (!error) {
       if (!(winGetFreeDiskSpace(location[0], &bytes_avail, &total_size))) {
          log.msg("Failed to read location \"%s\" (from \"%s\")", location, Path);
-         Info->BytesFree = -1;
-         Info->BytesUsed      = 0;
-         Info->DeviceSize     = -1;
+         Info->BytesFree  = -1;
+         Info->BytesUsed  = 0;
+         Info->DeviceSize = -1;
          FreeResource(location);
          return ERR_Okay; // Even though the disk space calculation failed, we succeeded on resolving other device information
       }
       else {
-         Info->BytesFree = bytes_avail;
-         Info->BytesUsed      = total_size - bytes_avail;
-         Info->DeviceSize     = total_size;
+         Info->BytesFree  = bytes_avail;
+         Info->BytesUsed  = total_size - bytes_avail;
+         Info->DeviceSize = total_size;
          FreeResource(location);
          return ERR_Okay;
       }
@@ -3399,15 +3357,15 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
 
       for (i=0; Path[i]; i++) {
          buffer[i] = Path[i];
-         if ((i > 0) AND (buffer[i] IS '/')) {
+         if ((i > 0) and (buffer[i] IS '/')) {
             buffer[i+1] = 0;
 
             log.msg("%s", buffer);
 
-            if (((err = mkdir(buffer, secureflags)) IS -1) AND (errno != EEXIST)) break;
+            if (((err = mkdir(buffer, secureflags)) IS -1) and (errno != EEXIST)) break;
 
             if (!err) {
-               if ((glForceUID != -1) OR (glForceGID != -1)) chown(buffer, glForceUID, glForceGID);
+               if ((glForceUID != -1) or (glForceGID != -1)) chown(buffer, glForceUID, glForceGID);
                if (secureflags & (S_ISUID|S_ISGID)) chmod(buffer, secureflags);
             }
          }
@@ -3421,18 +3379,18 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
          // If the path did not end with a slash, there is still one last folder to create
          buffer[i] = 0;
          log.msg("%s", buffer);
-         if (((err = mkdir(buffer, secureflags)) IS -1) AND (errno != EEXIST)) {
+         if (((err = mkdir(buffer, secureflags)) IS -1) and (errno != EEXIST)) {
             log.warning("Failed to create folder \"%s\".", Path);
             return convert_errno(errno, ERR_SystemCall);
          }
          if (!err) {
-            if ((glForceUID != -1) OR (glForceGID != -1)) chown(buffer, glForceUID, glForceGID);
+            if ((glForceUID != -1) or (glForceGID != -1)) chown(buffer, glForceUID, glForceGID);
             if (secureflags & (S_ISUID|S_ISGID)) chmod(buffer, secureflags);
          }
       }
    }
    else {
-      if ((glForceUID != -1) OR (glForceGID != -1)) chown(Path, glForceUID, glForceGID);
+      if ((glForceUID != -1) or (glForceGID != -1)) chown(Path, glForceUID, glForceGID);
       if (secureflags & (S_ISUID|S_ISGID)) chmod(Path, secureflags);
    }
 
@@ -3454,7 +3412,7 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
 
       for (i=0; Path[i]; i++) {
          buffer[i] = Path[i];
-         if ((i >= 3) AND (buffer[i] IS '\\')) {
+         if ((i >= 3) and (buffer[i] IS '\\')) {
             buffer[i+1] = 0;
             log.trace("%s", buffer);
             winCreateDir(buffer);
@@ -3479,8 +3437,7 @@ ERROR load_datatypes(void)
 {
    parasol::Log log(__FUNCTION__);
    if (!glDatatypes) {
-      if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&glDatatypes,
-            TAGEND) != ERR_Okay) {
+      if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&glDatatypes, TAGEND) != ERR_Okay) {
          return log.warning(ERR_CreateObject);
       }
    }
@@ -3492,36 +3449,27 @@ ERROR load_datatypes(void)
 {
    parasol::Log log(__FUNCTION__);
    FileInfo info;
-   static LARGE user_ts = 0, system_ts = 0;
-   UBYTE reload;
-   char filename[MAX_FILENAME];
+   static LARGE user_ts = 0;
+   bool reload;
 
    log.traceBranch("");
 
    if (!glDatatypes) {
-      reload = TRUE;
+      reload = true;
 
-      if (!get_file_info("user:config/associations.cfg", &info, sizeof(info), filename, sizeof(filename))) {
+      if (!get_file_info("config:users/associations.cfg", &info, sizeof(info))) {
          user_ts = info.TimeStamp;
       }
-
-      if (!get_file_info("config:software/associations.cfg", &info, sizeof(info), filename, sizeof(filename))) {
-         system_ts = info.TimeStamp;
+      else {
+         return log.warning(ERR_FileDoesNotExist);
       }
    }
    else {
-      reload = FALSE;
-      if (!get_file_info("user:config/associations.cfg", &info, sizeof(info), filename, sizeof(filename))) {
+      reload = false;
+      if (!get_file_info("config:users/associations.cfg", &info, sizeof(info))) {
          if (user_ts != info.TimeStamp) {
             user_ts = info.TimeStamp;
-            reload = TRUE;
-         }
-      }
-
-      if (!get_file_info("config:software/associations.cfg", &info, sizeof(info), filename, sizeof(filename))) {
-         if (system_ts != info.TimeStamp) {
-            system_ts = info.TimeStamp;
-            reload = TRUE;
+            reload = true;
          }
       }
    }
@@ -3530,12 +3478,13 @@ ERROR load_datatypes(void)
       objConfig *datatypes;
 
       if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&datatypes,
-            FID_Path|TSTR, "config:software/associations.cfg|user:config/associations.cfg",
+            FID_Path|TSTR, "config:users/associations.cfg",
+            FID_Flags|TLONG, CNF_OPTIONAL_FILES,
             TAGEND) != ERR_Okay) {
          return log.warning(ERR_CreateObject);
       }
 
-      if (glDatatypes) acFree(&glDatatypes->Head);
+      if (glDatatypes) acFree(glDatatypes);
       glDatatypes = datatypes;
    }
 
@@ -3560,7 +3509,7 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feed
 
    log.trace("Path: %s", Path);
 
-   if (Callback->Type) {
+   if ((Callback) and (Callback->Type)) {
       Feedback->Path = Path;
       result = CALL_FEEDBACK(Callback, Feedback);
       if (result IS FFR_ABORT) {
@@ -3592,8 +3541,8 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feed
       error = ERR_Okay;
       rewinddir(stream);
       while ((direntry = readdir(stream))) {
-         if ((direntry->d_name[0] IS '.') AND (direntry->d_name[1] IS 0));
-         else if ((direntry->d_name[0] IS '.') AND (direntry->d_name[1] IS '.') AND (direntry->d_name[2] IS 0));
+         if ((direntry->d_name[0] IS '.') and (direntry->d_name[1] IS 0));
+         else if ((direntry->d_name[0] IS '.') and (direntry->d_name[1] IS '.') and (direntry->d_name[2] IS 0));
          else {
             StrCopy(direntry->d_name, Path+len+1, Size-len-1);
             if ((dummydir = opendir(Path))) {
@@ -3617,7 +3566,7 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feed
 
       Path[len] = 0;
 
-      if ((!error) AND (rmdir(Path))) {
+      if ((!error) and (rmdir(Path))) {
          log.error("rmdir(%s) error: %s", Path, strerror(errno));
          return convert_errno(errno, ERR_SystemCall);
       }

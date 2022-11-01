@@ -14,12 +14,12 @@
     <idstring>ID_XML</idstring>
     <category>Data</category>
     <include>modules/xml.h</include>
-    <copyright>Paul Manias © 2001-2020</copyright>
+    <copyright>Paul Manias © 2001-2022</copyright>
     <description>
-<p>The XML class provides the necessary functionality to create and maintain XML data files.  It is capable of interpreting and validating XML files with or without correct structure and can perform various data manipulations while doing so. The XML class is also designed to minimise the amount of resources used in storing XML information and exhibits excellent performance in its processing.</p>
-<p>Data can be loaded into an XML object either by specifying a file <field>Path</field> or by giving it an XML <field>Statement</field>.  If you have multiple XML statements to process, you can reset the Path or Statement fields after initialisation and the XML object will rebuild itself.  This saves you from having to allocate multiple XML objects for batch processing.</p>
-<p>Once an XML object has interpreted a statement, you can read the information by scanning the array stored in the <field>Tags</field> field.  This array contains an XMLTag structure for each tag found in the original XML statement.  For more information on how to scan this information, refer to the <field>Tags</field> field.</p>
-<p>Please note that all tag address pointers that are listed in the <field>Tags</field> field are volatile.  Any write operation to an XML object's tree structure will result in changes to the tag address list.</p></description>
+<p>The XML class provides the necessary functionality to create and maintain XML data files.  It is capable of interpreting and validating XML files with or without correct structure and can perform various data manipulations while doing so.</p>
+<p>Data can be loaded into an XML object either by specifying a file <field>Path</field> or by giving it an XML <field>Statement</field>.  If multiple XML statements need to be processed then reset the Path or Statement field after initialisation and the XML object will rebuild itself.  This saves on allocating multiple XML objects for batch processing.</p>
+<p>Successfully processed data can be read back by scanning the array referenced in the <field>Tags</field> field.  The array contains an XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this information, refer to the <field>Tags</field> field.</p>
+<p>Please note that all tag address pointers that are listed in the <field>Tags</field> field are volatile.  Any write operation to an XML object's tree structure will invalidate the pointers.</p></description>
     <source>
       <file>xml.cpp</file>
     </source>
@@ -35,7 +35,7 @@
       <name>GetVar</name>
       <comment>Retrieves data from an xml object.</comment>
       <description>
-<p>The XML class supports variable fields for the execution of XPath queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate the majority of uses for this query language and a number of special instructions that we support:</p>
+<p>The XML class uses variable fields for the execution of XPath queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate the majority of uses for this query language and a number of special instructions that we support:</p>
 <types type="Path">
 <type name="/menu/submenu">Return the content of the submenu tag whose parent is the first window.</type>
 <type name="xpath:/menu[2]/window">Return the content of the submenu tag whose parent is the 3rd window.</type>
@@ -48,9 +48,9 @@
 <type name="contentexists:/menu">Return '1' if if the immediate child tags of the XPath contain text (white space is ignored).</type>
 <type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</type>
 </types>
-<p>The 'xpath', 'xml' and '/' prefixes are all identical in identifying the start of an xpath.  The 'content' prefix is used to specifically extract the content of the tag that matches the xpath.  Square brackets and round brackets may be used interchangeably for lookups and filtering clauses.</p>
-<p>Direct tag lookups are also supported through variable fields (this is not normally possible using XPath).  You can retrieve an attribute or the content of any tag so long as you know its index number, using this field name format: <code>Tag(Name, Index, Attrib)</code>.</p>
-<p>The Name indicates the name of the tag that you will be matching to.  If omitted, all tags are included in the lookup. The Index is used to match to the nth tag name that you are comparing against if a Name is specified, otherwise the Index is a direct lookup into the <field>Tags</field> array.  If an Attrib name is specified, then the value for that attribute will be returned.  If the Attrib name is omitted, the content of the matching tag will be returned.</p>
+<p>The <code>xpath</code>, <code>xml</code> and <code>/</code> prefixes are all identical in identifying the start of an xpath.  The <code>content</code> prefix is used to specifically extract the content of the tag that matches the xpath.  Square brackets and round brackets may be used interchangeably for lookups and filtering clauses.</p>
+<p>Direct tag lookups are also supported through variable fields (this is not normally possible using XPath).  You can retrieve an attribute or the content of any tag if you know its index number, using this format: <code>Tag(Name, Index, Attrib)</code>.</p>
+<p>The <code>Name</code> indicates the name of the tag that you will be matching to.  If omitted, all tags are included in the lookup. The <code>Index</code> is used to match to the nth tag name that you are comparing against if a Name is specified, otherwise the Index is a direct lookup into the <field>Tags</field> array.  If an <code>Attrib</code> name is specified, then the value for that attribute will be returned.  If the Attrib name is omitted, the content of the matching tag will be returned.</p>
       </description>
     </action>
 
@@ -73,9 +73,9 @@
 <p>Please note that making changes to the XML tree will render all previously obtained tag pointers and indexes invalid.</p>
       </description>
       <result>
-        <error code="ReadOnly">Changes to the XML structure are not permitted.</error>
-        <error code="Search">Failed to find the tag referenced by the XPath.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Search">Failed to find the tag referenced by the XPath.</error>
+        <error code="ReadOnly">Changes to the XML structure are not permitted.</error>
       </result>
     </action>
 
@@ -94,8 +94,8 @@
 <p>This method will count all tags that match a given XPath and return the value in the Result parameter.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -108,12 +108,12 @@
       </input>
       <description>
 <p>The Filter method is used to reduce the amount of data in an XML tree, filtering out all data exclusive to the targeted tag and its children.  This is useful for speeding up XPath queries where interest is limited to only one area of the XML tree, or for reducing the memory footprint of large trees.</p>
-<p>It is not possible to retrieve data once it has been filtered out by this method.</p>
+<p>Data that has been filtered out by this method is permanently removed.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Search">A matching tag could not be found.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Search">A matching tag could not be found.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -127,15 +127,15 @@
         <param type="LONG *" name="Result">The index of the first matching tag is returned in this parameter (not valid if a Callback is defined).</param>
       </input>
       <description>
-<p>This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses wild cards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that  is discovered.  The synopsis for the callback function is <code>ERROR Function(*XML, XMLTag *Tag, STRING Attrib)</code>.</p>
+<p>This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that  is discovered.  The prototype for the callback function is <code>ERROR Function(*XML, XMLTag *Tag, STRING Attrib)</code>.</p>
 <p>The callback routine can terminate the search early by returning ERR_Terminate.  All other error codes are ignored.</p>
 <p>The <field>RootIndex</field> value has no effect on this method.  Use <method>FindTagFromIndex</method> to make restricted searches.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">A matching tag was found.</error>
         <error code="Search">A matching tag could not be found.</error>
         <error code="NoData">No data is available for use.</error>
-        <error code="Okay">A matching tag was found.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -151,13 +151,13 @@
       </input>
       <description>
 <p>This method will return the first tag that matches the search string specified in XPath.  The search begins at the tag indicated by the Start value.  This should be set to zero if searching from the top of the XML tree.</p>
-<p>Optionally, if the XPath uses wild-cards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that is discovered.  The synopsis for the callback function in C is <code>ERROR Function(*XML, XMLTag *Tag, STRING Attrib)</code>.</p>
+<p>Optionally, if the XPath uses wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that is discovered.  The C prototype for the callback function is <code>ERROR Function(*XML, XMLTag *Tag, CSTRING Attrib)</code>.</p>
 <p>For Fluid: <code>function Callback(XML {ID}, TagIndex {Long}, Attrib {String})</code>.</p>
 <p>The callback routine can terminate the search early by returning ERR_Terminate.  All other error codes are ignored.</p>
       </description>
       <result>
-        <error code="OutOfRange">The Index is invalid.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="OutOfRange">The Index is invalid.</error>
       </result>
     </method>
 
@@ -175,8 +175,8 @@
 <p>A faster alternative for C/C++ users is to use the inline function XMLATTRIB(Tag,Attrib), which returns the attribute value or NULL if not found.</p>
       </description>
       <result>
-        <error code="NotFound">The attribute name was not found.</error>
         <error code="Okay">The attribute was found.</error>
+        <error code="NotFound">The attribute name was not found.</error>
         <error code="Args">The required arguments were not specified.</error>
       </result>
     </method>
@@ -201,9 +201,9 @@
 <p>This will produce the result "Hello friend!" and omit everything encapsulated within the bold tag.</p>
       </description>
       <result>
-        <error code="BufferOverflow">The buffer was not large enough to hold the content (the resulting string will be valid but truncated).</error>
         <error code="Okay">The content string was successfully extracted.</error>
         <error code="Args">Invalid arguments passed to function.</error>
+        <error code="BufferOverflow">The buffer was not large enough to hold the content (the resulting string will be valid but truncated).</error>
       </result>
     </method>
 
@@ -221,10 +221,10 @@
 <p>The XML string that is built by this method will be stored in the Result parameter.  The memory block must be freed once the content is no longer required.</p>
       </description>
       <result>
-        <error code="AllocMemory">Failed to allocate an XML string for the result.</error>
         <error code="Okay">The XML string was retrieved.</error>
-        <error code="NoData">No information has been loaded into the XML object.</error>
         <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NoData">No information has been loaded into the XML object.</error>
+        <error code="AllocMemory">Failed to allocate an XML string for the result.</error>
       </result>
     </method>
 
@@ -240,9 +240,9 @@
 <p>This method will return the XMLTag structure for a given tag Index.  The Index is checked to ensure it is valid prior to retrieval, and an ERR_OutOfRange error will be returned if it is invalid.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="OutOfRange">The Index parameter is invalid.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="OutOfRange">The Index parameter is invalid.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -261,9 +261,9 @@
 <p>To modify existing content, the <method>SetAttrib</method> method should be used.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -282,11 +282,11 @@
 <p>The <field>RootIndex</field> value has no effect on this method.</p>
       </description>
       <result>
-        <error code="OutOfRange">A specified number is outside of the valid range.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="ReadOnly">Changes to the XML data are not permitted.</error>
         <error code="Okay">The statement was added successfully.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="OutOfRange">A specified number is outside of the valid range.</error>
+        <error code="ReadOnly">Changes to the XML data are not permitted.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -304,9 +304,9 @@
 <p>The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid XPath location string.  An insertion point relative to the XPath target must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using an Insert value of XMI_CHILD or XMI_CHILD_END.  To insert behind or after the target, use XMI_PREV or XMI_NEXT.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Search">The XPath could not be resolved.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Search">The XPath could not be resolved.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -321,13 +321,13 @@
         <param type="LONG" name="Where" lookup="XMI">Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD for a child insert.</param>
       </input>
       <description>
-<p>This method is used to move XML tags within the XML tree structure.  This routine is designed to support the movement of a single tag, or a group of tags from one index to another using one function call.  You are required to supply the index of the tag that will be moved, and the index of the target tag.  All child tags of the source will be included in the move.</p>
+<p>This method is used to move XML tags within the XML tree structure.  It supports the movement of single and groups of tags from one index to another.  The client must supply the index of the tag that will be moved and the index of the target tag.  All child tags of the source will be included in the move.</p>
 <p>An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be inserted as a child of the destination by using a Where of XMI_CHILD.  To insert behind or after the target, use XMI_PREV or XMI_NEXT.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
         <error code="Okay">Tags were moved successfully.</error>
+        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -345,10 +345,10 @@
 <p>After using this method, you must assume that all tag addresses have been changed due to the rearrangement of the XML structure.  Thus if you have obtained pointers to various parts of the XML structure, they are invalid and must be recalculated.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
-        <error code="OutOfRange">A specified number is outside of the valid range.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="OutOfRange">A specified number is outside of the valid range.</error>
+        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -367,9 +367,9 @@
 <p>After using this method, you must assume that all tag addresses have been changed due to the rearrangement of the XML structure.  Thus if you have obtained pointers to various parts of the XML structure then you should proceed to consider them invalid and re-establish them.</p>
       </description>
       <result>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -394,13 +394,13 @@ tag = XML-&gt;Tags[index]; // Refresh the pointer to tag.
 </pre>
       </description>
       <result>
-        <error code="AllocMemory">A call to AllocMemory() failed.</error>
-        <error code="OutOfRange">The Index or Attrib value is out of range.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="ReadOnly">The XML object is read-only.</error>
-        <error code="Search">The attribute, identified by Name, could not be found.</error>
         <error code="Okay">Operation successful.</error>
+        <error code="Search">The attribute, identified by Name, could not be found.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="OutOfRange">The Index or Attrib value is out of range.</error>
+        <error code="AllocMemory">A call to AllocMemory() failed.</error>
+        <error code="ReadOnly">The XML object is read-only.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -422,8 +422,8 @@ name = xml.get("content:/action/name")
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="OutOfRange">The Index parameter is invalid.</error>
         <error code="Search">Unable to find a tag matching the provided XPath.</error>
+        <error code="OutOfRange">The Index parameter is invalid.</error>
       </result>
     </method>
 
@@ -442,11 +442,11 @@ name = xml.get("content:/action/name")
 <p>The Attrib field defines what attribute contains the sort data in each XML tag.  To sort on content, do not define an Attrib value (use the format <code>Tag:,</code>).</p>
       </description>
       <result>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="NothingDone">The XML array was already sorted to your specifications.   Dependent on XSF_REPORT_SORTING.</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
         <error code="Okay">The XML object was successfully sorted.</error>
+        <error code="NothingDone">The XML array was already sorted to your specifications.   Dependent on XSF_REPORT_SORTING.</error>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -570,43 +570,43 @@ name = xml.get("content:/action/name")
 
   </fields>
   <types>
-    <constants lookup="XSF" comment="Options for the Sort method.">
-      <const name="REPORT_SORTING">If set, ERR_NothingDone will be returned in the event that a rearrangement of the list was not necessary.</const>
-      <const name="DESC">Sort in descending order.</const>
-      <const name="CHECK_SORT">Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the Attrib field.</const>
-    </constants>
-
     <constants lookup="XMF" comment="Standard flags for the XML class.">
-      <const name="LOWER_CASE">Convert all names and attributes into lower-case characters.</const>
-      <const name="PARSE_HTML">Automatically parse HTML escape codes.</const>
-      <const name="INCLUDE_COMMENTS">By default, comments are stripped from all XML input.  This flag ensures that they are retained.</const>
-      <const name="NO_ESCAPE">Turns off escape code conversion.</const>
-      <const name="STRIP_CDATA">Do not echo CDATA sections.  Note that this option is used as a parameter, not an object flag.</const>
-      <const name="READABLE">Indent the output of XML tags to improve readability.</const>
-      <const name="STRIP_CONTENT">Strip all content from incoming XML data.</const>
-      <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (GetXMLString only)</const>
-      <const name="STRIP_HEADERS">XML headers found in the source data will not be included in the parsed results.</const>
-      <const name="DEBUG">Print extra log messages.</const>
-      <const name="WELL_FORMED">By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or a BadData error will be returned during processing.</const>
-      <const name="UPPER_CASE">Convert all names and attributes into upper-case characters.</const>
-      <const name="NEW">Creates an empty XML object on initialisation - if the Path field has been set, the source file will not be loaded.</const>
-      <const name="LOCK_REMOVE">Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.</const>
       <const name="ALL_CONTENT">By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.</const>
+      <const name="DEBUG">Print extra log messages.</const>
+      <const name="INCLUDE_COMMENTS">By default, comments are stripped from all XML input.  This flag ensures that they are retained.</const>
+      <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (GetXMLString only)</const>
       <const name="INDENT">Indent the output of XML tags to improve readability.</const>
+      <const name="LOCK_REMOVE">Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.</const>
+      <const name="LOWER_CASE">Convert all names and attributes into lower-case characters.</const>
+      <const name="NEW">Creates an empty XML object on initialisation - if the Path field has been set, the source file will not be loaded.</const>
+      <const name="NO_ESCAPE">Turns off escape code conversion.</const>
       <const name="PARSE_ENTITY">Entity references in the DTD will be parsed automatically.</const>
+      <const name="PARSE_HTML">Automatically parse HTML escape codes.</const>
+      <const name="READABLE">Indent the output of XML tags to improve readability.</const>
+      <const name="STRIP_CDATA">Do not echo CDATA sections.  Note that this option is used as a parameter, not an object flag.</const>
+      <const name="STRIP_CONTENT">Strip all content from incoming XML data.</const>
+      <const name="STRIP_HEADERS">XML headers found in the source data will not be included in the parsed results.</const>
+      <const name="UPPER_CASE">Convert all names and attributes into upper-case characters.</const>
+      <const name="WELL_FORMED">By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or a BadData error will be returned during processing.</const>
     </constants>
 
     <constants lookup="XMI" comment="Tag insertion options.">
-      <const name="PREV">Insert as the previous tag of the target.</const>
       <const name="CHILD">Insert as the first child of the target.</const>
-      <const name="NEXT">Insert as the next tag of the target.</const>
       <const name="CHILD_END">Insert as the last child of the target.</const>
+      <const name="NEXT">Insert as the next tag of the target.</const>
+      <const name="PREV">Insert as the previous tag of the target.</const>
     </constants>
 
     <constants lookup="XMS" comment="For SetAttrib()">
-      <const name="UPDATE_ONLY">SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  ERR_Search is returned if the attribute cannot be found.</const>
       <const name="NEW">Adds a new attribute.  Note that if the attribute already exists, this will result in at least two attributes of the same name in the tag.  Use XMS_DEFINE if this is undesirable.</const>
       <const name="UPDATE">As for XMS_UPDATE_ONLY, but if the attribute does not exist, it will be created.</const>
+      <const name="UPDATE_ONLY">SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  ERR_Search is returned if the attribute cannot be found.</const>
+    </constants>
+
+    <constants lookup="XSF" comment="Options for the Sort method.">
+      <const name="CHECK_SORT">Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the Attrib field.</const>
+      <const name="DESC">Sort in descending order.</const>
+      <const name="REPORT_SORTING">If set, ERR_NothingDone will be returned in the event that a rearrangement of the list was not necessary.</const>
     </constants>
 
   </types>
@@ -622,11 +622,6 @@ name = xml.get("content:/action/name")
       <field name="TotalAttrib" type="WORD">Total number of listed attributes for this tag</field>
       <field name="Branch" type="UWORD">The branch level for this XML node</field>
       <field name="LineNo" type="LONG">Line number on which this tag was encountered</field>
-    </struct>
-
-    <struct name="XMLAttrib" typeName="XMLATT">
-      <field name="Name" type="STRING">The name of the attribute.</field>
-      <field name="Value" type="STRING">The value assigned to the attribute.</field>
     </struct>
 
   </structs>

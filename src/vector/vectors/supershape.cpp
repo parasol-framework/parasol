@@ -15,11 +15,8 @@ The Superformula is documented in detail at Wikipedia: http://en.wikipedia.org/w
 
 #define DEFAULT_VERTICES (360 * 4)
 
-typedef struct rkVectorShape {
-   OBJECT_HEADER
-   SHAPE_PUBLIC
-   SHAPE_PRIVATE
-
+class objVectorShape : public extVector {
+   public:
    DOUBLE Radius;
    DOUBLE CX, CY;
    DOUBLE M, N1, N2, N3, A, B, Phi;
@@ -29,17 +26,29 @@ typedef struct rkVectorShape {
    LONG Repeat;
    UBYTE Close;
    UBYTE Mod;
-} objVectorShape;
+};
 
 //****************************************************************************
 
 static void generate_supershape(objVectorShape *Vector)
 {
-   DOUBLE scale = Vector->Radius;
-   DOUBLE rescale = 0;
+   DOUBLE cx = Vector->CX, cy = Vector->CY;
 
-   DOUBLE tscale = 1.0;
-   if (Vector->Transform) tscale = Vector->Transform->scale();
+   if (Vector->Dimensions & DMF_RELATIVE_CENTER_X) {
+      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) cx *= Vector->ParentView->vpFixedWidth;
+      else if (Vector->ParentView->vpViewWidth > 0) cx *= Vector->ParentView->vpViewWidth;
+      else cx *= Vector->Scene->PageWidth;
+   }
+
+   if (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) {
+      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) cy *= Vector->ParentView->vpFixedHeight;
+      else if (Vector->ParentView->vpViewHeight > 0) cy *= Vector->ParentView->vpViewHeight;
+      else cy *= Vector->Scene->PageHeight;
+   }
+
+   const DOUBLE scale = Vector->Radius;
+   DOUBLE rescale = 0;
+   DOUBLE tscale = Vector->Transform.scale();
 
    DOUBLE vertices = Vector->Vertices;
    if (vertices IS DEFAULT_VERTICES) {
@@ -93,67 +102,40 @@ static void generate_supershape(objVectorShape *Vector)
       if (x > rescale) rescale = x;
       else if (y > rescale) rescale = y;
 
-      if (i == 0.0) Vector->BasePath->move_to(x, y); // Plot the vertex
-      else Vector->BasePath->line_to(x, y);
+      if (i == 0.0) Vector->BasePath.move_to(x, y); // Plot the vertex
+      else Vector->BasePath.line_to(x, y);
    }
 
    if (Vector->Spiral > 1) {
-      DOUBLE total = Vector->BasePath->total_vertices();
+      DOUBLE total = Vector->BasePath.total_vertices();
       for (DOUBLE i=0; i < total; i++) {
          DOUBLE x, y;
-         Vector->BasePath->vertex(i, &x, &y);
+         Vector->BasePath.vertex(i, &x, &y);
          x = x * (i / total);
          y = y * (i / total);
-         Vector->BasePath->modify_vertex(i, x, y);
+         Vector->BasePath.modify_vertex(i, x, y);
       }
    }
    else if (Vector->Repeat > 1) {
-      Vector->BasePath->close_polygon(); // Repeated paths are always closed.
+      Vector->BasePath.close_polygon(); // Repeated paths are always closed.
 
-      agg::path_storage clone(*Vector->BasePath);
+      agg::path_storage clone(Vector->BasePath);
 
       for (LONG i=0; i < Vector->Repeat-1; i++) {
          agg::trans_affine transform;
          transform.scale(DOUBLE(i+1) / DOUBLE(Vector->Repeat));
          agg::conv_transform<agg::path_storage, agg::trans_affine> scaled_path(clone, transform);
-         Vector->BasePath->concat_path(scaled_path);
+         Vector->BasePath.concat_path(scaled_path);
       }
    }
-   else if (Vector->Close) Vector->BasePath->close_polygon();
+   else if (Vector->Close) Vector->BasePath.close_polygon();
 
    agg::trans_affine transform;
    if (rescale != scale) transform.scale(scale / rescale);
-   transform.translate(Vector->Radius, Vector->Radius);
-   Vector->BasePath->transform(transform);
-}
+   transform.translate(cx, cy);
+   Vector->BasePath.transform(transform);
 
-//****************************************************************************
-
-static void get_super_xy(objVectorShape *Vector)
-{
-   DOUBLE cx = Vector->CX, cy = Vector->CY;
-   DOUBLE radius = Vector->Radius;
-
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_X) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) cx *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) cx *= Vector->ParentView->vpViewWidth;
-      else cx *= Vector->Scene->PageWidth;
-   }
-
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) cy *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) cy *= Vector->ParentView->vpViewHeight;
-      else cy *= Vector->Scene->PageHeight;
-   }
-
-   if (Vector->Dimensions & DMF_RELATIVE_RADIUS) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) radius *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) radius *= Vector->ParentView->vpViewWidth;
-      else radius *= Vector->Scene->PageWidth;
-   }
-
-   Vector->FinalX = cx - radius;
-   Vector->FinalY = cy - radius;
+   bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
 //****************************************************************************
@@ -170,7 +152,7 @@ static ERROR SUPER_NewObject(objVectorShape *Self, APTR Void)
    Self->Phi = 2;
    Self->Vertices = DEFAULT_VERTICES;
    Self->Close = TRUE;
-   Self->GeneratePath = (void (*)(struct rkVector *))&generate_supershape;
+   Self->GeneratePath = (void (*)(extVector *))&generate_supershape;
    return ERR_Okay;
 }
 
@@ -224,7 +206,7 @@ The horizontal center of the shape is defined here as either a fixed or relative
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_CenterX(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_GET_CenterX(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val = Self->CX;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_X)) val = val * 100.0;
@@ -233,12 +215,12 @@ static ERROR SUPER_GET_CenterX(objVectorShape *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_CenterX(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_SET_CenterX(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -248,7 +230,7 @@ static ERROR SUPER_SET_CenterX(objVectorShape *Self, struct Variable *Value)
 
    Self->CX = val;
 
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -260,7 +242,7 @@ The vertical center of the shape is defined here as either a fixed or relative v
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_CenterY(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_GET_CenterY(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val = Self->CY;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_Y)) val = val * 100.0;
@@ -269,12 +251,12 @@ static ERROR SUPER_GET_CenterY(objVectorShape *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_CenterY(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_SET_CenterY(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -283,7 +265,7 @@ static ERROR SUPER_SET_CenterY(objVectorShape *Self, struct Variable *Value)
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
 
    Self->CY = val;
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -493,7 +475,7 @@ The Radius defines the final size of the generated shape.  It can be expressed i
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_Radius(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_GET_Radius(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_RADIUS)) val = val * 100.0;
@@ -502,12 +484,12 @@ static ERROR SUPER_GET_Radius(objVectorShape *Self, struct Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_Radius(objVectorShape *Self, struct Variable *Value)
+static ERROR SUPER_SET_Radius(objVectorShape *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return PostError(ERR_FieldTypeMismatch);
+   else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -544,7 +526,7 @@ static ERROR SUPER_SET_Repeat(objVectorShape *Self, LONG Value)
       reset_path(Self);
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidValue);
+   else return ERR_InvalidValue;
 }
 
 /*****************************************************************************
@@ -595,12 +577,12 @@ static ERROR SUPER_SET_Vertices(objVectorShape *Self, LONG Value)
       reset_path(Self);
       return ERR_Okay;
    }
-   else return PostError(ERR_InvalidValue);
+   else return ERR_InvalidValue;
 }
 
 //****************************************************************************
 
-static const struct FieldDef clSuperDimensions[] = {
+static const FieldDef clSuperDimensions[] = {
    { "FixedRadius",     DMF_FIXED_RADIUS },
    { "FixedCenterX",    DMF_FIXED_CENTER_X },
    { "FixedCenterY",    DMF_FIXED_CENTER_Y },
@@ -610,12 +592,12 @@ static const struct FieldDef clSuperDimensions[] = {
    { NULL, 0 }
 };
 
-static const struct ActionArray clVectorShapeActions[] = {
+static const ActionArray clVectorShapeActions[] = {
    { AC_NewObject, (APTR)SUPER_NewObject },
    { 0, NULL }
 };
 
-static const struct FieldArray clVectorShapeFields[] = {
+static const FieldArray clVectorShapeFields[] = {
    { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SUPER_GET_CenterX, (APTR)SUPER_SET_CenterX },
    { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SUPER_GET_CenterY, (APTR)SUPER_SET_CenterY },
    { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)SUPER_GET_Radius,  (APTR)SUPER_SET_Radius },

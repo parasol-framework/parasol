@@ -1,0 +1,35 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg width="350" height="211" viewBox="0 0 350 211" xmlns="http://www.w3.org/2000/svg" version="1.1">
+  <defs>
+    <pattern id="gridPattern" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="gray" stroke-width="0.25"/>
+    </pattern>
+  </defs>
+
+  <rect width="350" height="211" stroke-width="0.1" fill="rgb(255,255,255)" />
+  <rect width="350" height="211" stroke="gray" stroke-width="0.1" fill="url(#gridPattern)" />
+
+  <circle cx="40" cy="40" r="20" stroke="darkslategray" stroke-width="20" stroke-opacity="0.5" fill="lightslategray" fill-opacity="0.5" />
+  <circle cx="120" cy="40" r="20" stroke="darkslategray" stroke-width="10" stroke-dasharray="1.75 8.72" fill="lightslategray" fill-opacity="0.5" />
+  <circle cx="40" cy="100" r="10" stroke="darkslategray" stroke-width="20" stroke-dasharray="15.708 15.708" stroke-dashoffset="7.854" fill="lightslategray" fill-opacity="0.5"/>
+  <circle cx="120" cy="100" r="10" stroke="darkslategray" stroke-width="20" stroke-dasharray="47.124 15.708" stroke-dashoffset="7.854" fill="lightslategray" fill-opacity="0.5"/>
+  <circle cx="40" cy="160" r="20" stroke="darkslategray" stroke-width="2" stroke-dasharray="31.416 31.416" stroke-dashoffset="-15.708" fill="none" />
+  <circle cx="120" cy="160" r="20" stroke="darkslategray" stroke-width="8" stroke-dasharray="62.832 100" stroke-dashoffset="-41.888" fill="none" stroke-linecap="round" />
+  <text x="75" y="200" font-size="8" text-anchor="middle">single circle  each</text>
+  <circle cx="230" cy="40" r="20" stroke="darkslategray" stroke-width="20" stroke-opacity="0.5" fill="lightslategray" fill-opacity="0.5" />
+  <circle cx="230" cy="40" r="15" stroke="darkslategray" stroke-width="20" stroke-opacity="0.5" fill="lightslategray" fill-opacity="0.5" />
+  <circle cx="310" cy="40" r="20" stroke="darkslategray" stroke-width="10" stroke-dasharray="1.75 8.72" fill="lightslategray" fill-opacity="0.5" />
+  <circle cx="310" cy="40" r="10" stroke="darkslategray" stroke-width="20" stroke-dasharray="0.875 14.833 0.875 100" fill="none" />
+  <circle cx="230" cy="100" r="20" stroke="darkslategray" stroke-width="2" fill="none" />
+  <circle cx="230" cy="100" r="10" stroke="darkslategray" stroke-width="20" stroke-dasharray="0.524 2.094" fill="none" />
+  <circle cx="310" cy="100" r="10" stroke="darkslategray" stroke-width="20" stroke-dasharray="15.708 15.708" stroke-dashoffset="7.854" fill="none" />
+  <circle cx="310" cy="100" r="10" stroke="lightslategray" stroke-width="20" stroke-dasharray="15.708 15.708" stroke-dashoffset="-7.854" fill="none" />
+  <circle cx="230" cy="160" r="10" stroke="darkslategray" stroke-width="20" stroke-dasharray="15.708 15.708" stroke-dashoffset="7.854" stroke-opacity="0.5" fill="lightslategray" />
+  <circle cx="230" cy="160" r="10" stroke="lightslategray" stroke-width="20" stroke-dasharray="15.708 15.708" stroke-dashoffset="-7.854" stroke-opacity="0.5" fill="none" />
+  <circle cx="310" cy="160" r="20" stroke="darkslategray" stroke-width="8" stroke-dasharray="6.981 13.962" stroke-dashoffset="3.491" fill="none" stroke-linecap="round" />
+  <circle cx="310" cy="160" r="10" stroke="lightslategray" stroke-width="20" stroke-dasharray="3.491 6.981" stroke-dashoffset="-3.491" fill="none" />
+  <text x="275" y="200" font-size="8" text-anchor="middle">two concentric circles each</text>
+
+</svg>

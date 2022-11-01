@@ -16,10 +16,8 @@ Waves can be used in Parasol's SVG implementation by using the &lt;parasol:wave/
 
 *****************************************************************************/
 
-typedef struct rkVectorWave {
-   OBJECT_HEADER
-   SHAPE_PUBLIC
-   SHAPE_PRIVATE
+class objVectorWave : public extVector {
+   public:
    DOUBLE wX, wY;
    DOUBLE wWidth, wHeight;
    DOUBLE wAmplitude;
@@ -29,59 +27,52 @@ typedef struct rkVectorWave {
    DOUBLE wThickness;
    LONG   wDimensions;
    UBYTE  wClose;
-} objVectorWave;
+   UBYTE  wStyle;
+};
 
 //****************************************************************************
 
 static void generate_wave(objVectorWave *Vector)
 {
+   DOUBLE ox = Vector->wX, oy = Vector->wY;
    DOUBLE width = Vector->wWidth, height = Vector->wHeight;
 
-   if (Vector->wDimensions & DMF_RELATIVE_WIDTH) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) width *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) width *= Vector->ParentView->vpViewWidth;
-      else width *= Vector->Scene->PageWidth;
-   }
-
-   if (Vector->wDimensions & DMF_RELATIVE_HEIGHT) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) height *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) height *= Vector->ParentView->vpViewHeight;
-      else height *= Vector->Scene->PageHeight;
-   }
+   if (Vector->wDimensions & DMF_RELATIVE_X) ox *= get_parent_width(Vector);
+   if (Vector->wDimensions & DMF_RELATIVE_Y) oy *= get_parent_height(Vector);
+   if (Vector->wDimensions & DMF_RELATIVE_WIDTH) width *= get_parent_width(Vector);
+   if (Vector->wDimensions & DMF_RELATIVE_HEIGHT) height *= get_parent_height(Vector);
 
    DOUBLE decay;
    if (Vector->wDecay IS 0) decay = 0.00000001;
    else if (Vector->wDecay >= 0) decay = 360 * Vector->wDecay;
    else decay = 360 * -Vector->wDecay;
 
-   DOUBLE scale = 1.0;
-   DOUBLE degree = Vector->wDegree;
    const DOUBLE amp = (height * 0.5) * Vector->wAmplitude;
+   const DOUBLE scale = 1.0 / Vector->Transform.scale(); // Essential for smooth curves when scale > 1.0
 
-   if (Vector->Transform) scale = 1.0 / Vector->Transform->scale(); // Essential for smooth curves when scale > 1.0
-
-   DOUBLE x = 0, y = sin(DEG2RAD * degree) * amp + (height * 0.5);
+   DOUBLE x = 0, y = sin(DEG2RAD * Vector->wDegree) * amp + (height * 0.5);
    if (Vector->Transition) apply_transition_xy(Vector->Transition, 0, &x, &y);
 
    if ((!Vector->wClose) or (Vector->wThickness > 0)) {
-      Vector->BasePath->move_to(x, y);
+      Vector->BasePath.move_to(ox + x, oy + y);
    }
    else if (Vector->wClose IS WVC_TOP) {
-      Vector->BasePath->move_to(width, 0); // Top right
-      Vector->BasePath->line_to(0, 0); // Top left
-      Vector->BasePath->line_to(x, y);
+      Vector->BasePath.move_to(ox + width, oy); // Top right
+      Vector->BasePath.line_to(ox, oy); // Top left
+      Vector->BasePath.line_to(ox + x, oy + y);
    }
    else if (Vector->wClose IS WVC_BOTTOM) {
-      Vector->BasePath->move_to(width, height); // Bottom right
-      Vector->BasePath->line_to(0, height); // Bottom left
-      Vector->BasePath->line_to(x, y);
+      Vector->BasePath.move_to(ox + width, oy + height); // Bottom right
+      Vector->BasePath.line_to(ox, oy + height); // Bottom left
+      Vector->BasePath.line_to(ox + x, oy + y);
    }
    else return;
 
    // Sine wave generator.  This applies scaling so that the correct number of vertices are generated.  Also, the
    // last vertex is interpolated to end exactly at 360, ensuring that the path terminates accurately.
 
-   DOUBLE xscale = width / 360.0;
+   DOUBLE degree = Vector->wDegree;
+   DOUBLE xscale = width * (1.0 / 360.0);
    DOUBLE freq = Vector->wFrequency * scale;
    DOUBLE angle;
    DOUBLE last_x = x, last_y = y;
@@ -89,9 +80,9 @@ static void generate_wave(objVectorWave *Vector)
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
          DOUBLE x = angle * xscale;
          DOUBLE y = (sin(DEG2RAD * degree) * amp) + (height * 0.5);
-         if (Vector->Transition) apply_transition_xy(Vector->Transition, angle / 360.0, &x, &y);
+         if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
          if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
-            Vector->BasePath->line_to(x, y);
+            Vector->BasePath.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;
          }
@@ -100,15 +91,15 @@ static void generate_wave(objVectorWave *Vector)
       degree += freq * (360.0 - (angle - scale)) / scale;
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) + (height * 0.5);
-      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle / 360.0, &x, &y);
-      Vector->BasePath->line_to(x, y);
+      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
+      Vector->BasePath.line_to(ox + x, oy + y);
    }
    else if (Vector->wDecay > 0) {
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
          DOUBLE x = angle * xscale;
          DOUBLE y = (sin(DEG2RAD * degree) * amp) / exp((DOUBLE)angle / decay) + (height * 0.5);
          if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
-            Vector->BasePath->line_to(x, y);
+            Vector->BasePath.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;
          }
@@ -117,16 +108,16 @@ static void generate_wave(objVectorWave *Vector)
       degree += freq * (360.0 - (angle - scale)) / scale;
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) / exp(360.0 / decay) + (height * 0.5);
-      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle / 360.0, &x, &y);
-      Vector->BasePath->line_to(x, y);
+      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
+      Vector->BasePath.line_to(ox + x, oy + y);
    }
    else if (Vector->wDecay < 0) {
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
          DOUBLE x = angle * xscale;
          DOUBLE y = (sin(DEG2RAD * degree) * amp) / log((DOUBLE)angle / decay) + (height * 0.5);
-         if (Vector->Transition) apply_transition_xy(Vector->Transition, angle / 360.0, &x, &y);
+         if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
          if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
-            Vector->BasePath->line_to(x, y);
+            Vector->BasePath.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;
          }
@@ -135,45 +126,25 @@ static void generate_wave(objVectorWave *Vector)
       degree += freq * (360.0 - (angle - scale)) / scale;
       DOUBLE x = width;
       DOUBLE y = (sin(DEG2RAD * degree) * amp) / log(360.0 / decay) + (height * 0.5);
-      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle / 360.0, &x, &y);
-      Vector->BasePath->line_to(x, y);
+      if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
+      Vector->BasePath.line_to(ox + x, oy + y);
    }
 
    if (Vector->wThickness > 0) {
       DOUBLE x, y;
-      LONG total = Vector->BasePath->total_vertices();
-      Vector->BasePath->last_vertex(&x, &y);
-      Vector->BasePath->line_to(x, y + Vector->wThickness);
+      LONG total = Vector->BasePath.total_vertices();
+      Vector->BasePath.last_vertex(&x, &y);
+      Vector->BasePath.line_to(x, y + Vector->wThickness);
       for (LONG i=total-1; i >= 0; i--) {
-         Vector->BasePath->vertex(i, &x, &y);
-         Vector->BasePath->line_to(x, y + Vector->wThickness);
+         Vector->BasePath.vertex(i, &x, &y);
+         Vector->BasePath.line_to(x, y + Vector->wThickness);
       }
-      Vector->BasePath->translate(0, -Vector->wThickness * 0.5); // Ensure that the wave is centered vertically.
+      Vector->BasePath.translate(0, -Vector->wThickness * 0.5); // Ensure that the wave is centered vertically.
    }
 
-   if ((Vector->wClose) or (Vector->wThickness > 0)) Vector->BasePath->close_polygon();
-}
+   if ((Vector->wClose) or (Vector->wThickness > 0)) Vector->BasePath.close_polygon();
 
-//****************************************************************************
-
-static void get_wave_xy(objVectorWave *Vector)
-{
-   DOUBLE x = Vector->wX, y = Vector->wY;
-
-   if (Vector->wDimensions & DMF_RELATIVE_X) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) x *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) x *= Vector->ParentView->vpViewWidth;
-      else x *= Vector->Scene->PageWidth;
-   }
-
-   if (Vector->wDimensions & DMF_RELATIVE_Y) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) y *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) y *= Vector->ParentView->vpViewHeight;
-      else y *= Vector->Scene->PageHeight;
-   }
-
-   Vector->FinalX = x;
-   Vector->FinalY = y;
+   bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
 /*****************************************************************************
@@ -188,9 +159,9 @@ static ERROR WAVE_Move(objVectorWave *Self, struct acMove *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   Self->wX += Args->XChange;
-   Self->wY += Args->YChange;
-   reset_final_path(Self);
+   Self->wX += Args->DeltaX;
+   Self->wY += Args->DeltaY;
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -210,7 +181,7 @@ static ERROR WAVE_MoveToPoint(objVectorWave *Self, struct acMoveToPoint *Args)
    if (Args->Flags & MTF_Y) Self->wY = Args->Y;
    if (Args->Flags & MTF_RELATIVE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X | DMF_RELATIVE_Y) & ~(DMF_FIXED_X | DMF_FIXED_Y);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_X | DMF_FIXED_Y) & ~(DMF_RELATIVE_X | DMF_RELATIVE_Y);
-   reset_final_path(Self);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -218,7 +189,7 @@ static ERROR WAVE_MoveToPoint(objVectorWave *Self, struct acMoveToPoint *Args)
 
 static ERROR WAVE_NewObject(objVectorWave *Self, APTR Void)
 {
-   Self->GeneratePath = (void (*)(rkVector *))&generate_wave;
+   Self->GeneratePath = (void (*)(extVector *))&generate_wave;
    Self->wFrequency = 1.0;
    Self->wAmplitude = 1.0;
    Self->wDecay = 1.0;
@@ -264,6 +235,28 @@ static ERROR WAVE_SET_Amplitude(objVectorWave *Self, DOUBLE Value)
       return ERR_Okay;
    }
    else return ERR_InvalidValue;
+}
+
+/*****************************************************************************
+-FIELD-
+Close: Closes the generated wave path at either the top or bottom.
+
+Setting the Close field to TOP or BOTTOM will close the generated wave's path so that it is suitable for being
+filled.
+
+*****************************************************************************/
+
+static ERROR WAVE_GET_Close(objVectorWave *Self, LONG *Value)
+{
+   *Value = Self->wClose;
+   return ERR_Okay;
+}
+
+static ERROR WAVE_SET_Close(objVectorWave *Self, LONG Value)
+{
+   Self->wClose = Value;
+   reset_path(Self);
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -408,6 +401,28 @@ static ERROR WAVE_SET_Height(objVectorWave *Self, Variable *Value)
 
 /*****************************************************************************
 -FIELD-
+Style: Selects an alternative wave style.
+
+NOT YET IMPLEMENTED
+
+By default, waves are generated in the style of a sine wave.  Alternative styles can be selected by setting this field.
+
+*****************************************************************************/
+
+static ERROR WAVE_GET_Style(objVectorWave *Self, LONG *Value)
+{
+   *Value = Self->wStyle;
+   return ERR_Okay;
+}
+
+static ERROR WAVE_SET_Style(objVectorWave *Self, LONG Value)
+{
+   Self->wStyle = Value;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-FIELD-
 Thickness: Expands the height of the wave to the specified value to produce a closed path.
 
 Specifying a thickness value will create a wave that forms a filled shape, rather than the default of a stroked path.
@@ -494,7 +509,7 @@ static ERROR WAVE_SET_X(objVectorWave *Self, Variable *Value)
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->wX = val;
-   reset_final_path(Self);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -503,7 +518,7 @@ static ERROR WAVE_SET_X(objVectorWave *Self, Variable *Value)
 Y: The y coordinate of the wave.  Can be expressed as a fixed or relative coordinate.
 
 The y coordinate of the wave is defined here as either a fixed or relative value.
-
+-END-
 *****************************************************************************/
 
 static ERROR WAVE_GET_Y(objVectorWave *Self, Variable *Value)
@@ -529,28 +544,6 @@ static ERROR WAVE_SET_Y(objVectorWave *Self, Variable *Value)
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->wY = val;
-   reset_final_path(Self);
-   return ERR_Okay;
-}
-
-/*****************************************************************************
--FIELD-
-Close: Closes the generated wave path at either the top or bottom.
-
-Setting the Close field to TOP or BOTTOM will close the generated wave's path so that it is suitable for being
-filled.
--END-
-*****************************************************************************/
-
-static ERROR WAVE_GET_Close(objVectorWave *Self, LONG *Value)
-{
-   *Value = Self->wClose;
-   return ERR_Okay;
-}
-
-static ERROR WAVE_SET_Close(objVectorWave *Self, LONG Value)
-{
-   Self->wClose = Value;
    reset_path(Self);
    return ERR_Okay;
 }
@@ -561,6 +554,13 @@ static const FieldDef clWaveClose[] = {
    { "None",   WVC_NONE },
    { "Top",    WVC_TOP },
    { "Bottom", WVC_BOTTOM },
+   { NULL, 0 }
+};
+
+static const FieldDef clWaveStyle[] = {
+   { "Curved",   WVS_CURVED },
+   { "Angled",   WVS_ANGLED },
+   { "Sawtooth", WVS_SAWTOOTH },
    { NULL, 0 }
 };
 
@@ -577,17 +577,18 @@ static const FieldDef clWaveDimensions[] = {
 };
 
 static const FieldArray clWaveFields[] = {
-   { "X",         FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_X, (APTR)WAVE_SET_X },
-   { "Y",         FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Y, (APTR)WAVE_SET_Y },
-   { "Width",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Width,   (APTR)WAVE_SET_Width },
-   { "Height",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Height,  (APTR)WAVE_SET_Height },
-   { "Amplitude", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Amplitude, (APTR)WAVE_SET_Amplitude },
-   { "Frequency", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Frequency, (APTR)WAVE_SET_Frequency },
-   { "Decay",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Decay, (APTR)WAVE_SET_Decay },
-   { "Degree",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Degree, (APTR)WAVE_SET_Degree },
-   { "Close",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWaveClose, (APTR)WAVE_GET_Close, (APTR)WAVE_SET_Close },
-   { "Thickness", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Thickness, (APTR)WAVE_SET_Thickness },
+   { "Amplitude",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Amplitude, (APTR)WAVE_SET_Amplitude },
+   { "Close",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWaveClose, (APTR)WAVE_GET_Close, (APTR)WAVE_SET_Close },
+   { "Decay",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Decay, (APTR)WAVE_SET_Decay },
+   { "Degree",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Degree, (APTR)WAVE_SET_Degree },
    { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clWaveDimensions, (APTR)WAVE_GET_Dimensions, (APTR)WAVE_SET_Dimensions },
+   { "Frequency",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Frequency, (APTR)WAVE_SET_Frequency },
+   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Height, (APTR)WAVE_SET_Height },
+   { "Style",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWaveStyle, (APTR)WAVE_GET_Style, (APTR)WAVE_SET_Style },
+   { "Thickness",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Thickness, (APTR)WAVE_SET_Thickness },
+   { "X",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_X, (APTR)WAVE_SET_X },
+   { "Y",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Y, (APTR)WAVE_SET_Y },
+   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Width, (APTR)WAVE_SET_Width },
    END_FIELD
 };
 

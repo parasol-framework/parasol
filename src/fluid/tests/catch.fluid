@@ -152,7 +152,7 @@ function testCatchFilter()
          print(Exception.line .. ": Caught filtered exception #" .. Exception.code)
       end)
    end,
-   function(Exception) // This will be triggered if the filter doesn't catch the specified error codes.
+   function(Exception) -- This will be triggered if the filter doesn't catch the specified error codes.
       error("Failed to filter for the expected error code, received code " .. Exception.code)
    end)
 end
@@ -167,14 +167,14 @@ function testMissedFilter()
          xml.acDraw()
          print("This must not be reached.")
       end,
-      { ERR_Failed }, // Filter for the wrong error code.
+      { ERR_Failed }, -- Filter for the wrong error code.
       function(Exception)
-         // Do nothing
+         -- Do nothing
       end)
    end)
 
    if (status == false) then
-      // Exception has been thrown to the parent as expected
+      -- Exception has been thrown to the parent as expected
    else
       error("The exception was not thrown to the parent block.")
    end

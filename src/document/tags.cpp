@@ -1,9 +1,9 @@
 
-static void check_para_attrib(objDocument *, CSTRING, CSTRING, escParagraph *);
+static void check_para_attrib(extDocument *, CSTRING, CSTRING, escParagraph *);
 
 //****************************************************************************
 
-static void check_para_attrib(objDocument *Self, CSTRING Attrib, CSTRING Value, escParagraph *esc)
+static void check_para_attrib(extDocument *Self, CSTRING Attrib, CSTRING Value, escParagraph *esc)
 {
    if (!StrMatch(Attrib, "anchor")) {
       Self->Style.StyleChange = TRUE;
@@ -46,7 +46,7 @@ static void check_para_attrib(objDocument *Self, CSTRING Attrib, CSTRING Value, 
 
 //****************************************************************************
 
-static void trim_preformat(objDocument *Self, LONG *Index)
+static void trim_preformat(extDocument *Self, LONG *Index)
 {
    LONG i;
 
@@ -83,7 +83,7 @@ static void trim_preformat(objDocument *Self, LONG *Index)
 ** style stored in SaveStatus, we need to record a style change.
 */
 
-static void saved_style_check(objDocument *Self, style_status *SaveStatus)
+static void saved_style_check(extDocument *Self, style_status *SaveStatus)
 {
    UBYTE font = Self->Style.FontChange;
    UBYTE style = Self->Style.StyleChange;
@@ -110,7 +110,7 @@ static void saved_style_check(objDocument *Self, style_status *SaveStatus)
 //****************************************************************************
 // Advances the cursor.  It is only possible to advance positively on either axis.
 
-static void tag_advance(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_advance(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    escAdvance advance;
 
@@ -134,7 +134,7 @@ static void tag_advance(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 // NB: If a <body> tag contains any children, it is treated as a template and must contain an <inject/> tag so that
 // the XML insertion point is known.
 
-static void tag_body(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_body(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -229,7 +229,7 @@ static void tag_body(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 //****************************************************************************
 // In background mode, all objects are targetted to the view surface rather than the page surface.
 
-static void tag_background(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_background(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    Self->BkgdGfx++;
    parse_tag(Self, XML, Child, Index, 0);
@@ -238,7 +238,7 @@ static void tag_background(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *
 
 //****************************************************************************
 
-static void tag_bold(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_bold(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    if (!(Self->Style.FontStyle.Options & FSO_BOLD)) {
       style_status savestatus = Self->Style; // Save the current style
@@ -252,7 +252,7 @@ static void tag_bold(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
 //****************************************************************************
 
-static void tag_br(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_br(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    insert_text(Self, Index, "\n", 1, FSO_PREFORMAT);
    Self->NoWhitespace = TRUE;
@@ -277,7 +277,7 @@ static void tag_br(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, L
 ** NOTE: Another valid method of caching an object is to use a persistent script.
 */
 
-static void tag_cache(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_cache(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    Self->ObjectCache++;
    parse_tag(Self, XML, Child, Index, 0);
@@ -300,7 +300,7 @@ static void tag_cache(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 ** <call function="[script].function" arg1="" arg2="" _global=""/>
 */
 
-static void tag_call(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_call(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    OBJECTPTR script = Self->DefaultScript;
@@ -334,7 +334,7 @@ static void tag_call(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
    {
       parasol::Log log(__FUNCTION__);
-      log.traceBranch("Calling script #%d function '%s'", GetUniqueID(script), function);
+      log.traceBranch("Calling script #%d function '%s'", script->UID, function);
 
       if (Tag->TotalAttrib > 2) {
          ScriptArg args[40];
@@ -374,7 +374,7 @@ static void tag_call(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
          // Add the created XML object to the document rather than destroying it
 
-         add_resource_id(Self, xmlinc->Head.UniqueID, RT_OBJECT_TEMP);
+         add_resource_id(Self, xmlinc->UID, RT_OBJECT_TEMP);
       }
       FreeResource(results);
    }
@@ -382,7 +382,7 @@ static void tag_call(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
 //****************************************************************************
 
-static void tag_caps(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_caps(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    if (!(Self->Style.FontStyle.Options & FSO_CAPS)) {
       style_status savestatus;
@@ -397,7 +397,7 @@ static void tag_caps(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
 //****************************************************************************
 
-static void tag_debug(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_debug(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log("DocMsg");
    for (LONG i=1; i < Tag->TotalAttrib; i++) {
@@ -411,7 +411,7 @@ static void tag_debug(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 // Use div to structure the document in a similar way to paragraphs.  Its main
 // difference is that it avoids the declaration of paragraph start and end points.
 
-static void tag_div(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_div(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    style_status savestatus;
@@ -440,7 +440,7 @@ static void tag_div(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
 // Creates a new edit definition.  These are stored in a linked list.  Edit definitions are used by referring to them
 // by name in table cells.
 
-static void tag_editdef(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_editdef(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -581,21 +581,21 @@ static void tag_editdef(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 //
 // Note that for hyperlinks, the 'select' attribute can also be used as a convenient means to assign focus.
 
-static void tag_focus(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_focus(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    Self->FocusIndex = Self->TabIndex;
 }
 
 //****************************************************************************
 
-static void tag_footer(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_footer(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    Self->FooterTag = Child;
 }
 
 //****************************************************************************
 
-static void tag_header(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_header(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    Self->HeaderTag = Child;
 }
@@ -607,7 +607,7 @@ static void tag_header(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 ** the Units value.
 */
 
-static void tag_indent(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_indent(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    escParagraph esc;
    ClearMemory(&esc, sizeof(esc));
@@ -636,7 +636,7 @@ static void tag_indent(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 //****************************************************************************
 // Use of <meta> for custom information is allowed and is ignored by the parser.
 
-static void tag_head(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_head(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    // The head contains information about the document
 
@@ -678,7 +678,7 @@ static void tag_head(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 //****************************************************************************
 // Include XML from another RIPPLE file.
 
-static void tag_include(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_include(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    CSTRING src;
@@ -691,7 +691,7 @@ static void tag_include(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 
          parse_tag(Self, xmlinc, xmlinc->Tags[0], Index, Flags);
 
-         add_resource_id(Self, xmlinc->Head.UniqueID, RT_OBJECT_TEMP);
+         add_resource_id(Self, xmlinc->UID, RT_OBJECT_TEMP);
       }
       else log.warning("Failed to include '%s'", src);
    }
@@ -700,7 +700,7 @@ static void tag_include(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 
 //****************************************************************************
 
-static void tag_parse(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_parse(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    // The value attribute will contain XML.  We will parse the XML as if it were part of the document source.  This feature
    // is typically used when pulling XML information out of an object field.
@@ -726,7 +726,7 @@ static void tag_parse(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 
             // Add the created XML object to the document rather than destroying it
 
-            add_resource_id(Self, xmlinc->Head.UniqueID, RT_OBJECT_TEMP);
+            add_resource_id(Self, xmlinc->UID, RT_OBJECT_TEMP);
          }
       }
    }
@@ -748,7 +748,7 @@ static void tag_parse(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 // The developer can use indexes to bookmark areas of code that are of interest.  The FindIndex() method is used for
 // this purpose.
 
-static void tag_index(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_index(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -814,7 +814,7 @@ static void tag_index(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 // Dummy links that specify neither an href or onclick value can be useful in embedded documents if the
 // EventCallback feature is used.
 
-static void tag_link(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_link(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -951,7 +951,7 @@ static void tag_link(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
 #define LIST_BUFFER_SIZE 80
 
-static void tag_list(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_list(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    escList esc, *savelist;
    LONG i;
@@ -1018,7 +1018,7 @@ static void tag_list(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 //****************************************************************************
 // Also see check_para_attrib() for paragraph attributes.
 
-static void tag_paragraph(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    style_status savestatus;
@@ -1065,7 +1065,7 @@ static void tag_paragraph(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *C
 
 //****************************************************************************
 
-static void tag_print(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_print(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1111,14 +1111,15 @@ static void tag_print(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 // value="value"/>, however apart from being more convoluted, this would also result in more syntactic cruft as each
 // arg setting would require its own set element.
 
-static void tag_set(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_set(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
 
    if (Tag->TotalAttrib > 1) {
       if (!StrMatch("object", Tag->Attrib[1].Name)) {
          OBJECTID objectid;
-         if (!FastFindObject(Tag->Attrib[1].Value, 0, &objectid, 1, 0)) {
+         LONG count = 1;
+         if (!FindObject(Tag->Attrib[1].Value, 0, FOF_SMART_NAMES, &objectid, &count)) {
             if (valid_objectid(Self, objectid) IS TRUE) {
                OBJECTPTR object;
                if (!AccessObject(objectid, 3000, &object)) {
@@ -1148,7 +1149,7 @@ static void tag_set(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
 
 //****************************************************************************
 
-static void tag_template(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_template(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    // Templates can be used to create custom tags.
    //
@@ -1167,17 +1168,17 @@ static void tag_template(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Ch
 // NOTE: If no child tags or content is inside the XML string, or if attributes are attached to the XML tag, then the
 // user is trying to create a new XML object (under the Data category), not the XML reserved word.
 
-static void tag_xml(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_xml(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    tag_xml_content(Self, XML, Tag, PXF_ARGS);
 }
 
-static void tag_xmlraw(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_xmlraw(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    tag_xml_content(Self, XML, Tag, 0);
 }
 
-static void tag_xmltranslate(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_xmltranslate(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    tag_xml_content(Self, XML, Tag, PXF_TRANSLATE|PXF_ARGS);
 }
@@ -1185,7 +1186,7 @@ static void tag_xmltranslate(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag
 //****************************************************************************
 // For use the by tag_xml*() range of functions only.
 
-static void tag_xml_content(objDocument *Self, objXML *XML, XMLTag *Tag, WORD Flags)
+static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Flags)
 {
    parasol::Log log(__FUNCTION__);
    MemInfo meminfo;
@@ -1212,7 +1213,7 @@ static void tag_xml_content(objDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
 
    Tag = Tag->Child;
 
-   LAYOUT("~tag_xml()","XML: %d, Tag: %d/%d, Target: %d", XML->Head.UniqueID, Tag->Index, XML->TagCount, target->UniqueID);
+   LAYOUT("~tag_xml()","XML: %d, Tag: %d/%d, Target: %d", XML->UID, Tag->Index, XML->TagCount, target->UID);
 
    if (!target) {
       log.warning("<xml> used without a valid object reference to receive the XML.");
@@ -1237,8 +1238,7 @@ static void tag_xml_content(objDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
    if (!xmlGetString(XML, Tag->Index, XMF_INCLUDE_SIBLINGS, &xmlstr)) {
       if (Flags & PXF_TRANSLATE) {
          LAYOUT("tag_xml:","Translating...");
-         if ((!MemoryPtrInfo(xmlstr, &meminfo)) AND
-             (meminfo.Size > size)) {
+         if ((!MemoryPtrInfo(xmlstr, &meminfo)) and (meminfo.Size > size)) {
             acDataXML(target, xmlstr);
          }
          else {
@@ -1270,7 +1270,7 @@ static void tag_xml_content(objDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
 
 //****************************************************************************
 
-static void tag_font(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_font(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    style_status savestatus = Self->Style; // Save the current style
@@ -1353,7 +1353,7 @@ static void tag_font(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
 //****************************************************************************
 
-static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, XMLTag *Template,
+static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, XMLTag *Template,
   objXML *XML, XMLTag *Tag, XMLTag *child, LONG *Index,
   LONG Flags, UBYTE *s_revert, UBYTE *e_revert, LONG *b_revert)
 {
@@ -1372,7 +1372,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
       return;
    }
 
-   log.branch("Processing %s object from document tag, owner #%d.", object->Class->ClassName, Self->CurrentObject ? Self->CurrentObject->UniqueID : -1);
+   log.branch("Processing %s object from document tag, owner #%d.", object->Class->ClassName, Self->CurrentObject ? Self->CurrentObject->UID : -1);
 
    // If the class supports the LayoutStyle field, set it with current style information.
 
@@ -1385,7 +1385,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
    // Setup the callback interception so that we can control the order in which objects draw their graphics to the surface.
 
    if (Self->CurrentObject) {
-      SetLong(object, FID_Owner, Self->CurrentObject->UniqueID);
+      SetLong(object, FID_Owner, Self->CurrentObject->UID);
    }
    else if (pagetarget) {
       field_id = StrHash(pagetarget, 0);
@@ -1447,12 +1447,13 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
             }
             else if ((src = XMLATTRIB(scan, "object"))) {
                OBJECTID objectid;
+               LONG count = 1;
 
-               if (!FastFindObject(src, 0, &objectid, 1, 0)) {
+               if (!FindObject(src, 0, FOF_SMART_NAMES, &objectid, &count)) {
                   if ((objectid) and (valid_objectid(Self, objectid))) {
                      objXML *objxml;
                      if (!AccessObject(objectid, 3000, &objxml)) {
-                        if (objxml->Head.ClassID IS ID_XML) {
+                        if (objxml->ClassID IS ID_XML) {
                            if (!xmlGetString(objxml, 0, XMF_INCLUDE_SIBLINGS|XMF_STRIP_CDATA, &content)) {
                               acDataXML(object, content);
                               FreeResource(content);
@@ -1494,8 +1495,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
       ClearMemory(&escobj, sizeof(escobj));
 
-      if (FindField(object, FID_Layout, NULL)) escobj.Graphical = TRUE;
-      else if (FindField(object, FID_LayoutSurface, NULL)) escobj.Graphical = TRUE;
+      if (object->ClassID IS ID_VECTOR) escobj.Graphical = TRUE;
       else escobj.Graphical = FALSE;
 
       // Child tags are processed as normal, but are applied with respect to the object.  Any tags that reflect
@@ -1527,9 +1527,8 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
             if (resource) resource->ClassID = class_id;
          }
          else {
-            objLayout *layout;
 
-            escobj.ObjectID = object->UniqueID;
+            escobj.ObjectID = object->UID;
             escobj.ClassID = object->ClassID;
             escobj.Embedded = FALSE;
             if (Self->CurrentObject) escobj.Owned = TRUE;
@@ -1537,16 +1536,16 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
             // By default objects are assumed to be in the background (thus not embedded as part of the text stream).
             // This section is intended to confirm the graphical state of the object.
 
-            if ((FindField(object, FID_Layout, NULL)) and (!GetPointer(object, FID_Layout, &layout))) {
-               if (layout->Layout & (LAYOUT_BACKGROUND|LAYOUT_FOREGROUND));
-               else if (layout->Layout & LAYOUT_EMBEDDED) escobj.Embedded = TRUE;
+            if (object->ClassID IS ID_VECTOR) {
+               //if (layout->Layout & (LAYOUT_BACKGROUND|LAYOUT_FOREGROUND));
+               //else if (layout->Layout & LAYOUT_EMBEDDED) escobj.Embedded = TRUE;
             }
             else escobj.Embedded = TRUE; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
 
             style_check(Self, Index);
             insert_escape(Self, Index, ESC_OBJECT, &escobj, sizeof(escobj));
 
-            docresource *resource;
+            docresource *resource = NULL;
             if (Self->ObjectCache) {
                switch (object->ClassID) {
                   // The following class types can be cached
@@ -1555,7 +1554,6 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
                   case ID_CONFIG:
                   case ID_COMPRESSION:
                   case ID_SCRIPT:
-                  case ID_RSS:
                      resource = add_resource_id(Self, object_id, RT_PERSISTENT_OBJECT);
                      break;
 
@@ -1563,8 +1561,8 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
                   default:
                      log.warning("Cannot cache object of class type '%s'", ResolveClassID(object->ClassID));
-                  case ID_IMAGE:
-                     resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
+                  //case ID_IMAGE:
+                  //   resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
                      break;
                }
             }
@@ -1578,7 +1576,7 @@ static void tag_object(objDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
             // Add the object to the tab-list if it is in our list of classes that support keyboard input.
 
-            CLASSID classes[] = { ID_INPUT, ID_CHECKBOX, ID_COMBOBOX, ID_VIEW };
+            CLASSID classes[] = { ID_VECTOR };
 
             for (LONG i=0; i < ARRAYSIZE(classes); i++) {
                if (classes[i] IS class_id) {
@@ -1604,7 +1602,7 @@ next: // Used by PTR_SAVE_ARGS()
 
 //****************************************************************************
 
-static void tag_pre(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_pre(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
 //   insert_paragraph_start(Self, Index, NULL);
 
@@ -1636,7 +1634,7 @@ static void tag_pre(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
 //
 // Only the first section of content enclosed within the <script> tag (CDATA) is accepted by the script parser.
 
-static void tag_script(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    OBJECTPTR script;
@@ -1761,7 +1759,7 @@ static void tag_script(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 
       // Object references are to be limited in scope to the Document object
 
-      //SetLong(script, FID_ObjectScope, Self->Head.UniqueID);
+      //SetLong(script, FID_ObjectScope, Self->Head.UID);
 
       // Pass custom arguments in the script tag
 
@@ -1783,10 +1781,10 @@ static void tag_script(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
          }
 
          if (!(error = acActivate(script))) { // Persistent scripts survive refreshes.
-            add_resource_id(Self, script->UniqueID, (persistent) ? RT_PERSISTENT_SCRIPT : RT_OBJECT_UNLOAD_DELAY);
+            add_resource_id(Self, script->UID, (persistent) ? RT_PERSISTENT_SCRIPT : RT_OBJECT_UNLOAD_DELAY);
 
             if ((!Self->DefaultScript) or (defaultscript)) {
-               log.msg("Script #%d is the default script for this document.", script->UniqueID);
+               log.msg("Script #%d is the default script for this document.", script->UID);
                Self->DefaultScript = script;
             }
 
@@ -1804,7 +1802,7 @@ static void tag_script(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 
                   // Add the created XML object to the document rather than destroying it
 
-                  add_resource_id(Self, xmlinc->Head.UniqueID, RT_OBJECT_TEMP);
+                  add_resource_id(Self, xmlinc->UID, RT_OBJECT_TEMP);
                }
             }
          }
@@ -1817,7 +1815,7 @@ static void tag_script(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 //****************************************************************************
 // Similar to <font/>, but the original font state is never saved and restored.
 
-static void tag_setfont(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_setfont(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    for (LONG i=1; i < Tag->TotalAttrib; i++) {
       ULONG hash_attrib = StrHash(Tag->Attrib[i].Name, 0);
@@ -1858,7 +1856,7 @@ static void tag_setfont(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 
 //****************************************************************************
 
-static void tag_setmargins(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_setmargins(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    escSetMargins margins;
 
@@ -1904,7 +1902,7 @@ static void tag_setmargins(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *
 
 //****************************************************************************
 
-static void tag_savestyle(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_savestyle(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    //style_check(Self, Index);
    Self->RestoreStyle = Self->Style; // Save the current style
@@ -1912,7 +1910,7 @@ static void tag_savestyle(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *C
 
 //****************************************************************************
 
-static void tag_restorestyle(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_restorestyle(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    Self->Style = Self->RestoreStyle; // Restore the saved style
    Self->Style.FontChange = TRUE;
@@ -1921,7 +1919,7 @@ static void tag_restorestyle(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag
 
 //****************************************************************************
 
-static void tag_italic(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_italic(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    if (!(Self->Style.FontStyle.Options & FSO_ITALIC)) {
       style_status savestatus;
@@ -1936,7 +1934,7 @@ static void tag_italic(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 
 //****************************************************************************
 
-static void tag_li(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_li(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -2030,7 +2028,7 @@ static void tag_li(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, L
 
 //****************************************************************************
 
-static void tag_underline(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_underline(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    if (!(Self->Style.FontStyle.Options & FSO_UNDERLINE)) {
       style_status savestatus;
@@ -2045,7 +2043,7 @@ static void tag_underline(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *C
 
 //****************************************************************************
 
-static void tag_repeat(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_repeat(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    LONG loopstart = 0;
@@ -2140,7 +2138,7 @@ static void tag_repeat(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 // (repeat, if statements, etc).  The table byte code is typically generated as ESC_TABLE_START, ESC_ROW, ESC_CELL...,
 // ESC_ROW_END, ESC_TABLE_END.
 
-static void tag_table(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_table(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    escTable start, *table;
@@ -2278,7 +2276,7 @@ static void tag_table(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 
 //****************************************************************************
 
-static void tag_row(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_row(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    escRow escrow;
@@ -2327,7 +2325,7 @@ static void tag_row(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
 
 //****************************************************************************
 
-static void tag_cell(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_cell(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    struct {
@@ -2508,7 +2506,7 @@ static void tag_cell(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 //****************************************************************************
 // This instruction can only be used from within a template.
 
-static void tag_inject(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_inject(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    if (Self->InTemplate) {
@@ -2522,7 +2520,7 @@ static void tag_inject(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 //****************************************************************************
 // No response is required for page tags, but we can check for validity.
 
-static void tag_page(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_page(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    CSTRING name, str;
@@ -2547,7 +2545,7 @@ static void tag_page(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 ** Usage: <trigger event="resize" function="script.function"/>
 */
 
-static void tag_trigger(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
+static void tag_trigger(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
    LONG trigger_code;
@@ -2597,9 +2595,9 @@ static void tag_trigger(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
                trigger->Next = Self->Triggers[trigger_code];
                Self->Triggers[trigger_code] = trigger;
             }
-            else FuncError(ERR_AllocMemory);
+            else log.warning(ERR_AllocMemory);
          }
-         else log.warning("Unable to resolve '%s' in script #%d to a function ID (the procedure may not exist)", function_name, script->UniqueID);
+         else log.warning("Unable to resolve '%s' in script #%d to a function ID (the procedure may not exist)", function_name, script->UID);
       }
       else log.warning("The script for '%s' is not available - check if it is declared prior to the trigger tag.", function_name);
    }
@@ -2607,7 +2605,7 @@ static void tag_trigger(objDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 
 //****************************************************************************
 
-static void insert_paragraph_start(objDocument *Self, LONG *Index, escParagraph *Esc)
+static void insert_paragraph_start(extDocument *Self, LONG *Index, escParagraph *Esc)
 {
    escParagraph var;
 
@@ -2623,7 +2621,7 @@ static void insert_paragraph_start(objDocument *Self, LONG *Index, escParagraph 
 // This function inserts a paragraph into a text stream, with the addition of some checking to ensure that multiple
 // line breaks are avoided.
 
-static void insert_paragraph_end(objDocument *Self, LONG *Index)
+static void insert_paragraph_end(extDocument *Self, LONG *Index)
 {
    insert_escape(Self, Index, ESC_PARAGRAPH_END, NULL, 0);
    Self->NoWhitespace = TRUE; // TRUE: Prevents whitespace

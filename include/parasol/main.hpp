@@ -1,3 +1,6 @@
+#ifndef PARASOL_MAIN_HPP
+#define PARASOL_MAIN_HPP 1
+#ifdef __cplusplus
 
 #include <memory>
 #include <optional>
@@ -13,9 +16,9 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing shared mem
       T *ptr;
       ERROR error;
 
-      ScopedAccessMemory(LONG ID, LONG Flags, LONG Milliseconds) {
+      ScopedAccessMemory(LONG ID, LONG Flags, LONG Milliseconds = 5000) {
          id = ID;
-         error = AccessMemory(ID, Flags, Milliseconds, (T *)&ptr);
+         error = AccessMemory(ID, Flags, Milliseconds, (APTR *)&ptr);
       }
 
       ~ScopedAccessMemory() { if (!error) ReleaseMemory(ptr); }
@@ -32,7 +35,7 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing shared mem
 
 //****************************************************************************
 
-template <class T>
+template <class T = struct Head>
 class ScopedObject { // C++ wrapper for automatically freeing an object
    public:
       T *obj;
@@ -43,27 +46,25 @@ class ScopedObject { // C++ wrapper for automatically freeing an object
 };
 
 //****************************************************************************
+// Scoped object locker.  Use granted() to confirm that the lock has been granted.
 
-template <class T>
-class ScopedObjectLock { // C++ wrapper for automatically freeing an o  `bject
-   private:
-      LONG locks;
-      ERROR error;
-
+template <class T = struct Head>
+class ScopedObjectLock { // C++ wrapper for automatically releasing an object
    public:
+      ERROR error;
       T *obj;
-
-      ScopedObjectLock(OBJECTPTR Object) { // Lock already provided
-         obj = Object;
-         error = ERR_Okay;
-      }
 
       ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
          error = AccessObject(ObjectID, Milliseconds, &obj);
       }
 
+      ScopedObjectLock(OBJECTPTR Object, LONG Milliseconds = 3000) {
+         error = AccessPrivateObject(Object, Milliseconds);
+         obj = (T *)Object;
+      }
+
       ScopedObjectLock() { obj = NULL; error = ERR_NotLocked; }
-      ~ScopedObjectLock() { if (!error) ReleaseObject(obj); }
+      ~ScopedObjectLock() { if (!error) ReleaseObject((OBJECTPTR)obj); }
       bool granted() { return error == ERR_Okay; }
 };
 
@@ -150,7 +151,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          while (branches > 0) { branches--; LogReturn(); }
       }
 
-      void branch(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
+      void branch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF_API|VLF_BRANCH, header, Message, arg);
@@ -159,15 +160,15 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       #ifdef DEBUG
-      void traceBranch(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
+      void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_DEBUG|VLF_BRANCH, header, Message, arg);
+         VLogF(VLF_TRACE|VLF_BRANCH, header, Message, arg);
          va_end(arg);
          branches++;
       }
       #else
-      void traceBranch(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { }
+      void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) { }
       #endif
 
       void debranch() {
@@ -240,30 +241,12 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       ERROR error(ERROR Code) { // Technically a warning
-         #ifdef PRV_CORE_MODULE
          FuncError(header, Code);
-         #else
-         HeadError(header, Code);
-         #endif
-         return Code;
-      }
-
-      ERROR error(LONG Header, ERROR Code) { // Technically a warning
-         LogError(Header, Code);
          return Code;
       }
 
       ERROR warning(ERROR Code) {
-         #ifdef PRV_CORE_MODULE
          FuncError(header, Code);
-         #else
-         HeadError(header, Code);
-         #endif
-         return Code;
-      }
-
-      ERROR warning(LONG Header, ERROR Code) {
-         LogError(Header, Code);
          return Code;
       }
 
@@ -287,3 +270,6 @@ class Log { // C++ wrapper for Parasol's log functionality
 };
 
 } // namespace
+
+#endif // __cplusplus
+#endif

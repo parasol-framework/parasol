@@ -84,7 +84,7 @@ void Scintilla::Font::Release()
 class BitmapClipper
 {
 public:
-   BitmapClipper(struct rkBitmap *bitmap_, const Scintilla::PRectangle& cliprect) :  bitmap(bitmap_)
+   BitmapClipper(objBitmap *bitmap_, const Scintilla::PRectangle& cliprect) :  bitmap(bitmap_)
    {
       // Save old clipping rectangle
 
@@ -112,7 +112,7 @@ public:
    }
 
 private:
-   struct rkBitmap *bitmap;
+   objBitmap *bitmap;
    Scintilla::PRectangle saved_cliprect;
 };
 
@@ -292,7 +292,7 @@ void Scintilla::Platform::DebugPrintf(const char *format, ...)
 #ifdef DEBUG
    va_list pArguments;
    va_start(pArguments, format);
-   VLogF("Scintilla", pArguments);
+   VLogF(VLF_DEBUG, "Scintilla", format, pArguments);
    va_end(pArguments);
 #endif
 }

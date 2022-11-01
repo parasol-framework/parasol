@@ -29,7 +29,7 @@ set (FT_SOURCE
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftglyph.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/sfnt/sfnt.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftbase.c"
-   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftsystem.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftsystem.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/smooth/smooth.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/truetype/truetype.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftinit.c"
@@ -56,4 +56,4 @@ target_link_libraries (${MOD} PRIVATE "m")
 add_definitions ("-DFT_CONFIG_MODULES_H=<ftmodule.h>" "-DFT_CONFIG_CONFIG_H=<ftconfig.h>" "-DFT2_BUILD_LIBRARY" "-DDLL_EXPORT=1")
 
 # TODO: Kerning tests aren't working with the latest version of Freetype
-#flute_test(${MOD} "${CMAKE_CURRENT_SOURCE_DIR}/tests/font_tests.fluid")
+flute_test(${MOD} "${CMAKE_CURRENT_SOURCE_DIR}/tests/font_tests.fluid")

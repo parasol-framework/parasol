@@ -122,7 +122,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
    UBYTE buffer[2048];
    LONG count = 0;
    LONG buffersize = 0;
-   while (((result = read(FD, buffer+buffersize, sizeof(buffer)-buffersize)) > 0) OR (buffersize > 0)) {
+   while (((result = read(FD, buffer+buffersize, sizeof(buffer)-buffersize)) > 0) or (buffersize > 0)) {
       if (result > 0) buffersize += result;
 
       struct inotify_event *event = (struct inotify_event *)buffer;
@@ -132,7 +132,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
       // Use the watch descriptor to determine what user routine we are supposed to call.
 
       for (LONG i=0; i < MAX_FILEMONITOR; i++) {
-         if (!glFileMonitor[i].UniqueID) continue;
+         if (!glFileMonitor[i].UID) continue;
          if (FD != glInotify) continue;
          if (event->wd != glFileMonitor[i].Handle) continue;
 
@@ -210,9 +210,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
                      { "Custom", FD_LARGE,   { .Large = glFileMonitor[i].Custom } },
                      { "Flags",  FD_LONG,    { .Long = flags } }
                   };
-                  error = scCallback(script, tlFeedback.Script.ProcedureID, args, ARRAYSIZE(args));
-                  if (!error) GetLong(script, FID_Error, &error);
-                  else error = ERR_Failed;
+                  if (scCallback(script, tlFeedback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
                }
                else error = ERR_Terminate;
             }
@@ -249,12 +247,12 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
    parasol::Log log(__FUNCTION__);
 
    static THREADVAR BYTE recursion = FALSE; // Recursion avoidance is essential for correct queuing
-   if ((recursion) OR (!File->prvWatch)) return;
+   if ((recursion) or (!File->prvWatch)) return;
    recursion = TRUE;
 
    AdjustLogLevel(2);
 
-   log.branch("File monitoring event received (Handle %p, File #%d).", Handle, File->Head.UniqueID);
+   log.branch("File monitoring event received (Handle %p, File #%d).", Handle, File->UID);
 
    ERROR error;
    ERROR (*routine)(objFile *, CSTRING path, LARGE Custom, LONG Flags);
@@ -287,10 +285,9 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
                      { "Custom", FD_LARGE,   { .Large = File->prvWatch->Custom } },
                      { "Flags",  FD_LONG,    { .Long = 0 } }
                   };
-                  error = scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args));
-                  if (!error) GetLong(script, FID_Error, &error);
-                  else error = ERR_Failed;
+                  if (scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
                }
+               else error = ERR_Terminate;
             }
             else error = ERR_Terminate;
          }
@@ -299,7 +296,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
             error = routine(File, path, File->prvWatch->Custom, status);
          }
 
-         if (error IS ERR_Terminate) Action(MT_FlWatch, &File->Head, NULL);
+         if (error IS ERR_Terminate) Action(MT_FlWatch, File, NULL);
       }
    }
    else {
@@ -310,7 +307,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
       }
       else error = routine(File, File->Path, File->prvWatch->Custom, 0);
 
-      if (error IS ERR_Terminate) Action(MT_FlWatch, &File->Head, NULL);
+      if (error IS ERR_Terminate) Action(MT_FlWatch, File, NULL);
    }
 
    winFindNextChangeNotification(Handle);

@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status="stable", prefix="gfx" }, function()
+module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status="stable", prefix="gfx" }, function()
 
   restrict(function()
     loadFile(glPath .. 'common.fdl')
@@ -14,6 +14,94 @@ module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status=
 #define NULL 0
     ]])
   end)
+
+  enum("DRAG", { start=0, flags="Flags for the DragStatus field." },
+    "NONE: The surface is not being dragged.",
+    "ANCHOR: The surface is being dragged and the mouse pointer is anchored to the surface.",
+    "NORMAL: The surface is being dragged.")
+
+  enum("WH", { start=1, comment="Events for WindowHook()" },
+    "CLOSE")
+
+  enum("CS", { start=1, comment="Colour space options." },
+    "SRGB: The default colour-space is sRGB.",
+    "LINEAR_RGB: Linear RGB is used to improve colour balance in blending operations.",
+    "CIE_LAB: Cartesian L*a*b* colour space defined by CIE 15.",
+    "CIE_LCH: Polar L*CHab colour space defined by CIE 15.")
+
+  flags("EXF", { comment="Optional flags for the ExposeSurface() function." },
+    "CHILDREN: If set, all child surfaces that intersect with exposed region will be included in the expose operation.",
+    "REDRAW_VOLATILE: Redraw every volatile object that intersects with the expose region, including internal volatile children.",
+    "REDRAW_VOLATILE_OVERLAP: Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.",
+    "ABSOLUTE_COORDS|ABSOLUTE: The supplied coordinates for exposure are absolute (relative to the display).",
+    "CURSOR_SPLIT: Internal flag used to reduce screen flickering when a software cursor is in use.")
+
+  flags("RT", { },
+     "ROOT: Can be used by window surfaces to identify themselves as a root layer.")
+
+  flags("LVF", { comment="drwLockBitmap() result flags" },
+     "EXPOSE_CHANGES")
+
+  flags("IRF", { comment="Flags for RedrawSurface()." },
+    "IGNORE_NV_CHILDREN: Do not draw child surfaces unless they are volatile.",
+    "IGNORE_CHILDREN: Do not draw child surfaces (this includes volatile children).",
+    "SINGLE_BITMAP: Only draw children and/or siblings when they share our bitmap space.",
+    "RELATIVE: Coordinate arguments are expressed in relative format.  Right and Bottom reflect Width and Height respectively.",
+    "FORCE_DRAW: Forces redrawing to the surface buffer (overrides visibility checks).")
+
+  flags("ARF", { comment="AccessSurfaceList() flags" },
+    "READ: Read only access required",
+    "WRITE: Full write access required",
+    "UPDATE: Update a single entry (limited write access)",
+    "NO_DELAY: Do not delay when waiting for access")
+
+  flags("BDF", { comment="CopySurface() flags" },
+    "SYNC: Force synchronsiation so that changes to the source image do not occur mid-copy.",
+    "REDRAW: Redraw the surface before performing the copy operation.",
+    "DITHER: Allow the use of dithering to improve image quality at a cost of speed.")
+
+  flags("DSF", { },
+    "NO_DRAW: Drawing and exposures are disabled",
+    "NO_EXPOSE: Drawing is enabled, exposures are disabled")
+
+  enum("SWIN", { start=0, comment="Options for the Surface WindowType field." },
+    "HOST: Default to the standard hosted window mode with full titlebar, borders and taskbar representation.",
+    "TASKBAR: Create a borderless (custom) window with taskbar representation.",
+    "ICON_TRAY: Create a borderless (custom) window with icon tray representation.",
+    "NONE: Create a borderless (custom) window with no UI representation.")
+
+  flags("RNF", { "Switches for the Surface class' Flags field." },
+    "TRANSPARENT: Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.",
+    "STICK_TO_BACK: Enable if the surface object must stick to the back of its container.",
+    "STICK_TO_FRONT: Enable if the surface object must stick to the front of its container.",
+    "VISIBLE: If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.",
+    "STICKY: Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.",
+    "GRAB_FOCUS: Helps application windows manage the user's focus within the window",
+    "HAS_FOCUS: Read-only.  If set, this flag indicates that the surface object currently has the focus.",
+    "FAST_RESIZE: Do not redraw when a surface is shrunk on either dimension.  If a dimension is expanded, only redraw the exposed portion.",
+    "DISABLED: This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.",
+    "REGION: Read/Init only.  This flag is set if the Region option has been used.",
+    "AUTO_QUIT: The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.",
+    "HOST: Define host on initialisation to create a container that can host surfaces from other processes.",
+    "PRECOPY: Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.",
+    "VIDEO|WRITE_ONLY: Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.",
+    "NO_HORIZONTAL: Turns off all horizontal movement (applies to the Move action only).",
+    "NO_VERTICAL: Turns off all vertical movement (applies to the Move action only).",
+    "CURSOR|POINTER: Private - Surface is a mouse cursor",
+    "SCROLL_CONTENT: If set, the surface object will send Move and MoveToPoint messages if the Scroll and ScrollToPoint actions are ever called on the object.",
+    "AFTER_COPY: Read-only.  Indicates that after-copy mode has been enabled.",
+    "FIXED_BUFFER: Passes the NEVER_SHRINK option to the surface bitmap",
+    "PERVASIVE_COPY: This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.",
+    "NO_FOCUS: Prevents any kind of focussing on this object; no circumvention is possible",
+    "FIXED_DEPTH: The target buffer always remains at the same depth",
+    "TOTAL_REDRAW: Perform a total redraw of the entire surface when drawing - no partial draws",
+    "COMPOSITE|NO_PRECOMPOSITE|POST_COMPOSITE: Do not copy background information into the surface buffer - composite on the fly instead",
+    "FULL_SCREEN: Allow the surface to open as a new screen display",
+    "IGNORE_FOCUS: Focus is diverted directly to the parent",
+    "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.",
+    { VOLATILE = "PRECOPY|AFTER_COPY|CURSOR" },
+    { READ_ONLY = "HAS_FOCUS|REGION|CURSOR|AFTER_COPY" },
+    { INIT_ONLY = "HOST|TRANSPARENT|FAST_RESIZE|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })
 
   enum("HOST", { start=1 },
     "TRAY_ICON: All new displays are represented in the system tray when this option is active.",
@@ -56,15 +144,6 @@ module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status=
     "CLIP: Enable clipping of the source coordinates.",
     "OFFSET: Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.")
 
-  flags("CSTF", { comment="Flags for CopyStretch()." },
-    "BILINEAR|GOOD_QUALITY: Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.",
-    "FILTER_SOURCE: If the source bitmap is temporary and will not be required after the stretch operation, you have the option of setting this flag.  By doing so, the stretch routine will pass the source image through a simple filter so that it can improve the resulting image.  This option is available at a speed cost and is best used in conjunction with bilinear resizing.",
-    "BRESENHAM: Smooth bresenham.",
-    "NEIGHBOUR: Nearest neighbour scaling",
-    "CUBIC|BICUBIC: Cubic scaling.",
-    "CLAMP: Pixels that are past the edge of the source material will have a default alpha value of 0 unless the CLAMP flag is used, in which case the value is approximated with a bias of 255 if not otherwise calculable."
-  )
-
   enum("BMP", { start=2, comment="Bitmap types" },
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
      "CHUNKY: Chunky pixel mode (default).")
@@ -78,14 +157,15 @@ module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status=
     "INVERSE_ALPHA: Indicates reverse alpha blending, higher values are transparent.",
     "QUERIED: Automatically set after a Query on the bitmap.",
     "CLEAR: Clear graphics on initialisation and when resizing.",
-    "USER: User flag allows tagging of bitmaps for special meaning; not used internally.",
+    "USER: This user flag can be used to tag bitmaps with special meaning.  Not used internally.",
     "ACCELERATED_2D: 2D video acceleration is available.",
     "ACCELERATED_3D: 3D video acceleration is available.",
     "ALPHA_CHANNEL: For 32-bit images, indicates that an alpha channel is present.",
     "NEVER_SHRINK: Ignore resize requests that would shrink the size of the bitmap.",
     "X11_DGA: Private DGA indicator.",
     "FIXED_DEPTH: Prevent changing of bitmap depth after initialisation (e.g. via acResize()).",
-    "NO_BLEND: Drawing routines that support this flag will not blend pixels."
+    "NO_BLEND: Drawing routines that support this flag will not blend pixels.",
+    "PREMUL: The RGB values are premultiplied (32-bit only)."
   )
 
   enum("FLIP", { start=1, comment="Flags for the bitmap Flip method." },
@@ -130,6 +210,109 @@ module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status=
     "OFF: Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).",
     "SUSPEND: Puts the display into suspend mode (blanks the display output while maintaining normal power levels).",
     "STANDBY: Puts the display into standby (reduced power) mode.")
+
+  enum('CT', { start=0 }, 'DATA', 'AUDIO', 'IMAGE', 'FILE', 'OBJECT', 'TEXT', 'END')
+
+  -- Note: It is intentional that the CLIP types are expressed as flags and not constants.
+
+  flags('CLIPTYPE', { comment='Clipboard types' },
+    'DATA: Raw information that is uncategorised can be defined as a data clip.',
+    'AUDIO: An audio clip that is recognised by the Sound class (such as wav\'s and mp3\'s).',
+    'IMAGE: Images that are recognised by the Picture class may be stored as this type (such as jpeg\'s and png files).',
+    'FILE: Pure file references are stored as file clips.  This type is typically used by file managers for moving and copying files.',
+    'OBJECT: An object that has been deserialised into binary form.',
+    'TEXT: Plain text files such as ASCII and UTF-8 must be identified through this clip type.')
+
+  flags('CLF', { comment='Clipboard flags' },
+    'DRAG_DROP: Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.',
+    'HOST: This indicator is automatically set when a clipboard was created due to incoming content from the host system.')
+
+  flags('CEF', { },
+    'DELETE: Requests that the original file source is deleted if a successful paste operation takes place.',
+    'EXTEND: Instead of replacing existing clipboard data, add the new data to the group.')
+
+  struct("SurfaceControl", { comment="Internal structure returned by AccessList()"}, [[
+    int ListIndex   # Byte offset of the ordered list
+    int ArrayIndex  # Byte offset of the list array
+    int EntrySize   # Byte size of each entry in the array
+    int Total       # Total number of entries currently in the list array
+    int ArraySize   # Max limit of entries in the list array
+    # Followed by a background-to-foreground list of indexes into the list array (UWORD)
+    # Followed by the list array itself
+  ]])
+
+  struct("SurfaceInfo", { version=2, type="surfaceinfo" }, [[
+    oid ParentID        # Object that contains the surface area
+    oid BitmapID        # Surface bitmap buffer
+    oid DataMID         # Bitmap data memory ID
+    oid DisplayID       # If the surface object is root, its display is reflected here
+    int Flags           # Surface flags (RNF_VISIBLE etc)
+    int X               # Horizontal coordinate
+    int Y               # Vertical coordinate
+    int Width           # Width of the surface area
+    int Height          # Height of the surface area
+    int AbsX            # Absolute X coordinate
+    int AbsY            # Absolute Y coordinate
+    short Level         # Branch level within the tree
+    char BitsPerPixel   # Bits per pixel of the bitmap
+    char BytesPerPixel  # Bytes per pixel of the bitmap
+    int LineWidth       # Line width of the bitmap, in bytes
+  ]])
+
+  struct("SurfaceList", { }, [[
+    oid ParentID      # Object that owns the surface area
+    oid SurfaceID     # ID of the surface area
+    oid BitmapID      # Shared bitmap buffer, if available
+    oid DisplayID     # Display
+    oid DataMID       # For drwCopySurface()
+    oid TaskID        # Task that owns the surface
+    oid RootID        # RootLayer
+    oid PopOverID
+    int Flags         # Surface flags (RNF_VISIBLE etc)
+    int X             # Horizontal coordinate
+    int Y             # Vertical coordinate
+    int Width         # Width
+    int Height        # Height
+    # Note: The order of the following fields must match 'struct ClipRectangle'
+    int Left          # Absolute X
+    int Top           # Absolute Y
+    int Right         # Absolute right coordinate
+    int Bottom        # Absolute bottom coordinate
+    short Level       # Level number within the hierarchy
+    # For drwCopySurface()
+    short LineWidth    # [applies to the bitmap owner]
+    char BytesPerPixel # [applies to the bitmap owner]
+    char BitsPerPixel  # [applies to the bitmap owner]
+    char Cursor        # Preferred cursor image ID
+    uchar Opacity      # Current opacity setting 0 - 255
+  ]])
+
+  -- Note: Floating point precision is not supported when designating precopy zones
+
+  struct("PrecopyRegion", { restrict="c", comment="Internal structure managed by the PrecopyRegion field."}, [[
+    int X             # X Coordinate
+    int Y             # Y Coordinate
+    int Width         # Width
+    int Height        # Height
+    int XOffset       # X offset
+    int YOffset       # Y offset
+    short(DMF) Dimensions  # Dimension flags
+    short(RNF) Flags
+  ]])
+
+  struct("SurfaceCallback", { restrict="c", comment="Private structure for managing surface callbacks." }, [[
+    obj Object    # Context to use for the function.
+    func Function # void (*Routine)(OBJECTPTR, struct Surface *, objBitmap *);
+  ]])
+
+  struct("SurfaceCoords", { }, [[
+    int X      # Horizontal coordinate
+    int Y      # Vertical coordinate
+    int Width  # Width
+    int Height # Height
+    int AbsX   # Absolute X
+    int AbsY   # Absolute Y
+  ]])
 
   -- PixelFormat duplicates the Core module's ColourFormat structure.
 
@@ -190,70 +373,19 @@ module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status=
     ptr  Private        # A private pointer reserved for internal usage
   ]])
 
-  c_insert([[
-// Standard pack pixel for all formats
-
-#define PackPixel(a,b,c,d) ((((b)>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-                           ((((c)>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-                           ((((d)>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-                           (((255>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelA(a,b,c,d,e) \
-   ((((b)>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((c)>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((d)>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   ((((e)>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackAlpha(a,b) ((((b)>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelRGB(a,b) \
-   ((((b)->Red>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((b)->Green>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((b)->Blue>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   (((255>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-#define PackPixelRGBA(a,b) \
-   ((((b)->Red>>(a)->ColourFormat->RedShift) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedPos) | \
-   ((((b)->Green>>(a)->ColourFormat->GreenShift) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenPos) | \
-   ((((b)->Blue>>(a)->ColourFormat->BlueShift) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BluePos) | \
-   ((((b)->Alpha>>(a)->ColourFormat->AlphaShift) & (a)->ColourFormat->AlphaMask) << (a)->ColourFormat->AlphaPos)
-
-// Pack pixel 'whole-byte' version, for faster 24/32 bit formats
-
-#define PackPixelWB(a,b,c,d) ((b) << (a)->ColourFormat->RedPos) | ((c) << (a)->ColourFormat->GreenPos) | ((d) << (a)->ColourFormat->BluePos)
-#define PackPixelWBA(a,b,c,d,e) ((b) << (a)->ColourFormat->RedPos) | ((c) << (a)->ColourFormat->GreenPos) | ((d) << (a)->ColourFormat->BluePos) | ((e) << (a)->ColourFormat->AlphaPos)
-
-// Colour unpacking routines
-
-#define UnpackRed(a,b)   ((((b) >> (a)->ColourFormat->RedPos) & (a)->ColourFormat->RedMask) << (a)->ColourFormat->RedShift)
-#define UnpackGreen(a,b) ((((b) >> (a)->ColourFormat->GreenPos) & (a)->ColourFormat->GreenMask) << (a)->ColourFormat->GreenShift)
-#define UnpackBlue(a,b)  ((((b) >> (a)->ColourFormat->BluePos) & (a)->ColourFormat->BlueMask) << (a)->ColourFormat->BlueShift)
-#define UnpackAlpha(a,b) ((((b) >> (a)->ColourFormat->AlphaPos) & (a)->ColourFormat->AlphaMask))
-
-// Direct ColourFormat versions
-
-#define CFPackPixel(a,b,c,d)      ((((b)>>(a)->RedShift) & (a)->RedMask) << (a)->RedPos) | ((((c)>>(a)->GreenShift) & (a)->GreenMask) << (a)->GreenPos) | ((((d)>>(a)->BlueShift) & (a)->BlueMask) << (a)->BluePos)
-#define CFPackPixelA(a,b,c,d,e)   ((((b)>>(a)->RedShift) & (a)->RedMask) << (a)->RedPos) | ((((c)>>(a)->GreenShift) & (a)->GreenMask) << (a)->GreenPos) | ((((d)>>(a)->BlueShift) & (a)->BlueMask) << (a)->BluePos) | ((((e)>>(a)->AlphaShift) & (a)->AlphaMask) << (a)->AlphaPos)
-#define CFPackAlpha(a,b)          ((((b)>>(a)->AlphaShift) & (a)->AlphaMask) << (a)->AlphaPos)
-#define CFPackPixelWB(a,b,c,d)    ((b) << (a)->RedPos) | ((c) << (a)->GreenPos) | ((d) << (a)->BluePos)
-#define CFPackPixelWBA(a,b,c,d,e) ((b) << (a)->RedPos) | ((c) << (a)->GreenPos) | ((d) << (a)->BluePos) | ((e) << (a)->AlphaPos)
-#define CFUnpackRed(a,b)          ((((b) >> (a)->RedPos) & (a)->RedMask) << (a)->RedShift)
-#define CFUnpackGreen(a,b)        ((((b) >> (a)->GreenPos) & (a)->GreenMask) << (a)->GreenShift)
-#define CFUnpackBlue(a,b)         ((((b) >> (a)->BluePos) & (a)->BlueMask) << (a)->BlueShift)
-#define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
-  ]])
-
   methods("Bitmap", "Bmp", {
     { id=1, name="CopyArea" },
     { id=2, name="Compress" },
     { id=3, name="Decompress" },
     { id=4, name="Flip" },
-    { id=5, name="Flood" },
     { id=6, name="DrawRectangle" },
     { id=7, name="SetClipRegion" },
     { id=8, name="GetColour", inline=false },
     { id=9, name="DrawLine" },
-    { id=10, name="CopyStretch" }
+    { id=10, name="Premultiply" },
+    { id=11, name="Demultiply" },
+    { id=12, name="ConvertToLinear" },
+    { id=13, name="ConvertToRGB" }
   })
 
   class("Bitmap", { version=2.0, src="class_bitmap.cpp", output="class_bitmap_def.c" }, [[
@@ -288,55 +420,76 @@ module({ name="Display", copyright="Paul Manias 2003-2020", version=1.0, status=
     struct(RGB8) TransRGB       # The transparent colour of the bitmap, in RGB format.
     struct(RGB8) BkgdRGB        # Background colour (for clearing, resizing)
     int BkgdIndex               # Colour index or packed colour of the background.
+    int(CS) ColourSpace         # Defines the colour space for RGB values.
   ]],
+  nil,
   [[
-   ULONG  *Gradients;
-   APTR   ResolutionChangeHandle;
-   struct RGBPalette prvPaletteArray;
-   struct ColourFormat prvColourFormat;
-   MEMORYID prvCompressMID;
-   LONG   prvAFlags;                  // Private allocation flags
-   #ifdef __xwindows__
-      struct {
-         XImage   ximage;
-         Drawable drawable;
-         XImage   *readable;
-         XShmSegmentInfo ShmInfo;
-         BYTE XShmImage;
-      } x11;
-   #elif _WIN32
-      struct {
-         APTR Drawable;  // HDC for the Bitmap
-      } win;
-   #elif _GLES_
-      ULONG prvWriteBackBuffer:1;  // For OpenGL surface locking.
-      LONG prvGLPixel;
-      LONG prvGLFormat;
-   #endif
-  ]])
+   inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
+      if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
+      else {
+         struct bmpGetColour args = { Red, Green, Blue, Alpha };
+         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         return 0;
+      }
+   }
 
-  c_insert([[
-INLINE ULONG bmpGetColour(APTR Bitmap, UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
-   if (((objBitmap *)Bitmap)->BitsPerPixel > 8) {
-      return PackPixelA((objBitmap *)Bitmap, Red, Green, Blue, Alpha);
+   inline ULONG getColour(struct RGB8 &RGB) {
+      if (BitsPerPixel > 8) return packPixel(RGB);
+      else {
+         struct bmpGetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
+         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
+         return 0;
+      }
    }
-   else {
-      struct bmpGetColour args = { Red, Green, Blue, Alpha };
-      if (!Action(MT_BmpGetColour, Bitmap, &args)) return args.Colour;
-      return 0;
-   }
-}
 
-INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
-   if (((objBitmap *)Bitmap)->BitsPerPixel > 8) {
-      return PackPixelA((objBitmap *)Bitmap, RGB->Red, RGB->Green, RGB->Blue, RGB->Alpha);
+   inline ULONG packPixel(UBYTE R, UBYTE G, UBYTE B) {
+      return
+         (((R>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((G>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((B>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((255>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
    }
-   else {
-      struct bmpGetColour args = { RGB->Red, RGB->Green, RGB->Blue, RGB->Alpha };
-      if (!Action(MT_BmpGetColour, Bitmap, &args)) return args.Colour;
-      return 0;
+
+   inline ULONG packPixel(UBYTE R, UBYTE G, UBYTE B, UBYTE A) {
+      return
+         (((R>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((G>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((B>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((A>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
    }
-}
+
+   inline ULONG packPixel(struct RGB8 &RGB, UBYTE Alpha) {
+      return
+         (((RGB.Red>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((RGB.Green>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((RGB.Blue>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((Alpha>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixel(struct RGB8 &RGB) {
+      return
+         (((RGB.Red>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
+         (((RGB.Green>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
+         (((RGB.Blue>>ColourFormat->BlueShift) & ColourFormat->BlueMask) << ColourFormat->BluePos) |
+         (((RGB.Alpha>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
+   }
+
+   // Pack pixel 'whole-byte' version, for faster 24/32 bit formats
+
+   inline ULONG packPixelWB(UBYTE R, UBYTE G, UBYTE B, UBYTE A = 255) {
+      return (R << ColourFormat->RedPos) | (G << ColourFormat->GreenPos) | (B << ColourFormat->BluePos) | (A << ColourFormat->AlphaPos);
+   }
+
+   inline ULONG packPixelWB(struct RGB8 &RGB) {
+      return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (RGB.Alpha << ColourFormat->AlphaPos);
+   }
+
+   // Colour unpacking routines
+
+   template <class T> inline UBYTE unpackRed(T Packed)   { return (((Packed >> ColourFormat->RedPos) & ColourFormat->RedMask) << ColourFormat->RedShift); }
+   template <class T> inline UBYTE unpackGreen(T Packed) { return (((Packed >> ColourFormat->GreenPos) & ColourFormat->GreenMask) << ColourFormat->GreenShift); }
+   template <class T> inline UBYTE unpackBlue(T Packed)  { return (((Packed >> ColourFormat->BluePos) & ColourFormat->BlueMask) << ColourFormat->BlueShift); }
+   template <class T> inline UBYTE unpackAlpha(T Packed) { return (((Packed >> ColourFormat->AlphaPos) & ColourFormat->AlphaMask)); }
   ]])
 
   methods("Display", "Gfx", {
@@ -353,65 +506,46 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
   })
 
   class("Display", { version=1.0, src="class_display.cpp", output="class_display_def.c" }, [[
-    double RefreshRate      # The active refresh rate
-    obj(Bitmap) Bitmap      # Reference to the display's bitmap information.
-    int(SCR) Flags          # Optional flags
-    int Width               # The width of the visible display
-    int Height              # The height of the visible display
-    int X                   # Hardware co-ordinate for vertical offset, or position of host window
-    int Y                   # Hardware co-ordinate for horizontal offset, or position of host window
-    int BmpX                # Current offset of the horizontal axis
-    int BmpY                # Current offset of the vertical axis
-    oid Buffer              # Double buffer bitmap
-    int TotalMemory         # The total amount of accessible RAM installed on the video card.
-    int MinHScan            # The minimum horizontal scan rate of the display output device.
-    int MaxHScan            # The maximum horizontal scan rate of the display output device.
-    int MinVScan            # The minimum vertical scan rate of the display output device.
-    int MaxVScan            # The maximum vertical scan rate of the display output device.
-    int(DT) DisplayType     # Indicates the display type.
-    int(DPMS) DPMS          # Optional display power modes.
-    oid PopOver             # For hosted displays, PopOver can refer to another display that should always remain behind us
-    int LeftMargin          # Left window margin, if hosted
-    int RightMargin         # Right window margin, if hosted
-    int TopMargin           # Top window margin, if hosted
-    int BottomMargin        # Bottom window margin, if hosted
+    double RefreshRate   # The active refresh rate
+    obj(Bitmap) Bitmap   # Reference to the display's bitmap information.
+    int(SCR) Flags       # Optional flags
+    int Width            # The width of the visible display
+    int Height           # The height of the visible display
+    int X                # Hardware co-ordinate for vertical offset, or position of host window
+    int Y                # Hardware co-ordinate for horizontal offset, or position of host window
+    int BmpX             # Current offset of the horizontal axis
+    int BmpY             # Current offset of the vertical axis
+    oid Buffer           # Double buffer bitmap
+    int TotalMemory      # The total amount of accessible RAM installed on the video card.
+    int MinHScan         # The minimum horizontal scan rate of the display output device.
+    int MaxHScan         # The maximum horizontal scan rate of the display output device.
+    int MinVScan         # The minimum vertical scan rate of the display output device.
+    int MaxVScan         # The maximum vertical scan rate of the display output device.
+    int(DT) DisplayType  # Indicates the display type.
+    int(DPMS) DPMS       # Optional display power modes.
+    oid PopOver          # For hosted displays, PopOver can refer to another display that should always remain behind us
+    int LeftMargin       # Left window margin, if hosted
+    int RightMargin      # Right window margin, if hosted
+    int TopMargin        # Top window margin, if hosted
+    int BottomMargin     # Bottom window margin, if hosted
+  ]])
+
+  methods('clipboard', 'Clip', {
+    { id=1, name='AddFile' },
+    { id=2, name='AddObject' },
+    { id=3, name='AddObjects' },
+    { id=4, name='GetFiles' },
+    { id=5, name='AddText' },
+    { id=6, name='Remove' }
+  })
+
+  class('Clipboard', { src='class_clipboard.cpp', output='class_clipboard_def.c' }, [[
+    int(CLF) Flags      # Optional flags
+    mem Cluster         # Identifies the data cluster (item grouping) that the clipboard will work with
   ]],
   [[
-   DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
-   struct resolution *Resolutions;
-   FUNCTION  ResizeFeedback;
-   MEMORYID  ResolutionsMID;
-   WORD      TotalResolutions;
-   OBJECTID  BitmapID;
-   LONG      BmpXOffset;     // X offset for scrolling
-   LONG      BmpYOffset;     // Y offset for scrolling
-   #ifdef __xwindows__
-   union {
-      APTR   WindowHandle;
-      Window XWindowHandle;
-   };
-   #elif __ANDROID__
-      ANativeWindow *WindowHandle;
-   #else
-      APTR   WindowHandle;
-   #endif
-   APTR      UserLoginHandle;
-   WORD      Opacity;
-   LONG      VDensity;          // Cached DPI value, if calculable.
-   LONG      HDensity;
-   char      DriverVendor[60];
-   char      DriverCopyright[80];
-   char      Manufacturer[60];
-   char      Chipset[40];
-   char      DAC[32];
-   char      Clock[32];
-   char      DriverVersion[16];
-   char      CertificationDate[20];
-   char      Display[32];
-   char      DisplayManufacturer[60];
-   #ifdef _WIN32
-      APTR OldProcedure;
-   #endif
+   FUNCTION RequestHandler;
+   BYTE     ClusterAllocated:1;
   ]])
 
   class("Pointer", { version=1.0, src="class_pointer.cpp", output="class_pointer_def.c" }, [[
@@ -419,12 +553,12 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
     double Acceleration    # Acceleration level - keep between 0.0 and 3.0
     double DoubleClick     # Double click speed
     double WheelSpeed      # Mouse-wheel speed
-    int    X               # Current x coordinate
-    int    Y               # Current y coordinate
+    double X               # Current x coordinate
+    double Y               # Current y coordinate
+    double OverX           # The X coord relative to the closest object
+    double OverY           # The Y coord relative to the closest object
+    double OverZ           # The Z distance relative to the closest object
     int    MaxSpeed        # Maximum speed
-    int    OverX           # The X coord relative to the closest object
-    int    OverY           # The Y coord relative to the closest object
-    int    OverZ           # The Z distance relative to the closest object
     oid    Input           # Indicates where pointer input comes from (usually SystemMouse)
     oid    Surface         # Top-most surface that contains the pointer
     oid    Anchor          # Surface object that the pointer is anchored to
@@ -439,83 +573,186 @@ INLINE ULONG bmpGetColourRGB(APTR Bitmap, struct RGB8 *RGB) {
     int    DragItem        # If drag & drop is active, refers to the custom ID of the item being dragged
     oid    OverObject      # Object positioned under the pointer
     int    ClickSlop       # Leniency value for determining whether the user intended to make a click or drag.
+  ]])
+
+  methods("surface", "Drw", {
+    { id=1, name="InheritedFocus" },
+    { id=2, name="Expose" },
+    { id=3, name="InvalidateRegion" },
+    { id=4, name="SetDisplay" },
+    { id=5, name="SetOpacity" },
+    { id=6, name="AddCallback", inline=false },
+    { id=7, name="Minimise" },
+    { id=8, name="ResetDimensions" },
+    { id=9, name="RemoveCallback", inline=false },
+    { id=10, name="ScheduleRedraw" }
+  })
+
+  class("Surface", { src={
+      "class_surface/class_surface.cpp",
+      "class_surface/surface_dimensions.cpp",
+      "class_surface/surface_drawing.cpp",
+      "class_surface/surface_fields.cpp",
+      "class_surface/surface_resize.cpp"
+    }, output="class_surface/surface_def.c" }, [[
+    oid Drag              # Drag the object that this field points to
+    oid Buffer            # Buffer bitmap (backing store)
+    oid Parent            # Graphical container of the Surface object, if any
+    oid PopOver           # Keeps a surface in front of another surface in the Z order.
+    int TopMargin         # Top movement limit
+    int BottomMargin      # Bottom movement limit
+    int LeftMargin        # Left movement limit
+    int RightMargin       # Right movement limit
+    int MinWidth          # Minimum width setting
+    int MinHeight         # Minimum height setting
+    int MaxWidth          # Maximum width setting
+    int MaxHeight         # Maximum height setting
+    int LeftLimit         # Limits the surface area from moving too far left
+    int RightLimit        # Limits the surface area from moving too far right
+    int TopLimit          # Limits the surface area from moving too far up
+    int BottomLimit       # Limits the surface area from moving too far down
+    oid Display           # Refers to the Display object that is managing the surface's graphics.
+    int(RNF) Flags        # Special flags
+    int X                 # Fixed horizontal coordinate
+    int Y                 # Fixed vertical coordinate
+    int Width             # Fixed width
+    int Height            # Fixed height
+    oid Root              # Surface that is acting as a root for many surface children (useful when applying translucency)
+    oid Program           # The task that is represented by the surface object (important for linking desktop windows to foreign tasks)
+    int(ALIGN) Align      # Alignment flags
+    int(DMF) Dimensions   # Dimension flags
+    int(DRAG) DragStatus  # Indicates the draggable state when dragging is enabled.
+    int(PTR) Cursor       # The preferred cursor image to use when the pointer is over the surface
+    struct(RGB8) Colour   # Background colour specification
+    int Type              # Internal surface type flags
+    int Modal             # Set to 1 to enable modal mode
   ]],
   [[
-   struct {
-      LARGE LastClickTime;      // Timestamp
-      OBJECTID LastClicked;     // Most recently clicked object
-      UBYTE DblClick:1;         // TRUE if last click was a double-click
-   } Buttons[10];
-   LARGE    ClickTime;
-   LARGE    AnchorTime;
-   APTR     UserLoginHandle;
-   OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
-   OBJECTID CursorReleaseID;
-   OBJECTID DragSurface;        // Draggable surface anchored to the pointer position
-   OBJECTID DragParent;         // Parent of the draggable surface
-   MEMORYID MessageQueue;       // Message port of the task that holds the cursor
-   MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
-   LONG     LastClickX, LastClickY;
-   LONG     LastReleaseX, LastReleaseY;
-   LONG     CursorRelease;
-   LONG     BufferCursor;
-   LONG     BufferFlags;
-   MEMORYID BufferQueue;
-   OBJECTID BufferOwner;
-   OBJECTID BufferObject;
-   char     DragData[8];          // Data preferences for current drag & drop item
-   char     Device[32];
-   char     ButtonOrder[12];      // The order of the first 11 buttons can be changed here
-   WORD     ButtonOrderFlags[12]; // Button order represented as JD flags
-   BYTE     PostComposite;        // Enable post-composite drawing (default)
-   UBYTE    prvOverCursorID;
-   struct {
-      WORD HotX;
-      WORD HotY;
-   } Cursors[PTR_END];
+   // These coordinate fields are considered private but may be accessed by some internal classes, like Document
+   LONG     XOffset, YOffset;     // Fixed horizontal and vertical offset
+   DOUBLE   XOffsetPercent;       // Relative horizontal offset
+   DOUBLE   YOffsetPercent;       // Relative vertical offset
+   DOUBLE   WidthPercent, HeightPercent; // Relative width and height
+   DOUBLE   XPercent, YPercent;   // Relative coordinate
   ]])
 
   functionNames("gfx",
+    "AccessList",
+    "AccessPointer",
+    "CheckIfChild",
+    "Compress",
+    "CopyArea",
+    "CopyRawBitmap",
+    "CopySurface",
+    "Decompress",
+    "DrawLine",
+    "DrawPixel",
+    "DrawRGBPixel",
+    "DrawRectangle",
+    "ExposeSurface",
+    "FlipBitmap",
+    "GetColourFormat",
+    "GetCursorInfo",
+    "GetCursorPos",
     "GetDisplayInfo",
     "GetDisplayType",
-    "SetCursor",
-    "RestoreCursor",
-    "GetCursorPos",
-    "SetCursorPos",
-    "GetRelativeCursorPos",
-    "GetCursorInfo",
-    "SetCustomCursor",
-    "AccessPointer",
-    "ScanDisplayModes",
-    "LockCursor",
-    "UnlockCursor",
-    "SetHostOption",
-    "StartCursorDrag",
-    "CopySurface",
-    "Sync",
-    "Resample",
-    "GetColourFormat",
-    "CopyArea",
-    "CopyStretch",
-    "ReadRGBPixel",
-    "ReadPixel",
-    "DrawRGBPixel",
-    "DrawPixel",
-    "DrawLine",
-    "DrawRectangle",
-    "FlipBitmap",
-    "SetClipRegion",
-    "Compress",
-    "Decompress",
-    "Flood",
-    "DrawEllipse",
-    "SubscribeInput",
-    "UnsubscribeInput",
-    "GetInputMsg",
     "GetInputTypeName",
-    "ScaleToDPI")
+    "GetModalSurface",
+    "GetRelativeCursorPos",
+    "GetSurfaceCoords",
+    "GetSurfaceFlags",
+    "GetSurfaceInfo",
+    "GetUserFocus",
+    "GetVisibleArea",
+    "LockBitmap",
+    "LockCursor",
+    "ReadPixel",
+    "ReadRGBPixel",
+    "ReleaseList",
+    "Resample",
+    "RestoreCursor",
+    "ScaleToDPI",
+    "ScanDisplayModes",
+    "SetClipRegion",
+    "SetCursor",
+    "SetCursorPos",
+    "SetCustomCursor",
+    "SetHostOption",
+    "SetModalSurface",
+    "StartCursorDrag",
+    "SubscribeInput",
+    "Sync",
+    "UnlockBitmap",
+    "UnlockCursor",
+    "UnsubscribeInput",
+    "WindowHook")
 
   c_insert([[
+// Direct ColourFormat versions
+
+#define CFPackPixel(a,b,c,d)      ((((b)>>(a)->RedShift) & (a)->RedMask) << (a)->RedPos) | ((((c)>>(a)->GreenShift) & (a)->GreenMask) << (a)->GreenPos) | ((((d)>>(a)->BlueShift) & (a)->BlueMask) << (a)->BluePos)
+#define CFPackPixelA(a,b,c,d,e)   ((((b)>>(a)->RedShift) & (a)->RedMask) << (a)->RedPos) | ((((c)>>(a)->GreenShift) & (a)->GreenMask) << (a)->GreenPos) | ((((d)>>(a)->BlueShift) & (a)->BlueMask) << (a)->BluePos) | ((((e)>>(a)->AlphaShift) & (a)->AlphaMask) << (a)->AlphaPos)
+#define CFPackAlpha(a,b)          ((((b)>>(a)->AlphaShift) & (a)->AlphaMask) << (a)->AlphaPos)
+#define CFPackPixelWB(a,b,c,d)    ((b) << (a)->RedPos) | ((c) << (a)->GreenPos) | ((d) << (a)->BluePos)
+#define CFPackPixelWBA(a,b,c,d,e) ((b) << (a)->RedPos) | ((c) << (a)->GreenPos) | ((d) << (a)->BluePos) | ((e) << (a)->AlphaPos)
+#define CFUnpackRed(a,b)          ((((b) >> (a)->RedPos) & (a)->RedMask) << (a)->RedShift)
+#define CFUnpackGreen(a,b)        ((((b) >> (a)->GreenPos) & (a)->GreenMask) << (a)->GreenShift)
+#define CFUnpackBlue(a,b)         ((((b) >> (a)->BluePos) & (a)->BlueMask) << (a)->BlueShift)
+#define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
+
 #define gfxReleasePointer(a)    (ReleaseObject(a))
+// Helper function for surface lookups.
+
+INLINE LONG FIND_SURFACE_INDEX(SurfaceControl *Ctl, OBJECTID SurfaceID) {
+   auto *list = (SurfaceList *)((char *)Ctl + Ctl->ArrayIndex);
+   for (LONG j=0; j < Ctl->Total; j++) {
+      if (list->SurfaceID IS SurfaceID) return j;
+      list = (SurfaceList *)((char *)list + Ctl->EntrySize);
+   }
+   return -1;
+}
+
+// Stubs
+
+INLINE ERROR drwInvalidateRegionID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height) {
+   struct drwInvalidateRegion args = { X, Y, Width, Height };
+   return ActionMsg(MT_DrwInvalidateRegion, ObjectID, &args);
+}
+
+INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags) {
+   struct drwExpose args = { X, Y, Width, Height, Flags };
+   return ActionMsg(MT_DrwExpose, ObjectID, &args);
+}
+
+INLINE ERROR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment) {
+   struct drwSetOpacity args = { Value, Adjustment};
+   return ActionMsg(MT_DrwSetOpacity, ObjectID, &args);
+}
+
+INLINE ERROR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
+   if (Callback) {
+      FUNCTION func;
+      SET_FUNCTION_STDC(func, Callback);
+      struct drwAddCallback args = { &func };
+      return Action(MT_DrwAddCallback, Surface, &args);
+   }
+   else {
+      struct drwAddCallback args = { NULL };
+      return Action(MT_DrwAddCallback, Surface, &args);
+   }
+}
+
+INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
+   if (Callback) {
+      FUNCTION func;
+      SET_FUNCTION_STDC(func, Callback);
+      struct drwRemoveCallback args = { &func };
+      return Action(MT_DrwRemoveCallback, Surface, &args);
+   }
+   else {
+      struct drwRemoveCallback args = { NULL };
+      return Action(MT_DrwRemoveCallback, Surface, &args);
+   }
+}
   ]])
 end)

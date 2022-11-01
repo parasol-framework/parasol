@@ -99,7 +99,7 @@ void SurfacePan::Init(Scintilla::SurfaceID sid, Scintilla::WindowID WID_NAME)
    if (bitmap) return;
 
    // Surface id will be a bitmap object
-   bitmap = static_cast<struct rkBitmap *>(sid);
+   bitmap = static_cast<objBitmap *>(sid);
 
    // Set the Clipping rect to the dimensions of the bitmap
    cliprect.left = 0;
@@ -112,7 +112,8 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
 {
    if (bitmap) return;
 
-   FMSG("~panInitPixMap()","Size: %dx%d", width, height);
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch("Size: %dx%d", width, height);
 
    //DebugOff();
    ERROR error = CreateObject(ID_BITMAP, NULL, &bitmap,
@@ -122,10 +123,8 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
       TAGEND);
    //DebugOn();
 
-   LOGRETURN();
-
    if (error != ERR_Okay) {
-      LogF("@panInitPixMap","Failed to create offscreen surface object.");
+      log.warning("Failed to create offscreen surface object.");
       return;
    }
 
@@ -137,16 +136,14 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
    cliprect.top    = 0;
    cliprect.right  = bitmap->Width;
    cliprect.bottom = bitmap->Height;
-
-   LOGRETURN();
 }
 
 /****************************************************************************/
 
-INLINE ULONG to_pan_col(struct rkBitmap *bitmap, const Scintilla::ColourAllocated& colour)
+INLINE ULONG to_pan_col(objBitmap *bitmap, const Scintilla::ColourAllocated& colour)
 {
    ULONG col32 = colour.AsLong();
-   return PackPixel(bitmap, SCIRED(col32), SCIGREEN(col32), SCIBLUE(col32));
+   return bitmap->packPixel(SCIRED(col32), SCIGREEN(col32), SCIBLUE(col32), 255);
 }
 
 /****************************************************************************/
@@ -306,7 +303,7 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
 //      BitmapClipper clipper(bitmap, cliprect);
 
       DBGDRAW("panCopy:","From: %dx%d To: %dx%d,%dx%d, Clip: %dx%d,%dx%d", from.x, from.y, rc.left, rc.top, rc.Width(), rc.Height(), bitmap->Clip.Left, bitmap->Clip.Top, bitmap->Clip.Right, bitmap->Clip.Bottom);
-      DBGDRAW("panCopy:","Bitmap: %d, Offset: %dx%d", bitmap->Head.UniqueID, bitmap->XOffset, bitmap->YOffset);
+      DBGDRAW("panCopy:","Bitmap: %d, Offset: %dx%d", bitmap->Head.UID, bitmap->XOffset, bitmap->YOffset);
       gfxCopyArea(src_surface.bitmap, bitmap, 0,
          from.x, from.y, rc.Width(), rc.Height(), /* source */
          rc.left, rc.top); /* dest */

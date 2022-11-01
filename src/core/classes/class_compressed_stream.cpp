@@ -9,7 +9,7 @@ Please refer to it for further information on licensing.
 -CLASS-
 CompressedStream: Acts as a proxy for decompressing and compressing data streams between objects.
 
-Use the CompressedStream class to compress and decompress data on the fly, without the need for a temporary storage
+Use the CompressedStream class to compress and decompress data on the fly without the need for a temporary storage
 area.  The default compression algorithm is DEFLATE with gzip header data.  It is compatible with common command-line
 tools such as gzip.
 
@@ -56,9 +56,9 @@ static ERROR CSTREAM_Init(objCompressedStream *Self, APTR Void)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Self->Input) AND (!Self->Output)) return log.warning(ERR_FieldNotSet);
+   if ((!Self->Input) and (!Self->Output)) return log.warning(ERR_FieldNotSet);
 
-   if ((Self->Input) AND (Self->Output)) {
+   if ((Self->Input) and (Self->Output)) {
       log.warning("A CompressedStream can operate in either read or write mode, not both.");
       return ERR_Failed;
    }
@@ -85,8 +85,8 @@ static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
-   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
 
    Args->Result = 0;
    if (Args->Length <= 0) return ERR_Okay;
@@ -138,23 +138,13 @@ static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
 
    ERROR error = ERR_Okay;
    LONG result = Z_OK;
-   while ((result IS Z_OK) AND (Self->Stream.avail_in > 0) AND (outputsize > 0)) {
+   while ((result IS Z_OK) and (Self->Stream.avail_in > 0) and (outputsize > 0)) {
       Self->Stream.next_out  = (Bytef *)output;
       Self->Stream.avail_out = outputsize;
       result = inflate(&Self->Stream, Z_SYNC_FLUSH);
 
-      if ((result) AND (result != Z_STREAM_END)) {
-         if (Self->Stream.msg) log.warning("%s", Self->Stream.msg);
-         else log.warning("Zip error: %d", result);
-
-         switch(result) {
-            case Z_STREAM_ERROR:  error = ERR_Decompression; break;
-            case Z_DATA_ERROR:    error = ERR_InvalidData; break;
-            case Z_MEM_ERROR:     error = ERR_Memory; break;
-            case Z_BUF_ERROR:     error = ERR_BufferOverflow; break;
-            case Z_VERSION_ERROR: error = ERR_WrongVersion; break;
-            default:              error = ERR_Decompression;
-         }
+      if ((result) and (result != Z_STREAM_END)) {
+         error = convert_zip_error(&Self->Stream, result);
          break;
       }
 
@@ -236,7 +226,7 @@ static ERROR CSTREAM_Seek(objCompressedStream *Self, struct acSeek *Args)
    while (pos > 0) {
       struct acRead read = { .Buffer = buffer, .Length = (LONG)pos };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
-      if (Action(AC_Read, (OBJECTPTR)Self, &read)) return ERR_Decompression;
+      if (Action(AC_Read, Self, &read)) return ERR_Decompression;
       pos -= read.Result;
    }
 
@@ -253,8 +243,8 @@ static ERROR CSTREAM_Write(objCompressedStream *Self, struct acWrite *Args)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Args) OR (!Args->Buffer)) return log.warning(ERR_NullArgs);
-   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
 
    if (!Self->Deflating) {
       ClearMemory(&Self->Stream, sizeof(Self->Stream));

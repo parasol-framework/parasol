@@ -1,0 +1,107 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>VectorRectangle</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Extends the Vector class with support for generating rectangles.</comment>
+    <version>1</version>
+    <id>ac2f506d</id>
+    <idstring>ID_VECTORRECTANGLE</idstring>
+    <category>Graphics</category>
+    <include>modules/vectorrectangle.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>VectorRectangle extends the <class name="Vector">Vector</class> class with the ability to generate rectangular paths.</p></description>
+    <source>
+      <file path="vectors/">rectangle.cpp</file>
+    </source>
+  </info>
+
+  <fields>
+    <field>
+      <name>Dimensions</name>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The following dimension flags are supported:</p>
+<types lookup="DMF">
+<type name="FIXED_HEIGHT">The <field>Height</field> value is a fixed coordinate.</type>
+<type name="FIXED_WIDTH">The <field>Width</field> value is a fixed coordinate.</type>
+<type name="FIXED_X">The <field>X</field> value is a fixed coordinate.</type>
+<type name="FIXED_Y">The <field>Y</field> value is a fixed coordinate.</type>
+<type name="RELATIVE_HEIGHT">The <field>Height</field> value is a relative coordinate.</type>
+<type name="RELATIVE_WIDTH">The <field>Width</field> value is a relative coordinate.</type>
+<type name="RELATIVE_X">The <field>X</field> value is a relative coordinate.</type>
+<type name="RELATIVE_Y">The <field>Y</field> value is a relative coordinate.</type>
+</types>
+      </description>
+    </field>
+
+    <field>
+      <name>Height</name>
+      <comment>The height of the rectangle.  Can be expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The height of the rectangle is defined here as either a fixed or relative value.  Negative values are permitted (this will flip the rectangle on the vertical axis).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>RoundX</name>
+      <comment>Specifies the size of rounded corners on the horizontal axis.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The corners of a rectangle can be rounded by setting the RoundX and RoundY values.  Each value is interpreted as a radius along the relevant axis.  A value of zero (the default) turns off this feature.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>RoundY</name>
+      <comment>Specifies the size of rounded corners on the vertical axis.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The corners of a rectangle can be rounded by setting the RoundX and RoundY values.  Each value is interpreted as a radius along the relevant axis.  A value of zero (the default) turns off this feature.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>The width of the rectangle.  Can be expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The width of the rectangle is defined here as either a fixed or relative value.  Negative values are permitted (this will flip the rectangle on the horizontal axis).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X</name>
+      <comment>The left-side of the rectangle.  Can be expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The position of the rectangle on the x-axis is defined here as a fixed or relative coordinate.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Y</name>
+      <comment>The top of the rectangle.  Can be expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The position of the rectangle on the y-axis is defined here as a fixed or relative coordinate.</p>
+      </description>
+    </field>
+
+  </fields>
+  <structs>
+  </structs>
+</book>

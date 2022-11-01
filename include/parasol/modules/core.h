@@ -2,7 +2,7 @@
 #define MODULES_CORE 1
 
 // Name:      core.h
-// Copyright: Paul Manias 1996-2020
+// Copyright: Paul Manias 1996-2022
 // Generator: idl-c
 
 #ifndef MAIN_H
@@ -10,6 +10,26 @@
 #endif
 
 #include <stdarg.h>
+
+#ifdef __cplusplus
+#include <list>
+#include <map>
+#include <string>
+#include <vector>
+#include <unordered_map>
+#endif
+
+class objStorageDevice;
+class objFile;
+class objConfig;
+class objScript;
+class objMetaClass;
+class objTask;
+class objThread;
+class objModule;
+class objTime;
+class objCompression;
+class objCompressedStream;
 
 #ifdef _WIN32
 
@@ -35,8 +55,8 @@
 #define DEVICE_FLOPPY_DISK 0x00000004
 #define DEVICE_READ 0x00000008
 #define DEVICE_WRITE 0x00000010
-#define DEVICE_REMOVABLE 0x00000020
 #define DEVICE_REMOVEABLE 0x00000020
+#define DEVICE_REMOVABLE 0x00000020
 #define DEVICE_SOFTWARE 0x00000040
 #define DEVICE_NETWORK 0x00000080
 #define DEVICE_TAPE 0x00000100
@@ -123,22 +143,39 @@
 #define AC_Sort 53
 #define AC_SaveSettings 54
 #define AC_SelectArea 55
-#define AC_END 56
+#define AC_Signal 56
+#define AC_END 57
 
 // Permission flags
 
 #define PERMIT_READ 0x00000001
+#define PERMIT_USER_READ 0x00000001
 #define PERMIT_WRITE 0x00000002
+#define PERMIT_USER_WRITE 0x00000002
 #define PERMIT_EXEC 0x00000004
+#define PERMIT_USER_EXEC 0x00000004
 #define PERMIT_DELETE 0x00000008
+#define PERMIT_USER 0x0000000f
 #define PERMIT_GROUP_READ 0x00000010
 #define PERMIT_GROUP_WRITE 0x00000020
 #define PERMIT_GROUP_EXEC 0x00000040
 #define PERMIT_GROUP_DELETE 0x00000080
+#define PERMIT_GROUP 0x000000f0
 #define PERMIT_OTHERS_READ 0x00000100
+#define PERMIT_EVERYONE_READ 0x00000111
+#define PERMIT_ALL_READ 0x00000111
 #define PERMIT_OTHERS_WRITE 0x00000200
+#define PERMIT_ALL_WRITE 0x00000222
+#define PERMIT_EVERYONE_WRITE 0x00000222
+#define PERMIT_EVERYONE_READWRITE 0x00000333
 #define PERMIT_OTHERS_EXEC 0x00000400
+#define PERMIT_ALL_EXEC 0x00000444
+#define PERMIT_EVERYONE_EXEC 0x00000444
 #define PERMIT_OTHERS_DELETE 0x00000800
+#define PERMIT_EVERYONE_DELETE 0x00000888
+#define PERMIT_ALL_DELETE 0x00000888
+#define PERMIT_OTHERS 0x00000f00
+#define PERMIT_EVERYONE_ACCESS 0x00000fff
 #define PERMIT_HIDDEN 0x00001000
 #define PERMIT_ARCHIVE 0x00002000
 #define PERMIT_PASSWORD 0x00004000
@@ -147,59 +184,44 @@
 #define PERMIT_INHERIT 0x00020000
 #define PERMIT_OFFLINE 0x00040000
 #define PERMIT_NETWORK 0x00080000
-#define PERMIT_USER_READ 0x00000001
-#define PERMIT_USER_WRITE 0x00000002
-#define PERMIT_USER_EXEC 0x00000004
-#define PERMIT_EVERYONE_READ 0x00000111
-#define PERMIT_EVERYONE_WRITE 0x00000222
-#define PERMIT_EVERYONE_EXEC 0x00000444
-#define PERMIT_EVERYONE_DELETE 0x00000888
-#define PERMIT_ALL_READ 0x00000111
-#define PERMIT_ALL_WRITE 0x00000222
-#define PERMIT_ALL_EXEC 0x00000444
-#define PERMIT_ALL_DELETE 0x00000888
-#define PERMIT_EVERYONE_ACCESS 0x00000fff
-#define PERMIT_EVERYONE_READWRITE 0x00000333
-#define PERMIT_USER 0x0000000f
-#define PERMIT_GROUP 0x000000f0
-#define PERMIT_OTHERS 0x00000f00
 
 // Special qualifier flags
 
 #define KQ_L_SHIFT 0x00000001
 #define KQ_R_SHIFT 0x00000002
+#define KQ_SHIFT 0x00000003
 #define KQ_CAPS_LOCK 0x00000004
 #define KQ_L_CONTROL 0x00000008
 #define KQ_L_CTRL 0x00000008
-#define KQ_R_CONTROL 0x00000010
 #define KQ_R_CTRL 0x00000010
+#define KQ_R_CONTROL 0x00000010
+#define KQ_CTRL 0x00000018
+#define KQ_CONTROL 0x00000018
 #define KQ_L_ALT 0x00000020
+#define KQ_ALTGR 0x00000040
 #define KQ_R_ALT 0x00000040
+#define KQ_ALT 0x00000060
+#define KQ_INSTRUCTION_KEYS 0x00000078
 #define KQ_L_COMMAND 0x00000080
 #define KQ_R_COMMAND 0x00000100
+#define KQ_COMMAND 0x00000180
+#define KQ_QUALIFIERS 0x000001fb
 #define KQ_NUM_PAD 0x00000200
 #define KQ_REPEAT 0x00000400
 #define KQ_RELEASED 0x00000800
 #define KQ_PRESSED 0x00001000
 #define KQ_NOT_PRINTABLE 0x00002000
+#define KQ_INFO 0x00003c04
 #define KQ_SCR_LOCK 0x00004000
 #define KQ_NUM_LOCK 0x00008000
 #define KQ_DEAD_KEY 0x00010000
 #define KQ_WIN_CONTROL 0x00020000
-#define KQ_SHIFT 0x00000003
-#define KQ_COMMAND 0x00000180
-#define KQ_ALT 0x00000060
-#define KQ_CONTROL 0x00000018
-#define KQ_CTRL 0x00000018
-#define KQ_ALTGR 0x00000040
-#define KQ_QUALIFIERS 0x000001fb
-#define KQ_INSTRUCTION_KEYS 0x00000078
-#define KQ_INFO 0x00003c04
 
 // Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.
 
-#define MEM_PUBLIC 0x00000001
+#define MEM_DATA 0x00000000
 #define MEM_SHARED 0x00000001
+#define MEM_PUBLIC 0x00000001
 #define MEM_VIDEO 0x00000002
 #define MEM_TEXTURE 0x00000004
 #define MEM_AUDIO 0x00000008
@@ -212,19 +234,18 @@
 #define MEM_NO_LOCK 0x00000400
 #define MEM_EXCLUSIVE 0x00000800
 #define MEM_DELETE 0x00001000
-#define MEM_NO_BLOCK 0x00002000
 #define MEM_NO_BLOCKING 0x00002000
+#define MEM_NO_BLOCK 0x00002000
 #define MEM_FIXED 0x00004000
 #define MEM_MANAGED 0x00008000
-#define MEM_DATA 0x00000000
 #define MEM_READ 0x00010000
 #define MEM_WRITE 0x00020000
+#define MEM_READ_WRITE 0x00030000
 #define MEM_NO_CLEAR 0x00040000
 #define MEM_RESERVED 0x00080000
 #define MEM_HIDDEN 0x00100000
 #define MEM_TASK 0x00200000
 #define MEM_CALLER 0x00800000
-#define MEM_READ_WRITE 0x00030000
 
 // Event categories.
 
@@ -273,7 +294,7 @@
 #define JTYPE_REPEATED 0x0400
 #define JTYPE_DRAG_ITEM 0x0800
 
-// JET constants are documented in GetInputMsg()
+// JET constants are documented in GetInputEvent()
 
 #define JET_DIGITAL_X 1
 #define JET_DIGITAL_Y 2
@@ -311,7 +332,9 @@
 #define JET_ABS_X 31
 #define JET_ABS_Y 32
 #define JET_ENTERED_SURFACE 33
+#define JET_ENTERED 33
 #define JET_LEFT_SURFACE 34
+#define JET_LEFT 34
 #define JET_PRESSURE 35
 #define JET_DEVICE_TILT_X 36
 #define JET_DEVICE_TILT_Y 37
@@ -321,83 +344,80 @@
 
 // Field descriptors.
 
-#define FD_DOUBLE 0x80000000
-#define FD_LONG 0x40000000
-#define FD_VARIABLE 0x20000000
-#define FD_FLOAT 0x10000000
-#define FD_POINTER 0x08000000
-#define FD_LARGE 0x04000000
-#define FD_FUNCTION 0x02000000
-#define FD_BYTE 0x01000000
-#define FD_STRING 0x00800000
-#define FD_WORD 0x00400000
-#define FD_PERCENTAGE 0x00200000
-#define FD_RGB 0x00080000
-#define FD_UNSIGNED 0x00040000
-#define FD_SYNONYM 0x00020000
-#define FD_SYSTEM 0x00010000
-#define FD_CUSTOM 0x00008000
+#define FD_DOUBLERESULT 0x80000100
+#define FD_PTR_DOUBLERESULT 0x88000100
+#define FD_VOID 0x00000000
+#define FD_VOLATILE 0x00000000
+#define FD_OBJECT 0x00000001
+#define FD_INTEGRAL 0x00000002
+#define FD_REQUIRED 0x00000004
+#define FD_VIRTUAL 0x00000008
+#define FD_STRUCT 0x00000010
+#define FD_ALLOC 0x00000020
+#define FD_FLAGS 0x00000040
+#define FD_VARTAGS 0x00000040
+#define FD_LOOKUP 0x00000080
+#define FD_ARRAYSIZE 0x00000080
+#define FD_PTRSIZE 0x00000080
+#define FD_BUFSIZE 0x00000080
+#define FD_R 0x00000100
+#define FD_RESULT 0x00000100
+#define FD_READ 0x00000100
+#define FD_WRITE 0x00000200
+#define FD_W 0x00000200
+#define FD_BUFFER 0x00000200
+#define FD_RW 0x00000300
+#define FD_INIT 0x00000400
+#define FD_I 0x00000400
+#define FD_TAGS 0x00000400
+#define FD_RI 0x00000500
+#define FD_ERROR 0x00000800
 #define FD_ARRAY 0x00001000
 #define FD_RESOURCE 0x00002000
-#define FD_INIT 0x00000400
-#define FD_WRITE 0x00000200
-#define FD_READ 0x00000100
-#define FD_LOOKUP 0x00000080
-#define FD_FLAGS 0x00000040
-#define FD_ALLOC 0x00000020
-#define FD_STRUCT 0x00000010
-#define FD_VIRTUAL 0x00000008
-#define FD_REQUIRED 0x00000004
-#define FD_INTEGRAL 0x00000002
-#define FD_OBJECT 0x00000001
-#define FD_ERROR 0x00000800
-#define FD_TAGS 0x00000400
-#define FD_BUFFER 0x00000200
-#define FD_RESULT 0x00000100
-#define FD_BUFSIZE 0x00000080
-#define FD_ARRAYSIZE 0x00000080
-#define FD_VARTAGS 0x00000040
-#define FD_VOLATILE 0x00000000
+#define FD_CUSTOM 0x00008000
+#define FD_SYSTEM 0x00010000
 #define FD_PRIVATE 0x00010000
+#define FD_SYNONYM 0x00020000
+#define FD_UNSIGNED 0x00040000
+#define FD_RGB 0x00080000
+#define FD_PERCENTAGE 0x00200000
+#define FD_WORD 0x00400000
 #define FD_STR 0x00800000
-#define FD_PTR 0x08000000
-#define FD_PTRSIZE 0x00000080
-#define FD_VOID 0x00000000
-#define FD_FUNCTIONPTR 0x0a000000
-#define FD_OBJECTPTR 0x08000001
-#define FD_OBJECTID 0x40000001
-#define FD_PTRBUFFER 0x08000200
+#define FD_STRING 0x00800000
 #define FD_STRRESULT 0x00800100
-#define FD_PTRRESULT 0x08000100
-#define FD_LONGRESULT 0x40000100
+#define FD_BYTE 0x01000000
+#define FD_FUNCTION 0x02000000
+#define FD_LARGE 0x04000000
 #define FD_LARGERESULT 0x04000100
-#define FD_DOUBLERESULT 0x80000100
-#define FD_R 0x00000100
-#define FD_W 0x00000200
-#define FD_RW 0x00000300
-#define FD_RI 0x00000500
-#define FD_I 0x00000400
-#define FD_PTR_LONGRESULT 0x48000100
+#define FD_POINTER 0x08000000
+#define FD_PTR 0x08000000
+#define FD_OBJECTPTR 0x08000001
+#define FD_PTRRESULT 0x08000100
+#define FD_PTRBUFFER 0x08000200
+#define FD_FUNCTIONPTR 0x0a000000
 #define FD_PTR_LARGERESULT 0x0c000100
-#define FD_PTR_DOUBLERESULT 0x88000100
+#define FD_FLOAT 0x10000000
+#define FD_VARIABLE 0x20000000
+#define FD_LONG 0x40000000
+#define FD_OBJECTID 0x40000001
+#define FD_LONGRESULT 0x40000100
+#define FD_PTR_LONGRESULT 0x48000100
+#define FD_DOUBLE 0x80000000
 
-struct dcInputReady {
-   BYTE Pad;
-};
-
-struct InputMsg {
-   DOUBLE   Value;          // The value associated with the Type
-   LARGE    Timestamp;      // PreciseTime() of the recorded input
-   OBJECTID RecipientID;    // Surface that the input message is being conveyed to
-   OBJECTID OverID;         // Surface that is directly under the mouse pointer at the time of the event
-   LONG     AbsX;           // Absolute horizontal position of mouse cursor
-   LONG     AbsY;           // Absolute vertical position of mouse cursor
-   LONG     X;              // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   LONG     Y;              // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   OBJECTID DeviceID;       // The hardware device that this event originated from
-   UWORD    Type;           // JET constant
-   UWORD    Flags;          // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-   UWORD    Mask;           // Mask to use for checking against subscribers
+struct InputEvent {
+   const struct InputEvent * Next;    // Next event in the chain
+   DOUBLE   Value;                    // The value associated with the Type
+   LARGE    Timestamp;                // PreciseTime() of the recorded input
+   OBJECTID RecipientID;              // Surface that the input message is being conveyed to
+   OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
+   DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor
+   DOUBLE   AbsY;                     // Absolute vertical position of mouse cursor
+   DOUBLE   X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   DOUBLE   Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   OBJECTID DeviceID;                 // The hardware device that this event originated from
+   UWORD    Type;                     // JET constant
+   UWORD    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
+   UWORD    Mask;                     // Mask to use for checking against subscribers
 };
 
 struct dcRequest {
@@ -468,42 +488,42 @@ struct DateTime {
 #define DMF_RELATIVE_X 0x00000001
 #define DMF_RELATIVE_Y 0x00000002
 #define DMF_FIXED_X 0x00000004
+#define DMF_X 0x00000005
 #define DMF_FIXED_Y 0x00000008
+#define DMF_Y 0x0000000a
 #define DMF_RELATIVE_X_OFFSET 0x00000010
 #define DMF_RELATIVE_Y_OFFSET 0x00000020
 #define DMF_FIXED_X_OFFSET 0x00000040
+#define DMF_X_OFFSET 0x00000050
 #define DMF_FIXED_Y_OFFSET 0x00000080
+#define DMF_Y_OFFSET 0x000000a0
 #define DMF_FIXED_HEIGHT 0x00000100
 #define DMF_FIXED_WIDTH 0x00000200
 #define DMF_RELATIVE_HEIGHT 0x00000400
+#define DMF_HEIGHT 0x00000500
+#define DMF_HEIGHT_FLAGS 0x000005a0
+#define DMF_VERTICAL_FLAGS 0x000005aa
 #define DMF_RELATIVE_WIDTH 0x00000800
+#define DMF_WIDTH 0x00000a00
+#define DMF_WIDTH_FLAGS 0x00000a50
+#define DMF_HORIZONTAL_FLAGS 0x00000a55
 #define DMF_FIXED_DEPTH 0x00001000
 #define DMF_RELATIVE_DEPTH 0x00002000
 #define DMF_FIXED_Z 0x00004000
 #define DMF_RELATIVE_Z 0x00008000
-#define DMF_FIXED_CENTER_X 0x00100000
-#define DMF_RELATIVE_RADIUS_Y 0x01000000
-#define DMF_RELATIVE_CENTER_Y 0x00080000
 #define DMF_RELATIVE_RADIUS_X 0x00010000
-#define DMF_STATUS_CHANGE_V 0x00800000
-#define DMF_FIXED_RADIUS_Y 0x02000000
-#define DMF_RELATIVE_CENTER_X 0x00040000
 #define DMF_FIXED_RADIUS_X 0x00020000
-#define DMF_STATUS_CHANGE_H 0x00400000
+#define DMF_RELATIVE_CENTER_X 0x00040000
+#define DMF_RELATIVE_CENTER_Y 0x00080000
+#define DMF_FIXED_CENTER_X 0x00100000
 #define DMF_FIXED_CENTER_Y 0x00200000
-#define DMF_FIXED_RADIUS 0x02020000
-#define DMF_RELATIVE_RADIUS 0x01010000
-#define DMF_HEIGHT 0x00000500
-#define DMF_HEIGHT_FLAGS 0x000005a0
-#define DMF_HORIZONTAL_FLAGS 0x00000a55
-#define DMF_WIDTH 0x00000a00
-#define DMF_X 0x00000005
-#define DMF_Y_OFFSET 0x000000a0
-#define DMF_WIDTH_FLAGS 0x00000a50
-#define DMF_Y 0x0000000a
-#define DMF_X_OFFSET 0x00000050
-#define DMF_VERTICAL_FLAGS 0x000005aa
+#define DMF_STATUS_CHANGE_H 0x00400000
+#define DMF_STATUS_CHANGE_V 0x00800000
 #define DMF_STATUS_CHANGE 0x00c00000
+#define DMF_RELATIVE_RADIUS_Y 0x01000000
+#define DMF_RELATIVE_RADIUS 0x01010000
+#define DMF_FIXED_RADIUS_Y 0x02000000
+#define DMF_FIXED_RADIUS 0x02020000
 
 // Compass directions.
 
@@ -546,24 +566,24 @@ struct DateTime {
 #define ALIGN_RIGHT 0x00000002
 #define ALIGN_HORIZONTAL 0x00000004
 #define ALIGN_VERTICAL 0x00000008
+#define ALIGN_MIDDLE 0x0000000c
+#define ALIGN_CENTER 0x0000000c
 #define ALIGN_TOP 0x00000010
 #define ALIGN_BOTTOM 0x00000020
-#define ALIGN_CENTER 0x0000000c
-#define ALIGN_MIDDLE 0x0000000c
 
 // Universal values for alignment of graphic layouts in documents.
 
+#define LAYOUT_SQUARE 0x00000000
 #define LAYOUT_TIGHT 0x00000001
 #define LAYOUT_LEFT 0x00000002
 #define LAYOUT_RIGHT 0x00000004
+#define LAYOUT_WIDE 0x00000006
 #define LAYOUT_BACKGROUND 0x00000008
 #define LAYOUT_FOREGROUND 0x00000010
 #define LAYOUT_EMBEDDED 0x00000020
 #define LAYOUT_LOCK 0x00000040
 #define LAYOUT_IGNORE_CURSOR 0x00000080
 #define LAYOUT_TILE 0x00000100
-#define LAYOUT_WIDE 0x00000006
-#define LAYOUT_SQUARE 0x00000000
 
 struct HSV {
    DOUBLE Hue;           // Between 0 and 359.999
@@ -577,13 +597,6 @@ struct FRGB {
    FLOAT Blue;   // Blue component value
    FLOAT Alpha;  // Alpha component value
 };
-
-typedef struct DRGB {
-   DOUBLE Red;    // Red component value
-   DOUBLE Green;  // Green component value
-   DOUBLE Blue;   // Blue component value
-   DOUBLE Alpha;  // Alpha component value
-} DRGB;
 
 typedef struct RGB8 {
    UBYTE Red;    // Red component value
@@ -629,9 +642,16 @@ typedef struct ColourFormat {
 
 struct ClipRectangle {
    LONG Left;    // Left-most coordinate
+   LONG Top;     // Top coordinate
    LONG Right;   // Right-most coordinate
    LONG Bottom;  // Bottom coordinate
+};
+
+struct Edges {
+   LONG Left;    // Left-most coordinate
    LONG Top;     // Top coordinate
+   LONG Right;   // Right-most coordinate
+   LONG Bottom;  // Bottom coordinate
 };
 
 // Script flags
@@ -652,6 +672,10 @@ struct ClipRectangle {
 #define MSF_ADD 0x00000008
 #define MSF_ADDRESS 0x00000010
 #define MSF_MESSAGE_ID 0x00000020
+
+// Flags for ProcessMessages
+
+#define PMF_SYSTEM_NO_BREAK 0x00000001
 
 #define ALF_SHARED 0x0001
 #define ALF_RECURSIVE 0x0002
@@ -681,6 +705,7 @@ struct ClipRectangle {
 #define RFD_ALLOW_RECURSION 0x0020
 #define RFD_SOCKET 0x0040
 #define RFD_RECALL 0x0080
+#define RFD_ALWAYS_CALL 0x0100
 
 // Flags for StrBuildArray()
 
@@ -766,13 +791,23 @@ struct ClipRectangle {
 #define AHASH_SORT 0x7c9e066d
 #define AHASH_SAVESETTINGS 0x475f7165
 #define AHASH_SELECTAREA 0xf55e615e
+#define AHASH_SIGNAL 0x1bc6ade3
 #define AHASH_UNDO 0x7c9f191b
+
+// Internal style notifications
+
+#define STYLE_ENABLED 1
+#define STYLE_DISABLED 2
+#define STYLE_FOCUS 3
+#define STYLE_LOST_FOCUS 4
+#define STYLE_RESIZE 5
+#define STYLE_CONTENT 6
 
 // Internal options for requesting function tables from modules.
 
 #define MHF_NULL 0x00000001
-#define MHF_STRUCTURE 0x00000002
 #define MHF_DEFAULT 0x00000002
+#define MHF_STRUCTURE 0x00000002
 #define MHF_STATIC 0x00000004
 
 // Registered CPU ID's
@@ -931,6 +966,7 @@ struct ClipRectangle {
 #define RDF_FILE 0x00000008
 #define RDF_FOLDERS 0x00000010
 #define RDF_FOLDER 0x00000010
+#define RDF_READ_ALL 0x0000001f
 #define RDF_VOLUME 0x00000020
 #define RDF_LINK 0x00000040
 #define RDF_TAGS 0x00000080
@@ -942,15 +978,14 @@ struct ClipRectangle {
 #define RDF_READ_ONLY 0x00001000
 #define RDF_ARCHIVE 0x00002000
 #define RDF_OPENDIR 0x00004000
-#define RDF_READ_ALL 0x0000001f
 
 // File flags
 
 #define FL_WRITE 0x00000001
 #define FL_NEW 0x00000002
 #define FL_READ 0x00000004
-#define FL_FOLDER 0x00000008
 #define FL_DIRECTORY 0x00000008
+#define FL_FOLDER 0x00000008
 #define FL_APPROXIMATE 0x00000010
 #define FL_LINK 0x00000020
 #define FL_BUFFER 0x00000040
@@ -982,7 +1017,6 @@ struct ClipRectangle {
 // Flags for LoadFile()
 
 #define LDF_CHECK_EXISTS 0x00000001
-#define LDF_IGNORE_STATUS 0x00000002
 
 // Flags for file feedback.
 
@@ -1050,10 +1084,17 @@ struct ClipRectangle {
 #define CF_ZLIB 2
 #define CF_DEFLATE 3
 
+// Flags that can be passed to FindObject()
+
+#define FOF_SMART_NAMES 0x00000001
+#define FOF_INCLUDE_SHARED 0x00000002
+
 // Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.
 
-#define NF_NO_TRACK 0x00000001
+#define NF_PRIVATE 0x00000000
 #define NF_UNTRACKED 0x00000001
+#define NF_NO_TRACK 0x00000001
+#define NF_SHARED 0x00000002
 #define NF_PUBLIC 0x00000002
 #define NF_FOREIGN_OWNER 0x00000004
 #define NF_INITIALISED 0x00000008
@@ -1062,25 +1103,26 @@ struct ClipRectangle {
 #define NF_FREE 0x00000040
 #define NF_TIMER_SUB 0x00000080
 #define NF_CREATE_OBJECT 0x00000100
-#define NF_FREE_MARK 0x00000200
+#define NF_COLLECT 0x00000200
 #define NF_NEW_OBJECT 0x00000400
 #define NF_RECLASSED 0x00000800
 #define NF_MESSAGE 0x00001000
-#define NF_PRIVATE 0x00000000
-#define NF_NAME 0x80000000
+#define NF_SIGNALLED 0x00002000
+#define NF_HAS_SHARED_RESOURCES 0x00004000
 #define NF_UNIQUE 0x40000000
+#define NF_NAME 0x80000000
 
 // Reserved Public Memory identifiers.
 
-#define RPM_Audio -1001
-#define RPM_DisplayInfo -1008
-#define RPM_XWindowLookup -1005
 #define RPM_SharedObjects -1000
+#define RPM_Audio -1001
 #define RPM_Clipboard -1002
-#define RPM_AlphaBlend -1004
-#define RPM_FocusList -1006
-#define RPM_InputMsgs -1007
 #define RPM_X11 -1003
+#define RPM_AlphaBlend -1004
+#define RPM_XWindowLookup -1005
+#define RPM_FocusList -1006
+#define RPM_InputEvents -1007
+#define RPM_DisplayInfo -1008
 
 #define MAX_FILENAME 256
 
@@ -1090,29 +1132,30 @@ struct ClipRectangle {
 
 // Module file header constants
 
-#define MODULE_HEADER_V2 1297040386
-#define MODULE_HEADER EXPORT struct ModHeader ModHeader
 #define MODULE_HEADER_V1 1297040385
+#define MODULE_HEADER_V2 1297040386
 #define MODULE_HEADER_VERSION 1297040386
+#define MODULE_HEADER EXPORT struct ModHeader ModHeader
 
 #define MAX_NAME_LEN 32
 
 // Reserved message ID's that are handled internally.
 
-#define MSGID_SET_FIELD 98
-#define MSGID_COMMAND 101
-#define MSGID_DEBUG 95
-#define MSGID_GET_FIELD 97
-#define MSGID_ACTION 99
-#define MSGID_EXPOSE 100
+#define MSGID_WAIT_FOR_OBJECTS 90
 #define MSGID_THREAD_ACTION 91
-#define MSGID_QUIT 1000
+#define MSGID_THREAD_CALLBACK 92
 #define MSGID_VALIDATE_PROCESS 93
 #define MSGID_EVENT 94
-#define MSGID_BREAK 102
+#define MSGID_DEBUG 95
 #define MSGID_ACTION_RESULT 96
-#define MSGID_THREAD_CALLBACK 92
+#define MSGID_GET_FIELD 97
+#define MSGID_SET_FIELD 98
+#define MSGID_ACTION 99
 #define MSGID_CORE_END 100
+#define MSGID_EXPOSE 100
+#define MSGID_COMMAND 101
+#define MSGID_BREAK 102
+#define MSGID_QUIT 1000
 
 // Flags for ListTasks()
 
@@ -1120,8 +1163,8 @@ struct ClipRectangle {
 
 // Special tags for SubscribeActionTags()
 
-#define SUB_WARN_EXISTS 0x7fffffff
 #define SUB_FAIL_EXISTS 0x7ffffffe
+#define SUB_WARN_EXISTS 0x7fffffff
 
 // Types for AllocateID()
 
@@ -1152,7 +1195,7 @@ struct ClipRectangle {
 #define RES_GLOBAL_INSTANCE 3
 #define RES_SHARED_CONTROL 4
 #define RES_USER_ID 5
-#define RES_X11_FD 6
+#define RES_DISPLAY_DRIVER 6
 #define RES_PRIVILEGED_USER 7
 #define RES_PRIVILEGED 8
 #define RES_RANDOM_SEED 9
@@ -1178,7 +1221,6 @@ struct ClipRectangle {
 #define RES_FREE_SWAP 29
 #define RES_KEY_STATE 30
 #define RES_CORE_IDL 31
-#define RES_DISPLAY_DRIVER 32
 
 // Path types for SetResourcePath()
 
@@ -1200,9 +1242,8 @@ struct ClipRectangle {
 
 #define CNF_STRIP_QUOTES 0x00000001
 #define CNF_AUTO_SAVE 0x00000002
-#define CNF_LOCK_RECORDS 0x00000004
-#define CNF_FILE_EXISTS 0x00000008
-#define CNF_NEW 0x00000010
+#define CNF_OPTIONAL_FILES 0x00000004
+#define CNF_NEW 0x00000008
 
 // Flags for VarNew()
 
@@ -1214,159 +1255,163 @@ struct ClipRectangle {
 
 // Raw key codes
 
-#define K_LENS_FOCUS 140
-#define K_S 19
-#define K_FORWARD 144
-#define K_F5 80
-#define K_F11 86
-#define K_R_ALT 73
-#define K_EQUALS 39
-#define K_F7 82
-#define K_U 21
-#define K_W 23
-#define K_F16 91
-#define K_PAGE_UP 112
-#define K_Y 25
-#define K_BACK_SLASH 47
-#define K_F9 84
-#define K_THREE 29
-#define K_VOLUME_DOWN 133
-#define K_STAR 147
-#define K_PAUSE 101
-#define K_NEXT 142
-#define K_NP_ENTER 126
-#define K_DELETE 109
-#define K_CAMERA 137
-#define K_REWIND 145
-#define K_ZERO 36
-#define K_NP_DOT 63
-#define K_B 2
-#define K_INSERT 117
-#define K_F15 90
-#define K_NP_8 57
-#define K_SCR_LOCK 100
-#define K_NP_2 51
-#define K_NP_0 49
-#define K_SELECT 115
-#define K_H 8
-#define K_F 6
-#define K_PERIOD 45
-#define K_NP_6 55
-#define K_NP_4 53
-#define K_NP_MINUS 62
-#define K_UNDO 118
-#define K_L_ALT 72
-#define K_COMMA 44
-#define K_PAGE_DOWN 113
-#define K_FIVE 31
-#define K_R_COMMAND 75
-#define K_SPACE 48
-#define K_P 16
-#define K_SEMI_COLON 42
-#define K_F2 77
-#define K_F4 79
-#define K_MENU 120
-#define K_NP_MULTIPLY 59
-#define K_R 18
-#define K_F19 129
-#define K_F6 81
-#define K_T 20
-#define K_N 14
-#define K_UP 96
-#define K_REDO 119
-#define K_NP_PLUS_MINUS 94
-#define K_CANCEL 122
-#define K_REVERSE_QUOTE 37
-#define K_X 24
-#define K_ENTER 107
-#define K_F8 83
-#define K_PRT_SCR 125
-#define K_VOLUME_UP 132
-#define K_L_COMMAND 74
-#define K_R_SQUARE 41
-#define K_Z 26
-#define K_AT 138
-#define K_APOSTROPHE 43
-#define K_R_SHIFT 69
-#define K_STOP 141
-#define K_L_SQUARE 40
-#define K_SLASH 46
-#define K_MUTE 146
-#define K_SYSRQ 127
 #define K_A 1
-#define K_PLAY 149
-#define K_WIN_CONTROL 131
-#define K_TAB 106
-#define K_ONE 27
-#define K_CALL 135
-#define K_BACK 134
-#define K_PLUS 139
+#define K_B 2
 #define K_C 3
-#define K_F20 130
-#define K_F18 128
-#define K_PREVIOUS 143
-#define K_DOT 45
-#define K_M 13
-#define K_DOWN 97
-#define K_J 10
-#define K_SEVEN 33
-#define K_E 5
-#define K_MACRO 93
-#define K_K 11
-#define K_NP_BAR 61
-#define K_O 15
-#define K_F10 85
-#define K_NP_3 52
-#define K_NP_9 58
-#define K_TWO 28
-#define K_V 22
-#define K_HELP 67
-#define K_NP_1 50
-#define K_CAPS_LOCK 70
-#define K_NUM_LOCK 124
-#define K_FOUR 30
-#define K_END_CALL 136
-#define K_F12 87
-#define K_NP_PLUS 60
-#define K_CLEAR 110
-#define K_POUND 148
-#define K_G 7
-#define K_NP_5 54
-#define K_L_SHIFT 68
-#define K_L 12
-#define K_NP_7 56
-#define K_SIX 32
-#define K_LEFT 99
-#define K_I 9
-#define K_NP_DECIMAL 63
-#define K_NP_DIVIDE 64
-#define K_R_CONTROL 66
-#define K_LESS_GREATER 95
-#define K_ESCAPE 108
-#define K_LIST_END 150
-#define K_L_CONTROL 65
-#define K_POWER 104
-#define K_F1 76
-#define K_BREAK 123
-#define K_MINUS 38
-#define K_WAKE 102
 #define K_D 4
+#define K_E 5
+#define K_F 6
+#define K_G 7
+#define K_H 8
+#define K_I 9
+#define K_J 10
+#define K_K 11
+#define K_L 12
+#define K_M 13
+#define K_N 14
+#define K_O 15
+#define K_P 16
+#define K_Q 17
+#define K_R 18
+#define K_S 19
+#define K_T 20
+#define K_U 21
+#define K_V 22
+#define K_W 23
+#define K_X 24
+#define K_Y 25
+#define K_Z 26
+#define K_ONE 27
+#define K_TWO 28
+#define K_THREE 29
+#define K_FOUR 30
+#define K_FIVE 31
+#define K_SIX 32
+#define K_SEVEN 33
+#define K_EIGHT 34
+#define K_NINE 35
+#define K_ZERO 36
+#define K_REVERSE_QUOTE 37
+#define K_MINUS 38
+#define K_EQUALS 39
+#define K_L_SQUARE 40
+#define K_R_SQUARE 41
+#define K_SEMI_COLON 42
+#define K_APOSTROPHE 43
+#define K_COMMA 44
+#define K_DOT 45
+#define K_PERIOD 45
+#define K_SLASH 46
+#define K_BACK_SLASH 47
+#define K_SPACE 48
+#define K_NP_0 49
+#define K_NP_1 50
+#define K_NP_2 51
+#define K_NP_3 52
+#define K_NP_4 53
+#define K_NP_5 54
+#define K_NP_6 55
+#define K_NP_7 56
+#define K_NP_8 57
+#define K_NP_9 58
+#define K_NP_MULTIPLY 59
+#define K_NP_PLUS 60
+#define K_NP_BAR 61
 #define K_NP_SEPARATOR 61
-#define K_HOME 111
+#define K_NP_MINUS 62
+#define K_NP_DECIMAL 63
+#define K_NP_DOT 63
+#define K_NP_DIVIDE 64
+#define K_L_CONTROL 65
+#define K_R_CONTROL 66
+#define K_HELP 67
+#define K_L_SHIFT 68
+#define K_R_SHIFT 69
+#define K_CAPS_LOCK 70
 #define K_PRINT 71
+#define K_L_ALT 72
+#define K_R_ALT 73
+#define K_L_COMMAND 74
+#define K_R_COMMAND 75
+#define K_F1 76
+#define K_F2 77
+#define K_F3 78
+#define K_F4 79
+#define K_F5 80
+#define K_F6 81
+#define K_F7 82
+#define K_F8 83
+#define K_F9 84
+#define K_F10 85
+#define K_F11 86
+#define K_F12 87
 #define K_F13 88
 #define K_F14 89
-#define K_EIGHT 34
-#define K_END 114
-#define K_SLEEP 103
-#define K_FIND 121
+#define K_F15 90
+#define K_F16 91
 #define K_F17 92
-#define K_Q 17
+#define K_MACRO 93
+#define K_NP_PLUS_MINUS 94
+#define K_LESS_GREATER 95
+#define K_UP 96
+#define K_DOWN 97
 #define K_RIGHT 98
+#define K_LEFT 99
+#define K_SCR_LOCK 100
+#define K_PAUSE 101
+#define K_WAKE 102
+#define K_SLEEP 103
+#define K_POWER 104
 #define K_BACKSPACE 105
-#define K_F3 78
+#define K_TAB 106
+#define K_ENTER 107
+#define K_ESCAPE 108
+#define K_DELETE 109
+#define K_CLEAR 110
+#define K_HOME 111
+#define K_PAGE_UP 112
+#define K_PAGE_DOWN 113
+#define K_END 114
+#define K_SELECT 115
 #define K_EXECUTE 116
-#define K_NINE 35
+#define K_INSERT 117
+#define K_UNDO 118
+#define K_REDO 119
+#define K_MENU 120
+#define K_FIND 121
+#define K_CANCEL 122
+#define K_BREAK 123
+#define K_NUM_LOCK 124
+#define K_PRT_SCR 125
+#define K_NP_ENTER 126
+#define K_SYSRQ 127
+#define K_F18 128
+#define K_F19 129
+#define K_F20 130
+#define K_WIN_CONTROL 131
+#define K_VOLUME_UP 132
+#define K_VOLUME_DOWN 133
+#define K_BACK 134
+#define K_CALL 135
+#define K_END_CALL 136
+#define K_CAMERA 137
+#define K_AT 138
+#define K_PLUS 139
+#define K_LENS_FOCUS 140
+#define K_STOP 141
+#define K_NEXT 142
+#define K_PREVIOUS 143
+#define K_FORWARD 144
+#define K_REWIND 145
+#define K_MUTE 146
+#define K_STAR 147
+#define K_POUND 148
+#define K_PLAY 149
+#define K_LIST_END 150
+
+struct ObjectSignal {
+   OBJECTPTR Object;
+};
 
 struct ResourceManager {
    CSTRING Name;           // The name of the resource.
@@ -1432,7 +1477,6 @@ struct FieldDef {
 
 struct SystemState {
    CSTRING * ErrorMessages;    // A sorted array of all error codes, translated into human readable strings.
-   CSTRING * ErrorHeaders;     // A sorted array of all error header codes, translated into human readable strings.
    CSTRING   RootPath;         // The current root path, which defaults to the location of the installation folder.
    CSTRING   SystemPath;       // The current path of the 'system:' volume.
    CSTRING   ModulePath;       // The current path to the system modules, normally 'system:modules/'
@@ -1442,12 +1486,11 @@ struct SystemState {
    LONG      CoreRevision;     // Reflects the Core revision number.
    LONG      InstanceID;       // This is the ID of the instance that the calling process resides in.
    LONG      TotalErrorMessages; // The total number of error codes listed in the ErrorMessages array.
-   LONG      TotalErrorHeaders; // The total number of error headers listed in the ErrorHeaders array.
    LONG      Stage;            // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
 };
 
 struct Variable {
-   LONG   Type;      // Field definition flags
+   ULONG  Type;      // Field definition flags
    LONG   Unused;    // Unused 32-bit value for 64-bit alignment
    LARGE  Large;     // The value as a 64-bit integer.
    DOUBLE Double;    // The value as a 64-bit float-point number.
@@ -1539,7 +1582,7 @@ struct ThreadActionMessage {
 };
 
 typedef struct MemInfo {
-   APTR     Start;       // The starting address of the memory block (does not apply to public blocks).
+   APTR     Start;       // The starting address of the memory block (does not apply to shared blocks).
    OBJECTID ObjectID;    // The object that owns the memory block.
    LONG     Size;        // The size of the memory block.
    WORD     AccessCount; // Total number of active locks on this block.
@@ -1549,15 +1592,6 @@ typedef struct MemInfo {
    OBJECTID TaskID;      // The Task that owns the memory block
    LONG     Handle;      // Native system handle (e.g. the shmid in Linux)
 } MEMINFO;
-
-struct ConfigEntry {
-   STRING Section;        // The name of the section.
-   STRING Key;            // The name of the key.
-   STRING Data;           // The string data for this configuration entry.
-   LONG   SectionOffset;  // Internal
-   LONG   KeyOffset;      // Internal
-   LONG   DataOffset;     // Internal
-};
 
 struct ActionEntry {
    ERROR (*PerformAction)(OBJECTPTR, APTR);     // Internal
@@ -1683,65 +1717,46 @@ struct ScriptArg { // For use with scExec
       DOUBLE Double;
    };
 };
-  
-// StorageDevice class definition
-
-#define VER_STORAGEDEVICE (1.000000)
-
-typedef struct rkStorageDevice {
-   OBJECT_HEADER
-   LARGE DeviceFlags;    // Flags identifying the type of media
-   LARGE DeviceSize;     // Size of the device
-   LARGE BytesFree;      // Bytes available to the user
-   LARGE BytesUsed;      // Bytes already used
-
-#ifdef PRV_STORAGEDEVICE
-   STRING prvDeviceID;   // Unique ID for the filesystem, if available
-   STRING prvVolume;
-  
-#endif
-} objStorageDevice;
 
 struct CoreBase {
    ERROR (*_AccessMemory)(MEMORYID, LONG, LONG, APTR);
-   ERROR (*_Action)(LONG, APTR, APTR);
+   ERROR (*_Action)(LONG, OBJECTPTR, APTR);
    void (*_ActionList)(struct ActionTable **, LONG *);
    ERROR (*_ActionMsg)(LONG, OBJECTID, APTR, MEMORYID, CLASSID);
-   ERROR (*_ActionTags)(LONG, APTR, ...);
+   ERROR (*_ActionTags)(LONG, OBJECTPTR, ...);
    CSTRING (*_ResolveClassID)(CLASSID);
    LONG (*_AllocateID)(LONG);
    ERROR (*_AllocMemory)(LONG, LONG, APTR, MEMORYID *);
    ERROR (*_AccessObject)(OBJECTID, LONG, APTR);
    ERROR (*_ListTasks)(LONG, struct ListTasks **);
-   ERROR (*_CheckAction)(APTR, LONG);
+   ERROR (*_CheckAction)(OBJECTPTR, LONG);
    ERROR (*_CheckMemoryExists)(MEMORYID);
    ERROR (*_CheckObjectExists)(OBJECTID, CSTRING);
    ERROR (*_CloneMemory)(APTR, LONG, APTR, MEMORYID *);
    ERROR (*_CreateObject)(LARGE, LONG, APTR, ...);
    OBJECTPTR (*_CurrentContext)(void);
-   ERROR (*_GetFieldArray)(APTR, FIELD, APTR, LONG *);
+   ERROR (*_GetFieldArray)(OBJECTPTR, FIELD, APTR, LONG *);
    LONG (*_AdjustLogLevel)(LONG);
    void (*_LogF)(const void *, const char *, ...) __attribute__((format(printf, 2, 3)));
-   ERROR (*_FastFindObject)(CSTRING, CLASSID, OBJECTID *, LONG, LONG *);
-   struct rkMetaClass * (*_FindClass)(CLASSID);
-   ERROR (*_FindObject)(CSTRING, CLASSID, OBJECTID **, LONG *);
-   ERROR (*_ReleaseObject)(APTR);
+   ERROR (*_FindObject)(CSTRING, CLASSID, LONG, OBJECTID *, LONG *);
+   objMetaClass * (*_FindClass)(CLASSID);
+   ERROR (*_ReleaseObject)(OBJECTPTR);
    ERROR (*_FreeResource)(const void *);
    ERROR (*_FreeResourceID)(MEMORYID);
    CLASSID (*_GetClassID)(OBJECTID);
    OBJECTID (*_GetOwnerID)(OBJECTID);
-   ERROR (*_GetField)(APTR, FIELD, APTR);
-   ERROR (*_GetFieldVariable)(APTR, CSTRING, STRING, LONG);
-   ERROR (*_GetFields)(APTR, ...);
-   CSTRING (*_GetName)(APTR);
-   ERROR (*_ListChildren)(OBJECTID, struct ChildEntry *, LONG *);
+   ERROR (*_GetField)(OBJECTPTR, FIELD, APTR);
+   ERROR (*_GetFieldVariable)(OBJECTPTR, CSTRING, STRING, LONG);
+   ERROR (*_GetFields)(OBJECTPTR, ...);
+   CSTRING (*_GetName)(OBJECTPTR);
+   ERROR (*_ListChildren)(OBJECTID, LONG, struct ChildEntry *, LONG *);
    ERROR (*_StrBase64Decode)(struct rkBase64Decode *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_RegisterFD)(HOSTHANDLE, LONG, void (*Routine)(HOSTHANDLE, APTR), APTR);
    ERROR (*_ManageAction)(LONG, APTR);
    ERROR (*_MemoryIDInfo)(MEMORYID, struct MemInfo *, LONG);
    ERROR (*_MemoryPtrInfo)(APTR, struct MemInfo *, LONG);
    ERROR (*_NewObject)(LARGE, LONG, APTR);
-   LONG (*_NotifySubscribers)(APTR, LONG, APTR, LONG, ERROR);
+   LONG (*_NotifySubscribers)(OBJECTPTR, LONG, APTR, LONG, ERROR);
    ERROR (*_StrReadLocale)(CSTRING, CSTRING *);
    APTR (*_GetMemAddress)(MEMORYID);
    ERROR (*_ProcessMessages)(LONG, LONG);
@@ -1751,23 +1766,22 @@ struct CoreBase {
    MEMORYID (*_ReleaseMemory)(APTR);
    CLASSID (*_ResolveClassName)(CSTRING);
    void (*_SelfDestruct)(void);
-   ERROR (*_LogError)(LONG, ERROR);
    ERROR (*_SendMessage)(MEMORYID, LONG, LONG, APTR, LONG);
-   ERROR (*_SetOwner)(APTR, APTR);
-   OBJECTPTR (*_SetContext)(APTR);
-   ERROR (*_SetField)(APTR, FIELD, ...);
-   ERROR (*_SetFields)(APTR, ...);
-   ERROR (*_SetFieldEval)(APTR, CSTRING, CSTRING);
-   ERROR (*_SetName)(APTR, CSTRING);
+   ERROR (*_SetOwner)(OBJECTPTR, OBJECTPTR);
+   OBJECTPTR (*_SetContext)(OBJECTPTR);
+   ERROR (*_SetField)(OBJECTPTR, FIELD, ...);
+   ERROR (*_SetFields)(OBJECTPTR, ...);
+   ERROR (*_SetFieldEval)(OBJECTPTR, CSTRING, CSTRING);
+   ERROR (*_SetName)(OBJECTPTR, CSTRING);
    void (*_LogReturn)(void);
    ERROR (*_StrCompare)(CSTRING, CSTRING, LONG, LONG);
-   ERROR (*_SubscribeAction)(APTR, LONG);
-   ERROR (*_SubscribeFeed)(APTR);
+   ERROR (*_SubscribeAction)(OBJECTPTR, LONG);
+   ERROR (*_SubscribeFeed)(OBJECTPTR);
    ERROR (*_SubscribeEvent)(LARGE, FUNCTION *, APTR, APTR);
    ERROR (*_SubscribeTimer)(DOUBLE, FUNCTION *, APTR);
    ERROR (*_UpdateTimer)(APTR, DOUBLE);
-   ERROR (*_UnsubscribeAction)(APTR, LONG);
-   ERROR (*_UnsubscribeFeed)(APTR);
+   ERROR (*_UnsubscribeAction)(OBJECTPTR, LONG);
+   ERROR (*_UnsubscribeFeed)(OBJECTPTR);
    void (*_UnsubscribeEvent)(APTR);
    ERROR (*_BroadcastEvent)(APTR, LONG);
    void (*_WaitTime)(LONG, LONG);
@@ -1780,7 +1794,7 @@ struct CoreBase {
    ERROR (*_SysUnlock)(LONG);
    ERROR (*_CopyMemory)(const void *, APTR, LONG);
    ERROR (*_ClearMemory)(APTR, LONG);
-   ERROR (*_SubscribeActionTags)(APTR, ...);
+   ERROR (*_SubscribeActionTags)(OBJECTPTR, ...);
    void (*_PrintDiagnosis)(LONG, LONG);
    ERROR (*_AssociateCmd)(CSTRING, CSTRING, LONG, CSTRING);
    ERROR (*_UpdateMessage)(APTR, LONG, LONG, APTR, LONG);
@@ -1789,22 +1803,22 @@ struct CoreBase {
    LARGE (*_PreciseTime)(void);
    ERROR (*_SetFieldsID)(OBJECTID, ...);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID);
-   struct Field * (*_FindField)(APTR, ULONG, APTR);
+   struct Field * (*_FindField)(OBJECTPTR, ULONG, APTR);
    struct Field * (*_CurrentField)(void);
    LONG (*_GetMsgPort)(OBJECTID);
    CSTRING (*_GetErrorMsg)(ERROR);
    struct Message * (*_GetActionMsg)(void);
    ERROR (*_FuncError)(CSTRING, ERROR);
-   ERROR (*_SetArray)(APTR, FIELD, APTR, LONG);
+   ERROR (*_SetArray)(OBJECTPTR, FIELD, APTR, LONG);
    ERROR (*_ReleaseMemoryID)(MEMORYID);
-   ERROR (*_AccessPrivateObject)(APTR, LONG);
-   void (*_ReleasePrivateObject)(APTR);
+   ERROR (*_AccessPrivateObject)(OBJECTPTR, LONG);
+   void (*_ReleasePrivateObject)(OBJECTPTR);
    ERROR (*_AllocMutex)(LONG, APTR);
    void (*_FreeMutex)(APTR);
    ERROR (*_LockMutex)(APTR, LONG);
    void (*_UnlockMutex)(APTR);
-   ERROR (*_ActionThread)(LONG, APTR, APTR, FUNCTION *, LONG);
-   MEMORYID (*_GetFeedList)(APTR);
+   ERROR (*_ActionThread)(LONG, OBJECTPTR, APTR, FUNCTION *, LONG);
+   MEMORYID (*_GetFeedList)(OBJECTPTR);
    ERROR (*_AllocSharedMutex)(CSTRING, APTR);
    void (*_FreeSharedMutex)(APTR);
    ERROR (*_LockSharedMutex)(APTR, LONG);
@@ -1864,8 +1878,8 @@ struct CoreBase {
    ERROR (*_SetDocView)(CSTRING, CSTRING);
    CSTRING (*_GetDocView)(CSTRING);
    ERROR (*_DeleteFile)(CSTRING, FUNCTION *);
-   ERROR (*_GetFileInfo)(CSTRING, struct FileInfo *, LONG);
-   ERROR (*_SaveObjectToFile)(APTR, CSTRING, LONG);
+   ERROR (*_WaitForObjects)(LONG, LONG, struct ObjectSignal *);
+   ERROR (*_SaveObjectToFile)(OBJECTPTR, CSTRING, LONG);
    ERROR (*_OpenDir)(CSTRING, LONG, struct DirInfo **);
    ERROR (*_ScanDir)(struct DirInfo *);
    ERROR (*_IdentifyFile)(CSTRING, CSTRING, LONG, CLASSID *, CLASSID *, STRING *);
@@ -1879,7 +1893,7 @@ struct CoreBase {
    ERROR (*_LoadFile)(CSTRING, LONG, struct CacheFile **);
    void (*_UnloadFile)(struct CacheFile *);
    ERROR (*_AddInfoTag)(struct FileInfo *, CSTRING, CSTRING);
-   ERROR (*_SaveImageToFile)(APTR, CSTRING, CLASSID, LONG);
+   ERROR (*_SaveImageToFile)(OBJECTPTR, CSTRING, CLASSID, LONG);
    ERROR (*_CompareFilePaths)(CSTRING, CSTRING);
    const struct SystemState * (*_GetSystemState)(void);
    ERROR (*_SetResourcePath)(LONG, CSTRING);
@@ -1895,6 +1909,7 @@ struct CoreBase {
    ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_VarLock)(struct KeyStore *, LONG);
    void (*_VLogF)(int, const char *, const char *, va_list);
+   ERROR (*_WakeProcess)(LONG);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1917,9 +1932,8 @@ struct CoreBase {
 #define GetFieldArray(...) (CoreBase->_GetFieldArray)(__VA_ARGS__)
 #define AdjustLogLevel(...) (CoreBase->_AdjustLogLevel)(__VA_ARGS__)
 #define LogF(...) (CoreBase->_LogF)(__VA_ARGS__)
-#define FastFindObject(...) (CoreBase->_FastFindObject)(__VA_ARGS__)
-#define FindClass(...) (CoreBase->_FindClass)(__VA_ARGS__)
 #define FindObject(...) (CoreBase->_FindObject)(__VA_ARGS__)
+#define FindClass(...) (CoreBase->_FindClass)(__VA_ARGS__)
 #define ReleaseObject(...) (CoreBase->_ReleaseObject)(__VA_ARGS__)
 #define FreeResource(...) (CoreBase->_FreeResource)(__VA_ARGS__)
 #define FreeResourceID(...) (CoreBase->_FreeResourceID)(__VA_ARGS__)
@@ -1946,7 +1960,6 @@ struct CoreBase {
 #define ReleaseMemory(...) (CoreBase->_ReleaseMemory)(__VA_ARGS__)
 #define ResolveClassName(...) (CoreBase->_ResolveClassName)(__VA_ARGS__)
 #define SelfDestruct(...) (CoreBase->_SelfDestruct)(__VA_ARGS__)
-#define LogError(...) (CoreBase->_LogError)(__VA_ARGS__)
 #define SendMessage(...) (CoreBase->_SendMessage)(__VA_ARGS__)
 #define SetOwner(...) (CoreBase->_SetOwner)(__VA_ARGS__)
 #define SetContext(...) (CoreBase->_SetContext)(__VA_ARGS__)
@@ -2059,7 +2072,7 @@ struct CoreBase {
 #define SetDocView(...) (CoreBase->_SetDocView)(__VA_ARGS__)
 #define GetDocView(...) (CoreBase->_GetDocView)(__VA_ARGS__)
 #define DeleteFile(...) (CoreBase->_DeleteFile)(__VA_ARGS__)
-#define GetFileInfo(a,b) (CoreBase->_GetFileInfo)(a,b,sizeof(*b))
+#define WaitForObjects(...) (CoreBase->_WaitForObjects)(__VA_ARGS__)
 #define SaveObjectToFile(...) (CoreBase->_SaveObjectToFile)(__VA_ARGS__)
 #define OpenDir(...) (CoreBase->_OpenDir)(__VA_ARGS__)
 #define ScanDir(...) (CoreBase->_ScanDir)(__VA_ARGS__)
@@ -2090,6 +2103,7 @@ struct CoreBase {
 #define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
 #define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
 #define VLogF(...) (CoreBase->_VLogF)(__VA_ARGS__)
+#define WakeProcess(...) (CoreBase->_WakeProcess)(__VA_ARGS__)
 #endif
 
 
@@ -2107,18 +2121,14 @@ struct CoreBase {
 #define Action(a,b,c) (CoreBase->_Action(a,b,c))
 
 #define ActionMsgPort(a,b,c,d,e)  (CoreBase->_ActionMsg(a,b,c,d,e))
-#define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, 0, 0))
+#define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0))
 #define DelayAction(a,b,c)        (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
 #define DelayMsg(a,b,c)           (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
 #define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
 #define GetObjectAddress          (CoreBase->_GetMemAddress)
 
-#undef FuncError
-#define FuncError(a)              (CoreBase->_FuncError)((CSTRING)__func__, a)
-#define HeadError(a,b)            (CoreBase->_FuncError)(a, b)
-
 #undef NewLockedObject
-#define NewLockedObject(a,b,c,d)        (CoreBase->_NewLockedObject(a,b,c,d,0))
+#define NewLockedObject(a,b,c,d)  (CoreBase->_NewLockedObject(a,b,c,d,0))
 
 #undef PrintDiagnosis
 #define PrintDiagnosis()          (CoreBase->_PrintDiagnosis(NULL,NULL))
@@ -2132,13 +2142,6 @@ struct CoreBase {
 
 #define CheckObjectIDExists(a)    (CheckObjectExists(a,0))
 #define CheckObjectNameExists(a)  (CheckObjectExists(0,a))
-#define LogMethod(...)            (LogF("#",__VA_ARGS__))
-#define LogAction(...)            (LogF("#",__VA_ARGS__))
-#define LogFunction(...)          (LogF("#",__VA_ARGS__))
-#define LogCriticalError(...)     (LogF("!",__VA_ARGS__))
-#define LogErrorMsg(...)          (LogF("@",__VA_ARGS__))
-#define LogBranch(...)            (LogF("~",__VA_ARGS__))
-#define LogMsg(...)               (LogF(0,__VA_ARGS__))
 #define GetParentContext()        ((OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT))
 #define GetResourcePtr(a)         ((APTR)(MAXINT)GetResource((a)))
 #define AllocPublicMemory(a,b,c)  (AllocMemory((a),(b)|MEM_PUBLIC,0,(c)))
@@ -2146,55 +2149,400 @@ struct CoreBase {
 #define NewPrivateObject(a,b,c)   (NewObject(a,b,c))
 #define NewPublicObject(a,b,c)    (NewLockedObject(a,(b)|NF_PUBLIC,0,c))
 #define NewNamedObject(a,b,c,d,e) (CoreBase->_NewLockedObject(a,(b)|NF_NAME,c,d,e))
-#define PostError(a)              (LogError(0,a)) // Superseded by LogCode()
-#define LogCode(a)                (LogError(0,a))
-#define StepError(b,c)            (LogError(b,-c))
 #define StrMatch(a,b)             (StrCompare((a),(b),0,STR_MATCH_LEN))
 
 extern struct CoreBase *CoreBase;
 
-INLINE OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UniqueID; }
+typedef std::map<std::string, std::string> ConfigKeys;
+typedef std::pair<std::string, ConfigKeys> ConfigGroup;
+typedef std::vector<ConfigGroup> ConfigGroups;
+
+// If AUTO_OBJECT_LOCK is enabled, objects will be automatically locked to prevent thread-clashes.
+// NB: Turning this off will cause issues between threads unless they call the necessary locking functions.
+
+//#define AUTO_OBJECT_LOCK 1
+
+//********************************************************************************************************************
+// Header used for all objects.
+
+struct BaseClass { // Must be 64-bit aligned
+   objMetaClass *Class;         // Class pointer, resolved on AccessObject()
+   struct Stats *Stats;         // Stats pointer, resolved on AccessObject() [Private]
+   APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
+   APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
+   CLASSID  ClassID;            // Reference to the object's class, used to resolve the Class pointer
+   CLASSID  SubID;              // Reference to the object's sub-class, used to resolve the Class pointer
+   OBJECTID UID;                // Unique object identifier
+   OBJECTID OwnerID;            // Refers to the owner of this object
+   WORD     Flags;              // Object flags
+   WORD     MemFlags;           // Recommended memory allocation flags
+   OBJECTID TaskID;             // The process that this object belongs to
+   volatile LONG  ThreadID;     // Managed by locking functions
+   #ifdef _WIN32
+      WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
+   #else
+      LONG ThreadMsg;
+   #endif
+   UBYTE ThreadPending;         // ActionThread() increments this.
+   volatile BYTE Queue;         // Managed by locking functions
+   volatile BYTE SleepQueue;    //
+   volatile bool Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
+   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
+
+   ~BaseClass() {
+   }
+
+   inline LONG flags() {
+      return Flags;
+   }
+
+   inline bool initialised() {
+      return Flags & NF_INITIALISED;
+   }
+
+   inline OBJECTID ownerTask() {
+      return TaskID;
+   }
+
+   inline bool collecting() { // Is object being freed or marked for collection?
+      return Flags & (NF_FREE|NF_COLLECT);
+   }
+
+   inline bool terminating() { // Is object currently being freed?
+      return Flags & NF_FREE;
+   }
+
+   inline bool isPublic() {
+      return Flags & NF_PUBLIC;
+   }
+
+   inline OBJECTID ownerID() {
+      return OwnerID;
+   }
+
+   inline ERROR threadLock() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (INC_QUEUE(this) IS 1) {
+            ThreadID = get_thread_id();
+            return ERR_Okay;
+         }
+         else {
+            if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
+            SUB_QUEUE(this); // Put the lock count back to normal before AccessPrivateObject()
+            return AccessPrivateObject(this, -1); // Can fail if object is marked for deletion.
+         }
+      #else
+         return ERR_Okay;
+      #endif
+   }
+
+   inline void threadRelease() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (SleepQueue > 0) ReleasePrivateObject(this);
+         else SUB_QUEUE(this);
+      #endif
+   }
+
+   // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
+   // object lock if the queue value was at zero.
+
+   inline LONG incQueue() {
+      return __sync_add_and_fetch(&Queue, 1);
+   }
+
+   inline LONG subQueue() {
+      return __sync_sub_and_fetch(&Queue, 1);
+   }
+
+   inline LONG incSleep() {
+      return __sync_add_and_fetch(&SleepQueue, 1);
+   }
+
+   inline LONG subSleep() {
+      return __sync_sub_and_fetch(&SleepQueue, 1);
+   }
+
+   inline LONG memflags() {
+      return MemFlags;
+   }
+
+   inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
+      auto oid = this->OwnerID;
+      while ((oid) and (oid != ID)) oid = GetOwnerID(oid);
+      return oid ? true : false;
+   }
+
+} __attribute__ ((aligned (8)));
+
+#define ClassName(a) ((a)->Class->Name)
+
+INLINE OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 INLINE APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
-INLINE OBJECTID GetOwner(APTR Object) { return ((OBJECTPTR)Object)->OwnerID; }
-INLINE OBJECTID GetUniqueID(APTR Object) { return ((OBJECTPTR)Object)->UniqueID; }
+#define CONV_TIME_DATETIME(a) ((struct DateTime *)(&(a)->Year))
+
+INLINE BYTE CMP_DATETIME(struct DateTime *one, struct DateTime *two)
+{
+   if (one->Year < two->Year) return -1;
+   if (one->Year > two->Year) return 1;
+   if (one->Month < two->Month) return -1;
+   if (one->Month > two->Month) return 1;
+   if (one->Day < two->Day) return -1;
+   if (one->Day > two->Day) return 1;
+   if (one->Minute < two->Minute) return -1;
+   if (one->Minute > two->Minute) return 1;
+   if (one->Hour < two->Hour) return -1;
+   if (one->Hour > two->Hour) return 1;
+   if (one->Second < two->Second) return -1;
+   if (one->Second > two->Second) return 1;
+   return 0;
+}
+
+// Macro based actions.
+
+#define SetRead(a,b,c)  a.Buffer=(b);   a.Length=(c);
+#define SetSeek(a,b,c)  a.Position=(b); a.Offset=(c);
+#define SetWrite(a,b,c) a.Buffer=(b);   a.Length=(c);
+
+// Action and Notification Structures
+
+struct acActionNotify  { union { ACTIONID ActionID; ACTIONID Action; }; union { OBJECTID ObjectID; OBJECTID Object; }; APTR Args; LONG Size; ERROR Error; LONG Time; };
+struct acClipboard     { LONG Mode; };
+struct acCopyData      { union { OBJECTID DestID; OBJECTID Dest; }; };
+struct acCustom        { LONG Number; CSTRING String; };
+struct acDataFeed      { union { OBJECTID ObjectID; OBJECTID Object; }; union { LONG DataType; LONG Datatype; }; const void *Buffer; LONG Size; };
+struct acDragDrop      { union { OBJECTID SourceID; OBJECTID Source; }; LONG Item; CSTRING Datatype; };
+struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
+struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
+struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
+struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
+struct acNewChild      { OBJECTPTR Object; };
+struct acNewOwner      { union { OBJECTID NewOwnerID; OBJECTID NewOwner; }; CLASSID ClassID; };
+struct acRead          { APTR Buffer; LONG Length; LONG Result; };
+struct acRedimension   { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
+struct acRedo          { LONG Steps; };
+struct acRename        { CSTRING Name; };
+struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
+struct acSaveImage     { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSaveToObject  { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
+struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
+struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
+struct acSeek          { DOUBLE Offset; LONG Position; };
+struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
+struct acSetVar        { CSTRING Field; CSTRING Value; };
+struct acUndo          { LONG Steps; };
+struct acWrite         { CPTR Buffer; LONG Length; LONG Result; };
+
+// Action Macros
+
+#define acActivate(a)         (Action(AC_Activate,(a),NULL))
+#define acClear(a)            (Action(AC_Clear,(a),NULL))
+#define acDeactivate(a)       (Action(AC_Deactivate,(a),NULL))
+#define acDisable(a)          (Action(AC_Disable,(a),NULL))
+#define acDragDrop(obj,b,c,d) (Action(AC_DragDrop,(obj),(b),(c),(d))
+#define acDraw(a)             (Action(AC_Draw,(a),NULL))
+#define acEnable(a)           (Action(AC_Enable,(a),NULL))
+#define acFlush(a)            (Action(AC_Flush,(a),NULL))
+#define acFocus(a)            (Action(AC_Focus,(a),NULL))
+#define acFree(a)             (Action(AC_Free,(a),NULL))
+#define acHide(a)             (Action(AC_Hide,(a),NULL))
+#define acInit(a)             (Action(AC_Init,(a),NULL))
+#define acLock(a)             (Action(AC_Lock,(a),NULL))
+#define acLostFocus(a)        (Action(AC_LostFocus,(a),NULL))
+#define acMoveToBack(a)       (Action(AC_MoveToBack,(a),NULL))
+#define acMoveToFront(a)      (Action(AC_MoveToFront,(a),NULL))
+#define acNext(a)             (Action(AC_Next,(a),NULL)
+#define acPrev(a)             (Action(AC_Prev,(a),NULL)
+#define acQuery(a)            (Action(AC_Query,(a),NULL))
+#define acRefresh(a)          (Action(AC_Refresh, (a), NULL))
+#define acReset(a)            (Action(AC_Reset,(a),NULL))
+#define acSaveSettings(a)     (Action(AC_SaveSettings,(a),NULL))
+#define acShow(a)             (Action(AC_Show,(a),NULL))
+#define acSort(a)             (Action(AC_Sort,(a),NULL))
+#define acUnlock(a)           (Action(AC_Unlock,(a),NULL))
+
+#define acActivateID(a)       (ActionMsg(AC_Activate,(a),NULL))
+#define acClearID(a)          (ActionMsg(AC_Clear,(a),NULL))
+#define acDisableID(a)        (ActionMsg(AC_Disable,(a),NULL))
+#define acDrawID(a)           (ActionMsg(AC_Draw,(a),NULL))
+#define acEnableID(a)         (ActionMsg(AC_Enable,(a),NULL))
+#define acFlushID(a)          (ActionMsg(AC_Flush,(a),NULL))
+#define acFocusID(a)          (ActionMsg(AC_Focus,(a),NULL))
+#define acFreeID(a)           (ActionMsg(AC_Free,(a),NULL))
+#define acHideID(a)           (ActionMsg(AC_Hide,(a),NULL))
+#define acInitID(a)           (ActionMsg(AC_Init,(a),NULL))
+#define acLostFocusID(a)      (ActionMsg(AC_LostFocus,(a),NULL))
+#define acMoveToBackID(a)     (ActionMsg(AC_MoveToBack,(a),NULL))
+#define acMoveToFrontID(a)    (ActionMsg(AC_MoveToFront,(a),NULL))
+#define acQueryID(a)          (ActionMsg(AC_Query,(a),NULL))
+#define acRefreshID(a)        (ActionMsg(AC_Refresh,(a),NULL))
+#define acSaveSettingsID(a)   (ActionMsg(AC_SaveSettings,(a),NULL))
+#define acShowID(a)           (ActionMsg(AC_Show,(a),NULL))
+
+INLINE ERROR acClipboard(OBJECTPTR Object, LONG Mode) {
+   struct acClipboard args = { Mode };
+   return Action(AC_Clipboard, Object, &args);
+}
+
+INLINE ERROR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height) {
+   struct acDraw args = { X, Y, Width, Height };
+   return Action(AC_Draw, Object, &args);
+}
+
+INLINE ERROR acDataFeed(OBJECTPTR Object, OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+   struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   return Action(AC_DataFeed, Object, &args);
+}
+
+INLINE ERROR acMove(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
+   struct acMove args = { X, Y, Z };
+   return Action(AC_Move, Object, &args);
+}
+
+INLINE ERROR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
+   ERROR error;
+   struct acRead read = { (BYTE *)Buffer, Bytes };
+   if (!(error = Action(AC_Read, Object, &read))) {
+      if (Read) *Read = read.Result;
+      return ERR_Okay;
+   }
+   else {
+      if (Read) *Read = 0;
+      return error;
+   }
+}
+
+INLINE ERROR acRedo(OBJECTPTR Object, LONG Steps) {
+   struct acRedo args = { Steps };
+   return Action(AC_Redo, Object, &args);
+}
+
+INLINE ERROR acRedimension(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   struct acRedimension args = { X, Y, Z, Width, Height, Depth };
+   return Action(AC_Redimension, Object, &args);
+}
+
+INLINE ERROR acRename(OBJECTPTR Object, CSTRING Name) {
+   struct acRename args = { Name };
+   return Action(AC_Rename, Object, &args);
+}
+
+INLINE ERROR acResize(OBJECTPTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   struct acResize args = { Width, Height, Depth };
+   return Action(AC_Resize, Object, &args);
+}
+
+INLINE ERROR acScroll(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
+   struct acScroll args = { X, Y, Z };
+   return Action(AC_Scroll, Object, &args);
+}
+
+INLINE ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   struct acScrollToPoint args = { X, Y, Z, Flags };
+   return Action(AC_ScrollToPoint, Object, &args);
+}
+
+INLINE ERROR acUndo(OBJECTPTR Object, LONG Steps) {
+   struct acUndo args = { Steps };
+   return Action(AC_Undo, Object, &args);
+}
+
+INLINE ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
+   struct acGetVar args = { FieldName, Buffer, Size };
+   ERROR error = Action(AC_GetVar, Object, &args);
+   if ((error) AND (Buffer)) Buffer[0] = 0;
+   return error;
+}
+
+INLINE ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   struct acMoveToPoint moveto = { X, Y, Z, Flags };
+   return Action(AC_MoveToPoint, Object, &moveto);
+}
+
+INLINE ERROR acSaveImage(OBJECTPTR Object, OBJECTID DestID, CLASSID ClassID) {
+   struct acSaveImage args = { { DestID }, { ClassID } };
+   return Action(AC_SaveImage, Object, &args);
+}
+
+INLINE ERROR acSaveToObject(OBJECTPTR Object, OBJECTID DestID, CLASSID ClassID) {
+   struct acSaveToObject args = { { DestID }, { ClassID } };
+   return Action(AC_SaveToObject, Object, &args);
+}
+
+INLINE ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, LONG Position) {
+   struct acSeek args = { Offset, Position };
+   return Action(AC_Seek, Object, &args);
+}
+
+INLINE ERROR acSetVars(OBJECTPTR Object, CSTRING tags, ...) {
+   struct acSetVar args;
+   va_list list;
+
+   va_start(list, tags);
+   while ((args.Field = va_arg(list, STRING)) != TAGEND) {
+      args.Value = va_arg(list, STRING);
+      if (Action(AC_SetVar, Object, &args) != ERR_Okay) {
+         va_end(list);
+         return ERR_Failed;
+      }
+   }
+   va_end(list);
+   return ERR_Okay;
+}
+
+INLINE ERROR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
+   ERROR error;
+   struct acWrite write = { (BYTE *)Buffer, Bytes };
+   if (!(error = Action(AC_Write, Object, &write))) {
+      if (Result) *Result = write.Result;
+   }
+   else if (Result) *Result = 0;
+   return error;
+}
+
+INLINE LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
+   struct acWrite write = { (BYTE *)Buffer, Bytes };
+   if (!Action(AC_Write, Object, &write)) return write.Result;
+   else return 0;
+}
+
+#define acSeekStart(a,b)    acSeek((a),(b),SEEK_START)
+#define acSeekEnd(a,b)      acSeek((a),(b),SEEK_END)
+#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK_CURRENT)
+
+INLINE ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+   struct acSelectArea area = { X, Y, Width, Height };
+   return Action(AC_SelectArea, Object, &area);
+}
+
+INLINE ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
+   struct acSetVar args = { FieldName, Value };
+   return Action(AC_SetVar, Object, &args);
+}
+
+#define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
+#define SetVar(a,b,c)    acSetVar(a,b,c)
   
+// StorageDevice class definition
+
+#define VER_STORAGEDEVICE (1.000000)
+
+class objStorageDevice : public BaseClass {
+   public:
+   LARGE DeviceFlags;    // These read-only flags identify the type of device and its features.
+   LARGE DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
+   LARGE BytesFree;      // Total amount of storage space that is available, measured in bytes.
+   LARGE BytesUsed;      // Total amount of storage space in use.
+
+#ifdef PRV_STORAGEDEVICE
+   STRING prvDeviceID;   // Unique ID for the filesystem, if available
+   STRING prvVolume;
+  
+#endif
+};
+
 // File class definition
 
 #define VER_FILE (1.200000)
-
-typedef struct rkFile {
-   OBJECT_HEADER
-   LARGE    Position; // The current read/write byte position in a file.
-   LONG     Flags;    // File flags and options.
-   LONG     Static;   // Set to TRUE if a file object should be static.
-   OBJECTID TargetID; // Specifies a surface ID to target for user feedback and dialog boxes.
-   BYTE *   Buffer;   // Points to the internal data buffer if the file content is held in memory.
-
-#ifdef PRV_FILE
-    struct DateTime prvModified;  // [28 byte structure]
-    struct DateTime prvCreated;  // [28 byte structure]
-    LARGE Size;
-    #ifdef _WIN32
-       LONG  Stream;
-    #else
-       APTR  Stream;
-    #endif
-    STRING Path;
-    STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
-    STRING prvLink;
-    STRING prvLine;
-    CSTRING prvIcon;
-    struct rkWatchPath *prvWatch;
-    OBJECTPTR ProgressDialog;
-    struct DirInfo *prvList;
-    LARGE  ProgressTime;
-    LONG   Permissions;
-    LONG   prvType;
-    LONG   Handle;         // Native system file handle
-    WORD   prvLineLen;
-  
-#endif
-} objFile;
 
 // File methods
 
@@ -2215,7 +2563,7 @@ struct flMove { CSTRING Dest; FUNCTION * Callback;  };
 struct flCopy { CSTRING Dest; FUNCTION * Callback;  };
 struct flSetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; LONG Type;  };
 struct flReadLine { STRING Result;  };
-struct flNext { struct rkFile * File;  };
+struct flNext { objFile * File;  };
 struct flWatch { FUNCTION * Callback; LARGE Custom; LONG Flags;  };
 
 INLINE ERROR flStartStream(APTR Ob, OBJECTID SubscriberID, LONG Flags, LONG Length) {
@@ -2247,7 +2595,7 @@ INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG
 
 #define flBufferContent(obj) Action(MT_FlBufferContent,(obj),0)
 
-INLINE ERROR flNext(APTR Ob, struct rkFile ** File) {
+INLINE ERROR flNext(APTR Ob, objFile ** File) {
    struct flNext args = { 0 };
    ERROR error = Action(MT_FlNext, (OBJECTPTR)Ob, &args);
    if (File) *File = args.File;
@@ -2260,94 +2608,148 @@ INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, LONG Flags) {
 }
 
 
+class objFile : public BaseClass {
+   public:
+   LARGE    Position; // The current read/write byte position in a file.
+   LONG     Flags;    // File flags and options.
+   LONG     Static;   // Set to TRUE if a file object should be static.
+   OBJECTID TargetID; // Specifies a surface ID to target for user feedback and dialog boxes.
+   BYTE *   Buffer;   // Points to the internal data buffer if the file content is held in memory.
+
+#ifdef PRV_FILE
+    struct DateTime prvModified;  // [28 byte structure]
+    struct DateTime prvCreated;  // [28 byte structure]
+    LARGE Size;
+    #ifdef _WIN32
+       LONG  Stream;
+    #else
+       APTR  Stream;
+    #endif
+    STRING Path;
+    STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
+    STRING prvLink;
+    STRING prvLine;
+    CSTRING prvIcon;
+    struct rkWatchPath *prvWatch;
+    OBJECTPTR ProgressDialog;
+    struct DirInfo *prvList;
+    LARGE  ProgressTime;
+    LONG   Permissions;
+    LONG   prvType;
+    LONG   Handle;         // Native system file handle
+    WORD   prvLineLen;
+  
+#endif
+   // Action stubs
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR query() { return Action(AC_Query, this, NULL); }
+   inline ERROR read(APTR Buffer, LONG Bytes, LONG *Result) {
+      ERROR error;
+      struct acRead read = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Read, this, &read))) {
+         if (Result) *Result = read.Result;
+         return ERR_Okay;
+      }
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
+   }
+   inline ERROR rename(CSTRING Name) {
+      struct acRename args = { Name };
+      return Action(AC_Rename, this, &args);
+   }
+   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
+   inline ERROR seek(DOUBLE Offset, LONG Position) {
+      struct acSeek args = { Offset, Position };
+      return Action(AC_Seek, this, &args);
+   }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline LONG writeResult(CPTR Buffer, LONG Bytes) {
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!Action(AC_Write, this, &write)) return write.Result;
+      else return 0;
+   }
+};
+
 // Config class definition
 
 #define VER_CONFIG (1.000000)
 
-typedef struct rkConfig {
-   OBJECT_HEADER
-   struct ConfigEntry * Entries;    // Pointer to the array of configuration entries
-   STRING Path;                     // The location pointer
-   STRING KeyFilter;                // Enables key filtering, removing any unwanted keys on load.
-   STRING SectionFilter;            // Enables section filtering, removing any unwanted sections on load.
-   LONG   AmtEntries;               // Amount of configuration entries
-   LONG   Flags;                    // Not currently in use
-   LONG   TotalSections;            // The total number of loaded Config sections.
-
-#ifdef PRV_CONFIG
-   MEMORYID StringsMID;
-   MEMORYID EntriesMID;           // The configuration entries memory ID
-   MEMORYID PathMID;              // The location memory ID
-   MEMORYID KeyFilterMID;
-   MEMORYID SectionFilterMID;
-   STRING   Strings;
-   LONG     StringsPos;          // Insertion point / end of the strings data
-   LONG     StringsSize;         // Number of bytes allocated for the strings data
-   LONG     MaxEntries;          // Number of bytes allocated for the entries data
-   ULONG    CRC;                 // CRC32, for determining if config data has been altered
-  
-#endif
-} objConfig;
-
 // Config methods
 
 #define MT_CfgReadValue -1
-#define MT_CfgReadInt -2
+#define MT_CfgReadIValue -2
 #define MT_CfgWriteValue -3
-#define MT_CfgDeleteIndex -4
-#define MT_CfgDeleteSection -5
-#define MT_CfgGetSectionFromIndex -6
+#define MT_CfgDeleteKey -4
+#define MT_CfgDeleteGroup -5
+#define MT_CfgGetGroupFromIndex -6
 #define MT_CfgSortByKey -7
-#define MT_CfgReadFloat -8
 #define MT_CfgMergeFile -9
 #define MT_CfgMerge -10
 #define MT_CfgSet -11
 
-struct cfgReadValue { CSTRING Section; CSTRING Key; CSTRING Data;  };
-struct cfgReadInt { CSTRING Section; CSTRING Key; LONG Integer;  };
-struct cfgWriteValue { CSTRING Section; CSTRING Key; CSTRING Data;  };
-struct cfgDeleteIndex { LONG Index;  };
-struct cfgDeleteSection { CSTRING Section;  };
-struct cfgGetSectionFromIndex { LONG Index; CSTRING Section;  };
+struct cfgReadValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
+struct cfgReadIValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
+struct cfgWriteValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
+struct cfgDeleteKey { CSTRING Group; CSTRING Key;  };
+struct cfgDeleteGroup { CSTRING Group;  };
+struct cfgGetGroupFromIndex { LONG Index; CSTRING Group;  };
 struct cfgSortByKey { CSTRING Key; LONG Descending;  };
-struct cfgReadFloat { CSTRING Section; CSTRING Key; DOUBLE Float;  };
 struct cfgMergeFile { CSTRING Path;  };
-struct cfgMerge { OBJECTID ConfigID;  };
-struct cfgSet { CSTRING Section; CSTRING Key; CSTRING Data;  };
+struct cfgMerge { OBJECTPTR Source;  };
+struct cfgSet { CSTRING Group; CSTRING Key; CSTRING Data;  };
 
-INLINE ERROR cfgReadValue(APTR Ob, CSTRING Section, CSTRING Key, CSTRING * Data) {
-   struct cfgReadValue args = { Section, Key, 0 };
+INLINE ERROR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
+   struct cfgReadValue args = { Group, Key, 0 };
    ERROR error = Action(MT_CfgReadValue, (OBJECTPTR)Ob, &args);
    if (Data) *Data = args.Data;
    return(error);
 }
 
-INLINE ERROR cfgReadInt(APTR Ob, CSTRING Section, CSTRING Key, LONG * Integer) {
-   struct cfgReadInt args = { Section, Key, 0 };
-   ERROR error = Action(MT_CfgReadInt, (OBJECTPTR)Ob, &args);
-   if (Integer) *Integer = args.Integer;
+INLINE ERROR cfgReadIValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
+   struct cfgReadIValue args = { Group, Key, 0 };
+   ERROR error = Action(MT_CfgReadIValue, (OBJECTPTR)Ob, &args);
+   if (Data) *Data = args.Data;
    return(error);
 }
 
-INLINE ERROR cfgWriteValue(APTR Ob, CSTRING Section, CSTRING Key, CSTRING Data) {
-   struct cfgWriteValue args = { Section, Key, Data };
+INLINE ERROR cfgWriteValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
+   struct cfgWriteValue args = { Group, Key, Data };
    return(Action(MT_CfgWriteValue, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgDeleteIndex(APTR Ob, LONG Index) {
-   struct cfgDeleteIndex args = { Index };
-   return(Action(MT_CfgDeleteIndex, (OBJECTPTR)Ob, &args));
+INLINE ERROR cfgDeleteKey(APTR Ob, CSTRING Group, CSTRING Key) {
+   struct cfgDeleteKey args = { Group, Key };
+   return(Action(MT_CfgDeleteKey, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgDeleteSection(APTR Ob, CSTRING Section) {
-   struct cfgDeleteSection args = { Section };
-   return(Action(MT_CfgDeleteSection, (OBJECTPTR)Ob, &args));
+INLINE ERROR cfgDeleteGroup(APTR Ob, CSTRING Group) {
+   struct cfgDeleteGroup args = { Group };
+   return(Action(MT_CfgDeleteGroup, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgGetSectionFromIndex(APTR Ob, LONG Index, CSTRING * Section) {
-   struct cfgGetSectionFromIndex args = { Index, 0 };
-   ERROR error = Action(MT_CfgGetSectionFromIndex, (OBJECTPTR)Ob, &args);
-   if (Section) *Section = args.Section;
+INLINE ERROR cfgGetGroupFromIndex(APTR Ob, LONG Index, CSTRING * Group) {
+   struct cfgGetGroupFromIndex args = { Index, 0 };
+   ERROR error = Action(MT_CfgGetGroupFromIndex, (OBJECTPTR)Ob, &args);
+   if (Group) *Group = args.Group;
    return(error);
 }
 
@@ -2356,74 +2758,130 @@ INLINE ERROR cfgSortByKey(APTR Ob, CSTRING Key, LONG Descending) {
    return(Action(MT_CfgSortByKey, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgReadFloat(APTR Ob, CSTRING Section, CSTRING Key, DOUBLE * Float) {
-   struct cfgReadFloat args = { Section, Key, 0 };
-   ERROR error = Action(MT_CfgReadFloat, (OBJECTPTR)Ob, &args);
-   if (Float) *Float = args.Float;
-   return(error);
-}
-
 INLINE ERROR cfgMergeFile(APTR Ob, CSTRING Path) {
    struct cfgMergeFile args = { Path };
    return(Action(MT_CfgMergeFile, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgMerge(APTR Ob, OBJECTID ConfigID) {
-   struct cfgMerge args = { ConfigID };
+INLINE ERROR cfgMerge(APTR Ob, OBJECTPTR Source) {
+   struct cfgMerge args = { Source };
    return(Action(MT_CfgMerge, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cfgSet(APTR Ob, CSTRING Section, CSTRING Key, CSTRING Data) {
-   struct cfgSet args = { Section, Key, Data };
+INLINE ERROR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
+   struct cfgSet args = { Group, Key, Data };
    return(Action(MT_CfgSet, (OBJECTPTR)Ob, &args));
 }
 
 
-INLINE ERROR cfgWriteInt(APTR Self, CSTRING Section, CSTRING Key, LONG Integer)
+class objConfig : public BaseClass {
+   public:
+   STRING Path;         // Set this field to the location of the source configuration file.
+   STRING KeyFilter;    // Set this field to enable key filtering.
+   STRING GroupFilter;  // Set this field to enable group filtering.
+   LONG   Flags;        // Optional flags may be set here.
+
+#ifdef PRV_CONFIG
+   ConfigGroups *Groups;
+   ULONG    CRC;   // CRC32, for determining if config data has been altered
+  
+#endif
+   // Action stubs
+
+   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR flush() { return Action(AC_Flush, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
+   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
+      struct acSaveToObject args = { { DestID }, { ClassID } };
+      return Action(AC_SaveToObject, this, &args);
+   }
+   inline ERROR sort() { return Action(AC_Sort, this, NULL); }
+};
+
+INLINE ERROR cfgWriteInt(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG Integer)
 {
-   char buffer[32];
    if (!Self) return ERR_NullArgs;
-   STRING str = buffer;
-   LONG digits = 0;
-   if (Integer < 0) {
-      *str++ = '-';
-      Integer = -Integer;
-      digits++;
+   char buffer[32];
+   StrFormat(buffer, sizeof(buffer), "%d", Integer);
+   struct cfgWriteValue write = { Group, Key, buffer };
+   return Action(MT_CfgWriteValue, Self, &write);
+}
+
+INLINE ERROR cfgReadFloat(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
+{
+   ERROR error;
+   struct cfgReadValue read = { .Group = Group, .Key = Key };
+   if (!(error = Action(MT_CfgReadValue, Self, &read))) {
+      *Value = StrToFloat(read.Data);
+      return ERR_Okay;
    }
-   if (Integer) {
-      LONG count = 1000000000;
-      while (Integer < count) count = count/10;
-      while (count > 0) {
-         LONG build = 0;
-         while (Integer >= count) {
-            Integer -= count;
-            build++;
-         }
-         *str++ = (char)(build + '0');
-         count = count/10;
-         digits++;
-      }
+   else { *Value = 0; return error; }
+}
+
+INLINE ERROR cfgReadInt(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
+{
+   ERROR error;
+   struct cfgReadValue read = { .Group = Group, .Key = Key };
+   if (!(error = Action(MT_CfgReadValue, Self, &read))) {
+      *Value = StrToInt(read.Data);
+      return ERR_Okay;
    }
-   else {
-      *str++ = '0';
-      digits++;
-   }
-   *str = 0;
-   struct cfgWriteValue write = { Section, Key, buffer };
-   return Action(MT_CfgWriteValue, (OBJECTPTR)Self, &write);
+   else { *Value = 0; return error; }
 }
   
 // Script class definition
 
 #define VER_SCRIPT (1.000000)
 
-typedef struct rkScript {
-   OBJECT_HEADER
-   OBJECTID TargetID;  // The object that script objects must be initialised to, e.g. for obj.new()
-   LONG     Flags;     // Optional flags
-   ERROR    Error;     // If an error occurred, this field will indicate the error number
-   LONG     CurrentLine; // Current line being executed, or failed line if script execution terminated
-   LONG     LineOffset; // An optional offset to use when reporting line numbers
+// Script methods
+
+#define MT_ScExec -1
+#define MT_ScDerefProcedure -2
+#define MT_ScCallback -3
+#define MT_ScGetProcedureID -4
+
+struct scExec { CSTRING Procedure; const struct ScriptArg * Args; LONG TotalArgs;  };
+struct scDerefProcedure { FUNCTION * Procedure;  };
+struct scCallback { LARGE ProcedureID; const struct ScriptArg * Args; LONG TotalArgs; LONG Error;  };
+struct scGetProcedureID { CSTRING Procedure; LARGE ProcedureID;  };
+
+INLINE ERROR scExec(APTR Ob, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs) {
+   struct scExec args = { Procedure, Args, TotalArgs };
+   return(Action(MT_ScExec, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR scDerefProcedure(APTR Ob, FUNCTION * Procedure) {
+   struct scDerefProcedure args = { Procedure };
+   return(Action(MT_ScDerefProcedure, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR scCallback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, LONG * Error) {
+   struct scCallback args = { ProcedureID, Args, TotalArgs, 0 };
+   ERROR error = Action(MT_ScCallback, (OBJECTPTR)Ob, &args);
+   if (Error) *Error = args.Error;
+   return(error);
+}
+
+INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
+   struct scGetProcedureID args = { Procedure, 0 };
+   ERROR error = Action(MT_ScGetProcedureID, (OBJECTPTR)Ob, &args);
+   if (ProcedureID) *ProcedureID = args.ProcedureID;
+   return(error);
+}
+
+
+class objScript : public BaseClass {
+   public:
+   OBJECTID TargetID;  // Reference to the default container that new script objects will be initialised to.
+   LONG     Flags;     // Optional flags.
+   ERROR    Error;     // If a script fails during execution, an error code may be readable here.
+   LONG     CurrentLine; // Indicates the current line being executed when in debug mode.
+   LONG     LineOffset; // For debugging purposes, this value is added to any message referencing a line number.
 
 #ifdef PRV_SCRIPT
    LARGE    ProcedureID;          // For callbacks
@@ -2444,68 +2902,67 @@ typedef struct rkScript {
    OBJECTID ScriptOwnerID;
   
 #endif
-} objScript;
+   // Action stubs
 
-// Script methods
-
-#define MT_ScExec -1
-#define MT_ScDerefProcedure -2
-#define MT_ScCallback -3
-#define MT_ScGetProcedureID -4
-
-struct scExec { CSTRING Procedure; const struct ScriptArg * Args; LONG TotalArgs;  };
-struct scDerefProcedure { FUNCTION * Procedure;  };
-struct scCallback { LARGE ProcedureID; const struct ScriptArg * Args; LONG TotalArgs;  };
-struct scGetProcedureID { CSTRING Procedure; LARGE ProcedureID;  };
-
-INLINE ERROR scExec(APTR Ob, CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs) {
-   struct scExec args = { Procedure, Args, TotalArgs };
-   return(Action(MT_ScExec, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR scDerefProcedure(APTR Ob, FUNCTION * Procedure) {
-   struct scDerefProcedure args = { Procedure };
-   return(Action(MT_ScDerefProcedure, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR scCallback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs) {
-   struct scCallback args = { ProcedureID, Args, TotalArgs };
-   return(Action(MT_ScCallback, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
-   struct scGetProcedureID args = { Procedure, 0 };
-   ERROR error = Action(MT_ScGetProcedureID, (OBJECTPTR)Ob, &args);
-   if (ProcedureID) *ProcedureID = args.ProcedureID;
-   return(error);
-}
-
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+      return Action(AC_DataFeed, this, &args);
+   }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+      struct acSetVar args = { FieldName, Value };
+      return Action(AC_SetVar, this, &args);
+   }
+};
 
 // MetaClass class definition
 
 #define VER_METACLASS (1.000000)
 
-typedef struct rkMetaClass {
-   OBJECT_HEADER
-   DOUBLE  ClassVersion;                // Version of the class
-   struct MethodArray * Methods;        // Original method array supplied by the module.
-   const struct FieldArray * Fields;    // Original field array supplied by the module.
-   CSTRING ClassName;                   // Name of the class
-   CSTRING FileExtension;               // File extension that is supported by this class.
-   CSTRING FileDescription;             // File description
-   CSTRING FileHeader;                  // Internal file header for identifying the file
-   CSTRING Path;                        // Module path to the class
-   LONG    Size;                        // Byte-size of the class when produced as an object
-   LONG    Flags;                       // Special flags
-   CLASSID SubClassID;                  // Sub-class ID
-   CLASSID BaseClassID;                 // Base-class ID
-   LONG    OpenCount;                   // Number of objects allocated to this class
-   LONG    TotalMethods;                // Total number of methods
-   LONG    TotalFields;                 // Total number of fields, including any additional standard fields like 'Name'
-   LONG    Category;                    // Assigned category
+// MetaClass methods
+
+#define MT_mcFindField -1
+
+struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
+
+INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) {
+   struct mcFindField args = { ID, 0, 0 };
+   ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
+   if (Field) *Field = args.Field;
+   if (Source) *Source = args.Source;
+   return(error);
+}
+
+
+class objMetaClass : public BaseClass {
+   public:
+   DOUBLE  ClassVersion;                // The version number of the class.
+   struct MethodArray * Methods;        // Set this field to define the methods supported by the class.
+   const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
+   CSTRING ClassName;                   // The name of the represented class.
+   CSTRING FileExtension;               // Describes the file extension represented by the class.
+   CSTRING FileDescription;             // Describes the file type represented by the class.
+   CSTRING FileHeader;                  // Defines a string expression that will allow relevant file data to be matched to the class.
+   CSTRING Path;                        // The path to the module binary that represents the class.
+   LONG    Size;                        // The total size of the object structure represented by the MetaClass.
+   LONG    Flags;                       // Optional flag settings.
+   CLASSID SubClassID;                  // Specifies the sub-class ID of a class object.
+   CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
+   LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
+   LONG    TotalMethods;                // The total number of methods supported by a class.
+   LONG    TotalFields;                 // The total number of fields defined by a class.
+   LONG    Category;                    // The system category that a class belongs to.
 
 #ifdef PRV_METACLASS
-    struct rkMetaClass *Base;            // Reference to the base class if this is a sub-class
+    objMetaClass *Base;                  // Reference to the base class if this is a sub-class
     struct Field *prvFields;             // Internal field structure
     const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
     struct ModuleMaster *Master; // Master module that owns this class, if any.
@@ -2515,82 +2972,11 @@ typedef struct rkMetaClass {
     WORD OriginalFieldTotal;
   
 #endif
-} objMetaClass;
-
-// MetaClass methods
-
-#define MT_mcFindField -1
-
-struct mcFindField { LONG ID; struct Field * Field; struct rkMetaClass * Source;  };
-
-INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, struct rkMetaClass ** Source) {
-   struct mcFindField args = { ID, 0, 0 };
-   ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
-   if (Field) *Field = args.Field;
-   if (Source) *Source = args.Source;
-   return(error);
-}
-
+};
 
 // Task class definition
 
 #define VER_TASK (1.000000)
-
-typedef struct rkTask {
-   OBJECT_HEADER
-   DOUBLE TimeOut;
-   LONG   Flags;
-   LONG   ReturnCode;
-   LONG   ProcessID;  // Native process ID of the activated task
-
-#ifdef PRV_TASK
-   MEMORYID MessageMID;
-   MEMORYID LocationMID;       // Where to load the task from (string)
-   MEMORYID ParametersMID;     // Arguments (string)
-   MEMORYID CopyrightMID;      // Copyright details (string)
-   MEMORYID PathMID;
-   MEMORYID ProcessPathMID;
-   MEMORYID LaunchPathMID;
-   STRING   LaunchPath;
-   STRING   Path;
-   STRING   ProcessPath;
-   STRING   Location;         // Where to load the task from (string)
-   CSTRING  *Parameters;      // Arguments (string array)
-   STRING   Copyright;        // Copyright details (string)
-   char     Name[32];         // Name of the task, if specified (string)
-   char     Author[60];       // Who wrote the program (string)
-   char     Date[20];         // Date of compilation (string)
-   char     Short[80];        // Short description of program (string)
-   LONG     ParametersSize;   // Byte size of the arguments structure
-   STRING   Fields[100];      // Unlisted field storage
-   BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
-   FUNCTION ErrorCallback;
-   FUNCTION OutputCallback;
-   FUNCTION ExitCallback;
-   FUNCTION InputCallback;
-   struct MsgHandler *MsgAction;
-   struct MsgHandler *MsgGetField;
-   struct MsgHandler *MsgSetField;
-   struct MsgHandler *MsgActionResult;
-   struct MsgHandler *MsgDebug;
-   struct MsgHandler *MsgValidateProcess;
-   struct MsgHandler *MsgQuit;
-   struct MsgHandler *MsgEvent;
-   struct MsgHandler *MsgThreadCallback;
-   struct MsgHandler *MsgThreadAction;
-
-   #ifdef __unix__
-      LONG InFD;             // stdin FD for receiving output from launched task
-      LONG ErrFD;            // stderr FD for receiving output from launched task
-   #endif
-   #ifdef _WIN32
-      STRING Env;
-      APTR Platform;
-   #endif
-   struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
-  
-#endif
-} objTask;
 
 // Task methods
 
@@ -2629,22 +3015,94 @@ INLINE ERROR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) {
 #define taskCloseInstance(obj) Action(MT_TaskCloseInstance,(obj),0)
 
 
+class objTask : public BaseClass {
+   public:
+   DOUBLE TimeOut;    // Limits the amount of time to wait for a launched process to return.
+   LONG   Flags;      // Optional flags.
+   LONG   ReturnCode; // The task's return code can be retrieved following execution.
+   LONG   ProcessID;  // Reflects the process ID when an executable is launched.
+
+#ifdef PRV_TASK
+   MEMORYID MessageMID;
+   MEMORYID LocationMID;       // Where to load the task from (string)
+   MEMORYID ParametersMID;     // Arguments (string)
+   MEMORYID CopyrightMID;      // Copyright details (string)
+   MEMORYID PathMID;
+   MEMORYID ProcessPathMID;
+   MEMORYID LaunchPathMID;
+   STRING   LaunchPath;
+   STRING   Path;
+   STRING   ProcessPath;
+   STRING   Location;         // Where to load the task from (string)
+   CSTRING  *Parameters;      // Arguments (string array)
+   STRING   Copyright;        // Copyright details (string)
+   char     Name[32];         // Name of the task, if specified (string)
+   char     Author[60];       // Who wrote the program (string)
+   char     Date[20];         // Date of compilation (string)
+   char     Short[80];        // Short description of program (string)
+   LONG     ParametersSize;   // Byte size of the arguments structure
+   STRING   Fields[100];      // Variable field storage
+   BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
+   FUNCTION ErrorCallback;
+   FUNCTION OutputCallback;
+   FUNCTION ExitCallback;
+   FUNCTION InputCallback;
+   struct MsgHandler *MsgAction;
+   struct MsgHandler *MsgGetField;
+   struct MsgHandler *MsgSetField;
+   struct MsgHandler *MsgActionResult;
+   struct MsgHandler *MsgDebug;
+   struct MsgHandler *MsgWaitForObjects;
+   struct MsgHandler *MsgValidateProcess;
+   struct MsgHandler *MsgQuit;
+   struct MsgHandler *MsgEvent;
+   struct MsgHandler *MsgThreadCallback;
+   struct MsgHandler *MsgThreadAction;
+
+   #ifdef __unix__
+      LONG InFD;             // stdin FD for receiving output from launched task
+      LONG ErrFD;            // stderr FD for receiving output from launched task
+   #endif
+   #ifdef _WIN32
+      STRING Env;
+      APTR Platform;
+   #endif
+   struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
+  
+#endif
+   // Action stubs
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+      struct acSetVar args = { FieldName, Value };
+      return Action(AC_SetVar, this, &args);
+   }
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline LONG writeResult(CPTR Buffer, LONG Bytes) {
+      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!Action(AC_Write, this, &write)) return write.Result;
+      else return 0;
+   }
+};
+
 // Thread class definition
 
 #define VER_THREAD (1.000000)
-
-typedef struct rkThread {
-   OBJECT_HEADER
-   APTR  Data;       // User data pointer.
-   LONG  DataSize;   // Size of user data.
-   LONG  StackSize;  // Pre-set stack size
-   ERROR Error;      // Error code returned by the thread on completion.
-   LONG  Flags;      // Optional flags.
-
-#ifdef PRV_THREAD
- struct prvThread prv; 
-#endif
-} objThread;
 
 // Thread methods
 
@@ -2652,18 +3110,36 @@ typedef struct rkThread {
 #define MT_ThWait -2
 
 struct thSetData { APTR Data; LONG Size;  };
-struct thWait { LONG TimeOut; LONG MsgInterval;  };
+struct thWait { LONG TimeOut;  };
 
 INLINE ERROR thSetData(APTR Ob, APTR Data, LONG Size) {
    struct thSetData args = { Data, Size };
    return(Action(MT_ThSetData, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR thWait(APTR Ob, LONG TimeOut, LONG MsgInterval) {
-   struct thWait args = { TimeOut, MsgInterval };
+INLINE ERROR thWait(APTR Ob, LONG TimeOut) {
+   struct thWait args = { TimeOut };
    return(Action(MT_ThWait, (OBJECTPTR)Ob, &args));
 }
 
+
+class objThread : public BaseClass {
+   public:
+   APTR  Data;       // Pointer to initialisation data for the thread.
+   LONG  DataSize;   // The size of the buffer referenced in the Data field.
+   LONG  StackSize;  // The stack size to allocate for the thread.
+   ERROR Error;      // Reflects the error code returned by the thread routine.
+   LONG  Flags;      // Optional flags can be defined here.
+
+#ifdef PRV_THREAD
+ struct prvThread prv; 
+#endif
+   // Action stubs
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+};
 
 // Private task list control structure.
 
@@ -2695,23 +3171,6 @@ struct TaskList {
 
 #define VER_MODULE (1.000000)
 
-typedef struct rkModule {
-   OBJECT_HEADER
-   DOUBLE Version;                          // Minimum required version of the module
-   const struct Function * FunctionList;    // Array of functions
-   APTR   ModBase;                          // Ptr to function jump table
-   struct ModuleMaster * Master;            // Shared details on the module
-   struct ModHeader * Header;               // For creating in-memory modules only.
-   LONG   Flags;                            // Optional flags
-
-#ifdef PRV_MODULE
-   char   Name[60];      // Name of the module
-   APTR   prvMBMemory;   // Module base memory
-   struct KeyStore *Vars;
-  
-#endif
-} objModule;
-
 // Module methods
 
 #define MT_ModResolveSymbol -1
@@ -2726,24 +3185,39 @@ INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) {
 }
 
 
+class objModule : public BaseClass {
+   public:
+   DOUBLE Version;                          // Minimum required version number.
+   const struct Function * FunctionList;    // Refers to a list of public functions exported by the module.
+   APTR   ModBase;                          // The Module's function base (jump table) must be read from this field.
+   struct ModuleMaster * Master;            // For internal use only.
+   struct ModHeader * Header;               // For internal usage only.
+   LONG   Flags;                            // Optional flags.
+
+#ifdef PRV_MODULE
+   char   Name[60];      // Name of the module
+   APTR   prvMBMemory;   // Module base memory
+   struct KeyStore *Vars;
+  
+#endif
+   // Action stubs
+
+   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
+      struct acGetVar args = { FieldName, Buffer, Size };
+      ERROR error = Action(AC_GetVar, this, &args);
+      if ((error) AND (Buffer)) Buffer[0] = 0;
+      return error;
+   }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
+      struct acSetVar args = { FieldName, Value };
+      return Action(AC_SetVar, this, &args);
+   }
+};
+
 // Time class definition
 
 #define VER_TIME (1.000000)
-
-typedef struct rkTime {
-   OBJECT_HEADER
-   LARGE SystemTime;    // Total number of microseconds passed since the system base time
-   LONG  Year;          // Year   (-ve for BC, +ve for AD)
-   LONG  Month;         // Month  (1 - 12)
-   LONG  Day;           // Day    (1 - 31)
-   LONG  Hour;          // Hour   (0 - 23)
-   LONG  Minute;        // Minute (0 - 59)
-   LONG  Second;        // Second (0 - 59)
-   LONG  TimeZone;      // 0 is GMT, range is +1300 or -1300
-   LONG  DayOfWeek;     // Day of week (0 = Sunday ..)
-   LONG  MilliSecond;   // Millisecond (0 - 999)
-   LONG  MicroSecond;   // Microsecond  (0 - 999999)
-} objTime;
 
 // Time methods
 
@@ -2752,48 +3226,28 @@ typedef struct rkTime {
 #define tmSetTime(obj) Action(MT_TmSetTime,(obj),0)
 
 
+class objTime : public BaseClass {
+   public:
+   LARGE SystemTime;    // Represents the system time when the time object was last queried.
+   LONG  Year;          // Year (-ve for BC, +ve for AD).
+   LONG  Month;         // Month (1 - 12)
+   LONG  Day;           // Day (1 - 31)
+   LONG  Hour;          // Hour (0 - 23)
+   LONG  Minute;        // Minute (0 - 59)
+   LONG  Second;        // Second (0 - 59)
+   LONG  TimeZone;      // No information.
+   LONG  DayOfWeek;     // Day of week (0 - 6) starting from Sunday.
+   LONG  MilliSecond;   // Millisecond (0 - 999)
+   LONG  MicroSecond;   // Microsecond (0 - 999999)
+   // Action stubs
+
+   inline ERROR query() { return Action(AC_Query, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+};
+
 // Compression class definition
 
 #define VER_COMPRESSION (1.000000)
-
-typedef struct rkCompression {
-   OBJECT_HEADER
-   LARGE    TotalOutput;     // Total number of bytes output (e.g. during compression of a stream)
-   OBJECTID OutputID;        // Reference to output object for user messages
-   LONG     CompressionLevel; // Compression level (percentage - 0% none, 100% high)
-   LONG     Flags;           // Optional flags
-   LONG     SegmentSize;     // Splits the compressed file if it surpasses a set byte limit (e.g. 1.44MB)
-   LONG     Permissions;     // Default permissions to use for decompressed files
-   LONG     MinOutputSize;   // Minimum recommended output buffer size
-   LONG     WindowBits;      // Window bits, currently applicable to the default (zlib) compression
-
-#ifdef PRV_COMPRESSION
-   OBJECTPTR FileIO;             // File input/output
-   STRING *  FileList;           // List of all files held in the compression object
-   STRING    Location;           // File location of the compressed data
-   struct CompressionFeedback *FeedbackInfo;
-   struct rkCompression *NextArchive;
-   UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
-   char      Password[128];      // Password for the compressed object
-   FUNCTION  Feedback;           // Set a function here to get de/compression feedack
-   ULONG     ArchiveHash;        // Archive reference, used for the 'archive:' volume
-
-   // Zip only fields
-   z_stream prvZip;
-   z_stream Stream;
-   UBYTE  *prvOutput;
-   UBYTE  *prvInput;
-   struct ZipFile *prvFiles;    // List of files in the archive (must be in order of the archive's entries)
-   UBYTE  *OutputBuffer;        // Output buffer for compressed data
-   LONG   OutputSize;           // Size of OutputBuffer
-   LONG   prvTotalFiles;
-   LONG   prvFileIndex;
-   WORD   prvCompressionCount;  // Counter of times that compression has occurred
-   UBYTE  Deflating;
-   UBYTE  Inflating;
-  
-#endif
-} objCompression;
 
 // Compression methods
 
@@ -2896,16 +3350,58 @@ INLINE ERROR cmpFind(APTR Ob, CSTRING Path, LONG Flags, struct CompressedItem **
 }
 
 
+class objCompression : public BaseClass {
+   public:
+   LARGE    TotalOutput;     // The total number of bytes that have been output during the compression or decompression of streamed data.
+   OBJECTID OutputID;        // Resulting messages will be sent to the object referred to in this field.
+   LONG     CompressionLevel; // The compression level to use when compressing data.
+   LONG     Flags;           // Optional flags.
+   LONG     SegmentSize;     // Private. Splits the compressed file if it surpasses a set byte limit.
+   LONG     Permissions;     // Default permissions for decompressed files are defined here.
+   LONG     MinOutputSize;   // Indicates the minimum output buffer size that will be needed during de/compression.
+   LONG     WindowBits;      // Special option for certain compression formats.
+
+#ifdef PRV_COMPRESSION
+   OBJECTPTR FileIO;             // File input/output
+   STRING *  FileList;           // List of all files held in the compression object
+   STRING    Path;               // Location of the compressed data
+   CompressionFeedback *FeedbackInfo;
+   UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
+   char      Password[128];      // Password for the compressed object
+   FUNCTION  Feedback;           // Set a function here to get de/compression feedack
+   ULONG     ArchiveHash;        // Archive reference, used for the 'archive:' volume
+
+   // Zip only fields
+   z_stream prvZip;
+   z_stream Stream;
+   UBYTE  *prvOutput;
+   UBYTE  *prvInput;
+   struct ZipFile *prvFiles;    // List of files in the archive (must be in order of the archive's entries)
+   UBYTE  *OutputBuffer;        // Output buffer for compressed data
+   LONG   OutputSize;           // Size of OutputBuffer
+   LONG   prvTotalFiles;
+   LONG   prvFileIndex;
+   WORD   prvCompressionCount;  // Counter of times that compression has occurred
+   UBYTE  Deflating;
+   UBYTE  Inflating;
+  
+#endif
+   // Action stubs
+
+   inline ERROR flush() { return Action(AC_Flush, this, NULL); }
+   inline ERROR init() { return Action(AC_Init, this, NULL); }
+};
+
 // CompressedStream class definition
 
 #define VER_COMPRESSEDSTREAM (1.000000)
 
-typedef struct rkCompressedStream {
-   OBJECT_HEADER
-   LARGE     TotalOutput; // Count of the total bytes that have been output.
-   OBJECTPTR Input;      // The object that is the source of the compressed data.
-   OBJECTPTR Output;     // The object that is the destination for the compressed data.
-   LONG      Format;     // CF_GZIP, CF_ZLIB, CF_DEFLATE
+class objCompressedStream : public BaseClass {
+   public:
+   LARGE     TotalOutput; // A live counter of total bytes that have been output by the stream.
+   OBJECTPTR Input;      // An input object that will supply data for decompression.
+   OBJECTPTR Output;     // A target object that will receive data compressed by the stream.
+   LONG      Format;     // The format of the compressed stream.  The default is GZIP.
 
 #ifdef PRV_COMPRESSEDSTREAM
    UBYTE *OutputBuffer;
@@ -2915,322 +3411,73 @@ typedef struct rkCompressedStream {
    gz_header Header;
   
 #endif
-} objCompressedStream;
+};
 
-#define CONV_TIME_DATETIME(a) ((struct DateTime *)(&(a)->Year))
 
-INLINE BYTE CMP_DATETIME(struct DateTime *one, struct DateTime *two)
-{
-   if (one->Year < two->Year) return -1;
-   if (one->Year > two->Year) return 1;
-   if (one->Month < two->Month) return -1;
-   if (one->Month > two->Month) return 1;
-   if (one->Day < two->Day) return -1;
-   if (one->Day > two->Day) return 1;
-   if (one->Minute < two->Minute) return -1;
-   if (one->Minute > two->Minute) return 1;
-   if (one->Hour < two->Hour) return -1;
-   if (one->Hour > two->Hour) return 1;
-   if (one->Second < two->Second) return -1;
-   if (one->Second > two->Second) return 1;
-   return 0;
-}
-  
-
-// Macro based actions.
-
-#define SetRead(a,b,c)  a.Buffer=(b);   a.Length=(c);
-#define SetSeek(a,b,c)  a.Position=(b); a.Offset=(c);
-#define SetWrite(a,b,c) a.Buffer=(b);   a.Length=(c);
-
-// Action and Notification Structures
-
-struct acActionNotify  { union { ACTIONID ActionID; ACTIONID Action; }; union { OBJECTID ObjectID; OBJECTID Object; }; APTR Args; LONG Size; ERROR Error; LONG Time; };
-struct acClipboard     { LONG Mode; };
-struct acCopyData      { union { OBJECTID DestID; OBJECTID Dest; }; };
-struct acCustom        { LONG Number; CSTRING String; };
-struct acDataFeed      { union { OBJECTID ObjectID; OBJECTID Object; }; union { LONG DataType; LONG Datatype; }; const void *Buffer; LONG Size; };
-struct acDragDrop      { union { OBJECTID SourceID; OBJECTID Source; }; LONG Item; CSTRING Datatype; };
-struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
-struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
-struct acMove          { DOUBLE XChange; DOUBLE YChange; DOUBLE ZChange; };
-struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
-struct acNewChild      { union { OBJECTID NewChildID; OBJECTID NewChild; }; };
-struct acNewOwner      { union { OBJECTID NewOwnerID; OBJECTID NewOwner; }; CLASSID ClassID; };
-struct acRead          { APTR Buffer; LONG Length; LONG Result; };
-struct acRedimension   { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acRedo          { LONG Steps; };
-struct acRename        { CSTRING Name; };
-struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acSaveImage     { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSaveToObject  { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
-struct acScroll        { DOUBLE XChange; DOUBLE YChange; DOUBLE ZChange; };
-struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
-struct acSeek          { DOUBLE Offset; LONG Position; };
-struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
-struct acSetVar        { CSTRING Field; CSTRING Value; };
-struct acUndo          { LONG Steps; };
-struct acWrite         { CPTR Buffer; LONG Length; LONG Result; };
-
-// Action Macros
-
-#define acActivate(a)         (Action(AC_Activate,(a),NULL))
-#define acClear(a)            (Action(AC_Clear,(a),NULL))
-#define acDeactivate(a)       (Action(AC_Deactivate,(a),NULL))
-#define acDisable(a)          (Action(AC_Disable,(a),NULL))
-#define acDragDrop(obj,b,c,d) (Action(AC_DragDrop,(obj),(b),(c),(d))
-#define acDraw(a)             (Action(AC_Draw,(a),NULL))
-#define acEnable(a)           (Action(AC_Enable,(a),NULL))
-#define acFlush(a)            (Action(AC_Flush,(a),NULL))
-#define acFocus(a)            (Action(AC_Focus,(a),NULL))
-#define acFree(a)             (Action(AC_Free,(a),NULL))
-#define acHide(a)             (Action(AC_Hide,(a),NULL))
-#define acInit(a)             (Action(AC_Init,(a),NULL))
-#define acLock(a)             (Action(AC_Lock,(a),NULL))
-#define acLostFocus(a)        (Action(AC_LostFocus,(a),NULL))
-#define acMoveToBack(a)       (Action(AC_MoveToBack,(a),NULL))
-#define acMoveToFront(a)      (Action(AC_MoveToFront,(a),NULL))
-#define acNext(a)             (Action(AC_Next,(a),NULL)
-#define acPrev(a)             (Action(AC_Prev,(a),NULL)
-#define acQuery(a)            (Action(AC_Query,(a),NULL))
-#define acRefresh(a)          (Action(AC_Refresh, (a), NULL))
-#define acReset(a)            (Action(AC_Reset,(a),NULL))
-#define acSaveSettings(a)     (Action(AC_SaveSettings,(a),NULL))
-#define acShow(a)             (Action(AC_Show,(a),NULL))
-#define acSort(a)             (Action(AC_Sort,(a),NULL))
-#define acUnlock(a)           (Action(AC_Unlock,(a),NULL))
-
-#define acActivateID(a)       (ActionMsg(AC_Activate,(a),NULL))
-#define acClearID(a)          (ActionMsg(AC_Clear,(a),NULL))
-#define acDisableID(a)        (ActionMsg(AC_Disable,(a),NULL))
-#define acDrawID(a)           (ActionMsg(AC_Draw,(a),NULL))
-#define acEnableID(a)         (ActionMsg(AC_Enable,(a),NULL))
-#define acFlushID(a)          (ActionMsg(AC_Flush,(a),NULL))
-#define acFocusID(a)          (ActionMsg(AC_Focus,(a),NULL))
-#define acFreeID(a)           (ActionMsg(AC_Free,(a),NULL))
-#define acHideID(a)           (ActionMsg(AC_Hide,(a),NULL))
-#define acInitID(a)           (ActionMsg(AC_Init,(a),NULL))
-#define acLostFocusID(a)      (ActionMsg(AC_LostFocus,(a),NULL))
-#define acMoveToBackID(a)     (ActionMsg(AC_MoveToBack,(a),NULL))
-#define acMoveToFrontID(a)    (ActionMsg(AC_MoveToFront,(a),NULL))
-#define acQueryID(a)          (ActionMsg(AC_Query,(a),NULL))
-#define acRefreshID(a)        (ActionMsg(AC_Refresh,(a),NULL))
-#define acSaveSettingsID(a)   (ActionMsg(AC_SaveSettings,(a),NULL))
-#define acShowID(a)           (ActionMsg(AC_Show,(a),NULL))
-
-INLINE ERROR acClipboard(APTR Object, LONG Mode) {
-   struct acClipboard args = { Mode };
-   return Action(AC_Clipboard, (OBJECTPTR)Object, &args);
+INLINE ERROR GetLarge(OBJECTPTR Object, ULONG FieldID, LARGE *Value) {
+   return GetField(Object, (FIELD)FieldID|TLARGE, Value);
 }
 
-INLINE ERROR acDrawArea(APTR Object, LONG X, LONG Y, LONG Width, LONG Height) {
-   struct acDraw args = { X, Y, Width, Height };
-   return Action(AC_Draw, (OBJECTPTR)Object, &args);
+INLINE ERROR GetLong(OBJECTPTR Object, ULONG FieldID, LONG *Value) {
+   return GetField(Object, (FIELD)FieldID|TLONG, Value);
 }
 
-INLINE ERROR acDataFeed(APTR Object, OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-   struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
-   return Action(AC_DataFeed, (OBJECTPTR)Object, &args);
+INLINE ERROR GetDouble(OBJECTPTR Object, ULONG FieldID, DOUBLE *Value) {
+   return GetField(Object, (FIELD)FieldID|TDOUBLE, Value);
 }
 
-INLINE ERROR acMove(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
-   struct acMove args = { X, Y, Z };
-   return Action(AC_Move, (OBJECTPTR)Object, &args);
+INLINE ERROR GetString(OBJECTPTR Object, ULONG FieldID, STRING *Value) {
+   return GetField(Object, (FIELD)FieldID|TSTRING, Value);
 }
 
-INLINE ERROR acRead(APTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
-   ERROR error;
-   struct acRead read = { (BYTE *)Buffer, Bytes };
-   if (!(error = Action(AC_Read, (OBJECTPTR)Object, &read))) {
-      if (Read) *Read = read.Result;
-      return ERR_Okay;
-   }
-   else {
-      if (Read) *Read = 0;
-      return error;
-   }
+INLINE ERROR GetPercentage(OBJECTPTR Object, ULONG FieldID, DOUBLE *Value) {
+   return GetField(Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
 }
 
-INLINE ERROR acRedo(APTR Object, LONG Steps) {
-   struct acRedo args = { Steps };
-   return Action(AC_Redo, (OBJECTPTR)Object, &args);
+INLINE ERROR GetPointer(OBJECTPTR Object, ULONG FieldID, APTR Value) {
+   return GetField(Object, (FIELD)FieldID|TPTR, Value);
 }
 
-INLINE ERROR acRedimension(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
-   struct acRedimension args = { X, Y, Z, Width, Height, Depth };
-   return Action(AC_Redimension, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acRename(APTR Object, CSTRING Name) {
-   struct acRename args = { Name };
-   return Action(AC_Rename, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acResize(APTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
-   struct acResize args = { Width, Height, Depth };
-   return Action(AC_Resize, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acScroll(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
-   struct acScroll args = { X, Y, Z };
-   return Action(AC_Scroll, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acScrollToPoint(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
-   struct acScrollToPoint args = { X, Y, Z, Flags };
-   return Action(AC_ScrollToPoint, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acUndo(APTR Object, LONG Steps) {
-   struct acUndo args = { Steps };
-   return Action(AC_Undo, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acGetVar(APTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
-   struct acGetVar args = { FieldName, Buffer, Size };
-   ERROR error = Action(AC_GetVar, (OBJECTPTR)Object, &args);
-   if ((error) AND (Buffer)) Buffer[0] = 0;
-   return error;
-}
-
-INLINE ERROR acMoveToPoint(APTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
-   struct acMoveToPoint moveto = { X, Y, Z, Flags };
-   return Action(AC_MoveToPoint, (OBJECTPTR)Object, &moveto);
-}
-
-INLINE ERROR acSaveImage(APTR Object, OBJECTID DestID, CLASSID ClassID) {
-   struct acSaveImage args = { { DestID }, { ClassID } };
-   return Action(AC_SaveImage, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acSaveToObject(APTR Object, OBJECTID DestID, CLASSID ClassID) {
-   struct acSaveToObject args = { { DestID }, { ClassID } };
-   return Action(AC_SaveToObject, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acSeek(APTR Object, DOUBLE Offset, LONG Position) {
-   struct acSeek args = { Offset, Position };
-   return Action(AC_Seek, (OBJECTPTR)Object, &args);
-}
-
-INLINE ERROR acSetVars(APTR Object, CSTRING tags, ...) {
-   struct acSetVar args;
-   va_list list;
-
-   va_start(list, tags);
-   while ((args.Field = va_arg(list, STRING)) != TAGEND) {
-      args.Value = va_arg(list, STRING);
-      if (Action(AC_SetVar, (OBJECTPTR)Object, &args) != ERR_Okay) {
-         va_end(list);
-         return ERR_Failed;
-      }
-   }
-   va_end(list);
-   return ERR_Okay;
-}
-
-INLINE ERROR acWrite(APTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
-   ERROR error;
-   struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (!(error = Action(AC_Write, (OBJECTPTR)Object, &write))) {
-      if (Result) *Result = write.Result;
-   }
-   else if (Result) *Result = 0;
-   return error;
-}
-
-INLINE LONG acWriteResult(APTR Object, CPTR Buffer, LONG Bytes) {
-   struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (!Action(AC_Write, (OBJECTPTR)Object, &write)) return write.Result;
-   else return 0;
-}
-
-#define acSeekStart(a,b)    acSeek((a),(b),SEEK_START)
-#define acSeekEnd(a,b)      acSeek((a),(b),SEEK_END)
-#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK_CURRENT)
-
-INLINE ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
-   struct acSelectArea area = { X, Y, Width, Height };
-   return Action(AC_SelectArea, (OBJECTPTR)Object, &area);
-}
-
-INLINE ERROR acSetVar(APTR Object, CSTRING FieldName, CSTRING Value) {
-   struct acSetVar args = { FieldName, Value };
-   return Action(AC_SetVar, (OBJECTPTR)Object, &args);
-}
-
-#define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
-#define SetVar(a,b,c)    acSetVar(a,b,c)
-#define SetVars(a,b,...) acSetUnlistedFields(a,b __VA_ARGS__)
-
-// Variadic macro
-
-#define SetUnlistedFields(a,b,...)    acSetUnlistedFields(a,b __VA_ARGS__)
-
-INLINE ERROR GetLarge(APTR Object, ULONG FieldID, LARGE *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TLARGE, Value);
-}
-
-INLINE ERROR GetLong(APTR Object, ULONG FieldID, LONG *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TLONG, Value);
-}
-
-INLINE ERROR GetDouble(APTR Object, ULONG FieldID, DOUBLE *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE, Value);
-}
-
-INLINE ERROR GetString(APTR Object, ULONG FieldID, STRING *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TSTRING, Value);
-}
-
-INLINE ERROR GetPercentage(APTR Object, ULONG FieldID, DOUBLE *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
-}
-
-INLINE ERROR GetPointer(APTR Object, ULONG FieldID, APTR Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
-}
-
-INLINE ERROR GetVariable(APTR Object, ULONG FieldID, struct Variable *Value) {
-   return GetField((OBJECTPTR)Object, (FIELD)FieldID|TVAR, Value);
+INLINE ERROR GetVariable(OBJECTPTR Object, ULONG FieldID, struct Variable *Value) {
+   return GetField(Object, (FIELD)FieldID|TVAR, Value);
 }
 
 //****************************************************************************
 
-INLINE ERROR SetLarge(APTR Object, ULONG FieldID, LARGE Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TLARGE, Value);
+INLINE ERROR SetLarge(OBJECTPTR Object, ULONG FieldID, LARGE Value) {
+   return SetField(Object, (FIELD)FieldID|TLARGE, Value);
 }
 
-INLINE ERROR SetLong(APTR Object, ULONG FieldID, LONG Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TLONG, Value);
+INLINE ERROR SetLong(OBJECTPTR Object, ULONG FieldID, LONG Value) {
+   return SetField(Object, (FIELD)FieldID|TLONG, Value);
 }
 
-INLINE ERROR SetFunction(APTR Object, ULONG FieldID, FUNCTION *Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TFUNCTION, Value);
+INLINE ERROR SetFunction(OBJECTPTR Object, ULONG FieldID, FUNCTION *Value) {
+   return SetField(Object, (FIELD)FieldID|TFUNCTION, Value);
 }
 
-INLINE ERROR SetFunctionPtr(APTR Object, ULONG FieldID, APTR Value) { // Yes, the pointer value will be converted to a StdC FUNCTION type internally.
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
+INLINE ERROR SetFunctionPtr(OBJECTPTR Object, ULONG FieldID, APTR Value) { // Yes, the pointer value will be converted to a StdC FUNCTION type internally.
+   return SetField(Object, (FIELD)FieldID|TPTR, Value);
 }
 
-INLINE ERROR SetDouble(APTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE, Value);
+INLINE ERROR SetDouble(OBJECTPTR Object, ULONG FieldID, DOUBLE Value) {
+   return SetField(Object, (FIELD)FieldID|TDOUBLE, Value);
 }
 
-INLINE ERROR SetString(APTR Object, ULONG FieldID, CSTRING Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TSTRING, Value);
+INLINE ERROR SetString(OBJECTPTR Object, ULONG FieldID, CSTRING Value) {
+   return SetField(Object, (FIELD)FieldID|TSTRING, Value);
 }
 
-INLINE ERROR SetPercentage(APTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
+INLINE ERROR SetPercentage(OBJECTPTR Object, ULONG FieldID, DOUBLE Value) {
+   return SetField(Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
 }
 
-INLINE ERROR SetPointer(APTR Object, ULONG FieldID, const void *Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TPTR, Value);
+INLINE ERROR SetPointer(OBJECTPTR Object, ULONG FieldID, const void *Value) {
+   return SetField(Object, (FIELD)FieldID|TPTR, Value);
 }
 
-INLINE ERROR SetVariable(APTR Object, ULONG FieldID, struct Variable *Value) {
-   return SetField((OBJECTPTR)Object, (FIELD)FieldID|TVAR, Value);
+INLINE ERROR SetVariable(OBJECTPTR Object, ULONG FieldID, struct Variable *Value) {
+   return SetField(Object, (FIELD)FieldID|TVAR, Value);
 }
 
 #ifndef PRV_CORE
@@ -3327,12 +3574,6 @@ INLINE FIELD ResolveField(CSTRING Field) {
 
 #endif // PRV_CORE
 
-INLINE ERROR LogReturnError(LONG Header, ERROR Code) {
-   LogError(Header, Code);
-   LogReturn();
-   return Code;
-}
-
 #ifdef __unix__
 #include <pthread.h>
 #endif
@@ -3366,6 +3607,11 @@ struct PublicAddress {
    #endif
 };
 
+struct SortedAddress {
+   MEMORYID MemoryID;
+   LONG Index;
+};
+
 // Semaphore management structure.
 
 #define MAX_SEMAPHORES  40  // Maximum number of semaphores that can be allocated in the system
@@ -3388,18 +3634,6 @@ struct SemaphoreEntry {   // The index of each semaphore in the array indicates 
       UBYTE BufferCount;     // Buffered accesses (this value increases instead of AccessCount when the BlockCount is set)
    } Processes[20];
    //LONG     FIFO[10];       // List of processes currently queued for access
-};
-
-// Private memory management structures.
-
-struct PrivateAddress {
-   APTR     Address;
-   MEMORYID MemoryID;   // Unique identifier
-   OBJECTID ObjectID;   // Owner of the block
-   ULONG     Size;      // 4GB max
-   volatile LONG ThreadLockID;
-   WORD     Flags;
-   volatile WORD AccessCount; // Total number of locks
 };
 
 // Message structure and internal ID's for standard Task-to-Task messages.
@@ -3433,7 +3667,7 @@ enum { // For SysLock()
 
 struct SharedControl {
    LONG PoolSize;                   // Amount of allocated page space (starts at zero and expands)
-   volatile LONG BlocksUsed;        // Total amount of public memory blocks currently allocated
+   volatile LONG BlocksUsed;        // Total amount of shared memory blocks currently allocated
    LONG MaxBlocks;                  // Maximum amount of available blocks
    volatile LONG NextBlock;         // Next empty position in the blocks table
    volatile LONG IDCounter;         // ID counter
@@ -3444,13 +3678,15 @@ struct SharedControl {
    volatile LONG ThreadIDCount;
    volatile LONG InputTotal;        // Total number of subscribers in InputMID
    volatile LONG ValidateProcess;
+   volatile LONG InputIDCounter;    // Counter for input event subscriptions
    WORD SystemState;
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
    LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
    LONG BlocksOffset;               // Array of available shared memory pages
+   LONG SortedBlocksOffset;         // Array of shared memory blocks sorted by MemoryID
    LONG SemaphoreOffset;            // Offset to the semaphore control array
    LONG TaskOffset;                 // Offset to the task control array
-   LONG MemoryOffset;               // Offset to the public memory allocations
+   LONG MemoryOffset;               // Offset to the shared memory allocations
    LONG WLOffset;                   // Offset to the wait-lock array
    LONG GlobalInstance;             // If glSharedControl belongs to a global instance, this is the PID of the creator.
    LONG SurfaceSemaphore;
@@ -3471,16 +3707,16 @@ struct SharedControl {
          WORD Count;             // Resource tracking: Count of all locks (nesting)
       } PublicLocks[PL_END];
    #elif _WIN32
-      // In windows, the public memory controls are controlled by mutexes that have local handles.
+      // In windows, the shared memory controls are controlled by mutexes that have local handles.
    #endif
 };
 
 // Class database.
 
-#define CL_ITEMS(c)        (struct ClassItem *)( (BYTE *)(c) + sizeof(struct ClassHeader) + ((c)->Total<<2) )
+#define CL_ITEMS(c)        (ClassItem *)( (BYTE *)(c) + sizeof(ClassHeader) + ((c)->Total<<2) )
 #define CL_OFFSETS(c)      ((LONG *)((c) + 1))
 #define CL_SIZE_OFFSETS(c) (sizeof(LONG) * (c)->Total)
-#define CL_ITEM(c,i)       ((struct ClassItem *)((BYTE *)(c) + offsets[(i)]))
+#define CL_ITEM(c,i)       ((ClassItem *)((BYTE *)(c) + offsets[(i)]))
 
 struct ClassHeader {
    LONG Total;          // Total number of registered classes
@@ -3585,7 +3821,7 @@ struct evHotplug {
       LONG DeviceID;
    };
    char  ID[20];         // Typically the PCI bus ID or USB bus ID, serial number or unique identifier
-   char  Section[32];    // Section name in the config file
+   char  Group[32];    // Group name in the config file
    char  Class[32];      // Class identifier (USB)
    union {
       char Product[40]; // Name of product or the hardware device
@@ -3605,23 +3841,23 @@ INLINE void SET_DEVICE(struct dcDeviceInput *Input, WORD Type, WORD Flags, DOUBL
 //****************************************************************************
 // File Methods.
 
-INLINE CSTRING flReadLine(APTR Object) {
+INLINE CSTRING flReadLine(OBJECTPTR Object) {
    struct flReadLine args;
-   if (!Action(MT_FlReadLine, (OBJECTPTR)Object, &args)) return args.Result;
+   if (!Action(MT_FlReadLine, Object, &args)) return args.Result;
    else return NULL;
 }
 
 //****************************************************************************
 // Little endian read functions.
 
-INLINE ERROR flReadLE2(APTR Object, WORD *Result)
+INLINE ERROR flReadLE2(OBJECTPTR Object, WORD *Result)
 {
    struct acRead read;
    UBYTE data[2];
 
    read.Buffer = data;
    read.Length = 2;
-   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
+   if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS 2) {
          #ifdef LITTLE_ENDIAN
             *Result = ((WORD *)data)[0];
@@ -3635,12 +3871,12 @@ INLINE ERROR flReadLE2(APTR Object, WORD *Result)
    else return ERR_Read;
 }
 
-INLINE ERROR flReadLE4(APTR Object, LONG *Result)
+INLINE ERROR flReadLE4(OBJECTPTR Object, LONG *Result)
 {
    UBYTE data[4];
 
    struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
+   if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS sizeof(data)) {
          #ifdef LITTLE_ENDIAN
             *Result = ((LONG *)data)[0];
@@ -3654,11 +3890,11 @@ INLINE ERROR flReadLE4(APTR Object, LONG *Result)
    else return ERR_Read;
 }
 
-INLINE ERROR flReadLE8(APTR Object, LARGE *Result)
+INLINE ERROR flReadLE8(OBJECTPTR Object, LARGE *Result)
 {
    UBYTE data[8];
    struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, (OBJECTPTR)Object, &read)) {
+   if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS sizeof(data)) {
          #ifdef LITTLE_ENDIAN
             *Result = ((LARGE *)data)[0];
@@ -3671,5 +3907,19 @@ INLINE ERROR flReadLE8(APTR Object, LARGE *Result)
    }
    else return ERR_Read;
 }
+
+#ifdef __cplusplus
+template <class R>
+constexpr FUNCTION make_function_stdc(R Routine, OBJECTPTR Context = CurrentContext()) {
+   FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = Context, .Routine = (APTR)Routine } };
+   return func;
+}
+
+INLINE FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
+   FUNCTION func = { .Type = CALL_SCRIPT, .Script = { .Script = (OBJECTPTR)Script, .ProcedureID = Procedure } };
+   return func;
+}
+#endif
+
   
 #endif

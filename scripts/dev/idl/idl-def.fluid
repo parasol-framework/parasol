@@ -35,6 +35,7 @@ end
 ------------------------------------------------------------------------------
 
 function c_include(...) end
+function cpp_include(...) end
 function class(Name, Options, Def, Private) end
 function functionNames(Prefix, ...) end
 function methods(ClassName, Prefix, Methods) end
@@ -76,12 +77,12 @@ function flags(Prefix, Options, ...)
 
    local list = { }
    local f = 0
-   for k, flag_def in ipairs({...}) do
+   for _, flag_def in ipairs({...}) do
       if (type(flag_def) == 'string') then
          local key, comment = flag_def:match('^(.+):%s+(.+)$')
          if (key == nil) then key = flag_def end
 
-         for k, v in ipairs(key:split('|')) do
+         for _, v in ipairs(key:split('|')) do
             list[v] = bit.lshift(1, f)
          end
       elseif (type(flag_def) == 'table') then
@@ -107,7 +108,7 @@ function flags(Prefix, Options, ...)
                list[flag] = key
             else
                local f = 0
-               for k, v in ipairs(key:split('|')) do
+               for _, v in ipairs(key:split('|')) do
                   if (list[v] != nil) then
                      f = bit.bor(f, list[v])
                   else
@@ -503,20 +504,31 @@ function saveOutput()
 
    -- Build constants strings
 
-   local c = ''
+   local sortedConstants = { }
    for prefix, tab in pairs(glConstants) do
-      c = c .. 'c.' .. prefix .. ':'
-      local e = ''
+      local sortedkv = { }
       for k, v in pairs(tab) do
+         table.insert(sortedkv, { name = k, value = v })
+      end
+      table.sort(sortedkv, function(a,b) return a.name < b.name end)
+      table.insert(sortedConstants, { prefix=prefix, table=sortedkv })
+   end
+   table.sort(sortedConstants, function(a,b) return a.prefix < b.prefix end)
+
+   local c = ''
+   for _, group in ipairs(sortedConstants) do
+      c = c .. 'c.' .. group.prefix .. ':'
+      local e = ''
+      for _, const in ipairs(group.table) do
          if nz(e) then e = e .. ',' end
-         if (type(v) == 'string') then
-            local val = v:match('^(.-):%s+.+$') -- Scrap any defined comment for this value.
+         if (type(const.value) == 'string') then
+            local val = const.value:match('^(.-):%s+.+$') -- Scrap any defined comment for this value.
             if (val == nil) then val = v end
-            e = e .. k .. '="' .. val .. '"'
+            e = e .. const.name .. '="' .. const.value .. '"'
          else
-            local hexval = string.format('%x', v)
+            local hexval = string.format('%x', const.value)
             if (hexval:len() == 16) then hexval = hexval:sub(-8) end
-            e = e .. k .. '=0x' .. hexval
+            e = e .. const.name .. '=0x' .. hexval
          end
       end
       c = c .. e .. EOL

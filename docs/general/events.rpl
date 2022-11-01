@@ -2,7 +2,7 @@
 
 <info>
  <title>System Event Reference</title>
- <author>Rocklyte Systems</author>
+ <author>Paul Manias</author>
  <description>A complete list of all standard system events.</description>
  <keywords>event, broadcast, activity, listen, subscribe</keywords>
 </info>

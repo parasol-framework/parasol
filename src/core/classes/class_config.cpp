@@ -17,121 +17,174 @@ The following segment of a config file illustrates:
 <pre>
 [Action]
 ClassID  = 5800
-Location = modules:action
+Path = modules:action
 
 [Animation]
 ClassID  = 1000
-Location = modules:animation
+Path = modules:animation
 
 [Arrow]
 ClassID  = 3200
-Location = modules:arrow
+Path = modules:arrow
 </pre>
 
-Notice the text enclosed in square brackets, such as `[Action]`. These are referred to as 'sections', which are
-responsible for holding groups of keys expressed as string values.  In the above example, keys are defined by the
+Notice the text enclosed in square brackets, such as `[Action]`. These are referred to as 'groups', which are
+responsible for holding groups of key values expressed as strings.  In the above example, keys are defined by the
 ClassID and Path identifiers.
 
 The following source code illustrates how to open the classes.cfg file and read a key from it:
 
 <pre>
 local cfg = obj.new('config', { path='config:classes.cfg' })
-local err, str = cfg.mtReadValue('Action', 'Location')
+local err, str = cfg.mtReadValue('Action', 'Path')
 print('The Action class is located at ' .. str)
 </pre>
 
-You can also search through config data using your own array iterator.  The following example illustrates:
-
-<pre>
-for (LONG i=0; i < cfg->Entries; i++) {
-   LogMsg("Section: %s, Key: %s, Data: %s", cfg->Entries[i].Section,
-      cfg->Entries[i].Key, cfg->Entries[i].Data);
-}
-</pre>
+Please note that internal string comparisons of group and key names are case sensitive by default.  Use of camel-case
+is recommended as the default naming format.
 
 -END-
 
 *****************************************************************************/
 
-#define STRBLOCKSIZE 2048
-#define ENTBLOCKSIZE 100
-
 #define PRV_CONFIG
 #include "../defs.h"
 #include <parasol/main.h>
 
-static ERROR GET_Entries(objConfig *, ConfigEntry **);
-static ERROR GET_KeyFilter(objConfig *, STRING *);
-static ERROR GET_Path(objConfig *, STRING *);
-static ERROR GET_SectionFilter(objConfig *, STRING *);
-static ERROR GET_TotalSections(objConfig *, LONG *);
+class FilterConfig {
+   public:
+   bool reverse;
+   std::string name;
+   std::list<std::string> values;
+};
+
+static ERROR GET_KeyFilter(objConfig *, CSTRING *);
+static ERROR GET_GroupFilter(objConfig *, CSTRING *);
+static ERROR GET_TotalGroups(objConfig *, LONG *);
 
 static ERROR CONFIG_SaveSettings(objConfig *, APTR);
 
 static const FieldDef clFlags[] = {
    { "AutoSave",    CNF_AUTO_SAVE },
    { "StripQuotes", CNF_STRIP_QUOTES },
-   { "LockRecords", CNF_LOCK_RECORDS },
-   { "FileExists",  CNF_FILE_EXISTS },
    { "New",         CNF_NEW },
    { NULL, 0 }
 };
 
+#define CF_MATCHED  1
+#define CF_FAILED   0
+#define CF_KEY_FAIL -1
+
 //****************************************************************************
 
-static WORD check_for_key(CSTRING);
-static CSTRING next_section(CSTRING);
-static CSTRING next_line(CSTRING);
-static LONG check_filter(objConfig *, STRING, STRING, STRING);
-static ERROR defragment(objConfig *);
-static ERROR process_config_data(objConfig *, char *);
-static LONG find_section(objConfig *, LONG);
-static LONG find_section_name(objConfig *, CSTRING);
-static LONG find_section_wild(objConfig *, CSTRING);
-static STRING read_config(objConfig *, CSTRING, CSTRING);
+static bool check_for_key(CSTRING);
+static ERROR parse_config(objConfig *, CSTRING);
+static ConfigKeys * find_group_wild(objConfig *Self, CSTRING Group);
+static void apply_key_filter(objConfig *, CSTRING);
+static void apply_group_filter(objConfig *, CSTRING);
+static class FilterConfig parse_filter(std::string, bool);
+static void merge_groups(ConfigGroups &Dest, ConfigGroups &Source);
 
-static void resolve_addresses(objConfig *Self)
+//****************************************************************************
+
+template <class T>
+T next_line(T Data)
 {
-   for (LONG i=0; i < Self->AmtEntries; i++) {
-      Self->Entries[i].Section = Self->Strings + Self->Entries[i].SectionOffset;
-      Self->Entries[i].Key     = Self->Strings + Self->Entries[i].KeyOffset;
-      Self->Entries[i].Data    = Self->Strings + Self->Entries[i].DataOffset;
+   while ((*Data != '\n') and (*Data)) Data++;
+   while ((*Data) and (*Data <= 0x20)) Data++; // Skip empty lines and any leading whitespace
+   return Data;
+}
+
+//****************************************************************************
+// Searches for the next group in a text buffer, returns its name and the start of the first key value.
+
+template <class T>
+T next_group(T Data, std::string &GroupName)
+{
+   while (*Data) {
+      if (*Data IS '[') {
+         LONG len;
+         for (len=1; (Data[len] != '\n') and (Data[len]); len++) {
+            if (Data[len] IS '[') break; // Invalid character check
+            if (Data[len] IS ']') {
+               GroupName.assign(Data, 1, len-1);
+               return next_line(Data+len); // Skip all trailing characters to reach the next line
+            }
+         }
+         Data += len;
+      }
+      Data = next_line(Data);
    }
+   return Data;
 }
 
 //****************************************************************************
 
-static ERROR CONFIG_AccessObject(objConfig *Self, APTR Void)
+static std::pair<std::string, std::map<std::string, std::string>> * find_group(objConfig *Self, std::string GroupName)
 {
-   parasol::Log log;
+   for (auto scan = Self->Groups->begin(); scan != Self->Groups->end(); scan++) {
+      if (!scan->first.compare(GroupName)) return &(*scan);
+   }
+   return NULL;
+}
 
-   if (Self->EntriesMID) {
-      if (AccessMemory(Self->EntriesMID, MEM_READ_WRITE, 2000, (void **)&Self->Entries)) {
-         return log.warning(ERR_AccessMemory);
+//****************************************************************************
+
+static ULONG calc_crc(objConfig *Self)
+{
+   ULONG crc = 0;
+   for (auto& [group, keys] : Self->Groups[0]) {
+      crc = GenCRC32(crc, (APTR)group.c_str(), group.size());
+      for (auto& [k, v] : keys) {
+         crc = GenCRC32(crc, (APTR)k.c_str(), k.size());
+         crc = GenCRC32(crc, (APTR)v.c_str(), v.size());
       }
    }
+   return crc;
+}
 
-   if (Self->StringsMID) {
-      if (AccessMemory(Self->StringsMID, MEM_READ_WRITE, 2000, (void **)&Self->Strings)) {
-         return log.warning(ERR_AccessMemory);
+//****************************************************************************
+// Open a file with read only and exclusive flags, then read all of the data into a buffer.  Terminate the buffer,
+// then free the file.
+//
+// Note that multiple files can be specified by separating each file path with a pipe.  This allows you to merge
+// many configuration files into one object.
+
+static ERROR parse_file(objConfig *Self, CSTRING Path)
+{
+   ERROR error = ERR_Okay;
+   while ((*Path) and (!error)) {
+      objFile *file;
+      if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
+            FID_Path|TSTR,   Path,
+            FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
+            TAGEND))) {
+
+         LONG filesize;
+         GetLong(file, FID_Size, &filesize);
+
+         if (filesize > 0) {
+            STRING data;
+            if (!AllocMemory(filesize + 3, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL)) {
+               acRead(file, data, filesize, NULL); // Read the entire file
+               data[filesize++] = '\n';
+               data[filesize] = 0;
+               error = parse_config(Self, (CSTRING)data);
+               FreeResource(data);
+            }
+            else error = ERR_AllocMemory;
+         }
+
+         acFree(file);
+         file = NULL;
       }
+      else if (Self->Flags & CNF_OPTIONAL_FILES) error = ERR_Okay;
+
+      while ((*Path) and (*Path != ';') and (*Path != '|')) Path++;
+      if (*Path) Path++; // Skip separator
    }
 
-   if (Self->KeyFilterMID) {
-      if (AccessMemory(Self->KeyFilterMID, MEM_READ_WRITE, 2000, (void **)&Self->KeyFilter)) {
-         return log.warning(ERR_AccessMemory);
-      }
-   }
-
-   if (Self->SectionFilterMID) {
-      if (AccessMemory(Self->SectionFilterMID, MEM_READ_WRITE, 2000, (void **)&Self->SectionFilter)) {
-         return log.warning(ERR_AccessMemory);
-      }
-   }
-
-   resolve_addresses(Self);
-
-   return ERR_Okay;
+   return error;
 }
 
 /*****************************************************************************
@@ -142,224 +195,105 @@ Clear: Clears all configuration data.
 
 static ERROR CONFIG_Clear(objConfig *Self, APTR Void)
 {
-   if (Self->Entries)    { ReleaseMemoryID(Self->EntriesMID); Self->Entries = NULL; }
-   if (Self->EntriesMID) { FreeResourceID(Self->EntriesMID); Self->EntriesMID = 0; }
-   if (Self->Strings)    { ReleaseMemoryID(Self->StringsMID); Self->Strings = NULL; }
-   if (Self->StringsMID) { FreeResourceID(Self->StringsMID); Self->StringsMID = 0; }
-   if (Self->KeyFilter)    { ReleaseMemoryID(Self->KeyFilterMID); Self->KeyFilter = NULL; }
-   if (Self->KeyFilterMID) { FreeResourceID(Self->KeyFilterMID); Self->KeyFilterMID = 0; }
-   if (Self->SectionFilter)    { ReleaseMemoryID(Self->SectionFilterMID); Self->SectionFilter = NULL; }
-   if (Self->SectionFilterMID) { FreeResourceID(Self->SectionFilterMID); Self->SectionFilterMID = 0; }
-
-   Self->AmtEntries    = 0;
-   Self->StringsSize   = 0;
-   Self->StringsPos    = 0;
-   Self->MaxEntries    = 0;
-   Self->TotalSections = 0;
-
+   if (Self->Groups) { Self->Groups->clear(); }
+   if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = NULL; }
+   if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = NULL; }
    return ERR_Okay;
 }
 
 /*****************************************************************************
+-ACTION-
+DataFeed: Data can be added to a Config object through this action.
 
--METHOD-
-DeleteIndex: Deletes single configuration entries.
-
-This method deletes a single key from the config object.  The index number of the key that you want to delete is
-required.  If you don't know the index number, scan the #Entries array.
-
--INPUT-
-int Index: The number of the entry that you want to delete.
-
--ERRORS-
-Okay
-Args
-NullArgs
-GetField: The Entries field could not be retrieved.
+This action will accept configuration data in TEXT format.  Any existing data that matches to the new group keys will
+be overwritten with new values.
 -END-
-
 *****************************************************************************/
 
-static ERROR CONFIG_DeleteIndex(objConfig *Self, struct cfgDeleteIndex *Args)
+static ERROR CONFIG_DataFeed(objConfig *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if ((Args->Index < 0) OR (Args->Index >= Self->AmtEntries)) {
-      log.warning("Index %d is out of bounds.", Args->Index);
-      return ERR_Args;
+   if (Args->DataType IS DATA_TEXT) {
+      ERROR error = parse_config(Self, (CSTRING)Args->Buffer);
+      if (!error) {
+         if (Self->GroupFilter) apply_group_filter(Self, Self->GroupFilter);
+         if (Self->KeyFilter) apply_key_filter(Self, Self->KeyFilter);
+      }
+      return error;
    }
 
-   log.msg("Index: %d", Args->Index);
-
-   BYTE lastsection = TRUE;
-   if ((Args->Index > 0) AND (Self->Entries[Args->Index].Section IS Self->Entries[Args->Index-1].Section)) lastsection = FALSE;
-   if ((Args->Index < Self->AmtEntries) AND (Self->Entries[Args->Index].Section IS Self->Entries[Args->Index+1].Section)) lastsection = FALSE;
-
-   for (LONG i=Args->Index; i < Self->AmtEntries-1; i++) {
-      CopyMemory(Self->Entries+i+1, Self->Entries+i, sizeof(ConfigEntry));
-   }
-
-   Self->AmtEntries--;
-   if (lastsection IS TRUE) Self->TotalSections--;
    return ERR_Okay;
 }
 
 /*****************************************************************************
 
 -METHOD-
-DeleteSection: Deletes entire sections of configuration data.
+DeleteKey: Deletes single key entries.
 
-This method is used to delete entire sections of information from config objects.  Simply specify the name of the
-section that you want to delete and it will be removed.
+This method deletes a single key from the config object.
 
 -INPUT-
-cstr Section: The name of the section that you want to delete.
+cstr Group: The name of the targeted group.
+cstr Key: The name of the targeted key.
 
 -ERRORS-
-Okay: The section was deleted.
-Args
-GetField: The Entries field could not be retrieved.
+Okay
+NullArgs
+Search
 -END-
 
 *****************************************************************************/
 
-static ERROR CONFIG_DeleteSection(objConfig *Self, struct cfgDeleteSection *Args)
+static ERROR CONFIG_DeleteKey(objConfig *Self, struct cfgDeleteKey *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Section)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Group) or (!Args->Key)) return ERR_NullArgs;
 
-   UBYTE found = FALSE;
-   LONG i;
-   for (i=Self->AmtEntries-1; i >= 0; i--) {
-      if (!StrMatch(Args->Section, Self->Entries[i].Section)) {
-         found = TRUE;
+   log.msg("Group: %s, Key: %s", Args->Group, Args->Key);
 
-         // Entries are deleted by manipulating the entries array
-
-         if (i < Self->AmtEntries-1) {
-            CopyMemory(Self->Entries+i+1, Self->Entries+i, sizeof(ConfigEntry) * (Self->AmtEntries - i - 1));
-         }
-
-         Self->AmtEntries--;
-      }
-   }
-
-   if (found) {
-      Self->TotalSections--;
-      return defragment(Self);
-   }
-   else return ERR_Okay;
-}
-
-//****************************************************************************
-// To defragment a config object, we simply recreate the entries array and the strings buffer from scratch and copy
-// across the old entries.
-
-static ERROR defragment(objConfig *Self)
-{
-   parasol::Log log(__FUNCTION__);
-   ConfigEntry *newentries;
-   MEMORYID newid, newstrid;
-   STRING newstr, current_section;
-   LONG current_sectionpos;
-
-   if (!Self->AmtEntries) {
-      log.trace("Emptying config object.");
-
-      if (Self->Entries) {
-         ReleaseMemoryID(Self->EntriesMID);
-         FreeResourceID(Self->EntriesMID);
-         Self->Entries = NULL;
-         Self->EntriesMID = 0;
-      }
-
-      if (Self->Strings) {
-         ReleaseMemoryID(Self->StringsMID);
-         FreeResourceID(Self->StringsMID);
-         Self->Strings = NULL;
-         Self->StringsMID = 0;
-      }
-
-      Self->StringsPos = 0;
-      Self->MaxEntries = 0;
-      Self->TotalSections = 0;
-      return ERR_Okay;
-   }
-   else log.trace("Reducing size from %d entries, %d sections, %d string bytes.", Self->AmtEntries, Self->TotalSections, Self->StringsSize);
-
-   if (!AllocMemory(Self->AmtEntries * sizeof(ConfigEntry), Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newentries, &newid)) {
-      // Calculate the size of the string buffer
-
-      LONG strsize = 0;
-      STRING lastsection = NULL;
-      for (LONG i=0; i < Self->AmtEntries; i++) {
-         if (lastsection != Self->Entries[i].Section) {
-            lastsection = Self->Entries[i].Section;
-            strsize += StrLength(Self->Entries[i].Section) + 1;
-         }
-         strsize += StrLength(Self->Entries[i].Key) + 1;
-         strsize += StrLength(Self->Entries[i].Data) + 1;
-      }
-
-      if (strsize < STRBLOCKSIZE) strsize = STRBLOCKSIZE;
-
-      if (!AllocMemory(strsize, Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newstr, &newstrid)) {
-         // Copy the entries array
-
-         CopyMemory(Self->Entries, newentries, sizeof(ConfigEntry) * Self->AmtEntries);
-
-         // Copy the strings
-
-         LONG pos = 0;
-         lastsection = NULL;
-         current_section = NULL;
-         current_sectionpos = 0;
-         for (LONG i=0; i < Self->AmtEntries; i++) {
-            if (lastsection != Self->Entries[i].Section) {
-               lastsection = Self->Entries[i].Section;
-               current_section = newstr + pos;
-               current_sectionpos = pos;
-               pos += StrCopy(Self->Entries[i].Section, newstr + pos, COPY_ALL) + 1;
-            }
-            newentries[i].Section = current_section;
-            newentries[i].SectionOffset = current_sectionpos;
-
-            newentries[i].Key = newstr + pos;
-            newentries[i].KeyOffset = pos;
-            pos += StrCopy(Self->Entries[i].Key, newstr + pos, COPY_ALL) + 1;
-
-            newentries[i].Data = newstr + pos;
-            newentries[i].DataOffset = pos;
-            pos += StrCopy(Self->Entries[i].Data, newstr + pos, COPY_ALL) + 1;
-         }
-
-         // Replace old allocations with the new ones
-
-         if (Self->Entries) { ReleaseMemoryID(Self->EntriesMID); FreeResourceID(Self->EntriesMID); }
-         if (Self->Strings) { ReleaseMemoryID(Self->StringsMID); FreeResourceID(Self->StringsMID); }
-
-         Self->Entries    = newentries;
-         Self->EntriesMID = newid;
-         Self->Strings    = newstr;
-         Self->StringsMID = newstrid;
-
-         Self->StringsPos  = pos;
-         Self->StringsSize = strsize;
-         Self->MaxEntries  = Self->AmtEntries;
-
-         // String addresses in the new entries array have to match the offsets in the new strings buffer
-
-         resolve_addresses(Self);
-
-         log.trace("There are now %d sections and %d entries.  Strings Buffer: %d bytes", Self->TotalSections, Self->AmtEntries, Self->StringsSize);
+   for (auto& [group, keys] : Self->Groups[0]) {
+      if (!group.compare(Args->Group)) {
+         keys.erase(Args->Key);
          return ERR_Okay;
       }
-      else return ERR_AllocMemory;
    }
-   else return ERR_AllocMemory;
+
+   return ERR_Search;
+}
+
+/*****************************************************************************
+
+-METHOD-
+DeleteGroup: Deletes entire groups of configuration data.
+
+This method will delete an entire group of key-values from a config object if a matching group name is provided.
+
+-INPUT-
+cstr Group: The name of the group that will be deleted.
+
+-ERRORS-
+Okay: The group was deleted or does not exist.
+NullArgs
+-END-
+
+*****************************************************************************/
+
+static ERROR CONFIG_DeleteGroup(objConfig *Self, struct cfgDeleteGroup *Args)
+{
+   if ((!Args) or (!Args->Group)) return ERR_NullArgs;
+
+   for (auto it = Self->Groups->begin(); it != Self->Groups->end(); it++) {
+      if (!it->first.compare(Args->Group)) {
+         Self->Groups->erase(it);
+         return(ERR_Okay);
+      }
+   }
+
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -380,11 +314,10 @@ static ERROR CONFIG_Free(objConfig *Self, APTR Void)
    parasol::Log log;
 
    if (Self->Flags & CNF_AUTO_SAVE) {
-      if (!GET_Path(Self, &Self->Path)) {
-         ULONG crc = GenCRC32(0, (BYTE *)Self->Entries, Self->AmtEntries * sizeof(ConfigEntry));
-         crc = GenCRC32(crc, Self->Strings, Self->StringsPos);
+      if (Self->Path) {
+         auto crc = calc_crc(Self);
 
-         if ((!crc) OR (crc != (ULONG)Self->CRC)) {
+         if ((!crc) or (crc != Self->CRC)) {
             log.msg("Auto-saving changes to \"%s\" (CRC: %d : %d)", Self->Path, Self->CRC, crc);
 
             OBJECTPTR file;
@@ -393,7 +326,7 @@ static ERROR CONFIG_Free(objConfig *Self, APTR Void)
                   FID_Flags|TLONG,       FL_WRITE|FL_NEW,
                   FID_Permissions|TLONG, 0,
                   TAGEND)) {
-               ActionTags(AC_SaveToObject, (OBJECTPTR)Self, file->UniqueID, 0);
+               ActionTags(AC_SaveToObject, Self, file->UID, 0);
                acFree(file);
             }
          }
@@ -401,301 +334,43 @@ static ERROR CONFIG_Free(objConfig *Self, APTR Void)
       }
    }
 
-   if (Self->Entries)    { ReleaseMemoryID(Self->EntriesMID); Self->Entries = NULL; }
-   if (Self->EntriesMID) { FreeResourceID(Self->EntriesMID); Self->EntriesMID = 0; }
-   if (Self->Strings)    { ReleaseMemoryID(Self->StringsMID); Self->Strings = NULL; }
-   if (Self->StringsMID) { FreeResourceID(Self->StringsMID); Self->StringsMID = 0; }
-   if (Self->Path)    { ReleaseMemoryID(Self->PathMID); Self->Path = NULL; }
-   if (Self->PathMID) { FreeResourceID(Self->PathMID); Self->PathMID = 0; }
-   if (Self->KeyFilter)    { ReleaseMemoryID(Self->KeyFilterMID); Self->KeyFilter = NULL; }
-   if (Self->KeyFilterMID) { FreeResourceID(Self->KeyFilterMID); Self->KeyFilterMID = 0; }
-   if (Self->SectionFilter)    { ReleaseMemoryID(Self->SectionFilterMID); Self->SectionFilter = NULL; }
-   if (Self->SectionFilterMID) { FreeResourceID(Self->SectionFilterMID); Self->SectionFilterMID = 0; }
+   if (Self->Groups) { delete Self->Groups; Self->Groups = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = 0; }
+   if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = 0; }
+   if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = 0; }
    return ERR_Okay;
 }
 
 /*****************************************************************************
 
 -METHOD-
-GetSectionFromIndex: Converts an index number into its matching section string.
+GetGroupFromIndex: Converts an index number into its matching group string.
 
-Use GetSectionFromIndex to convert a section index number to its matching name.
+Use GetGroupFromIndex to convert a group index number to its matching name.
 
 -INPUT-
-int Index: The section index that you want to identify.
-&cstr Section: Points to the section string that matches the index number.
+int Index: The group index that you want to identify.
+&cstr Group: Points to the group string that matches the index number.
 
 -ERRORS-
 Okay
 Args
-OutOfRange: The index number is out of range of the available sections.
+OutOfRange: The index number is out of range of the available groups.
 NoData: There is no data loaded into the config object.
 
 *****************************************************************************/
 
-static ERROR CONFIG_GetSectionFromIndex(objConfig *Self, struct cfgGetSectionFromIndex *Args)
+static ERROR CONFIG_GetGroupFromIndex(objConfig *Self, struct cfgGetGroupFromIndex *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (Args->Index < 0)) return log.warning(ERR_Args);
+   if ((!Args) or (Args->Index < 0)) return log.warning(ERR_Args);
 
-   LONG index = Args->Index;
-   ConfigEntry *entries;
-   if (!GET_Entries(Self, &entries)) {
-      LONG pos = 0; // Position starts from the requested index at the very least
-      while ((index > 0) AND (pos < Self->AmtEntries-1)) {
-         if (entries[pos].Section != entries[pos+1].Section) index--;
-         pos++;
-      }
-
-      if (!index) {
-         Args->Section = entries[pos].Section;
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_OutOfRange);
-   }
-   else return log.warning(ERR_NoData);
-}
-
-/*****************************************************************************
-
--ACTION-
-GetVar: Retrieves data from a config object.
-
-Variable fields are used to retrieve data from specific keys in config objects.  Retrieval can be achieved in a
-variety of ways. The simplest method is to refer to the key name when retrieving data, for instance `mykey`.
-To pull a key from a specific section, use the format `mykey(section)`, where the section is a number
-referring to a section index that you want to retrieve.
-
-You can reference any key in the config object using indexes, if you wish to treat the object as a one-dimensional
-array.  To do this, use the `index(section,key)` string format, where key refers to the index of the key that
-you wish to lookup.  To refer to a key by name, use quotes to indicate that the section and/or key is a named
-reference.
-
-To retrieve the name of a key rather than its data, use the string format `key(value)`.
--END-
-
-*****************************************************************************/
-
-static ERROR CONFIG_GetVar(objConfig *Self, struct acGetVar *Args)
-{
-   parasol::Log log;
-
-   if (!Args) return ERR_NullArgs;
-   if ((!Args->Field) OR (!Args->Buffer) OR (Args->Size < 1)) return ERR_Args;
-
-   STRING buffer = Args->Buffer;
-   buffer[0] = 0;
-
-   CSTRING fieldname = Args->Field;
-   BYTE getkey = FALSE;
-
-   LONG section_index, i, j, k, index;
-   char section[160], key[160];
-
-   ConfigEntry *entries;
-   struct cfgGetSectionFromIndex getsection;
-   if (GET_Entries(Self, &entries) != ERR_Okay) return log.warning(ERR_NoData);
-
-   if (!StrCompare("section(", fieldname, 8, 0)) {
-      // Field is in the format: Section(SectionIndex) OR Section(#AbsIndex)
-      // The value that is returned is the name of the section at the specified index.
-      // The index is not absolute.
-
-      if (fieldname[8] IS '#') {
-         // Absolute index
-         section_index = StrToInt(fieldname+9);
-         if ((section_index >= 0) AND (section_index < Self->AmtEntries)) {
-            StrCopy(Self->Entries[section_index].Section, buffer, Args->Size);
-            return ERR_Okay;
-         }
-         else return ERR_OutOfRange;
-      }
-      else {
-         getsection.Index = StrToInt(fieldname+8);
-         if (!CONFIG_GetSectionFromIndex(Self, &getsection)) {
-            StrCopy(getsection.Section, buffer, Args->Size);
-            return ERR_Okay;
-         }
-         else return ERR_OutOfRange;
-      }
-   }
-   else if ((!StrCompare("index(", fieldname, 6, 0)) OR
-            (!StrCompare("key(", fieldname, 5, 0))) {
-      // Field is one of these formats:
-      //
-      //    Index(["SectionName"|'SectionName'|SectionIndex],["Key"|KeyIndex])
-      //    Index(AbsoluteIndex)
-      //
-      // You can use any combination of string or numeric references.  Quotes should be used to
-      // explicitly indicate strings instead of indexes.
-
-      if (!StrCompare("key(", fieldname, 5, 0)) {
-         i = 5;
-         getkey = TRUE;
-      }
-      else i = 6;
-
-      // Extract the section index
-
-      if (fieldname[i] IS '"') {
-         i++;
-         for (j=0; (fieldname[i]) AND (fieldname[i] != '"') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
-         section[j] = 0;
-         if (fieldname[i] IS '"') i++;
-         index = find_section_wild(Self, section); // Convert the section string to an absolute index
-      }
-      else if (fieldname[i] IS '\'') {
-         i++;
-         for (j=0; (fieldname[i]) AND (fieldname[i] != '\'') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
-         section[j] = 0;
-         if (fieldname[i] IS '\'') i++;
-         index = find_section_wild(Self, section); // Convert the section string to an absolute index
-      }
-      else {
-         for (j=0; (fieldname[i]) AND (fieldname[i] != ')') AND (fieldname[i] != ',') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
-         section[j] = 0;
-
-         if (StrDatatype(section) IS STT_NUMBER) {
-            // This is a section index (if a key is specified following) or an absolute index (no key specified following).
-
-            section_index = StrToInt(section);
-
-            while ((fieldname[i]) AND (fieldname[i] <= 0x20)) i++;
-            if (fieldname[i] IS ',') {
-               if ((index = find_section(Self, section_index)) IS -1) {
-                  log.warning("Invalid section index %d (from \"%s\")", section_index, section);
-                  return ERR_OutOfRange;
-               }
-            }
-            else index = section_index; // Index is absolute if no key reference follows the section number
-         }
-         else index = find_section_name(Self, section);
-      }
-
-      if (index IS -1) {
-         log.msg("Failed to find section '%s' (ref: %s)", section, Args->Field);
-         return ERR_Search;
-      }
-
-      while ((fieldname[i]) AND (fieldname[i] <= 0x20)) i++;
-      if (fieldname[i] IS ',') {
-         i++;
-         while ((fieldname[i]) AND (fieldname[i] <= 0x20)) i++;
-
-         // Extract the key index (if there is one) and add it to the absolute index
-
-         if ((fieldname[i] IS '"') OR (fieldname[i] IS '\'')) {
-            if (fieldname[i] IS '"') {
-               i++;
-               for (j=0; (fieldname[i]) AND (fieldname[i] != '"') AND ((size_t)j < sizeof(key)-1); j++) key[j] = fieldname[i++];
-            }
-            else {
-               i++;
-               for (j=0; (fieldname[i]) AND (fieldname[i] != '\'') AND ((size_t)j < sizeof(key)-1); j++) key[j] = fieldname[i++];
-            }
-            key[j] = 0;
-
-            while (index < Self->AmtEntries) {
-               if (!StrMatch(key, entries[index].Key)) break;
-
-               if ((index < Self->AmtEntries-1) AND (entries[index+1].Section != entries[index].Section)) {
-                  // We have reached the end of the section without finding the key
-                  return ERR_Search;
-               }
-               index++;
-            }
-         }
-         else {
-            for (j=0; (fieldname[i]) AND (fieldname[i] != ')') AND ((size_t)j < sizeof(key)-1); j++) key[j] = fieldname[i++];
-            key[j] = 0;
-
-            if (StrDatatype(key) IS STT_NUMBER) index += StrToInt(key);
-            else while (index < Self->AmtEntries) {
-               if (!StrMatch(key, entries[index].Key)) break;
-               if ((index < Self->AmtEntries-1) AND (entries[index+1].Section != entries[index].Section)) {
-                  // We have reached the end of the section without finding the key
-                  return ERR_Search;
-               }
-               index++;
-            }
-         }
-      }
-
-      // We now have an overall index that we can use
-
-      if ((index >= Self->AmtEntries) OR (index < 0)) return log.warning(ERR_OutOfRange);
-
-      if (getkey IS TRUE) StrCopy(entries[index].Key, buffer, Args->Size);
-      else StrCopy(entries[index].Data, buffer, Args->Size);
+   if ((Args->Index >= 0) and (Args->Index < (LONG)Self->Groups->size())) {
+      Args->Group = Self->Groups[0][Args->Index].first.c_str();
       return ERR_Okay;
    }
-
-   // Extract the key and the section number from the field name
-
-   for (i=0; (fieldname[i]) AND (fieldname[i] != '('); i++) key[i] = fieldname[i];
-   key[i] = 0;
-
-   LONG pos;
-   if (fieldname[i] IS '(') {
-      i++;
-
-      if ((fieldname[i] >= '0') AND (fieldname[i] <= '9')) {
-         section_index = 0;
-         for (k=i; fieldname[k]; k++) {
-            if ((fieldname[k] >= '0') AND (fieldname[k] <= '9')) {
-               section_index *= 10;
-               section_index += (fieldname[k] - '0');
-            }
-            else break;
-         }
-
-         // Convert the section number into an absolute index
-
-         pos = 0;
-         while ((section_index > 0) AND (pos < Self->AmtEntries-1)) {
-            if (entries[pos].Section != entries[pos+1].Section) section_index--;
-            pos++;
-         }
-      }
-      else {
-         if (fieldname[i] IS '"') {
-            i++;
-            for (j=0; (fieldname[i]) AND (fieldname[i] != '"') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
-            section[j] = 0;
-         }
-         else if (fieldname[i] IS '\'') {
-            i++;
-            for (j=0; (fieldname[i]) AND (fieldname[i] != '\'') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
-            section[j] = 0;
-         }
-         else {
-            for (j=0; (fieldname[i]) AND (fieldname[i] != ')') AND ((size_t)j < sizeof(section)-1); j++) section[j] = fieldname[i++];
-            section[j] = 0;
-         }
-
-         for (pos=0; pos < Self->AmtEntries; pos++) {
-            if (!StrMatch(section, entries[pos].Section)) break;
-         }
-      }
-   }
-   else pos = 0; // Assume the key is in section 0
-
-   // Search the entries for the data that we are looking for
-
-   section_index = pos;
-   while ((pos < Self->AmtEntries) AND (entries[pos].Section IS entries[section_index].Section)) {
-      if (!StrMatch(entries[pos].Key, key)) {
-         for (i=0; (entries[pos].Data[i]) AND (i < Args->Size - 1); i++) {
-            buffer[i] = entries[pos].Data[i];
-         }
-         buffer[i] = 0;
-         return ERR_Okay;
-      }
-      pos++;
-   }
-
-   return ERR_Search;
+   else return log.warning(ERR_OutOfRange);
 }
 
 //****************************************************************************
@@ -704,165 +379,18 @@ static ERROR CONFIG_Init(objConfig *Self, APTR Void)
 {
    parasol::Log log;
 
-   if (Self->Flags & CNF_NEW) return ERR_Okay; // Do not load any data - location refers to a new file yet to be created
+   if (Self->Flags & CNF_NEW) return ERR_Okay; // Do not load any data even if the path is defined.
 
-   rkFile *file = NULL;
-   STRING data = NULL;
-   ERROR error = ERR_Failed;
-
-   // Open a file with read only and exclusive flags, then read all of the data into a buffer.  Terminate the buffer,
-   // then free the file.
-   //
-   // Note that multiple files can be specified by separating each file path with a semi-colon.  This allows you to merge
-   // many configuration files into one object.
-
-   STRING location;
-   if (!GET_Path(Self, &location)) {
-      LONG datasize = 0;
-      while (*location) {
-         if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-               FID_Path|TSTR,   location,
-               FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
-               TAGEND))) {
-
-            LONG filesize;
-            GetLong((OBJECTPTR)file, FID_Size, &filesize);
-
-            if (filesize > 0) {
-               if (data) {
-                  if (ReallocMemory(data, datasize + filesize + 3, (APTR *)&data, NULL) != ERR_Okay) goto exit;
-               }
-               else if (AllocMemory(filesize + 3, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL) != ERR_Okay) goto exit;
-
-               acRead(file, data + datasize, filesize, NULL); // Read the entire file
-
-               datasize += filesize;
-               data[datasize++] = '\n';
-            }
-
-            acFree(&file->Head);
-            file = NULL;
-         }
-         else if (Self->Flags & CNF_FILE_EXISTS) return ERR_FileNotFound;
-
-         while ((*location) AND (*location != ';') AND (*location != '|')) location++;
-         if (*location) location++; // Skip separator
-      }
-
-      // Process the configuration data.  Note that if no files were loaded, we do not fail.  We just make it look like
-      // the files existed as empty files (some DML programs like System Options rely on this feature).
-
-      if (data) {
-         data[datasize] = 0; // Terminate the buffer
-         if ((error = process_config_data(Self, data)) != ERR_Okay) goto exit;
-      }
-   }
-   else if (Self->Flags & CNF_FILE_EXISTS) return ERR_FileNotFound;
-   else return ERR_Okay; // Return OK if there is no source location
-
-   // Key filtering
-
-   char section[40];
-   LONG j;
-
-   if ((Self->KeyFilterMID) AND (Self->Entries)) {
-      if (!Self->KeyFilter) {
-         AccessMemory(Self->KeyFilterMID, MEM_READ, 2000, (void **)&Self->KeyFilter);
-      }
-
-      if (Self->KeyFilter) {
-         char current_section[sizeof(section)];
-
-         for (j=0; (Self->Entries[0].Section[j]) AND ((size_t)j < sizeof(current_section)-1); j++) current_section[j] = Self->Entries[0].Section[j];
-         current_section[j] = 0;
-
-         LONG i;
-         WORD last_index = 0;
-         for (i=0; i < Self->AmtEntries; i++) {
-            // If we run through a section without encountering the given key, we must delete the entire section.
-
-            if (StrMatch(Self->Entries[i].Section, current_section) != ERR_Okay) {
-               struct cfgDeleteSection del = { current_section };
-               CONFIG_DeleteSection(Self, &del);
-               i = last_index-1;
-
-               if (last_index < Self->AmtEntries) {
-                  for (j=0; (Self->Entries[last_index].Section[j]) AND ((size_t)j < sizeof(current_section)-1); j++) {
-                     current_section[j] = Self->Entries[last_index].Section[j];
-                  }
-                  current_section[j] = 0;
-               }
-            }
-            else {
-               WORD status = check_filter(Self, Self->KeyFilter, Self->Entries[i].Key, Self->Entries[i].Data);
-               if (status IS 1) {
-                  while ((i+1 < Self->AmtEntries) AND (!StrMatch(Self->Entries[i+1].Section, current_section))) i++;
-                  last_index = i+1;
-
-                  if (i+1 < Self->AmtEntries) {
-                     for (j=0; (Self->Entries[i+1].Section[j]) AND ((size_t)j < sizeof(current_section)-1); j++) {
-                        current_section[j] = Self->Entries[i+1].Section[j];
-                     }
-                     current_section[j] = 0;
-                  }
-               }
-               else if ((status IS 0) OR (i IS Self->AmtEntries-1)) {
-                  for (j=0; (Self->Entries[i].Section[j]) AND ((size_t)j < sizeof(section)-1); j++) section[j] = Self->Entries[i].Section[j];
-                  section[j] = 0;
-                  struct cfgDeleteSection del = { section };
-                  CONFIG_DeleteSection(Self, &del);
-                  i = last_index-1;
-
-                  // Update the current section
-                  if (last_index < Self->AmtEntries) {
-                     for (j=0; (Self->Entries[last_index].Section[j]) AND ((size_t)j < sizeof(current_section)-1); j++) {
-                        current_section[j] = Self->Entries[last_index].Section[j];
-                     }
-                     current_section[j] = 0;
-                  }
-               }
-            }
-         }
-         log.msg("Filtered keys with \"%s\", reduced entries to %d.", Self->KeyFilter, Self->AmtEntries);
+   ERROR error = ERR_Okay;
+   if (Self->Path) {
+      error = parse_file(Self, Self->Path);
+      if (!error) {
+         if (Self->GroupFilter) apply_group_filter(Self, Self->GroupFilter);
+         if (Self->KeyFilter) apply_key_filter(Self, Self->KeyFilter);
       }
    }
 
-   // Section filtering
-
-   if (Self->SectionFilterMID) {
-      if (!Self->SectionFilter) {
-         AccessMemory(Self->SectionFilterMID, MEM_READ, 2000, (void **)&Self->SectionFilter);
-      }
-
-      if (Self->SectionFilter) {
-         LONG i;
-         for (i=Self->AmtEntries-1; i >= 0; i--) {
-            if (check_filter(Self, Self->SectionFilter, Self->Entries[i].Section, NULL)) {
-               for (j=0; (Self->Entries[i].Section[j]) AND ((size_t)j < sizeof(section)-1); j++) {
-                  section[j] = Self->Entries[i].Section[j];
-               }
-               section[j] = 0;
-               struct cfgDeleteSection del = { section };
-               CONFIG_DeleteSection(Self, &del);
-               if (i > Self->AmtEntries) i = Self->AmtEntries;
-            }
-         }
-
-         log.msg("Filtered sections with \"%s\", reduced entries to %d.", Self->SectionFilter, Self->AmtEntries);
-      }
-   }
-
-   error = ERR_Okay;
-
-   if (Self->Flags & CNF_AUTO_SAVE) {
-      // Calculate a checksum for all the data
-      Self->CRC = GenCRC32(0, (BYTE *)Self->Entries, Self->AmtEntries * sizeof(ConfigEntry));
-      Self->CRC = GenCRC32(Self->CRC, Self->Strings, Self->StringsPos);
-   }
-
-exit:
-   if (file) acFree(&file->Head);
-   if (data) FreeResource(data);
+   if (Self->Flags & CNF_AUTO_SAVE) Self->CRC = calc_crc(Self); // Store the CRC in advance of any changes
    return error;
 }
 
@@ -871,12 +399,11 @@ exit:
 -METHOD-
 Merge: Merges two config objects together.
 
-The Merge method is used to merge configuration data from one config object into the object that this method is called
-on.  You need to provide the unique object id of the config object providing the source data.  When performing the
-merge, existing data will be overwritten by the source in cases where there is a duplication of section and key lines.
+The Merge method is used to merge configuration data from one config object provided as a source, into the target object.
+Existing data in the target will be overwritten by the source in cases where there matching set of group keys.
 
 -INPUT-
-oid ConfigID: The ID of the config object to be merged.
+obj Source: The ID of the config object to be merged.
 
 -ERRORS-
 Okay
@@ -888,19 +415,12 @@ AccessObject: The source configuration object could not be accessed.
 
 static ERROR CONFIG_Merge(objConfig *Self, struct cfgMerge *Args)
 {
-   if ((!Args) OR (!Args->ConfigID)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Source)) return ERR_NullArgs;
+   if (Args->Source->ClassID != ID_CONFIG) return ERR_Args;
 
-   objConfig *src;
-   if (!AccessObject(Args->ConfigID, 5000, (OBJECTPTR *)&src)) {
-      for (LONG i=0; i < src->AmtEntries; i++) {
-         cfgWriteValue(Self, src->Entries[i].Section, src->Entries[i].Key, src->Entries[i].Data);
-      }
-
-      acFree(&src->Head);
-      ReleaseObject((OBJECTPTR)src);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
+   auto src = (objConfig *)Args->Source;
+   merge_groups(Self->Groups[0], src->Groups[0]);
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -908,9 +428,9 @@ static ERROR CONFIG_Merge(objConfig *Self, struct cfgMerge *Args)
 -METHOD-
 MergeFile: Merges a foreign configuration file into existing configuration data.
 
-The MergeFile method is used to pull configuration data from a file and merge it into the existing config object.
-You need to provide the location of the configuration file only.  When performing the merge, existing data will be
-overwritten by the source file in cases where there is a duplication of section and key lines.
+The MergeFile method is used to pull configuration data from a file and merge it into the target config object.
+The path to the configuration file is all that is required.  Existing data in the target will be overwritten by the
+source in cases where there matching set of group keys.
 
 -INPUT-
 cstr Path: The location of the configuration file that you want to merge.
@@ -927,38 +447,44 @@ static ERROR CONFIG_MergeFile(objConfig *Self, struct cfgMergeFile *Args)
 {
    parasol::Log log;
 
-   if ((!Args) OR (!Args->Path)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
 
    log.branch("%s", Args->Path);
 
    objConfig *src;
    if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&src, FID_Path|TSTR, Args->Path, TAGEND)) {
-      for (LONG i=0; i < src->AmtEntries; i++) {
-         cfgWriteValue(Self, src->Entries[i].Section, src->Entries[i].Key, src->Entries[i].Data);
-      }
-      acFree(&src->Head);
+      merge_groups(Self->Groups[0], src->Groups[0]);
+      acFree(src);
       return ERR_Okay;
    }
-   else return ERR_File;
+   return ERR_File;
+}
+
+//****************************************************************************
+
+static ERROR CONFIG_NewObject(objConfig *Self, APTR Void)
+{
+   Self->Groups = new ConfigGroups;
+   return ERR_Okay;
 }
 
 /*****************************************************************************
 
 -METHOD-
-ReadValue: Reads one selected string from a configuration file.
+ReadValue: Reads a key-value string.
 
 This function retrieves key values in their original string format.  On success, the resulting string remains valid
 only for as long as the client has exclusive access to the config object.  The pointer can also be invalidated
-if more information is written to the config object.  For this reason, consider copying the Data string if it will be
+if more information is written to the config object.  For this reason, consider copying the result if it will be
 used extensively.
 
-If the Section parameter is set to NULL, the scan routine will treat all of the config data as a one dimensional array.
-If the Key parameter is set to NULL then the first key in the requested section is returned.  If both parameters
+If the Group parameter is set to NULL, the scan routine will treat all of the config data as a one dimensional array.
+If the Key parameter is set to NULL then the first key in the requested group is returned.  If both parameters
 are NULL then the first known key value will be returned.
 
 -INPUT-
-cstr Section: The name of a section to examine for a key.  If NULL, all sections are scanned.
-cstr Key: The name of a key to retrieve.
+cstr Group: The name of a group to examine for a key.  If NULL, all groups are scanned.
+cstr Key: The name of a key to retrieve (case sensitive).
 &cstr Data: The key value will be stored in this parameter on returning.
 
 -ERRORS-
@@ -974,123 +500,78 @@ static ERROR CONFIG_ReadValue(objConfig *Self, struct cfgReadValue *Args)
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if (!Self->Entries) return ERR_Search;
 
+   for (auto& [group, keys] : Self->Groups[0]) {
+      if ((Args->Group) and (group.compare(Args->Group))) continue;
+
+      if (!Args->Key) {
+         Args->Data = keys.cbegin()->second.c_str();
+         return ERR_Okay;
+      }
+      else if (keys.contains(Args->Key)) {
+         Args->Data = keys[Args->Key].c_str();
+         return ERR_Okay;
+      }
+   }
+
+   log.trace("Could not find key %s : %s.", Args->Group, Args->Key);
    Args->Data = NULL;
-
-   if (!Args->Section) {
-      for (LONG i=0; i < Self->AmtEntries; i++) {
-         if ((!Args->Key) OR (!StrMatch(Args->Key, Self->Entries[i].Key))) {
-            Args->Data = Self->Entries[i].Data;
-            return ERR_Okay;
-         }
-      }
-   }
-   else {
-      for (LONG i=0; i < Self->AmtEntries; i++) {
-         if (!StrMatch(Args->Section, Self->Entries[i].Section)) {
-            if ((!Args->Key) OR (!StrMatch(Args->Key, Self->Entries[i].Key))) {
-               Args->Data = Self->Entries[i].Data;
-               return ERR_Okay;
-            }
-         }
-         else {
-            // Skip this entire section
-            while ((i < Self->AmtEntries-1) AND (Self->Entries[i+1].Section IS Self->Entries[i].Section)) i++;
-         }
-      }
-   }
-
-   log.trace("Could not find key %s : %s.", Args->Section, Args->Key);
    return ERR_Search;
 }
 
 /*****************************************************************************
 
 -METHOD-
-ReadFloat: Reads keys in floating-point format.
+ReadIValue: Reads a key-value string (case insensitive lookup).
 
-This method is identical to #ReadValue() but for converting the value to an integer before returning.  If the requested
-key cannot be found, a fail code will be returned and the Float result set to zero.  If the key is not convertible to
-a float then a success code will still be returned and the result will be zero.
+This function retrieves key values in their original string format.  On success, the resulting string remains valid
+only for as long as the client has exclusive access to the config object.  The pointer can also be invalidated
+if more information is written to the config object.  For this reason, consider copying the result if it will be
+used extensively.
+
+If the Group parameter is set to NULL, the scan routine will treat all of the config data as a one dimensional array.
+If the Key parameter is set to NULL then the first key in the requested group is returned.  If both parameters
+are NULL then the first known key value will be returned.
 
 -INPUT-
-cstr Section: The name of the section that the integer will be retrieved from.
-cstr Key: The specific key that contains the integer you want to retrieve.
-&double Float: This result parameter will be set to the floating point value read from the configuration data.
+cstr Group: The name of a group to examine for a key.  If NULL, all groups are scanned.
+cstr Key: The name of a key to retrieve (case insensitive).
+&cstr Data: The key value will be stored in this parameter on returning.
 
 -ERRORS-
 Okay
 NullArgs
-Failed: The requested configuration entry could not be read.
+Search: The requested configuration entry does not exist.
 -END-
 
 *****************************************************************************/
 
-static ERROR CONFIG_ReadFloat(objConfig *Self, struct cfgReadFloat *Args)
+static ERROR CONFIG_ReadIValue(objConfig *Self, struct cfgReadValue *Args)
 {
-   if (!Args) {
-      Args->Float = 0;
-      return ERR_NullArgs;
-   }
-   else {
-      struct cfgReadValue read = { .Section = Args->Section, .Key = Args->Key };
-      if (!Action(MT_CfgReadValue, &Self->Head, &read)) {
-         Args->Float = StrToFloat(read.Data);
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   for (auto& [group, keys] : Self->Groups[0]) {
+      if ((Args->Group) and (group.compare(Args->Group))) continue;
+
+      if (!Args->Key) {
+         Args->Data = keys.cbegin()->second.c_str();
          return ERR_Okay;
       }
-      else { Args->Float = 0; return ERR_Failed; }
-   }
-}
-
-/*****************************************************************************
-
--METHOD-
-ReadInt: Reads keys in integer format.
-
-This method is identical to #ReadValue() but for converting the value to an integer before returning.  If the requested
-key cannot be found, a fail code will be returned and the Integer result set to zero.  If the key is not convertible to
-an integer then a success code will still be returned and the result will be zero.
-
--INPUT-
-cstr Section: The name of the section that the integer will be retrieved from.
-cstr Key: The specific key that contains the integer you want to retrieve.
-&int Integer: This result argument will be set to the integer value read from the configuration data.
-
--ERRORS-
-Okay
-NullArgs
-Failed: The requested configuration entry could not be read.
--END-
-
-*****************************************************************************/
-
-static ERROR CONFIG_ReadInt(objConfig *Self, struct cfgReadInt *Args)
-{
-   if (!Args) {
-      Args->Integer = 0;
-      return ERR_NullArgs;
-   }
-   else {
-      struct cfgReadValue read = { Args->Section, Args->Key };
-      if (!Action(MT_CfgReadValue, &Self->Head, &read)) {
-         Args->Integer = StrToInt(read.Data);
-         return ERR_Okay;
+      else {
+         for (auto& [k, v] : keys) {
+            if ((!Args->Key) or (!StrMatch(Args->Key, k.c_str()))) {
+               Args->Data = v.c_str();
+               return ERR_Okay;
+            }
+         }
       }
-      else { Args->Integer = 0; return ERR_Failed; }
    }
-}
 
-//****************************************************************************
-
-static ERROR CONFIG_ReleaseObject(objConfig *Self, APTR Void)
-{
-   if (Self->Entries)       { ReleaseMemoryID(Self->EntriesMID);       Self->Entries = NULL; }
-   if (Self->Strings)       { ReleaseMemoryID(Self->StringsMID);       Self->Strings = NULL; }
-   if (Self->Path)          { ReleaseMemoryID(Self->PathMID);          Self->Path = NULL; }
-   if (Self->KeyFilter)     { ReleaseMemoryID(Self->KeyFilterMID);     Self->KeyFilter = NULL; }
-   if (Self->SectionFilter) { ReleaseMemoryID(Self->SectionFilterMID); Self->SectionFilter = NULL; }
-   return ERR_Okay;
+   log.trace("Could not find key %s : %s.", Args->Group, Args->Key);
+   Args->Data = NULL;
+   return ERR_Search;
 }
 
 /*****************************************************************************
@@ -1106,22 +587,19 @@ static ERROR CONFIG_SaveSettings(objConfig *Self, APTR Void)
 {
    parasol::Log log;
 
-   ULONG crc = 0;
-   if (Self->Flags & CNF_AUTO_SAVE) {
-      // Perform a CRC check
-      crc = GenCRC32(0, (BYTE *)Self->Entries, Self->AmtEntries * sizeof(ConfigEntry));
-      crc = GenCRC32(crc, Self->Strings, Self->StringsPos);
-      if (crc IS Self->CRC) return ERR_Okay;
-   }
+   log.branch();
 
-   if (!GET_Path(Self, &Self->Path)) {
+   ULONG crc = calc_crc(Self);
+   if ((Self->Flags & CNF_AUTO_SAVE) and (crc IS Self->CRC)) return ERR_Okay;
+
+   if (Self->Path) {
       OBJECTPTR file;
       if (!CreateObject(ID_FILE, 0, &file,
             FID_Path|TSTR,         Self->Path,
             FID_Flags|TLONG,       FL_WRITE|FL_NEW,
             FID_Permissions|TLONG, 0,
             TAGEND)) {
-         if (!ActionTags(AC_SaveToObject, (OBJECTPTR)Self, file->UniqueID, 0)) {
+         if (!ActionTags(AC_SaveToObject, Self, file->UID, 0)) {
             Self->CRC = crc;
          }
          acFree(file);
@@ -1142,53 +620,22 @@ static ERROR CONFIG_SaveToObject(objConfig *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
 
-   log.msg("Saving %d keys to object #%d.", Self->AmtEntries, Args->DestID);
+   log.msg("Saving %d groups to object #%d.", (LONG)Self->Groups->size(), Args->DestID);
 
-   OBJECTPTR object;
-   if (!AccessObject(Args->DestID, 5000, &object)) {
-      ConfigEntry *entries;
-      if (!GET_Entries(Self, &entries)) {
-         STRING section = NULL;
-         for (LONG i=0; i < Self->AmtEntries; i++) {
-            if ((!section) OR (StrMatch(section, entries[i].Section) != ERR_Okay)) {
-               section = entries[i].Section;
+   OBJECTPTR dest;
+   if (!AccessObject(Args->DestID, 5000, &dest)) {
+      ConfigGroups &groups = Self->Groups[0];
+      for (auto& [group, keys] : groups) {
+         std::string out_group("\n[" + group + "]\n");
+         acWrite(dest, out_group.c_str(), out_group.size(), NULL);
 
-               char buffer[60];
-               LONG k;
-               LONG j = 0;
-               buffer[j++] = '\n';
-               buffer[j++] = '[';
-               for (k=0; (section[k]) AND ((size_t)k < sizeof(buffer)-j-2); k++) {
-                  buffer[j++] = section[k];
-               }
-               buffer[j++] = ']';
-               buffer[j++] = '\n';
-
-               acWrite(object, buffer, j, NULL);
-            }
-
-            if ((entries[i].Key) AND (entries[i].Data)) {
-               LONG keylen = StrLength(entries[i].Key);
-               LONG datalen = StrLength(entries[i].Data);
-
-               {
-                  char buffer[keylen+datalen+4];
-
-                  LONG k = 0;
-                  for (LONG j=0; j < keylen; j++) buffer[k++] = entries[i].Key[j];
-                  buffer[k++] = ' ';
-                  buffer[k++] = '=';
-                  buffer[k++] = ' ';
-                  for (LONG j=0; j < datalen; j++) buffer[k++] = entries[i].Data[j];
-                  buffer[k++] = '\n';
-
-                  acWrite(object, buffer, k, NULL);
-               }
-            }
+         for (auto& [k, v] : keys) {
+            std::string kv(k + " = " + v + "\n");
+            acWrite(dest, kv.c_str(), k.size(), NULL);
          }
       }
 
-      ReleaseObject(object);
+      ReleaseObject(dest);
       return ERR_Okay;
    }
    else return ERR_AccessObject;
@@ -1197,21 +644,21 @@ static ERROR CONFIG_SaveToObject(objConfig *Self, struct acSaveToObject *Args)
 /*****************************************************************************
 
 -METHOD-
-Set: Sets keys in existing config sections (aborts if the section does not exist).
+Set: Sets keys in existing config groups (aborts if the group does not exist).
 
-This method is identical to #WriteValue() except it will abort if the name of the referred section does not exist in the
+This method is identical to #WriteValue() except it will abort if the name of the referred group does not exist in the
 config object.  The error code ERR_Search is returned if this is the case.  Please refer to #WriteValue() for further
 information on the behaviour of this function.
 
 -INPUT-
-cstr Section: The name of the section.
+cstr Group: The name of the group.  Wildcards are supported.
 cstr Key:  The name of the key.
-cstr Data: The data that will be added to the given section/key.
+cstr Data: The data that will be added to the given group/key.
 
 -ERRORS-
 Okay
 NullArgs
-Search: The referred section does not exist.
+Search: The referred group does not exist.
 AllocMemory
 GetField: The Entries field could not be retrieved.
 -END-
@@ -1221,183 +668,32 @@ GetField: The Entries field could not be retrieved.
 static ERROR CONFIG_Set(objConfig *Self, struct cfgSet *Args)
 {
    if (!Args) return ERR_NullArgs;
-   if ((!Args->Section) OR (!Args->Section[0])) return ERR_NullArgs;
-   if ((!Args->Key) OR (!Args->Key[0])) return ERR_NullArgs;
+   if ((!Args->Group) or (!Args->Group[0])) return ERR_NullArgs;
+   if ((!Args->Key) or (!Args->Key[0])) return ERR_NullArgs;
 
-   if (find_section_wild(Self, Args->Section) != -1) {
-      return Action(MT_CfgWriteValue, &Self->Head, Args);
-   }
+   auto group = find_group_wild(Self, Args->Group);
+   if (group) return Action(MT_CfgWriteValue, Self, Args);
    else return ERR_Search;
 }
 
 /*****************************************************************************
-
 -ACTION-
-SetVar: Allows new entries to be added to a config object with variable field names.
-
-The variable field mechanism can be used to add new entries to a config object.  The field data will be added under the
-`Variables` section with a key name identified by the Field parameter and a data value determined by the Value
-parameter.  To determine the section under which the key was added (something other than `Variables`),
-combine the section and key names into the Field parameter by using a semicolon.  For example,
-`Internet;IPAddress`.
-
-Update existing keys using indexing, which follows the format `Index(SectionIndex;KeyIndex)` or
-`Index(ArrayIndex)`.  Named lookups can be made by enclosing a section or key name in quotes.
-
-It is recommended that where possible, the #Write() method is used for updating or writing new keys to a config object.
--END-
-
-*****************************************************************************/
-
-static ERROR CONFIG_SetVar(objConfig *Self, struct acSetVar *Args)
-{
-   parasol::Log log;
-   LONG i, len, j;
-   char section[160], key[160];
-
-   if ((!Args) OR (!Args->Field) OR (!Args->Field[0])) return ERR_NullArgs;
-
-   if (!StrCompare("Index(", Args->Field, 6, 0)) {
-      // Field is in the format "Index(SectionIndex;KeyIndex)" or "Index(OverallIndex)".
-      // Quotes can be used to indicate strings instead of indexes.
-
-      LONG i = 6;
-      ConfigEntry *entries = Self->Entries;
-
-      // Extract the section index
-
-      LONG index;
-      if (Args->Field[i] IS '"') {
-         i++;
-         for (j=0; (Args->Field[i]) AND (Args->Field[i] != '"') AND ((size_t)j < sizeof(section)-1); j++) section[j] = Args->Field[i++];
-         section[j] = 0;
-
-         if (Args->Field[i] IS '"') i++;
-         if (Args->Field[i] IS ',') i++;
-
-         // Convert the section string to an absolute index
-
-         index = find_section_name(Self, section);
-      }
-      else {
-         index = StrToInt(Args->Field);
-         while ((Args->Field[i] >= '0') AND (Args->Field[i] <= '9')) i++;
-         if (Args->Field[i] IS ',') {
-            i++;
-            // Convert the section index so that it is absolute
-            if ((index = find_section(Self, index)) IS -1) return log.warning(ERR_OutOfRange);
-         }
-      }
-
-      // Extract the key index (if there is one) and add it to the absolute index
-
-      if (Args->Field[i] IS '"') {
-         i++;
-         for (j=0; (Args->Field[i]) AND (Args->Field[i] != '"') AND ((size_t)j < sizeof(key)-2); j++) key[j] = Args->Field[i++];
-         key[j] = 0;
-
-         while (index < Self->AmtEntries) {
-            if (!StrMatch(key, entries[index].Key)) break;
-
-            if ((index < Self->AmtEntries-1) AND (entries[index+1].Section != entries[index].Section)) {
-               // We have reached the end of the section without finding the key
-               return ERR_Search;
-            }
-            index++;
-         }
-      }
-      else if ((Args->Field[i] >= '0') AND (Args->Field[i] <= '9')) {
-         index += StrToInt(Args->Field + i);
-      }
-
-      // We now have an overall index that we can use
-
-      if ((index >= Self->AmtEntries) OR (index < 0)) return log.warning(ERR_OutOfRange);
-
-      StrCopy(entries[index].Section, section, sizeof(section));
-      StrCopy(entries[index].Key, key, sizeof(key));
-      return cfgWriteValue(Self, section, key, Args->Value);
-   }
-
-   for (len=0; Args->Field[len]; len++) {
-      if ((Args->Field[len] IS ';') OR (Args->Field[len] IS '.')) {
-         // Field is in the format: "Section;Key" or "Section.Key"
-         char buffer[len+1];
-         for (i=0; i < len; i++) buffer[i] = Args->Field[i];
-         buffer[i] = 0;
-         return cfgWriteValue(Self, buffer, Args->Field + len + 1, Args->Value);
-      }
-      else if (Args->Field[len] IS '(') {
-         // Field is in the format "Section(Key)"
-         char section[len+1], field[40];
-         for (i=0; i < len; i++) section[i] = Args->Field[i];
-         section[i] = 0;
-
-         len++;
-         for (i=0; (Args->Field[len]) AND (Args->Field[len] != ')') AND ((size_t)i < sizeof(field)-1); i++) field[i] = Args->Field[len++];
-         field[i] = 0;
-         return cfgWriteValue(Self, section, field, Args->Value);
-      }
-   }
-
-   // Field is in the format: "Key".  Section defaults to "Variables"
-
-   cfgWriteValue(Self, "Variables", Args->Field, Args->Value);
-   return ERR_Okay;
-}
-
-/*****************************************************************************
--ACTION-
-Sort: Sorts config sections into alphabetical order.
+Sort: Sorts config groups into alphabetical order.
 -END-
 *****************************************************************************/
 
 static ERROR CONFIG_Sort(objConfig *Self, APTR Void)
 {
    parasol::Log log;
-   ConfigEntry *entries;
-   CSTRING array[Self->TotalSections+1];
-   ConfigEntry entrybuffer[Self->AmtEntries];
 
-   log.branch("Sorting by section name.");
+   log.branch("Sorting by group name.");
 
-   // Copy all of the section strings into an array and sort them
+   std::sort(Self->Groups->begin(), Self->Groups->end(),
+      [](const std::pair<std::string, std::map<std::string, std::string>> &a,
+         const std::pair<std::string, std::map<std::string, std::string>> &b ) {
+      return a.first < b.first;
+   });
 
-   if ((entries = Self->Entries)) {
-      LONG pos = 0;
-      array[pos++] = entries[0].Section;
-      for (LONG i=0; i < Self->AmtEntries-1; i++) {
-         if (entries[i].Section != entries[i+1].Section) {
-            if (pos < Self->TotalSections) array[pos] = entries[i+1].Section;
-            pos++;
-         }
-      }
-
-      if (pos > Self->TotalSections) {
-         log.warning("Buffer overflow - expected %d sections, encountered %d.", Self->TotalSections, pos);
-         return ERR_BufferOverflow;
-      }
-
-      array[pos] = 0;
-      StrSort(array, 0);
-   }
-   else return ERR_NoData;
-
-   // Re-sort the config data based on the sorted section strings
-
-   LONG pos = 0;
-   for (LONG i=0; array[i]; i++) {
-      for (LONG j=0; j < Self->AmtEntries; j++) {
-         if (!StrCompare(array[i], Self->Entries[j].Section, 0, STR_CASE|STR_MATCH_LEN)) {
-            CopyMemory(Self->Entries + j, entrybuffer + pos, sizeof(ConfigEntry));
-            pos++;
-         }
-      }
-   }
-
-   // Copy our sorted buffer back into the config entry array
-
-   CopyMemory(entrybuffer, Self->Entries, sizeof(ConfigEntry) * Self->AmtEntries);
    return ERR_Okay;
 }
 
@@ -1406,7 +702,7 @@ static ERROR CONFIG_Sort(objConfig *Self, APTR Void)
 -METHOD-
 SortByKey: Sorts config data using a sequence of sort instructions.
 
-The SortByKey method sorts a config object by section, using a common key for each section as the sort key.
+The SortByKey method sorts the groups of a config object by key values (the named key value should be present in every group).
 
 -INPUT-
 cstr Key: The name of the key to sort on.
@@ -1419,162 +715,30 @@ NoData
 
 *****************************************************************************/
 
-struct sortlist {
-   STRING section; // The name of the section
-   STRING sort;    // The text to sort the section on
-};
-
-static void sift_down(sortlist *, LONG, LONG);
-static void sift_up(sortlist *, LONG, LONG);
-
 static ERROR CONFIG_SortByKey(objConfig *Self, struct cfgSortByKey *Args)
 {
+   if ((!Args) or (!Args->Key)) return CONFIG_Sort(Self, NULL);  // If no args are provided then use the default Sort action instead
+
    parasol::Log log;
-   ConfigEntry *entries;
-   LONG i;
-   sortlist array[Self->TotalSections+1], temp;
-   ConfigEntry entrybuffer[Self->AmtEntries];
 
-   // If no args are provided, use the default Sort action instead
-
-   if ((!Args) OR (!Args->Key)) return CONFIG_Sort(Self, NULL);
-
-   if (!(entries = Self->Entries)) return log.warning(ERR_NoData);
-
-   log.branch("Key: %s", Args->Key);
-
-   // Generate a sorting table consisting of unique section names and the key values that we will be sorting on.
-
-   array[0].section = entries[0].Section;
-   array[0].sort    = read_config(Self, entries[0].Section, Args->Key);
-   LONG pos = 1;
-   for (LONG i=0; i < Self->AmtEntries-1; i++) {
-      if (entries[i].Section != entries[i+1].Section) {
-         if (pos < Self->TotalSections) {
-            array[pos].section = entries[i+1].Section;
-            array[pos].sort    = read_config(Self, entries[i+1].Section, Args->Key);
-         }
-         pos++;
-      }
-   }
-
-   if (pos != Self->TotalSections) {
-      log.warning("Buffer overflow/underflow - expected %d sections, encountered %d.", Self->TotalSections, pos);
-      return ERR_BufferOverflow;
-   }
-
-   array[pos].section = NULL;
-   array[pos].sort    = NULL;
-
-   // Do the sort
+   log.branch("Key: %s, Descending: %d", Args->Key, Args->Descending);
 
    if (Args->Descending) {
-      for (i=Self->TotalSections>>1; i >= 0; i--) sift_down(array, i, Self->TotalSections);
-
-      LONG heapsize = Self->TotalSections;
-      for (i=heapsize; i > 0; i--) {
-         temp = array[0];
-         array[0] = array[i-1];
-         array[i-1] = temp;
-         sift_down(array, 0, --heapsize);
-      }
+      std::sort(Self->Groups->begin(), Self->Groups->end(),
+         [Args](std::pair<std::string, std::map<std::string, std::string>> &a,
+                std::pair<std::string, std::map<std::string, std::string>> &b ) {
+         return a.second[Args->Key] > b.second[Args->Key];
+      });
    }
    else {
-      for (i=Self->TotalSections>>1; i >= 0; i--) sift_up(array, i, Self->TotalSections);
-
-      LONG heapsize = Self->TotalSections;
-      for (i=heapsize; i > 0; i--) {
-         temp = array[0];
-         array[0] = array[i-1];
-         array[i-1] = temp;
-         sift_up(array, 0, --heapsize);
-      }
+      std::sort(Self->Groups->begin(), Self->Groups->end(),
+         [Args](std::pair<std::string, std::map<std::string, std::string>> &a,
+                std::pair<std::string, std::map<std::string, std::string>> &b ) {
+         return a.second[Args->Key] < b.second[Args->Key];
+      });
    }
 
-   // Re-sort the config data according to the sort results
-
-   pos = 0;
-   for (LONG i=0; i < Self->TotalSections; i++) {
-      for (LONG j=0; j < Self->AmtEntries; j++) {
-         if (!StrCompare(array[i].section, Self->Entries[j].Section, 0, STR_CASE|STR_MATCH_LEN)) {
-            CopyMemory(Self->Entries + j, entrybuffer + pos, sizeof(ConfigEntry));
-            pos++;
-         }
-      }
-   }
-
-   // Copy our sorted buffer back into the config entry array
-
-   CopyMemory(entrybuffer, Self->Entries, sizeof(ConfigEntry) * Self->AmtEntries);
    return ERR_Okay;
-}
-
-inline static BYTE sort(STRING Name1, STRING Name2)
-{
-   while ((*Name1) AND (*Name2)) {
-      char char1 = *Name1;
-      char char2 = *Name2;
-      if ((char1 >= 'A') AND (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-      if ((char2 >= 'A') AND (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-
-      if ((char1 > char2) OR ((Name1[1]) AND (!Name2[1]))) return 1; // Name1 is greater
-      else if (char1 < char2) return -1; // Name1 is lesser
-
-      Name1++;
-      Name2++;
-   }
-
-   if ((!*Name1) AND (!*Name2)) return 0;
-   else if (!*Name1) return -1;
-   else return 1;
-}
-
-static void sift_down(struct sortlist *lookup, LONG i, LONG heapsize)
-{
-   LONG largest = i;
-   do {
-      i = largest;
-      LONG left	= (i << 1) + 1;
-      LONG right	= left + 1;
-
-      if (left < heapsize){
-         if (sort(lookup[largest].sort, lookup[left].sort) > 0) largest = left;
-
-         if (right < heapsize) {
-            if (sort(lookup[largest].sort, lookup[right].sort) > 0) largest = right;
-         }
-      }
-
-      if (largest != i) {
-         sortlist temp = lookup[i];
-         lookup[i] = lookup[largest];
-         lookup[largest] = temp;
-      }
-   } while (largest != i);
-}
-
-static void sift_up(sortlist *lookup, LONG i, LONG heapsize)
-{
-   LONG largest = i;
-   do {
-      i = largest;
-      LONG left	= (i << 1) + 1;
-      LONG right = left + 1;
-
-      if (left < heapsize) {
-         if (sort(lookup[largest].sort, lookup[left].sort) < 0) largest = left;
-
-         if (right < heapsize) {
-            if (sort(lookup[largest].sort, lookup[right].sort) < 0) largest = right;
-         }
-      }
-
-      if (largest != i) {
-         sortlist temp = lookup[i];
-         lookup[i] = lookup[largest];
-         lookup[largest] = temp;
-      }
-   } while (largest != i);
 }
 
 /*****************************************************************************
@@ -1582,16 +746,16 @@ static void sift_up(sortlist *lookup, LONG i, LONG heapsize)
 -METHOD-
 WriteValue: Adds new entries to config objects.
 
-Use the WriteValue method to add or update information in a config object.  A Section name, Key name, and Data value
-are required.  If the Section and Key arguments match an existing entry in the config object, the data of that entry
+Use the WriteValue method to add or update information in a config object.  A Group name, Key name, and Data value
+are required.  If the Group and Key arguments match an existing entry in the config object, the data of that entry
 will be replaced with the new Data value.
 
-The Section string may refer to an index if the hash `#` character is used to precede a target index number.
+The Group string may refer to an index if the hash `#` character is used to precede a target index number.
 
 -INPUT-
-cstr Section: The name of the section.
-cstr Key:    The name of the key.
-cstr Data:   The data that will be added to the given section/key.
+cstr Group: The name of the group.
+cstr Key:   The name of the key.
+cstr Data:  The data that will be added to the given group/key.
 
 -ERRORS-
 Okay
@@ -1606,360 +770,55 @@ GetField: The Entries field could not be retrieved.
 static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
 {
    parasol::Log log;
-   ConfigEntry *entries, *newentries;
-   MEMORYID newEntriesMID, newStrMID;
-   STRING newstr, str;
-   LONG i, j, pos, strlen, maxentries;
-   char section[160];
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Group) or (!Args->Key)) return log.warning(ERR_NullArgs);
+   if ((!Args->Group[0]) or (!Args->Key[0])) return log.warning(ERR_EmptyString);
 
-   //log.trace("%s.%s = %s", Args->Section, Args->Key, Args->Data);
+   log.trace("%s.%s = %s", Args->Group, Args->Key, Args->Data);
 
-   if ((!Args->Section) OR (!Args->Section[0])) {
-      log.warning("The Section argument is missing.");
-      return ERR_Args;
-   }
+   // Check if the named group already exists
 
-   if ((!Args->Key) OR (!Args->Key[0])) {
-      log.warning("The Key argument is missing.");
-      return ERR_Args;
-   }
-
-   // Take a copy of the section.  This is important because sometimes our method will be passed a section name that
-   // refers to our own address space (e.g. entries[i].Section), and since this function invalidates that address
-   // space, it's safer to make a copy.
-
-   for (i=0; (Args->Section[i]) AND ((size_t)i < sizeof(section)-1); i++) section[i] = Args->Section[i];
-   section[i] = 0;
-
-   if (section[0] IS '#') {
-      // Section name is actually referring to an index - we need to extract the section name from that.
-
-      LONG index = StrToInt(section+1);
-      if ((i = find_section(Self, index)) != -1) {
-         if ((entries = Self->Entries)) {
-            for (j=0; (entries[i].Section[j]) AND ((size_t)j < sizeof(section)-1); j++) section[j] = entries[i].Section[j];
-            section[j] = 0;
-         }
-         else return log.warning(ERR_NoData);
-      }
-      else return log.warning(ERR_Search);
-   }
-
-   if (Self->AmtEntries < 1) {
-      // Create the first entry and return
-
-      strlen = StrLength(section) + 1 + StrLength(Args->Key) + 1;
-      strlen += ((Args->Data) ? StrLength(Args->Data) : 0) + 1;
-
-      Self->MaxEntries = ENTBLOCKSIZE;
-
-      if (strlen > STRBLOCKSIZE) Self->StringsSize = strlen;
-      else Self->StringsSize = STRBLOCKSIZE;
-
-      if (!AllocMemory(Self->MaxEntries * sizeof(ConfigEntry), Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&Self->Entries, &Self->EntriesMID)) {
-         if (!AllocMemory(Self->StringsSize, Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&Self->Strings, &Self->StringsMID)) {
-            LONG pos = 0;
-            STRING str = Self->Strings;
-
-            Self->Entries[0].Section = str + pos;
-            Self->Entries[0].SectionOffset = pos;
-            for (j=0; section[j]; j++) str[pos++] = section[j];
-            str[pos++] = 0;
-
-            Self->Entries[0].Key = str + pos;
-            Self->Entries[0].KeyOffset = pos;
-            for (j=0; Args->Key[j]; j++) str[pos++] = Args->Key[j];
-            str[pos++] = 0;
-
-            Self->Entries[0].Data = str + pos;
-            Self->Entries[0].DataOffset = pos;
-            if (Args->Data) for (j=0; Args->Data[j]; j++) str[pos++] = Args->Data[j];
-            str[pos++] = 0;
-
-            Self->TotalSections = 1;
-            Self->AmtEntries = 1;
-            Self->StringsPos = pos;
-            return ERR_Okay;
-         }
-         else return ERR_AllocMemory;
-      }
-      else return ERR_AllocMemory;
-   }
-
-   if (!(entries = Self->Entries)) return ERR_GetField;
-
-   // Check if the section and key names match an existing record.  If so, we'll 'delete' that entry from the buffer
-   // as our new entry information will be replacing it.
-
-   LONG replaceindex = -1;
-   LONG sectionindex = -1;
-   for (LONG i=0; i < Self->AmtEntries; i++) {
-      if (!StrMatch(entries[i].Section, section)) {
-         sectionindex = i;
-         if (!StrMatch(entries[i].Key, Args->Key)) {
-            if (!StrMatch(entries[i].Data, Args->Data)) return ERR_Okay;
-            if (Self->Flags & CNF_LOCK_RECORDS) return ERR_Exists;
-            replaceindex = i;
-            break;
-         }
-      }
-   }
-
-   // Calculate the amount of bytes required for the Section, Key & Data
-
-   LONG strsize = StrLength(section) + 1 + StrLength(Args->Key) + 1;
-
-   if (Args->Data) strsize += StrLength(Args->Data) + 1;
-   else strsize += 1;
-
-   if (replaceindex != -1) {
-      // Replace an existing key.  Expand the string buffer if necessary, replace the entry with new key and data
-      // string pointers, then return.  The section remains unchanged in the event of a replace operation.
-
-      log.trace("Replace %d/%d %s / %s = %s TO %d/%d", replaceindex, Self->AmtEntries, Args->Section, Args->Key, Args->Data, Self->StringsPos, Self->StringsSize);
-
-      if (Self->StringsPos + strsize >= Self->StringsSize) {
-         if (strsize > STRBLOCKSIZE) strsize = Self->StringsPos + strsize;
-         else strsize = Self->StringsPos + STRBLOCKSIZE;
-
-         if (AllocMemory(strsize, Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newstr, &newStrMID) != ERR_Okay) return ERR_AllocMemory;
-         CopyMemory(Self->Strings, newstr, Self->StringsPos);
-         ReleaseMemoryID(Self->StringsMID);
-         FreeResourceID(Self->StringsMID);
-
-         Self->Strings = newstr;
-         Self->StringsMID = newStrMID;
-         Self->StringsSize = strsize;
-
-         resolve_addresses(Self);
-      }
-
-      pos = Self->StringsPos;
-      str = Self->Strings;
-
-      if (StrMatch(Self->Entries[replaceindex].Key, Args->Key) != ERR_Okay) {
-         log.trace("Replace @ Key offset %d", pos);
-         Self->Entries[replaceindex].Key       = str + pos;
-         Self->Entries[replaceindex].KeyOffset = pos;
-         for (LONG j=0; Args->Key[j]; j++) str[pos++] = Args->Key[j];
-         str[pos++] = 0;
-      }
-
-      if (StrMatch(Self->Entries[replaceindex].Data, Args->Data) != ERR_Okay) {
-         log.trace("Replace @ Data offset %d", pos);
-         Self->Entries[replaceindex].Data       = str + pos;
-         Self->Entries[replaceindex].DataOffset = pos;
-         if (Args->Data) for (LONG j=0; Args->Data[j]; j++) str[pos++] = Args->Data[j];
-         str[pos++] = 0;
-      }
-
-      Self->StringsPos = pos;
-
-      return ERR_Okay;
-   }
-
-   //log.trace("Total Entries: %d++, [%s] Key: '%.10s' = '%.10s'", Self->AmtEntries, Args->Section, Args->Key, Args->Data);
-
-   if (Self->AmtEntries >= Self->MaxEntries-1) {
-      // Expand the entries array
-      log.trace("Expanding the entries array.");
-      maxentries = Self->MaxEntries + ENTBLOCKSIZE;
-      if (!AllocMemory(maxentries * sizeof(ConfigEntry), Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newentries, &newEntriesMID)) {
-         CopyMemory(Self->Entries, newentries, Self->AmtEntries * sizeof(ConfigEntry));
-         ReleaseMemoryID(Self->EntriesMID);
-         FreeResourceID(Self->EntriesMID);
-
-         Self->MaxEntries = maxentries;
-         Self->Entries    = newentries;
-         Self->EntriesMID = newEntriesMID;
-      }
-      else return ERR_AllocMemory;
-   }
-
-   if (Self->StringsPos + strsize >= Self->StringsSize) {
-      log.trace("Expanding the strings array.");
-      if (strsize > STRBLOCKSIZE) strsize = Self->StringsPos + strsize;
-      else strsize = Self->StringsPos + STRBLOCKSIZE;
-
-      if (!AllocMemory(strsize, Self->Head.MemFlags|MEM_NO_CLEAR, (void **)&newstr, &newStrMID)) {
-         CopyMemory(Self->Strings, newstr, Self->StringsPos);
-         ReleaseMemoryID(Self->StringsMID);
-         FreeResourceID(Self->StringsMID);
-
-         Self->StringsSize = strsize;
-         Self->Strings     = newstr;
-         Self->StringsMID  = newStrMID;
-
-         resolve_addresses(Self);
-      }
-      else return ERR_AllocMemory;
-   }
-
-   if (sectionindex != -1) {
-      // Entry belongs in an existing section
-      sectionindex++;
-      if (sectionindex < Self->AmtEntries) {
-         // Create a space in the entries array
-         CopyMemory(Self->Entries + sectionindex, Self->Entries + sectionindex + 1, sizeof(ConfigEntry) * (Self->AmtEntries - sectionindex));
-      }
-
-      Self->Entries[sectionindex].SectionOffset = Self->Entries[sectionindex-1].SectionOffset;
-      Self->Entries[sectionindex].Section = Self->Entries[sectionindex-1].Section;
-   }
-   else {
-      // Entry starts a new section
-      sectionindex = Self->AmtEntries;
-      Self->Entries[sectionindex].SectionOffset = Self->StringsPos;
-      Self->Entries[sectionindex].Section = Self->Strings + Self->StringsPos;
-      Self->StringsPos += StrCopy(Args->Section, Self->Strings + Self->StringsPos, COPY_ALL) + 1;
-      Self->TotalSections++;
-   }
-
-   Self->Entries[sectionindex].KeyOffset = Self->StringsPos;
-   Self->Entries[sectionindex].Key       = Self->Strings + Self->StringsPos;
-   Self->StringsPos += StrCopy(Args->Key, Self->Strings + Self->StringsPos, COPY_ALL) + 1;
-
-   Self->Entries[sectionindex].DataOffset = Self->StringsPos;
-   Self->Entries[sectionindex].Data       = Self->Strings + Self->StringsPos;
-   Self->StringsPos += StrCopy(Args->Data ? Args->Data : (STRING)"", Self->Strings + Self->StringsPos, COPY_ALL) + 1;
-
-   Self->AmtEntries++;
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR process_config_data(objConfig *Self, char *Src)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if (!Src) return ERR_NoData;
-
-   log.traceBranch("%.20s", Src);
-
-   // Process the file and get rid of PC carriage returns (by replacing them with standard line feeds).
-
-   STRING data = Src;
-   while (*data != 0) {
-      if (*data IS '\r') *data = '\n';
-      data++;
-   }
-
-   struct cfgWriteValue write;
-   write.Section = NULL;
-
-   if (!(data = (STRING)next_section(Src))) { // Find the first section
-      data = Src;
-   }
-
-   while (*data) {
-      while ((*data) AND (*data <= 0x20)) data++;
-      if (*data IS '#') {
-         data = (STRING)next_line(data);
-         continue;
-      }
-
-      while ((*data) AND (*data != '[')) {
-         if (check_for_key(data)) {
-            write.Key = data;
-            while ((*data) AND (*data != '=')) data++;
-            if (!*data) break;
-            while (data[-1] <= 0x20) data--;
-            if (*data) *data++ = 0;
-
-            while ((*data) AND (*data <= 0x20)) data++; // Skip whitespace
-            if (*data IS '=') data++;
-            while ((*data) AND (*data != '\n') AND (*data <= 0x20)) data++; // Skip any leading whitespace
-
-            if ((Self->Flags & CNF_STRIP_QUOTES) AND (*data IS '"')) {
-               data++;
-               write.Data = data;
-               while ((*data) AND (*data != '"')) data++;
-               if (*data) *data++ = 0;
-               data = (STRING)next_line(data);
-            }
-            else {
-               write.Data = data;
-               while ((*data) AND (*data != '\n')) data++;
-               if (*data) *data++ = 0;
-            }
-
-            CONFIG_WriteValue(Self, &write);
-         }
-         else data = (STRING)next_line(data);
-      }
-
-      // Whenever we get to this point, there is either a new section or we must have come to the end of the buffer.
-
-      if (*data IS '[') {
-         data++; // Skip '[' character
-         CSTRING start = data;
-         while ((*data != ']') AND (*data != '\n') AND (*data)) data++;
-         if (*data IS ']') {
-            write.Section = start;
-            *data++ = 0;
-         }
-      }
-
-      // Get the next line and repeat our loop
-
-      data = (STRING)next_line(data);
-   }
-
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
-AmtEntries: The total number of values loaded into the config object.
-
--FIELD-
-Entries: References the raw data values.
-
-This field points to an array of @ConfigEntry keys. Each key represents a string of data parsed from the
-source configuration file.  Direct scanning of the list of keys is a viable alternative to using the #ReadValue()
-method.
-
-This field is not writeable.  New values should be set with the #WriteValue() method.
-
-*****************************************************************************/
-
-static ERROR GET_Entries(objConfig *Self, struct ConfigEntry **Value)
-{
-   if (Self->Entries) {
-      *Value = Self->Entries;
-      return ERR_Okay;
-   }
-   else if (!Self->EntriesMID) {
-      *Value = NULL;
-      return ERR_FieldNotSet;
-   }
-   else if (!AccessMemory(Self->EntriesMID, MEM_READ_WRITE, 2000, (APTR *)&Self->Entries)) {
-      if (!AccessMemory(Self->StringsMID, MEM_READ_WRITE, 2000, (APTR *)&Self->Strings)) {
-         resolve_addresses(Self);
-         *Value = Self->Entries;
+   ConfigGroups &groups = *Self->Groups;
+   for (auto& [group, keys] : groups) {
+      if (!group.compare(Args->Group)) {
+         keys[Args->Key] = Args->Data;
          return ERR_Okay;
       }
    }
 
-   *Value = NULL;
-   return ERR_AccessMemory;
+   auto &new_group = Self->Groups->emplace_back();
+   new_group.first.assign(Args->Group);
+   new_group.second[Args->Key].assign(Args->Data);
+   return ERR_Okay;
 }
 
 /*****************************************************************************
 
 -FIELD-
-Flags: Special flags may be set here.
+Data: Reference to the raw data values.
+
+This field points to C++ object that contains all key-values for the config object.  It is intended to be used only by system code
+that is included with the standard framework.
+
+*****************************************************************************/
+
+static ERROR GET_Data(objConfig *Self, ConfigGroups **Value)
+{
+   *Value = Self->Groups;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
+Flags: Optional flags may be set here.
 
 -FIELD-
 KeyFilter: Set this field to enable key filtering.
 
-When dealing with large configuration files, filtering out unrelated data may be useful for speeding up operations on
-the config object.  By setting the KeyFilter field, you can filter out entire sections by setting criteria for each
-configuration entry.
+When dealing with large configuration files it may be useful to filter out groups of key-values that are not needed.
+The KeyFilter field allows simple filters to be defined that will perform this task for you.  It is recommended that it
+is set prior to parsing new data for best performance, but can be set or changed at any time to apply a new filter.
 
 Key filters are created in the format `[Key] = [Data1], [Data2], ...`
 
@@ -1971,8 +830,8 @@ Here are some examples:
 <li>Name = Parasol</li>
 </>
 
-You can also 'reverse' the filter so that only the keys matching your specifications are filtered out.  To do this,
-use the exclamation character, as in the following examples:
+You can also 'reverse' the filter so that only the keys matching your specifications are filtered out.  To do this
+use the exclamation character as shown in these examples:
 
 <list type="unsorted">
 <li>!Group = Sun, Light</li>
@@ -1980,42 +839,86 @@ use the exclamation character, as in the following examples:
 <li>!Name = Parasol</li>
 </>
 
-To create a filter based on section names, refer to the #SectionFilter field.
+To create a filter based on group names, refer to the #GroupFilter field.
 
 *****************************************************************************/
 
-static ERROR GET_KeyFilter(objConfig *Self, STRING *Value)
+static ERROR GET_KeyFilter(objConfig *Self, CSTRING *Value)
 {
    if (Self->KeyFilter) {
       *Value = Self->KeyFilter;
       return ERR_Okay;
    }
-   else if (!Self->KeyFilterMID) {
-      *Value = NULL;
-      return ERR_FieldNotSet;
-   }
-   else if (!AccessMemory(Self->KeyFilterMID, MEM_READ, 2000, (void **)&Self->KeyFilter)) {
-      *Value = Self->KeyFilter;
-      return ERR_Okay;
-   }
    else {
       *Value = NULL;
-      return ERR_AccessMemory;
+      return ERR_FieldNotSet;
    }
 }
 
 static ERROR SET_KeyFilter(objConfig *Self, CSTRING Value)
 {
-   if (Self->KeyFilter)    { ReleaseMemoryID(Self->KeyFilterMID);   Self->KeyFilter = NULL; }
-   if (Self->KeyFilterMID) { FreeResourceID(Self->KeyFilterMID); Self->KeyFilterMID = 0; }
+   if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = NULL; }
 
-   if ((Value) AND (*Value)) {
-      LONG i = StrLength(Value);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->KeyFilter, &Self->KeyFilterMID)) {
-         CopyMemory(Value, Self->KeyFilter, i+1);
-      }
-      else return ERR_AllocMemory;
+   if ((Value) and (*Value)) {
+      if (!(Self->KeyFilter = StrClone(Value))) return ERR_AllocMemory;
    }
+
+   if (Self->initialised()) apply_key_filter(Self, Self->KeyFilter);
+
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
+GroupFilter: Set this field to enable group filtering.
+
+When dealing with large configuration files, filtering out unrelated data may be useful.  By setting the GroupFilter
+field, it is possible to filter out entire groups that don't match the criteria.
+
+Group filters are created using the format `[Group1], [Group2], [Group3], ...`.
+
+Here are some examples:
+
+<list type="unsorted">
+<li>Program, Application, Game</li>
+<li>Apple, Banana</li>
+</>
+
+You can also reverse the filter so that only the groups matching your criteria are filtered out.  To do this, use the
+exclamation character, as in the following examples:
+
+<list type="unsorted">
+<li>!Program, Application, Game</li>
+<li>!Apple, Banana</li>
+</>
+
+To create a filter based on key names, refer to the #KeyFilter field.
+
+*****************************************************************************/
+
+static ERROR GET_GroupFilter(objConfig *Self, CSTRING *Value)
+{
+   if (Self->GroupFilter) {
+      *Value = Self->GroupFilter;
+      return ERR_Okay;
+   }
+   else {
+      *Value = NULL;
+      return ERR_FieldNotSet;
+   }
+}
+
+static ERROR SET_GroupFilter(objConfig *Self, CSTRING Value)
+{
+   if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = NULL; }
+
+   if ((Value) and (*Value)) {
+      if (!(Self->GroupFilter = StrClone(Value))) return ERR_AllocMemory;
+   }
+
+   if (Self->initialised()) apply_group_filter(Self, Self->GroupFilter);
+
    return ERR_Okay;
 }
 
@@ -2025,287 +928,263 @@ Path: Set this field to the location of the source configuration file.
 
 *****************************************************************************/
 
-static ERROR GET_Path(objConfig *Self, STRING *Value)
-{
-   if (Self->Path) {
-      *Value = Self->Path;
-      return ERR_Okay;
-   }
-   else if (!Self->PathMID) {
-      *Value = NULL;
-      return ERR_FieldNotSet;
-   }
-   else if (!AccessMemory(Self->PathMID, MEM_READ, 2000, (void **)&Self->Path)) {
-      *Value = Self->Path;
-      return ERR_Okay;
-   }
-   else {
-      *Value = NULL;
-      return ERR_AccessMemory;
-   }
-}
-
 static ERROR SET_Path(objConfig *Self, CSTRING Value)
 {
-   if (Self->Path)    { ReleaseMemoryID(Self->PathMID); Self->Path = NULL; }
-   if (Self->PathMID) { FreeResourceID(Self->PathMID); Self->PathMID = 0; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   if ((Value) AND (*Value)) {
-      LONG i = StrLength(Value);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->Path, &Self->PathMID)) {
-         CopyMemory(Value, Self->Path, i+1);
-      }
-      else return ERR_AllocMemory;
+   if ((Value) and (*Value)) {
+      if (!(Self->Path = StrClone(Value))) return ERR_AllocMemory;
    }
 
    return ERR_Okay;
 }
 
 /*****************************************************************************
-
 -FIELD-
-SectionFilter: Set this field to enable section filtering.
-
-When dealing with large configuration files, filtering out unrelated data may be useful.  By setting the SectionFilter
-field, it is possible to filter out entire sections that don't match the criteria.
-
-Section filters are created using the format `[Section1], [Section2], [Section3], ...`.
-
-Here are some examples:
-
-<list type="unsorted">
-<li>Program, Application, Game</li>
-<li>Apple, Banana</li>
-</>
-
-You can also reverse the filter so that only the sections matching your criteria are filtered out.  To do this, use the
-exclamation character, as in the following examples:
-
-<list type="unsorted">
-<li>!Program, Application, Game</li>
-<li>!Apple, Banana</li>
-</>
-
-If you need to create a filter based on key names, refer to the #KeyFilter field.
-
-*****************************************************************************/
-
-static ERROR GET_SectionFilter(objConfig *Self, STRING *Value)
-{
-   if (Self->SectionFilter) {
-      *Value = Self->SectionFilter;
-      return ERR_Okay;
-   }
-   else if (!Self->SectionFilterMID) {
-      *Value = NULL;
-      return ERR_FieldNotSet;
-   }
-   else if (!AccessMemory(Self->SectionFilterMID, MEM_READ, 2000, (void **)&Self->SectionFilter)) {
-      *Value = Self->SectionFilter;
-      return ERR_Okay;
-   }
-   else {
-      *Value = NULL;
-      return ERR_AccessMemory;
-   }
-}
-
-static ERROR SET_SectionFilter(objConfig *Self, STRING Value)
-{
-   if (Self->SectionFilter)    { ReleaseMemoryID(Self->SectionFilterMID); Self->SectionFilter = NULL; }
-   if (Self->SectionFilterMID) { FreeResourceID(Self->SectionFilterMID); Self->SectionFilterMID = 0; }
-
-   if ((Value) AND (*Value)) {
-      LONG i = StrLength(Value);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->Head.MemFlags, (void **)&Self->SectionFilter, &Self->SectionFilterMID)) {
-         CopyMemory(Value, Self->SectionFilter, i+1);
-      }
-      else return ERR_AllocMemory;
-   }
-   return ERR_Okay;
-}
-
-/*****************************************************************************
--FIELD-
-TotalSections: Returns the total number of sections in a config object.
+TotalGroups: Returns the total number of groups in a config object.
 -END-
 *****************************************************************************/
 
-static ERROR GET_TotalSections(objConfig *Self, LONG *Result)
+static ERROR GET_TotalGroups(objConfig *Self, LONG *Value)
 {
-   ConfigEntry *entries;
+   *Value = Self->Groups->size();
+   return ERR_Okay;
+}
 
-   if (!GET_Entries(Self, &entries)) {
-      LONG count = 1;
-      for (LONG i=0; i < Self->AmtEntries-1; i++) {
-         if (entries[i].Section != entries[i+1].Section) count++;
-      }
-      *Result = count;
-      return ERR_Okay;
+/*****************************************************************************
+
+-FIELD-
+TotalKeys: The total number of key values loaded into the config object.
+-END-
+
+*****************************************************************************/
+
+static ERROR GET_TotalKeys(objConfig *Self, LONG *Value)
+{
+   LONG total = 0;
+   for (const auto& [group, keys] : Self->Groups[0]) {
+      total += keys.size();
    }
-   else {
-      *Result = 0;
-      return ERR_FieldNotSet;
-   }
+   *Value = total;
+   return ERR_Okay;
 }
 
 //****************************************************************************
 // Checks the next line in a buffer to see if it is a valid key.
 
-static WORD check_for_key(CSTRING Data)
+static bool check_for_key(CSTRING Data)
 {
-   if ((*Data != '\n') AND (*Data != '[') AND (*Data != '#')) {
-      while ((*Data) AND (*Data != '\n') AND (*Data != '=')) Data++; // Skip key name
+   if ((*Data != '\n') and (*Data != '\r') and (*Data != '[') and (*Data != '#')) {
+      while ((*Data) and (*Data != '\n') and (*Data != '\r') and (*Data != '=')) Data++; // Skip key name
       if (*Data != '=') return FALSE;
       Data++;
-      while ((*Data) AND (*Data != '\n') AND (*Data <= 0x20)) Data++; // Skip whitespace
-//      if ((*Data IS '\n') OR (*Data IS 0)) return FALSE; // Check if data is present or the line terminates prematurely
-      return TRUE;
+      while ((*Data) and (*Data != '\n') and (*Data <= 0x20)) Data++; // Skip whitespace
+//      if ((*Data IS '\n') or (*Data IS 0)) return FALSE; // Check if data is present or the line terminates prematurely
+      return true;
    }
 
-   return FALSE;
-}
-
-/*****************************************************************************
-** Return codes
-** ------------
-** 1:  Indicates a match (do not delete the section).
-** 0:  Indicates a failed match (delete the section).
-** -1: Indicates that the key does not match the key specified in the filter.
-*/
-
-static LONG check_filter(objConfig *Self, STRING Filter, STRING Key, STRING Data)
-{
-   while ((*Filter) AND (*Filter <= 0x20)) Filter++;
-
-   BYTE reverse = FALSE;
-   if (*Filter IS '!') {
-      reverse = TRUE;
-      Filter++;
-   }
-
-   while ((*Filter) AND (*Filter <= 0x20)) Filter++;
-
-   // Pull out the key
-
-   #define DATA_SIZE 100
-   char data[DATA_SIZE];
-   LONG i;
-   for (i=0; (*Filter != '=') AND (i < DATA_SIZE-1); i++) data[i] = *Filter++;
-   while ((i > 0) AND (data[i-1] <= 0x20)) i--;
-   data[i] = 0;
-
-   if (!StrMatch(data, Key)) {
-      if (!Data) return 1;
-
-      // Skip " = "
-
-      while ((*Filter) AND (*Filter <= 0x20)) Filter++;
-      if (*Filter IS '=') Filter++;
-      while ((*Filter) AND (*Filter <= 0x20)) Filter++;
-
-      while (*Filter) {
-         for (i=0; ((*Filter) AND (*Filter != ',')); i++) data[i] = *Filter++;
-         data[i] = 0;
-
-         if (!data[0]) return 0;
-
-         if (!StrMatch(data, Data)) return 1;
-
-         if (*Filter IS ',') Filter++;
-         while ((*Filter) AND (*Filter <= 0x20)) Filter++;
-      }
-      return 0;
-   }
-   else return -1; // -1 indicates that the filter's key does not match the entry
+   return false;
 }
 
 //****************************************************************************
-// This function searches for the next line of information.  Note that if it reaches a NULL byte, it will
-// stop and return the Data pointer immediately rather than running into other mem space.
 
-static CSTRING next_line(CSTRING Data)
+static void merge_groups(ConfigGroups &Dest, ConfigGroups &Source)
 {
-   while ((*Data != '\n') AND (*Data)) Data++;
-   while (*Data IS '\n') Data++; // If there are extra line breaks, skip them
-   return Data;
-}
+   for (auto& [src_group, src_keys] : Source) {
+      bool processed = FALSE;
 
-//****************************************************************************
-// Checks for the next section in a text buffer and validates it.
+      // Check if the group already exists and merge the keys
 
-static CSTRING next_section(CSTRING Data)
-{
-   CSTRING CData;
-   while (*Data != 0) {
-      if (*Data IS '[') {
-         CData = Data + 1;
-         while ((*CData != '\n') AND (*CData != 0)) {
-            if (*CData IS ']') return Data;
-            CData++;
+      for (auto& [dest_group, dest_keys] : Dest) {
+         if (!dest_group.compare(src_group)) {
+            processed = TRUE;
+            for (auto& [k, v] : src_keys) {
+               dest_keys[k] = v;
+            }
          }
       }
-      Data = next_line(Data);
-   }
-   return Data;
-}
 
-//****************************************************************************
-// Converts a standard section index into an absolute index.
-
-static LONG find_section(objConfig *Self, LONG Number)
-{
-   if (Number < 0) return -1;
-
-   LONG pos = 0;
-   while ((Number > 0) AND (pos < Self->AmtEntries-1)) {
-      if (Self->Entries[pos].Section != Self->Entries[pos+1].Section) Number--;
-      pos++;
-   }
-
-   if (!Number) return pos;
-
-   return -1;
-}
-
-//****************************************************************************
-// Returns the index of a section, given a section name.
-
-static LONG find_section_name(objConfig *Self, CSTRING Section)
-{
-   if ((!Section) OR (!*Section)) return ERR_NullArgs;
-
-   for (LONG index=0; index < Self->AmtEntries; index++) {
-      if ((index > 0) AND (Self->Entries[index-1].Section IS Self->Entries[index].Section)) continue; // Avoid string comparisons where we can help it
-      if (!StrMatch(Section, Self->Entries[index].Section)) return index;
-   }
-   return -1;
-}
-
-//****************************************************************************
-// Returns the index of a section, given a section name.
-
-static LONG find_section_wild(objConfig *Self, CSTRING Section)
-{
-   if ((!Section) OR (!*Section)) return ERR_NullArgs;
-
-   for (LONG index=0; index < Self->AmtEntries; index++) {
-      if ((index > 0) AND (Self->Entries[index-1].Section IS Self->Entries[index].Section)) continue; // Avoid string comparisons where we can help it
-      if (!StrCompare(Section, Self->Entries[index].Section, 0, STR_WILDCARD)) return index;
-   }
-
-   return -1;
-}
-
-//****************************************************************************
-
-static STRING read_config(objConfig *Self, CSTRING Section, CSTRING Key)
-{
-   for (LONG i=0; i < Self->AmtEntries; i++) {
-      if (Section IS Self->Entries[i].Section) {
-         if (!StrMatch(Key, Self->Entries[i].Key)) return Self->Entries[i].Data;
+      if (!processed) { // New group to be added
+         auto &new_group = Dest.emplace_back();
+         new_group.first  = src_group;
+         new_group.second = src_keys;
       }
    }
+}
+
+//****************************************************************************
+
+static FilterConfig parse_filter(std::string Filter, bool KeyValue = false)
+{
+   FilterConfig f;
+
+   LONG start = 0, end = 0;
+   if (Filter[start] IS '!') {
+      f.reverse = TRUE;
+      start++;
+   }
+   else f.reverse = FALSE;
+
+   for (; (Filter[start]) and (Filter[start] <= 0x20); start++);
+
+   if (KeyValue) {
+      for (end=start; Filter[end] != '='; end++);
+      while ((end > start) and (Filter[end-1] <= 0x20)) end--;
+
+      f.name = Filter.substr(start, end - start);
+      start = end;
+
+      while ((Filter[start]) and (Filter[start] <= 0x20)) start++;
+      if (Filter[start] IS '=') start++;
+      while ((Filter[start]) and (Filter[start] <= 0x20)) start++;
+   }
+
+   end = start;
+   while (Filter[end]) {
+      while ((Filter[end]) and (Filter[end] != ',')) end++;
+
+      f.values.push_back(Filter.substr(start, end-start));
+
+      if (Filter[end] IS ',') end++;
+      while ((Filter[end]) and (Filter[end] <= 0x20)) end++;
+      start = end;
+   }
+
+   return f;
+}
+
+//****************************************************************************
+
+static ERROR parse_config(objConfig *Self, CSTRING Buffer)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!Buffer) return ERR_NoData;
+
+   log.traceBranch("%.20s", Buffer);
+
+   std::string group_name;
+   auto data = next_group(Buffer, group_name); // Find the first group
+
+   while ((data) and (*data)) {
+      while ((*data) and (*data <= 0x20)) data++;
+      if (*data IS '#') { // Commented
+         data = next_line(data);
+         continue;
+      }
+
+      std::pair<std::string, std::map<std::string, std::string>> *current_group = NULL;
+      while ((*data) and (*data != '[')) { // Keep processing keys until either a new group or EOF is reached
+         if (check_for_key(data)) {
+            std::string key, value;
+
+            LONG len;
+            for (len=0; (data[len]) and (data[len] != '='); len++);
+            if (!data[len]) break;
+            while (data[len-1] <= 0x20) len--;
+            key.assign(data, 0, len);
+            data += len;
+
+            while ((*data) and (*data != '=')) data++;
+            if (*data) data++;
+            while ((*data) and (*data <= 0x20)) data++; // Skip any leading whitespace, including new lines
+
+            if ((Self->Flags & CNF_STRIP_QUOTES) and (*data IS '"')) {
+               data++;
+               for (len=0; (data[len]) and (data[len] != '"'); len++);
+               value.assign(data, 0, len);
+               data += len;
+            }
+            else {
+               for (len=0; (data[len]) and (data[len] != '\n') and (data[len] != '\r'); len++);
+               value.assign(data, 0, len);
+               data += len;
+            }
+            data = next_line(data);
+
+            if (!current_group) { // Check if a matching group already exists before creating a new one
+               current_group = find_group(Self, group_name);
+               if (!current_group) {
+                  current_group = &Self->Groups->emplace_back();
+                  current_group->first = group_name;
+               }
+            }
+            current_group->second[key] = value;
+         }
+         else data = next_line(data);
+      }
+      data = next_group(data, group_name);
+   }
+
+   return ERR_Okay;
+}
+
+//****************************************************************************
+
+static void apply_key_filter(objConfig *Self, CSTRING Filter)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Filter) or (!Filter[0])) return;
+
+   log.branch("Filter: %s", Filter);
+
+   FilterConfig f = parse_filter(Filter, true);
+   for (auto group = Self->Groups->begin(); group != Self->Groups->end(); ) {
+      bool matched = (f.reverse) ? true : false;
+      for (auto& [k, v] : group->second) {
+         if (!StrMatch(f.name.c_str(), k.c_str())) {
+            for (auto const& cmp : f.values) {
+               if (!StrMatch(cmp.c_str(), v.c_str())) {
+                  matched = f.reverse ? false : true;
+                  break;
+               }
+            }
+            break;
+         }
+      }
+
+      if (!matched) group = Self->Groups->erase(group);
+      else group++;
+   }
+}
+
+//****************************************************************************
+
+static void apply_group_filter(objConfig *Self, CSTRING Filter)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Filter) or (!Filter[0])) return;
+
+   log.branch("Filter: %s", Filter);
+
+   FilterConfig f = parse_filter(Filter, false);
+   for (auto group = Self->Groups->begin(); group != Self->Groups->end(); ) {
+      bool matched = (f.reverse) ? true : false;
+      for (auto const& cmp : f.values) {
+         if (!cmp.compare(group->first)) {
+            matched = f.reverse ? false : true;
+            break;
+         }
+      }
+
+      if (!matched) group = Self->Groups->erase(group);
+      else group++;
+   }
+}
+
+//****************************************************************************
+// Returns the key-values for a group, given a group name.  Supports wild-cards.
+
+static ConfigKeys * find_group_wild(objConfig *Self, CSTRING Group)
+{
+   if ((!Group) or (!*Group)) return NULL;
+
+   for (auto& [group, keys] : Self->Groups[0]) {
+      if (!StrCompare(Group, group.c_str(), 0, STR_WILDCARD)) return &keys;
+   }
+
    return NULL;
 }
 
@@ -2314,16 +1193,14 @@ static STRING read_config(objConfig *Self, CSTRING Section, CSTRING Key)
 #include "class_config_def.c"
 
 static const FieldArray clFields[] = {
-   { "Entries",       FDF_POINTER|FDF_R, 0, (APTR)GET_Entries, NULL },   // This is not an FDF_ARRAY because each entry is sizeof(ConfigEntry)
-   { "Path",          FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
-   { "KeyFilter",     FDF_STRING|FDF_RI, 0, (APTR)GET_KeyFilter, (APTR)SET_KeyFilter },
-   { "SectionFilter", FDF_STRING|FDF_RW, 0, (APTR)GET_SectionFilter, (APTR)SET_SectionFilter },
-   { "AmtEntries",    FDF_LONG|FDF_R, 0, NULL, NULL },
-   { "Flags",         FDF_LONGFLAGS|FDF_RW, (MAXINT)&clFlags, NULL, NULL },
-   { "TotalSections", FDF_LONG|FDF_R, 0, (APTR)GET_TotalSections, NULL },
+   { "Path",        FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Path },
+   { "KeyFilter",   FDF_STRING|FDF_RW, 0, (APTR)GET_KeyFilter, (APTR)SET_KeyFilter },
+   { "GroupFilter", FDF_STRING|FDF_RW, 0, (APTR)GET_GroupFilter, (APTR)SET_GroupFilter },
+   { "Flags",       FDF_LONGFLAGS|FDF_RW, (MAXINT)&clFlags, NULL, NULL },
    // Virtual fields
-   { "Location",      FDF_SYNONYM|FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
-   { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Data",        FDF_POINTER|FDF_R, 0, (APTR)GET_Data, NULL },
+   { "TotalGroups", FDF_LONG|FDF_R, 0, (APTR)GET_TotalGroups, NULL },
+   { "TotalKeys",   FDF_LONG|FDF_R, 0, (APTR)GET_TotalKeys, NULL },
    END_FIELD
 };
 
@@ -2332,20 +1209,21 @@ static const FieldArray clFields[] = {
 extern "C" ERROR add_config_class(void)
 {
    if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&ConfigClass)) {
-      if (!SetFields((OBJECTPTR)ConfigClass,
+      if (!SetFields(ConfigClass,
             FID_BaseClassID|TLONG,    ID_CONFIG,
             FID_ClassVersion|TFLOAT,  VER_CONFIG,
             FID_Name|TSTR,            "Config",
             FID_Category|TLONG,       CCF_DATA,
             FID_FileExtension|TSTR,   "*.cfg|*.cnf|*.config",
             FID_FileDescription|TSTR, "Config File",
+            FID_Flags|TLONG,          CLF_PRIVATE_ONLY,
             FID_Actions|TPTR,         clConfigActions,
             FID_Methods|TARRAY,       clConfigMethods,
             FID_Fields|TARRAY,        clFields,
             FID_Size|TLONG,           sizeof(objConfig),
             FID_Path|TSTR,            "modules:core",
             TAGEND)) {
-         return acInit(&ConfigClass->Head);
+         return acInit(ConfigClass);
       }
       else return ERR_SetField;
    }

@@ -1,272 +1,325 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
-Morph and dilate share the same code apart from the inner loop.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-*****************************************************************************/
+**********************************************************************************************************************
 
-enum {
-   OP_ERODE=0,
-   OP_DILATE
+-CLASS-
+MorphologyFX: Applies the morphology filter effect.
+
+The MorphologyFX class performs "fattening" or "thinning" of artwork.  It is particularly useful for fattening or
+thinning an alpha channel.
+
+The dilation (or erosion) kernel is a rectangle with a width of `2 * RadiusX` and a height of `2 * RadiusY`. In
+dilation, the output pixel is the individual component-wise maximum of the corresponding R,G,B,A values in the input
+image's kernel rectangle.  In erosion, the output pixel is the individual component-wise minimum of the
+corresponding R,G,B,A values in the input image's kernel rectangle.
+
+Frequently this operation will take place on alpha-only images, such as that produced by the built-in input,
+SourceAlpha.  In that case, the implementation might want to optimize the single channel case.
+
+Because the algorithm operates on premultipied color values, it will always result in color values less than or
+equal to the alpha channel.
+
+-END-
+
+*********************************************************************************************************************/
+
+class objMorphologyFX : public extFilterEffect {
+   public:
+   LONG RadiusX, RadiusY;
+   UBYTE Operator;
 };
 
-//****************************************************************************
+/*********************************************************************************************************************
+-ACTION-
+Draw: Render the effect to the target bitmap.
+-END-
+*********************************************************************************************************************/
 
-static void erode(effect *Effect)
+static ERROR MORPHOLOGYFX_Draw(objMorphologyFX *Self, struct acDraw *Args)
 {
-   objBitmap *bmp = Effect->Bitmap;
-   if (bmp->BytesPerPixel != 4) return;
+   const LONG canvasWidth = Self->Target->Clip.Right - Self->Target->Clip.Left;
+   const LONG canvasHeight = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
 
-   const LONG canvasWidth = bmp->Clip.Right - bmp->Clip.Left;
-   const LONG canvasHeight = bmp->Clip.Bottom - bmp->Clip.Top;
+   if (canvasWidth * canvasHeight > 4096 * 4096) return ERR_Failed; // Bail on really large bitmaps.
 
-   if (canvasWidth * canvasHeight > 4096 * 4096) return; // Bail on really large bitmaps.
+   const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
+   const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
+   const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
+   const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
 
-   const UBYTE A = bmp->ColourFormat->AlphaPos>>3;
-   const UBYTE R = bmp->ColourFormat->RedPos>>3;
-   const UBYTE G = bmp->ColourFormat->GreenPos>>3;
-   const UBYTE B = bmp->ColourFormat->BluePos>>3;
+   UBYTE *out_line;
+   UBYTE *buffer = NULL;
+   LONG out_linewidth;
+   bool buffer_as_input;
 
-   LONG radius;
-   UBYTE *output = new (std::nothrow) UBYTE[canvasWidth * canvasHeight * bmp->BytesPerPixel];
-   UBYTE *input = bmp->Data + (bmp->Clip.Top * bmp->LineWidth) + (bmp->Clip.Left * bmp->BytesPerPixel);
+   // A temporary buffer is required if we are applying the effect on both axis.  Otherwise we can
+   // directly write to the target bitmap.
 
-   if (!output) return;
+   if ((Self->RadiusX > 0) and (Self->RadiusY > 0)) {
+      buffer = new (std::nothrow) UBYTE[canvasWidth * canvasHeight * 4];
+      if (!buffer) return ERR_Memory;
+      out_line = buffer;
+      out_linewidth = canvasWidth * 4;
+      buffer_as_input = true;
+   }
+   else {
+      out_line = (UBYTE *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
+      out_linewidth = Self->Target->LineWidth;
+      buffer_as_input = false;
+   }
 
-   if ((radius = Effect->Morph.RX) > 0) { // Top-to-bottom dilate
+   objBitmap *inBmp;
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+   UBYTE *input = inBmp->Data + (inBmp->Clip.Top * inBmp->LineWidth) + (inBmp->Clip.Left * inBmp->BytesPerPixel);
+
+   if (Self->RadiusX > 0) { // Top-to-bottom dilate
+      auto radius = Self->RadiusX;
       if (canvasWidth - 1 < radius) radius = canvasWidth - 1;
 
-      const UBYTE *endinput = input + (radius * 4);
-      UBYTE *inputline = input;
-      UBYTE *outputline = output;
+      const UBYTE *endinput  = input + (radius * 4);
+      const UBYTE *inputline = input;
 
       for (int x=0; x < canvasWidth; ++x) {
-         const UBYTE *lp = inputline;
+         const UBYTE *in  = inputline;
          const UBYTE *end = endinput;
-         UBYTE *dptr = outputline;
-         for (int y = 0; y < canvasHeight; ++y) {
-            UBYTE minB = 255, minG = 255, minR = 255, minA = 255;
-            for (const UBYTE *p=lp; p <= end; p += 4) {
-               if (p[B] < minB) minB = p[B];
-               if (p[G] < minG) minG = p[G];
-               if (p[R] < minR) minR = p[R];
-               if (p[A] < minA) minA = p[A];
+         auto out         = out_line;
+
+         if (Self->Operator IS MOP_DILATE) {
+            for (int y = 0; y < canvasHeight; ++y) {
+               UBYTE maxB = 0, maxG = 0, maxR = 0, maxA = 0;
+               for (const UBYTE *pix=in; pix <= end; pix += 4) {
+                  if (pix[B] > maxB) maxB = pix[B];
+                  if (pix[G] > maxG) maxG = pix[G];
+                  if (pix[R] > maxR) maxR = pix[R];
+                  if (pix[A] > maxA) maxA = pix[A];
+               }
+               out[R] = maxR; out[G] = maxG; out[B] = maxB; out[A] = maxA;
+
+               out += out_linewidth;
+               in  += inBmp->LineWidth;
+               end += inBmp->LineWidth;
             }
-            dptr[R] = minR; dptr[G] = minG; dptr[B] = minB; dptr[A] = minA;
-            dptr += canvasWidth<<2;
-            lp += bmp->LineWidth;
-            end += bmp->LineWidth;
          }
+         else { // ERODE
+            for (int y = 0; y < canvasHeight; ++y) {
+               UBYTE minB = 255, minG = 255, minR = 255, minA = 255;
+               for (const UBYTE *p=in; p <= end; p += 4) {
+                  if (p[B] < minB) minB = p[B];
+                  if (p[G] < minG) minG = p[G];
+                  if (p[R] < minR) minR = p[R];
+                  if (p[A] < minA) minA = p[A];
+               }
+               out[R] = minR; out[G] = minG; out[B] = minB; out[A] = minA;
+
+               out += out_linewidth;
+               in  += inBmp->LineWidth;
+               end += inBmp->LineWidth;
+            }
+         }
+
          if (x >= radius) inputline += 4;
          if (x + radius < canvasWidth - 1) endinput += 4;
-         outputline += 4;
-      }
-
-      // Copy the resulting output back to the bitmap.
-
-      ULONG *pixel = (ULONG *)(bmp->Data + (bmp->Clip.Left<<2) + (bmp->Clip.Top * bmp->LineWidth));
-      ULONG *src   = (ULONG *)output;
-      for (LONG y=0; y < canvasHeight; y++) {
-         for (LONG x=0; x < canvasWidth; x++) pixel[x] = src[x];
-         pixel += bmp->LineWidth>>2;
-         src += canvasWidth;
+         out_line += 4;
       }
    }
 
-   if ((radius = Effect->Morph.RY) > 0) { // Left-to-right dilate
+   if (Self->RadiusY > 0) { // Left-to-right dilate
+      auto radius = Self->RadiusY;
       if (canvasHeight - 1 < radius) radius = canvasHeight - 1;
 
-      const UBYTE *endinput = input + (radius * bmp->LineWidth); // Inner-loop will stop when reaching endinput
-      UBYTE *inputline = input;
-      UBYTE *outputline = output;
+      const UBYTE *endinput;
+      const UBYTE *inputline;
+      LONG inwidth;
+
+      if (buffer_as_input) {
+         endinput  = buffer + (radius * (canvasWidth * 4));
+         inputline = buffer;
+         inwidth   = canvasWidth * 4;
+      }
+      else {
+         endinput  = input + (radius * inBmp->LineWidth); // Inner-loop will stop when reaching endinput
+         inputline = input;
+         inwidth   = inBmp->LineWidth;
+      }
+
+      out_line = (UBYTE *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
+      out_linewidth = Self->Target->LineWidth;
 
       for (int y=0; y < canvasHeight; y++) {
-         const UBYTE *lp = inputline;
+         const UBYTE *in = inputline;
          const UBYTE *end = endinput;
-         UBYTE *dptr = outputline;
-         for (int x=0; x < canvasWidth; x++) {
-            UBYTE minB = 255, minG = 255, minR = 255, minA = 255;
-            for (const UBYTE *p=lp; p <= end; p += bmp->LineWidth) {
-               if (p[B] < minB) minB = p[B];
-               if (p[G] < minG) minG = p[G];
-               if (p[R] < minR) minR = p[R];
-               if (p[A] < minA) minA = p[A];
+         auto out = out_line;
+
+         if (Self->Operator IS MOP_DILATE) {
+            for (int x=0; x < canvasWidth; x++) {
+               UBYTE maxB = 0, maxG = 0, maxR = 0, maxA = 0;
+               for (const UBYTE *pix=in; pix <= end; pix += inwidth) {
+                  if (pix[B] > maxB) maxB = pix[B];
+                  if (pix[G] > maxG) maxG = pix[G];
+                  if (pix[R] > maxR) maxR = pix[R];
+                  if (pix[A] > maxA) maxA = pix[A];
+               }
+               out[R] = maxR; out[G] = maxG; out[B] = maxB; out[A] = maxA;
+               out += 4;
+               in  += 4;
+               end += 4;
             }
-            dptr[R] = minR; dptr[G] = minG; dptr[B] = minB; dptr[A] = minA;
-            dptr += 4;
-            lp   += 4;
-            end  += 4;
          }
-         if (y >= radius) inputline += bmp->LineWidth;
-         if (y + radius < canvasHeight - 1) endinput += bmp->LineWidth;
-         outputline += canvasWidth<<2;
-      }
-
-      // Copy the resulting output back to the bitmap.
-
-      ULONG *pixel = (ULONG *)(bmp->Data + (bmp->Clip.Left<<2) + (bmp->Clip.Top * bmp->LineWidth));
-      ULONG *src   = (ULONG *)output;
-      for (LONG y=0; y < canvasHeight; y++) {
-         for (LONG x=0; x < canvasWidth; x++) pixel[x] = src[x];
-         pixel += bmp->LineWidth>>2;
-         src += canvasWidth;
-      }
-   }
-
-   delete [] output;
-}
-
-//****************************************************************************
-
-static void dilate(effect *Effect)
-{
-   objBitmap *bmp = Effect->Bitmap;
-   if (bmp->BytesPerPixel != 4) return;
-
-   const LONG canvasWidth = bmp->Clip.Right - bmp->Clip.Left;
-   const LONG canvasHeight = bmp->Clip.Bottom - bmp->Clip.Top;
-
-   if (canvasWidth * canvasHeight > 4096 * 4096) return; // Bail on really large bitmaps.
-
-   const UBYTE A = bmp->ColourFormat->AlphaPos>>3;
-   const UBYTE R = bmp->ColourFormat->RedPos>>3;
-   const UBYTE G = bmp->ColourFormat->GreenPos>>3;
-   const UBYTE B = bmp->ColourFormat->BluePos>>3;
-
-   LONG radius;
-   UBYTE *output = new (std::nothrow) UBYTE[canvasWidth * canvasHeight * bmp->BytesPerPixel];
-   UBYTE *input = bmp->Data + (bmp->Clip.Top * bmp->LineWidth) + (bmp->Clip.Left * bmp->BytesPerPixel);
-
-   if (!output) return;
-
-   if ((radius = Effect->Morph.RX) > 0) { // Top-to-bottom dilate
-      if (canvasWidth - 1 < radius) radius = canvasWidth - 1;
-
-      const UBYTE *upperinput = input + (radius * 4);
-      UBYTE *inputline = input;
-      UBYTE *outputline = output;
-
-      for (int x=0; x < canvasWidth; ++x) {
-         const UBYTE *lp = inputline;
-         const UBYTE *up = upperinput;
-         UBYTE *dptr = outputline;
-         for (int y = 0; y < canvasHeight; ++y) {
-            UBYTE maxB = 0, maxG = 0, maxR = 0, maxA = 0;
-            for (const UBYTE *p=lp; p <= up; p += 4) {
-               if (p[B] > maxB) maxB = p[B];
-               if (p[G] > maxG) maxG = p[G];
-               if (p[R] > maxR) maxR = p[R];
-               if (p[A] > maxA) maxA = p[A];
+         else { // ERODE
+            for (int x=0; x < canvasWidth; x++) {
+               UBYTE minB = 255, minG = 255, minR = 255, minA = 255;
+               for (const UBYTE *pix=in; pix <= end; pix += inwidth) {
+                  if (pix[B] < minB) minB = pix[B];
+                  if (pix[G] < minG) minG = pix[G];
+                  if (pix[R] < minR) minR = pix[R];
+                  if (pix[A] < minA) minA = pix[A];
+               }
+               out[R] = minR; out[G] = minG; out[B] = minB; out[A] = minA;
+               out += 4;
+               in  += 4;
+               end += 4;
             }
-            dptr[R] = maxR; dptr[G] = maxG; dptr[B] = maxB; dptr[A] = maxA;
-            dptr += canvasWidth<<2;
-            lp += bmp->LineWidth;
-            up += bmp->LineWidth;
          }
-         if (x >= radius) inputline += 4;
-         if (x + radius < canvasWidth - 1) upperinput += 4;
-         outputline += 4;
-      }
-
-      // Copy the resulting output back to the bitmap.
-
-      ULONG *pixel = (ULONG *)(bmp->Data + (bmp->Clip.Left<<2) + (bmp->Clip.Top * bmp->LineWidth));
-      ULONG *src   = (ULONG *)output;
-      for (LONG y=0; y < canvasHeight; y++) {
-         for (LONG x=0; x < canvasWidth; x++) pixel[x] = src[x];
-         pixel += bmp->LineWidth>>2;
-         src += canvasWidth;
+         if (y >= radius) inputline += inwidth;
+         if (y + radius < canvasHeight - 1) endinput += inwidth;
+         out_line += Self->Target->LineWidth;
       }
    }
 
-   if ((radius = Effect->Morph.RY) > 0) { // Left-to-right dilate
-      if (canvasHeight - 1 < radius) radius = canvasHeight - 1;
+   if (buffer) delete [] buffer;
 
-      const UBYTE *endinput = input + (radius * bmp->LineWidth); // Inner-loop will stop when reaching endinput
-      UBYTE *inputline = input;
-      UBYTE *outputline = output;
-
-      for (int y=0; y < canvasHeight; y++) {
-         const UBYTE *lp = inputline;
-         const UBYTE *end = endinput;
-         UBYTE *dptr = outputline;
-         for (int x=0; x < canvasWidth; x++) {
-            UBYTE maxB = 0, maxG = 0, maxR = 0, maxA = 0;
-            for (const UBYTE *p=lp; p <= end; p += bmp->LineWidth) {
-               if (p[B] > maxB) maxB = p[B];
-               if (p[G] > maxG) maxG = p[G];
-               if (p[R] > maxR) maxR = p[R];
-               if (p[A] > maxA) maxA = p[A];
-            }
-            dptr[R] = maxR; dptr[G] = maxG; dptr[B] = maxB; dptr[A] = maxA;
-            dptr += 4;
-            lp   += 4;
-            end  += 4;
-         }
-         if (y >= radius) inputline += bmp->LineWidth;
-         if (y + radius < canvasHeight - 1) endinput += bmp->LineWidth;
-         outputline += canvasWidth<<2;
-      }
-
-      // Copy the resulting output back to the bitmap.
-
-      ULONG *pixel = (ULONG *)(bmp->Data + (bmp->Clip.Left<<2) + (bmp->Clip.Top * bmp->LineWidth));
-      ULONG *src   = (ULONG *)output;
-      for (LONG y=0; y < canvasHeight; y++) {
-         for (LONG x=0; x < canvasWidth; x++) pixel[x] = src[x];
-         pixel += bmp->LineWidth>>2;
-         src += canvasWidth;
-      }
-   }
-
-   delete [] output;
-}
-
-/*****************************************************************************
-** Internal: apply_morph()
-*/
-
-static void apply_morph(objVectorFilter *Self, effect *Effect)
-{
-   if (Effect->Morph.Type IS OP_ERODE) erode(Effect);
-   else dilate(Effect);
-}
-
-//****************************************************************************
-// Create a new morph matrix filter.
-
-static ERROR create_morph(objVectorFilter *Self, XMLTag *Tag)
-{
-   effect *effect;
-   if (!(effect = add_effect(Self, FE_MORPHOLOGY))) return ERR_AllocMemory;
-
-   effect->Morph.RX = 0; // SVG default is 0
-   effect->Morph.RY = 0;
-
-   for (LONG a=1; a < Tag->TotalAttrib; a++) {
-      CSTRING val = Tag->Attrib[a].Value;
-      if (!val) continue;
-
-      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
-      switch(hash) {
-         case SVF_RADIUS: {
-            DOUBLE x = -1, y = -1;
-            read_numseq(val, &x, &y, TAGEND);
-            if (x >= 0) effect->Morph.RX = x;
-            else effect->Morph.RX = 0;
-
-            if (y >= 0) effect->Morph.RY = y;
-            else effect->Morph.RY = x;
-            break;
-         }
-
-         case SVF_OPERATOR:
-            if (!StrMatch("erode", val)) effect->Morph.Type = OP_ERODE;
-            else if (!StrMatch("dilate", val)) effect->Morph.Type = OP_DILATE;
-            else LogErrorMsg("Unrecognised morphology operator '%s'", val);
-            break;
-
-         default: fe_default(Self, effect, hash, val); break;
-      }
-   }
    return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR MORPHOLOGYFX_NewObject(objMorphologyFX *Self, APTR Void)
+{
+   Self->Operator = MOP_ERODE;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Operator: Set to either 'erode' or 'dilate'.
+Lookup: MOP
+
+*********************************************************************************************************************/
+
+static ERROR MORPHOLOGYFX_GET_Operator(objMorphologyFX *Self, LONG *Value)
+{
+   *Value = Self->Operator;
+   return ERR_Okay;
+}
+
+static ERROR MORPHOLOGYFX_SET_Operator(objMorphologyFX *Self, LONG Value)
+{
+   Self->Operator = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+RadiusX: X radius value.
+
+*********************************************************************************************************************/
+
+static ERROR MORPHOLOGYFX_GET_RadiusX(objMorphologyFX *Self, LONG *Value)
+{
+   *Value = Self->RadiusX;
+   return ERR_Okay;
+}
+
+static ERROR MORPHOLOGYFX_SET_RadiusX(objMorphologyFX *Self, LONG Value)
+{
+   if (Value >= 0) {
+      Self->RadiusX = Value;
+      return ERR_Okay;
+   }
+   else return ERR_OutOfRange;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+RadiusY: Y radius value.
+
+*********************************************************************************************************************/
+
+static ERROR MORPHOLOGYFX_GET_RadiusY(objMorphologyFX *Self, LONG *Value)
+{
+   *Value = Self->RadiusY;
+   return ERR_Okay;
+}
+
+static ERROR MORPHOLOGYFX_SET_RadiusY(objMorphologyFX *Self, LONG Value)
+{
+   if (Value >= 0) {
+      Self->RadiusY = Value;
+      return ERR_Okay;
+   }
+   else return ERR_OutOfRange;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+XMLDef: Returns an SVG compliant XML string that describes the effect.
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR MORPHOLOGYFX_GET_XMLDef(objMorphologyFX *Self, STRING *Value)
+{
+   std::stringstream stream;
+
+   stream << "feMorphology operator=\"";
+
+   if (Self->Operator IS MOP_ERODE) stream << "erode\"";
+   else stream << "dilate\"";
+
+   stream << "radius=\"" << Self->RadiusX << " " << Self->RadiusY << "\"";
+
+   *Value = StrClone(stream.str().c_str());
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+#include "filter_morphology_def.c"
+
+static const FieldDef clMorphologyFXOperator[] = {
+   { "Erode",  MOP_ERODE },
+   { "Dilate", MOP_DILATE },
+   { NULL, 0 }
+};
+
+static const FieldArray clMorphologyFXFields[] = {
+   { "Operator", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clMorphologyFXOperator, (APTR)MORPHOLOGYFX_GET_Operator, (APTR)MORPHOLOGYFX_SET_Operator },
+   { "RadiusX",  FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, (APTR)MORPHOLOGYFX_GET_RadiusX, (APTR)MORPHOLOGYFX_SET_RadiusX },
+   { "RadiusY",  FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, (APTR)MORPHOLOGYFX_GET_RadiusY, (APTR)MORPHOLOGYFX_SET_RadiusY },
+   { "XMLDef",   FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)MORPHOLOGYFX_GET_XMLDef, NULL },
+   END_FIELD
+};
+
+//********************************************************************************************************************
+
+ERROR init_morphfx(void)
+{
+   return(CreateObject(ID_METACLASS, 0, &clMorphologyFX,
+      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
+      FID_SubClassID|TLONG,  ID_MORPHOLOGYFX,
+      FID_Name|TSTRING,      "MorphologyFX",
+      FID_Category|TLONG,    CCF_GRAPHICS,
+      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
+      FID_Actions|TPTR,      clMorphologyFXActions,
+      FID_Fields|TARRAY,     clMorphologyFXFields,
+      FID_Size|TLONG,        sizeof(objMorphologyFX),
+      FID_Path|TSTR,         MOD_PATH,
+      TAGEND));
 }

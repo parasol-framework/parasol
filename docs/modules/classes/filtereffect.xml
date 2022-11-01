@@ -1,0 +1,157 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>FilterEffect</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>FilterEffect is a support class for managing effects hosted by the VectorFilter class.</comment>
+    <version>1</version>
+    <id>79e93e58</id>
+    <idstring>ID_FILTEREFFECT</idstring>
+    <category>Graphics</category>
+    <include>modules/filtereffect.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>The FilterEffect class provides base-class functionality for effect classes.  FilterEffect objects mut not be instantiated directly by the client.</p>
+<p>The documented fields and actions here are integral to all effects that utilise this class.</p></description>
+    <source>
+      <file path="filters/">filter_effect.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>MoveToBack</name>
+      <comment>Move an effect to the front of the VectorFilter's list order.</comment>
+    </action>
+
+    <action>
+      <name>MoveToFront</name>
+      <comment>Move an object to the front of its current location.</comment>
+    </action>
+
+  </actions>
+
+  <fields>
+    <field>
+      <name>Dimensions</name>
+      <comment>Dimension flags are stored here.</comment>
+      <access read="R">Read</access>
+      <type lookup="DMF">INT</type>
+      <description>
+<p>Dimension flags are automatically defined when setting the <field>X</field>, <field>Y</field>, <field>Width</field> and <field>Height</field> fields.</p>
+<types lookup="DMF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Height</name>
+      <comment>Primitive height of the effect area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (Width,Height) field values define the dimensions of the effect within the target clipping area.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Input</name>
+      <comment>Reference to another effect to be used as an input source.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type class="FilterEffect">*FilterEffect</type>
+      <description>
+<p>If another effect should be used as a source input, it must be referenced here.  The <field>SourceType</field> will be automatically set to <code>REFERENCE</code> as a result.</p>
+<p>This field is the SVG equivalent to <code>in</code>.  If the Input is not defined by the client then it will default to the previous effect if available, otherwise the source graphic is used.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Mix</name>
+      <comment>Reference to another effect to be used a mixer with Input.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type class="FilterEffect">*FilterEffect</type>
+      <description>
+<p>If another effect should be used as a mixed source input, it must be referenced here.  The <field>MixType</field> will be automatically set to <code>REFERENCE</code> as a result.</p>
+<p>This field is the SVG equivalent to <code>in2</code>.  It does nothing if the effect does not supported a mixed source input.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MixType</name>
+      <comment>If a secondary mix input is required for the effect, specify it here.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VSF">INT</type>
+      <description>
+<p>Some effects support a secondary mix input for compositing, such as the <class name="CompositeFX">CompositeFX</class> class.  If the mixing source is a reference to another effect, set the <field>Mix</field> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
+<types lookup="VSF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Next</name>
+      <comment>Next filter in the chain.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type class="FilterEffect">*FilterEffect</type>
+    </field>
+
+    <field>
+      <name>Prev</name>
+      <comment>Previous filter in the chain.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type class="FilterEffect">*FilterEffect</type>
+    </field>
+
+    <field>
+      <name>SourceType</name>
+      <comment>Specifies an input source for the effect algorithm, if required.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VSF">INT</type>
+      <description>
+<p>If an effect requires an input source for processing, it must be specified here.  If the source is a reference to another effect, set the <field>Input</field> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
+<types lookup="VSF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Target</name>
+      <comment>Target bitmap for rendering the effect.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type class="Bitmap">*Bitmap</type>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>Primitive width of the effect area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (Width,Height) field values define the dimensions of the effect within the target clipping area.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X</name>
+      <comment>Primitive X coordinate for the effect.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (X,Y) field values define the offset of the effect within the target clipping area.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Y</name>
+      <comment>Primitive Y coordinate for the effect.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (X,Y) field values define the offset of the effect within the target clipping area.</p>
+      </description>
+    </field>
+
+  </fields>
+  <structs>
+  </structs>
+</book>

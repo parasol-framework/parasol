@@ -85,25 +85,25 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
       if (!(field->Flags & FD_ARRAY)) return log.warning(ERR_FieldTypeMismatch);
 
       if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
-         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
-         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
+         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
+         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
 
-      if ((field->Flags & FD_INIT) and (Object->Flags & NF_INITIALISED) and (tlContext->Object != Object)) {
-         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
-         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
+      if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
+         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
 
 
-      prv_access(Object);
+      Object->threadLock();
       ERROR error = field->WriteValue(Object, field, type, Array, Elements);
-      prv_release(Object);
+      Object->threadRelease();
       return error;
    }
    else {
-      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), ((rkMetaClass *)Object->Class)->ClassName);
+      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), ((objMetaClass *)Object->Class)->ClassName);
       return ERR_UnsupportedField;
    }
 }
@@ -174,17 +174,17 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
       // Validation
 
       if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
-         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
-         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
+         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
+         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
-      else if ((field->Flags & FD_INIT) and (Object->Flags & NF_INITIALISED) and (tlContext->Object != Object)) {
-         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
-         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
+      else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
+         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
 
-      prv_access(Object);
+      Object->threadLock();
 
       va_list list;
       va_start(list, FieldID);
@@ -193,7 +193,7 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
             error = field->WriteValue(Object, field, type, va_arg(list, APTR), 0);
          }
          else {
-            if (type & FD_DOUBLE) {
+            if (type & (FD_DOUBLE|FD_FLOAT)) {
                DOUBLE value = va_arg(list, DOUBLE);
                error = field->WriteValue(Object, field, type, &value, 1);
             }
@@ -209,10 +209,10 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
 
       va_end(list);
 
-      prv_release(Object);
+      Object->threadRelease();
    }
    else {
-      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), ((rkMetaClass *)Object->Class)->ClassName);
+      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), ((objMetaClass *)Object->Class)->ClassName);
       error = ERR_UnsupportedField;
    }
 
@@ -283,7 +283,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
 
    parasol::Log log("SetFields");
 
-   prv_access(Object);
+   Object->threadLock();
 
    FIELD field_id;
    while ((field_id = va_arg(List, LARGE)) != TAGEND) {
@@ -295,21 +295,21 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
          // Validation checks
 
          if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
-            if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
-            else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
+            if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
+            else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
 
-            if (flags & (FD_DOUBLE|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
+            if (flags & (FD_DOUBLE|FD_FLOAT|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
             #ifdef _LP64
             else if (flags & FD_PTR) va_arg(List, APTR);
             #endif
             else va_arg(List, LONG);
             continue;
          }
-         else if ((field->Flags & FD_INIT) and (Object->Flags & NF_INITIALISED) and (tlContext->Object != Object)) {
-            if (!field->Name) log.warning("Field %s of class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((rkMetaClass *)Object->Class)->ClassName);
-            else log.warning("Field \"%s\" of class %s is init-only.", field->Name, ((rkMetaClass *)Object->Class)->ClassName);
+         else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+            if (!field->Name) log.warning("Field %s of class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
+            else log.warning("Field \"%s\" of class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
 
-            if (flags & (FD_DOUBLE|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
+            if (flags & (FD_DOUBLE|FD_FLOAT|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
             #ifdef _LP64
             else if (flags & FD_PTR) va_arg(List, APTR);
             #endif
@@ -323,7 +323,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
          if (flags & (FD_POINTER|FD_ARRAY|FD_STRING|FD_FUNCTION)) {
             error = field->WriteValue(source, field, flags, va_arg(List, APTR), 0);
          }
-         else if (flags & FD_DOUBLE) {
+         else if (flags & (FD_DOUBLE|FD_FLOAT)) {
             DOUBLE value = va_arg(List, DOUBLE);
             error = field->WriteValue(source, field, flags, &value, 1);
          }
@@ -337,19 +337,19 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
          }
 
          if ((error) and (error != ERR_NoSupport)) {
-            log.warning("(%s:%d) Failed to set field %s (error #%d).", ((rkMetaClass *)source->Class)->ClassName, source->UniqueID, GET_FIELD_NAME(field_id), error);
-            prv_release(Object);
+            log.warning("(%s:%d) Failed to set field %s (error #%d).", ((objMetaClass *)source->Class)->ClassName, source->UID, GET_FIELD_NAME(field_id), error);
+            Object->threadRelease();
             return error;
          }
       }
       else {
-         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((rkMetaClass *)Object->Class)->ClassName);
-         prv_release(Object);
+         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((objMetaClass *)Object->Class)->ClassName);
+         Object->threadRelease();
          return ERR_UnsupportedField;
       }
    }
 
-   prv_release(Object);
+   Object->threadRelease();
    return ERR_Okay;
 }
 
@@ -401,14 +401,13 @@ ERROR SetFieldsID(OBJECTID ObjectID, ...)
 -FUNCTION-
 SetFieldEval: Sets any field using an abstract string value that is evaluated at runtime.
 
-The SetFieldEval() function is used to set field values using JIT value abstraction.  It is both a simple a powerful
-means of setting field values, at a cost of being the least efficient way of doing so.  It should only be used in
-situations where speed is trumped by convenience.  It is commonly used by script languages and other types of batch
-processing routines that do not prioritise speed.
+The SetFieldEval() function is used to set field values using JIT value abstraction.  It simplifies the setting of
+field values at a cost of low efficiency.  It is intended for use by script languages and batch processing routines
+that do not prioritise speed.
 
-This function includes an analysis feature that will convert named flags and lookups to their correct numeric values.
-For example, setting the Flags field of a surface object with `STICKY|MASK` will result in the references being
-converted to the correct hexadecimal value.
+An integrated analysis feature converts named flags and lookups to their correct numeric values.  For example, setting
+the Flags field of a surface object with `Sticky|Mask` will result in the references being converted to the correct
+hexadecimal value.
 
 Setting object typed fields also enables special support for the commands `self`, `owner` and ID values such as
 `#14592`.  In all other cases the Value string is considered to refer to an object's name.  The `self` keyword
@@ -492,41 +491,41 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
          struct acSetVar var = { .Field = FieldName, .Value = Value };
          return Action(AC_SetVar, Object, &var);
       }
-      else log.warning("Object %d (%s) does not support field '%s' or variable fields.", Object->UniqueID, ((rkMetaClass *)Object->Class)->ClassName, FieldName);
+      else log.warning("Object %d (%s) does not support field '%s' or variable fields.", Object->UID, ((objMetaClass *)Object->Class)->ClassName, FieldName);
 
       return ERR_Search;
    }
 
    if ((!(Field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
-      log.warning("Field \"%s\" of class %s is not writable.", FieldName, ((rkMetaClass *)Object->Class)->ClassName);
+      log.warning("Field \"%s\" of class %s is not writable.", FieldName, ((objMetaClass *)Object->Class)->ClassName);
       return ERR_NoFieldAccess;
    }
 
-   if ((Field->Flags & FD_INIT) and (Object->Flags & NF_INITIALISED) and (tlContext->Object != Object)) {
-      log.warning("Field \"%s\" in class %s is init-only.", FieldName, ((rkMetaClass *)Object->Class)->ClassName);
+   if ((Field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+      log.warning("Field \"%s\" in class %s is init-only.", FieldName, ((objMetaClass *)Object->Class)->ClassName);
       return ERR_NoFieldAccess;
    }
 
    if (!Value[0]) Value = NULL;
 
    ERROR error;
-   prv_access(Object);
+   Object->threadLock();
    if (Field->Flags & FD_ARRAY) { // CSV values
       if (!Value) {
-         prv_release(Object);
+         Object->threadRelease();
          return ERR_NoData;
       }
       error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
    }
    else if (Field->Flags & FD_STRING) {
-      if (!Value) log.debug("Warning: Sending a NULL string to field %s, class %s", Field->Name, ((rkMetaClass *)Object->Class)->ClassName);
+      if (!Value) log.debug("Warning: Sending a NULL string to field %s, class %s", Field->Name, ((objMetaClass *)Object->Class)->ClassName);
       error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
    }
    else if (Field->Flags & FD_FUNCTION) {
       error = ERR_FieldTypeMismatch;
    }
    else if (Value) {
-      if (Field->Flags & FD_DOUBLE) {
+      if (Field->Flags & (FD_DOUBLE|FD_FLOAT)) {
          DOUBLE dbl = StrToFloat(Value);
          for (i=0; Value[i]; i++);
          if (Value[i-1] IS '%') {
@@ -549,17 +548,18 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
          // If the string is enclosed in square brackets [], then they will be ignored.
 
          if (*Value IS '#')                      object_id = (LONG)StrToInt(Value+1);
-         else if (!StrMatch("self", Value))      object_id = Object->UniqueID;
+         else if (!StrMatch("self", Value))      object_id = Object->UID;
          else if (!StrMatch("owner", Value))     object_id = Object->OwnerID;
          else if ((!*Value) or ((Value[0] IS '0') and (!Value[1]))) object_id = 0;
          else {
             OBJECTID array[30];
-            if (!FastFindObject(Value, 0, array, ARRAYSIZE(array), &i)) {
+            LONG count = ARRAYSIZE(array);
+            if (!FindObject(Value, 0, FOF_INCLUDE_SHARED, array, &count)) {
                object_id = array[i-1];
             }
             else {
                log.warning("Object \"%s\" could not be found.", Value);
-               prv_release(Object);
+               Object->threadRelease();
                return ERR_Search;
             }
          }
@@ -595,12 +595,12 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
       else error = ERR_UnrecognisedFieldType;
    }
    else if (Field->Flags & FD_VARIABLE) {
-      if (!Value) log.msg("Warning: Sending a NULL string to field %s, class %s", Field->Name, ((rkMetaClass *)Object->Class)->ClassName);
+      if (!Value) log.msg("Warning: Sending a NULL string to field %s, class %s", Field->Name, ((objMetaClass *)Object->Class)->ClassName);
       error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
    }
    else error = ERR_UnrecognisedFieldType;
 
-   prv_release(Object);
+   Object->threadRelease();
    return error;
 }
 
@@ -685,7 +685,7 @@ ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LO
 {
    parasol::Log log("WriteField");
 
-   //log.trace("[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", ((rkMetaClass *)Object->Class)->ClassName, Object->UniqueID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
+   //log.trace("[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", ((objMetaClass *)Object->Class)->ClassName, Object->UID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
 
    if (!flags) flags = Field->Flags;
 
@@ -694,7 +694,7 @@ ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LO
       if (Field->Flags & FD_ARRAY)         error = writeval_array(Object, Field, flags, Data, Elements);
       else if (Field->Flags & FD_LONG)     error = writeval_long(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_LARGE)    error = writeval_large(Object, Field, flags, Data, 0);
-      else if (Field->Flags & FD_DOUBLE)   error = writeval_double(Object, Field, flags, Data, 0);
+      else if (Field->Flags & (FD_DOUBLE|FD_FLOAT)) error = writeval_double(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_FUNCTION) error = writeval_function(Object, Field, flags, Data, 0);
       else if (Field->Flags & (FD_POINTER|FD_STRING)) error = writeval_ptr(Object, Field, flags, Data, 0);
       else log.warning("Unrecognised field flags $%.8x.", Field->Flags);
@@ -708,7 +708,7 @@ ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LO
       else if (Field->Flags & FD_ARRAY)    return setval_array(Object, Field, flags, Data, Elements);
       else if (Field->Flags & FD_FUNCTION) return setval_function(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_LONG)     return setval_long(Object, Field, flags, Data, 0);
-      else if (Field->Flags & FD_DOUBLE)   return setval_double(Object, Field, flags, Data, 0);
+      else if (Field->Flags & (FD_DOUBLE|FD_FLOAT))   return setval_double(Object, Field, flags, Data, 0);
       else if (Field->Flags & (FD_POINTER|FD_STRING)) return setval_pointer(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_LARGE)    return setval_large(Object, Field, flags, Data, 0);
       else return ERR_FieldTypeMismatch;
@@ -766,13 +766,13 @@ static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
             int64 = StrToInt(str);
          }
          else if (Field->Arg) {
-            WORD reverse = FALSE;
+            bool reverse = false;
             WORD op      = OP_OVERWRITE;
             while (*str) {
                if (*str IS '&')      { op = OP_AND;       str++; }
                else if (*str IS '!') { op = OP_OR;        str++; }
                else if (*str IS '^') { op = OP_OVERWRITE; str++; }
-               else if (*str IS '~') { reverse = TRUE;    str++; }
+               else if (*str IS '~') { reverse = true;    str++; }
                else {
                   // Find out how long this particular flag name is
                   for (j=0; (str[j]) and (str[j] != '|'); j++);
@@ -792,7 +792,7 @@ static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
                }
             }
 
-            if (reverse IS TRUE) int64 = ~int64;
+            if (reverse) int64 = ~int64;
 
             // Get the current flag values from the field if special ops are requested
 
@@ -812,11 +812,11 @@ static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
       if (Field->Flags & FD_LONG) {
          int32 = int64;
          Flags = FD_LONG;
-         Data = &int32;
+         Data  = &int32;
       }
       else if (Field->Flags & FD_LARGE) {
          Flags = FD_LARGE;
-         Data= &int64;
+         Data  = &int64;
       }
       else return ERR_FieldTypeMismatch;
    }
@@ -858,7 +858,7 @@ static ERROR writeval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
    LONG *offset = (LONG *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_LONG)        *offset = *((LONG *)Data);
    else if (Flags & FD_LARGE)  *offset = (LONG)(*((LARGE *)Data));
-   else if (Flags & FD_DOUBLE) *offset = F2I(*((DOUBLE *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) *offset = (LONG)StrToInt((STRING)Data);
    else return ERR_FieldTypeMismatch;
    return ERR_Okay;
@@ -869,7 +869,7 @@ static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
    LARGE *offset = (LARGE *)((BYTE *)Object + Field->Offset);
    if (Flags & FD_LARGE)       *offset = *((LARGE *)Data);
    else if (Flags & FD_LONG)   *offset = *((LONG *)Data);
-   else if (Flags & FD_DOUBLE) *offset = F2I(*((DOUBLE *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) *offset = StrToInt((STRING)Data);
    else return ERR_FieldTypeMismatch;
    return ERR_Okay;
@@ -878,7 +878,7 @@ static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
 static ERROR writeval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    DOUBLE *offset = (DOUBLE *)((BYTE *)Object + Field->Offset);
-   if (Flags & FD_DOUBLE)      *offset = *((DOUBLE *)Data);
+   if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = *((DOUBLE *)Data);
    else if (Flags & FD_LONG)   *offset = *((LONG *)Data);
    else if (Flags & FD_LARGE)  *offset = (*((LARGE *)Data));
    else if (Flags & FD_STRING) *offset = StrToFloat((STRING)Data);
@@ -945,7 +945,7 @@ static ERROR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
       else var.Large = *((LARGE *)Data);
       error = ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
    }
-   else if (Flags & FD_DOUBLE) {
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) {
       var.Type = FD_DOUBLE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
       var.Double = *((DOUBLE *)Data);
       error = ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
@@ -994,7 +994,10 @@ static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
       LONG src_type = Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT);
       if (src_type) {
          LONG dest_type = Field->Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT);
-         if (!(src_type & dest_type)) return ERR_FieldTypeMismatch;
+         if (!(src_type & dest_type)) {
+            RESTORE_CONTEXT(Object);
+            return ERR_FieldTypeMismatch;
+         }
       }
 
       error = ((ERROR (*)(APTR, APTR, LONG))(Field->SetValue))(Object, (APTR)Data, Elements);
@@ -1066,7 +1069,7 @@ static ERROR setval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, 
    LONG int32;
    ERROR error;
    if (Flags & FD_LARGE)       int32 = (LONG)(*((LARGE *)Data));
-   else if (Flags & FD_DOUBLE) int32 = F2I(*((DOUBLE *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) int32 = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) int32 = StrToInt((STRING)Data);
    else if (Flags & FD_LONG)   int32 = *((LONG *)Data);
    else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
@@ -1086,7 +1089,7 @@ static ERROR setval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
    if (Flags & FD_LONG)        float64 = *((LONG *)Data);
    else if (Flags & FD_LARGE)  float64 = (DOUBLE)(*((LARGE *)Data));
    else if (Flags & FD_STRING) float64 = StrToFloat((CSTRING)Data);
-   else if (Flags & FD_DOUBLE) float64 = *((DOUBLE *)Data);
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) float64 = *((DOUBLE *)Data);
    else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
 
    ERROR error = ((ERROR (*)(APTR, DOUBLE))(Field->SetValue))(Object, float64);
@@ -1114,7 +1117,7 @@ static ERROR setval_pointer(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
       IntToStr(*((LARGE *)Data), buffer, sizeof(buffer));
       error = ((ERROR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
    }
-   else if (Flags & FD_DOUBLE) {
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) {
       char buffer[64];
       IntToStr(*((DOUBLE *)Data), buffer, sizeof(buffer));
       error = ((ERROR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
@@ -1133,7 +1136,7 @@ static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
    SET_CONTEXT(Object, Field, &ctx);
 
    if (Flags & FD_LONG)        int64 = *((LONG *)Data);
-   else if (Flags & FD_DOUBLE) int64 = F2I(*((DOUBLE *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) int64 = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) int64 = StrToInt((CSTRING)Data);
    else if (Flags & FD_LARGE)  int64 = *((LARGE *)Data);
    else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
@@ -1158,7 +1161,7 @@ void optimise_write_field(Field *Field)
       if (Field->Flags & FD_ARRAY)         Field->WriteValue = writeval_array;
       else if (Field->Flags & FD_LONG)     Field->WriteValue = writeval_long;
       else if (Field->Flags & FD_LARGE)    Field->WriteValue = writeval_large;
-      else if (Field->Flags & FD_DOUBLE)   Field->WriteValue = writeval_double;
+      else if (Field->Flags & (FD_DOUBLE|FD_FLOAT)) Field->WriteValue = writeval_double;
       else if (Field->Flags & FD_FUNCTION) Field->WriteValue = writeval_function;
       else if (Field->Flags & (FD_POINTER|FD_STRING)) Field->WriteValue = writeval_ptr;
       else log.warning("Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);
@@ -1172,7 +1175,7 @@ void optimise_write_field(Field *Field)
       else if (Field->Flags & FD_ARRAY)    Field->WriteValue = setval_array;
       else if (Field->Flags & FD_FUNCTION) Field->WriteValue = setval_function;
       else if (Field->Flags & FD_LONG)     Field->WriteValue = setval_long;
-      else if (Field->Flags & FD_DOUBLE)   Field->WriteValue = setval_double;
+      else if (Field->Flags & (FD_DOUBLE|FD_FLOAT))   Field->WriteValue = setval_double;
       else if (Field->Flags & (FD_POINTER|FD_STRING)) Field->WriteValue = setval_pointer;
       else if (Field->Flags & FD_LARGE)    Field->WriteValue = setval_large;
       else log.warning("Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);

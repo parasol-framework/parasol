@@ -15,8 +15,8 @@ Please refer to it for further information on licensing.
 
 CSTRING ProgName      = "Fluid";
 CSTRING ProgAuthor    = "Paul Manias";
-CSTRING ProgDate      = "September 2020";
-CSTRING ProgCopyright = "Copyright Paul Manias © 2000-2020";
+CSTRING ProgDate      = "February 2022";
+CSTRING ProgCopyright = "Copyright Paul Manias © 2000-2022";
 LONG  ProgDebug = 0;
 FLOAT ProgCoreVersion = VER_CORE;
 
@@ -51,12 +51,10 @@ static void set_script_args(objScript *Script, CSTRING *Args)
    char argbuffer[100];
    STRING argname = argbuffer;
 
-   ULONG i;
-   for (i=0; Args[i]; i++) {
-
+   for (ULONG i=0; Args[i]; i++) {
       ULONG j = 0, k = 0;
       while (Args[i][k] IS '-') k++;
-      while ((Args[i][k]) AND (Args[i][k] != '=') AND (j < sizeof(argbuffer)-10)) {
+      while ((Args[i][k]) and (Args[i][k] != '=') and (j < sizeof(argbuffer)-10)) {
          argname[j++] = Args[i][k++];
       }
       argname[j] = 0;
@@ -70,19 +68,19 @@ static void set_script_args(objScript *Script, CSTRING *Args)
          SetVar(Script, argname, "1");
          continue;
       }
-      else if ((Args[i+1][0] IS '-') AND (Args[i+1][1] IS '-')) {
+      else if ((Args[i+1][0] IS '-') and (Args[i+1][1] IS '-')) {
          SetVar(Script, argname, "1");
          continue;
       }
       else value = Args[++i];
 
-      if ((value[0] IS '{') AND (value[1] <= 0x20)) {
+      if ((value[0] IS '{') and (value[1] <= 0x20)) {
          // Array definition, e.g. files={ file1.txt file2.txt }
          // This will be converted to files(0)=file.txt files(1)=file2.txt
 
          i++;
          LONG arg_index = 0;
-         while ((Args[i]) AND (Args[i][0] != '}')) {
+         while ((Args[i]) and (Args[i][0] != '}')) {
             StrFormat(argname+al, sizeof(argbuffer)-al, "(%d)", arg_index);
             SetVar(Script, argname, Args[i]);
             arg_index++;
@@ -105,6 +103,7 @@ static void set_script_args(objScript *Script, CSTRING *Args)
 
 static LONG run_script(objScript *Script)
 {
+   parasol::Log log(__FUNCTION__);
    DOUBLE start_time = (DOUBLE)PreciseTime() / 1000000.0;
    ERROR error;
 
@@ -115,12 +114,17 @@ static LONG run_script(objScript *Script)
             print("Script executed in %f seconds.\n\n", end_time - start_time);
          }
 
-         if (Script->Error) return -1;
+         if (Script->Error) {
+            log.msg("Script returned an error code of %d: %s", Script->Error, GetErrorMsg(Script->Error));
+            return -1;
+         }
 
          STRING msg;
-         if ((!GetString(Script, FID_ErrorString, &msg)) AND (msg)) return -1;
-
-         return 0;
+         if ((!GetString(Script, FID_ErrorString, &msg)) and (msg)) {
+            log.msg("Script returned error message: %s", msg);
+            return -1;
+         }
+         else return 0;
       }
       else print("Script failed during processing.  Use the --log-error option to examine the failure.");
    }
@@ -167,7 +171,7 @@ static ERROR process_args(void)
    CSTRING *args;
    LONG i;
 
-   if ((!GetPointer(CurrentTask(), FID_Parameters, &args)) AND (args)) {
+   if ((!GetPointer(CurrentTask(), FID_Parameters, &args)) and (args)) {
       for (i=0; args[i]; i++) {
          if (!StrMatch(args[i], "--help")) {
             // Print help for the user
@@ -212,7 +216,7 @@ static ERROR process_args(void)
             }
          }
          else {
-            if ((args[i][0] IS '-') AND (args[i][1] IS '-')) {
+            if ((args[i][0] IS '-') and (args[i][1] IS '-')) {
                glArgs = args + i;
             }
             else {
@@ -244,9 +248,11 @@ static LONG glScriptReceivedMsg = 0;
 
 static void read_stdin(objTask *Task, APTR Buffer, LONG Size, ERROR Status)
 {
+   parasol::Log log(__FUNCTION__);
+
    if (Status IS ERR_Finished) {
       SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
-      LogMsg("Input pipe closed.");
+      log.msg("Input pipe closed.");
       return;
    }
 
@@ -277,7 +283,7 @@ static void read_stdin(objTask *Task, APTR Buffer, LONG Size, ERROR Status)
    if (glScriptBuffer[glScriptBufferLength-1] IS 0x1a) { // Ctrl-Z
       glScriptBuffer[glScriptBufferLength-1] = 0;
       SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
-      LogMsg("EOF received.");
+      log.msg("EOF received.");
       return;
    }
 }
@@ -308,7 +314,7 @@ int main(int argc, CSTRING *argv)
    if (!process_args()) {
       if (glTargetFile) {
          LONG type;
-         if ((AnalysePath(glTargetFile, &type) != ERR_Okay) OR (type != LOC_FILE)) {
+         if ((AnalysePath(glTargetFile, &type) != ERR_Okay) or (type != LOC_FILE)) {
             print("File '%s' does not exist.", glTargetFile);
             result = -1;
          }

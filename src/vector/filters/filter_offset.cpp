@@ -1,23 +1,115 @@
+/*********************************************************************************************************************
 
-//****************************************************************************
-// Create a new offset effect.  Typical usage involves specifying the input and a result that a subsequent filter can
-// use for applying an effect.
+-CLASS-
+OffsetFX: A filter effect that offsets the position of an input source.
 
-static ERROR create_offset(objVectorFilter *Self, struct XMLTag *Tag)
+This filter offsets the input image relative to its current position in the image space by the specified vector
+of `(XOffset,YOffset)`.
+
+-END-
+
+*********************************************************************************************************************/
+
+class objOffsetFX : public extFilterEffect {
+   public:
+   LONG XOffset, YOffset;
+};
+
+//********************************************************************************************************************
+
+static ERROR OFFSETFX_Draw(objOffsetFX *Self, struct acDraw *Args)
 {
-   struct effect *filter;
-
-   if (!(filter = add_effect(Self, FE_OFFSET))) return ERR_AllocMemory;
-
-   for (LONG a=1; a < Tag->TotalAttrib; a++) {
-      CSTRING val = Tag->Attrib[a].Value;
-      if (!val) continue;
-      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
-      switch(hash) {
-         case SVF_DX: filter->XOffset = StrToInt(val); break;
-         case SVF_DY: filter->YOffset = StrToInt(val); break;
-         default: fe_default(Self, filter, hash, val); break;
-      }
+   objBitmap *inBmp;
+   LONG dx = F2T((DOUBLE)Self->XOffset * Self->Filter->ClientVector->Transform.sx);
+   LONG dy = F2T((DOUBLE)Self->YOffset * Self->Filter->ClientVector->Transform.sy);
+   if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
+      gfxCopyArea(inBmp, Self->Target, 0, 0, 0, inBmp->Width, inBmp->Height, dx, dy);
+      return ERR_Okay;
    }
+   else return ERR_Failed;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+XOffset: The delta X coordinate for the input graphic.
+
+The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.
+
+*********************************************************************************************************************/
+
+static ERROR OFFSETFX_GET_XOffset(objOffsetFX *Self, LONG *Value)
+{
+   *Value = Self->XOffset;
    return ERR_Okay;
+}
+
+static ERROR OFFSETFX_SET_XOffset(objOffsetFX *Self, LONG Value)
+{
+   Self->XOffset = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+YOffset: The delta Y coordinate for the input graphic.
+
+The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.
+
+*********************************************************************************************************************/
+
+static ERROR OFFSETFX_GET_YOffset(objOffsetFX *Self, LONG *Value)
+{
+   *Value = Self->YOffset;
+   return ERR_Okay;
+}
+
+static ERROR OFFSETFX_SET_YOffset(objOffsetFX *Self, LONG Value)
+{
+   Self->YOffset = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+XMLDef: Returns an SVG compliant XML string that describes the effect.
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR OFFSETFX_GET_XMLDef(objOffsetFX *Self, STRING *Value)
+{
+   std::stringstream stream;
+   stream << "feOffset dx=\"" << Self->XOffset << "\" dy=\"" << Self->YOffset << "\"";
+   *Value = StrClone(stream.str().c_str());
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+#include "filter_offset_def.c"
+
+static const FieldArray clOffsetFXFields[] = {
+   { "XOffset", FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, (APTR)OFFSETFX_GET_XOffset, (APTR)OFFSETFX_SET_XOffset },
+   { "YOffset", FDF_VIRTUAL|FDF_LONG|FDF_RW, 0, (APTR)OFFSETFX_GET_YOffset, (APTR)OFFSETFX_SET_YOffset },
+   { "XMLDef",  FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)OFFSETFX_GET_XMLDef, NULL },
+   END_FIELD
+};
+
+//********************************************************************************************************************
+
+ERROR init_offsetfx(void)
+{
+   return(CreateObject(ID_METACLASS, 0, &clOffsetFX,
+      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
+      FID_SubClassID|TLONG,  ID_OFFSETFX,
+      FID_Name|TSTRING,      "OffsetFX",
+      FID_Category|TLONG,    CCF_GRAPHICS,
+      FID_Actions|TPTR,      clOffsetFXActions,
+      FID_Fields|TARRAY,     clOffsetFXFields,
+      FID_Size|TLONG,        sizeof(objOffsetFX),
+      FID_Path|TSTR,         MOD_PATH,
+      TAGEND));
 }

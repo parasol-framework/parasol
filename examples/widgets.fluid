@@ -8,16 +8,22 @@ A demonstration of standard widgets
    require 'gui/fontdialog'
    require 'gui/dialog'
    require 'gui/filedialog'
+   require 'gui/icon'
+   require 'gui/input'
+   require 'gui/button'
+   require 'gui/checkbox'
+   require 'gui/combobox'
+   require 'gui/window'
+   require 'vfx'
 
-   local win  = obj.new('window', { title='Widget Examples', insideWidth=600, insideHeight=400 })
-
-   local y = win.topMargin
+   local win  = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400, center=true })
+   local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
 function itemCallback(ID, Name)
    print('Callback: ' .. ID .. ', ' .. Name)
 end
 
-// This callback is activated whenever a menu is activated by the user.
+-- This callback is activated whenever a menu is activated by the user.
 
 function menuCallback(ID, Name)
    print('Callback: ' .. ID .. ', ' .. Name)
@@ -27,13 +33,20 @@ function itemClicked(Menu, Item)
 
 end
 
-// This is a universal callback for any menu item that is activated by the user.
+function widgetFocus(Widget)
+   --if Widget.effect then return end
+   --Widget.effect = vfx.shake(nz(Widget.inputViewport, Widget.viewport), 0.2, 0, 0.2, function(Effect)
+   --   Widget.effect = nil
+   --end)
+end
+
+-- This is a universal callback for any menu item that is activated by the user.
 
 function popupClicked(Menu, Item)
    print(Item.item)
 end
 
-   menubar = gui.menubar(win.surface, {
+   local menubar = gui.menubar(viewport, {
       createItems = function(Bar)
          Bar.addItem(1, 'File', 'devices/harddisk', menuCallback, {
             { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=itemClicked },
@@ -60,19 +73,18 @@ end
       end
    })
 
-   y = menubar.surface.height
+   local y = menubar.viewport.height
 
-   lToolbar = gui.toolbar(win.surface, {
-      xOffset = 0,
-      hoverColour  = '#00000030',
-      iconSize = 22,
-      y = y,
+   lToolbar = gui.toolbar(viewport, {
+      xOffset     = 0,
+      y           = y,
+      iconSize    = 22,
       createItems = function(Bar)
          Bar.addGroup(1, 'Navigation', 2)
          Bar.addItem(2, 'Root', 'Root Directory', 'devices/harddisk', itemCallback)
          Bar.addItem(3, 'Parent', 'Parent Folder', 'arrows/arrow_nw', itemCallback)
          Bar.addGroup(4, 'Clipboard', 3)
-         Bar.addItem(5, 'Cut', 'Cut', 'tools/cffut', itemCallback)
+         Bar.addItem(5, 'Cut', 'Cut', 'tools/not_an_icon', itemCallback)
          Bar.addItem(6, 'Copy', 'Copy', 'tools/copy', itemCallback)
          Bar.addItem(7, 'Paste', 'Paste', 'tools/paste', itemCallback)
          Bar.addGroup(8, 'Actions', 3)
@@ -86,11 +98,11 @@ end
       end
    })
 
-   y = y + lToolbar.surface.height + 8
+   y = y + lToolbar.viewport.height + 8
 
    local popupMenu = gui.menu({
-      x = 30,
-      y = 50,
+      x     = 30,
+      y     = 50,
       popup = true,
       config = {
          { group='Files' },
@@ -105,117 +117,241 @@ end
       }
    })
 
-   input.subscribe(JTYPE_BUTTON, win.surface, 0, function(Surface, Msg)
-      if (Msg.type == JET_BUTTON_2) then
-         if (Msg.value == 0) then
+   input.subscribe(JTYPE_BUTTON, win.surface, 0, function(Surface, Events)
+      if (Events.type == JET_BUTTON_2) then
+         if (Events.value == 0) then
             popupMenu.show()
          end
       end
    end)
 
-   local text = win.new('text', { x=win.leftMargin, y=y, string='Text Widget', face='Open Sans:20' })
-   y = y + text.textHeight + 8
+   local text = viewport.new('vectortext', {
+      x=win.margins.left, y=y, string='Text Widget', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
+   })
+   text.y = y + text.font.height
+   y = y + text.font.height + 8
 
-   local msgButton = win.new('button', { text='Message Box', x=win.leftMargin, y=y, icon='items/question',
-      feedback = function()
-         gui.dialog.message({
-            modal = true,
-            image = 'icons:items/warning',
-            title = 'Hamlet has a question',
-            message = 'To be or not to be?',
-            userInput = 'That is the question',
-            checkboxLabel = '\'Tis nobler to suffer',
-            options = {
-               { id=1, text='To be', icon='items/checkmark' },
-               { id=2, text='Not to be', icon='items/cancel' }
-            },
-            feedback = function(Dialog, Response, State)
-               if Response then
-                  print('User selected option ' .. Response.id)
-               end
-               if State then
-                  if State.input then
-                     print('User entered string: ' .. State.input)
+   local msgButton = gui.button({
+      target = viewport,
+      text   = 'Message Box',
+      x      = win.margins.left,
+      y      = y,
+      icon   = 'items/question',
+      events = {
+         activate = function(Widget)
+            gui.dialog.message({
+               modal         = true,
+               image         = 'icons:items/warning',
+               title         = 'Hamlet has a question',
+               message       = 'To be or not to be?',
+               userInput     = 'That is the question',
+               checkboxLabel = '\'Tis nobler to suffer',
+               options = {
+                  { id=1, text='To be', icon='items/checkmark' },
+                  { id=2, text='Not to be', icon='items/cancel' }
+               },
+               feedback = function(Dialog, Response, State)
+                  if Response then
+                     print('User selected option ' .. Response.id)
                   end
-                  if State.checkbox then
-                     print('User activated the checkbox')
+                  if State then
+                     if State.input then
+                        print('User entered string: ' .. State.input)
+                     end
+                     if State.checkbox then
+                        print('User activated the checkbox')
+                     end
                   end
                end
-            end
-         })
-      end
+            })
+         end,
+         focus = widgetFocus
+      }
    })
 
-   local colourButton = win.new('button', { text='Select Colour', x=msgButton.right + 4, y=y, icon='tools/palette',
-      feedback = function()
-         gui.dialog.colour({
-            modal = true,
-            colour = '255,0,0',
-            feedback = function(Colour)
-               if (not Colour) then
-                  print('Dialog was cancelled.')
-                  return
-               end
+   local colourButton = gui.button({
+      target = viewport,
+      text   = 'Select Colour',
+      x      = msgButton.viewport.x + msgButton.viewport.width + 4,
+      y      = y,
+      icon   = 'tools/palette',
+      events = {
+         activate = function(Widget)
+            gui.dialog.colour({
+               modal  = true,
+               colour = '255,0,0',
+               feedback = function(Colour)
+                  if (not Colour) then
+                     print('Dialog was cancelled.')
+                     return
+                  end
 
-               print('The user selected colour is ' .. Colour)
-            end
-         })
-      end
+                  print('The user selected colour is ' .. Colour)
+               end
+            })
+         end,
+         focus = widgetFocus
+      }
    })
 
-   local fontButton = win.new('button', { text='Select Font', x=colourButton.right + 4, y=y, icon='items/font',
-      feedback = function()
-         gui.dialog.font({
-            okText     = 'Select Font',
-            cancelText = 'Exit',
-            modal      = true,
-            feedback = function(Dialog, Accepted)
-               if (not Accepted) then
-                  print('Dialog was cancelled.')
-               else
-                  print("The user selected '" .. Dialog.face .. "', size " .. Dialog.size .. ", style '" .. Dialog.style .. "'")
-                  print("This can be compacted to '" .. Dialog.compactFace .. "'")
+   local fontButton = gui.button({
+      target = viewport,
+      text   = 'Select Font',
+      x      = colourButton.viewport.x + colourButton.viewport.width + 4,
+      y      = y,
+      icon   = 'items/font',
+      events = {
+         activate = function(Widget)
+            gui.dialog.font({
+               okText     = 'Select Font',
+               cancelText = 'Exit',
+               modal      = true,
+               feedback = function(Dialog, Accepted)
+                  if (not Accepted) then
+                     print('Dialog was cancelled.')
+                  else
+                     print("The user selected '" .. Dialog.face .. "', size " .. Dialog.size .. ", style '" .. Dialog.style .. "'")
+                     print("This can be compacted to '" .. Dialog.compactFace .. "'")
+                  end
                end
-            end
-         })
-      end
+            })
+         end,
+         focus = widgetFocus
+      }
    })
 
-   local fileButton = win.new('button', { text='Select File', x=fontButton.right + 4, y=y, icon='folders/folder',
-      feedback = function()
-         gui.dialog.file({
-            filterList = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
-            okText     = 'Select File',
-            cancelText = 'Exit',
-            modal      = true,
-            warnExists = true,
-            multiSelect = true,
-            feedback = function(Dialog, Path, Files)
-               if (Files == nil) then
-                  print('Dialog was cancelled.')
-                  return
-               end
+   local fileButton = gui.button({
+      target = viewport,
+      text   = 'Select File',
+      x      = fontButton.viewport.x + fontButton.viewport.width + 4,
+      y      = y,
+      icon   = 'folders/folder',
+      events = {
+         activate = function(Widget)
+            gui.dialog.file({
+               filterList  = { { name='All Files', pattern='*' }, { name='MP3 Audio Files', pattern='*.mp3' }, { name='Text Files', pattern='*.txt' } },
+               okText      = 'Select File',
+               cancelText  = 'Exit',
+               modal       = true,
+               warnExists  = true,
+               multiSelect = true,
+               feedback = function(Dialog, Path, Files)
+                  if (Files == nil) then
+                     print('Dialog was cancelled or no files selected.')
+                     return
+                  end
 
-               for k, v in ipairs(Files) do
-                   print(k, ' = ', nz(Path,'') .. v)
+                  for k, v in ipairs(Files) do
+                      print(k, ' = ', nz(Path,'') .. v.filename)
+                  end
                end
-            end
-         })
-      end
+            })
+         end,
+         focus = widgetFocus
+      }
    })
 
-   y = y + msgButton.height + 8
+   y = y + msgButton.viewport.height + 8
 
-   local checkbox = win.new('checkbox', { label='Checkbox', x=win.leftMargin, y=y })
-   y = y + checkbox.height + 8
+   local checkbox = gui.checkbox({
+      target = viewport,
+      label  = 'Checkbox',
+      align = 'left',
+      x = win.margins.left,
+      y = y,
+      events = {
+         activate = function(Widget)
+         end,
+         focus = widgetFocus
+      }
+   })
+   y = y + checkbox.viewport.height + 8
 
-   local combobox = win.new('combobox', { label='Combobox', x=win.leftMargin, y=y, string='Your text here' })
-   y = y + combobox.height + 8
+   local combobox = gui.combobox({
+      target = viewport,
+      label  = 'Combobox:',
+      string = 'Your text here',
+      x = win.margins.left, y = y,
+      allowCustom = true,
+      items = {
+         { group='Office' },
+         { item='Address Book', icon='office/addressbook' },
+         { item='Inbox', icon='office/cabinet_in' },
+         { item='Tasks', icon='office/tasks' },
+         { item='Finances', icon='office/money' },
+         { group='Weather' },
+         { item='Snow', icon='weather/snow' },
+         { item='Thunder', icon='weather/thunder' }
+      },
+      events = {
+         activate = function(Widget)
+         end,
+         focus = widgetFocus
+      }
+   })
+   y = y + combobox.viewport.height + 8
 
-   local input = win.new('input', { label='Inputbox', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here' })
-   y = y + input.height + 8
+   local input = gui.input({
+      target = viewport,
+      x      = win.margins.left,
+      y      = y,
+      width  = 260,
+      label  = 'Inputbox: ',
+      text   = 'Your text here',
+      events = {
+         activate = function(Widget, Event)
+            print('Input state set to "' .. nz(Event.state,'NIL') .. '", text "' .. nz(Event.text,'NIL') .. '"')
+         end,
+         focus = widgetFocus
+      }
+   })
+   y = y + input.viewport.height + 16
 
-   win.acShow()
+   gui.icon({
+      target = viewport,
+      x      = 20,
+      y      = y,
+      image  = 'time/alarm',
+      text   = 'Alarm',
+      size   = 80,
+      events = {
+         show = function(Icon)
+            vfx.fadeIn(Icon.viewport, 1.0, 0.1)
+         end,
+         activate = function(Icon)
+            if Icon.effect then return end
+            Icon.effect = vfx.shake(Icon.viewport, 1.0, 0, 1.0, function(Effect)
+               Icon.effect = nil
+            end)
+         end
+      }
+   })
 
-   processMessages(-1) // Will sleep until the window close widget sends MSGID_QUIT
+   gui.icon({
+      target = viewport,
+      x      = 120,
+      y      = y,
+      image  = 'programs/filemanager',
+      text   = 'Wilhelm\'s House',
+      events = {
+         show = function(Icon)
+            vfx.rotate(Icon.viewport, 0.8, 0)
+            vfx.zoomIn(Icon.viewport, 0.4, 0.3)
+         end,
+         activate = function(Icon)
+            if Icon.effect then return end
+
+            Icon.effect = vfx.chain({
+               vfx.rotate(Icon.viewport, 0.8),
+               vfx.zoomOut(Icon.viewport, 0.8)
+            }, function()
+               Icon.viewport.acFree()
+               Icon.viewport = nil
+            end)
+         end
+      }
+   })
+
+   win:show()
+   processing.sleep() -- Will sleep until the window sends MSGID_QUIT
 

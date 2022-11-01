@@ -5,11 +5,7 @@
 //
 //   General include file for all programs.
 //
-//   Copyright 1996-2020 © Paul Manias
-
-#ifdef  __cplusplus
-extern "C" {
-#endif
+//   Copyright 1996-2022 © Paul Manias
 
 #ifndef PLATFORM_CONFIG_H
 #include <parasol/config.h>
@@ -37,6 +33,10 @@ extern "C" {
 
 #ifndef __GNUC__
 #define __attribute__(a)
+#endif
+
+#ifdef  __cplusplus
+extern "C" {
 #endif
 
 //****************************************************************************
@@ -109,6 +109,15 @@ extern "C" {
   #define PF64() "%I64d"
 #else
   #define PF64() "%lld"
+#endif
+
+// Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
+// in to debug builds.
+
+#ifdef DEBUG
+ #define DEBUG_BREAK asm("int $3");
+#else
+ #define DEBUG_BREAK
 #endif
 
 /*****************************************************************************
@@ -301,51 +310,18 @@ struct OpenInfo {
 #define TDOUBLE   0x8000000000000000LL
 #define TLONG     0x4000000000000000LL
 #define TVAR      0x2000000000000000LL
+#define TFLOAT    0x1000000000000000LL // NB: Floats are upscaled to doubles when passed as v-args.
 #define TPTR      0x0800000000000000LL
 #define TLARGE    0x0400000000000000LL
 #define TFUNCTION 0x0200000000000000LL
 #define TSTR      0x0080000000000000LL
 #define TRELATIVE 0x0020000000000000LL
 #define TARRAY    0x0000100000000000LL
-#define TFLOAT    TDOUBLE
 #define TPERCENT  TRELATIVE
 #define TAGEND    0LL
 #define TAGDIVERT -1LL
 #define TSTRING   TSTR
 #define TREL      TRELATIVE
-
-/*****************************************************************************
-** Header used for all objects.
-*/
-
-struct Head { // Must be 64-bit aligned
-   struct rkMetaClass *Class;   // Class pointer, resolved on AccessObject()
-   struct Stats *Stats;         // Stats pointer, resolved on AccessObject() [Private]
-   APTR  ChildPrivate;          // Address for the ChildPrivate structure, if allocated
-   APTR  CreatorMeta;           // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID ClassID;             // Reference to the object's class, used to resolve the Class pointer
-   CLASSID SubID;               // Reference to the object's sub-class, used to resolve the Class pointer
-   OBJECTID UniqueID;           // Unique object identifier
-   OBJECTID OwnerID;            // Refers to the owner of this object
-   WORD Flags;                  // Object flags
-   WORD MemFlags;               // Recommended memory allocation flags
-   OBJECTID TaskID;             // The process that this object belongs to
-   volatile LONG  ThreadID;     // Managed by prv_access() and prv_release() - set by get_thread_id()
-   #ifdef _WIN32
-      WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
-   #else
-      LONG ThreadMsg;
-   #endif
-   UBYTE ThreadPending;         // ActionThread() increments this.
-   volatile BYTE Queue;         // Managed by prv_access() and prv_release()
-   volatile BYTE SleepQueue;    //
-   volatile BYTE Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
-   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
-} __attribute__ ((aligned (8)));
-
-#define ClassName(a) ((struct rkMetaClass *)(((OBJECTPTR)(a))->Class))->Name
-
-#define OBJECT_HEADER struct Head Head;
 
 #define ResolveAddress(a,b)  ((APTR)(((BYTE *)(a)) + (b)))
 
@@ -360,6 +336,10 @@ struct Head { // Must be 64-bit aligned
 
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
+#ifdef  __cplusplus
+}
+#endif
+
 #include <parasol/modules/core.h>
 
 INLINE LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
@@ -367,10 +347,7 @@ INLINE LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
 }
 
 #ifdef  __cplusplus
-}
-
 #include <parasol/main.hpp>
-
 #endif
 
 #endif // PARASOL_MAIN_H

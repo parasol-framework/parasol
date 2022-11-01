@@ -12,7 +12,7 @@ module.  Please refer to the @FileArchive class for further information on this 
 
 static ERROR SET_ArchiveName(objCompression *Self, CSTRING Value)
 {
-   if ((Value) AND (*Value)) Self->ArchiveHash = StrHash(Value, 0);
+   if ((Value) and (*Value)) Self->ArchiveHash = StrHash(Value, 0);
    else Self->ArchiveHash = 0;
 
    if (Self->ArchiveHash) add_archive(Self);
@@ -46,12 +46,12 @@ static ERROR SET_CompressionLevel(objCompression *Self, LONG Value)
 Feedback: Provides feedback during the de/compression process.
 
 To receive feedback during any de/compression process, set a callback routine in this field. The format for the
-callback routine is `ERROR Function(*Compression, struct CompressionFeedback *)`.
+callback routine is `ERROR Function(*Compression, *CompressionFeedback)`.
 
 For object classes, the object that initiated the de/compression process can be learned by calling the Core's
 ~Core.CurrentContext() function.
 
-During the processing of multiple files, any individual file can be skipped by returning ERR_Skip and the entire
+During the processing of multiple files, any individual file can be skipped by returning `ERR_Skip` and the entire
 process can be cancelled by returning ERR_Terminate.  All other error codes are ignored.
 
 The &CompressionFeedback structure consists of the following fields:
@@ -124,26 +124,26 @@ static ERROR GET_Header(objCompression *Self, UBYTE **Header)
 /****************************************************************************
 
 -FIELD-
-Location: Set if the compressed data originates from, or is to be saved to a file source.
+Path: Set if the compressed data originates from, or is to be saved to a file source.
 
-To load or create a new file archive, set the Location field to the path of that file.
+To load or create a new file archive, set the Path field to the path of that file.
 
 ****************************************************************************/
 
-static ERROR GET_Location(objCompression *Self, CSTRING *Value)
+static ERROR GET_Path(objCompression *Self, CSTRING *Value)
 {
-   if (Self->Location) { *Value = Self->Location; return ERR_Okay; }
+   if (Self->Path) { *Value = Self->Path; return ERR_Okay; }
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_Location(objCompression *Self, CSTRING Value)
+static ERROR SET_Path(objCompression *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   if ((Value) AND (*Value)) {
-      if (!(Self->Location = StrClone(Value))) return log.warning(ERR_AllocMemory);
+   if ((Value) and (*Value)) {
+      if (!(Self->Path = StrClone(Value))) return log.warning(ERR_AllocMemory);
    }
    return ERR_Okay;
 }
@@ -163,8 +163,7 @@ Output: Resulting messages will be sent to the object referred to in this field.
 If this field is set to a valid ObjectID, text messages will be sent to that object when the compression object is
 used.  This can be helpful for notifying the user of the results of compression, decompression and removal of files.
 
-The object receiving the message must be capable of understanding text sent via data channels.  In most cases it is
-recommended that a @Text object is used for this purpose.
+The target object must be capable of processing incoming text from data channels.
 
 -FIELD-
 Password: Required if an archive needs an encryption password for access.
@@ -186,10 +185,8 @@ static ERROR GET_Password(objCompression *Self, CSTRING *Value)
 
 static ERROR SET_Password(objCompression *Self, CSTRING Value)
 {
-   if ((Value) AND (*Value)) {
-      LONG i;
-      for (i=0; ((size_t)i < sizeof(Self->Password)-1) AND (Value[i]); i++) Self->Password[i] = Value[i];
-      Self->Password[i] = 0;
+   if ((Value) and (*Value)) {
+      StrCopy(Value, Self->Password, sizeof(Self->Password));
       Self->Flags |= CMF_PASSWORD;
    }
    else Self->Password[0] = 0;
@@ -202,7 +199,7 @@ static ERROR SET_Password(objCompression *Self, CSTRING Value)
 -FIELD-
 Permissions: Default permissions for decompressed files are defined here.
 
-By default, permissions of files added to an archive are derived from their source location.  This behaviour can be
+By default the permissions of files added to an archive are derived from their source location.  This behaviour can be
 over-ridden by setting the Permissions field.  Valid permission flags are outlined in the @File class.
 
 -FIELD-
@@ -264,10 +261,8 @@ static ERROR SET_WindowBits(objCompression *Self, LONG Value)
 {
    parasol::Log log;
 
-   if (((Value >= 8) AND (Value <= 15)) OR
-       ((Value >= -15) AND (Value <= -8)) OR
-       (Value IS 15 + 32) OR
-       (Value IS 16 + 32)) {
+   if (((Value >= 8) and (Value <= 15)) or ((Value >= -15) and (Value <= -8)) or
+       (Value IS 15 + 32) or (Value IS 16 + 32)) {
       Self->WindowBits = Value;
       return ERR_Okay;
    }

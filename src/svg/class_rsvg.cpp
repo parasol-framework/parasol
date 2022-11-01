@@ -1,16 +1,17 @@
+#include "../picture/picture.h"
 
 //****************************************************************************
 
-static ERROR RSVG_Activate(objPicture *Self, APTR Void)
+static ERROR RSVG_Activate(prvPicture *Self, APTR Void)
 {
    prvSVG *prv;
-   if (!(prv = (prvSVG *)Self->Head.ChildPrivate)) return ERR_NotInitialised;
+   if (!(prv = (prvSVG *)Self->ChildPrivate)) return ERR_NotInitialised;
 
    ERROR error;
    if ((error = acQuery(Self)) != ERR_Okay) return error;
 
-   objBitmap *bmp = Self->Bitmap;
-   if (!(bmp->Head.Flags & NF_INITIALISED)) {
+   auto bmp = Self->Bitmap;
+   if (!bmp->initialised()) {
       if (acInit(bmp) != ERR_Okay) return ERR_Init;
    }
 
@@ -21,10 +22,10 @@ static ERROR RSVG_Activate(objPicture *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR RSVG_Free(objPicture *Self, APTR Void)
+static ERROR RSVG_Free(prvPicture *Self, APTR Void)
 {
    prvSVG *prv;
-   if ((prv = (prvSVG *)Self->Head.ChildPrivate)) {
+   if ((prv = (prvSVG *)Self->ChildPrivate)) {
       if (prv->SVG) { acFree(prv->SVG); prv->SVG = NULL; }
    }
    return ERR_Okay;
@@ -32,7 +33,7 @@ static ERROR RSVG_Free(objPicture *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR RSVG_Init(objPicture *Self, APTR Void)
+static ERROR RSVG_Init(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
    STRING path;
@@ -57,7 +58,7 @@ static ERROR RSVG_Init(objPicture *Self, APTR Void)
 
    Self->Flags |= PCF_SCALABLE;
 
-   if (!AllocMemory(sizeof(prvSVG), Self->Head.MemFlags, &Self->Head.ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvSVG), Self->MemFlags, &Self->ChildPrivate, NULL)) {
       if (Self->Flags & PCF_LAZY) return ERR_Okay;
       return acActivate(Self);
    }
@@ -66,13 +67,13 @@ static ERROR RSVG_Init(objPicture *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR RSVG_Query(objPicture *Self, APTR Void)
+static ERROR RSVG_Query(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
    prvSVG *prv;
    objBitmap *bmp;
 
-   if (!(prv = (prvSVG *)Self->Head.ChildPrivate)) return ERR_NotInitialised;
+   if (!(prv = (prvSVG *)Self->ChildPrivate)) return ERR_NotInitialised;
    if (!(bmp = Self->Bitmap)) return log.warning(ERR_ObjectCorrupt);
 
    if (Self->Queried) return ERR_Okay;
@@ -102,7 +103,7 @@ static ERROR RSVG_Query(objPicture *Self, APTR Void)
       // Look for the viewport, represented by the <svg/> tag.
 
       objVector *view = scene->Viewport;
-      while ((view) AND (view->Head.SubID != ID_VECTORVIEWPORT)) view = view->Next;
+      while ((view) and (view->SubID != ID_VECTORVIEWPORT)) view = view->Next;
       if (!view) {
          log.warning("SVG source file does not define a valid <svg/> tag.");
          return ERR_Failed;
@@ -155,15 +156,15 @@ static ERROR RSVG_Query(objPicture *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR RSVG_Resize(objPicture *Self, struct acResize *Args)
+static ERROR RSVG_Resize(prvPicture *Self, struct acResize *Args)
 {
    prvSVG *prv;
-   if (!(prv = (prvSVG *)Self->Head.ChildPrivate)) return ERR_NotInitialised;
+   if (!(prv = (prvSVG *)Self->ChildPrivate)) return ERR_NotInitialised;
 
    if (!Args) return ERR_NullArgs;
 
    if (prv->SVG) {
-      if (!(Self->Bitmap->Head.Flags & NF_INITIALISED)) {
+      if (!Self->Bitmap->initialised()) {
          if (acInit(Self->Bitmap)) return ERR_Init;
       }
 

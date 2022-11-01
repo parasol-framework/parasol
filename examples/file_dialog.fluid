@@ -2,7 +2,7 @@
    require 'gui/filedialog'
 
    gui.dialog.file({
-      filterList = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
+      filterList = { { name='All Files', pattern='*' }, { name='MP3 Audio Files', pattern='*.mp3' }, { name='Text Files', pattern='*.txt' } },
       okText     = 'Select File',
       cancelText = 'Exit',
       modal      = true,
@@ -17,10 +17,10 @@
          end
 
          for k, v in ipairs(Files) do
-             print(k, ' = ', Path .. v)
+             print(k, ' = ', Path .. v.filename)
          end
       end
    })
 
-   processMessages(-1)
+   processing.sleep()
 

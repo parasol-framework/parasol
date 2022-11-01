@@ -7,21 +7,21 @@ static const struct FieldDef clDocumentEventMask[] = {
 };
 
 static const struct FieldDef clDocumentFlags[] = {
-   { "Unrestricted", 0x00000040 },
    { "Edit", 0x00000001 },
-   { "NoScrollbars", 0x00000010 },
-   { "Disabled", 0x00000008 },
    { "Overwrite", 0x00000002 },
-   { "NoLayoutMsg", 0x00000020 },
    { "NoSysKeys", 0x00000004 },
+   { "Disabled", 0x00000008 },
+   { "NoScrollbars", 0x00000010 },
+   { "NoLayoutMsg", 0x00000020 },
+   { "Unrestricted", 0x00000040 },
    { NULL, 0 }
 };
 
 static const struct FieldDef clDocumentBorderEdge[] = {
-   { "Bottom", 0x00000008 },
+   { "Top", 0x00000001 },
    { "Left", 0x00000002 },
    { "Right", 0x00000004 },
-   { "Top", 0x00000001 },
+   { "Bottom", 0x00000008 },
    { NULL, 0 }
 };
 

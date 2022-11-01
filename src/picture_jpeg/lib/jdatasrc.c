@@ -23,7 +23,7 @@ extern struct CoreBase *CoreBase;
 typedef struct {
    struct jpeg_source_mgr pub;	/* public fields */
 
-   struct rkFile *File;		/* source stream */
+   objFile *File;		/* source stream */
    JOCTET *buffer;		/* start of buffer */
    boolean start_of_file;	/* have we gotten any data yet? */
 } my_source_mgr;
@@ -99,7 +99,7 @@ void term_source(j_decompress_ptr cinfo)
 ** for closing it after finishing decompression.
 */
 
-void jpeg_stdio_src (j_decompress_ptr cinfo, struct rkFile *File)
+void jpeg_stdio_src (j_decompress_ptr cinfo, objFile *File)
 {
    my_src_ptr src;
 

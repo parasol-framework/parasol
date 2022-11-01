@@ -9,7 +9,7 @@ static ERROR set_dimension(objXML *XML, LONG Index, CSTRING Attrib, DOUBLE Value
 
 //*********************************************************************************************************************
 
-static ERROR save_vectorpath(objSVG *Self, objXML *XML, objVector *Vector, LONG Parent)
+static ERROR save_vectorpath(extSVG *Self, objXML *XML, objVector *Vector, LONG Parent)
 {
    STRING path;
    ERROR error;
@@ -28,7 +28,7 @@ static ERROR save_vectorpath(objSVG *Self, objXML *XML, objVector *Vector, LONG 
 
 //*********************************************************************************************************************
 
-static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LONG Parent)
+static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG Parent)
 {
    parasol::Log log(__FUNCTION__);
    KeyStore *keystore;
@@ -63,7 +63,7 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
             if (!error) error = xmlSetAttrib(XML, new_index, XMS_NEW, "id", key);
 
             LONG units;
-            if ((!error) AND (!GetLong(gradient, FID_Units, &units))) {
+            if ((!error) and (!GetLong(gradient, FID_Units, &units))) {
                switch(units) {
                   case VUNIT_USERSPACE:    error = xmlSetAttrib(XML, new_index, XMS_NEW, "gradientUnits", "userSpaceOnUse"); break;
                   case VUNIT_BOUNDING_BOX: error = xmlSetAttrib(XML, new_index, XMS_NEW, "gradientUnits", "objectBoundingBox"); break;
@@ -71,7 +71,7 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
             }
 
             LONG spread;
-            if ((!error) AND (!GetLong(gradient, FID_SpreadMethod, &spread))) {
+            if ((!error) and (!GetLong(gradient, FID_SpreadMethod, &spread))) {
                switch(spread) {
                   case VSPREAD_PAD:     break; // Pad is the default SVG setting
                   case VSPREAD_REFLECT: error = xmlSetAttrib(XML, new_index, XMS_NEW, "spreadMethod", "reflect"); break;
@@ -79,31 +79,31 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
                }
             }
 
-            if ((gradient->Type IS VGT_LINEAR) OR (gradient->Type IS VGT_CONTOUR)) {
+            if ((gradient->Type IS VGT_LINEAR) or (gradient->Type IS VGT_CONTOUR)) {
                if (!error) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "x1", gradient->X1);
                if (!error) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "y1", gradient->Y1);
                if (!error) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "x2", gradient->X2);
                if (!error) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "y2", gradient->Y2);
             }
-            else if ((gradient->Type IS VGT_RADIAL) OR (gradient->Type IS VGT_DIAMOND) OR (gradient->Type IS VGT_CONIC)) {
-               if ((!error) AND (gradient->Flags & (VGF_FIXED_CX|VGF_RELATIVE_CX)))
+            else if ((gradient->Type IS VGT_RADIAL) or (gradient->Type IS VGT_DIAMOND) or (gradient->Type IS VGT_CONIC)) {
+               if ((!error) and (gradient->Flags & (VGF_FIXED_CX|VGF_RELATIVE_CX)))
                   error = set_dimension(XML, new_index, "cx", gradient->CenterX, gradient->Flags & VGF_RELATIVE_CX);
 
-               if ((!error) AND (gradient->Flags & (VGF_FIXED_CY|VGF_RELATIVE_CY)))
+               if ((!error) and (gradient->Flags & (VGF_FIXED_CY|VGF_RELATIVE_CY)))
                   error = set_dimension(XML, new_index, "cy", gradient->CenterY, gradient->Flags & VGF_RELATIVE_CY);
 
-               if ((!error) AND (gradient->Flags & (VGF_FIXED_FX|VGF_RELATIVE_FX)))
+               if ((!error) and (gradient->Flags & (VGF_FIXED_FX|VGF_RELATIVE_FX)))
                   error = set_dimension(XML, new_index, "fx", gradient->FX, gradient->Flags & VGF_RELATIVE_FX);
 
-               if ((!error) AND (gradient->Flags & (VGF_FIXED_FY|VGF_RELATIVE_FY)))
+               if ((!error) and (gradient->Flags & (VGF_FIXED_FY|VGF_RELATIVE_FY)))
                   error = set_dimension(XML, new_index, "fy", gradient->FY, gradient->Flags & VGF_RELATIVE_FY);
 
-               if ((!error) AND (gradient->Flags & (VGF_FIXED_RADIUS|VGF_RELATIVE_RADIUS)))
+               if ((!error) and (gradient->Flags & (VGF_FIXED_RADIUS|VGF_RELATIVE_RADIUS)))
                   error = set_dimension(XML, new_index, "r", gradient->Radius, gradient->Flags & VGF_RELATIVE_RADIUS);
             }
 
-            VectorTransform *transform;
-            if ((!error) AND (!GetPointer(gradient, FID_Transforms, &transform)) AND (transform)) {
+            VectorMatrix *transform;
+            if ((!error) and (!GetPointer(gradient, FID_Transforms, &transform)) and (transform)) {
                if (!save_svg_transform(transform, buffer, sizeof(buffer))) {
                   error = xmlSetAttrib(XML, new_index, XMS_NEW, "gradientTransform", buffer);
                }
@@ -113,7 +113,7 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
                GradientStop *stops;
                LONG total_stops, stop_index;
                if (!GetFieldArray(gradient, FID_Stops, &stops, &total_stops)) {
-                  for (LONG s=0; (s < total_stops) AND (!error); s++) {
+                  for (LONG s=0; (s < total_stops) and (!error); s++) {
                      if (!(error = xmlInsertXML(XML, new_index, XMI_CHILD_END, "<stop/>", &stop_index))) {
                         error = xmlSetAttribDouble(XML, stop_index, XMS_NEW, "offset", stops[s].Offset);
 
@@ -143,20 +143,20 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
             LONG dim;
             if (!error) error = GetLong(filter, FID_Dimensions, &dim);
 
-            if ((!error) AND (dim & (DMF_RELATIVE_X|DMF_FIXED_X)))
+            if ((!error) and (dim & (DMF_RELATIVE_X|DMF_FIXED_X)))
                error = set_dimension(XML, new_index, "x", filter->X, dim & DMF_RELATIVE_X);
 
-            if ((!error) AND (dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)))
+            if ((!error) and (dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)))
                error = set_dimension(XML, new_index, "y", filter->Y, dim & DMF_RELATIVE_Y);
 
-            if ((!error) AND (dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)))
+            if ((!error) and (dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)))
                error = set_dimension(XML, new_index, "width", filter->Width, dim & DMF_RELATIVE_WIDTH);
 
-            if ((!error) AND (dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)))
+            if ((!error) and (dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)))
                error = set_dimension(XML, new_index, "height", filter->Height, dim & DMF_RELATIVE_HEIGHT);
 
             LONG units;
-            if ((!error) AND (!GetLong(filter, FID_Units, &units))) {
+            if ((!error) and (!GetLong(filter, FID_Units, &units))) {
                switch(units) {
                   default:
                   case VUNIT_BOUNDING_BOX: break; // Default
@@ -164,20 +164,17 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
                }
             }
 
-            if ((!error) AND (!GetLong(filter, FID_PrimitiveUnits, &units))) {
+            if ((!error) and (!GetLong(filter, FID_PrimitiveUnits, &units))) {
                switch(units) {
                   case VUNIT_USERSPACE:    break;
                   case VUNIT_BOUNDING_BOX: error = xmlSetAttrib(XML, new_index, XMS_NEW, "primitiveUnits", "objectBoundingBox"); break;
                }
             }
 
-            objXML *effect_xml;
-            if ((!error) AND (!GetPointer(filter, FID_EffectXML, &effect_xml))) {
-               STRING effects;
-               if (!GetString(effect_xml, FID_Statement, &effects)) {
-                  error = xmlInsertXML(XML, new_index, XMI_CHILD, effects, NULL);
-                  FreeResource(effects);
-               }
+            STRING effect_xml;
+            if ((!error) and (!GetString(filter, FID_EffectXML, &effect_xml))) {
+               error = xmlInsertXML(XML, new_index, XMI_CHILD, effect_xml, NULL);
+               FreeResource(effect_xml);
             }
          }
          else if (def->ClassID IS ID_VECTORTRANSITION) {
@@ -199,43 +196,26 @@ static ERROR save_svg_defs(objSVG *Self, objXML *XML, objVectorScene *Scene, LON
 
 //*********************************************************************************************************************
 
-static ERROR save_svg_transform(VectorTransform *Transform, char *Buffer, LONG Size)
+static ERROR save_svg_transform(VectorMatrix *Transform, char *Buffer, LONG Size)
 {
-   VectorTransform *t = Transform;
-   LONG pos = 0;
    Buffer[0] = 0;
-   while (t->Next) t = t->Next;
-   while (t) {
-      if (t->Type IS VTF_MATRIX) {
-         pos += StrFormat(Buffer + pos, Size - pos, "matrix(%g %g %g %g %g %g) ", t->Matrix[0], t->Matrix[1], t->Matrix[2], t->Matrix[3], t->Matrix[4], t->Matrix[5]);
-      }
-      else if (t->Type IS VTF_TRANSLATE) {
-         pos += StrFormat(Buffer + pos, Size - pos, "translate(%g %g) ", t->X, t->Y);
-      }
-      else if (t->Type IS VTF_SCALE) {
-         if ((t->X IS t->Y) OR (t->Y IS 0)) pos += StrFormat(Buffer + pos, Size - pos, "scale(%g) ", t->X);
-         else pos += StrFormat(Buffer + pos, Size - pos, "scale(%g %g) ", t->X, t->Y);
-      }
-      else if (t->Type IS VTF_ROTATE) {
-         pos += StrFormat(Buffer + pos, Size - pos, "rotate(%g %g %g) ", t->Angle, t->X, t->Y);
-      }
-      else if (t->Type IS VTF_SKEW) {
-         if (!t->Y) pos += StrFormat(Buffer + pos, Size - pos, "skewX(%g) ", t->X);
-         else if (!t->X) pos += StrFormat(Buffer + pos, Size - pos, "skewY(%g) ", t->Y);
-         else pos += StrFormat(Buffer + pos, Size - pos, "skew(%g %g) ", t->X, t->Y);
-      }
-      else LogF("@","Unrecognised transform command #%d", t->Type);
+   std::vector<VectorMatrix *> list;
 
-      t = t->Prev;
-   }
-   while ((pos > 0) AND (Buffer[pos-1] IS ' ')) pos--;
+   for (auto t=Transform; t; t=t->Next) list.push_back(t);
+
+   LONG pos = 0;
+   std::for_each(list.rbegin(), list.rend(), [&](auto t) {
+      pos += StrFormat(Buffer + pos, Size - pos, "matrix(%f %f %f %f %f %f) ", t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
+   });
+
+   while ((pos > 0) and (Buffer[pos-1] IS ' ')) pos--;
    Buffer[pos] = 0;
    return ERR_Okay;
 }
 
 //*********************************************************************************************************************
 
-static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LONG Tag)
+static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG Tag)
 {
    parasol::Log log(__FUNCTION__);
    char buffer[160];
@@ -244,25 +224,25 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
    LONG array_size;
    ERROR error = ERR_Okay;
 
-   if ((!error) AND (Vector->Opacity != 1.0))
+   if ((!error) and (Vector->Opacity != 1.0))
       error = xmlSetAttribDouble(XML, Tag, XMS_NEW, "opacity", Vector->Opacity);
 
-   if ((!error) AND (Vector->FillOpacity != 1.0))
+   if ((!error) and (Vector->FillOpacity != 1.0))
       error = xmlSetAttribDouble(XML, Tag, XMS_NEW, "fill-opacity", Vector->FillOpacity);
 
-   if ((!error) AND (Vector->StrokeOpacity != 1.0))
+   if ((!error) and (Vector->StrokeOpacity != 1.0))
       error = xmlSetAttribDouble(XML, Tag, XMS_NEW, "stroke-opacity", Vector->StrokeOpacity);
 
-   if ((!GetString(Vector, FID_Stroke, &str)) AND (str)) {
+   if ((!GetString(Vector, FID_Stroke, &str)) and (str)) {
       error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke", str);
    }
-   else if ((!GetFieldArray(Vector, FID_StrokeColour, &colour, &array_size)) AND (colour[3] != 0)) {
+   else if ((!GetFieldArray(Vector, FID_StrokeColour, &colour, &array_size)) and (colour[3] != 0)) {
       StrFormat(buffer, sizeof(buffer), "rgb(%g,%g,%g,%g)", colour[0], colour[1], colour[2], colour[3]);
       error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke-color", buffer);
    }
 
    LONG line_join;
-   if ((!error) AND (!GetLong(Vector, FID_LineJoin, &line_join))) {
+   if ((!error) and (!GetLong(Vector, FID_LineJoin, &line_join))) {
       switch (line_join) {
          default:
          case VLJ_MITER:        break; // Default
@@ -275,7 +255,7 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
    }
 
    LONG inner_join;
-   if ((!error) AND (!GetLong(Vector, FID_InnerJoin, &inner_join))) { // Parasol only
+   if ((!error) and (!GetLong(Vector, FID_InnerJoin, &inner_join))) { // Parasol only
       switch (inner_join) {
          default:
          case VIJ_MITER:   break; // Default
@@ -286,27 +266,25 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
       }
    }
 
-   if ((!error) AND (Vector->DashTotal > 0)) {
+   DOUBLE *dash_array;
+   LONG dash_total;
+   if ((!error) and (!GetFieldArray(Vector, FID_DashArray, &dash_array, &dash_total)) and (dash_array)) {
       DOUBLE dash_offset;
-      if ((!GetDouble(Vector, FID_DashOffset, &dash_offset)) AND (dash_offset != 0)) {
+      if ((!GetDouble(Vector, FID_DashOffset, &dash_offset)) and (dash_offset != 0)) {
          error = xmlSetAttribDouble(XML, Tag, XMS_NEW, "stroke-dashoffset", Vector->DashOffset);
       }
 
-      DOUBLE *dash_array;
-      LONG dash_total;
-      if (!GetFieldArray(Vector, FID_DashArray, &dash_array, &dash_total)) {
-         LONG pos = 0;
-         for (LONG i=0; i < dash_total; i++) {
-            if (pos != 0) buffer[pos++] = ',';
-            pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", dash_array[i]);
-            if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
-         }
-         error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke-dasharray", buffer);
+      LONG pos = 0;
+      for (LONG i=0; i < dash_total; i++) {
+         if (pos != 0) buffer[pos++] = ',';
+         pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", dash_array[i]);
+         if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
       }
+      error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke-dasharray", buffer);
    }
 
    LONG linecap;
-   if ((!error) AND (!GetLong(Vector, FID_LineCap, &linecap))) {
+   if ((!error) and (!GetLong(Vector, FID_LineCap, &linecap))) {
       switch (linecap) {
          default:
          case VLC_BUTT:    break; // Default
@@ -320,45 +298,50 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
    else if (Vector->Visibility IS VIS_COLLAPSE) error = xmlSetAttrib(XML, Tag, XMS_NEW, "visibility", "collapse");
    else if (Vector->Visibility IS VIS_INHERIT)  error = xmlSetAttrib(XML, Tag, XMS_NEW, "visibility", "inherit");
 
-   if ((!error) AND (Vector->StrokeWidth != 1.0))
-      error = xmlSetAttribDouble(XML, Tag, XMS_NEW, "stroke-width", Vector->StrokeWidth);
+   STRING stroke_width;
+   if ((!error) and (!GetString(Vector, FID_StrokeWidth, &stroke_width))) {
+      if (!stroke_width) stroke_width = "0";
+      if ((stroke_width[0] != '1') and (stroke_width[1] != 0)) {
+         error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke-width", stroke_width);
+      }
+   }
 
-   if ((!error) AND (!GetString(Vector, FID_Fill, &str)) AND (str)) {
+   if ((!error) and (!GetString(Vector, FID_Fill, &str)) and (str)) {
       if (StrMatch("rgb(0,0,0)", str) != ERR_Okay) {
          error = xmlSetAttrib(XML, Tag, XMS_NEW, "fill", str);
       }
    }
-   else if ((!error) AND (!GetFieldArray(Vector, FID_FillColour, &colour, &array_size)) AND (colour[3] != 0)) {
+   else if ((!error) and (!GetFieldArray(Vector, FID_FillColour, &colour, &array_size)) and (colour[3] != 0)) {
       StrFormat(buffer, sizeof(buffer), "rgb(%g,%g,%g,%g)", colour[0], colour[1], colour[2], colour[3]);
       error = xmlSetAttrib(XML, Tag, XMS_NEW, "fill", buffer);
    }
 
    LONG fill_rule;
-   if ((!error) AND (!GetLong(Vector, FID_FillRule, &fill_rule))) {
+   if ((!error) and (!GetLong(Vector, FID_FillRule, &fill_rule))) {
       if (fill_rule IS VFR_EVEN_ODD) error = xmlSetAttrib(XML, Tag, XMS_NEW, "fill-rule", "evenodd");
    }
 
-   if ((!error) AND (!(error = GetString(Vector, FID_ID, &str))) AND (str))
+   if ((!error) and (!(error = GetString(Vector, FID_ID, &str))) and (str))
       error = xmlSetAttrib(XML, Tag, XMS_NEW, "id", str);
 
-   if ((!error) AND (!GetString(Vector, FID_Filter, &str)) AND (str))
+   if ((!error) and (!GetString(Vector, FID_Filter, &str)) and (str))
       error = xmlSetAttrib(XML, Tag, XMS_NEW, "filter", str);
 
-   VectorTransform *transform;
-   if ((!error) AND (!GetPointer(Vector, FID_Transforms, &transform)) AND (transform)) {
+   VectorMatrix *transform;
+   if ((!error) and (!GetPointer(Vector, FID_Transforms, &transform)) and (transform)) {
       if (!(error = save_svg_transform(transform, buffer, sizeof(buffer)))) {
          error = xmlSetAttrib(XML, Tag, XMS_NEW, "transform", buffer);
       }
    }
 
    OBJECTPTR shape;
-   if ((!error) AND (!GetPointer(Vector, FID_Morph, &shape)) AND (shape)) {
+   if ((!error) and (!GetPointer(Vector, FID_Morph, &shape)) and (shape)) {
       LONG morph_tag, morph_flags;
 
       error = xmlInsertXML(XML, Tag, XMI_CHILD_END, "<parasol:morph/>", &morph_tag);
 
       STRING shape_id;
-      if ((!error) AND (!GetString(shape, FID_ID, &shape_id)) AND (shape_id)) {
+      if ((!error) and (!GetString(shape, FID_ID, &shape_id)) and (shape_id)) {
          // NB: It is required that the shape has previously been registered as a definition, otherwise the url will refer to a dud tag.
          char shape_ref[120];
          StrFormat(shape_ref, sizeof(shape_ref), "url(#%s)", shape_id);
@@ -367,11 +350,11 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
 
       if (!error) error = GetLong(Vector, FID_MorphFlags, &morph_flags);
 
-      if ((!error) AND (morph_flags & VMF_STRETCH)) error = xmlSetAttrib(XML, morph_tag, XMS_NEW, "method", "stretch");
+      if ((!error) and (morph_flags & VMF_STRETCH)) error = xmlSetAttrib(XML, morph_tag, XMS_NEW, "method", "stretch");
 
-      if ((!error) AND (morph_flags & VMF_AUTO_SPACING)) error = xmlSetAttrib(XML, morph_tag, XMS_NEW, "spacing", "auto");
+      if ((!error) and (morph_flags & VMF_AUTO_SPACING)) error = xmlSetAttrib(XML, morph_tag, XMS_NEW, "spacing", "auto");
 
-      if ((!error) AND (morph_flags & (VMF_X_MIN|VMF_X_MID|VMF_X_MAX|VMF_Y_MIN|VMF_Y_MID|VMF_Y_MAX))) {
+      if ((!error) and (morph_flags & (VMF_X_MIN|VMF_X_MID|VMF_X_MAX|VMF_Y_MIN|VMF_Y_MID|VMF_Y_MAX))) {
          char align[40];
          WORD apos = 0;
          if (morph_flags & VMF_X_MIN) apos = StrCopy("xMin ", align, sizeof(align));
@@ -386,7 +369,7 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
       }
 
       struct rkVectorTransition *tv;
-      if ((!error) AND (!GetPointer(Vector, FID_Transition, &tv))) {
+      if ((!error) and (!GetPointer(Vector, FID_Transition, &tv))) {
 
 #warning TODO save_svg_scan_std transition support
 
@@ -404,16 +387,16 @@ static ERROR save_svg_scan_std(objSVG *Self, objXML *XML, objVector *Vector, LON
 
 //*********************************************************************************************************************
 
-static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Parent)
+static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Parent)
 {
    parasol::Log log(__FUNCTION__);
 
    LONG new_index = -1;
 
-   log.branch("%s", Vector->Head.Class->ClassName);
+   log.branch("%s", Vector->Class->ClassName);
 
    ERROR error = ERR_Okay;
-   if (Vector->Head.SubID IS ID_VECTORRECTANGLE) {
+   if (Vector->SubID IS ID_VECTORRECTANGLE) {
       DOUBLE rx, ry, x, y, width, height;
       LONG dim;
 
@@ -421,27 +404,27 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = GetLong(Vector, FID_Dimensions, &dim);
 
-      if ((!error) AND (!GetDouble(Vector, FID_RoundX, &rx)) AND (rx != 0))
+      if ((!error) and (!GetDouble(Vector, FID_RoundX, &rx)) and (rx != 0))
          error = set_dimension(XML, new_index, "rx", rx, FALSE);
 
-      if ((!error) AND (!GetDouble(Vector, FID_RoundY, &ry)) AND (ry != 0))
+      if ((!error) and (!GetDouble(Vector, FID_RoundY, &ry)) and (ry != 0))
          error = set_dimension(XML, new_index, "ry", ry, FALSE);
 
-      if ((!error) AND (!GetDouble(Vector, FID_X, &x)))
+      if ((!error) and (!GetDouble(Vector, FID_X, &x)))
          error = set_dimension(XML, new_index, "x", x, dim & DMF_RELATIVE_X);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Y, &y)))
+      if ((!error) and (!GetDouble(Vector, FID_Y, &y)))
          error = set_dimension(XML, new_index, "y", y, dim & DMF_RELATIVE_Y);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Width, &width)))
+      if ((!error) and (!GetDouble(Vector, FID_Width, &width)))
          error = set_dimension(XML, new_index, "width", width, dim & DMF_RELATIVE_WIDTH);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Height, &height)))
+      if ((!error) and (!GetDouble(Vector, FID_Height, &height)))
          error = set_dimension(XML, new_index, "height", height, dim & DMF_RELATIVE_HEIGHT);
 
       if (!error) save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORELLIPSE) {
+   else if (Vector->SubID IS ID_VECTORELLIPSE) {
       DOUBLE rx, ry, cx, cy;
       LONG dim;
 
@@ -458,15 +441,15 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORPATH) {
+   else if (Vector->SubID IS ID_VECTORPATH) {
       error = save_vectorpath(Self, XML, Vector, Parent);
    }
-   else if (Vector->Head.SubID IS ID_VECTORPOLYGON) { // Serves <polygon>, <line> and <polyline>
+   else if (Vector->SubID IS ID_VECTORPOLYGON) { // Serves <polygon>, <line> and <polyline>
       VectorPoint *points;
       LONG total_points, i;
       char buffer[2048];
 
-      if ((!GetLong(Vector, FID_Closed, &i)) AND (i IS FALSE)) { // Line or Polyline
+      if ((!GetLong(Vector, FID_Closed, &i)) and (i IS FALSE)) { // Line or Polyline
          if (!(error = GetFieldArray(Vector, FID_PointsArray, &points, &total_points))) {
             if (total_points IS 2) {
                error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<line/>", &new_index);
@@ -491,7 +474,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       else {
          error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<polygon/>", &new_index);
 
-         if ((!error) AND (!GetFieldArray(Vector, FID_PointsArray, &points, &total_points))) {
+         if ((!error) and (!GetFieldArray(Vector, FID_PointsArray, &points, &total_points))) {
             WORD pos = 0;
             for (i=0; i < total_points; i++) {
                pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g,%g ", points[i].X, points[i].Y);
@@ -502,13 +485,13 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       }
 
       DOUBLE path_length;
-      if ((!(error = GetDouble(Vector, FID_PathLength, &path_length))) AND (path_length != 0)) {
+      if ((!(error = GetDouble(Vector, FID_PathLength, &path_length))) and (path_length != 0)) {
          error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "pathLength", path_length);
       }
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORTEXT) {
+   else if (Vector->SubID IS ID_VECTORTEXT) {
       DOUBLE x, y, *dx, *dy, *rotate, text_length;
       LONG total, i, weight;
       STRING str;
@@ -516,13 +499,13 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<text/>", &new_index);
 
-      if ((!error) AND (!GetDouble(Vector, FID_X, &x)))
+      if ((!error) and (!GetDouble(Vector, FID_X, &x)))
          error = set_dimension(XML, new_index, "x", x, FALSE);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Y, &y)))
+      if ((!error) and (!GetDouble(Vector, FID_Y, &y)))
          error = set_dimension(XML, new_index, "y", y, FALSE);
 
-      if ((!error) AND (!(error = GetFieldArray(Vector, FID_DX, &dx, &total))) AND (total > 0)) {
+      if ((!error) and (!(error = GetFieldArray(Vector, FID_DX, &dx, &total))) and (total > 0)) {
          LONG pos = 0;
          for (LONG i=0; i < total; i++) {
             if (pos != 0) buffer[pos++] = ',';
@@ -532,7 +515,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "dx", buffer);
       }
 
-      if ((!error) AND (!(error = GetFieldArray(Vector, FID_DY, &dy, &total))) AND (total > 0)) {
+      if ((!error) and (!(error = GetFieldArray(Vector, FID_DY, &dy, &total))) and (total > 0)) {
          LONG pos = 0;
          for (i=0; i < total; i++) {
             if (pos != 0) buffer[pos++] = ',';
@@ -542,12 +525,12 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "dy", buffer);
       }
 
-      if ((!error) AND (!(error = GetString(Vector, FID_FontSize, &str)))) {
+      if ((!error) and (!(error = GetString(Vector, FID_FontSize, &str)))) {
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "font-size", str);
          FreeResource(str);
       }
 
-      if ((!error) AND (!(error = GetFieldArray(Vector, FID_Rotate, &rotate, &total))) AND (total > 0)) {
+      if ((!error) and (!(error = GetFieldArray(Vector, FID_Rotate, &rotate, &total))) and (total > 0)) {
          LONG pos = 0;
          for (i=0; i < total; i++) {
             if (pos != 0) buffer[pos++] = ',';
@@ -557,29 +540,29 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "rotate", buffer);
       }
 
-      if ((!error) AND (!(error = GetDouble(Vector, FID_TextLength, &text_length))) AND (text_length))
+      if ((!error) and (!(error = GetDouble(Vector, FID_TextLength, &text_length))) and (text_length))
          error = xmlSetAttribLong(XML, new_index, XMS_NEW, "textLength", text_length);
 
-      if ((!error) AND (!(error = GetString(Vector, FID_Face, &str))))
+      if ((!error) and (!(error = GetString(Vector, FID_Face, &str))))
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "font-family", str);
 
-      if ((!error) AND (!(error = GetLong(Vector, FID_Weight, &weight))) AND (weight != 400))
+      if ((!error) and (!(error = GetLong(Vector, FID_Weight, &weight))) and (weight != 400))
          error = xmlSetAttribLong(XML, new_index, XMS_NEW, "font-weight", weight);
 
-      if ((!error) AND (!(error = GetString(Vector, FID_String, &str))))
+      if ((!error) and (!(error = GetString(Vector, FID_String, &str))))
          error = xmlInsertContent(XML, new_index, XMI_CHILD, str, NULL);
 
       // TODO: lengthAdjust, font, font-size-adjust, font-stretch, font-style, font-variant, text-anchor, kerning, letter-spacing, path-length, word-spacing, text-decoration
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORGROUP) {
+   else if (Vector->SubID IS ID_VECTORGROUP) {
       error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<g/>", &new_index);
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORCLIP) {
+   else if (Vector->SubID IS ID_VECTORCLIP) {
       STRING str;
-      if ((!(error = GetString(Vector, FID_ID, &str))) AND (str)) { // The id is an essential requirement
+      if ((!(error = GetString(Vector, FID_ID, &str))) and (str)) { // The id is an essential requirement
          error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<clipPath/>", &new_index);
 
          LONG units;
@@ -594,7 +577,7 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
       }
    }
-   else if (Vector->Head.SubID IS ID_VECTORWAVE) {
+   else if (Vector->SubID IS ID_VECTORWAVE) {
       DOUBLE dbl;
       LONG dim;
 
@@ -602,40 +585,40 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = GetLong(Vector, FID_Dimensions, &dim);
 
-      if ((!error) AND (!GetDouble(Vector, FID_X, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_X, &dbl)))
          error = set_dimension(XML, new_index, "x", dbl, dim & DMF_RELATIVE_X);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Y, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Y, &dbl)))
          error = set_dimension(XML, new_index, "y", dbl, dim & DMF_RELATIVE_Y);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Width, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Width, &dbl)))
          error = set_dimension(XML, new_index, "width", dbl, dim & DMF_RELATIVE_WIDTH);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Height, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Height, &dbl)))
          error = set_dimension(XML, new_index, "height", dbl, dim & DMF_RELATIVE_HEIGHT);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Amplitude, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Amplitude, &dbl)))
          error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "amplitude", dbl);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Frequency, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Frequency, &dbl)))
          error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "frequency", dbl);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Decay, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Decay, &dbl)))
          error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "decay", dbl);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Degree, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Degree, &dbl)))
          error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "degree", dbl);
 
       LONG close;
-      if ((!error) AND (!GetLong(Vector, FID_Close, &close)))
+      if ((!error) and (!GetLong(Vector, FID_Close, &close)))
          error = xmlSetAttribLong(XML, new_index, XMS_NEW, "close", close);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Thickness, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Thickness, &dbl)))
          error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "thickness", dbl);
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORSPIRAL) {
+   else if (Vector->SubID IS ID_VECTORSPIRAL) {
       DOUBLE dbl;
       LONG dim, length;
 
@@ -644,36 +627,36 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if ((error = GetLong(Vector, FID_Dimensions, &dim))) return error;
 
-      if ((!error) AND (!GetDouble(Vector, FID_CenterX, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_CenterX, &dbl)))
          error = set_dimension(XML, new_index, "cx", dbl, dim & DMF_RELATIVE_CENTER_X);
 
-      if ((!error) AND (!GetDouble(Vector, FID_CenterY, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_CenterY, &dbl)))
          error = set_dimension(XML, new_index, "cy", dbl, dim & DMF_RELATIVE_CENTER_Y);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Width, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Width, &dbl)))
          error = set_dimension(XML, new_index, "width", dbl, dim & DMF_RELATIVE_WIDTH);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Height, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Height, &dbl)))
          error = set_dimension(XML, new_index, "height", dbl, dim & DMF_RELATIVE_HEIGHT);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Offset, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Offset, &dbl)))
          error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "offset", dbl);
 
-      if ((!error) AND (!GetLong(Vector, FID_PathLength, &length)) AND (length != 0))
+      if ((!error) and (!GetLong(Vector, FID_PathLength, &length)) and (length != 0))
          error = xmlSetAttribLong(XML, new_index, XMS_NEW, "pathLength", length);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Radius, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Radius, &dbl)))
          error = set_dimension(XML, new_index, "r", dbl, dim & DMF_RELATIVE_RADIUS);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Scale, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Scale, &dbl)))
          error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "scale", dbl);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Step, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Step, &dbl)))
          error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "step", dbl);
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORSHAPE) {
+   else if (Vector->SubID IS ID_VECTORSHAPE) {
       DOUBLE dbl;
       LONG num, dim;
 
@@ -681,60 +664,60 @@ static ERROR save_svg_scan(objSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if ((error = GetLong(Vector, FID_Dimensions, &dim))) return error;
 
-      if ((!error) AND (!GetDouble(Vector, FID_CenterX, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_CenterX, &dbl)))
          error = set_dimension(XML, new_index, "cx", dbl, dim & DMF_RELATIVE_CENTER_X);
 
-      if ((!error) AND (!GetDouble(Vector, FID_CenterY, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_CenterY, &dbl)))
          error = set_dimension(XML, new_index, "cy", dbl, dim & DMF_RELATIVE_CENTER_Y);
 
-      if ((!error) AND (!GetDouble(Vector, FID_Radius, &dbl)))
+      if ((!error) and (!GetDouble(Vector, FID_Radius, &dbl)))
          error = set_dimension(XML, new_index, "r", dbl, dim & DMF_RELATIVE_RADIUS);
 
-      if ((!error) AND (!GetDouble(Vector, FID_A, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "a", dbl);
-      if ((!error) AND (!GetDouble(Vector, FID_B, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "b", dbl);
-      if ((!error) AND (!GetDouble(Vector, FID_M, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "m", dbl);
-      if ((!error) AND (!GetDouble(Vector, FID_N1, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "n1", dbl);
-      if ((!error) AND (!GetDouble(Vector, FID_N2, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "n2", dbl);
-      if ((!error) AND (!GetDouble(Vector, FID_N3, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "n3", dbl);
-      if ((!error) AND (!GetDouble(Vector, FID_Phi, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "phi", dbl);
+      if ((!error) and (!GetDouble(Vector, FID_A, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "a", dbl);
+      if ((!error) and (!GetDouble(Vector, FID_B, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "b", dbl);
+      if ((!error) and (!GetDouble(Vector, FID_M, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "m", dbl);
+      if ((!error) and (!GetDouble(Vector, FID_N1, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "n1", dbl);
+      if ((!error) and (!GetDouble(Vector, FID_N2, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "n2", dbl);
+      if ((!error) and (!GetDouble(Vector, FID_N3, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "n3", dbl);
+      if ((!error) and (!GetDouble(Vector, FID_Phi, &dbl))) error = xmlSetAttribDouble(XML, new_index, XMS_NEW, "phi", dbl);
 
-      if ((!error) AND (!GetLong(Vector, FID_Phi, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "phi", num);
-      if ((!error) AND (!GetLong(Vector, FID_Vertices, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "vertices", num);
-      if ((!error) AND (!GetLong(Vector, FID_Mod, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "mod", num);
-      if ((!error) AND (!GetLong(Vector, FID_Spiral, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "spiral", num);
-      if ((!error) AND (!GetLong(Vector, FID_Repeat, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "repeat", num);
-      if ((!error) AND (!GetLong(Vector, FID_Close, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "close", num);
+      if ((!error) and (!GetLong(Vector, FID_Phi, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "phi", num);
+      if ((!error) and (!GetLong(Vector, FID_Vertices, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "vertices", num);
+      if ((!error) and (!GetLong(Vector, FID_Mod, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "mod", num);
+      if ((!error) and (!GetLong(Vector, FID_Spiral, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "spiral", num);
+      if ((!error) and (!GetLong(Vector, FID_Repeat, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "repeat", num);
+      if ((!error) and (!GetLong(Vector, FID_Close, &num))) error = xmlSetAttribLong(XML, new_index, XMS_NEW, "close", num);
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->Head.SubID IS ID_VECTORVIEWPORT) {
+   else if (Vector->SubID IS ID_VECTORVIEWPORT) {
       DOUBLE x, y, width, height;
       LONG dim;
 
       error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<svg/>", &new_index);
 
-      if ((!error) AND (!(error = GetFields(Vector, FID_ViewX|TDOUBLE, &x, FID_ViewY|TDOUBLE, &y, FID_ViewWidth|TDOUBLE, &width, FID_ViewHeight|TDOUBLE, &height, TAGEND)))) {
+      if ((!error) and (!(error = GetFields(Vector, FID_ViewX|TDOUBLE, &x, FID_ViewY|TDOUBLE, &y, FID_ViewWidth|TDOUBLE, &width, FID_ViewHeight|TDOUBLE, &height, TAGEND)))) {
          char buffer[80];
          StrFormat(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "viewBox", buffer);
       }
 
-      if ((!error) AND (!(error = GetLong(Vector, FID_Dimensions, &dim)))) {
-         if ((!error) AND (dim & (DMF_RELATIVE_X|DMF_FIXED_X)) AND (!GetDouble(Vector, FID_X, &x)))
+      if ((!error) and (!(error = GetLong(Vector, FID_Dimensions, &dim)))) {
+         if ((!error) and (dim & (DMF_RELATIVE_X|DMF_FIXED_X)) and (!GetDouble(Vector, FID_X, &x)))
             error = set_dimension(XML, new_index, "x", x, dim & DMF_RELATIVE_X);
 
-         if ((!error) AND (dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) AND (!GetDouble(Vector, FID_Y, &y)))
+         if ((!error) and (dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) and (!GetDouble(Vector, FID_Y, &y)))
             error = set_dimension(XML, new_index, "y", y, dim & DMF_RELATIVE_Y);
 
-         if ((!error) AND (dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) AND (!GetDouble(Vector, FID_Width, &width)))
+         if ((!error) and (dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) and (!GetDouble(Vector, FID_Width, &width)))
             error = set_dimension(XML, new_index, "width", width, dim & DMF_RELATIVE_WIDTH);
 
-         if ((!error) AND (dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) AND (!GetDouble(Vector, FID_Height, &height)))
+         if ((!error) and (dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) and (!GetDouble(Vector, FID_Height, &height)))
             error = set_dimension(XML, new_index, "height", height, dim & DMF_RELATIVE_HEIGHT);
       }
    }
    else {
-      log.msg("Unrecognised class \"%s\"", Vector->Head.Class->ClassName);
+      log.msg("Unrecognised class \"%s\"", Vector->Class->ClassName);
       return ERR_Okay; // Skip objects in the scene graph that we don't recognise
    }
 

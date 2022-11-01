@@ -6,11 +6,16 @@ Please note that this is not an extension of the Vector class.  It is used for t
 VectorPattern: Provides support for the filling and stroking of vectors with patterns.
 
 The VectorPattern class is used by Vector painting algorithms to fill and stroke vectors with pre-rendered patterns.
-This is achieved by initialising a VectorPattern object with the desired settings and then registering it with
-a @VectorScene via the <method class="VectorScene">AddDef</> method.
+It is the most efficient way of rendering a common set of graphics multiple times.
 
+The VectorPattern must be registered with a @VectorScene via the <method class="VectorScene">AddDef</> method.
 Any vector within the target scene will be able to utilise the pattern for filling or stroking by referencing its
 name through the @Vector.Fill and @Vector.Stroke fields.  For instance 'url(#dots)'.
+
+A special use case is made for patterns that are applied as a fill operation in @VectorViewport objects.  In this
+case the renderer will dynamically render the pattern as a background within the viewport.  This ensures that the
+pattern is rendered at maximum fidelity whenever it is used, and not affected by bitmap clipping restrictions.  It
+should be noted that this means the image caching feature will be disabled.
 
 It is strongly recommended that the VectorPattern is owned by the @VectorScene that is handling the
 definition.  This will ensure that the VectorPattern is deallocated when the scene is destroyed.
@@ -21,18 +26,23 @@ contains the pattern content.
 
 *****************************************************************************/
 
-static ERROR PATTERN_Draw(objVectorPattern *Self, struct acDraw *Args)
+static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
 {
+   parasol::Log log;
+
+   if (!Self->Scene->PageWidth) return log.warning(ERR_FieldNotSet);
+   if (!Self->Scene->PageHeight) return log.warning(ERR_FieldNotSet);
+
    if (Self->Bitmap) {
-      if ((Self->Scene->PageWidth != Self->Bitmap->Width) OR (Self->Scene->PageHeight != Self->Bitmap->Height)) {
+      if ((Self->Scene->PageWidth != Self->Bitmap->Width) or (Self->Scene->PageHeight != Self->Bitmap->Height)) {
          acResize(Self->Bitmap, Self->Scene->PageWidth, Self->Scene->PageHeight, 32);
       }
    }
    else if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->Bitmap,
       FID_Width|TLONG,  Self->Scene->PageWidth,
       FID_Height|TLONG, Self->Scene->PageHeight,
+      FID_Flags|TLONG,  BMF_ALPHA_CHANNEL,
       FID_BitsPerPixel|TLONG, 32,
-      FID_Flags|TLONG, BMF_ALPHA_CHANNEL,
       TAGEND)) return ERR_CreateObject;
 
    ClearMemory(Self->Bitmap->Data, Self->Bitmap->LineWidth * Self->Bitmap->Height);
@@ -44,24 +54,24 @@ static ERROR PATTERN_Draw(objVectorPattern *Self, struct acDraw *Args)
 
 //****************************************************************************
 
-static ERROR PATTERN_Free(objVectorPattern *Self, APTR Void)
+static ERROR PATTERN_Free(extVectorPattern *Self, APTR Void)
 {
-   VectorTransform *next;
-   for (auto scan=Self->Transforms; scan; scan=next) {
+   VectorMatrix *next;
+   for (auto scan=Self->Matrices; scan; scan=next) {
       next = scan->Next;
       FreeResource(scan);
    }
-   Self->Transforms = NULL;
+   Self->Matrices = NULL;
 
    if (Self->Bitmap) { acFree(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Scene) { acFree(Self->Scene); Self->Scene = NULL; }
+   if (Self->Scene)  { acFree(Self->Scene); Self->Scene = NULL; }
 
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static ERROR PATTERN_Init(objVectorPattern *Self, APTR Void)
+static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -75,6 +85,16 @@ static ERROR PATTERN_Init(objVectorPattern *Self, APTR Void)
       return log.warning(ERR_OutOfRange);
    }
 
+   if (!Self->Width) {
+      Self->Width = 1;
+      Self->Dimensions |= DMF_FIXED_WIDTH;
+   }
+
+   if (!Self->Height) {
+      Self->Height = 1;
+      Self->Dimensions |= DMF_FIXED_HEIGHT;
+   }
+
    if (acInit(Self->Scene)) return ERR_Init;
    if (acInit(Self->Viewport)) return ERR_Init;
 
@@ -83,13 +103,11 @@ static ERROR PATTERN_Init(objVectorPattern *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR PATTERN_NewObject(objVectorPattern *Self, APTR Void)
+static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
 {
    if (!NewObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Scene)) {
       if (!NewObject(ID_VECTORVIEWPORT, 0, &Self->Viewport)) {
          SetOwner(Self->Viewport, Self->Scene);
-         Self->Scene->PageWidth  = 1;
-         Self->Scene->PageHeight = 1;
          Self->SpreadMethod = VSPREAD_REPEAT;
          Self->Units        = VUNIT_BOUNDING_BOX;
          Self->ContentUnits = VUNIT_USERSPACE;
@@ -114,6 +132,42 @@ and Height fields have been defined.  The default setting is USERSPACE.
 Dimensions: Dimension flags are stored here.
 
 -FIELD-
+Height: Height of the pattern tile.
+
+The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage
+then the dimension is calculated relative to the nearest bounding box or viewport, according to the #Units setting.
+
+*****************************************************************************/
+
+static ERROR PATTERN_GET_Height(extVectorPattern *Self, Variable *Value)
+{
+   DOUBLE val = Self->Height;
+   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_HEIGHT)) val = val * 100.0;
+   if (Value->Type & FD_DOUBLE) Value->Double = val;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   return ERR_Okay;
+}
+
+static ERROR PATTERN_SET_Height(extVectorPattern *Self, Variable *Value)
+{
+   DOUBLE val;
+   if (Value->Type & FD_DOUBLE) val = Value->Double;
+   else if (Value->Type & FD_LARGE) val = Value->Large;
+   else return ERR_FieldTypeMismatch;
+
+   if (Value->Type & FD_PERCENTAGE) {
+      val = val * 0.01;
+      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
+   }
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
+
+   Self->Height = val;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
 Inherit: Inherit attributes from a VectorPattern referenced here.
 
 Attributes can be inherited from another pattern by referencing it in this field.  This feature is provided
@@ -122,15 +176,67 @@ penalty.
 
 *****************************************************************************/
 
-static ERROR PATTERN_SET_Inherit(objVectorPattern *Self, objVectorPattern *Value)
+static ERROR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value)
 {
    if (Value) {
-      if (Value->Head.ClassID IS ID_VECTORPATTERN) {
+      if (Value->ClassID IS ID_VECTORPATTERN) {
          Self->Inherit = Value;
       }
       else return ERR_InvalidValue;
    }
    else Self->Inherit = NULL;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+-FIELD-
+Matrices: A linked list of transform matrices that have been applied to the pattern.
+
+All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is
+represented by a VectorMatrix structure, and are linked in the order in which they were applied to the pattern.
+
+&VectorMatrix
+
+*****************************************************************************/
+
+static ERROR VECTORPATTERN_GET_Matrices(extVectorPattern *Self, VectorMatrix **Value)
+{
+   *Value = Self->Matrices;
+   return ERR_Okay;
+}
+
+static ERROR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Value)
+{
+   if (!Value) {
+      auto hook = &Self->Matrices;
+      while (Value) {
+         VectorMatrix *matrix;
+         if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix, NULL)) {
+            matrix->Vector = NULL;
+            matrix->Next   = NULL;
+            matrix->ScaleX = Value->ScaleX;
+            matrix->ScaleY = Value->ScaleY;
+            matrix->ShearX = Value->ShearX;
+            matrix->ShearY = Value->ShearY;
+            matrix->TranslateX = Value->TranslateX;
+            matrix->TranslateY = Value->TranslateY;
+            *hook = matrix;
+            hook = &matrix->Next;
+         }
+         else return ERR_AllocMemory;
+
+         Value = Value->Next;
+      }
+   }
+   else {
+      VectorMatrix *next;
+      for (auto scan=Self->Matrices; scan; scan=next) {
+         next = scan->Next;
+         FreeResource(scan);
+      }
+      Self->Matrices = NULL;
+   }
+
    return ERR_Okay;
 }
 
@@ -144,7 +250,7 @@ is 1.0.
 
 *****************************************************************************/
 
-static ERROR PATTERN_SET_Opacity(objVectorPattern *Self, DOUBLE Value)
+static ERROR PATTERN_SET_Opacity(extVectorPattern *Self, DOUBLE Value)
 {
    if (Value < 0.0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
@@ -161,9 +267,6 @@ The VectorPattern class allocates a @VectorScene in this field and inherits its 
 a @VectorViewport class will be assigned to the scene and is referenced in the #Viewport field for
 managing the vectors that will be rendered.
 
-The PageWidth and PageHeight fields in the VectorScene object will define the size of the generated pattern.  It is
-essential that they are set prior to initialisation.
-
 -FIELD-
 SpreadMethod: The behaviour to use when the pattern bounds do not match the vector path.
 
@@ -176,69 +279,33 @@ A transform can be applied to the pattern by setting this field with an SVG comp
 
 *****************************************************************************/
 
-static ERROR PATTERN_SET_Transform(objVectorPattern *Self, CSTRING Value)
+static ERROR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
 {
-   if (!Value) return ERR_NullArgs;
+   parasol::Log log;
 
-   // Clear any existing transforms.
+   if (!Commands) return log.warning(ERR_InvalidValue);
 
-   VectorTransform *next;
-   for (auto scan=Self->Transforms; scan; scan=next) {
-      next = scan->Next;
-      FreeResource(scan);
+   if (!Self->Matrices) {
+      VectorMatrix *matrix;
+      if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix, NULL)) {
+         matrix->Vector = NULL;
+         matrix->Next   = Self->Matrices;
+         matrix->ScaleX = 1.0;
+         matrix->ScaleY = 1.0;
+         matrix->ShearX = 0;
+         matrix->ShearY = 0;
+         matrix->TranslateX = 0;
+         matrix->TranslateY = 0;
+
+         Self->Matrices = matrix;
+         return vecParseTransform(Self->Matrices, Commands);
+      }
+      else return ERR_AllocMemory;
    }
-   Self->Transforms = NULL;
-
-   VectorTransform *transform;
-
-   CSTRING str = Value;
-   while (*str) {
-      if (!StrCompare(str, "matrix", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_MATRIX))) {
-            str = read_numseq(str+6, &transform->Matrix[0], &transform->Matrix[1], &transform->Matrix[2], &transform->Matrix[3], &transform->Matrix[4], &transform->Matrix[5], TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "translate", 9, 0)) {
-         if ((transform = add_transform(Self, VTF_TRANSLATE))) {
-            DOUBLE x = 0;
-            DOUBLE y = 0;
-            str = read_numseq(str+9, &x, &y, TAGEND);
-            transform->X += x;
-            transform->Y += y;
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "rotate", 6, 0)) {
-         if ((transform = add_transform(Self, VTF_ROTATE))) {
-            str = read_numseq(str+6, &transform->Angle, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "scale", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SCALE))) {
-            str = read_numseq(str+5, &transform->X, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewX", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW))) {
-            transform->X = 0;
-            str = read_numseq(str+5, &transform->X, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else if (!StrCompare(str, "skewY", 5, 0)) {
-         if ((transform = add_transform(Self, VTF_SKEW))) {
-            transform->Y = 0;
-            str = read_numseq(str+5, &transform->Y, TAGEND);
-         }
-         else return ERR_AllocMemory;
-      }
-      else str++;
+   else {
+      vecResetMatrix(Self->Matrices);
+      return vecParseTransform(Self->Matrices, Commands);
    }
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -247,13 +314,60 @@ static ERROR PATTERN_SET_Transform(objVectorPattern *Self, CSTRING Value)
 Units:  Defines the coordinate system for fields X, Y, Width and Height.
 
 This field declares the coordinate system that is used for values in the #X and #Y fields.  The default setting is
-BOUNDING_BOX.
+`BOUNDING_BOX`, which means the pattern will be drawn to scale in realtime.  The most efficient method is USERSPACE,
+which allows the pattern image to be persistently cached.
 
 -FIELD-
 Viewport: Refers to the viewport that contains the pattern.
 
 The Viewport refers to a @VectorViewport object that is created to host the vectors for the rendered pattern.  If the
 Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.
+
+*****************************************************************************/
+
+static ERROR PATTERN_GET_Viewport(extVectorPattern *Self, extVectorViewport **Value)
+{
+   *Value = Self->Viewport;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+-FIELD-
+Width: Width of the pattern tile.
+
+The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage
+then the dimension is calculated relative to the nearest bounding box or viewport, according to the #Units setting.
+
+*****************************************************************************/
+
+static ERROR PATTERN_GET_Width(extVectorPattern *Self, Variable *Value)
+{
+   DOUBLE val = Self->Width;
+   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_WIDTH)) val = val * 100.0;
+   if (Value->Type & FD_DOUBLE) Value->Double = val;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   return ERR_Okay;
+}
+
+static ERROR PATTERN_SET_Width(extVectorPattern *Self, Variable *Value)
+{
+   DOUBLE val;
+   if (Value->Type & FD_DOUBLE) val = Value->Double;
+   else if (Value->Type & FD_LARGE) val = Value->Large;
+   else return ERR_FieldTypeMismatch;
+
+   if (Value->Type & FD_PERCENTAGE) {
+      val = val * 0.01;
+      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
+   }
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
+
+   Self->Width = val;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
 
 -FIELD-
 X: X coordinate for the pattern.
@@ -262,7 +376,7 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 
 *****************************************************************************/
 
-static ERROR PATTERN_GET_X(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_GET_X(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->X;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_X)) val = val * 100.0;
@@ -271,7 +385,7 @@ static ERROR PATTERN_GET_X(objVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR PATTERN_SET_X(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_SET_X(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -298,7 +412,7 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 
 *****************************************************************************/
 
-static ERROR PATTERN_GET_Y(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_GET_Y(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->Y;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_Y)) val = val * 100.0;
@@ -307,7 +421,7 @@ static ERROR PATTERN_GET_Y(objVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR PATTERN_SET_Y(objVectorPattern *Self, Variable *Value)
+static ERROR PATTERN_SET_Y(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -364,9 +478,10 @@ static const FieldDef clPatternSpread[] = {
 static const FieldArray clPatternFields[] = {
    { "X",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_X, (APTR)PATTERN_SET_X },
    { "Y",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Y, (APTR)PATTERN_SET_Y },
+   { "Width",        FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Width, (APTR)PATTERN_SET_Width },
+   { "Height",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Height, (APTR)PATTERN_SET_Height },
    { "Opacity",      FDF_DOUBLE|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Opacity },
-   { "Scene",        FDF_INTEGRAL|FDF_R,            0, NULL, NULL },
-   { "Viewport",     FDF_OBJECT|FDF_R,           0, NULL, NULL },
+   { "Scene",        FDF_INTEGRAL|FDF_R,         0, NULL, NULL },
    { "Inherit",      FDF_OBJECT|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_RW,            (MAXINT)&clPatternSpread, NULL, NULL },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clPatternUnits, NULL, NULL },
@@ -374,11 +489,13 @@ static const FieldArray clPatternFields[] = {
    { "Dimensions",   FDF_LONGFLAGS|FDF_R,        (MAXINT)&clPatternDimensions, NULL, NULL },
    //{ "AspectRatio", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clAspectRatio, (APTR)PATTERN_GET_AspectRatio, (APTR)PATTERN_SET_AspectRatio },
    // Virtual fields
+   { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"VectorMatrix", (APTR)VECTORPATTERN_GET_Matrices, (APTR)VECTORPATTERN_SET_Matrices },
    { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)PATTERN_SET_Transform },
+   { "Viewport",     FDF_VIRTUAL|FDF_OBJECT|FDF_R, ID_VECTORVIEWPORT, (APTR)PATTERN_GET_Viewport, NULL },
    END_FIELD
 };
 
-static ERROR init_pattern(void) // The pattern is a definition type for creating patterns and not drawing.
+ERROR init_pattern(void) // The pattern is a definition type for creating patterns and not drawing.
 {
    return(CreateObject(ID_METACLASS, 0, &clVectorPattern,
       FID_BaseClassID|TLONG, ID_VECTORPATTERN,
@@ -387,7 +504,7 @@ static ERROR init_pattern(void) // The pattern is a definition type for creating
       FID_Actions|TPTR,      clPatternActions,
       FID_Fields|TARRAY,     clPatternFields,
       FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Size|TLONG,        sizeof(objVectorPattern),
+      FID_Size|TLONG,        sizeof(extVectorPattern),
       FID_Path|TSTR,         "modules:vector",
       TAGEND));
 }

@@ -69,11 +69,10 @@ default datatype is RAW (binary format), but the most commonly supported datatyp
 The third method is to use function callbacks.  Refer to the #Incoming field for further information on receiving
 data through callbacks.
 
-<header>Progress Reports</>
+<header>Progress Monitoring</>
 
-To receive progress reports when uploading or downloading data from a server, subscribe to the #Index field, which
-indicates the current read/write position within the overall data stream (indicated by the #ContentLength).
-Alternatively, use a timer and read the #Index periodically.
+Progress of a data transfer can be monitored through the #Index field.  If the callback features are not being used for
+a data transfer, consider using a timer to read from the #Index periodically.
 
 <header>SSL Support (HTTPS)</>
 
@@ -98,7 +97,7 @@ For information about the HTTP protocol, please refer to the official protocol w
 
 #include <parasol/main.h>
 #include <parasol/modules/http.h>
-#include <parasol/modules/widget.h>
+//#include <parasol/modules/display.h>
 #include <parasol/modules/network.h>
 
 #include "md5.c"
@@ -113,7 +112,7 @@ typedef char HASHHEX[HASHHEXLEN+1];
 #define BUFFER_READ_SIZE 16384  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
 #define BUFFER_WRITE_SIZE 16384 // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
 
-#define SET_ERROR(http, code) { (http)->Error = (code); log.warning("Set HTTP error code: %d, Msg: %s", code, GetErrorMsg(code)); }
+#define SET_ERROR(http, code) { (http)->Error = (code); log.debug("Set error code %d: %s", code, GetErrorMsg(code)); }
 
 static ERROR create_http_class(void);
 
@@ -126,15 +125,69 @@ static objProxy *glProxy = NULL;
 extern UBYTE glAuthScript[];
 static LONG glAuthScriptLength;
 
-static ERROR HTTP_ActionNotify(objHTTP *, struct acActionNotify *);
-static ERROR HTTP_Activate(objHTTP *, APTR);
-static ERROR HTTP_Deactivate(objHTTP *, APTR);
-static ERROR HTTP_Free(objHTTP *, APTR);
-static ERROR HTTP_GetVar(objHTTP *, struct acGetVar *);
-static ERROR HTTP_Init(objHTTP *, APTR);
-static ERROR HTTP_NewObject(objHTTP *, APTR);
-static ERROR HTTP_SetVar(objHTTP *, struct acSetVar *);
-static ERROR HTTP_Write(objHTTP *, struct acWrite *);
+class extHTTP : public objHTTP {
+   public:
+   FUNCTION Incoming;
+   FUNCTION Outgoing;
+   FUNCTION AuthCallback;
+   FUNCTION StateChanged;
+   std::unordered_map<std::string, std::string> *Args;
+   std::unordered_map<std::string, std::string> *Headers;
+   STRING Response;         // Response header buffer
+   STRING URI;              // Temporary string, used only when the user reads the URI
+   STRING Username;
+   STRING Password;
+   STRING AuthNonce;
+   STRING AuthOpaque;
+   STRING AuthPath;
+   STRING ContentType;
+   UBYTE  *RecvBuffer;      // Receive buffer - aids downloading if HTF_RECVBUFFER is defined
+   UBYTE  *WriteBuffer;
+   LONG   WriteSize;
+   LONG   WriteOffset;
+   APTR   Buffer;           // Temporary buffer for storing outgoing data
+   objFile *flOutput;
+   objFile *flInput;
+   objNetSocket *Socket;    // Socket over which the communication is taking place
+   UBYTE  *Chunk;           // Chunk buffer
+   LONG   ChunkSize;        // Size of the chunk buffer
+   LONG   ChunkBuffered;    // Number of bytes buffered, cannot exceed ChunkSize
+   LONG   ChunkLen;         // Length of the current chunk being processed (applies when reading the chunk data)
+   LONG   ChunkIndex;
+   TIMER  TimeoutManager;
+   LARGE  LastReceipt;      // Last time (microseconds) at which data was received
+   LARGE  TotalSent;        // Total number of bytes sent - exists for assisting debugging only
+   OBJECTID DialogWindow;
+   LONG   RecvSize;
+   LONG   ResponseIndex;    // Next element to write to in 'Buffer'
+   LONG   SearchIndex;      // Current position of the CRLFCRLF search.
+   LONG   ResponseSize;
+   WORD   InputPos;         // File name parsing position in InputFile
+   UBYTE  RedirectCount;
+   UBYTE  AuthCNonce[10];
+   UBYTE  AuthQOP[12];
+   UBYTE  AuthAlgorithm[12];
+   UBYTE  AuthRetries;
+   UWORD  Connecting:1;
+   UWORD  AuthAttempt:1;
+   UWORD  AuthPreset:1;
+   UWORD  AuthDigest:1;
+   UWORD  SecurePath:1;
+   UWORD  Tunneling:1;
+   UWORD  Chunked:1;
+   UWORD  MultipleInput:1;
+   UWORD  ProxyDefined:1;   // TRUE if the ProxyServer has been manually set by the user
+};
+
+static ERROR HTTP_ActionNotify(extHTTP *, struct acActionNotify *);
+static ERROR HTTP_Activate(extHTTP *, APTR);
+static ERROR HTTP_Deactivate(extHTTP *, APTR);
+static ERROR HTTP_Free(extHTTP *, APTR);
+static ERROR HTTP_GetVar(extHTTP *, struct acGetVar *);
+static ERROR HTTP_Init(extHTTP *, APTR);
+static ERROR HTTP_NewObject(extHTTP *, APTR);
+static ERROR HTTP_SetVar(extHTTP *, struct acSetVar *);
+static ERROR HTTP_Write(extHTTP *, struct acWrite *);
 
 #include "http_def.c"
 
@@ -187,19 +240,19 @@ static const FieldDef clStatus[] = {
 //****************************************************************************
 
 static CSTRING adv_crlf(CSTRING);
-static ERROR check_incoming_end(objHTTP *);
-static ERROR parse_file(objHTTP *, STRING Buffer, LONG Size);
-static ERROR parse_response(objHTTP *, CSTRING);
-static ERROR process_data(objHTTP *, APTR, LONG);
+static ERROR check_incoming_end(extHTTP *);
+static ERROR parse_file(extHTTP *, STRING Buffer, LONG Size);
+static ERROR parse_response(extHTTP *, CSTRING);
+static ERROR process_data(extHTTP *, APTR, LONG);
 static LONG  extract_value(CSTRING, STRING *);
 static void  writehex(HASH, HASHHEX);
-static void  digest_calc_ha1(objHTTP *, HASHHEX);
-static void  digest_calc_response(objHTTP *, CSTRING, CSTRING, HASHHEX, HASHHEX, HASHHEX);
-static ERROR write_socket(objHTTP *, APTR Buffer, LONG Length, LONG *Result);
-static LONG  set_http_method(objHTTP *, STRING Buffer, LONG Size, CSTRING Method);
-static ERROR SET_Path(objHTTP *, CSTRING);
-static ERROR SET_Location(objHTTP *, CSTRING);
-static ERROR timeout_manager(objHTTP *, LARGE, LARGE);
+static void  digest_calc_ha1(extHTTP *, HASHHEX);
+static void  digest_calc_response(extHTTP *, CSTRING, CSTRING, HASHHEX, HASHHEX, HASHHEX);
+static ERROR write_socket(extHTTP *, APTR Buffer, LONG Length, LONG *Result);
+static LONG  set_http_method(extHTTP *, STRING Buffer, LONG Size, CSTRING Method);
+static ERROR SET_Path(extHTTP *, CSTRING);
+static ERROR SET_Location(extHTTP *, CSTRING);
+static ERROR timeout_manager(extHTTP *, LARGE, LARGE);
 static void  socket_feedback(objNetSocket *, objClientSocket *, LONG);
 static ERROR socket_incoming(objNetSocket *);
 static ERROR socket_outgoing(objNetSocket *);
@@ -242,7 +295,7 @@ static ERROR CMDExpunge(void)
 
 //****************************************************************************
 
-static ERROR HTTP_ActionNotify(objHTTP *Self, struct acActionNotify *Args)
+static ERROR HTTP_ActionNotify(extHTTP *Self, struct acActionNotify *Args)
 {
    parasol::Log log;
 
@@ -257,23 +310,23 @@ static ERROR HTTP_ActionNotify(objHTTP *Self, struct acActionNotify *Args)
          }
          else {
             log.msg("No username and password provided, deactivating...");
-            SetLong(Self, FID_State, HGS_TERMINATED);
+            SetLong(Self, FID_CurrentState, HGS_TERMINATED);
          }
          return ERR_Okay;
       }
-      else if ((Self->Outgoing.Type IS CALL_SCRIPT) and (Self->Outgoing.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->Outgoing.Type IS CALL_SCRIPT) and (Self->Outgoing.Script.Script->UID IS Args->ObjectID)) {
          Self->Outgoing.Type = CALL_NONE;
          return ERR_Okay;
       }
-      else if ((Self->StateChanged.Type IS CALL_SCRIPT) and (Self->StateChanged.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->StateChanged.Type IS CALL_SCRIPT) and (Self->StateChanged.Script.Script->UID IS Args->ObjectID)) {
          Self->StateChanged.Type = CALL_NONE;
          return ERR_Okay;
       }
-      else if ((Self->Incoming.Type IS CALL_SCRIPT) and (Self->Incoming.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->Incoming.Type IS CALL_SCRIPT) and (Self->Incoming.Script.Script->UID IS Args->ObjectID)) {
          Self->Incoming.Type = CALL_NONE;
          return ERR_Okay;
       }
-      else if ((Self->AuthCallback.Type IS CALL_SCRIPT) and (Self->AuthCallback.Script.Script->UniqueID IS Args->ObjectID)) {
+      else if ((Self->AuthCallback.Type IS CALL_SCRIPT) and (Self->AuthCallback.Script.Script->UID IS Args->ObjectID)) {
          Self->AuthCallback.Type = CALL_NONE;
          return ERR_Okay;
       }
@@ -314,14 +367,14 @@ HostNotFound: DNS resolution of the domain name in the URI failed.
 
 *****************************************************************************/
 
-static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
+static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 {
    parasol::Log log;
    char cmd[2048];
    LONG len, resume_from, i;
    ERROR result;
 
-   if (!(Self->Head.Flags & NF_INITIALISED)) return log.warning(ERR_NotInitialised);
+   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
 
    log.branch("Host: %s, Port: %d, Path: %s, Proxy: %s, SSL: %d", Self->Host, Self->Port, Self->Path, Self->ProxyServer, (Self->Flags & HTF_SSL) ? 1 : 0);
 
@@ -331,7 +384,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
    Self->ResponseIndex = 0;
    Self->SearchIndex   = 0;
    Self->Index         = 0;
-   Self->State         = 0;
+   Self->CurrentState  = 0;
    Self->Status        = 0;
    Self->TotalSent     = 0;
    Self->Tunneling     = FALSE;
@@ -423,10 +476,10 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
 
          Self->Chunked = FALSE;
 
-         if ((!(Self->Flags & HTF_NO_HEAD)) and ((Self->SecurePath) or (Self->State IS HGS_AUTHENTICATING))) {
+         if ((!(Self->Flags & HTF_NO_HEAD)) and ((Self->SecurePath) or (Self->CurrentState IS HGS_AUTHENTICATING))) {
             log.trace("Executing HEAD statement for authentication.");
             len = set_http_method(Self, cmd, sizeof(cmd), "HEAD");
-            SetLong(Self, FID_State, HGS_AUTHENTICATING);
+            SetLong(Self, FID_CurrentState, HGS_AUTHENTICATING);
          }
          else {
             // You can post data from a file source or an object.  In the case of an object it is possible to preset
@@ -462,8 +515,14 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
 
                if (!error) {
                   Self->Index = 0;
-                  if (!Self->Size) GetLarge(Self->flInput, FID_Size, &Self->ContentLength);
-                  else Self->ContentLength = Self->Size;
+                  if (!Self->Size) {
+                     GetLarge(Self->flInput, FID_Size, &Self->ContentLength); // Use the file's size as ContentLength
+                     if (!Self->ContentLength) { // If the file is empty or size is indeterminate then assume nothing is being posted
+                        SET_ERROR(Self, ERR_NoData);
+                        return Self->Error;
+                     }
+                  }
+                  else Self->ContentLength = Self->Size; // Allow the developer to define the ContentLength
                }
                else {
                   SET_ERROR(Self, ERR_File);
@@ -567,7 +626,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
 
       // Add any custom headers
 
-      if ((Self->State != HGS_AUTHENTICATING) AND (Self->Headers)) {
+      if ((Self->CurrentState != HGS_AUTHENTICATING) and (Self->Headers)) {
          for (const auto& [k, v] : Self->Headers[0]) {
             log.trace("Custom header: %s: %s", k.c_str(), v.c_str());
             len += StrFormat(cmd+len, sizeof(cmd)-len, "%s: %s\r\n", k.c_str(), v.c_str());
@@ -613,7 +672,7 @@ static ERROR HTTP_Activate(objHTTP *Self, APTR Void)
    }
 
    if (!Self->Tunneling) {
-      if (Self->State != HGS_AUTHENTICATING) {
+      if (Self->CurrentState != HGS_AUTHENTICATING) {
          if ((Self->Method IS HTM_PUT) or (Self->Method IS HTM_POST)) {
             SetPointer(Self->Socket, FID_Outgoing, (APTR)&socket_outgoing);
          }
@@ -669,13 +728,13 @@ Active HTTP requests can be manually cancelled by calling the Deactivate action 
 -END-
 *****************************************************************************/
 
-static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
+static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
 {
    parasol::Log log;
 
    log.branch("Closing connection to server & signalling children.");
 
-   if (Self->State < HGS_COMPLETED) SetLong(Self, FID_State, HGS_TERMINATED);
+   if (Self->CurrentState < HGS_COMPLETED) SetLong(Self, FID_CurrentState, HGS_TERMINATED);
 
    // Closing files is important for dropping the file locks
 
@@ -692,7 +751,7 @@ static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
       // (for example due to a timeout, or an early call to Deactivate).  This prevents any more incoming data from the
       // server being processed when we don't want it.
 
-      if ((Self->Socket->State IS NTC_DISCONNECTED) or (Self->State IS HGS_TERMINATED)) {
+      if ((Self->Socket->State IS NTC_DISCONNECTED) or (Self->CurrentState IS HGS_TERMINATED)) {
          log.msg("Terminating socket (disconnected).");
          SetPointer(Self->Socket, FID_Feedback, NULL);
          acFree(Self->Socket);
@@ -706,7 +765,7 @@ static ERROR HTTP_Deactivate(objHTTP *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR HTTP_Free(objHTTP *Self, APTR Args)
+static ERROR HTTP_Free(extHTTP *Self, APTR Args)
 {
    if (Self->Args) { delete Self->Args; Self->Args = NULL; }
    if (Self->Headers) { delete Self->Headers; Self->Headers = NULL; }
@@ -753,16 +812,16 @@ GetVar: Entries in the HTTP response header can be read as variable fields.
 -END-
 *****************************************************************************/
 
-static ERROR HTTP_GetVar(objHTTP *Self, struct acGetVar *Args)
+static ERROR HTTP_GetVar(extHTTP *Self, struct acGetVar *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   if (Self->Args->contains(Args->Field)) {
+   if ((Self->Args) and (Self->Args->contains(Args->Field))) {
       StrCopy(Self->Args[0][Args->Field].c_str(), Args->Buffer, Args->Size);
       return ERR_Okay;
    }
 
-   if (Self->Headers->contains(Args->Field)) {
+   if ((Self->Headers) and (Self->Headers->contains(Args->Field))) {
       StrCopy(Self->Headers[0][Args->Field].c_str(), Args->Buffer, Args->Size);
       return ERR_Okay;
    }
@@ -772,7 +831,7 @@ static ERROR HTTP_GetVar(objHTTP *Self, struct acGetVar *Args)
 
 //****************************************************************************
 
-static ERROR HTTP_Init(objHTTP *Self, APTR Args)
+static ERROR HTTP_Init(extHTTP *Self, APTR Args)
 {
    parasol::Log log;
 
@@ -795,7 +854,7 @@ static ERROR HTTP_Init(objHTTP *Self, APTR Args)
 
 //****************************************************************************
 
-static ERROR HTTP_NewObject(objHTTP *Self, APTR Args)
+static ERROR HTTP_NewObject(extHTTP *Self, APTR Args)
 {
    Self->Error          = ERR_Okay;
    Self->UserAgent      = StrClone("Parasol Client");
@@ -814,7 +873,7 @@ SetVar: Options to pass in the HTTP method header can be set as variable fields.
 -END-
 *****************************************************************************/
 
-static ERROR HTTP_SetVar(objHTTP *Self, struct acSetVar *Args)
+static ERROR HTTP_SetVar(extHTTP *Self, struct acSetVar *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -829,7 +888,7 @@ static ERROR HTTP_SetVar(objHTTP *Self, struct acSetVar *Args)
 //****************************************************************************
 // Writing to an HTTP object's outgoing buffer is possible if the Outgoing callback function is active.
 
-static ERROR HTTP_Write(objHTTP *Self, struct acWrite *Args)
+static ERROR HTTP_Write(extHTTP *Self, struct acWrite *Args)
 {
    if ((!Args) or (!Args->Buffer)) return ERR_NullArgs;
 
@@ -851,7 +910,7 @@ static ERROR HTTP_Write(objHTTP *Self, struct acWrite *Args)
          return ERR_BufferOverflow;
       }
    }
-   else return ERR_BadState;
+   else return ERR_InvalidState;
 }
 
 /*****************************************************************************
@@ -860,7 +919,7 @@ AuthCallback: Private.  This field is reserved for future use.
 
 *****************************************************************************/
 
-static ERROR GET_AuthCallback(objHTTP *Self, FUNCTION **Value)
+static ERROR GET_AuthCallback(extHTTP *Self, FUNCTION **Value)
 {
    if (Self->AuthCallback.Type != CALL_NONE) {
       *Value = &Self->AuthCallback;
@@ -869,7 +928,7 @@ static ERROR GET_AuthCallback(objHTTP *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_AuthCallback(objHTTP *Self, FUNCTION *Value)
+static ERROR SET_AuthCallback(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->AuthCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->AuthCallback.Script.Script, AC_Free);
@@ -892,7 +951,7 @@ Note that the actual buffer size may not reflect the exact size that you set her
 
 *****************************************************************************/
 
-static ERROR SET_BufferSize(objHTTP *Self, LONG Value)
+static ERROR SET_BufferSize(extHTTP *Self, LONG Value)
 {
    if (Value < 2 * 1024) Value = 2 * 1024;
    Self->BufferSize = Value;
@@ -916,8 +975,9 @@ HTTP servers will return a ContentLength value in their response headers when re
 defined here once the response header is processed.  The ContentLength may be set to -1 if the content is being
 streamed from the server.
 
-When posting data to a server, set the ContentLength to the amount of data that you intend to send to the server.  If
-streaming data of unknown length, set the ContentLength to -1.
+Note that if posting data to a server with an #InputFile or #InputObject as the source, the #Size field will have
+priority and override any existing value in ContentLength.  In all other cases the ContentLength can be set directly
+and a setting of -1 can be used for streaming.
 
 -FIELD-
 ContentType: Defines the content-type for PUT and POST methods.
@@ -928,13 +988,13 @@ be applied.
 
 *****************************************************************************/
 
-static ERROR GET_ContentType(objHTTP *Self, STRING *Value)
+static ERROR GET_ContentType(extHTTP *Self, STRING *Value)
 {
    *Value = Self->ContentType;
    return ERR_Okay;
 }
 
-static ERROR SET_ContentType(objHTTP *Self, CSTRING Value)
+static ERROR SET_ContentType(extHTTP *Self, CSTRING Value)
 {
    if (Self->ContentType) { FreeResource(Self->ContentType); Self->ContentType = NULL; }
    if (Value) Self->ContentType = StrClone(Value);
@@ -983,7 +1043,7 @@ The HTTP server to target for HTTP requests is defined here.  To change the host
 
 *****************************************************************************/
 
-static ERROR SET_Host(objHTTP *Self, CSTRING Value)
+static ERROR SET_Host(extHTTP *Self, CSTRING Value)
 {
    if (Self->Host) { FreeResource(Self->Host); Self->Host = NULL; }
    Self->Host = StrClone(Value);
@@ -1003,7 +1063,7 @@ cancelled.
 
 *****************************************************************************/
 
-static ERROR GET_Incoming(objHTTP *Self, FUNCTION **Value)
+static ERROR GET_Incoming(extHTTP *Self, FUNCTION **Value)
 {
    if (Self->Incoming.Type != CALL_NONE) {
       *Value = &Self->Incoming;
@@ -1012,7 +1072,7 @@ static ERROR GET_Incoming(objHTTP *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_Incoming(objHTTP *Self, FUNCTION *Value)
+static ERROR SET_Incoming(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->Incoming.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
@@ -1046,7 +1106,7 @@ An alternative is to set the #InputObject for abstracting the data source.
 
 *****************************************************************************/
 
-static ERROR SET_InputFile(objHTTP *Self, CSTRING Value)
+static ERROR SET_InputFile(extHTTP *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -1100,7 +1160,7 @@ URI string is inconvenient.
 
 *****************************************************************************/
 
-static ERROR GET_Location(objHTTP *Self, STRING *Value)
+static ERROR GET_Location(extHTTP *Self, STRING *Value)
 {
    Self->AuthRetries = 0; // Reset the retry counter
 
@@ -1131,11 +1191,11 @@ static ERROR GET_Location(objHTTP *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Location(objHTTP *Self, CSTRING Value)
+static ERROR SET_Location(extHTTP *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
       // Free the current socket if the entire URI changes
@@ -1165,7 +1225,7 @@ static ERROR SET_Location(objHTTP *Self, CSTRING Value)
 
    // Parse host name
 
-   LONG len, i;
+   LONG len;
    for (len=0; (str[len]) and (str[len] != ':') and (str[len] != '/'); len++);
 
    if (AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->Host, NULL) != ERR_Okay) {
@@ -1181,7 +1241,7 @@ static ERROR SET_Location(objHTTP *Self, CSTRING Value)
 
    if (*str IS ':') {
       str++;
-      i = StrToInt(str);
+      LONG i = StrToInt(str);
       if (i) {
          Self->Port = i;
          if (Self->Port IS 443) Self->Flags |= HTF_SSL;
@@ -1205,7 +1265,7 @@ Method: The HTTP instruction to execute is defined here (defaults to GET).
 
 *****************************************************************************/
 
-static ERROR SET_Method(objHTTP *Self, LONG Value)
+static ERROR SET_Method(extHTTP *Self, LONG Value)
 {
    // Changing/Setting the method results in a reset of the variable fields
    if (Self->Args) { delete Self->Args; Self->Args = NULL; }
@@ -1228,8 +1288,9 @@ object.
 -FIELD-
 Outgoing: Outgoing data can be managed using a function callback if this field is set.
 
-Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The format for
-the callback routine is `ERROR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)`
+Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype
+for the callback routine is `ERROR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)`.  For Fluid use
+`function(HTTP, Buffer, BufferSize)`.
 
 Outgoing content is placed in the Buffer address and must not exceed the indicated BufferSize.  The total number of
 bytes placed in the Buffer must be indicated in the Result parameter before the callback routine returns.
@@ -1240,7 +1301,7 @@ frame.  All other error codes apart from ERR_Okay indicate failure.
 
 *****************************************************************************/
 
-static ERROR GET_Outgoing(objHTTP *Self, FUNCTION **Value)
+static ERROR GET_Outgoing(extHTTP *Self, FUNCTION **Value)
 {
    if (Self->Outgoing.Type != CALL_NONE) {
       *Value = &Self->Outgoing;
@@ -1249,7 +1310,7 @@ static ERROR GET_Outgoing(objHTTP *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_Outgoing(objHTTP *Self, FUNCTION *Value)
+static ERROR SET_Outgoing(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->Outgoing.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
@@ -1271,7 +1332,7 @@ set in the #Flags field.
 
 *****************************************************************************/
 
-static ERROR SET_OutputFile(objHTTP *Self, CSTRING Value)
+static ERROR SET_OutputFile(extHTTP *Self, CSTRING Value)
 {
    if (Self->OutputFile) { FreeResource(Self->OutputFile); Self->OutputFile = NULL; }
    Self->OutputFile = StrClone(Value);
@@ -1300,7 +1361,7 @@ A 401 status code is returned in the event of an authorisation failure.
 
 *****************************************************************************/
 
-static ERROR SET_Password(objHTTP *Self, CSTRING Value)
+static ERROR SET_Password(extHTTP *Self, CSTRING Value)
 {
    if (Self->Password) { FreeResource(Self->Password); Self->Password = NULL; }
    Self->Password = StrClone(Value);
@@ -1321,58 +1382,57 @@ automatic conversions are operated when setting the Path field.
 
 *****************************************************************************/
 
-static ERROR SET_Path(objHTTP *Self, CSTRING Value)
+static ERROR SET_Path(extHTTP *Self, CSTRING Value)
 {
    Self->AuthRetries = 0; // Reset the retry counter
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   if (Value) {
-      while (*Value IS '/') Value++; // Skip '/' prefix
+   if (!Value) return ERR_Okay;
 
+   while (*Value IS '/') Value++; // Skip '/' prefix
+
+   LONG len = 0;
+   for (LONG i=0; Value[i]; i++) { // Compute the length with consideration to escape codes
+      if (Value[i] IS ' ') len += 3; // '%20'
+      else len++;
+   }
+
+   if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->Path, NULL)) {
       LONG len = 0;
       for (LONG i=0; Value[i]; i++) {
-         if (Value[i] IS ' ') len += 3;
-         else len++;
-      }
-
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->Path, NULL)) {
-         LONG len = 0;
-         for (LONG i=0; Value[i]; i++) {
-            if (Value[i] IS ' ') {
-               Self->Path[len++] = '%';
-               Self->Path[len++] = '2';
-               Self->Path[len++] = '0';
-            }
-            else Self->Path[len++] = Value[i];
+         if (Value[i] IS ' ') {
+            Self->Path[len++] = '%';
+            Self->Path[len++] = '2';
+            Self->Path[len++] = '0';
          }
-         Self->Path[len] = 0;
+         else Self->Path[len++] = Value[i];
+      }
+      Self->Path[len] = 0;
 
-         // Check if this path has been authenticated against the server yet by comparing it to AuthPath.  We need to
-         // do this if a PUT instruction is executed against the path and we're not authenticated yet.
+      // Check if this path has been authenticated against the server yet by comparing it to AuthPath.  We need to
+      // do this if a PUT instruction is executed against the path and we're not authenticated yet.
 
-         while ((len > 0) and (Self->Path[len-1] != '/')) len--;
+      while ((len > 0) and (Self->Path[len-1] != '/')) len--;
 
-         Self->SecurePath = TRUE;
-         if (Self->AuthPath) {
-            LONG i = StrLength(Self->AuthPath);
-            while ((i > 0) and (Self->AuthPath[i-1] != '/')) i--;
+      Self->SecurePath = TRUE;
+      if (Self->AuthPath) {
+         LONG i = StrLength(Self->AuthPath);
+         while ((i > 0) and (Self->AuthPath[i-1] != '/')) i--;
 
-            if (i IS len) {
-               if (!StrCompare(Self->Path, Self->AuthPath, len, 0)) {
-                  // No change to the current path
-                  Self->SecurePath = FALSE;
-               }
+         if (i IS len) {
+            if (!StrCompare(Self->Path, Self->AuthPath, len, 0)) {
+               // No change to the current path
+               Self->SecurePath = FALSE;
             }
          }
-
-         Self->AuthPath = StrClone(Self->Path);
-         Self->AuthPath[len] = 0;
-         return ERR_Okay;
       }
-      else return ERR_AllocMemory;
+
+      Self->AuthPath = StrClone(Self->Path);
+      Self->AuthPath[len] = 0;
+      return ERR_Okay;
    }
-   else return ERR_Okay;
+   else return ERR_AllocMemory;
 }
 
 /*****************************************************************************
@@ -1397,7 +1457,7 @@ that the proxy server uses to receive requests, see the #ProxyPort field.
 
 *****************************************************************************/
 
-static ERROR SET_ProxyServer(objHTTP *Self, CSTRING Value)
+static ERROR SET_ProxyServer(extHTTP *Self, CSTRING Value)
 {
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
    if ((Value) and (Value[0])) Self->ProxyServer = StrClone(Value);
@@ -1415,7 +1475,7 @@ this name string.
 
 *****************************************************************************/
 
-static ERROR SET_Realm(objHTTP *Self, CSTRING Value)
+static ERROR SET_Realm(extHTTP *Self, CSTRING Value)
 {
    if (Self->Realm) { FreeResource(Self->Realm); Self->Realm = NULL; }
    if (Value) Self->Realm = StrClone(Value);
@@ -1435,7 +1495,7 @@ The buffer is null-terminated if you wish to use it as a string.
 
 *****************************************************************************/
 
-static ERROR GET_RecvBuffer(objHTTP *Self, UBYTE **Value, LONG *Elements)
+static ERROR GET_RecvBuffer(extHTTP *Self, UBYTE **Value, LONG *Elements)
 {
    *Value = Self->RecvBuffer;
    *Elements = Self->RecvSize;
@@ -1447,61 +1507,66 @@ static ERROR GET_RecvBuffer(objHTTP *Self, UBYTE **Value, LONG *Elements)
 -FIELD-
 Size: Set this field to define the length of a data transfer when issuing a POST command.
 
-Prior to the execution of a POST command, it is recommended that you set the Size field to explicitly define the length
+Prior to the execution of a POST command it is recommended that you set the Size field to explicitly define the length
 of the data transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of the
 transfer by reading the size from the source file or object.
 
 -FIELD-
-State: Indicates the current state of an HTTP object during its interaction with an HTTP server.
+CurrentState: Indicates the current state of an HTTP object during its interaction with an HTTP server.
 
-The State is a readable field that tracks the current state of the client in its relationship with the target HTTP
-server.  The default state is READING_HEADER.  Changes to the state can be monitored through the #StateChanged field.
+The CurrentState is a readable field that tracks the current state of the client in its relationship with the target HTTP
+server.  The default state is `READING_HEADER`.  Changes to the state can be monitored through the #StateChanged field.
 
-On completion of an HTTP request, the state will be changed to either COMPLETED or TERMINATED.
+On completion of an HTTP request, the state will be changed to either `COMPLETED` or `TERMINATED`.
 
 *****************************************************************************/
 
-static ERROR SET_State(objHTTP *Self, LONG Value)
+static ERROR SET_CurrentState(extHTTP *Self, LONG Value)
 {
    parasol::Log log;
 
    if ((Value < 0) or (Value >= HGS_END)) return log.warning(ERR_OutOfRange);
 
-   if (Self->Flags & HTF_DEBUG) log.msg("New State: %s, Currently: %s", clHTTPState[Value].Name, clHTTPState[Self->State].Name);
+   if (Self->Flags & HTF_DEBUG) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[Value].Name, clHTTPCurrentState[Self->CurrentState].Name);
 
-   if ((Value >= HGS_COMPLETED) and (Self->State < HGS_COMPLETED)) {
-      Self->State = Value;
-      if (Self->Socket) DelayMsg(AC_Deactivate, Self->Head.UniqueID, NULL);
+   if ((Value >= HGS_COMPLETED) and (Self->CurrentState < HGS_COMPLETED)) {
+      Self->CurrentState = Value;
+      if (Self->Socket) DelayMsg(AC_Deactivate, Self->UID, NULL);
    }
-   else Self->State = Value;
+   else Self->CurrentState = Value;
 
    if (Self->StateChanged.Type != CALL_NONE) {
       ERROR error;
       if (Self->StateChanged.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(rkHTTP *, LONG))Self->StateChanged.StdC.Routine;
-         error = routine(Self, Self->State);
+         auto routine = (ERROR (*)(extHTTP *, LONG))Self->StateChanged.StdC.Routine;
+         error = routine(Self, Self->CurrentState);
       }
       else if (Self->StateChanged.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->StateChanged.Script.Script)) {
             const ScriptArg args[] = {
-               { "HTTP", FD_OBJECTID, { .Long = Self->Head.UniqueID } },
-               { "State", FD_LONG, { .Long = Self->State } }
+               { "HTTP", FD_OBJECTID, { .Long = Self->UID } },
+               { "State", FD_LONG, { .Long = Self->CurrentState } }
             };
 
-            if (!scCallback(script, Self->StateChanged.Script.ProcedureID, args, ARRAYSIZE(args))) {
-               GetLong(script, FID_Error, &error);
-            }
-            else error = ERR_Terminate; // Fatal error in attempting to execute the procedure
+            if (scCallback(script, Self->StateChanged.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
-         else error = ERR_Terminate;
+         else error = ERR_Terminate; // Error in function configuration
       }
+      else error = ERR_Okay;
 
-      if (error) SET_ERROR(Self, error);
+      if (error > ERR_ExceptionThreshold) SET_ERROR(Self, error);
 
-      if ((error IS ERR_Terminate) and (Self->State != HGS_TERMINATED) and (Self->State != HGS_COMPLETED)) {
-         log.branch("State changing to HGS_TERMINATED (terminate message received).");
-         SET_State(Self, HGS_TERMINATED);
+      if (error IS ERR_Terminate) {
+         if (Self->CurrentState IS HGS_SENDING_CONTENT) {
+            // Stop sending and expect a response from the server.  If the client doesn't care about the response
+            // then a subsequent ERR_Terminate code can be returned on notification of this state change.
+            SET_CurrentState(Self, HGS_SEND_COMPLETE);
+         }
+         else if ((Self->CurrentState != HGS_TERMINATED) and (Self->CurrentState != HGS_COMPLETED)) {
+            log.branch("State changing to HGS_COMPLETED (ERR_Terminate received).");
+            SET_CurrentState(Self, HGS_COMPLETED);
+         }
       }
    }
 
@@ -1521,7 +1586,7 @@ cancelled.
 
 *****************************************************************************/
 
-static ERROR GET_StateChanged(objHTTP *Self, FUNCTION **Value)
+static ERROR GET_StateChanged(extHTTP *Self, FUNCTION **Value)
 {
    if (Self->StateChanged.Type != CALL_NONE) {
       *Value = &Self->StateChanged;
@@ -1530,7 +1595,7 @@ static ERROR GET_StateChanged(objHTTP *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_StateChanged(objHTTP *Self, FUNCTION *Value)
+static ERROR SET_StateChanged(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->StateChanged.Type IS CALL_SCRIPT) UnsubscribeAction(Self->StateChanged.Script.Script, AC_Free);
@@ -1553,7 +1618,7 @@ This field describe the 'user-agent' value that will be sent in HTTP requests.  
 
 *****************************************************************************/
 
-static ERROR SET_UserAgent(objHTTP *Self, CSTRING Value)
+static ERROR SET_UserAgent(extHTTP *Self, CSTRING Value)
 {
    if (Self->UserAgent) { FreeResource(Self->UserAgent); Self->UserAgent = NULL; }
    Self->UserAgent = StrClone(Value);
@@ -1578,7 +1643,7 @@ presented with a dialog box and asked to enter the correct username and password
 
 *****************************************************************************/
 
-static ERROR SET_Username(objHTTP *Self, CSTRING Value)
+static ERROR SET_Username(extHTTP *Self, CSTRING Value)
 {
    if (Self->Username) { FreeResource(Self->Username); Self->Username = NULL; }
    Self->Username = StrClone(Value);
@@ -1611,7 +1676,7 @@ static const FieldArray clFields[] = {
    { "Status",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clStatus, NULL, NULL },
    { "Error",          FDF_LONG|FDF_RW,            0, NULL, NULL },
    { "Datatype",       FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPDatatype, NULL, NULL },
-   { "State",          FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPState, NULL, (APTR)SET_State },
+   { "CurrentState",   FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPCurrentState, NULL, (APTR)SET_CurrentState },
    { "ProxyServer",    FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_ProxyServer },
    { "ProxyPort",      FDF_LONG|FDF_RW,            0, NULL, NULL },
    { "BufferSize",     FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_BufferSize },
@@ -1640,7 +1705,7 @@ static ERROR create_http_class(void)
       FID_Category|TLONG, CCF_NETWORK,
       FID_Actions|TPTR,   clHTTPActions,
       FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(objHTTP),
+      FID_Size|TLONG,     sizeof(extHTTP),
       FID_Path|TSTR,      MOD_PATH,
       TAGEND);
 }

@@ -84,8 +84,8 @@ set_module_defaults (core)
 
 target_sources (core PRIVATE
    "core.cpp"
-   "data.c"
-   "data_actionlist.c"
+   "data.cpp"
+   "data_actionlist.cpp"
    "internal.cpp"
    "lib_actions.cpp"
    "lib_events.cpp"
@@ -155,6 +155,8 @@ endif ()
 flute_test (core_filesystem "tests/filesystem.fluid")
 flute_test (core_keypairs "tests/keypairs.fluid")
 flute_test (core_misc "tests/misc.fluid")
+flute_test (core_compression "tests/compression.fluid")
+flute_test (core_config "tests/config.fluid")
 
 # TODO: Convert these test builds to cmake
 #$(PARASOL_RELEASE)/test_objlocking$(EXE): private_object_locking.c

@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>ColourFX</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Support for applying colour transformation effects.</comment>
+    <version>1</version>
+    <id>3db0d377</id>
+    <idstring>ID_COLOURFX</idstring>
+    <category>Graphics</category>
+    <include>modules/colourfx.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>Use ColourFX to perform colour transformations on an input source.  A <field>Mode</field> must be selected and any required <field>Values</field> defined prior to rendering.</p>
+<p>SVG requires that the calculations are performed on non-premultiplied colour values.  If the input graphics consists of premultiplied colour values, those values are automatically converted into non-premultiplied colour values for this operation.</p></description>
+    <source>
+      <file path="filters/">filter_colourmatrix.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Draw</name>
+      <comment>Render the effect to the target bitmap.</comment>
+    </action>
+
+  </actions>
+
+  <fields>
+    <field>
+      <name>Mode</name>
+      <comment>Defines the algorithm that will process the input source.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type lookup="CM">INT</type>
+      <description>
+<types lookup="CM"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Values</name>
+      <comment>A list of input values for the algorithm defined by <field>Mode</field>.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE []</type>
+      <description>
+<p>The meaning of the input values is dependent on the selected <field>Mode</field>.  Each mode documents the total number of values that must be defined for them to work properly.</p>
+<p>When values are not defined, they default to 0.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>XMLDef</name>
+      <comment>Returns an SVG compliant XML string that describes the effect.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="CM" comment="Colour modes for ColourFX.">
+      <const name="BRIGHTNESS">Adjust brightness using the first parameter to define the intensity.</const>
+      <const name="COLOURISE">Colourise the input with the first 3 parameters used as RGB multipliers and the fourth parameter controlling intensity from 0 - 1.0.</const>
+      <const name="CONTRAST">Adjust contrast using the first parameter to define the intensity from -1.0 to 1.0.</const>
+      <const name="DESATURATE">Desaturate the input completely so that it is rendered in greyscale.</const>
+      <const name="HUE">Adjust the hue by 0 - 360 degrees using the first parameter.</const>
+      <const name="HUE_ROTATE">Rotate the hue by 0 - 360 degrees, controlled by the first parameter.</const>
+      <const name="LUMINANCE_ALPHA">Converts each RGB value to greyscale, which then overrides the alpha channel.</const>
+      <const name="MATRIX">Process the supplied 5x4 matrix values.</const>
+      <const name="NONE">Do nothing.</const>
+      <const name="SATURATE">Adjust colour saturation with the first parameter defining the multiplier.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

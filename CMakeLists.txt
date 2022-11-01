@@ -1,10 +1,13 @@
 # Parasol Core Build File
-# Prepare:    cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -G"MinGW Makefiles"
-#             cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles"
-# Local Opts: -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
-# Build:      cmake --build release -j 8 -- -O
-# Install:    sudo cmake --install release
-# Test:       make -C release test ARGS=--verbose
+#
+# Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
+# Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug
+#                  For Windows, add -G"MinGW Makefiles"
+#                  To target a local folder, add -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+#
+# Build:   cmake --build release -j 8 -- -O
+# Install: sudo cmake --install release
+# Test:    make -C release test ARGS=--verbose
 
 cmake_minimum_required(VERSION 3.13)
 
@@ -24,8 +27,10 @@ endif()
 
 project (Parasol LANGUAGES C CXX)
 
-set (VERSION "2020.10")
+set (VERSION "2022.8")
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
+
+# To switch on a custom option use -D, e.g. -DPARASOL_VLOG=ON
 
 option (PARASOL_STATIC   "Build as a static library" OFF)
 option (PARASOL_SHARED   "Build as a shared library" ON)
@@ -332,12 +337,12 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
    add_definitions ("-D_DARWIN_C_SOURCE")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
    add_definitions ("-D_GNU_SOURCE")
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -ffunction-sections -fno-strict-aliasing")
+	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing")
 elseif (WIN32)
    add_definitions ("-D_WIN32" "-U__unix__")
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign ${PARASOL_ARCH}")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -ffunction-sections -fno-strict-aliasing ${PARASOL_ARCH}")
+	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign ${PARASOL_ARCH}")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -fdiagnostics-color=auto -ffunction-sections -fno-strict-aliasing ${PARASOL_ARCH}")
    if (PRINTF64_ID)
       add_definitions ("-DPRINTF64I")
    endif ()
@@ -377,18 +382,14 @@ add_subdirectory (src/document)
 add_subdirectory (src/fluid)
 add_subdirectory (src/font)
 add_subdirectory (src/http)
-add_subdirectory (src/iconserver)
 add_subdirectory (src/json)
 add_subdirectory (src/network)
 add_subdirectory (src/parc)
 add_subdirectory (src/picture)
 add_subdirectory (src/picture_jpeg)
 add_subdirectory (src/scintilla)
-add_subdirectory (src/surface)
 add_subdirectory (src/svg)
 add_subdirectory (src/vector)
-add_subdirectory (src/widget)
-add_subdirectory (src/window)
 add_subdirectory (src/xml)
 if (X11_Xrandr_FOUND)
    add_subdirectory (src/xrandr)
@@ -446,6 +447,22 @@ add_dependencies (fluid_cmd build_headers)
 configure_file ("src/config.h.in" "parasol/config.h" NEWLINE_STYLE UNIX)
 
 # ----------------------------------------------------------------------------
+# Icons are installed as a zip file
+
+file(GLOB_RECURSE icon_files "data/icons/*.svg")
+
+add_custom_command (
+   OUTPUT  "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip"
+   PRE_BUILD
+   COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/icons"
+   COMMAND ${CMAKE_COMMAND} -E tar "cf" "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip" --format=zip -- "."
+   DEPENDS ${icon_files}
+   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/data/icons/Default"
+   COMMENT "Zipping icons")
+
+add_custom_target (icon_package ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip")
+
+# ----------------------------------------------------------------------------
 # Installation steps
 
 if (PARASOL_INSTALL)
@@ -468,7 +485,7 @@ if (WIN32)
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations/" DESTINATION "config/translations")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users/" DESTINATION "config/users")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts/" DESTINATION "fonts")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/icons/" DESTINATION "icons")
+   install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "styles/icons")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts/" DESTINATION "scripts")
    if (INSTALL_EXAMPLES)
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
@@ -479,7 +496,7 @@ else ()
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/translations" DESTINATION "${SHARE_TARGET}/config")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users" DESTINATION "${SHARE_TARGET}/config")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/icons" DESTINATION "${SHARE_TARGET}")
+   install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "${SHARE_TARGET}/styles/icons")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts" DESTINATION "${SHARE_TARGET}")
    if (INSTALL_EXAMPLES)
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples" DESTINATION "${SHARE_TARGET}")

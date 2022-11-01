@@ -75,6 +75,9 @@
 #define HASH_UNSUBSCRIBE 0x749c540a
 #define HASH_SUBSCRIBE 0xcb65e3e7
 #define HASH_NEW 0x0b88944f
+#define HASH_TIMEOUT 0xe1fe87cc
+#define HASH_SIGNALS 0x949c6ab6
 #define HASH_LOCK 0x7c9a2dce
+#define HASH_STATE 0x10614a06
 
 #endif

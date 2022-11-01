@@ -21,7 +21,7 @@ extern "C" {
 
 void clear_subscriptions(objScript *Self)
 {
-   auto prv = (prvFluid *)Self->Head.ChildPrivate;
+   auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return;
 
    // Free action subscriptions
@@ -78,7 +78,7 @@ int fcmd_check(lua_State *Lua)
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
       ERROR error = lua_tonumber(Lua, 1);
       if (error >= ERR_ExceptionThreshold) {
-         auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->CaughtError = error;
          luaL_error(prv->Lua, GetErrorMsg(error));
       }
@@ -87,10 +87,32 @@ int fcmd_check(lua_State *Lua)
 }
 
 //****************************************************************************
-// Use catch() to switch on exception handling for functions that return an error code other than ERR_Okay.  Areas
-// affected include obj.new(); any module function that returns an ERROR; any method or action called on an object.
+// raise() will raise an error immediately from an error code.  Unlike check(), all codes have coverage, including
+// minor codes.  The error code will also be propagated to the Script object's Error field.
+
+int fcmd_raise(lua_State *Lua)
+{
+   if (lua_type(Lua, 1) IS LUA_TNUMBER) {
+      ERROR error = lua_tonumber(Lua, 1);
+      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      prv->CaughtError = error;
+      luaL_error(prv->Lua, GetErrorMsg(error));
+   }
+   return 0;
+}
+
+//****************************************************************************
+// Use catch() to switch on exception handling for functions that return an error code other than ERR_Okay, as well as
+// normal exceptions that would otherwise be caught by pcall().  Areas affected include obj.new(); any module function
+// that returns an ERROR; any method or action called on an object.
+//
 // The caught error code is returned by default, or if no exception handler is defined then the entire exception table
 // is returned.
+//
+// Be aware that the scope of the catch will extend into any sub-routines that are called.  Mis-use of catch() can be
+// confusing for this reason, and pcall() is more appropriate when broad exception handling is desired.
+//
+// catch() is most useful for creating small code segments that limit any failures to their own scope.
 //
 //   err = catch(function()
 //      // Code to execute
@@ -121,7 +143,7 @@ int fcmd_check(lua_State *Lua)
 int fcmd_catch_handler(lua_State *Lua)
 {
    lua_Debug ar;
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    if (lua_getstack(Lua, 2, &ar)) {
       lua_getinfo(Lua, "nSl", &ar);
       // ar.currentline, ar.name, ar.source, ar.short_src, ar.linedefined, ar.lastlinedefined, ar.what
@@ -134,7 +156,7 @@ int fcmd_catch_handler(lua_State *Lua)
 
 int fcmd_catch(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    if (lua_gettop(Lua) >= 2) {
       LONG type = lua_type(Lua, 1);
@@ -189,7 +211,11 @@ int fcmd_catch(lua_State *Lua)
                   lua_settable(Lua, -3);
 
                   lua_pushstring(Lua, "message");
-                  lua_pushvalue(Lua, -4); // This is the error exception string returned by pcall()
+                  if (lua_type(Lua, -4) IS LUA_TSTRING) {
+                     lua_pushvalue(Lua, -4); // This is the error exception string returned by pcall()
+                  }
+                  else if (prv->CaughtError) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
+                  else lua_pushstring(Lua, "<No message>");
                   lua_settable(Lua, -3);
 
                   lua_pushstring(Lua, "line");
@@ -274,37 +300,6 @@ int fcmd_catch(lua_State *Lua)
 }
 
 //****************************************************************************
-// Usage: processMessages(Timeout)
-//
-// Processes incoming messages.  Returns the number of microseconds that elapsed, followed by the error from
-// ProcessMessages().  To process messages until a QUIT message is received, call processMessages(-1)
-
-int fcmd_processMessages(lua_State *Lua)
-{
-   static std::mutex recursion; // Intentionally accessible to all threads
-
-   {
-      parasol::Log log;
-      log.traceBranch("Collecting garbage.");
-      lua_gc(Lua, LUA_GCCOLLECT, 0);
-   }
-
-   LONG timeout = lua_tointeger(Lua, 1);
-
-   recursion.lock();
-
-      LARGE time = PreciseTime();
-      ERROR error = ProcessMessages(0, timeout);
-      time = PreciseTime() - time;
-
-   recursion.unlock();
-
-   lua_pushnumber(Lua, time);
-   lua_pushinteger(Lua, error);
-   return 2;
-}
-
-//****************************************************************************
 // The event callback will be called with the following synopsis:
 //
 // function callback(EventID, Args)
@@ -315,7 +310,7 @@ int fcmd_processMessages(lua_State *Lua)
 static void receive_event(eventsub *Event, APTR Info, LONG InfoSize)
 {
    auto Script = (objScript *)CurrentContext();
-   auto prv = (prvFluid *)Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Script->ChildPrivate;
    if (!prv) return;
 
    parasol::Log log(__FUNCTION__);
@@ -337,7 +332,7 @@ static void receive_event(eventsub *Event, APTR Info, LONG InfoSize)
 
 int fcmd_unsubscribe_event(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    if (!prv) return 0;
 
    APTR handle;
@@ -445,10 +440,9 @@ int fcmd_subscribe_event(lua_State *Lua)
       return 1;
    }
    else if (!(error = AllocMemory(sizeof(struct eventsub), MEM_DATA, &es, NULL))) {
-      FUNCTION call;
-      SET_FUNCTION_STDC(call, (APTR)receive_event);
+      auto call = make_function_stdc(receive_event);
       if (!(error = SubscribeEvent(event_id, &call, es, &es->EventHandle))) {
-         auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          lua_settop(Lua, 2);
          es->Function = luaL_ref(Lua, LUA_REGISTRYINDEX);
          es->EventID  = event_id;
@@ -551,13 +545,13 @@ int fcmd_include(lua_State *Lua)
 /*****************************************************************************
 ** Usage: require "Module"
 **
-** Loads a Fluid language file from system:scripts/ and executes it.  Differs from loadFile() in that registration
-** prevents multiple executions and the folder restriction improves security.
+** Loads a Fluid language file from "scripts:" and executes it.  Differs from loadFile() in that registration
+** prevents multiple executions, and the volume restriction improves security.
 */
 
 int fcmd_require(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    CSTRING module, error_msg = NULL;
    ERROR error = ERR_Okay;
@@ -581,39 +575,33 @@ int fcmd_require(lua_State *Lua)
 
       // Check if the module is already loaded.
 
-      char req[40] = "require.";
-      StrCopy(module, req+8, sizeof(req)-8);
+      auto req = std::string("require.") + module;
 
-      lua_getfield(prv->Lua, LUA_REGISTRYINDEX, req);
+      lua_getfield(prv->Lua, LUA_REGISTRYINDEX, req.c_str());
       BYTE loaded = lua_toboolean(prv->Lua, -1);
       lua_pop(prv->Lua, 1);
       if (loaded) return 0;
 
-      char path[96];
-      StrFormat(path, sizeof(path), "system:scripts/%s.fluid", module);
+      auto path = std::string("scripts:") + module + ".fluid";
 
       objFile *file;
-      if (!(error = CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path, FID_Flags|TLONG, FL_READ, TAGEND))) {
-         APTR buffer;
-         if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer, NULL)) {
-            struct code_reader_handle handle = { file, buffer };
-            if (!lua_load(Lua, &code_reader, &handle, module)) {
-               prv->RequireCounter++; // Used by getExecutionState()
-               if (!lua_pcall(Lua, 0, 0, 0)) { // Success, mark the module as loaded.
-                  lua_pushboolean(prv->Lua, 1);
-                  lua_setfield(prv->Lua, LUA_REGISTRYINDEX, req);
-               }
-               else error_msg = lua_tostring(Lua, -1);
-               prv->RequireCounter--;
+      if (!(error = CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path.c_str(), FID_Flags|TLONG, FL_READ, TAGEND))) {
+         std::unique_ptr<char[]> buffer(new char[SIZE_READ]);
+         struct code_reader_handle handle = { file, buffer.get() };
+         if (!lua_load(Lua, &code_reader, &handle, module)) {
+            prv->RequireCounter++; // Used by getExecutionState()
+            if (!lua_pcall(Lua, 0, 0, 0)) { // Success, mark the module as loaded.
+               lua_pushboolean(prv->Lua, 1);
+               lua_setfield(prv->Lua, LUA_REGISTRYINDEX, req.c_str());
             }
             else error_msg = lua_tostring(Lua, -1);
-            FreeResource(buffer);
+            prv->RequireCounter--;
          }
-         else error = ERR_AllocMemory;
+         else error_msg = lua_tostring(Lua, -1);
          acFree(file);
       }
       else {
-         luaL_error(Lua, "Failed to open file '%s', may not exist.", path);
+         luaL_error(Lua, "Failed to open file '%s', may not exist.", path.c_str());
          return 0;
       }
    }
@@ -633,7 +621,7 @@ int fcmd_require(lua_State *Lua)
 
 int fcmd_get_execution_state(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    lua_newtable(Lua);
    lua_pushstring(Lua, "inRequire");
    lua_pushboolean(Lua, prv->RequireCounter ? TRUE : FALSE);
@@ -642,14 +630,15 @@ int fcmd_get_execution_state(lua_State *Lua)
 }
 
 /*****************************************************************************
-** Usage: loadFile("Path")
+** Usage: results = loadFile("Path")
 **
-** Loads a Fluid language file from any location and executes it.
+** Loads a Fluid language file from any location and executes it.  Any return values from the script will be returned
+** as-is.  Any error that occurs will be thrown with a descriptive string.
 */
 
 int fcmd_loadfile(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    CSTRING error_msg = NULL;
    LONG results = 0;
@@ -787,7 +776,7 @@ static const char * code_reader_buffer(lua_State *, void *, size_t *);
 
 int fcmd_exec(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->Head.ChildPrivate;
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    LONG results = 0;
 
@@ -797,7 +786,7 @@ int fcmd_exec(lua_State *Lua)
 
       {
          parasol::Log log("exec");
-         log.branch("");
+         log.branch();
 
          // Check for the presence of a compiled header and skip it if present
 

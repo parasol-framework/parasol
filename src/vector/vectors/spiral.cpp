@@ -11,63 +11,48 @@ point.
 
 #define MAX_SPIRAL_VERTICES 65536
 
-typedef struct rkVectorSpiral {
-   OBJECT_HEADER
-   SHAPE_PUBLIC
-   SHAPE_PRIVATE
-
+class objVectorSpiral : public extVector {
+   public:
    DOUBLE Scale;
    DOUBLE Offset;
    DOUBLE Radius;
    DOUBLE CX, CY;
    DOUBLE Step;
    LONG Dimensions;
-} objVectorSpiral;
+};
 
 //****************************************************************************
 
 static void generate_spiral(objVectorSpiral *Vector)
 {
+   const DOUBLE cx = (Vector->Dimensions & DMF_RELATIVE_CENTER_X) ? Vector->CX * get_parent_width(Vector) : Vector->CX;
+   const DOUBLE cy = (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
+
+   DOUBLE min_x = DBL_MAX, max_x = DBL_MIN, min_y = DBL_MAX, max_y = DBL_MIN;
    DOUBLE angle = 0;
    for (int i=0; i < MAX_SPIRAL_VERTICES; i++) { // The spiral points keep generating until the max number of vertices is reached, or the radius is boundary is hit.
       DOUBLE x = (Vector->Offset + Vector->Scale * angle) * cos(angle);
       DOUBLE y = (Vector->Offset + Vector->Scale * angle) * sin(angle);
+
       if ((ABS(x) > Vector->Radius) or (ABS(y) > Vector->Radius)) break;
 
-      if (!i) Vector->BasePath->move_to(Vector->Radius + x, Vector->Radius + y);
-      else Vector->BasePath->line_to(Vector->Radius + x, Vector->Radius + y);
+      x += cx;
+      y += cy;
+      if (!i) Vector->BasePath.move_to(x, y);
+      else Vector->BasePath.line_to(x, y);
+
+      if (x < min_x) min_x = x;
+      if (y < min_y) min_y = y;
+      if (x > max_x) max_x = x;
+      if (y > max_y) max_y = y;
 
       angle += Vector->Step;
    }
-}
 
-//****************************************************************************
-
-static void get_spiral_xy(objVectorSpiral *Vector)
-{
-   DOUBLE cx = Vector->CX, cy = Vector->CY;
-   DOUBLE radius = Vector->Radius;
-
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_X) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) cx *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) cx *= Vector->ParentView->vpViewWidth;
-      else cx *= Vector->Scene->PageWidth;
-   }
-
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) cy *= Vector->ParentView->vpFixedHeight;
-      else if (Vector->ParentView->vpViewHeight > 0) cy *= Vector->ParentView->vpViewHeight;
-      else cy *= Vector->Scene->PageHeight;
-   }
-
-   if (Vector->Dimensions & DMF_RELATIVE_RADIUS) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) radius *= Vector->ParentView->vpFixedWidth;
-      else if (Vector->ParentView->vpViewWidth > 0) radius *= Vector->ParentView->vpViewWidth;
-      else radius *= Vector->Scene->PageWidth;
-   }
-
-   Vector->FinalX = cx - radius;
-   Vector->FinalY = cy - radius;
+   Vector->BX1 = min_x;
+   Vector->BY1 = min_y;
+   Vector->BX2 = max_x;
+   Vector->BY2 = max_y;
 }
 
 //****************************************************************************
@@ -78,7 +63,7 @@ static ERROR SPIRAL_NewObject(objVectorSpiral *Self, APTR Void)
    Self->Step   = 0.1;
    Self->Offset = 1;
    Self->Scale  = 1;
-   Self->GeneratePath = (void (*)(rkVector *))&generate_spiral;
+   Self->GeneratePath = (void (*)(extVector *))&generate_spiral;
    return ERR_Okay;
 }
 
@@ -116,7 +101,7 @@ static ERROR SPIRAL_SET_CenterX(objVectorSpiral *Self, Variable *Value)
 
    Self->CX = val;
 
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -153,7 +138,7 @@ static ERROR SPIRAL_SET_CenterY(objVectorSpiral *Self, Variable *Value)
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
 
    Self->CY = val;
-   mark_dirty(Self, RC_TRANSFORM);
+   reset_path(Self);
    return ERR_Okay;
 }
 

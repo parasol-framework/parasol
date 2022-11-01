@@ -77,7 +77,7 @@ void ListBoxImp::Create(Scintilla::Window &Window, int, Scintilla::Point, int, b
    OBJECTID surface_id = getSurfaceID(&Window);
 
    LogF("ListBoxImp::Create()","Surface: %d", surface_id);
-
+/*
    if (CreateObject(ID_MENU, 0, &menu,
          FID_Surface|TLONG,  surface_id,
          TAGEND) != ERR_Okay) {
@@ -89,7 +89,7 @@ void ListBoxImp::Create(Scintilla::Window &Window, int, Scintilla::Point, int, b
    //    APTR Buffer; LONG Size; LONG TotalEntries; };
    struct acDataFeed dc_args;
 
-   dc_args.ObjectID = menu->UniqueID;
+   dc_args.ObjectID = menu->UID;
    dc_args.DataType = DATA_XML;
    dc_args.Buffer = (STRING)"<menu name=\"Edit\">\
       <item text=\"Cut\" icon=\"icons:tools/cut\" qualifier=\"CTRL\" key=\"X\">\
@@ -99,6 +99,7 @@ void ListBoxImp::Create(Scintilla::Window &Window, int, Scintilla::Point, int, b
    dc_args.Size = StrLength((STRING)dc_args.Buffer);
    Action(AC_DataFeed, menu, &dc_args);
    acShow(menu);
+*/
 }
 
 /****************************************************************************/

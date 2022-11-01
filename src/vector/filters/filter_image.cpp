@@ -1,252 +1,330 @@
+/*********************************************************************************************************************
 
-//****************************************************************************
-// Create a new image effect.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-static ERROR create_image(objVectorFilter *Self, struct XMLTag *Tag)
+**********************************************************************************************************************
+
+-CLASS-
+ImageFX: Renders a bitmap image in the effect pipeline.
+
+The ImageFX class will render a source image into a given rectangle within the current user coordinate system.  The
+client has the option of providing a pre-allocated Bitmap or the path to a @Picture file as the source.
+
+If a pre-allocated @Bitmap is to be used, it must be created under the ownership of the ImageFX object, and this must
+be done prior to initialisation.  It is required that the bitmap uses 32 bits per pixel and that the alpha channel is
+enabled.
+
+If a source picture file is referenced, it will be upscaled to meet the requirements automatically as needed.
+
+Technically the ImageFX object is represented by a new viewport, the bounds of which are defined by attributes X, Y,
+Width and Height.  The placement and scaling of the referenced image is controlled by the #AspectRatio field.
+
+-END-
+
+*********************************************************************************************************************/
+
+class objImageFX : public extFilterEffect {
+   public:
+   objBitmap *Bitmap;    // Bitmap containing source image data.
+   objPicture *Picture;  // Origin picture if loading a source file.
+   LONG AspectRatio;     // Aspect ratio flags.
+   LONG ResampleMethod;  // Resample method.
+};
+
+/*********************************************************************************************************************
+-ACTION-
+Draw: Render the effect to the target bitmap.
+-END-
+*********************************************************************************************************************/
+
+static ERROR IMAGEFX_Draw(objImageFX *Self, struct acDraw *Args)
 {
-   struct effect *effect;
+   parasol::Log log(__FUNCTION__);
 
-   if (!(effect = add_effect(Self, FE_IMAGE))) return ERR_AllocMemory;
+   auto &filter = Self->Filter;
+   auto target = calc_target_area(Self);
 
-   // SVG defaults
-   effect->Image.Dimensions = 0;
-   effect->Image.AspectRatio = ARF_X_MID|ARF_Y_MID|ARF_MEET;
-   effect->Image.ResampleMethod = VSM_BILINEAR;
+   // The image's x,y,width,height default to (0,0,100%,100%) of the target region.
 
-   UBYTE image_required = FALSE;
-   CSTRING path = NULL;
+   DOUBLE img_x = target.x;
+   DOUBLE img_y = target.y;
+   DOUBLE img_width = target.width;
+   DOUBLE img_height = target.height;
 
-   for (LONG a=1; a < Tag->TotalAttrib; a++) {
-      CSTRING val = Tag->Attrib[a].Value;
-      if (!val) continue;
+   if (filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
+      // In this mode image dimensions typically remain at the default, i.e. (0,0,100%,100%) of the target.
+      // If the user does set the XYWH of the image then 'fixed' coordinates act as multipliers, as if they were relative.
 
-      UBYTE percent;
-      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
-      switch(hash) {
-         case SVF_X:
-            effect->Image.X = read_unit(val, &percent);
-            if (percent) effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_FIXED_X)) | DMF_RELATIVE_X;
-            else effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_RELATIVE_X)) | DMF_FIXED_X;
-            break;
-         case SVF_Y:
-            effect->Image.Y = read_unit(val, &percent);
-            if (percent) effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_FIXED_Y)) | DMF_RELATIVE_Y;
-            else effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_RELATIVE_Y)) | DMF_FIXED_Y;
-            break;
-         case SVF_WIDTH:
-            effect->Image.Width = read_unit(val, &percent);
-            if (percent) effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_FIXED_WIDTH)) | DMF_RELATIVE_WIDTH;
-            else effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_RELATIVE_WIDTH)) | DMF_FIXED_WIDTH;
-            break;
-         case SVF_HEIGHT:
-            effect->Image.Height = read_unit(val, &percent);
-            if (percent) effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_FIXED_HEIGHT)) | DMF_RELATIVE_HEIGHT;
-            else effect->Image.Dimensions = (effect->Image.Dimensions & (~DMF_RELATIVE_HEIGHT)) | DMF_FIXED_HEIGHT;
-            break;
+      // W3 spec on whether to use the bounds or the filter target region:
+      // "Any length values within the filter definitions represent fractions or percentages of the bounding box
+      // on the referencing element."
 
-         case SVF_IMAGE_RENDERING: {
-            if (!StrMatch("optimizeSpeed", val)) effect->Image.ResampleMethod = VSM_BILINEAR;
-            else if (!StrMatch("optimizeQuality", val)) effect->Image.ResampleMethod = VSM_LANCZOS3;
-            else if (!StrMatch("auto", val));
-            else if (!StrMatch("inherit", val));
-            else LogErrorMsg("Unrecognised image-rendering option '%s'", val);
-            break;
-         }
-
-         case SVF_PRESERVEASPECTRATIO: {
-            LONG flags = 0;
-            while ((*val) AND (*val <= 0x20)) val++;
-            if (!StrMatch("none", val)) flags = ARF_NONE;
-            else {
-               if (!StrCompare("xMin", val, 4, 0)) { flags |= ARF_X_MIN; val += 4; }
-               else if (!StrCompare("xMid", val, 4, 0)) { flags |= ARF_X_MID; val += 4; }
-               else if (!StrCompare("xMax", val, 4, 0)) { flags |= ARF_X_MAX; val += 4; }
-
-               if (!StrCompare("yMin", val, 4, 0)) { flags |= ARF_Y_MIN; val += 4; }
-               else if (!StrCompare("yMid", val, 4, 0)) { flags |= ARF_Y_MID; val += 4; }
-               else if (!StrCompare("yMax", val, 4, 0)) { flags |= ARF_Y_MAX; val += 4; }
-
-               while ((*val) AND (*val <= 0x20)) val++;
-
-               if (!StrCompare("meet", val, 4, 0)) { flags |= ARF_MEET; }
-               else if (!StrCompare("slice", val, 5, 0)) { flags |= ARF_SLICE; }
-            }
-            effect->Image.AspectRatio = flags;
-            break;
-         }
-
-         case SVF_XLINK_HREF:
-            path = val;
-            break;
-
-         case SVF_EXTERNALRESOURCESREQUIRED: // If true and the image cannot be loaded, return a fatal error code.
-            if (!StrMatch("true", val)) image_required = TRUE;
-            break;
-
-         default: fe_default(Self, effect, hash, val); break;
-      }
-   }
-
-   // The coordinate system is determined according to SVG rules.  The key thing here is that boundingbox and userspace
-   // systems are chosen depending on whether or not the user specified an x, y, width and/or height.
-
-   if (Self->PrimitiveUnits != VUNIT_UNDEFINED) effect->Image.Units = Self->PrimitiveUnits;
-   else {
-      if (effect->Image.Dimensions) effect->Image.Units = VUNIT_USERSPACE;
-      else effect->Image.Units = VUNIT_BOUNDING_BOX;
-   }
-
-   if (path) {
-      // Check for security risks in the path.
-
-      if ((path[0] IS '/') or
-          ((path[0] IS '.') and (path[1] IS '.') AND (path[2] IS '/'))) {
-         remove_effect(Self, effect);
-         return PostError(ERR_InvalidValue);
-      }
-
-      for (UWORD i=0; path[i]; i++) {
-         if (path[i] IS '/') {
-            while (path[i+1] IS '.') i++;
-            if (path[i+1] IS '/') {
-               remove_effect(Self, effect);
-               return PostError(ERR_InvalidValue);
-            }
-         }
-         else if (path[i] IS ':') {
-            remove_effect(Self, effect);
-            return PostError(ERR_InvalidValue);
-         }
-      }
-
-      ERROR error;
-      if (Self->Path) {
-         char comp_path[400];
-         LONG i = StrCopy(Self->Path, comp_path, sizeof(comp_path));
-         StrCopy(path, comp_path + i, sizeof(comp_path)-i);
-         error = CreateObject(ID_PICTURE, NF_INTEGRAL, &effect->Image.Picture,
-            FID_Location|TSTRING, comp_path,
-            FID_BitsPerPixel|TLONG, 32,
-            FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
-            TAGEND);
-      }
-      else error = CreateObject(ID_PICTURE, NF_INTEGRAL, &effect->Image.Picture,
-            FID_Location|TSTRING,   path,
-            FID_BitsPerPixel|TLONG, 32,
-            FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
-            TAGEND);
-
-      if ((error) AND (image_required)) {
-         remove_effect(Self, effect);
-         return ERR_CreateObject;
-      }
-
-      if ((Self->ColourSpace IS CS_LINEAR_RGB) AND (!error)) rgb2linear(*effect->Image.Picture->Bitmap);
-
-      return ERR_Okay;
-   }
-   else { // If no image path is referenced, the instruction to load an image will be ignored.
-      remove_effect(Self, effect);
-      return ERR_Okay;
-   }
-}
-
-/*****************************************************************************
-** Internal: apply_image()
-*/
-
-static void apply_image(objVectorFilter *Self, struct effect *Effect)
-{
-   objBitmap *bmp = Effect->Bitmap;
-   if (bmp->BytesPerPixel != 4) return;
-   if (!Effect->Image.Picture) return;
-
-   objBitmap *pic = Effect->Image.Picture->Bitmap;
-
-   DOUBLE xScale, yScale, x, y;
-
-   if (Effect->Image.Units IS VUNIT_BOUNDING_BOX) {
-      LONG parent_x, parent_y, parent_width, parent_height;
-      if (Effect->Image.Dimensions & DMF_RELATIVE_X) parent_x = Self->ViewX + F2I(Effect->Image.X * (DOUBLE)Self->BoundWidth);
-      else if (Effect->Image.Dimensions & DMF_FIXED_X) parent_x = Self->ViewX + Effect->Image.X;
-      else parent_x = Self->BoundX;
-
-      if (Effect->Image.Dimensions & DMF_RELATIVE_Y) parent_y = Self->ViewY + F2I(Effect->Image.Y * (DOUBLE)Self->BoundHeight);
-      else if (Effect->Image.Dimensions & DMF_FIXED_Y) parent_y = Self->ViewY + Effect->Image.Y;
-      else parent_y = Self->BoundY;
-
-      if (Effect->Image.Dimensions & DMF_RELATIVE_WIDTH) parent_width = (DOUBLE)Self->ViewWidth * Effect->Image.Width;
-      else if (Effect->Image.Dimensions & DMF_FIXED_WIDTH) parent_width = Self->ViewWidth;
-      else parent_width = Self->BoundWidth;
-
-      if (Effect->Image.Dimensions & DMF_RELATIVE_HEIGHT) parent_height = (DOUBLE)Self->ViewHeight * Effect->Image.Height;
-      else if (Effect->Image.Dimensions & DMF_FIXED_HEIGHT) parent_height = Self->ViewHeight;
-      else parent_height = Self->BoundHeight;
-
-      calc_alignment("align_image", Effect->Image.AspectRatio, parent_width, parent_height, pic->Width, pic->Height,
-         &x, &y, &xScale, &yScale);
-
-      x += parent_x;
-      y += parent_y;
+      if (Self->Dimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) img_x = trunc(target.x + (Self->X * target.bound_width));
+      if (Self->Dimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) img_y = trunc(target.y + (Self->Y * target.bound_height));
+      if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) img_width = Self->Width * target.bound_width;
+      if (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) img_height = Self->Height * target.bound_height;
    }
    else {
-      // UserSpace (relative to parent).  In this mode, all image coordinates will be computed relative to the parent viewport.
-      // Alignment is then calculated as normal relative to the bounding box.  The computed image coordinates are used
-      // as a shift for the final (x,y) values.
+      if (Self->Dimensions & DMF_RELATIVE_X)   img_x = target.x + (Self->X * target.width);
+      else if (Self->Dimensions & DMF_FIXED_X) img_x = Self->X;
 
-      LONG parent_x, parent_y, parent_width, parent_height;
+      if (Self->Dimensions & DMF_RELATIVE_Y)   img_y = target.y + (Self->Y * target.height);
+      else if (Self->Dimensions & DMF_FIXED_Y) img_y = Self->Y;
 
-      if (Effect->Image.Dimensions & DMF_RELATIVE_X) parent_x = Self->ViewX + F2I(Effect->Image.X * (DOUBLE)Self->Viewport->vpFixedWidth);
-      else if (Effect->Image.Dimensions & DMF_FIXED_X) parent_x = Self->ViewX + Effect->Image.X;
-      else parent_x = Self->ViewX;
+      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   img_width = target.width * Self->Width;
+      else if (Self->Dimensions & DMF_FIXED_WIDTH) img_width = Self->Width;
 
-      if (Effect->Image.Dimensions & DMF_RELATIVE_Y) parent_y = Self->ViewY + F2I(Effect->Image.Y * (DOUBLE)Self->Viewport->vpFixedHeight);
-      else if (Effect->Image.Dimensions & DMF_FIXED_Y) parent_y = Self->ViewY + Effect->Image.Y;
-      else parent_y = Self->ViewY;
-
-      if (Effect->Image.Dimensions & DMF_RELATIVE_WIDTH) parent_width = (DOUBLE)Self->Viewport->vpFixedWidth * Effect->Image.Width;
-      else if (Effect->Image.Dimensions & DMF_FIXED_WIDTH) parent_width = Effect->Image.Width;
-      else parent_width = Self->BoundWidth;
-
-      if (Effect->Image.Dimensions & DMF_RELATIVE_HEIGHT) parent_height = (DOUBLE)Self->Viewport->vpFixedHeight * Effect->Image.Height;
-      else if (Effect->Image.Dimensions & DMF_FIXED_HEIGHT) parent_height = Effect->Image.Height;
-      else parent_height = Self->BoundHeight;
-
-      calc_alignment("align_image", Effect->Image.AspectRatio, parent_width, parent_height, pic->Width, pic->Height,
-         &x, &y, &xScale, &yScale);
-
-      x += parent_x;
-      y += parent_y;
+      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   img_height = target.height * Self->Height;
+      else if (Self->Dimensions & DMF_FIXED_HEIGHT) img_height = Self->Height;
    }
 
-   gfxDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0x00000000, BAF_FILL);
+   DOUBLE xScale = 1, yScale = 1, align_x = 0, align_y = 0;
+   calc_aspectratio("align_image", Self->AspectRatio, img_width, img_height, Self->Bitmap->Width, Self->Bitmap->Height, &align_x, &align_y, &xScale, &yScale);
 
-   // Configure destination
-   agg::renderer_base<agg::pixfmt_rkl> renderBase;
-   agg::pixfmt_rkl pixDest(*Effect->Bitmap);
-   renderBase.attach(pixDest);
-   renderBase.clip_box(Effect->Bitmap->Clip.Left, Effect->Bitmap->Clip.Top, Effect->Bitmap->Clip.Right-1, Effect->Bitmap->Clip.Bottom-1);
+   img_x += align_x;
+   img_y += align_y;
 
-   // Configure source
+   // Draw to destination
 
-   agg::pixfmt_rkl pixSource(*pic);
-
-   agg::trans_affine transform;
-   transform.scale(xScale, yScale);
-   transform.translate(x, y);
-   transform.invert();
-   agg::span_interpolator_linear<> interpolator(transform);
-
-   agg::image_filter_lut filter;
-   set_filter(filter, Effect->Image.ResampleMethod);
-
-   agg::span_pattern_rkl<agg::pixfmt_rkl> source(pixSource, 0, 0);
-   agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_rkl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
    agg::rasterizer_scanline_aa<> raster;
-   setRasterClip(raster, Effect->Bitmap->Clip.Left, Effect->Bitmap->Clip.Top,
-      Effect->Bitmap->Clip.Right - Effect->Bitmap->Clip.Left,
-      Effect->Bitmap->Clip.Bottom - Effect->Bitmap->Clip.Top);
+   agg::renderer_base<agg::pixfmt_psl> renderBase;
+   agg::pixfmt_psl pixDest(*Self->Target);
+   agg::pixfmt_psl pixSource(*Self->Bitmap);
+
+   agg::path_storage path;
+   path.move_to(target.x, target.y);
+   path.line_to(target.x + target.width, target.y);
+   path.line_to(target.x + target.width, target.y + target.height);
+   path.line_to(target.x, target.y + target.height);
+   path.close_polygon();
+
+   renderBase.attach(pixDest);
+   renderBase.clip_box(Self->Target->Clip.Left, Self->Target->Clip.Top, Self->Target->Clip.Right-1, Self->Target->Clip.Bottom-1);
+
+   agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(path, filter->ClientVector->Transform);
+   raster.add_path(final_path);
+
+   agg::trans_affine img_transform;
+   img_transform.scale(xScale, yScale);
+   img_transform.translate(img_x, img_y);
+   img_transform *= filter->ClientVector->Transform;
+   img_transform.invert();
+   agg::span_interpolator_linear<> interpolator(img_transform);
+
+   agg::image_filter_lut ifilter;
+   set_filter(ifilter, Self->ResampleMethod);
+
+   agg::span_pattern_rkl<agg::pixfmt_psl> source(pixSource, 0, 0);
+   agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, ifilter);
+
+   setRasterClip(raster, Self->Target->Clip.Left, Self->Target->Clip.Top,
+      Self->Target->Clip.Right - Self->Target->Clip.Left,
+      Self->Target->Clip.Bottom - Self->Target->Clip.Top);
+
    drawBitmapRender(renderBase, raster, spangen, 1.0);
+
+   return ERR_Okay;
 }
 
+//********************************************************************************************************************
 
+static ERROR IMAGEFX_Free(objImageFX *Self, APTR Void)
+{
+   if (Self->Picture) { acFree(Self->Picture); Self->Picture = NULL; }
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR IMAGEFX_Init(objImageFX *Self, APTR Void)
+{
+   parasol::Log log;
+
+   if (!Self->Bitmap) return log.warning(ERR_UndefinedField);
+
+   if ((Self->Filter->ColourSpace IS VCS_LINEAR_RGB) and (Self->Bitmap)) {
+      bmpConvertToLinear(Self->Bitmap);
+   }
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+// If the client attaches a bitmap as a child of our object, we use it as the primary image source.
+
+static ERROR IMAGEFX_NewChild(objImageFX *Self, struct acNewChild *Args)
+{
+   parasol::Log log;
+
+   if (Args->Object->ClassID IS ID_BITMAP) {
+      if (!Self->Bitmap) {
+         if (Self->Bitmap->BytesPerPixel IS 4) Self->Bitmap = (objBitmap *)Args->Object;
+         else log.warning("Attached bitmap ignored; BPP of %d != 4", Self->Bitmap->BytesPerPixel);
+      }
+      else log.warning("Attached bitmap ignored; Bitmap field already defined.");
+   }
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR IMAGEFX_NewObject(objImageFX *Self, APTR Void)
+{
+   Self->AspectRatio    = ARF_X_MID|ARF_Y_MID|ARF_MEET;
+   Self->ResampleMethod = VSM_BILINEAR;
+   Self->SourceType     = VSF_PREVIOUS;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+AspectRatio: SVG compliant aspect ratio settings.
+Lookup: ARF
+
+*********************************************************************************************************************/
+
+static ERROR IMAGEFX_GET_AspectRatio(objImageFX *Self, LONG *Value)
+{
+   *Value = Self->AspectRatio;
+   return ERR_Okay;
+}
+
+static ERROR IMAGEFX_SET_AspectRatio(objImageFX *Self, LONG Value)
+{
+   Self->AspectRatio = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Bitmap: The @Bitmap being used as the image source.
+
+Reading the Bitmap field will return the @Bitmap that is being used as the image source.  Note that if a custom
+Bitmap is to be used, the correct way to do this as to assign it to the ImageFX object via ownership rules.
+
+If a picture image has been processed by setting the #Path, the Bitmap will refer to the content that has been
+processed.
+
+*********************************************************************************************************************/
+
+static ERROR IMAGEFX_GET_Bitmap(objImageFX *Self, objBitmap **Value)
+{
+   *Value = Self->Bitmap;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Path: Path to an image file supported by the Picture class.
+
+*********************************************************************************************************************/
+
+static ERROR IMAGEFX_GET_Path(objImageFX *Self, STRING *Value)
+{
+   if (Self->Picture) return GetString(Self->Picture, FID_Path, Value);
+   else *Value = NULL;
+   return ERR_Okay;
+}
+
+static ERROR IMAGEFX_SET_Path(objImageFX *Self, CSTRING Value)
+{
+   if ((Self->Bitmap) or (Self->Picture)) return ERR_Failed;
+
+   if (!CreateObject(ID_PICTURE, NF_INTEGRAL, &Self->Picture,
+         FID_Path|TSTR,          Value,
+         FID_BitsPerPixel|TLONG, 32,
+         FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
+         TAGEND)) {
+      Self->Bitmap = Self->Picture->Bitmap;
+      return ERR_Okay;
+   }
+   else return ERR_CreateObject;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+ResampleMethod: The resample algorithm to use for transforming the source image.
+
+*********************************************************************************************************************/
+
+static ERROR IMAGEFX_GET_ResampleMethod(objImageFX *Self, LONG *Value)
+{
+   *Value = Self->ResampleMethod;
+   return ERR_Okay;
+}
+
+static ERROR IMAGEFX_SET_ResampleMethod(objImageFX *Self, LONG Value)
+{
+   Self->ResampleMethod = Value;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+XMLDef: Returns an SVG compliant XML string that describes the filter.
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR IMAGEFX_GET_XMLDef(objImageFX *Self, STRING *Value)
+{
+   *Value = StrClone("feImage");
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static const FieldDef clResampleMethod[] = {
+   { "Auto",      VSM_AUTO },
+   { "Neighbour", VSM_NEIGHBOUR },
+   { "Bilinear",  VSM_BILINEAR },
+   { "Bicubic",   VSM_BICUBIC },
+   { "Spline16",  VSM_SPLINE16 },
+   { "Kaiser",    VSM_KAISER },
+   { "Quadric",   VSM_QUADRIC },
+   { "Gaussian",  VSM_GAUSSIAN },
+   { "Bessel",    VSM_BESSEL },
+   { "Mitchell",  VSM_MITCHELL },
+   { "Sinc3",     VSM_SINC3 },
+   { "Lanczos3",  VSM_LANCZOS3 },
+   { "Blackman3", VSM_BLACKMAN3 },
+   { "Sinc8",     VSM_SINC8 },
+   { "Lanczos8",  VSM_LANCZOS8 },
+   { "Blackman8", VSM_BLACKMAN8 },
+   { NULL, 0 }
+};
+
+#include "filter_image_def.c"
+
+static const FieldArray clImageFXFields[] = {
+   { "Bitmap",         FDF_VIRTUAL|FDF_OBJECT|FDF_R,           ID_BITMAP, (APTR)IMAGEFX_GET_Bitmap, NULL },
+   { "Path",           FDF_VIRTUAL|FDF_STRING|FDF_RI,          0, (APTR)IMAGEFX_GET_Path, (APTR)IMAGEFX_SET_Path },
+   { "XMLDef",         FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)IMAGEFX_GET_XMLDef, NULL },
+   { "AspectRatio",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clAspectRatio, (APTR)IMAGEFX_GET_AspectRatio, (APTR)IMAGEFX_SET_AspectRatio },
+   { "ResampleMethod", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clResampleMethod, (APTR)IMAGEFX_GET_ResampleMethod, (APTR)IMAGEFX_SET_ResampleMethod },
+   END_FIELD
+};
+
+//********************************************************************************************************************
+
+ERROR init_imagefx(void)
+{
+   return(CreateObject(ID_METACLASS, 0, &clImageFX,
+      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
+      FID_SubClassID|TLONG,  ID_IMAGEFX,
+      FID_Name|TSTRING,      "ImageFX",
+      FID_Category|TLONG,    CCF_GRAPHICS,
+      FID_Flags|TLONG,       CLF_PRIVATE_ONLY,
+      FID_Actions|TPTR,      clImageFXActions,
+      FID_Fields|TARRAY,     clImageFXFields,
+      FID_Size|TLONG,        sizeof(objImageFX),
+      FID_Path|TSTR,         MOD_PATH,
+      TAGEND));
+}

@@ -2,9 +2,9 @@
 
 <info>
  <title>Glossary</title>
- <author>Rocklyte Systems</author>
+ <author>Paul Manias</author>
  <keywords>glossary, words, explanation, detail</keywords>
- <description>A glossary of terms used in the Rocklyte SDK.</description>
+ <description>A glossary of terms used in the Parasol Framework.</description>
 </info>
 
 <include src="inc_style.rpl"/>
@@ -35,14 +35,11 @@
 <p>&nbsp;</p>
 -->
 
-<h3><index>DML</index></h3>
-<p>Short for "Dynamically Extendible Object Based Markup Language". This is a simple XML based language that allows components to be created and linked  with each other through Rocklyte's object model.</p>
-
 <h3><index>Field Abstraction</index></h3>
 <p>Objects typically consist of many fields that combine to define an object's data structure. A Surface object for example consists of Width, Height and Colour fields.  When we need to read or set the values for an object field we may do so directly, for example "Surface.Width = 100".  On the other hand, objects supporting field abstraction have their interface hidden from the developer and can only be accessed via function calls.  For example, SetFieldVariable(Surface, "Width", "100").  Also see <a href="#VirtualFields">Virtual Fields</a>.</p>
 
-<h3><index>MOO</index></h3>
-<p>Modular Object Orientation. The MOO acronym helps to distinguish language based object orientation from Rocklyte's concept of organising objects into modules and managing  them in run-time.</p>
+<h3><index>OOE</index></h3>
+<p>Object Oriented Environment. The OOE acronym helps to distinguish language based object orientation from the concept of organising and interacting with objects at run-time.</p>
 
 <h3><index>Object Orientation</index></h3>
 <p>Object orientation, or 'OO'  was  introduced to the world in 1967 in a language known as Simula.  Object orientation represents more of a programming philosophy than a particular set of standards, because it has been implemented in  many different ways since its conception. The basic premise is to create an environment where every entity is represented as an individual, functioning object, almost as if it had physical representation in the real world. Using OO, you can create 'classes' that define how an object behaves, what it contains, what its capabilities are and so on. Over time object orientation has evolved to support public/private object areas, polymorphism, inheritance and other technical buzzwords. While  the concept of object orientation has been with us for a long time, developers continue to debate object oriented principles, thus proving the concept's infancy.</p>

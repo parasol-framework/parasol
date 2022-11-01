@@ -1,0 +1,233 @@
+--[[
+
+The ListView API is used to display data to the user in the form of a list of items.
+
+Items are created and stored as structured tables.  Here is an example of a list of valid item structures.
+
+   { { id=1, name='document.txt' },
+     { id=2, name='config', icon='category/name' }
+   }
+
+Initialisation options:
+
+   multiSelect:    If true, more than one item can be selected at a time by the user.
+   sensitive:      If true, activation will occur whenever a new item is selected (double click no longer necessary).
+   compact:        Activates compact styling; 1 = Tabulate horizontally; 2 = Compress horizontally
+   target:         The viewport that will host the view.
+   textAttrib:     Declares the attribute to use as the main text when drawing each item.  Defaults to 'text'.
+
+Callbacks:
+
+   itemSelected:     An item has been selected by the user.
+   itemActivated:    An item has been activated by the user, e.g. by double clicking or pressing enter.
+   itemDeselected:   An item has been deselected by the user.
+   activeChange:     The active item has changed (includes reporting of deselection events)
+
+Readable fields:
+
+   highlightedItem: Refers to the current item that the user has highlighted.
+   selectedItem:    TODO - Refers to the most recently selected item.
+
+Methods:
+
+   loadItems()     Load a new set of items and display them for the user.  Any existing items will be cleared.
+   selectedItems() TODO - Returns a table of all currently selected items.
+
+Graphics and UI options:
+
+   noIcons:       Do not display icons alongside the item text.
+   dragDrop:      Enable support for drag and drop.
+   autoDeselect:  Deselects a highlighted item when it is activated through user interaction (e.g. mouse click).
+
+--]]
+
+   require 'gui/libview'
+
+local lIconSize = 16
+local lVSpacing = 2
+local EDGE      = 4
+
+local lLineHeight, lFontHeight = gui.getFontHeight(gui.fonts.widget)
+
+   lLineHeight = math.round(lLineHeight * 1.3)
+
+local lColours = {
+   fillItem           = 'rgb(0,0,0)',
+   fillItemSelectHigh = 'rgb(255,255,255)',
+   fillSelect         = 'rgb(0,0,60,140)',
+   fillSelectFont     = 'rgb(255,255,255)',
+   fillBkgdHighlight  = 'rgb(0,0,0,10)',
+   fillBkgdSelectHighlight = 'rgb(0,0,90,140)'
+}
+
+gui.listView = function(Options)
+   local lTextAttrib = nz(Options.textAttrib, 'text')
+   local lCompact    = nz(Options.compact, 0)
+
+   local function setListTextFill(Item, Fill)
+      if Item._vectors.text then
+         Item._vectors.text.fill = Fill
+      end
+   end
+
+   -- When an item is hovered, create a highlight for it.
+
+   local function highlightItem(View, Item, Highlighted)
+      if (not Item._vectors.highlight) then
+         Item._vectors.highlight = Item._vectors.viewport.new('VectorRectangle', {
+            roundX = 4, roundY = 4, width = '100%', height = '100%', visibility = VIS_HIDDEN
+         })
+         Item._vectors.highlight.acMoveToBack()
+      end
+
+      if Highlighted then
+         if Item._selected then -- Both selected AND highlighted
+            Item._vectors.highlight.fill = lColours.fillBkgdSelectHighlight
+            setListTextFill(Item, lColours.fillItemSelectHigh)
+         else
+            Item._vectors.highlight.fill = lColours.fillBkgdHighlight
+            setListTextFill(Item, lColours.fillItem)
+         end
+
+         Item._vectors.highlight.visibility = VIS_VISIBLE
+      elseif (Item._selected) then
+         setListTextFill(Item, lColours.fillItemSelectHigh)
+         Item._vectors.highlight.fill = lColours.fillSelect
+         Item._vectors.highlight.visibility = VIS_VISIBLE
+      else
+         setListTextFill(Item, lColours.fillItem)
+         Item._vectors.highlight.visibility = VIS_HIDDEN
+      end
+   end
+
+   local function constructListView(View, Scene, Viewport, Page)
+      if not View.itemFont then
+         View.itemFont = obj.new('font', {
+            face = gui.fonts.widget.face,
+            point = string.format('%.2fpt', gui.fonts.widget.size)
+         })
+      end
+
+      local width  = Viewport.width - EDGE - EDGE
+      local height = Viewport.height
+      local x      = EDGE
+      local y      = 0
+      local index  = 0
+      local widest_item = 0
+      local lLineOffset = (lLineHeight + lFontHeight) * 0.5
+      for _, item in pairs(View.items) do
+         index = index + 1
+
+         if (not item._vectors) then item._vectors = { } end
+
+         item._x = x
+         item._y = y
+         item._width  = width
+         item._height = lLineHeight
+
+         -- If the item is hovered, create a highlight for it.  ColBkgdHighlight defines the background colour to use
+         -- when an item is highlighted.  If an item is also marked as selected, then the final colour is interpolated
+         -- with ColSelect.
+
+         item._highlightEvent = highlightItem
+
+         -- Respond to positive item selection by the user (e.g. button click)
+
+         item._selectEvent = function(View, Item)
+            if (Item == View.hItem) then
+               Item._highlightEvent(View, Item, true)
+            else
+               Item._highlightEvent(View, Item, false)
+            end
+         end
+
+         -- Each item gets its own viewport in the page
+
+         if not item._vectors.viewport then
+            item._vectors.viewport = Page.new('VectorViewport', {
+               x       = EDGE,
+               y       = y + EDGE,
+               xOffset = EDGE,
+               height  = lLineHeight
+            })
+         end
+
+         local internalMargin = (lLineHeight * 0.2)
+         local iconMargin = 0
+
+         if not Options.noIcons then
+            iconMargin = lIconSize + internalMargin
+         end
+
+         local vp = item._vectors.viewport
+
+         if item.icon then
+            pcall(function()
+               if not View.icons then View.icons = { } end
+
+               if not View.icons[item.icon] then
+                  View.icons[item.icon] = gui.createIcon(Scene, item.icon, lIconSize)
+               end
+
+               if not item._vectors.iconImage then
+                  item._vectors.iconImage = vp.new('VectorRectangle', {
+                     fill   = 'url(#' .. item.icon .. ')',
+                     x      = lLineHeight * 0.2,
+                     y      = ((lLineHeight - lIconSize) * 0.5),
+                     width  = lIconSize,
+                     height = lIconSize
+                  })
+               end
+            end)
+         end
+
+         if nz(item[lTextAttrib]) then
+            if not item._vectors.text then
+               item._vectors.text = vp.new('VectorText', {
+                  face     = gui.fonts.widget.face,
+                  fontSize = string.format('%.2fpt', gui.fonts.widget.size),
+                  align    = 'left',
+                  y        = lLineOffset
+               })
+            end
+
+            item._vectors.text.x = internalMargin + iconMargin
+            item._vectors.text.y = lLineOffset
+            item._vectors.text.string = item[lTextAttrib]
+            --font.wrapEdge = x + item.Width
+
+            width = internalMargin + iconMargin + mFont.stringWidth(View.itemFont, item[lTextAttrib], -1) + internalMargin
+
+            if item._selected then
+               item._vectors.text.fill = lColours.fillSelectFont
+            elseif (item.index == lHighlightedItem) and (lColours.highlight) then
+               item._vectors.text.fill = lColours.highlight
+            else
+               item._vectors.text.fill = nz(item.colour, lColours.fillItem)
+            end
+         end
+
+         y = y + lLineHeight + lVSpacing
+         if (width > widest_item) then widest_item = width end
+      end
+
+      -- Item click and hover management
+
+      for _, item in pairs(View.items) do
+         if (Options.compact == 1) then
+            View.addZone(item._x, item._y, widest_item, item._height, item, itemHoverCallback)
+         else
+            View.addZone(item._x, item._y, nil, item._height, item, itemHoverCallback)
+         end
+      end
+
+      -- Adjust the page dimensions and report to the scrollbar
+
+      if View.scrollbar then
+         widest_item = widest_item + EDGE + EDGE
+         View.scrollbar.setDynamicPageSize(widest_item, widest_item, y + EDGE + lVSpacing)
+      end
+   end
+
+   return gui.initView(Options, constructListView)
+end

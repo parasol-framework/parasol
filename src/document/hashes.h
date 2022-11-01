@@ -1,7 +1,7 @@
 #ifndef USPTCRITLO
 #define USPTCRITLO 1
 
-// Copyright: Paul Manias © 1996-2017
+// Copyright: Paul Manias © 1996-2022
 // Generator: idl-c
 
 #define HASH_AfterLayout 0x58983635UL

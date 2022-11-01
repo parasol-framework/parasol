@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, function()
+module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, function()
   c_include("<parasol/modules/display.h>")
 
   restrict(function()
@@ -10,6 +10,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
   flags("ARC", { comment="Options for drawing arcs." },
     "LARGE",
     "SWEEP")
+
+  flags("VF", { comment="Optional flags and indicators for the Vector class." },
+     "DISABLED: The vector is disabled and user input should be ignored.",
+     "HAS_FOCUS: The vector holds the user's input focus.")
 
   enum("VUNIT", { start=0 },
     "UNDEFINED",
@@ -24,8 +28,13 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     "REPEAT: Tile the graphic repeatedly.",
     "REFLECT_X: Tile the graphic, reflecting the image alternately on the X axis only.",
     "REFLECT_Y: Tile the graphic, reflecting the image alternately on the Y axis only.",
-    "CLIP: Do not scale the graphic in any way and clip it if it extends past imposed boundaries.",
+    "CLIP: Do not scale the graphic.  Clip it if it extends past imposed boundaries.",
     "END: Private")
+
+  enum("EM", { start=1, "Edge mode options for the convolve effect." },
+    "DUPLICATE: The input image is extended along its borders by duplicating the color values at its edges.",
+    "WRAP: The input image is extended by taking the color values from the opposite edge of the image.",
+    "NONE: The input image is extended with colour values of zero.")
 
   enum("PE", { start=1 }, "Move", "MoveRel", "Line", "LineRel", "HLine", "HLineRel", "VLine", "VLineRel",
     "Curve", "CurveRel", "Smooth", "SmoothRel", "QuadCurve", "QuadCurveRel", "QuadSmooth", "QuadSmoothRel",
@@ -85,18 +94,49 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     "ULTRA_EXPANDED",
     "EXTRA_EXPANDED")
 
+  enum("MOP", { start=0, comment="MorphologyFX options." },
+    "ERODE: Erode (thin) the input source.",
+    "DILATE: Dilate (fatten) the input source.")
+
+   enum("OP", { start=0, comment="Operators for CompositionFX." },
+    "OVER: The Porter-Duff 'over' operator, this is the default operation for standard alpha blending.",
+    "IN: The Porter-Duff 'in' operator; the input alpha channel has priority and the mix channel is secondary.",
+    "OUT: The Porter-Duff 'out' operator; the mix alpha channel is inversed with the input channel.",
+    "ATOP: The Porter-Duff 'atop' operator; the mix alpha channel has priority and the input channel does not occlude.",
+    "XOR: The Porter-Duff 'xor' operator; blend as normal but occlusion occurs when input and mix alpha channels interact.",
+    "ARITHMETIC: The SVG 'arithmetic' blending algorithm.",
+    "SCREEN: Produces a result brighter than the input.",
+    "MULTIPLY",
+    "LIGHTEN: Use the lighter colour components of the mix and input values.",
+    "DARKEN: Use the darker colour components of the mix and input values.",
+    "INVERT_RGB",
+    "INVERT",
+    "CONTRAST",
+    "DODGE: Gives a brighter result than SCREEN by decreasing the contrast between the input and mix colours.",
+    "BURN",
+    "HARD_LIGHT",
+    "SOFT_LIGHT",
+    "DIFFERENCE: Output the difference between the input and mix colours.",
+    "EXCLUSION: Produce the difference between the mix and input values around a reference point of mid-grey.",
+    "PLUS: Add the input and mix colour values together.",
+    "MINUS|SUBTRACT: The input colour value is subtracted from the mix.",
+    "OVERLAY: Combines the multiply and screen blend modes, with the mix determining tonal strength.")
+
+  enum("VOF", { comment="Viewport overflow options." },
+    "VISIBLE: The content is not clipped to the viewport's boundary.  This is the default.",
+    "HIDDEN: All content is clipped to within the viewport's boundary.",
+    "SCROLL: All content is clipped to within the viewport's boundary.  A mechanism to scroll the viewport's content may be provided to the user (SVG capability not currently implemented).",
+    "INHERIT: The overflow state is inherited from the parent.")
+
   flags("VTXF", { comment="VectorText flags." },
     "UNDERLINE: Enable underlining of the text.",
     "OVERLINE: Enable overlining of the text.",
     "LINE_THROUGH: Enable a strike-through line in the text.",
-    "BLINK: Enable animated blinking (not enabled - exists as SVG dummy option).")
-
-  flags("VTF", { bits=16, comment="Types of vector transforms." },
-    "MATRIX: Apply a 2x3 matrix transformation to the vector.",
-    "TRANSLATE: Translate the vector by (X,Y)",
-    "SCALE: Scale the vector by (X,Y)",
-    "ROTATE: Rotate the vector around (CX,CY) by Angle.",
-    "SKEW: Skew the vector by (X,Y)")
+    "BLINK: Enable animated blinking (not supported - exists as SVG dummy option).",
+    "EDITABLE|EDIT: Allow user editing of the text if the nearest viewport has the focus.",
+    "AREA_SELECTED: Automatically set if a region of text has been selected.",
+    "NO_SYS_KEYS: Disables support for system-keys that enable common key combinations such as Ctrl-C, Ctrl-X etc.",
+    "OVERWRITE: Turns on overwrite mode (if off, insert mode is enabled).")
 
   flags("VMF", { comment="Morph flags", bits=8 },
     "STRETCH: Applicable when used on VectorText, the stretch option converts glyph outlines into paths, and then all end points and control points will be adjusted to be along the perpendicular vectors from the path, thereby stretching and possibly warping the glyphs.  With this approach, connected glyphs, such as in cursive scripts, will maintain their connections.",
@@ -108,25 +148,43 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     "Y_MID: Align the source so that it is morphed along the middle of the target path.",
     "Y_MAX: Align the source so that it is morphed along the bottom of the target path.")
 
-  enum("CS", { start=1, comment="Colour space options." },
+  enum("VCS", { start=0, comment="Colour space options." },
+    "INHERIT: Inherit the colour space option from the parent vector.",
     "SRGB: The default colour-space is sRGB, recommended for its speed.",
-    "LINEAR_RGB: Linear RGB is the default colour space for SVG and produces the best results.",
-    "INHERIT: Inherit the colour space option from the parent vector.")
+    "LINEAR_RGB: Linear RGB is the default colour space for SVG and produces the best results.")
 
-  enum("VSF", { start=1, comment="Filter source types - these are used internally", restrict="c" },
-    "GRAPHIC",
-    "ALPHA",
-    "BKGD",
-    "BKGD_ALPHA",
-    "FILL",
-    "STROKE",
-    "REFERENCE",
-    "IGNORE")
+  enum("VSF", { start=0, comment="Filter source types - these are used internally", restrict="c" },
+    "IGNORE|NONE: The filter does not require an input source.",
+    "GRAPHIC: Represents the graphics elements that were the original input into the filter element.",
+    "ALPHA: As for GRAPHIC except that only the alpha channel is used.",
+    "BKGD: An image snapshot of the SVG document under the filter region at the time that the filter element was invoked.",
+    "BKGD_ALPHA: As for BKGD but only the alpha channel is used.",
+    "FILL: The value of the fill property on the target element for the filter effect.",
+    "STROKE: The value of the stroke property on the target element for the filter effect.",
+    "REFERENCE: This value is an assigned name for the filter primitive in the form of a custom-ident. If supplied, then graphics that result from processing this filter primitive can be referenced by an in attribute on a subsequent filter primitive within the same filter element. If no value is provided, the output will only be available for re-use as the implicit input into the next filter primitive if that filter primitive provides no value for its in attribute.",
+    "PREVIOUS: Use the previous effect as input, or source graphic if no previous effect.")
 
-  enum("WVC", { start=1, comment="VectorWave options" },
+  enum("WVC", { start=1, comment="Wave options." },
     "NONE: Do not close the path.",
     "TOP: Close the path across the top of its area.",
     "BOTTOM: Close the path across the bottom of its area.")
+
+  enum("WVS", { start=1, comment="Wave style options." },
+    "CURVED: Standard sine-wave curvature, this is the default.",
+    "ANGLED: Chevron style angles at 45 degrees either side of the peak and bottom edge.",
+    "SAWTOOTH: Sawtooth patterns rise at 45 degrees to the peak, then direct 90 degrees to the bottom.")
+
+  enum("CM", { start=0, comment="Colour modes for ColourFX." },
+    "NONE: Do nothing.",
+    "MATRIX: Process the supplied 5x4 matrix values.",
+    "SATURATE: Adjust colour saturation with the first parameter defining the multiplier.",
+    "HUE_ROTATE: Rotate the hue by 0 - 360 degrees, controlled by the first parameter.",
+    "LUMINANCE_ALPHA: Converts each RGB value to greyscale, which then overrides the alpha channel.",
+    "CONTRAST: Adjust contrast using the first parameter to define the intensity from -1.0 to 1.0.",
+    "BRIGHTNESS: Adjust brightness using the first parameter to define the intensity.",
+    "HUE: Adjust the hue by 0 - 360 degrees using the first parameter.",
+    "DESATURATE: Desaturate the input completely so that it is rendered in greyscale.",
+    "COLOURISE: Colourise the input with the first 3 parameters used as RGB multipliers and the fourth parameter controlling intensity from 0 - 1.0.")
 
   flags("VGF", { comment="Gradient flags" },
     "RELATIVE_X1: X1 is relative",
@@ -151,7 +209,12 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
   flags("VPF", { comment="Optional flags for the VectorScene object." },
     "BITMAP_SIZED: Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.",
     "RENDER_TIME: Compute the drawing frame-rate for the RenderTime field.",
-    "RESIZE: The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.")
+    "RESIZE: The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.",
+    "OUTLINE_VIEWPORTS: Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.")
+
+  enum("TB", { start=0, "Function identifier for TurbulenceFX." },
+    "TURBULENCE: Use the standard turbulence function.",
+    "NOISE: Use the fractal noise function.")
 
   enum("VSM", { start=0, comments="Options for the VectorScene SampleMethod." },
     "AUTO: The default option is chosen by the system.  This will typically be bilinear, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.",
@@ -171,26 +234,39 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     "LANCZOS8",
     "BLACKMAN8: 15 times slower than bilinear, the final result is of excellent quality and sharpness is well balanced.")
 
-  flags("RC", { },
+  enum("RQ", { start=0, comments="Options for determining the quality of a rendered path." },
+    "AUTO: The default option is chosen by the system.",
+    "FAST: Use the fastest renderer available and allow accuracy to be compromised in favour of speed.  Recommended for normalised paths that are known to be rectangular.",
+    "CRISP: Use a good quality renderer that produces crisp outlines (no anti-aliasing).",
+    "PRECISE: Use a high quality renderer to produce accurate results.  Anti-aliasing will be enabled.",
+    "BEST: Use the best quality renderer available and without concerns for computational time taken.")
+
+  flags("RC", { comments="Internal flags for signalling the need to recompute paths." },
     "FINAL_PATH: The final path will need to be recalculated, so as to take transforms and/or relative coordinates into account.",
     "BASE_PATH: The base path (shape of the vector) must be recalculated.",
     "TRANSFORM: The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.",
-    { ALL = 0xff })
+    { ALL = "FINAL_PATH|BASE_PATH|TRANSFORM" })
 
-  flags("ARF", { comment="Aspect ratios" },
-    "X_MIN: Align to the left",
-    "X_MID: Align to the horizontal center",
-    "X_MAX: Align to the right",
-    "Y_MIN: Align to the top",
-    "Y_MID: Align to the vertical center",
-    "Y_MAX: Align to the bottom",
-    "MEET: Aspect ratio is preserved. The entire viewbox is visible within the viewport.  The viewbox is scaled up as much as possible.",
-    "SLICE: Aspect ratio is preserved. The entire viewport is covered by the viewbox.  The viewbox is scaled down as much as possible.",
-    "NONE: Scale the viewbox to match the size of the viewport.")
+  flags("ARF", { comment="Aspect ratios control alignment, scaling and clipping." },
+    "X_MIN: Align to the left.",
+    "X_MID: Align to the horizontal center.",
+    "X_MAX: Align to the right.",
+    "Y_MIN: Align to the top.",
+    "Y_MID: Align to the vertical center.",
+    "Y_MAX: Align to the bottom.",
+    "MEET: Aspect ratio is preserved. The entire viewbox will be visible in the viewport.  The viewbox is scaled up as much as possible.",
+    "SLICE: Aspect ratio is preserved. The viewbox can extend beyond the viewport's edges on one axis.  The viewbox is scaled up as much as possible.",
+    "NONE: Scale the viewbox to match the size of the viewport.  Aspect ratio is not preserved.")
 
-  flags("VBF", { comment="For vecGetBoundary()" },
+  flags("VBF", { comment="Options for vecGetBoundary()." },
      "INCLUSIVE: The result will be inclusive of all paths that belong to children of the queried vector.",
      "NO_TRANSFORM: The transformation step will not be applied to the vector's path.")
+
+  flags("FM", { comment="Mask for controlling feedback events that are received." },
+     "PATH_CHANGED: The vector path has been modified or affected by a transform.",
+     "HAS_FOCUS: The vector has gained the user focus.",
+     "CHILD_HAS_FOCUS: A child of the vector has gained the user focus.",
+     "LOST_FOCUS: The vector has lost the user focus.")
 
   struct("VectorDef", { comment="Describes a definition for the VectorScene AddDef() method.", restrict="c" }, [[
     obj Object   # Reference to the definition object.
@@ -198,7 +274,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
 
   struct("GradientStop", { comment="Describes a colour stop for the VectorGradient Stops field." }, [[
    double Offset     # An offset in the range of 0 - 1.0
-   struct(DRGB) RGB  # A floating point RGB value.
+   struct(FRGB) RGB  # A floating point RGB value.
   ]])
 
   struct("Transition", { comment="For VectorTransition definitions" }, [[
@@ -219,8 +295,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     uchar  LargeArc     # Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
     uchar  Sweep        # Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
     int    Pad          # Private
-    double X            # The targeted X coordinate for the command
-    double Y            # The targeted Y coordinate for the command
+    double X            # The targeted X coordinate (absolute or relative) for the command
+    double Y            # The targeted Y coordinate (absolute or relative) for the command
     double AbsX         # Private
     double AbsY         # Private
     double X2           # The X2 coordinate for curve commands, or RX for arcs
@@ -230,27 +306,16 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     double Angle        # Arc angle
   ]])
 
-  struct("VectorTransform", { }, [[
-    struct(*VectorTransform) Next  # The next transform in the list.
-    struct(*VectorTransform) Prev  # The previous transform in the list.
-    double X         # The X value, the meaning of which is defined by the Type
-    double Y         # The Y value, the meaning of which is defined by the Type
-    double Angle     # Requires VTF_ROTATE.  A rotation by Angle degrees about a given point.  If optional parameters X and Y are not specified, the rotate is about the origin of the current user coordinate system.
-    double Matrix[6] # Requires VTF_MATRIX.  A transformation expressed as a matrix of six values.
-    short(VTF) Type  # The VTF indicates the type of transformation: rotate, skew etc
+  struct("VectorMatrix", { comment="Vector transformation matrix." }, [[
+    struct(*VectorMatrix) Next  # The next transform in the list.
+    obj(Vector) Vector          # The vector associated with the transform.
+    double ScaleX               # Matrix value A
+    double ShearY               # Matrix value B
+    double ShearX               # Matrix value C
+    double ScaleY               # Matrix value D
+    double TranslateX           # Matrix value E
+    double TranslateY           # Matrix value F
   ]])
-
-  // VectorPath method ID's start high enough to give a cushion from inherited Vector methods.
-
-  methods("VectorPath", "VP", {
-    { id=30, name="AddCommand" },
-    { id=31, name="RemoveCommand" },
-    { id=32, name="SetCommand" },
-    { id=33, name="GetCommand" },
-    { id=34, name="SetCommandList" }
-  })
-
-  class("VectorPath", { src="vectors/path.c", output="vectors/path_def.c" })
 
   // Use SET_VECTOR_COLOUR() to configure the RGB values in VectorColour
 
@@ -264,51 +329,47 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
   methods("vectorscene", "Sc", {
     { id=1, name="AddDef" },
     { id=2, name="SearchByID" },
-    { id=3, name="FindDef" }
+    { id=3, name="FindDef" },
+    { id=4, name="Debug" }
   })
 
   class("VectorScene", { src="scene/scene.cpp", output="scene/scene_def.c" }, [[
-   large RenderTime       # Microseconds elapsed during the last rendering operation.
-   double Gamma           # Not currently implemented.
-   obj(Vector) Viewport   # Reference to the VectorViewport that contains the VectorScene.
-   obj(Bitmap) Bitmap     # Target bitmap.
-   struct(*KeyStore) Defs # Stores references to gradients, images, patterns etc
-   int(VPF) Flags         # Optional flags.
-   int PageWidth          # Fixed page width - vector viewport width will be stretched to fit this if resizing is enabled.
-   int PageHeight         # Fixed page height - vector viewport height will be stretched to fit this if resizing is enabled.
-   int(VSM) SampleMethod  # VSM: Method to use for resampling images and patterns.
-  ]],
-  [[
-   class VMAdaptor *Adaptor;
-   agg::rendering_buffer *Buffer;
-   UBYTE  AdaptorType;
+   large  RenderTime             # Microseconds elapsed during the last rendering operation.
+   double Gamma                  # Not currently implemented.
+   obj(VectorScene)    HostScene # Reference to a controlling VectorScene at the top of the hierarchy, if applicable.
+   obj(VectorViewport) Viewport  # Reference to the VectorViewport that contains the VectorScene.
+   obj(Bitmap)         Bitmap    # Target bitmap.
+   struct(*KeyStore)   Defs      # Stores references to gradients, images, patterns etc
+   oid      Surface              # Target surface for automated rendering
+   int(VPF) Flags                # Optional flags.
+   int      PageWidth            # Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.
+   int      PageHeight           # Fixed page height - vector viewport height will be sized to fit this if resizing is enabled.
+   int(VSM) SampleMethod         # VSM: Method to use for resampling images and patterns.
   ]])
 
   class("VectorImage", { src="defs/image.cpp" }, [[
-    double X
-    double Y
+    double X                   # Starting horizontal coordinate
+    double Y                   # Starting vertical coordinate
     obj(Picture) Picture
-    obj(Bitmap) Bitmap
-    int(VUNIT) Units  # VUNIT constant, defines the coordinate system for (X,Y)
-    int(DMF) Dimensions
+    obj(Bitmap)  Bitmap
+    int(VUNIT)   Units         # VUNIT constant, defines the coordinate system for (X,Y)
+    int(DMF)     Dimensions
     int(VSPREAD) SpreadMethod
+    int(ARF)     AspectRatio   # Defines how the referenced image should fit in the boundary of its target shape.
   ]])
 
   class("VectorPattern", { src="defs/pattern.cpp" }, [[
-    double X
-    double Y
-    double Opacity
+    double X                      # Starting horizontal coordinate
+    double Y                      # Starting vertical coordinate
+    double Width                  # Width of the canvas
+    double Height                 # Height of the canvas
+    double Opacity                # Level of opacity from 0 - 1.0
     obj(VectorScene) Scene        # Internal scene
-    obj(VectorViewport) Viewport  # Internal viewport
     obj(VectorPattern) Inherit    # Reference to another pattern from which to inherit attributes
-    int(VSPREAD) SpreadMethod
+    int(VSPREAD) SpreadMethod     # Behaviour to use when pattern bounds do not match the vector path.
     int(VUNIT) Units              # VUNIT constant
     int(VUNIT) ContentUnits       # VUNIT constant
     int(DMF) Dimensions
-  ]],
-  [[
-   struct VectorTransform *Transforms;
-   objBitmap *Bitmap;
   ]])
 
   class("VectorGradient", { src="defs/gradient.cpp", output="defs/gradient_def.c" }, [[
@@ -321,91 +382,82 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     double FX                    # Focal X coordinate for radial gradient shapes.
     double FY                    # Focal Y coordinate for radial gradient shapes.
     double Radius                # The size of a radial gradient radius.
-    obj(VectorGradient) Inherit  # Reference to another gradient from which to inherit attributes
+    obj(VectorGradient) Inherit  # Reference to another gradient from which to inherit attributes.
     int(VSPREAD) SpreadMethod    # Defines the spread method to use for gradient fills.
     int(VUNIT) Units             # Defines the coordinate system for (x1,y1),(x2,y2)
     int(VGT) Type
-    int(VGF) Flags               # Optional flags
+    int(VGF) Flags               # Optional flags.
     int TotalStops               # The total number of records in the Stops array.
-  ]],
-  [[
-   struct GradientStop *Stops;  // An array of gradient stop colours.
-   struct VectorTransform *Transforms;
-   class GradientColours *Colours;
-   STRING ID;
-   LONG NumericID;
-   WORD ChangeCounter;
   ]])
 
-  class("VectorFilter", { src="filters/filter.cpp", output="filters/filter_def.c" }, [[
-    double X                      # Left-most position of filter area
-    double Y                      # Top-most position of filter area
-    double Width                  # Width of filter area
-    double Height                 # Height of filter area
-    double Opacity                # Level of opacity from 0 - 1.0
-    obj(VectorScene) Scene        # Internal scene
-    obj(VectorViewport) Viewport  # Internal viewport
-    obj(VectorFilter) Inherit     # Reference to another pattern from which to inherit attributes
-    obj(XML) EffectXML            # The XML object used to parse incoming effects
-    int(VUNIT) Units              # VUNIT constant
-    int(VUNIT) PrimitiveUnits     # VUNIT constant
-    int Dimensions                # Flags for detailing area values
-    int(CS) ColourSpace
-  ]],
-  [[
-   LARGE DrawStamp; // Timestamp at which this filter was last rendered
-   struct effect *Effects;
-   struct effect *LastEffect;
-   struct effect **Merge;
-   objBitmap *SrcBitmap; // A temporary alpha enabled drawing of the vector that is targeted by the filter.
-   objBitmap *BkgdBitmap;
-   objBitmap *MergeBitmap;
-   STRING Path; // Affix this path to file references (e.g. feImage).
-   struct {
-      objBitmap *Bitmap;
-      UBYTE *Data;
-      LONG DataSize;
-   } Bank[10];
-   struct effect SrcGraphic;
-   struct effect BkgdGraphic;
-   LONG BoundX, BoundY, BoundWidth, BoundHeight;  // Calculated pixel boundary for the entire filter and its effects.
-   LONG ViewX, ViewY, ViewWidth, ViewHeight; // Boundary of the target area (for user space coordinate mode)
-   UBYTE BankIndex;
+  class("FilterEffect", { src="filters/filter_effect.cpp", output="filters/filter_effect_def.c" }, [[
+    obj(FilterEffect) Next  # Next filter in the chain.
+    obj(FilterEffect) Prev  # Previous filter in the chain.
+    obj(Bitmap) Target      # Target bitmap for rendering the effect.
+    obj(FilterEffect) Input # The effect uses another effect as an input.
+    obj(FilterEffect) Mix   # Reference to an additional effect for mixing, e.g. compositing
+    double X                # Primitive x coordinate.
+    double Y                # Primitive y coordinate.
+    double Width            # Primitive width.
+    double Height           # Primitive height.
+    int(DMF) Dimensions     # Primitive dimensions.
+    int(VSF) SourceType     # Desired source input.
+    int(VSF) MixType        # Optional input for mixing.
   ]])
 
-  c_insert([[
-#define SHAPE_PUBLIC \
-   struct rkVector *Child; \
-   struct rkVectorScene *Scene; \
-   struct rkVector *Next; \
-   struct rkVector *Prev; \
-   OBJECTPTR Parent; \
-   struct VectorTransform *Transforms; \
-   DOUBLE StrokeWidth; \
-   DOUBLE StrokeOpacity; \
-   DOUBLE FillOpacity; \
-   DOUBLE Opacity; \
-   DOUBLE MiterLimit; \
-   DOUBLE InnerMiterLimit; \
-   DOUBLE DashOffset; \
-   LONG   ActiveTransforms; \
-   LONG   DashTotal; \
-   LONG   Visibility;
+  struct("MergeSource", { comment="Input source declaration for MergeFX" }, [[
+   int(VSF) SourceType        # The type of the required source.
+   obj(FilterEffect) Effect   # Effect pointer if the SourceType is REFERENCE.
+  ]])
+
+  class("ImageFX",        { src="filters/filter_image.cpp", output="filters/filter_image_def.c", comment="Image filter support class." })
+
+  class("SourceFX",       { src="filters/filter_source.cpp", output="filters/filter_source_def.c", comment="Source filter support class." })
+
+  class("BlurFX",         { src="filters/filter_blur.cpp", output="filters/filter_blur_def.c", comment="Blur filter support class." })
+
+  class("ColourFX",       { src="filters/filter_colourmatrix.cpp", output="filters/filter_colourmatrix_def.c", comment="Colour filter support class." })
+
+  class("CompositeFX",    { src="filters/filter_composite.cpp", output="filters/filter_composite_def.c", comment="Composite filter support class." })
+
+  class("ConvolveFX",     { src="filters/filter_convolve.cpp", output="filters/filter_convolve_def.c", comment="Convolve filter support class." })
+
+  class("FloodFX",        { src="filters/filter_flood.cpp", output="filters/filter_flood_def.c", comment="Flood filter support class." })
+
+  class("MergeFX",        { src="filters/filter_merge.cpp", output="filters/filter_merge_def.c", comment="Merge filter support class." })
+
+  class("MorphologyFX",   { src="filters/filter_morphology.cpp", output="filters/filter_morphology_def.c", comment="Morphology filter support class." })
+
+  class("OffsetFX",       { src="filters/filter_offset.cpp", output="filters/filter_offset_def.c", comment="Offset filter support class." })
+
+  class("TurbulenceFX",   { src="filters/filter_turbulence.cpp", output="filters/filter_turbulence_def.c", comment="Turbulence filter support class." })
+
+  class("VectorFilter",   { src="filters/filter.cpp", output="filters/filter_def.c" }, [[
+    double X                  # Left-most position of filter area
+    double Y                  # Top-most position of filter area
+    double Width              # Width of filter area
+    double Height             # Height of filter area
+    double Opacity            # Level of opacity from 0 - 1.0
+    obj(VectorFilter) Inherit # Reference to another pattern from which to inherit attributes
+    int ResX                  # Width of the intermediate images in pixels
+    int ResY                  # Height of the intermediate images in pixels
+    int(VUNIT) Units          # VUNIT constant
+    int(VUNIT) PrimitiveUnits # VUNIT constant
+    int Dimensions            # Flags for detailing area values
+    int(VCS) ColourSpace      # Operating colour space for RGB values
   ]])
 
   methods("vector", "Vec", {
-    { id=1,  name="Push" },
-    { id=2,  name="TracePath" },
-    { id=3,  name="GetBoundary" },
-    { id=4,  name="Rotate" },
-    { id=5,  name="Transform" },
-    { id=6,  name="ApplyMatrix" },
-    { id=7,  name="Translate" },
-    { id=8,  name="Scale" },
-    { id=9,  name="Skew" },
-    { id=10, name="PointInPath" },
-    { id=11, name="ClearTransforms" },
-    { id=12, name="GetTransform" }
+    { id=1, name="Push" },
+    { id=2, name="TracePath" },
+    { id=3, name="GetBoundary" },
+    { id=4, name="PointInPath" },
+    { id=5, name="SubscribeInput" },
+    { id=6, name="SubscribeKeyboard" },
+    { id=7, name="SubscribeFeedback" },
+    { id=8, name="Debug" },
+    { id=9, name="NewMatrix" },
+    { id=10, name="FreeMatrix" }
   })
 
   class("Vector", { src="vectors/vector.cpp", output="vectors/vector_def.c", version=1 }, [[
@@ -414,19 +466,55 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     obj(Vector) Next        # The next vector in the branch, or NULL.
     obj(Vector) Prev        # The previous vector in the branch, or NULL.
     obj Parent              # The parent vector, or NULL if this is the top-most vector.
-    struct(*VectorTransform) Transforms  # A list of transforms to apply to the vector.
-    double StrokeWidth      # The width to use when stroking the path.
+    struct(*VectorMatrix) Matrices # A list of transform matrices to apply to the vector.
     double StrokeOpacity    # Defines the opacity of the path stroke.
     double FillOpacity      # The opacity to use when filling the vector.
     double Opacity          # An overall opacity value for the vector.
     double MiterLimit       # Imposes a limit on the ratio of the miter length to the StrokeWidth.
     double InnerMiterLimit  # A special limit to apply when the MITER_ROUND line-join effect is in use.
     double DashOffset       # For the DashArray, applies an initial dash offset.
-    int ActiveTransforms    # Indicates the transforms that are currently applied to a vector.
-    int DashTotal           # The total number of values in the DashArray.
     int(VIS) Visibility     # Controls the visibility of a vector and its children.
-  ]],
-  [[ SHAPE_PRIVATE ]])
+    int(VF)  Flags          # Optional flags.
+    int(PTR) Cursor         # The mouse cursor to display when the pointer is within the vector's boundary.
+    int(RQ)  PathQuality    # Defines the quality of rendered path outlines.
+    int(VCS) ColourSpace    # Desired colour space to use when blending colours.
+  ]])
+
+  // VectorPath method ID's start high enough to give a cushion from inherited Vector methods.
+
+  methods("VectorPath", "VP", {
+    { id=30, name="AddCommand" },
+    { id=31, name="RemoveCommand" },
+    { id=32, name="SetCommand" },
+    { id=33, name="GetCommand" },
+    { id=34, name="SetCommandList" }
+  })
+
+  class("VectorPath", { src="vectors/path.cpp", output="vectors/path_def.c" })
+
+  // VectorText method ID's start high enough to give a cushion from inherited Vector methods.
+
+  methods("VectorText", "VT", {
+    { id=30, name="DeleteLine" }
+  })
+
+  class('VectorText', { src='vectors/text.cpp', output="vectors/text_def.cpp"  })
+
+  class('VectorWave', { src='vectors/wave.cpp' })
+
+  class('VectorRectangle', { src='vectors/rectangle.cpp' })
+
+  class('VectorPolygon', { src='vectors/polygon.cpp' })
+
+  class('VectorShape', { src='vectors/supershape.cpp' })
+
+  class('VectorSpiral', { src='vectors/spiral.cpp' })
+
+  class('VectorEllipse', { src='vectors/ellipse.cpp' })
+
+  class('VectorClip', { src='vectors/clip.cpp' })
+
+  class('VectorViewport', { base='Vector',  src='vectors/viewport.cpp', output="vectors/viewport_def.cpp" })
 
   functionNames("vec",
     "DrawPath",
@@ -446,13 +534,21 @@ module({ name="Vector", copyright="Paul Manias © 2010-2020", version=1.0 }, fun
     "ClosePath",
     "RewindPath",
     "GetVertex",
-    "ApplyPath")
+    "ApplyPath",
+    "Rotate",
+    "Translate",
+    "Skew",
+    "Multiply",
+    "MultiplyMatrix",
+    "Scale",
+    "ParseTransform",
+    "ResetMatrix")
 
   c_insert([[
 //****************************************************************************
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
-   Colour->Head.ClassID = ID_VECTORCOLOUR;
+   Colour->ClassID = ID_VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
    Colour->Blue  = Blue;
@@ -461,143 +557,66 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
   ]])
 
   hash("SVF", "0x%s",
-    "ANIMATETRANSFORM",
-    "ANIMATEMOTION",
-    "CIRCLE",
-    "DEFS",
-    "ELLIPSE",
-    "LINE",
-    "IMAGE",
-    "TEXT",
-    "FX",
-    "FY",
-    "IMAGE",
-    "TO",
-    "DUR",
-    "DESC",
-    "PATH",
-    "X",
-    "Y",
-    "RX",
-    "RY",
-    "CX",
-    "CY",
-    "R",
-    "X1",
-    "Y1",
-    "X2",
-    "Y2",
-    "D",
-    "DX",
-    "DY",
-    "IN",
-    "IN2",
-    "OPERATOR",
-    "K1",
-    "K2",
-    "K3",
-    "K4",
-    "N1",
-    "N2",
-    "N3",
-    "PHI",
-    "M",
-    "MOD",
     "A",
-    "B",
+    "ACHROMATOMALY",
+    "ACHROMATOPSIA",
     "ALIGN",
-    "MASK",
-    "CLOSE",
-    "TOP",
-    "SPIRAL",
-    "BOTTOM",
     "AMPLITUDE",
-    "REPEAT",
-    "TRANSITION",
-    "PARASOL:TRANSITION",
-    "PARASOL:PATHTRANSITION",
-    "FREQUENCY",
-    "THICKNESS",
-    "DECAY",
-    "VERTICES",
-    "SCALE",
-    "PARASOL:SHAPE",
-    "CLIPPATHUNITS",
-    "CLIPPATH",
+    "ANIMATEMOTION",
+    "ANIMATETRANSFORM",
+    "ARITHMETIC",
+    "ATOP",
+    "B",
+    "BACKGROUNDALPHA",
+    "BACKGROUNDIMAGE",
+    "BASEFREQUENCY",
+    "BASEPROFILE",
+    "BEVEL",
+    "BIAS",
+    "BOTTOM",
+    "BRIGHTNESS",
+    "BURN",
+    "BUTT",
+    "CIRCLE",
     "CLIP-PATH",
     "CLIP-RULE",
-    "RADIUS",
-    "TEXTPATH",
-    "MODE",
-    "OVERLAY",
-    "PLUS",
-    "MINUS",
-    "BURN",
-    "SCREEN",
-    "STEP",
-    "OFFSET",
-    "BASEFREQUENCY",
-    "STITCHTILES",
-    "PRIMITIVEUNITS",
-    "IMAGE-RENDERING",
-    "SEED",
-    "MULTIPLY",
-    "NUMOCTAVES",
-    "LIGHTEN",
-    "DARKEN",
-    "INVERTRGB",
-    "INVERT",
-    "DODGE",
-    "HARDLIGHT",
-    "SOFTLIGHT",
-    "DIFFERENCE",
-    "EXCLUSION",
-    "FLOOD-COLOR",
-    "FLOOD-COLOUR",
-    "FLOOD-OPACITY",
-    "OUT",
-    "ORDER",
-    "OVER",
-    "ATOP",
-    "XOR",
-    "ARITHMETIC",
-    "COLOR-INTERPOLATION-FILTERS",
+    "CLIP-RULE",
+    "CLIPPATH",
+    "CLIPPATHUNITS",
+    "CLOSE",
+    "COLOR",
+    "COLOUR",
     "COLOR-INTERPOLATION",
-    "PRESERVEALPHA",
-    "KERNELMATRIX",
-    "DIVISOR",
-    "BIAS",
-    "TARGETX",
-    "TARGETY",
-    "EDGEMODE",
-    "KERNELUNITLENGTH",
-    "CONTRAST",
-    "BRIGHTNESS",
-    "HUE",
+    "COLOUR-INTERPOLATION",
+    "COLOR-INTERPOLATION-FILTERS",
+    "COLOUR-INTERPOLATION-FILTERS",
     "COLOURISE",
+    "CONTOURGRADIENT",
+    "CONTRAST",
+    "CX",
+    "CY",
+    "D",
+    "DARKEN",
+    "DECAY",
+    "DEFS",
     "DESATURATE",
-    "PROTANOPIA",
-    "PROTANOMALY",
-    "DEUTERANOPIA",
+    "DESC",
     "DEUTERANOMALY",
-    "TRITANOPIA",
-    "TRITANOMALY",
-    "ACHROMATOPSIA",
-    "ACHROMATOMALY",
-    "MATRIX",
-    "HUEROTATE",
-    "SATURATE",
-    "LUMINANCETOALPHA",
-    "SOURCEGRAPHIC",
-    "SOURCEALPHA",
-    "BACKGROUNDIMAGE",
-    "BACKGROUNDALPHA",
-    "FILLPAINT",
-    "STROKEPAINT",
-    "RESULT",
-    "FILTERUNITS",
-    "FEBLUR",
+    "DEUTERANOPIA",
+    "DIFFERENCE",
+    "DISPLAY",
+    "DIVISOR",
+    "DODGE",
+    "DUR",
+    "DX",
+    "DY",
+    "EDGEMODE",
+    "ELLIPSE",
+    "ENABLE-BACKGROUND",
+    "EXCLUSION",
+    "EXTERNALRESOURCESREQUIRED",
     "FEBLEND",
+    "FEBLUR",
     "FECOLORMATRIX",
     "FECOLOURMATRIX",
     "FECOMPONENTTRANSFER",
@@ -605,141 +624,204 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "FECONVOLVEMATRIX",
     "FEDIFFUSELIGHTING",
     "FEDISPLACEMENTMAP",
+    "FEDISTANTLIGHT",
     "FEFLOOD",
     "FEGAUSSIANBLUR",
     "FEIMAGE",
     "FEMERGE",
     "FEMORPHOLOGY",
     "FEOFFSET",
+    "FEPOINTLIGHT",
     "FESPECULARLIGHTING",
+    "FESPOTLIGHT",
     "FETILE",
     "FETURBULENCE",
-    "FEDISTANTLIGHT",
-    "FEPOINTLIGHT",
-    "FESPOTLIGHT",
-    "STDDEVIATION",
-    "XMLNS",
-    "TITLE",
-    "SYMBOL",
-    "BEVEL",
-    "BUTT",
-    "COLOR",
-    "COLOUR",
-    "DISPLAY",
-    "OPACITY",
-    "CLIP-RULE",
-    "FILTER",
-    "PARASOL:MORPH",
-    "PARASOL:SPIRAL",
-    "PARASOL:WAVE",
-    "XLINK:HREF",
-    "BASEPROFILE",
-    "PATTERNTRANSFORM",
-    "EXTERNALRESOURCESREQUIRED",
-    "XML:SPACE",
-    "PATTERNUNITS",
-    "PATTERNCONTENTUNITS",
-    "CONTOURGRADIENT",
-    "PATTERN",
     "FILL",
     "FILL-OPACITY",
     "FILL-RULE",
-    "ENABLE-BACKGROUND",
-    "VERTEX-SCALING",
-    "FONT-SIZE",
-    "FONT-FAMILY",
-    "FONT-WEIGHT",
-    "FONT-STRETCH",
-    "FONT-SIZE-ADJUST",
+    "FILLPAINT",
+    "FILTER",
+    "FILTERUNITS",
+    "FLOOD-COLOR",
+    "FLOOD-COLOUR",
+    "FLOOD-OPACITY",
     "FONT",
+    "FONT-FAMILY",
+    "FONT-SIZE",
+    "FONT-SIZE-ADJUST",
+    "FONT-STRETCH",
     "FONT-STYLE",
     "FONT-VARIANT",
+    "FONT-WEIGHT",
+    "FREQUENCY",
     "FROM",
+    "FX",
+    "FY",
     "G",
-    "GRADIENTUNITS",
     "GRADIENTTRANSFORM",
+    "GRADIENTUNITS",
+    "HARDLIGHT",
     "HEIGHT",
+    "HUE",
+    "HUEROTATE",
     "ID",
+    "IMAGE",
+    "IMAGE",
+    "IMAGE-RENDERING",
+    "IN",
+    "IN2",
     "INHERIT",
+    "INVERT",
     "INVERT-X-AXIS",
     "INVERT-Y-AXIS",
+    "INVERTRGB",
     "JAG",
+    "K1",
+    "K2",
+    "K3",
+    "K4",
+    "KERNELMATRIX",
+    "KERNELUNITLENGTH",
     "KERNING",
     "LENGTHADJUST",
     "LETTER-SPACING",
+    "LIGHTEN",
+    "LINE",
     "LINEARGRADIENT",
+    "LUMINANCETOALPHA",
+    "M",
     "MARKER",
     "MARKER-END",
     "MARKER-MID",
     "MARKER-START",
+    "MASK",
+    "MATRIX",
     "METHOD",
+    "MINUS",
     "MITER",
     "MITER-REVERT",
     "MITER-ROUND",
+    "MOD",
+    "MODE",
+    "MULTIPLY",
+    "N1",
+    "N2",
+    "N3",
     "NONE",
     "NUMERIC-ID",
+    "NUMOCTAVES",
+    "OFFSET",
+    "OPACITY",
+    "OPERATOR",
+    "ORDER",
+    "OUT",
+    "OVER",
     "OVERFLOW",
-    "PATHLENGTH",
-    "POINTS",
+    "OVERLAY",
+    "PARASOL:MORPH",
+    "PARASOL:PATHTRANSITION",
+    "PARASOL:SHAPE",
+    "PARASOL:SPIRAL",
+    "PARASOL:TRANSITION",
+    "PARASOL:WAVE",
     "PATH",
-    "POLYLINE",
+    "PATH",
+    "PATHLENGTH",
+    "PATTERN",
+    "PATTERNCONTENTUNITS",
+    "PATTERNTRANSFORM",
+    "PATTERNUNITS",
+    "PHI",
+    "PLUS",
+    "POINTS",
     "POLYGON",
-    "RECT",
+    "POLYLINE",
+    "PRESERVEALPHA",
+    "PRIMITIVEUNITS",
+    "PROTANOMALY",
+    "PROTANOPIA",
+    "R",
     "RADIALGRADIENT",
+    "RADIUS",
+    "RECT",
+    "REPEAT",
+    "RESULT",
     "ROTATE",
     "ROUND",
+    "RX",
+    "RY",
+    "SATURATE",
+    "SCALE",
+    "SCREEN",
+    "SEED",
+    "SHAPE-RENDERING",
+    "SOFTLIGHT",
+    "SOURCEALPHA",
+    "SOURCEGRAPHIC",
     "SPACING",
+    "SPIRAL",
     "SPREADMETHOD",
-    "STARTOFFSET",
-    "STRING",
-    "STROKE",
-    "STROKE-OPACITY",
-    "STROKE-WIDTH",
-    "STROKE-LINECAP",
-    "STROKE-LINEJOIN",
-    "STROKE-MITERLIMIT",
-    "STROKE-MITERLIMIT-THETA",
-    "STROKE-INNER-MITERLIMIT",
-    "STROKE-INNERJOIN",
-    "STROKE-DASHARRAY",
-    "STROKE-DASHOFFSET",
-    "STYLE",
     "SQUARE",
-    "SVG")
+    "STARTOFFSET",
+    "STDDEVIATION",
+    "STEP",
+    "STITCHTILES",
+    "STRING",
+    "STYLE",
+    "SVG",
+    "SYMBOL",
+    "TARGETX",
+    "TARGETY",
+    "TEXT",
+    "TEXTPATH",
+    "THICKNESS",
+    "TITLE",
+    "TO",
+    "TOP",
+    "TRANSITION",
+    "TRITANOMALY",
+    "TRITANOPIA",
+    "VERTEX-SCALING",
+    "VERTICES",
+    "X",
+    "X1",
+    "X2",
+    "XLINK:HREF",
+    "XML:SPACE",
+    "XMLNS",
+    "XOR",
+    "Y",
+    "Y1",
+    "Y2")
 
   hash("SVF", "0x%s",
-    "TEXTLENGTH",
-    "TEXT-ANCHOR",
-    "TEXT-DECORATION",
-    "TOTAL-POINTS",
-    "TRANSFORM",
-    "USE",
-    "UNITS",
-    "VIEWBOX",
-    "VERSION",
-    "VIEW-X",
-    "VIEW-Y",
-    "VIEW-WIDTH",
-    "VIEW-HEIGHT",
-    "VISIBILITY",
-    "WIDTH",
-    "WORD-SPACING",
+    "ACCUMULATE",
+    "ADDITIVE",
     "ALICEBLUE",
     "ANTIQUEWHITE",
     "AQUA",
     "AQUAMARINE",
+    "ATTRIBUTENAME",
+    "ATTRIBUTETYPE",
     "AZURE",
+    "BEGIN",
     "BEIGE",
     "BISQUE",
     "BLACK",
     "BLANCHEDALMOND",
+    "BLINK",
     "BLUE",
     "BLUEVIOLET",
+    "BOLD",
+    "BOLDER",
     "BROWN",
     "BURLYWOOD",
     "CADETBLUE",
     "CHARTREUSE",
     "CHOCOLATE",
+    "CLASS",
+    "CONDENSED",
+    "CONICGRADIENT",
     "CORAL",
     "CORNFLOWERBLUE",
     "CORNSILK",
@@ -766,9 +848,13 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "DARKVIOLET",
     "DEEPPINK",
     "DEEPSKYBLUE",
+    "DIAMONDGRADIENT",
     "DIMGRAY",
     "DIMGREY",
     "DODGERBLUE",
+    "END",
+    "EXTRA-CONDENSED",
+    "FILTERRES",
     "FIREBRICK",
     "FLORALWHITE",
     "FORESTGREEN",
@@ -783,6 +869,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "GREY",
     "HONEYDEW",
     "HOTPINK",
+    "HREF",
     "INDIANRED",
     "INDIGO",
     "IVORY",
@@ -794,6 +881,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "LIGHTBLUE",
     "LIGHTCORAL",
     "LIGHTCYAN",
+    "LIGHTER",
     "LIGHTGOLDENRODYELLOW",
     "LIGHTGRAY",
     "LIGHTGREEN",
@@ -809,8 +897,10 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "LIME",
     "LIMEGREEN",
     "LINEN",
+    "LINETHROUGH",
     "MAGENTA",
     "MAROON",
+    "MAX",
     "MEDIUMAQUAMARINE",
     "MEDIUMBLUE",
     "MEDIUMORCHID",
@@ -820,18 +910,23 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "MEDIUMSPRINGGREEN",
     "MEDIUMTURQUOISE",
     "MEDIUMVIOLETRED",
+    "MIDDLE",
     "MIDNIGHTBLUE",
+    "MIN",
     "MINTCREAM",
     "MISTYROSE",
     "MOCCASIN",
+    "NARROWER",
     "NAVAJOWHITE",
     "NAVY",
+    "NORMAL",
     "OLDLACE",
     "OLIVE",
     "OLIVEDRAB",
     "ORANGE",
     "ORANGERED",
     "ORCHID",
+    "OVERLINE",
     "PALEGOLDENROD",
     "PALEGREEN",
     "PALETURQUOISE",
@@ -842,8 +937,12 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "PINK",
     "PLUM",
     "POWDERBLUE",
+    "PRESERVEASPECTRATIO",
     "PURPLE",
     "RED",
+    "REPEATCOUNT",
+    "REPEATDUR",
+    "RESTART",
     "ROSYBROWN",
     "ROYALBLUE",
     "SADDLEBROWN",
@@ -851,6 +950,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "SANDYBROWN",
     "SEAGREEN",
     "SEASHELL",
+    "SEMI-CONDENSED",
     "SIENNA",
     "SILVER",
     "SKYBLUE",
@@ -859,49 +959,50 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "SLATEGREY",
     "SNOW",
     "SPRINGGREEN",
+    "START",
     "STEELBLUE",
+    "STROKE",
+    "STROKE-DASHARRAY",
+    "STROKE-DASHOFFSET",
+    "STROKE-INNER-MITERLIMIT",
+    "STROKE-INNERJOIN",
+    "STROKE-LINECAP",
+    "STROKE-LINEJOIN",
+    "STROKE-MITERLIMIT",
+    "STROKE-MITERLIMIT-THETA",
+    "STROKE-OPACITY",
+    "STROKE-WIDTH",
+    "STROKEPAINT",
     "TAN",
     "TEAL",
+    "TEXT-ANCHOR",
+    "TEXT-DECORATION",
+    "TEXTLENGTH",
     "THISTLE",
     "TOMATO",
+    "TOTAL-POINTS",
+    "TRANSFORM",
     "TURQUOISE",
+    "TYPE",
+    "ULTRA-CONDENSED",
+    "UNDERLINE",
+    "UNITS",
+    "USE",
+    "VALUES",
+    "VERSION",
+    "VIEW-HEIGHT",
+    "VIEW-WIDTH",
+    "VIEW-X",
+    "VIEW-Y",
+    "VIEWBOX",
     "VIOLET",
+    "VISIBILITY",
     "WHEAT",
     "WHITE",
     "WHITESMOKE",
-    "YELLOW",
-    "YELLOWGREEN",
-    "VALUES",
-    "START",
-    "MIDDLE",
-    "END",
-    "NORMAL",
     "WIDER",
-    "NARROWER",
-    "ULTRA-CONDENSED",
-    "EXTRA-CONDENSED",
-    "SEMI-CONDENSED",
-    "LIGHTER",
-    "BOLD",
-    "BOLDER",
-    "BLINK",
-    "UNDERLINE",
-    "OVERLINE",
-    "LINETHROUGH",
-    "CONDENSED",
-    "DIAMONDGRADIENT",
-    "CONICGRADIENT",
-    "ATTRIBUTENAME",
-    "ATTRIBUTETYPE",
-    "BEGIN",
-    "TYPE",
-    "MIN",
-    "MAX",
-    "RESTART",
-    "REPEATDUR",
-    "REPEATCOUNT",
-    "ADDITIVE",
-    "ACCUMULATE",
-    "PRESERVEASPECTRATIO",
-    "CLASS")
+    "WIDTH",
+    "WORD-SPACING",
+    "YELLOW",
+    "YELLOWGREEN")
 end)

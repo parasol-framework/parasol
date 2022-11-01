@@ -1,0 +1,208 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>VectorShape</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Extends the Vector class with support for the Superformula algorithm.</comment>
+    <version>1</version>
+    <id>890ce369</id>
+    <idstring>ID_VECTORSHAPE</idstring>
+    <category>Graphics</category>
+    <include>modules/vectorshape.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>The VectorShape class extends the Vector class with support for generating paths with the Superformula algorithm by Johan Gielis.  This feature is not part of the SVG standard and therefore should not be used in cases where SVG compliance is a strict requirement.</p>
+<p>The Superformula is documented in detail at Wikipedia: http://en.wikipedia.org/wiki/Superformula</p></description>
+    <source>
+      <file path="vectors/">supershape.cpp</file>
+    </source>
+  </info>
+
+  <fields>
+    <field>
+      <name>A</name>
+      <comment>A parameter for the Superformula.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field sets the Superformula's 'A' parameter value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>B</name>
+      <comment>A parameter for the Superformula.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field sets the Superformula's 'B' parameter value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>CenterX</name>
+      <comment>The center of the shape on the x-axis.  Expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The horizontal center of the shape is defined here as either a fixed or relative value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>CenterY</name>
+      <comment>The center of the shape on the y-axis.  Expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The vertical center of the shape is defined here as either a fixed or relative value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Close</name>
+      <comment>A parameter for the super shape algorithm.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>If TRUE, the shape path will be closed between the beginning and end points.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Dimensions</name>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The following dimension flags are supported:</p>
+<types lookup="DMF">
+<type name="FIXED_CENTER_X">The <field>CenterX</field> value is a fixed coordinate.</type>
+<type name="FIXED_CENTER_Y">The <field>CenterY</field> value is a fixed coordinate.</type>
+<type name="FIXED_RADIUS">The <field>Radius</field> value is a fixed coordinate.</type>
+<type name="RELATIVE_CENTER_X">The <field>CenterX</field> value is a relative coordinate.</type>
+<type name="RELATIVE_CENTER_Y">The <field>CenterY</field> value is a relative coordinate.</type>
+<type name="RELATIVE_RADIUS">The <field>Radius</field> value is a relative coordinate.</type>
+</types>
+      </description>
+    </field>
+
+    <field>
+      <name>M</name>
+      <comment>A parameter for the Superformula.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field sets the Superformula's 'M' parameter value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Mod</name>
+      <comment>A special modification parameter that alters the super shape algorithm.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The Mod field alters the super shape algorithm, sometimes in radical ways that allow entirely new shapes to be discovered in the super shape library.  The value that is specified will result in a formula being applied to the generated 'r' value.  Possible values and their effects are:</p>
+<types>
+<type name="0">Default</type>
+<type name="1">exp(r)</type>
+<type name="2">log(r)</type>
+<type name="3">atan(r)</type>
+<type name="4">exp(1.0/r)</type>
+<type name="5">1+cos(r)^2</type>
+<type name="6">sin(r)^2</type>
+<type name="7">1+sin(r)^2</type>
+<type name="8">cos(r)^2</type>
+</types>
+      </description>
+    </field>
+
+    <field>
+      <name>N1</name>
+      <comment>A parameter for the super shape algorithm.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field sets the Superformula's 'N1' parameter value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>N2</name>
+      <comment>A parameter for the super shape algorithm.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field sets the Superformula's 'N2' parameter value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>N3</name>
+      <comment>A parameter for the super shape algorithm.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field sets the Superformula's 'N3' parameter value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Phi</name>
+      <comment>A parameter for the super shape algorithm.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The Phi value has an impact on the length of the generated path.  If the super shape parameters form a circular path (whereby the last vertex meets the first) then the Phi value should not be modified.  If the path does not meet itself then the Phi value should be increased until it does.  The minimum (and default) value is 2.  It is recommended that the Phi value is increased in increments of 2 until the desired effect is achieved.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Radius</name>
+      <comment>The radius of the generated shape.  Expressed as a fixed or relative coordinate.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The Radius defines the final size of the generated shape.  It can be expressed in fixed or relative terms.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Repeat</name>
+      <comment>Repeat the generated shape multiple times.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>If set to a value greater than one, the Repeat field will cause the generated shape to be replicated multiple times at consistent intervals leading to the center point.</p>
+<p>The Repeat value cannot be set in conjunction with <field>Spiral</field>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Spiral</name>
+      <comment>Alters the generated super shape so that it forms a spiral.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Setting the Spiral field to a value greater than one will cause the path generator to form spirals, up to the value specified.  For instance, a value of 5 will generate five spirals.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Vertices</name>
+      <comment>Limits the total number of vertices generated for the super shape.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Setting a value in Vertices will limit the total number of vertices that are generated for the super shape.  This feature is useful for generating common convex geometrical shapes such as triangles, polygons, hexagons and so forth; because their vertices will always touch the sides of an elliptical area.</p>
+      </description>
+    </field>
+
+  </fields>
+  <structs>
+  </structs>
+</book>

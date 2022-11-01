@@ -22,12 +22,14 @@ mind the implications of creating a shared display.
 
 *****************************************************************************/
 
+#include "defs.h"
+
 // Class definition at end of this source file.
 
-static ERROR DISPLAY_Resize(objDisplay *, struct acResize *);
+static ERROR DISPLAY_Resize(extDisplay *, struct acResize *);
 static CSTRING dpms_name(LONG Index);
 
-static void alloc_display_buffer(objDisplay *Self);
+static void alloc_display_buffer(extDisplay *Self);
 
 #ifdef _GLES_
 static const int attributes[] = {
@@ -83,7 +85,7 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
    parasol::Log log(__FUNCTION__);
    LONG value[1];
 
-   log.branch("");
+   log.branch();
 
    for (LONG i=0; i < ARRAYSIZE(attributes); i++) {
       int attribute = attributes[i];
@@ -100,8 +102,86 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 #endif
 
 //****************************************************************************
+// Build a list of valid resolutions.
 
-static void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
+static resolution * get_resolutions(extDisplay *Self)
+{
+#ifdef __xwindows__
+
+   parasol::Log log(__FUNCTION__);
+
+   if (XRandRBase) {
+      static resolution resolutions[30];
+      struct xrMode *mode;
+
+      if (Self->TotalResolutions) return resolutions;
+
+      Self->TotalResolutions = xrGetDisplayTotal();
+
+      if (Self->TotalResolutions > ARRAYSIZE(resolutions) - 1) {
+         Self->TotalResolutions = ARRAYSIZE(resolutions) - 1;
+      }
+
+      LONG i;
+      for (i=0; i < Self->TotalResolutions; i++) {
+         if ((mode = (xrMode *)xrGetDisplayMode(i))) {
+            resolutions[i].width  = mode->Width;
+            resolutions[i].height = mode->Height;
+            resolutions[i].bpp    = mode->Depth;
+         }
+      }
+      resolutions[i].width  = 0;
+      resolutions[i].height = 0;
+      resolutions[i].bpp    = 0;
+
+      return resolutions;
+   }
+   else {
+      static resolution resolutions[2] = {
+         { 1024, 768, 32 },
+         { 0, 0, 0 }
+      };
+
+      log.msg("RandR extension not available.");
+
+      resolutions[0].width  = glRootWindow.width;
+      resolutions[0].height = glRootWindow.height;
+      resolutions[0].bpp    = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
+
+      Self->TotalResolutions = 1;
+      return resolutions;
+   }
+
+#else
+
+   static resolution resolutions[] = {
+      { 640, 480, 32 },
+      { 800, 600, 32 },
+      { 1024, 768, 32 },
+      { 1152, 864, 32 },
+      { 1280, 960, 32 },
+      { 0, 0, 0 }
+   };
+
+   Self->TotalResolutions = ARRAYSIZE(resolutions);
+   return resolutions;
+
+#endif
+}
+
+//*****************************************************************************
+
+static void update_displayinfo(extDisplay *Self)
+{
+   if (StrMatch("SystemDisplay", GetName(Self)) != ERR_Okay) return;
+
+   glDisplayInfo->DisplayID = 0;
+   get_display_info(Self->UID, glDisplayInfo, sizeof(DISPLAYINFO));
+}
+
+//****************************************************************************
+
+void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -122,14 +202,14 @@ static void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG
             { "Width",   FD_LONG, { .Long = Width } },
             { "Height",  FD_LONG, { .Long = Height } }
          };
-         scCallback(script, Feedback->Script.ProcedureID, args, ARRAYSIZE(args));
+         scCallback(script, Feedback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 }
 
 //****************************************************************************
 
-static ERROR DISPLAY_AccessObject(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_AccessObject(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -154,13 +234,13 @@ static ERROR DISPLAY_AccessObject(objDisplay *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR DISPLAY_ActionNotify(objDisplay *Self, struct acActionNotify *Args)
+static ERROR DISPLAY_ActionNotify(extDisplay *Self, struct acActionNotify *Args)
 {
    if (!Args) return ERR_NullArgs;
    if (Args->Error != ERR_Okay) return ERR_Okay;
 
    if (Args->ActionID IS AC_Free) {
-      if ((Self->ResizeFeedback.Type IS CALL_SCRIPT) and (Self->ResizeFeedback.Script.Script->UniqueID IS Args->ObjectID)) {
+      if ((Self->ResizeFeedback.Type IS CALL_SCRIPT) and (Self->ResizeFeedback.Script.Script->UID IS Args->ObjectID)) {
          Self->ResizeFeedback.Type = CALL_NONE;
          return ERR_Okay;
       }
@@ -175,7 +255,7 @@ Activate: Activating a display has the same effect as calling the Show action.
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_Activate(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_Activate(extDisplay *Self, APTR Void)
 {
    return acShow(Self);
 }
@@ -189,7 +269,7 @@ Private
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_CheckXWindow(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_CheckXWindow(extDisplay *Self, APTR Void)
 {
 #ifdef __xwindows__
 
@@ -205,7 +285,7 @@ static ERROR DISPLAY_CheckXWindow(objDisplay *Self, APTR Void)
       Self->X = absx;
       Self->Y = absy;
 
-      resize_feedback(&Self->ResizeFeedback, Self->Head.UniqueID, absx, absy, Self->Width, Self->Height);
+      resize_feedback(&Self->ResizeFeedback, Self->UID, absx, absy, Self->Width, Self->Height);
    }
 
 #endif
@@ -218,7 +298,7 @@ Clear: Clears a display's image data and hardware buffers (e.g. OpenGL)
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_Clear(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_Clear(extDisplay *Self, APTR Void)
 {
 #ifdef _GLES_
    if (!lock_graphics_active(__func__)) {
@@ -239,7 +319,7 @@ DataFeed: Declared for internal purposes - do not call.
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_DataFeed(objDisplay *Self, struct acDataFeed *Args)
+static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
@@ -280,7 +360,7 @@ static ERROR DISPLAY_DataFeed(objDisplay *Self, struct acDataFeed *Args)
             pos += StrCopy("</receipt>", xml+pos, xmlsize-pos);
 
             struct acDataFeed dc;
-            dc.ObjectID = Self->Head.UniqueID;
+            dc.ObjectID = Self->UID;
             dc.Datatype = DATA_RECEIPT;
             dc.Buffer   = xml;
             dc.Size     = pos+1;
@@ -315,7 +395,7 @@ NoSupport: The display or graphics card does not support DPMS.
 
 *****************************************************************************/
 
-static ERROR DISPLAY_Disable(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_Disable(extDisplay *Self, APTR Void)
 {
 #ifdef __snap__
 
@@ -358,12 +438,12 @@ Enable: Restores the screen display from power saving mode.
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_Enable(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_Enable(extDisplay *Self, APTR Void)
 {
 #ifdef __snap__
 
    parasol::Log log;
-   log.branch("");
+   log.branch();
 
    if (!glSNAP->gsDPMS.DPMSsetState) {
       log.msg("DPMS not available.");
@@ -385,14 +465,14 @@ static ERROR DISPLAY_Enable(objDisplay *Self, APTR Void)
 // redraw is required.  It is the responsibility of the program that created the Display object to subscribe to the
 // Draw action and act on it.
 
-static ERROR DISPLAY_Draw(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_Draw(extDisplay *Self, APTR Void)
 {
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static void user_login(objDisplay *Self, APTR Info, LONG Data)
+static void user_login(extDisplay *Self, APTR Info, LONG Data)
 {
    // Regenerate the screen.xml file for the user:config/ directory.
 
@@ -407,7 +487,7 @@ Flush: Flush pending graphics operations to the display.
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_Flush(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_Flush(extDisplay *Self, APTR Void)
 {
 #ifdef __xwindows__
    XSync(XDisplay, False);
@@ -422,7 +502,7 @@ static ERROR DISPLAY_Flush(objDisplay *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR DISPLAY_Focus(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_Focus(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -437,7 +517,7 @@ static ERROR DISPLAY_Focus(objDisplay *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR DISPLAY_Free(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -514,7 +594,7 @@ GetVar: Retrieve formatted information from the display.
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_GetVar(objDisplay *Self, struct acGetVar *Args)
+static ERROR DISPLAY_GetVar(extDisplay *Self, struct acGetVar *Args)
 {
    parasol::Log log;
    ULONG colours;
@@ -583,11 +663,11 @@ displays available then the user's viewport will be blank after calling this act
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_Hide(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_Hide(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
 #ifdef _WIN32
    winHideWindow(Self->WindowHandle);
@@ -604,7 +684,7 @@ static ERROR DISPLAY_Hide(objDisplay *Self, APTR Void)
 
 #elif _GLES_
    if (Self->Flags & SCR_VISIBLE) {
-      adHideDisplay(Self->Head.UniqueID);
+      adHideDisplay(Self->UID);
    }
 #endif
 
@@ -614,7 +694,7 @@ static ERROR DISPLAY_Hide(objDisplay *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR DISPLAY_Init(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
    struct gfxUpdatePalette pal;
@@ -848,7 +928,7 @@ static ERROR DISPLAY_Init(objDisplay *Self, APTR Void)
 
       glDisplayWindow = Self->XWindowHandle;
 
-      XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->Head.UniqueID, 1);
+      XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->UID, 1);
 
    #elif _WIN32
 
@@ -870,8 +950,9 @@ static ERROR DISPLAY_Init(objDisplay *Self, APTR Void)
          }
          else {
             OBJECTID surface_id;
-            if (!FastFindObject("SystemSurface", ID_SURFACE, &surface_id, 1, NULL)) {
-               if (surface_id IS GetOwner(Self)) desktop = TRUE;
+            LONG count = 1;
+            if (!FindObject("SystemSurface", ID_SURFACE, FOF_INCLUDE_SHARED, &surface_id, &count)) {
+               if (surface_id IS Self->ownerID()) desktop = TRUE;
             }
          }
 
@@ -879,7 +960,7 @@ static ERROR DISPLAY_Init(objDisplay *Self, APTR Void)
          GetString(CurrentTask(), FID_Name, &name);
          HWND popover = 0;
          if (Self->PopOverID) {
-            objDisplay *other_display;
+            extDisplay *other_display;
             if (!AccessObject(Self->PopOverID, 3000, &other_display)) {
                popover = other_display->WindowHandle;
                ReleaseObject(other_display);
@@ -975,10 +1056,10 @@ Okay
 
 *****************************************************************************/
 
-static ERROR DISPLAY_Minimise(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_Minimise(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
-   log.branch(NULL);
+   log.branch();
 #ifdef _WIN32
    winMinimiseWindow(Self->WindowHandle);
 #elif __xwindows__
@@ -1015,19 +1096,19 @@ Move: Move the display to a new display position (relative coordinates).
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_Move(objDisplay *Self, struct acMove *Args)
+static ERROR DISPLAY_Move(extDisplay *Self, struct acMove *Args)
 {
    parasol::Log log;
 
    if (!Args) return ERR_NullArgs;
 
-   //log.branch("Moving display by %dx%d", (LONG)Args->XChange, (LONG)Args->YChange);
+   //log.branch("Moving display by %dx%d", (LONG)Args->DeltaX, (LONG)Args->DeltaY);
 
 #ifdef _WIN32
 
    if (!winMoveWindow(Self->WindowHandle,
-      Self->X + Self->LeftMargin + Args->XChange,
-      Self->Y + Self->TopMargin + Args->YChange)) return ERR_Failed;
+      Self->X + Self->LeftMargin + Args->DeltaX,
+      Self->Y + Self->TopMargin + Args->DeltaY)) return ERR_Failed;
 
    return ERR_Okay;
 
@@ -1037,13 +1118,13 @@ static ERROR DISPLAY_Move(objDisplay *Self, struct acMove *Args)
 
    if (!XDisplay) return ERR_Failed;
 
-   XMoveWindow(XDisplay, Self->XWindowHandle, Self->X + Args->XChange, Self->Y + Args->YChange);
+   XMoveWindow(XDisplay, Self->XWindowHandle, Self->X + Args->DeltaX, Self->Y + Args->DeltaY);
    return ERR_Okay;
 
 #elif __snap__
 
-   Self->X += Args->XChange;
-   Self->Y += Args->YChange;
+   Self->X += Args->DeltaX;
+   Self->Y += Args->DeltaY;
    return ERR_Okay;
 
 #else
@@ -1060,7 +1141,7 @@ MoveToBack: Move the display to the back of the display list.
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_MoveToBack(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_MoveToBack(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
    log.branch("%s", GetName(Self));
@@ -1080,7 +1161,7 @@ MoveToFront: Move the display to the front of the display list.
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_MoveToFront(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_MoveToFront(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
    log.branch("%s", GetName(Self));
@@ -1107,7 +1188,7 @@ unavailable.
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_MoveToPoint(objDisplay *Self, struct acMoveToPoint *Args)
+static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 {
    parasol::Log log;
 
@@ -1148,17 +1229,17 @@ static ERROR DISPLAY_MoveToPoint(objDisplay *Self, struct acMoveToPoint *Args)
 
 //****************************************************************************
 
-static ERROR DISPLAY_NewObject(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
    ERROR error;
 
-   if (Self->Head.Flags & NF_PUBLIC) {
-      error = NewLockedObject(ID_BITMAP, Self->Head.Flags|NF_INTEGRAL, &Self->Bitmap, &Self->BitmapID);
+   if (Self->isPublic()) {
+      error = NewLockedObject(ID_BITMAP, Self->flags()|NF_INTEGRAL, &Self->Bitmap, &Self->BitmapID);
    }
    else {
-      error = NewObject(ID_BITMAP, Self->Head.Flags|NF_INTEGRAL, &Self->Bitmap);
-      Self->BitmapID = GetUniqueID(Self->Bitmap);
+      error = NewObject(ID_BITMAP, Self->flags()|NF_INTEGRAL, &Self->Bitmap);
+      Self->BitmapID = Self->Bitmap->UID;
    }
 
    if (!error) {
@@ -1235,7 +1316,7 @@ Redimension: Moves and resizes a display object in a single action call.
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_Redimension(objDisplay *Self, struct acRedimension *Args)
+static ERROR DISPLAY_Redimension(extDisplay *Self, struct acRedimension *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -1249,7 +1330,7 @@ static ERROR DISPLAY_Redimension(objDisplay *Self, struct acRedimension *Args)
 
 //****************************************************************************
 
-static ERROR DISPLAY_ReleaseObject(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_ReleaseObject(extDisplay *Self, APTR Void)
 {
    if (Self->Bitmap) { ReleaseObject(Self->Bitmap); Self->Bitmap = NULL; }
    if (Self->Resolutions) { ReleaseMemory(Self->Resolutions); Self->Resolutions = NULL; }
@@ -1264,11 +1345,11 @@ If the display is hosted, the Width and Height values will determine the size of
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_Resize(objDisplay *Self, struct acResize *Args)
+static ERROR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
 {
    parasol::Log log;
 
-   log.branch(NULL);
+   log.branch();
 
 #ifdef _WIN32
 
@@ -1369,7 +1450,7 @@ SaveImage: Saves the image of a display to a data object.
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_SaveImage(objDisplay *Self, struct acSaveImage *Args)
+static ERROR DISPLAY_SaveImage(extDisplay *Self, struct acSaveImage *Args)
 {
    return Action(AC_SaveImage, Self->Bitmap, Args);
 }
@@ -1380,13 +1461,13 @@ SaveSettings: Saves the current display settings as the default.
 -END-
 *****************************************************************************/
 
-static ERROR DISPLAY_SaveSettings(objDisplay *Self, APTR Void)
+static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
 
 #ifdef __xwindows__
 
-   log.branch("");
+   log.branch();
 
    OBJECTPTR config;
    if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/display.cfg", TAGEND)) {
@@ -1459,7 +1540,7 @@ NoSupport: The host platform does not support this feature.
 
 *****************************************************************************/
 
-static ERROR DISPLAY_SizeHints(objDisplay *Self, struct gfxSizeHints *Args)
+static ERROR DISPLAY_SizeHints(extDisplay *Self, struct gfxSizeHints *Args)
 {
 #ifdef __xwindows__
    XSizeHints hints;
@@ -1518,7 +1599,7 @@ Failed: Failed to switch to the requested display mode.
 
 *****************************************************************************/
 
-static ERROR DISPLAY_SetDisplay(objDisplay *Self, struct gfxSetDisplay *Args)
+static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
 {
    parasol::Log log;
 
@@ -1592,8 +1673,8 @@ static ERROR DISPLAY_SetDisplay(objDisplay *Self, struct gfxSetDisplay *Args)
       ReleaseObject(Self->Bitmap);
       Self->Bitmap = NULL;
 
-      if (!NewObject(ID_BITMAP, NF_INTEGRAL|Self->Head.Flags, &Self->Bitmap, (Self->Head.Flags & NF_PUBLIC) ? &Self->BitmapID : NULL)) {
-         Self->BitmapID = Self->Bitmap->Head.UniqueID;
+      if (!NewObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &Self->Bitmap, Self->isPublic() ? &Self->BitmapID : NULL)) {
+         Self->BitmapID = Self->Bitmap->UID;
          Self->Bitmap->BitsPerPixel = bpp;
          Self->Bitmap->Width        = Self->Width;
          Self->Bitmap->Height       = Self->Height;
@@ -1626,7 +1707,7 @@ The SetGamma method controls the gamma correction levels for the display.  Gamma
 colour components can be set at floating point precision.  The default gamma level for each component is 1.0; the
 minimum value is 0.0 and the maximum value is 100.
 
-Optional flags include GMF_SAVE.  This option will save the requested settings as the user default when future displays
+Optional flags include `GMF_SAVE`.  This option will save the requested settings as the user default when future displays
 are opened.
 
 If you would like to know the default gamma correction settings for a display, please refer to the #Gamma
@@ -1646,7 +1727,7 @@ NoSupport: The graphics hardware does not support gamma correction.
 
 *****************************************************************************/
 
-static ERROR DISPLAY_SetGamma(objDisplay *Self, struct gfxSetGamma *Args)
+static ERROR DISPLAY_SetGamma(extDisplay *Self, struct gfxSetGamma *Args)
 {
 #ifdef __snap__
    parasol::Log log;
@@ -1708,7 +1789,7 @@ NullArgs:
 
 *****************************************************************************/
 
-static ERROR DISPLAY_SetGammaLinear(objDisplay *Self, struct gfxSetGammaLinear *Args)
+static ERROR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfxSetGammaLinear *Args)
 {
 #ifdef __snap__
    parasol::Log log;
@@ -1786,7 +1867,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DISPLAY_SetMonitor(objDisplay *Self, struct gfxSetMonitor *Args)
+static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
 {
 #ifdef __snap__
    parasol::Log log;
@@ -1796,7 +1877,7 @@ static ERROR DISPLAY_SetMonitor(objDisplay *Self, struct gfxSetMonitor *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (CurrentTaskID() != Self->Head.TaskID) {
+   if (CurrentTaskID() != Self->ownerTask()) {
       log.warning("Only the owner of the display may call this method.");
       return ERR_Failed;
    }
@@ -1886,7 +1967,7 @@ titlebar and buttons for close, maximise and minimise operations.  The position 
 #X and #Y fields.  In Parasol's native platform, the user's screen display will be altered to match the required
 resolution and the graphics of the display's #Bitmap object will take up the entirety of the screen.
 
-If the BORDERLESS flag has been set in the #Flags field, the window will appear without the surrounding border
+If the `BORDERLESS` flag has been set in the #Flags field, the window will appear without the surrounding border
 and gadgets normally associated with new windows.
 
 In Microsoft Windows, the #LeftMargin, #RightMargin, #TopMargin and #BottomMargin fields will be updated to reflect
@@ -1895,16 +1976,16 @@ the position of the client area within the hosted window.  In X11 these field va
 If the window is minimised at the time this action is called, the window will be restored to its original position if
 the code for the host platform supports this capability.
 
-The VISIBLE flag in the #Flags field will be set if the Show operation is successful.
+The `VISIBLE` flag in the #Flags field will be set if the Show operation is successful.
 -END-
 
 *****************************************************************************/
 
-ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
+ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
+   parasol::Log log;
 
-   log.branch("");
+   log.branch();
 
    #ifdef __xwindows__
       if (!XDisplay) {
@@ -1938,7 +2019,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
 
       // Post a delayed CheckXWindow() message so that we can respond to changes by the window manager.
 
-      DelayMsg(MT_GfxCheckXWindow, Self->Head.UniqueID, NULL);
+      DelayMsg(MT_GfxCheckXWindow, Self->UID, NULL);
 
       // This really shouldn't be here, but until the management of menu focussing is fixed, we need it.
 
@@ -1964,7 +2045,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
    #elif _GLES_
 
       #warning TODO: Bring back the native window if it is hidden.
-      glActiveDisplayID = Self->Head.UniqueID;
+      glActiveDisplayID = Self->UID;
       Self->Flags &= ~SCR_NOACCELERATION;
 
    #else
@@ -1977,7 +2058,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
       objPointer *pointer;
       OBJECTID pointer_id;
       if (!NewNamedObject(ID_POINTER, NF_NO_TRACK|NF_PUBLIC|NF_UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
-         OBJECTID owner = GetOwner(Self);
+         OBJECTID owner = Self->ownerID();
          if (GetClassID(owner) IS ID_SURFACE) SetLong(pointer, FID_Surface, owner);
 
          #ifdef __ANDROID__
@@ -2003,7 +2084,7 @@ ERROR DISPLAY_Show(objDisplay *Self, APTR Void)
 -METHOD-
 UpdateDisplay: Private. Updates the display using content from a source bitmap.
 
-Called by the Surface module when a surface buffer needs to be exposed to the display.
+Called by the Surface class when a surface buffer needs to be exposed to the display.
 
 -INPUT-
 obj(Bitmap) Bitmap: Source bitmap.
@@ -2021,7 +2102,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DISPLAY_UpdateDisplay(objDisplay *Self, struct gfxUpdateDisplay *Args)
+static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Args)
 {
    parasol::Log log;
 
@@ -2104,7 +2185,7 @@ static ERROR DISPLAY_UpdateDisplay(objDisplay *Self, struct gfxUpdateDisplay *Ar
       Self->Opacity);
    return ERR_Okay;
 #else
-   return(gfxCopyArea(Args->Bitmap, Self->Bitmap, NULL,
+   return(gfxCopyArea((extBitmap *)Args->Bitmap, (extBitmap *)Self->Bitmap, NULL,
       Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest));
 #endif
 }
@@ -2128,7 +2209,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR DISPLAY_UpdatePalette(objDisplay *Self, struct gfxUpdatePalette *Args)
+static ERROR DISPLAY_UpdatePalette(extDisplay *Self, struct gfxUpdatePalette *Args)
 {
    parasol::Log log;
 
@@ -2160,7 +2241,7 @@ NoSupport
 
 *****************************************************************************/
 
-ERROR DISPLAY_WaitVBL(objDisplay *Self, APTR Void)
+ERROR DISPLAY_WaitVBL(extDisplay *Self, APTR Void)
 {
    return ERR_NoSupport;
 }
@@ -2203,7 +2284,7 @@ not available from the driver, a NULL pointer is returned.
 
 *****************************************************************************/
 
-static ERROR GET_CertificationDate(objDisplay *Self, STRING *Value)
+static ERROR GET_CertificationDate(extDisplay *Self, STRING *Value)
 {
    *Value = Self->CertificationDate;
    return ERR_Okay;
@@ -2218,7 +2299,7 @@ is returned.
 
 *****************************************************************************/
 
-static ERROR GET_Chipset(objDisplay *Self, STRING *Value)
+static ERROR GET_Chipset(extDisplay *Self, STRING *Value)
 {
    *Value = Self->Chipset;
    return ERR_Okay;
@@ -2239,7 +2320,7 @@ Reading this field always succeeds.
 
 *****************************************************************************/
 
-static ERROR GET_HDensity(objDisplay *Self, LONG *Value)
+ERROR GET_HDensity(extDisplay *Self, LONG *Value)
 {
    if (Self->HDensity) {
       *Value = Self->HDensity;
@@ -2255,7 +2336,8 @@ static ERROR GET_HDensity(objDisplay *Self, LONG *Value)
    // If the user has overridden the DPI with a preferred value, we have to use it.
 
    OBJECTID style_id;
-   if (!FastFindObject("glStyle", ID_XML, &style_id, 1, NULL)) {
+   LONG count = 1;
+   if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
       objXML *style;
       if (!AccessObject(style_id, 3000, &style)) {
          char strdpi[32];
@@ -2288,7 +2370,7 @@ static ERROR GET_HDensity(objDisplay *Self, LONG *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_HDensity(objDisplay *Self, LONG Value)
+static ERROR SET_HDensity(extDisplay *Self, LONG Value)
 {
    Self->HDensity = Value;
    return ERR_Okay;
@@ -2310,7 +2392,7 @@ Reading this field always succeeds.
 
 *****************************************************************************/
 
-static ERROR GET_VDensity(objDisplay *Self, LONG *Value)
+ERROR GET_VDensity(extDisplay *Self, LONG *Value)
 {
    if (Self->VDensity) {
       *Value = Self->VDensity;
@@ -2326,7 +2408,8 @@ static ERROR GET_VDensity(objDisplay *Self, LONG *Value)
    // If the user has overridden the DPI with a preferred value, we have to use it.
 
    OBJECTID style_id;
-   if (!FastFindObject("glStyle", ID_XML, &style_id, 1, NULL)) {
+   LONG count = 1;
+   if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
       objXML *style;
       if (!AccessObject(style_id, 3000, &style)) {
          char strdpi[32];
@@ -2359,7 +2442,7 @@ static ERROR GET_VDensity(objDisplay *Self, LONG *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_VDensity(objDisplay *Self, LONG Value)
+static ERROR SET_VDensity(extDisplay *Self, LONG Value)
 {
    Self->VDensity = Value;
    return ERR_Okay;
@@ -2375,7 +2458,7 @@ information is not detectable, a NULL pointer is returned.
 
 *****************************************************************************/
 
-static ERROR GET_Display(objDisplay *Self, CSTRING *Value)
+static ERROR GET_Display(extDisplay *Self, CSTRING *Value)
 {
    if (Self->Display[0]) *Value = Self->Display;
    else *Value = NULL;
@@ -2392,7 +2475,7 @@ information is not detectable, a NULL pointer is returned.
 
 *****************************************************************************/
 
-static ERROR GET_DisplayManufacturer(objDisplay *Self, CSTRING *Value)
+static ERROR GET_DisplayManufacturer(extDisplay *Self, CSTRING *Value)
 {
    if (Self->DisplayManufacturer[0]) *Value = Self->DisplayManufacturer;
    else *Value = NULL;
@@ -2422,7 +2505,7 @@ available, a NULL pointer is returned.
 
 *****************************************************************************/
 
-static ERROR GET_DriverCopyright(objDisplay *Self, CSTRING *Value)
+static ERROR GET_DriverCopyright(extDisplay *Self, CSTRING *Value)
 {
    if (Self->DriverCopyright[0]) *Value = Self->DriverCopyright;
    else *Value = NULL;
@@ -2439,7 +2522,7 @@ pointer is returned.
 
 *****************************************************************************/
 
-static ERROR GET_DriverVersion(objDisplay *Self, CSTRING *Value)
+static ERROR GET_DriverVersion(extDisplay *Self, CSTRING *Value)
 {
    if (Self->DriverVersion[0]) *Value = Self->DriverVersion;
    else *Value = NULL;
@@ -2456,7 +2539,7 @@ not available, a NULL pointer is returned.
 
 *****************************************************************************/
 
-static ERROR GET_DriverVendor(objDisplay *Self, CSTRING *Value)
+static ERROR GET_DriverVendor(extDisplay *Self, CSTRING *Value)
 {
    *Value = Self->DriverVendor;
    return ERR_Okay;
@@ -2472,11 +2555,11 @@ BORDERLESS.
 
 *****************************************************************************/
 
-static ERROR SET_Flags(objDisplay *Self, LONG Value)
+static ERROR SET_Flags(extDisplay *Self, LONG Value)
 {
    parasol::Log log;
 
-   if (Self->Head.Flags & NF_INITIALISED) {
+   if (Self->initialised()) {
       // Only flags that are explicitly supported here may be set post-initialisation.
 
       #define ACCEPT_FLAGS (SCR_AUTO_SAVE)
@@ -2516,11 +2599,11 @@ static ERROR SET_Flags(objDisplay *Self, LONG Value)
             Self->Width  = winwidth;
             Self->Height = winheight;
 
-            resize_feedback(&Self->ResizeFeedback, Self->Head.UniqueID, cx, cy, cwidth, cheight);
+            resize_feedback(&Self->ResizeFeedback, Self->UID, cx, cy, cwidth, cheight);
 
             if (Self->Flags & SCR_VISIBLE) {
                winShowWindow(Self->WindowHandle, TRUE);
-               DelayMsg(AC_Focus, Self->Head.UniqueID, NULL);
+               DelayMsg(AC_Focus, Self->UID, NULL);
             }
          }
 
@@ -2588,7 +2671,7 @@ static ERROR SET_Flags(objDisplay *Self, LONG Value)
             XSetTransientForHint(XDisplay, Self->XWindowHandle, DefaultRootWindow(XDisplay));
          }
 
-         XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->Head.UniqueID, 1);
+         XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->UID, 1);
 
          // Indicate that the window position is not to be meddled with by the window manager.
 
@@ -2606,10 +2689,10 @@ static ERROR SET_Flags(objDisplay *Self, LONG Value)
          if (Self->Flags & SCR_VISIBLE) {
             acShow(Self);
             XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
-            DelayMsg(AC_Focus, Self->Head.UniqueID, NULL);
+            DelayMsg(AC_Focus, Self->UID, NULL);
          }
 
-         resize_feedback(&Self->ResizeFeedback, Self->Head.UniqueID, Self->X, Self->Y, Self->Width, Self->Height);
+         resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);
       #endif
       }
 
@@ -2648,14 +2731,14 @@ To modify the display gamma values, please refer to the #SetGamma() and #SetGamm
 
 *****************************************************************************/
 
-static ERROR GET_Gamma(objDisplay *Self, DOUBLE **Value, LONG *Elements)
+static ERROR GET_Gamma(extDisplay *Self, DOUBLE **Value, LONG *Elements)
 {
    *Elements = 3;
    *Value = Self->Gamma;
    return ERR_Okay;
 }
 
-static ERROR SET_Gamma(objDisplay *Self, DOUBLE *Value, LONG Elements)
+static ERROR SET_Gamma(extDisplay *Self, DOUBLE *Value, LONG Elements)
 {
    if (Value) {
       if (Elements > 3) Elements = 3;
@@ -2678,7 +2761,7 @@ height of the window can be calculated by reading the #TopMargin and #BottomMarg
 
 *****************************************************************************/
 
-static ERROR SET_Height(objDisplay *Self, LONG Value)
+static ERROR SET_Height(extDisplay *Self, LONG Value)
 {
    if (Value > 0) Self->Height = Value;
    return ERR_Okay;
@@ -2695,7 +2778,7 @@ the display #Height.
 
 *****************************************************************************/
 
-static ERROR GET_InsideHeight(objDisplay *Self, LONG *Value)
+static ERROR GET_InsideHeight(extDisplay *Self, LONG *Value)
 {
    *Value = Self->Bitmap->Height;
    return ERR_Okay;
@@ -2712,7 +2795,7 @@ display #Width.
 
 *****************************************************************************/
 
-static ERROR GET_InsideWidth(objDisplay *Self, LONG *Value)
+static ERROR GET_InsideWidth(extDisplay *Self, LONG *Value)
 {
    *Value = Self->Bitmap->Width;
    return ERR_Okay;
@@ -2734,7 +2817,7 @@ information is not detectable, a NULL pointer is returned.
 
 *****************************************************************************/
 
-static ERROR GET_Manufacturer(objDisplay *Self, STRING *Value)
+static ERROR GET_Manufacturer(extDisplay *Self, STRING *Value)
 {
    if (Self->Manufacturer[0]) *Value = Self->Manufacturer;
    else *Value = NULL;
@@ -2776,13 +2859,13 @@ be solid.  High values will retain the boldness of the display, while low values
 
 ****************************************************************************/
 
-static ERROR GET_Opacity(objDisplay *Self, DOUBLE *Value)
+static ERROR GET_Opacity(extDisplay *Self, DOUBLE *Value)
 {
    *Value = Self->Opacity * 100 / 255;
    return ERR_Okay;
 }
 
-static ERROR SET_Opacity(objDisplay *Self, DOUBLE Value)
+static ERROR SET_Opacity(extDisplay *Self, DOUBLE Value)
 {
 #ifdef _WIN32
    if (Value < 0) Self->Opacity = 0;
@@ -2808,20 +2891,20 @@ output device.
 
 *****************************************************************************/
 
-static ERROR SET_PopOver(objDisplay *Self, OBJECTID Value)
+static ERROR SET_PopOver(extDisplay *Self, OBJECTID Value)
 {
    parasol::Log log;
 
 #ifdef __xwindows__
 
-   if (Self->Head.Flags & NF_INITIALISED) {
-      objDisplay *popover;
+   if (Self->initialised()) {
+      extDisplay *popover;
       if (!Value) {
          Self->PopOverID = 0;
          XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)0);
       }
       else if (!AccessObject(Value, 2000, &popover)) {
-         if (popover->Head.ClassID IS ID_DISPLAY) {
+         if (popover->ClassID IS ID_DISPLAY) {
             Self->PopOverID = Value;
             XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)popover->WindowHandle);
          }
@@ -2865,7 +2948,7 @@ The value in this field reflects the refresh rate of the currently active displa
 
 *****************************************************************************/
 
-static ERROR SET_RefreshRate(objDisplay *Self, DOUBLE Value)
+static ERROR SET_RefreshRate(extDisplay *Self, DOUBLE Value)
 {
    return ERR_NoSupport;
 }
@@ -2879,7 +2962,7 @@ The value in this field reflects the refresh rate of the currently active displa
 
 *****************************************************************************/
 
-static ERROR GET_ResizeFeedback(objDisplay *Self, FUNCTION **Value)
+static ERROR GET_ResizeFeedback(extDisplay *Self, FUNCTION **Value)
 {
    if (Self->ResizeFeedback.Type != CALL_NONE) {
       *Value = &Self->ResizeFeedback;
@@ -2888,7 +2971,7 @@ static ERROR GET_ResizeFeedback(objDisplay *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_ResizeFeedback(objDisplay *Self, FUNCTION *Value)
+static ERROR SET_ResizeFeedback(extDisplay *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->ResizeFeedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free);
@@ -2915,7 +2998,7 @@ TotalResolutions: The total number of resolutions supported by the display.
 
 *****************************************************************************/
 
-static ERROR GET_TotalResolutions(objDisplay *Self, LONG *Value)
+static ERROR GET_TotalResolutions(extDisplay *Self, LONG *Value)
 {
    if (Self->TotalResolutions) {
       *Value = Self->TotalResolutions;
@@ -2941,10 +3024,10 @@ width of the window can be calculated by reading the #LeftMargin and #RightMargi
 
 *****************************************************************************/
 
-static ERROR SET_Width(objDisplay *Self, LONG Value)
+static ERROR SET_Width(extDisplay *Self, LONG Value)
 {
    if (Value > 0) {
-      if (Self->Head.Flags & NF_INITIALISED) {
+      if (Self->initialised()) {
          acResize(Self, Value, Self->Height, 0);
       }
       else Self->Width = Value;
@@ -2966,15 +3049,15 @@ window that already exists.
 
 *****************************************************************************/
 
-static ERROR GET_WindowHandle(objDisplay *Self, APTR *Value)
+static ERROR GET_WindowHandle(extDisplay *Self, APTR *Value)
 {
    *Value = Self->WindowHandle;
    return ERR_Okay;
 }
 
-static ERROR SET_WindowHandle(objDisplay *Self, APTR Value)
+static ERROR SET_WindowHandle(extDisplay *Self, APTR Value)
 {
-   if (Self->Head.Flags & NF_INITIALISED) return ERR_Failed;
+   if (Self->initialised()) return ERR_Failed;
 
    if (Value) {
       Self->WindowHandle = Value;
@@ -2997,7 +3080,7 @@ Title: Sets the window title (hosted environments only).
 static STRING glWindowTitle = NULL;
 #endif
 
-static ERROR GET_Title(objDisplay *Self, CSTRING *Value)
+static ERROR GET_Title(extDisplay *Self, CSTRING *Value)
 {
 #ifdef __xwindows__
    return ERR_NoSupport;
@@ -3020,7 +3103,7 @@ static ERROR GET_Title(objDisplay *Self, CSTRING *Value)
 #endif
 }
 
-static ERROR SET_Title(objDisplay *Self, CSTRING Value)
+static ERROR SET_Title(extDisplay *Self, CSTRING Value)
 {
 #ifdef __xwindows__
    XStoreName(XDisplay, Self->XWindowHandle, Value);
@@ -3048,9 +3131,9 @@ To adjust the position of the display, use the #MoveToPoint() action rather than
 
 *****************************************************************************/
 
-static ERROR SET_X(objDisplay *Self, LONG Value)
+static ERROR SET_X(extDisplay *Self, LONG Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) {
+   if (!(Self->initialised())) {
       Self->X = Value;
       return ERR_Okay;
    }
@@ -3072,9 +3155,9 @@ To adjust the position of the display, use the #MoveToPoint() action rather than
 -END-
 *****************************************************************************/
 
-static ERROR SET_Y(objDisplay *Self, LONG Value)
+static ERROR SET_Y(extDisplay *Self, LONG Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) {
+   if (!(Self->initialised())) {
       Self->Y = Value;
       return ERR_Okay;
    }
@@ -3082,78 +3165,10 @@ static ERROR SET_Y(objDisplay *Self, LONG Value)
 }
 
 //****************************************************************************
-// Build a list of valid resolutions.
-
-static resolution * get_resolutions(objDisplay *Self)
-{
-#ifdef __xwindows__
-
-   parasol::Log log(__FUNCTION__);
-   
-   if (XRandRBase) {
-      static resolution resolutions[30];
-      struct xrMode *mode;
-
-      if (Self->TotalResolutions) return resolutions;
-
-      Self->TotalResolutions = xrGetDisplayTotal();
-
-      if (Self->TotalResolutions > ARRAYSIZE(resolutions) - 1) {
-         Self->TotalResolutions = ARRAYSIZE(resolutions) - 1;
-      }
-
-      LONG i;
-      for (i=0; i < Self->TotalResolutions; i++) {
-         if ((mode = (xrMode *)xrGetDisplayMode(i))) {
-            resolutions[i].width  = mode->Width;
-            resolutions[i].height = mode->Height;
-            resolutions[i].bpp    = mode->Depth;
-         }
-      }
-      resolutions[i].width  = 0;
-      resolutions[i].height = 0;
-      resolutions[i].bpp    = 0;
-
-      return resolutions;
-   }
-   else {
-      static resolution resolutions[2] = {
-         { 1024, 768, 32 },
-         { 0, 0, 0 }
-      };
-
-      log.msg("RandR extension not available.");
-
-      resolutions[0].width  = glRootWindow.width;
-      resolutions[0].height = glRootWindow.height;
-      resolutions[0].bpp    = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
-
-      Self->TotalResolutions = 1;
-      return resolutions;
-   }
-
-#else
-
-   static resolution resolutions[] = {
-      { 640, 480, 32 },
-      { 800, 600, 32 },
-      { 1024, 768, 32 },
-      { 1152, 864, 32 },
-      { 1280, 960, 32 },
-      { 0, 0, 0 }
-   };
-
-   Self->TotalResolutions = ARRAYSIZE(resolutions);
-   return resolutions;
-
-#endif
-}
-
-//****************************************************************************
 // Attempt to create a display buffer (process is not guaranteed, programmer has to check the Buffer field to know if
 // this succeeded or not).
 
-static void alloc_display_buffer(objDisplay *Self)
+void alloc_display_buffer(extDisplay *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -3163,7 +3178,7 @@ static void alloc_display_buffer(objDisplay *Self)
 
    objBitmap *buffer;
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->Head.Flags, &buffer, &Self->BufferID)) {
+   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &buffer, &Self->BufferID)) {
       if (!SetFields(buffer,
             FID_Name|TSTR,           "SystemBuffer",
             FID_BitsPerPixel|TLONG,  Self->Bitmap->BitsPerPixel,
@@ -3239,14 +3254,14 @@ static const FieldArray DisplayFields[] = {
 
 //****************************************************************************
 
-static CSTRING dpms_name(LONG Index)
+CSTRING dpms_name(LONG Index)
 {
    return clDisplayDPMS[Index].Name;
 }
 
 //****************************************************************************
 
-static ERROR create_display_class(void)
+ERROR create_display_class(void)
 {
    return(CreateObject(ID_METACLASS, 0, &clDisplay,
       FID_ClassVersion|TFLOAT, VER_DISPLAY,
@@ -3256,7 +3271,7 @@ static ERROR create_display_class(void)
       FID_Actions|TPTR,   clDisplayActions,
       FID_Methods|TARRAY, clDisplayMethods,
       FID_Fields|TARRAY,  DisplayFields,
-      FID_Size|TLONG,     sizeof(objDisplay),
+      FID_Size|TLONG,     sizeof(extDisplay),
       FID_Path|TSTR,      MOD_PATH,
       TAGEND));
 }

@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>VectorClip</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Clips are used to define complex clipping regions for vectors.</comment>
+    <version>1</version>
+    <id>51b1de80</id>
+    <idstring>ID_VECTORCLIP</idstring>
+    <category>Graphics</category>
+    <include>modules/vectorclip.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>The VectorClip defines a clipping path that can be used by other vectors as a mask.  The clipping path is defined by creating Vector shapes that are initialised to the VectorClip as child objects.</p>
+<p>Any Vector that defines a path can utilise a VectorClip by referencing it through the Vector's Mask field.</p>
+<p>VectorClip objects must always be owned by their relevant <class name="VectorScene">VectorScene</class> or <class name="VectorViewport">VectorViewport</class>.  It is valid for a VectorClip to be shared by multiple vector objects within the same scene.</p></description>
+    <source>
+      <file path="vectors/">clip.cpp</file>
+    </source>
+  </info>
+
+  <fields>
+    <field>
+      <name>Transform</name>
+      <comment>Applies a transform to the paths in the clipping mask.</comment>
+      <access write="S">Set</access>
+      <type>STRING</type>
+      <description>
+<p>A transform can be applied to the paths in the clipping mask by setting this field with an SVG compliant transform string.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Units</name>
+      <comment>Defines the coordinate system for fields X, Y, Width and Height.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The default coordinate system for clip-paths is <code>BOUNDING_BOX</code>, which positions the clipping region against the vector that references it.  The alternative is <code>USERSPACE</code>, which positions the path relative to the current viewport.</p>
+      </description>
+    </field>
+
+  </fields>
+  <structs>
+  </structs>
+</book>

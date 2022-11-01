@@ -29,7 +29,7 @@ complete run-down on class development.
 
 #include "../defs.h"
 
-static ERROR OBJECT_GetClass(OBJECTPTR, rkMetaClass **);
+static ERROR OBJECT_GetClass(OBJECTPTR, objMetaClass **);
 static ERROR OBJECT_GetClassID(OBJECTPTR, CLASSID *);
 static ERROR OBJECT_GetName(OBJECTPTR, STRING *);
 static ERROR OBJECT_GetOwner(OBJECTPTR, OBJECTID *);
@@ -37,39 +37,41 @@ static ERROR OBJECT_SetOwner(OBJECTPTR, OBJECTID);
 static ERROR OBJECT_SetName(OBJECTPTR, CSTRING);
 static ERROR OBJECT_GetTask(OBJECTPTR, OBJECTID *);
 
-static ERROR field_setup(rkMetaClass *);
+static ERROR field_setup(objMetaClass *);
 
-static void copy_field(rkMetaClass *, const FieldArray *, Field *, LONG *);
-static void register_fields(rkMetaClass *);
-static Field * lookup_id_byclass(rkMetaClass *, ULONG, rkMetaClass **);
+static void copy_field(objMetaClass *, const FieldArray *, Field *, LONG *);
+static void register_fields(objMetaClass *);
+static Field * lookup_id_byclass(objMetaClass *, ULONG, objMetaClass **);
 
 //****************************************************************************
 // The MetaClass is the focal point of the OO design model.  Because classes are treated like objects, they must point
 // back to a controlling class definition - this it.  See NewObject() for the management code for this data.
 
-#define TOTAL_METAFIELDS  23
+#define TOTAL_METAFIELDS  25
 #define TOTAL_METAMETHODS 1
 
-static ERROR GET_ActionTable(rkMetaClass *, ActionEntry **, LONG *);
-static ERROR GET_Fields(rkMetaClass *, const FieldArray **, LONG *);
-static ERROR GET_IDL(rkMetaClass *, CSTRING *);
-static ERROR GET_Location(rkMetaClass *, CSTRING *);
-static ERROR GET_Methods(rkMetaClass *Self, const MethodArray **, LONG *);
-static ERROR GET_Module(rkMetaClass *, CSTRING *);
-static ERROR GET_SubFields(rkMetaClass *, const FieldArray **, LONG *);
-static ERROR GET_TotalMethods(rkMetaClass *, LONG *);
+static ERROR GET_ActionTable(objMetaClass *, ActionEntry **, LONG *);
+static ERROR GET_Fields(objMetaClass *, const FieldArray **, LONG *);
+static ERROR GET_IDL(objMetaClass *, CSTRING *);
+static ERROR GET_Location(objMetaClass *, CSTRING *);
+static ERROR GET_Methods(objMetaClass *Self, const MethodArray **, LONG *);
+static ERROR GET_Module(objMetaClass *, CSTRING *);
+static ERROR GET_PrivateObjects(objMetaClass *, OBJECTID **, LONG *);
+static ERROR GET_PublicObjects(objMetaClass *, OBJECTID **, LONG *);
+static ERROR GET_SubFields(objMetaClass *, const FieldArray **, LONG *);
+static ERROR GET_TotalMethods(objMetaClass *, LONG *);
 
-static ERROR SET_Actions(rkMetaClass *, const ActionArray *);
-static ERROR SET_Fields(rkMetaClass *, const FieldArray *, LONG);
-static ERROR SET_Methods(rkMetaClass *, const MethodArray *, LONG);
+static ERROR SET_Actions(objMetaClass *, const ActionArray *);
+static ERROR SET_Fields(objMetaClass *, const FieldArray *, LONG);
+static ERROR SET_Methods(objMetaClass *, const MethodArray *, LONG);
 
-static ERROR GET_ClassName(rkMetaClass *Self, CSTRING *Value)
+static ERROR GET_ClassName(objMetaClass *Self, CSTRING *Value)
 {
    *Value = Self->ClassName;
    return ERR_Okay;
 }
 
-static ERROR SET_ClassName(rkMetaClass *Self, CSTRING Value)
+static ERROR SET_ClassName(objMetaClass *Self, CSTRING Value)
 {
    Self->ClassName = Value;
    return ERR_Okay;
@@ -88,30 +90,32 @@ static const FieldDef CategoryTable[] = {
 
 static Field glMetaFieldsPreset[TOTAL_METAFIELDS+1] = {
    // If you adjust this table, remember to change TOTAL_METAFIELDS, adjust the index numbers and the byte offsets into the structure.
-   { 0, 0, 0,                      writeval_default, "ClassVersion",                           FID_ClassVersion, sizeof(Head),                0, FDF_DOUBLE|FDF_RI },
-   { (MAXINT)"MethodArray", (ERROR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods,      sizeof(Head)+8,              1, FDF_ARRAY|FD_STRUCT|FDF_RI },
-   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_Fields, (APTR)SET_Fields, writeval_default, "Fields",     FID_Fields,       sizeof(Head)+8+sizeof(APTR), 2, FDF_ARRAY|FD_STRUCT|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "ClassName",       FID_ClassName,       sizeof(Head)+8+(sizeof(APTR)*2),  3,  FDF_STRING|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "FileExtension",   FID_FileExtension,   sizeof(Head)+8+(sizeof(APTR)*3),  4,  FDF_STRING|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "FileDescription", FID_FileDescription, sizeof(Head)+8+(sizeof(APTR)*4),  5,  FDF_STRING|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "FileHeader",      FID_FileHeader,      sizeof(Head)+8+(sizeof(APTR)*5),  6,  FDF_STRING|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "Path",            FID_Path,            sizeof(Head)+8+(sizeof(APTR)*6),  7,  FDF_STRING|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "Size",            FID_Size,            sizeof(Head)+8+(sizeof(APTR)*7),  8,  FDF_LONG|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "Flags",           FID_Flags,           sizeof(Head)+12+(sizeof(APTR)*7), 9,  FDF_LONG|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "SubClassID",      FID_SubClassID,      sizeof(Head)+16+(sizeof(APTR)*7), 10, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(Head)+20+(sizeof(APTR)*7), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "OpenCount",       FID_OpenCount,       sizeof(Head)+24+(sizeof(APTR)*7), 12, FDF_LONG|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_TotalMethods, 0, writeval_default, "TotalMethods",    FID_TotalMethods,    sizeof(Head)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_R },
-   { 0, 0, 0,                      writeval_default, "TotalFields",     FID_TotalFields,     sizeof(Head)+32+(sizeof(APTR)*7), 14, FDF_LONG|FDF_R },
-   { (MAXINT)&CategoryTable, 0, 0, writeval_default, "Category",        FID_Category,        sizeof(Head)+36+(sizeof(APTR)*7), 15, FDF_LONG|FDF_LOOKUP|FDF_RI },
+   { 0, 0, 0,                      writeval_default, "ClassVersion",                           FID_ClassVersion, sizeof(BaseClass),                0, FDF_DOUBLE|FDF_RI },
+   { (MAXINT)"MethodArray", (ERROR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods,      sizeof(BaseClass)+8,              1, FDF_ARRAY|FD_STRUCT|FDF_RI },
+   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_Fields, (APTR)SET_Fields, writeval_default, "Fields",     FID_Fields,       sizeof(BaseClass)+8+sizeof(APTR), 2, FDF_ARRAY|FD_STRUCT|FDF_RI },
+   { 0, 0, 0,                      writeval_default, "ClassName",       FID_ClassName,       sizeof(BaseClass)+8+(sizeof(APTR)*2),  3,  FDF_STRING|FDF_RI },
+   { 0, 0, 0,                      writeval_default, "FileExtension",   FID_FileExtension,   sizeof(BaseClass)+8+(sizeof(APTR)*3),  4,  FDF_STRING|FDF_RI },
+   { 0, 0, 0,                      writeval_default, "FileDescription", FID_FileDescription, sizeof(BaseClass)+8+(sizeof(APTR)*4),  5,  FDF_STRING|FDF_RI },
+   { 0, 0, 0,                      writeval_default, "FileHeader",      FID_FileHeader,      sizeof(BaseClass)+8+(sizeof(APTR)*5),  6,  FDF_STRING|FDF_RI },
+   { 0, 0, 0,                      writeval_default, "Path",            FID_Path,            sizeof(BaseClass)+8+(sizeof(APTR)*6),  7,  FDF_STRING|FDF_RI },
+   { 0, 0, 0,                      writeval_default, "Size",            FID_Size,            sizeof(BaseClass)+8+(sizeof(APTR)*7),  8,  FDF_LONG|FDF_RI },
+   { 0, 0, 0,                      writeval_default, "Flags",           FID_Flags,           sizeof(BaseClass)+12+(sizeof(APTR)*7), 9,  FDF_LONG|FDF_RI },
+   { 0, 0, 0,                      writeval_default, "SubClassID",      FID_SubClassID,      sizeof(BaseClass)+16+(sizeof(APTR)*7), 10, FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { 0, 0, 0,                      writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(BaseClass)+20+(sizeof(APTR)*7), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { 0, 0, 0,                      writeval_default, "OpenCount",       FID_OpenCount,       sizeof(BaseClass)+24+(sizeof(APTR)*7), 12, FDF_LONG|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_TotalMethods, 0, writeval_default,   "TotalMethods",    FID_TotalMethods,    sizeof(BaseClass)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_R },
+   { 0, 0, 0,                      writeval_default, "TotalFields",     FID_TotalFields,     sizeof(BaseClass)+32+(sizeof(APTR)*7), 14, FDF_LONG|FDF_R },
+   { (MAXINT)&CategoryTable, 0, 0, writeval_default, "Category",        FID_Category,        sizeof(BaseClass)+36+(sizeof(APTR)*7), 15, FDF_LONG|FDF_LOOKUP|FDF_RI },
    // Virtual fields
-   { 0, 0, (APTR)SET_Actions,      writeval_default, "Actions",         FID_Actions,         sizeof(Head), 16, FDF_POINTER|FDF_I },
-   { 0, (ERROR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default, "ActionTable",     FID_ActionTable,     sizeof(Head), 17, FDF_ARRAY|FDF_POINTER|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_Location, 0,     writeval_default, "Location",        FID_Location,        sizeof(Head), 18, FDF_STRING|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,        sizeof(Head), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
-   { 0, (ERROR (*)(APTR, APTR))GET_Module, 0,       writeval_default, "Module",          FID_Module,          sizeof(Head), 20, FDF_STRING|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_IDL, 0,          writeval_default, "IDL",             FID_IDL,             sizeof(Head), 21, FDF_STRING|FDF_R },
-   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Head), 22, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
+   { 0, 0, (APTR)SET_Actions,      writeval_default, "Actions",         FID_Actions,         sizeof(BaseClass), 16, FDF_POINTER|FDF_I },
+   { 0, (ERROR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",     FID_ActionTable,     sizeof(BaseClass), 17, FDF_ARRAY|FDF_POINTER|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",        FID_Location,        sizeof(BaseClass), 18, FDF_STRING|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,        sizeof(BaseClass), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
+   { 0, (ERROR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",          FID_Module,          sizeof(BaseClass), 20, FDF_STRING|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_PrivateObjects, 0, writeval_default, "PrivateObjects", FID_PrivateObjects, sizeof(BaseClass), 21, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_PublicObjects,  0, writeval_default, "PublicObjects",  FID_PublicObjects,  sizeof(BaseClass), 22, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_IDL, 0,          writeval_default,   "IDL",             FID_IDL,             sizeof(BaseClass), 23, FDF_STRING|FDF_R },
+   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(BaseClass), 24, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
 };
 
@@ -138,14 +142,16 @@ static const FieldArray glMetaFields[] = {
    { "Location",        FDF_STRING|FDF_R,             0, NULL, NULL },
    { "Name",            FDF_STRING|FDF_SYSTEM|FDF_RI, 0, (APTR)GET_ClassName, (APTR)SET_ClassName },
    { "Module",          FDF_STRING|FDF_R,             0, (APTR)GET_Module, NULL },
+   { "PrivateObjects",  FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, 0, (APTR)GET_PrivateObjects, NULL },
+   { "PublicObjects",   FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, 0, (APTR)GET_PublicObjects, NULL },
    { "IDL",             FDF_STRING|FDF_R,             0, (APTR)GET_IDL, NULL },
    { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, (MAXINT)"FieldArray", (APTR)GET_SubFields, NULL },
    END_FIELD
 };
 
-extern "C" ERROR CLASS_FindField(rkMetaClass *, struct mcFindField *);
-extern "C" ERROR CLASS_Free(rkMetaClass *, APTR);
-extern "C" ERROR CLASS_Init(rkMetaClass *, APTR);
+extern "C" ERROR CLASS_FindField(objMetaClass *, struct mcFindField *);
+extern "C" ERROR CLASS_Free(objMetaClass *, APTR);
+extern "C" ERROR CLASS_Init(objMetaClass *, APTR);
 
 FDEF argsFindField[] = { { "ID", FD_LONG }, { "Field:Field", FD_RESULT|FD_PTR|FD_STRUCT }, { "Source", FD_RESULT|FD_OBJECTPTR }, { 0, 0 } };
 
@@ -157,51 +163,32 @@ static MethodArray glMetaMethods[TOTAL_METAMETHODS+2] = {
 
 struct Stats glMetaClass_Stats = { .ActionSubscriptions = { .Ptr = 0 }, .MID_FeedList = 0, .NotifyFlags = { 0, 0 }, .MethodFlags = { 0, 0 }, .Name = { 'M','e','t','a','C','l','a','s','s' } , .SubscriptionSize = 0, .FeedSize = 0 };
 
-rkMetaClass glMetaClass = {
-   .Head = {
-     .Class         = &glMetaClass,
-     .Stats         = &glMetaClass_Stats,
-     .ChildPrivate  = NULL,
-     .CreatorMeta   = NULL,
-     .ClassID       = ID_METACLASS,
-     .SubID         = ID_METACLASS,
-     .UniqueID      = 123,
-     .OwnerID       = 0,
-     .Flags         = NF_INITIALISED,
-     .MemFlags      = 0,
-     .TaskID        = 0,
-     .ThreadID      = 0,
-     .ThreadMsg     = 0,
-     .ThreadPending = 0,
-     .Queue         = 0,
-     .SleepQueue    = 0,
-     .Locked        = 0,
-     .ActionDepth   = 0
-   },
-   .ClassVersion    = 1,
-   .Methods         = glMetaMethods,
-   .Fields          = glMetaFields,
-   .ClassName       = "MetaClass",
-   .FileExtension   = 0,
-   .FileDescription = 0,
-   .FileHeader      = 0,
-   .Path            = 0,
-   .Size            = sizeof(rkMetaClass),
-   .Flags           = 0,
-   .SubClassID      = ID_METACLASS,
-   .BaseClassID     = ID_METACLASS,
-   .OpenCount       = 0,
-   .TotalMethods    = TOTAL_METAMETHODS,
-   .TotalFields     = TOTAL_METAFIELDS,
-   .Category        = CCF_SYSTEM,
-   .Base            = NULL,
-   .prvFields       = glMetaFieldsPreset,
-   .SubFields       = NULL,
-   .Master          = NULL,
-   .Children        = { 0, 0, 0, 0, 0, 0, 0, 0 },
-   .Location        = NULL,
-   .OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1
-};
+objMetaClass glMetaClass;
+
+void init_metaclass(void)
+{
+   ClearMemory(&glMetaClass, sizeof(glMetaClass));
+
+   glMetaClass.BaseClass::Class         = &glMetaClass;
+   glMetaClass.BaseClass::Stats         = &glMetaClass_Stats;
+   glMetaClass.BaseClass::ClassID       = ID_METACLASS;
+   glMetaClass.BaseClass::SubID         = ID_METACLASS;
+   glMetaClass.BaseClass::UID           = 123;
+   glMetaClass.BaseClass::Flags         = NF_INITIALISED;
+
+   glMetaClass.ClassVersion    = 1;
+   glMetaClass.Methods         = glMetaMethods;
+   glMetaClass.Fields          = glMetaFields;
+   glMetaClass.ClassName       = "MetaClass";
+   glMetaClass.Size            = sizeof(objMetaClass);
+   glMetaClass.SubClassID      = ID_METACLASS;
+   glMetaClass.BaseClassID     = ID_METACLASS;
+   glMetaClass.TotalMethods    = TOTAL_METAMETHODS;
+   glMetaClass.TotalFields     = TOTAL_METAFIELDS;
+   glMetaClass.Category        = CCF_SYSTEM;
+   glMetaClass.prvFields       = glMetaFieldsPreset;
+   glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
+}
 
 //****************************************************************************
 // Sort class lookup by class ID.
@@ -213,11 +200,10 @@ static void sort_class_db(void)
 
    LONG *offsets = CL_OFFSETS(glClassDB);
    for (; h > 0; h /= 3) {
-      LONG i;
-      for (i=h; i < glClassDB->Total; i++) {
+      for (LONG i=h; i < glClassDB->Total; i++) {
          LONG j;
-         LONG temp = offsets[i];
-         for (j=i; (j >= h) AND (((ClassItem *)((BYTE *)glClassDB + offsets[j-h]))->ClassID > ((ClassItem *)((BYTE *)glClassDB + temp))->ClassID); j -= h) {
+         auto temp = offsets[i];
+         for (j=i; (j >= h) and (((ClassItem *)((BYTE *)glClassDB + offsets[j-h]))->ClassID > ((ClassItem *)((BYTE *)glClassDB + temp))->ClassID); j -= h) {
             offsets[j] = offsets[j - h];
          }
          offsets[j] = temp;
@@ -249,11 +235,11 @@ Search
 
 *****************************************************************************/
 
-ERROR CLASS_FindField(rkMetaClass *Class, struct mcFindField *Args)
+ERROR CLASS_FindField(objMetaClass *Class, struct mcFindField *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   rkMetaClass *src;
+   objMetaClass *src;
    Args->Field = lookup_id_byclass(Class, Args->ID, &src);
    Args->Source = src;
    if (Args->Field) return ERR_Okay;
@@ -262,24 +248,22 @@ ERROR CLASS_FindField(rkMetaClass *Class, struct mcFindField *Args)
 
 //****************************************************************************
 
-ERROR CLASS_Free(rkMetaClass *Class, APTR Void)
+ERROR CLASS_Free(objMetaClass *Class, APTR Void)
 {
    VarSet(glClassMap, Class->ClassName, NULL, 0); // Deregister the class.
 
    if (Class->prvFields) { FreeResource(Class->prvFields); Class->prvFields = NULL; }
-   if (Class->Methods) { FreeResource(Class->Methods); Class->Methods = NULL; }
-   if (Class->Location) { FreeResource(Class->Location); Class->Location = NULL; }
-
+   if (Class->Methods)   { FreeResource(Class->Methods); Class->Methods = NULL; }
+   if (Class->Location)  { FreeResource(Class->Location); Class->Location = NULL; }
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-ERROR CLASS_Init(rkMetaClass *Self, APTR Void)
+ERROR CLASS_Init(objMetaClass *Self, APTR Void)
 {
    parasol::Log log;
-   rkMetaClass *base;
-   LONG i;
+   objMetaClass *base;
 
    if (!Self->ClassName) return log.warning(ERR_MissingClassName);
 
@@ -288,20 +272,18 @@ ERROR CLASS_Init(rkMetaClass *Self, APTR Void)
    //
    // If neither ID is specified, the hash is derived from the name and then applied to both SubClassID and BaseClassID.
 
-   if ((Self->BaseClassID) AND (!Self->SubClassID)) {
+   if ((Self->BaseClassID) and (!Self->SubClassID)) {
       Self->SubClassID = StrHash(Self->ClassName, FALSE);
       //Self->SubClassID = Self->BaseClassID;
    }
    else if (!Self->BaseClassID) {
-      if (!Self->SubClassID) {
-         Self->SubClassID = StrHash(Self->ClassName, FALSE);
-      }
+      if (!Self->SubClassID) Self->SubClassID = StrHash(Self->ClassName, FALSE);
       Self->BaseClassID = Self->SubClassID;
    }
 
    if (Self->BaseClassID IS Self->SubClassID) {
-      if (!Self->Size) Self->Size = sizeof(Head);
-      else if (Self->Size < (LONG)sizeof(Head)) { // Object size not specified
+      if (!Self->Size) Self->Size = sizeof(BaseClass);
+      else if (Self->Size < (LONG)sizeof(BaseClass)) { // Object size not specified
          log.warning("Size of %d is not valid.", Self->Size);
          return ERR_FieldNotSet;
       }
@@ -311,8 +293,8 @@ ERROR CLASS_Init(rkMetaClass *Self, APTR Void)
    // there is a reference for it, so if it returns NULL then it is obvious that the base class is not installed on the
    // user's system.
 
-   if ((Self->BaseClassID) AND (Self->SubClassID != Self->BaseClassID)) {
-      if ((base = (rkMetaClass *)FindClass(Self->BaseClassID))) {
+   if ((Self->BaseClassID) and (Self->SubClassID != Self->BaseClassID)) {
+      if ((base = (objMetaClass *)FindClass(Self->BaseClassID))) {
          log.trace("Using baseclass $%.8x (%s) for %s", Self->BaseClassID, base->ClassName, Self->ClassName);
          if (!Self->FileDescription) Self->FileDescription = base->FileDescription;
          if (!Self->FileExtension)   Self->FileExtension   = base->FileExtension;
@@ -337,7 +319,7 @@ ERROR CLASS_Init(rkMetaClass *Self, APTR Void)
          // Note: Sub-classes can define their own custom methods independent of the base class, but care must be taken
          // to use a large enough cushion to prevent an overlap of method ID's.
 
-         if ((Self->Methods) AND (base->Methods)) {
+         if ((Self->Methods) and (base->Methods)) {
             if (Self->TotalMethods < base->TotalMethods) { // Expand the method table to match the base class.
                if (!ReallocMemory(Self->Methods, sizeof(MethodArray) * (base->TotalMethods+1), (APTR *)&Self->Methods, NULL)) {
                   Self->TotalMethods = base->TotalMethods;
@@ -348,14 +330,14 @@ ERROR CLASS_Init(rkMetaClass *Self, APTR Void)
             // Copy over method information from the base-class (the sub-class' function pointers will
             // not be modified).
 
-            for (i=0; i < base->TotalMethods+1; i++) {
+            for (LONG i=0; i < base->TotalMethods+1; i++) {
                Self->Methods[i].MethodID = base->Methods[i].MethodID;
                Self->Methods[i].Name = base->Methods[i].Name;
                Self->Methods[i].Args = base->Methods[i].Args;
                Self->Methods[i].Size = base->Methods[i].Size;
             }
          }
-         else if ((!Self->Methods) AND (base->Methods)) { // Copy methods from the base-class
+         else if ((!Self->Methods) and (base->Methods)) { // Copy methods from the base-class
             if (!AllocMemory(sizeof(MethodArray) * (base->TotalMethods + 1), MEM_DATA, (APTR *)&Self->Methods, NULL)) {
                CopyMemory(base->Methods, Self->Methods, sizeof(MethodArray) * (base->TotalMethods + 1));
                Self->TotalMethods = base->TotalMethods;
@@ -427,13 +409,13 @@ others. Never define method ID's in an action list - please use the #Methods fie
 
 *****************************************************************************/
 
-static ERROR SET_Actions(rkMetaClass *Self, const ActionArray *Actions)
+static ERROR SET_Actions(objMetaClass *Self, const ActionArray *Actions)
 {
    if (!Actions) return ERR_Failed;
 
    for (auto i=0; Actions[i].ActionCode; i++) {
       auto code = Actions[i].ActionCode;
-      if ((code < AC_END) AND (code > 0) AND (code != AC_OwnerDestroyed)) {
+      if ((code < AC_END) and (code > 0) and (code != AC_OwnerDestroyed)) {
          Self->ActionTable[code].PerformAction = (ERROR (*)(OBJECTPTR, APTR))Actions[i].Routine;
       }
    }
@@ -457,7 +439,7 @@ a call, as documented in the Action Support Guide.
 
 *****************************************************************************/
 
-static ERROR GET_ActionTable(rkMetaClass *Self, ActionEntry **Value, LONG *Elements)
+static ERROR GET_ActionTable(objMetaClass *Self, ActionEntry **Value, LONG *Elements)
 {
    *Value = Self->ActionTable;
    *Elements = AC_END - 1;
@@ -506,14 +488,14 @@ information.
 
 *****************************************************************************/
 
-static ERROR GET_Fields(rkMetaClass *Self, const FieldArray **Fields, LONG *Elements)
+static ERROR GET_Fields(objMetaClass *Self, const FieldArray **Fields, LONG *Elements)
 {
    *Fields = Self->Fields;
    *Elements = Self->OriginalFieldTotal;
    return ERR_Okay;
 }
 
-static ERROR SET_Fields(rkMetaClass *Self, const FieldArray *Fields, LONG Elements)
+static ERROR SET_Fields(objMetaClass *Self, const FieldArray *Fields, LONG Elements)
 {
    if (!Fields) return ERR_Failed;
 
@@ -584,11 +566,11 @@ A value of NULL is returned if the module does not provide an IDL string.
 
 *****************************************************************************/
 
-static ERROR GET_IDL(rkMetaClass *Self, CSTRING *Value)
+static ERROR GET_IDL(objMetaClass *Self, CSTRING *Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_NotInitialised;
+   if (!Self->initialised()) return ERR_NotInitialised;
 
-   if ((Self->Master) AND (Self->Master->Header)) {
+   if ((Self->Master) and (Self->Master->Header)) {
       *Value = Self->Master->Header->Definitions;
       return ERR_Okay;
    }
@@ -617,7 +599,7 @@ static STRING get_class_path(CLASSID ClassID)
    return NULL;
 }
 
-static ERROR GET_Location(rkMetaClass *Self, CSTRING *Value)
+static ERROR GET_Location(objMetaClass *Self, CSTRING *Value)
 {
    if (Self->Path) {
       *Value = Self->Path;
@@ -654,14 +636,14 @@ Never use action ID's in a Methods array - please use the #Actions field for thi
 
 *****************************************************************************/
 
-static ERROR GET_Methods(rkMetaClass *Self, const MethodArray **Methods, LONG *Elements)
+static ERROR GET_Methods(objMetaClass *Self, const MethodArray **Methods, LONG *Elements)
 {
    *Methods = Self->Methods;
    *Elements = Self->TotalMethods;
    return ERR_Okay;
 }
 
-static ERROR SET_Methods(rkMetaClass *Self, const MethodArray *Methods, LONG Elements)
+static ERROR SET_Methods(objMetaClass *Self, const MethodArray *Methods, LONG Elements)
 {
    parasol::Log log;
 
@@ -715,9 +697,9 @@ Module: The name of the module binary that initialised the class.
 
 *****************************************************************************/
 
-static ERROR GET_Module(rkMetaClass *Self, CSTRING *Value)
+static ERROR GET_Module(objMetaClass *Self, CSTRING *Value)
 {
-   if (!(Self->Head.Flags & NF_INITIALISED)) return ERR_NotInitialised;
+   if (!Self->initialised()) return ERR_NotInitialised;
 
    if (Self->Master) {
       *Value = Self->Master->LibraryName;
@@ -727,6 +709,105 @@ static ERROR GET_Module(rkMetaClass *Self, CSTRING *Value)
       *Value = "core";
       return ERR_Okay;
    }
+}
+
+/*****************************************************************************
+
+-FIELD-
+PrivateObjects: Returns an allocated list of all private objects that belong to this class.
+
+This field will compile a list of all private objects that belong to the class.  The list is sorted with the oldest
+object appearing first.
+
+The resulting array must be terminated with ~FreeResource() after use.
+
+*****************************************************************************/
+
+static ERROR GET_PrivateObjects(objMetaClass *Self, OBJECTID **Array, LONG *Elements)
+{
+   parasol::Log log;
+   std::list<OBJECTID> objlist;
+
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      for (const auto & [ id, mem ] : glPrivateMemory) {
+         OBJECTPTR object;
+         if ((mem.Flags & MEM_OBJECT) and (object = (OBJECTPTR)mem.Address)) {
+            if (Self->SubClassID IS object->ClassID) {
+               objlist.push_back(object->UID);
+            }
+         }
+      }
+   }
+   else return log.warning(ERR_LockFailed);
+
+   if (!objlist.size()) {
+      *Array = NULL;
+      *Elements = 0;
+      return ERR_Okay;
+   }
+
+   objlist.sort([](const OBJECTID &a, const OBJECTID &b) { return (a < b); });
+
+   OBJECTID *result;
+   if (!AllocMemory(sizeof(OBJECTID) * objlist.size(), MEM_NO_CLEAR, (APTR *)&result, NULL)) {
+      LONG i = 0;
+      for (const auto & id : objlist) result[i++] = id;
+      *Array = result;
+      *Elements = objlist.size();
+      return ERR_Okay;
+   }
+   else return ERR_AllocMemory;
+}
+
+/*****************************************************************************
+
+-FIELD-
+PublicObjects: Returns an allocated list of all public objects that belong to this class.
+
+This field will compile a list of all public objects that belong to the class.  The list is sorted with the oldest
+object appearing first.
+
+The resulting array must be terminated with ~FreeResource() after use.
+
+*****************************************************************************/
+
+static ERROR GET_PublicObjects(objMetaClass *Self, OBJECTID **Array, LONG *Elements)
+{
+   parasol::Log log;
+   std::list<OBJECTID> objlist;
+
+   SharedObjectHeader *header;
+   if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
+      auto entry = (SharedObject *)ResolveAddress(header, header->Offset);
+      for (LONG i=0; i < header->NextEntry; i++) {
+         if ((entry[i].ObjectID) and (Self->SubClassID IS entry[i].ClassID)) {
+            if ((!entry[i].InstanceID) or (entry[i].InstanceID IS glInstanceID)) {
+               objlist.push_back(entry[i].ObjectID);
+            }
+         }
+      }
+      ReleaseMemoryID(RPM_SharedObjects);
+   }
+   else return log.warning(ERR_AccessMemory);
+
+   if (!objlist.size()) {
+      *Array = NULL;
+      *Elements = 0;
+      return ERR_Okay;
+   }
+
+   objlist.sort([](const OBJECTID &a, const OBJECTID &b) { return (a < b); });
+
+   OBJECTID *result;
+   if (!AllocMemory(sizeof(OBJECTID) * objlist.size(), MEM_NO_CLEAR, (APTR *)&result, NULL)) {
+      LONG i = 0;
+      for (const auto & id : objlist) result[i++] = id;
+      *Array = result;
+      *Elements = objlist.size();
+      return ERR_Okay;
+   }
+   else return ERR_AllocMemory;
 }
 
 /*****************************************************************************
@@ -768,10 +849,10 @@ they are identical then it is a base class, otherwise it is a sub-class.
 
 *****************************************************************************/
 
-static ERROR GET_SubFields(rkMetaClass *Self, const FieldArray **Fields, LONG *Elements)
+static ERROR GET_SubFields(objMetaClass *Self, const FieldArray **Fields, LONG *Elements)
 {
-   LONG i;
    if (Self->SubFields) {
+      LONG i;
       for (i=0; Self->SubFields[i].Name; i++);
       *Fields = Self->SubFields;
       *Elements = i;
@@ -793,7 +874,7 @@ TotalMethods: The total number of methods supported by a class.
 
 *****************************************************************************/
 
-static ERROR GET_TotalMethods(rkMetaClass *Class, LONG *Value)
+static ERROR GET_TotalMethods(objMetaClass *Class, LONG *Value)
 {
    if (Class->TotalMethods > 0) {
       *Value = Class->TotalMethods - 1; // Minus 1 due to the dummy entry at the start
@@ -807,7 +888,7 @@ static ERROR GET_TotalMethods(rkMetaClass *Class, LONG *Value)
 
 //****************************************************************************
 
-static ERROR field_setup(rkMetaClass *Class)
+static ERROR field_setup(objMetaClass *Class)
 {
    parasol::Log log(__FUNCTION__);
    LONG i, j;
@@ -896,7 +977,7 @@ static ERROR field_setup(rkMetaClass *Class)
          return ERR_AllocMemory;
       }
 
-      LONG offset = sizeof(Head);
+      LONG offset = sizeof(BaseClass);
       for (i=0; i < Class->TotalFields; i++) {
          copy_field(Class, class_fields+i, fields+i, &offset);
          fields[i].Index = i;
@@ -993,7 +1074,7 @@ static ERROR field_setup(rkMetaClass *Class)
 //****************************************************************************
 // Register a hashed field ID and its corresponding name.  Use GET_FIELD_NAME() to retrieve field names from the store.
 
-static void register_fields(rkMetaClass *Class)
+static void register_fields(objMetaClass *Class)
 {
    if (!glFields) {
       glFields = VarNew(0, KSF_THREAD_SAFE|KSF_UNTRACKED);
@@ -1011,7 +1092,7 @@ static void register_fields(rkMetaClass *Class)
 
 //****************************************************************************
 
-static void copy_field(rkMetaClass *Class, const FieldArray *Source, Field *Dest, LONG *Offset)
+static void copy_field(objMetaClass *Class, const FieldArray *Source, Field *Dest, LONG *Offset)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1032,8 +1113,8 @@ static void copy_field(rkMetaClass *Class, const FieldArray *Source, Field *Dest
       #ifdef _LP64
          if (Offset[0] & 0x7) {
             Offset[0] = (Offset[0] + 7) & (~0x7);
-            if (((fieldflags & FDF_R) AND (!Dest->GetValue)) OR
-                ((fieldflags & FDF_W) AND (!Dest->SetValue))) {
+            if (((fieldflags & FDF_R) and (!Dest->GetValue)) OR
+                ((fieldflags & FDF_W) and (!Dest->SetValue))) {
                log.warning("Misaligned 64-bit pointer '%s' in class '%s'.", Dest->Name, Class->ClassName);
             }
          }
@@ -1047,8 +1128,8 @@ static void copy_field(rkMetaClass *Class, const FieldArray *Source, Field *Dest
    else if (fieldflags & FD_FUNCTION) Offset[0] += sizeof(FUNCTION);
    else if (fieldflags & (FD_DOUBLE|FD_LARGE)) {
       if (Offset[0] & 0x7) {
-         if (((fieldflags & FDF_R) AND (!Dest->GetValue)) OR
-             ((fieldflags & FDF_W) AND (!Dest->SetValue))) {
+         if (((fieldflags & FDF_R) and (!Dest->GetValue)) OR
+             ((fieldflags & FDF_W) and (!Dest->SetValue))) {
             log.warning("Misaligned 64-bit field '%s' in class '%s'.", Dest->Name, Class->ClassName);
          }
       }
@@ -1066,7 +1147,7 @@ static void copy_field(rkMetaClass *Class, const FieldArray *Source, Field *Dest
 ** NOTE: This is also used in NewObject() to sort the fields of the glMetaClass.
 */
 
-ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
+ERROR sort_class_fields(objMetaClass *Class, Field *fields)
 {
    Field *temp;
    LONG i, j;
@@ -1095,8 +1176,8 @@ ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
       while (h < Class->TotalFields / 9) h = 3 * h + 1;
       for (; h > 0; h /= 3) {
          for (i=h; i < Class->TotalFields; i++) {
-            Field *temp = sort[i];
-            for (j=i; (j >= h) AND (sort[j - h]->FieldID > temp->FieldID); j -= h) {
+            auto temp = sort[i];
+            for (j=i; (j >= h) and (sort[j - h]->FieldID > temp->FieldID); j -= h) {
                sort[j] = sort[j - h];
             }
             sort[j] = temp;
@@ -1109,7 +1190,7 @@ ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
       LONG size = Class->TotalFields * sizeof(Field);
       if (size > 4096) {
          if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, (APTR *)&temp, NULL)) {
-            for (i=0; i < Class->TotalFields; i++) {
+            for (LONG i=0; i < Class->TotalFields; i++) {
                CopyMemory(sort[i], temp+i, sizeof(Field));
             }
             CopyMemory(temp, fields, (Class->TotalFields) * sizeof(Field));
@@ -1120,7 +1201,7 @@ ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
       else {
          Field temp[Class->TotalFields];
 
-         for (i=0; i < Class->TotalFields; i++) {
+         for (LONG i=0; i < Class->TotalFields; i++) {
             CopyMemory(sort[i], temp+i, sizeof(Field));
          }
          CopyMemory(temp, fields, size);
@@ -1129,8 +1210,8 @@ ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
 
    // Repair child indexes
 
-   for (i=0; i < childcount; i++) {
-      for (j=0; j < Class->TotalFields; j++) {
+   for (LONG i=0; i < childcount; i++) {
+      for (LONG j=0; j < Class->TotalFields; j++) {
          if (children[i] IS fields[j].FieldID) {
             Class->Children[i] = j;
             break;
@@ -1140,7 +1221,7 @@ ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
 
    // Repair field indexes following the sort
 
-   for (i=0; i < Class->TotalFields; i++) fields[i].Index = i;
+   for (LONG i=0; i < Class->TotalFields; i++) fields[i].Index = i;
 
    return ERR_Okay;
 }
@@ -1148,7 +1229,7 @@ ERROR sort_class_fields(rkMetaClass *Class, Field *fields)
 //****************************************************************************
 // These are pre-defined fields that are applied to each class' object.
 
-static ERROR OBJECT_GetClass(OBJECTPTR Self, rkMetaClass **Value)
+static ERROR OBJECT_GetClass(OBJECTPTR Self, objMetaClass **Value)
 {
    *Value = Self->Class;
    return ERR_Okay;
@@ -1166,7 +1247,7 @@ static ERROR OBJECT_GetClassID(OBJECTPTR Self, CLASSID *Value)
 
 static ERROR OBJECT_GetOwner(OBJECTPTR Self, OBJECTID *OwnerID)
 {
-   *OwnerID = GetOwner(Self);
+   *OwnerID = Self->ownerID();
    return ERR_Okay;
 }
 
@@ -1221,7 +1302,7 @@ ERROR write_class_item(ClassItem *item)
    log.traceBranch("Record Index: %d", glClassDB->Total);
 
    OBJECTPTR file = NULL;
-   if ((!glClassFileID) AND (!write_attempted)) {
+   if ((!glClassFileID) and (!write_attempted)) {
       write_attempted = TRUE;
       LONG flags = FL_WRITE;
       if (AnalysePath(glClassBinPath, NULL) != ERR_Okay) flags |= FL_NEW;
@@ -1264,7 +1345,7 @@ ERROR load_classes(void)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.branch("");
+   log.branch();
 
    if (glClassDB) { ReleaseMemoryID(glSharedControl->ClassesMID); glClassDB = NULL; }
    if (glSharedControl->ClassesMID) { FreeResourceID(glSharedControl->ClassesMID); glSharedControl->ClassesMID = 0; }
@@ -1278,14 +1359,13 @@ ERROR load_classes(void)
             TAGEND)) {
 
          LONG filesize;
-         GetLong((OBJECTPTR)file, FID_Size, &filesize);
+         GetLong(file, FID_Size, &filesize);
 
          LONG total;
          if (!(error = acRead(file, &total, sizeof(total), NULL))) {
             log.msg("There are %d class records to process.", total);
             LONG memsize = sizeof(ClassHeader) + (sizeof(LONG) * total) + filesize - sizeof(LONG);
             if (!(error = AllocMemory(memsize, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glClassDB, &glSharedControl->ClassesMID))) {
-
                // Configure the header
 
                glClassDB->Total = total;
@@ -1311,7 +1391,7 @@ ERROR load_classes(void)
          }
          else error = log.warning(ERR_Read);
 
-         acFree(&file->Head);
+         acFree(file);
       }
       else glScanClasses = TRUE;
 
@@ -1406,7 +1486,7 @@ ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path
    ULONG class_id = StrHash(Name, FALSE);
    if (ParentID IS class_id) ParentID = 0; // Parent ID should only be set if the class is a genuine child of another class
 
-   if ((!glClassDB) AND (glSharedControl->ClassesMID)) {
+   if ((!glClassDB) and (glSharedControl->ClassesMID)) {
       if (AccessMemory(glSharedControl->ClassesMID, MEM_READ|MEM_NO_BLOCK, 2000, (APTR *)&glClassDB) != ERR_Okay) {
          return log.warning(ERR_AccessMemory);
       }
@@ -1438,13 +1518,13 @@ ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path
             // we rewrite the path to fit the Android system.
 
             i = StrLength(Path);
-            while ((i > 0) AND (Path[i] != '/') AND (Path[i] != '\\') AND (Path[i] != ':')) i--;
+            while ((i > 0) and (Path[i] != '/') and (Path[i] != '\\') and (Path[i] != ':')) i--;
             if (i > 0) i++; // Skip folder separator.
 
-            for (pathlen=0; (Path[i+pathlen]) AND ((size_t)pathlen < sizeof(modpath)-1); pathlen++) modpath[pathlen] = Path[i+pathlen];
+            for (pathlen=0; (Path[i+pathlen]) and ((size_t)pathlen < sizeof(modpath)-1); pathlen++) modpath[pathlen] = Path[i+pathlen];
             modpath[pathlen++] = 0;
          #else
-            for (pathlen=0; (Path[pathlen]) AND ((size_t)pathlen < sizeof(modpath)-1); pathlen++) modpath[pathlen] = Path[pathlen];
+            for (pathlen=0; (Path[pathlen]) and ((size_t)pathlen < sizeof(modpath)-1); pathlen++) modpath[pathlen] = Path[pathlen];
             modpath[pathlen++] = 0;
          #endif
       }
@@ -1589,7 +1669,7 @@ ClassItem * find_class(ULONG Hash)
 //****************************************************************************
 // Lookup the fields declared by a MetaClass, as opposed to the fields of the MetaClass itself.
 
-static Field * lookup_id_byclass(rkMetaClass *Class, ULONG FieldID, rkMetaClass **Result)
+static Field * lookup_id_byclass(objMetaClass *Class, ULONG FieldID, objMetaClass **Result)
 {
    Field *field = Class->prvFields;
 
@@ -1600,7 +1680,7 @@ static Field * lookup_id_byclass(rkMetaClass *Class, ULONG FieldID, rkMetaClass 
       if (field[i].FieldID < FieldID) floor = i + 1;
       else if (field[i].FieldID > FieldID) ceiling = i;
       else {
-         while ((i > 0) AND (field[i-1].FieldID IS FieldID)) i--;
+         while ((i > 0) and (field[i-1].FieldID IS FieldID)) i--;
          *Result = Class;
          return field+i;
       }
@@ -1608,9 +1688,9 @@ static Field * lookup_id_byclass(rkMetaClass *Class, ULONG FieldID, rkMetaClass 
 
    if (Class->Flags & CLF_PROMOTE_INTEGRAL) {
       for (LONG i=0; Class->Children[i] != 0xff; i++) {
-         field = Class->prvFields + Class->Children[i];
+         auto field = Class->prvFields + Class->Children[i];
          if (field->Arg) {
-            rkMetaClass *childclass = FindClass(field->Arg);
+            objMetaClass *childclass = FindClass(field->Arg);
             if (childclass) {
                *Result = childclass;
                field = lookup_id_byclass(childclass, FieldID, Result);

@@ -58,6 +58,7 @@ function initialise()
       })
 
       task.acActivate()
+      msg('Archive process completed')
    end
 end
 
