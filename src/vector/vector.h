@@ -133,6 +133,9 @@ public:
    };
 
    objBitmap * get_bitmap(LONG Width, LONG Height, ClipRectangle &Clip, bool Debug) {
+      if (Width < Clip.Right) Width = Clip.Right;
+      if (Height < Clip.Bottom) Height = Clip.Bottom;
+
       if (Bitmap) {
          Bitmap->Width = Width;
          Bitmap->Height = Height;
@@ -719,7 +722,7 @@ static bool point_in_rectangle(agg::vertex_d X, agg::vertex_d Y, agg::vertex_d Z
     return (is_left(X, Y, P) > 0) and (is_left(Y, Z, P) > 0) and (is_left(Z, W, P) > 0) and (is_left(W, X, P) > 0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 inline double fastPow(double a, double b) {
    union {
@@ -731,7 +734,7 @@ inline double fastPow(double a, double b) {
    return u.d;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 inline int isPow2(ULONG x)
 {

@@ -22,9 +22,13 @@ registered vector rather than an image file.
 
 class objSourceFX : public extFilterEffect {
    public:
+   objBitmap *Bitmap;     // Rendered image cache.
    objVector *Source;     // The vector branch to render as source graphic.
-   objVectorScene *Scene;
+   objVectorScene *Scene; // Internal scene for rendering.
+   UBYTE *BitmapData;
    LONG AspectRatio;      // Aspect ratio flags.
+   LONG DataSize;
+   bool Render;           // Must be true if the bitmap cache needs to be rendered.
 };
 
 //********************************************************************************************************************
@@ -80,49 +84,91 @@ static ERROR SOURCEFX_Draw(objSourceFX *Self, struct acDraw *Args)
    LONG cs = (filter->ColourSpace IS VCS_LINEAR_RGB) ? VCS_LINEAR_RGB : VCS_SRGB;
    if (Self->Scene->Viewport->ColourSpace != cs) {
       SetLong(Self->Scene->Viewport, FID_ColourSpace, cs);
+      SetLong(Self->Bitmap, FID_ColourSpace, (cs IS VCS_LINEAR_RGB) ? CS_LINEAR_RGB : CS_SRGB);
+      Self->Render = true;
    }
 
-   if ((target.width > Self->Scene->PageWidth) or (target.height > Self->Scene->PageHeight)) {
+   if ((filter->ClientViewport->Scene->PageWidth > Self->Scene->PageWidth) or
+       (filter->ClientViewport->Scene->PageHeight > Self->Scene->PageHeight)) {
       acResize(Self->Scene, filter->ClientViewport->Scene->PageWidth, filter->ClientViewport->Scene->PageHeight, 0);
    }
 
-   SetFields(Self->Scene->Viewport,
-      FID_X|TDOUBLE,         img_x,
-      FID_Y|TDOUBLE,         img_y,
-      FID_Width|TDOUBLE,     img_width,
-      FID_Height|TDOUBLE,    img_height,
-      FID_AspectRatio|TLONG, Self->AspectRatio,
-      TAGEND);
+   if ((filter->VectorClip.Right > Self->Bitmap->Clip.Right) or
+       (filter->VectorClip.Bottom > Self->Bitmap->Clip.Bottom)) {
+      acResize(Self->Bitmap, filter->ClientViewport->Scene->PageWidth, filter->ClientViewport->Scene->PageHeight, 0);
+   }
 
-   auto &t = filter->ClientVector->Transform;
-   VectorMatrix matrix = {
-      .Next = NULL, .Vector = Self->Scene->Viewport,
-      .ScaleX = t.sx, .ShearY = t.shy, .ShearX = t.shx, .ScaleY = t.sy, .TranslateX = t.tx, .TranslateY = t.ty
-   };
+   auto vp = (extVectorViewport *)Self->Scene->Viewport;
+   if ((img_x != vp->vpViewX) or (img_y != vp->vpViewY) or (img_width != vp->vpViewWidth) or (img_height != vp->vpViewHeight)) {
+      Self->Render = true;
+   }
 
-   // This rendering implementation is done in run-time.  Allocating a bitmap cache would
-   // be a more optimal alternative.
+   if (Self->Render) {
+      auto &cache = Self->Bitmap;
+      cache->Clip = filter->VectorClip;
 
-   ((extVectorViewport *)Self->Scene->Viewport)->Matrices = &matrix;
-   Self->Scene->Viewport->Child = Self->Source;
-   auto save_parent = Self->Source->Parent;
-   Self->Source->Parent = Self->Scene->Viewport;
+      // Manual data management - bitmap data is restricted to the clipping region.
 
-   auto const save_next = Self->Source->Next; // Switch off the Next pointer to prevent processing of siblings.
-   Self->Source->Next = NULL;
-   filter->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
+      const LONG canvas_width  = cache->Clip.Right - cache->Clip.Left;
+      const LONG canvas_height = cache->Clip.Bottom - cache->Clip.Top;
+      cache->LineWidth = canvas_width * cache->BytesPerPixel;
 
-   mark_dirty(Self->Scene->Viewport, RC_TRANSFORM);
+      if ((Self->BitmapData) and (Self->DataSize < cache->LineWidth * canvas_height)) {
+         FreeResource(Self->BitmapData);
+         Self->BitmapData = NULL;
+         cache->Data = NULL;
+      }
 
-   Self->Scene->Bitmap = Self->Target;
-   acDraw(Self->Scene);
+      if (!cache->Data) {
+         if (!AllocMemory(cache->LineWidth * canvas_height, MEM_DATA|MEM_NO_CLEAR, &Self->BitmapData, NULL)) {
+            Self->DataSize = cache->LineWidth * canvas_height;
+         }
+         else return ERR_AllocMemory;
+      }
 
-   filter->Disabled = false;
-   Self->Source->Parent = save_parent;
-   Self->Source->Next = save_next;
-   ((extVectorViewport *)Self->Scene->Viewport)->Matrices = NULL;
-   mark_dirty(Self->Source, RC_ALL);
+      cache->Data = Self->BitmapData - (cache->Clip.Left * cache->BytesPerPixel) - (cache->Clip.Top * cache->LineWidth);
 
+      SetFields(Self->Scene->Viewport,
+         FID_X|TDOUBLE,         img_x,
+         FID_Y|TDOUBLE,         img_y,
+         FID_Width|TDOUBLE,     img_width,
+         FID_Height|TDOUBLE,    img_height,
+         FID_AspectRatio|TLONG, Self->AspectRatio,
+         TAGEND);
+
+      auto &t = filter->ClientVector->Transform;
+      VectorMatrix matrix = {
+         .Next = NULL, .Vector = Self->Scene->Viewport,
+         .ScaleX = t.sx, .ShearY = t.shy, .ShearX = t.shx, .ScaleY = t.sy, .TranslateX = t.tx, .TranslateY = t.ty
+      };
+
+      ((extVectorViewport *)Self->Scene->Viewport)->Matrices = &matrix;
+
+      auto save_parent = Self->Source->Parent;
+      auto const save_next = Self->Source->Next;
+      Self->Scene->Viewport->Child = Self->Source;
+      Self->Source->Parent = Self->Scene->Viewport;
+      Self->Source->Next = NULL;
+
+      filter->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
+
+      mark_dirty(Self->Scene->Viewport, RC_TRANSFORM);
+
+      Self->Scene->Bitmap = cache;
+      gfxDrawRectangle(cache, 0, 0, cache->Width, cache->Height, 0x00000000, BAF_FILL);
+      acDraw(Self->Scene);
+
+      filter->Disabled = false;
+      Self->Scene->Viewport->Child = NULL;
+      Self->Source->Parent = save_parent;
+      Self->Source->Next   = save_next;
+      ((extVectorViewport *)Self->Scene->Viewport)->Matrices = NULL;
+      mark_dirty(Self->Source, RC_ALL);
+   }
+
+   gfxCopyArea(Self->Bitmap, Self->Target, 0, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, 0);
+
+   Self->Render = false;
    return ERR_Okay;
 }
 
@@ -130,8 +176,10 @@ static ERROR SOURCEFX_Draw(objSourceFX *Self, struct acDraw *Args)
 
 static ERROR SOURCEFX_Free(objSourceFX *Self, APTR Void)
 {
-   if (Self->Source) { UnsubscribeAction(Self->Source, AC_Free); Self->Source = NULL; }
-   if (Self->Scene)  { acFree(Self->Scene); Self->Scene = NULL; }
+   if (Self->Bitmap)     { acFree(Self->Bitmap); Self->Bitmap = NULL; }
+   if (Self->Source)     { UnsubscribeAction(Self->Source, AC_Free); Self->Source = NULL; }
+   if (Self->Scene)      { acFree(Self->Scene); Self->Scene = NULL; }
+   if (Self->BitmapData) { FreeResource(Self->BitmapData); Self->BitmapData = NULL; }
    return ERR_Okay;
 }
 
@@ -152,6 +200,7 @@ static ERROR SOURCEFX_NewObject(objSourceFX *Self, APTR Void)
 {
    Self->AspectRatio = ARF_X_MID|ARF_Y_MID|ARF_MEET;
    Self->SourceType  = VSF_NONE;
+   Self->Render      = true;
 
    if (!CreateObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Scene,
          FID_Name|TSTR,        "fx_src_scene",
@@ -165,12 +214,22 @@ static ERROR SOURCEFX_NewObject(objSourceFX *Self, APTR Void)
             FID_Owner|TLONG,       Self->Scene->UID,
             FID_ColourSpace|TLONG, VCS_LINEAR_RGB,
             TAGEND)) {
+
+         if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->Bitmap,
+               FID_Name|TSTR,          "fx_src_cache",
+               FID_Width|TLONG,        1,
+               FID_Height|TLONG,       1,
+               FID_BitsPerPixel|TLONG, 32,
+               FID_Flags|TLONG,        BMF_ALPHA_CHANNEL|BMF_NO_DATA,
+               FID_ColourSpace|TLONG,  CS_LINEAR_RGB,
+               TAGEND)) {
+            return ERR_Okay;
+         }
+         else return ERR_CreateObject;
       }
       else return ERR_CreateObject;
    }
    else return ERR_CreateObject;
-
-   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -190,6 +249,7 @@ static ERROR SOURCEFX_GET_AspectRatio(objSourceFX *Self, LONG *Value)
 static ERROR SOURCEFX_SET_AspectRatio(objSourceFX *Self, LONG Value)
 {
    Self->AspectRatio = Value;
+   Self->Render = true;
    return ERR_Okay;
 }
 
@@ -212,6 +272,7 @@ static ERROR SOURCEFX_SET_Source(objSourceFX *Self, objVector *Value)
    if (Self->Source) UnsubscribeAction(Self->Source, AC_Free);
    Self->Source = Value;
    SubscribeAction(Value, AC_Free);
+   Self->Render = true;
    return ERR_Okay;
 }
 
@@ -243,6 +304,7 @@ static ERROR SOURCEFX_SET_SourceName(objSourceFX *Self, CSTRING Value)
       if (src->ClassID != ID_VECTOR) return log.warning(ERR_WrongClass);
       Self->Source = src;
       SubscribeAction(src, AC_Free);
+      Self->Render = true;
       return ERR_Okay;
    }
    else return log.warning(ERR_Search);
