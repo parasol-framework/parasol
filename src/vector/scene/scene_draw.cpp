@@ -389,9 +389,11 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
 
 //********************************************************************************************************************
 // Fixed-size patterns can be rendered internally as a separate bitmap for tiling.  That bitmap is copied to the
-// target bitmap with the necessary transforms applied.  USERSPACE patterns are suitable for this method.
+// target bitmap with the necessary transforms applied.  USERSPACE patterns are suitable for this method.  If the
+// client needs the pattern to maintain a fixed alignment with the associated vector, they must set the X,Y field
+// values manually when that vector changes position.
 //
-// Patterns rendered with BOUNDING_BOX require more real-time calculations as they have a dependency on the target
+// Patterns rendered with BOUNDING_BOX require real-time calculation as they have a dependency on the target
 // vector's dimensions.
 
 static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
@@ -399,14 +401,13 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
    extVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
-   DOUBLE dwidth, dheight;
-
    const DOUBLE c_width  = (Pattern.Units IS VUNIT_USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
    const DOUBLE c_height = (Pattern.Units IS VUNIT_USERSPACE) ? ViewHeight : Bounds[3] - Bounds[1];
    const DOUBLE x_offset = (Pattern.Units IS VUNIT_USERSPACE) ? 0 : Bounds[0];
    const DOUBLE y_offset = (Pattern.Units IS VUNIT_USERSPACE) ? 0 : Bounds[1];
 
    if (Pattern.Units IS VUNIT_USERSPACE) { // Use fixed coordinates specified in the pattern.
+      DOUBLE dwidth, dheight;
       if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = c_width * Pattern.Width;
       else if (Pattern.Dimensions & DMF_FIXED_WIDTH) dwidth = Pattern.Width;
       else dwidth = 1;
@@ -423,20 +424,22 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
    }
    else {
       // BOUNDING_BOX.  The pattern (x,y) is an optional offset applied to the base position of the vector's
-      // path and the size is relative to the vector's bounds.
+      // path.  The area is relative to the vector's bounds.
 
-      DOUBLE vpwidth  = Pattern.Viewport->vpViewWidth;
-      DOUBLE vpheight = Pattern.Viewport->vpViewHeight;
+      DOUBLE dwidth, dheight;
 
-      if (!vpwidth) vpwidth = 1;
-      if (!vpheight) vpheight = 1;
-
-      if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = c_width * Pattern.Width;
-      else if (Pattern.Dimensions & DMF_FIXED_WIDTH) dwidth = (Pattern.Width / vpwidth) * c_width;
+      if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = Pattern.Width * c_width;
+      else if (Pattern.Dimensions & DMF_FIXED_WIDTH) {
+         if (Pattern.Viewport->vpViewWidth) dwidth = (Pattern.Width / Pattern.Viewport->vpViewWidth) * c_width;
+         else dwidth = Pattern.Width * c_width; // A quirk of SVG is that the fixed value has to be interpreted as a multiplier if the viewbox is unspecified.
+      }
       else dwidth = 1;
 
-      if (Pattern.Dimensions & DMF_RELATIVE_HEIGHT) dheight = c_height * Pattern.Height;
-      else if (Pattern.Dimensions & DMF_FIXED_HEIGHT) dheight = (Pattern.Height / vpheight) * c_height;
+      if (Pattern.Dimensions & DMF_RELATIVE_HEIGHT) dheight = Pattern.Height * c_height;
+      else if (Pattern.Dimensions & DMF_FIXED_HEIGHT) {
+         if (Pattern.Viewport->vpViewHeight) dheight = (Pattern.Height / Pattern.Viewport->vpViewHeight) * c_height;
+         else dheight = Pattern.Height * c_height;
+      }
       else dheight = 1;
 
       if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
