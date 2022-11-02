@@ -111,7 +111,6 @@ static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
          Self->SpreadMethod = VSPREAD_REPEAT;
          Self->Units        = VUNIT_BOUNDING_BOX;
          Self->ContentUnits = VUNIT_USERSPACE;
-         Self->SpreadMethod = VSPREAD_PAD;
          Self->Opacity      = 1.0;
          return ERR_Okay;
       }
