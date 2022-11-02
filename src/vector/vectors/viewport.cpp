@@ -188,12 +188,36 @@ static ERROR VECTORVIEWPORT_MoveToPoint(extVectorViewport *Self, struct acMoveTo
 static ERROR VECTORVIEWPORT_NewObject(extVectorViewport *Self, APTR Void)
 {
    Self->vpAspectRatio = ARF_MEET|ARF_X_MID|ARF_Y_MID;
-   Self->vpOverflowX = VOF_VISIBLE;
-   Self->vpOverflowY = VOF_VISIBLE;
+   Self->vpOverflowX   = VOF_VISIBLE;
+   Self->vpOverflowY   = VOF_VISIBLE;
 
    // NB: vpTargetWidth and vpTargetHeight are not set to a default because we need to know if the client has
    // intentionally avoided setting the viewport and/or viewbox dimensions (which typically means that the viewport
    // will expand to fit the parent).
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+-ACTION-
+Redimension: Reposition and resize a viewport to a fixed size.
+-END-
+*********************************************************************************************************************/
+
+static ERROR VECTORVIEWPORT_Redimension(extVectorViewport *Self, struct acRedimension *Args)
+{
+   if (!Args) return ERR_NullArgs;
+
+   Self->vpDimensions = (Self->vpDimensions|DMF_FIXED_X|DMF_FIXED_Y|DMF_FIXED_WIDTH|DMF_FIXED_HEIGHT) &
+      (~(DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT));
+
+   Self->vpTargetX      = Args->X;
+   Self->vpTargetY      = Args->Y;
+   Self->vpTargetWidth  = Args->Width;
+   Self->vpTargetHeight = Args->Height;
+
+   if (Self->vpTargetWidth < 1) Self->vpTargetWidth = 1;
+   if (Self->vpTargetHeight < 1) Self->vpTargetHeight = 1;
+   mark_dirty((extVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
    return ERR_Okay;
 }
 

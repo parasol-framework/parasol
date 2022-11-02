@@ -39,6 +39,11 @@
     </action>
 
     <action>
+      <name>Redimension</name>
+      <comment>Reposition and resize a viewport to a fixed size.</comment>
+    </action>
+
+    <action>
       <name>Resize</name>
       <comment>Resize a viewport to a fixed size.</comment>
     </action>

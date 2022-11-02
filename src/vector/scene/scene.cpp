@@ -1033,9 +1033,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
       }
       else if (input->Type IS JET_ENTERED_SURFACE);
       else if (input->Flags & JTYPE_BUTTON) {
-         OBJECTID target;
-         if (Self->ButtonLock) target = Self->ButtonLock;
-         else target = Self->ActiveVector;
+         OBJECTID target = Self->ButtonLock ? Self->ButtonLock : Self->ActiveVector;
 
          if (target) {
             parasol::ScopedObjectLock<extVector> lock(target);
