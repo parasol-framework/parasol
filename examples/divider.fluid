@@ -3,58 +3,42 @@ Demonstrates the functionality provided by the divider interface.
 --]]
 
    require 'gui/divider'
+   require 'gui/window'
 
-   local win = obj.new('window', { title='Divider Example', insideWidth=400, insideHeight=200 })
+   local win = gui.window({ title='Divider Example', insideWidth=400, insideHeight=200, minWidth=200, minHeight=50 })
+   local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
-   // Create left and right surfaces with a vertical divider to split them through the middle.
+   -- Create left and right viewports with a vertical divider to split them through the middle.
 
-   leftSurface = win.new('surface', {
-      x       = win.leftMargin,
-      y       = win.topMargin,
-      yoffset = win.bottomMargin,
-      width   = win.insideWidth/2,
-      colour  = '128,0,0'
+   leftVP = viewport.new('VectorViewport', {
+      name='left_vp', x = win.margins.left, y = win.margins.top,
+      yOffset = win.margins.bottom, width = viewport.width / 2
+   })
+   leftVP.new('VectorRectangle', { -- Red
+      name='left_fill', x=0, y=0, width='100%', height='100%', strokeWidth=2, stroke='rgb(128,0,0)', roundX=8, roundY=8
    })
 
-   rightSurface = win.new('surface', { // This surface is transparent because it contains rightA and rightB
-      width   = win.width - leftSurface.right,
-      y       = win.topMargin,
-      xoffset = win.rightMargin,
-      yoffset = win.bottomMargin,
-      flags   = "!transparent"
+   rightVP = viewport.new('VectorViewport', { -- This viewport is transparent because it contains rightA and rightB
+      x = leftVP.x + leftVP.width, y = win.margins.top, xOffset = win.margins.right, yOffset = win.margins.bottom
    })
 
-   leftSurface.acShow()
-   rightSurface.acShow()
+   gui.divider({ left = leftVP, right = rightVP, minA = 30, maxA = win.surface.insideWidth * 0.6, minB = 30 })
 
-   gui.divider({
-      left    = { leftSurface },
-      right   = { rightSurface },
-      min     = { left=50, right=50 },
-      background = '0,0,0,128'
+   -- The right-side viewport contains two child viewports with a horizontal divider to split them.
+
+   rightA = rightVP.new('VectorViewport', { x=0, y=0, xOffset=0, height=(rightVP.height / 2) })
+   rightA.new('VectorRectangle', {  -- Blue
+      x=0, y=0, width='100%', height='100%', strokeWidth=2, stroke='rgb(0,0,128)', roundX=8, roundY=8
    })
 
-   // For the right-side surface, create two child surfaces with a horizontal divider to split them.
-
-   rightA = rightSurface.new('surface', {
-      x=0, y=0, xoffset=0, height=(rightSurface.height/2)-3, colour='128,0,128'
+   rightB = rightVP.new('VectorViewport', { x=0, xOffset=0, y=rightA.y + rightA.height, yOffset=0 })
+   rightB.new('VectorRectangle', { -- Green
+      x=0, y=0, width='100%', height='100%', strokeWidth=2, stroke='rgb(0,128,0)', roundX=8, roundY=8
    })
 
-   rightB = rightSurface.new('surface', {
-      x=0, yOffset=0, xOffset=0, y=(rightSurface.height/2)+3, colour='0,128,0'
-   })
+   gui.divider({ top = rightA, bottom = rightB, minA = 40, minB = 20 })
 
-   rightA.acShow()
-   rightB.acShow()
+   -- Now show the window and enter the main loop.
 
-   gui.divider({
-      top     = { rightA },
-      bottom  = { rightB },
-      min     = { top=10, bottom=10 },
-      background = '255,255,255,128'
-   })
-
-   // Now show the window and enter the main loop.
-
-   win.acShow()
+   win:show()
    processing.sleep()

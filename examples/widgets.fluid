@@ -256,9 +256,9 @@ end
    local checkbox = gui.checkbox({
       target = viewport,
       label  = 'Checkbox',
-      align = 'left',
-      x = win.margins.left,
-      y = y,
+      align  = 'left',
+      x      = win.margins.left,
+      y      = y,
       events = {
          activate = function(Widget)
          end,
@@ -271,7 +271,7 @@ end
       target = viewport,
       label  = 'Combobox:',
       string = 'Your text here',
-      x = win.margins.left, y = y,
+      x      = win.margins.left, y = y,
       allowCustom = true,
       items = {
          { group='Office' },

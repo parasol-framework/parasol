@@ -384,6 +384,8 @@ Height: The height of the viewport's target area.
 The height of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for
 full coverage.
 
+The fixed value is always returned when retrieving the height.
+
 *********************************************************************************************************************/
 
 static ERROR VIEW_GET_Height(extVectorViewport *Self, Variable *Value)
@@ -406,9 +408,8 @@ static ERROR VIEW_GET_Height(extVectorViewport *Self, Variable *Value)
    }
    else if (Self->vpDimensions & (DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET)) {
       DOUBLE y, parent_height;
-      if (Self->vpDimensions & DMF_RELATIVE_Y) {
-         y = Self->vpTargetY * Self->ParentView->vpFixedHeight;
-      }
+
+      if (Self->vpDimensions & DMF_RELATIVE_Y) y = Self->vpTargetY * Self->ParentView->vpFixedHeight;
       else y = Self->vpTargetY;
 
       if (Self->ParentView) GetDouble(Self->ParentView, FID_Height, &parent_height);
@@ -647,9 +648,8 @@ static ERROR VIEW_GET_Width(extVectorViewport *Self, Variable *Value)
    }
    else if (Self->vpDimensions & (DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET)) {
       DOUBLE x, parent_width;
-      if (Self->vpDimensions & DMF_RELATIVE_X) {
-         x = Self->vpTargetX * Self->ParentView->vpFixedWidth;
-      }
+
+      if (Self->vpDimensions & DMF_RELATIVE_X) x = Self->vpTargetX * Self->ParentView->vpFixedWidth;
       else x = Self->vpTargetX;
 
       if (Self->ParentView) GetDouble(Self->ParentView, FID_Width, &parent_width);

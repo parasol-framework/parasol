@@ -354,7 +354,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
          agg::span_image_filter_rgba<agg::span_repeat_rkl, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
          drawBitmapRender(RenderBase, Raster, spangen, Opacity);
       }
-      else { // Cater for path VSPREAD_PAD and VSPREAD_CLIP modes.
+      else { // VSPREAD_PAD and VSPREAD_CLIP modes.
          agg::span_pattern_rkl<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
          agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
          drawBitmapRender(RenderBase, Raster, spangen, Opacity);
@@ -380,7 +380,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
          agg::span_repeat_rkl source(pixels, XOffset, YOffset);
          drawBitmapRender(RenderBase, Raster, source, Opacity);
       }
-      else { // Cater for path VSPREAD_PAD and VSPREAD_CLIP modes.
+      else { // VSPREAD_PAD and VSPREAD_CLIP modes.
          agg::span_pattern_rkl<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
          drawBitmapRender(RenderBase, Raster, source, Opacity);
       }
