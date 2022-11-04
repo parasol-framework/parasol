@@ -128,19 +128,19 @@ gui.divider = function(Options)
             name='div_pattern', x=0, y=0, pageWidth=GAP, pageHeight=GAP*3, width=GAP, height=GAP*3, units=VUNIT_USERSPACE, spreadMethod=VSPREAD_REPEAT
          })
          local pt = string.format('0,0, %d,%d, %d,%d 0,%d', GAP, GAP, GAP, GAP*2, GAP)
-         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,40)' })
+         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,20)' })
 
          local pt = string.format('0,%d, %d,%d, %d,%d 0,%d', GAP, GAP, GAP+GAP, GAP, GAP*2+GAP, GAP+GAP)
-         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,80)' })
+         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,40)' })
       else
          self._pattern = self._vp.scene.new('VectorPattern', {
             name='div_pattern', x=0, y=0, pageWidth=GAP*3, pageHeight=GAP, width=GAP*3, height=GAP, units=VUNIT_USERSPACE, spreadMethod=VSPREAD_REPEAT
          })
          local pt = string.format('0,0, %d,0, %d,%d %d,%d', GAP, GAP*2, GAP, GAP, GAP)
-         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,40)' })
+         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,20)' })
 
          local pt = string.format('%d,0, %d,0, %d,%d %d,%d', GAP, GAP+GAP, GAP*2+GAP, GAP, GAP+GAP, GAP)
-         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,80)' })
+         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,40)' })
       end
 
       check(self._vp.scene.mtAddDef(div_name, self._pattern))
@@ -170,19 +170,19 @@ gui.divider = function(Options)
 
    self._pct = (self._div[self._anchor] + HALF_GAP) / self._vp[self._length]
 
-   self._dividerVP.resizeEvent = function(Viewport, Divider, ViewX, ViewY, ViewWidth, ViewHeight)
+   self._vp.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
       if self._proportional then
          if (self._orientation == 'h') then
-            arrangeAll(self, self._pct * ViewWidth)
+            arrangeAll(self, self._pct * Viewport.width)
          else
-            arrangeAll(self, self._pct * ViewHeight)
+            arrangeAll(self, self._pct * Viewport.height)
          end
       else
          arrangeAll(self)
       end
 
       Viewport.acDraw()
-   end
+   end)
 
    check(self._dividerVP.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
       local ev = Events

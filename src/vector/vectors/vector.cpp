@@ -1825,6 +1825,10 @@ void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE
 
 The dimension values refer to the current location and size of the viewport.
 
+Note that this callback feature is provided for convenience, and only one subscription to the viewport is possible at
+any time.  The conventional means for monitoring the size and position of any vector is to subscribe to the
+`PATH_CHANGED` event.
+
 *********************************************************************************************************************/
 
 static ERROR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
