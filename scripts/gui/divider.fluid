@@ -1,540 +1,221 @@
 --[[
 
-The Divider interface is used to break up the space between surface areas and provides drag support so that the
-amount of space on either side of the divider can be adjusted by the user.
+The Divider interface is used to break up the space between viewports and allow them to be user adjustable.
 
-A divider object is configured by specifying the surfaces positioned to the left and right of the divider for a
-vertical split, or the top and bottom for a horizontal split.
-
-To create a divider:
-
-   gui.divider({ Options... })
+For a horizontal split the configuration must specify two viewports that are positioned to the left and right of the
+divider, or top and bottom for a vertical split.  For the viewport on the far side of the divider, define (x, xOffset)
+and (y, yOffset) pairs as necessary to ensure that the viewport is correctly anchored.
 
 Example:
 
-   gui.divider({ left={ leftSurface }, right={ rightSurface }, min={ left=50, right=50 } })
+   gui.divider({ left=leftViewport, right=rightViewport, minA=50, minB=50 })
 
 Valid options to use when creating the divider are as follows:
 
-   surface:    The surface object that will contain the divider (optional, is otherwise inferred from surface arrays).
-   left:       Array of surface objects for the left side.
-   right:      Array of surface objects for the right side.
-   top:        Array of surface objects for the top side.
-   bottom:     Array of surface objects for the bottom side.
-   min{}:      A table of minimum pixel dimensions for left, right, top, bottom.
-   max{}:      A table of maximum pixel dimensions for left, right, top, bottom.
-   gap:        The pixel gap dividing either side of the divider.
-   fixedSize:  Set to true if the divider position should remain fixed when the window is resized.
-   style:      Set to 'none', 'default' or 'alt' for an alternative
-   background: A background colour in 'R,G,B,A' format for the divider.  The default is transparent.
+   left:       Viewport on the left (A) side.  Must be paired with a viewport on the right.
+   right:      Viewport on the right (B) side.
+   top:        Viewport on the top (A) side.  Must be paired with a viewport on the bottom.
+   bottom:     Viewport on the bottom (B) side.
+   minA/B:     Minimum pixel size of the A or B side.
+   maxA/B:     Maximum pixel size of the A or B side.
+   fixedSize:  Set if the divider position should remain fixed when the window is resized (default is proportional).
+   style:      Set to 'none', 'default' or 'alt' for an alternative divider style.
 --]]
 
    require 'common'
    require 'gui'
 
-gui.divider = function(Options)
-   local mGfx = mod.load('display')
+   if not mGfx then mGfx = mod.load('display') end
 
-   local self = { // Public variables
+local GAP = 8
+local HALF_GAP = GAP / 2
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function arrangeAll(self, Middle)
+   local a_len
+
+   if Middle then
+      local a_limit = math.floor(self._vp[self._length] - self._minB - GAP)
+      a_len = math.floor(Middle - HALF_GAP)
+      local minA = math.floor(self._primary[self._anchor] + self._minA)
+      local maxA = math.floor(self._primary[self._anchor] + self._maxA)
+      if (a_len < minA) then a_len = minA end
+      if (a_len > maxA) then a_len = maxA end
+      if (a_len > a_limit) then a_len = a_limit end
+      self._primary[self._length] = a_len - self._primary[self._anchor]
+   else -- (A) side will stay the same, (B) side will be resized
+      a_len = self._primary[self._anchor] + self._primary[self._length]
+   end
+
+   if (self._orientation == 'h') then
+      local margin = GAP
+      self._div = { x = a_len+1, y = self._primary.y + margin, width = GAP-2, height = self._primary.height - (margin*2) }
+      self._pattern.x = self._vp.absX + a_len
+      self._pattern.y = self._primary.absY + margin
+   else
+      local margin = GAP
+      self._div = { x = self._primary.x + margin, y = a_len+1, width = self._primary.width - (margin*2), height = GAP-2 }
+      self._pattern.x = self._primary.absX + margin
+      self._pattern.y = self._vp.absY + a_len
+   end
+
+   self._secondary[self._anchor] = a_len + GAP
+   -- It is presumed that _secondary.[x|y]Offset is preset by the client.
+
+   self._dividerVP.acRedimension(self._div.x, self._div.y, 0, self._div.width, self._div.height, 0)
+
+   if self._anchored then -- If pointer is anchored, it must be moved manually.
+      if (self._orientation == 'h') then
+         mGfx.setCursorPos(self._vp.absX + self._div.x + HALF_GAP, self._vp.absY + self._anchorY)
+      else
+         mGfx.setCursorPos(self._vp.absX + self._anchorX, self._vp.absY + self._div.y + HALF_GAP)
+      end
+   end
+
+   self._vp.acDraw()
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+gui.divider = function(Options)
+   local self = {
+      _pct          = 0.5,
+      _proportional = not Options.fixedSize,
+      _buttonHeld   = false,
+      _minA = nz(Options.minA, 5),
+      _minB = nz(Options.minB, 5),
+      _maxA = nz(Options.maxA, 8000),
+      _maxB = nz(Options.maxB, 8000),
+      _div  = { } -- Area of the 'strip' between the opposing regions.
    }
 
-   local lSelf = obj.find('self')
-   local lSurface
-   local lLeft, lRight, lTop, lBottom // Surface arrays
-   local lButtonState = 'released'
-   local lStyle = nz(Options.style,'default')
-   local lDirection = 'h'
-   local lBackground = { r=0, g=0, b=0, a=0 }
-   local lMin = { left=5, right=5, top=5, bottom=5 }
-   local lMax = { left=4000, right=4000, top=4000, bottom=4000 }
-   local lFixedSize = Options.fixedSize
-   local lPercentX = 1.0
-   local lPercentY = 1.0
-   local lInput
-   local lSplit = { } // Area of the divider 'strip' between the opposing regions.
-   local arrangeAll
-   local lCursorSet = 0
-   local lParent = { }
+   if (Options.left) and (Options.right) then
+      self._orientation = 'h'
+      self._primary     = Options.left
+      self._secondary   = Options.right
+      self._anchor      = 'x'
+      self._length      = 'width'
 
-   local function validateArray(Array)
-      for k,surface in ipairs(Array) do
-         local err, info = mGfx.GetSurfaceInfo(surface)
-         if (err != ERR_Okay) then error('Failed to analyse surface: ' .. mSys.GetErrorMsg(err)) end
-         if (info.parentID != lSurface.id) then
-            error('Surface #' .. surface.id .. ' is not contained by divider surface #' .. lSurface.id .. ' got #' .. info.parentID)
-         end
+      local sd = self._secondary.dimensions
+      if (bit.band(sd, DMF_FIXED_X) == 0) or (bit.band(sd, DMF_FIXED_X_OFFSET) == 0) then
+         error('The opposing viewport must use fixed x and xOffset coordinates.')
       end
+   elseif (Options.top) and (Options.bottom) then
+      self._orientation = 'v'
+      self._primary     = Options.top
+      self._secondary   = Options.bottom
+      self._anchor      = 'y'
+      self._length      = 'height'
+
+      local sd = self._secondary.dimensions
+      if (bit.band(sd, DMF_FIXED_Y) == 0) or (bit.band(sd, DMF_FIXED_Y_OFFSET) == 0) then
+         error('The opposing viewport must use fixed y and yOffset coordinates.')
+      end
+   else
+      error('A left/right or top/bottom pair must be specified.')
    end
 
-   // Checks if the given coordinates fall within the given area.
+   self._vp = self._primary.parent
+   if (self._vp.id != self._secondary.parent.id) then
+      error('The provided viewports do not share the same parent.')
+   end
 
-   local function withinArea(X, Y)
-      if (X < lSplit.x) or (Y < lSplit.y) or (X >= lSplit.x + lSplit.width) or (Y >= lSplit.y + lSplit.height) then
-         return false
+   local div_name = 'divider-bkgd-' .. self._vp.id
+   if (Options.style != 'none') then
+      if (self._orientation == 'h') then
+         self._pattern = self._vp.scene.new('VectorPattern', {
+            name='div_pattern', x=0, y=0, pageWidth=GAP, pageHeight=GAP*3, width=GAP, height=GAP*3, units=VUNIT_USERSPACE, spreadMethod=VSPREAD_REPEAT
+         })
+         local pt = string.format('0,0, %d,%d, %d,%d 0,%d', GAP, GAP, GAP, GAP*2, GAP)
+         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,20)' })
+
+         local pt = string.format('0,%d, %d,%d, %d,%d 0,%d', GAP, GAP, GAP+GAP, GAP, GAP*2+GAP, GAP+GAP)
+         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,40)' })
       else
-         return true
+         self._pattern = self._vp.scene.new('VectorPattern', {
+            name='div_pattern', x=0, y=0, pageWidth=GAP*3, pageHeight=GAP, width=GAP*3, height=GAP, units=VUNIT_USERSPACE, spreadMethod=VSPREAD_REPEAT
+         })
+         local pt = string.format('0,0, %d,0, %d,%d %d,%d', GAP, GAP*2, GAP, GAP, GAP)
+         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,20)' })
+
+         local pt = string.format('%d,0, %d,0, %d,%d %d,%d', GAP, GAP+GAP, GAP*2+GAP, GAP, GAP+GAP, GAP)
+         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,40)' })
       end
+
+      check(self._vp.scene.mtAddDef(div_name, self._pattern))
    end
 
-   local function getSplitCursor()
-      if (lDirection == 'h') then
-         return PTR_SPLIT_HORIZONTAL
-      else
-         return PTR_SPLIT_VERTICAL
-      end
-   end
-
-   // User I/O feedback
-
-   local function inputFeedback(Surface, Msg)
-      if bit.band(Msg.flags, JTYPE_MOVEMENT) != 0 then
-         if (lButtonState == 'held') then
-            local err, x, y = mGfx.GetRelativeCursorPos(lSurface, Msg.x, Msg.y)
-            arrangeAll(x, y)
-            lPercentX = lSplit.x / lParent.width
-            lPercentY = lSplit.y / lParent.height
-         else
-            // If the user is moving the mouse pointer over the resizing area and the mouse button is not currently
-            // held, check if we can change the pointer image to something else.  This provides effective visual
-            // notification to the user.
-
-            if (Msg.overID == lSurface.id) then
-               if withinArea(Msg.x, Msg.y) then
-                  local cursor = getSplitCursor()
-                  if (cursor != lCursorSet) then
-                     if mGfx.SetCursor(0, bit.bor(CRF_BUFFER, CRF_NO_BUTTONS), cursor, 0, lSelf.id) == ERR_Okay then
-                        lCursorSet = cursor
-                     end
-                  end
-               elseif (lCursorSet != 0) then
-                  mGfx.RestoreCursor(PTR_DEFAULT, lSelf.id)
-                  lCursorSet = 0
-               end
-            elseif (lCursorSet != 0) then
-               mGfx.RestoreCursor(PTR_DEFAULT, lSelf.id)
-               lCursorSet = 0
-            end
-         end
-      end
-
-      if (Msg.type == JET_BUTTON_1) then // LMB
-         if (Msg.value > 0) then
-            if withinArea(Msg.x, Msg.y) then
-               // Anchor the pointer
-               //if mGfx.LockCursor(lSurface) == ERR_Okay then
-               //   lAnchored = true
-               //   lAnchorX  = input.x
-               //   lAnchorY  = input.y
-               //end
-               lButtonState = 'held'
-            end
-         elseif (lButtonState == 'held') then
-            if (lAnchored) then
-               lAnchored = false
-               mGfx.UnlockCursor(lSurface)
-            end
-
-            local err, x, y = mGfx.GetRelativeCursorPos(lSurface, Msg.x, Msg.y)
-            if (err == ERR_Okay) and withinArea(x, y) then
-               // Do nothing
-            else // Release the cursor image
-               if (lCursorSet != 0) then
-                  mGfx.RestoreCursor(PTR_DEFAULT, lSelf.id)
-                  lCursorSet = 0
-               end
-            end
-
-            lButtonState = 'released'
-         end
-      end
-   end
-
-   // Return the maximum area covered by the surfaces referenced in an array.
-
-   local function maxCoverageArea(List)
-      local count = 0
-      local max = { left=0, right=0, top=0, bottom=0 }
-      for _, surface in ipairs(List) do
-         local err, x, y, absx, absy, width, height = mGfx.GetSurfaceCoords(surface)
-         if (err == ERR_Okay) then
-            if (count == 0) then
-               max.left   = x
-               max.top    = y
-               max.right  = x + width
-               max.bottom = y + height
-            else
-               if (x < max.left) then max.left = x end
-               if (y < max.top) then max.top = y end
-               if (x + width  > max.right) then max.right = x + width end
-               if (y + height > max.bottom) then max.bottom = y + height end
-            end
-            count = count + 1
-         end
-      end
-
-      if (max.right  > lParent.width) then max.right = lParent.width end
-      if (max.bottom > lParent.height) then max.bottom = lParent.height end
-
-      return max
-   end
-
-   // This function arranges surfaces on the split-side of the divider so that they are flush against everything on the
-   // left/top sides.
-
-   local function arrangeOppositeSurfaces()
-      if (lRelativeGap) then // Recalculate the gap size in pixels
-         if (lDirection == 'h') then
-            lGap = lParent.width * lRelativeGap / 100
-         else
-            lGap = lParent.height * lRelativeGap / 100
-         end
-      end
-
-      local max = { }
-
-      if (lDirection == 'h') then // Split left & right
-         local area = maxCoverageArea(lLeft)
-
-         max.left   = area.left
-         max.top    = area.top
-         max.right  = area.right
-         max.bottom = area.bottom
-
-         lSplit.x      = area.right
-         lSplit.y      = area.top
-         lSplit.width  = lGap
-         lSplit.height = area.bottom - area.top
-
-         // Arrange everything on the right side of the divider
-
-         for _, surface in ipairs(lRight) do
-            if (surface.minWidth > lMin.right) then
-               lMin.right = surface.minWidth
-            end
-
-            if (surface.maxWidth < 2000) and (surface.maxWidth > lMax.right) then
-               lMax.right = surface.maxWidth
-            end
-
-            surface.acRedimension(area.right + lGap, surface.y, 0,
-               surface.right - (area.right + lGap), surface.height, 0)
-
-            if (surface.x < max.left) then max.left = surface.x end
-            if (surface.y < max.top) then max.top = surface.y end
-            if (surface.right > max.right) then max.right = surface.right end
-            if (surface.bottom > max.bottom) then max.bottom = surface.bottom end
-         end
-      else // Split top & bottom
-         local area = maxCoverageArea(lTop)
-
-         max.left   = area.left
-         max.top    = area.top
-         max.right  = area.right
-         max.bottom = area.bottom
-
-         lSplit.x      = area.left
-         lSplit.y      = area.bottom
-         lSplit.width  = area.right - area.left
-         lSplit.height = lGap
-
-         // Arrange everything underneath the divider
-
-         for _, surface in ipairs(lBottom) do
-            if (surface.minHeight > lMin.bottom) then
-               lMin.bottom = surface.minHeight
-            end
-
-            if (surface.maxHeight < 2000) and (surface.MaxHeight > lMax.bottom) then
-               lMax.bottom = surface.maxHeight
-            end
-
-            surface.acRedimension(surface.x, area.bottom + lGap, 0,
-               surface.width, surface.y + surface.height - (area.bottom + lGap), 0)
-
-            if (surface.x < max.left) then max.left = surface.x end
-            if (surface.y < max.top) then max.top = surface.y end
-            if (surface.right > max.right) then max.right = surface.right end
-            if (surface.bottom > max.bottom) then max.bottom = surface.bottom end
-         end
-      end
-
-      return max
-   end
-
-   // Redimension everything on the left or top side of the divider, the call arrangeOppositeSurfaces() to resize
-   // everything on the other side of the divider.
-
-   arrangeAll = function(OverX, OverY) // OverX and OverY are absolute coordinates.
-         if (lDirection == 'h') then // Arrange the width of everything on the left side of the divider
-            local x_change = OverX - (lSplit.x + (lGap / 2))
-            for _, surface in ipairs(lLeft) do
-               local right = surface.x + surface.width + x_change
-               if (right < lMin.left) then
-                  right = lMin.left
-               end
-
-               if (lMax.left > 1) and (right > lMax.left) then
-                  right = lMax.left
-               end
-
-               if (right > lParent.width - lMin.right - lGap) then
-                  right = lParent.width - lMin.right - lGap
-               end
-
-               surface.acRedimension(surface.x, surface.y, 0, right - surface.x, surface.height, 0)
-            end
-         else // Arrange the height of everything at the top of the divider
-            local y_change = OverY - (lSplit.y + (lGap / 2))
-            for _, surface in ipairs(lTop) do
-               local bottom = surface.y + surface.height + y_change
-               if (bottom < lMin.top) then
-                  bottom = lMin.top
-               end
-
-               if ((lMax.top > 1) and (bottom > lMax.top)) then
-                  bottom = lMax.top
-               end
-
-               if (bottom > lParent.height - lMin.bottom - lGap) then
-                  bottom = lParent.height - lMin.bottom - lGap
-               end
-
-               surface.acRedimension(surface.x, surface.y, 0, surface.width, bottom - surface.y, 0)
-            end
-         end
-
-         // Arrange everything on the other side of the surface
-
-         local area = arrangeOppositeSurfaces()
-
-      lSurface.mtInvalidateRegion(area.left, area.top, area.right - area.left, area.bottom - area.top)
-
-      // If we have anchored the pointer, we need to tell the pointer to move or else it will stay locked at its
-      // current position.
-
-      if (lAnchored) then
-         local err
-         err, lParent.x, lParent.y, lParent.absX, lParent.absY, lParent.width, lParent.height = mGfx.GetSurfaceCoords(lSurface)
-
-         if (lDirection == 'h') then
-            mGfx.SetCursorPos(lParent.absX + lSplit.x + (lGap / 2), lParent.absY + lAnchorY)
-         else
-            mGfx.SetCursorPos(lParent.absX + lAnchorX, lParent.absY + lSplit.y + (lGap / 2))
-         end
-      end
-   end
-
-   // Principal drawing routine
-
-   local function drawDivider(Surface, Bitmap)
-      local TOTAL = 4
-
-      local err, bkgd  = Bitmap.mtGetColour(lBackground.r, lBackground.g, lBackground.b, lBackground.a)
-      local err, white = Bitmap.mtGetColour(255, 255, 255, 128)
-      local err, dark  = Bitmap.mtGetColour(0, 0, 0, 80)
-
-      if (lDirection == 'h') then
-         if (lBackground.a > 0) then
-            Bitmap.mtDrawRectangle(lSplit.x, lSplit.y, lGap, lSplit.height, bkgd, bit.bor(BAF_FILL, BAF_BLEND))
-         end
-
-         if (lGap > 4) then
-            local x = lSplit.x + (lGap / 2)
-            local y = lSplit.y + (lSplit.height / 2)
-            if (lStyle == 'alt') then // Diagonal slashes
-               x = x - 2
-               y = y - ((TOTAL * lGap)/2)
-               for i=1,TOTAL do
-                  Bitmap.mtDrawLine(x, y, x+3, y-3, dark)
-                  Bitmap.mtDrawLine(x, y+1, x+3, y-2, white)
-                  y = y + lGap
-               end
-            elseif (lStyle != 'none') then // Black & white alternating lines
-               x = x - 1
-               y = y - ((TOTAL * lGap)/2)
-               for i=1,TOTAL do
-                  Bitmap.mtDrawRectangle(x, y, 2, 2, dark, bit.bor(BAF_FILL, BAF_BLEND))
-                  y = y + lGap
-               end
-            end
-         end
-      else
-         if (lBackground.a > 0) then
-            Bitmap.mtDrawRectangle(lSplit.x, lSplit.y, lSplit.width, lGap, bkgd, bit.bor(BAF_FILL, BAF_BLEND))
-         end
-
-         if (lGap > 4) then
-            local x = lSplit.x + (lSplit.width / 2)
-            local y = lSplit.y + (lGap / 2)
-            if (lStyle == 'alt') then // Diagonal slashes
-               y = y - 2
-               x = x - ((TOTAL * lGap) / 2)
-               for i=1,TOTAL do
-                  Bitmap.mtDrawLine(x, y, x-3, y+3, dark)
-                  Bitmap.mtDrawLine(x+1, y, x+3, y-2, white)
-                  x = x + lGap
-               end
-            elseif (lStyle != 'none') then // Black & white alternating lines
-               y = y - 1
-               x = x - ((TOTAL * lGap) / 2)
-               for i=1,TOTAL do
-                  Bitmap.mtDrawRectangle(x, y, 2, 2, dark, bit.bor(BAF_FILL, BAF_BLEND))
-                  x = x + lGap
-               end
-            end
-         end
-      end
-   end
-
-   // Main entry point
-
-   catch(function()
-      if (Options.min) then
-         lMin.left   = nz(Options.min.left, lMin.left)
-         lMin.right  = nz(Options.min.right, lMin.right)
-         lMin.top    = nz(Options.min.top, lMin.top)
-         lMin.bottom = nz(Options.min.bottom, lMin.bottom)
-      end
-
-      if (Options.max) then
-         lMax.left   = nz(Options.max.left, lMax.left)
-         lMax.right  = nz(Options.max.right, lMax.right)
-         lMax.top    = nz(Options.max.top, lMax.top)
-         lMax.bottom = nz(Options.max.bottom, lMax.bottom)
-      end
-
-      if (Options.gap == nil) or (Options.gap < 3) or (Options.gap > 20) then
-         lGap = 6
-      else
-         lGap = Options.gap
-      end
-
-      if (Options.background) then
-         lBackground = gui.strToRGB(Options.background)
-      end
-
-      if (Options.left) and (Options.right) then
-         if (#Options.left < 1) then error('The left-side surface list is empty.') end
-         if (#Options.right < 1) then error('The right-side surface list is empty.') end
-         lDirection = 'h'
-         lLeft  = Options.left
-         lRight = Options.right
-         if (Options.surface == nil) then Options.surface = lLeft[1].parent end
-      elseif (Options.top) and (Options.bottom) then
-         if (#Options.top < 1) then error('The top-side surface list is empty.') end
-         if (#Options.bottom < 1) then error('The bottom-side surface list is empty.') end
-         lDirection = 'v'
-         lTop    = Options.top
-         lBottom = Options.bottom
-         if (Options.surface == nil) then Options.surface = lTop[1].parent end
-      else
-         error('The left/right or top/bottom options must be specified.')
-      end
-
-      lSurface = Options.surface
-      if (lSurface == nil) then error('The surface option must be defined.') end
-
-      if (lLeft) then validateArray(lLeft) end
-      if (lRight) then validateArray(lRight) end
-      if (lTop) then validateArray(lTop) end
-      if (lBottom) then validateArray(lBottom) end
-
-      lSurface.subscribe('redimension', function(Surface, Args)
-         lParent.x = Args.x
-         lParent.y = Args.y
-
-         // If the container surface moved, we don't have to do anything.  Only true resizes are important to us.
-
-         if (Args.width != lParent.width) or (Args.height != lParent.height) then
-            lParent.width  = Args.width
-            lParent.height = Args.height
-
-            // The fixed resize option means that when the parent surface is resized, the divider is not shifted
-            // to compensate.
-
-            if (lFixedSize) then
-               arrangeOppositeSurfaces()
-            else
-               arrangeAll(lPercentX * Args.width, lPercentY * Args.height)
-            end
-         end
-      end)
-
-      lInput = input.subscribe(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), Surface, 0, inputFeedback)
-
-      lSurface.mtAddCallback(drawDivider)
-
-      lParent = { x=lSurface.x, y=lSurface.y, width=lSurface.width, height=lSurface.height }
-
-      // Pull max and min values from the surfaces
-
-      if (lLeft) then
-         for k, surface in ipairs(lLeft) do
-            if (surface.minWidth + surface.x > lMin.left) then
-               lMin.left = surface.minWidth + surface.x
-            end
-
-            if (surface.maxWidth < 4000) and (surface.maxWidth + surface.x > lMax.left) then
-               lMax.Left = surface.maxWidth + surface.x
-            end
-         end
-      end
-
-      if (lRight) then
-         for k, surface in ipairs(lRight) do
-            local margin = lParent.width - surface.x - surface.width
-            if (surface.minWidth > lMin.right + margin) then
-               lMin.right = margin + surface.minWidth
-            end
-
-            if (surface.maxWidth < 4000) and (surface.maxWidth + margin > lMax.right) then
-               lMax.right = surface.maxWidth + margin
-            end
-         end
-      end
-
-      if (lTop) then
-         for k, surface in ipairs(lTop) do
-            if (surface.minHeight + surface.y > lMin.top) then
-               lMin.top = surface.minHeight + surface.y
-            end
-
-            if (surface.maxHeight < 4000) and (surface.maxHeight + surface.y > lMax.top) then
-               lMax.top = surface.maxHeight + surface.y
-            end
-         end
-      end
-
-      if (lBottom) then
-         for k, surface in ipairs(lBottom) do
-            local margin = lParent.height - surface.y - surface.height
-            if (surface.minHeight > lMin.bottom + margin) then
-               lMin.bottom = margin + surface.minHeight
-            end
-
-            if (surface.maxHeight < 4000) and (surface.maxHeight + margin > lMax.bottom) then
-               lMax.bottom = surface.maxHeight + margin
-            end
-         end
-      end
-
-      // Monitor the surface for its destruction
-
-      lSurface.subscribe('free', function(Surface)
-         if (lAnchored) then mGfx.UnlockCursor(lSurface) end
-         if (lCursorSet != 0) then mGfx.RestoreCursor(PTR_DEFAULT, lSelf.id) end
-         if (lInput) then lInput.unsubscribe() end
-      end)
-
-      // Arrange the surfaces around the divider
-
-      arrangeOppositeSurfaces()
-      lPercentX = lSplit.x / lParent.width
-      lPercentY = lSplit.y / lParent.height
-   end,
-   function(Exception)
-      error('Failed to initialise Divider: ' .. Exception.message)
+   self._vp.subscribe('free', function(Viewport)
+      if self._anchored then mGfx.unlockCursor(self._vp) end
    end)
+
+   if (self._orientation == 'h') then
+      self._dividerVP = self._vp.new('VectorViewport', {
+         name='div_vp', x=0, y=0, width=GAP, height='100%', cursor=PTR_SPLIT_HORIZONTAL
+      })
+   else
+      self._dividerVP = self._vp.new('VectorViewport', {
+         name='div_vp', x=0, y=0, width='100%', height=GAP, cursor=PTR_SPLIT_VERTICAL
+      })
+   end
+
+   if (Options.style != 'none') then
+      self._dividerVP.new('VectorRectangle', {
+         name='div_fill', x=0, y=0, width='100%', height='100%', fill='url(#' .. div_name .. ')'
+      })
+   end
+
+   arrangeAll(self)
+
+   self._pct = (self._div[self._anchor] + HALF_GAP) / self._vp[self._length]
+
+   self._vp.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+      if self._proportional then
+         if (self._orientation == 'h') then
+            arrangeAll(self, self._pct * Viewport.width)
+         else
+            arrangeAll(self, self._pct * Viewport.height)
+         end
+      else
+         arrangeAll(self)
+      end
+
+      Viewport.acDraw()
+   end)
+
+   check(self._dividerVP.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
+      local ev = Events
+      while ev do
+         if (ev.type == JET_ABS_X) or (ev.type == JET_ABS_Y) then
+            if self._buttonHeld then
+               if (self._orientation == 'h') then
+                  arrangeAll(self, ev.absX - self._vp.absX)
+               else
+                  arrangeAll(self, ev.absY - self._vp.absY)
+               end
+               self._pct = (self._div[self._anchor] + HALF_GAP) / self._vp[self._length]
+            end
+         elseif (ev.type == JET_BUTTON_1) then -- LMB
+            if (ev.value > 0) then
+               if mGfx.lockCursor(self._vp) == ERR_Okay then
+                  self._anchored = true
+                  self._anchorX  = input.x
+                  self._anchorY  = input.y
+               end
+               self._buttonHeld = true
+            elseif self._buttonHeld then
+               if self._anchored then
+                  self._anchored = false
+                  mGfx.unlockCursor(self._vp)
+               end
+
+               self._buttonHeld = false
+            end
+         end
+         ev = ev.next
+      end
+   end))
 
    return self
 end

@@ -7,6 +7,7 @@ static const struct ActionArray clVectorViewportActions[] = {
    { AC_Move, (APTR)VECTORVIEWPORT_Move },
    { AC_MoveToPoint, (APTR)VECTORVIEWPORT_MoveToPoint },
    { AC_NewObject, (APTR)VECTORVIEWPORT_NewObject },
+   { AC_Redimension, (APTR)VECTORVIEWPORT_Redimension },
    { AC_Resize, (APTR)VECTORVIEWPORT_Resize },
    { 0, 0 }
 };

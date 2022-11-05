@@ -111,7 +111,6 @@ static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
          Self->SpreadMethod = VSPREAD_REPEAT;
          Self->Units        = VUNIT_BOUNDING_BOX;
          Self->ContentUnits = VUNIT_USERSPACE;
-         Self->SpreadMethod = VSPREAD_PAD;
          Self->Opacity      = 1.0;
          return ERR_Okay;
       }
@@ -135,7 +134,8 @@ Dimensions: Dimension flags are stored here.
 Height: Height of the pattern tile.
 
 The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage
-then the dimension is calculated relative to the nearest bounding box or viewport, according to the #Units setting.
+then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the
+#Units setting.
 
 *****************************************************************************/
 
@@ -337,7 +337,8 @@ static ERROR PATTERN_GET_Viewport(extVectorPattern *Self, extVectorViewport **Va
 Width: Width of the pattern tile.
 
 The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage
-then the dimension is calculated relative to the nearest bounding box or viewport, according to the #Units setting.
+then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the
+#Units setting.
 
 *****************************************************************************/
 
@@ -483,7 +484,7 @@ static const FieldArray clPatternFields[] = {
    { "Opacity",      FDF_DOUBLE|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Opacity },
    { "Scene",        FDF_INTEGRAL|FDF_R,         0, NULL, NULL },
    { "Inherit",      FDF_OBJECT|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Inherit },
-   { "SpreadMethod", FDF_LONG|FDF_RW,            (MAXINT)&clPatternSpread, NULL, NULL },
+   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clPatternSpread, NULL, NULL },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clPatternUnits, NULL, NULL },
    { "ContentUnits", FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clPatternUnits, NULL, NULL },
    { "Dimensions",   FDF_LONGFLAGS|FDF_R,        (MAXINT)&clPatternDimensions, NULL, NULL },

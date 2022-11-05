@@ -80,8 +80,9 @@ function testW3AspectRatio()    hashTestSVG('transforms/w3-aspectratio.svg', 0x1
 function testW3SkewText()       hashTestSVG('transforms/w3-skew-text.svg', 0xe8984527) end
 function testW3Viewbox()        hashTestSVG('transforms/w3-viewbox.svg', 0xc3159d79) end
 
-function testCSS()          hashTestSVG('misc/css.svg', 0xab6e2a08) end
-function testBrushStrokes() hashTestSVG('misc/brush-strokes.svg', 0xf9f469c3) end
+function testCSS()             hashTestSVG('misc/css.svg', 0xab6e2a08) end
+function testBrushStrokes()    hashTestSVG('misc/brush-strokes.svg', 0xf9f469c3) end
+function testContourGradient() hashTestSVG('misc/contour-gradient.svg', 0x32ccd7e6) end
 
 function testClock()  hashTestSVG('images/clock.svg', 0xaf8d39d8) end
 function testTiger()  hashTestSVG('images/tiger.svg', 0x3f0e95a6) end
@@ -118,6 +119,7 @@ function testTiger()  hashTestSVG('images/tiger.svg', 0x3f0e95a6) end
         -- Misc
         'testCSS',
         'testBrushStrokes',
+        'testContourGradient',
         -- Stock Images
         'testClock',
         'testTiger',

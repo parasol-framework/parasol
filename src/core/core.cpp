@@ -1393,6 +1393,8 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       return;
    }
 
+   auto ctx = tlContext;
+
    if (glCodeIndex != CP_PRINT_CONTEXT) {
       if (Signal) {
          if ((Signal > 0) and (Signal < ARRAYSIZE(signals))) {
@@ -1402,14 +1404,14 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       }
       glCodeIndex = CP_PRINT_CONTEXT;
 
-      if ((ProcessID IS glProcessID) and (tlContext != &glTopContext)) {
+      if ((ProcessID IS glProcessID) and (ctx != &glTopContext)) {
          LONG class_id;
          STRING classname;
-         if ((class_id = tlContext->Object->ClassID)) {
-            classname = ResolveClassID(tlContext->Object->ClassID);
+         if ((class_id = ctx->Object->ClassID)) {
+            classname = ResolveClassID(ctx->Object->ClassID);
          }
          else classname = "None";
-         LOGE("  Object Context: #%d / %p [Class: %s / $%.8x]", tlContext->Object->UID, tlContext->Object, classname, tlContext->Object->ClassID);
+         LOGE("  Object Context: #%d / %p [Class: %s / $%.8x]", ctx->Object->UID, ctx->Object, classname, ctx->Object->ClassID);
       }
 
       glPageFault = 0;
@@ -1420,14 +1422,14 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
    if (ProcessID IS glProcessID) {
       if (glCodeIndex != CP_PRINT_ACTION) {
          glCodeIndex = CP_PRINT_ACTION;
-         if (tlContext->Action > 0) {
-            if (tlContext->Field) {
-               LOGE("  Last Action:    Set.%s", tlContext->Field->Name);
+         if (ctx->Action > 0) {
+            if (ctx->Field) {
+               LOGE("  Last Action:    Set.%s", ctx->Field->Name);
             }
-            else LOGE("  Last Action:    %s", ActionTable[tlContext->Action].Name);
+            else LOGE("  Last Action:    %s", ActionTable[ctx->Action].Name);
          }
-         else if (tlContext->Action < 0) {
-            LOGE("  Last Method:    %d", tlContext->Action);
+         else if (ctx->Action < 0) {
+            LOGE("  Last Method:    %d", ctx->Action);
          }
       }
       else LOGE("  The action table is corrupt.");
@@ -1516,6 +1518,8 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       return;
    }
 
+   auto ctx = tlContext;
+
    if (glCodeIndex != CP_PRINT_CONTEXT) {
       #ifdef __unix__
          fprintf(fd, "  Page Fault:     %p\n", glPageFault);
@@ -1532,12 +1536,12 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       }
       glCodeIndex = CP_PRINT_CONTEXT;
 
-      if ((ProcessID IS glProcessID) and (tlContext->Object)) {
+      if ((ProcessID IS glProcessID) and (ctx->Object)) {
          LONG class_id;
          CSTRING classname;
-         if (tlContext != &glTopContext) {
-            if ((class_id = tlContext->Object->ClassID)) {
-               classname = ResolveClassID(tlContext->Object->ClassID);
+         if (ctx != &glTopContext) {
+            if ((class_id = ctx->Object->ClassID)) {
+               classname = ResolveClassID(ctx->Object->ClassID);
             }
             else classname = "None";
          }
@@ -1545,7 +1549,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
             classname = "None";
             class_id = 0;
          }
-         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", tlContext->Object->UID, tlContext->Object, classname, tlContext->Object->ClassID);
+         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->Object->UID, ctx->Object, classname, ctx->Object->ClassID);
       }
 
       glPageFault = 0;
@@ -1556,14 +1560,14 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
    if (ProcessID IS glProcessID) {
       if (glCodeIndex != CP_PRINT_ACTION) {
          glCodeIndex = CP_PRINT_ACTION;
-         if (tlContext->Action > 0) {
-            if (tlContext->Field) {
-               fprintf(fd, "  Last Action:    Set.%s\n", tlContext->Field->Name);
+         if (ctx->Action > 0) {
+            if (ctx->Field) {
+               fprintf(fd, "  Last Action:    Set.%s\n", ctx->Field->Name);
             }
-            else fprintf(fd, "  Last Action:    %s\n", ActionTable[tlContext->Action].Name);
+            else fprintf(fd, "  Last Action:    %s\n", ActionTable[ctx->Action].Name);
          }
-         else if (tlContext->Action < 0) {
-            fprintf(fd, "  Last Method:    %d\n", tlContext->Action);
+         else if (ctx->Action < 0) {
+            fprintf(fd, "  Last Method:    %d\n", ctx->Action);
          }
       }
       else fprintf(fd, "  The action table is corrupt.\n");
