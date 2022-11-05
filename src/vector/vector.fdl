@@ -52,6 +52,13 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "COLLAPSE: Hide the vector and its children.  Do not use - provided for SVG compatibility only.",
     "INHERIT: Inherit the visibility state from the parent.")
 
+  enum("CMP", { start=0, comment="Component selection for RemapFX methods." },
+    "ALL: All colour channels.",
+    "RED: The red colour channel.",
+    "GREEN: The green colour channel.",
+    "BLUE: The blue colour channel.",
+    "ALPHA: The alpha channel.")
+
   enum("VLJ", { start=0, comment="Options for the look of line joins." }, // Match to agg::line_join_e
     "MITER: The default.  The join will form a pointed edge.",
     "MITER_REVERT",
@@ -410,6 +417,14 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
    obj(FilterEffect) Effect   # Effect pointer if the SourceType is REFERENCE.
   ]])
 
+  methods("RemapFX", "RF", {
+    { id=20, name="SelectGamma" },
+    { id=21, name="SelectTable" },
+    { id=22, name="SelectLinear" },
+    { id=23, name="SelectIdentity" },
+    { id=24, name="SelectDiscrete" }
+  })
+
   class("ImageFX",        { src="filters/filter_image.cpp", output="filters/filter_image_def.c", comment="Image filter support class." })
 
   class("SourceFX",       { src="filters/filter_source.cpp", output="filters/filter_source_def.c", comment="Source filter support class." })
@@ -429,6 +444,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
   class("MorphologyFX",   { src="filters/filter_morphology.cpp", output="filters/filter_morphology_def.c", comment="Morphology filter support class." })
 
   class("OffsetFX",       { src="filters/filter_offset.cpp", output="filters/filter_offset_def.c", comment="Offset filter support class." })
+
+  class("RemapFX",        { src="filters/filter_remap.cpp", output="filters/filter_remap_def.c", comment="Remap filter support class." })
 
   class("TurbulenceFX",   { src="filters/filter_turbulence.cpp", output="filters/filter_turbulence_def.c", comment="Turbulence filter support class." })
 
