@@ -406,10 +406,9 @@ enum {
    CP_FINISHED
 };
 
-/******************************************************************************
-** These values are set against glProgramStage to indicate the current state of the program (either starting up, active
-** or shutting down).
-*/
+//*****************************************************************************
+// These values are set against glProgramStage to indicate the current state of the program (either starting up, active
+// or shutting down).
 
 enum {
    STAGE_STARTUP=1,
@@ -417,7 +416,7 @@ enum {
    STAGE_SHUTDOWN
 };
 
-/****************************************************************************/
+//****************************************************************************
 
 struct ModuleHeader {
    LONG Total;          // Total number of registered modules
@@ -429,9 +428,8 @@ struct ModuleItem {
    // Followed by path
 };
 
-/*****************************************************************************
-** Memory messaging structure.
-*/
+//****************************************************************************
+// Memory messaging structure.
 
 struct MemoryMessageDetail {
    BYTE buffer[4];
@@ -446,9 +444,8 @@ struct MemoryMessage {
    #endif
 };
 
-/*****************************************************************************
-** Global data variables.
-*/
+//****************************************************************************
+// Global data variables.
 
 extern objMetaClass glMetaClass;
 extern LONG glEUID, glEGID, glUID, glGID;
@@ -511,6 +508,7 @@ extern struct KeyStore *glFields; // Reverse lookup for converting field hashes 
 extern OBJECTID glClassFileID;
 extern CSTRING glIDL;
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
+extern struct BaseClass glDummyObject;
 
 extern CSTRING glClassBinPath;
 extern CSTRING glModuleBinPath;
@@ -536,9 +534,8 @@ extern UBYTE glTimerCycle;
 extern LONG glDebugMemory;
 extern struct CoreBase *LocalCoreBase;
 
-/*****************************************************************************
-** Thread specific variables - these do not require locks.
-*/
+//****************************************************************************
+// Thread specific variables - these do not require locks.
 
 extern THREADVAR struct ObjectContext *tlContext;
 extern THREADVAR struct Message *tlCurrentMsg;
@@ -551,7 +548,7 @@ extern THREADVAR WORD tlPublicLockCount;
 extern THREADVAR WORD tlPrivateLockCount;
 extern THREADVAR LONG glForceUID, glForceGID, glDefaultPermissions;
 
-/****************************************************************************/
+//****************************************************************************
 
 extern LONG (**ManagedActions)(OBJECTPTR Object, APTR Parameters);
 extern ERROR (*glMessageHandler)(struct Message *);
@@ -572,15 +569,13 @@ extern THREADVAR LONG tlThreadReadMsg, tlThreadWriteMsg;
 extern struct FileMonitor *glFileMonitor;
 #endif
 
-/*****************************************************************************
-** Message handler chain structure.
-*/
+//****************************************************************************
+// Message handler chain structure.
 
 extern struct MsgHandler *glMsgHandlers, *glLastMsgHandler;
 
-/*****************************************************************************
-** Message structure and internal ID's for standard Task-to-Task messages.
-*/
+//****************************************************************************
+// Message structure and internal ID's for standard Task-to-Task messages.
 
 #define SIZE_MSGBUFFER (1024 * 64)
 
@@ -614,25 +609,25 @@ struct ValidateMessage {
    LONG ProcessID;
 };
 
-/*****************************************************************************
-** Current object state values are handled in the context structure.
-*/
+//****************************************************************************
+// Current object state values are handled in the context structure.
 
-struct ObjectContext {
+class ObjectContext {
+   public:
    struct ObjectContext *Stack; // For historical context / call stack analysis.
-   OBJECTPTR Object;    // Object that we are currently operating in.
-   struct Field *Field; // Used if the context enters a get/set field routine
-   WORD Action;         // Used if the context enters an action or method routine.
+   OBJECTPTR Object;      // Object that we are currently operating in.
+   struct Field *Field;   // Used if the context represents a get/set field routine
+   WORD Action;           // Used if the context enters an action or method routine.
 };
 
-/****************************************************************************/
+//****************************************************************************
 
 #ifdef __ANDROID__
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Parasol:Core", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "Parasol:Core", __VA_ARGS__)
 #endif
 
-/****************************************************************************/
+//****************************************************************************
 
 #define ZIP_PARASOL 0x7e // Use this identifier to declare Parasol zipped files
 
@@ -761,9 +756,8 @@ struct ziptail {
    UWORD commentlen;
 } __attribute__((__packed__));
 
-/*****************************************************************************
-** File Descriptor table.  This is for RegisterFD()
-*/
+//****************************************************************************
+// File Descriptor table.  This is for RegisterFD()
 
 #define MAX_FDS 40
 extern struct FDTable *glFDTable;
@@ -774,7 +768,7 @@ extern struct DocView *glDocView;
 
 #define LRT_Exclusive 1
 
-/****************************************************************************/
+//****************************************************************************
 
 class ModuleMaster : public BaseClass {
    public:
@@ -1083,9 +1077,8 @@ void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, 
 }
 #endif
 
-/*****************************************************************************
-** Function tracing macros.
-*/
+//****************************************************************************
+// Function tracing macros.
 
 #if FUNCTION_TRACE || LASTFUNCTION_TRACE
 
@@ -1121,8 +1114,7 @@ INLINE CSTRING GET_FIELD_NAME(ULONG FieldID)
    }
 }
 
-/*****************************************************************************
-*/
+//****************************************************************************
 
 #ifdef  __cplusplus
 
@@ -1159,12 +1151,12 @@ INLINE char is_alpha(char c) {
 }
 
 INLINE char UCase(char Case) {
-   if ((Case >= 'a') AND (Case <= 'z')) Case -= 0x20;
+   if ((Case >= 'a') and (Case <= 'z')) Case -= 0x20;
    return Case;
 }
 
 INLINE char LCase(char Case) {
-   if ((Case >= 'A') AND (Case <= 'Z')) Case = Case - 'A' + 'Z';
+   if ((Case >= 'A') and (Case <= 'Z')) Case = Case - 'A' + 'Z';
    return Case;
 }
 
@@ -1174,7 +1166,7 @@ INLINE CSTRING get_extension(CSTRING Path)
 {
    ULONG i;
    for (i=0; Path[i]; i++);
-   while ((i > 0) AND (Path[i] != '.') AND (Path[i] != ':') AND (Path[i] != '/') AND (Path[i] != '\\')) i--;
+   while ((i > 0) and (Path[i] != '.') and (Path[i] != ':') and (Path[i] != '/') and (Path[i] != '\\')) i--;
    if (Path[i] IS '.') return Path+i+1;
    else return NULL;
 }
@@ -1185,7 +1177,7 @@ INLINE CSTRING get_filename(CSTRING Path)
 {
    ULONG i;
    for (i=0; Path[i]; i++);
-   while ((i > 0) AND (Path[i-1] != '/') AND (Path[i-1] != '\\') AND (Path[i-1] != ':')) i--;
+   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
    if (Path[i]) return Path+i;
    else return NULL;
 }

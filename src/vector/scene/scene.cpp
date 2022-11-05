@@ -70,7 +70,7 @@ static ERROR VECTORSCENE_ActionNotify(extVectorScene *Self, struct acActionNotif
       auto resize = (struct acRedimension *)Args->Args;
 
       if (Self->Flags & VPF_RESIZE) {
-         Self->PageWidth = resize->Width;
+         Self->PageWidth  = resize->Width;
          Self->PageHeight = resize->Height;
 
          if (Self->Viewport) {
@@ -281,7 +281,7 @@ Definitions are created with the #AddDef() method.
 
 -INPUT-
 cstr Name: The name of the definition.
-&obj Def: A pointer to the definition is returned here if discovered.
+&obj Def: A pointer to the definition object is returned here if discovered.
 
 -ERRORS-
 Okay
@@ -784,7 +784,7 @@ static void process_resize_msgs(extVectorScene *Self)
          for (auto &sub : list) {
             ERROR result;
             auto vector = sub.first;
-            auto func = sub.second;
+            auto func   = sub.second;
             if (func.Type IS CALL_STDC) {
                parasol::SwitchContext ctx(func.StdC.Context);
                auto callback = (ERROR (*)(extVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE))func.StdC.Routine;
@@ -792,12 +792,12 @@ static void process_resize_msgs(extVectorScene *Self)
             }
             else if (func.Type IS CALL_SCRIPT) {
                ScriptArg args[] = {
-                  { "Viewport", FDF_OBJECT, { .Address = view } },
-                  { "Vector",   FDF_OBJECT, { .Address = vector } },
-                  { "X",        FDF_DOUBLE, { .Double = view->FinalX } },
-                  { "Y",        FDF_DOUBLE, { .Double = view->FinalY } },
-                  { "Width",    FDF_DOUBLE, { .Double = view->vpFixedWidth } },
-                  { "Height",   FDF_DOUBLE, { .Double = view->vpFixedHeight } }
+                  { "Viewport",       FDF_OBJECT, { .Address = view } },
+                  { "Vector",         FDF_OBJECT, { .Address = vector } },
+                  { "ViewportX",      FDF_DOUBLE, { .Double = view->FinalX } },
+                  { "ViewportY",      FDF_DOUBLE, { .Double = view->FinalY } },
+                  { "ViewportWidth",  FDF_DOUBLE, { .Double = view->vpFixedWidth } },
+                  { "ViewportHeight", FDF_DOUBLE, { .Double = view->vpFixedHeight } }
                };
                scCallback(func.Script.Script, func.Script.ProcedureID, args, ARRAYSIZE(args), &result);
             }
@@ -1033,9 +1033,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
       }
       else if (input->Type IS JET_ENTERED_SURFACE);
       else if (input->Flags & JTYPE_BUTTON) {
-         OBJECTID target;
-         if (Self->ButtonLock) target = Self->ButtonLock;
-         else target = Self->ActiveVector;
+         OBJECTID target = Self->ButtonLock ? Self->ButtonLock : Self->ActiveVector;
 
          if (target) {
             parasol::ScopedObjectLock<extVector> lock(target);

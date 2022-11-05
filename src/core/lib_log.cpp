@@ -227,15 +227,16 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
       // If no header is provided, make one to match the current context
 
-      if (tlContext->Action) {
-         if (tlContext->Action < 0) {
-            objMetaClass *mc = (objMetaClass *)tlContext->Object->Class;
-            if ((mc) and (mc->Methods) and (-tlContext->Action < mc->TotalMethods)) {
-               action = mc->Methods[-tlContext->Action].Name;
+      auto ctx = tlContext;
+      if (ctx->Action) {
+         if (ctx->Action < 0) {
+            objMetaClass *mc = (objMetaClass *)ctx->Object->Class;
+            if ((mc) and (mc->Methods) and (-ctx->Action < mc->TotalMethods)) {
+               action = mc->Methods[-ctx->Action].Name;
             }
             else action = "Method";
          }
-         else action = ActionTable[tlContext->Action].Name;
+         else action = ActionTable[ctx->Action].Name;
       }
       else action = glProgName;
 
@@ -249,19 +250,19 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
          fmsg(Header, msgheader, msgstate, 0);
 
-         if (tlContext->Object->Class) {
+         if (ctx->Object->Class) {
             char msg[180];
 
-            if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((objMetaClass *)tlContext->Object->Class)->Name;
+            if (ctx->Object->Stats->Name[0]) name = ctx->Object->Stats->Name;
+            else name = ((objMetaClass *)ctx->Object->Class)->Name;
 
             if (glLogLevel > 5) {
-               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UID, tlContext->Field->Name, Format);
-               else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UID, Format);
+               if (ctx->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, ctx->Object->UID, ctx->Field->Name, Format);
+               else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, ctx->Object->UID, Format);
             }
             else {
-               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s:%d:%s] %s", name, tlContext->Object->UID, tlContext->Field->Name, Format);
-               else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, tlContext->Object->UID, Format);
+               if (ctx->Field) snprintf(msg, sizeof(msg), "[%s:%d:%s] %s", name, ctx->Object->UID, ctx->Field->Name, Format);
+               else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, ctx->Object->UID, Format);
             }
 
             va_list arg;
@@ -288,19 +289,19 @@ void LogF(CSTRING Header, CSTRING Format, ...)
             msgheader[len] = 0;
          }
 
-         OBJECTPTR obj = tlContext->Object;
+         OBJECTPTR obj = ctx->Object;
          if (obj->Class) {
             if (obj->Stats->Name[0]) name = obj->Stats->Name;
             else name = ((objMetaClass *)obj->Class)->ClassName;
 
             if (glLogLevel > 5) {
-               if (tlContext->Field) {
-                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, tlContext->Field->Name);
+               if (ctx->Field) {
+                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx->Field->Name);
                }
                else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID);
             }
-            else if (tlContext->Field) {
-               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, tlContext->Field->Name);
+            else if (ctx->Field) {
+               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx->Field->Name);
             }
             else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UID);
          }
@@ -413,7 +414,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       else msgstate = MS_MSG;
 
       //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
-      //fprintf(stderr, "%p ", tlContext);
+      //fprintf(stderr, "%p ", ctx);
 
       #if defined(__unix__) and !defined(__ANDROID__)
          BYTE flushdbg;
@@ -438,15 +439,16 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       // If no header is provided, make one to match the current context
 
-      if (tlContext->Action) {
-         if (tlContext->Action < 0) {
-            objMetaClass *mc = (objMetaClass *)tlContext->Object->Class;
-            if ((mc) and (mc->Methods) and (-tlContext->Action < mc->TotalMethods)) {
-               action = mc->Methods[-tlContext->Action].Name;
+      auto ctx = tlContext;
+      if (ctx->Action) {
+         if (ctx->Action < 0) {
+            objMetaClass *mc = (objMetaClass *)ctx->Object->Class;
+            if ((mc) and (mc->Methods) and (-ctx->Action < mc->TotalMethods)) {
+               action = mc->Methods[-ctx->Action].Name;
             }
             else action = "Method";
          }
-         else action = ActionTable[tlContext->Action].Name;
+         else action = ActionTable[ctx->Action].Name;
       }
       else action = glProgName;
 
@@ -460,19 +462,19 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
          fmsg(Header, msgheader, msgstate, 0);
 
-         if (tlContext->Object->Class) {
+         if (ctx->Object->Class) {
             char msg[180];
 
-            if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((objMetaClass *)tlContext->Object->Class)->Name;
+            if (ctx->Object->Stats->Name[0]) name = ctx->Object->Stats->Name;
+            else name = ((objMetaClass *)ctx->Object->Class)->Name;
 
             if (glLogLevel > 5) {
-               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UID, tlContext->Field->Name, Message);
-               else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, tlContext->Object->UID, Message);
+               if (ctx->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, ctx->Object->UID, ctx->Field->Name, Message);
+               else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, ctx->Object->UID, Message);
             }
             else {
-               if (tlContext->Field) snprintf(msg, sizeof(msg), "[%s:%d:%s] %s", name, tlContext->Object->UID, tlContext->Field->Name, Message);
-               else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, tlContext->Object->UID, Message);
+               if (ctx->Field) snprintf(msg, sizeof(msg), "[%s:%d:%s] %s", name, ctx->Object->UID, ctx->Field->Name, Message);
+               else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, ctx->Object->UID, Message);
             }
 
             __android_log_vprint((level <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, msg, Args);
@@ -493,19 +495,19 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
             msgheader[len] = 0;
          }
 
-         OBJECTPTR obj = tlContext->Object;
+         OBJECTPTR obj = ctx->Object;
          if (obj->Class) {
             if (obj->Stats->Name[0]) name = obj->Stats->Name;
             else name = ((objMetaClass *)obj->Class)->ClassName;
 
             if (glLogLevel > 5) {
-               if (tlContext->Field) {
-                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, tlContext->Field->Name);
+               if (ctx->Field) {
+                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx->Field->Name);
                }
                else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID);
             }
-            else if (tlContext->Field) {
-               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, tlContext->Field->Name);
+            else if (ctx->Field) {
+               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx->Field->Name);
             }
             else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UID);
          }
@@ -578,31 +580,32 @@ ERROR FuncError(CSTRING Header, ERROR Code)
    if ((Code < glTotalMessages) and (Code > 0)) {
       // Print the header
 
+      auto ctx = tlContext;
       if (!Header) {
-         if (tlContext->Action) {
-            if (tlContext->Action < 0) {
-               objMetaClass *mc = (objMetaClass *)tlContext->Object->Class;
-               if ((mc) and (mc->Methods) and (-tlContext->Action < mc->TotalMethods)) {
-                  Header = mc->Methods[-tlContext->Action].Name;
+         if (ctx->Action) {
+            if (ctx->Action < 0) {
+               objMetaClass *mc = (objMetaClass *)ctx->Object->Class;
+               if ((mc) and (mc->Methods) and (-ctx->Action < mc->TotalMethods)) {
+                  Header = mc->Methods[-ctx->Action].Name;
                }
                else Header = "Method";
             }
-            else Header = ActionTable[tlContext->Action].Name;
+            else Header = ActionTable[ctx->Action].Name;
          }
          else Header = "Function";
       }
 
       #ifdef __ANDROID__
-         if (tlContext->Object->Class) {
+         if (ctx->Object->Class) {
             STRING name;
 
-            if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((objMetaClass *)tlContext->Object->Class)->Name;
+            if (ctx->Object->Stats->Name[0]) name = ctx->Object->Stats->Name;
+            else name = ((objMetaClass *)ctx->Object->Class)->Name;
 
-            if (tlContext->Field) {
-                __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d:%s] %s", name, tlContext->Object->UID, tlContext->Field->Name, glMessages[Code]);
+            if (ctx->Field) {
+                __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d:%s] %s", name, ctx->Object->UID, ctx->Field->Name, glMessages[Code]);
             }
-            else __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d] %s", name, tlContext->Object->UID, glMessages[Code]);
+            else __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d] %s", name, ctx->Object->UID, glMessages[Code]);
          }
          else __android_log_print(ANDROID_LOG_ERROR, Header, "%s", glMessages[Code]);
       #else
@@ -622,14 +625,14 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 
          fmsg(Header, msgheader, MS_MSG, 2);
 
-         if (tlContext->Object->Class) {
-            if (tlContext->Object->Stats->Name[0]) name = tlContext->Object->Stats->Name;
-            else name = ((objMetaClass *)tlContext->Object->Class)->ClassName;
+         if (ctx->Object->Class) {
+            if (ctx->Object->Stats->Name[0]) name = ctx->Object->Stats->Name;
+            else name = ((objMetaClass *)ctx->Object->Class)->ClassName;
 
-            if (tlContext->Field) {
-               fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, tlContext->Object->UID, tlContext->Field->Name, glMessages[Code], hiend);
+            if (ctx->Field) {
+               fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, ctx->Object->UID, ctx->Field->Name, glMessages[Code], hiend);
             }
-            else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, tlContext->Object->UID, glMessages[Code], hiend);
+            else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, ctx->Object->UID, glMessages[Code], hiend);
          }
          else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[Code], hiend);
 
