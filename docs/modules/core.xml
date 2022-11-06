@@ -779,18 +779,6 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
   </function>
 
   <function>
-    <name>CurrentField</name>
-    <category>Fields</category>
-    <comment>Returns a pointer to the field meta data representing an active get or set function.</comment>
-    <prototype>struct Field * CurrentField()</prototype>
-    <description>
-<p>The CurrentField() function returns field meta data for the active thread, if it is operating within a field's get or set operator.  In all other situations, NULL is returned.</p>
-<p>This is a technical function with limited use cases.  Dynamic languages that need to use generic get and set functions to support virtual field operations will find it useful.</p>
-    </description>
-    <result type="struct Field *">Returns the active field meta data or NULL if the thread is not executing a get or set operation.</result>
-  </function>
-
-  <function>
     <name>CurrentTask</name>
     <category>System</category>
     <comment>Returns the active Task object.</comment>
@@ -1040,7 +1028,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id, &amp;count);
     <comment>Returns a message structure if called from an action that was executed by the message system.</comment>
     <prototype>struct Message * GetActionMsg()</prototype>
     <description>
-<p>This function is designed to be called from action and method support routines only.  It will return a Message structure if the action currently under execution has been called directly from the <function module="Core">ProcessMessages</function> function. In all other cases a NULL pointer is returned.</p>
+<p>This function is for use by action and method support routines only.  It will return a Message structure if the action currently under execution has been called directly from the <function module="Core">ProcessMessages</function> function.  In all other cases a NULL pointer is returned.</p>
 <p>The Message structure reflects the contents of a standard <function module="Core">GetMessage</function> call.  Of particular interest may be the Time field, which indicates the time-stamp at which the action message was originally sent to the object.</p>
     </description>
     <result type="struct Message *">A Message structure is returned if the function is called in valid circumstances, otherwise NULL.  The Message structure's fields are described in the <function module="Core">GetMessage</function> function.</result>
@@ -2294,7 +2282,7 @@ FreeResource(memory);
 <p>Freeing the bitmap and memory block after the display would be invalid.  They can however be removed before the display is terminated, if necessary.</p>
 <p>SetContext() is intended for use by modules and classes.  Do not use it unless conditions necessitate its use.  The Core will automatically set the correct context when calling any action or method of a class, as do the field management functions.</p>
     </description>
-    <result type="OBJECTPTR">Returns a pointer to the previous context.  Because contexts will nest, you need to call SetContext() a second time with the returned pointer, in order to keep the Task stable.</result>
+    <result type="OBJECTPTR">Returns a pointer to the previous context.  Because contexts nest, the client must call SetContext() a second time with this pointer in order to keep the process stable.</result>
   </function>
 
   <function>
