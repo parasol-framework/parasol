@@ -145,12 +145,12 @@ typedef struct {
 } MixRoutine;
 
 typedef struct {
-   MixRoutine routines[5];
+   const MixRoutine routines[5];
 } MixRoutineSet;
 
 #define MAX_CHANNELSETS 8
 #define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
-  
+
 struct AudioSample {
    UBYTE *  Data;        // Private.  Pointer to the sample data.
    OBJECTID StreamID;    // Reference to an object to use for streaming
@@ -328,7 +328,7 @@ typedef class plAudio : public BaseClass {
    struct ChannelSet Channels[MAX_CHANNELSETS]; // Channels are grouped into sets, which are allocated on a per-task basis
    struct AudioSample *Samples;
    struct VolumeCtl *VolumeCtl;
-   MixRoutineSet      *MixRoutines;
+   const MixRoutineSet *MixRoutines;
    MEMORYID BFMemoryMID;
    MEMORYID BufferMemoryMID;
    MEMORYID SamplesMID;
@@ -356,7 +356,7 @@ typedef class plAudio : public BaseClass {
    MEMORYID VolumeCtlMID;
    LONG VolumeCtlTotal;
    char prvDevice[28];
-  
+
 #endif
    // Action stubs
 
@@ -414,7 +414,7 @@ typedef class plSound : public BaseClass {
     struct WAVEFormat *prvWAVE;
     UBYTE    prvPlatformData[128];  // Data area for holding platform/hardware specific information
     LONG     prvAlignment;          // Byte alignment value
-  
+
 #endif
    // Action stubs
 
@@ -485,5 +485,5 @@ INLINE ERROR sndOpenChannelsID(OBJECTID AudioID, LONG Total, LONG Key, LONG Comm
    }
    else return ERR_AccessObject;
 }
-  
+
 #endif

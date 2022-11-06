@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 Audio: Supports a machine's audio hardware and provides a client-server audio management service.
@@ -18,22 +18,22 @@ Support for audio recording is not currently available.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_AddSample(objAudio *, struct sndAddSample *);
-static ERROR AUDIO_AddStream(objAudio *, struct sndAddStream *);
-static ERROR AUDIO_Beep(objAudio *, struct sndBeep *);
-static ERROR AUDIO_BufferCommand(objAudio *, struct sndBufferCommand *);
-static ERROR AUDIO_CloseChannels(objAudio *, struct sndCloseChannels *);
-static ERROR AUDIO_OpenChannels(objAudio *, struct sndOpenChannels *);
-static ERROR AUDIO_RemoveSample(objAudio *, struct sndRemoveSample *);
-static ERROR AUDIO_SetVolume(objAudio *, struct sndSetVolume *);
+static ERROR AUDIO_AddSample(extAudio *, struct sndAddSample *);
+static ERROR AUDIO_AddStream(extAudio *, struct sndAddStream *);
+static ERROR AUDIO_Beep(extAudio *, struct sndBeep *);
+static ERROR AUDIO_BufferCommand(extAudio *, struct sndBufferCommand *);
+static ERROR AUDIO_CloseChannels(extAudio *, struct sndCloseChannels *);
+static ERROR AUDIO_OpenChannels(extAudio *, struct sndOpenChannels *);
+static ERROR AUDIO_RemoveSample(extAudio *, struct sndRemoveSample *);
+static ERROR AUDIO_SetVolume(extAudio *, struct sndSetVolume *);
 
-static ERROR AUDIO_SaveSettings(objAudio *, APTR);
+static ERROR AUDIO_SaveSettings(extAudio *, APTR);
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static ERROR AUDIO_AccessObject(objAudio *Self, APTR Void)
+static ERROR AUDIO_AccessObject(extAudio *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -90,7 +90,7 @@ static ERROR AUDIO_AccessObject(objAudio *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Activate: Enables access to the audio hardware and initialises the mixer.
 
@@ -102,9 +102,9 @@ device.  The resources and any device locks obtained by this action can be relea
 An inactive audio object can operate in a limited fashion but will not otherwise interact directly with the audio
 hardware.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_Activate(objAudio *Self, APTR Void)
+static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -172,7 +172,7 @@ static ERROR AUDIO_Activate(objAudio *Self, APTR Void)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddSample: Adds a new sample to an audio object for channel-based playback.
@@ -225,9 +225,9 @@ ReallocMemory: The existing sample handle array could not be expanded.
 AllocMemory: Failed to allocate enough memory to hold the sample data.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-ERROR AUDIO_AddSample(objAudio *Self, struct sndAddSample *Args)
+ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 {
    parasol::Log log;
 
@@ -295,7 +295,7 @@ ERROR AUDIO_AddSample(objAudio *Self, struct sndAddSample *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddStream: Adds a new sample-stream to an Audio object for channel-based playback.
@@ -358,11 +358,11 @@ AllocMemory: Failed to allocate the stream buffer.
 CreateObject: Failed to create a file object based on the supplied Path.
 -END-
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 #define MAX_STREAM_BUFFER 32768  // Max stream buffer length in bytes
 
-static ERROR AUDIO_AddStream(objAudio *Self, struct sndAddStream *Args)
+static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 {
    parasol::Log log;
    OBJECTPTR stream;
@@ -489,7 +489,7 @@ static ERROR AUDIO_AddStream(objAudio *Self, struct sndAddStream *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Beep: Beeps the PC audio speaker.
@@ -508,9 +508,9 @@ Okay
 NullArgs
 NoSupport: PC speaker support is not available.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_Beep(objAudio *Self, struct sndBeep *Args)
+static ERROR AUDIO_Beep(extAudio *Self, struct sndBeep *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -524,7 +524,7 @@ static ERROR AUDIO_Beep(objAudio *Self, struct sndBeep *Args)
    return ERR_NoSupport;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 BufferCommand: Sends instructions to the audio mixer.
@@ -586,9 +586,9 @@ BufferOverflow: The command buffer is full.
 NoSupport: The Command is not supported.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_BufferCommand(objAudio *Self, struct sndBufferCommand *Args)
+static ERROR AUDIO_BufferCommand(extAudio *Self, struct sndBufferCommand *Args)
 {
    parasol::Log log;
 
@@ -657,7 +657,7 @@ static ERROR AUDIO_BufferCommand(objAudio *Self, struct sndBufferCommand *Args)
    return ERR_NoSupport;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Clear: Clears the audio buffers.
@@ -665,9 +665,9 @@ Clear: Clears the audio buffers.
 Call this action at any time to clear the internal audio buffers.  This will have the side-effect of temporarily
 stopping all output until the next audio update occurs.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_Clear(objAudio *Self, APTR Void)
+static ERROR AUDIO_Clear(extAudio *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -682,7 +682,7 @@ static ERROR AUDIO_Clear(objAudio *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 CloseChannels: Frees audio channels that have been allocated for sample playback.
@@ -700,9 +700,9 @@ Okay
 NullArgs
 Args
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_CloseChannels(objAudio *Self, struct sndCloseChannels *Args)
+static ERROR AUDIO_CloseChannels(extAudio *Self, struct sndCloseChannels *Args)
 {
    parasol::Log log;
 
@@ -743,16 +743,16 @@ static ERROR AUDIO_CloseChannels(objAudio *Self, struct sndCloseChannels *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Deactivate: Disables the audio mixer and returns device resources to the system.
 
 Deactivating an audio object will switch off the mixer, clear the output buffer and return any allocated device
 resources back to the host system.  The audio object will remain in a suspended state until it is reactivated.
 -END-
-s*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_Deactivate(objAudio *Self, APTR Void)
+static ERROR AUDIO_Deactivate(extAudio *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -780,7 +780,7 @@ static ERROR AUDIO_Deactivate(objAudio *Self, APTR Void)
 static void task_removed(APTR Reference, evTaskRemoved *Info, LONG InfoSize)
 {
    parasol::Log log("Audio");
-   objAudio *Self;
+   extAudio *Self;
 
    if (!AccessObject((OBJECTID)(MAXINT)Reference, 3000, &Self)) {
       log.msg("Dead task reported by system - checking integrity of %d channels.", ARRAYSIZE(Self->Channels));
@@ -815,7 +815,7 @@ static void task_removed(APTR Reference, evTaskRemoved *Info, LONG InfoSize)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Event: user_login()
 ** Reload the user's audio configuration details.
 */
@@ -823,7 +823,7 @@ static void task_removed(APTR Reference, evTaskRemoved *Info, LONG InfoSize)
 static void user_login(APTR Reference, APTR Info, LONG InfoSize)
 {
    parasol::Log log("Audio");
-   objAudio *Self;
+   extAudio *Self;
 
    if (!AccessObject((OBJECTID)(MAXINT)Reference, 3000, &Self)) {
       if (Self->Initialising IS FALSE) {
@@ -838,7 +838,7 @@ static void user_login(APTR Reference, APTR Info, LONG InfoSize)
 
 //****************************************************************************
 
-static ERROR AUDIO_Free(objAudio *Self, APTR Void)
+static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -921,7 +921,7 @@ static ERROR AUDIO_Free(objAudio *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR AUDIO_Init(objAudio *Self, APTR Void)
+static ERROR AUDIO_Init(extAudio *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -944,7 +944,7 @@ static ERROR AUDIO_Init(objAudio *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR AUDIO_NewObject(objAudio *Self, APTR Void)
+static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 {
    parasol::Log log;
    WORD i;
@@ -1001,7 +1001,7 @@ static ERROR AUDIO_NewObject(objAudio *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 OpenChannels: Allocates audio channels that can be used for sample playback.
@@ -1042,9 +1042,9 @@ AllocMemory: Memory for the audio channels could not be allocated.
 ArrayFull: The maximum number of available channel sets is currently exhausted.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_OpenChannels(objAudio *Self, struct sndOpenChannels *Args)
+static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 {
    parasol::Log log;
    LONG index, total;
@@ -1120,11 +1120,11 @@ static ERROR AUDIO_OpenChannels(objAudio *Self, struct sndOpenChannels *Args)
    else return log.warning(ERR_AllocMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Audio: ReleaseObject
 */
 
-static ERROR AUDIO_ReleaseObject(objAudio *Self, APTR Void)
+static ERROR AUDIO_ReleaseObject(extAudio *Self, APTR Void)
 {
    if (Self->BFMemory)     { ReleaseMemory(Self->BFMemory);     Self->BFMemory = NULL; }
    if (Self->BufferMemory) { ReleaseMemory(Self->BufferMemory); Self->BufferMemory = NULL; }
@@ -1145,7 +1145,7 @@ static ERROR AUDIO_ReleaseObject(objAudio *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveSample: Removes a sample from the global sample list and deallocates its memory usage.
@@ -1172,9 +1172,9 @@ OutOfRange: The provided sample handle is not within the valid range.
 IllegalActionAttempt: You attempted to call this method directly using the Action() function.  Use ActionMsg() instead.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_RemoveSample(objAudio *Self, struct sndRemoveSample *Args)
+static ERROR AUDIO_RemoveSample(extAudio *Self, struct sndRemoveSample *Args)
 {
    parasol::Log log;
    AudioSample *sample;
@@ -1214,26 +1214,26 @@ static ERROR AUDIO_RemoveSample(objAudio *Self, struct sndRemoveSample *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Reset: Resets the audio settings to default values.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_Reset(objAudio *Self, APTR Void)
+static ERROR AUDIO_Reset(extAudio *Self, APTR Void)
 {
    Self->Bass   = 50;
    Self->Treble = 50;
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveSettings: Saves the current audio settings.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_SaveSettings(objAudio *Self, APTR Void)
+static ERROR AUDIO_SaveSettings(extAudio *Self, APTR Void)
 {
    OBJECTPTR file;
    if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
@@ -1247,13 +1247,13 @@ static ERROR AUDIO_SaveSettings(objAudio *Self, APTR Void)
    else return ERR_CreateFile;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveToObject: Saves the current audio settings to another object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_SaveToObject(objAudio *Self, struct acSaveToObject *Args)
+static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
    OBJECTPTR config;
@@ -1362,7 +1362,7 @@ static ERROR AUDIO_SaveToObject(objAudio *Self, struct acSaveToObject *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetVolume: Sets the volume for input and output mixers.
@@ -1373,7 +1373,7 @@ is also provided for special options, such as muting.
 
 To set the volume for a mixer, you need to know its index (by scanning the #VolumeCtl field) or you can set
 its name (to change the Master volume, use a name of "Master").  A channel needs to be specified, or you can use
-CHN_ALL to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags
+`CHN_ALL` to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags
 may be set as follows:
 
 <types lookup="SVF"/>
@@ -1391,9 +1391,9 @@ NullArgs
 OutOfRange: The Volume or Index is out of the acceptable range.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR AUDIO_SetVolume(objAudio *Self, struct sndSetVolume *Args)
+static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 {
    parasol::Log log;
 
@@ -1591,7 +1591,7 @@ static ERROR AUDIO_SetVolume(objAudio *Self, struct sndSetVolume *Args)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Bass: Sets the amount of bass to use for audio playback.
@@ -1607,9 +1607,9 @@ BitDepth: The bit depth affects the overall quality of audio input and output.
 This field manages the bit depth for audio mixing and output.  Valid bit depths are 8, 16 and 24, with 16 being the
 recommended value for CD quality playback.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_BitDepth(objAudio *Self, LONG Value)
+static ERROR SET_BitDepth(extAudio *Self, LONG Value)
 {
    if (Value IS 16) Self->BitDepth = 16;
    else if (Value IS 8) Self->BitDepth = 8;
@@ -1618,7 +1618,7 @@ static ERROR SET_BitDepth(objAudio *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Device: The name of the audio device used by this audio object.
@@ -1629,15 +1629,15 @@ setting the Device field to the name of the device that you would like to use.
 
 The default device can always be referenced with a name of "Default".
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR GET_Device(objAudio *Self, CSTRING *Value)
+static ERROR GET_Device(extAudio *Self, CSTRING *Value)
 {
    *Value = Self->prvDevice;
    return ERR_Okay;
 }
 
-static ERROR SET_Device(objAudio *Self, CSTRING Value)
+static ERROR SET_Device(extAudio *Self, CSTRING Value)
 {
    if ((!Value) or (!*Value)) Value = "Default";
 
@@ -1646,7 +1646,7 @@ static ERROR SET_Device(objAudio *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Special audio flags can be set here.
@@ -1673,15 +1673,15 @@ MasterVolume: The master volume to use for audio playback.
 The MasterVolume field controls the amount of volume applied to all of the audio channels.  Volume is expressed as a
 percentage, with 0% being no volume and 100% being maximum volume.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR GET_MasterVolume(objAudio *Self, DOUBLE *Value)
+static ERROR GET_MasterVolume(extAudio *Self, DOUBLE *Value)
 {
    *Value = Self->MasterVolume;
    return ERR_Okay;
 }
 
-static ERROR SET_MasterVolume(objAudio *Self, DOUBLE Value)
+static ERROR SET_MasterVolume(extAudio *Self, DOUBLE Value)
 {
    struct sndSetVolume setvol;
 
@@ -1696,7 +1696,7 @@ static ERROR SET_MasterVolume(objAudio *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Mute:  Mutes all audio output.
@@ -1704,9 +1704,9 @@ Mute:  Mutes all audio output.
 Audio output can be muted at any time by setting this value to TRUE.  To restart audio output after muting, set the
 field to FALSE.  Muting does not disable the audio system, which is achieved by calling #Deactivate().
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR GET_Mute(objAudio *Self, LONG *Value)
+static ERROR GET_Mute(extAudio *Self, LONG *Value)
 {
    *Value = FALSE;
    if (Self->VolumeCtl) {
@@ -1721,7 +1721,7 @@ static ERROR GET_Mute(objAudio *Self, LONG *Value)
    return ERR_Okay;
 }
 
-static ERROR SET_Mute(objAudio *Self, LONG Value)
+static ERROR SET_Mute(extAudio *Self, LONG Value)
 {
    struct sndSetVolume setvol = {
       .Index   = 0,
@@ -1734,7 +1734,7 @@ static ERROR SET_Mute(objAudio *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 OutputRate:  Determines the frequency to use for the output of audio data.
@@ -1744,9 +1744,9 @@ this value should be set to 44100 for CD quality audio.
 
 The OutputRate can only be set prior to initialisation, further attempts to set the field will be ignored.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_OutputRate(objAudio *Self, LONG Value)
+static ERROR SET_OutputRate(extAudio *Self, LONG Value)
 {
    if (Value < 0) return ERR_OutOfRange;
    else if (Value > 44100) Self->OutputRate = 44100;
@@ -1754,7 +1754,7 @@ static ERROR SET_OutputRate(objAudio *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Periods: Defines the number of periods that make up the internal audio buffer.
@@ -1765,9 +1765,9 @@ period.  The total size of the audio buffer is calculated as the number of Perio
 
 The minimum period size is 1K and maximum 16K.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_Periods(objAudio *Self, LONG Value)
+static ERROR SET_Periods(extAudio *Self, LONG Value)
 {
    Self->Periods = Value;
    if (Self->Periods < 2) Self->Periods = 2;
@@ -1775,16 +1775,16 @@ static ERROR SET_Periods(objAudio *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 PeriodSize: Defines the byte size of each period allocated to the internal audio buffer.
 
 Refer to the #Periods field for further information.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_PeriodSize(objAudio *Self, LONG Value)
+static ERROR SET_PeriodSize(extAudio *Self, LONG Value)
 {
    Self->PeriodSize = Value;
    if (Self->PeriodSize < 1024) Self->PeriodSize = 1024;
@@ -1792,7 +1792,7 @@ static ERROR SET_PeriodSize(objAudio *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Quality: Determines the quality of the audio mixing.
@@ -1804,9 +1804,9 @@ flags being automatically adjusted in the audio object: ADF_FILTER_LOW, ADF_FILT
 In general, low quality mixing should only be used when the audio output needs to be raw, or if the audio speaker is
 of low quality.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_Quality(objAudio *Self, LONG Value)
+static ERROR SET_Quality(extAudio *Self, LONG Value)
 {
    Self->Quality = Value;
 
@@ -1820,28 +1820,28 @@ static ERROR SET_Quality(objAudio *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Stereo: Set to TRUE for stereo output and FALSE for mono output.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR GET_Stereo(objAudio *Self, LONG *Value)
+static ERROR GET_Stereo(extAudio *Self, LONG *Value)
 {
    if (Self->Flags & ADF_STEREO) *Value = TRUE;
    else *Value = FALSE;
    return ERR_Okay;
 }
 
-static ERROR SET_Stereo(objAudio *Self, LONG Value)
+static ERROR SET_Stereo(extAudio *Self, LONG Value)
 {
    if (Value IS TRUE) Self->Flags |= ADF_STEREO;
    else Self->Flags &= ~ADF_STEREO;
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TotalChannels: The total number of audio channels allocated by all processes.
@@ -1870,9 +1870,9 @@ To scan through the list of controls, search until an entry that uses a Name con
 byte is found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR GET_VolumeCtl(objAudio *Self, struct VolumeCtl **Value)
+static ERROR GET_VolumeCtl(extAudio *Self, struct VolumeCtl **Value)
 {
 #ifdef __linux__
    if (!Self->Handle) return ERR_NotInitialised;
@@ -1889,9 +1889,9 @@ static ERROR GET_VolumeCtl(objAudio *Self, struct VolumeCtl **Value)
    else return ERR_FieldNotSet;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static ERROR SetInternalVolume(objAudio *Self, AudioChannel *Channel)
+static ERROR SetInternalVolume(extAudio *Self, AudioChannel *Channel)
 {
    parasol::Log log(__FUNCTION__);
    FLOAT leftvol, rightvol;
@@ -1954,12 +1954,12 @@ static ERROR SetInternalVolume(objAudio *Self, AudioChannel *Channel)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __linx__
-static ERROR GetMixAmount(objAudio *Self, LONG *MixLeft)
+static ERROR GetMixAmount(extAudio *Self, LONG *MixLeft)
 #else
-ERROR GetMixAmount(objAudio *Self, LONG *MixLeft)
+ERROR GetMixAmount(extAudio *Self, LONG *MixLeft)
 #endif
 {
    *MixLeft = 0x7fffffff;
@@ -1972,12 +1972,12 @@ ERROR GetMixAmount(objAudio *Self, LONG *MixLeft)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __linux__
-static ERROR DropMixAmount(objAudio *Self, LONG Elements)
+static ERROR DropMixAmount(extAudio *Self, LONG Elements)
 #else
-ERROR DropMixAmount(objAudio *Self, LONG Elements)
+ERROR DropMixAmount(extAudio *Self, LONG Elements)
 #endif
 {
    parasol::Log log(__FUNCTION__);
@@ -2052,10 +2052,9 @@ ERROR DropMixAmount(objAudio *Self, LONG Elements)
    return ERR_Okay;
 }
 
+//********************************************************************************************************************
 
-//****************************************************************************
-
-static ERROR audio_timer(objAudio *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 {
 #ifdef __linux__
 
@@ -2177,9 +2176,9 @@ static ERROR audio_timer(objAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static void load_config(objAudio *Self)
+static void load_config(extAudio *Self)
 {
    parasol::Log log(__FUNCTION__);
    CSTRING str;
@@ -2268,10 +2267,10 @@ static void load_config(objAudio *Self)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __linux__
-static void free_alsa(objAudio *Self)
+static void free_alsa(extAudio *Self)
 {
    if (Self->Handle) { snd_pcm_close(Self->Handle); Self->Handle = NULL; }
    if (Self->MixHandle) { snd_mixer_close(Self->MixHandle); Self->MixHandle = NULL; }
@@ -2279,9 +2278,9 @@ static void free_alsa(objAudio *Self)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static ERROR init_audio(objAudio *Self)
+static ERROR init_audio(extAudio *Self)
 {
    LONG i;
 
@@ -2816,27 +2815,17 @@ next_card:
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static const FieldDef AudioFlags[] = {
-   { "AutoSave",     ADF_AUTO_SAVE },
-   { "OverSampling", ADF_OVER_SAMPLING },
-   { "FilterLow",    ADF_FILTER_LOW },
-   { "FilterHigh",   ADF_FILTER_HIGH },
-   { "Stereo",       ADF_STEREO },
-   { "VolRamping",   ADF_VOL_RAMPING },
-   { "ServiceMode",  ADF_SERVICE_MODE },
-   { "Service",      ADF_SERVICE_MODE },
-   { NULL, 0 }
-};
+#include "audio_def.c"
 
-static const FieldArray AudioFields[] = {
+static const FieldArray clAudioFields[] = {
    { "Bass",          FDF_DOUBLE|FDF_RW,  0, NULL, NULL },
    { "Treble",        FDF_DOUBLE|FDF_RW,  0, NULL, NULL },
    { "OutputRate",    FDF_LONG|FDF_RI,    0, NULL, (APTR)SET_OutputRate },
    { "InputRate",     FDF_LONG|FDF_RI,    0, NULL, NULL },
    { "Quality",       FDF_LONG|FDF_RW,    0, NULL, (APTR)SET_Quality },
-   { "Flags",         FDF_LONGFLAGS|FDF_RI, (MAXINT)&AudioFlags, NULL, NULL },
+   { "Flags",         FDF_LONGFLAGS|FDF_RI, (MAXINT)&clAudioFlags, NULL, NULL },
    { "TotalChannels", FDF_LONG|FDF_R,     0, NULL, NULL },
    { "BitDepth",      FDF_LONG|FDF_RI,    0, NULL, (APTR)SET_BitDepth },
    { "Periods",       FDF_LONG|FDF_RI,    0, NULL, (APTR)SET_Periods },
@@ -2850,22 +2839,20 @@ static const FieldArray AudioFields[] = {
    END_FIELD
 };
 
-#include "audio_def.c"
-
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR add_audio_class(void)
 {
    return CreateObject(ID_METACLASS, 0, &clAudio,
       FID_BaseClassID|TLONG,   ID_AUDIO,
       FID_ClassVersion|TFLOAT, 1.0,
-      FID_Name|TSTRING,   "Audio",
-      FID_Category|TLONG, CCF_AUDIO,
-      FID_Actions|TPTR,   clAudioActions,
-      FID_Methods|TARRAY, clAudioMethods,
-      FID_Fields|TARRAY,  AudioFields,
-      FID_Size|TLONG,     sizeof(objAudio),
-      FID_Path|TSTR,      MOD_PATH,
+      FID_Name|TSTRING,        "Audio",
+      FID_Category|TLONG,      CCF_AUDIO,
+      FID_Actions|TPTR,        clAudioActions,
+      FID_Methods|TARRAY,      clAudioMethods,
+      FID_Fields|TARRAY,       clAudioFields,
+      FID_Size|TLONG,          sizeof(extAudio),
+      FID_Path|TSTR,           MOD_PATH,
       TAGEND);
 }
 
