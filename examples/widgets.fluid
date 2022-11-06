@@ -16,7 +16,7 @@ A demonstration of standard widgets
    require 'gui/window'
    require 'vfx'
 
-   local win  = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400, center=true })
+   local win = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400, center=true })
    local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
 function itemCallback(ID, Name)

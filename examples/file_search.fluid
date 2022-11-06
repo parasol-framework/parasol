@@ -1,13 +1,20 @@
+-- Basic demonstration of the file.search interface.  The following command-line parameters are accepted:
+--
+-- path:   The folder to be searched.
+-- filter: A wildcard string to filter for desired filenames.
 
    require 'filesearch'
 
-   local time = mSys.preciseTime()
+   local time        = mSys.preciseTime()
+   local glPath      = obj.find('self').workingPath
+   local search_path = arg('path', glPath .. '../src/core/')
+   local filter      = arg('filter', '*')
 
-   local glPath = obj.find('self').workingPath
+   print('Initiating search of path ' .. search_path .. ' with filter ' .. filter)
 
-   file.search(glPath .. '../core/src/', {
-      nameFilter = '*.c',
-      nameWild = true,
+   file.search(search_path, {
+      nameFilter = filter,
+      nameWild   = true,
       matchFeedback = function(Path, FileName, File)
          print('FOUND: ' .. Path, FileName)
       end

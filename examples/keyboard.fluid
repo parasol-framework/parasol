@@ -1,26 +1,31 @@
 --[[
-A basic demonstration of receiving keyboard input.
+A basic demonstration of receiving keyboard input from a viewport.
 --]]
 
-   win = obj.new('window', { title='Example Window', insideWidth=400, insideHeight=200,
+   require 'gui/window'
+
+   local win = gui.window({ title='Keyboard Example', insideWidth=400, insideHeight=200,
       maxWidth=600, maxHeight=300, minWidth=400, minHeight=200 })
 
-   text = win.new('text', { string='Press a key', face='Open Sans:30', align='center' })
+   local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
-   // Create a keyboard subscription to the window surface.  The applied function will be called every time
-   // that the user presses a key when the window has the focus.
+   local text = viewport.new('VectorText', {
+      string='Press a key', face='Open Sans', fontSize=60, y=50, x=10, fill='rgb(0,0,0)'
+   })
 
-   input.keyboard(win.surface, function(Input, Surface, Flags, Value, Unicode)
+   -- Create a keyboard subscription to the window's main viewport.  The applied function will be called every time
+   -- that the user presses a key when the window has the focus.
+
+   viewport.mtSubscribeKeyboard(function(Viewport, Flags, Value, Unicode)
       if (Unicode > 0) then
          glChars = nz(glChars,'') .. string.char(Unicode)
-         glChars = glChars:sub(-15)
+         glChars = glChars:sub(-10)
       end
 
       text.string = 'Flags: ' .. string.format('0x%x', Flags) .. '\nCode: ' .. Value .. '\n' .. glChars
+      viewport.acDraw()
    end)
 
-   text.acShow()
-   win.acShow()
-
+   win:show()
    processing.sleep()
 
