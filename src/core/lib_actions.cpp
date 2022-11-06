@@ -308,10 +308,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    }
    #endif
 
-   // Set the current context to the given object
-
-   ObjectContext new_context = { .Stack = tlContext, .Object = obj, .Field = NULL, .Action = (WORD)ActionID };
-   tlContext = &new_context;
+   ObjectContext new_context(obj, ActionID);
 
    obj->ActionDepth++;
 
@@ -405,7 +402,6 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    if (ActionID != AC_Free) obj->ActionDepth--;
 
    obj->threadRelease();
-   tlContext = tlContext->Stack;
 
    if (log_depth != tlDepth) {
       if (ActionID >= 0) {
@@ -896,15 +892,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
       return ERR_IllegalActionAttempt;
    }
 
-   // Set the current context to the given object
-
-   struct ObjectContext new_context = {
-      .Stack  = tlContext,
-      .Object = obj,
-      .Field  = NULL,
-      .Action = (WORD)ActionID
-   };
-   tlContext = &new_context;
+   ObjectContext new_context(obj, ActionID);
 
    obj->ActionDepth++;
 
@@ -1029,7 +1017,6 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 
    if (ActionID != AC_Free) obj->ActionDepth--;
    obj->threadRelease();
-   tlContext = tlContext->Stack;
    return error;
 }
 
