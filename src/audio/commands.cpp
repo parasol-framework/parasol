@@ -2,7 +2,7 @@
 ** Continue: Continues playing a sound sample after it has been stopped earlier.
 */
 
-static ERROR COMMAND_Continue(objAudio *Self, LONG Handle)
+static ERROR COMMAND_Continue(extAudio *Self, LONG Handle)
 {
    parasol::Log log("AudioCommand");
 
@@ -43,7 +43,7 @@ static ERROR COMMAND_Continue(objAudio *Self, LONG Handle)
 ** FadeIn: Starts fading in a channel if fadeout channels have been allocated.
 */
 
-static ERROR COMMAND_FadeIn(objAudio *Self, LONG Handle)
+static ERROR COMMAND_FadeIn(extAudio *Self, LONG Handle)
 {
    parasol::Log log("AudioCommand");
 
@@ -66,7 +66,7 @@ static ERROR COMMAND_FadeIn(objAudio *Self, LONG Handle)
 ** FadeOut: Starts fading out a channel if fadeout channels have been allocated and the channel has data being played.
 */
 
-static ERROR COMMAND_FadeOut(objAudio *Self, LONG Handle)
+static ERROR COMMAND_FadeOut(extAudio *Self, LONG Handle)
 {
    parasol::Log log("AudioCommand");
 
@@ -103,7 +103,7 @@ static ERROR COMMAND_FadeOut(objAudio *Self, LONG Handle)
 ** Mute: Use this method to mute sound channels.
 */
 
-static ERROR COMMAND_Mute(objAudio *Self, LONG Handle, LONG Mute)
+static ERROR COMMAND_Mute(extAudio *Self, LONG Handle, LONG Mute)
 {
    parasol::Log log("AudioCommand");
 
@@ -122,7 +122,7 @@ static ERROR COMMAND_Mute(objAudio *Self, LONG Handle, LONG Mute)
 ** Play
 */
 
-static ERROR COMMAND_Play(objAudio *Self, LONG Handle, LONG Frequency)
+static ERROR COMMAND_Play(extAudio *Self, LONG Handle, LONG Frequency)
 {
    parasol::Log log("AudioCommand");
 
@@ -151,7 +151,7 @@ static ERROR COMMAND_Play(objAudio *Self, LONG Handle, LONG Frequency)
 ** SetFrequency: Sets the channel playback rate.
 */
 
-static ERROR COMMAND_SetFrequency(objAudio *Self, LONG Handle, ULONG Frequency)
+static ERROR COMMAND_SetFrequency(extAudio *Self, LONG Handle, ULONG Frequency)
 {
    parasol::Log log("AudioCommand");
 
@@ -168,7 +168,7 @@ static ERROR COMMAND_SetFrequency(objAudio *Self, LONG Handle, ULONG Frequency)
 ** SetPan: Sets the panning position of a channel.
 */
 
-static ERROR COMMAND_SetPan(objAudio *Self, LONG Handle, LONG Pan)
+static ERROR COMMAND_SetPan(extAudio *Self, LONG Handle, LONG Pan)
 {
    parasol::Log log("AudioCommand");
 
@@ -192,7 +192,7 @@ static ERROR COMMAND_SetPan(objAudio *Self, LONG Handle, LONG Pan)
 ** This command can only be executed by the task that owns the audio object.
 */
 
-static ERROR COMMAND_SetPosition(objAudio *Self, LONG Handle, LONG Position)
+static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, LONG Position)
 {
    parasol::Log log("SetPosition");
    OBJECTPTR stream;
@@ -364,7 +364,7 @@ static ERROR COMMAND_SetPosition(objAudio *Self, LONG Handle, LONG Position)
 ** SetRate: Sets a new update rate for buffered channels.
 */
 
-static ERROR COMMAND_SetRate(objAudio *Self, LONG Handle, LONG Rate)
+static ERROR COMMAND_SetRate(extAudio *Self, LONG Handle, LONG Rate)
 {
    parasol::Log log("AudioCommand");
 
@@ -379,7 +379,7 @@ static ERROR COMMAND_SetRate(objAudio *Self, LONG Handle, LONG Rate)
 ** SetSample: Sets the sample number on a channel.
 */
 
-ERROR COMMAND_SetSample(objAudio *Self, LONG Handle, LONG SampleHandle)
+ERROR COMMAND_SetSample(extAudio *Self, LONG Handle, LONG SampleHandle)
 {
    parasol::Log log("AudioCommand");
 
@@ -432,7 +432,7 @@ ERROR COMMAND_SetSample(objAudio *Self, LONG Handle, LONG SampleHandle)
 ** SetLength: Sets the byte length of the sample playing in the channel.
 */
 
-static ERROR COMMAND_SetLength(objAudio *Self, LONG Handle, LONG Length)
+static ERROR COMMAND_SetLength(extAudio *Self, LONG Handle, LONG Length)
 {
    parasol::Log log("AudioCommand");
 
@@ -450,7 +450,7 @@ static ERROR COMMAND_SetLength(objAudio *Self, LONG Handle, LONG Length)
 ** SetVolume: Sets the volume of a specific channel (0 - 100).
 */
 
-static ERROR COMMAND_SetVolume(objAudio *Self, LONG Handle, LONG Volume)
+static ERROR COMMAND_SetVolume(extAudio *Self, LONG Handle, LONG Volume)
 {
    parasol::Log log("AudioCommand");
 
@@ -470,7 +470,7 @@ static ERROR COMMAND_SetVolume(objAudio *Self, LONG Handle, LONG Volume)
 ** Stop: Stops a channel's audio playback.
 */
 
-ERROR COMMAND_Stop(objAudio *Self, LONG Handle)
+ERROR COMMAND_Stop(extAudio *Self, LONG Handle)
 {
    parasol::Log log("AudioCommand");
 
@@ -493,7 +493,7 @@ ERROR COMMAND_Stop(objAudio *Self, LONG Handle)
 ** continually loop and you want to stop the loop from occurring.
 */
 
-static ERROR COMMAND_StopLooping(objAudio *Self, LONG Handle)
+static ERROR COMMAND_StopLooping(extAudio *Self, LONG Handle)
 {
    parasol::Log log("AudioCommand");
 

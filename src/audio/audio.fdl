@@ -113,7 +113,7 @@ typedef struct {
 } MixRoutine;
 
 typedef struct {
-   MixRoutine routines[5];
+   const MixRoutine routines[5];
 } MixRoutineSet;
 
 #define MAX_CHANNELSETS 8
@@ -231,39 +231,6 @@ typedef struct {
     int BitDepth           # Typically 8 or 16 bit, reflects the active bit depth
     int Periods
     int PeriodSize
-  ]],
-  [[
-   struct ChannelSet Channels[MAX_CHANNELSETS]; // Channels are grouped into sets, which are allocated on a per-task basis
-   struct AudioSample *Samples;
-   struct VolumeCtl *VolumeCtl;
-   MixRoutineSet      *MixRoutines;
-   MEMORYID BFMemoryMID;
-   MEMORYID BufferMemoryMID;
-   MEMORYID SamplesMID;
-   LONG     MixBufferSize;
-   LONG     TotalSamples;
-   TIMER    Timer;
-   APTR     BufferMemory;
-   APTR     MixBuffer;
-   FLOAT    *BFMemory;               // Byte/Float table memory
-   WORD     SampleBitSize;
-   WORD     MixBitSize;
-   LONG     MixElements;
-   UBYTE    Stereo;                  // TRUE/FALSE for active stereo mode
-   BYTE     Mute;
-   BYTE     MasterVolume;
-   BYTE     Initialising;
-   APTR     TaskRemovedHandle;
-   APTR     UserLoginHandle;
-#ifdef __linux__
-   UBYTE *AudioBuffer;
-   LONG  AudioBufferSize;
-   snd_pcm_t *Handle;
-   snd_mixer_t *MixHandle;
-#endif
-   MEMORYID VolumeCtlMID;
-   LONG VolumeCtlTotal;
-   char prvDevice[28];
   ]])
 
   class("Sound", { src="class_sound.cpp" }, [[
@@ -288,21 +255,6 @@ typedef struct {
     int Handle         # Audio handle acquired at the audio object [Private - Available to child classes]
     int ChannelIndex   # Channel handle that the sound was last played on
     obj File           # Private. The file holding the sample data; available to child classes only.
-  ]],
-  [[
-    struct KeyStore *Fields;
-    UBYTE    prvHeader[128];
-    LONG     prvFormat;         // The format of the sound data
-    LONG     prvDataOffset;     // Start of raw audio data within the source file
-    TIMER    Timer;
-    STRING   prvPath;
-    STRING   prvDescription;
-    STRING   prvDisclaimer;
-    LONG     prvNote;               // Note to play back (e.g. C, C#, G...)
-    char     prvNoteString[4];
-    struct WAVEFormat *prvWAVE;
-    UBYTE    prvPlatformData[128];  // Data area for holding platform/hardware specific information
-    LONG     prvAlignment;          // Byte alignment value
   ]])
 
   functionNames("snd",
@@ -310,32 +262,5 @@ typedef struct {
      "WaitDrivers",
      "SetChannels",
      "SetTaskVolume")
-
-  c_insert([[
-INLINE ERROR sndCloseChannelsID(OBJECTID AudioID, int Handle) {
-   extern struct CoreBase *CoreBase;
-   OBJECTPTR audio;
-   if (!AccessObject(AudioID, 5000, &audio)) {
-      struct sndCloseChannels close = { Handle };
-      Action(MT_SndCloseChannels, audio, &close);
-      ReleaseObject(audio);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-}
-
-INLINE ERROR sndOpenChannelsID(OBJECTID AudioID, LONG Total, LONG Key, LONG Commands, LONG *Handle) {
-   extern struct CoreBase *CoreBase;
-   OBJECTPTR audio;
-   if (!AccessObject(AudioID, 5000, &audio)) {
-      struct sndOpenChannels open = { Total, Key, Commands };
-      Action(MT_SndOpenChannels, audio, &open);
-      *Handle = open.Result;
-      ReleaseObject(audio);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-}
-  ]])
 
 end)
