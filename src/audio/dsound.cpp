@@ -16,8 +16,8 @@ static LPDIRECTSOUNDBUFFER glPrimaryBuffer = 0;
 #define FILL_FIRST  2
 #define FILL_SECOND 3
 
-typedef class plSound objSound;
-typedef class plAudio objAudio;
+class extSound;
+class extAudio;
 
 struct PlatformData {
    LPDIRECTSOUNDBUFFER SoundBuffer;
@@ -31,14 +31,14 @@ struct PlatformData {
    char Stream;
    char Loop;
    char Stop;
-   objSound *File;
+   extSound *File;
 };
 
-int ReadData(objSound *, void *, int);
-void SeekData(objSound *, double);
-void SeekZero(objSound *);
-int GetMixAmount(objAudio *, int *);
-int DropMixAmount(objAudio *, int);
+int ReadData(extSound *, void *, int);
+void SeekData(extSound *, double);
+void SeekZero(extSound *);
+int GetMixAmount(extAudio *, int *);
+int DropMixAmount(extAudio *, int);
 
 #include "windows.h"
 
@@ -240,9 +240,9 @@ int dsResume(void)
 
 //****************************************************************************
 
-int MixData(objAudio *, unsigned int, void *);
+int MixData(extAudio *, unsigned int, void *);
 
-int dsPlay(objAudio *Self)
+int dsPlay(extAudio *Self)
 {
    HRESULT result;
    UBYTE *write1, *write2;
@@ -264,7 +264,7 @@ int dsPlay(objAudio *Self)
    spaceleft = spaceleft / mixElemSize; // Convert to number of elements
 
    while (spaceleft) { // Scan channels to check if an update rate is going to be met
-      GetMixAmount((objAudio *)Self, &mixleft);
+      GetMixAmount((extAudio *)Self, &mixleft);
 
       if ((DWORD)mixleft < spaceleft) elements = mixleft;
       else elements = spaceleft;
@@ -287,7 +287,7 @@ int dsPlay(objAudio *Self)
 
       // Drop the mix amount.  This may also update buffered channels for the next round
 
-      DropMixAmount((objAudio *)Self, elements);
+      DropMixAmount((extAudio *)Self, elements);
 
       spaceleft -= elements;
    }
@@ -335,7 +335,7 @@ int sndCheckActivity(PlatformData *Sound)
 
 //****************************************************************************
 
-const char * sndCreateBuffer(objSound *File, void *Wave, int BufferLength, int SampleLength, PlatformData *Sound, int Stream)
+const char * sndCreateBuffer(extSound *File, void *Wave, int BufferLength, int SampleLength, PlatformData *Sound, int Stream)
 {
    DSBUFFERDESC dsbdesc;
    int length1, i;
