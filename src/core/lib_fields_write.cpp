@@ -84,13 +84,13 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
    if ((field = lookup_id(Object, FieldID, &Object))) {
       if (!(field->Flags & FD_ARRAY)) return log.warning(ERR_FieldTypeMismatch);
 
-      if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
+      if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
          if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
          else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
 
-      if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+      if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
          if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
          else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
@@ -173,12 +173,12 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
    if ((field = lookup_id(Object, FieldID, &Object))) {
       // Validation
 
-      if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
+      if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
          if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
          else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
-      else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+      else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
          if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
          else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
@@ -294,7 +294,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
       if ((field = lookup_id(Object, (ULONG)field_id, &source))) {
          // Validation checks
 
-         if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
+         if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
             if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
             else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
 
@@ -305,7 +305,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
             else va_arg(List, LONG);
             continue;
          }
-         else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+         else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
             if (!field->Name) log.warning("Field %s of class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
             else log.warning("Field \"%s\" of class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
 
@@ -496,12 +496,12 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
       return ERR_Search;
    }
 
-   if ((!(Field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
+   if ((!(Field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
       log.warning("Field \"%s\" of class %s is not writable.", FieldName, ((objMetaClass *)Object->Class)->ClassName);
       return ERR_NoFieldAccess;
    }
 
-   if ((Field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+   if ((Field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
       log.warning("Field \"%s\" in class %s is init-only.", FieldName, ((objMetaClass *)Object->Class)->ClassName);
       return ERR_NoFieldAccess;
    }
@@ -895,7 +895,7 @@ static ERROR writeval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR 
    else if (Flags & FD_POINTER) {
       offset[0].Type = (Data) ? CALL_STDC : CALL_NONE;
       offset[0].StdC.Routine = (FUNCTION *)Data;
-      offset[0].StdC.Context = tlContext->Object;
+      offset[0].StdC.Context = tlContext->object();
    }
    else return ERR_FieldTypeMismatch;
    return ERR_Okay;
@@ -916,7 +916,7 @@ class FieldContext : public ObjectContext {
 
    public:
    FieldContext(OBJECTPTR Object, struct Field *Field) : ObjectContext(Object, AC_SetField, NULL) {
-      if ((tlContext->Field IS Field) and (tlContext->Object IS Object)) { // Detect recursion
+      if ((tlContext->Field IS Field) and (tlContext->object() IS Object)) { // Detect recursion
          success = false;
          return;
       }
@@ -1021,7 +1021,7 @@ static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
 
 static ERROR setval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   OBJECTPTR caller = tlContext->Object;
+   OBJECTPTR caller = tlContext->object();
 
    FieldContext ctx(Object, Field);
 

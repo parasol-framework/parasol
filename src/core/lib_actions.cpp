@@ -1197,9 +1197,9 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
 -FUNCTION-
 GetActionMsg: Returns a message structure if called from an action that was executed by the message system.
 
-This function is designed to be called from action and method support routines only.  It will return a Message
-structure if the action currently under execution has been called directly from the ~ProcessMessages() function.
-In all other cases a NULL pointer is returned.
+This function is for use by action and method support routines only.  It will return a Message structure if the
+action currently under execution has been called directly from the ~ProcessMessages() function.  In all other
+cases a NULL pointer is returned.
 
 The Message structure reflects the contents of a standard ~GetMessage() call.  Of particular interest may be
 the Time field, which indicates the time-stamp at which the action message was originally sent to the object.
@@ -1211,11 +1211,9 @@ resource(Message): A Message structure is returned if the function is called in 
 
 Message * GetActionMsg(void)
 {
-   if (tlContext->Object) {
-      if (tlContext->Object->Flags & NF_MESSAGE) {
-         if (tlContext->Object->ActionDepth IS 1) {
-            return tlCurrentMsg;
-         }
+   if (auto obj = tlContext->resource()) {
+      if ((obj->Flags & NF_MESSAGE) and (obj->ActionDepth IS 1)) {
+         return tlCurrentMsg;
       }
    }
    return NULL;
@@ -1554,7 +1552,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
          // identical), we move it to the bottom of the list.
 
          for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
-            if ((list[i].ActionID IS actionid) and (list[i].SubscriberID IS tlContext->Object->UID)) {
+            if ((list[i].ActionID IS actionid) and (list[i].SubscriberID IS tlContext->resource()->UID)) {
                if (warntag IS SUB_WARN_EXISTS) {
                   // Return ERR_Exists to warn the caller that there is already a subscription against this action.
                   // We will not shift the subscription to the front of the queue.
@@ -1625,8 +1623,8 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
          }
 
          list[i].ActionID       = actionid;
-         list[i].SubscriberID   = tlContext->Object->UID;
-         list[i].ClassID        = tlContext->Object->ClassID;
+         list[i].SubscriberID   = tlContext->object()->UID;
+         list[i].ClassID        = tlContext->object()->ClassID;
          list[i].MessagePortMID = glTaskMessageMID;
 
          if (actionid > 0) {
@@ -1681,7 +1679,7 @@ AccessMemory: Access to the internal subscription array was denied.
 
 ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 {
-   return UnsubscribeActionByID(Object, ActionID, tlContext->Object->UID);
+   return UnsubscribeActionByID(Object, ActionID, tlContext->object()->UID);
 }
 
 ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID SubscriberID)

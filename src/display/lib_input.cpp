@@ -272,12 +272,11 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
 
          auto &cb = sub.Callback;
          if (cb.Type IS CALL_STDC) {
-            if (!AccessPrivateObject(cb.StdC.Context, 2000)) { // Ensure that the object can't be removed until after input processing
-               OBJECTPTR oldcontext = SetContext(cb.StdC.Context);
+            parasol::ScopedObjectLock lock(cb.StdC.Context, 2000); // Ensure that the object can't be removed until after input processing
+            if (lock.granted()) {
+               parasol::SwitchContext ctx(cb.StdC.Context);
                auto func = (ERROR (*)(InputEvent *, LONG))cb.StdC.Routine;
                func(events, handle);
-               SetContext(oldcontext);
-               ReleasePrivateObject(cb.StdC.Context);
             }
          }
          else if (cb.Type IS CALL_SCRIPT) {

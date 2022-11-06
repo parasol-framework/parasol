@@ -260,29 +260,7 @@ obj: Returns an object pointer (of which the Task has exclusive access to).  Thi
 
 OBJECTPTR CurrentContext(void)
 {
-   return tlContext->Object;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-CurrentField: Returns a pointer to the field meta data representing an active get or set function.
-Category: Fields
-
-The CurrentField() function returns field meta data for the active thread, if it is operating within a field's get or
-set operator.  In all other situations, NULL is returned.
-
-This is a technical function with limited use cases.  Dynamic languages that need to use generic get and set functions
-to support virtual field operations will find it useful.
-
--RESULT-
-struct(*Field): Returns the active field meta data or NULL if the thread is not executing a get or set operation.
-
-*****************************************************************************/
-
-Field * CurrentField(void)
-{
-   return tlContext->Field;
+   return tlContext->object();
 }
 
 /*****************************************************************************
@@ -471,9 +449,9 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
       }
 
       if (!StrMatch("owner", InitialName)) {
-         if ((tlContext != &glTopContext) and (tlContext->Object->OwnerID)) {
-            if (!CheckObjectExists(tlContext->Object->OwnerID, NULL)) {
-               *Array = tlContext->Object->OwnerID;
+         if ((tlContext != &glTopContext) and (tlContext->object()->OwnerID)) {
+            if (!CheckObjectExists(tlContext->object()->OwnerID, NULL)) {
+               *Array = tlContext->object()->OwnerID;
                *Count = 1;
                return ERR_Okay;
             }
@@ -647,10 +625,10 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
       return ERR_Search;
    }
    else if (!StrMatch("owner", InitialName)) {
-      if ((tlContext != &glTopContext) and (tlContext->Object->OwnerID)) {
+      if ((tlContext != &glTopContext) and (tlContext->object()->OwnerID)) {
          ThreadLock lock(TL_PRIVATE_MEM, 4000);
          if (lock.granted()) {
-            auto mem = glPrivateMemory.find(tlContext->Object->OwnerID);
+            auto mem = glPrivateMemory.find(tlContext->object()->OwnerID);
             if (mem != glPrivateMemory.end()) {
                if ((*Object = mem->second.Object)) {
                   return ERR_Okay;
@@ -1247,8 +1225,8 @@ LARGE GetResource(LONG Resource)
          // Return the first parent context that differs to the current context.  This avoids any confusion
          // arising from the the current object making calls to itself.
          auto parent = tlContext->Stack;
-         while ((parent) and (parent->Object IS tlContext->Object)) parent = parent->Stack;
-         return parent ? (MAXINT)parent->Object : 0;
+         while ((parent) and (parent->object() IS tlContext->object())) parent = parent->Stack;
+         return parent ? (MAXINT)parent->object() : 0;
       }
 
 #ifdef __linux__
@@ -1922,18 +1900,14 @@ management functions.
 obj Object: Pointer to the object that will take on the new context.  If NULL, no change to the context will be made.
 
 -RESULT-
-obj: Returns a pointer to the previous context.  Because contexts will nest, you need to call SetContext() a second time with the returned pointer, in order to keep the Task stable.
+obj: Returns a pointer to the previous context.  Because contexts nest, the client must call SetContext() a second time with this pointer in order to keep the process stable.
 
 *****************************************************************************/
 
 OBJECTPTR SetContext(OBJECTPTR Object)
 {
-   if (Object) {
-      OBJECTPTR old = tlContext->Object;
-      tlContext->Object = Object;
-      return old;
-   }
-   else return tlContext->Object;
+   if (Object) return tlContext->setContext(Object);
+   else return tlContext->object();
 }
 
 /*****************************************************************************
@@ -2346,9 +2320,9 @@ ERROR SubscribeFeed(OBJECTPTR Object)
    if (!Object->Stats->MID_FeedList) { // Allocate a feed list for the first time
       if (!AllocMemory(sizeof(FeedSubscription)*2, MEM_NO_CLEAR|memflags, NULL, &Object->Stats->MID_FeedList)) {
          if (!AccessMemory(Object->Stats->MID_FeedList, MEM_WRITE, 2000, (APTR *)&list)) {
-            list[0].SubscriberID   = tlContext->Object->UID;
+            list[0].SubscriberID   = tlContext->object()->UID;
             list[0].MessagePortMID = glTaskMessageMID;
-            list[0].ClassID        = tlContext->Object->ClassID;
+            list[0].ClassID        = tlContext->object()->ClassID;
             list[1].SubscriberID   = 0;
             ReleaseMemoryID(Object->Stats->MID_FeedList);
             return ERR_Okay;
@@ -2368,9 +2342,9 @@ ERROR SubscribeFeed(OBJECTPTR Object)
 
             for (i=0; list[i].SubscriberID; i++) newlist[i] = list[i];
 
-            newlist[i].SubscriberID   = tlContext->Object->UID;
+            newlist[i].SubscriberID   = tlContext->object()->UID;
             newlist[i].MessagePortMID = glTaskMessageMID;
-            newlist[i].ClassID        = tlContext->Object->ClassID;
+            newlist[i].ClassID        = tlContext->object()->ClassID;
             newlist[i+1].SubscriberID   = 0;
             newlist[i+1].MessagePortMID = 0;
             newlist[i+1].ClassID        = 0;
@@ -2438,7 +2412,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    if ((!Interval) or (!Callback)) return log.warning(ERR_NullArgs);
    if (Interval < 0) return log.warning(ERR_Args);
 
-   OBJECTPTR subscriber = tlContext->Object;
+   auto subscriber = tlContext->object();
    if (subscriber->collecting()) return log.warning(ERR_InvalidState);
 
    if (Callback->Type IS CALL_SCRIPT) log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Interval: %.3fs", Interval);
@@ -2540,7 +2514,7 @@ ERROR UnsubscribeFeed(OBJECTPTR Object)
    FeedSubscription *list;
    if (!AccessMemory(Object->Stats->MID_FeedList, MEM_READ_WRITE, 2000, (APTR *)&list)) {
       for (LONG i=0; list[i].SubscriberID; i++) {
-         if (list[i].SubscriberID IS tlContext->Object->UID) {
+         if (list[i].SubscriberID IS tlContext->object()->UID) {
             while (list[i+1].SubscriberID) { // Compact the list
                list[i] = list[i+1];
                i++;
