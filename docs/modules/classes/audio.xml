@@ -275,7 +275,7 @@
       </input>
       <description>
 <p>To change volume and mixer levels, use the SetVolume method.  You can make adjustments to any of the available mixers and for different channels per mixer - for instance you may set different volumes for left and right speakers.  Support is also provided for special options, such as muting.</p>
-<p>To set the volume for a mixer, you need to know its index (by scanning the <field>VolumeCtl</field> field) or you can set its name (to change the Master volume, use a name of "Master").  A channel needs to be specified, or you can use CHN_ALL to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags may be set as follows:</p>
+<p>To set the volume for a mixer, you need to know its index (by scanning the <field>VolumeCtl</field> field) or you can set its name (to change the Master volume, use a name of "Master").  A channel needs to be specified, or you can use <code>CHN_ALL</code> to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags may be set as follows:</p>
 <types lookup="SVF"/>
       </description>
       <result>
