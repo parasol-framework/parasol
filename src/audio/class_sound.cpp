@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Sound: Plays and records sound samples in a variety of different data formats.
@@ -32,20 +32,20 @@ snd.acActivate()
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 struct PlatformData { void *Void; };
 
 #include "windows.h"
 
-static ERROR SOUND_GET_Active(objSound *, LONG *);
-static ERROR SOUND_GET_Position(objSound *, LONG *);
+static ERROR SOUND_GET_Active(extSound *, LONG *);
+static ERROR SOUND_GET_Position(extSound *, LONG *);
 
-static ERROR SOUND_SET_Note(objSound *, CSTRING);
-static ERROR SOUND_SET_Pan(objSound *, DOUBLE);
-static ERROR SOUND_SET_Playback(objSound *, LONG);
-static ERROR SOUND_SET_Position(objSound *, LONG);
-static ERROR SOUND_SET_Volume(objSound *, DOUBLE);
+static ERROR SOUND_SET_Note(extSound *, CSTRING);
+static ERROR SOUND_SET_Pan(extSound *, DOUBLE);
+static ERROR SOUND_SET_Playback(extSound *, LONG);
+static ERROR SOUND_SET_Position(extSound *, LONG);
+static ERROR SOUND_SET_Volume(extSound *, DOUBLE);
 
 static const DOUBLE glScale[NOTE_B+1] = {
    1.0,         // C
@@ -64,18 +64,18 @@ static const DOUBLE glScale[NOTE_B+1] = {
 
 static OBJECTPTR clSound = NULL;
 
-static ERROR find_chunk(objSound *, OBJECTPTR, CSTRING);
-static ERROR playback_timer(objSound *, LARGE Elapsed, LARGE CurrentTime);
+static ERROR find_chunk(extSound *, OBJECTPTR, CSTRING);
+static ERROR playback_timer(extSound *, LARGE Elapsed, LARGE CurrentTime);
 
 #undef GetChannel
 #define GetChannel(a,b) &(a)->Channels[(b)>>16].Channel[(b) & 0xffff];
 
 #define KEY_SOUNDCHANNELS 0x3389f93
 
-//****************************************************************************
+//********************************************************************************************************************
 // Stubs.
 
-static LONG ReadLong(OBJECTPTR File)
+static LONG read_long(OBJECTPTR File)
 {
    struct acRead args;
    LONG value;
@@ -86,7 +86,7 @@ static LONG ReadLong(OBJECTPTR File)
 }
 
 #ifndef _WIN32
-static LONG SampleFormat(objSound *Self)
+static LONG sample_format(extSound *Self)
 {
    if (Self->BitsPerSample IS 8) {
       if (Self->Flags & SDF_STEREO) return SFM_U8_BIT_STEREO;
@@ -100,9 +100,9 @@ static LONG SampleFormat(objSound *Self)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static ERROR SOUND_ActionNotify(objSound *Self, struct acActionNotify *Args)
+static ERROR SOUND_ActionNotify(extSound *Self, struct acActionNotify *Args)
 {
    parasol::Log log;
 
@@ -123,13 +123,13 @@ static ERROR SOUND_ActionNotify(objSound *Self, struct acActionNotify *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Activate: Plays the audio sample.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_Activate(objSound *Self, APTR Void)
+static ERROR SOUND_Activate(extSound *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -166,7 +166,7 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
 #endif
 
    LONG i;
-   objAudio *audio;
+   extAudio *audio;
    if (!AccessObject(Self->AudioID, 2000, &audio)) {
       // Restricted and streaming audio can only be played on one channel at any given time.  This search will check
       // if the sound object is already active on one of our channels.
@@ -246,13 +246,13 @@ static ERROR SOUND_Activate(objSound *Self, APTR Void)
    else return log.warning(ERR_AccessObject);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Deactivate: Stops the audio sample and resets the playback position.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_Deactivate(objSound *Self, APTR Void)
+static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -269,7 +269,7 @@ static ERROR SOUND_Deactivate(objSound *Self, APTR Void)
    }
 #endif
 
-   objAudio *audio;
+   extAudio *audio;
    if (!AccessObject(Self->AudioID, 3000, &audio)) {
       // Get a reference to our sound channel, then check if our unique ID is set against it.  If so, our sound is
       // currently playing and we must send a stop signal to the audio system.
@@ -286,13 +286,13 @@ static ERROR SOUND_Deactivate(objSound *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Disable: Disable playback of an active audio sample.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_Disable(objSound *Self, APTR Void)
+static ERROR SOUND_Disable(extSound *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -309,7 +309,7 @@ static ERROR SOUND_Disable(objSound *Self, APTR Void)
 
    if (!Self->ChannelIndex) return ERR_Okay;
 
-   objAudio *audio;
+   extAudio *audio;
    if (!AccessObject(Self->AudioID, 5000, &audio)) {
       auto channel = GetChannel(audio, Self->ChannelIndex);
       if ((channel) and (channel->SoundID IS Self->UID)) {
@@ -321,13 +321,13 @@ static ERROR SOUND_Disable(objSound *Self, APTR Void)
    else return log.warning(ERR_AccessObject);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Enable: Continues playing a sound if it has been disabled.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_Enable(objSound *Self, APTR Void)
+static ERROR SOUND_Enable(extSound *Self, APTR Void)
 {
    parasol::Log log;
    log.branch();
@@ -345,7 +345,7 @@ static ERROR SOUND_Enable(objSound *Self, APTR Void)
 
    if (!Self->ChannelIndex) return ERR_Okay;
 
-   objAudio *audio;
+   extAudio *audio;
    if (!AccessObject(Self->AudioID, 5000, &audio)) {
       AudioChannel *channel = GetChannel(audio, Self->ChannelIndex);
       if ((channel) and (channel->SoundID IS Self->UID)) {
@@ -357,9 +357,9 @@ static ERROR SOUND_Enable(objSound *Self, APTR Void)
    else return log.warning(ERR_AccessObject);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static ERROR SOUND_Free(objSound *Self, APTR Void)
+static ERROR SOUND_Free(extSound *Self, APTR Void)
 {
    if (Self->Fields) { FreeResource(Self->Fields); Self->Fields = NULL; }
 
@@ -390,7 +390,7 @@ static ERROR SOUND_Free(objSound *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 GetVar: Retrieve custom tag values.
 
@@ -405,9 +405,9 @@ The following custom tag values are formally recognised and may be defined autom
 <type name="Title">The title of the audio sample.</type>
 </types>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_GetVar(objSound *Self, struct acGetVar *Args)
+static ERROR SOUND_GetVar(extSound *Self, struct acGetVar *Args)
 {
    if ((!Args) or (!Args->Field)) return ERR_NullArgs;
 
@@ -419,11 +419,11 @@ static ERROR SOUND_GetVar(objSound *Self, struct acGetVar *Args)
    else return ERR_UnsupportedField;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Init: Prepares a sound object for usage.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define WAVE_RAW    0x0001    // Uncompressed waveform data.
 #define WAVE_ADPCM  0x0002    // ADPCM compressed waveform data.
@@ -434,7 +434,7 @@ Init: Prepares a sound object for usage.
 
 #ifdef _WIN32
 
-static ERROR SOUND_Init(objSound *Self, APTR Void)
+static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
    parasol::Log log;
    struct acRead read;
@@ -511,8 +511,8 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
    // Read the RIFF header
 
    acSeek(Self->File, 12.0, SEEK_START);
-   id  = ReadLong(Self->File); // Contains the characters "fmt "
-   len = ReadLong(Self->File); // Length of data in this chunk
+   id  = read_long(Self->File); // Contains the characters "fmt "
+   len = read_long(Self->File); // Length of data in this chunk
 
    if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE, NULL)) {
       read.Buffer = (BYTE *)Self->prvWAVE;
@@ -542,7 +542,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
       return log.warning(ERR_Read);
    }
 
-   Self->Length = ReadLong(Self->File); // Length of audio data in this chunk
+   Self->Length = read_long(Self->File); // Length of audio data in this chunk
 
    if (Self->Length & 1) Self->Length++;
 
@@ -606,7 +606,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
 #else
 
-static ERROR SOUND_Init(objSound *Self, APTR Void)
+static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
    parasol::Log log;
    struct sndAddSample add;
@@ -711,7 +711,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
          .Path         = NULL,
          .ObjectID     = Self->StreamFileID,
          .SeekStart    = 0,
-         .SampleFormat = SampleFormat(Self),
+         .sample_format = sample_format(Self),
          .SampleLength = -1,
          .BufferLength = Self->BufferLength,
          .Loop         = 0,
@@ -765,8 +765,8 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
       // Read the FMT header
 
       acSeek(Self->File, 12, SEEK_START);
-      id  = ReadLong(Self->File); // Contains the characters "fmt "
-      len = ReadLong(Self->File); // Length of data in this chunk
+      id  = read_long(Self->File); // Contains the characters "fmt "
+      len = read_long(Self->File); // Length of data in this chunk
 
       if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE, NULL)) {
          if ((acRead(Self->File, Self->prvWAVE, len, &result) != ERR_Okay) or (result < len)) {
@@ -794,12 +794,12 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 #if 0
       if (find_chunk(Self, Self->File, "cue ") IS ERR_Okay) {
          data_p += 32;
-         info.loopstart = ReadLong();
+         info.loopstart = read_long();
          // if the next chunk is a LIST chunk, look for a cue length marker
          if (find_chunk(Self, Self->File, "LIST") IS ERR_Okay) {
             if (!strncmp (data_p + 28, "mark", 4)) {
                data_p += 24;
-               i = ReadLong();	// samples in loop
+               i = read_long();	// samples in loop
                info.samples = info.loopstart + i;
             }
          }
@@ -816,7 +816,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
       // Setup the sound structure
 
-      Self->Length = ReadLong(Self->File); // Length of audio data in this chunk
+      Self->Length = read_long(Self->File); // Length of audio data in this chunk
 
       GetLong(Self->File, FID_Position, &Self->prvDataOffset);
 
@@ -896,7 +896,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
          stream.Path         = Self->prvPath;
          stream.ObjectID     = 0;
          stream.SeekStart    = Self->prvDataOffset;
-         stream.SampleFormat = sampleformat;
+         stream.sample_format = sampleformat;
          stream.SampleLength = Self->Length;
          stream.BufferLength = Self->BufferLength;
          if (!WaitMsg(MT_SndAddStream, Self->AudioID, &stream)) {
@@ -929,7 +929,7 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
                add.LoopSize = 0;
             }
 
-            add.SampleFormat = sampleformat;
+            add.sample_format = sampleformat;
             add.Data         = buffer;
             add.DataSize     = Self->Length;
             add.Result       = 0;
@@ -960,9 +960,9 @@ static ERROR SOUND_Init(objSound *Self, APTR Void)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static ERROR SOUND_NewObject(objSound *Self, APTR Void)
+static ERROR SOUND_NewObject(extSound *Self, APTR Void)
 {
    Self->Compression = 50;     // 50% compression by default
    Self->Volume      = 100;    // Playback at 100% volume level
@@ -973,9 +973,9 @@ static ERROR SOUND_NewObject(objSound *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static ERROR SOUND_ReleaseObject(objSound *Self, APTR Void)
+static ERROR SOUND_ReleaseObject(extSound *Self, APTR Void)
 {
    if (Self->prvPath)        { ReleaseMemory(Self->prvPath);        Self->prvPath    = NULL; }
    if (Self->prvDescription) { ReleaseMemory(Self->prvDescription); Self->prvDescription = NULL; }
@@ -983,13 +983,13 @@ static ERROR SOUND_ReleaseObject(objSound *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Reset: Stops audio playback, resets configuration details and restores the playback position to the start of the sample.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_Reset(objSound *Self, APTR Void)
+static ERROR SOUND_Reset(extSound *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -997,7 +997,7 @@ static ERROR SOUND_Reset(objSound *Self, APTR Void)
 
    if (!Self->ChannelIndex) return ERR_Okay;
 
-   objAudio *audio;
+   extAudio *audio;
    if (!AccessObject(Self->AudioID, 2000, &audio)) {
       Self->Position = 0;
 
@@ -1029,13 +1029,13 @@ static ERROR SOUND_Reset(objSound *Self, APTR Void)
    else return log.warning(ERR_AccessObject);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveToObject: Saves audio sample data to an object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_SaveToObject(objSound *Self, struct acSaveToObject *Args)
+static ERROR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
 
@@ -1062,13 +1062,13 @@ static ERROR SOUND_SaveToObject(objSound *Self, struct acSaveToObject *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Seek: Moves sample playback to a new position.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_Seek(objSound *Self, struct acSeek *Args)
+static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
 {
    // Switch off the audio playback if active
 
@@ -1093,20 +1093,18 @@ static ERROR SOUND_Seek(objSound *Self, struct acSeek *Args)
       }
    }
 
-   // Restart the audio
-
-   if (active IS TRUE) acActivate(Self);
+   if (active) acActivate(Self); // Restart the audio
 
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SetVar: Define custom tags that will be saved with the sample data.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_SetVar(objSound *Self, struct acSetVar *Args)
+static ERROR SOUND_SetVar(extSound *Self, struct acSetVar *Args)
 {
    if ((!Args) or (!Args->Field) or (!Args->Field[0])) return ERR_NullArgs;
 
@@ -1117,13 +1115,13 @@ static ERROR SOUND_SetVar(objSound *Self, struct acSetVar *Args)
    return VarSetString(Self->Fields, Args->Field, Args->Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Active: Returns TRUE if the sound sample is being played back.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_GET_Active(objSound *Self, LONG *Value)
+static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
 {
    parasol::Log log;
 
@@ -1147,7 +1145,7 @@ static ERROR SOUND_GET_Active(objSound *Self, LONG *Value)
    *Value = FALSE;
 
    if (Self->ChannelIndex) {
-      objAudio *audio;
+      extAudio *audio;
       if (!AccessObject(Self->AudioID, 5000, &audio)) {
          auto channel = GetChannel(audio, Self->ChannelIndex);
          if (channel) {
@@ -1163,7 +1161,7 @@ static ERROR SOUND_GET_Active(objSound *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Audio: Refers to the audio object/device to use for playback.
@@ -1210,15 +1208,15 @@ It is intended for use by child classes only.
 -FIELD-
 Flags: Optional initialisation flags.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_SET_Flags(objSound *Self, LONG Value)
+static ERROR SOUND_SET_Flags(extSound *Self, LONG Value)
 {
    Self->Flags = (Self->Flags & 0xffff0000) | (Value & 0x0000ffff);
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Frequency: The frequency of a sampled sound is specified here.
@@ -1237,31 +1235,31 @@ for the sound class.
 
 The buffer that is referred to by the Header field is not populated until the Init action is called on the sound object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_GET_Header(objSound *Self, BYTE **Value, LONG *Elements)
+static ERROR SOUND_GET_Header(extSound *Self, BYTE **Value, LONG *Elements)
 {
    *Value = (BYTE *)Self->prvHeader;
    *Elements = ARRAYSIZE(Self->prvHeader);
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Length: Indicates the total byte-length of sample data.
 
 This field specifies the length of the sample data in bytes.  To get the length of the sample in seconds, divide this
 value by the #BytesPerSecond field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_GET_Path(objSound *Self, STRING *Value)
+static ERROR SOUND_GET_Path(extSound *Self, STRING *Value)
 {
    if ((*Value = Self->prvPath)) return ERR_Okay;
    else return ERR_FieldNotSet;
 }
 
-static ERROR SOUND_SET_Path(objSound *Self, CSTRING Value)
+static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -1278,7 +1276,7 @@ static ERROR SOUND_SET_Path(objSound *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 LoopEnd: The byte position at which sample looping will end.
@@ -1315,9 +1313,9 @@ is `KEY OCTAVE SHARP`.  Here are some examples: `C5, D7#, G2, E3S`.
 The middle C key for this format is `C5`.  The maximum octave that you can achieve for the string format is 9
 and the lowest is 0.  Use either the `S` character or the `#` character for referral to a sharp note.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_GET_Note(objSound *Self, CSTRING *Value)
+static ERROR SOUND_GET_Note(extSound *Self, CSTRING *Value)
 {
    switch(Self->prvNote) {
       case NOTE_C:  Self->prvNoteString[0] = 'C';
@@ -1380,7 +1378,7 @@ static ERROR SOUND_GET_Note(objSound *Self, CSTRING *Value)
    return ERR_Okay;
 }
 
-static ERROR SOUND_SET_Note(objSound *Self, CSTRING Value)
+static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -1459,7 +1457,7 @@ static ERROR SOUND_SET_Note(objSound *Self, CSTRING Value)
 #endif
 
    if (Self->ChannelIndex) {
-      objAudio *audio;
+      extAudio *audio;
       if (!AccessObject(Self->AudioID, 200, &audio)) {
          COMMAND_SetFrequency(audio, Self->ChannelIndex, Self->Playback);
          ReleaseObject(audio);
@@ -1470,7 +1468,7 @@ static ERROR SOUND_SET_Note(objSound *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Octave: The octave to use for sample playback.
 
@@ -1481,16 +1479,16 @@ positive values raise the playback rate.  The minimum octave setting is -5 and t
 The octave can also be adjusted by setting the #Note field.  Setting the Octave field directly is useful if
 you need to quickly double or halve the playback rate.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_SET_Octave(objSound *Self, LONG Value)
+static ERROR SOUND_SET_Octave(extSound *Self, LONG Value)
 {
    if ((Value < -10) or (Value > 10))
    Self->Octave = Value;
    return SetLong(Self, FID_Note, Self->prvNote);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Pan: Determines the horizontal position of a sound when played through stereo speakers.
 
@@ -1499,9 +1497,9 @@ The default value for this field is zero, which plays the sound through both spe
 value is -100, which forces play through the left speaker and the maximum value is 100, which forces play through the
 right speaker.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_SET_Pan(objSound *Self, DOUBLE Value)
+static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
 {
    parasol::Log log;
 
@@ -1518,7 +1516,7 @@ static ERROR SOUND_SET_Pan(objSound *Self, DOUBLE Value)
 #endif
 
    if (Self->ChannelIndex) {
-      objAudio *audio;
+      extAudio *audio;
       if (!AccessObject(Self->AudioID, 200, &audio)) {
          COMMAND_SetPan(audio, Self->ChannelIndex, (Self->Pan * 64) / 100);
          ReleaseObject(audio);
@@ -1529,7 +1527,7 @@ static ERROR SOUND_SET_Pan(objSound *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Path: Location of the audio sample data.
@@ -1543,9 +1541,9 @@ Playback: The playback frequency of the sound sample can be defined here.
 Set this field to define the exact frequency of a sample's playback.  The playback frequency can be modified at
 any time, including during audio playback if real-time adjustments to a sample's audio output rate is desired.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_SET_Playback(objSound *Self, LONG Value)
+static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
 {
    parasol::Log log;
 
@@ -1562,7 +1560,7 @@ static ERROR SOUND_SET_Playback(objSound *Self, LONG Value)
 #endif
 
    if (Self->ChannelIndex) {
-      objAudio *audio;
+      extAudio *audio;
       if (!AccessObject(Self->AudioID, 200, &audio)) {
          COMMAND_SetFrequency(audio, Self->ChannelIndex, Self->Playback);
          ReleaseObject(audio);
@@ -1573,16 +1571,16 @@ static ERROR SOUND_SET_Playback(objSound *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Position: The current playback position.
 
 The current playback position of the audio sample is indicated by this field.  Writing to the field will alter the
 playback position, either when the sample is next played, or immediately if it is currently playing.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_GET_Position(objSound *Self, LONG *Value)
+static ERROR SOUND_GET_Position(extSound *Self, LONG *Value)
 {
 #ifdef _WIN32
 
@@ -1598,7 +1596,7 @@ static ERROR SOUND_GET_Position(objSound *Self, LONG *Value)
    return ERR_Okay;
 }
 
-static ERROR SOUND_SET_Position(objSound *Self, LONG Value)
+static ERROR SOUND_SET_Position(extSound *Self, LONG Value)
 {
    if (!acSeek(Self, Value, SEEK_START)) return ERR_Okay;
    else {
@@ -1608,7 +1606,7 @@ static ERROR SOUND_SET_Position(objSound *Self, LONG Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Priority: The priority of a sound in relation to other sound samples being played.
@@ -1618,9 +1616,9 @@ available mixing channels are busy. Naturally, higher priorities are played over
 
 The minimum priority value allowed is -100, the maximum is 100.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_SET_Priority(objSound *Self, LONG Value)
+static ERROR SOUND_SET_Priority(extSound *Self, LONG Value)
 {
    Self->Priority = Value;
    if (Self->Priority < -100) Self->Priority = -100;
@@ -1628,7 +1626,7 @@ static ERROR SOUND_SET_Priority(objSound *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Stream: Defines the preferred streaming method for the sample.
@@ -1646,9 +1644,9 @@ The field specifies the volume of a sound, which lies in the range 0 - 100%.  A 
 a volume of 100 is the loudest.  Setting the field during sample playback will dynamically alter the volume.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SOUND_SET_Volume(objSound *Self, DOUBLE Value)
+static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
 {
    Self->Volume = Value;
    if (Self->Volume < 0) Self->Volume = 0;
@@ -1662,7 +1660,7 @@ static ERROR SOUND_SET_Volume(objSound *Self, DOUBLE Value)
 #endif
 
    if (Self->ChannelIndex) {
-      objAudio *audio;
+      extAudio *audio;
       if (!AccessObject(Self->AudioID, 200, &audio)) {
          COMMAND_SetVolume(audio, Self->ChannelIndex, Self->Volume);
          ReleaseObject(audio);
@@ -1673,9 +1671,9 @@ static ERROR SOUND_SET_Volume(objSound *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static ERROR find_chunk(objSound *Self, OBJECTPTR File, CSTRING ChunkName)
+static ERROR find_chunk(extSound *Self, OBJECTPTR File, CSTRING ChunkName)
 {
    while (1) {
       char chunk[4];
@@ -1686,14 +1684,14 @@ static ERROR find_chunk(objSound *Self, OBJECTPTR File, CSTRING ChunkName)
 
       if (!StrCompare(ChunkName, chunk, 4, STR_CASE)) return ERR_Okay;
 
-      len = ReadLong(Self->File); // Length of data in this chunk
+      len = read_long(Self->File); // Length of data in this chunk
       acSeek(Self->File, len, SEEK_CURRENT);
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static ERROR playback_timer(objSound *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERROR playback_timer(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
 {
    parasol::Log log;
    LONG active;
@@ -1736,7 +1734,7 @@ static ERROR playback_timer(objSound *Self, LARGE Elapsed, LARGE CurrentTime)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clFlags[] = {
    { "Loop",         SDF_LOOP },
@@ -1803,6 +1801,8 @@ static const ActionArray clActions[] = {
    { 0, NULL }
 };
 
+//********************************************************************************************************************
+
 ERROR add_sound_class(void)
 {
    return CreateObject(ID_METACLASS, 0, &clSound,
@@ -1815,7 +1815,7 @@ ERROR add_sound_class(void)
       FID_Category|TLONG,       CCF_AUDIO,
       FID_Actions|TPTR,         clActions,
       FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(objSound),
+      FID_Size|TLONG,           sizeof(extSound),
       FID_Path|TSTR,            MOD_PATH,
       TAGEND);
 }
