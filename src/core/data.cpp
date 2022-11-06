@@ -206,8 +206,8 @@ THREADVAR LONG tlThreadReadMsg = 0;
 THREADVAR LONG tlThreadWriteMsg = 0;
 #endif
 
-struct ObjectContext glTopContext = { .Stack = NULL, .Object = &glDummyObject, .Field = NULL }; // Top-level context is a dummy and can be thread-shared
 struct BaseClass glDummyObject;
+class ObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
 THREADVAR struct ObjectContext *tlContext = &glTopContext;
 
 OBJECTPTR glLocale = NULL;

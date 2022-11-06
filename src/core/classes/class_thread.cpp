@@ -242,8 +242,7 @@ static void * thread_entry(objThread *Self)
 
    if (Self->prv.Routine.Type) {
       // Replace the default dummy context with one that pertains to the thread
-      ObjectContext thread_ctx = { .Stack = tlContext, .Object = Self, .Field = NULL, .Action = 0 };
-      tlContext = &thread_ctx;
+      ObjectContext thread_ctx(Self, 0);
 
       if (Self->prv.Routine.Type IS CALL_STDC) {
          auto routine = (ERROR (*)(objThread *))Self->prv.Routine.StdC.Routine;
@@ -289,8 +288,6 @@ static void * thread_entry(objThread *Self)
       }
 
       // Please note that the Thread object/memory should be presumed terminated from this point
-
-      tlContext = &glTopContext; // Revert back to the dummy context
    }
 
    tlThreadCrashed = FALSE;
