@@ -363,10 +363,10 @@ ERROR CLASS_Init(objMetaClass *Self, APTR Void)
 
    // Record the name of the module that owns this class.
 
-   ObjectContext *ctx = tlContext;
+   auto ctx = tlContext;
    while (ctx != &glTopContext) {
-      if (ctx->Object->ClassID IS ID_MODULEMASTER) {
-         Self->Master = (ModuleMaster *)ctx->Object;
+      if (ctx->object()->ClassID IS ID_MODULEMASTER) {
+         Self->Master = (ModuleMaster *)ctx->object();
          break;
       }
       ctx = ctx->Stack;

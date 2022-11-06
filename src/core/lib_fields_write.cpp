@@ -84,13 +84,13 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
    if ((field = lookup_id(Object, FieldID, &Object))) {
       if (!(field->Flags & FD_ARRAY)) return log.warning(ERR_FieldTypeMismatch);
 
-      if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
+      if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
          if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
          else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
 
-      if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+      if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
          if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
          else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
@@ -173,12 +173,12 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
    if ((field = lookup_id(Object, FieldID, &Object))) {
       // Validation
 
-      if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
+      if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
          if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
          else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
       }
-      else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+      else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
          if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
          else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
          return ERR_NoFieldAccess;
@@ -294,7 +294,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
       if ((field = lookup_id(Object, (ULONG)field_id, &source))) {
          // Validation checks
 
-         if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
+         if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
             if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
             else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
 
@@ -305,7 +305,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
             else va_arg(List, LONG);
             continue;
          }
-         else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+         else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
             if (!field->Name) log.warning("Field %s of class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
             else log.warning("Field \"%s\" of class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
 
@@ -496,12 +496,12 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
       return ERR_Search;
    }
 
-   if ((!(Field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->Object != Object)) {
+   if ((!(Field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
       log.warning("Field \"%s\" of class %s is not writable.", FieldName, ((objMetaClass *)Object->Class)->ClassName);
       return ERR_NoFieldAccess;
    }
 
-   if ((Field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->Object != Object)) {
+   if ((Field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
       log.warning("Field \"%s\" in class %s is init-only.", FieldName, ((objMetaClass *)Object->Class)->ClassName);
       return ERR_NoFieldAccess;
    }
@@ -895,7 +895,7 @@ static ERROR writeval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR 
    else if (Flags & FD_POINTER) {
       offset[0].Type = (Data) ? CALL_STDC : CALL_NONE;
       offset[0].StdC.Routine = (FUNCTION *)Data;
-      offset[0].StdC.Context = tlContext->Object;
+      offset[0].StdC.Context = tlContext->object();
    }
    else return ERR_FieldTypeMismatch;
    return ERR_Okay;
@@ -911,71 +911,64 @@ static ERROR writeval_ptr(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
 
 //****************************************************************************
 
-INLINE void SET_CONTEXT(OBJECTPTR Object, Field *CurrentField, ObjectContext *Context)
-{
-   if ((tlContext->Field IS CurrentField) and (tlContext->Object IS Object)) return; // Detect recursion
+class FieldContext : public ObjectContext {
+   bool success;
 
-   Context->Stack  = tlContext;
-   Context->Object = Object;
-   Context->Field  = CurrentField;
-   Context->Action = AC_SetField;
+   public:
+   FieldContext(OBJECTPTR Object, struct Field *Field) : ObjectContext(Object, AC_SetField, NULL) {
+      if ((tlContext->Field IS Field) and (tlContext->object() IS Object)) { // Detect recursion
+         success = false;
+         return;
+      }
+      else success = true;
 
-   tlContext = Context;
-   Object->ActionDepth++;
-}
+      Object->ActionDepth++;
+   }
 
-INLINE void RESTORE_CONTEXT(OBJECTPTR Object)
-{
-   Object->ActionDepth--;
-   tlContext = tlContext->Stack;
-}
+   ~FieldContext() {
+      if (success) Object->ActionDepth--;
+   }
+};
 
 static ERROR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    // Convert the value to match what the variable will accept, then call the variable field's set function.
 
    Variable var;
-   ERROR error;
-   ObjectContext ctx;
-   SET_CONTEXT(Object, Field, &ctx);
+   FieldContext ctx(Object, Field);
 
    if (Flags & (FD_LONG|FD_LARGE)) {
       var.Type = FD_LARGE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
       if (Flags & FD_LONG) var.Large = *((LONG *)Data);
       else var.Large = *((LARGE *)Data);
-      error = ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
+      return ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
    }
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) {
       var.Type = FD_DOUBLE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
       var.Double = *((DOUBLE *)Data);
-      error = ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
+      return ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
    }
    else if (Flags & (FD_POINTER|FD_STRING)) {
       var.Type = FD_POINTER | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER))); // Allows support flags like FD_STRING to fall through
       var.Pointer = (APTR)Data;
-      error = ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
+      return ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
    }
    else if (Flags & FD_VARIABLE) {
-      error = ((ERROR (*)(APTR, APTR))(Field->SetValue))(Object, (APTR)Data);
+      return ((ERROR (*)(APTR, APTR))(Field->SetValue))(Object, (APTR)Data);
    }
-   else error = ERR_FieldTypeMismatch;
-
-   RESTORE_CONTEXT(Object);
-   return error;
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR setval_brgb(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    if (Field->Flags & FD_BYTE) {
-      ObjectContext ctx;
-      SET_CONTEXT(Object, Field, &ctx);
+      FieldContext ctx(Object, Field);
 
       RGB8 rgb;
       rgb.Alpha = 255;
       write_array((CSTRING)Data, FD_BYTE, 4, &rgb);
       ERROR error = ((ERROR (*)(APTR, RGB8 *, LONG))(Field->SetValue))(Object, &rgb, 4);
 
-      RESTORE_CONTEXT(Object);
       return error;
    }
    else return ERR_FieldTypeMismatch;
@@ -983,24 +976,17 @@ static ERROR setval_brgb(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, 
 
 static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   parasol::Log log(__FUNCTION__);
-   ERROR error;
-
-   ObjectContext ctx;
-   SET_CONTEXT(Object, Field, &ctx);
+   FieldContext ctx(Object, Field);
 
    if (Flags & FD_ARRAY) {
       // Basic type checking
       LONG src_type = Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT);
       if (src_type) {
          LONG dest_type = Field->Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT);
-         if (!(src_type & dest_type)) {
-            RESTORE_CONTEXT(Object);
-            return ERR_FieldTypeMismatch;
-         }
+         if (!(src_type & dest_type)) return ERR_FieldTypeMismatch;
       }
 
-      error = ((ERROR (*)(APTR, APTR, LONG))(Field->SetValue))(Object, (APTR)Data, Elements);
+      return ((ERROR (*)(APTR, APTR, LONG))(Field->SetValue))(Object, (APTR)Data, Elements);
    }
    else if (Flags & FD_STRING) {
       APTR arraybuffer;
@@ -1019,132 +1005,106 @@ static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
          }
          else Elements = write_array((CSTRING)Data, Field->Flags, 0, arraybuffer);
 
-         error = ((ERROR (*)(APTR, APTR, LONG))(Field->SetValue))(Object, arraybuffer, Elements);
+         auto error = ((ERROR (*)(APTR, APTR, LONG))(Field->SetValue))(Object, arraybuffer, Elements);
 
          free(arraybuffer);
+         return error;
       }
-      else error = ERR_AllocMemory;
+      else return ERR_AllocMemory;
    }
    else {
+      parasol::Log log(__FUNCTION__);
       log.warning("Arrays can only be set using the FD_ARRAY type.");
-      error = ERR_FieldTypeMismatch;
+      return ERR_FieldTypeMismatch;
    }
-
-   RESTORE_CONTEXT(Object);
-   return error;
 }
 
 static ERROR setval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   OBJECTPTR current_context = tlContext->Object;
+   OBJECTPTR caller = tlContext->object();
+   FieldContext ctx(Object, Field);
 
-   ObjectContext ctx;
-   SET_CONTEXT(Object, Field, &ctx);
-
-   ERROR error;
    if (Flags & FD_FUNCTION) {
-      error = ((ERROR (*)(APTR, APTR))(Field->SetValue))(Object, (APTR)Data);
+      return ((ERROR (*)(APTR, APTR))(Field->SetValue))(Object, (APTR)Data);
    }
    else if (Flags & FD_POINTER) {
       FUNCTION func;
       if (Data) {
          func.Type = CALL_STDC;
-         func.StdC.Context = current_context;
+         func.StdC.Context = caller;
          func.StdC.Routine = (APTR)Data;
       }
       else func.Type = CALL_NONE;
-      error = ((ERROR (*)(APTR, FUNCTION *))(Field->SetValue))(Object, &func);
+      return ((ERROR (*)(APTR, FUNCTION *))(Field->SetValue))(Object, &func);
    }
-   else error = ERR_FieldTypeMismatch;
-
-   RESTORE_CONTEXT(Object);
-   return error;
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR setval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   ObjectContext ctx;
-   SET_CONTEXT(Object, Field, &ctx);
+   FieldContext ctx(Object, Field);
 
    LONG int32;
-   ERROR error;
    if (Flags & FD_LARGE)       int32 = (LONG)(*((LARGE *)Data));
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) int32 = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) int32 = StrToInt((STRING)Data);
    else if (Flags & FD_LONG)   int32 = *((LONG *)Data);
-   else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
+   else return ERR_FieldTypeMismatch;
 
-   error = ((ERROR (*)(APTR, LONG))(Field->SetValue))(Object, int32);
-
-   RESTORE_CONTEXT(Object);
-   return error;
+   return ((ERROR (*)(APTR, LONG))(Field->SetValue))(Object, int32);
 }
 
 static ERROR setval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   ObjectContext ctx;
-   SET_CONTEXT(Object, Field, &ctx);
+   FieldContext ctx(Object, Field);
 
    DOUBLE float64;
    if (Flags & FD_LONG)        float64 = *((LONG *)Data);
    else if (Flags & FD_LARGE)  float64 = (DOUBLE)(*((LARGE *)Data));
    else if (Flags & FD_STRING) float64 = StrToFloat((CSTRING)Data);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) float64 = *((DOUBLE *)Data);
-   else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
+   else return ERR_FieldTypeMismatch;
 
-   ERROR error = ((ERROR (*)(APTR, DOUBLE))(Field->SetValue))(Object, float64);
-
-   RESTORE_CONTEXT(Object);
-   return error;
+   return ((ERROR (*)(APTR, DOUBLE))(Field->SetValue))(Object, float64);
 }
 
 static ERROR setval_pointer(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   ERROR error;
-   ObjectContext ctx;
-   SET_CONTEXT(Object, Field, &ctx);
+   FieldContext ctx(Object, Field);
 
    if (Flags & (FD_POINTER|FD_STRING)) {
-      error = ((ERROR (*)(APTR, CPTR ))(Field->SetValue))(Object, Data);
+      return ((ERROR (*)(APTR, CPTR ))(Field->SetValue))(Object, Data);
    }
    else if (Flags & FD_LONG) {
       char buffer[32];
       IntToStr(*((LONG *)Data), buffer, sizeof(buffer));
-      error = ((ERROR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
+      return ((ERROR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
    }
    else if (Flags & FD_LARGE) {
       char buffer[64];
       IntToStr(*((LARGE *)Data), buffer, sizeof(buffer));
-      error = ((ERROR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
+      return ((ERROR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
    }
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) {
       char buffer[64];
       IntToStr(*((DOUBLE *)Data), buffer, sizeof(buffer));
-      error = ((ERROR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
+      return ((ERROR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
    }
-   else error = ERR_FieldTypeMismatch;
-
-   RESTORE_CONTEXT(Object);
-   return error;
+   else return ERR_FieldTypeMismatch;
 }
 
 static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   ERROR error;
    LARGE int64;
-   ObjectContext ctx;
-   SET_CONTEXT(Object, Field, &ctx);
+   FieldContext ctx(Object, Field);
 
    if (Flags & FD_LONG)        int64 = *((LONG *)Data);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) int64 = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) int64 = StrToInt((CSTRING)Data);
    else if (Flags & FD_LARGE)  int64 = *((LARGE *)Data);
-   else { RESTORE_CONTEXT(Object); return ERR_FieldTypeMismatch; }
+   else return ERR_FieldTypeMismatch;
 
-   error = ((ERROR (*)(APTR, LARGE))(Field->SetValue))(Object, int64);
-
-   RESTORE_CONTEXT(Object);
-   return error;
+   return ((ERROR (*)(APTR, LARGE))(Field->SetValue))(Object, int64);
 }
 
 //****************************************************************************

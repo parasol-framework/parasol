@@ -496,7 +496,7 @@ extern LONG glBufferSize;
 extern TIMER glCacheTimer;
 extern STRING glBuffer;
 extern APTR glJNIEnv;
-extern struct ObjectContext glTopContext; // Read-only, not a threading concern.
+extern class ObjectContext glTopContext; // Read-only, not a threading concern.
 extern OBJECTPTR modIconv;
 extern OBJECTPTR glLocale;
 extern objTime *glTime;
@@ -537,7 +537,7 @@ extern struct CoreBase *LocalCoreBase;
 //****************************************************************************
 // Thread specific variables - these do not require locks.
 
-extern THREADVAR struct ObjectContext *tlContext;
+extern THREADVAR class ObjectContext *tlContext;
 extern THREADVAR struct Message *tlCurrentMsg;
 extern THREADVAR WORD tlMsgRecursion;
 extern THREADVAR WORD tlDepth;
@@ -614,10 +614,56 @@ struct ValidateMessage {
 
 class ObjectContext {
    public:
-   struct ObjectContext *Stack; // For historical context / call stack analysis.
-   OBJECTPTR Object;      // Object that we are currently operating in.
-   struct Field *Field;   // Used if the context represents a get/set field routine
-   WORD Action;           // Used if the context enters an action or method routine.
+   class ObjectContext *Stack; // Call stack.
+   struct Field *Field;        // Set if the context is linked to a get/set field operation.  For logging purposes only.
+   WORD Action;                // Set if the context enters an action or method routine.
+
+   protected:
+   OBJECTPTR Object;           // Required.  The object that currently has the operating context.
+
+   public:
+   ObjectContext() { // Dummy initialisation
+      Stack  = NULL;
+      Object = &glDummyObject;
+      Field  = NULL;
+      Action = 0;
+   }
+
+   ObjectContext(OBJECTPTR pObject, WORD pAction, struct Field *pField = NULL) {
+      Stack  = tlContext;
+      Object = pObject;
+      Field  = pField;
+      Action = pAction;
+
+      tlContext = this;
+   }
+
+   ~ObjectContext() {
+      if (Stack) tlContext = Stack;
+   }
+
+   // Return the nearest object for resourcing purposes.  Note that an action ID of 0 has special meaning and indicates
+   // that resources should be tracked to the next object on the stack (this feature is used by GetField*() functionality).
+
+   inline OBJECTPTR resource() {
+      if (Action) return Object;
+      else {
+         for (auto ctx = Stack; ctx; ctx=ctx->Stack) {
+            if (Action) return ctx->Object;
+         }
+         return &glDummyObject;
+      }
+   }
+
+   inline OBJECTPTR setContext(OBJECTPTR NewObject) {
+      auto old = Object;
+      Object = NewObject;
+      return old;
+   }
+
+   constexpr inline OBJECTPTR object() { // Return the object that has the context (but not necessarily for resourcing)
+      return Object;
+   }
 };
 
 //****************************************************************************

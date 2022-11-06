@@ -168,10 +168,11 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
    else if (Flags & MEM_UNTRACKED) object_id = 0;
    else if (Flags & MEM_TASK)      object_id = glCurrentTaskID;
    else if (Flags & MEM_CALLER) {
-      if (tlContext->Stack) object_id = tlContext->Stack->Object->UID;
+      // Rarely used, but this feature allows methods to return memory that is tracked to the caller.
+      if (tlContext->Stack) object_id = tlContext->Stack->resource()->UID;
       else object_id = glCurrentTaskID;
    }
-   else if (tlContext != &glTopContext) object_id = tlContext->Object->UID;
+   else if (tlContext != &glTopContext) object_id = tlContext->resource()->UID;
    else object_id = SystemTaskID;
 
    // Allocate the memory block according to whether it is public or private.
@@ -397,9 +398,9 @@ retry:
 
       if (Flags & (MEM_UNTRACKED|MEM_HIDDEN));
       else {
-         tlContext->Object->Flags |= NF_HAS_SHARED_RESOURCES;
-         if ((tlContext->Object->Stats) and (tlContext->Object->TaskID)) {
-            glSharedBlocks[blk].TaskID = tlContext->Object->TaskID;
+         tlContext->resource()->Flags |= NF_HAS_SHARED_RESOURCES;
+         if ((tlContext->resource()->Stats) and (tlContext->resource()->TaskID)) {
+            glSharedBlocks[blk].TaskID = tlContext->resource()->TaskID;
          }
          else glSharedBlocks[blk].TaskID = glCurrentTaskID;
       }
@@ -432,8 +433,8 @@ retry:
 
          if (Flags & MEM_TMP_LOCK) tlPreventSleep++;
          glSharedBlocks[blk].AccessCount = 1;
-         glSharedBlocks[blk].ContextID = tlContext->Object->UID; // For debugging, indicates the object that acquired the first lock.
-         glSharedBlocks[blk].ActionID  = tlContext->Action;      // For debugging.
+         glSharedBlocks[blk].ContextID = tlContext->resource()->UID; // For debugging, indicates the object that acquired the first lock.
+         glSharedBlocks[blk].ActionID  = tlContext->Action;          // For debugging.
 
          if (Flags & MEM_STRING) ((STRING)(*Address))[0] = 0; // Strings are easily 'cleared' by setting the first byte.
          else if (!(Flags & MEM_NO_CLEAR)) {  // Clear the memory block unless told otherwise.
@@ -700,7 +701,7 @@ ERROR FreeResource(const void *Address)
          log.pmsg("FreeResource(%p, Size: %d, $%.8x, Owner: #%d)", Address, mem.Size, mem.Flags, mem.OwnerID);
       }
 
-      if ((mem.OwnerID) and (tlContext->Object->UID) and (mem.OwnerID != tlContext->Object->UID)) {
+      if ((mem.OwnerID) and (tlContext->object()->UID) and (mem.OwnerID != tlContext->object()->UID)) {
          log.warning("Attempt to free address %p (size %d) owned by #%d.", Address, mem.Size, mem.OwnerID);
       }
 

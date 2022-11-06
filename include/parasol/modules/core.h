@@ -1804,7 +1804,6 @@ struct CoreBase {
    ERROR (*_SetFieldsID)(OBJECTID, ...);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID);
    struct Field * (*_FindField)(OBJECTPTR, ULONG, APTR);
-   struct Field * (*_CurrentField)(void);
    LONG (*_GetMsgPort)(OBJECTID);
    CSTRING (*_GetErrorMsg)(ERROR);
    struct Message * (*_GetActionMsg)(void);
@@ -1998,7 +1997,6 @@ struct CoreBase {
 #define SetFieldsID(...) (CoreBase->_SetFieldsID)(__VA_ARGS__)
 #define GetObjectPtr(...) (CoreBase->_GetObjectPtr)(__VA_ARGS__)
 #define FindField(...) (CoreBase->_FindField)(__VA_ARGS__)
-#define CurrentField(...) (CoreBase->_CurrentField)(__VA_ARGS__)
 #define GetMsgPort(...) (CoreBase->_GetMsgPort)(__VA_ARGS__)
 #define GetErrorMsg(...) (CoreBase->_GetErrorMsg)(__VA_ARGS__)
 #define GetActionMsg(...) (CoreBase->_GetActionMsg)(__VA_ARGS__)

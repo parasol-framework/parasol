@@ -1039,7 +1039,6 @@ struct ScriptArg { // For use with scExec
     "SetFieldsID",
     "GetObjectPtr",
     "FindField",
-    "CurrentField",
     "GetMsgPort",
     "GetErrorMsg",
     "GetActionMsg",

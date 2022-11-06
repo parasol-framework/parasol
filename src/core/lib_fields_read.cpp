@@ -608,8 +608,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
 
       Variable var;
       ERROR error;
-      struct Field *old_field = tlContext->Field;
-      tlContext->Field = Field;
+      ObjectContext ctx(Object, 0, Field);
 
       if (DestFlags & FD_VARIABLE) {
          error = Field->GetValue(Object, Result);
@@ -650,18 +649,14 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
          }
       }
 
-      tlContext->Field = old_field;
-
       if (error IS ERR_FieldTypeMismatch) goto mismatch;
       else return error;
    }
 
    if (Field->GetValue) {
-      struct Field *old_field = tlContext->Field;
-      tlContext->Field = Field;
+      ObjectContext ctx(Object, 0, Field);
       ERROR (*get_field)(APTR, APTR, LONG *) = (ERROR (*)(APTR, APTR, LONG *))Field->GetValue;
       ERROR error = get_field(Object, value, &array_size);
-      tlContext->Field = old_field;
       if (error) return error;
       data = value;
    }

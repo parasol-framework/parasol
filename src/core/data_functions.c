@@ -35,7 +35,6 @@ FDEF argsCreateFolder[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, {
 FDEF argsCreateLink[] = { { "Error", FD_LONG|FD_ERROR }, { "From", FD_STR }, { "To", FD_STR }, { 0, 0 } };
 FDEF argsCreateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "ClassID", FD_LARGE }, { "Flags", FD_LONG }, { "Object", FD_OBJECTPTR|FD_RESULT }, { "Tags", FD_VARTAGS }, { 0, 0 } };
 FDEF argsCurrentContext[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
-FDEF argsCurrentField[] = { { "Field", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsCurrentTask[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsDeleteFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsDeleteVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { 0, 0 } };
@@ -282,7 +281,6 @@ const struct Function glFunctions[] = {
    { (APTR)SetFieldsID, "SetFieldsID", argsSetFieldsID },
    { (APTR)GetObjectPtr, "GetObjectPtr", argsGetObjectPtr },
    { (APTR)FindField, "FindField", argsFindField },
-   { (APTR)CurrentField, "CurrentField", argsCurrentField },
    { (APTR)GetMsgPort, "GetMsgPort", argsGetMsgPort },
    { (APTR)GetErrorMsg, "GetErrorMsg", argsGetErrorMsg },
    { (APTR)GetActionMsg, "GetActionMsg", argsGetActionMsg },

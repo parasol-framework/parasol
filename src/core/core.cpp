@@ -1407,11 +1407,11 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       if ((ProcessID IS glProcessID) and (ctx != &glTopContext)) {
          LONG class_id;
          STRING classname;
-         if ((class_id = ctx->Object->ClassID)) {
-            classname = ResolveClassID(ctx->Object->ClassID);
+         if ((class_id = ctx->object()->ClassID)) {
+            classname = ResolveClassID(ctx->object()->ClassID);
          }
          else classname = "None";
-         LOGE("  Object Context: #%d / %p [Class: %s / $%.8x]", ctx->Object->UID, ctx->Object, classname, ctx->Object->ClassID);
+         LOGE("  Object Context: #%d / %p [Class: %s / $%.8x]", ctx->object()->UID, ctx->object(), classname, ctx->object()->ClassID);
       }
 
       glPageFault = 0;
@@ -1536,12 +1536,12 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
       }
       glCodeIndex = CP_PRINT_CONTEXT;
 
-      if ((ProcessID IS glProcessID) and (ctx->Object)) {
+      if ((ProcessID IS glProcessID) and (ctx->object())) {
          LONG class_id;
          CSTRING classname;
          if (ctx != &glTopContext) {
-            if ((class_id = ctx->Object->ClassID)) {
-               classname = ResolveClassID(ctx->Object->ClassID);
+            if ((class_id = ctx->object()->ClassID)) {
+               classname = ResolveClassID(ctx->object()->ClassID);
             }
             else classname = "None";
          }
@@ -1549,7 +1549,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
             classname = "None";
             class_id = 0;
          }
-         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->Object->UID, ctx->Object, classname, ctx->Object->ClassID);
+         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->object()->UID, ctx->object(), classname, ctx->object()->ClassID);
       }
 
       glPageFault = 0;

@@ -18,11 +18,11 @@
 
 #endif
 
-typedef class plBitmap objBitmap;
-typedef class plDisplay objDisplay;
-typedef class plClipboard objClipboard;
-typedef class plPointer objPointer;
-typedef class plSurface objSurface;
+class objBitmap;
+class objDisplay;
+class objClipboard;
+class objPointer;
+class objSurface;
 
 #ifdef __xwindows__
 
@@ -481,7 +481,7 @@ INLINE ERROR bmpDrawLine(APTR Ob, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Co
 #define bmpConvertToRGB(obj) Action(MT_BmpConvertToRGB,(obj),0)
 
 
-typedef class plBitmap : public BaseClass {
+class objBitmap : public BaseClass {
    public:
    struct RGBPalette * Palette;                                      // Points to a bitmap's colour palette.
    struct ColourFormat * ColourFormat;                               // Describes the colour format used to construct each bitmap pixel.
@@ -641,7 +641,7 @@ typedef class plBitmap : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
-} objBitmap;
+};
 
 // Display class definition
 
@@ -710,7 +710,7 @@ INLINE ERROR gfxUpdateDisplay(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG 
 #define gfxCheckXWindow(obj) Action(MT_GfxCheckXWindow,(obj),0)
 
 
-typedef class plDisplay : public BaseClass {
+class objDisplay : public BaseClass {
    public:
    DOUBLE   RefreshRate;  // This field manages the display refresh rate.
    objBitmap * Bitmap;    // Reference to the display's bitmap information.
@@ -783,7 +783,7 @@ typedef class plDisplay : public BaseClass {
    }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
    inline ERROR show() { return Action(AC_Show, this, NULL); }
-} objDisplay;
+};
 
 // Clipboard class definition
 
@@ -840,7 +840,7 @@ INLINE ERROR clipRemove(APTR Ob, LONG Datatype) {
 }
 
 
-typedef class plClipboard : public BaseClass {
+class objClipboard : public BaseClass {
    public:
    LONG     Flags;      // Optional flags.
    MEMORYID ClusterID;  // Identifies a unique cluster of items targeted by a clipboard object.
@@ -864,13 +864,13 @@ typedef class plClipboard : public BaseClass {
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-} objClipboard;
+};
 
 // Pointer class definition
 
 #define VER_POINTER (1.000000)
 
-typedef class plPointer : public BaseClass {
+class objPointer : public BaseClass {
    public:
    DOUBLE   Speed;         // Speed multiplier for Pointer movement.
    DOUBLE   Acceleration;  // The rate of acceleration for relative pointer movement.
@@ -896,7 +896,7 @@ typedef class plPointer : public BaseClass {
    LONG     DragItem;      // The currently dragged item, as defined by StartCursorDrag().
    OBJECTID OverObjectID;  // Readable field that gives the ID of the object under the pointer.
    LONG     ClickSlop;     // A leniency value that assists in determining if the user intended to click or drag.
-} objPointer;
+};
 
 // Surface class definition
 
@@ -959,7 +959,7 @@ INLINE ERROR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOU
 #define drwScheduleRedraw(obj) Action(MT_DrwScheduleRedraw,(obj),0)
 
 
-typedef class plSurface : public BaseClass {
+class objSurface : public BaseClass {
    public:
    OBJECTID DragID;     // This object-based field is used to control the dragging of objects around the display.
    OBJECTID BufferID;   // The ID of the bitmap that manages the surface's graphics.
@@ -1026,8 +1026,6 @@ typedef class plSurface : public BaseClass {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC_MoveToPoint, this, &moveto);
    }
-   // NewOwner
-
    inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC_Redimension, this, &args);
@@ -1049,7 +1047,7 @@ typedef class plSurface : public BaseClass {
       return Action(AC_ScrollToPoint, this, &args);
    }
    inline ERROR show() { return Action(AC_Show, this, NULL); }
-} objSurface;
+};
 
 struct DisplayBase {
    struct SurfaceControl * (*_AccessList)(LONG);
