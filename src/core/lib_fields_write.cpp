@@ -1022,7 +1022,6 @@ static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
 static ERROR setval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    OBJECTPTR caller = tlContext->object();
-
    FieldContext ctx(Object, Field);
 
    if (Flags & FD_FUNCTION) {

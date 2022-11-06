@@ -664,7 +664,6 @@ class ObjectContext {
    constexpr inline OBJECTPTR object() { // Return the object that has the context (but not necessarily for resourcing)
       return Object;
    }
-
 };
 
 //****************************************************************************
