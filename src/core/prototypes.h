@@ -89,7 +89,6 @@ LARGE PreciseTime();
 ERROR SetFieldsID(OBJECTID Object, ...);
 OBJECTPTR GetObjectPtr(OBJECTID Object);
 struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Source);
-struct Field * CurrentField();
 LONG GetMsgPort(OBJECTID Object);
 CSTRING GetErrorMsg(ERROR Error);
 struct Message * GetActionMsg();

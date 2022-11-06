@@ -279,12 +279,10 @@ restart:
 
          glEventListAltered = FALSE;
 
-         OBJECTPTR context;
-         if (!AccessObject(event->ContextID, 3000, &context)) {
-            OBJECTPTR oldcontext = SetContext(context);
+         parasol::ScopedObjectLock lock(event->ContextID, 3000);
+         if (lock.granted()) {
+            parasol::SwitchContext ctx(lock.obj);
             event->Callback(event->Custom, Message, MsgSize);
-            SetContext(oldcontext);
-            ReleaseObject(context);
          }
 
          if (glEventListAltered IS TRUE) goto restart;
