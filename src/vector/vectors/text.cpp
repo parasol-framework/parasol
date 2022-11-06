@@ -1848,7 +1848,7 @@ static void add_line(objVectorText *Self, std::string String, LONG Offset, LONG 
 
 static ERROR text_focus_event(extVector *Vector, LONG Event)
 {
-   objVectorText *Self = (objVectorText *)CurrentContext();
+   auto Self = (objVectorText *)CurrentContext();
 
    if (Event & FM_HAS_FOCUS) {
       if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
@@ -1891,7 +1891,7 @@ static ERROR text_focus_event(extVector *Vector, LONG Event)
 
 static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
 {
-   objVectorText *Self = (objVectorText *)CurrentContext();
+   auto Self = (objVectorText *)CurrentContext();
 
    parasol::Log log(__FUNCTION__);
 

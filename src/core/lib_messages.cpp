@@ -910,7 +910,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
 
    if (glLogLevel >= 9) log.function("MessageMID: %d, Type: %d, Data: %p, Size: %d", MessageMID, Type, Data, Size);
 
-   if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d, context #%d.", MessageMID, tlContext->Object->UID);
+   if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d, context #%d.", MessageMID, tlContext->object()->UID);
 
    if ((!Type) or (Size < 0)) return log.warning(ERR_Args);
 

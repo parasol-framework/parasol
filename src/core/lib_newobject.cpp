@@ -222,7 +222,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
          }
       }
       else if (tlContext != &glTopContext) { // Track the object to the current context
-         SetOwner(head, tlContext->Object);
+         SetOwner(head, tlContext->resource());
       }
       else if (glCurrentTaskID) { // If no current context is available then track the object to the local task
          if (!AccessObject(glCurrentTaskID, 3000, &task)) {
@@ -456,7 +456,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
          }
       }
       else if (tlContext != &glTopContext) { // Track the object to the current context
-         SetOwner(head, tlContext->Object);
+         SetOwner(head, tlContext->resource());
       }
       else if (glCurrentTaskID) { // If no current context is available then track the object to the local task
          if (!AccessObject(glCurrentTaskID, 3000, &task)) {

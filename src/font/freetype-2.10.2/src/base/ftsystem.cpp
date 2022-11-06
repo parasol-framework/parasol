@@ -248,15 +248,15 @@ extern struct CoreBase *CoreBase;
 
    if (!stream) return FT_Err_Invalid_Stream_Handle;
 
-   context = SetContext(modFont);
+   {
+      parasol::SwitchContext ctx(modFont);
 
-   error = CreateObject(ID_FILE, NF_INTEGRAL, &file,
-         FID_Name|TSTR,   "FreetypeTTFile",
-         FID_Path|TSTR,   filepathname,
-         FID_Flags|TLONG, FL_READ,
-         TAGEND);
-
-   SetContext(context);
+      error = CreateObject(ID_FILE, NF_INTEGRAL, &file,
+            FID_Name|TSTR,   "FreetypeTTFile",
+            FID_Path|TSTR,   filepathname,
+            FID_Flags|TLONG, FL_READ,
+            TAGEND);
+   }
 
    if (!error) {
       GetLong(file, FID_Size, &size);

@@ -608,7 +608,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
 
       Variable var;
       ERROR error;
-      ObjectContext ctx(tlContext->Object, tlContext->Action, Field);
+      ObjectContext ctx(Object, 0, Field);
 
       if (DestFlags & FD_VARIABLE) {
          error = Field->GetValue(Object, Result);
@@ -654,7 +654,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
    }
 
    if (Field->GetValue) {
-      ObjectContext ctx(tlContext->Object, tlContext->Action, Field);
+      ObjectContext ctx(Object, 0, Field);
       ERROR (*get_field)(APTR, APTR, LONG *) = (ERROR (*)(APTR, APTR, LONG *))Field->GetValue;
       ERROR error = get_field(Object, value, &array_size);
       if (error) return error;
