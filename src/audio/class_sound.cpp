@@ -711,7 +711,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          .Path         = NULL,
          .ObjectID     = Self->StreamFileID,
          .SeekStart    = 0,
-         .sample_format = sample_format(Self),
+         .SampleFormat = sample_format(Self),
          .SampleLength = -1,
          .BufferLength = Self->BufferLength,
          .Loop         = 0,
@@ -896,7 +896,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          stream.Path         = Self->prvPath;
          stream.ObjectID     = 0;
          stream.SeekStart    = Self->prvDataOffset;
-         stream.sample_format = sampleformat;
+         stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
          stream.BufferLength = Self->BufferLength;
          if (!WaitMsg(MT_SndAddStream, Self->AudioID, &stream)) {
@@ -929,7 +929,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
                add.LoopSize = 0;
             }
 
-            add.sample_format = sampleformat;
+            add.SampleFormat = sampleformat;
             add.Data         = buffer;
             add.DataSize     = Self->Length;
             add.Result       = 0;
