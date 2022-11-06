@@ -94,7 +94,7 @@
       <prototype>ERROR scFindDef(OBJECTPTR Object, CSTRING Name, OBJECTPTR * Def)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the definition.</param>
-        <param type="OBJECTPTR *" name="Def">A pointer to the definition is returned here if discovered.</param>
+        <param type="OBJECTPTR *" name="Def">A pointer to the definition object is returned here if discovered.</param>
       </input>
       <description>
 <p>Use the FindDef method to search for a vector definition by name.  A reference to the definition will be returned if the search is successful.</p>

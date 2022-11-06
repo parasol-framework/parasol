@@ -126,6 +126,7 @@ struct FileFeedback;
 struct ResourceManager;
 struct MsgHandler;
 
+//********************************************************************************************************************
 // Private memory management structures.
 
 class PrivateAddress {
@@ -202,7 +203,7 @@ enum {
    CN_END
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 struct Stats {
    union {
@@ -253,9 +254,8 @@ extern const struct virtual_drive glFSDefault;
 extern LONG glVirtualTotal;
 extern struct virtual_drive glVirtual[20];
 
-/*****************************************************************************
-** Resource definitions.
-*/
+//********************************************************************************************************************
+// Resource definitions.
 
 #define PRIVATE_TABLE_CHUNK  300
 #define PUBLIC_TABLE_CHUNK   1000  // Maximum number of public objects (system-wide)
@@ -347,9 +347,8 @@ struct WaitLock {
 
 #define WLF_REMOVED 0x01  // Set if the resource was removed by the thread that was holding it.
 
-/*****************************************************************************
-** Shared object management.
-*/
+//********************************************************************************************************************
+// Shared object management.
 
 struct SharedObjectHeader {
    LONG Offset;          // Offset of the main array - sizeof(struct PublicObjectHeader)
@@ -368,9 +367,8 @@ struct SharedObject {
    LONG      InstanceID;         // Reference to the instance that this object is restricted to
 };
 
-/*****************************************************************************
-** This structure is used for internally timed broadcasting.
-*/
+//********************************************************************************************************************
+// This structure is used for internally timed broadcasting.
 
 class CoreTimer {
 public:
@@ -384,10 +382,9 @@ public:
    bool      Locked;
 };
 
-/*****************************************************************************
-** Crash index numbers.  Please note that the order of this index must match the order in which resources are freed in
-** the shutdown process.
-*/
+//********************************************************************************************************************
+// Crash index numbers.  Please note that the order of this index must match the order in which resources are freed in
+// the shutdown process.
 
 enum {
    CP_START=1,
@@ -406,7 +403,7 @@ enum {
    CP_FINISHED
 };
 
-//*****************************************************************************
+//********************************************************************************************************************
 // These values are set against glProgramStage to indicate the current state of the program (either starting up, active
 // or shutting down).
 
@@ -416,7 +413,7 @@ enum {
    STAGE_SHUTDOWN
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 struct ModuleHeader {
    LONG Total;          // Total number of registered modules
@@ -428,7 +425,7 @@ struct ModuleItem {
    // Followed by path
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 // Memory messaging structure.
 
 struct MemoryMessageDetail {
@@ -444,7 +441,7 @@ struct MemoryMessage {
    #endif
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 // Global data variables.
 
 extern objMetaClass glMetaClass;
@@ -534,7 +531,7 @@ extern UBYTE glTimerCycle;
 extern LONG glDebugMemory;
 extern struct CoreBase *LocalCoreBase;
 
-//****************************************************************************
+//********************************************************************************************************************
 // Thread specific variables - these do not require locks.
 
 extern THREADVAR class ObjectContext *tlContext;
@@ -548,7 +545,7 @@ extern THREADVAR WORD tlPublicLockCount;
 extern THREADVAR WORD tlPrivateLockCount;
 extern THREADVAR LONG glForceUID, glForceGID, glDefaultPermissions;
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern LONG (**ManagedActions)(OBJECTPTR Object, APTR Parameters);
 extern ERROR (*glMessageHandler)(struct Message *);
@@ -569,12 +566,12 @@ extern THREADVAR LONG tlThreadReadMsg, tlThreadWriteMsg;
 extern struct FileMonitor *glFileMonitor;
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Message handler chain structure.
 
 extern struct MsgHandler *glMsgHandlers, *glLastMsgHandler;
 
-//****************************************************************************
+//********************************************************************************************************************
 // Message structure and internal ID's for standard Task-to-Task messages.
 
 #define SIZE_MSGBUFFER (1024 * 64)
@@ -609,8 +606,10 @@ struct ValidateMessage {
    LONG ProcessID;
 };
 
-//****************************************************************************
-// Current object state values are handled in the context structure.
+//********************************************************************************************************************
+// ObjectContext is used to represent the object that has the current context in terms of the run-time call stack.
+// It is primarily used for the resource tracking of newly allocated memory and objects, as well as for message logs
+// and analysis of the call stack.
 
 class ObjectContext {
    public:
@@ -666,14 +665,14 @@ class ObjectContext {
    }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __ANDROID__
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Parasol:Core", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "Parasol:Core", __VA_ARGS__)
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #define ZIP_PARASOL 0x7e // Use this identifier to declare Parasol zipped files
 
@@ -728,7 +727,7 @@ struct ZipFile {
 
 #define SIZE_COMPRESSION_BUFFER 16384
 
-//****************************************************************************
+//********************************************************************************************************************
 // File header.  Compressed data is prefixed with this information.
 
 #define HEAD_DEFLATEMETHOD  8
@@ -740,7 +739,7 @@ struct ZipFile {
 #define HEAD_EXTRALEN       28   // System specific information
 #define HEAD_LENGTH         30   // END
 
-//****************************************************************************
+//********************************************************************************************************************
 // Central folder structure for each archived file.  This appears at the end of the zip file.
 
 #define LIST_SIGNATURE      0
@@ -783,7 +782,7 @@ struct zipentry {
    ULONG offset;
 } __attribute__((__packed__));
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #define TAIL_FILECOUNT      8
 #define TAIL_TOTALFILECOUNT 10
@@ -802,7 +801,7 @@ struct ziptail {
    UWORD commentlen;
 } __attribute__((__packed__));
 
-//****************************************************************************
+//********************************************************************************************************************
 // File Descriptor table.  This is for RegisterFD()
 
 #define MAX_FDS 40
@@ -814,7 +813,7 @@ extern struct DocView *glDocView;
 
 #define LRT_Exclusive 1
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class ModuleMaster : public BaseClass {
    public:
@@ -823,18 +822,18 @@ class ModuleMaster : public BaseClass {
    struct ModHeader  *Header;  // Pointer to module header - for memory resident modules only.
    struct CoreBase *CoreBase;  // Module's personal Core reference
    #ifdef __unix__
-      APTR LibraryBase;           // Module code
+      APTR LibraryBase;        // Module code
    #else
       MODHANDLE LibraryBase;
    #endif
-   CSTRING Name;                   // Name of the module (as declared by the header)
+   CSTRING Name;               // Name of the module (as declared by the header)
    struct ModHeader *Table;
    WORD   Version;
-   WORD   OpenCount;              // Amount of programs with this module open
-   FLOAT  ModVersion;             // Version of this module
+   WORD   OpenCount;           // Amount of programs with this module open
+   FLOAT  ModVersion;          // Version of this module
    LONG   Flags;
    UBYTE  NoUnload;
-   UBYTE  DLL;                    // TRUE if the module is a Windows DLL
+   UBYTE  DLL;                 // TRUE if the module is a Windows DLL
    LONG   (*Init)(OBJECTPTR, struct CoreBase *);
    void   (*Close)(OBJECTPTR);
    LONG   (*Open)(OBJECTPTR);
@@ -847,7 +846,7 @@ class ModuleMaster : public BaseClass {
 extern "C" {
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Action managers.
 
 ERROR MGR_Init(OBJECTPTR, APTR);
@@ -859,7 +858,7 @@ ERROR MGR_Seek(OBJECTPTR, struct acSeek *);
 ERROR MGR_SetField(OBJECTPTR, struct acSetVar *);
 ERROR MGR_Signal(OBJECTPTR, APTR);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR AccessSemaphore(LONG, LONG, LONG);
 ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);
@@ -1123,7 +1122,7 @@ void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, 
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Function tracing macros.
 
 #if FUNCTION_TRACE || LASTFUNCTION_TRACE
@@ -1160,7 +1159,7 @@ INLINE CSTRING GET_FIELD_NAME(ULONG FieldID)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef  __cplusplus
 
@@ -1190,7 +1189,7 @@ class ScopedObjectAccess {
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE char is_alpha(char c) {
    return glAlphaNumeric[(LONG)c];
@@ -1206,7 +1205,7 @@ INLINE char LCase(char Case) {
    return Case;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE CSTRING get_extension(CSTRING Path)
 {
@@ -1217,7 +1216,7 @@ INLINE CSTRING get_extension(CSTRING Path)
    else return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE CSTRING get_filename(CSTRING Path)
 {
@@ -1228,7 +1227,7 @@ INLINE CSTRING get_filename(CSTRING Path)
    else return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE LARGE calc_timestamp(struct DateTime *Date)
 {
@@ -1240,7 +1239,7 @@ INLINE LARGE calc_timestamp(struct DateTime *Date)
           ((LARGE)Date->Year * 60LL * 60LL * 24LL * 31LL * 12LL));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Stubs.
 
 static LONG read_long(APTR File) __attribute__((unused));
@@ -1268,7 +1267,7 @@ static WORD read_word(APTR File)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef  __cplusplus
 

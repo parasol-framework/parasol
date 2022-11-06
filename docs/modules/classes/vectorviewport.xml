@@ -114,6 +114,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The height of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for full coverage.</p>
+<p>The fixed value is always returned when retrieving the height.</p>
       </description>
     </field>
 

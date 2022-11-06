@@ -22,11 +22,6 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 * Multi-channel audio playback
 * Extensive text editing widget (implemented with scintilla.org)
 
-Optional extensions not included with the main distribution:
-
-* Cryptography support (AES)
-* Database connectivity (MySQL, SQLite)
-
 ## 2. Checkout
 
 Source code should be checked out from the `release` branch of our GitHub repository if you are a newcomer:
