@@ -38,6 +38,31 @@ struct PlatformData { void *Void; };
 
 #include "windows.h"
 
+INLINE ERROR sndCloseChannelsID(OBJECTID AudioID, int Handle) {
+   extern struct CoreBase *CoreBase;
+   OBJECTPTR audio;
+   if (!AccessObject(AudioID, 5000, &audio)) {
+      struct sndCloseChannels close = { Handle };
+      Action(MT_SndCloseChannels, audio, &close);
+      ReleaseObject(audio);
+      return ERR_Okay;
+   }
+   else return ERR_AccessObject;
+}
+
+INLINE ERROR sndOpenChannelsID(OBJECTID AudioID, LONG Total, LONG Key, LONG Commands, LONG *Handle) {
+   extern struct CoreBase *CoreBase;
+   OBJECTPTR audio;
+   if (!AccessObject(AudioID, 5000, &audio)) {
+      struct sndOpenChannels open = { Total, Key, Commands };
+      Action(MT_SndOpenChannels, audio, &open);
+      *Handle = open.Result;
+      ReleaseObject(audio);
+      return ERR_Okay;
+   }
+   else return ERR_AccessObject;
+}
+
 static ERROR SOUND_GET_Active(extSound *, LONG *);
 static ERROR SOUND_GET_Position(extSound *, LONG *);
 
