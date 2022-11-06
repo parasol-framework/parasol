@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -MODULE-
 Audio: Audio support is managed by this module.
@@ -14,7 +14,7 @@ please refer to the @Audio class.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_AUDIO
 #define PRV_AUDIO_MODULE
@@ -51,7 +51,7 @@ static DOUBLE glTaskVolume = 1.0;
 
 #include "audio.h"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static FLOAT MixLeftVolFloat, MixRightVolFloat;
 static LONG  MixSrcPos, MixStep;
@@ -59,35 +59,35 @@ static UBYTE *glMixDest = NULL;
 static UBYTE *MixSample = NULL;
 static FLOAT *ByteFloatTable = NULL;
 static APTR glMixBuffer = NULL;    // DSM mixing buffer. Play() writes the mixed data here. Post-processing is usually necessary.
-extern MixRoutineSet MixMonoFloat;
-extern MixRoutineSet MixStereoFloat;
-extern MixRoutineSet MixMonoFloatInterp;
-extern MixRoutineSet MixStereoFloatInterp;
+extern const MixRoutineSet MixMonoFloat;
+extern const MixRoutineSet MixStereoFloat;
+extern const MixRoutineSet MixMonoFloatInterp;
+extern const MixRoutineSet MixStereoFloatInterp;
 static LONG glMaxSoundChannels = 8;
 
 #ifdef _WIN32
 char * dsInitDevice(int);
 void dsCloseDevice(void);
 void dsClear(void);
-LONG dsPlay(objAudio *);
+LONG dsPlay(extAudio *);
 void dsSetVolume(float);
 #endif
 
-LONG MixData(objAudio *, ULONG, void *);
-ERROR GetMixAmount(objAudio *, LONG *);
+LONG MixData(extAudio *, ULONG, void *);
+ERROR GetMixAmount(extAudio *, LONG *);
 static LONG SampleShift(LONG);
-static LONG HandleSampleEnd(objAudio *, struct AudioChannel *);
+static bool handle_sample_end(extAudio *, struct AudioChannel *);
 ERROR add_audio_class(void);
 ERROR add_sound_class(void);
 void free_audio_class(void);
 void free_sound_class(void);
-static ERROR SetInternalVolume(objAudio *, struct AudioChannel *);
-static void load_config(objAudio *);
-static ERROR init_audio(objAudio *);
+static ERROR SetInternalVolume(extAudio *, struct AudioChannel *);
+static void load_config(extAudio *);
+static ERROR init_audio(extAudio *);
 
 #ifdef __linux__
-static void free_alsa(objAudio *);
-static ERROR DropMixAmount(objAudio *, LONG);
+static void free_alsa(extAudio *);
+static ERROR DropMixAmount(extAudio *, LONG);
 
 static WORD glAlsaConvert[6] = {
    SND_MIXER_SCHN_FRONT_LEFT,   // Conversion table must follow the CHN_ order
@@ -98,72 +98,74 @@ static WORD glAlsaConvert[6] = {
    SND_MIXER_SCHN_WOOFER
 };
 #else
-ERROR DropMixAmount(objAudio *, LONG);
+ERROR DropMixAmount(extAudio *, LONG);
 #endif
 
 #define MixLeft(a) (((100 * (LARGE)Self->OutputRate) / ((a) * 40)) + 1) & 0xfffffffe;
 
+//********************************************************************************************************************
+
 struct BufferCommand {
    WORD CommandID;
-   ERROR (*Routine)(objAudio *Self, APTR);
+   ERROR (*Routine)(extAudio *Self, APTR);
 };
 
-static ERROR COMMAND_Continue(objAudio *, LONG);
-static ERROR COMMAND_FadeIn(objAudio *, LONG);
-static ERROR COMMAND_FadeOut(objAudio *, LONG);
-static ERROR COMMAND_Play(objAudio *, LONG, LONG);
-static ERROR COMMAND_SetFrequency(objAudio *, LONG, ULONG);
-static ERROR COMMAND_Mute(objAudio *, LONG, LONG);
-static ERROR COMMAND_SetLength(objAudio *, LONG, LONG);
-static ERROR COMMAND_SetPan(objAudio *, LONG, LONG);
-static ERROR COMMAND_SetPosition(objAudio *, LONG, LONG);
-static ERROR COMMAND_SetRate(objAudio *, LONG, LONG);
-static ERROR COMMAND_SetSample(objAudio *, LONG, LONG);
-static ERROR COMMAND_SetVolume(objAudio *, LONG, LONG);
-static ERROR COMMAND_Stop(objAudio *, LONG);
-static ERROR COMMAND_StopLooping(objAudio *, LONG);
+static ERROR COMMAND_Continue(extAudio *, LONG);
+static ERROR COMMAND_FadeIn(extAudio *, LONG);
+static ERROR COMMAND_FadeOut(extAudio *, LONG);
+static ERROR COMMAND_Play(extAudio *, LONG, LONG);
+static ERROR COMMAND_SetFrequency(extAudio *, LONG, ULONG);
+static ERROR COMMAND_Mute(extAudio *, LONG, LONG);
+static ERROR COMMAND_SetLength(extAudio *, LONG, LONG);
+static ERROR COMMAND_SetPan(extAudio *, LONG, LONG);
+static ERROR COMMAND_SetPosition(extAudio *, LONG, LONG);
+static ERROR COMMAND_SetRate(extAudio *, LONG, LONG);
+static ERROR COMMAND_SetSample(extAudio *, LONG, LONG);
+static ERROR COMMAND_SetVolume(extAudio *, LONG, LONG);
+static ERROR COMMAND_Stop(extAudio *, LONG);
+static ERROR COMMAND_StopLooping(extAudio *, LONG);
 
 const struct BufferCommand glCommands[] = {
    { CMD_END_SEQUENCE,   NULL },
-   { CMD_CONTINUE,       (ERROR (*)(objAudio*, APTR))COMMAND_Continue },
-   { CMD_FADE_IN,        (ERROR (*)(objAudio*, APTR))COMMAND_FadeIn },
-   { CMD_FADE_OUT,       (ERROR (*)(objAudio*, APTR))COMMAND_FadeOut },
-   { CMD_PLAY,           (ERROR (*)(objAudio*, APTR))COMMAND_Play },
-   { CMD_SET_FREQUENCY,  (ERROR (*)(objAudio*, APTR))COMMAND_SetFrequency },
-   { CMD_MUTE,           (ERROR (*)(objAudio*, APTR))COMMAND_Mute },
-   { CMD_SET_LENGTH,     (ERROR (*)(objAudio*, APTR))COMMAND_SetLength },
-   { CMD_SET_PAN,        (ERROR (*)(objAudio*, APTR))COMMAND_SetPan },
-   { CMD_SET_POSITION,   (ERROR (*)(objAudio*, APTR))COMMAND_SetPosition },
-   { CMD_SET_RATE,       (ERROR (*)(objAudio*, APTR))COMMAND_SetRate },
-   { CMD_SET_SAMPLE,     (ERROR (*)(objAudio*, APTR))COMMAND_SetSample },
-   { CMD_SET_VOLUME,     (ERROR (*)(objAudio*, APTR))COMMAND_SetVolume },
+   { CMD_CONTINUE,       (ERROR (*)(extAudio*, APTR))COMMAND_Continue },
+   { CMD_FADE_IN,        (ERROR (*)(extAudio*, APTR))COMMAND_FadeIn },
+   { CMD_FADE_OUT,       (ERROR (*)(extAudio*, APTR))COMMAND_FadeOut },
+   { CMD_PLAY,           (ERROR (*)(extAudio*, APTR))COMMAND_Play },
+   { CMD_SET_FREQUENCY,  (ERROR (*)(extAudio*, APTR))COMMAND_SetFrequency },
+   { CMD_MUTE,           (ERROR (*)(extAudio*, APTR))COMMAND_Mute },
+   { CMD_SET_LENGTH,     (ERROR (*)(extAudio*, APTR))COMMAND_SetLength },
+   { CMD_SET_PAN,        (ERROR (*)(extAudio*, APTR))COMMAND_SetPan },
+   { CMD_SET_POSITION,   (ERROR (*)(extAudio*, APTR))COMMAND_SetPosition },
+   { CMD_SET_RATE,       (ERROR (*)(extAudio*, APTR))COMMAND_SetRate },
+   { CMD_SET_SAMPLE,     (ERROR (*)(extAudio*, APTR))COMMAND_SetSample },
+   { CMD_SET_VOLUME,     (ERROR (*)(extAudio*, APTR))COMMAND_SetVolume },
    { CMD_START_SEQUENCE, NULL },
-   { CMD_STOP,           (ERROR (*)(objAudio*, APTR))COMMAND_Stop },
-   { CMD_STOP_LOOPING,   (ERROR (*)(objAudio*, APTR))COMMAND_StopLooping },
+   { CMD_STOP,           (ERROR (*)(extAudio*, APTR))COMMAND_Stop },
+   { CMD_STOP_LOOPING,   (ERROR (*)(extAudio*, APTR))COMMAND_StopLooping },
    { 0, NULL }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef _WIN32 // Functions for use by dsound.c
-int ReadData(objSound *Self, void *Buffer, int Length) {
+int ReadData(extSound *Self, void *Buffer, int Length) {
    struct acRead read = { Buffer, Length };
    if (!Action(AC_Read, Self->File, &read)) return read.Result;
    return 0;
 }
 
-void SeekData(objSound *Self, DOUBLE Offset) {
+void SeekData(extSound *Self, DOUBLE Offset) {
    struct acSeek seek = { Offset, SEEK_START };
    Action(AC_Seek, Self->File, &seek);
 }
 
-void SeekZero(objSound *Self) {
+void SeekZero(extSound *Self) {
    struct acSeek seek = { (DOUBLE)Self->prvDataOffset, SEEK_START };
    Action(AC_Seek, Self->File, &seek);
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -212,7 +214,7 @@ static ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StartDrivers: Starts the audio drivers (platform dependent).
@@ -223,14 +225,14 @@ platform specific and is typically used on boot-up only.
 -ERRORS-
 Okay
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR sndStartDrivers(void)
 {
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetChannels: Defines the maximum number of channels available for sound mixing.
@@ -245,7 +247,7 @@ int Total: The total number of sound channels required by the client.
 -RESULT-
 int: The previous setting for the maximum number of sound channels is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static LONG sndSetChannels(LONG Total)
 {
@@ -256,7 +258,7 @@ static LONG sndSetChannels(LONG Total)
    return previous;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetTaskVolume: Set the default volume for the task (not global)
@@ -271,7 +273,7 @@ double Volume: Desired volume, between 0 and 100.
 -RESULT-
 double: The previous volume setting is returned by this function, regardless of whether the volume setting is successful or not.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static DOUBLE sndSetTaskVolume(DOUBLE Volume)
 {
@@ -292,7 +294,7 @@ static DOUBLE sndSetTaskVolume(DOUBLE Volume)
       }
 
       if (glAudioID) {
-         objAudio *audio;
+         extAudio *audio;
          if (!AccessObject(glAudioID, 3000, &audio)) {
             OBJECTID taskid = CurrentTaskID();
             for (LONG i=0; i < ARRAYSIZE(audio->Channels); i++) {
@@ -308,7 +310,7 @@ static DOUBLE sndSetTaskVolume(DOUBLE Volume)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 WaitDrivers: Wait for audio drivers to become initialised on boot-up.
@@ -323,7 +325,7 @@ int TimeOut: The desired timeout value indicated in 1/1000ths of a second.
 Okay
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR sndWaitDrivers(LONG TimeOut)
 {
@@ -381,13 +383,13 @@ static ERROR sndWaitDrivers(LONG TimeOut)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "class_audio.cpp"
 #include "commands.cpp"
 #include "functions.cpp"
 #include "class_sound.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_AUDIO)
