@@ -241,8 +241,7 @@ extern struct CoreBase *CoreBase;
   FT_Stream_Open( FT_Stream    stream,
                   const char*  filepathname )
   {
-   OBJECTPTR file, context;
-   LONG size;
+   OBJECTPTR file;
    extern OBJECTPTR modFont;
    ERROR error;
 
@@ -259,6 +258,7 @@ extern struct CoreBase *CoreBase;
    }
 
    if (!error) {
+      LONG size;
       GetLong(file, FID_Size, &size);
       stream->size = size;
       stream->descriptor.pointer = file;
