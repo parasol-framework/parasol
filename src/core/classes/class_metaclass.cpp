@@ -824,7 +824,7 @@ the module.
 Path: The path to the module binary that represents the class.
 
 The Path field must be set on initialisation and refers to the default location of the class' module binary, for
-example `modules:surface`. For reasons of platform portability, the file extension must not be specified at the
+example `modules:display`. For reasons of platform portability, the file extension must not be specified at the
 end of the file name.
 
 -FIELD-

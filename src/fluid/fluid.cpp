@@ -305,8 +305,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    GetPointer(argModule, FID_Master, &modFluid);
 
-   //if (LoadModule("surface", MODVERSION_SURFACE, &modSurface, &SurfaceBase) != ERR_Okay) return ERR_InitModule;
-
    ActionList(&glActions, NULL); // Get the global action table from the Core
 
    // Create a lookup table for converting named actions to IDs.
@@ -333,7 +331,6 @@ static ERROR CMDExpunge(void)
    if (glActionLookup) { FreeResource(glActionLookup); glActionLookup = NULL; }
    if (clFluid)        { acFree(clFluid); clFluid = NULL; }
    if (modDisplay)     { acFree(modDisplay); modDisplay = NULL; }
-   //if (modSurface)     { acFree(modSurface); modSurface = NULL; }
    return ERR_Okay;
 }
 

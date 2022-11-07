@@ -308,8 +308,8 @@ ActionTags(MT_Rename, Object, "user:documents.txt");
 <p>During a call to ProcessMessages(), each incoming message will be scanned to determine if a message handler is able to process that message.  All handlers that accept the message type will be called with a copy of the message structure and any additional data.  The message is then removed from the message queue.</p>
 <p>When calling AddMsgHandler(), you can provide an optional Custom pointer that will have meaning to the handler.  The MsgType acts as a filter so that only messages with the same type identifier will be passed to the handler.  The Routine parameter must point to the function handler, which will follow this definition:</p>
 <pre>ERROR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
-<p>The handler must return ERR_Okay if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw ERR_NothingDone if the message has been ignored or ERR_Continue if the message was processed but may be analysed by other handlers.  Throw ERR_Terminate to break the current ProcessMessages() loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
-<p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to FreeResource() once it is no longer required.</p>
+<p>The handler must return <code>ERR_Okay</code> if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw <code>ERR_NothingDone</code> if the message has been ignored or <code>ERR_Continue</code> if the message was processed but may be analysed by other handlers.  Throw <code>ERR_Terminate</code> to break the current ProcessMessages() loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
+<p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to <function module="Core">FreeResource</function> once it is no longer required.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1243,7 +1243,7 @@ GetFields(screen,
       <param type="LONG" name="Size">The byte-size of the buffer that you have supplied.</param>
     </input>
     <description>
-<p>The GetMessage() function is used to read messages that have been stored in message queues.  You can use this function to read the next immediate message stored on the queue, or the first message on the queue that matches a particular Type.  It is also possible to call this function in a loop to clear out all messages, until an error code other than ERR_Okay is returned.</p>
+<p>The GetMessage() function is used to read messages that have been stored in message queues.  You can use this function to read the next immediate message stored on the queue, or the first message on the queue that matches a particular Type.  It is also possible to call this function in a loop to clear out all messages, until an error code other than <code>ERR_Okay</code> is returned.</p>
 <p>Messages will often (although not always) carry data that is relevant to the message type.  To retrieve this data you need to supply a buffer, preferably one that is large enough to receive all the data that you expect from your messages.  If the buffer is too small, the message data will be cut off to fit inside the buffer.</p>
 <p>Message data is written to the supplied buffer with a Message structure, which is immediately followed up with the actual message data.</p>
     </description>
@@ -1823,8 +1823,8 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <description>
 <p>The ProcessMessages() function is used to process the task's message queue.  Messages are dispatched to message handlers in the order in which they arrived and the queue is emptied so that space is available for more messages.</p>
 <p>Responding to incoming messages is a vital process - the queue is the standard means of communication between your task and the rest of the system and other tasks within it.  Failing to call the ProcessMessages() function on a regular basis may cause a back-log of messages to be generated, as well as causing problems with areas such as the graphical interface. If an area of your program is likely to loop continuously for a measurable period of time without returning, consider calling ProcessMessages() at a rate of 50 times per second to ensure that incoming messages are processed.</p>
-<p>User messages that are on the queue are passed to message handlers.  If no message handler exists to interpret the message, then it is removed from the queue without being processed. Message handlers are added with the <function module="Core">AddMsgHandler</function> function.  If a message handler returns the error code ERR_Terminate, then ProcessMessages() will stop processing the queue and returns immediately with ERR_Okay.</p>
-<p>If a message with a MSGID_QUIT ID is found on the queue, then the function returns immediately with the error code ERR_Terminate.  The program must respond to the terminate request by exiting immediately.</p>
+<p>User messages that are on the queue are passed to message handlers.  If no message handler exists to interpret the message, then it is removed from the queue without being processed. Message handlers are added with the <function module="Core">AddMsgHandler</function> function.  If a message handler returns the error code <code>ERR_Terminate</code>, then ProcessMessages() will stop processing the queue and returns immediately with <code>ERR_Okay</code>.</p>
+<p>If a message with a <code>MSGID_QUIT</code> ID is found on the queue, then the function returns immediately with the error code ERR_Terminate.  The program must respond to the terminate request by exiting immediately.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1913,7 +1913,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <description>
 <p>This function will register a file descriptor that will be monitored for activity when the task is sleeping.  If activity occurs on the descriptor then the function specified in the Routine parameter will be called.  The routine must read all of information from the descriptor, as the running process will not be able to sleep until all the data is cleared.</p>
 <p>The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause your program to hang if not handled carefully.</p>
-<p>File descriptors support read and write states simultaneously and a callback routine can be applied to either state. Set the RFD_READ flag to apply the Routine to the read callback and RFD_WRITE for the write callback.  If neither flag is specified, RFD_READ is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by combining the read/write flags with RFD_REMOVE.</p>
+<p>File descriptors support read and write states simultaneously and a callback routine can be applied to either state. Set the <code>RFD_READ</code> flag to apply the Routine to the read callback and <code>RFD_WRITE</code> for the write callback.  If neither flag is specified, <code>RFD_READ</code> is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by combining the read/write flags with <code>RFD_REMOVE</code>.</p>
 <p>The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking restrictions do not apply, except to sockets.</p>
 <p>Call the DeregisterFD() macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.</p>
     </description>
@@ -2165,7 +2165,7 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
       <param type="LONG" name="Size">The byte-size of the buffer that you have supplied.</param>
     </input>
     <description>
-<p>Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To use this function, you need to establish a connection to the queue by using the <function module="Core">AccessMemory</function> function first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than ERR_Okay.  Use <function module="Core">ReleaseMemory</function> to let go of the message queue when you are done with it.</p>
+<p>Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To use this function, you need to establish a connection to the queue by using the <function module="Core">AccessMemory</function> function first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR_Okay</code>.  Use <function module="Core">ReleaseMemory</function> to let go of the message queue when you are done with it.</p>
 <p>Here is an example that scans the queue of the active task:</p>
 <pre>if (!AccessMemory(GetResource(RES_MESSAGEQUEUE), MEM_READ, &amp;queue)) {
    while (!ScanMessages(queue, &amp;index, MSGID_QUIT, NULL, NULL)) {
@@ -2209,7 +2209,7 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
     </input>
     <description>
 <p>The SendMessage() function is used to write messages to message queues. To write a message to a queue, you must know the memory ID of that queue and be able to provide this function with a message type ID that the queue's handler will understand.  If necessary, you can also attach data to the message if it has relevance to the message type.</p>
-<p>If the message queue is found to be full, or if the size of your message is larger than the total size of the queue, this function will immediately return with an ERR_ArrayFull error code.  If you are prepared to wait for the queue handler to process the waiting messages, specify WAIT in the Flags parameter.  There is a maximum time-out period of 10 seconds in case the task responsible for handling the queue is failing to process its messages.</p>
+<p>If the message queue is found to be full, or if the size of your message is larger than the total size of the queue, this function will immediately return with an <code>ERR_ArrayFull</code> error code.  If you are prepared to wait for the queue handler to process the waiting messages, specify <code>WAIT</code> in the Flags parameter.  There is a maximum time-out period of 10 seconds in case the task responsible for handling the queue is failing to process its messages.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -3343,7 +3343,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <description>
 <p>This function creates a new timer subscription that will be called at regular intervals for the calling object.</p>
 <p>A callback function must be provided that follows this prototype: <code>ERROR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)</code></p>
-<p>The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime parameter is set to the <function module="Core">PreciseTime</function> value just prior to the Callback being called.  The callback function can return ERR_Terminate at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks should call <code>check(ERR_Terminate)</code> to perform the equivalent of this behaviour.</p>
+<p>The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime parameter is set to the <function module="Core">PreciseTime</function> value just prior to the Callback being called.  The callback function can return <code>ERR_Terminate</code> at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks should call <code>check(ERR_Terminate)</code> to perform the equivalent of this behaviour.</p>
 <p>To change the interval, call <function module="Core">UpdateTimer</function> with the new value.  To release a timer subscription, call <function module="Core">UpdateTimer</function> with the resulting SubscriptionID and an Interval of zero.</p>
 <p>Timer management is provisioned by the <function module="Core">ProcessMessages</function> function.  Failure to regularly process incoming messages will lead to unreliable timer cycles.  It should be noted that the smaller the Interval that has been used, the more imperative regular message checking becomes.  Prolonged processing inside a timer routine can also impact on other timer subscriptions that are waiting to be processed.</p>
     </description>
@@ -3927,7 +3927,7 @@ end
     </input>
     <description>
 <p>This function waits for a period of time as specified by the Seconds and MicroSeconds arguments.  While waiting, your task will continue to process incoming messages in order to prevent the process' message queue from developing a back-log.</p>
-<p>WaitTime() can return earlier than the indicated timeout if a message handler returns ERR_Terminate, or if a MSGID_QUIT message is sent to the task's message queue.</p>
+<p>WaitTime() can return earlier than the indicated timeout if a message handler returns ERR_Terminate, or if a <code>MSGID_QUIT</code> message is sent to the task's message queue.</p>
     </description>
   </function>
 

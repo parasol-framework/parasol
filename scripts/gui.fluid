@@ -427,7 +427,7 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
 
    gui.counter = gui.counter + 1
    local gname   = 'icon_grd' .. gui.counter
-   icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size })
+   icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size, spreadMethod=VSPREAD_PAD })
    icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lGradient.first, lGradient.last }, 0, 0, 0, 1)
    if string.find(Path, 'icons:') != 1 then
       Path = 'icons:' .. Path .. '.svg'

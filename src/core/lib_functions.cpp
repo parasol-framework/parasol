@@ -1579,10 +1579,10 @@ The file descriptor should be configured as non-blocking before registration.  B
 program to hang if not handled carefully.
 
 File descriptors support read and write states simultaneously and a callback routine can be applied to either state.
-Set the RFD_READ flag to apply the Routine to the read callback and RFD_WRITE for the write callback.  If neither
-flag is specified, RFD_READ is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read
+Set the `RFD_READ` flag to apply the Routine to the read callback and `RFD_WRITE` for the write callback.  If neither
+flag is specified, `RFD_READ` is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read
 callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by
-combining the read/write flags with RFD_REMOVE.
+combining the read/write flags with `RFD_REMOVE`.
 
 The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX
 compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking
@@ -2379,7 +2379,7 @@ A callback function must be provided that follows this prototype: `ERROR Functio
 
 The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime
 parameter is set to the ~PreciseTime() value just prior to the Callback being called.  The callback function
-can return ERR_Terminate at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks
+can return `ERR_Terminate` at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks
 should call `check(ERR_Terminate)` to perform the equivalent of this behaviour.
 
 To change the interval, call ~UpdateTimer() with the new value.  To release a timer subscription, call
@@ -2619,7 +2619,7 @@ This function waits for a period of time as specified by the Seconds and MicroSe
 task will continue to process incoming messages in order to prevent the process' message queue from developing a
 back-log.
 
-WaitTime() can return earlier than the indicated timeout if a message handler returns ERR_Terminate, or if a MSGID_QUIT
+WaitTime() can return earlier than the indicated timeout if a message handler returns ERR_Terminate, or if a `MSGID_QUIT`
 message is sent to the task's message queue.
 
 -INPUT-

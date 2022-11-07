@@ -11,8 +11,8 @@
 
 #define MODVERSION_AUDIO (1)
 
-typedef class plAudio objAudio;
-typedef class plSound objSound;
+class objAudio;
+class objSound;
 
 // Optional flags for the Audio object.
 
@@ -150,7 +150,7 @@ typedef struct {
 
 #define MAX_CHANNELSETS 8
 #define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
-
+  
 struct AudioSample {
    UBYTE *  Data;        // Private.  Pointer to the sample data.
    OBJECTID StreamID;    // Reference to an object to use for streaming
@@ -311,7 +311,7 @@ INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, LONG Flags, DOUBLE 
 }
 
 
-typedef class plAudio : public BaseClass {
+class objAudio : public BaseClass {
    public:
    DOUBLE Bass;           // Sets the amount of bass to use for audio playback.
    DOUBLE Treble;         // Sets the amount of treble to use for audio playback.
@@ -323,41 +323,6 @@ typedef class plAudio : public BaseClass {
    LONG   BitDepth;       // The bit depth affects the overall quality of audio input and output.
    LONG   Periods;        // Defines the number of periods that make up the internal audio buffer.
    LONG   PeriodSize;     // Defines the byte size of each period allocated to the internal audio buffer.
-
-#ifdef PRV_AUDIO
-   struct ChannelSet Channels[MAX_CHANNELSETS]; // Channels are grouped into sets, which are allocated on a per-task basis
-   struct AudioSample *Samples;
-   struct VolumeCtl *VolumeCtl;
-   const MixRoutineSet *MixRoutines;
-   MEMORYID BFMemoryMID;
-   MEMORYID BufferMemoryMID;
-   MEMORYID SamplesMID;
-   LONG     MixBufferSize;
-   LONG     TotalSamples;
-   TIMER    Timer;
-   APTR     BufferMemory;
-   APTR     MixBuffer;
-   FLOAT    *BFMemory;               // Byte/Float table memory
-   WORD     SampleBitSize;
-   WORD     MixBitSize;
-   LONG     MixElements;
-   UBYTE    Stereo;                  // TRUE/FALSE for active stereo mode
-   BYTE     Mute;
-   BYTE     MasterVolume;
-   BYTE     Initialising;
-   APTR     TaskRemovedHandle;
-   APTR     UserLoginHandle;
-#ifdef __linux__
-   UBYTE *AudioBuffer;
-   LONG  AudioBufferSize;
-   snd_pcm_t *Handle;
-   snd_mixer_t *MixHandle;
-#endif
-   MEMORYID VolumeCtlMID;
-   LONG VolumeCtlTotal;
-   char prvDevice[28];
-
-#endif
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -370,13 +335,13 @@ typedef class plAudio : public BaseClass {
       struct acSaveToObject args = { { DestID }, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-} objAudio;
+};
 
 // Sound class definition
 
 #define VER_SOUND (1.000000)
 
-typedef class plSound : public BaseClass {
+class objSound : public BaseClass {
    public:
    DOUBLE    Volume;       // The volume to use when playing the sound sample.
    DOUBLE    Pan;          // Determines the horizontal position of a sound when played through stereo speakers.
@@ -399,23 +364,6 @@ typedef class plSound : public BaseClass {
    LONG      Handle;       // Audio handle acquired at the audio object [Private - Available to child classes]
    LONG      ChannelIndex; // Refers to the channel that the sound is playing through.
    OBJECTPTR File;         // Refers to the file object that contains the audio data for playback.
-
-#ifdef PRV_SOUND
-    struct KeyStore *Fields;
-    UBYTE    prvHeader[128];
-    LONG     prvFormat;         // The format of the sound data
-    LONG     prvDataOffset;     // Start of raw audio data within the source file
-    TIMER    Timer;
-    STRING   prvPath;
-    STRING   prvDescription;
-    STRING   prvDisclaimer;
-    LONG     prvNote;               // Note to play back (e.g. C, C#, G...)
-    char     prvNoteString[4];
-    struct WAVEFormat *prvWAVE;
-    UBYTE    prvPlatformData[128];  // Data area for holding platform/hardware specific information
-    LONG     prvAlignment;          // Byte alignment value
-
-#endif
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -445,7 +393,7 @@ typedef class plSound : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-} objSound;
+};
 
 struct AudioBase {
    ERROR (*_StartDrivers)(void);
@@ -460,30 +408,5 @@ struct AudioBase {
 #define sndSetChannels(...) (AudioBase->_SetChannels)(__VA_ARGS__)
 #define sndSetTaskVolume(...) (AudioBase->_SetTaskVolume)(__VA_ARGS__)
 #endif
-
-INLINE ERROR sndCloseChannelsID(OBJECTID AudioID, int Handle) {
-   extern struct CoreBase *CoreBase;
-   OBJECTPTR audio;
-   if (!AccessObject(AudioID, 5000, &audio)) {
-      struct sndCloseChannels close = { Handle };
-      Action(MT_SndCloseChannels, audio, &close);
-      ReleaseObject(audio);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-}
-
-INLINE ERROR sndOpenChannelsID(OBJECTID AudioID, LONG Total, LONG Key, LONG Commands, LONG *Handle) {
-   extern struct CoreBase *CoreBase;
-   OBJECTPTR audio;
-   if (!AccessObject(AudioID, 5000, &audio)) {
-      struct sndOpenChannels open = { Total, Key, Commands };
-      Action(MT_SndOpenChannels, audio, &open);
-      *Handle = open.Result;
-      ReleaseObject(audio);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-}
 
 #endif

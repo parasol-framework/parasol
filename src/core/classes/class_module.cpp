@@ -1156,17 +1156,22 @@ static void free_module(MODHANDLE handle)
 
    log.traceBranch("%p", handle);
 
-   #ifdef __unix__
-      #ifdef DLL
-         if (Self->DLL) FreeLibrary(handle);
-         else dlclose(handle);
-      #else
-         dlclose(handle);
-      #endif
-   #elif _WIN32
-      winFreeLibrary(handle);
+   #ifdef ANALYSIS_ENABLED
+      // Library closure is disabled when code analysis is turned on so that code
+      // addresses can be looked up correctly.
    #else
-      #error You need to write machine specific code to expunge modules.
+      #ifdef __unix__
+         #ifdef DLL
+            if (Self->DLL) FreeLibrary(handle);
+            else dlclose(handle);
+         #else
+            dlclose(handle);
+         #endif
+      #elif _WIN32
+         winFreeLibrary(handle);
+      #else
+         #error You need to write machine specific code to expunge modules.
+      #endif
    #endif
 }
 
