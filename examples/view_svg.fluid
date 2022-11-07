@@ -1,0 +1,59 @@
+--[[
+A simple SVG image viewer
+
+Example: fluid view_svg.fluid --file [Path]
+--]]
+
+   require 'gui'
+   require 'gui/window'
+
+   glWindow = gui.window({
+      center = true,
+      width  = arg('width', 800),
+      height = arg('height', 600),
+      title  = 'Picture Viewer',
+      icon   = 'icons:programs/pictureviewer',
+      minHeight = 200,
+      minWidth  = 400
+   })
+
+   glScene = glWindow.scene
+   glViewport = glScene.new('VectorViewport', {
+      aspectRatio = ARF_MEET, x=glWindow.client.left, y=glWindow.client.top, xOffset=glWindow.client.right, yOffset=glWindow.client.bottom
+   })
+
+   if not arg('file') then
+      print('Usage: --file [Path]')
+      return
+   end
+
+   if mSys.AnalysePath(arg('file')) != ERR_Okay then
+      error('Unable to load file ' .. arg('file'))
+   end
+
+   local svg = obj.new('svg', { target=glViewport, path=arg('file') })
+
+   -- Check if this is a fixed size SVG (default is scaled)
+
+   local scaled = true
+   if (glViewport.width == glScene.width) and (glViewport.height == glScene.height) then
+      scaled = true
+   else
+      scaled = false
+   end
+
+   svg.frameCallback = function(SVG)
+      glWindow.surface.acDraw()
+   end
+
+   if (svg.frameRate < 60) then svg.frameRate = 60 end
+   svg.acActivate() -- Animation support
+
+   glScene.mtDebug()
+
+   glWindow:setTitle(arg('file'))
+   glWindow:show()
+
+------------------------------------------------------------------------------
+
+   processing.sleep()
