@@ -86,13 +86,13 @@ Routine parameter must point to the function handler, which will follow this def
 
 <pre>ERROR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
 
-The handler must return ERR_Okay if the message was handled.  This means that the message will not be passed to message
-handlers that are yet to receive the message.  Throw ERR_NothingDone if the message has been ignored or ERR_Continue
-if the message was processed but may be analysed by other handlers.  Throw ERR_Terminate to break the current
+The handler must return `ERR_Okay` if the message was handled.  This means that the message will not be passed to message
+handlers that are yet to receive the message.  Throw `ERR_NothingDone` if the message has been ignored or `ERR_Continue`
+if the message was processed but may be analysed by other handlers.  Throw `ERR_Terminate` to break the current
 ProcessMessages() loop.  When using Fluid, this is best achieved by writing `check(errorcode)` in the handler.
 
 The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage
-collected or can be passed to FreeResource() once it is no longer required.
+collected or can be passed to ~FreeResource() once it is no longer required.
 
 -INPUT-
 ptr Custom: A custom pointer that will be passed to the message handler when messages are received.
@@ -152,7 +152,7 @@ GetMessage: Reads messages from message queues.
 The GetMessage() function is used to read messages that have been stored in message queues.  You can use this function
 to read the next immediate message stored on the queue, or the first message on the queue that matches a particular
 Type.  It is also possible to call this function in a loop to clear out all messages, until an error code other than
-ERR_Okay is returned.
+`ERR_Okay` is returned.
 
 Messages will often (although not always) carry data that is relevant to the message type.  To retrieve this data you
 need to supply a buffer, preferably one that is large enough to receive all the data that you expect from your
@@ -270,10 +270,10 @@ consider calling ProcessMessages() at a rate of 50 times per second to ensure th
 
 User messages that are on the queue are passed to message handlers.  If no message handler exists to interpret the
 message, then it is removed from the queue without being processed. Message handlers are added with the
-~AddMsgHandler() function.  If a message handler returns the error code ERR_Terminate, then ProcessMessages()
-will stop processing the queue and returns immediately with ERR_Okay.
+~AddMsgHandler() function.  If a message handler returns the error code `ERR_Terminate`, then ProcessMessages()
+will stop processing the queue and returns immediately with `ERR_Okay`.
 
-If a message with a MSGID_QUIT ID is found on the queue, then the function returns immediately with the error code
+If a message with a `MSGID_QUIT` ID is found on the queue, then the function returns immediately with the error code
 ERR_Terminate.  The program must respond to the terminate request by exiting immediately.
 
 -INPUT-
@@ -755,7 +755,7 @@ ScanMessages: Scans a message queue for multiple occurrences of a message type.
 Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To
 use this function, you need to establish a connection to the queue by using the ~AccessMemory() function
 first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code
-other than ERR_Okay.  Use ~ReleaseMemory() to let go of the message queue when you are done with it.
+other than `ERR_Okay`.  Use ~ReleaseMemory() to let go of the message queue when you are done with it.
 
 Here is an example that scans the queue of the active task:
 
@@ -857,8 +857,8 @@ the memory ID of that queue and be able to provide this function with a message 
 will understand.  If necessary, you can also attach data to the message if it has relevance to the message type.
 
 If the message queue is found to be full, or if the size of your message is larger than the total size of the queue,
-this function will immediately return with an ERR_ArrayFull error code.  If you are prepared to wait for the queue
-handler to process the waiting messages, specify WAIT in the Flags parameter.  There is a maximum time-out period
+this function will immediately return with an `ERR_ArrayFull` error code.  If you are prepared to wait for the queue
+handler to process the waiting messages, specify `WAIT` in the Flags parameter.  There is a maximum time-out period
 of 10 seconds in case the task responsible for handling the queue is failing to process its messages.
 
 -INPUT-
@@ -893,7 +893,7 @@ static void view_messages(MessageHeader *Header)
    while (count < Header->Count) {
       if (msg->Type) {
          if (msg->Type IS MSGID_ACTION) {
-            ActionMessage *action = (ActionMessage *)(msg + 1);
+            auto action = (ActionMessage *)(msg + 1);
             if (action->ActionID > 0) log.warning("Action: %s, Object: %d, Args: %d [Size: %d, Next: %d]", ActionTable[action->ActionID].Name, action->ObjectID, action->SendArgs, msg->DataSize, msg->NextMsg);
             else log.warning("Method: %d, Object: %d, Args: %d [Size: %d, Next: %d]", action->ActionID, action->ObjectID, action->SendArgs, msg->DataSize, msg->NextMsg);
          }
