@@ -158,8 +158,8 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
             }
 
             UBYTE fnbuffer[256];
-            if ((path[0] IS '/') AND (path[1] IS 0)) path = NULL;
-            else if ((glFileMonitor[i].Flags & MFF_QUALIFY) AND (event->mask & IN_ISDIR)) {
+            if ((path[0] IS '/') and (path[1] IS 0)) path = NULL;
+            else if ((glFileMonitor[i].Flags & MFF_QUALIFY) and (event->mask & IN_ISDIR)) {
                LONG j = StrCopy(path, fnbuffer, sizeof(fnbuffer)-1);
                fnbuffer[j++] = '/';
                fnbuffer[j] = 0;
@@ -262,10 +262,10 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 
       // Keep in mind that the state of the File object might change during the loop due to the code in the user's callback.
 
-      while ((File->prvWatch) AND (!winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path, sizeof(path), &status))) {
+      while ((File->prvWatch) and (!winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path, sizeof(path), &status))) {
          if (!(File->prvWatch->Flags & MFF_DEEP)) { // Ignore if path is in a sub-folder and the deep option is not enabled.
             LONG i;
-            for (i=0; (path[i]) AND (path[i] != '\\'); i++);
+            for (i=0; (path[i]) and (path[i] != '\\'); i++);
             if (path[i] IS '\\') continue;
          }
 

@@ -908,7 +908,7 @@ static void free_shared_control(void)
 
       // Check if we are the last active task
 
-      if ((glMasterTask) and (glSharedControl->GlobalInstance) AND
+      if ((glMasterTask) and (glSharedControl->GlobalInstance) and
           (glInstanceID IS glSharedControl->GlobalInstance)) {
          // If we're the master, global task for everything, we're taking all the resources down, no matter what else
          // we have running.

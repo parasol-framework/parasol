@@ -2435,7 +2435,7 @@ INLINE ERROR acUndo(OBJECTPTR Object, LONG Steps) {
 INLINE ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
    struct acGetVar args = { FieldName, Buffer, Size };
    ERROR error = Action(AC_GetVar, Object, &args);
-   if ((error) AND (Buffer)) Buffer[0] = 0;
+   if ((error) and (Buffer)) Buffer[0] = 0;
    return error;
 }
 

@@ -733,9 +733,9 @@ retry:
 
          //log.msg("[%d] Action: %d, Error: %d", receive.Action.ObjectID, receive.Action.ActionID, receive.Action.Error);
 
-         BYTE *src_msg = msg.Buffer;
+         BYTE *src_msg    = msg.Buffer;
          BYTE *result_msg = receive.Buffer;
-         BYTE *dest = (BYTE *)Args;
+         BYTE *dest       = (BYTE *)Args;
          LONG pos = 0;
          for (LONG i=0; fields[i].Name; i++) {
             if (fields[i].Type & FD_RESULT) {
@@ -1114,7 +1114,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
       if (!error) {
          SET_FUNCTION_STDC(thread->Routine, (APTR)&thread_action);
 
-         thread_data *call = (thread_data *)call_data;
+         auto call = (thread_data *)call_data;
          call->Object   = Object;
          call->ActionID = ActionID;
          call->Key      = Key;
@@ -1470,9 +1470,9 @@ SubscribeActionTags: Listens for actions that may be performed on an object.
 This function is identical to SubscribeAction() in every aspect except that it is tag based.  The following example
 illustrates typical usage `SubscribeActionTags(object, AC_Draw, AC_Redimension, TAGEND)`.
 
-Two special tags are also available: SUB_WARN_EXISTS will result in an error of ERR_Exists being returned if it is
-discovered that there is an existing match for the Subscriber and at least one of the actions.  SUB_FAIL_EXISTS
-will return with ERR_Exists immediately if an action is already subscribed, meaning no further tags (if
+Two special tags are also available: `SUB_WARN_EXISTS` will result in an error of `ERR_Exists` being returned if it is
+discovered that there is an existing match for the Subscriber and at least one of the actions.  `SUB_FAIL_EXISTS`
+will return with `ERR_Exists` immediately if an action is already subscribed, meaning no further tags (if
 present) will be processed.
 
 -INPUT-
@@ -1690,8 +1690,7 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
 
    //log.msg("UnsubscribeAction(%d, Subscriber %d, Action %d)", Object->UID, ActionID);
 
-   ActionSubscription *list;
-   if ((list = lock_subscribers(Object))) {
+   if (auto list = lock_subscribers(Object)) {
       // Clear matching array entries and perform compaction of the array so that there are no gaps.
 
       LONG j = 0;
@@ -2055,25 +2054,6 @@ ERROR MGR_OwnerDestroyed(OBJECTPTR Object, APTR Void)
    log.function("Owner %d has been destroyed.", Object->UID);
    acFree(Object);
    return ERR_Okay;
-}
-
-/*****************************************************************************
-** Action: Rename
-*/
-
-ERROR MGR_Rename(OBJECTPTR Object, struct acRename *Args)
-{
-   parasol::Log log("Rename");
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   if (Object->ExtClass) {
-      if (Object->ExtClass->ActionTable[AC_Rename].PerformAction) {
-         return Object->ExtClass->ActionTable[AC_Rename].PerformAction(Object, Args);
-      }
-      else return SetField(Object, FID_FileName|TPTR, Args->Name);
-   }
-   else return log.warning(ERR_LostClass);
 }
 
 /*****************************************************************************

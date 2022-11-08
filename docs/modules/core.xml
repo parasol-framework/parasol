@@ -3276,7 +3276,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function is identical to SubscribeAction() in every aspect except that it is tag based.  The following example illustrates typical usage <code>SubscribeActionTags(object, AC_Draw, AC_Redimension, TAGEND)</code>.</p>
-<p>Two special tags are also available: SUB_WARN_EXISTS will result in an error of ERR_Exists being returned if it is discovered that there is an existing match for the Subscriber and at least one of the actions.  SUB_FAIL_EXISTS will return with ERR_Exists immediately if an action is already subscribed, meaning no further tags (if present) will be processed.</p>
+<p>Two special tags are also available: <code>SUB_WARN_EXISTS</code> will result in an error of <code>ERR_Exists</code> being returned if it is discovered that there is an existing match for the Subscriber and at least one of the actions.  <code>SUB_FAIL_EXISTS</code> will return with <code>ERR_Exists</code> immediately if an action is already subscribed, meaning no further tags (if present) will be processed.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

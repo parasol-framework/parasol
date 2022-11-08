@@ -834,7 +834,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    ManageAction(AC_Init, (APTR)MGR_Init);
    ManageAction(AC_Free, (APTR)MGR_Free);
-   ManageAction(AC_Rename, (APTR)MGR_Rename);
    ManageAction(AC_Seek, (APTR)MGR_Seek);
    ManageAction(AC_Signal, (APTR)MGR_Signal);
 
@@ -1721,7 +1720,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
       }
       else fprintf(stderr, "\nProcess terminated, signal %d.\n\n", SignalNumber);
 
-      if ((SignalNumber IS SIGILL) or (SignalNumber IS SIGFPE) OR
+      if ((SignalNumber IS SIGILL) or (SignalNumber IS SIGFPE) or
           (SignalNumber IS SIGSEGV) or (SignalNumber IS SIGBUS)) {
          glPageFault = Info->si_addr;
       }
