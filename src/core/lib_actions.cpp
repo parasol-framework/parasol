@@ -75,7 +75,7 @@ struct thread_data {
    BYTE      Parameters;
 };
 
-static ERROR thread_action(objThread *Thread)
+static ERROR thread_action(extThread *Thread)
 {
    ERROR error;
    thread_data *data = (thread_data *)Thread->Data;
@@ -140,7 +140,7 @@ static void free_private_children(OBJECTPTR Object)
 
             if (!(mem.Object->Flags & NF_UNLOCK_FREE)) {
                if (mem.Object->Flags & NF_INTEGRAL) {
-                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->ClassID), Object->Class->ClassName, Object->UID);
+                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->ClassID), Object->className(), Object->UID);
                }
                acFree(mem.Object);
             }
@@ -312,7 +312,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    obj->ActionDepth++;
 
-   objMetaClass *cl = obj->Class;
+   auto cl = obj->ExtClass;
    auto log_depth = tlDepth;
 
    ERROR error;
@@ -639,21 +639,20 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
             }
          }
 
-         objMetaClass *Class;
-         if ((Class = FindClass(ClassID))) {
-            if ((-ActionID) < Class->TotalMethods) {
-               fields   = Class->Methods[-ActionID].Args;
-               argssize = Class->Methods[-ActionID].Size;
+         if (auto cl = (extMetaClass *)FindClass(ClassID)) {
+            if ((-ActionID) < cl->TotalMethods) {
+               fields   = cl->Methods[-ActionID].Args;
+               argssize = cl->Methods[-ActionID].Size;
                WORD waitresult;
-               if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, Class->Methods[-ActionID].Name) != ERR_Okay) {
-                  log.warning("Failed to buffer arguments for method \"%s\".", Class->Methods[-ActionID].Name);
+               if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, cl->Methods[-ActionID].Name) != ERR_Okay) {
+                  log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
                   return ERR_Failed;
                }
                msgsize += sizeof(ActionMessage);
                msg.Action.SendArgs = TRUE;
             }
             else {
-               log.warning("Illegal method ID %d executed on class %s.", ActionID, Class->ClassName);
+               log.warning("Illegal method ID %d executed on class %s.", ActionID, cl->ClassName);
                return ERR_IllegalMethodID;
             }
          }
@@ -839,7 +838,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 
    auto obj = argObject;
    OBJECTID object_id = obj->UID;
-   objMetaClass *sysclass = obj->Class;
+   auto cl = obj->ExtClass;
 
    obj->threadLock();
 
@@ -857,7 +856,7 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
             if (ActionID > 0) {
                log.warning("Cannot execute action %s on non-public object #%d, class $%.8x (belongs to task %d, I am %d).", ActionTable[ActionID].Name, object_id, obj->ClassID, obj->TaskID, glCurrentTaskID);
             }
-            else log.warning("Cannot execute method %s on non-public object #%d (belongs to task %d, I am %d).", sysclass->Methods[-ActionID].Name, object_id, obj->TaskID, glCurrentTaskID);
+            else log.warning("Cannot execute method %s on non-public object #%d (belongs to task %d, I am %d).", cl->Methods[-ActionID].Name, object_id, obj->TaskID, glCurrentTaskID);
             obj->threadRelease();
             return ERR_IllegalActionAttempt;
          }
@@ -870,16 +869,16 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
       fields   = ActionTable[ActionID].Args;
       argssize = ActionTable[ActionID].Size;
    }
-   else if ((sysclass->Base) and ((-ActionID) < sysclass->Base->TotalMethods)) { // The base class takes precedence for the correct definition of method arguments. Sub-classes should typically avoid declaration of method arguments.
-      fields   = sysclass->Base->Methods[-ActionID].Args;
-      argssize = sysclass->Base->Methods[-ActionID].Size;
+   else if ((cl->Base) and ((-ActionID) < cl->Base->TotalMethods)) { // The base class takes precedence for the correct definition of method arguments. Sub-classes should typically avoid declaration of method arguments.
+      fields   = cl->Base->Methods[-ActionID].Args;
+      argssize = cl->Base->Methods[-ActionID].Size;
    }
-   else if ((-ActionID) < sysclass->TotalMethods) { // A sub-class can legally define its own methods, but should choose ID's >= 50 in order to avoid the potential for conflict with new methods appearing in the base class.
-      fields   = sysclass->Methods[-ActionID].Args;
-      argssize = sysclass->Methods[-ActionID].Size;
+   else if ((-ActionID) < cl->TotalMethods) { // A sub-class can legally define its own methods, but should choose ID's >= 50 in order to avoid the potential for conflict with new methods appearing in the base class.
+      fields   = cl->Methods[-ActionID].Args;
+      argssize = cl->Methods[-ActionID].Size;
    }
    else {
-      log.warning("Illegal method ID %d executed on class %s.", ActionID, sysclass->ClassName);
+      log.warning("Illegal method ID %d executed on class %s.", ActionID, cl->ClassName);
       obj->threadRelease();
       return ERR_IllegalMethodID;
    }
@@ -923,12 +922,12 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
       if (ManagedActions[ActionID]) {
          error = ManagedActions[ActionID](obj, params);
       }
-      else if (sysclass->ActionTable[ActionID].PerformAction) {
-         error = sysclass->ActionTable[ActionID].PerformAction(obj, params);
+      else if (cl->ActionTable[ActionID].PerformAction) {
+         error = cl->ActionTable[ActionID].PerformAction(obj, params);
       }
-      else if (sysclass->Base) {
-         if (sysclass->Base->ActionTable[ActionID].PerformAction) {
-            error = sysclass->Base->ActionTable[ActionID].PerformAction(obj, params);
+      else if (cl->Base) {
+         if (cl->Base->ActionTable[ActionID].PerformAction) {
+            error = cl->Base->ActionTable[ActionID].PerformAction(obj, params);
          }
          else error = ERR_NoAction;
       }
@@ -937,9 +936,9 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
    else { // Method call
       ERROR (*routine)(OBJECTPTR, APTR);
 
-      if (sysclass->Methods) {
-         if (sysclass->Methods[-ActionID].Routine) {
-            routine = (ERROR (*)(OBJECTPTR, APTR))sysclass->Methods[-ActionID].Routine;
+      if (cl->Methods) {
+         if (cl->Methods[-ActionID].Routine) {
+            routine = (ERROR (*)(OBJECTPTR, APTR))cl->Methods[-ActionID].Routine;
             error = routine(obj, params);
          }
          else error = ERR_NoAction;
@@ -948,10 +947,10 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 
       // If this is a child, check the base class
 
-      if (((error IS ERR_NoAction) /*OR (!error)*/) and (sysclass->Base)) {
-         if (sysclass->Base->Methods) {
-            if (sysclass->Base->Methods[-ActionID].Routine) {
-               routine = (ERROR (*)(OBJECTPTR, APTR))sysclass->Base->Methods[-ActionID].Routine;
+      if (((error IS ERR_NoAction) /*OR (!error)*/) and (cl->Base)) {
+         if (cl->Base->Methods) {
+            if (cl->Base->Methods[-ActionID].Routine) {
+               routine = (ERROR (*)(OBJECTPTR, APTR))cl->Base->Methods[-ActionID].Routine;
                error = routine(obj, params);
             }
          }
@@ -976,12 +975,12 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
             notify.ObjectID = object_id;
             notify.Args     = params;
             if (ActionID > 0) notify.Size = ActionTable[ActionID].Size;
-            else if (sysclass->Base) {
-               if (sysclass->Base->Methods) notify.Size = sysclass->Base->Methods[-ActionID].Size;
+            else if (cl->Base) {
+               if (cl->Base->Methods) notify.Size = cl->Base->Methods[-ActionID].Size;
                else notify.Size = 0;
             }
             else {
-               if (sysclass->Methods) notify.Size = sysclass->Methods[-ActionID].Size;
+               if (cl->Methods) notify.Size = cl->Methods[-ActionID].Size;
                else notify.Size = 0;
             }
             notify.ActionID = ActionID;
@@ -1071,7 +1070,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
    __sync_add_and_fetch(&Object->ThreadPending, 1);
 
    ERROR error;
-   objThread *thread = NULL;
+   extThread *thread = NULL;
    if (!(error = threadpool_get(&thread))) {
       // Prepare the parameter buffer for passing to the thread routine.
 
@@ -1079,7 +1078,6 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
       BYTE call_data[sizeof(thread_data) + SIZE_ACTIONBUFFER];
       BYTE free_args = FALSE;
       const FunctionField *args = NULL;
-      objMetaClass *metaclass;
 
       if (Parameters) {
          if (ActionID > 0) {
@@ -1093,15 +1091,15 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
             }
             else argssize = sizeof(thread_data);
          }
-         else if ((metaclass = Object->Class)) {
-            if ((-ActionID) < metaclass->TotalMethods) {
-               args = metaclass->Methods[-ActionID].Args;
-               if ((argssize = metaclass->Methods[-ActionID].Size) > 0) {
-                  if (!(error = local_copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, metaclass->Methods[-ActionID].Name))) {
+         else if (auto cl = Object->ExtClass) {
+            if ((-ActionID) < cl->TotalMethods) {
+               args = cl->Methods[-ActionID].Args;
+               if ((argssize = cl->Methods[-ActionID].Size) > 0) {
+                  if (!(error = local_copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-ActionID].Name))) {
                      free_args = TRUE;
                   }
                }
-               else log.trace("Ignoring parameters provided for method %s", metaclass->Methods[-ActionID].Name);
+               else log.trace("Ignoring parameters provided for method %s", cl->Methods[-ActionID].Name);
 
                argssize += sizeof(thread_data);
             }
@@ -1114,7 +1112,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
       // Execute the thread that will call the action.  Refer to thread_action() for the routine.
 
       if (!error) {
-         SET_FUNCTION_STDC(thread->prv.Routine, (APTR)&thread_action);
+         SET_FUNCTION_STDC(thread->Routine, (APTR)&thread_action);
 
          thread_data *call = (thread_data *)call_data;
          call->Object   = Object;
@@ -1177,13 +1175,13 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
 
    if ((Object) and (ActionID)) {
       if (Object->ClassID IS ID_METACLASS) {
-         if (((objMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
+         if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
          else return ERR_False;
       }
-      else if (Object->Class) {
-         if (Object->Class->ActionTable[ActionID].PerformAction) return ERR_Okay;
-         else if (Object->Class->Base) {
-            if (Object->Class->Base->ActionTable[ActionID].PerformAction) return ERR_Okay;
+      else if (auto cl = Object->ExtClass) {
+         if (cl->ActionTable[ActionID].PerformAction) return ERR_Okay;
+         else if (cl->Base) {
+            if (cl->Base->ActionTable[ActionID].PerformAction) return ERR_Okay;
          }
          return ERR_False;
       }
@@ -1746,11 +1744,11 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
 ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 {
    parasol::Log log("Free");
-   objMetaClass *mc;
+   extMetaClass *mc;
 
    Object->ActionDepth--; // See Action() regarding this
 
-   if (!(mc = Object->Class)) {
+   if (!(mc = Object->ExtClass)) {
       log.trace("Object %p #%d is missing its class pointer.", Object, Object->UID);
       return log.warning(ERR_ObjectCorrupt)|ERF_Notified;
    }
@@ -1780,8 +1778,8 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       return ERR_Okay|ERF_Notified;
    }
 
-   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", ((objMetaClass *)Object)->ClassName, Object->OwnerID);
-   else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((objModule *)Object)->Name, Object->OwnerID);
+   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
+   else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
    else if (Object->Stats->Name[0])       log.branch("Name: %s, Owner: %d", Object->Stats->Name, Object->OwnerID);
    else log.branch("Owner: %d", Object->OwnerID);
 
@@ -1902,11 +1900,11 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
 
    if (!Object->Stats) return log.warning(ERR_NoStats);
 
-   objMetaClass *baseclass;
-   if (!(baseclass = Object->Class)) return log.warning(ERR_LostClass);
+   extMetaClass *cl;
+   if (!(cl = Object->ExtClass)) return log.warning(ERR_LostClass);
 
-   if (Object->ClassID != baseclass->BaseClassID) {
-      log.warning("Cannot initialise object #%d - the Object.ClassID ($%.8x) does not match the Class.BaseClassID ($%.8x)", Object->UID, Object->ClassID, baseclass->BaseClassID);
+   if (Object->ClassID != cl->BaseClassID) {
+      log.warning("Cannot initialise object #%d - the Object.ClassID ($%.8x) does not match the Class.BaseClassID ($%.8x)", Object->UID, Object->ClassID, cl->BaseClassID);
       return ERR_ObjectCorrupt;
    }
 
@@ -1924,13 +1922,13 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
       // For sub-classes, the base-class gets called first.  It should check the SubID in the header to determine that
       // the object is sub-classed so as to prevent it from doing 'too much' initialisation.
 
-      if (Object->Class->Base->ActionTable[AC_Init].PerformAction) {
-         error = Object->Class->Base->ActionTable[AC_Init].PerformAction(Object, NULL);
+      if (cl->Base->ActionTable[AC_Init].PerformAction) {
+         error = cl->Base->ActionTable[AC_Init].PerformAction(Object, NULL);
       }
 
       if (!error) {
-         if (Object->Class->ActionTable[AC_Init].PerformAction) {
-            error = Object->Class->ActionTable[AC_Init].PerformAction(Object, NULL);
+         if (cl->ActionTable[AC_Init].PerformAction) {
+            error = cl->ActionTable[AC_Init].PerformAction(Object, NULL);
          }
 
          if (!error) set_object_flags(Object, Object->Flags|NF_INITIALISED);
@@ -1947,24 +1945,24 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
       //
       // ERR_UseSubClass: Similar to ERR_NoSupport, but avoids scanning of sub-classes that aren't loaded in memory.
 
-      objMetaClass * sublist[16];
+      extMetaClass * sublist[16];
       LONG sli = -1;
 
-      while (Object->Class) {
-         if (Object->Class->ActionTable[AC_Init].PerformAction) {
-            error = Object->Class->ActionTable[AC_Init].PerformAction(Object, NULL);
+      while (Object->ExtClass) {
+         if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
+            error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL);
             if (!error) {
                set_object_flags(Object, Object->Flags|NF_INITIALISED);
 
-               if (Object->Class != baseclass) {
+               if (Object->ExtClass != cl) {
                   // Due to the switch, increase the open count of the sub-class (see NewObject() for details on object
                   // reference counting).
 
-                  log.msg("Object class switched to sub-class \"%s\".", Object->Class->ClassName);
+                  log.msg("Object class switched to sub-class \"%s\".", Object->className());
 
-                  if (!(Object->Flags & NF_PUBLIC)) Object->Class->OpenCount++;
+                  if (!(Object->Flags & NF_PUBLIC)) Object->ExtClass->OpenCount++;
 
-                  Object->SubID = Object->Class->SubClassID;
+                  Object->SubID = Object->ExtClass->SubClassID;
                   Object->Flags |= NF_RECLASSED; // This flag indicates that the object originally belonged to the base-class
                }
 
@@ -1983,10 +1981,10 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
             // Initialise a list of all sub-classes already in memory for querying in sequence.
             sli = 0;
             LONG i = 0;
-            objMetaClass **ptr;
+            extMetaClass **ptr;
             CSTRING key = NULL;
             while ((i < ARRAYSIZE(sublist)-1) and (!VarIterate(glClassMap, key, &key, (APTR *)&ptr, NULL))) {
-               objMetaClass *mc = ptr[0];
+               extMetaClass *mc = ptr[0];
                if ((Object->ClassID IS mc->BaseClassID) and (mc->BaseClassID != mc->SubClassID)) {
                   sublist[i++] = mc;
                }
@@ -1997,13 +1995,13 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
          // Attempt to initialise with the next known sub-class.
 
          if ((Object->Class = sublist[sli++])) {
-            log.trace("Attempting initialisation with sub-class '%s'", Object->Class->ClassName);
+            log.trace("Attempting initialisation with sub-class '%s'", Object->className());
             Object->SubID = Object->Class->SubClassID;
          }
       }
    }
 
-   Object->Class = baseclass;  // Put back the original to retain integrity
+   Object->Class = cl;  // Put back the original to retain integrity
    Object->SubID = Object->Class->SubClassID;
 
    // If the base class and its loaded sub-classes failed, check the object for a Path field and check the data
@@ -2021,14 +2019,14 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
       if (!IdentifyFile(path, NULL, 0, &classid, &Object->SubID, NULL)) {
          if ((classid IS Object->ClassID) and (Object->SubID)) {
             log.msg("Searching for subclass $%.8x", Object->SubID);
-            if ((Object->Class = FindClass(Object->SubID))) {
-               if (Object->Class->ActionTable[AC_Init].PerformAction) {
-                  if (!(error = Object->Class->ActionTable[AC_Init].PerformAction(Object, NULL))) {
-                     log.msg("Object class switched to sub-class \"%s\".", Object->Class->ClassName);
+            if ((Object->ExtClass = (extMetaClass *)FindClass(Object->SubID))) {
+               if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
+                  if (!(error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL))) {
+                     log.msg("Object class switched to sub-class \"%s\".", Object->className());
                      set_object_flags(Object, Object->Flags|NF_INITIALISED);
 
                      if (!(Object->Flags & NF_PUBLIC)) { // Increase the open count of the sub-class
-                        Object->Class->OpenCount++;
+                        Object->ExtClass->OpenCount++;
                      }
                      return ERR_Okay;
                   }
@@ -2038,10 +2036,10 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
             else log.warning("Failed to load module for class #%d.", Object->SubID);
          }
       }
-      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->Class->ClassName, classid);
+      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), classid);
 
-      Object->Class = baseclass;  // Put back the original to retain object integrity
-      Object->SubID = baseclass->SubClassID;
+      Object->Class = cl;  // Put back the original to retain object integrity
+      Object->SubID = cl->SubClassID;
    }
 
    return error;
@@ -2069,9 +2067,9 @@ ERROR MGR_Rename(OBJECTPTR Object, struct acRename *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Object->Class) {
-      if (Object->Class->ActionTable[AC_Rename].PerformAction) {
-         return Object->Class->ActionTable[AC_Rename].PerformAction(Object, Args);
+   if (Object->ExtClass) {
+      if (Object->ExtClass->ActionTable[AC_Rename].PerformAction) {
+         return Object->ExtClass->ActionTable[AC_Rename].PerformAction(Object, Args);
       }
       else return SetField(Object, FID_FileName|TPTR, Args->Name);
    }
@@ -2089,13 +2087,13 @@ ERROR MGR_Seek(OBJECTPTR Object, struct acSeek *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
    ERROR error;
-   if (Object->Class) {
-      if (Object->Class->ActionTable[AC_Seek].PerformAction) {
+   if (Object->ExtClass) {
+      if (Object->ExtClass->ActionTable[AC_Seek].PerformAction) {
          // Check and correct the Pos and Mode if SEEK_END
 
          if ((Args->Position IS SEEK_END) and (Args->Offset < 0)) Args->Offset = -Args->Offset;
          else if ((Args->Position IS SEEK_START) and (Args->Position < 0)) return log.warning(ERR_Args);
-         return Object->Class->ActionTable[AC_Seek].PerformAction(Object, Args);
+         return Object->ExtClass->ActionTable[AC_Seek].PerformAction(Object, Args);
       }
       else error = ERR_NoSupport;
    }

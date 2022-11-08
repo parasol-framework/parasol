@@ -95,17 +95,17 @@ in a file.
 
 #include <parasol/main.h>
 
-extern "C" void path_monitor(HOSTHANDLE, objFile *);
+extern "C" void path_monitor(HOSTHANDLE, extFile *);
 
-static ERROR FILE_Init(objFile *, APTR);
-static ERROR FILE_Watch(objFile *, struct flWatch *);
+static ERROR FILE_Init(extFile *, APTR);
+static ERROR FILE_Watch(extFile *, struct flWatch *);
 
-static ERROR SET_Path(objFile *, CSTRING);
-static ERROR SET_Size(objFile *, LARGE);
+static ERROR SET_Path(extFile *, CSTRING);
+static ERROR SET_Size(extFile *, LARGE);
 
-static ERROR GET_ResolvedPath(objFile *, CSTRING *);
+static ERROR GET_ResolvedPath(extFile *, CSTRING *);
 
-static ERROR set_permissions(objFile *, LONG);
+static ERROR set_permissions(extFile *, LONG);
 
 /*****************************************************************************
 -ACTION-
@@ -113,7 +113,7 @@ Activate: Opens the file.  Performed automatically if NEW, READ or WRITE flags w
 -END-
 *****************************************************************************/
 
-static ERROR FILE_Activate(objFile *Self, APTR Void)
+static ERROR FILE_Activate(extFile *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -264,7 +264,7 @@ Read: Failed to read the file content.
 
 *****************************************************************************/
 
-static ERROR FILE_BufferContent(objFile *Self, APTR Void)
+static ERROR FILE_BufferContent(extFile *Self, APTR Void)
 {
    parasol::Log log;
    LONG len;
@@ -339,7 +339,7 @@ Streaming data of any type to a file will result in the content being written to
 
 ****************************************************************************/
 
-static ERROR FILE_DataFeed(objFile *Self, struct acDataFeed *Args)
+static ERROR FILE_DataFeed(extFile *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
@@ -383,7 +383,7 @@ AllocMemory:
 
 ****************************************************************************/
 
-static ERROR FILE_Copy(objFile *Self, struct flCopy *Args)
+static ERROR FILE_Copy(extFile *Self, struct flCopy *Args)
 {
    return CopyFile(Self->Path, Args->Dest, Args->Callback);
 }
@@ -412,7 +412,7 @@ BufferOverflow: The file path string is too long.
 
 ****************************************************************************/
 
-static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
+static ERROR FILE_Delete(extFile *Self, struct flDelete *Args)
 {
    parasol::Log log;
 
@@ -489,7 +489,7 @@ static ERROR FILE_Delete(objFile *Self, struct flDelete *Args)
 
 //****************************************************************************
 
-static ERROR FILE_Free(objFile *Self, APTR Void)
+static ERROR FILE_Free(extFile *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -573,7 +573,7 @@ NoPermission: Permission was denied when accessing or creating the file.
 
 *****************************************************************************/
 
-static ERROR FILE_Init(objFile *Self, APTR Void)
+static ERROR FILE_Init(extFile *Self, APTR Void)
 {
    parasol::Log log;
    LONG j, len;
@@ -798,7 +798,7 @@ Failed
 
 *****************************************************************************/
 
-static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
+static ERROR FILE_MoveFile(extFile *Self, struct flMove *Args)
 {
    parasol::Log log;
 
@@ -878,7 +878,7 @@ static ERROR FILE_MoveFile(objFile *Self, struct flMove *Args)
 
 //****************************************************************************
 
-static ERROR FILE_NewObject(objFile *Self, APTR Void)
+static ERROR FILE_NewObject(extFile *Self, APTR Void)
 {
    Self->Handle = -1;
    Self->Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
@@ -912,7 +912,7 @@ DirEmpty: The index has reached the end of the file list.
 
 ****************************************************************************/
 
-static ERROR FILE_NextFile(objFile *Self, struct flNext *Args)
+static ERROR FILE_NextFile(extFile *Self, struct flNext *Args)
 {
    parasol::Log log;
 
@@ -941,7 +941,7 @@ static ERROR FILE_NextFile(objFile *Self, struct flNext *Args)
          CopyMemory(Self->prvList->Info->Name, path + folder_len, name_len);
          path[folder_len + name_len] = 0;
 
-         objFile *file;
+         extFile *file;
          if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file, FID_Path|TSTR, path, TAGEND)) {
             Args->File = file;
             return ERR_Okay;
@@ -965,7 +965,7 @@ Query: Read a file's meta information from source.
 -END-
 *****************************************************************************/
 
-static ERROR FILE_Query(objFile *Self, APTR Void)
+static ERROR FILE_Query(extFile *Self, APTR Void)
 {
 #ifdef _WIN32
    return ERR_Okay;
@@ -1000,7 +1000,7 @@ Failed: The file object refers to a folder, or the object is corrupt.
 
 ****************************************************************************/
 
-static ERROR FILE_Read(objFile *Self, struct acRead *Args)
+static ERROR FILE_Read(extFile *Self, struct acRead *Args)
 {
    parasol::Log log;
 
@@ -1096,7 +1096,7 @@ NoData: There is no more data left to read.
 
 ****************************************************************************/
 
-static ERROR FILE_ReadLine(objFile *Self, struct flReadLine *Args)
+static ERROR FILE_ReadLine(extFile *Self, struct flReadLine *Args)
 {
    parasol::Log log;
 
@@ -1171,7 +1171,7 @@ Rename: Changes the name of a file.
 -END-
 *****************************************************************************/
 
-static ERROR FILE_Rename(objFile *Self, struct acRename *Args)
+static ERROR FILE_Rename(extFile *Self, struct acRename *Args)
 {
    parasol::Log log;
    LONG j;
@@ -1269,7 +1269,7 @@ Reset: If the file represents a folder, the file list index is reset by this act
 -END-
 *****************************************************************************/
 
-static ERROR FILE_Reset(objFile *Self, APTR Void)
+static ERROR FILE_Reset(extFile *Self, APTR Void)
 {
    if (Self->Flags & FL_FOLDER) {
       if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
@@ -1284,7 +1284,7 @@ Seek: Seeks to a new read/write position within a file.
 -END-
 *****************************************************************************/
 
-static ERROR FILE_Seek(objFile *Self, struct acSeek *Args)
+static ERROR FILE_Seek(extFile *Self, struct acSeek *Args)
 {
    parasol::Log log;
 
@@ -1361,7 +1361,7 @@ NoSupport: The platform does not support file date setting.
 
 *****************************************************************************/
 
-static ERROR FILE_SetDate(objFile *Self, struct flSetDate *Args)
+static ERROR FILE_SetDate(extFile *Self, struct flSetDate *Args)
 {
    parasol::Log log;
 
@@ -1458,7 +1458,7 @@ NoSupport: The file is not streamed.
 
 *****************************************************************************/
 
-static ERROR FILE_StartStream(objFile *Self, struct flStartStream *Args)
+static ERROR FILE_StartStream(extFile *Self, struct flStartStream *Args)
 {
    parasol::Log log;
 
@@ -1484,7 +1484,7 @@ NoSupport: The file is not streamed.
 
 *****************************************************************************/
 
-static ERROR FILE_StopStream(objFile *Self, APTR Void)
+static ERROR FILE_StopStream(extFile *Self, APTR Void)
 {
    return ERR_NoSupport;
 }
@@ -1525,7 +1525,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR FILE_Watch(objFile *Self, struct flWatch *Args)
+static ERROR FILE_Watch(extFile *Self, struct flWatch *Args)
 {
    parasol::Log log;
 
@@ -1610,7 +1610,7 @@ LimitedSuccess: Only some of the data was written to the file.  Check the Result
 
 *****************************************************************************/
 
-static ERROR FILE_Write(objFile *Self, struct acWrite *Args)
+static ERROR FILE_Write(extFile *Self, struct acWrite *Args)
 {
    parasol::Log log;
 
@@ -1714,7 +1714,7 @@ the address of that buffer.  The size of the buffer will match the #Size field.
 
 *****************************************************************************/
 
-static ERROR GET_Buffer(objFile *Self, APTR *Value, LONG *Elements)
+static ERROR GET_Buffer(extFile *Self, APTR *Value, LONG *Elements)
 {
    *Value = Self->Buffer;
    *Elements = Self->Size;
@@ -1735,7 +1735,7 @@ To simplify time management, information is read and set via a &DateTime structu
 
 *****************************************************************************/
 
-static ERROR GET_Created(objFile *Self, DateTime **Value)
+static ERROR GET_Created(extFile *Self, DateTime **Value)
 {
    parasol::Log log;
 
@@ -1808,7 +1808,7 @@ Information is read and set using a standard &DateTime structure.
 
 *****************************************************************************/
 
-static ERROR GET_Date(objFile *Self, DateTime **Value)
+static ERROR GET_Date(extFile *Self, DateTime **Value)
 {
    parasol::Log log;
 
@@ -1872,7 +1872,7 @@ static ERROR GET_Date(objFile *Self, DateTime **Value)
    }
 }
 
-ERROR SET_Date(objFile *Self, DateTime *Date)
+ERROR SET_Date(extFile *Self, DateTime *Date)
 {
    parasol::Log log;
 
@@ -1942,7 +1942,7 @@ If the file system does not support group ID's, ERR_NoSupport is returned.
 
 *****************************************************************************/
 
-static ERROR GET_Group(objFile *Self, LONG *Value)
+static ERROR GET_Group(extFile *Self, LONG *Value)
 {
 #ifdef __unix__
    struct stat64 info;
@@ -1954,7 +1954,7 @@ static ERROR GET_Group(objFile *Self, LONG *Value)
 #endif
 }
 
-static ERROR SET_Group(objFile *Self, LONG Value)
+static ERROR SET_Group(extFile *Self, LONG Value)
 {
 #ifdef __unix__
    parasol::Log log;
@@ -1979,7 +1979,7 @@ is returned as a 64-bit integer.
 
 ****************************************************************************/
 
-static ERROR GET_Handle(objFile *Self, LARGE *Value)
+static ERROR GET_Handle(extFile *Self, LARGE *Value)
 {
    *Value = Self->Handle;
    return ERR_Okay;
@@ -1996,7 +1996,7 @@ The resulting string is returned in the format `icons:category/name` and can be 
 
 ****************************************************************************/
 
-static ERROR GET_Icon(objFile *Self, CSTRING *Value)
+static ERROR GET_Icon(extFile *Self, CSTRING *Value)
 {
    if (Self->prvIcon) {
       *Value = Self->prvIcon;
@@ -2171,7 +2171,7 @@ folder containing the link will need to be taken into consideration when calcula
 
 ****************************************************************************/
 
-static ERROR GET_Link(objFile *Self, STRING *Value)
+static ERROR GET_Link(extFile *Self, STRING *Value)
 {
 #ifdef __unix__
    parasol::Log log;
@@ -2207,7 +2207,7 @@ static ERROR GET_Link(objFile *Self, STRING *Value)
 #endif
 }
 
-static ERROR SET_Link(objFile *Self, STRING Value)
+static ERROR SET_Link(extFile *Self, STRING Value)
 {
 #ifdef __unix__
    //symlink().
@@ -2233,7 +2233,7 @@ to traverse the folder hierarchy.
 
 ****************************************************************************/
 
-static ERROR GET_Path(objFile *Self, STRING *Value)
+static ERROR GET_Path(extFile *Self, STRING *Value)
 {
    if (Self->Path) {
       *Value = Self->Path;
@@ -2245,7 +2245,7 @@ static ERROR GET_Path(objFile *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Path(objFile *Self, CSTRING Value)
+static ERROR SET_Path(extFile *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -2341,7 +2341,7 @@ Lookup: PERMIT
 -END-
 *****************************************************************************/
 
-static ERROR GET_Permissions(objFile *Self, LONG *Value)
+static ERROR GET_Permissions(extFile *Self, LONG *Value)
 {
    parasol::Log log;
 
@@ -2391,7 +2391,7 @@ static ERROR GET_Permissions(objFile *Self, LONG *Value)
    return ERR_NoSupport;
 }
 
-static ERROR SET_Permissions(objFile *Self, LONG Value)
+static ERROR SET_Permissions(extFile *Self, LONG Value)
 {
    if (!Self->initialised()) {
       Self->Permissions = Value;
@@ -2402,7 +2402,7 @@ static ERROR SET_Permissions(objFile *Self, LONG Value)
 
 //****************************************************************************
 
-static ERROR set_permissions(objFile *Self, LONG Permissions)
+static ERROR set_permissions(extFile *Self, LONG Permissions)
 {
    parasol::Log log(__FUNCTION__);
 #ifdef __unix__
@@ -2499,7 +2499,7 @@ The Position will always remain at zero if the file object represents a folder.
 
 *****************************************************************************/
 
-static ERROR SET_Position(objFile *Self, LARGE Value)
+static ERROR SET_Position(extFile *Self, LARGE Value)
 {
    if (Self->initialised()) {
       return acSeekStart(Self, Value);
@@ -2519,7 +2519,7 @@ to the host platform.  Please refer to the ~ResolvePath() function for further i
 
 *****************************************************************************/
 
-static ERROR GET_ResolvedPath(objFile *Self, CSTRING *Value)
+static ERROR GET_ResolvedPath(extFile *Self, CSTRING *Value)
 {
    if (!Self->Path) return ERR_FieldNotSet;
 
@@ -2549,7 +2549,7 @@ position being set to the end of the file.
 
 *****************************************************************************/
 
-static ERROR GET_Size(objFile *Self, LARGE *Size)
+static ERROR GET_Size(extFile *Self, LARGE *Size)
 {
    parasol::Log log;
 
@@ -2581,7 +2581,7 @@ static ERROR GET_Size(objFile *Self, LARGE *Size)
    else return log.warning(ERR_ResolvePath);
 }
 
-static ERROR SET_Size(objFile *Self, LARGE Size)
+static ERROR SET_Size(extFile *Self, LARGE Size)
 {
    parasol::Log log;
 
@@ -2703,7 +2703,7 @@ for comparison to the time stamps of other files.  For a parsed time structure, 
 
 *****************************************************************************/
 
-static ERROR GET_TimeStamp(objFile *Self, LARGE *Value)
+static ERROR GET_TimeStamp(extFile *Self, LARGE *Value)
 {
    parasol::Log log;
 
@@ -2773,7 +2773,7 @@ If the filesystem does not support user ID's, ERR_NoSupport is returned.
 -END-
 *****************************************************************************/
 
-static ERROR GET_User(objFile *Self, LONG *Value)
+static ERROR GET_User(extFile *Self, LONG *Value)
 {
 #ifdef __unix__
    struct stat64 info;
@@ -2787,7 +2787,7 @@ static ERROR GET_User(objFile *Self, LONG *Value)
 #endif
 }
 
-static ERROR SET_User(objFile *Self, LONG Value)
+static ERROR SET_User(extFile *Self, LONG Value)
 {
 #ifdef __unix__
    parasol::Log log;
@@ -2874,7 +2874,7 @@ extern "C" ERROR add_file_class(void)
       FID_Actions|TPTR,   clFileActions,
       FID_Methods|TARRAY, clFileMethods,
       FID_Fields|TARRAY,  FileFields,
-      FID_Size|TLONG,     sizeof(objFile),
+      FID_Size|TLONG,     sizeof(extFile),
       FID_Path|TSTR,      "modules:core",
       TAGEND);
 }

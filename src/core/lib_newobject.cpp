@@ -7,8 +7,8 @@ Name: Objects
 #include "defs.h"
 #include <parasol/main.h>
 
-extern "C" ERROR CLASS_Free(objMetaClass *, APTR);
-extern "C" ERROR CLASS_Init(objMetaClass *, APTR);
+extern "C" ERROR CLASS_Free(extMetaClass *, APTR);
+extern "C" ERROR CLASS_Init(extMetaClass *, APTR);
 
 static LONG add_shared_object(OBJECTPTR, OBJECTID, WORD);
 
@@ -52,7 +52,7 @@ ERROR CreateObjectF(LARGE ClassID, LONG Flags, OBJECTPTR *argObject, va_list Lis
    parasol::Log log("CreateObject");
 
    if (glLogLevel > 2) {
-      objMetaClass **ptr;
+      extMetaClass **ptr;
       if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
          log.branch("Class: %s", ptr[0]->ClassName);
       }
@@ -127,7 +127,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
    ULONG class_id = (ULONG)(ClassID & 0xffffffff);
    if ((!class_id) or (!Object)) return log.warning(ERR_NullArgs);
 
-   objMetaClass *mc;
+   extMetaClass *mc;
    if (class_id IS ID_METACLASS) {
       mc = &glMetaClass;
       glMetaClass.ActionTable[AC_Free].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Free;
@@ -139,8 +139,8 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
          master_sorted = TRUE;
       }
    }
-   else if (!(mc = (objMetaClass *)FindClass(class_id))) {
-      objMetaClass **ptr;
+   else if (!(mc = (extMetaClass *)FindClass(class_id))) {
+      extMetaClass **ptr;
       if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
          log.function("Class %s was not found in the system.", ptr[0]->ClassName);
       }
@@ -185,7 +185,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
          head->SubID = mc->SubClassID;
       }
 
-      head->Class = (objMetaClass *)mc;
+      head->Class = (extMetaClass *)mc;
       if ((glCurrentTaskID != SystemTaskID) and (!(mc->Flags & CLF_NO_OWNERSHIP))) {
          head->TaskID = glCurrentTaskID;
       }
@@ -264,7 +264,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
       }
 
       if (!error) {
-         ((objMetaClass *)head->Class)->OpenCount++;
+         ((extMetaClass *)head->Class)->OpenCount++;
          if (mc->Base) mc->Base->OpenCount++;
 
          head->Flags &= ~NF_NEW_OBJECT;
@@ -323,7 +323,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
    ULONG class_id = (ULONG)(ClassID & 0xffffffff);
    if ((!class_id) or (!ObjectID)) return log.warning(ERR_NullArgs);
 
-   objMetaClass *mc;
+   extMetaClass *mc;
    if (class_id IS ID_METACLASS) {
       mc = &glMetaClass;
       glMetaClass.ActionTable[AC_Free].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Free;
@@ -335,8 +335,8 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
          master_sorted = TRUE;
       }
    }
-   else if (!(mc = (objMetaClass *)FindClass(class_id))) {
-      objMetaClass **ptr;
+   else if (!(mc = (extMetaClass *)FindClass(class_id))) {
+      extMetaClass **ptr;
       if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
          log.function("Class %s was not found in the system.", ptr[0]->ClassName);
       }
@@ -507,7 +507,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
       // because this prevents the Core from expunging modules correctly during shutdown.
 
       if (!(Flags & NF_PUBLIC)) {
-         ((objMetaClass *)head->Class)->OpenCount++;
+         head->ExtClass->OpenCount++;
          if (mc->Base) mc->Base->OpenCount++;
       }
 
@@ -723,7 +723,7 @@ static ERROR add_shared_object(OBJECTPTR Object, OBJECTID ObjectID, WORD Flags)
    objects[hdr->NextEntry].ObjectID = ObjectID;
    objects[hdr->NextEntry].OwnerID  = Object->OwnerID;
 
-   if (((objMetaClass *)(Object->Class))->Flags & CLF_NO_OWNERSHIP) {
+   if (Object->ExtClass->Flags & CLF_NO_OWNERSHIP) {
       objects[hdr->NextEntry].MessageMID = 0;
    }
    else objects[hdr->NextEntry].MessageMID = glTaskMessageMID;

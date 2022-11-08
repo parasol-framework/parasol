@@ -1206,7 +1206,10 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 // Header used for all objects.
 
 struct BaseClass { // Must be 64-bit aligned
-   objMetaClass *Class;         // Class pointer, resolved on AccessObject()
+   union {
+      objMetaClass *Class;          // Class pointer, resolved on AccessObject()
+      class extMetaClass *ExtClass; // Internal class reference
+   };
    struct Stats *Stats;         // Stats pointer, resolved on AccessObject() [Private]
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
@@ -1232,17 +1235,12 @@ struct BaseClass { // Must be 64-bit aligned
    ~BaseClass() {
    }
 
-   inline LONG flags() {
-      return Flags;
-   }
-
-   inline bool initialised() {
-      return Flags & NF_INITIALISED;
-   }
-
-   inline OBJECTID ownerTask() {
-      return TaskID;
-   }
+   inline LONG flags() { return Flags; }
+   inline bool initialised() { return Flags & NF_INITIALISED; }
+   inline OBJECTID ownerTask() { return TaskID; }
+   inline bool isPublic() { return Flags & NF_PUBLIC; }
+   inline OBJECTID ownerID() { return OwnerID; }
+   CSTRING className();
 
    inline bool collecting() { // Is object being freed or marked for collection?
       return Flags & (NF_FREE|NF_COLLECT);
@@ -1250,14 +1248,6 @@ struct BaseClass { // Must be 64-bit aligned
 
    inline bool terminating() { // Is object currently being freed?
       return Flags & NF_FREE;
-   }
-
-   inline bool isPublic() {
-      return Flags & NF_PUBLIC;
-   }
-
-   inline OBJECTID ownerID() {
-      return OwnerID;
    }
 
    inline ERROR threadLock() {
@@ -1302,9 +1292,7 @@ struct BaseClass { // Must be 64-bit aligned
       return __sync_sub_and_fetch(&SleepQueue, 1);
    }
 
-   inline LONG memflags() {
-      return MemFlags;
-   }
+   inline LONG memflags() { return MemFlags; }
 
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
       auto oid = this->OwnerID;
@@ -1568,10 +1556,6 @@ INLINE ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
     large DeviceSize           # Size of the device
     large BytesFree            # Bytes available to the user
     large BytesUsed            # Bytes already used
-  ]],
-  [[
-   STRING prvDeviceID;   // Unique ID for the filesystem, if available
-   STRING prvVolume;
   ]])
 
   methods("File", "Fl", {
@@ -1593,29 +1577,6 @@ INLINE ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
     int   Static     # Set to TRUE if a file object should be static.
     oid   Target     # Specifies a surface ID to target for user feedback and dialog boxes.
     ptr(char) Buffer # Points to the internal data buffer if the file content is held in memory.
-  ]],
-  [[
-    struct DateTime prvModified;  // [28 byte structure]
-    struct DateTime prvCreated;  // [28 byte structure]
-    LARGE Size;
-    #ifdef _WIN32
-       LONG  Stream;
-    #else
-       APTR  Stream;
-    #endif
-    STRING Path;
-    STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
-    STRING prvLink;
-    STRING prvLine;
-    CSTRING prvIcon;
-    struct rkWatchPath *prvWatch;
-    OBJECTPTR ProgressDialog;
-    struct DirInfo *prvList;
-    LARGE  ProgressTime;
-    LONG   Permissions;
-    LONG   prvType;
-    LONG   Handle;         // Native system file handle
-    WORD   prvLineLen;
   ]])
 
   methods("config", "Cfg", {
@@ -1636,10 +1597,6 @@ INLINE ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
     str KeyFilter     # Enables key filtering, removing any unwanted keys on load.
     str GroupFilter   # Enables group filtering, removing any unwanted groups on load.
     int(CNF) Flags    # Not currently in use
-  ]],
-  [[
-   ConfigGroups *Groups;
-   ULONG    CRC;   // CRC32, for determining if config data has been altered
   ]])
 
   c_insert([[
@@ -1729,16 +1686,6 @@ INLINE ERROR cfgReadInt(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
     int TotalMethods       # Total number of methods
     int TotalFields        # Total number of fields, including any additional standard fields like 'Name'
     int(CCF) Category      # Assigned category
-  ]],
-  [[
-    objMetaClass *Base;                  // Reference to the base class if this is a sub-class
-    struct Field *prvFields;             // Internal field structure
-    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
-    struct ModuleMaster *Master; // Master module that owns this class, if any.
-    UBYTE Children[8];    // Child objects (field indexes), in order
-    STRING Location;      // Location of the class binary, this field exists purely for caching the location string if the user reads it
-    struct ActionEntry ActionTable[AC_END];
-    WORD OriginalFieldTotal;
   ]])
 
   methods("Task", "Task", {
@@ -1755,53 +1702,6 @@ INLINE ERROR cfgReadInt(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
     int Flags
     int ReturnCode
     int ProcessID    # Native process ID of the activated task
-  ]],
-  [[
-   MEMORYID MessageMID;
-   MEMORYID LocationMID;       // Where to load the task from (string)
-   MEMORYID ParametersMID;     // Arguments (string)
-   MEMORYID CopyrightMID;      // Copyright details (string)
-   MEMORYID PathMID;
-   MEMORYID ProcessPathMID;
-   MEMORYID LaunchPathMID;
-   STRING   LaunchPath;
-   STRING   Path;
-   STRING   ProcessPath;
-   STRING   Location;         // Where to load the task from (string)
-   CSTRING  *Parameters;      // Arguments (string array)
-   STRING   Copyright;        // Copyright details (string)
-   char     Name[32];         // Name of the task, if specified (string)
-   char     Author[60];       // Who wrote the program (string)
-   char     Date[20];         // Date of compilation (string)
-   char     Short[80];        // Short description of program (string)
-   LONG     ParametersSize;   // Byte size of the arguments structure
-   STRING   Fields[100];      // Variable field storage
-   BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
-   FUNCTION ErrorCallback;
-   FUNCTION OutputCallback;
-   FUNCTION ExitCallback;
-   FUNCTION InputCallback;
-   struct MsgHandler *MsgAction;
-   struct MsgHandler *MsgGetField;
-   struct MsgHandler *MsgSetField;
-   struct MsgHandler *MsgActionResult;
-   struct MsgHandler *MsgDebug;
-   struct MsgHandler *MsgWaitForObjects;
-   struct MsgHandler *MsgValidateProcess;
-   struct MsgHandler *MsgQuit;
-   struct MsgHandler *MsgEvent;
-   struct MsgHandler *MsgThreadCallback;
-   struct MsgHandler *MsgThreadAction;
-
-   #ifdef __unix__
-      LONG InFD;             // stdin FD for receiving output from launched task
-      LONG ErrFD;            // stderr FD for receiving output from launched task
-   #endif
-   #ifdef _WIN32
-      STRING Env;
-      APTR Platform;
-   #endif
-   struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
   ]])
 
   methods("Thread", "Th", {
@@ -1815,8 +1715,7 @@ INLINE ERROR cfgReadInt(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
    int   StackSize    # Pre-set stack size
    error Error        # Error code returned by the thread on completion.
    int   Flags        # Optional flags.
-  ]],
-  [[ struct prvThread prv; ]])
+  ]])
 
   c_insert([[
 // Private task list control structure.
@@ -1857,11 +1756,6 @@ struct TaskList {
     struct(*ModuleMaster) Master    # Shared details on the module
     struct(*ModHeader) Header       # For creating in-memory modules only.
     int(MOF) Flags                  # Optional flags
-  ]],
-  [[
-   char   Name[60];      // Name of the module
-   APTR   prvMBMemory;   // Module base memory
-   struct KeyStore *Vars;
   ]])
 
   -- Note that the fields following SystemTime are identical to struct DateTime
@@ -1910,44 +1804,13 @@ struct TaskList {
     int(PERMIT) Permissions # Default permissions to use for decompressed files
     int MinOutputSize       # Minimum recommended output buffer size
     int WindowBits          # Window bits, currently applicable to the default (zlib) compression
-  ]],
-  [[
-   OBJECTPTR FileIO;             // File input/output
-   STRING *  FileList;           // List of all files held in the compression object
-   STRING    Path;               // Location of the compressed data
-   CompressionFeedback *FeedbackInfo;
-   UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
-   char      Password[128];      // Password for the compressed object
-   FUNCTION  Feedback;           // Set a function here to get de/compression feedack
-   ULONG     ArchiveHash;        // Archive reference, used for the 'archive:' volume
-
-   // Zip only fields
-   z_stream prvZip;
-   z_stream Stream;
-   UBYTE  *prvOutput;
-   UBYTE  *prvInput;
-   struct ZipFile *prvFiles;    // List of files in the archive (must be in order of the archive's entries)
-   UBYTE  *OutputBuffer;        // Output buffer for compressed data
-   LONG   OutputSize;           // Size of OutputBuffer
-   LONG   prvTotalFiles;
-   LONG   prvFileIndex;
-   WORD   prvCompressionCount;  // Counter of times that compression has occurred
-   UBYTE  Deflating;
-   UBYTE  Inflating;
   ]])
 
-  class("CompressedStream", { src="../classes/class_compressed_stream.cpp", output="../classes/class_compressed_stream_def.c" }, [[
+  class("CompressedStream", { src="../compression/class_compressed_stream.cpp", output="../compression/class_compressed_stream_def.c" }, [[
     large TotalOutput  # Count of the total bytes that have been output.
     obj Input          # The object that is the source of the compressed data.
     obj Output         # The object that is the destination for the compressed data.
     int(CF) Format     # CF_GZIP, CF_ZLIB, CF_DEFLATE
-  ]],
-  [[
-   UBYTE *OutputBuffer;
-   UBYTE Inflating:1;
-   UBYTE Deflating:1;
-   z_stream Stream;
-   gz_header Header;
   ]])
 
   c_insert([[
@@ -2458,6 +2321,8 @@ INLINE FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
    return func;
 }
 #endif
+
+inline CSTRING BaseClass::className() { return Class->ClassName; }
 
   ]])
 

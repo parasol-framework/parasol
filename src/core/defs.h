@@ -167,21 +167,6 @@ struct rkWatchPath {
 #define SendAction(a,b,c,d) (ActionMsg(a,b,c,d,0))
 #define WaitMsg(a,b,c)      (ActionMsg(a,b,c,0,0xfffffffe))
 
-struct prvThread {
-   #ifdef __unix__
-      pthread_t PThread;
-      LONG Msgs[2];
-   #elif _WIN32
-      WINHANDLE Handle;
-      LONG ThreadID;
-      WINHANDLE Msgs[2];
-   #endif
-   BYTE Active;
-   BYTE Waiting;
-   FUNCTION Routine;
-   FUNCTION Callback;
-};
-
 #include <parasol/main.h>
 
 enum {
@@ -238,8 +223,8 @@ struct virtual_drive {
    ERROR (*CloseDir)(struct DirInfo *);
    ERROR (*Obsolete)(CSTRING, struct DirInfo **, LONG);
    ERROR (*TestPath)(CSTRING, LONG, LONG *);
-   ERROR (*WatchPath)(objFile *);
-   void  (*IgnoreFile)(objFile *);
+   ERROR (*WatchPath)(class extFile *);
+   void  (*IgnoreFile)(class extFile *);
    ERROR (*GetInfo)(CSTRING, struct FileInfo *, LONG);
    ERROR (*GetDeviceInfo)(CSTRING, objStorageDevice *);
    ERROR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
@@ -403,6 +388,127 @@ enum {
    CP_FINISHED
 };
 
+class extMetaClass : public objMetaClass {
+   public:
+   class extMetaClass *Base;            // Reference to the base class if this is a sub-class
+   struct Field *prvFields;             // Internal field structure
+   const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
+   struct ModuleMaster *Master;         // Master module that owns this class, if any.
+   UBYTE Children[8];                   // Child objects (field indexes), in order
+   STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the user reads it
+   struct ActionEntry ActionTable[AC_END];
+   WORD OriginalFieldTotal;
+};
+
+class extFile : public objFile {
+   public:
+   struct DateTime prvModified;  // [28 byte structure]
+   struct DateTime prvCreated;  // [28 byte structure]
+   LARGE Size;
+   #ifdef _WIN32
+      LONG  Stream;
+   #else
+      APTR  Stream;
+   #endif
+   STRING Path;
+   STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
+   STRING prvLink;
+   STRING prvLine;
+   CSTRING prvIcon;
+   struct rkWatchPath *prvWatch;
+   OBJECTPTR ProgressDialog;
+   struct DirInfo *prvList;
+   LARGE  ProgressTime;
+   LONG   Permissions;
+   LONG   prvType;
+   LONG   Handle;         // Native system file handle
+   WORD   prvLineLen;
+};
+
+class extConfig : public objConfig {
+   public:
+   ConfigGroups *Groups;
+   ULONG    CRC;   // CRC32, for determining if config data has been altered
+};
+
+class extStorageDevice : public objStorageDevice {
+   public:
+   STRING DeviceID;   // Unique ID for the filesystem, if available
+   STRING Volume;
+};
+
+class extThread : public objThread {
+   public:
+   #ifdef __unix__
+      pthread_t PThread;
+      LONG Msgs[2];
+   #elif _WIN32
+      WINHANDLE Handle;
+      LONG ThreadID;
+      WINHANDLE Msgs[2];
+   #endif
+   BYTE Active;
+   BYTE Waiting;
+   FUNCTION Routine;
+   FUNCTION Callback;
+};
+
+class extTask : public objTask {
+   public:
+   MEMORYID MessageMID;
+   MEMORYID LocationMID;       // Where to load the task from (string)
+   MEMORYID ParametersMID;     // Arguments (string)
+   MEMORYID CopyrightMID;      // Copyright details (string)
+   MEMORYID PathMID;
+   MEMORYID ProcessPathMID;
+   MEMORYID LaunchPathMID;
+   STRING   LaunchPath;
+   STRING   Path;
+   STRING   ProcessPath;
+   STRING   Location;         // Where to load the task from (string)
+   CSTRING  *Parameters;      // Arguments (string array)
+   STRING   Copyright;        // Copyright details (string)
+   char     Name[32];         // Name of the task, if specified (string)
+   char     Author[60];       // Who wrote the program (string)
+   char     Date[20];         // Date of compilation (string)
+   char     Short[80];        // Short description of program (string)
+   LONG     ParametersSize;   // Byte size of the arguments structure
+   STRING   Fields[100];      // Variable field storage
+   BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
+   FUNCTION ErrorCallback;
+   FUNCTION OutputCallback;
+   FUNCTION ExitCallback;
+   FUNCTION InputCallback;
+   struct MsgHandler *MsgAction;
+   struct MsgHandler *MsgGetField;
+   struct MsgHandler *MsgSetField;
+   struct MsgHandler *MsgActionResult;
+   struct MsgHandler *MsgDebug;
+   struct MsgHandler *MsgWaitForObjects;
+   struct MsgHandler *MsgValidateProcess;
+   struct MsgHandler *MsgQuit;
+   struct MsgHandler *MsgEvent;
+   struct MsgHandler *MsgThreadCallback;
+   struct MsgHandler *MsgThreadAction;
+
+   #ifdef __unix__
+      LONG InFD;             // stdin FD for receiving output from launched task
+      LONG ErrFD;            // stderr FD for receiving output from launched task
+   #endif
+   #ifdef _WIN32
+      STRING Env;
+      APTR Platform;
+   #endif
+   struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
+};
+
+class extModule : public objModule {
+   public:
+   char   Name[60];      // Name of the module
+   APTR   prvMBMemory;   // Module base memory
+   struct KeyStore *Vars;
+};
+
 //********************************************************************************************************************
 // These values are set against glProgramStage to indicate the current state of the program (either starting up, active
 // or shutting down).
@@ -444,7 +550,7 @@ struct MemoryMessage {
 //********************************************************************************************************************
 // Global data variables.
 
-extern objMetaClass glMetaClass;
+extern extMetaClass glMetaClass;
 extern LONG glEUID, glEGID, glUID, glGID;
 extern LONG glKeyState;
 extern char glSystemPath[SIZE_SYSTEM_PATH];
@@ -873,7 +979,7 @@ ERROR fs_createlink(CSTRING, CSTRING);
 ERROR fs_delete(STRING, FUNCTION *);
 ERROR fs_getinfo(CSTRING, struct FileInfo *, LONG);
 ERROR fs_getdeviceinfo(CSTRING, objStorageDevice *);
-void  fs_ignore_file(objFile *);
+void  fs_ignore_file(class extFile *);
 ERROR fs_makedir(CSTRING, LONG);
 ERROR fs_opendir(struct DirInfo *);
 ERROR fs_readlink(STRING, STRING *);
@@ -881,7 +987,7 @@ ERROR fs_rename(STRING, STRING);
 ERROR fs_samefile(CSTRING, CSTRING);
 ERROR fs_scandir(struct DirInfo *);
 ERROR fs_testpath(CSTRING, LONG, LONG *);
-ERROR fs_watch_path(objFile *);
+ERROR fs_watch_path(class extFile *);
 
 const struct virtual_drive * get_fs(CSTRING Path);
 void free_storage_class(void);
@@ -906,8 +1012,8 @@ void free_file_cache(void);
 
 EXPORT void Expunge(WORD);
 
-extern void add_archive(objCompression *);
-extern void remove_archive(objCompression *);
+extern void add_archive(class extCompression *);
+extern void remove_archive(class extCompression *);
 extern void zipfile_to_item(struct ZipFile *ZF, struct CompressedItem *Item);
 
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
@@ -955,10 +1061,10 @@ ERROR  resolve_args(APTR, const struct FunctionField *);
 APTR   resolve_public_address(struct PublicAddress *);
 void   scan_classes(void);
 void   set_object_flags(OBJECTPTR, LONG);
-ERROR  sort_class_fields(objMetaClass *, struct Field *);
+ERROR  sort_class_fields(extMetaClass *, struct Field *);
 void   remove_threadpool(void);
-ERROR  threadpool_get(objThread **);
-void   threadpool_release(objThread *);
+ERROR  threadpool_get(extThread **);
+void   threadpool_release(extThread *);
 ERROR  unpage_memory(APTR);
 ERROR  unpage_memory_id(MEMORYID MemoryID);
 ERROR  UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID SubscriberID);

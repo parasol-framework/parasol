@@ -2164,7 +2164,10 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 // Header used for all objects.
 
 struct BaseClass { // Must be 64-bit aligned
-   objMetaClass *Class;         // Class pointer, resolved on AccessObject()
+   union {
+      objMetaClass *Class;          // Class pointer, resolved on AccessObject()
+      class extMetaClass *ExtClass; // Internal class reference
+   };
    struct Stats *Stats;         // Stats pointer, resolved on AccessObject() [Private]
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
@@ -2190,17 +2193,12 @@ struct BaseClass { // Must be 64-bit aligned
    ~BaseClass() {
    }
 
-   inline LONG flags() {
-      return Flags;
-   }
-
-   inline bool initialised() {
-      return Flags & NF_INITIALISED;
-   }
-
-   inline OBJECTID ownerTask() {
-      return TaskID;
-   }
+   inline LONG flags() { return Flags; }
+   inline bool initialised() { return Flags & NF_INITIALISED; }
+   inline OBJECTID ownerTask() { return TaskID; }
+   inline bool isPublic() { return Flags & NF_PUBLIC; }
+   inline OBJECTID ownerID() { return OwnerID; }
+   CSTRING className();
 
    inline bool collecting() { // Is object being freed or marked for collection?
       return Flags & (NF_FREE|NF_COLLECT);
@@ -2208,14 +2206,6 @@ struct BaseClass { // Must be 64-bit aligned
 
    inline bool terminating() { // Is object currently being freed?
       return Flags & NF_FREE;
-   }
-
-   inline bool isPublic() {
-      return Flags & NF_PUBLIC;
-   }
-
-   inline OBJECTID ownerID() {
-      return OwnerID;
    }
 
    inline ERROR threadLock() {
@@ -2260,9 +2250,7 @@ struct BaseClass { // Must be 64-bit aligned
       return __sync_sub_and_fetch(&SleepQueue, 1);
    }
 
-   inline LONG memflags() {
-      return MemFlags;
-   }
+   inline LONG memflags() { return MemFlags; }
 
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
       auto oid = this->OwnerID;
@@ -2530,12 +2518,6 @@ class objStorageDevice : public BaseClass {
    LARGE DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
    LARGE BytesFree;      // Total amount of storage space that is available, measured in bytes.
    LARGE BytesUsed;      // Total amount of storage space in use.
-
-#ifdef PRV_STORAGEDEVICE
-   STRING prvDeviceID;   // Unique ID for the filesystem, if available
-   STRING prvVolume;
-  
-#endif
 };
 
 // File class definition
@@ -2613,31 +2595,6 @@ class objFile : public BaseClass {
    LONG     Static;   // Set to TRUE if a file object should be static.
    OBJECTID TargetID; // Specifies a surface ID to target for user feedback and dialog boxes.
    BYTE *   Buffer;   // Points to the internal data buffer if the file content is held in memory.
-
-#ifdef PRV_FILE
-    struct DateTime prvModified;  // [28 byte structure]
-    struct DateTime prvCreated;  // [28 byte structure]
-    LARGE Size;
-    #ifdef _WIN32
-       LONG  Stream;
-    #else
-       APTR  Stream;
-    #endif
-    STRING Path;
-    STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
-    STRING prvLink;
-    STRING prvLine;
-    CSTRING prvIcon;
-    struct rkWatchPath *prvWatch;
-    OBJECTPTR ProgressDialog;
-    struct DirInfo *prvList;
-    LARGE  ProgressTime;
-    LONG   Permissions;
-    LONG   prvType;
-    LONG   Handle;         // Native system file handle
-    WORD   prvLineLen;
-  
-#endif
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -2778,12 +2735,6 @@ class objConfig : public BaseClass {
    STRING KeyFilter;    // Set this field to enable key filtering.
    STRING GroupFilter;  // Set this field to enable group filtering.
    LONG   Flags;        // Optional flags may be set here.
-
-#ifdef PRV_CONFIG
-   ConfigGroups *Groups;
-   ULONG    CRC;   // CRC32, for determining if config data has been altered
-  
-#endif
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
@@ -2958,18 +2909,6 @@ class objMetaClass : public BaseClass {
    LONG    TotalMethods;                // The total number of methods supported by a class.
    LONG    TotalFields;                 // The total number of fields defined by a class.
    LONG    Category;                    // The system category that a class belongs to.
-
-#ifdef PRV_METACLASS
-    objMetaClass *Base;                  // Reference to the base class if this is a sub-class
-    struct Field *prvFields;             // Internal field structure
-    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
-    struct ModuleMaster *Master; // Master module that owns this class, if any.
-    UBYTE Children[8];    // Child objects (field indexes), in order
-    STRING Location;      // Location of the class binary, this field exists purely for caching the location string if the user reads it
-    struct ActionEntry ActionTable[AC_END];
-    WORD OriginalFieldTotal;
-  
-#endif
 };
 
 // Task class definition
@@ -3019,55 +2958,6 @@ class objTask : public BaseClass {
    LONG   Flags;      // Optional flags.
    LONG   ReturnCode; // The task's return code can be retrieved following execution.
    LONG   ProcessID;  // Reflects the process ID when an executable is launched.
-
-#ifdef PRV_TASK
-   MEMORYID MessageMID;
-   MEMORYID LocationMID;       // Where to load the task from (string)
-   MEMORYID ParametersMID;     // Arguments (string)
-   MEMORYID CopyrightMID;      // Copyright details (string)
-   MEMORYID PathMID;
-   MEMORYID ProcessPathMID;
-   MEMORYID LaunchPathMID;
-   STRING   LaunchPath;
-   STRING   Path;
-   STRING   ProcessPath;
-   STRING   Location;         // Where to load the task from (string)
-   CSTRING  *Parameters;      // Arguments (string array)
-   STRING   Copyright;        // Copyright details (string)
-   char     Name[32];         // Name of the task, if specified (string)
-   char     Author[60];       // Who wrote the program (string)
-   char     Date[20];         // Date of compilation (string)
-   char     Short[80];        // Short description of program (string)
-   LONG     ParametersSize;   // Byte size of the arguments structure
-   STRING   Fields[100];      // Variable field storage
-   BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
-   FUNCTION ErrorCallback;
-   FUNCTION OutputCallback;
-   FUNCTION ExitCallback;
-   FUNCTION InputCallback;
-   struct MsgHandler *MsgAction;
-   struct MsgHandler *MsgGetField;
-   struct MsgHandler *MsgSetField;
-   struct MsgHandler *MsgActionResult;
-   struct MsgHandler *MsgDebug;
-   struct MsgHandler *MsgWaitForObjects;
-   struct MsgHandler *MsgValidateProcess;
-   struct MsgHandler *MsgQuit;
-   struct MsgHandler *MsgEvent;
-   struct MsgHandler *MsgThreadCallback;
-   struct MsgHandler *MsgThreadAction;
-
-   #ifdef __unix__
-      LONG InFD;             // stdin FD for receiving output from launched task
-      LONG ErrFD;            // stderr FD for receiving output from launched task
-   #endif
-   #ifdef _WIN32
-      STRING Env;
-      APTR Platform;
-   #endif
-   struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
-  
-#endif
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -3128,10 +3018,6 @@ class objThread : public BaseClass {
    LONG  StackSize;  // The stack size to allocate for the thread.
    ERROR Error;      // Reflects the error code returned by the thread routine.
    LONG  Flags;      // Optional flags can be defined here.
-
-#ifdef PRV_THREAD
- struct prvThread prv; 
-#endif
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -3191,13 +3077,6 @@ class objModule : public BaseClass {
    struct ModuleMaster * Master;            // For internal use only.
    struct ModHeader * Header;               // For internal usage only.
    LONG   Flags;                            // Optional flags.
-
-#ifdef PRV_MODULE
-   char   Name[60];      // Name of the module
-   APTR   prvMBMemory;   // Module base memory
-   struct KeyStore *Vars;
-  
-#endif
    // Action stubs
 
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
@@ -3358,32 +3237,6 @@ class objCompression : public BaseClass {
    LONG     Permissions;     // Default permissions for decompressed files are defined here.
    LONG     MinOutputSize;   // Indicates the minimum output buffer size that will be needed during de/compression.
    LONG     WindowBits;      // Special option for certain compression formats.
-
-#ifdef PRV_COMPRESSION
-   OBJECTPTR FileIO;             // File input/output
-   STRING *  FileList;           // List of all files held in the compression object
-   STRING    Path;               // Location of the compressed data
-   CompressionFeedback *FeedbackInfo;
-   UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
-   char      Password[128];      // Password for the compressed object
-   FUNCTION  Feedback;           // Set a function here to get de/compression feedack
-   ULONG     ArchiveHash;        // Archive reference, used for the 'archive:' volume
-
-   // Zip only fields
-   z_stream prvZip;
-   z_stream Stream;
-   UBYTE  *prvOutput;
-   UBYTE  *prvInput;
-   struct ZipFile *prvFiles;    // List of files in the archive (must be in order of the archive's entries)
-   UBYTE  *OutputBuffer;        // Output buffer for compressed data
-   LONG   OutputSize;           // Size of OutputBuffer
-   LONG   prvTotalFiles;
-   LONG   prvFileIndex;
-   WORD   prvCompressionCount;  // Counter of times that compression has occurred
-   UBYTE  Deflating;
-   UBYTE  Inflating;
-  
-#endif
    // Action stubs
 
    inline ERROR flush() { return Action(AC_Flush, this, NULL); }
@@ -3400,15 +3253,6 @@ class objCompressedStream : public BaseClass {
    OBJECTPTR Input;      // An input object that will supply data for decompression.
    OBJECTPTR Output;     // A target object that will receive data compressed by the stream.
    LONG      Format;     // The format of the compressed stream.  The default is GZIP.
-
-#ifdef PRV_COMPRESSEDSTREAM
-   UBYTE *OutputBuffer;
-   UBYTE Inflating:1;
-   UBYTE Deflating:1;
-   z_stream Stream;
-   gz_header Header;
-  
-#endif
 };
 
 
@@ -3918,6 +3762,8 @@ INLINE FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
    return func;
 }
 #endif
+
+inline CSTRING BaseClass::className() { return Class->ClassName; }
 
   
 #endif

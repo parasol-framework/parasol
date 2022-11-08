@@ -85,14 +85,14 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
       if (!(field->Flags & FD_ARRAY)) return log.warning(ERR_FieldTypeMismatch);
 
       if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
-         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
+         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), Object->className());
+         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, Object->className());
          return ERR_NoFieldAccess;
       }
 
       if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
-         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
+         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), Object->className());
+         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, Object->className());
          return ERR_NoFieldAccess;
       }
 
@@ -103,7 +103,7 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
       return error;
    }
    else {
-      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), ((objMetaClass *)Object->Class)->ClassName);
+      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), Object->className());
       return ERR_UnsupportedField;
    }
 }
@@ -174,13 +174,13 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
       // Validation
 
       if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
-         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
+         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), Object->className());
+         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, Object->className());
          return ERR_NoFieldAccess;
       }
       else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
-         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
+         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), Object->className());
+         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, Object->className());
          return ERR_NoFieldAccess;
       }
 
@@ -212,7 +212,7 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
       Object->threadRelease();
    }
    else {
-      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), ((objMetaClass *)Object->Class)->ClassName);
+      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), Object->className());
       error = ERR_UnsupportedField;
    }
 
@@ -295,8 +295,8 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
          // Validation checks
 
          if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
-            if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
-            else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
+            if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), Object->className());
+            else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, Object->className());
 
             if (flags & (FD_DOUBLE|FD_FLOAT|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
             #ifdef _LP64
@@ -306,8 +306,8 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
             continue;
          }
          else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
-            if (!field->Name) log.warning("Field %s of class %s is init-only.", GET_FIELD_NAME(field->FieldID), ((objMetaClass *)Object->Class)->ClassName);
-            else log.warning("Field \"%s\" of class %s is init-only.", field->Name, ((objMetaClass *)Object->Class)->ClassName);
+            if (!field->Name) log.warning("Field %s of class %s is init-only.", GET_FIELD_NAME(field->FieldID), Object->className());
+            else log.warning("Field \"%s\" of class %s is init-only.", field->Name, Object->className());
 
             if (flags & (FD_DOUBLE|FD_FLOAT|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
             #ifdef _LP64
@@ -343,7 +343,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
          }
       }
       else {
-         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), ((objMetaClass *)Object->Class)->ClassName);
+         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), Object->className());
          Object->threadRelease();
          return ERR_UnsupportedField;
       }
@@ -491,18 +491,18 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
          struct acSetVar var = { .Field = FieldName, .Value = Value };
          return Action(AC_SetVar, Object, &var);
       }
-      else log.warning("Object %d (%s) does not support field '%s' or variable fields.", Object->UID, ((objMetaClass *)Object->Class)->ClassName, FieldName);
+      else log.warning("Object %d (%s) does not support field '%s' or variable fields.", Object->UID, Object->className(), FieldName);
 
       return ERR_Search;
    }
 
    if ((!(Field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
-      log.warning("Field \"%s\" of class %s is not writable.", FieldName, ((objMetaClass *)Object->Class)->ClassName);
+      log.warning("Field \"%s\" of class %s is not writable.", FieldName, Object->className());
       return ERR_NoFieldAccess;
    }
 
    if ((Field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
-      log.warning("Field \"%s\" in class %s is init-only.", FieldName, ((objMetaClass *)Object->Class)->ClassName);
+      log.warning("Field \"%s\" in class %s is init-only.", FieldName, Object->className());
       return ERR_NoFieldAccess;
    }
 
@@ -518,7 +518,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
       error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
    }
    else if (Field->Flags & FD_STRING) {
-      if (!Value) log.debug("Warning: Sending a NULL string to field %s, class %s", Field->Name, ((objMetaClass *)Object->Class)->ClassName);
+      if (!Value) log.debug("Warning: Sending a NULL string to field %s, class %s", Field->Name, Object->className());
       error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
    }
    else if (Field->Flags & FD_FUNCTION) {
@@ -595,7 +595,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
       else error = ERR_UnrecognisedFieldType;
    }
    else if (Field->Flags & FD_VARIABLE) {
-      if (!Value) log.msg("Warning: Sending a NULL string to field %s, class %s", Field->Name, ((objMetaClass *)Object->Class)->ClassName);
+      if (!Value) log.msg("Warning: Sending a NULL string to field %s, class %s", Field->Name, Object->className());
       error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
    }
    else error = ERR_UnrecognisedFieldType;
@@ -685,7 +685,7 @@ ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LO
 {
    parasol::Log log("WriteField");
 
-   //log.trace("[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", ((objMetaClass *)Object->Class)->ClassName, Object->UID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
+   //log.trace("[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", Object->className(), Object->UID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
 
    if (!flags) flags = Field->Flags;
 

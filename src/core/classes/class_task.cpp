@@ -64,7 +64,7 @@ way to initiate interprocess communication is to pass your MessageQueue ID to th
 
 extern "C" void CloseCore(void);
 
-static ERROR InterceptedAction(objTask *, APTR);
+static ERROR InterceptedAction(extTask *, APTR);
 
 #ifdef __unix__
 
@@ -101,24 +101,24 @@ extern "C" DLLCALL LONG WINAPI RegSetValueExA(APTR hKey, CSTRING lpValueName, LO
 static LONG glProcessBreak = 0;
 #endif
 
-static ERROR GET_LaunchPath(objTask *, STRING *);
+static ERROR GET_LaunchPath(extTask *, STRING *);
 
-static ERROR TASK_ActionNotify(objTask *, struct acActionNotify *);
-static ERROR TASK_Activate(objTask *, APTR);
-static ERROR TASK_Free(objTask *, APTR);
-static ERROR TASK_GetEnv(objTask *, struct taskGetEnv *);
-static ERROR TASK_GetVar(objTask *, struct acGetVar *);
-static ERROR TASK_Init(objTask *, APTR);
-static ERROR TASK_NewObject(objTask *, APTR);
-static ERROR TASK_ReleaseObject(objTask *, APTR);
-static ERROR TASK_SetEnv(objTask *, struct taskSetEnv *);
-static ERROR TASK_SetVar(objTask *, struct acSetVar *);
-static ERROR TASK_Write(objTask *, struct acWrite *);
+static ERROR TASK_ActionNotify(extTask *, struct acActionNotify *);
+static ERROR TASK_Activate(extTask *, APTR);
+static ERROR TASK_Free(extTask *, APTR);
+static ERROR TASK_GetEnv(extTask *, struct taskGetEnv *);
+static ERROR TASK_GetVar(extTask *, struct acGetVar *);
+static ERROR TASK_Init(extTask *, APTR);
+static ERROR TASK_NewObject(extTask *, APTR);
+static ERROR TASK_ReleaseObject(extTask *, APTR);
+static ERROR TASK_SetEnv(extTask *, struct taskSetEnv *);
+static ERROR TASK_SetVar(extTask *, struct acSetVar *);
+static ERROR TASK_Write(extTask *, struct acWrite *);
 
-static ERROR TASK_AddArgument(objTask *, struct taskAddArgument *);
-static ERROR TASK_CloseInstance(objTask *, APTR);
-static ERROR TASK_Expunge(objTask *, APTR);
-static ERROR TASK_Quit(objTask *, APTR);
+static ERROR TASK_AddArgument(extTask *, struct taskAddArgument *);
+static ERROR TASK_CloseInstance(extTask *, APTR);
+static ERROR TASK_Expunge(extTask *, APTR);
+static ERROR TASK_Quit(extTask *, APTR);
 
 static const FieldDef clFlags[] = {
    { "Foreign",    TSF_FOREIGN },
@@ -194,7 +194,7 @@ static const ActionArray clActions[] = {
 
 static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
 {
-   auto Self = (objTask *)Task;
+   auto Self = (extTask *)Task;
    char buffer[4096];
    ERROR error;
 
@@ -224,7 +224,7 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
    buffer[bytes_read] = 0;
 
    if (Self->InputCallback.Type IS CALL_STDC) {
-      auto routine = (void (*)(objTask *, APTR, LONG, ERROR))Self->InputCallback.StdC.Routine;
+      auto routine = (void (*)(extTask *, APTR, LONG, ERROR))Self->InputCallback.StdC.Routine;
       routine(Self, buffer, bytes_read, error);
    }
    else if (Self->InputCallback.Type IS CALL_SCRIPT) {
@@ -242,7 +242,7 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
 }
 
 #ifdef __unix__
-static void check_incoming(objTask *Self)
+static void check_incoming(extTask *Self)
 {
    struct pollfd fd;
 
@@ -282,9 +282,9 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
    if ((len = read(FD, buffer, sizeof(buffer)-1)) > 0) {
       buffer[len] = 0;
 
-      auto task = (objTask *)Task;
+      auto task = (extTask *)Task;
       if (task->OutputCallback.Type IS CALL_STDC) {
-         auto routine = (void (*)(objTask *, APTR, LONG))task->OutputCallback.StdC.Routine;
+         auto routine = (void (*)(extTask *, APTR, LONG))task->OutputCallback.StdC.Routine;
          routine(task, buffer, len);
       }
       else if (task->OutputCallback.Type IS CALL_SCRIPT) {
@@ -314,10 +314,10 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
    if ((len = read(FD, buffer, sizeof(buffer)-1)) > 0) {
       buffer[len] = 0;
 
-      auto task = (objTask *)Task;
+      auto task = (extTask *)Task;
       if (task->ErrorCallback.Type) {
          if (task->ErrorCallback.Type IS CALL_STDC) {
-            auto routine = (void (*)(objTask *, APTR, LONG))task->ErrorCallback.StdC.Routine;
+            auto routine = (void (*)(extTask *, APTR, LONG))task->ErrorCallback.StdC.Routine;
             routine(task, buffer, len);
          }
          else if (task->ErrorCallback.Type IS CALL_SCRIPT) {
@@ -342,10 +342,10 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
 // process that we've launched.
 
 #ifdef _WIN32
-static void output_callback(objTask *Task, FUNCTION *Callback, APTR Buffer, LONG Size)
+static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, LONG Size)
 {
    if (Callback->Type IS CALL_STDC) {
-      auto routine = (void (*)(objTask *, APTR, LONG))Callback->StdC.Routine;
+      auto routine = (void (*)(extTask *, APTR, LONG))Callback->StdC.Routine;
       routine(Task, Buffer, Size);
    }
    else if (Callback->Type IS CALL_SCRIPT) {
@@ -361,7 +361,7 @@ static void output_callback(objTask *Task, FUNCTION *Callback, APTR Buffer, LONG
    }
 }
 
-static void task_incoming_stdout(WINHANDLE Handle, objTask *Task)
+static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
 {
    parasol::Log log(__FUNCTION__);
    static UBYTE recursive = 0;
@@ -383,7 +383,7 @@ static void task_incoming_stdout(WINHANDLE Handle, objTask *Task)
    }
 }
 
-static void task_incoming_stderr(WINHANDLE Handle, objTask *Task)
+static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
 {
    parasol::Log log(__FUNCTION__);
    static UBYTE recursive = 0;
@@ -408,14 +408,14 @@ static void task_incoming_stderr(WINHANDLE Handle, objTask *Task)
 //****************************************************************************
 // These functions arrange for callbacks to be made whenever one of our process-connected pipes receives data.
 
-extern "C" void task_register_stdout(objTask *Task, WINHANDLE Handle)
+extern "C" void task_register_stdout(extTask *Task, WINHANDLE Handle)
 {
    parasol::Log log(__FUNCTION__);
    log.traceBranch("Handle: %d", (LONG)(MAXINT)Handle);
    RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stdout, Task);
 }
 
-extern "C" void task_register_stderr(objTask *Task, WINHANDLE Handle)
+extern "C" void task_register_stderr(extTask *Task, WINHANDLE Handle)
 {
    parasol::Log log(__FUNCTION__);
    log.traceBranch("Handle: %d", (LONG)(MAXINT)Handle);
@@ -508,11 +508,11 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
             const FunctionField *fields;
             if (action->ActionID > 0) fields = ActionTable[action->ActionID].Args;
             else {
-               auto objclass = (objMetaClass *)obj->Class;
-               if (objclass->Base) objclass = objclass->Base;
+               auto cl = obj->ExtClass;
+               if (cl->Base) cl = cl->Base;
 
-               if (objclass->Methods) {
-                  fields = objclass->Methods[-action->ActionID].Args;
+               if (cl->Methods) {
+                  fields = cl->Methods[-action->ActionID].Args;
                }
                else {
                   log.warning("No method table for object #%d, class %d", obj->UID, obj->ClassID);
@@ -631,7 +631,7 @@ static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
 // For the linux equivalent, refer to internal.c validate_processID().
 
 #ifdef _WIN32
-static void task_process_end(WINHANDLE FD, objTask *Task)
+static void task_process_end(WINHANDLE FD, extTask *Task)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -674,7 +674,7 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
    // Call ExitCallback, if specified
 
    if (Task->ExitCallback.Type IS CALL_STDC) {
-      auto routine = (void (*)(objTask *))Task->ExitCallback.StdC.Routine;
+      auto routine = (void (*)(extTask *))Task->ExitCallback.StdC.Routine;
       routine(Task);
    }
    else if (Task->ExitCallback.Type IS CALL_SCRIPT) {
@@ -699,14 +699,14 @@ static void task_process_end(WINHANDLE FD, objTask *Task)
 //****************************************************************************
 
 #ifdef _WIN32
-extern "C" void register_process_pipes(objTask *Self, WINHANDLE ProcessHandle)
+extern "C" void register_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 {
    parasol::Log log;
    log.traceBranch("Process: %d", (LONG)(MAXINT)ProcessHandle);
    RegisterFD(ProcessHandle, RFD_READ, (void (*)(void *, void *))&task_process_end, Self);
 }
 
-extern "C" void deregister_process_pipes(objTask *Self, WINHANDLE ProcessHandle)
+extern "C" void deregister_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 {
    parasol::Log log;
    log.traceBranch("Process: %d", (LONG)(MAXINT)ProcessHandle);
@@ -717,7 +717,7 @@ extern "C" void deregister_process_pipes(objTask *Self, WINHANDLE ProcessHandle)
 //****************************************************************************
 // Action interception routine.
 
-static ERROR InterceptedAction(objTask *Self, APTR Args)
+static ERROR InterceptedAction(extTask *Self, APTR Args)
 {
    if (Self->Actions[tlContext->Action].PerformAction) {
       return Self->Actions[tlContext->Action].PerformAction(Self, Args);
@@ -727,7 +727,7 @@ static ERROR InterceptedAction(objTask *Self, APTR Args)
 
 //****************************************************************************
 
-static ERROR TASK_ActionNotify(objTask *Self, struct acActionNotify *Args)
+static ERROR TASK_ActionNotify(extTask *Self, struct acActionNotify *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -793,7 +793,7 @@ TimeOut:     Can be returned if the WAIT flag is used.  Indicates that the proce
 
 *****************************************************************************/
 
-static ERROR TASK_Activate(objTask *Self, APTR Void)
+static ERROR TASK_Activate(extTask *Self, APTR Void)
 {
    parasol::Log log;
    LONG i, j, k;
@@ -1320,7 +1320,7 @@ AllocMemory: Memory for the new Parameters could not be allocated.
 
 *****************************************************************************/
 
-static ERROR TASK_AddArgument(objTask *Self, struct taskAddArgument *Args)
+static ERROR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
 {
    parasol::Log log;
 
@@ -1403,7 +1403,7 @@ Okay
 
 *****************************************************************************/
 
-static ERROR TASK_CloseInstance(objTask *Self, APTR Void)
+static ERROR TASK_CloseInstance(extTask *Self, APTR Void)
 {
    for (LONG i=0; i < MAX_TASKS; i++) {
       if (shTasks[i].TaskID) SendMessage(shTasks[i].MessageID, MSGID_QUIT, 0, NULL, 0);
@@ -1426,7 +1426,7 @@ Okay
 
 *****************************************************************************/
 
-static ERROR TASK_Expunge(objTask *Self, APTR Void)
+static ERROR TASK_Expunge(extTask *Self, APTR Void)
 {
    if (Self->UID IS SystemTaskID) {
       parasol::ScopedSysLock lock(PL_PROCESSES, 4000);
@@ -1445,7 +1445,7 @@ static ERROR TASK_Expunge(objTask *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR TASK_Free(objTask *Self, APTR Void)
+static ERROR TASK_Free(extTask *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -1543,7 +1543,7 @@ NoSupport: The platform does not support environment variables.
 
 *****************************************************************************/
 
-static ERROR TASK_GetEnv(objTask *Self, struct taskGetEnv *Args)
+static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
 {
    parasol::Log log;
 
@@ -1670,7 +1670,7 @@ NoSupport: The platform does not support environment variables.
 
 *****************************************************************************/
 
-static ERROR TASK_SetEnv(objTask *Self, struct taskSetEnv *Args)
+static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
 {
    parasol::Log log;
 
@@ -1767,7 +1767,7 @@ GetVar: Retrieves variable field values.
 -END-
 *****************************************************************************/
 
-static ERROR TASK_GetVar(objTask *Self, struct acGetVar *Args)
+static ERROR TASK_GetVar(extTask *Self, struct acGetVar *Args)
 {
    parasol::Log log;
    LONG j;
@@ -1795,7 +1795,7 @@ static ERROR TASK_GetVar(objTask *Self, struct acGetVar *Args)
 
 //****************************************************************************
 
-static ERROR TASK_Init(objTask *Self, APTR Void)
+static ERROR TASK_Init(extTask *Self, APTR Void)
 {
    parasol::Log log;
    MessageHeader *msgblock;
@@ -1955,7 +1955,7 @@ static ERROR TASK_Init(objTask *Self, APTR Void)
 ** Task: NewObject
 */
 
-static ERROR TASK_NewObject(objTask *Self, APTR Void)
+static ERROR TASK_NewObject(extTask *Self, APTR Void)
 {
 #ifdef __unix__
    Self->InFD = -1;
@@ -1981,7 +1981,7 @@ Okay
 
 *****************************************************************************/
 
-static ERROR TASK_Quit(objTask *Self, APTR Void)
+static ERROR TASK_Quit(extTask *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -2009,7 +2009,7 @@ static ERROR TASK_Quit(objTask *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR TASK_ReleaseObject(objTask *Self, APTR Void)
+static ERROR TASK_ReleaseObject(extTask *Self, APTR Void)
 {
    if (Self->LaunchPath)  { ReleaseMemoryID(Self->LaunchPathMID);  Self->LaunchPath  = NULL; }
    if (Self->Location)    { ReleaseMemoryID(Self->LocationMID);    Self->Location    = NULL; }
@@ -2026,7 +2026,7 @@ SetVar: Variable fields are supported for the general storage of program variabl
 -END-
 *****************************************************************************/
 
-static ERROR TASK_SetVar(objTask *Self, struct acSetVar *Args)
+static ERROR TASK_SetVar(extTask *Self, struct acSetVar *Args)
 {
    parasol::Log log;
 
@@ -2068,7 +2068,7 @@ process that no more data is incoming).
 
 *****************************************************************************/
 
-static ERROR TASK_Write(objTask *Task, struct acWrite *Args)
+static ERROR TASK_Write(extTask *Task, struct acWrite *Args)
 {
    parasol::Log log;
 
@@ -2118,7 +2118,7 @@ code for before.
 
 *****************************************************************************/
 
-static ERROR GET_Actions(objTask *Self, struct ActionEntry **Value)
+static ERROR GET_Actions(extTask *Self, struct ActionEntry **Value)
 {
    *Value = Self->Actions;
    return ERR_Okay;
@@ -2136,7 +2136,7 @@ If an argument needs to include whitespace, use double-quotes to encapsulate the
 
 *****************************************************************************/
 
-static ERROR SET_Args(objTask *Self, CSTRING Value)
+static ERROR SET_Args(extTask *Self, CSTRING Value)
 {
    if ((!Value) or (!*Value)) return ERR_Okay;
 
@@ -2194,7 +2194,7 @@ CSTRING Args[] = {
 
 *****************************************************************************/
 
-static ERROR GET_Parameters(objTask *Self, CSTRING **Value, LONG *Elements)
+static ERROR GET_Parameters(extTask *Self, CSTRING **Value, LONG *Elements)
 {
    parasol::Log log;
 
@@ -2234,7 +2234,7 @@ static ERROR GET_Parameters(objTask *Self, CSTRING **Value, LONG *Elements)
    }
 }
 
-static ERROR SET_Parameters(objTask *Self, CSTRING *Value, LONG Elements)
+static ERROR SET_Parameters(extTask *Self, CSTRING *Value, LONG Elements)
 {
    parasol::Log log;
 
@@ -2278,13 +2278,13 @@ This field gives information about the author of the program/task. If the author
 
 *****************************************************************************/
 
-static ERROR GET_Author(objTask *Self, STRING *Value)
+static ERROR GET_Author(extTask *Self, STRING *Value)
 {
    *Value = Self->Author;
    return ERR_Okay;
 }
 
-static ERROR SET_Author(objTask *Self, CSTRING Value)
+static ERROR SET_Author(extTask *Self, CSTRING Value)
 {
    StrCopy(Value, Self->Author, sizeof(Self->Author));
    return ERR_Okay;
@@ -2297,7 +2297,7 @@ Copyright: Copyright/licensing details.
 
 *****************************************************************************/
 
-static ERROR GET_Copyright(objTask *Self, STRING *Value)
+static ERROR GET_Copyright(extTask *Self, STRING *Value)
 {
    parasol::Log log;
 
@@ -2319,7 +2319,7 @@ static ERROR GET_Copyright(objTask *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Copyright(objTask *Self, CSTRING Value)
+static ERROR SET_Copyright(extTask *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -2358,13 +2358,13 @@ which is outlined here.
 
 ****************************************************************************/
 
-static ERROR GET_Date(objTask *Self, STRING *Value)
+static ERROR GET_Date(extTask *Self, STRING *Value)
 {
    *Value = Self->Date;
    return ERR_Okay;
 }
 
-static ERROR SET_Date(objTask *Self, CSTRING Value)
+static ERROR SET_Date(extTask *Self, CSTRING Value)
 {
    StrCopy(Value, Self->Date, sizeof(Self->Date));
    return ERR_Okay;
@@ -2383,7 +2383,7 @@ called on termination because the Task object no longer exists for the control o
 
 *****************************************************************************/
 
-static ERROR GET_ExitCallback(objTask *Self, FUNCTION **Value)
+static ERROR GET_ExitCallback(extTask *Self, FUNCTION **Value)
 {
    if (Self->ExitCallback.Type != CALL_NONE) {
       *Value = &Self->ExitCallback;
@@ -2392,7 +2392,7 @@ static ERROR GET_ExitCallback(objTask *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_ExitCallback(objTask *Self, FUNCTION *Value)
+static ERROR SET_ExitCallback(extTask *Self, FUNCTION *Value)
 {
    if (Value) Self->ExitCallback = *Value;
    else Self->ExitCallback.Type = CALL_NONE;
@@ -2412,7 +2412,7 @@ indicated by the Size.  The data pointer is temporary and will be invalid once t
 
 *****************************************************************************/
 
-static ERROR GET_ErrorCallback(objTask *Self, FUNCTION **Value)
+static ERROR GET_ErrorCallback(extTask *Self, FUNCTION **Value)
 {
    if (Self->ErrorCallback.Type != CALL_NONE) {
       *Value = &Self->ErrorCallback;
@@ -2421,7 +2421,7 @@ static ERROR GET_ErrorCallback(objTask *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_ErrorCallback(objTask *Self, FUNCTION *Value)
+static ERROR SET_ErrorCallback(extTask *Self, FUNCTION *Value)
 {
    if (Value) Self->ErrorCallback = *Value;
    else Self->ErrorCallback.Type = CALL_NONE;
@@ -2444,7 +2444,7 @@ A status of ERR_Finished is sent if the stdinput handle has been closed.
 
 *****************************************************************************/
 
-static ERROR GET_InputCallback(objTask *Self, FUNCTION **Value)
+static ERROR GET_InputCallback(extTask *Self, FUNCTION **Value)
 {
    if (Self->InputCallback.Type != CALL_NONE) {
       *Value = &Self->InputCallback;
@@ -2453,7 +2453,7 @@ static ERROR GET_InputCallback(objTask *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_InputCallback(objTask *Self, FUNCTION *Value)
+static ERROR SET_InputCallback(extTask *Self, FUNCTION *Value)
 {
    if (Self != glCurrentTask) return ERR_Failed;
 
@@ -2494,7 +2494,7 @@ by the Size.  The data pointer is temporary and will be invalid once the callbac
 
 *****************************************************************************/
 
-static ERROR GET_OutputCallback(objTask *Self, FUNCTION **Value)
+static ERROR GET_OutputCallback(extTask *Self, FUNCTION **Value)
 {
    if (Self->OutputCallback.Type != CALL_NONE) {
       *Value = &Self->OutputCallback;
@@ -2503,7 +2503,7 @@ static ERROR GET_OutputCallback(objTask *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_OutputCallback(objTask *Self, FUNCTION *Value)
+static ERROR SET_OutputCallback(extTask *Self, FUNCTION *Value)
 {
    if (Value) Self->OutputCallback = *Value;
    else Self->OutputCallback.Type = CALL_NONE;
@@ -2524,7 +2524,7 @@ activated.  This will override all other path options, such as the RESET_PATH fl
 
 *****************************************************************************/
 
-static ERROR GET_LaunchPath(objTask *Self, STRING *Value)
+static ERROR GET_LaunchPath(extTask *Self, STRING *Value)
 {
    parasol::Log log;
 
@@ -2546,7 +2546,7 @@ static ERROR GET_LaunchPath(objTask *Self, STRING *Value)
    }
 }
 
-static ERROR SET_LaunchPath(objTask *Self, CSTRING Value)
+static ERROR SET_LaunchPath(extTask *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -2578,7 +2578,7 @@ only the quoted portion of the string will be used as the source path.
 
 *****************************************************************************/
 
-static ERROR GET_Location(objTask *Self, STRING *Value)
+static ERROR GET_Location(extTask *Self, STRING *Value)
 {
    parasol::Log log;
 
@@ -2600,7 +2600,7 @@ static ERROR GET_Location(objTask *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Location(objTask *Self, CSTRING Value)
+static ERROR SET_Location(extTask *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -2639,7 +2639,7 @@ instance ID as its creator.
 
 *****************************************************************************/
 
-static ERROR GET_Instance(objTask *Self, LONG *Value)
+static ERROR GET_Instance(extTask *Self, LONG *Value)
 {
    *Value = glInstanceID;
    return ERR_Okay;
@@ -2656,7 +2656,7 @@ you can use it to send messages to the task.  For information on messaging, refe
 
 *****************************************************************************/
 
-static ERROR GET_MessageQueue(objTask *Task, MEMORYID *Value)
+static ERROR GET_MessageQueue(extTask *Task, MEMORYID *Value)
 {
    if ((*Value = glTaskMessageMID)) return ERR_Okay;
    else return ERR_NoData;
@@ -2673,13 +2673,13 @@ assign a randomly generated name.
 
 *****************************************************************************/
 
-static ERROR GET_Name(objTask *Self, STRING *Value)
+static ERROR GET_Name(extTask *Self, STRING *Value)
 {
    *Value = Self->Name;
    return ERR_Okay;
 }
 
-static ERROR SET_Name(objTask *Self, CSTRING Value)
+static ERROR SET_Name(extTask *Self, CSTRING Value)
 {
    StrCopy(Value, Self->Name, sizeof(Self->Name));
    return ERR_Okay;
@@ -2711,7 +2711,7 @@ new folder fails for any reason, the working folder will remain unchanged and th
 
 *****************************************************************************/
 
-static ERROR GET_Path(objTask *Self, STRING *Value)
+static ERROR GET_Path(extTask *Self, STRING *Value)
 {
    parasol::Log log;
 
@@ -2733,7 +2733,7 @@ static ERROR GET_Path(objTask *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Path(objTask *Self, CSTRING Value)
+static ERROR SET_Path(extTask *Self, CSTRING Value)
 {
    STRING new_path = NULL;
    MEMORYID new_path_mid = 0;
@@ -2806,7 +2806,7 @@ ProcessPath is set to the working folder in use at the time the process was laun
 
 *****************************************************************************/
 
-static ERROR GET_ProcessPath(objTask *Self, CSTRING *Value)
+static ERROR GET_ProcessPath(extTask *Self, CSTRING *Value)
 {
    parasol::Log log;
 
@@ -2843,7 +2843,7 @@ effect of prioritisation.
 
 *****************************************************************************/
 
-static ERROR SET_Priority(objTask *Self, LONG Value)
+static ERROR SET_Priority(extTask *Self, LONG Value)
 {
 #ifdef __unix__
    LONG priority, unused;
@@ -2868,7 +2868,7 @@ DoesNotExist: The task is yet to be successfully launched with the Activate acti
 
 *****************************************************************************/
 
-static ERROR GET_ReturnCode(objTask *Self, LONG *Value)
+static ERROR GET_ReturnCode(extTask *Self, LONG *Value)
 {
    parasol::Log log;
 
@@ -2920,7 +2920,7 @@ static ERROR GET_ReturnCode(objTask *Self, LONG *Value)
 #endif
 }
 
-static ERROR SET_ReturnCode(objTask *Self, LONG Value)
+static ERROR SET_ReturnCode(extTask *Self, LONG Value)
 {
    Self->ReturnCodeSet = TRUE;
    Self->ReturnCode = Value;
@@ -2939,13 +2939,13 @@ system or trying to get a quick overview of the processes that are currently run
 
 *****************************************************************************/
 
-static ERROR GET_Short(objTask *Self, CSTRING *Value)
+static ERROR GET_Short(extTask *Self, CSTRING *Value)
 {
    *Value = Self->Short;
    return ERR_Okay;
 }
 
-static ERROR SET_Short(objTask *Self, CSTRING Value)
+static ERROR SET_Short(extTask *Self, CSTRING Value)
 {
    StrCopy(Value, Self->Short, sizeof(Self->Short));
    return ERR_Okay;
@@ -3003,7 +3003,7 @@ extern "C" ERROR add_task_class(void)
             FID_Actions|TPTR,         clActions,
             FID_Methods|TARRAY,       clTaskMethods,
             FID_Fields|TARRAY,        clFields,
-            FID_Size|TLONG,           sizeof(objTask),
+            FID_Size|TLONG,           sizeof(extTask),
             FID_Path|TSTR,            "modules:core",
             TAGEND)) {
          return acInit(TaskClass);

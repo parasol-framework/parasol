@@ -553,7 +553,7 @@ ERROR init_sleep(LONG OtherProcessID, LONG OtherThreadID, LONG ResourceID, LONG 
 
    ScopedSysLock lock(PL_WAITLOCKS, 3000);
    if (lock.granted()) {
-      WaitLock *locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
+      auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
 
       WORD i;
       if (glWLIndex IS -1) {
@@ -619,7 +619,7 @@ void wake_sleepers(LONG ResourceID, LONG ResourceType)
    log.trace("Resource: %d, Type: %d, Total: %d", ResourceID, ResourceType, glSharedControl->WLIndex);
 
    if (!SysLock(PL_WAITLOCKS, 2000)) {
-      WaitLock *locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
+      auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
       LONG i;
       #ifdef USE_GLOBAL_EVENTS
          LONG count = 0;
@@ -671,7 +671,7 @@ void remove_process_waitlocks(void)
    {
       ScopedSysLock lock(PL_WAITLOCKS, 5000);
       if (lock.granted()) {
-         WaitLock *locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
+         auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
          #ifdef USE_GLOBAL_EVENTS
             LONG count = 0;
          #endif
@@ -739,7 +739,7 @@ ERROR clear_waitlock(WORD Index)
 
    // A sys-lock is not required so long as we only operate on our thread entry.
 
-   WaitLock *locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
+   auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
    if (Index IS -1) {
       WORD i;
       LONG our_thread = get_thread_id();
@@ -1203,7 +1203,7 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
             // do not call the AccessObject support routine if NewObject support has been written by the developer
             // (the NewObject support routine is expected to do the equivalent of AccessObject).
 
-            if (!obj->Class->ActionTable[AC_NewObject].PerformAction) error = Action(AC_AccessObject, obj, NULL);
+            if (!obj->ExtClass->ActionTable[AC_NewObject].PerformAction) error = Action(AC_AccessObject, obj, NULL);
          }
          else error = Action(AC_AccessObject, obj, NULL);
       }
@@ -1317,7 +1317,7 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
    if (lock.granted()) {
       //log.function("TID: %d, Sleeping on #%d, Timeout: %d, Queue: %d, Locked By: %d", our_thread, Object->UID, Timeout, Object->Queue, Object->ThreadID);
 
-      WaitLock *locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
+      auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
       ERROR error = ERR_TimeOut;
       WORD wl;
       if (!init_sleep(glProcessID, Object->ThreadID, Object->UID, RT_OBJECT, &wl)) { // Indicate that our thread is sleeping.
@@ -1732,7 +1732,7 @@ MEMORYID ReleaseMemory(APTR Address)
       auto mem = glPrivateMemory.find(((LONG *)Address)[-2]);
 
       if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
-         if (tlContext->object()->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->object()->UID, tlContext->object()->Class->ClassName);
+         if (tlContext->object()->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->object()->UID, tlContext->object()->className());
          else log.warning("Unable to find a record for memory address %p.", Address);
          if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);
          return 0;
@@ -1915,7 +1915,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
          auto mem = glPrivateMemory.find(MemoryID);
 
          if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
-            if (tlContext->object()->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->object()->UID, tlContext->object()->Class->ClassName);
+            if (tlContext->object()->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->object()->UID, tlContext->object()->className());
             else log.warning("Unable to find a record for memory #%d.", MemoryID);
             if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);
             return ERR_Search;
@@ -2095,7 +2095,7 @@ void ReleasePrivateObject(OBJECTPTR Object)
          if (Object->Flags & (NF_FREE|NF_UNLOCK_FREE)) { // We have to tell other threads that the object is marked for deletion.
             // NB: A lock on PL_WAITLOCKS is not required because we're already protected by the TL_PRIVATE_OBJECTS
             // barrier (which is common between AccessPrivateObject() and ReleasePrivateObject()
-            WaitLock *locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
+            auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
             for (WORD i=0; i < glSharedControl->WLIndex; i++) {
                if ((locks[i].WaitingForResourceID IS Object->UID) and (locks[i].WaitingForResourceType IS RT_OBJECT)) {
                   locks[i].Flags |= WLF_REMOVED;

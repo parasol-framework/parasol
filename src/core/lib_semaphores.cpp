@@ -110,7 +110,7 @@ void remove_semaphores(void)
 
    ScopedSysLock lock(PL_SEMAPHORES, 4000);
    if (lock.granted()) {
-      SemaphoreEntry *semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+      auto semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
 
       for (WORD index=1; index < MAX_SEMAPHORES; index++) {
          if (semlist[index].InstanceID IS glInstanceID) {
@@ -140,19 +140,19 @@ static LONG DeadSemaphoreProcesses(SemaphoreEntry *Semaphore)
 {
    parasol::Log log(__FUNCTION__);
 
-   BYTE dead = FALSE;
+   bool dead = false;
    for (LONG i=0; i < ARRAYSIZE(Semaphore->Processes); i++) {
       if (Semaphore->Processes[i].ProcessID) {
          // Check to see if the process exists.  If it doesn't, remove it from the list
 
-         BYTE exists = TRUE;
+         bool exists = true;
          #ifdef __unix__
             if ((kill(Semaphore->Processes[i].ProcessID, 0) IS -1) and (errno IS ESRCH)) {
-               exists = FALSE;
+               exists = false;
             }
          #elif _WIN32
-            if (winCheckProcessExists(Semaphore->Processes[i].ProcessID) IS FALSE) {
-               exists = FALSE;
+            if (winCheckProcessExists(Semaphore->Processes[i].ProcessID) IS false) {
+               exists = false;
             }
          #else
             #error Platform requires process checking.
@@ -166,7 +166,7 @@ static LONG DeadSemaphoreProcesses(SemaphoreEntry *Semaphore)
             // Remove this process from the semaphore registrar
 
             ClearMemory(Semaphore->Processes+i, sizeof(Semaphore->Processes[i]));
-            dead = TRUE;
+            dead = true;
          }
       }
    }
@@ -211,8 +211,8 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
 
    ScopedSysLock lock(PL_SEMAPHORES, Timeout);
    if (lock.granted()) {
-      SemaphoreEntry *semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-      SemaphoreEntry *semaphore = semlist + SemaphoreID;
+      auto semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+      auto semaphore = semlist + SemaphoreID;
 
       // Each semaphore has a list of processes that have currently gained or are waiting to access to it.  Search for a process entry that we can
       // use, or perhaps use an existing entry if we already have access.
@@ -372,21 +372,20 @@ instance, if you create a shared memory area for read/write operations between t
 prevent the tasks from writing to the memory at the same time.  Using a semaphore is appropriate for controlling this
 situation.
 
-For a simple blocking semaphore, set a value of 1 in the Value parameter.  To allow multiple
-processes to read from the resource, set the Value higher - 100 or more.  In this mode, there are
-two ways for processes to access the semaphore - blocking and non-blocking mode.  Access is achieved
-through the ~AccessSemaphore() function.  Blocking mode is the default and will grant full access to the resource if
-it succeeds.  Non-blocking access grants limited access to the resource - typically considered 'read only' access.
-Multiple processes can have non-blocking access at the same time, but only one process may have access when blocking
-mode is required.  As an example, if Value is 100 then the number of non-blocking accesses will be limited to 100
-processes.  Any more processes than this wishing to use the semaphore will need to wait until some of the locks are
-released.  If 50 processes currently have read access and a new process requires blocking access, it will have to wait
-until all 50 read accesses are released.  The specifics of this are discussed in the documentation for
-~AccessSemaphore() and ~ReleaseSemaphore().
+For a simple blocking semaphore, set a value of 1 in the Value parameter.  To allow multiple processes to read from
+the resource, set the Value higher - 100 or more.  In this mode, there are two ways for processes to access the
+semaphore - blocking and non-blocking mode.  Access is achieved through the ~AccessSemaphore() function.  Blocking
+mode is the default and will grant full access to the resource if it succeeds.  Non-blocking access grants limited
+access to the resource - typically considered 'read only' access. Multiple processes can have non-blocking access at
+the same time, but only one process may have access when blocking mode is required.  As an example, if Value is 100
+then the number of non-blocking accesses will be limited to 100 processes.  Any more processes than this wishing to
+use the semaphore will need to wait until some of the locks are released.  If 50 processes currently have read access
+and a new process requires blocking access, it will have to wait until all 50 read accesses are released.  The
+specifics of this are discussed in the documentation for ~AccessSemaphore() and ~ReleaseSemaphore().
 
 The handle returned in the Semaphore argument is global, so if you want to secretly share an anonymous semaphore with
 other processes, you may do so if you pass the handle to them.  The other processes will still need to call
-AllocSemaphore(), setting the SMF_EXISTS flag and also passing the semaphore handle in the Semaphore parameter.
+AllocSemaphore(), setting the `SMF_EXISTS` flag and also passing the semaphore handle in the Semaphore parameter.
 
 To free a semaphore after allocating it, call ~FreeSemaphore().  AllocSemaphore() will nest if it
 is called multiple times with the same Name.  Each call must be matched with a ~FreeSemaphore() call.  A
@@ -394,10 +393,10 @@ semaphore will not be completely freed from the system until all processes that 
 semaphore.
 
 -INPUT-
-Name: Optional.  The name of the semaphore (up to 15 characters, CASE SENSITIVE) to create or find.
-Value: The starting value of the semaphore - this indicates the number of locks that can be made before the semaphore blocks.  The minimum starting value is 1.
-Flags: Optional flags, currently SMF_EXISTS is supported.
-Semaphore: A reference to the semaphore handle will be returned through this pointer.
+cstr Name: Optional.  The name of the semaphore (up to 15 characters, CASE SENSITIVE) to create or find.
+int Value: The starting value of the semaphore - this indicates the number of locks that can be made before the semaphore blocks.  The minimum starting value is 1.
+int(SMF) Flags: Optional flags, currently SMF_EXISTS is supported.
+&int Semaphore: A reference to the semaphore handle will be returned through this pointer.
 
 -END-
 
@@ -424,7 +423,7 @@ ERROR AllocSemaphore(CSTRING Name, LONG Value, LONG Flags, LONG *SemaphoreID)
 
    ScopedSysLock lock(PL_SEMAPHORES, 4000);
    if (lock.granted()) {
-      SemaphoreEntry *semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+      auto semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
 
       // If a name is given, look for the existing semaphore.  Otherwise, find an empty space in the semaphore list.
 
@@ -529,8 +528,8 @@ ERROR FreeSemaphore(LONG SemaphoreID)
 
    ScopedSysLock lock(PL_SEMAPHORES, 4000);
    if (lock.granted()) {
-      SemaphoreEntry *semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-      SemaphoreEntry *semaphore = semlist + SemaphoreID;
+      auto semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+      auto semaphore = semlist + SemaphoreID;
 
       LONG pi;
       for (pi=0; (pi < ARRAYSIZE(semaphore->Processes)) and (semaphore->Processes[pi].ProcessID != glProcessID); pi++);
@@ -604,8 +603,8 @@ ERROR pReleaseSemaphore(LONG SemaphoreID, LONG Flags)
 
    ScopedSysLock lock(PL_SEMAPHORES, 4000);
    if (lock.granted()) {
-      SemaphoreEntry *semaphores = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-      SemaphoreEntry *semaphore = semaphores + SemaphoreID;
+      auto semaphores = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+      auto semaphore = semaphores + SemaphoreID;
 
       WORD pi;
       for (pi=0; (pi < ARRAYSIZE(semaphore->Processes)) and (semaphore->Processes[pi].ProcessID != glProcessID); pi++);
@@ -718,8 +717,8 @@ ERROR SemaphoreCtrl(LONG SemaphoreID, LONG Command, ...)
 
    ScopedSysLock lock(PL_SEMAPHORES, 4000);
    if (lock.granted()) {
-      SemaphoreEntry *semaphores = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-      SemaphoreEntry *semaphore = semaphores + SemaphoreID;
+      auto semaphores = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+      auto semaphore = semaphores + SemaphoreID;
       va_start(list, Command);
 
       switch(Command) {

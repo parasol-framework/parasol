@@ -19,29 +19,28 @@ Following initialisation, all meta fields describing the volume are readable for
 *****************************************************************************/
 
 #define PRV_FILESYSTEM
-#define PRV_STORAGEDEVICE
 #include "../defs.h"
 
-static ERROR STORAGE_Free(objStorageDevice *, APTR);
-static ERROR STORAGE_Init(objStorageDevice *, APTR);
+static ERROR STORAGE_Free(extStorageDevice *, APTR);
+static ERROR STORAGE_Init(extStorageDevice *, APTR);
 
 //****************************************************************************
 
-static ERROR STORAGE_Free(objStorageDevice *Self, APTR Void)
+static ERROR STORAGE_Free(extStorageDevice *Self, APTR Void)
 {
-   if (Self->prvVolume) { FreeResource(Self->prvVolume); Self->prvVolume = NULL; }
+   if (Self->Volume) { FreeResource(Self->Volume); Self->Volume = NULL; }
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static ERROR STORAGE_Init(objStorageDevice *Self, APTR Void)
+static ERROR STORAGE_Init(extStorageDevice *Self, APTR Void)
 {
    parasol::Log log;
 
-   if (!Self->prvVolume) return log.warning(ERR_FieldNotSet);
+   if (!Self->Volume) return log.warning(ERR_FieldNotSet);
 
-   const virtual_drive *vd = get_fs(Self->prvVolume);
+   const virtual_drive *vd = get_fs(Self->Volume);
 
    if (vd->VirtualID != 0xffffffff) Self->DeviceFlags |= DEVICE_SOFTWARE;
 
@@ -49,7 +48,7 @@ static ERROR STORAGE_Init(objStorageDevice *Self, APTR Void)
    Self->BytesUsed  = 0;
    Self->DeviceSize = -1;
 
-   if (vd->GetDeviceInfo) return vd->GetDeviceInfo(Self->prvVolume, Self);
+   if (vd->GetDeviceInfo) return vd->GetDeviceInfo(Self->Volume, Self);
    else return ERR_Okay;
 }
 
@@ -73,10 +72,10 @@ If a volume expresses a unique device identifier such as a factory serial number
 
 *****************************************************************************/
 
-static ERROR GET_DeviceID(objStorageDevice *Self, STRING *Value)
+static ERROR GET_DeviceID(extStorageDevice *Self, STRING *Value)
 {
-   if (Self->prvDeviceID) {
-      *Value = Self->prvDeviceID;
+   if (Self->DeviceID) {
+      *Value = Self->DeviceID;
       return ERR_Okay;
    }
    else {
@@ -106,10 +105,10 @@ acceptable.  Any characters following a colon will be stripped automatically wit
 
 *****************************************************************************/
 
-static ERROR GET_Volume(objStorageDevice *Self, STRING *Value)
+static ERROR GET_Volume(extStorageDevice *Self, STRING *Value)
 {
-   if (Self->prvVolume) {
-      *Value = Self->prvVolume;
+   if (Self->Volume) {
+      *Value = Self->Volume;
       return ERR_Okay;
    }
    else {
@@ -118,7 +117,7 @@ static ERROR GET_Volume(objStorageDevice *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Volume(objStorageDevice *Self, CSTRING Value)
+static ERROR SET_Volume(extStorageDevice *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -128,12 +127,12 @@ static ERROR SET_Volume(objStorageDevice *Self, CSTRING Value)
       LONG len;
       for (len=0; (Value[len]) and (Value[len] != ':'); len++);
 
-      if (Self->prvVolume) FreeResource(Self->prvVolume);
+      if (Self->Volume) FreeResource(Self->Volume);
 
-      if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (APTR *)&Self->prvVolume, NULL)) {
-         CopyMemory(Value, Self->prvVolume, len);
-         Self->prvVolume[len] = ':';
-         Self->prvVolume[len+1] = 0;
+      if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (APTR *)&Self->Volume, NULL)) {
+         CopyMemory(Value, Self->Volume, len);
+         Self->Volume[len] = ':';
+         Self->Volume[len+1] = 0;
          return ERR_Okay;
       }
       else return log.warning(ERR_AllocMemory);
@@ -190,7 +189,7 @@ extern "C" ERROR add_storage_class(void)
       FID_Flags|TLONG,    CLF_PRIVATE_ONLY,
       FID_Actions|TPTR,   clActions,
       FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(objStorageDevice),
+      FID_Size|TLONG,     sizeof(extStorageDevice),
       FID_Path|TSTR,      "modules:core",
       TAGEND);
 }

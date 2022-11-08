@@ -29,7 +29,7 @@ complete run-down on class development.
 
 #include "../defs.h"
 
-static ERROR OBJECT_GetClass(OBJECTPTR, objMetaClass **);
+static ERROR OBJECT_GetClass(OBJECTPTR, extMetaClass **);
 static ERROR OBJECT_GetClassID(OBJECTPTR, CLASSID *);
 static ERROR OBJECT_GetName(OBJECTPTR, STRING *);
 static ERROR OBJECT_GetOwner(OBJECTPTR, OBJECTID *);
@@ -37,11 +37,11 @@ static ERROR OBJECT_SetOwner(OBJECTPTR, OBJECTID);
 static ERROR OBJECT_SetName(OBJECTPTR, CSTRING);
 static ERROR OBJECT_GetTask(OBJECTPTR, OBJECTID *);
 
-static ERROR field_setup(objMetaClass *);
+static ERROR field_setup(extMetaClass *);
 
-static void copy_field(objMetaClass *, const FieldArray *, Field *, LONG *);
-static void register_fields(objMetaClass *);
-static Field * lookup_id_byclass(objMetaClass *, ULONG, objMetaClass **);
+static void copy_field(extMetaClass *, const FieldArray *, Field *, LONG *);
+static void register_fields(extMetaClass *);
+static Field * lookup_id_byclass(extMetaClass *, ULONG, extMetaClass **);
 
 //****************************************************************************
 // The MetaClass is the focal point of the OO design model.  Because classes are treated like objects, they must point
@@ -50,28 +50,28 @@ static Field * lookup_id_byclass(objMetaClass *, ULONG, objMetaClass **);
 #define TOTAL_METAFIELDS  25
 #define TOTAL_METAMETHODS 1
 
-static ERROR GET_ActionTable(objMetaClass *, ActionEntry **, LONG *);
-static ERROR GET_Fields(objMetaClass *, const FieldArray **, LONG *);
-static ERROR GET_IDL(objMetaClass *, CSTRING *);
-static ERROR GET_Location(objMetaClass *, CSTRING *);
-static ERROR GET_Methods(objMetaClass *Self, const MethodArray **, LONG *);
-static ERROR GET_Module(objMetaClass *, CSTRING *);
-static ERROR GET_PrivateObjects(objMetaClass *, OBJECTID **, LONG *);
-static ERROR GET_PublicObjects(objMetaClass *, OBJECTID **, LONG *);
-static ERROR GET_SubFields(objMetaClass *, const FieldArray **, LONG *);
-static ERROR GET_TotalMethods(objMetaClass *, LONG *);
+static ERROR GET_ActionTable(extMetaClass *, ActionEntry **, LONG *);
+static ERROR GET_Fields(extMetaClass *, const FieldArray **, LONG *);
+static ERROR GET_IDL(extMetaClass *, CSTRING *);
+static ERROR GET_Location(extMetaClass *, CSTRING *);
+static ERROR GET_Methods(extMetaClass *Self, const MethodArray **, LONG *);
+static ERROR GET_Module(extMetaClass *, CSTRING *);
+static ERROR GET_PrivateObjects(extMetaClass *, OBJECTID **, LONG *);
+static ERROR GET_PublicObjects(extMetaClass *, OBJECTID **, LONG *);
+static ERROR GET_SubFields(extMetaClass *, const FieldArray **, LONG *);
+static ERROR GET_TotalMethods(extMetaClass *, LONG *);
 
-static ERROR SET_Actions(objMetaClass *, const ActionArray *);
-static ERROR SET_Fields(objMetaClass *, const FieldArray *, LONG);
-static ERROR SET_Methods(objMetaClass *, const MethodArray *, LONG);
+static ERROR SET_Actions(extMetaClass *, const ActionArray *);
+static ERROR SET_Fields(extMetaClass *, const FieldArray *, LONG);
+static ERROR SET_Methods(extMetaClass *, const MethodArray *, LONG);
 
-static ERROR GET_ClassName(objMetaClass *Self, CSTRING *Value)
+static ERROR GET_ClassName(extMetaClass *Self, CSTRING *Value)
 {
    *Value = Self->ClassName;
    return ERR_Okay;
 }
 
-static ERROR SET_ClassName(objMetaClass *Self, CSTRING Value)
+static ERROR SET_ClassName(extMetaClass *Self, CSTRING Value)
 {
    Self->ClassName = Value;
    return ERR_Okay;
@@ -149,9 +149,9 @@ static const FieldArray glMetaFields[] = {
    END_FIELD
 };
 
-extern "C" ERROR CLASS_FindField(objMetaClass *, struct mcFindField *);
-extern "C" ERROR CLASS_Free(objMetaClass *, APTR);
-extern "C" ERROR CLASS_Init(objMetaClass *, APTR);
+extern "C" ERROR CLASS_FindField(extMetaClass *, struct mcFindField *);
+extern "C" ERROR CLASS_Free(extMetaClass *, APTR);
+extern "C" ERROR CLASS_Init(extMetaClass *, APTR);
 
 FDEF argsFindField[] = { { "ID", FD_LONG }, { "Field:Field", FD_RESULT|FD_PTR|FD_STRUCT }, { "Source", FD_RESULT|FD_OBJECTPTR }, { 0, 0 } };
 
@@ -163,7 +163,7 @@ static MethodArray glMetaMethods[TOTAL_METAMETHODS+2] = {
 
 struct Stats glMetaClass_Stats = { .ActionSubscriptions = { .Ptr = 0 }, .MID_FeedList = 0, .NotifyFlags = { 0, 0 }, .MethodFlags = { 0, 0 }, .Name = { 'M','e','t','a','C','l','a','s','s' } , .SubscriptionSize = 0, .FeedSize = 0 };
 
-objMetaClass glMetaClass;
+extMetaClass glMetaClass;
 
 void init_metaclass(void)
 {
@@ -180,7 +180,7 @@ void init_metaclass(void)
    glMetaClass.Methods         = glMetaMethods;
    glMetaClass.Fields          = glMetaFields;
    glMetaClass.ClassName       = "MetaClass";
-   glMetaClass.Size            = sizeof(objMetaClass);
+   glMetaClass.Size            = sizeof(extMetaClass);
    glMetaClass.SubClassID      = ID_METACLASS;
    glMetaClass.BaseClassID     = ID_METACLASS;
    glMetaClass.TotalMethods    = TOTAL_METAMETHODS;
@@ -235,11 +235,11 @@ Search
 
 *****************************************************************************/
 
-ERROR CLASS_FindField(objMetaClass *Class, struct mcFindField *Args)
+ERROR CLASS_FindField(extMetaClass *Class, struct mcFindField *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   objMetaClass *src;
+   extMetaClass *src;
    Args->Field = lookup_id_byclass(Class, Args->ID, &src);
    Args->Source = src;
    if (Args->Field) return ERR_Okay;
@@ -248,7 +248,7 @@ ERROR CLASS_FindField(objMetaClass *Class, struct mcFindField *Args)
 
 //****************************************************************************
 
-ERROR CLASS_Free(objMetaClass *Class, APTR Void)
+ERROR CLASS_Free(extMetaClass *Class, APTR Void)
 {
    VarSet(glClassMap, Class->ClassName, NULL, 0); // Deregister the class.
 
@@ -260,10 +260,10 @@ ERROR CLASS_Free(objMetaClass *Class, APTR Void)
 
 //****************************************************************************
 
-ERROR CLASS_Init(objMetaClass *Self, APTR Void)
+ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 {
    parasol::Log log;
-   objMetaClass *base;
+   extMetaClass *base;
 
    if (!Self->ClassName) return log.warning(ERR_MissingClassName);
 
@@ -294,7 +294,7 @@ ERROR CLASS_Init(objMetaClass *Self, APTR Void)
    // user's system.
 
    if ((Self->BaseClassID) and (Self->SubClassID != Self->BaseClassID)) {
-      if ((base = (objMetaClass *)FindClass(Self->BaseClassID))) {
+      if ((base = (extMetaClass *)FindClass(Self->BaseClassID))) {
          log.trace("Using baseclass $%.8x (%s) for %s", Self->BaseClassID, base->ClassName, Self->ClassName);
          if (!Self->FileDescription) Self->FileDescription = base->FileDescription;
          if (!Self->FileExtension)   Self->FileExtension   = base->FileExtension;
@@ -409,7 +409,7 @@ others. Never define method ID's in an action list - please use the #Methods fie
 
 *****************************************************************************/
 
-static ERROR SET_Actions(objMetaClass *Self, const ActionArray *Actions)
+static ERROR SET_Actions(extMetaClass *Self, const ActionArray *Actions)
 {
    if (!Actions) return ERR_Failed;
 
@@ -439,7 +439,7 @@ a call, as documented in the Action Support Guide.
 
 *****************************************************************************/
 
-static ERROR GET_ActionTable(objMetaClass *Self, ActionEntry **Value, LONG *Elements)
+static ERROR GET_ActionTable(extMetaClass *Self, ActionEntry **Value, LONG *Elements)
 {
    *Value = Self->ActionTable;
    *Elements = AC_END - 1;
@@ -488,14 +488,14 @@ information.
 
 *****************************************************************************/
 
-static ERROR GET_Fields(objMetaClass *Self, const FieldArray **Fields, LONG *Elements)
+static ERROR GET_Fields(extMetaClass *Self, const FieldArray **Fields, LONG *Elements)
 {
    *Fields = Self->Fields;
    *Elements = Self->OriginalFieldTotal;
    return ERR_Okay;
 }
 
-static ERROR SET_Fields(objMetaClass *Self, const FieldArray *Fields, LONG Elements)
+static ERROR SET_Fields(extMetaClass *Self, const FieldArray *Fields, LONG Elements)
 {
    if (!Fields) return ERR_Failed;
 
@@ -566,7 +566,7 @@ A value of NULL is returned if the module does not provide an IDL string.
 
 *****************************************************************************/
 
-static ERROR GET_IDL(objMetaClass *Self, CSTRING *Value)
+static ERROR GET_IDL(extMetaClass *Self, CSTRING *Value)
 {
    if (!Self->initialised()) return ERR_NotInitialised;
 
@@ -599,7 +599,7 @@ static STRING get_class_path(CLASSID ClassID)
    return NULL;
 }
 
-static ERROR GET_Location(objMetaClass *Self, CSTRING *Value)
+static ERROR GET_Location(extMetaClass *Self, CSTRING *Value)
 {
    if (Self->Path) {
       *Value = Self->Path;
@@ -636,14 +636,14 @@ Never use action ID's in a Methods array - please use the #Actions field for thi
 
 *****************************************************************************/
 
-static ERROR GET_Methods(objMetaClass *Self, const MethodArray **Methods, LONG *Elements)
+static ERROR GET_Methods(extMetaClass *Self, const MethodArray **Methods, LONG *Elements)
 {
    *Methods = Self->Methods;
    *Elements = Self->TotalMethods;
    return ERR_Okay;
 }
 
-static ERROR SET_Methods(objMetaClass *Self, const MethodArray *Methods, LONG Elements)
+static ERROR SET_Methods(extMetaClass *Self, const MethodArray *Methods, LONG Elements)
 {
    parasol::Log log;
 
@@ -697,7 +697,7 @@ Module: The name of the module binary that initialised the class.
 
 *****************************************************************************/
 
-static ERROR GET_Module(objMetaClass *Self, CSTRING *Value)
+static ERROR GET_Module(extMetaClass *Self, CSTRING *Value)
 {
    if (!Self->initialised()) return ERR_NotInitialised;
 
@@ -723,7 +723,7 @@ The resulting array must be terminated with ~FreeResource() after use.
 
 *****************************************************************************/
 
-static ERROR GET_PrivateObjects(objMetaClass *Self, OBJECTID **Array, LONG *Elements)
+static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elements)
 {
    parasol::Log log;
    std::list<OBJECTID> objlist;
@@ -772,7 +772,7 @@ The resulting array must be terminated with ~FreeResource() after use.
 
 *****************************************************************************/
 
-static ERROR GET_PublicObjects(objMetaClass *Self, OBJECTID **Array, LONG *Elements)
+static ERROR GET_PublicObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elements)
 {
    parasol::Log log;
    std::list<OBJECTID> objlist;
@@ -849,7 +849,7 @@ they are identical then it is a base class, otherwise it is a sub-class.
 
 *****************************************************************************/
 
-static ERROR GET_SubFields(objMetaClass *Self, const FieldArray **Fields, LONG *Elements)
+static ERROR GET_SubFields(extMetaClass *Self, const FieldArray **Fields, LONG *Elements)
 {
    if (Self->SubFields) {
       LONG i;
@@ -874,7 +874,7 @@ TotalMethods: The total number of methods supported by a class.
 
 *****************************************************************************/
 
-static ERROR GET_TotalMethods(objMetaClass *Class, LONG *Value)
+static ERROR GET_TotalMethods(extMetaClass *Class, LONG *Value)
 {
    if (Class->TotalMethods > 0) {
       *Value = Class->TotalMethods - 1; // Minus 1 due to the dummy entry at the start
@@ -888,7 +888,7 @@ static ERROR GET_TotalMethods(objMetaClass *Class, LONG *Value)
 
 //****************************************************************************
 
-static ERROR field_setup(objMetaClass *Class)
+static ERROR field_setup(extMetaClass *Class)
 {
    parasol::Log log(__FUNCTION__);
    LONG i, j;
@@ -1074,7 +1074,7 @@ static ERROR field_setup(objMetaClass *Class)
 //****************************************************************************
 // Register a hashed field ID and its corresponding name.  Use GET_FIELD_NAME() to retrieve field names from the store.
 
-static void register_fields(objMetaClass *Class)
+static void register_fields(extMetaClass *Class)
 {
    if (!glFields) {
       glFields = VarNew(0, KSF_THREAD_SAFE|KSF_UNTRACKED);
@@ -1092,7 +1092,7 @@ static void register_fields(objMetaClass *Class)
 
 //****************************************************************************
 
-static void copy_field(objMetaClass *Class, const FieldArray *Source, Field *Dest, LONG *Offset)
+static void copy_field(extMetaClass *Class, const FieldArray *Source, Field *Dest, LONG *Offset)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1147,7 +1147,7 @@ static void copy_field(objMetaClass *Class, const FieldArray *Source, Field *Des
 ** NOTE: This is also used in NewObject() to sort the fields of the glMetaClass.
 */
 
-ERROR sort_class_fields(objMetaClass *Class, Field *fields)
+ERROR sort_class_fields(extMetaClass *Class, Field *fields)
 {
    Field *temp;
    LONG i, j;
@@ -1229,9 +1229,9 @@ ERROR sort_class_fields(objMetaClass *Class, Field *fields)
 //****************************************************************************
 // These are pre-defined fields that are applied to each class' object.
 
-static ERROR OBJECT_GetClass(OBJECTPTR Self, objMetaClass **Value)
+static ERROR OBJECT_GetClass(OBJECTPTR Self, extMetaClass **Value)
 {
-   *Value = Self->Class;
+   *Value = Self->ExtClass;
    return ERR_Okay;
 }
 
@@ -1669,7 +1669,7 @@ ClassItem * find_class(ULONG Hash)
 //****************************************************************************
 // Lookup the fields declared by a MetaClass, as opposed to the fields of the MetaClass itself.
 
-static Field * lookup_id_byclass(objMetaClass *Class, ULONG FieldID, objMetaClass **Result)
+static Field * lookup_id_byclass(extMetaClass *Class, ULONG FieldID, extMetaClass **Result)
 {
    Field *field = Class->prvFields;
 
@@ -1690,7 +1690,7 @@ static Field * lookup_id_byclass(objMetaClass *Class, ULONG FieldID, objMetaClas
       for (LONG i=0; Class->Children[i] != 0xff; i++) {
          auto field = Class->prvFields + Class->Children[i];
          if (field->Arg) {
-            objMetaClass *childclass = FindClass(field->Arg);
+            auto childclass = (extMetaClass *)FindClass(field->Arg);
             if (childclass) {
                *Result = childclass;
                field = lookup_id_byclass(childclass, FieldID, Result);
