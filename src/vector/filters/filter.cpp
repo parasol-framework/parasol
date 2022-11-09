@@ -163,7 +163,6 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
       if (auto sg = get_source_graphic(Self)) {
          gfxCopyArea(sg, bmp, 0, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0, 0);
       }
-      else log.warning("get_source_graphic() failed.");
    }
    else if (SourceType IS VSF_ALPHA) { // SourceAlpha
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
@@ -179,7 +178,6 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
             dy++;
          }
       }
-      else log.warning("get_source_graphic() failed.");
    }
    else if (SourceType IS VSF_BKGD) {
       // "Represents an image snapshot of the canvas under the filter region at the time that the filter element is invoked."
@@ -314,6 +312,15 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    Self->SourceScene->Viewport->Child = Self->ClientVector;
    Self->SourceGraphic->Clip = Self->VectorClip;
 
+   if (Self->SourceGraphic->Clip.Top < 0)  Self->SourceGraphic->Clip.Top = 0;
+   if (Self->SourceGraphic->Clip.Left < 0) Self->SourceGraphic->Clip.Left = 0;
+   if (Self->SourceGraphic->Clip.Bottom > Self->SourceGraphic->Height) Self->SourceGraphic->Clip.Bottom = Self->SourceGraphic->Height;
+   if (Self->SourceGraphic->Clip.Right  > Self->SourceGraphic->Width)  Self->SourceGraphic->Clip.Right  = Self->SourceGraphic->Width;
+
+   // These non-fatal clipping checks will trigger if vector bounds lie outside of the visible/drawable area.
+   if (Self->SourceGraphic->Clip.Top >= Self->SourceGraphic->Clip.Bottom) return NULL;
+   if (Self->SourceGraphic->Clip.Left >= Self->SourceGraphic->Clip.Right) return NULL;
+
    auto const save_vector = Self->ClientVector->Next; // Switch off the Next pointer to prevent processing of siblings.
    Self->ClientVector->Next = NULL;
    Self->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
@@ -405,18 +412,13 @@ static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport,
       bounding_rect_single(path, 0, &Self->VectorClip.Left, &Self->VectorClip.Top, &Self->VectorClip.Right, &Self->VectorClip.Bottom);
    }
 
-   if (Self->VectorClip.Left < 0) Self->VectorClip.Left = 0;
-   if (Self->VectorClip.Top < 0)  Self->VectorClip.Top  = 0;
-   if (Self->VectorClip.Right > container_width)   Self->VectorClip.Right  = container_width;
-   if (Self->VectorClip.Bottom > container_height) Self->VectorClip.Bottom = container_height;
+   if (Self->VectorClip.Left < Viewport->vpBX1)   Self->VectorClip.Left   = Viewport->vpBX1;
+   if (Self->VectorClip.Top < Viewport->vpBY1)    Self->VectorClip.Top    = Viewport->vpBY1;
+   if (Self->VectorClip.Right > Viewport->vpBX2)  Self->VectorClip.Right  = Viewport->vpBX2;
+   if (Self->VectorClip.Bottom > Viewport->vpBY2) Self->VectorClip.Bottom = Viewport->vpBY2;
 
-   if (Self->VectorClip.Bottom <= Self->VectorClip.Top) {
-      return log.warning(ERR_InvalidDimension);
-   }
-
-   if (Self->VectorClip.Right <= Self->VectorClip.Left) {
-      return log.warning(ERR_InvalidDimension);
-   }
+   if (Self->VectorClip.Bottom <= Self->VectorClip.Top) return log.warning(ERR_InvalidDimension);
+   if (Self->VectorClip.Right <= Self->VectorClip.Left) return log.warning(ERR_InvalidDimension);
 
    return ERR_Okay;
 }

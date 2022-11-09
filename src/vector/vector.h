@@ -164,6 +164,8 @@ public:
       }
 
       Bitmap->Clip = Clip;
+      if (Bitmap->Clip.Left < 0) Bitmap->Clip.Left = 0;
+      if (Bitmap->Clip.Top < 0) Bitmap->Clip.Top = 0;
 
       if (!Debug) {
          const LONG canvas_width  = Clip.Right - Clip.Left;
