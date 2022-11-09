@@ -1,0 +1,124 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>RemapFX</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Provides pixel remapping; equivalent to feComponentTransfer in SVG.</comment>
+    <version>1</version>
+    <id>3eb33c98</id>
+    <idstring>ID_REMAPFX</idstring>
+    <category>Graphics</category>
+    <include>modules/remapfx.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>The RemapFX class provides an implementation of the feComponentTransfer functionality in SVG.</p></description>
+    <source>
+      <file path="filters/">filter_remap.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Draw</name>
+      <comment>Render the effect to the target bitmap.</comment>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>SelectDiscrete</name>
+      <comment>Apply the discrete function to a pixel component.</comment>
+      <prototype>ERROR rfSelectDiscrete(OBJECTPTR Object, LONG Component, DOUBLE * Values, LONG Size)</prototype>
+      <input>
+        <param type="LONG" name="Component" lookup="CMP">The pixel component to which the discrete function must be applied.</param>
+        <param type="DOUBLE *" name="Values">A list of values for the discrete function.</param>
+        <param type="LONG" name="Size">Total number of elements in the value list.</param>
+      </input>
+      <description>
+<p>This method will apply the table function to a selected RGBA pixel component.  A list of values is required with a minimum size of 1.</p>
+      </description>
+    </method>
+
+    <method>
+      <name>SelectGamma</name>
+      <comment>Apply the gamma function to a pixel component.</comment>
+      <prototype>ERROR rfSelectGamma(OBJECTPTR Object, LONG Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent)</prototype>
+      <input>
+        <param type="LONG" name="Component" lookup="CMP">The pixel component to which the gamma function must be applied.</param>
+        <param type="DOUBLE" name="Amplitude">The amplitude of the gamma function.</param>
+        <param type="DOUBLE" name="Offset">The offset of the gamma function.</param>
+        <param type="DOUBLE" name="Exponent">The exponent of the gamma function.</param>
+      </input>
+      <description>
+<p>This method will apply the gamma function to a selected RGBA pixel component.  The gamma function is written as <code>C' = Amplitude * pow(C, Exponent) + Offset</code>.</p>
+      </description>
+    </method>
+
+    <method>
+      <name>SelectIdentity</name>
+      <comment>Apply the identity function to a pixel component.</comment>
+      <prototype>ERROR rfSelectIdentity(OBJECTPTR Object, LONG Component)</prototype>
+      <input>
+        <param type="LONG" name="Component" lookup="CMP">The pixel component to which the identity function must be applied.</param>
+      </input>
+      <description>
+<p>Selecting the identity function for a pixel component will render it as its original value.  By default, all pixels will use this function if no other option is chosen.</p>
+      </description>
+    </method>
+
+    <method>
+      <name>SelectLinear</name>
+      <comment>Apply the linear function to a pixel component.</comment>
+      <prototype>ERROR rfSelectLinear(OBJECTPTR Object, LONG Component, DOUBLE Slope, DOUBLE Intercept)</prototype>
+      <input>
+        <param type="LONG" name="Component" lookup="CMP">The pixel component to which the linear function must be applied.</param>
+        <param type="DOUBLE" name="Slope">The slope of the linear function.</param>
+        <param type="DOUBLE" name="Intercept">The intercept of the linear function.</param>
+      </input>
+      <description>
+<p>This method will apply the linear function to a selected RGBA pixel component.  The linear function is written as <code>C' = (Slope * C) + Intercept</code>.</p>
+      </description>
+    </method>
+
+    <method>
+      <name>SelectTable</name>
+      <comment>Apply the table function to a pixel component.</comment>
+      <prototype>ERROR rfSelectTable(OBJECTPTR Object, LONG Component, DOUBLE * Values, LONG Size)</prototype>
+      <input>
+        <param type="LONG" name="Component" lookup="CMP">The pixel component to which the table function must be applied.</param>
+        <param type="DOUBLE *" name="Values">A list of values for the table function.</param>
+        <param type="LONG" name="Size">Total number of elements in the value list.</param>
+      </input>
+      <description>
+<p>This method will apply the table function to a selected RGBA pixel component.  A list of values is required with a minimum size of 1.</p>
+      </description>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>XMLDef</name>
+      <comment>Returns an SVG compliant XML string that describes the filter.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="CMP" comment="Component selection for RemapFX methods.">
+      <const name="ALL">All colour channels.</const>
+      <const name="ALPHA">The alpha channel.</const>
+      <const name="BLUE">The blue colour channel.</const>
+      <const name="GREEN">The green colour channel.</const>
+      <const name="RED">The red colour channel.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

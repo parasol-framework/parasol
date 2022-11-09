@@ -2190,14 +2190,13 @@ struct BaseClass { // Must be 64-bit aligned
    volatile bool Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
-   ~BaseClass() {
-   }
-
-   inline LONG flags() { return Flags; }
    inline bool initialised() { return Flags & NF_INITIALISED; }
-   inline OBJECTID ownerTask() { return TaskID; }
    inline bool isPublic() { return Flags & NF_PUBLIC; }
+   inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
+   inline LONG memflags() { return MemFlags; }
+   inline LONG flags() { return Flags; }
+
    CSTRING className();
 
    inline bool collecting() { // Is object being freed or marked for collection?
@@ -2249,8 +2248,6 @@ struct BaseClass { // Must be 64-bit aligned
    inline LONG subSleep() {
       return __sync_sub_and_fetch(&SleepQueue, 1);
    }
-
-   inline LONG memflags() { return MemFlags; }
 
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
       auto oid = this->OwnerID;

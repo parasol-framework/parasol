@@ -1022,4 +1022,19 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "WORD-SPACING",
     "YELLOW",
     "YELLOWGREEN")
+
+   hash("SVF", "0x%s",
+    "FEFUNCR",
+    "FEFUNCG",
+    "FEFUNCB",
+    "FEFUNCA",
+    "TABLEVALUES",
+    "EXPONENT",
+    "SLOPE",
+    "INTERCEPT",
+    "IDENTITY",
+    "LINEAR",
+    "TABLE",
+    "GAMMA",
+    "DISCRETE")
 end)

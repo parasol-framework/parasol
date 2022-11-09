@@ -59,7 +59,7 @@ extern OBJECTPTR clVectorFilter, clVectorPolygon, clVectorText, clVectorClip;
 extern OBJECTPTR clVectorGradient, clVectorImage, clVectorPattern, clVector;
 extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX, clSourceFX;
 extern OBJECTPTR clBlurFX, clColourFX, clCompositeFX, clConvolveFX, clFilterEffect;
-extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX;
+extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX, clRemapFX;
 
 extern struct DisplayBase *DisplayBase;
 extern struct FontBase *FontBase;
@@ -133,8 +133,20 @@ public:
    };
 
    objBitmap * get_bitmap(LONG Width, LONG Height, ClipRectangle &Clip, bool Debug) {
+      parasol::Log log;
+
       if (Width < Clip.Right) Width = Clip.Right;
       if (Height < Clip.Bottom) Height = Clip.Bottom;
+
+      if ((Clip.Bottom <= Clip.Top) or (Clip.Right <= Clip.Left)) {
+         log.warning("Invalid clip region %d %d %d %d", Clip.Left, Clip.Top, Clip.Right, Clip.Bottom);
+         return NULL;
+      }
+
+      if ((Width < 1) or (Height < 1) or (Width > 0xffff) or (Height > 0xffff)) {
+         log.warning("Invalid bitmap size of %dx%d", Width, Height);
+         return NULL;
+      }
 
       if (Bitmap) {
          Bitmap->Width = Width;
@@ -167,6 +179,10 @@ public:
          if (!Bitmap->Data) {
             if (!AllocMemory(Bitmap->LineWidth * canvas_height, MEM_DATA|MEM_NO_CLEAR, &Data, NULL)) {
                DataSize = Bitmap->LineWidth * canvas_height;
+            }
+            else {
+               log.warning("Failed to allocate graphics area of size %d(B) x %d", Bitmap->LineWidth * canvas_height);
+               return NULL;
             }
          }
 
@@ -397,6 +413,7 @@ extern ERROR init_mergefx(void);
 extern ERROR init_morphfx(void);
 extern ERROR init_offsetfx(void);
 extern ERROR init_pattern(void);
+extern ERROR init_remapfx(void);
 extern ERROR init_sourcefx(void);
 extern ERROR init_transition(void);
 extern ERROR init_turbulencefx(void);

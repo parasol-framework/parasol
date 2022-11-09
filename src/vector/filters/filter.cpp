@@ -43,16 +43,17 @@ static target calc_target_area(extFilterEffect *Effect);
 
 #include "filter_effect.cpp"
 #include "filter_blur.cpp"
-#include "filter_merge.cpp"
+#include "filter_colourmatrix.cpp"
 #include "filter_composite.cpp"
+#include "filter_convolve.cpp"
 #include "filter_flood.cpp"
 #include "filter_image.cpp"
-#include "filter_offset.cpp"
-#include "filter_source.cpp"
-#include "filter_colourmatrix.cpp"
-#include "filter_convolve.cpp"
-#include "filter_turbulence.cpp"
+#include "filter_merge.cpp"
 #include "filter_morphology.cpp"
+#include "filter_offset.cpp"
+#include "filter_remap.cpp"
+#include "filter_source.cpp"
+#include "filter_turbulence.cpp"
 
 //********************************************************************************************************************
 
@@ -408,6 +409,14 @@ static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport,
    if (Self->VectorClip.Top < 0)  Self->VectorClip.Top  = 0;
    if (Self->VectorClip.Right > container_width)   Self->VectorClip.Right  = container_width;
    if (Self->VectorClip.Bottom > container_height) Self->VectorClip.Bottom = container_height;
+
+   if (Self->VectorClip.Bottom <= Self->VectorClip.Top) {
+      return log.warning(ERR_InvalidDimension);
+   }
+
+   if (Self->VectorClip.Right <= Self->VectorClip.Left) {
+      return log.warning(ERR_InvalidDimension);
+   }
 
    return ERR_Okay;
 }

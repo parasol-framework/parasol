@@ -135,7 +135,7 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
     "SYSTEM: If the VOLUME_SAVE option is used in conjunction with VOLUME_SYSTEM, the volume is saved to config:volumes.cfg as opposed to the user's home folder.  This means that the change is global to all users.  On secure platforms the current process may need administrative rights to write to the file.")
 
   flags("FDL", { comment="Options for the File Delete() method." },
-     "FEEDBACK: Automatically manage user feedback for deleting files by presenting dialog boxes.")
+    "FEEDBACK: Automatically manage user feedback for deleting files by presenting dialog boxes.")
 
   flags("CMF", { comment="Compression flags" },
     "PASSWORD: A password has been set on the object.",
@@ -263,17 +263,17 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
     "IGNORE_HOST: Ignore the host platform's file assocations.")
 
   flags("LDF", { comment="Flags for LoadFile()" },
-     "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.")
+    "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.")
 
   enum("FBK", { start=1, comment="Flags for file feedback." },
-     "MOVE_FILE: A file is to be, or has been moved.",
-     "COPY_FILE: A file is to be, or has been copied.",
-     "DELETE_FILE: A file is to be, or has been deleted.")
+    "MOVE_FILE: A file is to be, or has been moved.",
+    "COPY_FILE: A file is to be, or has been copied.",
+    "DELETE_FILE: A file is to be, or has been deleted.")
 
   enum("FFR", { start=0, comment="Return codes available to the feedback routine" },
-     "OKAY|CONTINUE: Continue processing uninterrupted.",
-     "SKIP: Skip processing of this entity.",
-     "ABORT: Abort the entire operation.")
+    "OKAY|CONTINUE: Continue processing uninterrupted.",
+    "SKIP: Skip processing of this entity.",
+    "ABORT: Abort the entire operation.")
 
   enum("VAS", { start=1, comment="For use by VirtualVolume()" },
     "DEREGISTER: Remove the virtual volume from the system.",
@@ -370,20 +370,20 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
   const("MAX", nil, { NAME_LEN = 32 })
 
   const("MSGID", { comment="Reserved message ID's that are handled internally." }, {
-     QUIT = 1000,     -- Note that IDs >= 100 may be handled by non-Core code (external modules and applications)
-     BREAK = 102,
-     COMMAND = 101,
-     EXPOSE = 100,
-     CORE_END = 100,  -- End marker for Core generated messages
-     ACTION = 99,     -- Start from 99 descending (lower risk of accidental ID matches)
-     SET_FIELD = 98,
-     GET_FIELD = 97,
-     ACTION_RESULT = 96,
-     DEBUG = 95,
-     EVENT = 94,
+     QUIT             = 1000,     -- Note that IDs >= 100 may be handled by non-Core code (external modules and applications)
+     BREAK            = 102,
+     COMMAND          = 101,
+     EXPOSE           = 100,
+     CORE_END         = 100,  -- End marker for Core generated messages
+     ACTION           = 99,     -- Start from 99 descending (lower risk of accidental ID matches)
+     SET_FIELD        = 98,
+     GET_FIELD        = 97,
+     ACTION_RESULT    = 96,
+     DEBUG            = 95,
+     EVENT            = 94,
      VALIDATE_PROCESS = 93,
-     THREAD_CALLBACK = 92,
-     THREAD_ACTION = 91,
+     THREAD_CALLBACK  = 92,
+     THREAD_ACTION    = 91,
      WAIT_FOR_OBJECTS = 90
   })
 
@@ -392,14 +392,14 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
   })
 
   const("SUB", { comment="Special tags for SubscribeActionTags()" }, {
-     WARN_EXISTS = "0x7fffffff: An error of ERR_Exists will be returned if there was an existing match for the subscriber and at least one of the following actions.",
-     FAIL_EXISTS = "0x7ffffffe: As for WARN_EXISTS, but aborts immediately when a conflict is discovered."
+    WARN_EXISTS = "0x7fffffff: An error of ERR_Exists will be returned if there was an existing match for the subscriber and at least one of the following actions.",
+    FAIL_EXISTS = "0x7ffffffe: As for WARN_EXISTS, but aborts immediately when a conflict is discovered."
   })
 
   enum("IDTYPE", { start=1, comment="Types for AllocateID()" },
-     "MESSAGE: Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.",
-     "GLOBAL: Global ID's have no specific association with anything.",
-     "FUNCTION: Function ID's are used to track FUNCTION types and are assigned to the function ID field."
+    "MESSAGE: Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.",
+    "GLOBAL: Global ID's have no specific association with anything.",
+    "FUNCTION: Function ID's are used to track FUNCTION types and are assigned to the function ID field."
   )
 
   enum("SEM", { start=1 },
@@ -415,49 +415,49 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
     "SET_DATA_DOUBLE: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit floating point number.")
 
   enum("TSTATE", { comment="Indicates the state of a process." },
-     "RUNNING: The process is currently executing code.",
-     "PAUSED: The process is asleep.",
-     "STOPPING: The process is in its termination phase.",
-     "TERMINATED: The process has closed.")
+    "RUNNING: The process is currently executing code.",
+    "PAUSED: The process is asleep.",
+    "STOPPING: The process is in its termination phase.",
+    "TERMINATED: The process has closed.")
 
   enum("RES", { start=1 },
-     "MESSAGE_QUEUE: Use this resource to retrieve the message queue ID of the current task.",
-     "CONSOLE_FD: Internal reference to the FD of the console.",
-     "GLOBAL_INSTANCE: If a global instance is active, this resource holds the instance ID.  Otherwise the value is 0.",
-     "SHARED_CONTROL: Internal pointer to the SharedControl structure.",
-     "USER_ID: Internal",
-     "DISPLAY_DRIVER: Internal.  Passes the name of the preferred display driver to the display module.",
-     "PRIVILEGED_USER: If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.",
-     "PRIVILEGED: This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).",
-     "RANDOM_SEED: Changes the PRNG seed value for RandomNumber().",
-     "PARENT_CONTEXT: Read-only pointer to the parent object of the current context.",
-     "LOG_LEVEL: The current level of log detail (larger numbers indicate more detail).",
-     "TOTAL_SHARED_MEMORY: The total amount of shared memory in use.",
-     "TASK_CONTROL: Internal",
-     "TASK_LIST: Internal",
-     "MAX_PROCESSES: The maximum number of processes that can be supported at any time.",
-     "LOG_DEPTH: The current depth of log messages.",
-     "JNI_ENV: Return the current JNI environment string.",
-     "THREAD_ID: Return the ID of the current thread.",
-     "CURRENT_MSG: Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.",
-     "OPEN_INFO: Pointer to the OpenInfo structure originally used to initialise the system.",
-     "EXCEPTION_HANDLER: Internal",
-     "NET_PROCESSING: Internal windows resource for Network module",
-     "PROCESS_STATE: Life-cycle stage of the running process",
-     "TOTAL_MEMORY: The total amount of installed memory.",
-     "TOTAL_SWAP: The total amount of available swap space.",
-     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
-     "SHARED_BLOCKS: Internal",
-     "FREE_MEMORY: The total amount of free memory.",
-     "FREE_SWAP: The total amount of free swap memory.",
-     "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys.",
-     "CORE_IDL: Refers to the Core module's compressed IDL string."
+    "MESSAGE_QUEUE: Use this resource to retrieve the message queue ID of the current task.",
+    "CONSOLE_FD: Internal reference to the FD of the console.",
+    "GLOBAL_INSTANCE: If a global instance is active, this resource holds the instance ID.  Otherwise the value is 0.",
+    "SHARED_CONTROL: Internal pointer to the SharedControl structure.",
+    "USER_ID: Internal",
+    "DISPLAY_DRIVER: Internal.  Passes the name of the preferred display driver to the display module.",
+    "PRIVILEGED_USER: If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.",
+    "PRIVILEGED: This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).",
+    "RANDOM_SEED: Changes the PRNG seed value for RandomNumber().",
+    "PARENT_CONTEXT: Read-only pointer to the parent object of the current context.",
+    "LOG_LEVEL: The current level of log detail (larger numbers indicate more detail).",
+    "TOTAL_SHARED_MEMORY: The total amount of shared memory in use.",
+    "TASK_CONTROL: Internal",
+    "TASK_LIST: Internal",
+    "MAX_PROCESSES: The maximum number of processes that can be supported at any time.",
+    "LOG_DEPTH: The current depth of log messages.",
+    "JNI_ENV: Return the current JNI environment string.",
+    "THREAD_ID: Return the ID of the current thread.",
+    "CURRENT_MSG: Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.",
+    "OPEN_INFO: Pointer to the OpenInfo structure originally used to initialise the system.",
+    "EXCEPTION_HANDLER: Internal",
+    "NET_PROCESSING: Internal windows resource for Network module",
+    "PROCESS_STATE: Life-cycle stage of the running process",
+    "TOTAL_MEMORY: The total amount of installed memory.",
+    "TOTAL_SWAP: The total amount of available swap space.",
+    "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
+    "SHARED_BLOCKS: Internal",
+    "FREE_MEMORY: The total amount of free memory.",
+    "FREE_SWAP: The total amount of free swap memory.",
+    "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys.",
+    "CORE_IDL: Refers to the Core module's compressed IDL string."
   )
 
   enum("RP", { start=1, comment="Path types for SetResourcePath()" },
-     "MODULE_PATH: An alternative path leading to the system modules (normally 'system:modules/').  Introduced for platforms such as Android, where modules are stored in asset folders.",
-     "SYSTEM_PATH: The path of the 'system:' volume, which otherwise defaults to '[root]:system/'.",
-     "ROOT_PATH: Overrides the root path, which defaults to the location at which Parasol is installed.")
+    "MODULE_PATH: An alternative path leading to the system modules (normally 'system:modules/').  Introduced for platforms such as Android, where modules are stored in asset folders.",
+    "SYSTEM_PATH: The path of the 'system:' volume, which otherwise defaults to '[root]:system/'.",
+    "ROOT_PATH: Overrides the root path, which defaults to the location at which Parasol is installed.")
 
   flags("CLF", { comment="Flags for the MetaClass." },
     "SHARED_ONLY|SHARED_OBJECTS: Forces all objects of this class to be shared.",
@@ -468,17 +468,17 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
     "NO_OWNERSHIP: Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).")
 
   flags("CNF", { comment="Flags for the Config class." },
-     "STRIP_QUOTES: Removes quotes from key values that are quote-encapsulated.",
-     "AUTO_SAVE: When the configuration object is freed, automatically save the configuration data back to the original file source.",
-     "OPTIONAL_FILES: Files are optional (do not fail if a requested file does not exist).",
-     "NEW: On initialisation, do not load any data from the referenced configuration file.")
+    "STRIP_QUOTES: Removes quotes from key values that are quote-encapsulated.",
+    "AUTO_SAVE: When the configuration object is freed, automatically save the configuration data back to the original file source.",
+    "OPTIONAL_FILES: Files are optional (do not fail if a requested file does not exist).",
+    "NEW: On initialisation, do not load any data from the referenced configuration file.")
 
   flags("KSF", { comment="Flags for VarNew()" },
-     "CASE: Enable case-sensitive keys.",
-     "THREAD_SAFE: Enable thread safety for a small performance penalty.",
-     "UNTRACKED: Do not track the key-store to the object with the current context.",
-     "AUTO_REMOVE: Automatically call FreeResource() on remaining key values when FreeResource() is called for the key-store.",
-     "INTERNAL: Private.")
+    "CASE: Enable case-sensitive keys.",
+    "THREAD_SAFE: Enable thread safety for a small performance penalty.",
+    "UNTRACKED: Do not track the key-store to the object with the current context.",
+    "AUTO_REMOVE: Automatically call FreeResource() on remaining key values when FreeResource() is called for the key-store.",
+    "INTERNAL: Private.")
 
 -- Please note that when the user is using an international keyboard, the name of the key will not
 -- actually match what the symbol represents for some key types.
@@ -710,16 +710,16 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
 
   struct("SystemState", { comment="Returned by the GetSystemState() function." }, [[
     array(cstr) ErrorMessages  # A sorted array of all error codes, translated into human readable strings.
-    cstr RootPath      # The current root path, which defaults to the location of the installation folder.
-    cstr SystemPath    # The current path of the 'system:' volume.
-    cstr ModulePath    # The current path to the system modules, normally 'system:modules/'
-    cstr Platform      # String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
-    hhandle ConsoleFD  # Internal
-    int  CoreVersion   # Reflects the Core version number.
-    int  CoreRevision  # Reflects the Core revision number.
-    int  InstanceID    # This is the ID of the instance that the calling process resides in.
-    int  TotalErrorMessages # The total number of error codes listed in the ErrorMessages array.
-    int  Stage              # The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
+    cstr RootPath              # The current root path, which defaults to the location of the installation folder.
+    cstr SystemPath            # The current path of the 'system:' volume.
+    cstr ModulePath            # The current path to the system modules, normally 'system:modules/'
+    cstr Platform              # String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
+    hhandle ConsoleFD          # Internal
+    int  CoreVersion           # Reflects the Core version number.
+    int  CoreRevision          # Reflects the Core revision number.
+    int  InstanceID            # This is the ID of the instance that the calling process resides in.
+    int  TotalErrorMessages    # The total number of error codes listed in the ErrorMessages array.
+    int  Stage                 # The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
   ]])
 
   struct("Variable", { }, [[
@@ -829,11 +829,11 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
   struct("ActionEntry", { restrict="c" }, [[ fptr(error obj ptr) PerformAction # Internal ]])
 
   struct("MsgHandler", { restrict="c" }, [[
-    ptr(struct(MsgHandler)) Prev   # Previous message handler in the chain
-    ptr(struct(MsgHandler)) Next   # Next message handler in the chain
-    ptr Custom            # Custom pointer to send to the message handler
-    func Function         # Call this function
-    int MsgType           # Type of message being filtered
+    ptr(struct(MsgHandler)) Prev  # Previous message handler in the chain
+    ptr(struct(MsgHandler)) Next  # Next message handler in the chain
+    ptr Custom                    # Custom pointer to send to the message handler
+    func Function                 # Call this function
+    int MsgType                   # Type of message being filtered
   ]])
 
   struct("KeyStore", { comment="Key-pair storage created by VarNew()" }, [[
@@ -874,15 +874,15 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
     large OriginalSize            # Original size of the file
     large CompressedSize          # Compressed size of the file
     struct(*CompressedItem) Next  # Used only if this is a linked-list.
-    cstr Path                  # Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
-    struct(*KeyStore) Tags     # Any archive specific information is expressed here as key value pairs.
-    int(PERMIT) Permissions    # Original permissions - see PERMIT flags.
-    int  UserID                # Original user ID
-    int  GroupID               # Original group ID
-    int  OthersID              # Original others ID
-    int(FL) Flags              # FL flags
-    struct(DateTime) Created   # Date and time of the file's creation.
-    struct(DateTime) Modified  # Date and time last modified.
+    cstr Path                     # Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
+    struct(*KeyStore) Tags        # Any archive specific information is expressed here as key value pairs.
+    int(PERMIT) Permissions       # Original permissions - see PERMIT flags.
+    int  UserID                   # Original user ID
+    int  GroupID                  # Original group ID
+    int  OthersID                 # Original others ID
+    int(FL) Flags                 # FL flags
+    struct(DateTime) Created      # Date and time of the file's creation.
+    struct(DateTime) Modified     # Date and time last modified.
   ]])
 
   struct("FileInfo", { comment="Returned by GetFileInfo()" }, [[
@@ -1232,14 +1232,13 @@ struct BaseClass { // Must be 64-bit aligned
    volatile bool Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
-   ~BaseClass() {
-   }
-
-   inline LONG flags() { return Flags; }
    inline bool initialised() { return Flags & NF_INITIALISED; }
-   inline OBJECTID ownerTask() { return TaskID; }
    inline bool isPublic() { return Flags & NF_PUBLIC; }
+   inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
+   inline LONG memflags() { return MemFlags; }
+   inline LONG flags() { return Flags; }
+
    CSTRING className();
 
    inline bool collecting() { // Is object being freed or marked for collection?
@@ -1291,8 +1290,6 @@ struct BaseClass { // Must be 64-bit aligned
    inline LONG subSleep() {
       return __sync_sub_and_fetch(&SleepQueue, 1);
    }
-
-   inline LONG memflags() { return MemFlags; }
 
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
       auto oid = this->OwnerID;

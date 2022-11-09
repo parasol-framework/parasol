@@ -155,7 +155,7 @@ static ERROR FLOODFX_GET_XMLDef(objFloodFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
-   stream << "feFlood opacity=\"" << Self->Opacity << "\"";
+   stream << "<feFlood opacity=\"" << Self->Opacity << "\"/>";
 
    *Value = StrClone(stream.str().c_str());
    return ERR_Okay;
