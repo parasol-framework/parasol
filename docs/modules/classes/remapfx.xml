@@ -76,10 +76,11 @@
       <comment>Apply the invert function to a pixel component.</comment>
       <prototype>ERROR rfSelectInvert(OBJECTPTR Object, LONG Component)</prototype>
       <input>
-        <param type="LONG" name="Component" lookup="CMP">The pixel component to which the linear function must be applied.</param>
+        <param type="LONG" name="Component" lookup="CMP">The pixel component to which the function must be applied.</param>
       </input>
       <description>
-<p>This method will apply the invert function to a selected RGBA pixel component.  The linear function is written as <code>C' = 1.0 - C</code>.</p>
+<p>This method will apply the invert function to a selected RGBA pixel component.  The function is written as <code>C' = 1.0 - C</code>.</p>
+<p>This feature is not compatible with SVG.</p>
       </description>
     </method>
 
@@ -88,12 +89,26 @@
       <comment>Apply the linear function to a pixel component.</comment>
       <prototype>ERROR rfSelectLinear(OBJECTPTR Object, LONG Component, DOUBLE Slope, DOUBLE Intercept)</prototype>
       <input>
-        <param type="LONG" name="Component" lookup="CMP">The pixel component to which the linear function must be applied.</param>
+        <param type="LONG" name="Component" lookup="CMP">The pixel component to which the function must be applied.</param>
         <param type="DOUBLE" name="Slope">The slope of the linear function.</param>
         <param type="DOUBLE" name="Intercept">The intercept of the linear function.</param>
       </input>
       <description>
-<p>This method will apply the linear function to a selected RGBA pixel component.  The linear function is written as <code>C' = (Slope * C) + Intercept</code>.</p>
+<p>This method will apply the linear function to a selected RGBA pixel component.  The function is written as <code>C' = (Slope * C) + Intercept</code>.</p>
+      </description>
+    </method>
+
+    <method>
+      <name>SelectMask</name>
+      <comment>Apply the mask function to a pixel component.</comment>
+      <prototype>ERROR rfSelectMask(OBJECTPTR Object, LONG Component, LONG Mask)</prototype>
+      <input>
+        <param type="LONG" name="Component" lookup="CMP">The pixel component to which the function must be applied.</param>
+        <param type="LONG" name="Mask">The bit mask to be AND'd with each value.</param>
+      </input>
+      <description>
+<p>This method will apply the mask function to a selected RGBA pixel component.  The function is written as <code>C' = C &amp; Mask</code>.</p>
+<p>This feature is not compatible with SVG.</p>
       </description>
     </method>
 
