@@ -17,7 +17,7 @@ this by calling SetContext() themselves.
 #include "defs.h"
 #include <parasol/main.h>
 
-static THREADVAR char strGetField[400]; // Buffer for retrieving unlisted field values
+static THREADVAR char strGetField[400]; // Buffer for retrieving variable field values
 
 //****************************************************************************
 // This internal function provides a fast binary search of field names via ID.
@@ -84,7 +84,7 @@ The resulting Field structure is immutable.
 -INPUT-
 obj Object:   The target object.
 uint FieldID: The 'FID' number to lookup.
-&obj Source:  (Optional) The object that represents the field is returned here (sometimes a field may belong to a child of the queried object).
+&obj Source:  (Optional) The object that represents the field is returned here (in case a field belongs to an integrated child object).
 
 -RESULT-
 struct(Field): Returns a pointer to the field descriptor, otherwise NULL if not found.

@@ -80,8 +80,7 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
    LONG type = (FieldID>>32)|FD_ARRAY;
    FieldID = FieldID & 0xffffffff;
 
-   Field *field;
-   if ((field = lookup_id(Object, FieldID, &Object))) {
+   if (auto field = lookup_id(Object, FieldID, &Object)) {
       if (!(field->Flags & FD_ARRAY)) return log.warning(ERR_FieldTypeMismatch);
 
       if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
@@ -168,9 +167,7 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
    ULONG type = FieldID>>32;
    FieldID = FieldID & 0xffffffff;
 
-   ERROR error;
-   Field *field;
-   if ((field = lookup_id(Object, FieldID, &Object))) {
+   if (auto field = lookup_id(Object, FieldID, &Object)) {
       // Validation
 
       if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
@@ -186,37 +183,35 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
 
       Object->threadLock();
 
+      ERROR error;
       va_list list;
       va_start(list, FieldID);
 
          if (type & (FD_POINTER|FD_STRING|FD_FUNCTION|FD_VARIABLE)) {
             error = field->WriteValue(Object, field, type, va_arg(list, APTR), 0);
          }
+         else if (type & (FD_DOUBLE|FD_FLOAT)) {
+            DOUBLE value = va_arg(list, DOUBLE);
+            error = field->WriteValue(Object, field, type, &value, 1);
+         }
+         else if (type & FD_LARGE) {
+            LARGE value = va_arg(list, LARGE);
+            error = field->WriteValue(Object, field, type, &value, 1);
+         }
          else {
-            if (type & (FD_DOUBLE|FD_FLOAT)) {
-               DOUBLE value = va_arg(list, DOUBLE);
-               error = field->WriteValue(Object, field, type, &value, 1);
-            }
-            else if (type & FD_LARGE) {
-               LARGE value = va_arg(list, LARGE);
-               error = field->WriteValue(Object, field, type, &value, 1);
-            }
-            else {
-               LONG value = va_arg(list, LONG);
-               error = field->WriteValue(Object, field, type, &value, 1);
-            }
+            LONG value = va_arg(list, LONG);
+            error = field->WriteValue(Object, field, type, &value, 1);
          }
 
       va_end(list);
 
       Object->threadRelease();
+      return error;
    }
    else {
       log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), Object->className());
-      error = ERR_UnsupportedField;
+      return ERR_UnsupportedField;
    }
-
-   return error;
 }
 
 /*****************************************************************************
@@ -568,8 +563,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
             error = Field->WriteValue(Object, Field, FDF_OBJECTID, &object_id, 0);
          }
          else {
-            OBJECTPTR target;
-            if ((target = GetObjectPtr(object_id))) {
+            if (auto target = GetObjectPtr(object_id)) {
                error = Field->WriteValue(Object, Field, FDF_POINTER, target, 0);
             }
             else error = ERR_Search;

@@ -857,7 +857,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
       <param type="ULONG" name="FieldID">The 'FID' number to lookup.</param>
-      <param type="OBJECTPTR *" name="Source">(Optional) The object that represents the field is returned here (sometimes a field may belong to a child of the queried object).</param>
+      <param type="OBJECTPTR *" name="Source">(Optional) The object that represents the field is returned here (in case a field belongs to an integrated child object).</param>
     </input>
     <description>
 <p>The FindField() function checks if an object supports a specified field by scanning its class descriptor for a FieldID. If a matching field is declared, its descriptor is returned.  For example:</p>
