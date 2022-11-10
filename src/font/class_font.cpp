@@ -116,10 +116,7 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
 
       if (!(--Self->Cache->Usage)) {
          log.trace("Font face usage reduced to %d.", Self->Cache->Usage);
-
-         if (Self->Cache->Face) FT_Done_Face(Self->Cache->Face);
-
-         glCache.erase(Self->Cache->Path);
+         glCache.erase(Self->Cache->Path); // This will trigger the item's destructor
       }
    }
 

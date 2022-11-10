@@ -123,7 +123,8 @@ public:
 
    ~font_cache() {
       parasol::Log log;
-      log.msg("Font cache '%s' terminated.", Path.c_str());
+      FT_Done_Face(Face);
+      log.trace("Terminated cache entry for '%s'", Path.c_str());
    }
 };
 
