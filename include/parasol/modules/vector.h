@@ -604,12 +604,14 @@ struct MergeSource {
 #define MT_RFSelectLinear -22
 #define MT_RFSelectIdentity -23
 #define MT_RFSelectDiscrete -24
+#define MT_RFSelectInvert -25
 
 struct rfSelectGamma { LONG Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent;  };
 struct rfSelectTable { LONG Component; DOUBLE * Values; LONG Size;  };
 struct rfSelectLinear { LONG Component; DOUBLE Slope; DOUBLE Intercept;  };
 struct rfSelectIdentity { LONG Component;  };
 struct rfSelectDiscrete { LONG Component; DOUBLE * Values; LONG Size;  };
+struct rfSelectInvert { LONG Component;  };
 
 INLINE ERROR rfSelectGamma(APTR Ob, LONG Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) {
    struct rfSelectGamma args = { Component, Amplitude, Offset, Exponent };
@@ -634,6 +636,11 @@ INLINE ERROR rfSelectIdentity(APTR Ob, LONG Component) {
 INLINE ERROR rfSelectDiscrete(APTR Ob, LONG Component, DOUBLE * Values, LONG Size) {
    struct rfSelectDiscrete args = { Component, Values, Size };
    return(Action(MT_RFSelectDiscrete, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR rfSelectInvert(APTR Ob, LONG Component) {
+   struct rfSelectInvert args = { Component };
+   return(Action(MT_RFSelectInvert, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -1403,10 +1410,13 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_EXPONENT 0xd4513596
 #define SVF_SLOPE 0x105d2208
 #define SVF_INTERCEPT 0x12b3db33
+#define SVF_INVERT 0x04d5a7bd
 #define SVF_IDENTITY 0x68144eaf
 #define SVF_LINEAR 0x0b7641e0
 #define SVF_TABLE 0x1068fa8d
 #define SVF_GAMMA 0x0f7deae8
 #define SVF_DISCRETE 0x6b8e5778
+#define SVF_DIFFUSECONSTANT 0x4f5eb9d5
+#define SVF_SURFACESCALE 0xbd475ab6
 
 #endif

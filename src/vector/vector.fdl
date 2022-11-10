@@ -422,7 +422,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     { id=21, name="SelectTable" },
     { id=22, name="SelectLinear" },
     { id=23, name="SelectIdentity" },
-    { id=24, name="SelectDiscrete" }
+    { id=24, name="SelectDiscrete" },
+    { id=25, name="SelectInvert" }
   })
 
   class("ImageFX",        { src="filters/filter_image.cpp", output="filters/filter_image_def.c", comment="Image filter support class." })
@@ -1032,9 +1033,12 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "EXPONENT",
     "SLOPE",
     "INTERCEPT",
+    "INVERT",
     "IDENTITY",
     "LINEAR",
     "TABLE",
     "GAMMA",
-    "DISCRETE")
+    "DISCRETE",
+    "DIFFUSECONSTANT",
+    "SURFACESCALE")
 end)
