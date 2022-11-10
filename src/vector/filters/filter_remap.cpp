@@ -5,6 +5,9 @@ RemapFX: Provides pixel remapping; equivalent to feComponentTransfer in SVG.
 
 The RemapFX class provides an implementation of the feComponentTransfer functionality in SVG.
 
+Internally the pixel rendering process is implemented using pixel lookup tables.  As such this particular effect
+carries minimal overhead compared to most other effect classes.
+
 -END-
 
 *********************************************************************************************************************/
@@ -16,7 +19,8 @@ enum RFT {
    RFT_DISCRETE,
    RFT_LINEAR,
    RFT_GAMMA,
-   RFT_TABLE
+   RFT_TABLE,
+   RFT_INVERT
 };
 
 class Component {
@@ -238,6 +242,44 @@ static ERROR REMAPFX_SelectGamma(objRemapFX *Self, struct rfSelectGamma *Args)
       }
 
       log.extmsg("%s Amplitude: %.2f, Exponent: %.2f, Offset: %.2f", cmp->Name.c_str(), cmp->Amplitude, cmp->Exponent, cmp->Offset);
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_Args);
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+SelectInvert: Apply the invert function to a pixel component.
+
+This method will apply the invert function to a selected RGBA pixel component.  The linear function is written as
+`C' = 1.0 - C`.
+
+This feature is not compatible with SVG.
+
+-INPUT-
+int(CMP) Component: The pixel component to which the linear function must be applied.
+
+-RESULT-
+Okay:
+NullArgs:
+
+*********************************************************************************************************************/
+
+static ERROR REMAPFX_SelectInvert(objRemapFX *Self, struct rfSelectInvert *Args)
+{
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   if (auto cmp = Self->getComponent(Args->Component)) {
+      cmp->Type = RFT_INVERT;
+
+      for (size_t i=0; i < sizeof(cmp->Lookup); i++) {
+         cmp->Lookup[i] = 255 - i;
+      }
+
+      log.extmsg("%s", cmp->Name.c_str());
       return ERR_Okay;
    }
    else return log.warning(ERR_Args);

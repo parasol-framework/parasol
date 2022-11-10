@@ -14,7 +14,8 @@
     <include>modules/remapfx.h</include>
     <copyright>Paul Manias © 2010-2022</copyright>
     <description>
-<p>The RemapFX class provides an implementation of the feComponentTransfer functionality in SVG.</p></description>
+<p>The RemapFX class provides an implementation of the feComponentTransfer functionality in SVG.</p>
+<p>Internally the pixel rendering process is implemented using pixel lookup tables.  As such this particular effect carries minimal overhead compared to most other effect classes.</p></description>
     <source>
       <file path="filters/">filter_remap.cpp</file>
     </source>
@@ -67,6 +68,18 @@
       </input>
       <description>
 <p>Selecting the identity function for a pixel component will render it as its original value.  By default, all pixels will use this function if no other option is chosen.</p>
+      </description>
+    </method>
+
+    <method>
+      <name>SelectInvert</name>
+      <comment>Apply the invert function to a pixel component.</comment>
+      <prototype>ERROR rfSelectInvert(OBJECTPTR Object, LONG Component)</prototype>
+      <input>
+        <param type="LONG" name="Component" lookup="CMP">The pixel component to which the linear function must be applied.</param>
+      </input>
+      <description>
+<p>This method will apply the invert function to a selected RGBA pixel component.  The linear function is written as <code>C' = 1.0 - C</code>.</p>
       </description>
     </method>
 
