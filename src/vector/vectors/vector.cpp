@@ -65,12 +65,10 @@ void debug_tree(extVector *Vector, LONG &Level)
 //********************************************************************************************************************
 // Determine the parent object, based on the owner.
 
-void set_parent(extVector *Self, OBJECTID OwnerID)
+static ERROR set_parent(extVector *Self, OBJECTID OwnerID)
 {
-   // Objects that don't belong to the Vector class will be ignored (i.e. they won't appear in the tree).
-
    CLASSID class_id = GetClassID(OwnerID);
-   if ((class_id != ID_VECTORSCENE) and (class_id != ID_VECTOR)) return;
+   if ((class_id != ID_VECTORSCENE) and (class_id != ID_VECTOR)) return ERR_UnsupportedOwner;
 
    Self->Parent = GetObjectPtr(OwnerID);
 
@@ -105,6 +103,9 @@ void set_parent(extVector *Self, OBJECTID OwnerID)
 
       Self->Scene = (objVectorScene *)Self->Parent;
    }
+   else return ERR_UnsupportedOwner;
+
+   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -244,7 +245,7 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
    }
    if (Self->Child) Self->Child->Parent = NULL;
 
-   if ((Self->Scene) and (!(Self->Scene->collecting()))) {
+   if ((Self->Scene) and (!Self->Scene->collecting())) {
       if ((Self->ParentView) and (Self->ResizeSubscription) and (((extVectorScene *)Self->Scene)->ResizeSubscriptions.contains(Self->ParentView))) {
          auto sub = ((extVectorScene *)Self->Scene)->ResizeSubscriptions[Self->ParentView];
          sub.erase(Self);
@@ -428,47 +429,17 @@ static ERROR VECTOR_Init(extVector *Self, APTR Void)
       return ERR_Failed;
    }
 
-   if (!Self->Parent) set_parent(Self, Self->ownerID());
+   if (!Self->Parent) {
+      if (auto error = set_parent(Self, Self->ownerID())) return log.warning(error);
+   }
 
-   log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent ? Self->Parent->UID : 0,
+   log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent->UID,
       Self->Prev ? Self->Prev->UID : 0, Self->Next ? Self->Next->UID : 0, Self);
 
-   if (auto parent = Self->Parent) {
-      if (parent->ClassID IS ID_VECTOR) {
-         auto parent_shape = (extVector *)parent;
-         Self->Scene = parent_shape->Scene;
-
-         // Check if this object is already present in the parent's branch.
-         auto scan = parent_shape->Child;
-         while (scan) {
-            if (scan IS Self) break;
-            scan = (extVector *)scan->Next;
-         }
-
-         if (!scan) {
-            Self->Prev = NULL;
-            Self->Next = NULL;
-            if (parent_shape->Child) {
-               parent_shape->Child->Prev = Self;
-               parent_shape->Child->Parent = NULL;
-               Self->Next = parent_shape->Child;
-            }
-            parent_shape->Child = Self;
-            Self->Parent = parent_shape;
-         }
-      }
-      else if (parent->ClassID IS ID_VECTORSCENE) {
-         Self->Scene = (objVectorScene *)parent;
-      }
-      else return log.warning(ERR_UnsupportedOwner);
-   }
-   else return log.warning(ERR_UnsupportedOwner);
-
-   // Find the nearest parent viewport.
-
-   Self->ParentView = get_parent_view(Self);
+   Self->ParentView = get_parent_view(Self); // Find the nearest parent viewport.
 
    // Reapply the filter if it couldn't be set prior to initialisation.
+
    if ((!Self->Filter) and (Self->FilterString)) {
       SetString(Self, FID_Filter, Self->FilterString);
    }
@@ -722,8 +693,8 @@ static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
       if (!Self->Prev) return ERR_Okay; // Return if the vector is at the top of its branch
 
       LONG i = -Args->Position;
-      Self->Prev->Next =  (extVector *)Self->Next;
-      if (Self->Next) Self->Next->Prev =  (extVector *)Self->Prev;
+      Self->Prev->Next = Self->Next;
+      if (Self->Next) Self->Next->Prev = Self->Prev;
       auto scan = Self;
       while ((i > 0) and (scan->Prev)) {
          scan = (extVector *)scan->Prev;
@@ -743,7 +714,7 @@ static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
       LONG i = Args->Position;
       if (Self->Prev) Self->Prev->Next = Self->Next;
       Self->Next->Prev = Self->Prev;
-      extVector *scan = Self;
+      auto scan = Self;
       while ((i > 0) and (scan->Next)) {
          scan = (extVector *)scan->Next;
          i--;
