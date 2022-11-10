@@ -436,7 +436,7 @@ static ERROR VECTOR_Init(extVector *Self, APTR Void)
    log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent->UID,
       Self->Prev ? Self->Prev->UID : 0, Self->Next ? Self->Next->UID : 0, Self);
 
-   Self->ParentView = get_parent_view(Self); // Find the nearest parent viewport.
+   Self->ParentView = get_parent_view(Self); // Locate the nearest parent viewport.
 
    // Reapply the filter if it couldn't be set prior to initialisation.
 
