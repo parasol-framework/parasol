@@ -605,6 +605,7 @@ struct MergeSource {
 #define MT_RFSelectIdentity -23
 #define MT_RFSelectDiscrete -24
 #define MT_RFSelectInvert -25
+#define MT_RFSelectMask -26
 
 struct rfSelectGamma { LONG Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent;  };
 struct rfSelectTable { LONG Component; DOUBLE * Values; LONG Size;  };
@@ -612,6 +613,7 @@ struct rfSelectLinear { LONG Component; DOUBLE Slope; DOUBLE Intercept;  };
 struct rfSelectIdentity { LONG Component;  };
 struct rfSelectDiscrete { LONG Component; DOUBLE * Values; LONG Size;  };
 struct rfSelectInvert { LONG Component;  };
+struct rfSelectMask { LONG Component; LONG Mask;  };
 
 INLINE ERROR rfSelectGamma(APTR Ob, LONG Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) {
    struct rfSelectGamma args = { Component, Amplitude, Offset, Exponent };
@@ -641,6 +643,11 @@ INLINE ERROR rfSelectDiscrete(APTR Ob, LONG Component, DOUBLE * Values, LONG Siz
 INLINE ERROR rfSelectInvert(APTR Ob, LONG Component) {
    struct rfSelectInvert args = { Component };
    return(Action(MT_RFSelectInvert, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR rfSelectMask(APTR Ob, LONG Component, LONG Mask) {
+   struct rfSelectMask args = { Component, Mask };
+   return(Action(MT_RFSelectMask, (OBJECTPTR)Ob, &args));
 }
 
 

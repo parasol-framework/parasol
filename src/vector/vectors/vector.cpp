@@ -63,6 +63,28 @@ void debug_tree(extVector *Vector, LONG &Level)
 }
 
 //********************************************************************************************************************
+
+static void validate_tree(extVector *Vector) __attribute__((unused));
+static void validate_tree(extVector *Vector)
+{
+   parasol::Log log(__FUNCTION__);
+
+   for (auto v=Vector; v; v=(extVector *)v->Next) {
+      if ((v->Next) and (v->Next->Prev != v)) {
+         log.warning("Invalid coupling between %d -> %d (%p); Parent: %d", v->UID, v->Next->UID, v->Next->Prev, v->Parent->UID);
+      }
+
+      if ((v->Prev) and (v->Prev->Next != v)) {
+         log.warning("Invalid coupling between %d (%p) <- %d; Parent: %d", v->Prev->UID, v->Prev->Next, v->UID, v->Parent->UID);
+      }
+
+      if ((v->ClassID IS ID_VECTOR) and (v->Child)) {
+         validate_tree((extVector *)v->Child);
+      }
+   }
+}
+
+//********************************************************************************************************************
 // Determine the parent object, based on the owner.
 
 static ERROR set_parent(extVector *Self, OBJECTID OwnerID)
@@ -436,7 +458,7 @@ static ERROR VECTOR_Init(extVector *Self, APTR Void)
    log.trace("Parent: #%d, Siblings: #%d #%d, Vector: %p", Self->Parent->UID,
       Self->Prev ? Self->Prev->UID : 0, Self->Next ? Self->Next->UID : 0, Self);
 
-   Self->ParentView = get_parent_view(Self); // Find the nearest parent viewport.
+   Self->ParentView = get_parent_view(Self); // Locate the nearest parent viewport.
 
    // Reapply the filter if it couldn't be set prior to initialisation.
 
@@ -688,43 +710,43 @@ static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
    parasol::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args->Position) return ERR_Okay;
 
+   auto scan = Self;
    if (Args->Position < 0) { // Move backward through the stack.
-      if (!Self->Prev) return ERR_Okay; // Return if the vector is at the top of its branch
+      for (LONG i=-Args->Position; (scan->Prev) and (i); i--) scan = (extVector *)scan->Prev;
+      if (scan IS Self) return ERR_Okay;
 
-      LONG i = -Args->Position;
-      Self->Prev->Next = Self->Next;
-      if (Self->Next) Self->Next->Prev = Self->Prev;
-      auto scan = Self;
-      while ((i > 0) and (scan->Prev)) {
-         scan = (extVector *)scan->Prev;
-         i--;
-      }
-      Self->Next = scan;
-      Self->Prev = scan->Prev;
-      if (!Self->Prev) {
-         if (scan->Parent->ClassID IS ID_VECTOR) ((extVector *)scan->Parent)->Child = Self;
-         else if (scan->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)scan->Parent)->Viewport = (objVectorViewport *)Self;
-         Self->Parent = scan->Parent;
-      }
-   }
-   else if (Args->Position > 0) { // Move forward through the stack.
-      if (!Self->Next) return ERR_Okay;
+      // Patch up either side of the current position.
 
-      LONG i = Args->Position;
       if (Self->Prev) Self->Prev->Next = Self->Next;
-      Self->Next->Prev = Self->Prev;
-      auto scan = Self;
-      while ((i > 0) and (scan->Next)) {
-         scan = (extVector *)scan->Next;
-         i--;
+      if (Self->Next) Self->Next->Prev = Self->Prev;
+
+      Self->Prev = scan->Prev; // Vector is behind scan
+      Self->Next = scan;
+      scan->Prev = Self;
+
+      if (!Self->Prev) { // Reconfigure the parent's child relationship
+         if (Self->Parent->ClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
+         else if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
       }
-      if ((!Self->Prev) and (scan != Self)) {
+      else Self->Prev->Next = Self;
+   }
+   else { // Move forward through the stack.
+      for (LONG i=Args->Position; (scan->Next) and (i); i--) scan = (extVector *)scan->Next;
+      if (scan IS Self) return ERR_Okay;
+
+      if (Self->Prev) Self->Prev->Next = Self->Next;
+      if (Self->Next) Self->Next->Prev = Self->Prev;
+
+      if (!Self->Prev) {
          if (Self->Parent->ClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self->Next;
          else if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
       }
-      Self->Prev = scan;
+
+      Self->Prev = scan; // Vector is ahead of scan
       Self->Next = scan->Next;
+      if (Self->Next) Self->Next->Prev = Self;
       scan->Next = Self;
    }
 

@@ -20,7 +20,8 @@ enum RFT {
    RFT_LINEAR,
    RFT_GAMMA,
    RFT_TABLE,
-   RFT_INVERT
+   RFT_INVERT,
+   RFT_MASK
 };
 
 class Component {
@@ -252,16 +253,17 @@ static ERROR REMAPFX_SelectGamma(objRemapFX *Self, struct rfSelectGamma *Args)
 -METHOD-
 SelectInvert: Apply the invert function to a pixel component.
 
-This method will apply the invert function to a selected RGBA pixel component.  The linear function is written as
+This method will apply the invert function to a selected RGBA pixel component.  The function is written as
 `C' = 1.0 - C`.
 
 This feature is not compatible with SVG.
 
 -INPUT-
-int(CMP) Component: The pixel component to which the linear function must be applied.
+int(CMP) Component: The pixel component to which the function must be applied.
 
 -RESULT-
 Okay:
+Args:
 NullArgs:
 
 *********************************************************************************************************************/
@@ -290,16 +292,17 @@ static ERROR REMAPFX_SelectInvert(objRemapFX *Self, struct rfSelectInvert *Args)
 -METHOD-
 SelectLinear: Apply the linear function to a pixel component.
 
-This method will apply the linear function to a selected RGBA pixel component.  The linear function is written as
+This method will apply the linear function to a selected RGBA pixel component.  The function is written as
 `C' = (Slope * C) + Intercept`.
 
 -INPUT-
-int(CMP) Component: The pixel component to which the linear function must be applied.
+int(CMP) Component: The pixel component to which the function must be applied.
 double Slope: The slope of the linear function.
 double Intercept: The intercept of the linear function.
 
 -RESULT-
 Okay:
+Args:
 NullArgs:
 
 *********************************************************************************************************************/
@@ -330,10 +333,53 @@ static ERROR REMAPFX_SelectLinear(objRemapFX *Self, struct rfSelectLinear *Args)
 /*********************************************************************************************************************
 
 -METHOD-
+SelectMask: Apply the mask function to a pixel component.
+
+This method will apply the mask function to a selected RGBA pixel component.  The function is written as
+`C' = C & Mask`.  This algorithm is particularly useful for lowering the bit depth of colours, e.g. a value of `0xf0`
+will reduce 8 bit colours to 4 bit.
+
+This feature is not compatible with SVG.
+
+-INPUT-
+int(CMP) Component: The pixel component to which the function must be applied.
+int Mask: The bit mask to be AND'd with each value.
+
+-RESULT-
+Okay:
+Args:
+NullArgs:
+
+*********************************************************************************************************************/
+
+static ERROR REMAPFX_SelectMask(objRemapFX *Self, struct rfSelectMask *Args)
+{
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   if (auto cmp = Self->getComponent(Args->Component)) {
+      cmp->Type = RFT_MASK;
+
+      for (size_t i=0; i < sizeof(cmp->Lookup); i++) {
+         cmp->Lookup[i] = i & Args->Mask;
+      }
+
+      log.extmsg("%s, Mask: $%.2x", cmp->Name.c_str(), Args->Mask);
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_Args);
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
 SelectTable: Apply the table function to a pixel component.
 
 This method will apply the table function to a selected RGBA pixel component.  A list of values is required with a
 minimum size of 1.
+
+If a single table value is supplied then the component will be output as a constant with no interpolation applied.
 
 -INPUT-
 int(CMP) Component: The pixel component to which the table function must be applied.
@@ -342,6 +388,7 @@ arraysize Size: Total number of elements in the value list.
 
 -RESULT-
 Okay:
+Args:
 NullArgs:
 
 *********************************************************************************************************************/

@@ -6,6 +6,7 @@ FDEF maSelectLinear[] = { { "Component", FD_LONG }, { "Slope", FD_DOUBLE }, { "I
 FDEF maSelectIdentity[] = { { "Component", FD_LONG }, { 0, 0 } };
 FDEF maSelectDiscrete[] = { { "Component", FD_LONG }, { "Values", FD_ARRAY|FD_DOUBLE }, { "Size", FD_LONG|FD_ARRAYSIZE }, { 0, 0 } };
 FDEF maSelectInvert[] = { { "Component", FD_LONG }, { 0, 0 } };
+FDEF maSelectMask[] = { { "Component", FD_LONG }, { "Mask", FD_LONG }, { 0, 0 } };
 
 static const struct MethodArray clRemapFXMethods[] = {
    { -20, (APTR)REMAPFX_SelectGamma, "SelectGamma", maSelectGamma, sizeof(struct rfSelectGamma) },
@@ -14,6 +15,7 @@ static const struct MethodArray clRemapFXMethods[] = {
    { -23, (APTR)REMAPFX_SelectIdentity, "SelectIdentity", maSelectIdentity, sizeof(struct rfSelectIdentity) },
    { -24, (APTR)REMAPFX_SelectDiscrete, "SelectDiscrete", maSelectDiscrete, sizeof(struct rfSelectDiscrete) },
    { -25, (APTR)REMAPFX_SelectInvert, "SelectInvert", maSelectInvert, sizeof(struct rfSelectInvert) },
+   { -26, (APTR)REMAPFX_SelectMask, "SelectMask", maSelectMask, sizeof(struct rfSelectMask) },
    { 0, 0, 0, 0, 0 }
 };
 
