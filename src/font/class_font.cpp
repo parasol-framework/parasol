@@ -111,7 +111,7 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
 
    // Manage the vector font cache
 
-   if (Self->Cache) {
+   if (Self->Cache.get()) {
       unload_glyph_cache(Self);
 
       if (!(--Self->Cache->Usage)) {
@@ -119,10 +119,7 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
 
          if (Self->Cache->Face) FT_Done_Face(Self->Cache->Face);
 
-         CSTRING path = Self->Cache->Path.c_str();
-         VarSet(glCache, path, NULL, 0);
-
-         Self->Cache = NULL;
+         glCache.erase(Self->Cache->Path);
       }
    }
 
@@ -136,6 +133,8 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
       }
       Self->String = NULL;
    }
+
+   Self->~extFont();
 
    return ERR_Okay;
 }
@@ -354,6 +353,8 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
 static ERROR FONT_NewObject(extFont *Self, APTR Void)
 {
+   new (Self) extFont;
+
    update_dpi(); // A good time to check the DPI is whenever a new font is created.
 
    Self->TabSize         = 8;
@@ -611,7 +612,7 @@ a font that has been loaded by the FreeType library (FT_Face).
 
 static ERROR GET_FreeTypeFace(extFont *Self, APTR *Handle)
 {
-   if (Self->Cache) *Handle = Self->Cache->Face;
+   if (Self->Cache.get()) *Handle = Self->Cache->Face;
    else *Handle = NULL;
    return ERR_Okay;
 }
@@ -829,7 +830,7 @@ static ERROR SET_Point(extFont *Self, Variable *Value)
    if (value < 1) value = 1;
 
    if (Self->initialised()) {
-      if (Self->Cache) {
+      if (Self->Cache.get()) {
          unload_glyph_cache(Self); // Remove any existing glyph reference
          Self->Point = value;
          cache_truetype_font(Self, NULL);
@@ -1463,12 +1464,13 @@ static ERROR draw_vector_font(extFont *Self)
 static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
 {
    parasol::Log log(__FUNCTION__);
-   font_cache *fc;
    FT_Open_Args openargs;
    ERROR error;
 
    if (Path) { // Check the cache.
-      if (VarGet(glCache, Path, &fc, NULL) != ERR_Okay) {
+      std::string sp(Path);
+      if (glCache.contains(sp)) Self->Cache = glCache[sp];
+      else {
          log.msg("Creating new cache for font '%s'", Path);
 
          FT_Face face;
@@ -1485,17 +1487,14 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
             return log.warning(ERR_InvalidData);
          }
 
-         char buffer[sizeof(font_cache)];
-         fc = (font_cache *)VarSet(glCache, Path, buffer, sizeof(font_cache));
-         new ((APTR)fc) font_cache(std::string(Path), face);
+         Self->Cache = glCache[sp] = std::make_shared<font_cache>(sp, face);
       }
-
-      Self->Cache = fc;
    }
    else { // If no path is provided, the font is already cached and requires a new point size.
       log.trace("Recalculating size of currently loaded font.");
-      fc = Self->Cache;
    }
+
+   font_cache *fc = Self->Cache.get();
 
    if ((Self->Height) and (!Self->Point)) {
       // If the user has defined the font size in pixels, we need to convert it to a point size.
@@ -2113,7 +2112,7 @@ static void unload_glyph_cache(extFont *Font)
 
    CACHE_LOCK lock(glCacheMutex);
 
-   if ((Font->Cache) and (Font->Cache->Glyphs.contains(Font->Point))) {
+   if ((Font->Cache.get()) and (Font->Cache->Glyphs.contains(Font->Point))) {
       auto &glyphs = Font->Cache->Glyphs.at(Font->Point);
       glyphs.Usage--;
       if (!glyphs.Usage) {
