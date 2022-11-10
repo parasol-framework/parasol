@@ -559,7 +559,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_component_xfer(extSVG *Self, objXML *XML, svgState *State, objVectorFilter *Filter, const XMLTag *Tag)
+static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -581,60 +581,63 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objXML *XML, svgState *State,
       }
    }
 
-   if (auto child = Tag->Child) {
-      for (child = Tag->Child; child; child = child->Next) {
-         if (!StrCompare("feFunc?", child->Attrib->Name, 0, STR_WILDCARD)) {
-            LONG cmp = 0;
-            switch(child->Attrib->Name[6]) {
-               case 'R': cmp = CMP_RED; break;
-               case 'G': cmp = CMP_GREEN; break;
-               case 'B': cmp = CMP_BLUE; break;
-               case 'A': cmp = CMP_ALPHA; break;
-               default:
-                  log.warning("Invalid feComponentTransfer element %s", child->Attrib->Name);
-                  return ERR_Failed;
-            }
-
-            ULONG type = 0;
-            DOUBLE amp = 1.0, offset = 0, exp = 1.0, slope = 1.0, intercept = 0.0;
-            std::vector<DOUBLE> values;
-            for (LONG a=1; a < child->TotalAttrib; a++) {
-               switch(StrHash(child->Attrib[a].Name, FALSE)) {
-                  case SVF_TYPE:        type = StrHash(child->Attrib[a].Value, FALSE); break;
-                  case SVF_AMPLITUDE:   read_numseq(child->Attrib[a].Value, &amp, TAGEND); break;
-                  case SVF_INTERCEPT:   read_numseq(child->Attrib[a].Value, &intercept, TAGEND); break;
-                  case SVF_SLOPE:       read_numseq(child->Attrib[a].Value, &slope, TAGEND); break;
-                  case SVF_EXPONENT:    read_numseq(child->Attrib[a].Value, &exp, TAGEND); break;
-                  case SVF_OFFSET:      read_numseq(child->Attrib[a].Value, &offset, TAGEND); break;
-                  case SVF_TABLEVALUES: {
-                     CSTRING val = child->Attrib[a].Value;
-                     if (val) {
-                        for (LONG i=0; (*val) and (i < 64); i++) {
-                           DOUBLE dbl;
-                           val = read_numseq(val, &dbl, TAGEND);
-                           values.push_back(dbl);
-                        }
-                     }
-                     break;
-                  }
-                  default: log.warning("Unknown %s attribute %s", child->Attrib->Name, child->Attrib[a].Name); break;
-               }
-            }
-
-            switch(type) {
-               case SVF_TABLE:    rfSelectTable(fx, cmp, values.data(), values.size()); break;
-               case SVF_LINEAR:   rfSelectLinear(fx, cmp, slope, intercept);  break;
-               case SVF_GAMMA:    rfSelectGamma(fx, cmp, amp, offset, exp);  break;
-               case SVF_DISCRETE: rfSelectDiscrete(fx, cmp, values.data(), values.size());  break;
-               case SVF_IDENTITY: rfSelectIdentity(fx, cmp); break;
-               default:
-                  log.warning("feComponentTransfer node failed to specify its type.");
-                  return ERR_UndefinedField;
-            }
-
+   XMLTag *child;
+   for (child = Tag->Child; child; child = child->Next) {
+      if (!StrCompare("feFunc?", child->Attrib->Name, 0, STR_WILDCARD)) {
+         LONG cmp = 0;
+         switch(child->Attrib->Name[6]) {
+            case 'R': cmp = CMP_RED; break;
+            case 'G': cmp = CMP_GREEN; break;
+            case 'B': cmp = CMP_BLUE; break;
+            case 'A': cmp = CMP_ALPHA; break;
+            default:
+               log.warning("Invalid feComponentTransfer element %s", child->Attrib->Name);
+               return ERR_Failed;
          }
-         else log.warning("Unrecognised feComponentTransfer child node '%s'", child->Attrib->Name);
+
+         ULONG type = 0;
+         LONG mask = 0xff;
+         DOUBLE amp = 1.0, offset = 0, exp = 1.0, slope = 1.0, intercept = 0.0;
+         std::vector<DOUBLE> values;
+         for (LONG a=1; a < child->TotalAttrib; a++) {
+            switch(StrHash(child->Attrib[a].Name, FALSE)) {
+               case SVF_TYPE:        type = StrHash(child->Attrib[a].Value, FALSE); break;
+               case SVF_AMPLITUDE:   read_numseq(child->Attrib[a].Value, &amp, TAGEND); break;
+               case SVF_INTERCEPT:   read_numseq(child->Attrib[a].Value, &intercept, TAGEND); break;
+               case SVF_SLOPE:       read_numseq(child->Attrib[a].Value, &slope, TAGEND); break;
+               case SVF_EXPONENT:    read_numseq(child->Attrib[a].Value, &exp, TAGEND); break;
+               case SVF_OFFSET:      read_numseq(child->Attrib[a].Value, &offset, TAGEND); break;
+               case SVF_MASK:        mask = StrToInt(child->Attrib[a].Value); break;
+               case SVF_TABLEVALUES: {
+                  CSTRING val = child->Attrib[a].Value;
+                  if (val) {
+                     for (LONG i=0; (*val) and (i < 64); i++) {
+                        DOUBLE dbl;
+                        val = read_numseq(val, &dbl, TAGEND);
+                        values.push_back(dbl);
+                     }
+                  }
+                  break;
+               }
+               default: log.warning("Unknown %s attribute %s", child->Attrib->Name, child->Attrib[a].Name); break;
+            }
+         }
+
+         switch(type) {
+            case SVF_TABLE:    rfSelectTable(fx, cmp, values.data(), values.size()); break;
+            case SVF_LINEAR:   rfSelectLinear(fx, cmp, slope, intercept);  break;
+            case SVF_GAMMA:    rfSelectGamma(fx, cmp, amp, offset, exp);  break;
+            case SVF_DISCRETE: rfSelectDiscrete(fx, cmp, values.data(), values.size());  break;
+            case SVF_IDENTITY: rfSelectIdentity(fx, cmp); break;
+            case SVF_INVERT:   rfSelectInvert(fx, cmp); break;
+            case SVF_MASK:     rfSelectMask(fx, cmp, mask); break;
+            default:
+               log.warning("feComponentTransfer node failed to specify its type.");
+               return ERR_UndefinedField;
+         }
+
       }
+      else log.warning("Unrecognised feComponentTransfer child node '%s'", child->Attrib->Name);
    }
 
    if (!acInit(fx)) return ERR_Okay;
