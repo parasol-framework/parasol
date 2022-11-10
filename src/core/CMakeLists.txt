@@ -26,7 +26,7 @@ set (FUNCTIONS  # Full paths are required for add_custom_command() dependencies 
    "${CMAKE_CURRENT_SOURCE_DIR}/fs_volumes.cpp")
 
 SET (CORE_DEFS
-   "${CMAKE_CURRENT_SOURCE_DIR}/classes/class_compressed_stream_def.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/compression/class_compressed_stream_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/classes/class_config_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/classes/class_file_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/classes/class_script_def.c"
@@ -101,8 +101,6 @@ target_sources (core PRIVATE
    "lib_newobject.cpp"
    "lib_semaphores.cpp"
    "lib_strings.cpp"
-   "classes/class_archive.cpp"
-   "classes/class_compressed_stream.cpp"
    "classes/class_config.cpp"
    "classes/class_file.cpp"
    "classes/class_metaclass.cpp"

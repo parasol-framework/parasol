@@ -47,7 +47,6 @@ is recommended as the default naming format.
 
 *****************************************************************************/
 
-#define PRV_CONFIG
 #include "../defs.h"
 #include <parasol/main.h>
 
@@ -58,11 +57,11 @@ class FilterConfig {
    std::list<std::string> values;
 };
 
-static ERROR GET_KeyFilter(objConfig *, CSTRING *);
-static ERROR GET_GroupFilter(objConfig *, CSTRING *);
-static ERROR GET_TotalGroups(objConfig *, LONG *);
+static ERROR GET_KeyFilter(extConfig *, CSTRING *);
+static ERROR GET_GroupFilter(extConfig *, CSTRING *);
+static ERROR GET_TotalGroups(extConfig *, LONG *);
 
-static ERROR CONFIG_SaveSettings(objConfig *, APTR);
+static ERROR CONFIG_SaveSettings(extConfig *, APTR);
 
 static const FieldDef clFlags[] = {
    { "AutoSave",    CNF_AUTO_SAVE },
@@ -78,10 +77,10 @@ static const FieldDef clFlags[] = {
 //****************************************************************************
 
 static bool check_for_key(CSTRING);
-static ERROR parse_config(objConfig *, CSTRING);
-static ConfigKeys * find_group_wild(objConfig *Self, CSTRING Group);
-static void apply_key_filter(objConfig *, CSTRING);
-static void apply_group_filter(objConfig *, CSTRING);
+static ERROR parse_config(extConfig *, CSTRING);
+static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group);
+static void apply_key_filter(extConfig *, CSTRING);
+static void apply_group_filter(extConfig *, CSTRING);
 static class FilterConfig parse_filter(std::string, bool);
 static void merge_groups(ConfigGroups &Dest, ConfigGroups &Source);
 
@@ -120,7 +119,7 @@ T next_group(T Data, std::string &GroupName)
 
 //****************************************************************************
 
-static std::pair<std::string, std::map<std::string, std::string>> * find_group(objConfig *Self, std::string GroupName)
+static std::pair<std::string, std::map<std::string, std::string>> * find_group(extConfig *Self, std::string GroupName)
 {
    for (auto scan = Self->Groups->begin(); scan != Self->Groups->end(); scan++) {
       if (!scan->first.compare(GroupName)) return &(*scan);
@@ -130,7 +129,7 @@ static std::pair<std::string, std::map<std::string, std::string>> * find_group(o
 
 //****************************************************************************
 
-static ULONG calc_crc(objConfig *Self)
+static ULONG calc_crc(extConfig *Self)
 {
    ULONG crc = 0;
    for (auto& [group, keys] : Self->Groups[0]) {
@@ -150,7 +149,7 @@ static ULONG calc_crc(objConfig *Self)
 // Note that multiple files can be specified by separating each file path with a pipe.  This allows you to merge
 // many configuration files into one object.
 
-static ERROR parse_file(objConfig *Self, CSTRING Path)
+static ERROR parse_file(extConfig *Self, CSTRING Path)
 {
    ERROR error = ERR_Okay;
    while ((*Path) and (!error)) {
@@ -193,7 +192,7 @@ Clear: Clears all configuration data.
 -END-
 *****************************************************************************/
 
-static ERROR CONFIG_Clear(objConfig *Self, APTR Void)
+static ERROR CONFIG_Clear(extConfig *Self, APTR Void)
 {
    if (Self->Groups) { Self->Groups->clear(); }
    if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = NULL; }
@@ -210,7 +209,7 @@ be overwritten with new values.
 -END-
 *****************************************************************************/
 
-static ERROR CONFIG_DataFeed(objConfig *Self, struct acDataFeed *Args)
+static ERROR CONFIG_DataFeed(extConfig *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
@@ -247,7 +246,7 @@ Search
 
 *****************************************************************************/
 
-static ERROR CONFIG_DeleteKey(objConfig *Self, struct cfgDeleteKey *Args)
+static ERROR CONFIG_DeleteKey(extConfig *Self, struct cfgDeleteKey *Args)
 {
    parasol::Log log;
 
@@ -282,7 +281,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR CONFIG_DeleteGroup(objConfig *Self, struct cfgDeleteGroup *Args)
+static ERROR CONFIG_DeleteGroup(extConfig *Self, struct cfgDeleteGroup *Args)
 {
    if ((!Args) or (!Args->Group)) return ERR_NullArgs;
 
@@ -302,14 +301,14 @@ Flush: Diverts to #SaveSettings().
 -END-
 *****************************************************************************/
 
-static ERROR CONFIG_Flush(objConfig *Self, APTR Void)
+static ERROR CONFIG_Flush(extConfig *Self, APTR Void)
 {
    return CONFIG_SaveSettings(Self, NULL);
 }
 
 //****************************************************************************
 
-static ERROR CONFIG_Free(objConfig *Self, APTR Void)
+static ERROR CONFIG_Free(extConfig *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -360,7 +359,7 @@ NoData: There is no data loaded into the config object.
 
 *****************************************************************************/
 
-static ERROR CONFIG_GetGroupFromIndex(objConfig *Self, struct cfgGetGroupFromIndex *Args)
+static ERROR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfgGetGroupFromIndex *Args)
 {
    parasol::Log log;
 
@@ -375,7 +374,7 @@ static ERROR CONFIG_GetGroupFromIndex(objConfig *Self, struct cfgGetGroupFromInd
 
 //****************************************************************************
 
-static ERROR CONFIG_Init(objConfig *Self, APTR Void)
+static ERROR CONFIG_Init(extConfig *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -413,12 +412,12 @@ AccessObject: The source configuration object could not be accessed.
 
 *****************************************************************************/
 
-static ERROR CONFIG_Merge(objConfig *Self, struct cfgMerge *Args)
+static ERROR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
 {
    if ((!Args) or (!Args->Source)) return ERR_NullArgs;
    if (Args->Source->ClassID != ID_CONFIG) return ERR_Args;
 
-   auto src = (objConfig *)Args->Source;
+   auto src = (extConfig *)Args->Source;
    merge_groups(Self->Groups[0], src->Groups[0]);
    return ERR_Okay;
 }
@@ -443,7 +442,7 @@ File: Failed to load the source file.
 
 *****************************************************************************/
 
-static ERROR CONFIG_MergeFile(objConfig *Self, struct cfgMergeFile *Args)
+static ERROR CONFIG_MergeFile(extConfig *Self, struct cfgMergeFile *Args)
 {
    parasol::Log log;
 
@@ -451,7 +450,7 @@ static ERROR CONFIG_MergeFile(objConfig *Self, struct cfgMergeFile *Args)
 
    log.branch("%s", Args->Path);
 
-   objConfig *src;
+   extConfig *src;
    if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&src, FID_Path|TSTR, Args->Path, TAGEND)) {
       merge_groups(Self->Groups[0], src->Groups[0]);
       acFree(src);
@@ -462,7 +461,7 @@ static ERROR CONFIG_MergeFile(objConfig *Self, struct cfgMergeFile *Args)
 
 //****************************************************************************
 
-static ERROR CONFIG_NewObject(objConfig *Self, APTR Void)
+static ERROR CONFIG_NewObject(extConfig *Self, APTR Void)
 {
    Self->Groups = new ConfigGroups;
    return ERR_Okay;
@@ -495,7 +494,7 @@ Search: The requested configuration entry does not exist.
 
 *****************************************************************************/
 
-static ERROR CONFIG_ReadValue(objConfig *Self, struct cfgReadValue *Args)
+static ERROR CONFIG_ReadValue(extConfig *Self, struct cfgReadValue *Args)
 {
    parasol::Log log;
 
@@ -546,7 +545,7 @@ Search: The requested configuration entry does not exist.
 
 *****************************************************************************/
 
-static ERROR CONFIG_ReadIValue(objConfig *Self, struct cfgReadValue *Args)
+static ERROR CONFIG_ReadIValue(extConfig *Self, struct cfgReadValue *Args)
 {
    parasol::Log log;
 
@@ -583,7 +582,7 @@ This action will save the configuration data back to its original file source (a
 
 *****************************************************************************/
 
-static ERROR CONFIG_SaveSettings(objConfig *Self, APTR Void)
+static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -616,7 +615,7 @@ SaveToObject: Saves configuration data to an object, using standard config text 
 -END-
 *****************************************************************************/
 
-static ERROR CONFIG_SaveToObject(objConfig *Self, struct acSaveToObject *Args)
+static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
 
@@ -665,7 +664,7 @@ GetField: The Entries field could not be retrieved.
 
 *****************************************************************************/
 
-static ERROR CONFIG_Set(objConfig *Self, struct cfgSet *Args)
+static ERROR CONFIG_Set(extConfig *Self, struct cfgSet *Args)
 {
    if (!Args) return ERR_NullArgs;
    if ((!Args->Group) or (!Args->Group[0])) return ERR_NullArgs;
@@ -682,7 +681,7 @@ Sort: Sorts config groups into alphabetical order.
 -END-
 *****************************************************************************/
 
-static ERROR CONFIG_Sort(objConfig *Self, APTR Void)
+static ERROR CONFIG_Sort(extConfig *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -715,7 +714,7 @@ NoData
 
 *****************************************************************************/
 
-static ERROR CONFIG_SortByKey(objConfig *Self, struct cfgSortByKey *Args)
+static ERROR CONFIG_SortByKey(extConfig *Self, struct cfgSortByKey *Args)
 {
    if ((!Args) or (!Args->Key)) return CONFIG_Sort(Self, NULL);  // If no args are provided then use the default Sort action instead
 
@@ -767,7 +766,7 @@ GetField: The Entries field could not be retrieved.
 
 *****************************************************************************/
 
-static ERROR CONFIG_WriteValue(objConfig *Self, struct cfgWriteValue *Args)
+static ERROR CONFIG_WriteValue(extConfig *Self, struct cfgWriteValue *Args)
 {
    parasol::Log log;
 
@@ -802,7 +801,7 @@ that is included with the standard framework.
 
 *****************************************************************************/
 
-static ERROR GET_Data(objConfig *Self, ConfigGroups **Value)
+static ERROR GET_Data(extConfig *Self, ConfigGroups **Value)
 {
    *Value = Self->Groups;
    return ERR_Okay;
@@ -843,7 +842,7 @@ To create a filter based on group names, refer to the #GroupFilter field.
 
 *****************************************************************************/
 
-static ERROR GET_KeyFilter(objConfig *Self, CSTRING *Value)
+static ERROR GET_KeyFilter(extConfig *Self, CSTRING *Value)
 {
    if (Self->KeyFilter) {
       *Value = Self->KeyFilter;
@@ -855,7 +854,7 @@ static ERROR GET_KeyFilter(objConfig *Self, CSTRING *Value)
    }
 }
 
-static ERROR SET_KeyFilter(objConfig *Self, CSTRING Value)
+static ERROR SET_KeyFilter(extConfig *Self, CSTRING Value)
 {
    if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = NULL; }
 
@@ -897,7 +896,7 @@ To create a filter based on key names, refer to the #KeyFilter field.
 
 *****************************************************************************/
 
-static ERROR GET_GroupFilter(objConfig *Self, CSTRING *Value)
+static ERROR GET_GroupFilter(extConfig *Self, CSTRING *Value)
 {
    if (Self->GroupFilter) {
       *Value = Self->GroupFilter;
@@ -909,7 +908,7 @@ static ERROR GET_GroupFilter(objConfig *Self, CSTRING *Value)
    }
 }
 
-static ERROR SET_GroupFilter(objConfig *Self, CSTRING Value)
+static ERROR SET_GroupFilter(extConfig *Self, CSTRING Value)
 {
    if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = NULL; }
 
@@ -928,7 +927,7 @@ Path: Set this field to the location of the source configuration file.
 
 *****************************************************************************/
 
-static ERROR SET_Path(objConfig *Self, CSTRING Value)
+static ERROR SET_Path(extConfig *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
@@ -945,7 +944,7 @@ TotalGroups: Returns the total number of groups in a config object.
 -END-
 *****************************************************************************/
 
-static ERROR GET_TotalGroups(objConfig *Self, LONG *Value)
+static ERROR GET_TotalGroups(extConfig *Self, LONG *Value)
 {
    *Value = Self->Groups->size();
    return ERR_Okay;
@@ -959,7 +958,7 @@ TotalKeys: The total number of key values loaded into the config object.
 
 *****************************************************************************/
 
-static ERROR GET_TotalKeys(objConfig *Self, LONG *Value)
+static ERROR GET_TotalKeys(extConfig *Self, LONG *Value)
 {
    LONG total = 0;
    for (const auto& [group, keys] : Self->Groups[0]) {
@@ -1055,7 +1054,7 @@ static FilterConfig parse_filter(std::string Filter, bool KeyValue = false)
 
 //****************************************************************************
 
-static ERROR parse_config(objConfig *Self, CSTRING Buffer)
+static ERROR parse_config(extConfig *Self, CSTRING Buffer)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1121,7 +1120,7 @@ static ERROR parse_config(objConfig *Self, CSTRING Buffer)
 
 //****************************************************************************
 
-static void apply_key_filter(objConfig *Self, CSTRING Filter)
+static void apply_key_filter(extConfig *Self, CSTRING Filter)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1151,7 +1150,7 @@ static void apply_key_filter(objConfig *Self, CSTRING Filter)
 
 //****************************************************************************
 
-static void apply_group_filter(objConfig *Self, CSTRING Filter)
+static void apply_group_filter(extConfig *Self, CSTRING Filter)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1177,7 +1176,7 @@ static void apply_group_filter(objConfig *Self, CSTRING Filter)
 //****************************************************************************
 // Returns the key-values for a group, given a group name.  Supports wild-cards.
 
-static ConfigKeys * find_group_wild(objConfig *Self, CSTRING Group)
+static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group)
 {
    if ((!Group) or (!*Group)) return NULL;
 
@@ -1220,7 +1219,7 @@ extern "C" ERROR add_config_class(void)
             FID_Actions|TPTR,         clConfigActions,
             FID_Methods|TARRAY,       clConfigMethods,
             FID_Fields|TARRAY,        clFields,
-            FID_Size|TLONG,           sizeof(objConfig),
+            FID_Size|TLONG,           sizeof(extConfig),
             FID_Path|TSTR,            "modules:core",
             TAGEND)) {
          return acInit(ConfigClass);

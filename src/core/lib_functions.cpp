@@ -8,7 +8,7 @@ Please refer to it for further information on licensing.
 Name: System
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <stdlib.h>
 
@@ -45,7 +45,7 @@ Name: System
 
 using namespace parasol;
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AllocateID: Generates unique ID's for general purposes.
@@ -61,7 +61,7 @@ int(IDTYPE) Type: The type of ID that is required.
 -RESULT-
 int: A unique ID matching the requested type will be returned.  This function can return zero if the Type is unrecognised, or if an internal error occurred.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG AllocateID(LONG Type)
 {
@@ -86,7 +86,7 @@ LONG AllocateID(LONG Type)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CheckObjectExists: Checks if a particular object is still available in the system.
@@ -107,7 +107,7 @@ True:  The object exists.
 False: The object ID does not exist.
 Args:  Neither of the ObjectID or Name arguments were specified.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
 {
@@ -177,7 +177,7 @@ ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
    else return log.warning(ERR_Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ClearMemory: Clears large blocks of memory very quickly.
@@ -193,7 +193,7 @@ int Length: The total number of bytes that you want to clear.
 Okay: The memory was cleared.
 NullArgs: The Memory argument was not specified.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ClearMemory(APTR Memory, LONG Length)
 {
@@ -202,7 +202,7 @@ ERROR ClearMemory(APTR Memory, LONG Length)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CopyMemory: Copies a block of bytes from a source to a destination address.
@@ -222,7 +222,7 @@ Okay:
 NullArgs: Src and/or Dest parameters were not provided.
 Args:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
@@ -236,7 +236,7 @@ ERROR CopyMemory(const void *Src, APTR Dest, LONG Length)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CurrentContext: Returns a pointer to the object that has the current context.
@@ -256,14 +256,14 @@ desired.
 -RESULT-
 obj: Returns an object pointer (of which the Task has exclusive access to).  This function rarely returns a NULL pointer - this is only possible during the initial start-up and shut-down sequences of the Core.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 OBJECTPTR CurrentContext(void)
 {
    return tlContext->object();
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CurrentTask: Returns the active Task object.
@@ -276,14 +276,14 @@ Core initialisation) then the "system task" may be returned (the system task con
 -RESULT-
 obj: Returns a pointer to the current Task object or NULL if failure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 OBJECTPTR CurrentTask(void)
 {
    return glCurrentTask;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FindClass: Returns all class objects for a given class ID.
@@ -303,14 +303,14 @@ cid ClassID: A class ID such as one retrieved from ~ResolveClassName().
 -RESULT-
 obj(MetaClass): Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 objMetaClass * FindClass(CLASSID ClassID)
 {
    parasol::Log log(__FUNCTION__);
 
    if (ClassID IS ID_METACLASS) { // Return the internal pointer to the MetaClass.
-      return &glMetaClass;
+      return (objMetaClass *)&glMetaClass;
    }
    else if (!ClassID) {
       return NULL;
@@ -318,7 +318,7 @@ objMetaClass * FindClass(CLASSID ClassID)
    else {
       // A simple KeyGet() works for base-classes and sub-classes because the hash map is indexed by class name.
 
-      objMetaClass **ptr;
+      extMetaClass **ptr;
       if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
          return ptr[0];
       }
@@ -344,7 +344,7 @@ objMetaClass * FindClass(CLASSID ClassID)
          if ((mod = find_module(ClassID))) path = (STRING)(mod + 1);
       }
 
-      objMetaClass *mc = NULL;
+      extMetaClass *mc = NULL;
       if (path) {
          // Load the module from the associated location and then find the class that it contains.  If the module fails,
          // we keep on looking for other installed modules that may handle the class.
@@ -365,7 +365,7 @@ objMetaClass * FindClass(CLASSID ClassID)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FindObject: Searches for objects by name.
@@ -407,7 +407,7 @@ EmptyString:
 DoesNotExist:
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Array, LONG *Count)
 {
@@ -556,7 +556,7 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
    else return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FindPrivateObject: Search for an object by name.
@@ -581,7 +581,7 @@ Search: No objects matching the given name could be found.
 LockFailed
 EmptyString
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
 {
@@ -659,7 +659,7 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
    else return ERR_Search;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetFeedList: Private.  Retrieves the data feed subscriptions of an object.
@@ -672,7 +672,7 @@ obj Object: The object to query.
 -RESULT-
 mem: A memory ID that refers to the feed list is returned, or NULL if no subscriptions are present.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 MEMORYID GetFeedList(OBJECTPTR Object)
 {
@@ -682,7 +682,7 @@ MEMORYID GetFeedList(OBJECTPTR Object)
    else return 0;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetClassID: Returns the class ID of an object.
@@ -700,7 +700,7 @@ oid Object: The object to be examined.
 -RESULT-
 cid: Returns the base class ID of the object or NULL if failure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CLASSID GetClassID(OBJECTID ObjectID)
 {
@@ -731,7 +731,7 @@ CLASSID GetClassID(OBJECTID ObjectID)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetErrorMsg: Translates error codes into human readable strings.
@@ -746,7 +746,7 @@ error Error: The error code to lookup.
 -RESULT-
 cstr: A human readable string for the error code is returned.  By default error codes are returned in English, however if a translation table exists for the user's own language, the string will be translated.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CSTRING GetErrorMsg(ERROR Code)
 {
@@ -757,7 +757,7 @@ CSTRING GetErrorMsg(ERROR Code)
    else return "Unknown error code.";
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GenCRC32: Generates 32-bit CRC checksum values.
@@ -775,7 +775,7 @@ uint Length: The length of the Data buffer.
 uint: Returns the computed 32 bit CRC value for the given data.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #if 1
 
@@ -1012,7 +1012,7 @@ static ULONG crc32_big(ULONG crc, const UBYTE *buf, unsigned len)
 
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetMsgPort: Returns the message port used for communication with an object.
@@ -1028,7 +1028,7 @@ oid Object: Reference to the object to be queried.
 -RESULT-
 int: The number of the message port is returned or 0 if failure occurs.  Failure will most likely occur if the ObjectID is invalid.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG GetMsgPort(OBJECTID ObjectID)
 {
@@ -1055,7 +1055,7 @@ LONG GetMsgPort(OBJECTID ObjectID)
    else return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetName: Retrieves object names.
@@ -1070,7 +1070,7 @@ obj Object: Pointer to the object that you want to get the name of.
 -RESULT-
 cstr: A string containing the object name is returned.  If the object has no name or the parameter is invalid, a null-terminated string is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CSTRING GetName(OBJECTPTR Object)
 {
@@ -1078,7 +1078,7 @@ CSTRING GetName(OBJECTPTR Object)
    else return "";
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetObjectPtr: Returns the object address for any private object ID.
@@ -1093,7 +1093,7 @@ oid Object: The ID of the object to lookup.
 -RESULT-
 obj: The address of the object is returned, or NULL if the ID does not relate to a private object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
 {
@@ -1112,7 +1112,7 @@ OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetOwnerID: Returns the unique ID of an object's owner.
@@ -1130,7 +1130,7 @@ oid Object: The ID of the object that you want to examine.
 -RESULT-
 oid: Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the ID that you provided is invalid, this function will return NULL.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 OBJECTID GetOwnerID(OBJECTID ObjectID)
 {
@@ -1158,7 +1158,7 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
    return ownerid;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetResource: Retrieves miscellaneous resource identifiers.
@@ -1193,7 +1193,7 @@ int(RES) Resource: The ID of the resource that you want to obtain.
 large: Returns the value of the resource that you have requested.  If the resource ID is not known by the Core, NULL is returned.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LARGE GetResource(LONG Resource)
 {
@@ -1312,7 +1312,7 @@ LARGE GetResource(LONG Resource)
 
    return 0;
 }
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetSystemState: Returns miscellaneous data values from the Core.
@@ -1323,7 +1323,7 @@ paths, the Core's version number and the name of the host platform.
 -RESULT-
 cstruct(*SystemState): A read-only SystemState structure is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 const SystemState * GetSystemState(void)
 {
@@ -1358,7 +1358,7 @@ const SystemState * GetSystemState(void)
    return &state;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ListChildren: Returns a list of all children belonging to an object.
@@ -1367,11 +1367,11 @@ Category: Objects
 The ListChildren() function returns a list of an object's children in a single function call.
 
 The client must provide an empty array of ChildEntry structures for the function to write its results.  The Count
-argument must point to a LONG value that indicates the size of the array that you have supplied.  Before returning, the
+argument must point to a `LONG` value that indicates the size of the supplied List.  Before returning, the
 ListChildren() function will update the Count variable so that it reflects the total number of children that were
 written to the array.
 
-Objects marked with the INTEGRAL flag are not returned as they are private members of the targeted object.
+Objects marked with the `INTEGRAL` flag are not returned as they are private members of the targeted object.
 
 -INPUT-
 oid Object: The ID of the object that you wish to examine.
@@ -1384,7 +1384,7 @@ Okay: Zero or more children were found and listed.
 Args
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG *Count)
 {
@@ -1437,7 +1437,7 @@ ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ListTasks: Returns a list of all active processes that are in the system.
@@ -1453,7 +1453,7 @@ int(LTF) Flags: Optional flags.
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
 {
@@ -1524,7 +1524,7 @@ ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
    else return ERR_SystemLocked;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 RandomNumber: Generates random numbers.
@@ -1535,7 +1535,7 @@ automatically change the random seed value each time you call it.  Remember that
 below the Range that you specify. Add 1 to your Range if maximum value is inclusive.
 
 The unique seed used by the PRNG is generated when the Core is opened for the first time.  You can change the seed
-by calling ~SetResource() with the RES_RANDOM_SEED option.
+by calling ~SetResource() with the `RES_RANDOM_SEED` option.
 
 -INPUT-
 int Range: A range between 1 and 2,147,483,648.  An invalid value will result in 0 being returned.
@@ -1543,7 +1543,7 @@ int Range: A range between 1 and 2,147,483,648.  An invalid value will result in
 -RESULT-
 int: Returns a number greater or equal to 0, and <i>less than</i> Range.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG RandomNumber(LONG Range)
 {
@@ -1565,7 +1565,7 @@ LONG RandomNumber(LONG Range)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 RegisterFD: Registers a file descriptor for monitoring when the task is asleep.
@@ -1603,7 +1603,7 @@ ArrayFull: The maximum number of registrable file descriptors has been reached.
 NoSupport: The host platform does not support file descriptors.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #ifdef _WIN32
 ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
@@ -1673,7 +1673,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SelfDestruct: Destroys the process and frees its resources.
@@ -1683,7 +1683,7 @@ for a process to destroy itself when a normal exit procedure is not possible.
 
 This function will not return.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 extern "C" void CloseCore(void);
 
@@ -1699,7 +1699,7 @@ void SelfDestruct(void)
 //#endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetOwner: Changes object ownership dynamically.
@@ -1728,7 +1728,7 @@ NullArgs
 Args
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 {
@@ -1738,7 +1738,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    if (Object->OwnerID IS Owner->UID) return ERR_Okay;
 
-   if (((objMetaClass *)Object->Class)->Flags & CLF_NO_OWNERSHIP) {
+   if (Object->ExtClass->Flags & CLF_NO_OWNERSHIP) {
       log.traceWarning("Cannot set the object owner as CLF_NO_OWNERSHIP is set in its class.");
       return ERR_Okay;
    }
@@ -1851,7 +1851,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetContext: Assign the ownership of new resources to an object.
@@ -1902,7 +1902,7 @@ obj Object: Pointer to the object that will take on the new context.  If NULL, n
 -RESULT-
 obj: Returns a pointer to the previous context.  Because contexts nest, the client must call SetContext() a second time with this pointer in order to keep the process stable.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 OBJECTPTR SetContext(OBJECTPTR Object)
 {
@@ -1910,7 +1910,7 @@ OBJECTPTR SetContext(OBJECTPTR Object)
    else return tlContext->object();
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetName: Sets the name of an object.
@@ -1933,7 +1933,7 @@ NullArgs:
 Search:       The Object is not recognised by the system - the address may be invalid.
 AccessMemory: The function could not gain access to the shared objects table (internal error).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 {
@@ -2014,7 +2014,7 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetResourcePath: Redefines the location of a system resource path.
@@ -2031,7 +2031,7 @@ cstr Path: The new location to set for the resource path.
 Okay:
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR SetResourcePath(LONG PathType, CSTRING Path)
 {
@@ -2092,7 +2092,7 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetResource: Sets miscellaneous resource identifiers.
@@ -2116,7 +2116,7 @@ large Value:    The new value to set for the resource.
 large: Returns the previous value used for the resource that you have set.  If the resource ID that you provide is invalid, NULL is returned.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LARGE SetResource(LONG Resource, LARGE Value)
 {
@@ -2205,76 +2205,7 @@ LARGE SetResource(LONG Resource, LARGE Value)
    return oldvalue;
 }
 
-/*****************************************************************************
-
-*****************************************************************************/
-/*
-ERROR SetSubscriptionPriority(OBJECTPTR Object, ACTIONID ActionID, OBJECTID SubscriberID, LONG Priority)
-{
-   ActionSubscription *list, *newlist;
-   MEMORYID newlistid;
-   LONG i, error, memflags;
-   APTR context;
-
-   if ((!Object) or (!ActionID) or (!SubscriberID)) return ERR_Args;
-
-   if (AccessMemory(Object->Stats->ActionSubscriptions.ID, MEM_READ_WRITE, 2000, (APTR *)&list) IS ERR_Okay) {
-      for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
-         if ((list[i].ActionID IS ActionID) and (list[i].SubscriberID IS Subscriber->UID)) break;
-      }
-
-      if (i >= Object->Stats->SubscriptionSize) {
-
-         context = SetContext(Object);
-            error = AllocMemory(sizeof(ActionSubscription)*(Object->Stats->SubscriptionSize+10),
-                                memflags, NULL, &newlistid);
-         SetContext(context);
-
-         if (error IS ERR_Okay) {
-            if (AccessMemory(newlistid, MEM_READ_WRITE, 2000, (APTR *)&newlist) IS ERR_Okay) {
-               for (i=0; (list[i].ActionID) and (i < Object->Stats->SubscriptionSize); i++) {
-                  newlist[i].ActionID       = list[i].ActionID;
-                  newlist[i].SubscriberID   = list[i].SubscriberID;
-                  newlist[i].MessagePortMID = list[i].MessagePortMID;
-                  newlist[i].ClassID        = list[i].ClassID;
-               }
-
-               ReleaseMemory(list);
-               FreeResourceID(Object->Stats->ActionSubscriptions.ID);
-
-               Object->Stats->ActionSubscriptions.ID = newlistid;
-               Object->Stats->SubscriptionSize += 10;
-               list = newlist;
-            }
-            else {
-               FreeResourceID(newlistid);
-               ReleaseMemory(list);
-               return log.warning(ERR_AccessMemory);
-            }
-         }
-         else {
-            ReleaseMemory(list);
-            return log.warning(ERR_AllocMemory);
-         }
-      }
-
-      list[i].ActionID       = ActionID;
-      list[i].SubscriberID   = Subscriber->UID;
-      list[i].ClassID        = Subscriber->ClassID;
-      list[i].MessagePortMID = glTaskMessageMID;
-
-      if (ActionID > 0) Object->Stats->NotifyFlags[ActionID>>5] |= 1<<(ActionID & 31);
-      else Object->Stats->MethodFlags[(-ActionID)>>5] |= 1<<((-ActionID) & 31);
-      ReleaseMemory(list);
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_AccessMemory);
-
-   return ERR_Okay;
-}
-*/
-
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SubscribeFeed: Listens to an object's incoming data feed.
@@ -2296,7 +2227,7 @@ NullArgs:
 AllocMemory:  The function could not allocate a feed list for the target object.
 AccessMemory: Access to the target object's feed list was denied.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR SubscribeFeed(OBJECTPTR Object)
 {
@@ -2310,7 +2241,7 @@ ERROR SubscribeFeed(OBJECTPTR Object)
 
    ScopedObjectAccess objlock(Object);
 
-   log.traceBranch("%s: %d", ((objMetaClass *)Object->Class)->ClassName, Object->UID);
+   log.traceBranch("%s: %d", Object->className(), Object->UID);
 
    if (Object->Flags & NF_PUBLIC) memflags = Object->MemFlags|MEM_PUBLIC;
    else memflags = Object->MemFlags;
@@ -2368,7 +2299,7 @@ ERROR SubscribeFeed(OBJECTPTR Object)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SubscribeTimer: Subscribes an object or function to the timer service.
@@ -2403,7 +2334,7 @@ ArrayFull: The task's timer array is at capacity - no more subscriptions can be 
 InvalidState: The subscriber is marked for termination.
 SystemLocked:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 {
@@ -2451,7 +2382,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    else return log.warning(ERR_SystemLocked);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 PreciseTime: Returns the current system time, in microseconds.
@@ -2464,7 +2395,7 @@ savings adjustments or manual changes by the user.
 -RESULT-
 large: Returns the system time in microseconds.  An error is extremely unlikely, but zero is returned in the event of one.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LARGE PreciseTime(void)
 {
@@ -2480,7 +2411,7 @@ LARGE PreciseTime(void)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UnsubscribeFeed: Removes data feed subscriptions from an external object.
@@ -2497,13 +2428,13 @@ NullArgs:
 Search:       The object referred to by the SubscriberID was not in the subscription list.
 AccessMemory: Access to the object's feed subscription array was denied.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR UnsubscribeFeed(OBJECTPTR Object)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.trace("%s: %d", ((objMetaClass *)Object->Class)->ClassName, Object->UID);
+   log.trace("%s: %d", Object->className(), Object->UID);
 
    if (!Object) return log.warning(ERR_NullArgs);
 
@@ -2540,7 +2471,7 @@ ERROR UnsubscribeFeed(OBJECTPTR Object)
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UpdateTimer: Modify or remove a subscription created by SubscribeTimer().
@@ -2558,7 +2489,7 @@ NullArgs:
 SystemLocked:
 Search:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 {
@@ -2610,7 +2541,7 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
    else return log.warning(ERR_SystemLocked);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 WaitTime: Waits for a specified amount of seconds and/or microseconds.
@@ -2628,7 +2559,7 @@ int MicroSeconds: The number of microseconds to wait for.  Please note that a mi
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void WaitTime(LONG Seconds, LONG MicroSeconds)
 {
@@ -2673,7 +2604,7 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // NOTE: To be called with TL_OBJECT_LOOKUP only.
 
 void remove_object_hash(OBJECTPTR Object)
@@ -2702,7 +2633,7 @@ void remove_object_hash(OBJECTPTR Object)
    else log.trace("No hash entry for object '%s'", Object->Stats->Name);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void set_object_flags(OBJECTPTR Object, LONG Flags)
 {

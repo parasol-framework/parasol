@@ -1272,8 +1272,8 @@ The Callback parameter can be set with a function that matches this prototype:
 
 For each file that is processed during the move operation, a &FileFeedback structure is passed that describes the
 source file and its target.  The callback must return a constant value that can potentially affect file processing.
-Valid values are FFR_Okay (move the file), FFR_Skip (do not move the file) and FFR_Abort (abort the process completely
-and return ERR_Cancelled as an error code).
+Valid values are `FFR_Okay` (move the file), `FFR_Skip` (do not move the file) and FFR_Abort (abort the process completely
+and return `ERR_Cancelled` as an error code).
 
 -INPUT-
 cstr Source: The source path.
@@ -1373,7 +1373,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
       FreeResource(res_path);
    }
    else if (error IS ERR_VirtualVolume) {
-      objFile *file;
+      extFile *file;
 
       if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
             FID_Path|TSTR,   res_path,
@@ -1399,7 +1399,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 
 #else
 
-   objFile *file;
+   extFile *file;
 
    if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
          FID_Path|TSTR,   Path,
@@ -1563,7 +1563,7 @@ SaveObjectToFile: Saves an object to a destination file.
 This support function simplifies the process of saving objects to files.  A source Object must be provided and a
 destination path for the data.  If the destination file exists, it will be overwritten.
 
-The object's class must support the SaveToObject action or this function will return ERR_NoSupport.
+The object's class must support the SaveToObject action or this function will return `ERR_NoSupport`.
 
 -INPUT-
 obj Object: Pointer to the source object that will be saved.
@@ -1999,8 +1999,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
    log.traceBranch("\"%s\" to \"%s\"", Source, Dest);
 
-   objFile *srcfile = NULL;
-   objFile *destfile = NULL;
+   extFile *srcfile = NULL;
+   extFile *destfile = NULL;
 
    if ((error = ResolvePath(Source, 0, &src)) != ERR_Okay) {
       return ERR_FileNotFound;

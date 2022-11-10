@@ -36,13 +36,14 @@ static ERROR VECTOR_Push(extVector *, struct vecPush *);
 void debug_tree(extVector *Vector, LONG &Level)
 {
    parasol::Log log(__FUNCTION__);
-   char indent[Level + 1];
-   char buffer[120];
+   char buffer[80];
    LONG i;
 
-   Level++;
+   char indent[Level + 1];
    for (i=0; i < Level; i++) indent[i] = ' '; // Indenting
    indent[i] = 0;
+
+   Level++;
 
    for (auto v=Vector; v; v=(extVector *)v->Next) {
       buffer[0] = 0;

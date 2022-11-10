@@ -61,7 +61,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <param type="LONG *" name="Result">The size of the compressed data will be returned in this parameter.</param>
       </input>
       <description>
-<p>This method provides a simple way of compressing a memory area into a buffer.  It requires a reference to the source data and a buffer large enough to accept the compressed information.  Generally the destination buffer should be no smaller than 75% of the size of the source data.  If the destination buffer is not large enough, an error of ERR_BufferOverflow will be returned.  The size of the compressed data will be returned in the Result parameter.</p>
+<p>This method provides a simple way of compressing a memory area into a buffer.  It requires a reference to the source data and a buffer large enough to accept the compressed information.  Generally the destination buffer should be no smaller than 75% of the size of the source data.  If the destination buffer is not large enough, an error of <code>ERR_BufferOverflow</code> will be returned.  The size of the compressed data will be returned in the Result parameter.</p>
 <p>To decompress the data that is output by this function, use the <method>DecompressBuffer</method> method.</p>
 <p>The compression method used to compress the data will be identified in the first 32 bits of output, for example, <code>ZLIB</code>.  The following 32 bits will indicate the length of the compressed data section, followed by the data itself.</p>
       </description>
@@ -194,7 +194,7 @@ if (!error) {
         <param type="LONG *" name="Result">The amount of bytes decompressed will be returned in this parameter.</param>
       </input>
       <description>
-<p>This method is used to decompress data that has been packed using the <method>CompressBuffer</method> method.  A pointer to the compressed data and an output buffer large enough to contain the decompressed data are required.  If the output buffer is not large enough to contain the data, the method will write out as much information as it can and then return with an error code of ERR_BufferOverflow.</p>
+<p>This method is used to decompress data that has been packed using the <method>CompressBuffer</method> method.  A pointer to the compressed data and an output buffer large enough to contain the decompressed data are required.  If the output buffer is not large enough to contain the data, the method will write out as much information as it can and then return with an error code of <code>ERR_BufferOverflow</code>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

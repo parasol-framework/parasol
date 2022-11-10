@@ -27,24 +27,20 @@ to the streaming process.
 
 *****************************************************************************/
 
-#define PRV_COMPRESSION
-#define PRV_COMPRESSEDSTREAM
+class extCompressedStream : public objCompressedStream {
+   public:
+   UBYTE *OutputBuffer;
+   UBYTE Inflating:1;
+   UBYTE Deflating:1;
+   z_stream Stream;
+   gz_header Header;
+};
 
-#define ZLIB_MEM_LEVEL 8
-#include "zlib.h"
-
-#ifndef __system__
-#define __system__
-#endif
-
-#include "../defs.h"
-#include <parasol/modules/core.h>
-
-static ERROR CSTREAM_Reset(objCompressedStream *, APTR);
+static ERROR CSTREAM_Reset(extCompressedStream *, APTR);
 
 //****************************************************************************
 
-static ERROR CSTREAM_Free(objCompressedStream *Self, APTR Void)
+static ERROR CSTREAM_Free(extCompressedStream *Self, APTR Void)
 {
    CSTREAM_Reset(Self, NULL);
    return ERR_Okay;
@@ -52,7 +48,7 @@ static ERROR CSTREAM_Free(objCompressedStream *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR CSTREAM_Init(objCompressedStream *Self, APTR Void)
+static ERROR CSTREAM_Init(extCompressedStream *Self, APTR Void)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -68,7 +64,7 @@ static ERROR CSTREAM_Init(objCompressedStream *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR CSTREAM_NewObject(objCompressedStream *Self, APTR Void) {
+static ERROR CSTREAM_NewObject(extCompressedStream *Self, APTR Void) {
    Self->Format = CF_GZIP;
    return ERR_Okay;
 }
@@ -81,7 +77,7 @@ Read: Decompress data from the input stream and write it to the supplied buffer.
 
 #define MIN_OUTPUT_SIZE ((32 * 1024) + 2048)
 
-static ERROR CSTREAM_Read(objCompressedStream *Self, struct acRead *Args)
+static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -173,7 +169,7 @@ referenced objects separately.
 
 *****************************************************************************/
 
-static ERROR CSTREAM_Reset(objCompressedStream *Self, APTR Void)
+static ERROR CSTREAM_Reset(extCompressedStream *Self, APTR Void)
 {
    Self->TotalOutput = 0;
 
@@ -198,7 +194,7 @@ Seek: For use in decompressing streams only.  Seeks to a position within the str
 -END-
 *****************************************************************************/
 
-static ERROR CSTREAM_Seek(objCompressedStream *Self, struct acSeek *Args)
+static ERROR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -239,7 +235,7 @@ Write: Compress raw data in a buffer and write it to the Output object.
 -END-
 *****************************************************************************/
 
-static ERROR CSTREAM_Write(objCompressedStream *Self, struct acWrite *Args)
+static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -361,7 +357,7 @@ If the size is unknown, a value of -1 is returned.
 
 *****************************************************************************/
 
-static ERROR CSTREAM_GET_Size(objCompressedStream *Self, LARGE *Value)
+static ERROR CSTREAM_GET_Size(extCompressedStream *Self, LARGE *Value)
 {
    *Value = -1;
    if (Self->Input) {
@@ -417,7 +413,7 @@ extern "C" ERROR add_compressed_stream_class(void)
       FID_Category|TLONG,       CCF_DATA,
       FID_Actions|TPTR,         clStreamActions,
       FID_Fields|TARRAY,        clStreamFields,
-      FID_Size|TLONG,           sizeof(objCompressedStream),
+      FID_Size|TLONG,           sizeof(extCompressedStream),
       FID_Path|TSTR,            "modules:core",
       TAGEND));
 }

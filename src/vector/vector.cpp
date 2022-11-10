@@ -20,7 +20,7 @@ OBJECTPTR clVectorGradient = NULL, clVectorImage = NULL, clVectorPattern = NULL,
 OBJECTPTR clVectorSpiral = NULL, clVectorShape = NULL, clVectorTransition = NULL, clImageFX = NULL;
 OBJECTPTR clBlurFX = NULL, clColourFX = NULL, clCompositeFX = NULL, clConvolveFX = NULL, clFilterEffect = NULL;
 OBJECTPTR clFloodFX = NULL, clMergeFX = NULL, clMorphologyFX = NULL, clOffsetFX = NULL, clTurbulenceFX = NULL;
-OBJECTPTR clSourceFX = NULL;
+OBJECTPTR clSourceFX = NULL, clRemapFX = NULL;
 
 static OBJECTPTR modDisplay = NULL;
 static OBJECTPTR modFont = NULL;
@@ -84,6 +84,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if ((error = init_morphfx())) return error;
    if ((error = init_offsetfx())) return error;
    if ((error = init_turbulencefx())) return error;
+   if ((error = init_remapfx())) return error;
    return error;
 }
 
@@ -123,6 +124,7 @@ ERROR CMDExpunge(void)
    if (clMorphologyFX)     { acFree(clMorphologyFX);     clMorphologyFX = NULL; }
    if (clOffsetFX)         { acFree(clOffsetFX);         clOffsetFX = NULL; }
    if (clTurbulenceFX)     { acFree(clTurbulenceFX);     clTurbulenceFX = NULL; }
+   if (clRemapFX)          { acFree(clRemapFX);          clRemapFX = NULL; }
    return ERR_Okay;
 }
 
