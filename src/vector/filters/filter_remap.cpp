@@ -106,6 +106,14 @@ static ERROR REMAPFX_Draw(objRemapFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
+static ERROR REMAPFX_Free(objRemapFX *Self, APTR Void)
+{
+   Self->~objRemapFX();
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
 static ERROR REMAPFX_NewObject(objRemapFX *Self, APTR Void)
 {
    new (Self) objRemapFX;
