@@ -16,7 +16,6 @@
 
 typedef const std::lock_guard<std::recursive_mutex> CACHE_LOCK;
 static std::recursive_mutex glCacheMutex; // Protects access to glCache for multi-threading support
-static KeyStore *glCache = NULL; // Key = Path to the font; Value = struct font_cache
 
 INLINE FT_F26Dot6 DBL_TO_FT(DOUBLE Value)
 {
@@ -120,9 +119,13 @@ public:
    FT_Face Face;           // Truetype font face
    LONG    Usage;          // Counter for usage of the typeface
 
-   font_cache(const std::string &pPath, FT_Face &pFace) {
-      Path = pPath;
-      Face = pFace;
-      Usage = 0;
+   font_cache(std::string pPath, FT_Face pFace) : Path(pPath), Face(pFace), Usage(0) { }
+
+   ~font_cache() {
+      parasol::Log log;
+      FT_Done_Face(Face);
+      log.trace("Terminated cache entry for '%s'", Path.c_str());
    }
 };
+
+static std::unordered_map<std::string, std::shared_ptr<font_cache> > glCache;

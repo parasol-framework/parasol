@@ -77,10 +77,10 @@ class extFont : public objFont {
    public:
    WORD *prvTabs;                // Array of tab stops
    UBYTE *prvData;
-   class font_cache *Cache;     // Reference to the Truetype font that is in use
+   std::shared_ptr<font_cache> Cache;     // Reference to the Truetype font that is in use
    struct FontCharacter *prvChar;
-   struct BitmapCache *BmpCache;
-   struct font_glyph prvTempGlyph;
+   struct BitmapCache   *BmpCache;
+   struct font_glyph    prvTempGlyph;
    LONG prvLineCount;
    LONG prvStrWidth;
    WORD prvSpaceWidth;          // Pixel width of word breaks
@@ -268,8 +268,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
-   if (!(glCache = VarNew(0, KSF_THREAD_SAFE))) return ERR_AllocMemory;
-
    if (FT_Init_FreeType(&glFTLibrary)) {
       log.warning("Failed to initialise the FreeType font library.");
       return ERR_Failed;
@@ -310,7 +308,6 @@ static ERROR CMDExpunge(void)
 
    if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
    if (glConfig)    { acFree(glConfig); glConfig = NULL; }
-   if (glCache)     { FreeResource(glCache); glCache = NULL; }
 
    if (clFont)     { acFree(clFont);     clFont = NULL; }
    if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
