@@ -857,12 +857,12 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
       <param type="ULONG" name="FieldID">The 'FID' number to lookup.</param>
-      <param type="OBJECTPTR *" name="Source">(Optional) The object that represents the field is returned here (sometimes a field may belong to a child of the queried object).</param>
+      <param type="OBJECTPTR *" name="Source">(Optional) The object that represents the field is returned here (in case a field belongs to an integrated child object).</param>
     </input>
     <description>
 <p>The FindField() function checks if an object supports a specified field by scanning its class descriptor for a FieldID. If a matching field is declared, its descriptor is returned.  For example:</p>
 <pre>if ((field = FindField(Screen, FID_Width, NULL))) {
-   LogMsg("The field name is \"%s\".", Field-&gt;Name);
+   log.msg("The field name is \"%s\".", Field-&gt;Name);
 }
 </pre>
 <p>The resulting Field structure is immutable.</p>
@@ -1480,8 +1480,8 @@ end
     </input>
     <description>
 <p>The ListChildren() function returns a list of an object's children in a single function call.</p>
-<p>The client must provide an empty array of ChildEntry structures for the function to write its results.  The Count argument must point to a LONG value that indicates the size of the array that you have supplied.  Before returning, the ListChildren() function will update the Count variable so that it reflects the total number of children that were written to the array.</p>
-<p>Objects marked with the INTEGRAL flag are not returned as they are private members of the targeted object.</p>
+<p>The client must provide an empty array of ChildEntry structures for the function to write its results.  The Count argument must point to a <code>LONG</code> value that indicates the size of the supplied List.  Before returning, the ListChildren() function will update the Count variable so that it reflects the total number of children that were written to the array.</p>
+<p>Objects marked with the <code>INTEGRAL</code> flag are not returned as they are private members of the targeted object.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1684,7 +1684,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>For each file that is processed during the move operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are FFR_Okay (move the file), FFR_Skip (do not move the file) and FFR_Abort (abort the process completely and return ERR_Cancelled as an error code).</p>
+<p>For each file that is processed during the move operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR_Okay</code> (move the file), <code>FFR_Skip</code> (do not move the file) and FFR_Abort (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1843,7 +1843,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </input>
     <description>
 <p>This function generates a random number as quickly as possible.  In some cases it will use various hardware attributes in order to create guaranteed random numbers.  The routine uses one divide to determine the range and will automatically change the random seed value each time you call it.  Remember that all generated numbers fall one value below the Range that you specify. Add 1 to your Range if maximum value is inclusive.</p>
-<p>The unique seed used by the PRNG is generated when the Core is opened for the first time.  You can change the seed by calling <function module="Core">SetResource</function> with the RES_RANDOM_SEED option.</p>
+<p>The unique seed used by the PRNG is generated when the Core is opened for the first time.  You can change the seed by calling <function module="Core">SetResource</function> with the <code>RES_RANDOM_SEED</code> option.</p>
     </description>
     <result type="LONG">Returns a number greater or equal to 0, and &lt;i&gt;less than&lt;/i&gt; Range.</result>
   </function>
@@ -2113,7 +2113,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </input>
     <description>
 <p>This support function simplifies the process of saving objects to files.  A source Object must be provided and a destination path for the data.  If the destination file exists, it will be overwritten.</p>
-<p>The object's class must support the SaveToObject action or this function will return ERR_NoSupport.</p>
+<p>The object's class must support the SaveToObject action or this function will return <code>ERR_NoSupport</code>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -3276,7 +3276,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function is identical to SubscribeAction() in every aspect except that it is tag based.  The following example illustrates typical usage <code>SubscribeActionTags(object, AC_Draw, AC_Redimension, TAGEND)</code>.</p>
-<p>Two special tags are also available: SUB_WARN_EXISTS will result in an error of ERR_Exists being returned if it is discovered that there is an existing match for the Subscriber and at least one of the actions.  SUB_FAIL_EXISTS will return with ERR_Exists immediately if an action is already subscribed, meaning no further tags (if present) will be processed.</p>
+<p>Two special tags are also available: <code>SUB_WARN_EXISTS</code> will result in an error of <code>ERR_Exists</code> being returned if it is discovered that there is an existing match for the Subscriber and at least one of the actions.  <code>SUB_FAIL_EXISTS</code> will return with <code>ERR_Exists</code> immediately if an action is already subscribed, meaning no further tags (if present) will be processed.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

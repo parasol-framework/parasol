@@ -3,14 +3,14 @@
 
 #ifdef __linux__
 
-void fs_ignore_file(objFile *File)
+void fs_ignore_file(extFile *File)
 {
    inotify_rm_watch(glInotify, File->prvWatch->Handle);
 }
 
 #elif _WIN32
 
-void fs_ignore_file(objFile *File)
+void fs_ignore_file(extFile *File)
 {
    RegisterFD(File->prvWatch->Handle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, 0, 0); // remove operation
    winCloseHandle(File->prvWatch->Handle);
@@ -20,7 +20,7 @@ void fs_ignore_file(objFile *File)
 
 // OSX uses an FSEvents device https://en.wikipedia.org/wiki/FSEvents
 
-void fs_ignore_file(objFile *File)
+void fs_ignore_file(extFile *File)
 {
 
 }
@@ -29,11 +29,11 @@ void fs_ignore_file(objFile *File)
 
 //****************************************************************************
 
-extern "C" void path_monitor(HOSTHANDLE, objFile *);
+extern "C" void path_monitor(HOSTHANDLE, extFile *);
 
 #ifdef __linux__
 
-ERROR fs_watch_path(objFile *File)
+ERROR fs_watch_path(extFile *File)
 {
    parasol::Log log;
    STRING path;
@@ -71,7 +71,7 @@ ERROR fs_watch_path(objFile *File)
 
 #elif _WIN32
 
-ERROR fs_watch_path(objFile *File)
+ERROR fs_watch_path(extFile *File)
 {
    parasol::Log log(__FUNCTION__);
    HOSTHANDLE handle;
@@ -94,7 +94,7 @@ ERROR fs_watch_path(objFile *File)
 
 #else
 
-ERROR fs_watch_path(objFile *File)
+ERROR fs_watch_path(extFile *File)
 {
    return ERR_NoSupport;
 }
@@ -104,7 +104,7 @@ ERROR fs_watch_path(objFile *File)
 //****************************************************************************
 
 #ifdef __linux__
-void path_monitor(HOSTHANDLE FD, objFile *File)
+void path_monitor(HOSTHANDLE FD, extFile *File)
 {
 #if 0
    parasol::Log log(__FUNCTION__);
@@ -158,8 +158,8 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
             }
 
             UBYTE fnbuffer[256];
-            if ((path[0] IS '/') AND (path[1] IS 0)) path = NULL;
-            else if ((glFileMonitor[i].Flags & MFF_QUALIFY) AND (event->mask & IN_ISDIR)) {
+            if ((path[0] IS '/') and (path[1] IS 0)) path = NULL;
+            else if ((glFileMonitor[i].Flags & MFF_QUALIFY) and (event->mask & IN_ISDIR)) {
                LONG j = StrCopy(path, fnbuffer, sizeof(fnbuffer)-1);
                fnbuffer[j++] = '/';
                fnbuffer[j] = 0;
@@ -190,7 +190,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
          ERROR error;
          if (flags) {
             if (glFileMonitor[i].Routine.Type IS CALL_STDC) {
-               ERROR (*routine)(objFile *File, CSTRING path, LARGE Custom, LONG Flags);
+               ERROR (*routine)(extFile *File, CSTRING path, LARGE Custom, LONG Flags);
                routine = glFileMonitor[i].Routine.StdC.Routine;
 
                OBJECTPTR context;
@@ -242,7 +242,7 @@ void path_monitor(HOSTHANDLE FD, objFile *File)
 
 #elif _WIN32
 
-void path_monitor(HOSTHANDLE Handle, objFile *File)
+void path_monitor(HOSTHANDLE Handle, extFile *File)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -255,17 +255,17 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
    log.branch("File monitoring event received (Handle %p, File #%d).", Handle, File->UID);
 
    ERROR error;
-   ERROR (*routine)(objFile *, CSTRING path, LARGE Custom, LONG Flags);
+   ERROR (*routine)(extFile *, CSTRING path, LARGE Custom, LONG Flags);
    if (File->prvWatch->Handle) {
       char path[256];
       LONG status;
 
       // Keep in mind that the state of the File object might change during the loop due to the code in the user's callback.
 
-      while ((File->prvWatch) AND (!winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path, sizeof(path), &status))) {
+      while ((File->prvWatch) and (!winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path, sizeof(path), &status))) {
          if (!(File->prvWatch->Flags & MFF_DEEP)) { // Ignore if path is in a sub-folder and the deep option is not enabled.
             LONG i;
-            for (i=0; (path[i]) AND (path[i] != '\\'); i++);
+            for (i=0; (path[i]) and (path[i] != '\\'); i++);
             if (path[i] IS '\\') continue;
          }
 
@@ -273,7 +273,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
             parasol::SwitchContext context(File->prvWatch->Routine.StdC.Context);
 
             if (File->prvWatch->Routine.Type IS CALL_STDC) {
-               routine = (ERROR (*)(objFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
+               routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
                error = routine(File, path, File->prvWatch->Custom, status);
             }
             else if (File->prvWatch->Routine.Type IS CALL_SCRIPT) {
@@ -292,7 +292,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
             else error = ERR_Terminate;
          }
          else {
-            routine = (ERROR (*)(objFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
+            routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
             error = routine(File, path, File->prvWatch->Custom, status);
          }
 
@@ -300,7 +300,7 @@ void path_monitor(HOSTHANDLE Handle, objFile *File)
       }
    }
    else {
-      routine = (ERROR (*)(objFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
+      routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
       if (File->prvWatch->Routine.StdC.Context) {
          parasol::SwitchContext context(File->prvWatch->Routine.StdC.Context);
          error = routine(File, File->Path, File->prvWatch->Custom, 0);

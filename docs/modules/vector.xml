@@ -18,6 +18,7 @@
       <class>MergeFX</class>
       <class>MorphologyFX</class>
       <class>OffsetFX</class>
+      <class>RemapFX</class>
       <class>SourceFX</class>
       <class>TurbulenceFX</class>
       <class>Vector</class>
@@ -533,6 +534,14 @@ Z: Close Path
       <const name="MATRIX">Process the supplied 5x4 matrix values.</const>
       <const name="NONE">Do nothing.</const>
       <const name="SATURATE">Adjust colour saturation with the first parameter defining the multiplier.</const>
+    </constants>
+
+    <constants lookup="CMP" comment="Component selection for RemapFX methods.">
+      <const name="ALL">All colour channels.</const>
+      <const name="ALPHA">The alpha channel.</const>
+      <const name="BLUE">The blue colour channel.</const>
+      <const name="GREEN">The green colour channel.</const>
+      <const name="RED">The red colour channel.</const>
     </constants>
 
     <constants lookup="EM">

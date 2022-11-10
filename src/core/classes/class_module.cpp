@@ -65,18 +65,18 @@ static ModuleMaster glCoreMaster;
 static ModHeader glCoreHeader;
 
 static LONG cmp_mod_names(CSTRING, CSTRING);
-static ModuleMaster * check_resident(objModule *, CSTRING);
+static ModuleMaster * check_resident(extModule *, CSTRING);
 static ERROR intercepted_master(ModuleMaster *, APTR);
 static void free_module(MODHANDLE handle);
 
 //****************************************************************************
 
-static ERROR GET_Actions(objModule *, ActionEntry **);
-static ERROR GET_IDL(objModule *, CSTRING *);
-static ERROR GET_Name(objModule *, CSTRING *);
+static ERROR GET_Actions(extModule *, ActionEntry **);
+static ERROR GET_IDL(extModule *, CSTRING *);
+static ERROR GET_Name(extModule *, CSTRING *);
 
-static ERROR SET_Header(objModule *, ModHeader *);
-static ERROR SET_Name(objModule *, CSTRING);
+static ERROR SET_Header(extModule *, ModHeader *);
+static ERROR SET_Name(extModule *, CSTRING);
 
 static const FieldDef clFlags[] = {
    { "LinkLibrary", MOF_LINK_LIBRARY },
@@ -98,10 +98,10 @@ static const FieldArray glModuleFields[] = {
    END_FIELD
 };
 
-static ERROR MODULE_GetVar(objModule *, struct acGetVar *);
-static ERROR MODULE_Init(objModule *, APTR);
-static ERROR MODULE_Free(objModule *, APTR);
-static ERROR MODULE_SetVar(objModule *, struct acSetVar *);
+static ERROR MODULE_GetVar(extModule *, struct acGetVar *);
+static ERROR MODULE_Init(extModule *, APTR);
+static ERROR MODULE_Free(extModule *, APTR);
+static ERROR MODULE_SetVar(extModule *, struct acSetVar *);
 
 static const ActionArray glModuleActions[] = {
    { AC_Free,   (APTR)MODULE_Free },
@@ -113,7 +113,7 @@ static const ActionArray glModuleActions[] = {
 
 //****************************************************************************
 
-static ERROR MODULE_ResolveSymbol(objModule *, struct modResolveSymbol *);
+static ERROR MODULE_ResolveSymbol(extModule *, struct modResolveSymbol *);
 
 static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { NULL, 0 } };
 
@@ -191,7 +191,7 @@ extern "C" ERROR add_module_class(void)
          FID_Actions|TPTR,         glModuleActions,
          FID_Methods|TARRAY,       glModuleMethods,
          FID_Fields|TARRAY,        glModuleFields,
-         FID_Size|TLONG,           sizeof(objModule),
+         FID_Size|TLONG,           sizeof(extModule),
          FID_Path|TSTR,            "modules:core",
          TAGEND) != ERR_Okay) return ERR_AddClass;
 
@@ -261,7 +261,7 @@ ERROR MODULEMASTER_Free(ModuleMaster *Self, APTR Void)
 // module code will be left resident in memory as it belongs to the ModuleMaster, not the Module.  See Expunge()
 // in the Core for further details.
 
-static ERROR MODULE_Free(objModule *Self, APTR Void)
+static ERROR MODULE_Free(extModule *Self, APTR Void)
 {
    // Call the Module's Close procedure
 
@@ -282,7 +282,7 @@ GetVar: Module parameters can be retrieved through this action.
 -END-
 *****************************************************************************/
 
-static ERROR MODULE_GetVar(objModule *Self, struct acGetVar *Args)
+static ERROR MODULE_GetVar(extModule *Self, struct acGetVar *Args)
 {
    parasol::Log log;
 
@@ -304,7 +304,7 @@ static ERROR MODULE_GetVar(objModule *Self, struct acGetVar *Args)
 
 //****************************************************************************
 
-static ERROR MODULE_Init(objModule *Self, APTR Void)
+static ERROR MODULE_Init(extModule *Self, APTR Void)
 {
    parasol::Log log;
    #define AF_MODULEMASTER 0x0001
@@ -771,7 +771,7 @@ NoSupport: The host platform does not support this method.
 
 *****************************************************************************/
 
-static ERROR MODULE_ResolveSymbol(objModule *Self, struct modResolveSymbol *Args)
+static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args)
 {
    parasol::Log log;
 
@@ -809,7 +809,7 @@ SetVar: Passes variable parameters to loaded modules.
 -END-
 *****************************************************************************/
 
-static ERROR MODULE_SetVar(objModule *Self, struct acSetVar *Args)
+static ERROR MODULE_SetVar(extModule *Self, struct acSetVar *Args)
 {
    parasol::Log log;
 
@@ -851,7 +851,7 @@ code for before.
 
 *****************************************************************************/
 
-static ERROR GET_Actions(objModule *Self, ActionEntry **Value)
+static ERROR GET_Actions(extModule *Self, ActionEntry **Value)
 {
    parasol::Log log;
 
@@ -873,7 +873,7 @@ IDL: Returns a compressed IDL string from the module, if available.
 
 *****************************************************************************/
 
-static ERROR GET_IDL(objModule *Self, CSTRING *Value)
+static ERROR GET_IDL(extModule *Self, CSTRING *Value)
 {
    parasol::Log log;
 
@@ -909,7 +909,7 @@ than on disk.
 
 *****************************************************************************/
 
-static ERROR SET_Header(objModule *Self, ModHeader *Value)
+static ERROR SET_Header(extModule *Self, ModHeader *Value)
 {
    if (!Value) return ERR_Failed;
    Self->Header = Value;
@@ -958,13 +958,13 @@ may use a ".dll" extension.
 
 *****************************************************************************/
 
-static ERROR GET_Name(objModule *Self, CSTRING *Value)
+static ERROR GET_Name(extModule *Self, CSTRING *Value)
 {
    *Value = Self->Name;
    return ERR_Okay;
 }
 
-static ERROR SET_Name(objModule *Self, CSTRING Name)
+static ERROR SET_Name(extModule *Self, CSTRING Name)
 {
    if (!Name) return ERR_Okay;
 
@@ -1077,7 +1077,7 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 // Searches the system for a ModuleMaster header that matches the Module details.  The module must have been
 // loaded into memory in order for this function to return successfully.
 
-static ModuleMaster * check_resident(objModule *Self, CSTRING ModuleName)
+static ModuleMaster * check_resident(extModule *Self, CSTRING ModuleName)
 {
    parasol::Log log(__FUNCTION__);
    ModuleMaster *master;

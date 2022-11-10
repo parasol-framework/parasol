@@ -62,7 +62,7 @@ LONG StrBase64Encode(const void *Input, LONG InputSize, STRING Output, LONG Outp
          out[1] = enc[((in[0] & 0x03)<<4) | ((in[1] & 0xf0)>>4) ];
          out[2] = (UBYTE)(len > 1 ? enc[((in[1] & 0x0f) << 2) | ((in[2] & 0xc0)>>6)] : '=');
          out[3] = (UBYTE)(len > 2 ? enc[in[2] & 0x3f] : '=');
-         for (i=0; (i < 4) AND (io < OutputSize-1); i++,io++) {
+         for (i=0; (i < 4) and (io < OutputSize-1); i++,io++) {
             Output[io] = out[i];
          }
       }

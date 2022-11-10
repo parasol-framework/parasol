@@ -1,7 +1,7 @@
 
 //*********************************************************************************************************************
 
-static void print(objCompression *Self, CSTRING Buffer)
+static void print(extCompression *Self, CSTRING Buffer)
 {
    parasol::Log log;
 
@@ -19,7 +19,7 @@ static void print(objCompression *Self, CSTRING Buffer)
 
 //*********************************************************************************************************************
 
-static ERROR compress_folder(objCompression *Self, CSTRING Location, CSTRING Path)
+static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Path)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -201,7 +201,7 @@ exit:
 
 //*********************************************************************************************************************
 
-static ERROR compress_file(objCompression *Self, CSTRING Location, CSTRING Path, BYTE Link)
+static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path, BYTE Link)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -494,7 +494,7 @@ exit:
 
 //*********************************************************************************************************************
 
-ERROR remove_file(objCompression *Self, ZipFile **File)
+ERROR remove_file(extCompression *Self, ZipFile **File)
 {
    parasol::Log log(__FUNCTION__);
    ZipFile *file = *File;
@@ -547,7 +547,7 @@ ERROR remove_file(objCompression *Self, ZipFile **File)
 // if the zip file is damaged or partially downloaded, it will fail.  In the event that the directory is unavailable,
 // the function will fallback to scan_zip().
 
-static ERROR fast_scan_zip(objCompression *Self)
+static ERROR fast_scan_zip(extCompression *Self)
 {
    parasol::Log log(__FUNCTION__);
    ziptail tail;
@@ -692,7 +692,7 @@ static ERROR fast_scan_zip(objCompression *Self)
 //*********************************************************************************************************************
 // Scans a zip file and adds file entries to the Compression object.
 
-static ERROR scan_zip(objCompression *Self)
+static ERROR scan_zip(extCompression *Self)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -838,7 +838,7 @@ static ERROR scan_zip(objCompression *Self)
 
 //*********************************************************************************************************************
 
-static ERROR send_feedback(objCompression *Self, CompressionFeedback *Feedback)
+static ERROR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
 {
    parasol::Log log(__FUNCTION__);
    ERROR error;
@@ -847,7 +847,7 @@ static ERROR send_feedback(objCompression *Self, CompressionFeedback *Feedback)
       Self->FeedbackInfo = Feedback;
 
       if (Self->Feedback.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(objCompression *, CompressionFeedback *))Self->Feedback.StdC.Routine;
+         auto routine = (ERROR (*)(extCompression *, CompressionFeedback *))Self->Feedback.StdC.Routine;
          if (Self->Feedback.StdC.Context) {
             parasol::SwitchContext context(Self->Feedback.StdC.Context);
             error = routine(Self, Feedback);
@@ -879,7 +879,7 @@ static ERROR send_feedback(objCompression *Self, CompressionFeedback *Feedback)
 
 //*********************************************************************************************************************
 
-static void write_eof(objCompression *Self)
+static void write_eof(extCompression *Self)
 {
    ZipFile *chain;
 

@@ -10,7 +10,7 @@ module.  Please refer to the @FileArchive class for further information on this 
 
 ****************************************************************************/
 
-static ERROR SET_ArchiveName(objCompression *Self, CSTRING Value)
+static ERROR SET_ArchiveName(extCompression *Self, CSTRING Value)
 {
    if ((Value) and (*Value)) Self->ArchiveHash = StrHash(Value, 0);
    else Self->ArchiveHash = 0;
@@ -32,7 +32,7 @@ but the compression ratio will improve.
 
 ****************************************************************************/
 
-static ERROR SET_CompressionLevel(objCompression *Self, LONG Value)
+static ERROR SET_CompressionLevel(extCompression *Self, LONG Value)
 {
    if (Value < 0) Value = 0;
    else if (Value > 100) Value = 100;
@@ -63,7 +63,7 @@ CompressionFeedback pointer to a readable structure.
 
 ****************************************************************************/
 
-static ERROR GET_Feedback(objCompression *Self, FUNCTION **Value)
+static ERROR GET_Feedback(extCompression *Self, FUNCTION **Value)
 {
    if (Self->Feedback.Type != CALL_NONE) {
       *Value = &Self->Feedback;
@@ -72,7 +72,7 @@ static ERROR GET_Feedback(objCompression *Self, FUNCTION **Value)
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_Feedback(objCompression *Self, FUNCTION *Value)
+static ERROR SET_Feedback(extCompression *Self, FUNCTION *Value)
 {
    if (Value) {
       if (Self->Feedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
@@ -92,7 +92,7 @@ FeedbackInfo: For script usage only, returns a CompressionFeedback structure.
 
 ****************************************************************************/
 
-static ERROR GET_FeedbackInfo(objCompression *Self, struct CompressionFeedback **Value)
+static ERROR GET_FeedbackInfo(extCompression *Self, struct CompressionFeedback **Value)
 {
    parasol::Log log;
 
@@ -115,7 +115,7 @@ This field is only of use to sub-classes that need to examine the first 32 bytes
 
 ****************************************************************************/
 
-static ERROR GET_Header(objCompression *Self, UBYTE **Header)
+static ERROR GET_Header(extCompression *Self, UBYTE **Header)
 {
    *Header = Self->Header;
    return ERR_Okay;
@@ -130,13 +130,13 @@ To load or create a new file archive, set the Path field to the path of that fil
 
 ****************************************************************************/
 
-static ERROR GET_Path(objCompression *Self, CSTRING *Value)
+static ERROR GET_Path(extCompression *Self, CSTRING *Value)
 {
    if (Self->Path) { *Value = Self->Path; return ERR_Okay; }
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_Path(objCompression *Self, CSTRING Value)
+static ERROR SET_Path(extCompression *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -177,13 +177,13 @@ across to it.
 
 ****************************************************************************/
 
-static ERROR GET_Password(objCompression *Self, CSTRING *Value)
+static ERROR GET_Password(extCompression *Self, CSTRING *Value)
 {
    *Value = Self->Password;
    return ERR_Okay;
 }
 
-static ERROR SET_Password(objCompression *Self, CSTRING Value)
+static ERROR SET_Password(extCompression *Self, CSTRING Value)
 {
    if ((Value) and (*Value)) {
       StrCopy(Value, Self->Password, sizeof(Self->Password));
@@ -207,7 +207,7 @@ Size: Indicates the size of the source archive, in bytes.
 
 ****************************************************************************/
 
-static ERROR GET_Size(objCompression *Self, LARGE *Value)
+static ERROR GET_Size(extCompression *Self, LARGE *Value)
 {
    *Value = 0;
    if (Self->FileIO) return GetLarge(Self->FileIO, FID_Size, Value);
@@ -231,7 +231,7 @@ information that may identify the compressed data is not included in the total.
 
 ****************************************************************************/
 
-static ERROR GET_UncompressedSize(objCompression *Self, LARGE *Value)
+static ERROR GET_UncompressedSize(extCompression *Self, LARGE *Value)
 {
    LARGE size = 0;
    for (ZipFile *f=Self->prvFiles; f; f=(ZipFile *)f->Next) {
@@ -257,7 +257,7 @@ To support GZIP decompression, please set the WindowBits value to 47.
 
 ****************************************************************************/
 
-static ERROR SET_WindowBits(objCompression *Self, LONG Value)
+static ERROR SET_WindowBits(extCompression *Self, LONG Value)
 {
    parasol::Log log;
 

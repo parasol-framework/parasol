@@ -528,7 +528,7 @@ EXPORT void Expunge(WORD Force)
                auto mem = glPrivateMemory.find(id);
                if (mem IS glPrivateMemory.end()) continue;
 
-               auto mc = (objMetaClass *)mem->second.Address;
+               auto mc = (extMetaClass *)mem->second.Address;
                if ((mc) and (mc->ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
                   log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name, mc->ClassName, mc->OpenCount);
                   class_in_use = true;
@@ -589,7 +589,7 @@ EXPORT void Expunge(WORD Force)
                   auto mem = glPrivateMemory.find(id);
                   if (mem IS glPrivateMemory.end()) continue;
 
-                  auto mc = (objMetaClass *)mem->second.Address;
+                  auto mc = (extMetaClass *)mem->second.Address;
                   if ((mc) and (mc->ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
                      log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name, mc->ClassName, mc->OpenCount);
                   }
@@ -908,7 +908,7 @@ static void free_shared_control(void)
 
       // Check if we are the last active task
 
-      if ((glMasterTask) and (glSharedControl->GlobalInstance) AND
+      if ((glMasterTask) and (glSharedControl->GlobalInstance) and
           (glInstanceID IS glSharedControl->GlobalInstance)) {
          // If we're the master, global task for everything, we're taking all the resources down, no matter what else
          // we have running.

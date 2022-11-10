@@ -89,6 +89,14 @@ class objVectorViewport;
 #define VIS_COLLAPSE 2
 #define VIS_INHERIT 3
 
+// Component selection for RemapFX methods.
+
+#define CMP_ALL 0
+#define CMP_RED 1
+#define CMP_GREEN 2
+#define CMP_BLUE 3
+#define CMP_ALPHA 4
+
 // Options for the look of line joins.
 
 #define VLJ_MITER 0
@@ -584,6 +592,50 @@ struct MergeSource {
 // OffsetFX class definition
 
 #define VER_OFFSETFX (1.000000)
+
+// RemapFX class definition
+
+#define VER_REMAPFX (1.000000)
+
+// RemapFX methods
+
+#define MT_RFSelectGamma -20
+#define MT_RFSelectTable -21
+#define MT_RFSelectLinear -22
+#define MT_RFSelectIdentity -23
+#define MT_RFSelectDiscrete -24
+
+struct rfSelectGamma { LONG Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent;  };
+struct rfSelectTable { LONG Component; DOUBLE * Values; LONG Size;  };
+struct rfSelectLinear { LONG Component; DOUBLE Slope; DOUBLE Intercept;  };
+struct rfSelectIdentity { LONG Component;  };
+struct rfSelectDiscrete { LONG Component; DOUBLE * Values; LONG Size;  };
+
+INLINE ERROR rfSelectGamma(APTR Ob, LONG Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) {
+   struct rfSelectGamma args = { Component, Amplitude, Offset, Exponent };
+   return(Action(MT_RFSelectGamma, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR rfSelectTable(APTR Ob, LONG Component, DOUBLE * Values, LONG Size) {
+   struct rfSelectTable args = { Component, Values, Size };
+   return(Action(MT_RFSelectTable, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR rfSelectLinear(APTR Ob, LONG Component, DOUBLE Slope, DOUBLE Intercept) {
+   struct rfSelectLinear args = { Component, Slope, Intercept };
+   return(Action(MT_RFSelectLinear, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR rfSelectIdentity(APTR Ob, LONG Component) {
+   struct rfSelectIdentity args = { Component };
+   return(Action(MT_RFSelectIdentity, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR rfSelectDiscrete(APTR Ob, LONG Component, DOUBLE * Values, LONG Size) {
+   struct rfSelectDiscrete args = { Component, Values, Size };
+   return(Action(MT_RFSelectDiscrete, (OBJECTPTR)Ob, &args));
+}
+
 
 // TurbulenceFX class definition
 
@@ -1342,5 +1394,19 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_WORD_SPACING 0x62976533
 #define SVF_YELLOW 0x297ff6e1
 #define SVF_YELLOWGREEN 0xda4a85b2
+
+#define SVF_FEFUNCR 0xa284a6ae
+#define SVF_FEFUNCG 0xa284a6a3
+#define SVF_FEFUNCB 0xa284a69e
+#define SVF_FEFUNCA 0xa284a69d
+#define SVF_TABLEVALUES 0x9de92b7d
+#define SVF_EXPONENT 0xd4513596
+#define SVF_SLOPE 0x105d2208
+#define SVF_INTERCEPT 0x12b3db33
+#define SVF_IDENTITY 0x68144eaf
+#define SVF_LINEAR 0x0b7641e0
+#define SVF_TABLE 0x1068fa8d
+#define SVF_GAMMA 0x0f7deae8
+#define SVF_DISCRETE 0x6b8e5778
 
 #endif

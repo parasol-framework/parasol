@@ -19,7 +19,7 @@
 <p>To decompress data, set the <field>Input</field> field with a source object that supports the Read action, such as a File. Repeatedly reading from the CompressedStream will automatically handle the decompression process for you.  If the decompressed size of the incoming data is defined in the source header, it will be reflected in the <field>Size</field> field.</p>
 <p>To compress data, set the <field>Output</field> field with a source object that supports the <action>Write</action> action, such as a <class name="File">File</class>. Repeatedly writing to the CompressedStream with raw data will automatically handle the compression process for you. Once all of the data has been written, call the <action>Write</action> action with a Buffer of NULL and Length -1 to signal an end to the streaming process.</p></description>
     <source>
-      <file path="../classes/">class_compressed_stream.cpp</file>
+      <file path="../compression/">class_compressed_stream.cpp</file>
     </source>
   </info>
 

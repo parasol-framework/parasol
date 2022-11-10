@@ -31,18 +31,6 @@ reference.  The format is `archive:ArchiveName/path/to/file.ext` and the example
 
 *****************************************************************************/
 
-#include "zlib.h"
-
-#ifndef __system__
-#define __system__
-#endif
-
-#define PRV_FILE
-#define PRV_COMPRESSION
-
-#include "../defs.h"
-#include <parasol/main.h>
-
 using namespace parasol;
 
 #define LEN_ARCHIVE 8 // "archive:" length
@@ -50,8 +38,8 @@ using namespace parasol;
 struct prvFileArchive {
    ZipFile  Info;
    z_stream Stream;
-   objFile  *FileStream;
-   objCompression *Archive;
+   extFile  *FileStream;
+   extCompression *Archive;
    UBYTE    InputBuffer[SIZE_COMPRESSION_BUFFER];
    UBYTE    OutputBuffer[SIZE_COMPRESSION_BUFFER];
    UBYTE    *ReadPtr;      // Current position within OutputBuffer
@@ -59,7 +47,7 @@ struct prvFileArchive {
    bool     Inflating;
 };
 
-static std::unordered_map<ULONG, objCompression *> glArchives;
+static std::unordered_map<ULONG, extCompression *> glArchives;
 
 static ERROR close_folder(DirInfo *);
 static ERROR open_folder(DirInfo *);
@@ -83,7 +71,7 @@ INLINE CSTRING name_from_path(CSTRING Path)
 
 //****************************************************************************
 
-static void reset_state(objFile *Self)
+static void reset_state(extFile *Self)
 {
    auto prv = (prvFileArchive *)Self->ChildPrivate;
 
@@ -96,7 +84,7 @@ static void reset_state(objFile *Self)
 
 //****************************************************************************
 
-static ERROR seek_to_item(objFile *Self)
+static ERROR seek_to_item(extFile *Self)
 {
    auto prv = (prvFileArchive *)Self->ChildPrivate;
    ZipFile *item = &prv->Info;
@@ -133,14 +121,14 @@ static ERROR seek_to_item(objFile *Self)
 //****************************************************************************
 // Insert a new compression object as an archive.
 
-extern void add_archive(objCompression *Compression)
+extern void add_archive(extCompression *Compression)
 {
    glArchives[Compression->ArchiveHash] = Compression;
 }
 
 //****************************************************************************
 
-extern void remove_archive(objCompression *Compression)
+extern void remove_archive(extCompression *Compression)
 {
    glArchives.erase(Compression->ArchiveHash);
 }
@@ -148,7 +136,7 @@ extern void remove_archive(objCompression *Compression)
 //****************************************************************************
 // Return the archive referenced by 'archive:[NAME]/...'
 
-extern objCompression * find_archive(CSTRING Path, std::string &FilePath)
+extern extCompression * find_archive(CSTRING Path, std::string &FilePath)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -176,7 +164,7 @@ extern objCompression * find_archive(CSTRING Path, std::string &FilePath)
 
 //****************************************************************************
 
-static ERROR ARCHIVE_Activate(objFile *Self, APTR Void)
+static ERROR ARCHIVE_Activate(extFile *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -203,7 +191,7 @@ static ERROR ARCHIVE_Activate(objFile *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR ARCHIVE_Free(objFile *Self, APTR Void)
+static ERROR ARCHIVE_Free(extFile *Self, APTR Void)
 {
    auto prv = (prvFileArchive *)Self->ChildPrivate;
 
@@ -217,7 +205,7 @@ static ERROR ARCHIVE_Free(objFile *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
+static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -274,7 +262,7 @@ static ERROR ARCHIVE_Init(objFile *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR ARCHIVE_Query(objFile *Self, APTR Void)
+static ERROR ARCHIVE_Query(extFile *Self, APTR Void)
 {
    auto prv = (prvFileArchive *)(Self->ChildPrivate);
 
@@ -311,7 +299,7 @@ static ERROR ARCHIVE_Query(objFile *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
+static ERROR ARCHIVE_Read(extFile *Self, struct acRead *Args)
 {
    parasol::Log log;
 
@@ -408,7 +396,7 @@ static ERROR ARCHIVE_Read(objFile *Self, struct acRead *Args)
 
 //****************************************************************************
 
-static ERROR ARCHIVE_Seek(objFile *Self, struct acSeek *Args)
+static ERROR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
 {
    parasol::Log log;
    LARGE pos;
@@ -441,7 +429,7 @@ static ERROR ARCHIVE_Seek(objFile *Self, struct acSeek *Args)
 
 //****************************************************************************
 
-static ERROR ARCHIVE_Write(objFile *Self, struct acWrite *Args)
+static ERROR ARCHIVE_Write(extFile *Self, struct acWrite *Args)
 {
    parasol::Log log;
    return log.warning(ERR_NoSupport);
@@ -449,7 +437,7 @@ static ERROR ARCHIVE_Write(objFile *Self, struct acWrite *Args)
 
 //****************************************************************************
 
-static ERROR ARCHIVE_GET_Size(objFile *Self, LARGE *Value)
+static ERROR ARCHIVE_GET_Size(extFile *Self, LARGE *Value)
 {
    auto prv = (prvFileArchive *)Self->ChildPrivate;
    if (prv) {
@@ -487,7 +475,7 @@ static ERROR scan_folder(DirInfo *Dir)
 
    log.traceBranch("Path: \"%s\", Flags: $%.8x", path, Dir->prvFlags);
 
-   auto archive = (objCompression *)Dir->prvHandle;
+   auto archive = (extCompression *)Dir->prvHandle;
 
    ZipFile *zf = archive->prvFiles;
    if (Dir->prvIndexPtr) zf = (ZipFile *)Dir->prvIndexPtr;
@@ -580,7 +568,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
    parasol::Log log(__FUNCTION__);
    CompressedItem *item;
-   objCompression *cmp;
+   extCompression *cmp;
    std::string file_path;
    ERROR error;
 
@@ -634,7 +622,7 @@ static ERROR test_path(STRING Path, LONG Flags, LONG *Type)
    log.traceBranch("%s", Path);
 
    std::string file_path;
-   objCompression *cmp;
+   extCompression *cmp;
    if (!(cmp = find_archive(Path, file_path))) return ERR_DoesNotExist;
 
    if (file_path.empty()) {

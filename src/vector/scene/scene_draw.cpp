@@ -965,6 +965,12 @@ public:
 
       log.traceBranch("Bitmap: %dx%d,%dx%d, Viewport: %p", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Scene->Viewport);
 
+      if ((Bitmap->Clip.Bottom > Bitmap->Height) or (Bitmap->Clip.Right > Bitmap->Width)) {
+         // NB: Any code that triggers this warning needs to be fixed.
+         log.warning("Invalid Bitmap clip region: %d %d %d %d; W/H: %dx%d", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Bitmap->Width, Bitmap->Height);
+         return;
+      }
+
       if (Scene->Viewport) {
          mBitmap = Bitmap;
          mFormat.setBitmap(*Bitmap);

@@ -435,7 +435,7 @@ ERROR VirtualVolume(CSTRING Name, ...)
             break;
 
          case VAS_IGNORE_FILE:
-            glVirtual[index].IgnoreFile = va_arg(list, void (*)(objFile*));
+            glVirtual[index].IgnoreFile = va_arg(list, void (*)(extFile*));
             break;
 
          case VAS_MAKE_DIR:
@@ -463,7 +463,7 @@ ERROR VirtualVolume(CSTRING Name, ...)
             break;
 
          case VAS_WATCH_PATH:
-            glVirtual[index].WatchPath = va_arg(list, ERROR (*)(objFile*));
+            glVirtual[index].WatchPath = va_arg(list, ERROR (*)(extFile*));
             break;
 
          default:
