@@ -1164,10 +1164,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag
                   case SVF_FETURBULENCE:        parse_fe_turbulence(Self, filter, tag); break;
                   case SVF_FEMORPHOLOGY:        parse_fe_morphology(Self, filter, tag); break;
                   case SVF_FEIMAGE:             parse_fe_image(Self, XML, State, filter, tag); break;
-                  case SVF_FECOMPONENTTRANSFER: parse_fe_component_xfer(Self, XML, State, filter, tag); break;
-                  case SVF_FEDISPLACEMENTMAP:
-                  case SVF_FETILE:
-                  case SVF_FEDIFFUSELIGHTING:
+                  case SVF_FECOMPONENTTRANSFER: parse_fe_component_xfer(Self, filter, tag); break;
                   case SVF_FESPECULARLIGHTING:
                   case SVF_FEDISTANTLIGHT:
                   case SVF_FEPOINTLIGHT:
