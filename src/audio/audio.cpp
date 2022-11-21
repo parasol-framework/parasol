@@ -31,7 +31,9 @@ please refer to the @Audio class.
   #include <sys/kd.h>
  #endif
  #include <unistd.h>
- #include <alsa/asoundlib.h> // Requires libasound2-dev
+ #ifdef ALSA_ENABLED
+  #include <alsa/asoundlib.h> // Requires libasound2-dev
+ #endif
 #endif
 
 #include <parasol/main.h>
@@ -85,7 +87,7 @@ static ERROR SetInternalVolume(extAudio *, struct AudioChannel *);
 static void load_config(extAudio *);
 static ERROR init_audio(extAudio *);
 
-#ifdef __linux__
+#ifdef ALSA_ENABLED
 static void free_alsa(extAudio *);
 static ERROR DropMixAmount(extAudio *, LONG);
 
@@ -329,7 +331,7 @@ Okay
 
 static ERROR sndWaitDrivers(LONG TimeOut)
 {
-#ifdef __linux__
+#ifdef ALSA_ENABLED
    parasol::Log log(__FUNCTION__);
    snd_ctl_t *ctlhandle;
    snd_ctl_card_info_t *info;

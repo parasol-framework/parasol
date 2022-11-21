@@ -35,7 +35,7 @@ class extAudio : public objAudio {
    BYTE     Initialising;
    APTR     TaskRemovedHandle;
    APTR     UserLoginHandle;
-#ifdef __linux__
+#ifdef ALSA_ENABLED
    UBYTE *AudioBuffer;
    LONG  AudioBufferSize;
    snd_pcm_t *Handle;
