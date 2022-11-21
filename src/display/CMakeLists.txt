@@ -52,6 +52,17 @@ endif ()
 
 link_directories("/usr/X11R6/lib" "/usr/lib")
 
+   CHECK_C_SOURCE_COMPILES ("
+#include <X11/extensions/Xrandr.h>
+int main() {
+   return 0;
+}"
+   XRANDR_INSTALLED)
+
+   if (XRANDR_INSTALLED)
+      add_definitions ("-DXRANDR_ENABLED")
+   endif ()
+
 add_library (${MOD} SHARED)
 
 set_module_defaults (${MOD})
