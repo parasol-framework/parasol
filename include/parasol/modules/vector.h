@@ -35,6 +35,17 @@ class objVectorViewport;
 #define VF_DISABLED 0x00000001
 #define VF_HAS_FOCUS 0x00000002
 
+// Light source identifiers.
+
+#define LS_DISTANT 0
+#define LS_SPOT 1
+#define LS_POINT 2
+
+// Lighting algorithm for the LightingFX class.
+
+#define LT_DIFFUSE 0
+#define LT_SPECULAR 1
+
 #define VUNIT_UNDEFINED 0
 #define VUNIT_BOUNDING_BOX 1
 #define VUNIT_USERSPACE 2
@@ -581,6 +592,36 @@ struct MergeSource {
 
 #define VER_FLOODFX (1.000000)
 
+// LightingFX class definition
+
+#define VER_LIGHTINGFX (1.000000)
+
+// LightingFX methods
+
+#define MT_LTSetDistantLight -20
+#define MT_LTSetPointLight -22
+#define MT_LTSetSpotLight -21
+
+struct ltSetDistantLight { DOUBLE Azimuth; DOUBLE Elevation;  };
+struct ltSetPointLight { DOUBLE X; DOUBLE Y; DOUBLE Z;  };
+struct ltSetSpotLight { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE PX; DOUBLE PY; DOUBLE PZ; DOUBLE Exponent; DOUBLE ConeAngle;  };
+
+INLINE ERROR ltSetDistantLight(APTR Ob, DOUBLE Azimuth, DOUBLE Elevation) {
+   struct ltSetDistantLight args = { Azimuth, Elevation };
+   return(Action(MT_LTSetDistantLight, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR ltSetPointLight(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE Z) {
+   struct ltSetPointLight args = { X, Y, Z };
+   return(Action(MT_LTSetPointLight, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR ltSetSpotLight(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DOUBLE PY, DOUBLE PZ, DOUBLE Exponent, DOUBLE ConeAngle) {
+   struct ltSetSpotLight args = { X, Y, Z, PX, PY, PZ, Exponent, ConeAngle };
+   return(Action(MT_LTSetSpotLight, (OBJECTPTR)Ob, &args));
+}
+
+
 // MergeFX class definition
 
 #define VER_MERGEFX (1.000000)
@@ -899,7 +940,7 @@ struct VectorBase {
    ERROR (*_GenerateEllipse)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR);
    ERROR (*_GeneratePath)(CSTRING, APTR);
    ERROR (*_GenerateRectangle)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR);
-   void (*_ReadPainter)(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
+   ERROR (*_ReadPainter)(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
    void (*_TranslatePath)(APTR, DOUBLE, DOUBLE);
    void (*_MoveTo)(APTR, DOUBLE, DOUBLE);
    void (*_LineTo)(APTR, DOUBLE, DOUBLE);
@@ -1197,6 +1238,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_Y 0x0002b61e
 #define SVF_Y1 0x00597a0f
 #define SVF_Y2 0x00597a10
+#define SVF_Z 0x0002b61f
 
 #define SVF_ACCUMULATE 0x5c660bc9
 #define SVF_ADDITIVE 0x035604af
@@ -1409,10 +1451,20 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_YELLOW 0x297ff6e1
 #define SVF_YELLOWGREEN 0xda4a85b2
 
+#define SVF_AZIMUTH 0x52cfd287
+#define SVF_ELEVATION 0x0c12538c
 #define SVF_FEFUNCR 0xa284a6ae
 #define SVF_FEFUNCG 0xa284a6a3
 #define SVF_FEFUNCB 0xa284a69e
 #define SVF_FEFUNCA 0xa284a69d
+#define SVF_LIGHTING_COLOR 0x020fc127
+#define SVF_LIGHTING_COLOUR 0x4407e6dc
+#define SVF_LIMITINGCONEANGLE 0xbb90036e
+#define SVF_POINTSATX 0xf4c77f0f
+#define SVF_POINTSATY 0xf4c77f10
+#define SVF_POINTSATZ 0xf4c77f11
+#define SVF_SPECULARCONSTANT 0x8bb3ceae
+#define SVF_SPECULAREXPONENT 0x1d625135
 #define SVF_TABLEVALUES 0x9de92b7d
 #define SVF_EXPONENT 0xd4513596
 #define SVF_SLOPE 0x105d2208
@@ -1425,5 +1477,6 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_DISCRETE 0x6b8e5778
 #define SVF_DIFFUSECONSTANT 0x4f5eb9d5
 #define SVF_SURFACESCALE 0xbd475ab6
+#define SVF_ZOOMANDPAN 0xc606dfdc
 
 #endif

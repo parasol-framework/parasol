@@ -15,6 +15,15 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
      "DISABLED: The vector is disabled and user input should be ignored.",
      "HAS_FOCUS: The vector holds the user's input focus.")
 
+  enum("LS", { comment="Light source identifiers." },
+    "DISTANT: Distant light source.",
+    "SPOT: Spot light source.",
+    "POINT: Point light source.")
+
+  enum("LT", { start=0, comment="Lighting algorithm for the LightingFX class." },
+    "DIFFUSE: Select diffuse lighting.",
+    "SPECULAR: Select specular lighting.")
+
   enum("VUNIT", { start=0 },
     "UNDEFINED",
     "BOUNDING_BOX: Coordinates are relative to the object's bounding box.",
@@ -424,7 +433,13 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     { id=23, name="SelectIdentity" },
     { id=24, name="SelectDiscrete" },
     { id=25, name="SelectInvert" },
-    { id=26, name="SelectMask" },
+    { id=26, name="SelectMask" }
+  })
+
+  methods("LightingFX", "LT", {
+    { id=20, name="SetDistantLight" },
+    { id=22, name="SetPointLight" },
+    { id=21, name="SetSpotLight" }
   })
 
   class("ImageFX",        { src="filters/filter_image.cpp", output="filters/filter_image_def.c", comment="Image filter support class." })
@@ -440,6 +455,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
   class("ConvolveFX",     { src="filters/filter_convolve.cpp", output="filters/filter_convolve_def.c", comment="Convolve filter support class." })
 
   class("FloodFX",        { src="filters/filter_flood.cpp", output="filters/filter_flood_def.c", comment="Flood filter support class." })
+
+  class("LightingFX",     { src="filters/filter_lighting.cpp", output="filters/filter_lighting_def.c", comment="Lighting filter support class." })
 
   class("MergeFX",        { src="filters/filter_merge.cpp", output="filters/filter_merge_def.c", comment="Merge filter support class." })
 
@@ -811,7 +828,8 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "XOR",
     "Y",
     "Y1",
-    "Y2")
+    "Y2",
+    "Z")
 
   hash("SVF", "0x%s",
     "ACCUMULATE",
@@ -1026,10 +1044,20 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "YELLOWGREEN")
 
    hash("SVF", "0x%s",
+    "AZIMUTH",
+    "ELEVATION",
     "FEFUNCR",
     "FEFUNCG",
     "FEFUNCB",
     "FEFUNCA",
+    "LIGHTING-COLOR",
+    "LIGHTING-COLOUR",
+    "LIMITINGCONEANGLE",
+    "POINTSATX",
+    "POINTSATY",
+    "POINTSATZ",
+    "SPECULARCONSTANT",
+    "SPECULAREXPONENT",
     "TABLEVALUES",
     "EXPONENT",
     "SLOPE",
@@ -1041,5 +1069,6 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "GAMMA",
     "DISCRETE",
     "DIFFUSECONSTANT",
-    "SURFACESCALE")
+    "SURFACESCALE",
+    "ZOOMANDPAN")
 end)

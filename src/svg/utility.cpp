@@ -45,6 +45,26 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 #endif
 
 //********************************************************************************************************************
+// Support for the 'currentColor' colour value.  Finds the first parent with a defined fill colour and returns it.
+
+static ERROR current_colour(extSVG *Self, objVector *Vector, FRGB &RGB)
+{
+   if (Vector->ClassID != ID_VECTOR) return ERR_Failed;
+
+   Vector = (objVector *)Vector->Parent;
+   while (Vector) {
+      if (Vector->ClassID != ID_VECTOR) return ERR_Failed;
+
+      if (!GetFieldArray(Vector, FID_FillColour|TFLOAT, &RGB, NULL)) {
+         if (RGB.Alpha != 0) return ERR_Okay;
+      }
+      Vector = (objVector *)Vector->Parent;
+   }
+
+   return ERR_Failed;
+}
+
+//********************************************************************************************************************
 
 static void parse_result(extSVG *Self, objFilterEffect *Effect, CSTRING Value)
 {
@@ -363,7 +383,7 @@ static CSTRING read_numseq(CSTRING Value, ...)
    while ((result = va_arg(list, DOUBLE *))) {
       while ((*Value) and ((*Value <= 0x20) or (*Value IS ',') or (*Value IS '(') or (*Value IS ')'))) Value++;
 
-      if ((*Value IS '-') and (Value[1] >= '0') and (Value[1] <= '9')) {
+      if ((*Value IS '-') and (((Value[1] >= '0') and (Value[1] <= '9')) or (Value[1] IS '.'))) {
          *result = StrToFloat(Value);
          Value++;
       }
@@ -383,9 +403,7 @@ static CSTRING read_numseq(CSTRING Value, ...)
 
       if (*Value IS '.') {
          Value++;
-         if ((*Value >= '0') and (*Value <= '9')) {
-            while ((*Value >= '0') and (*Value <= '9')) Value++;
-         }
+         while ((*Value >= '0') and (*Value <= '9')) Value++;
       }
    }
 
@@ -493,7 +511,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          convert_styles(xml);
 
-         OBJECTPTR sibling = NULL;
+         objVector *sibling = NULL;
          for (auto tag=xml->Tags[0]; (tag); tag=tag->Next) {
             if (!StrMatch("svg", tag->Attrib->Name)) {
                svgState state;

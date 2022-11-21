@@ -35,6 +35,7 @@
 *.mak
 
 # Folders
+.*/
 /debug/*
 /release/*
 /parasol-*/
