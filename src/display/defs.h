@@ -41,7 +41,6 @@
  #include <X11/XKBlib.h>
  #include <X11/keysymdef.h>
  #include <X11/Xproto.h>
- #include <X11/extensions/Xxf86dga.h> // Requires libxxf86dga-dev
  #include <X11/extensions/XShm.h>
  #include <X11/cursorfont.h>
  #include <stdlib.h>
@@ -50,9 +49,15 @@
  #include <X11/Xutil.h>
  #include <sys/shm.h>
  #include <stdio.h>
+
+ #ifdef XDGA_ENABLED
+  #include <X11/extensions/Xxf86dga.h> // Requires libxxf86dga-dev
+ #endif
+
  #ifdef XRANDR_ENABLED
   #include <X11/extensions/Xrandr.h> // Requires libxrandr-dev
  #endif
+
  #include <parasol/modules/xrandr.h>
 #endif
 

@@ -355,6 +355,8 @@ static ERROR msg_handler(APTR Custom, LONG UniqueID, LONG Type, APTR Data, LONG 
 #ifdef __xwindows__
 
 WORD glDGAAvailable = -1; // -1 indicates that we have not tried the setup process yet
+
+#ifdef XDGA_AVAILABLE
 APTR glDGAMemory = NULL;
 
 LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
@@ -422,6 +424,13 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
    if (BankSize)      *BankSize = glX11->BankSize;
    return glDGAAvailable;
 }
+#else
+LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
+{
+   glDGAAvailable = FALSE;
+   return glDGAAvailable;
+}
+#endif
 
 //**********************************************************************
 // This routine is called if there is another window manager running.

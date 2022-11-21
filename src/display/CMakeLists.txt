@@ -59,8 +59,20 @@ int main() {
 }"
    XRANDR_INSTALLED)
 
+   CHECK_C_SOURCE_COMPILES ("
+#include <X11/Xlib.h>
+#include <X11/extensions/Xxf86dga.h>
+int main() {
+   return 0;
+}"
+   XDGA_INSTALLED)
+
    if (XRANDR_INSTALLED)
       add_definitions ("-DXRANDR_ENABLED")
+   endif ()
+
+   if (XDGA_INSTALLED)
+      add_definitions ("-DXDGA_ENABLED")
    endif ()
 
 add_library (${MOD} SHARED)
