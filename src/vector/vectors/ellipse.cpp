@@ -45,6 +45,8 @@ static void generate_ellipse(objVectorEllipse *Vector)
       if (steps < 3) steps = 3; // Because you need at least 3 vertices to create a shape.
    }
 
+   // TODO: Using a cosine lookup table would speed up this loop.
+
    for (ULONG step=0; step < steps; step++) {
       DOUBLE angle = DOUBLE(step) / DOUBLE(steps) * 2.0 * agg::pi;
       //if (m_cw) angle = 2.0 * agg::pi - angle;

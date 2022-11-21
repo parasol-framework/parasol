@@ -6,7 +6,7 @@
     <name>VectorFilter</name>
     <type>class</type>
     <module>Vector</module>
-    <comment>Constructs filter pipelines that manipulate rendered vectors.</comment>
+    <comment>Constructs filter pipelines that alter rendered vector graphics.</comment>
     <version>1</version>
     <id>8c6e727e</id>
     <idstring>ID_VECTORFILTER</idstring>

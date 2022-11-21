@@ -15,6 +15,7 @@
       <class>FilterEffect</class>
       <class>FloodFX</class>
       <class>ImageFX</class>
+      <class>LightingFX</class>
       <class>MergeFX</class>
       <class>MorphologyFX</class>
       <class>OffsetFX</class>
@@ -338,7 +339,7 @@ Z: Close Path
   <function>
     <name>ReadPainter</name>
     <comment>Parses a painter string into its colour, gradient and image values.</comment>
-    <prototype>void vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern)</prototype>
+    <prototype>ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern)</prototype>
     <input>
       <param type="objVectorScene *" name="Scene">Optional.  Required if url() references are to be resolved.</param>
       <param type="CSTRING" name="IRI">The IRI string to be translated.</param>
@@ -352,6 +353,11 @@ Z: Close Path
 <p>Colours can be referenced using one of three methods.  Colour names such as <code>orange</code> and <code>red</code> are accepted.  Hexadecimal RGB values are supported in the format <code>#RRGGBBAA</code>.  Floating point RGB is supported as <code>rgb(r,g,b,a)</code> whereby the component values range between 0.0 and 1.0.</p>
 <p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference. Any failure to lookup a reference will be silently discarded.</p>
     </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Failed">General failure.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
   </function>
 
   <function>
@@ -555,6 +561,17 @@ Z: Close Path
       <const name="HAS_FOCUS">The vector has gained the user focus.</const>
       <const name="LOST_FOCUS">The vector has lost the user focus.</const>
       <const name="PATH_CHANGED">The vector path has been modified or affected by a transform.</const>
+    </constants>
+
+    <constants lookup="LS" comment="Light source identifiers.">
+      <const name="DISTANT">Distant light source.</const>
+      <const name="POINT">Point light source.</const>
+      <const name="SPOT">Spot light source.</const>
+    </constants>
+
+    <constants lookup="LT" comment="Lighting algorithm for the LightingFX class.">
+      <const name="DIFFUSE">Select diffuse lighting.</const>
+      <const name="SPECULAR">Select specular lighting.</const>
     </constants>
 
     <constants lookup="MOP" comment="MorphologyFX options.">

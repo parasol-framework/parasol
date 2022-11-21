@@ -1,0 +1,201 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>LightingFX</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Enables the application of lighting effects.</comment>
+    <version>1</version>
+    <id>1b9352d9</id>
+    <idstring>ID_LIGHTINGFX</idstring>
+    <category>Graphics</category>
+    <include>modules/lightingfx.h</include>
+    <copyright>Paul Manias © 2010-2022</copyright>
+    <description>
+<p>The lighting effect class applies a diffuse or specular lighting effect to the alpha channel of an input bitmap, which functions as a bump map.  The output is an RGBA representation of the light effect.  If no light <field>Colour</field> is specified by the client then the output will be in grey scale.</p>
+<p>For diffuse lighting, the resulting RGBA image is computed as follows:</p>
+<pre>Dr = kd * N.L * Lr
+Dg = kd * N.L * Lg
+Db = kd * N.L * Lb
+Da = 1.0
+</pre>
+<p>where</p>
+<pre>kd = Diffuse lighting constant
+N  = Surface normal unit vector, a function of x and y
+L  = Unit vector pointing from surface to light, a function of x and y in the point and spot light cases
+Lr,Lg,Lb = RGB components of light, a function of x and y in the spot light case
+</pre>
+<p>For specular lighting, the resulting RGBA image is computed as follows:</p>
+<pre>Sr = ks * pow(N.H, specularExponent) * Lr
+Sg = ks * pow(N.H, specularExponent) * Lg
+Sb = ks * pow(N.H, specularExponent) * Lb
+Sa = max(Sr, Sg, Sb)
+</pre>
+<p>where</p>
+<pre>ks = Specular lighting constant
+N  = Surface normal unit vector, a function of x and y
+H  = "Halfway" unit vector between eye unit vector and light unit vector
+
+Lr,Lg,Lb = RGB components of light
+</pre>
+<p>The definition of <code>H</code> reflects our assumption of the constant eye vector <code>E = (0,0,1)</code>:</p>
+<pre>H = (L + E) / Norm(L + E)
+</pre>
+<p>where <code>L</code> is the light unit vector.</p></description>
+    <source>
+      <file path="filters/">filter_lighting.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Draw</name>
+      <comment>Render the effect to the target bitmap.</comment>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>SetDistantLight</name>
+      <comment>Configure lighting with a distant light source.</comment>
+      <prototype>ERROR ltSetDistantLight(OBJECTPTR Object, DOUBLE Azimuth, DOUBLE Elevation)</prototype>
+      <input>
+        <param type="DOUBLE" name="Azimuth">Direction angle for the light source on the XY plane (clockwise), in degrees from the X axis.</param>
+        <param type="DOUBLE" name="Elevation">Direction angle for the light source from the XY plane towards the Z axis, in degrees.  A positive value points towards the viewer of the content.</param>
+      </input>
+      <description>
+<p>This method applies a distant light configuration to the lighting effect.  It will override any previously defined light source setting.</p>
+<p>A distant light can be thought of as like the light from the sun.  An infinite amount of parallel light rays travel in the direction that the distant light points to.  Distant lights are handy when you want equal illumination on objects in a scene.</p>
+      </description>
+    </method>
+
+    <method>
+      <name>SetPointLight</name>
+      <comment>Configure lighting with a pointed light source.</comment>
+      <prototype>ERROR ltSetPointLight(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z)</prototype>
+      <input>
+        <param type="DOUBLE" name="X">X location for the light source.</param>
+        <param type="DOUBLE" name="Y">Y location for the light source.</param>
+        <param type="DOUBLE" name="Z">Z location for the light source.</param>
+      </input>
+      <description>
+<p>This method applies a pointed light configuration to the lighting effect.  It will override any previously defined light source setting.</p>
+<p>A point light sends light out from the specified (X, Y, Z) location equally in all directions.  A light bulb or open flame is a good example of a point light.  The intensity of the light can be controlled by altering the alpha component of the light <field>Colour</field>.</p>
+      </description>
+    </method>
+
+    <method>
+      <name>SetSpotLight</name>
+      <comment>Configure lighting with a spot light source.</comment>
+      <prototype>ERROR ltSetSpotLight(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DOUBLE PY, DOUBLE PZ, DOUBLE Exponent, DOUBLE ConeAngle)</prototype>
+      <input>
+        <param type="DOUBLE" name="X">X location for the light source.</param>
+        <param type="DOUBLE" name="Y">Y location for the light source.</param>
+        <param type="DOUBLE" name="Z">Z location for the light source.  The positive Z-axis comes out towards the person viewing the content and assuming that one unit along the Z-axis equals one unit in X and Y.</param>
+        <param type="DOUBLE" name="PX">X location of the light source's target.</param>
+        <param type="DOUBLE" name="PY">Y location of the light source's target.</param>
+        <param type="DOUBLE" name="PZ">Z location of the light source's target.</param>
+        <param type="DOUBLE" name="Exponent">Exponent value controlling the focus for the light source.</param>
+        <param type="DOUBLE" name="ConeAngle">A limiting cone which restricts the region where the light is projected, or 0 to disable.  Specified in degrees.</param>
+      </input>
+      <description>
+<p>This method applies a spot light configuration to the lighting effect.  It will override any previously defined light source setting.</p>
+<p>A spot light beams light rays from the defined (X, Y, Z) position to the (PX, PY, PZ) position.  The Exponent and ConeAngle work together to constrain the edge of the light projection.</p>
+      </description>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>Colour</name>
+      <comment>Defines the colour of the light source.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>ARRAY</type>
+      <description>
+<p>Set the Colour field to define the colour of the light source.  The colour is defined as an array of four 32-bit floating point values between 0 and 1.0.  The array elements consist of Red, Green, Blue and Alpha values in that order.</p>
+<p>If the algorithm supports it, the Alpha component defines the intensity of the light source.</p>
+<p>The default colour is pure white, <code>1.0,1.0,1.0,1.0</code>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Constant</name>
+      <comment>Specifies the ks/kd value in Phong lighting model.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>In the Phong lighting model, this field specifies the kd value in diffuse mode, or ks value in specular mode.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Exponent</name>
+      <comment>Exponent for specular lighting, larger is more "shiny".  Ranges from 1.0 to 128.0.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field defines the exponent value for specular lighting, within a range of 1.0 to 128.0.  The larger the value, shinier the end result.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Scale</name>
+      <comment>The maximum height of the input surface (bump map) when the alpha input is 1.0.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
+      <name>Type</name>
+      <comment>Defines the type of surface light scattering, which can be specular or diffuse.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type lookup="LT">INT</type>
+      <description>
+<types lookup="LT"/>
+      </description>
+    </field>
+
+    <field>
+      <name>UnitX</name>
+      <comment>The intended distance in current filter units for dx in the surface normal calculation formulas.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>Indicates the intended distance in current filter units (i.e. as determined by the value of PrimitiveUnits) for dx in the surface normal calculation formulas.</p>
+<p>By specifying value(s) for <field>UnitX</field>, the kernel becomes defined in a scalable, abstract coordinate system.  If <field>UnitX</field> is not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary that a value be provided for at least one of ResX and <field>UnitX</field>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>UnitY</name>
+      <comment>The intended distance in current filter units for dy in the surface normal calculation formulas.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>Indicates the intended distance in current filter units (i.e. as determined by the value of PrimitiveUnits) for dy in the surface normal calculation formulas.</p>
+<p>By specifying value(s) for <field>UnitY</field>, the kernel becomes defined in a scalable, abstract coordinate system.  If <field>UnitY</field> is not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary that a value be provided for at least one of ResY and <field>UnitY</field>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>XMLDef</name>
+      <comment>Returns an SVG compliant XML string that describes the filter.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="LT" comment="Lighting algorithm for the LightingFX class.">
+      <const name="DIFFUSE">Select diffuse lighting.</const>
+      <const name="SPECULAR">Select specular lighting.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

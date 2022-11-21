@@ -107,7 +107,7 @@
         <param type="LONG" name="Mask">The bit mask to be AND'd with each value.</param>
       </input>
       <description>
-<p>This method will apply the mask function to a selected RGBA pixel component.  The function is written as <code>C' = C &amp; Mask</code>.</p>
+<p>This method will apply the mask function to a selected RGBA pixel component.  The function is written as <code>C' = C &amp; Mask</code>.  This algorithm is particularly useful for lowering the bit depth of colours, e.g. a value of <code>0xf0</code> will reduce 8 bit colours to 4 bit.</p>
 <p>This feature is not compatible with SVG.</p>
       </description>
     </method>
@@ -123,6 +123,7 @@
       </input>
       <description>
 <p>This method will apply the table function to a selected RGBA pixel component.  A list of values is required with a minimum size of 1.</p>
+<p>If a single table value is supplied then the component will be output as a constant with no interpolation applied.</p>
       </description>
     </method>
 

@@ -3,7 +3,7 @@
 Please note that this is not an extension of the Vector class.  It is used for the purposes of filter definitions only.
 
 -CLASS-
-VectorFilter: Constructs filter pipelines that manipulate rendered vectors.
+VectorFilter: Constructs filter pipelines that alter rendered vector graphics.
 
 The VectorFilter class allows post-effect filters to be applied to vectors as they are being rendered.  Filter
 support is closely modelled around the SVG standard, and effect results are intended to match that of the standard.
@@ -48,6 +48,7 @@ static target calc_target_area(extFilterEffect *Effect);
 #include "filter_convolve.cpp"
 #include "filter_flood.cpp"
 #include "filter_image.cpp"
+#include "filter_lighting.cpp"
 #include "filter_merge.cpp"
 #include "filter_morphology.cpp"
 #include "filter_offset.cpp"
