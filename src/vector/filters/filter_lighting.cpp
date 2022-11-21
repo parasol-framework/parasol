@@ -211,7 +211,7 @@ static FRGB colour_spot_light(objLightingFX *Self, point3 &Point)
 {
    if (Self->ConeAngle) {
       DOUBLE cosAngle = -Point.dot(Self->SpotDelta);
-      if (cosAngle < Self->CosOuterConeAngle) return FRGB(0.0, 0, 0, 1.0);
+      if (cosAngle < Self->CosOuterConeAngle) return FRGB(0.0, 0.0, 0.0, 1.0);
 
       DOUBLE scale = pow(cosAngle, Self->SpotExponent);
       if (cosAngle < Self->CosInnerConeAngle) {
