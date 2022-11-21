@@ -596,6 +596,9 @@ struct FRGB {
    FLOAT Green;  // Green component value
    FLOAT Blue;   // Blue component value
    FLOAT Alpha;  // Alpha component value
+   FRGB() { };
+   FRGB(FLOAT R, FLOAT G, FLOAT B, FLOAT A) : Red(R), Green(G), Blue(B), Alpha(A) { };
+  
 };
 
 typedef struct RGB8 {
