@@ -3,14 +3,23 @@
 
 set (MOD xrandr)
 
-idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp"
-   ARGS "--output-defs=module_def.c" "--prototypes=static")
+   CHECK_C_SOURCE_COMPILES ("
+#include <X11/extensions/Xrandr.h>
+int main() {
+   return 0;
+}"
+   XRANDR_INSTALLED)
 
-link_directories("/usr/X11R6/lib" "/usr/lib")
+   if (XRANDR_INSTALLED)
+      idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp"
+         ARGS "--output-defs=module_def.c" "--prototypes=static")
 
-add_library (${MOD} SHARED)
+      link_directories("/usr/X11R6/lib" "/usr/lib")
 
-set_module_defaults (${MOD})
+      add_library (${MOD} SHARED)
 
-target_sources (${MOD} PRIVATE "${MOD}.cpp")
-target_link_libraries (${MOD} PRIVATE Xrender Xrandr Xext) # x11/libXxf86dga.a
+      set_module_defaults (${MOD})
+
+      target_sources (${MOD} PRIVATE "${MOD}.cpp")
+      target_link_libraries (${MOD} PRIVATE Xrender Xrandr Xext) # x11/libXxf86dga.a
+   endif ()

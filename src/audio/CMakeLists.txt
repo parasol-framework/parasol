@@ -3,6 +3,13 @@
 
 set (MOD "audio")
 
+   CHECK_C_SOURCE_COMPILES ("
+#include <alsa/asoundlib.h>
+int main() {
+   return 0;
+}"
+   ALSA_INSTALLED)
+
 idl_all ("${MOD}.fdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    APPEND_IDL "module_def.c"
@@ -24,5 +31,8 @@ target_sources (${MOD} PRIVATE "audio.cpp")
 if (WIN32)
    target_sources (${MOD} PRIVATE "dsound.cpp")
 else ()
-   target_link_libraries (${MOD} PRIVATE "asound")
+   if (ALSA_INSTALLED)
+      add_definitions ("-DALSA_ENABLED")
+      target_link_libraries (${MOD} PRIVATE "asound")
+   endif ()
 endif ()

@@ -417,7 +417,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
       bufferlength = 256;
    }
 
-   #ifdef __linux__
+   #ifdef ALSA_ENABLED
       if (bufferlength < Self->AudioBufferSize) log.warning("Warning: Buffer length of %d is less than audio buffer size of %d.", bufferlength, Self->AudioBufferSize);
    #endif
 
@@ -765,7 +765,7 @@ static ERROR AUDIO_Deactivate(extAudio *Self, APTR Void)
 
    acClear(Self);
 
-#ifdef __linux__
+#ifdef ALSA_ENABLED
    free_alsa(Self);
    //if (Self->MixHandle) { snd_mixer_close(Self->MixHandle); Self->MixHandle = NULL; }
    //if (Self->Handle) { snd_pcm_close(Self->Handle); Self->Handle = 0; }
@@ -900,7 +900,7 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
       Self->SamplesMID = 0;
    }
 
-#ifdef __linux__
+#ifdef ALSA_ENABLED
 
    free_alsa(Self);
 
@@ -1397,7 +1397,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 {
    parasol::Log log;
 
-#ifdef __linux__
+#ifdef ALSA_ENABLED
 
    WORD index, chn;
    snd_mixer_selem_id_t *sid;
@@ -1874,7 +1874,7 @@ byte is found.
 
 static ERROR GET_VolumeCtl(extAudio *Self, struct VolumeCtl **Value)
 {
-#ifdef __linux__
+#ifdef ALSA_ENABLED
    if (!Self->Handle) return ERR_NotInitialised;
 #endif
 
@@ -1974,7 +1974,7 @@ ERROR GetMixAmount(extAudio *Self, LONG *MixLeft)
 
 //********************************************************************************************************************
 
-#ifdef __linux__
+#ifdef ALSA_ENABLED
 static ERROR DropMixAmount(extAudio *Self, LONG Elements)
 #else
 ERROR DropMixAmount(extAudio *Self, LONG Elements)
@@ -2056,7 +2056,7 @@ ERROR DropMixAmount(extAudio *Self, LONG Elements)
 
 static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 {
-#ifdef __linux__
+#ifdef ALSA_ENABLED
 
    parasol::Log log(__FUNCTION__);
    LONG elements, mixleft, spaceleft, err, space;
@@ -2269,7 +2269,7 @@ static void load_config(extAudio *Self)
 
 //********************************************************************************************************************
 
-#ifdef __linux__
+#ifdef ALSA_ENABLED
 static void free_alsa(extAudio *Self)
 {
    if (Self->Handle) { snd_pcm_close(Self->Handle); Self->Handle = NULL; }
@@ -2284,7 +2284,7 @@ static ERROR init_audio(extAudio *Self)
 {
    LONG i;
 
-#ifdef __linux__
+#ifdef ALSA_ENABLED
 
    parasol::Log log(__FUNCTION__);
    struct sndSetVolume setvol;

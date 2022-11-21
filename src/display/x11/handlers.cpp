@@ -114,6 +114,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             break;
       }
 
+      #ifdef XRANDR_ENABLED
       if ((XRandRBase) and (xrNotify(&xevent))) {
          // If randr indicates that the display has been resized, we must adjust the system display to match.  Refer to
          // SetDisplay() for more information.
@@ -140,6 +141,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             }
          }
       }
+      #endif
    }
 
    XFlush(XDisplay);

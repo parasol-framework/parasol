@@ -1,0 +1,17 @@
+<!-- Original concept written by Bence Szabo -->
+
+<svg xmlns="http://www.w3.org/2000/svg">
+  <filter id="filter">
+    <feTurbulence type="fractalNoise" baseFrequency=".01" numOctaves="9"/>
+
+    <feComponentTransfer>
+      <feFuncA type="table" tableValues="0 .02 .1 .25 .2 .25 .3 .4 .5 .6 .7 .8"/>
+    </feComponentTransfer>
+
+    <feDiffuseLighting diffuseConstant="4" surfaceScale="4">
+      <feDistantLight elevation="4"/>
+    </feDiffuseLighting>
+  </filter>
+
+  <rect width="100%" height="100%" filter="url(#filter)"/>
+</svg>
