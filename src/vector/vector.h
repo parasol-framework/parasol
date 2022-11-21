@@ -59,7 +59,7 @@ extern OBJECTPTR clVectorFilter, clVectorPolygon, clVectorText, clVectorClip;
 extern OBJECTPTR clVectorGradient, clVectorImage, clVectorPattern, clVector;
 extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX, clSourceFX;
 extern OBJECTPTR clBlurFX, clColourFX, clCompositeFX, clConvolveFX, clFilterEffect;
-extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX, clRemapFX;
+extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX, clRemapFX, clLightingFX;
 
 extern struct DisplayBase *DisplayBase;
 extern struct FontBase *FontBase;
@@ -73,7 +73,7 @@ typedef class extVectorScene;
 typedef class extFilterEffect;
 typedef class extVectorViewport;
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class InputBoundary {
 public:
@@ -200,7 +200,7 @@ public:
 
 #include <parasol/modules/vector.h>
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #define MAX_TRANSITION_STOPS 10
 
@@ -335,7 +335,7 @@ class extVectorScene : public objVectorScene {
    UBYTE AdaptorType;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 // NB: Considered a shape (can be transformed).
 
 class extVectorViewport : public extVector {
@@ -354,7 +354,7 @@ class extVectorViewport : public extVector {
    UBYTE vpOverflowX, vpOverflowY;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class objVectorPoly : public extVector {
    public:
@@ -377,7 +377,7 @@ class objVectorRectangle : public extVector {
    LONG   rDimensions;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class GradientColours {
    public:
@@ -395,7 +395,7 @@ class objVectorClip : public extVector {
    LONG ClipSize;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern CSTRING get_name(OBJECTPTR);
 extern CSTRING read_numseq(CSTRING, ...);
@@ -411,6 +411,7 @@ extern ERROR init_floodfx(void);
 extern ERROR init_gradient(void);
 extern ERROR init_image(void);
 extern ERROR init_imagefx(void);
+extern ERROR init_lightingfx(void);
 extern ERROR init_mergefx(void);
 extern ERROR init_morphfx(void);
 extern ERROR init_offsetfx(void);
@@ -815,7 +816,7 @@ extern void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
 extern ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 extern ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
 extern ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
-extern void  vecReadPainter(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
+extern ERROR  vecReadPainter(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
 extern ERROR vecResetMatrix(struct VectorMatrix *);
 extern void  vecRewindPath(class SimpleVector *);
 extern ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);

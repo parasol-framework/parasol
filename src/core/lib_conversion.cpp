@@ -999,44 +999,7 @@ DOUBLE StrToFloat(CSTRING String)
       String++;
    }
 
-   UBYTE neg;
-   DOUBLE result;
-   if (*String IS '.') { result = 0; neg = FALSE; }
-   else {
-      result = (DOUBLE)StrToInt(String);
-
-      // Skip numbers
-      if (*String IS '-') {
-         neg = TRUE; // Remember that the number is signed (in case of e.g. '-0.5')
-         String++;
-      }
-      else neg = FALSE;
-
-      while ((*String >= '0') and (*String <= '9')) String++;
-   }
-
-   // Check for decimal place
-
-   if (*String IS '.') {
-      String++;
-      if ((*String >= '0') and (*String <= '9')) {
-         LONG number;
-         if ((number = StrToInt(String))) {
-             LONG factor = 1;
-             while ((*String >= '0') and (*String <= '9')) {
-                factor = factor * 10;
-                String++;
-             }
-
-             if (result < 0) result = result - (((DOUBLE)number) / factor);
-             else result = result + (((DOUBLE)number) / factor);
-         }
-      }
-   }
-
-   if ((neg) and (result > 0)) result = -result;
-
-   return result;
+   return strtod(String, NULL);
 }
 
 /*****************************************************************************
@@ -1147,11 +1110,11 @@ LARGE StrToInt(CSTRING str)
 
    // Ignore any leading characters
 
-   BYTE neg = FALSE;
+   bool neg = false;
    while ((*str < '0') or (*str > '9')) {
       if (*str IS 0) return 0;
-      if (*str IS '-') neg = TRUE;
-      if (*str IS '+') neg = FALSE;
+      if (*str IS '-') neg = true;
+      if (*str IS '+') neg = false;
       str++;
    }
 

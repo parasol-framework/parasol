@@ -95,6 +95,7 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 
    PathCommand path;
 
+   LONG max_cmds = 8192; // Maximum commands per path - this acts as a safety net in case the parser gets stuck.
    UBYTE cmd = 0;
    while (*Value) {
       if ((*Value >= 'a') and (*Value <= 'z')) cmd = *Value++;
@@ -196,6 +197,11 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
             log.warning("Invalid path command '%c'", *Value);
             return ERR_Failed;
          }
+      }
+
+      if (--max_cmds == 0) {
+         Path.clear();
+         return log.warning(ERR_BufferOverflow);
       }
 
       Path.push_back(path);
@@ -422,12 +428,14 @@ CSTRING read_numseq(CSTRING Value, ...)
    va_list list;
    DOUBLE *result;
 
+   if ((!Value) or (!Value[0])) return Value;
+
    va_start(list, Value);
 
    while ((result = va_arg(list, DOUBLE *))) {
       while ((*Value) and ((*Value <= 0x20) or (*Value IS ',') or (*Value IS '(') or (*Value IS ')'))) Value++;
 
-      if ((*Value IS '-') and (Value[1] >= '0') and (Value[1] <= '9')) {
+      if ((*Value IS '-') and (((Value[1] >= '0') and (Value[1] <= '9')) or (Value[1] IS '.'))) {
          *result = StrToFloat(Value);
          Value++; // Skip '-'
       }
@@ -441,9 +449,7 @@ CSTRING read_numseq(CSTRING Value, ...)
       else if (((*Value >= '0') and (*Value <= '9'))) {
          *result = StrToFloat(Value);
       }
-      else { // Invalid character or end-of-stream.
-         break;
-      }
+      else break; // Invalid character or end-of-stream.
 
       while ((*Value >= '0') and (*Value <= '9')) Value++;
 

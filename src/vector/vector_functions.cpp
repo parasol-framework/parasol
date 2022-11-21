@@ -743,15 +743,20 @@ struct(*FRGB) RGB: A colour will be returned here if specified in the IRI.
 &obj(VectorImage) Image: A VectorImage will be returned here if specified in the IRI.
 &obj(VectorPattern) Pattern: A VectorPattern will be returned here if specified in the IRI.
 
+-ERRORS-
+Okay:
+NullArgs:
+Failed:
+
 *****************************************************************************/
 
-void vecReadPainter(objVectorScene *Scene, CSTRING IRI, FRGB *RGB, objVectorGradient **Gradient,
+ERROR vecReadPainter(objVectorScene *Scene, CSTRING IRI, FRGB *RGB, objVectorGradient **Gradient,
    objVectorImage **Image, objVectorPattern **Pattern)
 {
    parasol::Log log(__FUNCTION__);
    ULONG i;
 
-   if (!IRI) return;
+   if (!IRI) return ERR_NullArgs;
 
    if (RGB)      RGB->Alpha = 0; // Nullify the colour
    if (Gradient) *Gradient = NULL;
@@ -766,13 +771,13 @@ next:
    if (!StrCompare("url(", IRI, 4, 0)) {
       if (!Scene) {
          log.trace("No Scene specified to enable URL() reference.");
-         return;
+         return ERR_Failed;
       }
 
       if (Scene->ClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
       else if (Scene->ClassID != ID_VECTORSCENE) {
          log.warning("The Scene is invalid.");
-         return;
+         return ERR_Failed;
       }
 
       if (Scene->HostScene) Scene = Scene->HostScene;
@@ -808,12 +813,14 @@ next:
                }
             }
 
-            return;
+            return ERR_Okay;
          }
 
          log.warning("Failed to lookup IRI '%s' in scene #%d", name, Scene->UID);
       }
       else log.warning("Invalid IRI: %s", IRI);
+
+      return ERR_Failed;
    }
    else if (!StrCompare("rgb(", IRI, 4, 0)) {
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
@@ -855,6 +862,8 @@ next:
 
       if (RGB->Blue > 1) RGB->Blue = 1;
       else if (RGB->Blue < 0) RGB->Blue = 0;
+
+      return ERR_Okay;
    }
    else if (*IRI IS '#') {
       RGB8 rgb;
@@ -863,20 +872,29 @@ next:
       RGB->Green = (FLOAT)rgb.Green * (1.0 / 255.0);
       RGB->Blue  = (FLOAT)rgb.Blue  * (1.0 / 255.0);
       RGB->Alpha = (FLOAT)rgb.Alpha * (1.0 / 255.0);
+      return ERR_Okay;
+   }
+   else if ((!StrMatch("currentColor", IRI)) or (!StrMatch("currentColour", IRI))) {
+      // This SVG feature derivess the colour from first parent that defines a fill value.  Since this
+      // function doesn't support a vector reference, we have to throw an error.
+
+      log.warning("Parser needs to add support for %s.", IRI);
+      return ERR_Failed;
    }
    else {
-      ULONG hash = StrHash(IRI, FALSE);
+      auto hash = StrHash(IRI, FALSE);
       for (WORD i=0; i < ARRAYSIZE(glNamedColours); i++) {
          if (glNamedColours[i].Hash IS hash) {
             RGB->Red   = (FLOAT)glNamedColours[i].Red * (1.0 / 255.0);
             RGB->Green = (FLOAT)glNamedColours[i].Green * (1.0 / 255.0);
             RGB->Blue  = (FLOAT)glNamedColours[i].Blue * (1.0 / 255.0);
             RGB->Alpha = (FLOAT)glNamedColours[i].Alpha * (1.0 / 255.0);
-            return;
+            return ERR_Okay;
          }
       }
 
       log.warning("Failed to interpret colour: %s", IRI);
+      return ERR_Failed;
    }
 }
 
