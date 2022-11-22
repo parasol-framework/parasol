@@ -1102,41 +1102,18 @@ large: Returns the integer value that was calculated from the String.
 
 *****************************************************************************/
 
-LARGE StrToInt(CSTRING str)
+LARGE StrToInt(CSTRING String)
 {
-   parasol::Log log(__FUNCTION__);
+   if (!String) return 0;
 
-   if (!str) return 0;
-
-   // Ignore any leading characters
-
-   bool neg = false;
-   while ((*str < '0') or (*str > '9')) {
-      if (*str IS 0) return 0;
-      if (*str IS '-') neg = true;
-      if (*str IS '+') neg = false;
-      str++;
+   while ((*String < '0') or (*String > '9')) { // Ignore any leading characters
+      if (!String[0]) return 0;
+      else if (*String IS '-') break;
+      else if (*String IS '+') break;
+      else String++;
    }
 
-   while (*str IS '0') str++; // Ignore leading zeros
-
-   CSTRING start = str;
-   LARGE number = 0;
-   while (*str) {
-      if ((*str >= '0') and (*str <= '9')) {
-         number *= 10LL;
-         number += (*str - '0');
-      }
-      else break;
-      str++;
-   }
-
-   if (number < 0) { // If the sign reversed during parsing, an overflow occurred
-      log.warning("Buffer overflow: %s", start);
-      return 0;
-   }
-
-   return neg ? -number : number;
+   return strtol(String, NULL, 10);
 }
 
 //****************************************************************************
