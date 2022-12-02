@@ -133,7 +133,8 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     { DITHER = "0x1: Perform dithering if the colour formats differ between the source and destination." },
     { BLEND  = "0x2: Enable alpha blending to the destination if the source supports an alpha channel." },
     { FILL   = "0x1: For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture." },
-    { COPY   = "0x4: Special CopyArea() option that avoids blending when the destination pixel is empty." }
+    { COPY   = "0x4: Special CopyArea() option that avoids blending when the destination pixel is empty." },
+    { LINEAR = "0x8: Use linear interpolation to improve the quality of alpha blending." }
   )
 
   flags("CSRF", { comment="Flags for CopySurface()." },

@@ -1009,5 +1009,7 @@
 #define FID_WindowBits 0x7f38700fLL
 #define FID_WordSpacing 0x73f6e186LL
 #define FID_XMLDef 0x27bb6ee5LL
+#define FID_XChannel 0xf9068f76LL
+#define FID_YChannel 0xe5486457LL
 
 #endif

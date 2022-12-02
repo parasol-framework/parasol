@@ -13,5 +13,5 @@
     </feDiffuseLighting>
   </filter>
 
-  <rect width="100%" height="100%" filter="url(#filter)"/>
+  <rect width="100%" height="100%" fill="white" filter="url(#filter)"/>
 </svg>

@@ -3,7 +3,10 @@
   xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 
   <g id="test-body-content" font-family="sans-serif" font-size="18">
-    <svg xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="15" y="5" width="450" height="300" viewBox="0 0 630 620">
+    <svg xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="480" height="360" viewBox="0 0 630 620">
+
+      <rect fill="white" stroke="blue" x="1" y="1" width="628" height="618"/>
+
       <defs>
         <linearGradient id="MyGradient" gradientUnits="userSpaceOnUse" x1="10" y1="0" x2="590" y2="0">
           <stop offset="0" stop-color="#ff0000"/>
@@ -62,10 +65,7 @@
         </filter>
       </defs>
 
-      <rect fill="none" stroke="blue" x="1" y="1" width="628" height="618"/>
-
       <g font-size="30" font-family="Verdana">
-        <rect fill="none" stroke="blue" x="1" y="1" width="628" height="618"/>
         <rect x="10" y="10" width="580" height="40" fill="url(#MyGradient)" filter="url(#Identity)"/>
         <text x="10" y="80">type: identity</text>
 

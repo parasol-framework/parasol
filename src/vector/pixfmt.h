@@ -1,10 +1,18 @@
 
-INLINE void BLEND32(UBYTE *p, UBYTE r, UBYTE g, UBYTE b, UBYTE a, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
+INLINE void BLEND32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
 {
-   p[r] = p[r] + (((cr - p[r]) * ca)>>8);
-   p[g] = p[g] + (((cg - p[g]) * ca)>>8);
-   p[b] = p[b] + (((cb - p[b]) * ca)>>8);
-   p[a] = p[a] + ((ca * (255-p[a]))>>8);
+   p[oR] = ((p[oR] * (0xff-ca)) + (cr * ca) + 0xff)>>8;
+   p[oG] = ((p[oG] * (0xff-ca)) + (cg * ca) + 0xff)>>8;
+   p[oB] = ((p[oB] * (0xff-ca)) + (cb * ca) + 0xff)>>8;
+   p[oA] = 0xff - (((0xff - ca) * (0xff - p[oA]))>>8); // The W3C's SVG sanctioned method for the alpha channel :)
+}
+
+INLINE void LINEAR32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
+{
+   p[oR] = glLinearRGB.invert(((glLinearRGB.convert(p[oR]) * (0xff-ca)) + (glLinearRGB.convert(cr) * ca) + 0xff)>>8);
+   p[oG] = glLinearRGB.invert(((glLinearRGB.convert(p[oG]) * (0xff-ca)) + (glLinearRGB.convert(cg) * ca) + 0xff)>>8);
+   p[oB] = glLinearRGB.invert(((glLinearRGB.convert(p[oB]) * (0xff-ca)) + (glLinearRGB.convert(cb) * ca) + 0xff)>>8);
+   p[oA] = 0xff - (((0xff - ca) * (0xff - p[oA]))>>8);
 }
 
 INLINE void COPY32(UBYTE *p, ULONG r, ULONG g, ULONG b, ULONG a, ULONG cr, ULONG cg, ULONG cb, ULONG ca)
@@ -71,18 +79,24 @@ public:
    typedef typename agg::rendering_buffer::row_data row_data;
 
    pixfmt_psl() :  oR(0), oG(0), oB(0), oA(0) {}
-   explicit pixfmt_psl(objBitmap &Bitmap) : oR(0), oG(0), oB(0), oA(0) {
-      setBitmap(Bitmap);
+   explicit pixfmt_psl(objBitmap &Bitmap, bool Linear = false) : oR(0), oG(0), oB(0), oA(0) {
+      setBitmap(Bitmap, Linear);
    }
 
-   void setBitmap(objBitmap &Bitmap);
+   void setBitmap(objBitmap &Bitmap, bool Linear = false);
+
+   // The setBitmap() code in scene_draw.cpp defines the following functions.
    void (*fBlendPix)(agg::pixfmt_psl *, UBYTE *, ULONG cr, ULONG cg, ULONG cb, ULONG alpha);
    void (*fCopyPix)(agg::pixfmt_psl *,  UBYTE *, ULONG cr, ULONG cg, ULONG cb, ULONG alpha);
    void (*fCoverPix)(agg::pixfmt_psl *, UBYTE *, ULONG cr, ULONG cg, ULONG cb, ULONG alpha, ULONG);
    void (*fBlendHLine)(agg::pixfmt_psl *, int x, int y, unsigned len, const agg::rgba8 &c, int8u cover);
-   void (*fBlendSolidHSpan)(agg::pixfmt_psl *, int x, int y, ULONG len, const agg::rgba8 &c, const UBYTE *covers);
-   void (*fBlendColorHSpan)(agg::pixfmt_psl *, int x, int y, ULONG len, const agg::rgba8 *colors, const UBYTE *covers, UBYTE cover);
-   void (*fCopyColorHSpan)(agg::pixfmt_psl *, int x, int y, ULONG len, const agg::rgba8 *colors);
+   void (*fBlendSolidHSpan)(agg::pixfmt_psl *, int x, int y, ULONG len, const agg::rgba8 &, const UBYTE *covers);
+   void (*fBlendColorHSpan)(agg::pixfmt_psl *, int x, int y, ULONG len, const agg::rgba8 *, const UBYTE *covers, UBYTE cover);
+   void (*fCopyColorHSpan)(agg::pixfmt_psl *, int x, int y, ULONG len, const agg::rgba8 *); // copy_color_hspan
+
+   void linearMode(bool pEnable = true) {
+      setBitmap(*mBitmap, pEnable);
+   }
 
    AGG_INLINE unsigned width()  const { return mBitmap->Clip.Right;  }
    AGG_INLINE unsigned height() const { return mBitmap->Clip.Bottom; }
@@ -103,9 +117,7 @@ private:
 
    static void blend32BGRA(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
    {
-      if (p[3]) {
-         BLEND32(p,2,1,0,3,cr,cg,cb,alpha);
-      }
+      if (p[3]) BLEND32(p,2,1,0,3,cr,cg,cb,alpha);
       else {
          p[2] = cr;
          p[1] = cg;
@@ -116,9 +128,7 @@ private:
 
    static void blend32RGBA(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
    {
-      if (p[3]) {
-         BLEND32(p,0,1,2,3,cr,cg,cb,alpha);
-      }
+      if (p[3]) BLEND32(p,0,1,2,3,cr,cg,cb,alpha);
       else {
          p[0] = cr;
          p[1] = cg;
@@ -129,9 +139,7 @@ private:
 
    static void blend32AGBR(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
    {
-      if (p[0]) {
-         BLEND32(p,3,1,2,0,cr,cg,cb,alpha);
-      }
+      if (p[0]) BLEND32(p,3,1,2,0,cr,cg,cb,alpha);
       else {
          p[3] = cr;
          p[1] = cg;
@@ -142,9 +150,53 @@ private:
 
    static void blend32ARGB(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
    {
-      if (p[0]) {
-         BLEND32(p,1,2,3,0,cr,cg,cb,alpha);
+      if (p[0]) BLEND32(p,1,2,3,0,cr,cg,cb,alpha);
+      else {
+         p[1] = cr;
+         p[2] = cg;
+         p[3] = cb;
+         p[0] = alpha;
       }
+   }
+
+   // Linear version of the blend operations
+
+   static void linear32BGRA(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
+   {
+      if (p[3]) LINEAR32(p,2,1,0,3,cr,cg,cb,alpha);
+      else {
+         p[2] = cr;
+         p[1] = cg;
+         p[0] = cb;
+         p[3] = alpha;
+      }
+   }
+
+   static void linear32RGBA(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
+   {
+      if (p[3]) LINEAR32(p,0,1,2,3,cr,cg,cb,alpha);
+      else {
+         p[0] = cr;
+         p[1] = cg;
+         p[2] = cb;
+         p[3] = alpha;
+      }
+   }
+
+   static void linear32AGBR(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
+   {
+      if (p[0]) LINEAR32(p,3,1,2,0,cr,cg,cb,alpha);
+      else {
+         p[3] = cr;
+         p[1] = cg;
+         p[2] = cb;
+         p[0] = alpha;
+      }
+   }
+
+   static void linear32ARGB(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
+   {
+      if (p[0]) LINEAR32(p,1,2,3,0,cr,cg,cb,alpha);
       else {
          p[1] = cr;
          p[2] = cg;
@@ -164,9 +216,7 @@ private:
             p[0] = cb;
             p[3] = alpha;
          }
-         else {
-            BLEND32(p,2,1,0,3,cr,cg,cb,alpha);
-         }
+         else BLEND32(p,2,1,0,3,cr,cg,cb,alpha);
       }
    }
 
@@ -181,9 +231,7 @@ private:
             p[0] = cb;
             p[3] = alpha;
          }
-         else {
-            BLEND32(p,2,1,0,3,cr,cg,cb,alpha);
-         }
+         else BLEND32(p,2,1,0,3,cr,cg,cb,alpha);
       }
    }
 
@@ -196,9 +244,7 @@ private:
             p[2] = cb;
             p[3] = alpha;
          }
-         else {
-            BLEND32(p,0,1,2,3,cr,cg,cb,alpha);
-         }
+         else BLEND32(p,0,1,2,3,cr,cg,cb,alpha);
       }
    }
 
@@ -213,9 +259,7 @@ private:
             p[2] = cb;
             p[3] = alpha;
          }
-         else {
-            BLEND32(p,0,1,2,3,cr,cg,cb,alpha);
-         }
+         else BLEND32(p,0,1,2,3,cr,cg,cb,alpha);
       }
    }
 
@@ -228,9 +272,7 @@ private:
             p[2] = cb;
             p[0] = alpha;
          }
-         else {
-            BLEND32(p,3,1,2,0,cr,cg,cb,alpha);
-         }
+         else BLEND32(p,3,1,2,0,cr,cg,cb,alpha);
       }
    }
 
@@ -245,9 +287,7 @@ private:
             p[2] = cb;
             p[0] = alpha;
          }
-         else {
-            BLEND32(p,3,1,2,0,cr,cg,cb,alpha);
-         }
+         else BLEND32(p,3,1,2,0,cr,cg,cb,alpha);
       }
    }
 
@@ -260,9 +300,7 @@ private:
             p[3] = cb;
             p[0] = alpha;
          }
-         else {
-            BLEND32(p,1,2,3,0,cr,cg,cb,alpha);
-         }
+         else BLEND32(p,1,2,3,0,cr,cg,cb,alpha);
       }
    }
 
@@ -277,9 +315,123 @@ private:
             p[3] = cb;
             p[0] = alpha;
          }
-         else {
-            BLEND32(p,1,2,3,0,cr,cg,cb,alpha);
+         else BLEND32(p,1,2,3,0,cr,cg,cb,alpha);
+      }
+   }
+
+   // Linear copy and cover operations
+
+   inline static void linearCopy32BGRA(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
+   {
+      if (alpha) {
+         if ((alpha == 0xff) or (!p[3])) {
+            p[2] = cr;
+            p[1] = cg;
+            p[0] = cb;
+            p[3] = alpha;
          }
+         else LINEAR32(p,2,1,0,3,cr,cg,cb,alpha);
+      }
+   }
+
+   static void linearCover32BGRA(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha, ULONG cover) noexcept
+   {
+      if (cover == 255) {
+         linearCopy32BGRA(Self, p, cr, cg, cb, alpha);
+      }
+      else if (alpha) {
+         alpha = (alpha * (cover + 1)) >> 8;
+         if ((alpha == 0xff) or (!p[3])) {
+            p[2] = cr;
+            p[1] = cg;
+            p[0] = cb;
+            p[3] = alpha;
+         }
+         else LINEAR32(p,2,1,0,3,cr,cg,cb,alpha);
+      }
+   }
+
+   inline static void linearCopy32RGBA(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
+   {
+      if (alpha) {
+         if ((alpha == 0xff) or (!p[3])) {
+            p[0] = cr;
+            p[1] = cg;
+            p[2] = cb;
+            p[3] = alpha;
+         }
+         else LINEAR32(p,0,1,2,3,cr,cg,cb,alpha);
+      }
+   }
+
+   static void linearCover32RGBA(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha, ULONG cover) noexcept
+   {
+      if (cover == 255) linearCopy32RGBA(Self, p, cr, cg, cb, alpha);
+      else if (alpha) {
+         alpha = (alpha * (cover + 1)) >> 8;
+         if ((alpha == 0xff) or (!p[3])) {
+            p[0] = cr;
+            p[1] = cg;
+            p[2] = cb;
+            p[3] = alpha;
+         }
+         else LINEAR32(p,0,1,2,3,cr,cg,cb,alpha);
+      }
+   }
+
+   inline static void linearCopy32AGBR(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
+   {
+      if (alpha) {
+         if ((alpha == 0xff) or (!p[3])) {
+            p[3] = cr;
+            p[1] = cg;
+            p[2] = cb;
+            p[0] = alpha;
+         }
+         else LINEAR32(p,3,1,2,0,cr,cg,cb,alpha);
+      }
+   }
+
+   static void linearCover32AGBR(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha, ULONG cover) noexcept
+   {
+      if (cover == 255) linearCopy32AGBR(Self, p, cr, cg, cb, alpha);
+      else if (alpha) {
+         alpha = (alpha * (cover + 1)) >> 8;
+         if ((alpha == 0xff) or (!p[3])) {
+            p[3] = cr;
+            p[1] = cg;
+            p[2] = cb;
+            p[0] = alpha;
+         }
+         else LINEAR32(p,3,1,2,0,cr,cg,cb,alpha);
+      }
+   }
+
+   inline static void linearCopy32ARGB(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
+   {
+      if (alpha) {
+         if ((alpha == 0xff) or (!p[3])) {
+            p[1] = cr;
+            p[2] = cg;
+            p[3] = cb;
+            p[0] = alpha;
+         }
+         else LINEAR32(p,1,2,3,0,cr,cg,cb,alpha);
+      }
+   }
+
+   static void linearCover32ARGB(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha, ULONG cover) noexcept
+   {
+      if (cover == 255) linearCopy32ARGB(Self, p, cr, cg, cb, alpha);
+      else if (alpha) {
+         alpha = (alpha * (cover + 1)) >> 8;
+         if ((alpha == 0xff) or (!p[3])) {
+            p[1] = cr;
+            p[2] = cg;
+            p[3] = cb;
+            p[0] = alpha;
+         }
+         else LINEAR32(p,1,2,3,0,cr,cg,cb,alpha);
       }
    }
 
@@ -368,7 +520,7 @@ private:
       } while(--len);
    }
 
-   // --- Generic 24-bit routines
+   // Generic 24-bit routines
 
    static void blendHLine24(agg::pixfmt_psl *Self, int x, int y, unsigned len, const agg::rgba8 &c, int8u cover) noexcept
    {
@@ -450,20 +602,20 @@ private:
       } while(--len);
    }
 
-   // --- Standard 24-bit routines
+   // Standard 24-bit routines
 
    static void blend24RGB(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
    {
-      p[0] = (UBYTE)(((cr - p[0]) * alpha + (p[0] << 8)) >> 8);
-      p[1] = (UBYTE)(((cg - p[1]) * alpha + (p[1] << 8)) >> 8);
-      p[2] = (UBYTE)(((cb - p[2]) * alpha + (p[2] << 8)) >> 8);
+      p[0] = ((p[0] * (0xff-alpha)) + (cr * alpha) + 0xff)>>8;
+      p[1] = ((p[1] * (0xff-alpha)) + (cg * alpha) + 0xff)>>8;
+      p[2] = ((p[2] * (0xff-alpha)) + (cb * alpha) + 0xff)>>8;
    }
 
    static void blend24BGR(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
    {
-      p[2] = (UBYTE)(((cr - p[2]) * alpha + (p[2] << 8)) >> 8);
-      p[1] = (UBYTE)(((cg - p[1]) * alpha + (p[1] << 8)) >> 8);
-      p[0] = (UBYTE)(((cb - p[0]) * alpha + (p[0] << 8)) >> 8);
+      p[2] = ((p[2] * (0xff-alpha)) + (cr * alpha) + 0xff)>>8;
+      p[1] = ((p[1] * (0xff-alpha)) + (cg * alpha) + 0xff)>>8;
+      p[0] = ((p[0] * (0xff-alpha)) + (cb * alpha) + 0xff)>>8;
    }
 
    inline static void copy24BGR(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
@@ -475,9 +627,9 @@ private:
             p[2] = cr;
          }
          else {
-            p[0] = (UBYTE)(((cb - p[0]) * alpha + (p[0] << 8)) >> 8);
-            p[1] = (UBYTE)(((cg - p[1]) * alpha + (p[1] << 8)) >> 8);
-            p[2] = (UBYTE)(((cr - p[2]) * alpha + (p[2] << 8)) >> 8);
+            p[2] = ((p[2] * (0xff-alpha)) + (cr * alpha) + 0xff)>>8;
+            p[1] = ((p[1] * (0xff-alpha)) + (cg * alpha) + 0xff)>>8;
+            p[0] = ((p[0] * (0xff-alpha)) + (cb * alpha) + 0xff)>>8;
          }
       }
    }
@@ -491,9 +643,9 @@ private:
             p[2] = cb;
          }
          else {
-            p[0] = (UBYTE)(((cr - p[0]) * alpha + (p[0] << 8)) >> 8);
-            p[1] = (UBYTE)(((cg - p[1]) * alpha + (p[1] << 8)) >> 8);
-            p[2] = (UBYTE)(((cb - p[2]) * alpha + (p[2] << 8)) >> 8);
+            p[0] = ((p[0] * (0xff-alpha)) + (cr * alpha) + 0xff)>>8;
+            p[1] = ((p[1] * (0xff-alpha)) + (cg * alpha) + 0xff)>>8;
+            p[2] = ((p[2] * (0xff-alpha)) + (cb * alpha) + 0xff)>>8;
          }
       }
    }
@@ -509,9 +661,9 @@ private:
             p[2] = cb;
          }
          else {
-            p[0] = (UBYTE)(((cr - p[0]) * alpha + (p[0] << 8)) >> 8);
-            p[1] = (UBYTE)(((cg - p[1]) * alpha + (p[1] << 8)) >> 8);
-            p[2] = (UBYTE)(((cb - p[2]) * alpha + (p[2] << 8)) >> 8);
+            p[0] = ((p[0] * (0xff-alpha)) + (cr * alpha) + 0xff)>>8;
+            p[1] = ((p[1] * (0xff-alpha)) + (cg * alpha) + 0xff)>>8;
+            p[2] = ((p[2] * (0xff-alpha)) + (cb * alpha) + 0xff)>>8;
          }
       }
    }
@@ -527,15 +679,14 @@ private:
             p[2] = cr;
          }
          else {
-            p[0] = (UBYTE)(((cb - p[0]) * alpha + (p[0] << 8)) >> 8);
-            p[1] = (UBYTE)(((cg - p[1]) * alpha + (p[1] << 8)) >> 8);
-            p[2] = (UBYTE)(((cr - p[2]) * alpha + (p[2] << 8)) >> 8);
+            p[2] = ((p[2] * (0xff-alpha)) + (cr * alpha) + 0xff)>>8;
+            p[1] = ((p[1] * (0xff-alpha)) + (cg * alpha) + 0xff)>>8;
+            p[0] = ((p[0] * (0xff-alpha)) + (cb * alpha) + 0xff)>>8;
          }
       }
    }
 
-
-   // --- Standard 16-bit routines
+   // Standard 16-bit routines
 
    static void blend16(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
    {
@@ -543,18 +694,16 @@ private:
       UBYTE red   = Self->mBitmap->unpackRed(pixel);
       UBYTE green = Self->mBitmap->unpackGreen(pixel);
       UBYTE blue  = Self->mBitmap->unpackBlue(pixel);
-      red   = red + (((cr - red) * alpha)>>8);
+      red   = red   + (((cr - red) * alpha)>>8);
       green = green + (((cg - green) * alpha)>>8);
-      blue  = blue + (((cb - blue) * alpha)>>8);
+      blue  = blue  + (((cb - blue) * alpha)>>8);
       ((UWORD *)p)[0] = CFPackPixel(Self->mBitmap->ColourFormat, red, green, blue);
    }
 
    static void copy16(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
    {
       if (alpha) {
-         if (alpha == 0xff) {
-            ((UWORD *)p)[0] = CFPackPixel(Self->mBitmap->ColourFormat, cr, cg, cb);
-         }
+         if (alpha == 0xff) ((UWORD *)p)[0] = CFPackPixel(Self->mBitmap->ColourFormat, cr, cg, cb);
          else blend16(Self, p, cr, cg, cb, alpha);
       }
    }
@@ -564,9 +713,7 @@ private:
       if (cover == 255) copy16(Self, p, cr, cg, cb, alpha);
       else if (alpha) {
          alpha = (alpha * (cover + 1)) >> 8;
-         if (alpha == 0xff) {
-            ((UWORD *)p)[0] = CFPackPixel(Self->mBitmap->ColourFormat, cr, cg, cb);
-         }
+         if (alpha == 0xff) ((UWORD *)p)[0] = CFPackPixel(Self->mBitmap->ColourFormat, cr, cg, cb);
          else blend16(Self, p, cr, cg, cb, alpha);
       }
    }
@@ -651,9 +798,9 @@ private:
       UBYTE red   = (pixel >> 8) & 0xf8;
       UBYTE green = (pixel >> 3) & 0xf8;
       UBYTE blue  = pixel << 3;
-      red   = red + (((cr - red) * alpha)>>8);
+      red   = red   + (((cr - red) * alpha)>>8);
       green = green + (((cg - green) * alpha)>>8);
-      blue  = blue + (((cb - blue) * alpha)>>8);
+      blue  = blue  + (((cb - blue) * alpha)>>8);
       ((UWORD *)p)[0] = ((red & 0xf8) << 8) | ((green & 0xfc) << 3) | (blue>>3);
    }
 
@@ -681,9 +828,9 @@ private:
       UBYTE blue   = (pixel >> 8) & 0xf8;
       UBYTE green  = (pixel >> 3) & 0xf8;
       UBYTE red   = pixel << 3;
-      red   = red + (((cr - red) * alpha)>>8);
+      red   = red   + (((cr - red) * alpha)>>8);
       green = green + (((cg - green) * alpha)>>8);
-      blue  = blue + (((cb - blue) * alpha)>>8);
+      blue  = blue  + (((cb - blue) * alpha)>>8);
       ((UWORD *)p)[0] = ((blue & 0xf8) << 8) | ((green & 0xfc) << 3) | (red>>3);
    }
 

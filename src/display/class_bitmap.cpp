@@ -380,10 +380,13 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
 -METHOD-
 ConvertToLinear: Convert a bitmap's colour space to linear RGB.
 
-Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.
+Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the `BMF_ALPHA_CHANNEL` flag
+is enabled on the bitmap, pixels with an alpha value of 0 are ignored.
 
 The #ColourSpace will be set to `LINEAR_RGB` on completion.  This method returns immediately if the #ColourSpace is
 already set to `LINEAR_RGB`.
+
+For the sake of efficiency, lookup tables are used to quickly perform the conversion process.
 
 -ERRORS-
 Okay
@@ -453,10 +456,13 @@ ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
 -METHOD-
 ConvertToRGB: Convert a bitmap's colour space to standard RGB.
 
-Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.
+Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the `BMF_ALPHA_CHANNEL` flag is
+enabled on the bitmap, pixels with an alpha value of 0 are ignored.
 
 The #ColourSpace will be set to `SRGB` on completion.  This method returns immediately if the #ColourSpace is
 already set to `SRGB`.
+
+For the sake of efficiency, lookup tables are used to quickly perform the conversion process.
 
 -ERRORS-
 Okay

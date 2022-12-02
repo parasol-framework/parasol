@@ -881,6 +881,7 @@ the surface area first).</li>
       <const name="COPY">Special CopyArea() option that avoids blending when the destination pixel is empty.</const>
       <const name="DITHER">Perform dithering if the colour formats differ between the source and destination.</const>
       <const name="FILL">For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture.</const>
+      <const name="LINEAR">Use linear interpolation to improve the quality of alpha blending.</const>
     </constants>
 
     <constants lookup="BDF" comment="CopySurface() flags">

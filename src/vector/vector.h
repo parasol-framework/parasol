@@ -58,7 +58,7 @@ extern OBJECTPTR clVectorEllipse, clVectorRectangle, clVectorPath, clVectorWave;
 extern OBJECTPTR clVectorFilter, clVectorPolygon, clVectorText, clVectorClip;
 extern OBJECTPTR clVectorGradient, clVectorImage, clVectorPattern, clVector;
 extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX, clSourceFX;
-extern OBJECTPTR clBlurFX, clColourFX, clCompositeFX, clConvolveFX, clFilterEffect;
+extern OBJECTPTR clBlurFX, clColourFX, clCompositeFX, clConvolveFX, clFilterEffect, clDisplacementFX;
 extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX, clRemapFX, clLightingFX;
 
 extern struct DisplayBase *DisplayBase;
@@ -249,6 +249,8 @@ class extVectorFilter : public objVectorFilter {
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
    ClipRectangle VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
    UBYTE BankIndex;
+   DOUBLE BoundWidth, BoundHeight; // Filter boundary, computed on acDraw()
+   DOUBLE TargetX, TargetY, TargetWidth, TargetHeight; // Target boundary, computed on acDraw()
    bool Rendered;
    bool Disabled;
 };
@@ -405,6 +407,7 @@ extern ERROR init_colour(void);
 extern ERROR init_colourfx(void);
 extern ERROR init_compositefx(void);
 extern ERROR init_convolvefx(void);
+extern ERROR init_displacementfx(void);
 extern ERROR init_filter(void);
 extern ERROR init_filtereffect(void);
 extern ERROR init_floodfx(void);
@@ -427,7 +430,7 @@ extern ERROR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERROR scene_input_events(const InputEvent *, LONG);
 extern GRADIENT_TABLE * get_fill_gradient_table(extVector &, DOUBLE);
 extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
-extern void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform);
+extern void apply_parent_transforms(extVector *Start, agg::trans_affine &);
 extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
 extern void calc_aspectratio(CSTRING, LONG, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
@@ -504,25 +507,36 @@ inline static void apply_transforms(const T &Vector, agg::trans_affine &AGGTrans
 
 namespace agg {
 
+// This is a customised caller into AGG's drawing process.
+//
+// RenderBase: The target bitmap.  Use the clip_box() method to limit the drawing region.
+// Raster: Chooses the algorithm used to rasterise the vector path (affects AA, outlining etc).  Also configures the
+//   filling rule, gamma and related drawing options.
+
 template <class T> static void drawBitmapRender(agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::rasterizer_scanline_aa<> &Raster, T &spangen, DOUBLE Opacity)
+   agg::rasterizer_scanline_aa<> &Raster, T &spangen, DOUBLE Opacity = 1.0)
 {
    class spanconv_image {
       public:
-      spanconv_image(DOUBLE Alpha) : alpha(Alpha) { }
-      void prepare() { }
-      void generate(agg::rgba8 *span, int x, int y, unsigned len) const {
-         do {
-            span->a = span->a * alpha;
-            ++span;
-         } while(--len);
-      }
+         spanconv_image(DOUBLE Alpha) : alpha(Alpha) { }
+
+         void prepare() { }
+
+         void generate(agg::rgba8 *span, int x, int y, unsigned len) const {
+            do {
+               span->a = span->a * alpha;
+               ++span;
+            } while(--len);
+         }
+
       private:
-      DOUBLE alpha;
+         DOUBLE alpha;
    };
 
    agg::span_allocator<agg::rgba8> spanalloc;
    agg::scanline_u8 scanline;
+
+   // Refer to pixfmt_psl::blend_color_hspan() if you're looking for the code that does the actual drawing.
    if (Opacity < 1.0) {
       spanconv_image sci(Opacity);
       agg::span_converter<T, spanconv_image> sc(spangen, sci);
@@ -532,28 +546,58 @@ template <class T> static void drawBitmapRender(agg::renderer_base<agg::pixfmt_p
 };
 
 //****************************************************************************
+
+template <class T> static void renderSolidBitmap(agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+   agg::rasterizer_scanline_aa<> &Raster, T &spangen, DOUBLE Opacity = 1.0)
+{
+   class spanconv_image {
+      public:
+         spanconv_image(DOUBLE Alpha) : alpha(Alpha) { }
+
+         void prepare() { }
+
+         void generate(agg::rgba8 *span, int x, int y, unsigned len) const {
+            do {
+               span->a = span->a * alpha;
+               ++span;
+            } while(--len);
+         }
+
+      private:
+         DOUBLE alpha;
+   };
+
+   agg::span_allocator<agg::rgba8> spanalloc;
+   agg::scanline_u8 scanline;
+
+   if (Opacity < 1.0) {
+      spanconv_image sci(Opacity);
+      agg::span_converter<T, spanconv_image> sc(spangen, sci);
+      agg::render_scanlines_aa_noblend(Raster, scanline, RenderBase, spanalloc, sc);
+   }
+   else agg::render_scanlines_aa_noblend(Raster, scanline, RenderBase, spanalloc, spangen);
+};
+
+//****************************************************************************
 // This class is used for clipped images (no tiling)
 
-template<class Source> class span_pattern_rkl // Based on span_pattern_rgba
+template<class Source> class span_once // Based on span_pattern_rgba
 {
 private:
-   span_pattern_rkl() {}
+   span_once() {}
 public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_pattern_rkl(Source & src, unsigned offset_x, unsigned offset_y) :
-       m_src(&src),
-       m_offset_x(offset_x),
-       m_offset_y(offset_y)
+   span_once(Source & src, unsigned offset_x, unsigned offset_y) :
+       m_src(&src), m_offset_x(offset_x), m_offset_y(offset_y)
    {
       m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
    }
 
    void prepare() {}
 
-   void generate(agg::rgba8 *s, int x, int y, unsigned len)
-   {
+   void generate(agg::rgba8 *s, int x, int y, unsigned len) {
       x += m_offset_x;
       y += m_offset_y;
       const value_type* p = (const value_type*)span(x, y, len);
@@ -567,8 +611,7 @@ public:
       } while(--len);
    }
 
-    int8u* span(int x, int y, unsigned len)
-   {
+   int8u * span(int x, int y, unsigned len) {
       m_x = m_x0 = x;
       m_y = y;
       if ((y >= 0) and (y < (int)m_src->mBitmap->Clip.Bottom) and (x >= 0) and (x+(int)len <= (int)m_src->mBitmap->Clip.Right)) {
@@ -581,8 +624,7 @@ public:
       return m_bk_buf;
    }
 
-   int8u* next_x()
-   {
+   int8u * next_x() {
       if (m_pix_ptr) return m_pix_ptr += m_src->mBitmap->BytesPerPixel;
       ++m_x;
       if ((m_y >= 0) and (m_y < (int)m_src->mBitmap->Clip.Bottom) and (m_x >= 0) and (m_x < (int)m_src->mBitmap->Clip.Right)) {
@@ -591,8 +633,7 @@ public:
       return m_bk_buf;
   }
 
-   int8u* next_y()
-   {
+   int8u * next_y() {
       ++m_y;
       m_x = m_x0;
       if (m_pix_ptr and m_y >= 0 and m_y < (int)m_src->height()) {
@@ -604,6 +645,7 @@ public:
       }
       return m_bk_buf;
    }
+
    Source *m_src;
 
 private:

@@ -162,6 +162,7 @@ inline point3 rightNormal(const UBYTE m[9], const DOUBLE Scale) {
 class objLightingFX : public extFilterEffect {
    public:
    FRGB   Colour;           // Colour of the light source.
+   FRGB   LinearColour;     // Colour of the light source in linear sRGB space.
    DOUBLE SpecularExponent; // Exponent value for specular lighting only.
    DOUBLE Scale;            // Maximum height of the surface for bump map calculations.
    DOUBLE Constant;         // The ks/kd constant value for the light mode.
@@ -185,6 +186,7 @@ class objLightingFX : public extFilterEffect {
    objLightingFX() {
       SpecularExponent = 1.0;
       Colour   = { 1.0, 1.0, 1.0, 1.0 };
+      LinearColour = { 1.0, 1.0, 1.0, 1.0 };
       Type     = LT_DIFFUSE;
       Constant = 1.0;
       Scale    = 1.0;
@@ -218,12 +220,12 @@ static FRGB colour_spot_light(objLightingFX *Self, point3 &Point)
          scale = scale * (cosAngle - Self->CosOuterConeAngle);
          scale *= Self->ConeScale;
       }
-      FRGB result = { .Red = Self->Colour.Red * scale, .Green = Self->Colour.Green * scale, .Blue = Self->Colour.Blue * scale, .Alpha = Self->Colour.Alpha * scale };
+      FRGB result = { .Red = Self->LinearColour.Red * scale, .Green = Self->LinearColour.Green * scale, .Blue = Self->LinearColour.Blue * scale, .Alpha = Self->LinearColour.Alpha * scale };
       return result;
    }
    else {
       DOUBLE scale = pow(-Point.dot(Self->SpotDelta), Self->SpotExponent);
-      FRGB result = { .Red = Self->Colour.Red * scale, .Green = Self->Colour.Green * scale, .Blue = Self->Colour.Blue * scale, .Alpha = Self->Colour.Alpha * scale };
+      FRGB result = { .Red = Self->LinearColour.Red * scale, .Green = Self->LinearColour.Green * scale, .Blue = Self->LinearColour.Blue * scale, .Alpha = Self->LinearColour.Alpha * scale };
       return result;
    }
 }
@@ -237,9 +239,9 @@ static void diffuse_light(objLightingFX *Self, const point3 &Normal, const point
    if (scale < 0) scale = 0;
    else if (scale > 255.0) scale = 255.0;
 
-   Output[R] = F2T(Colour.Red * scale);
-   Output[G] = F2T(Colour.Green * scale);
-   Output[B] = F2T(Colour.Blue * scale);
+   Output[R] = glLinearRGB.invert(F2T(Colour.Red * scale));
+   Output[G] = glLinearRGB.invert(F2T(Colour.Green * scale));
+   Output[B] = glLinearRGB.invert(F2T(Colour.Blue * scale));
    Output[A] = 255;
 }
 
@@ -253,10 +255,17 @@ static void specular_light(objLightingFX *Self, const point3 &Normal, const poin
    if (scale < 0) scale = 0;
    else if (scale > 255.0) scale = 255.0;
 
-   Output[R] = F2T(Colour.Red * scale);
-   Output[G] = F2T(Colour.Green * scale);
-   Output[B] = F2T(Colour.Blue * scale);
-   Output[A] = Output[R] > Output[G] ? (Output[R] > Output[B] ? Output[R] : Output[B]) : (Output[G] > Output[B] ? Output[G] : Output[B]);
+   const UBYTE r = F2T(Colour.Red * scale);
+   const UBYTE g = F2T(Colour.Green * scale);
+   const UBYTE b = F2T(Colour.Blue * scale);
+
+   Output[R] = glLinearRGB.invert(r);
+   Output[G] = glLinearRGB.invert(g);
+   Output[B] = glLinearRGB.invert(b);
+   if (Self->LightSource IS LS_DISTANT) {
+      Output[A] = Output[R] > Output[G] ? (Output[R] > Output[B] ? Output[R] : Output[B]) : (Output[G] > Output[B] ? Output[G] : Output[B]); // Correct for w3-filters-specular-01 (specular distant light)
+   }
+   else Output[A] = r > g ? (r > b ? r : b) : (g > b ? g : b);
 }
 
 /*********************************************************************************************************************
@@ -269,7 +278,7 @@ static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
 {
    parasol::Log log;
 
-   if (Self->Target->BytesPerPixel != 4) return log.warning(ERR_Failed);
+   if (Self->Target->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
 
    DOUBLE ltx = Self->X;
    DOUBLE lty = Self->Y;
@@ -326,6 +335,7 @@ static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
 
    objBitmap *bmp;
    if (get_source_bitmap(Self->Filter, &bmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+   // Note: Linear conversion of the source bitmap is unnecessary because only the alpha channel is used.
 
    const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
    const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
@@ -363,7 +373,7 @@ static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
          m[8] = row2[A]; row2 += bpp;
 
          if (Self->LightSource IS LS_DISTANT) { // Diffuse distant light
-            diffuse_light(Self, leftNormal(m, scale), Self->Direction, Self->Colour, dptr, R, G, B, A);
+            diffuse_light(Self, leftNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
             dptr += bpp;
 
             for (LONG x=1; x < width-1; ++x) {
@@ -371,12 +381,12 @@ static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
                 m[2] = row0[A]; row0 += bpp;
                 m[5] = row1[A]; row1 += bpp;
                 m[8] = row2[A]; row2 += bpp;
-                diffuse_light(Self, interiorNormal(m, scale), Self->Direction, Self->Colour, dptr, R, G, B, A);
+                diffuse_light(Self, interiorNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
                 dptr += bpp;
             }
 
             shiftMatrixLeft(m);
-            diffuse_light(Self, rightNormal(m, scale), Self->Direction, Self->Colour, dptr, R, G, B, A);
+            diffuse_light(Self, rightNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
          }
          else if (Self->LightSource IS LS_SPOT) { // Diffuse spot light
             point3 stl = read_light_delta(Self, ltx, lty - DOUBLE(y), ltz, m[4]);
@@ -399,7 +409,7 @@ static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
          }
          else { // Diffuse point light
             point3 stl = read_light_delta(Self, ltx, lty - DOUBLE(y), ltz, m[4]);
-            diffuse_light(Self, leftNormal(m, scale), stl, Self->Colour, dptr, R, G, B, A);
+            diffuse_light(Self, leftNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
             dptr += bpp;
 
             for (LONG x=1; x < width-1; ++x) {
@@ -408,13 +418,13 @@ static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
                 m[5] = row1[A]; row1 += bpp;
                 m[8] = row2[A]; row2 += bpp;
                 stl = read_light_delta(Self, ltx - DOUBLE(x), lty - DOUBLE(y), ltz, m[4]);
-                diffuse_light(Self, interiorNormal(m, scale), stl, Self->Colour, dptr, R, G, B, A);
+                diffuse_light(Self, interiorNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
                 dptr += bpp;
             }
 
             shiftMatrixLeft(m);
             stl = read_light_delta(Self, ltx - DOUBLE(width-1), lty - DOUBLE(y), ltz, m[4]);
-            diffuse_light(Self, rightNormal(m, scale), stl, Self->Colour, dptr, R, G, B, A);
+            diffuse_light(Self, rightNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
          }
 
          dptr += bpp;
@@ -438,7 +448,7 @@ static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
          m[8] = row2[A]; row2 += bpp;
 
          if (Self->LightSource IS LS_DISTANT) { // Specular distant light
-            specular_light(Self, leftNormal(m, scale), Self->Direction, Self->Colour, dptr, R, G, B, A);
+            specular_light(Self, leftNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
             dptr += bpp;
 
             for (LONG x=1; x < width-1; ++x) {
@@ -446,12 +456,12 @@ static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
                 m[2] = row0[A]; row0 += bpp;
                 m[5] = row1[A]; row1 += bpp;
                 m[8] = row2[A]; row2 += bpp;
-                specular_light(Self, interiorNormal(m, scale), Self->Direction, Self->Colour, dptr, R, G, B, A);
+                specular_light(Self, interiorNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
                 dptr += bpp;
             }
 
             shiftMatrixLeft(m);
-            specular_light(Self, rightNormal(m, scale), Self->Direction, Self->Colour, dptr, R, G, B, A);
+            specular_light(Self, rightNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
          }
          else if (Self->LightSource IS LS_SPOT) { // Specular spot light
             point3 stl = read_light_delta(Self, ltx, lty - DOUBLE(y), ltz, m[4]);
@@ -474,7 +484,7 @@ static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
          }
          else { // Specular point light
             point3 stl = read_light_delta(Self, ltx, lty - DOUBLE(y), ltz, m[4]);
-            specular_light(Self, leftNormal(m, scale), stl, Self->Colour, dptr, R, G, B, A);
+            specular_light(Self, leftNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
             dptr += bpp;
 
             for (LONG x=1; x < width-1; ++x) {
@@ -483,13 +493,13 @@ static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
                 m[5] = row1[A]; row1 += bpp;
                 m[8] = row2[A]; row2 += bpp;
                 stl = read_light_delta(Self, ltx - DOUBLE(x), lty - DOUBLE(y), ltz, m[4]);
-                specular_light(Self, interiorNormal(m, scale), stl, Self->Colour, dptr, R, G, B, A);
+                specular_light(Self, interiorNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
                 dptr += bpp;
             }
 
             shiftMatrixLeft(m);
             stl = read_light_delta(Self, ltx - DOUBLE(width-1), lty - DOUBLE(y), ltz, m[4]);
-            specular_light(Self, rightNormal(m, scale), stl, Self->Colour, dptr, R, G, B, A);
+            specular_light(Self, rightNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
          }
 
          dptr += bpp;
@@ -549,10 +559,10 @@ static ERROR LIGHTINGFX_SetDistantLight(objLightingFX *Self, struct ltSetDistant
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   Self->Azimuth        = Args->Azimuth;
-   Self->Elevation      = Args->Elevation;
-   Self->LightSource    = LS_DISTANT;
-   Self->Direction      = point3(cosf(Self->Azimuth * DEG2RAD) * cosf(Self->Elevation * DEG2RAD), sinf(Self->Azimuth * DEG2RAD) * cosf(Self->Elevation * DEG2RAD), sinf(Self->Elevation * DEG2RAD));
+   Self->Azimuth     = Args->Azimuth;
+   Self->Elevation   = Args->Elevation;
+   Self->LightSource = LS_DISTANT;
+   Self->Direction   = point3(cosf(Self->Azimuth * DEG2RAD) * cosf(Self->Elevation * DEG2RAD), sinf(Self->Azimuth * DEG2RAD) * cosf(Self->Elevation * DEG2RAD), sinf(Self->Elevation * DEG2RAD));
    return ERR_Okay;
 }
 
@@ -684,6 +694,9 @@ static ERROR LIGHTINGFX_SET_Colour(objLightingFX *Self, FLOAT *Value, LONG Eleme
       else Self->Colour.Alpha = 1;
    }
    else Self->Colour.Alpha = 0;
+
+   Self->LinearColour = Self->Colour;
+   glLinearRGB.convert(Self->LinearColour);
 
    return ERR_Okay;
 }

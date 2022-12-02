@@ -37,7 +37,6 @@ struct target {
 };
 
 static ERROR get_source_bitmap(extVectorFilter *, objBitmap **, UBYTE, objFilterEffect *, bool);
-static target calc_target_area(extFilterEffect *Effect);
 
 //********************************************************************************************************************
 
@@ -46,6 +45,7 @@ static target calc_target_area(extFilterEffect *Effect);
 #include "filter_colourmatrix.cpp"
 #include "filter_composite.cpp"
 #include "filter_convolve.cpp"
+#include "filter_displacement.cpp"
 #include "filter_flood.cpp"
 #include "filter_image.cpp"
 #include "filter_lighting.cpp"
@@ -57,59 +57,58 @@ static target calc_target_area(extFilterEffect *Effect);
 #include "filter_turbulence.cpp"
 
 //********************************************************************************************************************
+// Compute the Target* and Bound* values, which are used by filter effect algorithms to determine placement.  They
+// reflect positions *without* transforms.  The caller is expected to apply ClientVector->Transform after making
+// normliased coordinate calculations.
+//
+// The Target* values tell the effects exactly where to render to.
+//
+// BoundsWidth/Height reflect the bounds of the client vector and its children.  These values are
+// be used by effects to compute their area when PrimitiveUnits = BOUNDING_BOX.
 
-static target calc_target_area(extFilterEffect *Effect)
+static void compute_target_area(extVectorFilter *Self)
 {
-   auto &filter = Effect->Filter;
-   target Target;
+   std::array<DOUBLE, 4> bounds = { Self->ClientViewport->vpFixedWidth, Self->ClientViewport->vpFixedHeight, 0, 0 };
+   calc_full_boundary(Self->ClientVector, bounds, false, false);
+   DOUBLE boundX = trunc(bounds[0]);
+   DOUBLE boundY = trunc(bounds[1]);
+   Self->BoundWidth  = bounds[2] - bounds[0];
+   Self->BoundHeight = bounds[3] - bounds[1];
 
-   std::array<DOUBLE, 4> bounds = { filter->ClientViewport->vpFixedWidth, filter->ClientViewport->vpFixedHeight, 0, 0 };
-   calc_full_boundary(filter->ClientVector, bounds, false, false);
-   const DOUBLE b_x = trunc(bounds[0]);
-   const DOUBLE b_y = trunc(bounds[1]);
-   const DOUBLE b_width  = bounds[2] - bounds[0];
-   const DOUBLE b_height = bounds[3] - bounds[1];
+   if (Self->Units IS VUNIT_BOUNDING_BOX) {
+      if (Self->Dimensions & DMF_FIXED_X) Self->TargetX = boundX;
+      else if (Self->Dimensions & DMF_RELATIVE_X) Self->TargetX = trunc(boundX + (Self->X * Self->BoundWidth));
+      else Self->TargetX = boundX;
 
-   if (filter->Units IS VUNIT_BOUNDING_BOX) {
-      if (filter->Dimensions & DMF_FIXED_X) Target.x = b_x;
-      else if (filter->Dimensions & DMF_RELATIVE_X) Target.x = trunc(b_x + (filter->X * b_width));
-      else Target.x = b_x;
+      if (Self->Dimensions & DMF_FIXED_Y) Self->TargetY = boundY;
+      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->TargetY = trunc(boundY + (Self->Y * Self->BoundHeight));
+      else Self->TargetY = boundY;
 
-      if (filter->Dimensions & DMF_FIXED_Y) Target.y = b_y;
-      else if (filter->Dimensions & DMF_RELATIVE_Y) Target.y = trunc(b_y + (filter->Y * b_height));
-      else Target.y = b_y;
+      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->TargetWidth = Self->Width * Self->BoundWidth;
+      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->TargetWidth = Self->Width * Self->BoundWidth;
+      else Self->TargetWidth = Self->BoundWidth;
 
-      if (filter->Dimensions & DMF_FIXED_WIDTH) Target.width = filter->Width * b_width;
-      else if (filter->Dimensions & DMF_RELATIVE_WIDTH) Target.width = filter->Width * b_width;
-      else Target.width = b_width;
-
-      if (filter->Dimensions & DMF_FIXED_HEIGHT) Target.height = filter->Height * b_height;
-      else if (filter->Dimensions & DMF_RELATIVE_HEIGHT) Target.height = filter->Height * b_height;
-      else Target.height = b_height;
+      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->TargetHeight = Self->Height * Self->BoundHeight;
+      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->TargetHeight = Self->Height * Self->BoundHeight;
+      else Self->TargetHeight = Self->BoundHeight;
    }
-   else { // USERSPACE
-      if (filter->Dimensions & DMF_FIXED_X) Target.x = trunc(filter->X);
-      else if (filter->Dimensions & DMF_RELATIVE_X) Target.x = trunc(filter->X * filter->ClientViewport->vpFixedWidth);
-      else Target.x = b_x;
+   else { // USERSPACE: Relative dimensions are measured against the client's viewport rather than the vector.
+      if (Self->Dimensions & DMF_FIXED_X) Self->TargetX = trunc(Self->X);
+      else if (Self->Dimensions & DMF_RELATIVE_X) Self->TargetX = trunc(Self->X * Self->ClientViewport->vpFixedWidth);
+      else Self->TargetX = boundX;
 
-      if (filter->Dimensions & DMF_FIXED_Y) Target.y = trunc(filter->Y);
-      else if (filter->Dimensions & DMF_RELATIVE_Y) Target.y = trunc(filter->Y * filter->ClientViewport->vpFixedHeight);
-      else Target.y = b_y;
+      if (Self->Dimensions & DMF_FIXED_Y) Self->TargetY = trunc(Self->Y);
+      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->TargetY = trunc(Self->Y * Self->ClientViewport->vpFixedHeight);
+      else Self->TargetY = boundY;
 
-      if (filter->Dimensions & DMF_FIXED_WIDTH) Target.width = filter->Width;
-      else if (filter->Dimensions & DMF_RELATIVE_WIDTH) Target.width = filter->Width * filter->ClientViewport->vpFixedWidth;
-      else Target.width = filter->ClientViewport->vpFixedWidth;
+      if (Self->Dimensions & DMF_FIXED_WIDTH) Self->TargetWidth = Self->Width;
+      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->TargetWidth = Self->Width * Self->ClientViewport->vpFixedWidth;
+      else Self->TargetWidth = Self->ClientViewport->vpFixedWidth;
 
-      if (filter->Dimensions & DMF_FIXED_HEIGHT) Target.height = filter->Height;
-      else if (filter->Dimensions & DMF_RELATIVE_HEIGHT) Target.height = filter->Height * filter->ClientViewport->vpFixedHeight;
-      else Target.height = filter->ClientViewport->vpFixedHeight;
+      if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->TargetHeight = Self->Height;
+      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->TargetHeight = Self->Height * Self->ClientViewport->vpFixedHeight;
+      else Self->TargetHeight = Self->ClientViewport->vpFixedHeight;
    }
-
-   Target.bound_x = b_x;
-   Target.bound_y = b_y;
-   Target.bound_width = b_width;
-   Target.bound_height = b_height;
-   return Target;
 }
 
 //********************************************************************************************************************
@@ -133,8 +132,7 @@ static ERROR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
    #endif
 
    if (bmp) {
-      if (Self->ColourSpace IS VCS_LINEAR_RGB) bmp->ColourSpace = CS_LINEAR_RGB;
-      else bmp->ColourSpace = CS_SRGB;
+      bmp->ColourSpace = CS_SRGB;
       bmp->Flags &= ~BMF_PREMUL;
       *BitmapResult = bmp;
       Self->BankIndex++;
@@ -193,11 +191,6 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
          gfxCopyArea(Self->BkgdBitmap, bmp, 0, Self->VectorClip.Left, Self->VectorClip.Top,
             Self->VectorClip.Right - Self->VectorClip.Left, Self->VectorClip.Bottom - Self->VectorClip.Top,
             bmp->Clip.Left, bmp->Clip.Top);
-
-         if ((Self->ColourSpace IS VCS_LINEAR_RGB) and (Self->BkgdBitmap->ColourSpace != CS_LINEAR_RGB)) {
-            bmp->ColourSpace = Self->BkgdBitmap->ColourSpace;
-            bmpConvertToLinear(bmp);
-         }
       }
    }
    else if (SourceType IS VSF_BKGD_ALPHA) {
@@ -281,7 +274,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
             FID_Height|TLONG,       Self->ClientViewport->Scene->PageHeight,
             FID_BitsPerPixel|TLONG, 32,
             FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
-            FID_ColourSpace|TLONG,  (Self->ColourSpace IS VCS_LINEAR_RGB) ? CS_LINEAR_RGB : CS_SRGB,
+            FID_ColourSpace|TLONG,  CS_SRGB,
             TAGEND)) return NULL;
    }
    else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or
@@ -298,7 +291,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
          extVectorViewport *viewport;
          if (!CreateObject(ID_VECTORVIEWPORT, 0, &viewport,
                FID_Owner|TLONG,       Self->SourceScene->UID,
-               FID_ColourSpace|TLONG, (Self->ColourSpace IS VCS_LINEAR_RGB) ? VCS_LINEAR_RGB : VCS_SRGB,
+               FID_ColourSpace|TLONG, Self->ColourSpace,
                TAGEND)) {
          }
          else return NULL;
@@ -437,13 +430,11 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
 
    parasol::SwitchContext context(Self);
 
-   //Self->ColourSpace = CS_SRGB;
-
    auto filter_name = GetName(Self);
    if ((!filter_name) or (!filter_name[0])) filter_name = "Unnamed";
    auto vector_name = GetName(Vector);
    if ((!vector_name) or (!vector_name[0])) vector_name = "Unnamed";
-   log.branch("Rendering '%s' filter content for %s #%d '%s'.  LinearRGB: %c", filter_name, Vector->Class->ClassName, Vector->UID, vector_name, (Self->ColourSpace IS VCS_LINEAR_RGB) ? 'Y' : 'N');
+   log.branch("Rendering '%s' filter content for %s #%d '%s'.", filter_name, Vector->Class->ClassName, Vector->UID, vector_name);
 
    Self->ClientViewport = Viewport;
    Self->ClientVector   = Vector;
@@ -452,6 +443,10 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
    Self->BankIndex      = 0;
 
    if (set_clip_region(Self, Viewport, Vector)) return ERR_Okay;
+
+   // Calculate Self->Target* and Self->Bound* values
+
+   compute_target_area(Self);
 
    // Render the effect pipeline in sequence.  Linked effects get their own bitmap, everything else goes to a shared
    // output bitmap.  After all effects are rendered, the shared output bitmap is returned for rendering to the scene graph.
@@ -468,11 +463,11 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
 
       Self->ActiveEffect = e;
 
-      if (e->UsageCount > 0) { // Effect is an input to something else
+      if (e->UsageCount > 0) { // This effect is an input to something else
          if (auto error = get_banked_bitmap(Self, &e->Target)) return error;
          gfxDrawRectangle(e->Target, 0, 0, e->Target->Width, e->Target->Height, 0x00000000, BAF_FILL);
       }
-      else { // Render to shared output
+      else { // This effect can render directly to the shared output bitmap
          if (!out) {
             if (auto error = get_banked_bitmap(Self, &out)) return error;
             gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
@@ -488,12 +483,6 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
       log.warning("Effect pipeline did not produce an output bitmap.");
       if (auto error = get_banked_bitmap(Self, &out)) return error;
       gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
-   }
-
-   // Return the result for rendering to the scene graph.
-
-   if (out->ColourSpace IS CS_LINEAR_RGB) {
-      bmpConvertToRGB(out);
    }
 
    #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)

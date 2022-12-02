@@ -135,9 +135,9 @@ class objConvolveFX : public extFilterEffect {
             LONG lr = F2I((factor * r) + Bias);
             LONG lg = F2I((factor * g) + Bias);
             LONG lb = F2I((factor * b) + Bias);
-            out[R] = MIN(MAX(lr, 0), 255);
-            out[G] = MIN(MAX(lg, 0), 255);
-            out[B] = MIN(MAX(lb, 0), 255);
+            out[R] = glLinearRGB.invert(MIN(MAX(lr, 0), 255));
+            out[G] = glLinearRGB.invert(MIN(MAX(lg, 0), 255));
+            out[B] = glLinearRGB.invert(MIN(MAX(lb, 0), 255));
             if (!PreserveAlpha) out[A] = MIN(MAX(F2I(factor * a + Bias), 0), 255);
             else out[A] = (input + (x<<2))[A];
             out += 4;
@@ -183,9 +183,9 @@ class objConvolveFX : public extFilterEffect {
             LONG lr = F2I((factor * r) + Bias);
             LONG lg = F2I((factor * g) + Bias);
             LONG lb = F2I((factor * b) + Bias);
-            out[R] = MIN(MAX(lr, 0), 255);
-            out[G] = MIN(MAX(lg, 0), 255);
-            out[B] = MIN(MAX(lb, 0), 255);
+            out[R] = glLinearRGB.invert(MIN(MAX(lr, 0), 255));
+            out[G] = glLinearRGB.invert(MIN(MAX(lg, 0), 255));
+            out[B] = glLinearRGB.invert(MIN(MAX(lb, 0), 255));
             if (!PreserveAlpha) out[A] = MIN(MAX(F2I(factor * a + Bias), 0), 255);
             else out[A] = (input + (x<<2))[A];
             out += 4;
@@ -211,7 +211,10 @@ static ERROR CONVOLVEFX_Draw(objConvolveFX *Self, struct acDraw *Args)
    if (!output) return ERR_Memory;
 
    objBitmap *inBmp;
-   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, true)) return ERR_Failed;
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+
+   if (Self->Filter->ColourSpace IS VCS_LINEAR_RGB) bmpConvertToLinear(inBmp);
+   //bmpPremultiply(inBmp);
 
    if ((canvas_width > Self->MatrixColumns*3) and (canvas_height > Self->MatrixRows*3)) {
       const LONG ew = Self->MatrixColumns>>1;
@@ -237,7 +240,9 @@ static ERROR CONVOLVEFX_Draw(objConvolveFX *Self, struct acDraw *Args)
 
    delete [] output;
 
-   bmpDemultiply(inBmp);
+   //bmpDemultiply(inBmp);
+   if (Self->Filter->ColourSpace IS VCS_LINEAR_RGB) bmpConvertToRGB(inBmp);
+
    return ERR_Okay;
 }
 

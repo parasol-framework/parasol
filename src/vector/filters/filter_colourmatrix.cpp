@@ -49,9 +49,10 @@ this operation.
 
 #define CM_SIZE 20
 
-static const DOUBLE LUMA_R = 0.212671;
-static const DOUBLE LUMA_G = 0.71516;
-static const DOUBLE LUMA_B = 0.072169;
+static const DOUBLE LUMA_R = 0.2125; // These values are as documented in W3C SVG
+static const DOUBLE LUMA_G = 0.7154;
+static const DOUBLE LUMA_B = 0.0721;
+
 static const DOUBLE ONETHIRD = 1.0 / 3.0;
 
 typedef std::array<DOUBLE, CM_SIZE> MATRIX;
@@ -76,7 +77,7 @@ public:
       for (auto i=0; i < CM_SIZE; i++) matrix[i] = Values[i];
    }
 
-   ColourMatrix() : preHue(0), postHue(0) {
+   ColourMatrix() : preHue(NULL), postHue(NULL) {
       reset();
    }
 
@@ -350,41 +351,40 @@ static ERROR COLOURFX_Draw(objColourFX *Self, struct acDraw *Args)
    objBitmap *inBmp;
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
 
-   auto out_line = (UBYTE *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
+   auto out_line = Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth);
+   auto in_line  = inBmp->Data + (inBmp->Clip.Left<<2) + (inBmp->Clip.Top * inBmp->LineWidth);
 
-   UBYTE *in_line = inBmp->Data + (inBmp->Clip.Left<<2) + (inBmp->Clip.Top * inBmp->LineWidth);
    for (LONG y=0; y < inBmp->Clip.Bottom - inBmp->Clip.Top; y++) {
       UBYTE *pixel = in_line;
       UBYTE *out = out_line;
-      for (LONG x=0; x < inBmp->Clip.Right - inBmp->Clip.Left; x++) {
+      for (LONG x=0; x < inBmp->Clip.Right - inBmp->Clip.Left; x++, pixel += 4, out += 4) {
          DOUBLE a = pixel[A];
-         DOUBLE r = pixel[R];
-         DOUBLE g = pixel[G];
-         DOUBLE b = pixel[B];
+         if (a) {
+            DOUBLE r = glLinearRGB.convert(pixel[R]);
+            DOUBLE g = glLinearRGB.convert(pixel[G]);
+            DOUBLE b = glLinearRGB.convert(pixel[B]);
 
-         LONG r2 = 0.5 + (r * matrix[0]) + (g * matrix[1]) + (b * matrix[2]) + (a * matrix[3]) + matrix[4];
-         LONG g2 = 0.5 + (r * matrix[5]) + (g * matrix[6]) + (b * matrix[7]) + (a * matrix[8]) + matrix[9];
-         LONG b2 = 0.5 + (r * matrix[10]) + (g * matrix[11]) + (b * matrix[12]) + (a * matrix[13]) + matrix[14];
-         LONG a2 = 0.5 + (r * matrix[15]) + (g * matrix[16]) + (b * matrix[17]) + (a * matrix[18]) + matrix[19];
+            LONG r2 = 0.5 + (r * matrix[0]) + (g * matrix[1]) + (b * matrix[2]) + (a * matrix[3]) + matrix[4];
+            LONG g2 = 0.5 + (r * matrix[5]) + (g * matrix[6]) + (b * matrix[7]) + (a * matrix[8]) + matrix[9];
+            LONG b2 = 0.5 + (r * matrix[10]) + (g * matrix[11]) + (b * matrix[12]) + (a * matrix[13]) + matrix[14];
+            LONG a2 = 0.5 + (r * matrix[15]) + (g * matrix[16]) + (b * matrix[17]) + (a * matrix[18]) + matrix[19];
 
-         if (a2 < 0) out[A] = 0;
-         else if (a2 > 255) out[A] = 255;
-         else out[A] = a2;
+            if (a2 < 0) out[A] = 0;
+            else if (a2 > 255) out[A] = 255;
+            else out[A] = a2;
 
-         if (r2 < 0)   out[R] = 0;
-         else if (r2 > 255) out[R] = 255;
-         else out[R] = r2;
+            if (r2 < 0)   out[R] = 0;
+            else if (r2 > 255) out[R] = glLinearRGB.invert(255);
+            else out[R] = glLinearRGB.invert(r2);
 
-         if (g2 < 0) out[G] = 0;
-         else if (g2 > 255) out[G] = 255;
-         else out[G] = g2;
+            if (g2 < 0) out[G] = 0;
+            else if (g2 > 255) out[G] = glLinearRGB.invert(255);
+            else out[G] = glLinearRGB.invert(g2);
 
-         if (b2 < 0) out[B] = 0;
-         else if (b2 > 255) out[B] = 255;
-         else out[B] = b2;
-
-         pixel += 4;
-         out += 4;
+            if (b2 < 0) out[B] = 0;
+            else if (b2 > 255) out[B] = glLinearRGB.invert(255);
+            else out[B] = glLinearRGB.invert(b2);
+         }
       }
       out_line += Self->Target->LineWidth;
       in_line += inBmp->LineWidth;
@@ -454,7 +454,10 @@ static ERROR COLOURFX_Init(objColourFX *Self, APTR Void)
          if (matrix) matrix->adjustSaturation(0);
          break;
 
-      case CM_NONE:
+      case CM_NONE: // Accept default of identity matrix
+         matrix = new (std::nothrow) ColourMatrix();
+         break;
+
       default:
          matrix = new (std::nothrow) ColourMatrix(Self->Values);
          break;
@@ -463,6 +466,18 @@ static ERROR COLOURFX_Init(objColourFX *Self, APTR Void)
    if (!matrix) return log.warning(ERR_AllocMemory);
    else Self->Matrix = matrix;
 
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR COLOURFX_NewObject(objColourFX *Self, APTR Void)
+{
+   // Configure identity matrix
+   Self->Values[0] = 1;
+   Self->Values[6] = 1;
+   Self->Values[12] = 1;
+   Self->Values[18] = 1;
    return ERR_Okay;
 }
 

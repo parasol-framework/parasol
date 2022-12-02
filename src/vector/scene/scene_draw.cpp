@@ -355,8 +355,8 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
          drawBitmapRender(RenderBase, Raster, spangen, Opacity);
       }
       else { // VSPREAD_PAD and VSPREAD_CLIP modes.
-         agg::span_pattern_rkl<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_once<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
+         agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
          drawBitmapRender(RenderBase, Raster, spangen, Opacity);
       }
    }
@@ -381,7 +381,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
          drawBitmapRender(RenderBase, Raster, source, Opacity);
       }
       else { // VSPREAD_PAD and VSPREAD_CLIP modes.
-         agg::span_pattern_rkl<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
+         agg::span_once<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
          drawBitmapRender(RenderBase, Raster, source, Opacity);
       }
    }
@@ -630,7 +630,7 @@ void draw_brush(const objVectorImage &Image,
 static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMethod,
    const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
    objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::rasterizer_scanline_aa<> &Raster, DOUBLE BorderWidth = 0, DOUBLE Alpha = 1.0)
+   agg::rasterizer_scanline_aa<> &Raster, DOUBLE Alpha = 1.0)
 {
    const DOUBLE c_width  = (Image.Units IS VUNIT_USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
    const DOUBLE c_height = (Image.Units IS VUNIT_USERSPACE) ? ViewHeight : Bounds[3] - Bounds[1];
@@ -1014,7 +1014,6 @@ private:
 
       if ((Vector.FillColour.Alpha > 0) and (!Vector.DisableFillColour)) { // Solid colour
          auto colour = agg::rgba(Vector.FillColour, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity);
-         if (State.mLinearRGB) colour.to_linear();
 
          if ((Vector.PathQuality IS RQ_CRISP) or (Vector.PathQuality IS RQ_FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
@@ -1042,7 +1041,7 @@ private:
 
       if (Vector.FillImage) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
          draw_image((DOUBLE *)&Vector.BX1, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillImage->Units IS VUNIT_USERSPACE, State),
-            view_width(), view_height(), *Vector.FillImage, mRenderBase, Raster, 0, Vector.FillOpacity * State.mOpacity);
+            view_width(), view_height(), *Vector.FillImage, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
       }
 
       if (Vector.FillGradient) {
@@ -1458,7 +1457,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       }
       else if (FillStyle->ClassID IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*FillStyle;
-         draw_image(bounds, mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster, 0, 1.0);
+         draw_image(bounds, mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster);
       }
       else if (FillStyle->ClassID IS ID_VECTORGRADIENT) {
          extVectorGradient &gradient = (extVectorGradient &)*FillStyle;
@@ -1506,7 +1505,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
 
 //********************************************************************************************************************
 
-void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap)
+void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, bool Linear)
 {
    mBitmap = &Bitmap;
 
@@ -1521,28 +1520,28 @@ void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap)
       if (Bitmap.ColourFormat->AlphaPos IS 24) {
          if (Bitmap.ColourFormat->BluePos IS 0) {
             pixel_order(2, 1, 0, 3); // BGRA
-            fBlendPix = &blend32BGRA;
-            fCopyPix  = &copy32BGRA;
-            fCoverPix = &cover32BGRA;
+            fBlendPix = Linear ? &linear32BGRA : &blend32BGRA;
+            fCopyPix  = Linear ? &linearCopy32BGRA : &copy32BGRA;
+            fCoverPix = Linear ? &linearCover32BGRA : &cover32BGRA;
          }
          else {
             pixel_order(0, 1, 2, 3); // RGBA
-            fBlendPix = &blend32RGBA;
-            fCopyPix  = &copy32RGBA;
-            fCoverPix = &cover32RGBA;
+            fBlendPix = Linear ? &linear32RGBA : &blend32RGBA;
+            fCopyPix  = Linear ? &linearCopy32RGBA : &copy32RGBA;
+            fCoverPix = Linear ? &linearCover32RGBA : &cover32RGBA;
          }
       }
       else if (Bitmap.ColourFormat->RedPos IS 24) {
          pixel_order(3, 1, 2, 0); // AGBR
-         fBlendPix = &blend32AGBR;
-         fCopyPix  = &copy32AGBR;
-         fCoverPix = &cover32AGBR;
+         fBlendPix = Linear ? &linear32AGBR : &blend32AGBR;
+         fCopyPix  = Linear ? &linearCopy32AGBR : &copy32AGBR;
+         fCoverPix = Linear ? &linearCover32AGBR : &cover32AGBR;
       }
       else {
          pixel_order(1, 2, 3, 0); // ARGB
-         fBlendPix = &blend32ARGB;
-         fCopyPix  = &copy32ARGB;
-         fCoverPix = &cover32ARGB;
+         fBlendPix = Linear ? &linear32ARGB : &blend32ARGB;
+         fCopyPix  = Linear ? &linearCopy32ARGB : &copy32ARGB;
+         fCoverPix = Linear ? &linearCover32ARGB : &cover32ARGB;
       }
    }
    else if (Bitmap.BitsPerPixel IS 24) {

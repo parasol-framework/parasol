@@ -2,23 +2,20 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
 //
-// Filtering class image_filter_lut implemantation
+// Filtering class image_filter_lut implementation
 //
 //----------------------------------------------------------------------------
 
-
 #include "agg_image_filters.h"
-
 
 namespace agg
 {
-    //--------------------------------------------------------------------
     void image_filter_lut::realloc_lut(double radius)
     {
         m_radius = radius;
@@ -31,12 +28,10 @@ namespace agg
         }
     }
 
-
-
     //--------------------------------------------------------------------
-    // This function normalizes integer values and corrects the rounding 
+    // This function normalizes integer values and corrects the rounding
     // errors. It doesn't do anything with the source floating point values
-    // (m_weight_array_dbl), it corrects only integers according to the rule 
+    // (m_weight_array_dbl), it corrects only integers according to the rule
     // of 1.0 which means that any sum of pixel weights must be equal to 1.0.
     // So, the filter function must produce a graph of the proper shape.
     //--------------------------------------------------------------------
@@ -62,7 +57,7 @@ namespace agg
                 sum = 0;
                 for(j = 0; j < m_diameter; j++)
                 {
-                    sum +=     m_weight_array[j * image_subpixel_scale + i] = 
+                    sum +=     m_weight_array[j * image_subpixel_scale + i] =
                         iround(m_weight_array[j * image_subpixel_scale + i] * k);
                 }
 

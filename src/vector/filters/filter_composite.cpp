@@ -4,7 +4,8 @@
 CompositeFX: Composite two sources together with a mixing algorithm.
 
 This filter combines the Input and Mix sources using either one of the Porter-Duff compositing operations, or a colour
-blending algorithm.
+blending algorithm.  The Input has priority and will be placed in the foreground for ordered operations such as Atop
+and Over.
 
 -END-
 
@@ -61,9 +62,9 @@ struct composite_over {
          const ULONG cA = 256 - sA;
          const ULONG mA = M[A] + (M[A] >> 7); // 0..255 -> 0..256
 
-         D[R] = ((S[R] * sA + ((M[R] * mA * cA)>>8))>>8) * 255 / dA;
-         D[G] = ((S[G] * sA + ((M[G] * mA * cA)>>8))>>8) * 255 / dA;
-         D[B] = ((S[B] * sA + ((M[B] * mA * cA)>>8))>>8) * 255 / dA;
+         D[R] = glLinearRGB.invert(((glLinearRGB.convert(S[R]) * sA + ((glLinearRGB.convert(M[R]) * mA * cA)>>8))>>8) * 255 / dA);
+         D[G] = glLinearRGB.invert(((glLinearRGB.convert(S[G]) * sA + ((glLinearRGB.convert(M[G]) * mA * cA)>>8))>>8) * 255 / dA);
+         D[B] = glLinearRGB.invert(((glLinearRGB.convert(S[B]) * sA + ((glLinearRGB.convert(M[B]) * mA * cA)>>8))>>8) * 255 / dA);
          D[A] = dA;
       }
    }
@@ -93,27 +94,46 @@ struct composite_out {
    }
 };
 
-// Mix alpha has priority.  Source alpha is ignored except for blending.
+// S is on top and blended with M as a background.  S is obscured if M is not present.  Mix alpha has priority in the
+// output.  S alpha is ignored except for blending with M.
 
 struct composite_atop {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if (auto alpha = M[A]) {
-         const UBYTE csalpha = 0xff - S[A];
-         D[R] = (S[R] * alpha + M[R] * csalpha + 0xff) >> 8;
-         D[G] = (S[G] * alpha + M[G] * csalpha + 0xff) >> 8;
-         D[B] = (S[B] * alpha + M[B] * csalpha + 0xff) >> 8;
-         D[A] = alpha;
+      if (auto m_alpha = M[A]) {
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         auto mR = glLinearRGB.convert(M[R]);
+         auto mG = glLinearRGB.convert(M[G]);
+         auto mB = glLinearRGB.convert(M[B]);
+
+         const UBYTE sA  = S[A];
+         const UBYTE scA = 0xff - sA;
+
+         D[R] = glLinearRGB.invert(((sR * sA) + (mR * scA) + 0xff)>>8);
+         D[G] = glLinearRGB.invert(((sG * sA) + (mG * scA) + 0xff)>>8);
+         D[B] = glLinearRGB.invert(((sB * sA) + (mB * scA) + 0xff)>>8);
+         D[A] = m_alpha;
       }
    }
 };
 
 struct composite_xor {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      auto sR = glLinearRGB.convert(S[R]);
+      auto sG = glLinearRGB.convert(S[G]);
+      auto sB = glLinearRGB.convert(S[B]);
+
+      auto mR = glLinearRGB.convert(M[R]);
+      auto mG = glLinearRGB.convert(M[G]);
+      auto mB = glLinearRGB.convert(M[B]);
+
       const UBYTE s1a = 0xff - S[A];
       const UBYTE d1a = 0xff - M[A];
-      D[R] = ((M[R] * s1a + S[R] * d1a + 0xff) >> 8);
-      D[G] = ((M[G] * s1a + S[G] * d1a + 0xff) >> 8);
-      D[B] = ((M[B] * s1a + S[B] * d1a + 0xff) >> 8);
+      D[R] = glLinearRGB.invert(((mR * s1a) + (sR * d1a) + 0xff) >> 8);
+      D[G] = glLinearRGB.invert(((mG * s1a) + (sG * d1a) + 0xff) >> 8);
+      D[B] = glLinearRGB.invert(((mB * s1a) + (sB * d1a) + 0xff) >> 8);
       D[A] = (S[A] + M[A] - ((S[A] * M[A] + (0xff>>1)) >> (8 - 1)));
    }
 };
@@ -123,21 +143,37 @@ struct composite_xor {
 
 struct blend_screen {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      D[R] = (UBYTE)(S[R] + M[R] - ((S[R] * M[R] + 0Xff) >> 8));
-      D[G] = (UBYTE)(S[G] + M[G] - ((S[G] * M[G] + 0Xff) >> 8));
-      D[B] = (UBYTE)(S[B] + M[B] - ((S[B] * M[B] + 0Xff) >> 8));
-      D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0Xff) >> 8));
+      auto sR = glLinearRGB.convert(S[R]);
+      auto sG = glLinearRGB.convert(S[G]);
+      auto sB = glLinearRGB.convert(S[B]);
+
+      auto mR = glLinearRGB.convert(M[R]);
+      auto mG = glLinearRGB.convert(M[G]);
+      auto mB = glLinearRGB.convert(M[B]);
+
+      D[R] = glLinearRGB.invert(sR + mR - ((sR * mR + 0Xff) >> 8));
+      D[G] = glLinearRGB.invert(sG + mG - ((sG * mG + 0Xff) >> 8));
+      D[B] = glLinearRGB.invert(sB + mB - ((sB * mB + 0Xff) >> 8));
+      D[A] = UBYTE(S[A] + M[A] - ((S[A] * M[A] + 0Xff) >> 8));
    }
 };
 
 struct blend_multiply {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         auto mR = glLinearRGB.convert(M[R]);
+         auto mG = glLinearRGB.convert(M[G]);
+         auto mB = glLinearRGB.convert(M[B]);
+
          const UBYTE s1a = 0xff - S[A];
          const UBYTE d1a = 0xff - M[A];
-         D[R] = (UBYTE)((S[R] * M[R] + (S[R] * d1a) + (M[R] * s1a) + 0xff) >> 8);
-         D[G] = (UBYTE)((S[G] * M[G] + (S[G] * d1a) + (M[G] * s1a) + 0xff) >> 8);
-         D[B] = (UBYTE)((S[B] * M[B] + (S[B] * d1a) + (M[B] * s1a) + 0xff) >> 8);
+         D[R] = glLinearRGB.invert((sR * mR + (sR * d1a) + (mR * s1a) + 0xff) >> 8);
+         D[G] = glLinearRGB.invert((sG * mG + (sG * d1a) + (mG * s1a) + 0xff) >> 8);
+         D[B] = glLinearRGB.invert((sB * mB + (sB * d1a) + (mB * s1a) + 0xff) >> 8);
          D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
@@ -146,13 +182,21 @@ struct blend_multiply {
 struct blend_darken {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         auto mR = glLinearRGB.convert(M[R]);
+         auto mG = glLinearRGB.convert(M[G]);
+         auto mB = glLinearRGB.convert(M[B]);
+
          UBYTE d1a = 0xff - D[A];
          UBYTE s1a = 0xff - S[A];
          UBYTE da  = D[A];
 
-         D[R] = (UBYTE)((agg::sd_min(S[R] * da, M[R] * S[A]) + S[R] * d1a + M[R] * s1a + 0xff) >> 8);
-         D[G] = (UBYTE)((agg::sd_min(S[G] * da, M[G] * S[A]) + S[G] * d1a + M[G] * s1a + 0xff) >> 8);
-         D[B] = (UBYTE)((agg::sd_min(S[B] * da, M[B] * S[A]) + S[B] * d1a + M[B] * s1a + 0xff) >> 8);
+         D[R] = glLinearRGB.invert((agg::sd_min(sR * da, mR * S[A]) + sR * d1a + mR * s1a + 0xff) >> 8);
+         D[G] = glLinearRGB.invert((agg::sd_min(sG * da, mG * S[A]) + sG * d1a + mG * s1a + 0xff) >> 8);
+         D[B] = glLinearRGB.invert((agg::sd_min(sB * da, mB * S[A]) + sB * d1a + mB * s1a + 0xff) >> 8);
          D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
@@ -161,12 +205,20 @@ struct blend_darken {
 struct blend_lighten {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         auto mR = glLinearRGB.convert(M[R]);
+         auto mG = glLinearRGB.convert(M[G]);
+         auto mB = glLinearRGB.convert(M[B]);
+
          UBYTE d1a = 0xff - D[A];
          UBYTE s1a = 0xff - S[A];
 
-         D[R] = (UBYTE)((agg::sd_max(S[R] * M[A], M[R] * S[A]) + S[R] * d1a + M[R] * s1a + 0xff) >> 8);
-         D[G] = (UBYTE)((agg::sd_max(S[G] * M[A], M[G] * S[A]) + S[G] * d1a + M[G] * s1a + 0xff) >> 8);
-         D[B] = (UBYTE)((agg::sd_max(S[B] * M[A], M[B] * S[A]) + S[B] * d1a + M[B] * s1a + 0xff) >> 8);
+         D[R] = glLinearRGB.invert((agg::sd_max(sR * M[A], mR * S[A]) + sR * d1a + mR * s1a + 0xff) >> 8);
+         D[G] = glLinearRGB.invert((agg::sd_max(sG * M[A], mG * S[A]) + sG * d1a + mG * s1a + 0xff) >> 8);
+         D[B] = glLinearRGB.invert((agg::sd_max(sB * M[A], mB * S[A]) + sB * d1a + mB * s1a + 0xff) >> 8);
          D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
@@ -175,27 +227,35 @@ struct blend_lighten {
 struct blend_dodge {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         auto mR = glLinearRGB.convert(M[R]);
+         auto mG = glLinearRGB.convert(M[G]);
+         auto mB = glLinearRGB.convert(M[B]);
+
          LONG d1a  = 0xff - M[A];
          LONG s1a  = 0xff - S[A];
-         LONG drsa = M[G] * S[A];
-         LONG dgsa = M[B] * S[A];
-         LONG dbsa = M[B] * S[A];
-         LONG srda = S[R] * M[A];
-         LONG sgda = S[G] * M[A];
-         LONG sbda = S[B] * M[A];
+         LONG drsa = mG * S[A];
+         LONG dgsa = mB * S[A];
+         LONG dbsa = mB * S[A];
+         LONG srda = sR * M[A];
+         LONG sgda = sG * M[A];
+         LONG sbda = sB * M[A];
          LONG sada = S[A] * M[A];
 
-         D[R] = (UBYTE)((srda + drsa >= sada) ?
-             (sada + S[R] * d1a + M[R] * s1a + 0xff) >> 8 :
-             drsa / (0xff - (S[R] << 8) / S[A]) + ((S[R] * d1a + M[R] * s1a + 0xff) >> 8));
+         D[R] = glLinearRGB.invert((srda + drsa >= sada) ?
+             (sada + sR * d1a + mR * s1a + 0xff) >> 8 :
+             drsa / (0xff - (sR << 8) / S[A]) + ((sR * d1a + mR * s1a + 0xff) >> 8));
 
-         D[G] = (UBYTE)((sgda + dgsa >= sada) ?
-             (sada + S[G] * d1a + M[G] * s1a + 0xff) >> 8 :
-             dgsa / (0xff - (S[G] << 8) / S[A]) + ((S[G] * d1a + M[G] * s1a + 0xff) >> 8));
+         D[G] = glLinearRGB.invert((sgda + dgsa >= sada) ?
+             (sada + sG * d1a + mG * s1a + 0xff) >> 8 :
+             dgsa / (0xff - (sG << 8) / S[A]) + ((sG * d1a + mG * s1a + 0xff) >> 8));
 
-         D[B] = (UBYTE)((sbda + dbsa >= sada) ?
-             (sada + S[B] * d1a + M[B] * s1a + 0xff) >> 8 :
-             dbsa / (0xff - (S[B] << 8) / S[A]) + ((S[B] * d1a + M[B] * s1a + 0xff) >> 8));
+         D[B] = glLinearRGB.invert((sbda + dbsa >= sada) ?
+             (sada + sB * d1a + mB * s1a + 0xff) >> 8 :
+             dbsa / (0xff - (sB << 8) / S[A]) + ((sB * d1a + mB * s1a + 0xff) >> 8));
 
          D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
@@ -204,41 +264,57 @@ struct blend_dodge {
 
 struct blend_contrast {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
+      auto sR = glLinearRGB.convert(S[R]);
+      auto sG = glLinearRGB.convert(S[G]);
+      auto sB = glLinearRGB.convert(S[B]);
+
+      auto mR = glLinearRGB.convert(M[R]);
+      auto mG = glLinearRGB.convert(M[G]);
+      auto mB = glLinearRGB.convert(M[B]);
+
       LONG d2a = M[A] >> 1;
       UBYTE s2a = S[A] >> 1;
 
-      int r = (int)((((M[R] - d2a) * int((S[R] - s2a)*2 + 0xff)) >> 8) + d2a);
-      int g = (int)((((M[G] - d2a) * int((S[G] - s2a)*2 + 0xff)) >> 8) + d2a);
-      int b = (int)((((M[B] - d2a) * int((S[B] - s2a)*2 + 0xff)) >> 8) + d2a);
+      auto r = LONG((((mR - d2a) * int((sR - s2a)*2 + 0xff)) >> 8) + d2a);
+      auto g = LONG((((mG - d2a) * int((sG - s2a)*2 + 0xff)) >> 8) + d2a);
+      auto b = LONG((((mB - d2a) * int((sB - s2a)*2 + 0xff)) >> 8) + d2a);
 
       r = (r < 0) ? 0 : r;
       g = (g < 0) ? 0 : g;
       b = (b < 0) ? 0 : b;
 
-      D[R] = (UBYTE)((r > M[A]) ? M[A] : r);
-      D[G] = (UBYTE)((g > M[A]) ? M[A] : g);
-      D[B] = (UBYTE)((b > M[A]) ? M[A] : b);
+      D[R] = glLinearRGB.invert((r > M[A]) ? M[A] : r);
+      D[G] = glLinearRGB.invert((g > M[A]) ? M[A] : g);
+      D[B] = glLinearRGB.invert((b > M[A]) ? M[A] : b);
    }
 };
 
 struct blend_overlay {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         auto mR = glLinearRGB.convert(M[R]);
+         auto mG = glLinearRGB.convert(M[G]);
+         auto mB = glLinearRGB.convert(M[B]);
+
          UBYTE d1a = 0xff - M[A];
          UBYTE s1a = 0xff - S[A];
          UBYTE sada = S[A] * M[A];
 
-         D[R] = (UBYTE)(((2*M[R] < M[A]) ?
-             2*S[R]*M[R] + S[R]*d1a + M[R]*s1a :
-             sada - 2*(M[A] - M[R])*(S[A] - S[R]) + S[R]*d1a + M[R]*s1a + 0xff) >> 8);
+         D[R] = glLinearRGB.invert(((2*mR < M[A]) ?
+             2*sR*mR + sR*d1a + mR*s1a :
+             sada - 2*(M[A] - mR)*(S[A] - sR) + sR*d1a + mR*s1a + 0xff) >> 8);
 
-         D[G] = (UBYTE)(((2*M[G] < M[A]) ?
-             2*S[G]*M[G] + S[G]*d1a + M[G]*s1a :
-             sada - 2*(M[A] - M[G])*(S[A] - S[G]) + S[G]*d1a + M[G]*s1a + 0xff) >> 8);
+         D[G] = glLinearRGB.invert(((2*mG < M[A]) ?
+             2*sG*mG + sG*d1a + mG*s1a :
+             sada - 2*(M[A] - mG)*(S[A] - sG) + sG*d1a + mG*s1a + 0xff) >> 8);
 
-         D[B] = (UBYTE)(((2*M[B] < M[A]) ?
-             2*S[B]*M[B] + S[B]*d1a + M[B]*s1a :
-             sada - 2*(M[A] - M[B])*(S[A] - S[B]) + S[B]*d1a + M[B]*s1a + 0xff) >> 8);
+         D[B] = glLinearRGB.invert(((2*mB < M[A]) ?
+             2*sB*mB + sB*d1a + mB*s1a :
+             sada - 2*(M[A] - mB)*(S[A] - sB) + sB*d1a + mB*s1a + 0xff) >> 8);
 
          D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
@@ -248,27 +324,35 @@ struct blend_overlay {
 struct blend_burn {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         auto mR = glLinearRGB.convert(M[R]);
+         auto mG = glLinearRGB.convert(M[G]);
+         auto mB = glLinearRGB.convert(M[B]);
+
          const UBYTE d1a = 0xff - D[A];
          const UBYTE s1a = 0xff - S[A];
-         const LONG drsa = M[R] * S[A];
-         const LONG dgsa = M[G] * S[A];
-         const LONG dbsa = M[B] * S[A];
-         const LONG srda = S[R] * M[A];
-         const LONG sgda = S[G] * M[A];
-         const LONG sbda = S[B] * M[A];
+         const LONG drsa = mR * S[A];
+         const LONG dgsa = mG * S[A];
+         const LONG dbsa = mB * S[A];
+         const LONG srda = sR * M[A];
+         const LONG sgda = sG * M[A];
+         const LONG sbda = sB * M[A];
          const LONG sada = S[A] * M[A];
 
-         D[R] = (UBYTE)(((srda + drsa <= sada) ?
-             S[R] * d1a + M[R] * s1a :
-             S[A] * (srda + drsa - sada) / S[R] + S[R] * d1a + M[R] * s1a + 0xff) >> 8);
+         D[R] = glLinearRGB.invert(((srda + drsa <= sada) ?
+             sR * d1a + mR * s1a :
+             S[A] * (srda + drsa - sada) / sR + sR * d1a + mR * s1a + 0xff) >> 8);
 
-         D[G] = (UBYTE)(((sgda + dgsa <= sada) ?
-             S[G] * d1a + M[G] * s1a :
-             S[A] * (sgda + dgsa - sada) / S[G] + S[G] * d1a + M[G] * s1a + 0xff) >> 8);
+         D[G] = glLinearRGB.invert(((sgda + dgsa <= sada) ?
+             sG * d1a + mG * s1a :
+             S[A] * (sgda + dgsa - sada) / sG + sG * d1a + mG * s1a + 0xff) >> 8);
 
-         D[B] = (UBYTE)(((sbda + dbsa <= sada) ?
-             S[B] * d1a + M[B] * s1a :
-             S[A] * (sbda + dbsa - sada) / S[B] + S[B] * d1a + M[B] * s1a + 0xff) >> 8);
+         D[B] = glLinearRGB.invert(((sbda + dbsa <= sada) ?
+             sB * d1a + mB * s1a :
+             S[A] * (sbda + dbsa - sada) / sB + sB * d1a + mB * s1a + 0xff) >> 8);
 
          D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
@@ -278,21 +362,29 @@ struct blend_burn {
 struct blend_hard_light {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         auto mR = glLinearRGB.convert(M[R]);
+         auto mG = glLinearRGB.convert(M[G]);
+         auto mB = glLinearRGB.convert(M[B]);
+
          UBYTE d1a  = 0xff - D[A];
          UBYTE s1a  = 0xff - S[A];
          UBYTE sada = S[A] * M[A];
 
-         D[R] = (UBYTE)(((2*S[R] < S[A]) ?
-             2*S[R]*M[R] + S[R]*d1a + M[R]*s1a :
-             sada - 2*(M[A] - M[R])*(S[A] - S[R]) + S[R]*d1a + M[R]*s1a + 0xff) >> 8);
+         D[R] = glLinearRGB.invert(((2*sR < S[A]) ?
+             2*sR*mR + sR*d1a + mR*s1a :
+             sada - 2*(M[A] - mR)*(S[A] - sR) + sR*d1a + mR*s1a + 0xff) >> 8);
 
-         D[G] = (UBYTE)(((2*S[G] < S[A]) ?
-             2*S[G]*M[G] + S[G]*d1a + M[G]*s1a :
-             sada - 2*(M[A] - M[G])*(S[A] - S[G]) + S[G]*d1a + M[G]*s1a + 0xff) >> 8);
+         D[G] = glLinearRGB.invert(((2*sG < S[A]) ?
+             2*sG*mG + sG*d1a + mG*s1a :
+             sada - 2*(M[A] - mG)*(S[A] - sG) + sG*d1a + mG*s1a + 0xff) >> 8);
 
-         D[B] = (UBYTE)(((2*S[B] < S[A]) ?
-             2*S[B]*M[B] + S[B]*d1a + M[B]*s1a :
-             sada - 2*(M[A] - M[B])*(S[A] - S[B]) + S[B]*d1a + M[B]*s1a + 0xff) >> 8);
+         D[B] = glLinearRGB.invert(((2*sB < S[A]) ?
+             2*sB*mB + sB*d1a + mB*s1a :
+             sada - 2*(M[A] - mB)*(S[A] - sB) + sB*d1a + mB*s1a + 0xff) >> 8);
 
          D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
@@ -302,26 +394,30 @@ struct blend_hard_light {
 struct blend_soft_light {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
-         double xr = double(D[R]) / 0xff;
-         double xg = double(D[G]) / 0xff;
-         double xb = double(D[B]) / 0xff;
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         double xr = double(glLinearRGB.convert(D[R])) / 0xff;
+         double xg = double(glLinearRGB.convert(D[G])) / 0xff;
+         double xb = double(glLinearRGB.convert(D[B])) / 0xff;
          double da = double(D[A] ? D[A] : 1) / 0xff;
 
-         if(2*S[R] < S[A])   xr = xr*(S[A] + (1 - xr/da)*(2*S[R] - S[A])) + S[R]*(1 - da) + xr*(1 - S[A]);
-         else if(8*xr <= da) xr = xr*(S[A] + (1 - xr/da)*(2*S[R] - S[A])*(3 - 8*xr/da)) + S[R]*(1 - da) + xr*(1 - S[A]);
-         else                xr = (xr*S[A] + (sqrt(xr/da)*da - xr)*(2*S[R] - S[A])) + S[R]*(1 - da) + xr*(1 - S[A]);
+         if(2*sR < S[A])     xr = xr*(S[A] + (1 - xr/da)*(2*sR - S[A])) + sR*(1 - da) + xr*(1 - S[A]);
+         else if(8*xr <= da) xr = xr*(S[A] + (1 - xr/da)*(2*sR - S[A])*(3 - 8*xr/da)) + sR*(1 - da) + xr*(1 - S[A]);
+         else                xr = (xr*S[A] + (sqrt(xr/da)*da - xr)*(2*sR - S[A])) + sR*(1 - da) + xr*(1 - S[A]);
 
-         if(2*S[G] < S[A])   xg = xg*(S[A] + (1 - xg/da)*(2*S[G] - S[A])) + S[G]*(1 - da) + xg*(1 - S[A]);
-         else if(8*xg <= da) xg = xg*(S[A] + (1 - xg/da)*(2*S[G] - S[A])*(3 - 8*xg/da)) + S[G]*(1 - da) + xg*(1 - S[A]);
-         else                xg = (xg*S[A] + (sqrt(xg/da)*da - xg)*(2*S[G] - S[A])) + S[G]*(1 - da) + xg*(1 - S[A]);
+         if(2*sG < S[A])     xg = xg*(S[A] + (1 - xg/da)*(2*sG - S[A])) + sG*(1 - da) + xg*(1 - S[A]);
+         else if(8*xg <= da) xg = xg*(S[A] + (1 - xg/da)*(2*sG - S[A])*(3 - 8*xg/da)) + sG*(1 - da) + xg*(1 - S[A]);
+         else                xg = (xg*S[A] + (sqrt(xg/da)*da - xg)*(2*sG - S[A])) + sG*(1 - da) + xg*(1 - S[A]);
 
-         if(2*S[B] < S[A])   xb = xb*(S[A] + (1 - xb/da)*(2*S[B] - S[A])) + S[B]*(1 - da) + xb*(1 - S[A]);
-         else if(8*xb <= da) xb = xb*(S[A] + (1 - xb/da)*(2*S[B] - S[A])*(3 - 8*xb/da)) + S[B]*(1 - da) + xb*(1 - S[A]);
-         else                xb = (xb*S[A] + (sqrt(xb/da)*da - xb)*(2*S[B] - S[A])) + S[B]*(1 - da) + xb*(1 - S[A]);
+         if(2*sB < S[A])     xb = xb*(S[A] + (1 - xb/da)*(2*sB - S[A])) + sB*(1 - da) + xb*(1 - S[A]);
+         else if(8*xb <= da) xb = xb*(S[A] + (1 - xb/da)*(2*sB - S[A])*(3 - 8*xb/da)) + sB*(1 - da) + xb*(1 - S[A]);
+         else                xb = (xb*S[A] + (sqrt(xb/da)*da - xb)*(2*sB - S[A])) + sB*(1 - da) + xb*(1 - S[A]);
 
-         D[R] = (UBYTE)agg::uround(xr * 0xff);
-         D[G] = (UBYTE)agg::uround(xg * 0xff);
-         D[B] = (UBYTE)agg::uround(xb * 0xff);
+         D[R] = glLinearRGB.invert(agg::uround(xr * 0xff));
+         D[G] = glLinearRGB.invert(agg::uround(xg * 0xff));
+         D[B] = glLinearRGB.invert(agg::uround(xb * 0xff));
          D[A] = (UBYTE)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
       }
    }
@@ -330,9 +426,17 @@ struct blend_soft_light {
 struct blend_difference {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
-         D[R] = (UBYTE)(S[R] + M[R] - ((2 * agg::sd_min(S[R]*M[A], M[R]*S[A]) + 0xff) >> 8));
-         D[G] = (UBYTE)(S[G] + M[G] - ((2 * agg::sd_min(S[G]*M[A], M[G]*S[A]) + 0xff) >> 8));
-         D[B] = (UBYTE)(S[B] + M[B] - ((2 * agg::sd_min(S[B]*M[A], M[B]*S[A]) + 0xff) >> 8));
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         auto mR = glLinearRGB.convert(M[R]);
+         auto mG = glLinearRGB.convert(M[G]);
+         auto mB = glLinearRGB.convert(M[B]);
+
+         D[R] = glLinearRGB.invert(sR + mR - ((2 * agg::sd_min(sR*M[A], mR*S[A]) + 0xff) >> 8));
+         D[G] = glLinearRGB.invert(sG + mG - ((2 * agg::sd_min(sG*M[A], mG*S[A]) + 0xff) >> 8));
+         D[B] = glLinearRGB.invert(sB + mB - ((2 * agg::sd_min(sB*M[A], mB*S[A]) + 0xff) >> 8));
          D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
@@ -341,11 +445,19 @@ struct blend_difference {
 struct blend_exclusion {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         auto mR = glLinearRGB.convert(M[R]);
+         auto mG = glLinearRGB.convert(M[G]);
+         auto mB = glLinearRGB.convert(M[B]);
+
          const UBYTE d1a = 0xff - D[A];
          const UBYTE s1a = 0xff - S[A];
-         D[R] = (UBYTE)((S[R]*M[A] + M[R]*S[A] - 2*S[R]*M[R] + S[R]*d1a + M[R]*s1a + 0xff) >> 8);
-         D[G] = (UBYTE)((S[G]*M[A] + M[G]*S[A] - 2*S[G]*M[G] + S[G]*d1a + M[G]*s1a + 0xff) >> 8);
-         D[B] = (UBYTE)((S[B]*M[A] + M[B]*S[A] - 2*S[B]*M[B] + S[B]*d1a + M[B]*s1a + 0xff) >> 8);
+         D[R] = glLinearRGB.invert((sR*M[A] + mR*S[A] - 2*sR*mR + sR*d1a + mR*s1a + 0xff) >> 8);
+         D[G] = glLinearRGB.invert((sG*M[A] + mG*S[A] - 2*sG*mG + sG*d1a + mG*s1a + 0xff) >> 8);
+         D[B] = glLinearRGB.invert((sB*M[A] + mB*S[A] - 2*sB*mB + sB*d1a + mB*s1a + 0xff) >> 8);
          D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
@@ -354,13 +466,17 @@ struct blend_exclusion {
 struct blend_plus {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
-         const UBYTE xr = D[R] + S[R];
-         const UBYTE xg = D[G] + S[G];
-         const UBYTE xb = D[B] + S[B];
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         const UBYTE xr = glLinearRGB.convert(D[R]) + sR;
+         const UBYTE xg = glLinearRGB.convert(D[G]) + sG;
+         const UBYTE xb = glLinearRGB.convert(D[B]) + sB;
          const UBYTE xa = D[A] + S[A];
-         D[R] = (xr > 0xff) ? (UBYTE)0xff : xr;
-         D[G] = (xg > 0xff) ? (UBYTE)0xff : xg;
-         D[B] = (xb > 0xff) ? (UBYTE)0xff : xb;
+         D[R] = glLinearRGB.invert((xr > 0xff) ? (UBYTE)0xff : xr);
+         D[G] = glLinearRGB.invert((xg > 0xff) ? (UBYTE)0xff : xg);
+         D[B] = glLinearRGB.invert((xb > 0xff) ? (UBYTE)0xff : xb);
          D[A] = (xa > 0xff) ? (UBYTE)0xff : xa;
       }
    }
@@ -369,12 +485,16 @@ struct blend_plus {
 struct blend_minus {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
-         const UBYTE xr = D[R] - S[R];
-         const UBYTE xg = D[G] - S[G];
-         const UBYTE xb = D[B] - S[B];
-         D[R] = (xr > 0xff) ? 0 : xr;
-         D[G] = (xg > 0xff) ? 0 : xg;
-         D[B] = (xb > 0xff) ? 0 : xb;
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         const UBYTE xr = glLinearRGB.convert(D[R]) - sR;
+         const UBYTE xg = glLinearRGB.convert(D[G]) - sG;
+         const UBYTE xb = glLinearRGB.convert(D[B]) - sB;
+         D[R] = glLinearRGB.invert((xr > 0xff) ? 0 : xr);
+         D[G] = glLinearRGB.invert((xg > 0xff) ? 0 : xg);
+         D[B] = glLinearRGB.invert((xb > 0xff) ? 0 : xb);
          D[A] = (UBYTE)(S[A] + D[A] - ((S[A] * D[A] + 0xff) >> 8));
          //D[A] = (UBYTE)(0xff - (((0xff - S[A]) * (0xff - D[A]) + 0xff) >> 8));
       }
@@ -384,13 +504,17 @@ struct blend_minus {
 struct blend_invert {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if ((S[A]) or (M[A])) {
-         const UBYTE xr = ((M[A] - D[R]) * S[A] + 0xff) >> 8;
-         const UBYTE xg = ((M[A] - D[G]) * S[A] + 0xff) >> 8;
-         const UBYTE xb = ((M[A] - D[B]) * S[A] + 0xff) >> 8;
+         auto dR = glLinearRGB.convert(D[R]);
+         auto dG = glLinearRGB.convert(D[G]);
+         auto dB = glLinearRGB.convert(D[B]);
+
+         const UBYTE xr = ((M[A] - dR) * S[A] + 0xff) >> 8;
+         const UBYTE xg = ((M[A] - dG) * S[A] + 0xff) >> 8;
+         const UBYTE xb = ((M[A] - dB) * S[A] + 0xff) >> 8;
          const UBYTE s1a = 0xff - S[A];
-         D[R] = (UBYTE)(xr + ((D[R] * s1a + 0xff) >> 8));
-         D[G] = (UBYTE)(xg + ((D[G] * s1a + 0xff) >> 8));
-         D[B] = (UBYTE)(xb + ((D[B] * s1a + 0xff) >> 8));
+         D[R] = glLinearRGB.invert(xr + ((dR * s1a + 0xff) >> 8));
+         D[G] = glLinearRGB.invert(xg + ((dG * s1a + 0xff) >> 8));
+         D[B] = glLinearRGB.invert(xb + ((dB * s1a + 0xff) >> 8));
          D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
@@ -399,13 +523,21 @@ struct blend_invert {
 struct blend_invert_rgb {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
       if (S[A]) {
-         UBYTE xr = ((M[A] - D[R]) * S[R] + 0xff) >> 8;
-         UBYTE xg = ((M[A] - D[G]) * S[G] + 0xff) >> 8;
-         UBYTE xb = ((M[A] - D[B]) * S[B] + 0xff) >> 8;
+         auto sR = glLinearRGB.convert(S[R]);
+         auto sG = glLinearRGB.convert(S[G]);
+         auto sB = glLinearRGB.convert(S[B]);
+
+         auto dR = glLinearRGB.convert(D[R]);
+         auto dG = glLinearRGB.convert(D[G]);
+         auto dB = glLinearRGB.convert(D[B]);
+
+         UBYTE xr = ((M[A] - dR) * sR + 0xff) >> 8;
+         UBYTE xg = ((M[A] - dG) * sG + 0xff) >> 8;
+         UBYTE xb = ((M[A] - dB) * sB + 0xff) >> 8;
          UBYTE s1a = 0xff - S[A];
-         D[R] = (UBYTE)(xr + ((D[R] * s1a + 0xff) >> 8));
-         D[G] = (UBYTE)(xg + ((D[G] * s1a + 0xff) >> 8));
-         D[B] = (UBYTE)(xb + ((D[B] * s1a + 0xff) >> 8));
+         D[R] = glLinearRGB.invert(xr + ((dR * s1a + 0xff) >> 8));
+         D[G] = glLinearRGB.invert(xg + ((dG * s1a + 0xff) >> 8));
+         D[B] = glLinearRGB.invert(xb + ((dB * s1a + 0xff) >> 8));
          D[A] = (UBYTE)(S[A] + M[A] - ((S[A] * M[A] + 0xff) >> 8));
       }
    }
@@ -514,14 +646,14 @@ static ERROR COMPOSITEFX_Draw(objCompositeFX *Self, struct acDraw *Args)
                         #define SCALE (1.0 / 255.0)
                         #define DESCALE 255.0
                         const DOUBLE sA = DOUBLE(sp[A]) * SCALE;
-                        const DOUBLE sR = DOUBLE(sp[R]) * SCALE * sA;
-                        const DOUBLE sG = DOUBLE(sp[G]) * SCALE * sA;
-                        const DOUBLE sB = DOUBLE(sp[B]) * SCALE * sA;
+                        const DOUBLE sR = DOUBLE(glLinearRGB.convert(sp[R])) * SCALE * sA;
+                        const DOUBLE sG = DOUBLE(glLinearRGB.convert(sp[G])) * SCALE * sA;
+                        const DOUBLE sB = DOUBLE(glLinearRGB.convert(sp[B])) * SCALE * sA;
 
                         const DOUBLE mA = DOUBLE(mp[A]) * SCALE;
-                        const DOUBLE mR = DOUBLE(mp[R]) * SCALE * mA;
-                        const DOUBLE mG = DOUBLE(mp[G]) * SCALE * mA;
-                        const DOUBLE mB = DOUBLE(mp[B]) * SCALE * mA;
+                        const DOUBLE mR = DOUBLE(glLinearRGB.convert(mp[R])) * SCALE * mA;
+                        const DOUBLE mG = DOUBLE(glLinearRGB.convert(mp[G])) * SCALE * mA;
+                        const DOUBLE mB = DOUBLE(glLinearRGB.convert(mp[B])) * SCALE * mA;
 
                         DOUBLE dA = (Self->K1 * sA * mA) + (Self->K2 * sA) + (Self->K3 * mA) + Self->K4;
 
@@ -535,15 +667,15 @@ static ERROR COMPOSITEFX_Draw(objCompositeFX *Self, struct acDraw *Args)
 
                            if (dr > 0xff) dp[R] = 0xff;
                            else if (dr < 0) dp[R] = 0;
-                           else dp[R] = dr;
+                           else dp[R] = glLinearRGB.invert(dr);
 
                            if (dg > 0xff) dp[G] = 0xff;
                            else if (dg < 0) dp[G] = 0;
-                           else dp[G] = dg;
+                           else dp[G] = glLinearRGB.invert(dg);
 
                            if (db > 0xff) dp[B] = 0xff;
                            else if (db < 0) dp[B] = 0;
-                           else dp[B] = db;
+                           else dp[B] = glLinearRGB.invert(db);
 
                            dp[A] = F2T(dA * DESCALE);
                         }

@@ -28,7 +28,10 @@ class Component {
    public:
 
    Component(CSTRING pName) : Name(pName), Type(RFT_IDENTITY) {
-      for (size_t i=0; i < sizeof(Lookup); i++) Lookup[i] = i;
+      for (size_t i=0; i < sizeof(Lookup); i++) {
+         Lookup[i] = i;
+         ILookup[i] = glLinearRGB.invert(i);
+      }
    }
 
    std::string Name;
@@ -39,7 +42,88 @@ class Component {
    DOUBLE Exponent;           // If gamma; the exponent of the gamma function.
    DOUBLE Offset;             // If gamma; the offset of the gamma function.
    RFT    Type;               // The type of algorithm to use.
-   UBYTE  Lookup[256];
+   UBYTE  Lookup[256];        // sRGB lookup
+   UBYTE  ILookup[256];       // Inverted linear RGB lookup
+
+   void select_invert() {
+      Type = RFT_INVERT;
+      for (size_t i=0; i < sizeof(Lookup); i++) {
+         Lookup[i]  = 255 - i;
+         ILookup[i] = glLinearRGB.invert(255 - i);
+      }
+   }
+
+   void select_identity() {
+      Type = RFT_IDENTITY;
+      for (size_t i=0; i < sizeof(Lookup); i++) {
+         Lookup[i] = i;
+         ILookup[i] = glLinearRGB.invert(i);
+      }
+   }
+
+   void select_mask(UBYTE pMask) {
+      Type = RFT_MASK;
+      for (size_t i=0; i < sizeof(Lookup); i++) {
+         Lookup[i]  = i & pMask;
+         ILookup[i] = glLinearRGB.invert(i & pMask);
+      }
+   }
+
+   void select_linear(const DOUBLE pSlope, const DOUBLE pIntercept) {
+      Type      = RFT_LINEAR;
+      Slope     = pSlope;
+      Intercept = pIntercept;
+
+      for (size_t i=0; i < sizeof(Lookup); i++) {
+         ULONG c = F2T((DOUBLE(i) * pSlope) + pIntercept * 255.0);
+         Lookup[i] = c;
+         ILookup[i] = glLinearRGB.invert(c);
+      }
+   }
+
+   void select_gamma(const DOUBLE pAmplitude, const DOUBLE pExponent, const DOUBLE pOffset) {
+      Type      = RFT_GAMMA;
+      Amplitude = pAmplitude;
+      Exponent  = pExponent;
+      Offset    = pOffset;
+
+      for (size_t i=0; i < sizeof(Lookup); i++) {
+         DOUBLE pe = pow(DOUBLE(i) * (1.0/255.0), pExponent);
+         ULONG c = F2T(((pAmplitude * pe) + pOffset) * 255.0);
+         Lookup[i]  = (c < 255) ? c : 255;
+         ILookup[i] = glLinearRGB.invert((c < 255) ? c : 255);
+      }
+   }
+
+   void select_discrete(const DOUBLE *pValues, const LONG pSize) {
+      Type = RFT_DISCRETE;
+      Table.insert(Table.end(), pValues, pValues + pSize);
+
+      ULONG n = Table.size();
+      for (size_t i=0; i < sizeof(Lookup); i++) {
+         auto k = ULONG((i * n) / 255.0);
+         k = std::min(k, (ULONG)n - 1);
+         auto val = 255.0 * DOUBLE(Table[k]);
+         val = std::max(0.0, std::min(255.0, val));
+         Lookup[i] = UBYTE(val);
+         ILookup[i] = glLinearRGB.invert(UBYTE(val));
+      }
+   }
+
+   void select_table(const DOUBLE *pValues, const LONG pSize) {
+      Type = RFT_TABLE;
+      Table.insert(Table.end(), pValues, pValues + pSize);
+
+      ULONG n = Table.size();
+      for (size_t i=0; i < sizeof(Lookup); i++) {
+          DOUBLE c = DOUBLE(i) / 255.0;
+          auto k = ULONG(c * (n - 1));
+          DOUBLE v = Table[std::min((k + 1), (n - 1))];
+          LONG val = F2T(255.0 * (Table[k] + (c * (n - 1) - k) * (v - Table[k])));
+          Lookup[i] = std::max(0, std::min(255, val));
+          ILookup[i] = glLinearRGB.invert(Lookup[i]);
+      }
+   }
 };
 
 class objRemapFX : public extFilterEffect {
@@ -70,9 +154,7 @@ Draw: Render the effect to the target bitmap.
 
 static ERROR REMAPFX_Draw(objRemapFX *Self, struct acDraw *Args)
 {
-   parasol::Log log;
-
-   if (Self->Target->BytesPerPixel != 4) return ERR_Failed;
+   if (Self->Target->BytesPerPixel != 4) return ERR_InvalidState;
 
    objBitmap *bmp;
    if (get_source_bitmap(Self->Filter, &bmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
@@ -92,16 +174,36 @@ static ERROR REMAPFX_Draw(objRemapFX *Self, struct acDraw *Args)
    for (LONG y=0; y < height; y++) {
       auto dp = (ULONG *)dest;
       auto sp = in;
-      for (LONG x=0; x < width; x++) {
-         UBYTE out[4];
-         out[R] = Self->Red.Lookup[sp[R]];
-         out[G] = Self->Green.Lookup[sp[G]];
-         out[B] = Self->Blue.Lookup[sp[B]];
-         out[A] = Self->Alpha.Lookup[sp[A]];
-         dp[0] = ((ULONG *)out)[0];
-         dp++;
-         sp += 4;
+
+      if (Self->Filter->ColourSpace IS VCS_LINEAR_RGB) {
+         for (LONG x=0; x < width; x++) {
+            if (auto a = sp[A]) {
+               UBYTE out[4];
+               out[R] = Self->Red.ILookup[glLinearRGB.convert(sp[R])];
+               out[G] = Self->Green.ILookup[glLinearRGB.convert(sp[G])];
+               out[B] = Self->Blue.ILookup[glLinearRGB.convert(sp[B])];
+               out[A] = Self->Alpha.Lookup[a];
+               dp[0] = ((ULONG *)out)[0];
+            }
+            dp++;
+            sp += 4;
+         }
       }
+      else {
+         for (LONG x=0; x < width; x++) {
+            if (auto a = sp[A]) {
+               UBYTE out[4];
+               out[R] = Self->Red.Lookup[sp[R]];
+               out[G] = Self->Green.Lookup[sp[G]];
+               out[B] = Self->Blue.Lookup[sp[B]];
+               out[A] = Self->Alpha.Lookup[a];
+               dp[0] = ((ULONG *)out)[0];
+            }
+            dp++;
+            sp += 4;
+         }
+      }
+
       dest += Self->Target->LineWidth;
       in   += bmp->LineWidth;
    }
@@ -152,18 +254,7 @@ static ERROR REMAPFX_SelectDiscrete(objRemapFX *Self, struct rfSelectDiscrete *A
    if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR_Args);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
-      cmp->Type = RFT_DISCRETE;
-      cmp->Table.insert(cmp->Table.end(), Args->Values, Args->Values + Args->Size);
-
-      ULONG n = cmp->Table.size();
-      for (size_t i=0; i < sizeof(cmp->Lookup); i++) {
-         auto k = ULONG((i * n) / 255.0);
-         k = std::min(k, (ULONG)n - 1);
-         auto val = 255.0 * DOUBLE(cmp->Table[k]);
-         val = std::max(0.0, std::min(255.0, val));
-         cmp->Lookup[i] = (UBYTE)val;
-      }
-
+      cmp->select_discrete(Args->Values, Args->Size);
       log.extmsg("%s Values: %d", cmp->Name.c_str(), Args->Size);
       return ERR_Okay;
    }
@@ -194,10 +285,7 @@ static ERROR REMAPFX_SelectIdentity(objRemapFX *Self, struct rfSelectIdentity *A
    if (!Args) return log.warning(ERR_NullArgs);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
-      cmp->Type = RFT_IDENTITY;
-      for (size_t i=0; i < sizeof(cmp->Lookup); i++) {
-         cmp->Lookup[i] = i;
-      }
+      cmp->select_identity();
       log.extmsg("%s", cmp->Name.c_str());
       return ERR_Okay;
    }
@@ -231,17 +319,7 @@ static ERROR REMAPFX_SelectGamma(objRemapFX *Self, struct rfSelectGamma *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
-      cmp->Type      = RFT_GAMMA;
-      cmp->Amplitude = Args->Amplitude;
-      cmp->Exponent  = Args->Exponent;
-      cmp->Offset    = Args->Offset;
-
-      for (size_t i=0; i < sizeof(cmp->Lookup); i++) {
-         DOUBLE pe = pow(DOUBLE(i) * (1.0/255.0), cmp->Exponent);
-         ULONG c = F2T(((cmp->Amplitude * pe) + cmp->Offset) * 255.0);
-         cmp->Lookup[i] = (c < 255) ? c : 255;
-      }
-
+      cmp->select_gamma(Args->Amplitude, Args->Exponent, Args->Offset);
       log.extmsg("%s Amplitude: %.2f, Exponent: %.2f, Offset: %.2f", cmp->Name.c_str(), cmp->Amplitude, cmp->Exponent, cmp->Offset);
       return ERR_Okay;
    }
@@ -275,12 +353,7 @@ static ERROR REMAPFX_SelectInvert(objRemapFX *Self, struct rfSelectInvert *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
-      cmp->Type = RFT_INVERT;
-
-      for (size_t i=0; i < sizeof(cmp->Lookup); i++) {
-         cmp->Lookup[i] = 255 - i;
-      }
-
+      cmp->select_invert();
       log.extmsg("%s", cmp->Name.c_str());
       return ERR_Okay;
    }
@@ -315,15 +388,7 @@ static ERROR REMAPFX_SelectLinear(objRemapFX *Self, struct rfSelectLinear *Args)
    if (Args->Slope < 0) return log.warning(ERR_Args);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
-      cmp->Type      = RFT_LINEAR;
-      cmp->Slope     = Args->Slope;
-      cmp->Intercept = Args->Intercept;
-
-      for (size_t i=0; i < sizeof(cmp->Lookup); i++) {
-         ULONG c = F2T((DOUBLE(i) * cmp->Slope) + cmp->Intercept * 255.0);
-         cmp->Lookup[i] = c;
-      }
-
+      cmp->select_linear(Args->Slope, Args->Intercept);
       log.extmsg("%s Slope: %.2f, Intercept: %.2f", cmp->Name.c_str(), cmp->Slope, Args->Intercept);
       return ERR_Okay;
    }
@@ -359,12 +424,7 @@ static ERROR REMAPFX_SelectMask(objRemapFX *Self, struct rfSelectMask *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
-      cmp->Type = RFT_MASK;
-
-      for (size_t i=0; i < sizeof(cmp->Lookup); i++) {
-         cmp->Lookup[i] = i & Args->Mask;
-      }
-
+      cmp->select_mask(Args->Mask);
       log.extmsg("%s, Mask: $%.2x", cmp->Name.c_str(), Args->Mask);
       return ERR_Okay;
    }
@@ -401,18 +461,7 @@ static ERROR REMAPFX_SelectTable(objRemapFX *Self, struct rfSelectTable *Args)
    if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR_Args);
 
    if (auto cmp = Self->getComponent(Args->Component)) {
-      cmp->Type = RFT_TABLE;
-      cmp->Table.insert(cmp->Table.end(), Args->Values, Args->Values + Args->Size);
-
-      ULONG n = cmp->Table.size();
-      for (size_t i=0; i < sizeof(cmp->Lookup); i++) {
-          DOUBLE c = DOUBLE(i) / 255.0;
-          auto k = ULONG(c * (n - 1));
-          DOUBLE v = cmp->Table[std::min((k + 1), (n - 1))];
-          LONG val = F2T(255.0 * (cmp->Table[k] + (c * (n - 1) - k) * (v - cmp->Table[k])));
-          cmp->Lookup[i] = std::max(0, std::min(255, val));
-      }
-
+      cmp->select_table(Args->Values, Args->Size);
       log.extmsg("%s Values: %d", cmp->Name.c_str(), Args->Size);
       return ERR_Okay;
    }
