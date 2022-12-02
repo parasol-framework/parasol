@@ -18,7 +18,7 @@
 #endif
 
 #include <unordered_set>
-
+#include <mutex>
 #include <math.h>
 
 #ifdef __linux__
@@ -484,6 +484,7 @@ extern LONG glpMaximise, glpFullScreen;
 extern LONG glpWindowType;
 extern char glpDPMS[20];
 extern std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
+extern UBYTE *glDemultiply;
 
 // Thread-specific variables.
 
