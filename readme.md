@@ -23,7 +23,7 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 * Multi-platform compatible networking API, providing coverage for TCP/IP Sockets, HTTP, SSL.
 * Data handling APIs (XML, JSON, ZIP, PNG, JPEG, SVG)
 * Hundreds of standardised scalable icons are included for application building.
-* Full system abstraction for multi-platform support (file I/O, clipboards, threads, object management)
+* Full system abstraction for building cross-platform applications (file I/O, clipboards, threads, object management)
 * Multi-channel audio playback
 * WIP: Extensive text editing widget implemented with scintilla.org.
 
@@ -55,7 +55,8 @@ Here's an example of a simple client application written in Fluid.  It loads an 
    })
 
    glViewport = glWindow.scene.new('VectorViewport', {
-      aspectRatio = 'MEET', x=glWindow.client.left, y=glWindow.client.top, xOffset=glWindow.client.right, yOffset=glWindow.client.bottom
+      aspectRatio = 'MEET', x=glWindow.client.left, y=glWindow.client.top,
+      xOffset=glWindow.client.right, yOffset=glWindow.client.bottom
    })
 
    obj.new('svg', { target=glViewport, path=arg('file') })
@@ -74,11 +75,13 @@ Source code should be checked out from the `release` branch of our GitHub reposi
 git clone -b release https://github.com/team-parasol/parasol.git parasol
 ```
 
+The `master` branch is generally stable and updated more frequently, but be aware that minor build issues can occasionally surface.  Anything under `test` is under active development and unlikely to compile.
+
 ## 3. Build Process
 
-We recommend using the GCC compiler to build the framework on all platforms.  If you are running Windows then we recommend using MSYS2 and MinGW as your build environment.  Please refer to section 2.3 of this document for Windows development instructions.  Targeting Android will require Cygwin.
+We recommend using the GCC compiler to build the framework on all platforms.  If you are running Windows then we recommend using MSYS2 and MinGW as your build environment.  Please refer to section 2.3 of this document for Windows development instructions.  Targeting Android (experimental) will require Cygwin.
 
-Linux systems require a few package dependencies to be installed first.  For an Apt based system such as Debian or Ubuntu, execute the following:
+Linux systems require a few package dependencies to be installed first if a complete build is desired.  For an Apt based system such as Debian or Ubuntu, execute the following:
 
 ```
 sudo apt-get install libasound2-dev libxrandr-dev libxxf86dga-dev
