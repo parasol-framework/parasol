@@ -59,7 +59,7 @@ static ERROR get_source_bitmap(extVectorFilter *, objBitmap **, UBYTE, objFilter
 //********************************************************************************************************************
 // Compute the Target* and Bound* values, which are used by filter effect algorithms to determine placement.  They
 // reflect positions *without* transforms.  The caller is expected to apply ClientVector->Transform after making
-// normliased coordinate calculations.
+// normalised coordinate calculations.
 //
 // The Target* values tell the effects exactly where to render to.
 //
