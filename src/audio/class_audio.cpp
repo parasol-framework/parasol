@@ -974,7 +974,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    if (!AllocMemory(sizeof(VolumeCtl) * 3, Self->MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
       StrCopy("Master", Self->VolumeCtl[0].Name, sizeof(Self->VolumeCtl[0].Name));
       Self->VolumeCtl[0].Flags = 0;
-      for (i=0; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = 75;
+      for (LONG i=0; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = 75;
 
       StrCopy("PCM", Self->VolumeCtl[1].Name, sizeof(Self->VolumeCtl[1].Name));
       Self->VolumeCtl[1].Flags = 0;
@@ -1309,7 +1309,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
    long pmin, pmax;
    int mute;
    DOUBLE fleft, fright;
-   WORD i;
+   LONG i;
 
    snd_mixer_selem_id_alloca(&sid);
    snd_mixer_selem_id_set_index(sid, 0);
@@ -1397,7 +1397,6 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    snd_mixer_selem_id_t *sid;
    snd_mixer_elem_t *elem;
    long pmin, pmax;
-   LONG lvol;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (((Args->Volume < 0) or (Args->Volume > 100)) and (Args->Volume != -1)) {
