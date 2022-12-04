@@ -102,7 +102,7 @@ static ERROR VECTORVIEWPORT_Clear(extVectorViewport *Self, APTR Void)
    LONG count = ARRAYSIZE(list);
    do {
       if (!ListChildren(Self->UID, FALSE, list, &count)) {
-         for (WORD i=0; i < count; i++) acFreeID(list[i].ObjectID);
+         for (LONG i=0; i < count; i++) acFreeID(list[i].ObjectID);
       }
    } while (count IS ARRAYSIZE(list));
 

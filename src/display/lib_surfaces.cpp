@@ -251,7 +251,7 @@ ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, L
 ** Redraw everything in RegionB that does not intersect with RegionA.
 */
 
-void redraw_nonintersect(OBJECTID SurfaceID, SurfaceList *List, WORD Index, WORD Total,
+void redraw_nonintersect(OBJECTID SurfaceID, SurfaceList *List, LONG Index, LONG Total,
    ClipRectangle *Region, ClipRectangle *RegionB, LONG RedrawFlags, LONG ExposeFlags)
 {
    parasol::Log log(__FUNCTION__);
@@ -301,9 +301,9 @@ void redraw_nonintersect(OBJECTID SurfaceID, SurfaceList *List, WORD Index, WORD
 //****************************************************************************
 // Scans the surfacelist for the 'true owner' of a given bitmap.
 
-WORD find_bitmap_owner(SurfaceList *List, WORD Index)
+LONG find_bitmap_owner(SurfaceList *List, LONG Index)
 {
-   WORD owner = Index;
+   LONG owner = Index;
    for (LONG i=Index; i >= 0; i--) {
       if (List[i].SurfaceID IS List[owner].ParentID) {
          if (List[i].BitmapID != List[owner].BitmapID) return owner;
@@ -322,7 +322,7 @@ ERROR track_layer(extSurface *Self)
 {
    parasol::Log log(__FUNCTION__);
    SurfaceControl *ctl;
-   WORD i;
+   LONG i;
 
    if ((ctl = gfxAccessList(ARF_WRITE))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
@@ -380,9 +380,9 @@ ERROR track_layer(extSurface *Self)
 
       // Find the position at which the surface object should be inserted
 
-      WORD level;
-      WORD absx = 0;
-      WORD absy = 0;
+      LONG level;
+      LONG absx = 0;
+      LONG absy = 0;
       if (!Self->ParentID) {
          // Insert the surface object at the end of the list
 
@@ -511,7 +511,7 @@ void untrack_layer(OBJECTID ObjectID)
 ERROR update_surface_copy(extSurface *Self, SurfaceList *Copy)
 {
    parasol::Log log(__FUNCTION__);
-   WORD i, j, level;
+   LONG i, j, level;
 
    if (!Self) return log.warning(ERR_NullArgs);
    if (!Self->initialised()) return ERR_Okay;
@@ -570,7 +570,7 @@ ERROR update_surface_copy(extSurface *Self, SurfaceList *Copy)
          // Rebuild absolute coordinates of child objects
 
          level = list[i].Level;
-         WORD c = i+1;
+         LONG c = i+1;
          while ((c < ctl->Total) and (list[c].Level > level)) {
             for (j=c-1; j >= 0; j--) {
                if (list[j].SurfaceID IS list[c].ParentID) {
@@ -776,7 +776,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
       CopyMemory((BYTE *)ctl + ctl->ArrayIndex, cplist, sizeof(cplist[0]) * total);
       gfxReleaseList(ARF_READ);
 
-      WORD index;
+      LONG index;
       if ((index = find_surface_list(cplist, total, Self->UID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
          return ERR_Search;
       }
@@ -793,7 +793,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
          // Note: tlVolatileIndex determines the point at which volatile exposes will start.  We want volatile exposes to start just after our target surface, and not
          // anything that sits behind us in the containing parent.
 
-         WORD vindex;
+         LONG vindex;
          for (vindex=index+1; (vindex < total) and (cplist[vindex].Level > cplist[index].Level); vindex++);
          tlVolatileIndex = vindex;
 
@@ -832,10 +832,10 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
 //****************************************************************************
 // Checks if an object is visible, according to its visibility and its parents visibility.
 
-static UBYTE check_visibility(SurfaceList *list, WORD index)
+static UBYTE check_visibility(SurfaceList *list, LONG index)
 {
    OBJECTID scan = list[index].SurfaceID;
-   for (WORD i=index; i >= 0; i--) {
+   for (LONG i=index; i >= 0; i--) {
       if (list[i].SurfaceID IS scan) {
          if (!(list[i].Flags & RNF_VISIBLE)) return FALSE;
          if (!(scan = list[i].ParentID)) return TRUE;
@@ -1021,7 +1021,7 @@ LONG find_surface_list(SurfaceList *list, LONG Total, OBJECTID SurfaceID)
    return -1;
 }
 
-LONG find_parent_list(SurfaceList *list, WORD Total, extSurface *Self)
+LONG find_parent_list(SurfaceList *list, LONG Total, extSurface *Self)
 {
    if (glRecentSurfaceIndex < Total) { // Cached lookup
       if (list[glRecentSurfaceIndex].SurfaceID IS Self->ParentID) return glRecentSurfaceIndex;
@@ -1176,7 +1176,7 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
    if ((ctl = gfxAccessList(ARF_READ))) {
       BITMAPSURFACE surface;
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      for (WORD i=0; i < ctl->Total; i++) {
+      for (LONG i=0; i < ctl->Total; i++) {
          if (list[i].SurfaceID IS SurfaceID) {
             if (X < 0) { XDest -= X; Width  += X; X = 0; }
             if (Y < 0) { YDest -= Y; Height += Y; Y = 0; }
@@ -1185,7 +1185,7 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
 
             // Find the bitmap root
 
-            WORD root = find_bitmap_owner(list, i);
+            LONG root = find_bitmap_owner(list, i);
 
             SurfaceList list_i = list[i];
             SurfaceList list_root = list[root];
@@ -1290,7 +1290,7 @@ ERROR gfxExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Heig
    CopyMemory((BYTE *)ctl + ctl->ArrayIndex, list, sizeof(list[0]) * ctl->Total);
    gfxReleaseList(ARF_READ);
 
-   WORD index;
+   LONG index;
    if ((index = find_surface_list(list, total, SurfaceID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
       log.traceWarning("Surface %d is not in the surfacelist.", SurfaceID);
       return ERR_Search;
@@ -1342,7 +1342,7 @@ ERROR gfxGetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG
    }
 
    SurfaceControl *ctl;
-   WORD i;
+   LONG i;
 
    if ((ctl = gfxAccessList(ARF_READ))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
@@ -1446,7 +1446,7 @@ ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
    SurfaceControl *ctl;
    if ((ctl = gfxAccessList(ARF_READ))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      WORD i, root;
+      LONG i, root;
       if (!SurfaceID) {
          i = 0;
          root = 0;
@@ -1556,7 +1556,7 @@ ERROR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *
    if ((ctl = gfxAccessList(ARF_READ))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
 
-      WORD i;
+      LONG i;
       if ((i = find_surface_index(ctl, SurfaceID)) IS -1) {
          gfxReleaseList(ARF_READ);
          return ERR_Search;
@@ -1640,7 +1640,7 @@ ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG
    CopyMemory((BYTE *)ctl + ctl->ArrayIndex, list, sizeof(list[0]) * ctl->Total);
    gfxReleaseList(ARF_READ);
 
-   WORD index;
+   LONG index;
    if ((index = find_surface_list(list, total, SurfaceID)) IS -1) {
       log.traceWarning("Unable to find surface #%d in surface list.", SurfaceID);
       return ERR_Search;
@@ -1651,7 +1651,7 @@ ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG
 
 //****************************************************************************
 
-ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD Total,
+ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG Total,
    LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags)
 {
    parasol::Log log("redraw_surface");
@@ -1678,7 +1678,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD To
 
    if ((list[index].Flags & (RNF_REGION|RNF_TRANSPARENT)) and (!recursive)) {
       log.trace("Passing draw request to parent (I am a %s)", (list[index].Flags & RNF_REGION) ? "region" : "invisible");
-      WORD parent_index;
+      LONG parent_index;
       if ((parent_index = find_surface_list(list, Total, list[index].ParentID)) != -1) {
          _redraw_surface(list[parent_index].SurfaceID, list, parent_index, Total, Left, Top, Right, Bottom, Flags & (~IRF_IGNORE_CHILDREN));
       }
@@ -1719,7 +1719,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD To
    }
    else {
       OBJECTID parent_id = SurfaceID;
-      WORD i = index;
+      LONG i = index;
       while (parent_id) {
          while ((list[i].SurfaceID != parent_id) and (i > 0)) i--;
 
@@ -1774,8 +1774,8 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD To
 
    if (!(Flags & IRF_IGNORE_CHILDREN)) {
       log.trace("Redrawing intersecting child surfaces.");
-      WORD level = list[index].Level;
-      for (WORD i=index+1; i < Total; i++) {
+      LONG level = list[index].Level;
+      for (LONG i=index+1; i < Total; i++) {
          if (list[i].Level <= level) break; // End of list - exit this loop
 
          if (Flags & IRF_IGNORE_NV_CHILDREN) {
@@ -1805,7 +1805,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD To
 //****************************************************************************
 // This function fulfils the recursive drawing requirements of _redraw_surface() and is not intended for any other use.
 
-void _redraw_surface_do(extSurface *Self, SurfaceList *list, WORD Total, WORD Index,
+void _redraw_surface_do(extSurface *Self, SurfaceList *list, LONG Total, LONG Index,
                                LONG Left, LONG Top, LONG Right, LONG Bottom, extBitmap *DestBitmap, LONG Flags)
 {
    parasol::Log log("redraw_surface");
@@ -1824,7 +1824,7 @@ void _redraw_surface_do(extSurface *Self, SurfaceList *list, WORD Total, WORD In
    if (abs.Right  > list[Index].Right)  abs.Right  = list[Index].Right;
    if (abs.Bottom > list[Index].Bottom) abs.Bottom = list[Index].Bottom;
 
-   WORD i;
+   LONG i;
    if (!(Flags & IRF_FORCE_DRAW)) {
       LONG level = list[Index].Level + 1;   // The +1 is used to include children contained in the surface object
 
@@ -1934,7 +1934,7 @@ void _redraw_surface_do(extSurface *Self, SurfaceList *list, WORD Total, WORD In
    if ((Self->Flags & RNF_PRECOPY) and (!(Self->Flags & RNF_COMPOSITE))) {
       PrecopyRegion *regions;
       LONG x, y, xoffset, yoffset, width, height;
-      WORD j;
+      LONG j;
 
       if ((Self->PrecopyMID) and (!AccessMemory(Self->PrecopyMID, MEM_READ, 2000, &regions))) {
          for (j=0; j < Self->PrecopyTotal; j++) {
@@ -2190,7 +2190,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
       if ((ctl = gfxAccessList(ARF_READ))) {
          auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
 
-         WORD i;
+         LONG i;
          if ((i = find_surface_index(ctl, SurfaceID)) IS -1) {
             ReleaseObject(bitmap);
             gfxReleaseList(ARF_READ);
@@ -2250,7 +2250,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
 
    SurfaceControl *ctl;
    if ((ctl = gfxAccessList(ARF_READ))) {
-      WORD i;
+      LONG i;
       if ((i = find_surface_index(ctl, SurfaceID)) IS -1) {
          gfxReleaseList(ARF_READ);
          return ERR_Search;

@@ -116,7 +116,7 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
    log.traceBranch("Size: %dx%d", width, height);
 
    //DebugOff();
-   ERROR error = CreateObject(ID_BITMAP, NULL, &bitmap,
+   ERROR error = CreateObject(ID_BITMAP, 0, &bitmap,
       FID_Name|TSTR,    "sciPixmap",
       FID_Width|TLONG,  width,
       FID_Height|TLONG, height,

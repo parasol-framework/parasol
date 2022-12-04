@@ -710,7 +710,7 @@ sptr_t ScintillaParasol::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lP
    default:
       return ScintillaBase::WndProc(iMessage, wParam, lParam);
    }
-   return NULL;
+   return 0;
 }
 
 //****************************************************************************
@@ -726,7 +726,7 @@ sptr_t ScintillaParasol::DirectFunction(ScintillaParasol *sci, unsigned int iMes
 
 sptr_t ScintillaParasol::DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
 {
-   return NULL;
+   return 0;
 }
 
 /*****************************************************************************
