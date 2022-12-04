@@ -167,7 +167,7 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
    struct DateTime dt;
    STRING str;
    char day[32], month[32], buffer[80];
-   WORD pos, i, j;
+   LONG pos, i, j;
 
    if ((!Buffer) or (BufferSize < 1) or (!Format)) return ERR_Args;
 
@@ -206,7 +206,7 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
    LONG a = (14 - Time->Month) / 12;
    LONG y = Time->Year - a;
    LONG m = Time->Month + 12 * a - 2;
-   WORD dayofweek = (Time->Day + y + (y / 4) - (y / 100) + (y / 400) + (31 * m) / 12) % 7;
+   LONG dayofweek = (Time->Day + y + (y / 4) - (y / 100) + (y / 400) + (31 * m) / 12) % 7;
 
    StrCopy(StrTranslateText(days[dayofweek]), day, sizeof(day));
 
@@ -288,7 +288,7 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
          // Year
 
          if ((Format[i+1] IS 'y') and (Format[i+2] != 'y')) {
-            WORD tmp = Time->Year % 100;
+            LONG tmp = Time->Year % 100;
             if (tmp < 10) str[pos++] = '0';
             pos += IntToStr(tmp, str + pos, BufferSize-pos);
          }
@@ -418,7 +418,7 @@ static CSTRING find_datepart(CSTRING Date, struct datepart *Part)
 {
    parasol::Log log(__FUNCTION__);
    UBYTE ch;
-   WORD i;
+   LONG i;
 
    if (Date) {
    while (*Date) {
@@ -856,10 +856,9 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
                // Convert the two letter code to three letters.
 
                if (code[0]) {
-                  WORD i;
                   code[0] = LCASE(code[0]);
                   code[1] = LCASE(code[1]);
-                  for (i=0; i < ARRAYSIZE(glLanguages); i++) {
+                  for (LONG i=0; i < ARRAYSIZE(glLanguages); i++) {
                      if ((glLanguages[i].Two[0] IS code[0]) and (glLanguages[i].Two[1] IS code[1])) {
                         code[0] = glLanguages[i].Three[0];
                         code[1] = glLanguages[i].Three[1];

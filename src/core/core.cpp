@@ -141,9 +141,9 @@ static void print_class_list(void)
    char buffer[1024];
    size_t pos = 0;
    LONG *offsets = CL_OFFSETS(glClassDB);
-   for (WORD i=0; i < glClassDB->Total; i++) {
+   for (LONG i=0; i < glClassDB->Total; i++) {
       ClassItem *item = (ClassItem *)(((BYTE *)glClassDB) + offsets[i]);
-      for (WORD j=0; (item->Name[j]) and (pos < sizeof(buffer)-2); j++) buffer[pos++] = item->Name[j];
+      for (LONG j=0; (item->Name[j]) and (pos < sizeof(buffer)-2); j++) buffer[pos++] = item->Name[j];
       if ((i < glClassDB->Total-1) and (pos < sizeof(buffer)-1)) buffer[pos++] = ' ';
    }
    buffer[pos] = 0;
@@ -261,8 +261,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    #endif
 
    const char lookup[] = "0123456789ABCDEF";
-   WORD p;
-   for (p=1; p < PL_END; p++) {
+   for (LONG p=1; p < PL_END; p++) {
       glPublicLocks[p].Name[0] = 'r';
       glPublicLocks[p].Name[1] = 'k';
       glPublicLocks[p].Name[2] = 'a' + p;
@@ -567,10 +566,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          LONG id = glProcessID;
          static const char lookup[] = "0123456789ABCDEF";
          while (1) {
-            WORD p, i;
-            for (p=1; p < PL_END; p++) {
+            for (LONG p=1; p < PL_END; p++) {
                LONG mid = id;
-               for (i=3; i < 11; i++) {
+               for (LONG i=3; i < 11; i++) {
                   glPublicLocks[p].Name[i] = lookup[mid & 0xf];
                   mid = mid>>4;
                }
@@ -1380,7 +1378,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
    if (!shTasks) return;
 
    TaskList *task = NULL;
-   for (WORD j=0; j < MAX_TASKS; j++) {
+   for (LONG j=0; j < MAX_TASKS; j++) {
       if (shTasks[j].ProcessID IS ProcessID) {
          task = &shTasks[j];
          break;

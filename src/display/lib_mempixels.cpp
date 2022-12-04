@@ -235,12 +235,12 @@ static void MemReadRGBIndex8(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RGB)
 
 static ULONG MemReadPixelPlanar(objBitmap *Bitmap, LONG X, LONG Y)
 {
-   WORD XOffset = X % 8;
+   LONG XOffset = X % 8;
    UBYTE *Data = Bitmap->Data;
    Data += (Y * Bitmap->LineWidth) + (X>>3);
 
    ULONG Colour = 0;
-   for (WORD i=0; i < Bitmap->BitsPerPixel; i++) {
+   for (LONG i=0; i < Bitmap->BitsPerPixel; i++) {
       if (*Data & (0x80>>XOffset)) Colour |= 0x01<<i;
       Data += Bitmap->PlaneMod;
    }
@@ -255,11 +255,11 @@ static void MemDrawPixelPlanar(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 
 static void MemReadRGBPixelPlanar(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB)
 {
-   WORD XOffset = X % 8;
+   LONG XOffset = X % 8;
    UBYTE *Data = Bitmap->Data + (Y * Bitmap->LineWidth) + (X>>3);
 
    ULONG Colour = 0;
-   for (WORD i = 0; i < Bitmap->BitsPerPixel; i++) {
+   for (LONG i = 0; i < Bitmap->BitsPerPixel; i++) {
       if (*Data & (0x80>>XOffset)) Colour |= 0x01<<i;
       Data += Bitmap->PlaneMod;
    }
@@ -272,9 +272,9 @@ static void MemReadRGBPixelPlanar(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8
 
 static void MemReadRGBIndexPlanar(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RGB)
 {
-   WORD XOffset = 0;
+   LONG XOffset = 0;
    ULONG Colour = 0;
-   for (WORD i=0; i < Bitmap->BitsPerPixel; i++) {
+   for (LONG i=0; i < Bitmap->BitsPerPixel; i++) {
       if (*Data & (0x80>>XOffset)) Colour |= 0x01<<i;
       Data += Bitmap->PlaneMod;
    }
