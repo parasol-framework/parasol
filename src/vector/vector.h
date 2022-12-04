@@ -737,7 +737,7 @@ inline static DOUBLE dist(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
 inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 {
    objPicture *pic;
-   std::string path = "temp:filter_output_" + Name + ".png";
+   std::string path = "temp:bmp_" + Name + ".png";
 
    if (!CreateObject(ID_PICTURE, 0, &pic,
          FID_Width|TLONG,        Bitmap->Clip.Right - Bitmap->Clip.Left,
@@ -749,6 +749,33 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
          TAGEND)) {
 
       gfxCopyArea(Bitmap, pic->Bitmap, 0, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
+      acSaveImage(pic, 0, 0);
+      acFree(pic);
+   }
+}
+
+// Raw version of save_bitmap()
+
+inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG Height, LONG BPP = 32)
+{
+   objPicture *pic;
+   std::string path = "temp:raw_" + Name + ".png";
+
+   if (!CreateObject(ID_PICTURE, 0, &pic,
+         FID_Width|TLONG,        Width,
+         FID_Height|TLONG,       Height,
+         FID_BitsPerPixel|TLONG, BPP,
+         FID_Flags|TLONG,        PCF_FORCE_ALPHA_32|PCF_NEW,
+         FID_Path|TSTR,          path.c_str(),
+         TAGEND)) {
+
+      const LONG byte_width = Width * pic->Bitmap->BytesPerPixel;
+      UBYTE *out = pic->Bitmap->Data;
+      for (LONG y=0; y < Height; y++) {
+         CopyMemory(Data, out, byte_width);
+         out  += pic->Bitmap->LineWidth;
+         Data += Width * pic->Bitmap->BytesPerPixel;
+      }
       acSaveImage(pic, 0, 0);
       acFree(pic);
    }
