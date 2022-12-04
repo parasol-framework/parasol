@@ -80,7 +80,7 @@ void write_backing_store(j_common_ptr cinfo, backing_store_ptr info, void FAR * 
       struct acWrite write = { .Buffer = buffer_address, .Length = byte_count > CHUNK ? (LONG)CHUNK : (LONG)byte_count };
       if (Action(AC_Write, info->temp_file, &write) != ERR_Okay) ERREXIT(cinfo, JERR_TFILE_WRITE);
       byte_count -= write.Result;
-      buffer_address += write.Result;
+      buffer_address = (UBYTE *)buffer_address + write.Result;
    }
 }
 
