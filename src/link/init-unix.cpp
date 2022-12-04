@@ -100,14 +100,14 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
       LONG path_len;
       if ((path_len = readlink(procfile, root_path, sizeof(root_path)-1)) > 0) {
          // Strip the process name
-         while ((root_path > 0) AND (root_path[path_len-1] != '/')) path_len--;
+         while ((path_len > 0) and (root_path[path_len-1] != '/')) path_len--;
          root_path[path_len] = 0;
 
          snprintf(core_path, sizeof(core_path), "%slib/core.so", root_path);
          if (stat(core_path, &corestat)) {
             // Check the parent folder of the binary
             path_len--;
-            while ((path_len > 0) AND (root_path[path_len-1] != '/')) path_len--;
+            while ((path_len > 0) and (root_path[path_len-1] != '/')) path_len--;
             root_path[path_len] = 0;
 
             snprintf(core_path, sizeof(core_path), "%slib/core.so", root_path);
