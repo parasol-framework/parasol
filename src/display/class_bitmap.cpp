@@ -380,10 +380,13 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
 -METHOD-
 ConvertToLinear: Convert a bitmap's colour space to linear RGB.
 
-Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.
+Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the `BMF_ALPHA_CHANNEL` flag
+is enabled on the bitmap, pixels with an alpha value of 0 are ignored.
 
 The #ColourSpace will be set to `LINEAR_RGB` on completion.  This method returns immediately if the #ColourSpace is
 already set to `LINEAR_RGB`.
+
+For the sake of efficiency, lookup tables are used to quickly perform the conversion process.
 
 -ERRORS-
 Okay
@@ -453,10 +456,13 @@ ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
 -METHOD-
 ConvertToRGB: Convert a bitmap's colour space to standard RGB.
 
-Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.
+Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the `BMF_ALPHA_CHANNEL` flag is
+enabled on the bitmap, pixels with an alpha value of 0 are ignored.
 
 The #ColourSpace will be set to `SRGB` on completion.  This method returns immediately if the #ColourSpace is
 already set to `SRGB`.
+
+For the sake of efficiency, lookup tables are used to quickly perform the conversion process.
 
 -ERRORS-
 Okay
@@ -692,10 +698,22 @@ static ERROR BITMAP_Demultiply(extBitmap *Self, APTR Void)
 {
    parasol::Log log;
 
-   if (!(Self->Flags & BMF_PREMUL)) {
-      return log.warning(ERR_NothingDone);
+   static std::mutex mutex;
+   if (!glDemultiply) {
+      const std::lock_guard<std::mutex> lock(mutex);
+      if (!glDemultiply) {
+         if (!AllocMemory(256 * 256, MEM_NO_CLEAR|MEM_UNTRACKED, &glDemultiply, NULL)) {
+            for (LONG a=1; a <= 255; a++) {
+               for (LONG i=0; i <= 255; i++) {
+                  glDemultiply[(a<<8) + i] = (i * 0xff) / a;
+               }
+            }
+         }
+         else return ERR_AllocMemory;
+      }
    }
 
+   if (!(Self->Flags & BMF_PREMUL)) return log.warning(ERR_NothingDone);
    if (Self->BitsPerPixel != 32) return log.warning(ERR_InvalidState);
    if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_InvalidState);
 
@@ -718,9 +736,9 @@ static ERROR BITMAP_Demultiply(extBitmap *Self, APTR Void)
          if (a < 0xff) {
             if (a == 0) pixel[R] = pixel[G] = pixel[B] = 0;
             else {
-               ULONG r = (ULONG(pixel[R]) * 0xff) / a;
-               ULONG g = (ULONG(pixel[G]) * 0xff) / a;
-               ULONG b = (ULONG(pixel[B]) * 0xff) / a;
+               ULONG r = glDemultiply[(a<<8) + pixel[R]]; //(ULONG(pixel[R]) * 0xff) / a;
+               ULONG g = glDemultiply[(a<<8) + pixel[G]]; //(ULONG(pixel[G]) * 0xff) / a;
+               ULONG b = glDemultiply[(a<<8) + pixel[B]]; //(ULONG(pixel[B]) * 0xff) / a;
                pixel[R] = UBYTE((r > 0xff) ? 0xff : r);
                pixel[G] = UBYTE((g > 0xff) ? 0xff : g);
                pixel[B] = UBYTE((b > 0xff) ? 0xff : b);

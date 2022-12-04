@@ -102,11 +102,11 @@ class objVectorViewport;
 
 // Component selection for RemapFX methods.
 
-#define CMP_ALL 0
-#define CMP_RED 1
-#define CMP_GREEN 2
-#define CMP_BLUE 3
-#define CMP_ALPHA 4
+#define CMP_ALL -1
+#define CMP_RED 0
+#define CMP_GREEN 1
+#define CMP_BLUE 2
+#define CMP_ALPHA 3
 
 // Options for the look of line joins.
 
@@ -587,6 +587,10 @@ struct MergeSource {
 // ConvolveFX class definition
 
 #define VER_CONVOLVEFX (1.000000)
+
+// DisplacementFX class definition
+
+#define VER_DISPLACEMENTFX (1.000000)
 
 // FloodFX class definition
 
@@ -1477,6 +1481,8 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_DISCRETE 0x6b8e5778
 #define SVF_DIFFUSECONSTANT 0x4f5eb9d5
 #define SVF_SURFACESCALE 0xbd475ab6
+#define SVF_XCHANNELSELECTOR 0x57175337
+#define SVF_YCHANNELSELECTOR 0x634c7918
 #define SVF_ZOOMANDPAN 0xc606dfdc
 
 #endif

@@ -43,14 +43,10 @@ static ERROR IMAGEFX_Draw(objImageFX *Self, struct acDraw *Args)
    parasol::Log log(__FUNCTION__);
 
    auto &filter = Self->Filter;
-   auto target = calc_target_area(Self);
 
    // The image's x,y,width,height default to (0,0,100%,100%) of the target region.
 
-   DOUBLE img_x = target.x;
-   DOUBLE img_y = target.y;
-   DOUBLE img_width = target.width;
-   DOUBLE img_height = target.height;
+   DOUBLE p_x = filter->TargetX, p_y = filter->TargetY, p_width = filter->TargetWidth, p_height = filter->TargetHeight;
 
    if (filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
       // In this mode image dimensions typically remain at the default, i.e. (0,0,100%,100%) of the target.
@@ -60,32 +56,34 @@ static ERROR IMAGEFX_Draw(objImageFX *Self, struct acDraw *Args)
       // "Any length values within the filter definitions represent fractions or percentages of the bounding box
       // on the referencing element."
 
-      if (Self->Dimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) img_x = trunc(target.x + (Self->X * target.bound_width));
-      if (Self->Dimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) img_y = trunc(target.y + (Self->Y * target.bound_height));
-      if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) img_width = Self->Width * target.bound_width;
-      if (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) img_height = Self->Height * target.bound_height;
+      if (Self->Dimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) p_x = trunc(filter->TargetX + (Self->X * filter->BoundWidth));
+      if (Self->Dimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) p_y = trunc(filter->TargetY + (Self->Y * filter->BoundHeight));
+      if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) p_width = Self->Width * filter->BoundWidth;
+      if (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) p_height = Self->Height * filter->BoundHeight;
    }
    else {
-      if (Self->Dimensions & DMF_RELATIVE_X)   img_x = target.x + (Self->X * target.width);
-      else if (Self->Dimensions & DMF_FIXED_X) img_x = Self->X;
+      if (Self->Dimensions & DMF_RELATIVE_X)   p_x = filter->TargetX + (Self->X * filter->TargetWidth);
+      else if (Self->Dimensions & DMF_FIXED_X) p_x = Self->X;
 
-      if (Self->Dimensions & DMF_RELATIVE_Y)   img_y = target.y + (Self->Y * target.height);
-      else if (Self->Dimensions & DMF_FIXED_Y) img_y = Self->Y;
+      if (Self->Dimensions & DMF_RELATIVE_Y)   p_y = filter->TargetY + (Self->Y * filter->TargetHeight);
+      else if (Self->Dimensions & DMF_FIXED_Y) p_y = Self->Y;
 
-      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   img_width = target.width * Self->Width;
-      else if (Self->Dimensions & DMF_FIXED_WIDTH) img_width = Self->Width;
+      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   p_width = filter->TargetWidth * Self->Width;
+      else if (Self->Dimensions & DMF_FIXED_WIDTH) p_width = Self->Width;
 
-      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   img_height = target.height * Self->Height;
-      else if (Self->Dimensions & DMF_FIXED_HEIGHT) img_height = Self->Height;
+      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   p_height = filter->TargetHeight * Self->Height;
+      else if (Self->Dimensions & DMF_FIXED_HEIGHT) p_height = Self->Height;
    }
 
    DOUBLE xScale = 1, yScale = 1, align_x = 0, align_y = 0;
-   calc_aspectratio("align_image", Self->AspectRatio, img_width, img_height, Self->Bitmap->Width, Self->Bitmap->Height, &align_x, &align_y, &xScale, &yScale);
+   calc_aspectratio("align_image", Self->AspectRatio, p_width, p_height, Self->Bitmap->Width, Self->Bitmap->Height, &align_x, &align_y, &xScale, &yScale);
 
-   img_x += align_x;
-   img_y += align_y;
+   p_x += align_x;
+   p_y += align_y;
 
-   // Draw to destination
+   // To render, no blending is performed because there is no input to the image.  Our objective is
+   // to copy across the image data with only the transforms applied (if any).  Linear RGB interpolation
+   // will wait until post processing.
 
    agg::rasterizer_scanline_aa<> raster;
    agg::renderer_base<agg::pixfmt_psl> renderBase;
@@ -93,10 +91,10 @@ static ERROR IMAGEFX_Draw(objImageFX *Self, struct acDraw *Args)
    agg::pixfmt_psl pixSource(*Self->Bitmap);
 
    agg::path_storage path;
-   path.move_to(target.x, target.y);
-   path.line_to(target.x + target.width, target.y);
-   path.line_to(target.x + target.width, target.y + target.height);
-   path.line_to(target.x, target.y + target.height);
+   path.move_to(filter->TargetX, filter->TargetY);
+   path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY);
+   path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY + filter->TargetHeight);
+   path.line_to(filter->TargetX, filter->TargetY + filter->TargetHeight);
    path.close_polygon();
 
    renderBase.attach(pixDest);
@@ -107,22 +105,28 @@ static ERROR IMAGEFX_Draw(objImageFX *Self, struct acDraw *Args)
 
    agg::trans_affine img_transform;
    img_transform.scale(xScale, yScale);
-   img_transform.translate(img_x, img_y);
+   img_transform.translate(p_x, p_y);
    img_transform *= filter->ClientVector->Transform;
    img_transform.invert();
-   agg::span_interpolator_linear<> interpolator(img_transform);
 
-   agg::image_filter_lut ifilter;
-   set_filter(ifilter, Self->ResampleMethod);
+   if (img_transform.is_complex()) {
+      agg::span_interpolator_linear<> interpolator(img_transform);
 
-   agg::span_pattern_rkl<agg::pixfmt_psl> source(pixSource, 0, 0);
-   agg::span_image_filter_rgba<agg::span_pattern_rkl<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, ifilter);
+      agg::image_filter_lut ifilter;
+      set_filter(ifilter, Self->ResampleMethod);
 
-   setRasterClip(raster, Self->Target->Clip.Left, Self->Target->Clip.Top,
-      Self->Target->Clip.Right - Self->Target->Clip.Left,
-      Self->Target->Clip.Bottom - Self->Target->Clip.Top);
+      agg::span_once<agg::pixfmt_psl> source(pixSource, 0, 0);
+      agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, ifilter);
 
-   drawBitmapRender(renderBase, raster, spangen, 1.0);
+      setRasterClip(raster, Self->Target->Clip.Left, Self->Target->Clip.Top,
+         Self->Target->Clip.Right - Self->Target->Clip.Left,
+         Self->Target->Clip.Bottom - Self->Target->Clip.Top);
+
+      renderSolidBitmap(renderBase, raster, spangen); // Solid render without blending.
+   }
+   else {
+      gfxCopyArea(Self->Bitmap, Self->Target, 0, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, img_transform.tx, img_transform.ty);
+   }
 
    return ERR_Okay;
 }
@@ -142,10 +146,6 @@ static ERROR IMAGEFX_Init(objImageFX *Self, APTR Void)
    parasol::Log log;
 
    if (!Self->Bitmap) return log.warning(ERR_UndefinedField);
-
-   if ((Self->Filter->ColourSpace IS VCS_LINEAR_RGB) and (Self->Bitmap)) {
-      bmpConvertToLinear(Self->Bitmap);
-   }
 
    return ERR_Okay;
 }

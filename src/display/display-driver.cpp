@@ -218,6 +218,7 @@ LONG glpDisplayDepth = 0; // If zero, the display depth will be based on the hos
 LONG glpMaximise = FALSE, glpFullScreen = FALSE;
 LONG glpWindowType = SWIN_HOST;
 char glpDPMS[20] = "Standby";
+UBYTE *glDemultiply = NULL;
 
 THREADVAR APTR glSurfaceMutex = NULL;
 THREADVAR WORD tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;
@@ -1170,6 +1171,7 @@ static ERROR CMDExpunge(void)
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
    if (glComposite)           { acFree(glComposite); glComposite = NULL; }
    if (glCompress)            { acFree(glCompress); glCompress = NULL; }
+   if (glDemultiply)          { FreeResource(glDemultiply); glDemultiply = NULL; }
 
    DeregisterFD((HOSTHANDLE)-2); // Disable input_event_loop()
 

@@ -52,40 +52,32 @@ static ERROR SOURCEFX_Draw(objSourceFX *Self, struct acDraw *Args)
    if (!Self->Source) return ERR_Okay;
 
    auto &filter = Self->Filter;
-   auto target = calc_target_area(Self);
 
    // The configuration of the img values must be identical to the ImageFX code.
 
-   DOUBLE img_x = target.x;
-   DOUBLE img_y = target.y;
-   DOUBLE img_width = target.width;
-   DOUBLE img_height = target.height;
+   DOUBLE img_x = filter->TargetX;
+   DOUBLE img_y = filter->TargetY;
+   DOUBLE img_width = filter->TargetWidth;
+   DOUBLE img_height = filter->TargetHeight;
 
    if (filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
-      if (Self->Dimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) img_x = trunc(target.x + (Self->X * target.bound_width));
-      if (Self->Dimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) img_y = trunc(target.y + (Self->Y * target.bound_height));
-      if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) img_width = Self->Width * target.bound_width;
-      if (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) img_height = Self->Height * target.bound_height;
+      if (Self->Dimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) img_x = trunc(filter->TargetX + (Self->X * filter->BoundWidth));
+      if (Self->Dimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) img_y = trunc(filter->TargetY + (Self->Y * filter->BoundHeight));
+      if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) img_width = Self->Width * filter->BoundWidth;
+      if (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) img_height = Self->Height * filter->BoundHeight;
    }
    else {
-      if (Self->Dimensions & DMF_RELATIVE_X)   img_x = target.x + (Self->X * target.width);
+      if (Self->Dimensions & DMF_RELATIVE_X)   img_x = filter->TargetX + (Self->X * filter->TargetWidth);
       else if (Self->Dimensions & DMF_FIXED_X) img_x = Self->X;
 
-      if (Self->Dimensions & DMF_RELATIVE_Y)   img_y = target.y + (Self->Y * target.height);
+      if (Self->Dimensions & DMF_RELATIVE_Y)   img_y = filter->TargetY + (Self->Y * filter->TargetHeight);
       else if (Self->Dimensions & DMF_FIXED_Y) img_y = Self->Y;
 
-      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   img_width = target.width * Self->Width;
+      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   img_width = filter->TargetWidth * Self->Width;
       else if (Self->Dimensions & DMF_FIXED_WIDTH) img_width = Self->Width;
 
-      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   img_height = target.height * Self->Height;
+      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   img_height = filter->TargetHeight * Self->Height;
       else if (Self->Dimensions & DMF_FIXED_HEIGHT) img_height = Self->Height;
-   }
-
-   LONG cs = (filter->ColourSpace IS VCS_LINEAR_RGB) ? VCS_LINEAR_RGB : VCS_SRGB;
-   if (Self->Scene->Viewport->ColourSpace != cs) {
-      SetLong(Self->Scene->Viewport, FID_ColourSpace, cs);
-      SetLong(Self->Bitmap, FID_ColourSpace, (cs IS VCS_LINEAR_RGB) ? CS_LINEAR_RGB : CS_SRGB);
-      Self->Render = true;
    }
 
    if ((filter->ClientViewport->Scene->PageWidth > Self->Scene->PageWidth) or
@@ -191,6 +183,8 @@ static ERROR SOURCEFX_Init(objSourceFX *Self, APTR Void)
 
    if (!Self->Source) return log.warning(ERR_UndefinedField);
 
+   SetLong(Self->Scene->Viewport, FID_ColourSpace, Self->Filter->ColourSpace);
+
    return ERR_Okay;
 }
 
@@ -212,7 +206,6 @@ static ERROR SOURCEFX_NewObject(objSourceFX *Self, APTR Void)
       if (!CreateObject(ID_VECTORVIEWPORT, 0, &vp,
             FID_Name|TSTR,         "fx_src_viewport",
             FID_Owner|TLONG,       Self->Scene->UID,
-            FID_ColourSpace|TLONG, VCS_LINEAR_RGB,
             TAGEND)) {
 
          if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->Bitmap,
@@ -221,7 +214,6 @@ static ERROR SOURCEFX_NewObject(objSourceFX *Self, APTR Void)
                FID_Height|TLONG,       1,
                FID_BitsPerPixel|TLONG, 32,
                FID_Flags|TLONG,        BMF_ALPHA_CHANNEL|BMF_NO_DATA,
-               FID_ColourSpace|TLONG,  CS_LINEAR_RGB,
                TAGEND)) {
             return ERR_Okay;
          }
