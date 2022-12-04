@@ -7,20 +7,65 @@
 
 ## 1. Introduction
 
-Parasol is a FOSS vector engine and application sandbox for Windows and Linux. An integrated scripting language based on Lua helps to simplify application development without compromising on speed or modern features.  Alternatively you can integrate the framework with your preferred environment if it supports linking with standard system libraries.
+Parasol is an open source vector graphics engine and application framework for Windows and Linux.  It features integrated support for SVG with a focus on correctness, and we test against W3C's official SVG compliance tests.
 
-Parasol's ongoing development is focused on enhancing vector graphics programming on the desktop. We believe that this a research area that has been historically under-valued, but this needs to change with more displays achieving resolutions at 4K and beyond.  Apart from the scalability of vector graphics, we're also hoping to experiment with more dynamic rendering features that aren't possible with traditional bitmap interfaces.
+Our integrated scripting language, Fluid, is based on LuaJIT and helps to simplify application development without compromising on speed or modern features.  Alternatively you can integrate the framework with your preferred language if it supports linking with standard system libraries and C function calls.
+
+### Motivation
+
+Parasol's ongoing development is focused on enhancing vector graphics programming on the desktop. We believe that this a research area that has been historically under-valued, and this needs to change with more displays achieving resolutions at 4K and beyond.  Besides from benefitting from the scalability of vector graphics and SVG features, we're also hoping to experiment with more dynamic rendering features that aren't possible with traditional bitmap interfaces.
 
 ### Features
 
-* Fully integrated Lua scripting in our Fluid development environment.
-* Load and save SVG files.  Manipulate or create new vector scene graphs from scratch using our API that also includes feature enhancements not available in SVG.
+* Use our Lua based scripting language `Fluid` to quickly write applications without having to deal with compiled code.
+* Load SVG files into our scene graph, interact with the graph via our API and save the output in SVG (saving is WIP).
+* Build fully scalable UI's using our vector based widgets.  Windows, checkboxes, buttons, dialogs, text and more are supported.
 * Multi-platform compatible networking API, providing coverage for TCP/IP Sockets, HTTP, SSL.
-* Scalable widgets for UI development (windows, checkboxes, buttons, dialogs, text and a great deal more...).
 * Data handling APIs (XML, JSON, ZIP, PNG, JPEG, SVG)
-* Full system abstraction for multi-platform support (file I/O, clipboards, threads, object management)
+* Hundreds of standardised scalable icons are included for application building.
+* Full system abstraction for building cross-platform applications (file I/O, clipboards, threads, object management)
 * Multi-channel audio playback
-* Extensive text editing widget (implemented with scintilla.org)
+* WIP: Extensive text editing widget implemented with scintilla.org.
+
+### Application Example
+
+Here's an example of a simple client application written in Fluid.  It loads an SVG file and displays the content in a window for the user.  Notice that the SVG is parsed in one line of code and all resource cleanup is handled in the background by the garbage collector.  You can find more example programs [here](examples/).
+
+```Lua
+   require 'gui'
+   require 'gui/window'
+
+   if not arg('file') then
+      print('Usage: --file [Path]')
+      return
+   end
+
+   if mSys.AnalysePath(arg('file')) != ERR_Okay then
+      error('Unable to load file ' .. arg('file'))
+   end
+
+   glWindow = gui.window({
+      center = true,
+      width  = arg('width', 800),
+      height = arg('height', 600),
+      title  = 'Picture Viewer',
+      icon   = 'icons:programs/pictureviewer',
+      minHeight = 200,
+      minWidth  = 400
+   })
+
+   glViewport = glWindow.scene.new('VectorViewport', {
+      aspectRatio = 'MEET', x=glWindow.client.left, y=glWindow.client.top,
+      xOffset=glWindow.client.right, yOffset=glWindow.client.bottom
+   })
+
+   obj.new('svg', { target=glViewport, path=arg('file') })
+
+   glWindow:setTitle(arg('file'))
+   glWindow:show()
+
+   processing.sleep()
+```
 
 ## 2. Checkout
 
@@ -30,11 +75,13 @@ Source code should be checked out from the `release` branch of our GitHub reposi
 git clone -b release https://github.com/team-parasol/parasol.git parasol
 ```
 
+The `master` branch is generally stable and updated more frequently, but be aware that minor build issues can occasionally surface.  Anything under `test` is under active development and unlikely to compile.
+
 ## 3. Build Process
 
-We recommend using the GCC compiler to build the framework on all platforms.  If you are running Windows then we recommend using MSYS2 and MinGW as your build environment.  Please refer to section 2.3 of this document for Windows development instructions.  Targeting Android will require Cygwin.
+We recommend using the GCC compiler to build the framework on all platforms.  If you are running Windows then we recommend using MSYS2 and MinGW as your build environment.  Please refer to section 2.3 of this document for Windows development instructions.  Targeting Android (experimental) will require Cygwin.
 
-Linux systems require a few package dependencies to be installed first.  For an Apt based system such as Debian or Ubuntu, execute the following:
+Linux systems require a few package dependencies to be installed first if a complete build is desired.  For an Apt based system such as Debian or Ubuntu, execute the following:
 
 ```
 sudo apt-get install libasound2-dev libxrandr-dev libxxf86dga-dev

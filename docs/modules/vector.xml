@@ -12,6 +12,7 @@
       <class>ColourFX</class>
       <class>CompositeFX</class>
       <class>ConvolveFX</class>
+      <class>DisplacementFX</class>
       <class>FilterEffect</class>
       <class>FloodFX</class>
       <class>ImageFX</class>

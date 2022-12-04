@@ -684,6 +684,61 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
 
 //********************************************************************************************************************
 
+static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
+{
+   parasol::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(ID_DISPLACEMENTFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   SetOwner(fx, Filter);
+
+   for (LONG a=1; a < Tag->TotalAttrib; a++) {
+      CSTRING val = Tag->Attrib[a].Value;
+      if (!val) continue;
+
+      ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
+      switch(hash) {
+         case SVF_XCHANNELSELECTOR:
+            switch(val[0]) {
+               case 'r': case 'R': SetLong(fx, FID_XChannel, CMP_RED); break;
+               case 'g': case 'G': SetLong(fx, FID_XChannel, CMP_GREEN); break;
+               case 'b': case 'B': SetLong(fx, FID_XChannel, CMP_BLUE); break;
+               case 'a': case 'A': SetLong(fx, FID_XChannel, CMP_ALPHA); break;
+            }
+            break;
+
+         case SVF_YCHANNELSELECTOR:
+            switch(val[0]) {
+               case 'r': case 'R': SetLong(fx, FID_YChannel, CMP_RED); break;
+               case 'g': case 'G': SetLong(fx, FID_YChannel, CMP_GREEN); break;
+               case 'b': case 'B': SetLong(fx, FID_YChannel, CMP_BLUE); break;
+               case 'a': case 'A': SetLong(fx, FID_YChannel, CMP_ALPHA); break;
+            }
+            break;
+
+         case SVF_SCALE: SetDouble(fx, FID_Scale, StrToFloat(val)); break;
+
+         case SVF_X: set_double(fx, FID_X, val); break;
+         case SVF_Y: set_double(fx, FID_Y, val); break;
+         case SVF_WIDTH: set_double(fx, FID_Width, val); break;
+         case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
+
+         case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
+         case SVF_IN2: parse_input(Self, fx, val, FID_MixType, FID_Mix); break;
+
+         case SVF_RESULT: parse_result(Self, fx, val); break;
+      }
+   }
+
+   if (!acInit(fx)) return ERR_Okay;
+   else {
+      acFree(fx);
+      return ERR_Init;
+   }
+}
+
+//********************************************************************************************************************
+
 static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
    parasol::Log log(__FUNCTION__);
@@ -1296,7 +1351,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag
                   case SVF_FECOMPONENTTRANSFER: parse_fe_component_xfer(Self, filter, tag); break;
                   case SVF_FEDIFFUSELIGHTING:   parse_fe_lighting(Self, filter, tag, LT_DIFFUSE); break;
                   case SVF_FESPECULARLIGHTING:  parse_fe_lighting(Self, filter, tag, LT_SPECULAR); break;
-                  case SVF_FEDISPLACEMENTMAP:
+                  case SVF_FEDISPLACEMENTMAP:   parse_fe_displacement_map(Self, filter, tag); break;
                   case SVF_FETILE:
                      log.warning("Filter element '%s' is not currently supported.", tag->Attrib->Name);
                      break;

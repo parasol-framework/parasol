@@ -279,6 +279,12 @@ To enable dithering, pass `BAF_DITHER` in the Flags argument.  The drawing algor
 needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set `BAF_BLEND` (the source bitmap
 will also need to have the `BMF_ALPHA_CHANNEL` flag set to indicate that an alpha channel is available).
 
+The quality of 32-bit alpha blending can be improved by selecting the `BAF_LINEAR` flag.  This enables an additional
+computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The
+discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this
+option is not usable if either bitmap is already in a linear colourspace (`ERR_InvalidState` will be returned if that
+is the case).
+
 -INPUT-
 ext(Bitmap) Bitmap: The source bitmap.
 ext(Bitmap) Dest: Pointer to the destination bitmap.
@@ -294,6 +300,7 @@ int YDest:  The vertical position to copy the area to.
 Okay:
 NullArgs: The DestBitmap argument was not specified.
 Mismatch: The destination bitmap is not a close enough match to the source bitmap in order to perform the blit.
+InvalidState: The BAF_LINEAR flag was used when at least one bitmap is using a linear colourspace.
 -END-
 
 *****************************************************************************/
@@ -370,6 +377,11 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
 
    if (Bitmap != dest) { // Validate the clipping region of the destination
       if (validate_clip(__FUNCTION__, "Dest", dest)) return ERR_Okay;
+   }
+
+   if (Flags & BAF_LINEAR) {
+      if ((Bitmap->ColourSpace IS CS_LINEAR_RGB) or (dest->ColourSpace IS CS_LINEAR_RGB)) return log.warning(ERR_InvalidState);
+      if ((Bitmap->BitsPerPixel != 32) or (!(Bitmap->Flags & BMF_ALPHA_CHANNEL))) return log.warning(ERR_InvalidState);
    }
 
    if (Bitmap IS dest) { // Use this clipping routine only if we are copying within the same bitmap
@@ -738,20 +750,50 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
                if (Flags & BAF_COPY) { // Avoids blending in cases where the destination pixel is zero alpha.
                   for (LONG y=0; y < Height; y++) {
                      UBYTE *sp = sdata, *dp = ddata;
-                     for (LONG x=0; x < Width; x++) {
-                        if (dp[dA]) {
-                           if (sp[sA] IS 0xff) ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
-                           else if (sp[sA]) {
-                              dp[dR] = dp[dR] + (((sp[sR] - dp[dR]) * sp[sA])>>8);
-                              dp[dG] = dp[dG] + (((sp[sG] - dp[dG]) * sp[sA])>>8);
-                              dp[dB] = dp[dB] + (((sp[sB] - dp[dB]) * sp[sA])>>8);
-                              dp[dA] = dp[dA] + ((sp[sA] * (0xff-dp[dA]))>>8);
-                           }
-                        }
-                        else ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
+                     if (Flags & BAF_LINEAR) {
+                        for (LONG x=0; x < Width; x++) {
+                           if (dp[dA]) {
+                              if (sp[sA] IS 0xff) ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
+                              else if (auto a = sp[sA]) {
+                                 auto slR = glLinearRGB.convert(sp[sR]);
+                                 auto slG = glLinearRGB.convert(sp[sG]);
+                                 auto slB = glLinearRGB.convert(sp[sB]);
 
-                        sp += 4;
-                        dp += 4;
+                                 auto dlR = glLinearRGB.convert(dp[dR]);
+                                 auto dlG = glLinearRGB.convert(dp[dG]);
+                                 auto dlB = glLinearRGB.convert(dp[dB]);
+
+                                 const UBYTE ca = 0xff - a;
+
+                                 dp[dR] = glLinearRGB.invert(((slR * a) + (dlR * ca) + 0xff)>>8);
+                                 dp[dG] = glLinearRGB.invert(((slG * a) + (dlG * ca) + 0xff)>>8);
+                                 dp[dB] = glLinearRGB.invert(((slB * a) + (dlB * ca) + 0xff)>>8);
+                                 dp[dA] = 0xff - ((ca * (0xff - dp[dA]))>>8);
+                              }
+                           }
+                           else ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
+
+                           sp += 4;
+                           dp += 4;
+                        }
+                     }
+                     else {
+                        for (LONG x=0; x < Width; x++) {
+                           if (dp[dA]) {
+                              if (sp[sA] IS 0xff) ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
+                              else if (auto a = sp[sA]) {
+                                 const UBYTE ca = 0xff - a;
+                                 dp[dR] = ((sp[sR] * a) + (dp[dR] * ca) + 0xff)>>8;
+                                 dp[dG] = ((sp[sG] * a) + (dp[dG] * ca) + 0xff)>>8;
+                                 dp[dB] = ((sp[sB] * a) + (dp[dB] * ca) + 0xff)>>8;
+                                 dp[dA] = 0xff - ((ca * (0xff - dp[dA]))>>8);
+                              }
+                           }
+                           else ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
+
+                           sp += 4;
+                           dp += 4;
+                        }
                      }
                      sdata += Bitmap->LineWidth;
                      ddata += dest->LineWidth;
@@ -761,14 +803,64 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
                   while (Height > 0) {
                      UBYTE *sp = sdata, *dp = ddata;
                      if (Bitmap->Opacity IS 0xff) {
+                        if (Flags & BAF_LINEAR) {
+                           for (i=0; i < Width; i++) {
+                              if (sp[sA] IS 0xff) ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
+                              else if (auto a = sp[sA]) {
+                                 auto slR = glLinearRGB.convert(sp[sR]);
+                                 auto slG = glLinearRGB.convert(sp[sG]);
+                                 auto slB = glLinearRGB.convert(sp[sB]);
+
+                                 auto dlR = glLinearRGB.convert(dp[dR]);
+                                 auto dlG = glLinearRGB.convert(dp[dG]);
+                                 auto dlB = glLinearRGB.convert(dp[dB]);
+
+                                 const UBYTE ca = 0xff - a;
+
+                                 dp[dR] = glLinearRGB.invert(((slR * a) + (dlR * ca) + 0xff)>>8);
+                                 dp[dG] = glLinearRGB.invert(((slG * a) + (dlG * ca) + 0xff)>>8);
+                                 dp[dB] = glLinearRGB.invert(((slB * a) + (dlB * ca) + 0xff)>>8);
+                                 dp[dA] = 0xff - ((ca * (0xff - dp[dA]))>>8);
+                              }
+
+                              sp += 4;
+                              dp += 4;
+                           }
+                        }
+                        else {
+                           for (i=0; i < Width; i++) {
+                              if (sp[sA] IS 0xff) ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
+                              else if (auto a = sp[sA]) {
+                                 const UBYTE ca = 0xff - a;
+                                 dp[dR] = ((sp[sR] * a) + (dp[dR] * ca) + 0xff)>>8;
+                                 dp[dG] = ((sp[sG] * a) + (dp[dG] * ca) + 0xff)>>8;
+                                 dp[dB] = ((sp[sB] * a) + (dp[dB] * ca) + 0xff)>>8;
+                                 dp[dA] = 0xff - ((ca * (0xff - dp[dA]))>>8);
+                              }
+
+                              sp += 4;
+                              dp += 4;
+                           }
+                        }
+                     }
+                     else if (Flags & BAF_LINEAR) {
                         for (i=0; i < Width; i++) {
-                           if (sp[sA] IS 0xff) ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
-                           else if (sp[sA]) {
-                              const UBYTE alpha = sp[sA];
-                              dp[dR] = dp[dR] + (((sp[sR] - dp[dR]) * alpha)>>8);
-                              dp[dG] = dp[dG] + (((sp[sG] - dp[dG]) * alpha)>>8);
-                              dp[dB] = dp[dB] + (((sp[sB] - dp[dB]) * alpha)>>8);
-                              dp[dA] = dp[dA] + ((sp[sA] * (0xff-dp[dA]))>>8);
+                           if (auto a = sp[sA]) {
+                              a = (a * Bitmap->Opacity + 0xff)>>8;
+                              auto slR = glLinearRGB.convert(sp[sR]);
+                              auto slG = glLinearRGB.convert(sp[sG]);
+                              auto slB = glLinearRGB.convert(sp[sB]);
+
+                              auto dlR = glLinearRGB.convert(dp[dR]);
+                              auto dlG = glLinearRGB.convert(dp[dG]);
+                              auto dlB = glLinearRGB.convert(dp[dB]);
+
+                              const UBYTE ca = 0xff - a;
+
+                              dp[dR] = glLinearRGB.invert(((slR * a) + (dlR * ca) + 0xff)>>8);
+                              dp[dG] = glLinearRGB.invert(((slG * a) + (dlG * ca) + 0xff)>>8);
+                              dp[dB] = glLinearRGB.invert(((slB * a) + (dlB * ca) + 0xff)>>8);
+                              dp[dA] = 0xff - ((ca * (0xff - dp[dA]))>>8);
                            }
 
                            sp += 4;
@@ -777,12 +869,13 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
                      }
                      else {
                         for (i=0; i < Width; i++) {
-                           if (sp[sA]) {
-                              const UBYTE alpha = (sp[sA] * Bitmap->Opacity)>>8;
-                              dp[dR] = dp[dR] + (((sp[sR] - dp[dR]) * alpha)>>8);
-                              dp[dG] = dp[dG] + (((sp[sG] - dp[dG]) * alpha)>>8);
-                              dp[dB] = dp[dB] + (((sp[sB] - dp[dB]) * alpha)>>8);
-                              dp[dA] = dp[dA] + ((sp[sA] * (0xff-dp[dA]))>>8);
+                           if (auto oa = sp[sA]) {
+                              const UBYTE a = (oa * Bitmap->Opacity + 0xff)>>8;
+                              const UBYTE ca = 0xff - a;
+                              dp[dR] = ((sp[sR] * a) + (dp[dR] * ca) + 0xff)>>8;
+                              dp[dG] = ((sp[sG] * a) + (dp[dG] * ca) + 0xff)>>8;
+                              dp[dB] = ((sp[sB] * a) + (dp[dB] * ca) + 0xff)>>8;
+                              dp[dA] = 0xff - ((ca * (0xff - dp[dA]))>>8);
                            }
 
                            sp += 4;

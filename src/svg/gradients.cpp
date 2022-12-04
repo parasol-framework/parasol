@@ -112,7 +112,7 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
 
             default: {
                LONG j;
-               for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
+               for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
                if (Tag->Attrib[a].Name[j] IS ':') break;
                log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;
@@ -263,7 +263,7 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
             case SVF_ID: id = val; break;
             default: {
                LONG j;
-               for (j=0; Tag->Attrib[a].Name[j] AND (Tag->Attrib[a].Name[j] != ':'); j++);
+               for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
                if (Tag->Attrib[a].Name[j] IS ':') break;
                log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
                break;

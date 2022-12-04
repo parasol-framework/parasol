@@ -160,6 +160,7 @@ class objSurface;
 #define BAF_FILL 0x00000001
 #define BAF_BLEND 0x00000002
 #define BAF_COPY 0x00000004
+#define BAF_LINEAR 0x00000008
 
 // Flags for CopySurface().
 

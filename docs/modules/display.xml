@@ -89,10 +89,12 @@
 <p>This function copies rectangular areas from one bitmap to another.  It performs a straight region-copy only, using the fastest method available.  Bitmaps may be of a different type (e.g. bit depth), however this will result in performance penalties.  The copy process will respect the clipping region defined in both the source and destination bitmap objects.</p>
 <p>If the <code>TRANSPARENT</code> flag is set in the source object, all colours that match the ColourIndex field will be ignored in the copy operation.</p>
 <p>To enable dithering, pass <code>BAF_DITHER</code> in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set <code>BAF_BLEND</code> (the source bitmap will also need to have the <code>BMF_ALPHA_CHANNEL</code> flag set to indicate that an alpha channel is available).</p>
+<p>The quality of 32-bit alpha blending can be improved by selecting the <code>BAF_LINEAR</code> flag.  This enables an additional computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this option is not usable if either bitmap is already in a linear colourspace (<code>ERR_InvalidState</code> will be returned if that is the case).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Mismatch">A mis-match has been detected that prevents further processing.</error>
+      <error code="InvalidState">Object was in an incorrect state for the operation.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -953,6 +955,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="COPY">Special CopyArea() option that avoids blending when the destination pixel is empty.</const>
       <const name="DITHER">Perform dithering if the colour formats differ between the source and destination.</const>
       <const name="FILL">For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture.</const>
+      <const name="LINEAR">Use linear interpolation to improve the quality of alpha blending.</const>
     </constants>
 
     <constants lookup="BDF" comment="CopySurface() flags">

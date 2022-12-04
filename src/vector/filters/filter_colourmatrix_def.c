@@ -4,6 +4,7 @@ static const struct ActionArray clColourFXActions[] = {
    { AC_Draw, (APTR)COLOURFX_Draw },
    { AC_Free, (APTR)COLOURFX_Free },
    { AC_Init, (APTR)COLOURFX_Init },
+   { AC_NewObject, (APTR)COLOURFX_NewObject },
    { 0, 0 }
 };
 

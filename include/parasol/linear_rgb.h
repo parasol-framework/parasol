@@ -20,9 +20,7 @@ private:
       if (X < 0.0031308) ix = F2T(((X * 12.92) * 255.0) + 0.5);
       else ix = F2T(((std::pow(X, 1.0 / 2.4) * 1.055 - 0.055) * 255.0) + 0.5);
 
-      if (ix < 0) return 0;
-      else if (ix > 255) return 255;
-      else return ix;
+      return (ix < 0) ? 0 : (ix > 255) ? 255 : ix;
    }
 
 public:
@@ -34,11 +32,11 @@ public:
       }
    }
 
-   inline UBYTE convert(const UBYTE Colour) {
+   inline constexpr UBYTE convert(const UBYTE Colour) { // RGB to linear
       return r2l[Colour];
    }
 
-   inline UBYTE invert(const UBYTE Colour) {
+   inline constexpr UBYTE invert(const UBYTE Colour) { // Linear to RGB
       return l2r[Colour];
    }
 
@@ -54,6 +52,34 @@ public:
       Colour.Red   = l2r[Colour.Red];
       Colour.Green = l2r[Colour.Green];
       Colour.Blue  = l2r[Colour.Blue];
+   }
+
+   inline static FLOAT f_invert(FLOAT Value) {
+      if (Value < 0.0031308) Value = Value * 12.92;
+      else Value = std::pow(Value, 1.0 / 2.4) * 1.055 - 0.055;
+      return (Value < 0) ? 0 : (Value > 255) ? 255 : Value;
+   }
+
+   inline static FLOAT f_convert(FLOAT Value) {
+      if (Value <= 0.04045) return Value /= 12.92;
+      else return std::pow((Value + 0.055) / 1.055, 2.4);
+   }
+
+   inline static void convert(FRGB &Colour) {
+      if (Colour.Red <= 0.04045) Colour.Red /= 12.92;
+      else Colour.Red = std::pow((Colour.Red + 0.055) / 1.055, 2.4);
+
+      if (Colour.Green <= 0.04045) Colour.Green /= 12.92;
+      else Colour.Green = std::pow((Colour.Green + 0.055) / 1.055, 2.4);
+
+      if (Colour.Blue <= 0.04045) Colour.Blue /= 12.92;
+      else Colour.Blue = std::pow((Colour.Blue + 0.055) / 1.055, 2.4);
+   }
+
+   inline static void invert(FRGB &Colour) {
+      Colour.Red   = f_invert(Colour.Red);
+      Colour.Green = f_invert(Colour.Green);
+      Colour.Blue  = f_invert(Colour.Blue);
    }
 
 private:

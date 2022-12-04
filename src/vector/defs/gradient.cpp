@@ -89,8 +89,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
       Vector.StrokeGradientAlpha = opacity;
 
       for (unsigned i=0; i < Vector.StrokeGradientTable->size(); i++) {
-         (*Vector.StrokeGradientTable)[i] = agg::rgba8(cols->table[i].r, cols->table[i].g, cols->table[i].b,
-            cols->table[i].a * opacity);
+         (*Vector.StrokeGradientTable)[i] = agg::rgba8(cols->table[i].r, cols->table[i].g, cols->table[i].b, cols->table[i].a * opacity);
       }
 
       return Vector.StrokeGradientTable;

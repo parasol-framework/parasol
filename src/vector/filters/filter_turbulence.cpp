@@ -100,7 +100,7 @@ class objTurbulenceFX : public extFilterEffect {
 
    // Standard turbulence (non-stitched)
 
-   DOUBLE turbulence(UBYTE Channel, LONG x, LONG y) {
+   UBYTE turbulence(UBYTE Channel, LONG x, LONG y) {
       DOUBLE sum = 0.0;
       DOUBLE vx = x * FX;
       DOUBLE vy = y * FY;
@@ -114,13 +114,16 @@ class objTurbulenceFX : public extFilterEffect {
          ratio *= 0.5;
       }
 
-      if (Type IS TB_NOISE) return ((sum * 255.0) + 255.0) * 0.5;
-      else return sum * 255.0;
+      LONG col;
+      if (Type IS TB_NOISE) col = ((sum * 255.0) + 255.0) * 0.5;
+      else col = sum * 255.0;
+
+      return (col < 0) ? 0 : (col > 255) ? 255 : col;
    }
 
    // Stitched turbulence
 
-   DOUBLE turbulence_stitch(UBYTE Channel, LONG x, LONG y, DOUBLE FX, DOUBLE FY, LONG StitchWidth, LONG StitchHeight) {
+   UBYTE turbulence_stitch(UBYTE Channel, LONG x, LONG y, DOUBLE FX, DOUBLE FY, LONG StitchWidth, LONG StitchHeight) {
       wrap_x = (x % StitchWidth) * FX + PerlinN + stitch_width;
       wrap_y = (y % StitchHeight) * FY + PerlinN + stitch_height;
 
@@ -145,8 +148,11 @@ class objTurbulenceFX : public extFilterEffect {
          wrap_y         = 2 * wrap_y - PerlinN;
       }
 
-      if (Type IS TB_NOISE) return ((sum * 255.0) + 255.0) * 0.5;
-      else return sum * 255.0;
+      LONG col;
+      if (Type IS TB_NOISE) col = ((sum * 255.0) + 255.0) * 0.5;
+      else col = sum * 255.0;
+
+      return (col < 0) ? 0 : (col > 255) ? 255 : col;
    }
 };
 
@@ -216,36 +222,22 @@ static ERROR TURBULENCEFX_Draw(objTurbulenceFX *Self, struct acDraw *Args)
 
       for (LONG y=0; y < height; y++) {
          UBYTE *pixel = data + (Self->Target->LineWidth * y);
-         for (LONG x=0; x < width; x++) {
-            DOUBLE r = Self->turbulence_stitch(0, x, y, fx, fy, stitch_width, stitch_height);
-            DOUBLE g = Self->turbulence_stitch(1, x, y, fx, fy, stitch_width, stitch_height);
-            DOUBLE b = Self->turbulence_stitch(2, x, y, fx, fy, stitch_width, stitch_height);
-            DOUBLE a = Self->turbulence_stitch(3, x, y, fx, fy, stitch_width, stitch_height);
-
-            if (a < 0) pixel[A] = 0; else if (a > 255) pixel[A] = 255; else pixel[A] = a;
-            if (r < 0) pixel[R] = 0; else if (r > 255) pixel[R] = 255; else pixel[R] = r;
-            if (g < 0) pixel[G] = 0; else if (g > 255) pixel[G] = 255; else pixel[G] = g;
-            if (b < 0) pixel[B] = 0; else if (b > 255) pixel[B] = 255; else pixel[B] = b;
-
-            pixel += 4;
+         for (LONG x=0; x < width; x++, pixel += 4) {
+            pixel[R] = glLinearRGB.invert(Self->turbulence_stitch(0, x, y, fx, fy, stitch_width, stitch_height));
+            pixel[G] = glLinearRGB.invert(Self->turbulence_stitch(1, x, y, fx, fy, stitch_width, stitch_height));
+            pixel[B] = glLinearRGB.invert(Self->turbulence_stitch(2, x, y, fx, fy, stitch_width, stitch_height));
+            pixel[A] = Self->turbulence_stitch(3, x, y, fx, fy, stitch_width, stitch_height);
          }
       }
    }
    else {
       for (LONG y=0; y < height; y++) {
          UBYTE *pixel = data + (Self->Target->LineWidth * y);
-         for (LONG x=0; x < width; x++) {
-            DOUBLE r = Self->turbulence(0, x, y);
-            DOUBLE g = Self->turbulence(1, x, y);
-            DOUBLE b = Self->turbulence(2, x, y);
-            DOUBLE a = Self->turbulence(3, x, y);
-
-            if (a < 0) pixel[A] = 0; else if (a > 255) pixel[A] = 255; else pixel[A] = a;
-            if (r < 0) pixel[R] = 0; else if (r > 255) pixel[R] = 255; else pixel[R] = r;
-            if (g < 0) pixel[G] = 0; else if (g > 255) pixel[G] = 255; else pixel[G] = g;
-            if (b < 0) pixel[B] = 0; else if (b > 255) pixel[B] = 255; else pixel[B] = b;
-
-            pixel += 4;
+         for (LONG x=0; x < width; x++, pixel += 4) {
+            pixel[R] = glLinearRGB.invert(Self->turbulence(0, x, y));
+            pixel[G] = glLinearRGB.invert(Self->turbulence(1, x, y));
+            pixel[B] = glLinearRGB.invert(Self->turbulence(2, x, y));
+            pixel[A] = Self->turbulence(3, x, y);
          }
       }
    }

@@ -18,7 +18,6 @@ class objFloodFX : public extFilterEffect {
    public:
    FRGB   Colour;
    RGB8   ColourRGB;
-   RGB8   LinearRGB;
    DOUBLE Opacity;
 };
 
@@ -42,18 +41,13 @@ static ERROR FLOODFX_Draw(objFloodFX *Self, struct acDraw *Args)
    parasol::Log log;
 
    auto &filter = Self->Filter;
-   auto target = calc_target_area(Self);
 
-   // Draw to destination.  No anti-aliasing is applied.
+   // Draw to destination.  No anti-aliasing is applied and the alpha channel remains constant.
+   // Note: There seems to be a quirk in the SVG standards in that flooding does not honour the
+   // linear RGB space when blending.  This is indicated in the formal test results, but
+   // W3C documentation has no mention of it.
 
-   const auto col = [Self, filter]() {
-      if (filter->ColourSpace IS VCS_LINEAR_RGB) {
-         return agg::rgba8(Self->LinearRGB, F2T(Self->Colour.Alpha * Self->Opacity * 255.0));
-      }
-      else return agg::rgba8(Self->ColourRGB, F2T(Self->Colour.Alpha * Self->Opacity * 255.0));
-   }();
-
-   log.msg("Flood colour: %d %d %d %d; Linear: %c", col.r, col.g, col.b, col.a, (filter->ColourSpace IS VCS_LINEAR_RGB) ? 'Y' : 'N');
+   const auto col = agg::rgba8(Self->ColourRGB, F2T(Self->Colour.Alpha * Self->Opacity * 255.0));
 
    agg::rasterizer_scanline_aa<> raster;
    agg::renderer_base<agg::pixfmt_psl> renderBase;
@@ -62,10 +56,10 @@ static ERROR FLOODFX_Draw(objFloodFX *Self, struct acDraw *Args)
    renderBase.attach(format);
 
    agg::path_storage path;
-   path.move_to(target.x, target.y);
-   path.line_to(target.x + target.width, target.y);
-   path.line_to(target.x + target.width, target.y + target.height);
-   path.line_to(target.x, target.y + target.height);
+   path.move_to(filter->TargetX, filter->TargetY);
+   path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY);
+   path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY + filter->TargetHeight);
+   path.line_to(filter->TargetX, filter->TargetY + filter->TargetHeight);
    path.close_polygon();
 
    agg::renderer_scanline_bin_solid< agg::renderer_base<agg::pixfmt_psl> > solid_render(renderBase);
@@ -110,9 +104,6 @@ static ERROR FLOODFX_SET_Colour(objFloodFX *Self, FLOAT *Value, LONG Elements)
          Self->ColourRGB.Green = F2T(Self->Colour.Green * 255.0);
          Self->ColourRGB.Blue  = F2T(Self->Colour.Blue * 255.0);
          Self->ColourRGB.Alpha = F2T(Self->Colour.Alpha * 255.0);
-
-         Self->LinearRGB = Self->ColourRGB;
-         glLinearRGB.convert(Self->LinearRGB);
       }
       else return log.warning(ERR_InvalidValue);
    }
