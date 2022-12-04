@@ -75,8 +75,13 @@ void write_backing_store(j_common_ptr cinfo, backing_store_ptr info, void FAR * 
    struct acSeek seek = { .Offset = (DOUBLE)file_offset, .Position = SEEK_START };
    if (Action(AC_Seek, info->temp_file, &seek) != ERR_Okay) ERREXIT(cinfo, JERR_TFILE_SEEK);
 
-   struct acWrite write = { .Buffer = buffer_address, .Length = byte_count };
-   if (Action(AC_Write, info->temp_file, &write) != ERR_Okay) ERREXIT(cinfo, JERR_TFILE_WRITE);
+   const long CHUNK = 1024LL * 1024LL;
+   while (byte_count > 0) {
+      struct acWrite write = { .Buffer = buffer_address, .Length = byte_count > CHUNK ? (LONG)CHUNK : (LONG)byte_count };
+      if (Action(AC_Write, info->temp_file, &write) != ERR_Okay) ERREXIT(cinfo, JERR_TFILE_WRITE);
+      byte_count -= write.Result;
+      buffer_address += write.Result;
+   }
 }
 
 void close_backing_store(j_common_ptr cinfo, backing_store_ptr info)
