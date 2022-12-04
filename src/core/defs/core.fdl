@@ -65,12 +65,6 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
     "DESC: Sort in descending order.",
     "CSV: The list is in CSV format and the Size and Total parameters should be ignored. Note that the source string will be modified in this mode.")
 
-  flags("SEF", { comment="Optional flags for StrEvaluate()" },
-    "STRICT: Enforces strict processing.  An error code will always be returned if at least one of the translation attempts failed.  Failed translations will be unprocessed (normally they are removed from the resulting string).",
-    "IGNORE_QUOTES: Areas marked with double-quotes will not be translated.  The quote characters will also not be removed.",
-    "KEEP_ESCAPE: Escaped string symbols will not be altered if this flag is used.",
-    "NO_SCRIPT: Turns off the embedded script feature.  An error code is returned if an attempt to embed a script is made.")
-
   flags("TSF", { comment="Task flags" },
     "FOREIGN: Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.",
     "DUMMY: Private. Marks the object as being for temporary use only.",
@@ -1067,8 +1061,6 @@ struct ScriptArg { // For use with scExec
     "StrLineLength",
     "StrNextLine",
     "StrReplace",
-    "StrEvaluate",
-    "StrCalculate",
     "StrToFloat",
     "StrCopy",
     "StrClone",
@@ -1093,7 +1085,6 @@ struct ScriptArg { // For use with scExec
     "StrTranslateRefresh",
     "StrSortCompare",
     "StrReadDate",
-    "StrEvalConditional",
     "UTF8Copy",
     "StrBase64Encode",
     "VarSetString",
