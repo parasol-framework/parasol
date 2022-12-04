@@ -55,8 +55,8 @@ public:
 
    span_reflect_y(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
        m_src(&pixf),
-       m_wrap_x(pixf.mBitmap->Width),
-       m_wrap_y(pixf.mBitmap->Height),
+       m_wrap_x(pixf.mWidth),
+       m_wrap_y(pixf.mHeight),
        m_offset_x(offset_x),
        m_offset_y(offset_y)
    {
@@ -119,8 +119,8 @@ public:
 
    span_reflect_x(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
        m_src(&pixf),
-       m_wrap_x(pixf.mBitmap->Width),
-       m_wrap_y(pixf.mBitmap->Height),
+       m_wrap_x(pixf.mWidth),
+       m_wrap_y(pixf.mHeight),
        m_offset_x(offset_x),
        m_offset_y(offset_y)
    {
@@ -187,8 +187,8 @@ public:
 
    span_repeat_rkl(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
        m_src(&pixf),
-       m_wrap_x(pixf.mBitmap->Width),
-       m_wrap_y(pixf.mBitmap->Height),
+       m_wrap_x(pixf.mWidth),
+       m_wrap_y(pixf.mHeight),
        m_offset_x(offset_x),
        m_offset_y(offset_y)
    {
@@ -330,8 +330,6 @@ void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
 static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
    objBitmap *SrcBitmap, LONG SpreadMethod, DOUBLE Opacity, agg::trans_affine *Transform = NULL, DOUBLE XOffset = 0, DOUBLE YOffset = 0)
 {
-   agg::rendering_buffer imgSource;
-   imgSource.attach(SrcBitmap->Data, SrcBitmap->Width, SrcBitmap->Height, SrcBitmap->LineWidth);
    agg::pixfmt_psl pixels(*SrcBitmap);
 
    if ((Transform) and (Transform->is_complex())) {
@@ -581,15 +579,11 @@ class pattern_rgb {
       DOUBLE mHeight;
 };
 
-void draw_brush(const objVectorImage &Image,
-   agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::conv_transform<agg::path_storage, agg::trans_affine> &Path,
-   DOUBLE StrokeWidth)
+void draw_brush(const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+   agg::conv_transform<agg::path_storage, agg::trans_affine> &Path, DOUBLE StrokeWidth)
 {
    typedef agg::pattern_filter_bilinear_rgba8 FILTER_TYPE;
    FILTER_TYPE filter;
-   agg::rendering_buffer img;
-   img.attach(Image.Bitmap->Data, Image.Bitmap->Width, Image.Bitmap->Height, Image.Bitmap->LineWidth);
    pattern_rgb src(*Image.Bitmap, StrokeWidth);
 
    DOUBLE scale;
@@ -655,8 +649,7 @@ static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMetho
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
 static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::trans_affine &Transform,
-   DOUBLE ViewWidth, DOUBLE ViewHeight, const extVectorGradient &Gradient,
-   GRADIENT_TABLE *Table,
+   DOUBLE ViewWidth, DOUBLE ViewHeight, const extVectorGradient &Gradient, GRADIENT_TABLE *Table,
    agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster,
    DOUBLE BorderWidth)
@@ -1507,18 +1500,26 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
 
 void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, bool Linear)
 {
-   mBitmap = &Bitmap;
+   auto data = Bitmap.Data + (Bitmap.XOffset * Bitmap.BytesPerPixel) + (Bitmap.YOffset * Bitmap.LineWidth);
+   rawBitmap(data, Bitmap.Clip.Right, Bitmap.Clip.Bottom, Bitmap.LineWidth, Bitmap.BitsPerPixel, *Bitmap.ColourFormat, Linear);
+}
 
-   mData = Bitmap.Data + (Bitmap.XOffset * Bitmap.BytesPerPixel) + (Bitmap.YOffset * Bitmap.LineWidth);
+void agg::pixfmt_psl::rawBitmap(UBYTE *Data, LONG Width, LONG Height, LONG Stride, LONG BitsPerPixel, ColourFormat &ColourFormat, bool Linear)
+{
+   mData   = Data;
+   mWidth  = Width;
+   mHeight = Height;
+   mStride = Stride;
+   mBytesPerPixel = BitsPerPixel/8;
 
-   if (Bitmap.BitsPerPixel IS 32) {
+   if (BitsPerPixel IS 32) {
       fBlendHLine      = &blendHLine32;
       fBlendSolidHSpan = &blendSolidHSpan32;
       fBlendColorHSpan = &blendColorHSpan32;
       fCopyColorHSpan  = &copyColorHSpan32;
 
-      if (Bitmap.ColourFormat->AlphaPos IS 24) {
-         if (Bitmap.ColourFormat->BluePos IS 0) {
+      if (ColourFormat.AlphaPos IS 24) {
+         if (ColourFormat.BluePos IS 0) {
             pixel_order(2, 1, 0, 3); // BGRA
             fBlendPix = Linear ? &linear32BGRA : &blend32BGRA;
             fCopyPix  = Linear ? &linearCopy32BGRA : &copy32BGRA;
@@ -1531,7 +1532,7 @@ void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, bool Linear)
             fCoverPix = Linear ? &linearCover32RGBA : &cover32RGBA;
          }
       }
-      else if (Bitmap.ColourFormat->RedPos IS 24) {
+      else if (ColourFormat.RedPos IS 24) {
          pixel_order(3, 1, 2, 0); // AGBR
          fBlendPix = Linear ? &linear32AGBR : &blend32AGBR;
          fCopyPix  = Linear ? &linearCopy32AGBR : &copy32AGBR;
@@ -1544,13 +1545,13 @@ void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, bool Linear)
          fCoverPix = Linear ? &linearCover32ARGB : &cover32ARGB;
       }
    }
-   else if (Bitmap.BitsPerPixel IS 24) {
+   else if (BitsPerPixel IS 24) {
       fBlendHLine      = &blendHLine24;
       fBlendSolidHSpan = &blendSolidHSpan24;
       fBlendColorHSpan = &blendColorHSpan24;
       fCopyColorHSpan  = &copyColorHSpan24;
 
-      if (Bitmap.ColourFormat->BluePos IS 0) {
+      if (ColourFormat.BluePos IS 0) {
          pixel_order(2, 1, 0, 0); // BGR
          fBlendPix = &blend24BGR;
          fCopyPix  = &copy24BGR;
@@ -1563,26 +1564,9 @@ void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, bool Linear)
          fCoverPix = &cover24RGB;
       }
    }
-   else if (Bitmap.BitsPerPixel IS 16) {
-      fBlendHLine      = &blendHLine16;
-      fBlendSolidHSpan = &blendSolidHSpan16;
-      fBlendColorHSpan = &blendColorHSpan16;
-      fCopyColorHSpan  = &copyColorHSpan16;
-
-      if ((Bitmap.ColourFormat->BluePos IS 0) and (Bitmap.ColourFormat->RedPos IS 11)) { // BGR
-         fBlendPix = &blend16bgr;
-         fCopyPix  = &copy16bgr;
-         fCoverPix = &cover16bgr;
-      }
-      else if ((Bitmap.ColourFormat->RedPos IS 0) and (Bitmap.ColourFormat->BluePos IS 11)) { // RGB
-         fBlendPix = &blend16rgb;
-         fCopyPix  = &copy16rgb;
-         fCoverPix = &cover16rgb;
-      }
-      else { // RGB
-         fBlendPix = &blend16;
-         fCopyPix  = &copy16;
-         fCoverPix = &cover16;
-      }
+   else if (BitsPerPixel IS 16) {
+      // Deprecated.  16-bit client code should use 24-bit and downscale instead.
+      parasol::Log log;
+      log.warning("Support for 16-bit bitmaps is deprecated.");
    }
 }

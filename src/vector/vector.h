@@ -614,21 +614,21 @@ public:
    int8u * span(int x, int y, unsigned len) {
       m_x = m_x0 = x;
       m_y = y;
-      if ((y >= 0) and (y < (int)m_src->mBitmap->Clip.Bottom) and (x >= 0) and (x+(int)len <= (int)m_src->mBitmap->Clip.Right)) {
-         return m_pix_ptr = m_src->row_ptr(y) + (x * m_src->mBitmap->BytesPerPixel);
+      if ((y >= 0) and (y < m_src->mHeight) and (x >= 0) and (x+(int)len <= m_src->mWidth)) {
+         return m_pix_ptr = m_src->row_ptr(y) + (x * m_src->mBytesPerPixel);
       }
       m_pix_ptr = 0;
-      if ((m_y >= 0) and (m_y < (int)m_src->mBitmap->Clip.Bottom) and (m_x >= 0) and (m_x < (int)m_src->mBitmap->Clip.Right)) {
-         return m_src->row_ptr(m_y) + (m_x * m_src->mBitmap->BytesPerPixel);
+      if ((m_y >= 0) and (m_y < m_src->mHeight) and (m_x >= 0) and (m_x < m_src->mWidth)) {
+         return m_src->row_ptr(m_y) + (m_x * m_src->mBytesPerPixel);
       }
       return m_bk_buf;
    }
 
    int8u * next_x() {
-      if (m_pix_ptr) return m_pix_ptr += m_src->mBitmap->BytesPerPixel;
+      if (m_pix_ptr) return m_pix_ptr += m_src->mBytesPerPixel;
       ++m_x;
-      if ((m_y >= 0) and (m_y < (int)m_src->mBitmap->Clip.Bottom) and (m_x >= 0) and (m_x < (int)m_src->mBitmap->Clip.Right)) {
-         return m_src->row_ptr(m_y) + (m_x * m_src->mBitmap->BytesPerPixel);
+      if ((m_y >= 0) and (m_y < m_src->mHeight) and (m_x >= 0) and (m_x < m_src->mWidth)) {
+         return m_src->row_ptr(m_y) + (m_x * m_src->mBytesPerPixel);
       }
       return m_bk_buf;
   }
@@ -636,12 +636,12 @@ public:
    int8u * next_y() {
       ++m_y;
       m_x = m_x0;
-      if (m_pix_ptr and m_y >= 0 and m_y < (int)m_src->height()) {
-         return m_pix_ptr = m_src->row_ptr(m_y) + (m_x * m_src->mBitmap->BytesPerPixel);
+      if (m_pix_ptr and m_y >= 0 and m_y < m_src->height()) {
+         return m_pix_ptr = m_src->row_ptr(m_y) + (m_x * m_src->mBytesPerPixel);
       }
       m_pix_ptr = 0;
-      if ((m_y >= 0) and (m_y < (int)m_src->mBitmap->Clip.Bottom) and (m_x >= 0) and (m_x < (int)m_src->mBitmap->Clip.Right)) {
-         return m_src->row_ptr(m_y) + (m_x * m_src->mBitmap->BytesPerPixel);
+      if ((m_y >= 0) and (m_y < m_src->mHeight) and (m_x >= 0) and (m_x < m_src->mWidth)) {
+         return m_src->row_ptr(m_y) + (m_x * m_src->mBytesPerPixel);
       }
       return m_bk_buf;
    }

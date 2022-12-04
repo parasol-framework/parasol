@@ -83,7 +83,12 @@ public:
       setBitmap(Bitmap, Linear);
    }
 
-   void setBitmap(objBitmap &Bitmap, bool Linear = false);
+   explicit pixfmt_psl(UBYTE *Data, LONG Width, LONG Height, LONG Stride, LONG BPP, ColourFormat &Format, bool Linear = false) : oR(0), oG(0), oB(0), oA(0) {
+      rawBitmap(Data, Width, Height, Stride, BPP, Format, Linear);
+   }
+
+   void setBitmap(objBitmap &, bool Linear = false);
+   void rawBitmap(UBYTE *Data, LONG Width, LONG Height, LONG Stride, LONG BitsPerPixel, ColourFormat &, bool Linear = false);
 
    // The setBitmap() code in scene_draw.cpp defines the following functions.
    void (*fBlendPix)(agg::pixfmt_psl *, UBYTE *, ULONG cr, ULONG cg, ULONG cb, ULONG alpha);
@@ -94,15 +99,16 @@ public:
    void (*fBlendColorHSpan)(agg::pixfmt_psl *, int x, int y, ULONG len, const agg::rgba8 *, const UBYTE *covers, UBYTE cover);
    void (*fCopyColorHSpan)(agg::pixfmt_psl *, int x, int y, ULONG len, const agg::rgba8 *); // copy_color_hspan
 
-   void linearMode(bool pEnable = true) {
-      setBitmap(*mBitmap, pEnable);
-   }
+   AGG_INLINE unsigned width()  const { return mWidth;  }
+   AGG_INLINE unsigned height() const { return mHeight; }
+   AGG_INLINE int      stride() const { return mStride; }
+   AGG_INLINE UBYTE *   row_ptr(int y) { return mData + (y * mStride); }
+   AGG_INLINE const UBYTE * row_ptr(int y) const { return mData + (y * mStride); }
 
-   AGG_INLINE unsigned width()  const { return mBitmap->Clip.Right;  }
-   AGG_INLINE unsigned height() const { return mBitmap->Clip.Bottom; }
-   AGG_INLINE int      stride() const { return mBitmap->LineWidth; }
-   AGG_INLINE UBYTE *   row_ptr(int y) { return mData + (y * mBitmap->LineWidth); }
-   AGG_INLINE const UBYTE * row_ptr(int y) const { return mData + (y * mBitmap->LineWidth); }
+   UBYTE *mData;
+   LONG mWidth, mHeight, mStride;
+   UBYTE oR, oG, oB, oA;
+   UBYTE mBytesPerPixel;
 
 private:
    void pixel_order(UBYTE aoR, UBYTE aoG, UBYTE aoB, UBYTE aoA)
@@ -440,7 +446,7 @@ private:
    static void blendHLine32(agg::pixfmt_psl *Self, int x, int y, unsigned len, const agg::rgba8 &c, int8u cover) noexcept
    {
       if (c.a) {
-         UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x<<2);
+         UBYTE *p = Self->mData + (y * Self->mStride) + (x<<2);
          ULONG alpha = (ULONG(c.a) * (cover + 1)) >> 8;
          if (alpha == 0xff) {
             ULONG v;
@@ -465,7 +471,7 @@ private:
    static void blendSolidHSpan32(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 &c, const UBYTE *covers) noexcept
    {
       if (c.a) {
-         UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x<<2);
+         UBYTE *p = Self->mData + (y * Self->mStride) + (x<<2);
          do {
             ULONG alpha = (ULONG(c.a) * (ULONG(*covers) + 1)) >> 8;
             if (alpha == 0xff) {
@@ -483,7 +489,7 @@ private:
 
    static void blendColorHSpan32(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 *colors, const UBYTE *covers, UBYTE cover) noexcept
    {
-      UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x<<2);
+      UBYTE *p = Self->mData + (y * Self->mStride) + (x<<2);
       if (covers) {
          do {
             Self->fCoverPix(Self, p, colors->r, colors->g, colors->b, colors->a, *covers++);
@@ -509,7 +515,7 @@ private:
 
    static void copyColorHSpan32(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 *colors) noexcept
    {
-      UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x<<2);
+      UBYTE *p = Self->mData + (y * Self->mStride) + (x<<2);
       do {
           p[Self->oR] = colors->r;
           p[Self->oG] = colors->g;
@@ -525,7 +531,7 @@ private:
    static void blendHLine24(agg::pixfmt_psl *Self, int x, int y, unsigned len, const agg::rgba8 &c, int8u cover) noexcept
    {
       if (c.a) {
-         UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x / 3);
+         UBYTE *p = Self->mData + (y * Self->mStride) + (x / 3);
          ULONG alpha = (ULONG(c.a) * (cover + 1)) >> 8;
          if (alpha == 0xff) {
             ULONG v;
@@ -549,7 +555,7 @@ private:
    static void blendSolidHSpan24(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 &c, const UBYTE *covers) noexcept
    {
       if (c.a) {
-         UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x / 3);
+         UBYTE *p = Self->mData + (y * Self->mStride) + (x / 3);
          do {
             ULONG alpha = (ULONG(c.a) * (ULONG(*covers) + 1)) >> 8;
             if (alpha == 0xff) {
@@ -566,7 +572,7 @@ private:
 
    static void blendColorHSpan24(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 *colors, const UBYTE *covers, UBYTE cover) noexcept
    {
-      UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x / 3);
+      UBYTE *p = Self->mData + (y * Self->mStride) + (x / 3);
       if (covers) {
          do {
             Self->fCoverPix(Self, p, colors->r, colors->g, colors->b, colors->a, *covers++);
@@ -592,7 +598,7 @@ private:
 
    static void copyColorHSpan24(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 *colors) noexcept
    {
-      UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x / 3);
+      UBYTE *p = Self->mData + (y * Self->mStride) + (x / 3);
       do {
           p[Self->oR] = colors->r;
           p[Self->oG] = colors->g;
@@ -686,172 +692,6 @@ private:
       }
    }
 
-   // Standard 16-bit routines
-
-   static void blend16(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
-   {
-      UWORD pixel = ((UWORD *)p)[0];
-      UBYTE red   = Self->mBitmap->unpackRed(pixel);
-      UBYTE green = Self->mBitmap->unpackGreen(pixel);
-      UBYTE blue  = Self->mBitmap->unpackBlue(pixel);
-      red   = red   + (((cr - red) * alpha)>>8);
-      green = green + (((cg - green) * alpha)>>8);
-      blue  = blue  + (((cb - blue) * alpha)>>8);
-      ((UWORD *)p)[0] = CFPackPixel(Self->mBitmap->ColourFormat, red, green, blue);
-   }
-
-   static void copy16(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
-   {
-      if (alpha) {
-         if (alpha == 0xff) ((UWORD *)p)[0] = CFPackPixel(Self->mBitmap->ColourFormat, cr, cg, cb);
-         else blend16(Self, p, cr, cg, cb, alpha);
-      }
-   }
-
-   static void cover16(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha, ULONG cover) noexcept
-   {
-      if (cover == 255) copy16(Self, p, cr, cg, cb, alpha);
-      else if (alpha) {
-         alpha = (alpha * (cover + 1)) >> 8;
-         if (alpha == 0xff) ((UWORD *)p)[0] = CFPackPixel(Self->mBitmap->ColourFormat, cr, cg, cb);
-         else blend16(Self, p, cr, cg, cb, alpha);
-      }
-   }
-
-   static void blendHLine16(agg::pixfmt_psl *Self, int x, int y, unsigned len, const agg::rgba8 &c, int8u cover) noexcept
-   {
-      if (c.a) {
-         UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x<<1);
-         ULONG alpha = (ULONG(c.a) * (cover + 1)) >> 8;
-         if (alpha == 0xff) {
-            UWORD v = CFPackPixel(Self->mBitmap->ColourFormat, c.r, c.g, c.b);
-            do {
-               *(UWORD *)p = v;
-               p += sizeof(UWORD);
-            } while(--len);
-         }
-         else {
-            do {
-               Self->fBlendPix(Self, p, c.r, c.g, c.b, alpha);
-               p += sizeof(UWORD);
-            } while(--len);
-         }
-      }
-   }
-
-   static void copyColorHSpan16(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 *colors) noexcept
-   {
-      UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x<<1);
-      do {
-          ((UWORD *)p)[0] = CFPackPixel(Self->mBitmap->ColourFormat, colors->r, colors->g, colors->b);
-          ++colors;
-          p += sizeof(UWORD);
-      } while(--len);
-   }
-
-   static void blendSolidHSpan16(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 &c, const UBYTE *covers) noexcept
-   {
-      if (c.a) {
-         UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x<<1);
-         UWORD colour = CFPackPixel(Self->mBitmap->ColourFormat, c.r, c.g, c.b);
-         do {
-            ULONG alpha = (ULONG(c.a) * (ULONG(*covers) + 1)) >> 8;
-            if (alpha == 0xff) *(UWORD *)p = colour;
-            else Self->fBlendPix(Self, p, c.r, c.g, c.b, alpha);
-            p += sizeof(UWORD);
-            ++covers;
-         } while(--len);
-      }
-   }
-
-   static void blendColorHSpan16(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 *colors, const UBYTE *covers, UBYTE cover) noexcept
-   {
-      UBYTE *p = Self->mData + (y * Self->mBitmap->LineWidth) + (x<<1);
-      if (covers) {
-         do {
-            Self->fCoverPix(Self, p, colors->r, colors->g, colors->b, colors->a, *covers++);
-            p += sizeof(UWORD);
-            ++colors;
-         } while(--len);
-      }
-      else if (cover == 255) {
-         do {
-            Self->fCopyPix(Self, p, colors->r, colors->g, colors->b, colors->a);
-            p += sizeof(UWORD);
-            ++colors;
-         } while(--len);
-      }
-      else {
-         do {
-            Self->fCoverPix(Self, p, colors->r, colors->g, colors->b, colors->a, cover);
-            p += sizeof(UWORD);
-            ++colors;
-         } while(--len);
-      }
-   }
-
-   // 16-bit BGR specific routines.
-
-   inline static void blend16bgr(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
-   {
-      UWORD pixel = ((UWORD *)p)[0];
-      UBYTE red   = (pixel >> 8) & 0xf8;
-      UBYTE green = (pixel >> 3) & 0xf8;
-      UBYTE blue  = pixel << 3;
-      red   = red   + (((cr - red) * alpha)>>8);
-      green = green + (((cg - green) * alpha)>>8);
-      blue  = blue  + (((cb - blue) * alpha)>>8);
-      ((UWORD *)p)[0] = ((red & 0xf8) << 8) | ((green & 0xfc) << 3) | (blue>>3);
-   }
-
-   inline static void copy16bgr(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
-   {
-      if (alpha == 0xff) ((UWORD *)p)[0] = ((cr & 0xf8) << 8) | ((cg & 0xfc) << 3) | (cb>>3);
-      else if (alpha) blend16bgr(Self, p, cr, cg, cb, alpha);
-   }
-
-   static void cover16bgr(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha, ULONG cover) noexcept
-   {
-      if (cover == 255) copy16bgr(Self, p, cr, cg, cb, alpha);
-      else if (alpha) {
-         alpha = (alpha * (cover + 1)) >> 8;
-         if (alpha == 0xff) ((UWORD *)p)[0] = ((cr & 0xf8) << 8) | ((cg & 0xfc) << 3) | (cb>>3);
-         else blend16bgr(Self, p, cr, cg, cb, alpha);
-      }
-   }
-
-   // 16-bit RGB specific routines.
-
-   inline static void blend16rgb(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
-   {
-      UWORD pixel = ((UWORD *)p)[0];
-      UBYTE blue   = (pixel >> 8) & 0xf8;
-      UBYTE green  = (pixel >> 3) & 0xf8;
-      UBYTE red   = pixel << 3;
-      red   = red   + (((cr - red) * alpha)>>8);
-      green = green + (((cg - green) * alpha)>>8);
-      blue  = blue  + (((cb - blue) * alpha)>>8);
-      ((UWORD *)p)[0] = ((blue & 0xf8) << 8) | ((green & 0xfc) << 3) | (red>>3);
-   }
-
-   inline static void copy16rgb(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha) noexcept
-   {
-      if (alpha) {
-         if (alpha == 0xff) ((UWORD *)p)[0] = ((cb & 0xf8) << 8) | ((cg & 0xfc) << 3) | (cr>>3);
-         else blend16rgb(Self, p, cr, cg, cb, alpha);
-      }
-   }
-
-   static void cover16rgb(agg::pixfmt_psl *Self, UBYTE *p, ULONG cr, ULONG cg, ULONG cb, ULONG alpha, ULONG cover) noexcept
-   {
-      if (cover == 255) copy16rgb(Self, p, cr, cg, cb, alpha);
-      else if (alpha) {
-         alpha = (alpha * (cover + 1)) >> 8;
-         if (alpha == 0xff) ((UWORD *)p)[0] = ((cb & 0xf8) << 8) | ((cg & 0xfc) << 3) | (cr>>3);
-         else blend16rgb(Self, p, cr, cg, cb, alpha);
-      }
-   }
-
 public:
 
    inline void blend_hline(int x, int y, unsigned len, const agg::rgba8 &c, int8u cover) noexcept
@@ -876,34 +716,29 @@ public:
 
    inline void blend_color_vspan(int x, int y, ULONG len, const agg::rgba8 *colors, const UBYTE *covers, UBYTE cover) noexcept
    {
-      UBYTE *p = (UBYTE *)mData + (y * mBitmap->LineWidth) + (x * mBitmap->BytesPerPixel);
+      UBYTE *p = (UBYTE *)mData + (y * mStride) + (x * mBytesPerPixel);
       if (covers) {
          do {
             fCoverPix(this, p, colors->r, colors->g, colors->b, colors->a, *covers++);
-            p += mBitmap->LineWidth;
+            p += mStride;
             ++colors;
          } while(--len);
       }
       else if (cover == 255) {
          do {
             fCopyPix(this, p, colors->r, colors->g, colors->b, colors->a);
-            p += mBitmap->LineWidth;
+            p += mStride;
             ++colors;
          } while(--len);
       }
       else {
          do {
             fCoverPix(this, p, colors->r, colors->g, colors->b, colors->a, cover);
-            p += mBitmap->LineWidth;
+            p += mStride;
             ++colors;
          } while(--len);
       }
    }
-
-public:
-   UBYTE *mData;
-   objBitmap *mBitmap;
-   UBYTE oR, oG, oB, oA;
 };
 
 } // namespace
