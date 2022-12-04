@@ -59,6 +59,8 @@ GRADIENT_TABLE * get_fill_gradient_table(extVector &Vector, DOUBLE Opacity)
    }
 }
 
+//****************************************************************************
+
 GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 {
    parasol::Log log(__FUNCTION__);
@@ -268,7 +270,15 @@ static ERROR VECTORGRADIENT_SET_CenterY(extVectorGradient *Self, Variable *Value
 /*****************************************************************************
 
 -FIELD-
+ColourSpace: Defines the colour space to use when interpolating gradient colours.
+Lookup: VCS
+
+By default, gradients are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour
+space to `LINEAR_RGB` will force the renderer to automatically convert sRGB values to linear RGB when blending.
+
+-FIELD-
 Flags: Dimension flags are stored here.
+Lookup: DMF
 
 Dimension flags that indicate whether field values are fixed or relative are defined here.
 
@@ -515,7 +525,7 @@ static ERROR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Variable *Value)
 SpreadMethod: The behaviour to use when the gradient bounds do not match the vector path.
 
 Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is
-VSPREAD_PAD.
+`VSPREAD_PAD`.
 
 -FIELD-
 Stops: Defines the colours to use for the gradient.
@@ -602,6 +612,7 @@ static ERROR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Comma
 
 -FIELD-
 Type: Specifies the type of gradient (e.g. RADIAL, LINEAR)
+Lookup: VGT
 
 The type of the gradient to be drawn is specified here.
 
@@ -775,6 +786,7 @@ static const FieldArray clGradientFields[] = {
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RI,  (MAXINT)&clVectorGradientUnits, NULL, NULL },
    { "Type",         FDF_LONG|FDF_LOOKUP|FDF_RI,  (MAXINT)&clVectorGradientType, NULL, NULL },
    { "Flags",        FDF_LONGFLAGS|FDF_RW,        (MAXINT)&clVectorGradientFlags, NULL, NULL },
+   { "ColourSpace",  FDF_LONG|FDF_RI,             (MAXINT)&clVectorGradientColourSpace, NULL, NULL },
    { "TotalStops",   FDF_LONG|FDF_R,              0, NULL, NULL },
    // Virtual fields
    { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"VectorMatrix", (APTR)VECTORGRADIENT_GET_Matrices, (APTR)VECTORGRADIENT_SET_Matrices },
