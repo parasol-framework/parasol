@@ -111,38 +111,6 @@
 
 #define URF_REDRAWS_CHILDREN     0x00000001
 
-#define UpdateSurfaceField(a,b) { \
-   SurfaceList *list; SurfaceControl *ctl; LONG i; \
-   if (Self->initialised()) { \
-   if ((ctl = gfxAccessList(ARF_UPDATE))) { \
-      list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
-      for (i=0; i < ctl->Total; i++) { \
-         if (list[i].SurfaceID IS (a)->UID) { \
-            list[i].b = (a)->b; \
-            break; \
-         } \
-      } \
-      gfxReleaseList(ARF_UPDATE); \
-   } \
-   } \
-}
-
-#define UpdateSurfaceField2(a,b,c) { \
-   SurfaceList *list; SurfaceControl *ctl; LONG i; \
-   if (Self->initialised()) { \
-      if ((ctl = gfxAccessList(ARF_UPDATE))) { \
-         list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
-         for (i=0; i < ctl->Total; i++) { \
-            if (list[i].SurfaceID IS (a)->UID) { \
-               list[i].b = (a)->c; \
-               break; \
-            } \
-         } \
-         gfxReleaseList(ARF_UPDATE); \
-      } \
-   } \
-}
-
 #define UpdateSurfaceList(a) update_surface_copy((a), 0)
 
 struct dcDisplayInputReady { // This is an internal structure used by the display module to replace dcInputReady
@@ -596,6 +564,23 @@ extern APTR glDGAVideo;
 #endif
 
 #include "prototypes.h"
+
+template <typename T>
+void UpdateSurfaceField(objSurface *Self, T SurfaceList::*LValue, T Value)
+{
+   if (Self->initialised()) {
+      if (auto ctl = gfxAccessList(ARF_UPDATE)) {
+         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+         for (LONG i=0; i < ctl->Total; i++) {
+            if (list[i].SurfaceID IS Self->UID) {
+               list[i].*LValue = Value;
+               break;
+            }
+         }
+         gfxReleaseList(ARF_UPDATE);
+      }
+   }
+}
 
 INLINE void clip_rectangle(ClipRectangle *rect, ClipRectangle *clip)
 {

@@ -484,7 +484,7 @@ static ERROR SURFACE_ActionNotify(extSurface *Self, struct acActionNotify *Notif
          // that results in a clean deallocation of the surface hierarchy.
 
          Self->Flags &= ~RNF_VISIBLE;
-         UpdateSurfaceField(Self, Flags);
+         UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
          if (Self->flags() & NF_INTEGRAL) DelayMsg(AC_Free, Self->UID, NULL); // If the object is a child of something, give the parent object time to do the deallocation itself
          else acFree(Self);
       }
@@ -771,7 +771,7 @@ Disable: Disables a surface object.
 static ERROR SURFACE_Disable(extSurface *Self, APTR Void)
 {
    Self->Flags |= RNF_DISABLED;
-   UpdateSurfaceField(Self, Flags);
+   UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
    return ERR_Okay;
 }
 
@@ -784,7 +784,7 @@ Enable: Enables a disabled surface object.
 static ERROR SURFACE_Enable(extSurface *Self, APTR Void)
 {
    Self->Flags &= ~RNF_DISABLED;
-   UpdateSurfaceField(Self, Flags);
+   UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
    return ERR_Okay;
 }
 
@@ -1056,7 +1056,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
       }
       else {
          Self->Flags |= RNF_HAS_FOCUS;
-         UpdateSurfaceField(Self, Flags);
+         UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
 
          // Focussing on the display window is important in hosted environments
 
@@ -1180,7 +1180,7 @@ static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
 
    if (!Self->ParentID) {
       Self->Flags &= ~RNF_VISIBLE; // Important to switch off visibliity before Hide(), otherwise a false redraw will occur.
-      UpdateSurfaceField(Self, Flags);
+      UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
 
       if (acHideID(Self->DisplayID) != ERR_Okay) return ERR_Failed;
    }
@@ -1188,7 +1188,7 @@ static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
       // Mark this surface object as invisible, then invalidate the region it was covering in order to have the background redrawn.
 
       Self->Flags &= ~RNF_VISIBLE;
-      UpdateSurfaceField(Self, Flags);
+      UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
 
       if (Self->Flags & RNF_REGION) {
          gfxRedrawSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, IRF_RELATIVE);
@@ -1754,7 +1754,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       if (!Self->PopOverID) {
          log.warning("PopOver surface #%d is not a sibling of this surface.", popover_id);
-         UpdateSurfaceField(Self, PopOverID);
+         UpdateSurfaceField(Self, &SurfaceList::PopOverID, Self->PopOverID);
       }
    }
 
@@ -1813,7 +1813,7 @@ static ERROR SURFACE_LostFocus(extSurface *Self, APTR Void)
 
    if (Self->Flags & RNF_HAS_FOCUS) {
       Self->Flags &= ~RNF_HAS_FOCUS;
-      UpdateSurfaceField(Self, Flags);
+      UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
       return ERR_Okay;
    }
    else return ERR_Okay | ERF_Notified;
@@ -2751,7 +2751,7 @@ static ERROR SURFACE_Show(extSurface *Self, APTR Void)
    if (Self->Modal) Self->PrevModalID = gfxSetModalSurface(Self->UID);
 
    if (!notified) {
-      UpdateSurfaceField(Self, Flags);
+      UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
 
       if (Self->Flags & RNF_REGION) {
          gfxRedrawSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, IRF_RELATIVE);
@@ -2913,7 +2913,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
                if (sticky) {
                   Self->Flags |= RNF_STICKY;
-                  UpdateSurfaceField(Self, Flags); // (Required to put back the sticky flag)
+                  UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags); // (Required to put back the sticky flag)
                }
             }
 

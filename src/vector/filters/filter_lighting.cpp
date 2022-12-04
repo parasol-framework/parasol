@@ -562,7 +562,7 @@ static ERROR LIGHTINGFX_SetDistantLight(objLightingFX *Self, struct ltSetDistant
    Self->Azimuth     = Args->Azimuth;
    Self->Elevation   = Args->Elevation;
    Self->LightSource = LS_DISTANT;
-   Self->Direction   = point3(cosf(Self->Azimuth * DEG2RAD) * cosf(Self->Elevation * DEG2RAD), sinf(Self->Azimuth * DEG2RAD) * cosf(Self->Elevation * DEG2RAD), sinf(Self->Elevation * DEG2RAD));
+   Self->Direction   = point3(cos(Self->Azimuth * DEG2RAD) * cos(Self->Elevation * DEG2RAD), sin(Self->Azimuth * DEG2RAD) * cos(Self->Elevation * DEG2RAD), sin(Self->Elevation * DEG2RAD));
    return ERR_Okay;
 }
 
