@@ -220,12 +220,12 @@ static FRGB colour_spot_light(objLightingFX *Self, point3 &Point)
          scale = scale * (cosAngle - Self->CosOuterConeAngle);
          scale *= Self->ConeScale;
       }
-      FRGB result = { .Red = Self->LinearColour.Red * scale, .Green = Self->LinearColour.Green * scale, .Blue = Self->LinearColour.Blue * scale, .Alpha = Self->LinearColour.Alpha * scale };
+      FRGB result(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
       return result;
    }
    else {
       DOUBLE scale = pow(-Point.dot(Self->SpotDelta), Self->SpotExponent);
-      FRGB result = { .Red = Self->LinearColour.Red * scale, .Green = Self->LinearColour.Green * scale, .Blue = Self->LinearColour.Blue * scale, .Alpha = Self->LinearColour.Alpha * scale };
+      FRGB result(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
       return result;
    }
 }
@@ -562,7 +562,7 @@ static ERROR LIGHTINGFX_SetDistantLight(objLightingFX *Self, struct ltSetDistant
    Self->Azimuth     = Args->Azimuth;
    Self->Elevation   = Args->Elevation;
    Self->LightSource = LS_DISTANT;
-   Self->Direction   = point3(cosf(Self->Azimuth * DEG2RAD) * cosf(Self->Elevation * DEG2RAD), sinf(Self->Azimuth * DEG2RAD) * cosf(Self->Elevation * DEG2RAD), sinf(Self->Elevation * DEG2RAD));
+   Self->Direction   = point3(cos(Self->Azimuth * DEG2RAD) * cos(Self->Elevation * DEG2RAD), sin(Self->Azimuth * DEG2RAD) * cos(Self->Elevation * DEG2RAD), sin(Self->Elevation * DEG2RAD));
    return ERR_Okay;
 }
 

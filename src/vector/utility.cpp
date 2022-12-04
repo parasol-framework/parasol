@@ -373,11 +373,11 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
+DOUBLE read_unit(CSTRING Value, bool &Percent)
 {
    bool isnumber = true;
 
-   *Percent = 0;
+   Percent = false;
 
    while ((*Value) and (*Value <= 0x20)) Value++;
 
@@ -399,7 +399,7 @@ DOUBLE read_unit(CSTRING Value, UBYTE *Percent)
       DOUBLE dpi = 96.0;
 
       if (*str IS '%') {
-         *Percent = 0x01;
+         Percent = true;
          multiplier = 0.01;
          str++;
       }

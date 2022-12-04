@@ -1,12 +1,12 @@
 
-void copy_bkgd(SurfaceList *, WORD, WORD, WORD, WORD, WORD, WORD, WORD, extBitmap *, extBitmap *, WORD, BYTE);
+void copy_bkgd(SurfaceList *, LONG, LONG, LONG, WORD, WORD, WORD, WORD, extBitmap *, extBitmap *, WORD, BYTE);
 
-ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD Total, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)
+ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG Total, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)
 {
    parasol::Log log("expose_surface");
    extBitmap *bitmap;
    ClipRectangle abs;
-   WORD i, j;
+   LONG i, j;
    UBYTE skip;
    OBJECTID parent_id;
 
@@ -82,7 +82,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD To
 
 #ifndef _WIN32
    if (!(Flags & EXF_CURSOR_SPLIT)) {
-      WORD cursor;
+      LONG cursor;
       for (cursor=index+1; (cursor < Total) and (!(list[cursor].Flags & RNF_CURSOR)); cursor++);
       if (cursor < Total) {
          if ((list[cursor].SurfaceID) and (list[cursor].Bottom < abs.Bottom) and (list[cursor].Bottom > abs.Top) and
@@ -189,7 +189,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, WORD index, WORD To
       //    the surface and its children.  Useful if no redrawing has occurred internally, but the surface object has
       //    been moved to a new position and the parents need to be redrawn.
 
-      WORD level = list[index].Level + 1;
+      LONG level = list[index].Level + 1;
 
       if ((Flags & EXF_REDRAW_VOLATILE_OVERLAP)) { //OR (Flags & EXF_CHILDREN)) {
          // All children in our area have already been redrawn or do not need redrawing, so skip past them.
@@ -632,7 +632,7 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
    LONG destx = old.Left + X - Self->X;
    LONG desty = old.Top  + Y - Self->Y;
 
-   WORD parent_index = find_parent_list(list, total, Self);
+   LONG parent_index = find_parent_list(list, total, Self);
 
    if (Self->Flags & RNF_REGION) {
       // Drawing code for region based surface objects.  This is achieved by redrawing the parent
@@ -719,7 +719,7 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
 ** Stage:      Either STAGE_PRECOPY or STAGE_AFTERCOPY.
 */
 
-void prepare_background(extSurface *Self, SurfaceList *list, WORD Total, WORD Index, extBitmap *DestBitmap, ClipRectangle *clip, BYTE Stage)
+void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG Index, extBitmap *DestBitmap, ClipRectangle *clip, BYTE Stage)
 {
    parasol::Log log("prepare_bkgd");
 
@@ -814,7 +814,7 @@ void prepare_background(extSurface *Self, SurfaceList *list, WORD Total, WORD In
 ** Coordinates are absolute.
 */
 
-void copy_bkgd(SurfaceList *list, WORD Index, WORD End, WORD Master, WORD Left, WORD Top, WORD Right, WORD Bottom,
+void copy_bkgd(SurfaceList *list, LONG Index, LONG End, LONG Master, WORD Left, WORD Top, WORD Right, WORD Bottom,
    extBitmap *DestBitmap, extBitmap *SrcBitmap, WORD Opacity, BYTE Pervasive)
 {
    parasol::Log log(__FUNCTION__);

@@ -60,7 +60,7 @@ static ERROR DISPLACEMENTFX_Draw(objDisplacementFX *Self, struct acDraw *Args)
    parasol::Log log;
 
    // SVG rules state that the Input texture is pre-multiplied.  The Mix displacement map is not.  In practice however,
-   // this should not make any difference to Input because the pixels are copied being verbatim (not-withstanding pixel
+   // this should not make any difference to Input because the pixels are copied verbatim (not-withstanding pixel
    // interpolation measures).
 
    // SVG also states that Filter->ColourSpace applies to the Mix and not Input.  The Input must remain in its current

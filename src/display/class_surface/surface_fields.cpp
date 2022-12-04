@@ -67,7 +67,7 @@ static ERROR SET_Cursor(extSurface *Self, LONG Value)
 {
    Self->Cursor = Value;
    if (Self->initialised()) {
-      UpdateSurfaceField(Self, Cursor);
+      UpdateSurfaceField(Self, &SurfaceList::Cursor, (BYTE)Self->Cursor);
       OBJECTID pointer_id;
       LONG count = 1;
       if (!FindObject("SystemPointer", ID_POINTER, FOF_INCLUDE_SHARED, &pointer_id, &count)) {
@@ -140,7 +140,7 @@ static ERROR SET_Flags(extSurface *Self, LONG Value)
 
    if (flags != Self->Flags) {
       Self->Flags = flags;
-      UpdateSurfaceField(Self, Flags);
+      UpdateSurfaceField(Self, &SurfaceList::Flags, flags);
    }
 
    return ERR_Okay;
@@ -206,7 +206,7 @@ static ERROR SET_Movement(extSurface *Self, LONG Flags)
    else if (Flags IS (MOVE_HORIZONTAL|MOVE_VERTICAL)) Self->Flags &= ~(RNF_NO_VERTICAL | RNF_NO_HORIZONTAL);
    else Self->Flags |= RNF_NO_HORIZONTAL|RNF_NO_VERTICAL;
 
-   UpdateSurfaceField(Self, Flags);
+   UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
    return ERR_Okay;
 }
 
@@ -234,7 +234,7 @@ static ERROR GET_Opacity(extSurface *Self, DOUBLE *Value)
 
 static ERROR SET_Opacity(extSurface *Self, DOUBLE Value)
 {
-   WORD opacity;
+   LONG opacity;
 
    // NB: It is OK to set the opacity on a surface object when it does not own its own bitmap, as the aftercopy
    // routines will refer the copy so that it starts from the bitmap owner.
@@ -509,7 +509,7 @@ static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
          Self->PrecopyTotal = total;
          if (!Self->initialised()) {
             Self->Flags |= RNF_PRECOPY;
-            UpdateSurfaceField(Self, Flags);
+            UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
          }
 
          ReleaseMemoryID(Self->PrecopyMID);
@@ -568,7 +568,7 @@ RootLayer: Private
 static ERROR SET_RootLayer(extSurface *Self, OBJECTID Value)
 {
    Self->RootID = Value;
-   UpdateSurfaceField(Self, RootID); // Update RootLayer
+   UpdateSurfaceField(Self, &SurfaceList::RootID, Value); // Update RootLayer
    return ERR_Okay;
 }
 

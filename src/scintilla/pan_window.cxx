@@ -116,7 +116,7 @@ Scintilla::PRectangle Scintilla::Window::GetMonitorRect(Scintilla::Point)
    if (!gfxGetDisplayInfo(0, &info)) {
       return Scintilla::PRectangle(0, 0, info->Width, info->Height);
    }
-   else return NULL;
+   else return 0;
 }
 
 /****************************************************************************/
