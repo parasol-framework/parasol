@@ -902,7 +902,7 @@ void *lj_mem_grow(lua_State *L, void *p, MSize *szp, MSize lim, MSize esz)
     sz = LJ_MIN_VECSZ;
   if (sz > lim)
     sz = lim;
-  p = lj_mem_realloc(L, p, (*szp)*esz, sz*esz);
+  p = lj_mem_realloc(L, p, GCSize(*szp) * esz, GCSize(sz)*esz);
   *szp = sz;
   return p;
 }

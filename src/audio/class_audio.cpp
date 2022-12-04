@@ -61,8 +61,7 @@ static ERROR AUDIO_AccessObject(extAudio *Self, APTR Void)
       }
    }
 
-   WORD index;
-   for (index=0; index < ARRAYSIZE(Self->Channels); index++) {
+   for (LONG index=0; index < ARRAYSIZE(Self->Channels); index++) {
       if (Self->Channels[index].ChannelMID) {
          if (!AccessMemory(Self->Channels[index].ChannelMID, MEM_READ_WRITE, 2000, &Self->Channels[index].Channel)) {
             if (Self->Channels[index].CommandMID) {
@@ -596,7 +595,7 @@ static ERROR AUDIO_BufferCommand(extAudio *Self, struct sndBufferCommand *Args)
 
    log.trace("Command: %d, Handle: $%.8x, Data: %d", Args->Command, Args->Handle, Args->Data);
 
-   WORD index = Args->Handle>>16;
+   LONG index = Args->Handle>>16;
 
    if (index >= ARRAYSIZE(Self->Channels)) {
       log.warning("Bad channel handle $%.8x.", Args->Handle);
@@ -708,7 +707,7 @@ static ERROR AUDIO_CloseChannels(extAudio *Self, struct sndCloseChannels *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   WORD index = Args->Handle>>16;
+   LONG index = Args->Handle>>16;
 
    log.branch("Handle: $%.8x", Args->Handle);
 
@@ -785,7 +784,7 @@ static void task_removed(APTR Reference, evTaskRemoved *Info, LONG InfoSize)
    if (!AccessObject((OBJECTID)(MAXINT)Reference, 3000, &Self)) {
       log.msg("Dead task reported by system - checking integrity of %d channels.", ARRAYSIZE(Self->Channels));
 
-      for (WORD index=0; index < ARRAYSIZE(Self->Channels); index++) {
+      for (LONG index=0; index < ARRAYSIZE(Self->Channels); index++) {
          if ((Self->Channels[index].TaskID IS Info->ProcessID) and (Self->Channels[index].OpenCount > 0)) {
             log.msg("Removed orphaned channel #%d.", index);
 
@@ -851,8 +850,7 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 
    acDeactivate(Self);
 
-   WORD i;
-   for (i=0; i < ARRAYSIZE(Self->Channels); i++) {
+   for (LONG i=0; i < ARRAYSIZE(Self->Channels); i++) {
       if (Self->Channels[i].ChannelMID) {
          if (Self->Channels[i].Channel) { ReleaseMemory(Self->Channels[i].Channel); Self->Channels[i].Channel = NULL; }
          FreeResourceID(Self->Channels[i].ChannelMID);
@@ -886,7 +884,7 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 
    if (Self->SamplesMID) {
       if (Self->Samples) {
-         for (i=0; i < Self->TotalSamples; i++) {
+         for (LONG i=0; i < Self->TotalSamples; i++) {
             if (Self->Samples[i].Used IS TRUE) {
                if (Self->Samples[i].Data) FreeResource(Self->Samples[i].Data);
                if (Self->Samples[i].Free IS TRUE) acFreeID(Self->Samples[i].StreamID);
@@ -947,7 +945,6 @@ static ERROR AUDIO_Init(extAudio *Self, APTR Void)
 static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 {
    parasol::Log log;
-   WORD i;
 
    Self->OutputRate = 44100;        // Rate for output to speakers
    Self->InputRate  = 44100;        // Input rate for recording
@@ -981,7 +978,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 
       StrCopy("PCM", Self->VolumeCtl[1].Name, sizeof(Self->VolumeCtl[1].Name));
       Self->VolumeCtl[1].Flags = 0;
-      for (i=0; i < ARRAYSIZE(Self->VolumeCtl[1].Channels); i++) Self->VolumeCtl[1].Channels[i] = 80;
+      for (LONG i=0; i < ARRAYSIZE(Self->VolumeCtl[1].Channels); i++) Self->VolumeCtl[1].Channels[i] = 80;
 
       Self->VolumeCtl[2].Name[0] = 0;
    }
@@ -990,7 +987,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
       StrCopy("Master", Self->VolumeCtl[0].Name, sizeof(Self->VolumeCtl[0].Name));
       Self->VolumeCtl[0].Flags = 0;
       Self->VolumeCtl[0].Channels[0] = 75;
-      for (i=1; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = -1;
+      for (LONG i=1; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = -1;
 
       Self->VolumeCtl[1].Name[0] = 0;
    }
@@ -1131,7 +1128,7 @@ static ERROR AUDIO_ReleaseObject(extAudio *Self, APTR Void)
    if (Self->Samples)      { ReleaseMemory(Self->Samples);      Self->Samples = NULL; }
    if (Self->VolumeCtl)    { ReleaseMemory(Self->VolumeCtl);    Self->VolumeCtl = NULL; }
 
-   for (WORD index=0; index < ARRAYSIZE(Self->Channels); index++) {
+   for (LONG index=0; index < ARRAYSIZE(Self->Channels); index++) {
       if (Self->Channels[index].Channel) {
          ReleaseMemory(Self->Channels[index].Channel);
          Self->Channels[index].Channel = NULL;
@@ -1282,21 +1279,18 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       if (Self->prvDevice[0]) cfgWriteValue(config, "AUDIO", "Device", Self->prvDevice);
       else cfgWriteValue(config, "AUDIO", "Device", "default");
 
-      WORD i;
-      WORD channel, pos;
-
       if ((Self->VolumeCtl) and (Self->Flags & ADF_SYSTEM_WIDE)) {
-         for (i=0; Self->VolumeCtl[i].Name[0]; i++) {
+         for (LONG i=0; Self->VolumeCtl[i].Name[0]; i++) {
             if (Self->VolumeCtl[i].Flags & VCF_MUTE) buffer[0] = '1';
             else buffer[0] = '0';
             buffer[1] = ',';
 
             buffer[2] = '[';
-            pos = 3;
+            LONG pos = 3;
             if (Self->VolumeCtl[i].Flags & VCF_MONO) {
                pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%.2f", Self->VolumeCtl[i].Channels[0]);
             }
-            else for (channel=0; channel < ARRAYSIZE(Self->VolumeCtl[i].Channels); channel++) {
+            else for (LONG channel=0; channel < ARRAYSIZE(Self->VolumeCtl[i].Channels); channel++) {
                if (channel > 0) buffer[pos++] = ',';
                pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%.2f", Self->VolumeCtl[i].Channels[channel]);
             }
@@ -1314,7 +1308,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
    long left, right;
    long pmin, pmax;
    int mute;
-   FLOAT fleft, fright;
+   DOUBLE fleft, fright;
    WORD i;
 
    snd_mixer_selem_id_alloca(&sid);
@@ -1340,8 +1334,8 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
       if (pmin >= pmax) continue;
 
-      fleft = (FLOAT)left * 100.0 / (FLOAT)(pmax - pmin);
-      fright = (FLOAT)right * 100.0 / (FLOAT)(pmax - pmin);
+      fleft = (DOUBLE)left * 100.0 / (DOUBLE)(pmax - pmin);
+      fright = (DOUBLE)right * 100.0 / (DOUBLE)(pmax - pmin);
       StrFormat(buffer, sizeof(buffer), "%.2f,%.2f,%d", fleft, fright, (mute) ? 0 : 1);
 
       cfgWriteValue(config, "MIXER", Self->VolumeCtl[i].Name, buffer);
@@ -1399,13 +1393,11 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
 #ifdef ALSA_ENABLED
 
-   WORD index, chn;
+   LONG index, chn;
    snd_mixer_selem_id_t *sid;
    snd_mixer_elem_t *elem;
    long pmin, pmax;
    LONG lvol;
-   WORD channel;
-   FLOAT vol;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (((Args->Volume < 0) or (Args->Volume > 100)) and (Args->Volume != -1)) {
@@ -1464,9 +1456,9 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
       pmax = pmax - 1; // -1 because the absolute maximum tends to produce distortion...
 
-      vol = Args->Volume;
+      DOUBLE vol = Args->Volume;
       if (vol > 100) vol = 100;
-      lvol = (FLOAT)pmin + ((FLOAT)(pmax - pmin) * vol / 100.0);
+      LONG lvol = (DOUBLE)pmin + ((DOUBLE)(pmax - pmin) * vol / 100.0);
 
          if (Self->VolumeCtl[index].Flags & VCF_CAPTURE) {
             snd_mixer_selem_set_capture_volume_all(elem, lvol);
@@ -1476,7 +1468,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
          if (Self->VolumeCtl[index].Flags & VCF_MONO) {
             Self->VolumeCtl[index].Channels[0] = vol;
          }
-         else for (channel=0; channel < ARRAYSIZE(Self->VolumeCtl[0].Channels); channel++) {
+         else for (LONG channel=0; channel < ARRAYSIZE(Self->VolumeCtl[0].Channels); channel++) {
             if (Self->VolumeCtl[index].Channels[channel] >= 0) {
                Self->VolumeCtl[index].Channels[channel] = vol;
             }

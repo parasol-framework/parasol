@@ -1083,7 +1083,7 @@ static void register_fields(extMetaClass *Class)
 
    if (!VarLock(glFields, 4000)) {
       Field *fields = Class->prvFields;
-      for (WORD i=0; i < Class->TotalFields; i++) {
+      for (LONG i=0; i < Class->TotalFields; i++) {
          KeySet(glFields, fields[i].FieldID, fields[i].Name, StrLength(fields[i].Name)+1);
       }
       VarUnlock(glFields);

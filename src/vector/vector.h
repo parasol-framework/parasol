@@ -183,7 +183,7 @@ public:
                DataSize = Bitmap->LineWidth * canvas_height;
             }
             else {
-               log.warning("Failed to allocate graphics area of size %d(B) x %d", Bitmap->LineWidth * canvas_height);
+               log.warning("Failed to allocate graphics area of size %d(B) x %d", Bitmap->LineWidth, canvas_height);
                return NULL;
             }
          }
