@@ -47,6 +47,17 @@
     </field>
 
     <field>
+      <name>ColourSpace</name>
+      <comment>Defines the colour space to use when interpolating gradient colours.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="VCS">INT</type>
+      <description>
+<p>By default, gradients are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour space to <code>LINEAR_RGB</code> will force the renderer to automatically convert sRGB values to linear RGB when blending.</p>
+<types lookup="VCS"/>
+      </description>
+    </field>
+
+    <field>
       <name>FX</name>
       <comment>The horizontal focal point for radial gradients.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -136,7 +147,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VSPREAD">INT</type>
       <description>
-<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is VSPREAD_PAD.</p>
+<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is <code>VSPREAD_PAD</code>.</p>
 <types lookup="VSPREAD"/>
       </description>
     </field>
@@ -238,6 +249,12 @@
 
   </fields>
   <types>
+    <constants lookup="VCS" comment="Colour space options.">
+      <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
+      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
+      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
+    </constants>
+
     <constants lookup="VGF" comment="Gradient flags">
       <const name="FIXED_CX">CX is fixed</const>
       <const name="FIXED_CY">CY is fixed</const>

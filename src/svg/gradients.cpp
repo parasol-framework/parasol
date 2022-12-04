@@ -1,4 +1,20 @@
 
+static ERROR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG Attrib, CSTRING Value)
+{
+   switch (Attrib) {
+      case SVF_COLOR_INTERPOLATION:
+         if (!StrMatch("auto", Value)) SetLong(Gradient, FID_ColourSpace, VCS_LINEAR_RGB);
+         else if (!StrMatch("sRGB", Value)) SetLong(Gradient, FID_ColourSpace, VCS_SRGB);
+         else if (!StrMatch("linearRGB", Value)) SetLong(Gradient, FID_ColourSpace, VCS_LINEAR_RGB);
+         else if (!StrMatch("inherit", Value)) SetLong(Gradient, FID_ColourSpace, VCS_INHERIT);
+         return ERR_Okay;
+
+      case SVF_XLINK_HREF: add_inherit(Self, Gradient, Value); break;
+   }
+
+   return ERR_Failed;
+}
+
 //****************************************************************************
 // Note that all offsets are percentages.
 
@@ -81,7 +97,6 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT_BOUNDING_BOX;
-
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          if (!StrMatch("gradientUnits", Tag->Attrib[a].Name)) {
             if (!StrMatch("userSpaceOnUse", Tag->Attrib[a].Value)) gradient->Units = VUNIT_USERSPACE;
@@ -93,7 +108,8 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
          CSTRING val;
          if (!(val = Tag->Attrib[a].Value)) continue;
 
-         switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
+         auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
+         switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already checked gradientUnits earlier
             case SVF_GRADIENTTRANSFORM: SetString(gradient, FID_Transform, val); break;
             case SVF_X1: set_double_units(gradient, FID_X1, val, gradient->Units); break;
@@ -101,20 +117,28 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
             case SVF_X2: set_double_units(gradient, FID_X2, val, gradient->Units); break;
             case SVF_Y2: set_double_units(gradient, FID_Y2, val, gradient->Units); break;
 
+            case SVF_COLOR_INTERPOLATION:
+               if (!StrMatch("auto", val)) SetLong(gradient, FID_ColourSpace, VCS_LINEAR_RGB);
+               else if (!StrMatch("sRGB", val)) SetLong(gradient, FID_ColourSpace, VCS_SRGB);
+               else if (!StrMatch("linearRGB", val)) SetLong(gradient, FID_ColourSpace, VCS_LINEAR_RGB);
+               else if (!StrMatch("inherit", val)) SetLong(gradient, FID_ColourSpace, VCS_INHERIT);
+               break;
+
             case SVF_SPREADMETHOD: {
                if (!StrMatch("pad", val))          SetLong(gradient, FID_SpreadMethod, VSPREAD_PAD);
                else if (!StrMatch("reflect", val)) SetLong(gradient, FID_SpreadMethod, VSPREAD_REFLECT);
                else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
-            case SVF_XLINK_HREF: add_inherit(Self, gradient, val); break;
             case SVF_ID: id = val; break;
 
             default: {
-               LONG j;
-               for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
-               if (Tag->Attrib[a].Name[j] IS ':') break;
-               log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               if (gradient_defaults(Self, gradient, attrib, val)) {
+                  LONG j;
+                  for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
+                  if (Tag->Attrib[a].Name[j] IS ':') break;
+                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               }
                break;
             }
          }
@@ -170,7 +194,8 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
          if (!val) continue;
          log.trace("Processing radial gradient attribute %s = %s", Tag->Attrib[a].Name, val);
 
-         switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
+         auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
+         switch(attrib) {
             case SVF_CX: set_double_units(gradient, FID_CenterX, val, gradient->Units); break;
             case SVF_CY: set_double_units(gradient, FID_CenterY, val, gradient->Units); break;
             case SVF_FX: set_double_units(gradient, FID_FX, val, gradient->Units); break;
@@ -185,13 +210,13 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
                else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
                break;
 
-            case SVF_XLINK_HREF: add_inherit(Self, gradient, val); break;
             default: {
-               LONG j;
-               for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
-               if (Tag->Attrib[a].Name[j] IS ':') break;
-               log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
-               break;
+               if (gradient_defaults(Self, gradient, attrib, val)) {
+                  LONG j;
+                  for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
+                  if (Tag->Attrib[a].Name[j] IS ':') break;
+                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               }
             }
          }
       }
@@ -247,7 +272,8 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
 
          log.trace("Processing diamond gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
 
-         switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
+         auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
+         switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already processed
             case SVF_GRADIENTTRANSFORM: SetString(gradient, FID_Transform, val); break;
             case SVF_CX: set_double_units(gradient, FID_CenterX, val, gradient->Units); break;
@@ -259,14 +285,14 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
                else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
-            case SVF_XLINK_HREF: add_inherit(Self, gradient, val); break;
             case SVF_ID: id = val; break;
             default: {
-               LONG j;
-               for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
-               if (Tag->Attrib[a].Name[j] IS ':') break;
-               log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
-               break;
+               if (gradient_defaults(Self, gradient, attrib, val)) {
+                  LONG j;
+                  for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
+                  if (Tag->Attrib[a].Name[j] IS ':') break;
+                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               }
             }
          }
       }
@@ -319,7 +345,8 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
 
          log.trace("Processing contour gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
 
-         switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
+         auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
+         switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already processed
             case SVF_GRADIENTTRANSFORM: SetString(gradient, FID_Transform, val); break;
             case SVF_X1: set_double_units(gradient, FID_X1, val, gradient->Units); break;
@@ -330,14 +357,14 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
                else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
-            case SVF_XLINK_HREF: add_inherit(Self, gradient, val); break;
             case SVF_ID: id = val; break;
             default: {
-               LONG j;
-               for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
-               if (Tag->Attrib[a].Name[j] IS ':') break;
-               log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
-               break;
+               if (gradient_defaults(Self, gradient, attrib, val)) {
+                  LONG j;
+                  for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
+                  if (Tag->Attrib[a].Name[j] IS ':') break;
+                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               }
             }
          }
       }
@@ -394,7 +421,8 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag *Tag)
 
          log.trace("Processing diamond gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
 
-         switch(StrHash(Tag->Attrib[a].Name, FALSE)) {
+         auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
+         switch(attrib) {
             case SVF_GRADIENTUNITS:
                if (!StrMatch("userSpaceOnUse", val)) SetLong(gradient, FID_Units, VUNIT_USERSPACE);
                else if (!StrMatch("objectBoundingBox", val)) SetLong(gradient, FID_Units, VUNIT_BOUNDING_BOX);
@@ -409,14 +437,14 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag *Tag)
                else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
-            case SVF_XLINK_HREF: add_inherit(Self, gradient, val); break;
             case SVF_ID: id = val; break;
             default: {
-               LONG j;
-               for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
-               if (Tag->Attrib[a].Name[j] IS ':') break;
-               log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
-               break;
+               if (gradient_defaults(Self, gradient, attrib, val)) {
+                  LONG j;
+                  for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
+                  if (Tag->Attrib[a].Name[j] IS ':') break;
+                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+               }
             }
          }
       }

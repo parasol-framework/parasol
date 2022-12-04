@@ -405,6 +405,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     int(VUNIT) Units             # Defines the coordinate system for (x1,y1),(x2,y2)
     int(VGT) Type
     int(VGF) Flags               # Optional flags.
+    int(VCS) ColourSpace         # The colour space or method to use for interpolating the gradient colours.
     int TotalStops               # The total number of records in the Stops array.
   ]])
 

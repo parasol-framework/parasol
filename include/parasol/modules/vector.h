@@ -528,6 +528,7 @@ class objVectorGradient : public BaseClass {
    LONG   Units;                   // Defines the coordinate system for fields X1, Y1, X2 and Y2.
    LONG   Type;                    // Specifies the type of gradient (e.g. RADIAL, LINEAR)
    LONG   Flags;                   // Dimension flags are stored here.
+   LONG   ColourSpace;             // Defines the colour space to use when interpolating gradient colours.
    LONG   TotalStops;              // Total number of stops defined in the Stops array.
    // Action stubs
 

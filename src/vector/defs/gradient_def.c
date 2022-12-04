@@ -49,6 +49,13 @@ static const struct FieldDef clVectorGradientFlags[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clVectorGradientColourSpace[] = {
+   { "Inherit", 0x00000000 },
+   { "SRGB", 0x00000001 },
+   { "LinearRGB", 0x00000002 },
+   { NULL, 0 }
+};
+
 static const struct ActionArray clVectorGradientActions[] = {
    { AC_Free, (APTR)VECTORGRADIENT_Free },
    { AC_Init, (APTR)VECTORGRADIENT_Init },
