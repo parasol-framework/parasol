@@ -665,8 +665,12 @@ static ERROR TEXT_GET_FontSize(objVectorText *Self, CSTRING *Value)
 
 static ERROR TEXT_SET_FontSize(objVectorText *Self, CSTRING Value)
 {
-   if (Value > 0) {
-      Self->txFontSize = read_unit(Value, &Self->txRelativeFontSize);
+   bool pct;
+   auto size = read_unit(Value, pct);
+
+   if (size > 0) {
+      Self->txFontSize = size;
+      Self->txRelativeFontSize = pct;
       reset_font(Self);
       return ERR_Okay;
    }

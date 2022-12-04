@@ -278,7 +278,7 @@ space to `LINEAR_RGB` will force the renderer to automatically convert sRGB valu
 
 -FIELD-
 Flags: Dimension flags are stored here.
-Lookup: DMF
+Lookup: VGF
 
 Dimension flags that indicate whether field values are fixed or relative are defined here.
 

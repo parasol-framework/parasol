@@ -234,7 +234,7 @@ static ERROR GET_Opacity(extSurface *Self, DOUBLE *Value)
 
 static ERROR SET_Opacity(extSurface *Self, DOUBLE Value)
 {
-   WORD opacity;
+   LONG opacity;
 
    // NB: It is OK to set the opacity on a surface object when it does not own its own bitmap, as the aftercopy
    // routines will refer the copy so that it starts from the bitmap owner.

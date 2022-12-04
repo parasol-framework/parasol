@@ -137,14 +137,14 @@ static void release_video(objDisplay *Display)
 ** up to the caller to make a decision as to whether COMPOSITE's are volatile or not.
 */
 
-static UBYTE check_volatile(SurfaceList *list, WORD index)
+static UBYTE check_volatile(SurfaceList *list, LONG index)
 {
    if (list[index].Flags & RNF_VOLATILE) return TRUE;
 
    // If there are children with custom root layers or are volatile, that will force volatility
 
-   WORD j;
-   for (WORD i=index+1; list[i].Level > list[index].Level; i++) {
+   LONG j;
+   for (LONG i=index+1; list[i].Level > list[index].Level; i++) {
       if (!(list[i].Flags & RNF_VISIBLE)) {
          j = list[i].Level;
          while (list[i+1].Level > j) i++;
@@ -173,7 +173,7 @@ static UBYTE check_volatile(SurfaceList *list, WORD index)
 
 //****************************************************************************
 
-static void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIndex, LONG Left, LONG Top,
+static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIndex, LONG Left, LONG Top,
                    LONG Right, LONG Bottom, OBJECTID DisplayID, extBitmap *Bitmap)
 {
    parasol::Log log(__FUNCTION__);
@@ -357,7 +357,7 @@ static void expose_buffer(SurfaceList *list, WORD Total, WORD Index, WORD ScanIn
 ** All coordinates are expressed in absolute format.
 */
 
-static void invalidate_overlap(extSurface *Self, SurfaceList *list, WORD Total, LONG OldIndex, LONG Index,
+static void invalidate_overlap(extSurface *Self, SurfaceList *list, LONG Total, LONG OldIndex, LONG Index,
    LONG Left, LONG Top, LONG Right, LONG Bottom, objBitmap *Bitmap)
 {
    parasol::Log log(__FUNCTION__);
@@ -489,7 +489,7 @@ static ERROR SURFACE_ActionNotify(extSurface *Self, struct acActionNotify *Notif
          else acFree(Self);
       }
       else {
-         for (WORD i=0; i < Self->CallbackCount; i++) {
+         for (LONG i=0; i < Self->CallbackCount; i++) {
             if (Self->Callback[i].Function.Type IS CALL_SCRIPT) {
                if (Self->Callback[i].Function.Script.Script->UID IS NotifyArgs->ObjectID) {
                   Self->Callback[i].Function.Type = CALL_NONE;
@@ -698,7 +698,7 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
    if (Self->Callback) {
       // Check if the subscription is already on the list for our surface context.
 
-      WORD i;
+      LONG i;
       for (i=0; i < Self->CallbackCount; i++) {
          if (Self->Callback[i].Object IS context) {
             if ((Self->Callback[i].Function.Type IS CALL_STDC) and (Args->Callback->Type IS CALL_STDC)) {
@@ -1998,21 +1998,21 @@ static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
    if ((ctl = gfxAccessList(ARF_WRITE))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
 
-      WORD index; // Get our position within the chain
+      LONG index; // Get our position within the chain
       if ((index = find_surface_list(list, ctl->Total, Self->UID)) IS -1) {
          gfxReleaseList(ARF_WRITE);
          return log.warning(ERR_Search)|ERF_Notified;
       }
 
       OBJECTID parent_bitmap;
-      WORD i;
+      LONG i;
       if ((i = find_parent_index(ctl, Self)) != -1) parent_bitmap = list[i].BitmapID;
       else parent_bitmap = 0;
 
       // Find the position in the list that our surface object will be moved to
 
-      WORD pos = index;
-      WORD level = list[index].Level;
+      LONG pos = index;
+      LONG level = list[index].Level;
       for (i=index-1; (i >= 0) and (list[i].Level >= level); i--) {
          if (list[i].Level IS level) {
             if (Self->BitmapOwnerID IS Self->UID) { // If we own an independent bitmap, we cannot move behind surfaces that are members of the parent region
@@ -2061,7 +2061,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 {
    parasol::Log log;
    OBJECTPTR parent;
-   WORD currentindex, i;
+   LONG currentindex, i;
 
    log.branch("%s", GetName(Self));
 
@@ -2084,8 +2084,8 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 
    // Find the object in the list that our surface object will displace
 
-   WORD index = currentindex;
-   WORD level = list[currentindex].Level;
+   LONG index = currentindex;
+   LONG level = list[currentindex].Level;
    for (i=currentindex+1; (list[i].Level >= list[currentindex].Level); i++) {
       if (list[i].Level IS level) {
          if (list[i].Flags & RNF_POINTER) break; // Do not move in front of the mouse cursor
@@ -2137,7 +2137,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 
    // Count the number of children that have been assigned to our surface object.
 
-   WORD total;
+   LONG total;
    for (total=1; list[currentindex+total].Level > list[currentindex].Level; total++) { };
 
    // Reorder the list so that our surface object is inserted at the new index.
@@ -2307,8 +2307,8 @@ static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *
    if ((!Args) or (!Args->Callback) or (Args->Callback->Type IS CALL_NONE)) {
       // Remove everything relating to this context if no callback was specified.
 
-      WORD i;
-      WORD shrink = 0;
+      LONG i;
+      LONG shrink = 0;
       for (i=0; i < Self->CallbackCount; i++) {
          if (Self->Callback[i].Object IS context) {
             shrink--;
@@ -2326,7 +2326,7 @@ static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *
 
    // Find the callback entry, then shrink the list.
 
-   WORD i;
+   LONG i;
    for (i=0; i < Self->CallbackCount; i++) {
       //log.msg("  %d: #%d, Routine %p", i, Self->Callback[i].Object->UID, Self->Callback[i].Function.StdC.Routine);
 
@@ -2518,7 +2518,7 @@ the user's preferred default file format is used.
 static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 {
    parasol::Log log;
-   WORD i, j, level;
+   LONG i, j, level;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -2624,7 +2624,7 @@ static ERROR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
             LONG t = 0;
             if ((i = find_own_index(ctl, Self)) != -1) {
                // Send a move command to each child surface
-               WORD level = list[i].Level + 1;
+               LONG level = list[i].Level + 1;
                for (++i; list[i].Level >= level; i++) {
                   if (list[i].Level IS level) surfaces[t++] = list[i].SurfaceID;
                }

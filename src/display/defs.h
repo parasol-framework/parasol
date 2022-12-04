@@ -112,7 +112,7 @@
 #define URF_REDRAWS_CHILDREN     0x00000001
 
 #define UpdateSurfaceField(a,b) { \
-   SurfaceList *list; SurfaceControl *ctl; WORD i; \
+   SurfaceList *list; SurfaceControl *ctl; LONG i; \
    if (Self->initialised()) { \
    if ((ctl = gfxAccessList(ARF_UPDATE))) { \
       list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
@@ -128,7 +128,7 @@
 }
 
 #define UpdateSurfaceField2(a,b,c) { \
-   SurfaceList *list; SurfaceControl *ctl; WORD i; \
+   SurfaceList *list; SurfaceControl *ctl; LONG i; \
    if (Self->initialised()) { \
       if ((ctl = gfxAccessList(ARF_UPDATE))) { \
          list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex); \
@@ -435,10 +435,10 @@ extern void  permitDrawing(void);
 extern void  permitExpose(void);
 extern ERROR apply_style(OBJECTPTR, OBJECTPTR, CSTRING);
 extern ERROR load_styles(void);
-extern WORD  find_bitmap_owner(SurfaceList *, WORD);
+extern LONG  find_bitmap_owner(SurfaceList *, LONG);
 extern void  move_layer(extSurface *, LONG, LONG);
 extern void  move_layer_pos(SurfaceControl *, LONG, LONG);
-extern void  prepare_background(extSurface *, SurfaceList *, WORD, WORD, extBitmap *, ClipRectangle *, BYTE);
+extern void  prepare_background(extSurface *, SurfaceList *, LONG, LONG, extBitmap *, ClipRectangle *, BYTE);
 extern void  process_surface_callbacks(extSurface *, extBitmap *);
 extern void  refresh_pointer(extSurface *Self);
 extern ERROR track_layer(extSurface *);
@@ -446,14 +446,14 @@ extern void  untrack_layer(OBJECTID);
 extern BYTE  restrict_region_to_parents(SurfaceList *, LONG, ClipRectangle *, BYTE);
 extern ERROR load_style_values(void);
 extern ERROR resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
-extern void  redraw_nonintersect(OBJECTID, SurfaceList *, WORD, WORD, ClipRectangle *, ClipRectangle *, LONG, LONG);
-extern ERROR _expose_surface(OBJECTID, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, LONG);
-extern ERROR _redraw_surface(OBJECTID, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, LONG);
-extern void  _redraw_surface_do(extSurface *, SurfaceList *, WORD, WORD, LONG, LONG, LONG, LONG, extBitmap *, LONG);
+extern void  redraw_nonintersect(OBJECTID, SurfaceList *, LONG, LONG, ClipRectangle *, ClipRectangle *, LONG, LONG);
+extern ERROR _expose_surface(OBJECTID, SurfaceList *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
+extern ERROR _redraw_surface(OBJECTID, SurfaceList *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
+extern void  _redraw_surface_do(extSurface *, SurfaceList *, LONG, LONG, LONG, LONG, LONG, LONG, extBitmap *, LONG);
 extern void  check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
 extern ERROR update_surface_copy(extSurface *, SurfaceList *);
 extern LONG  find_surface_list(SurfaceList *, LONG, OBJECTID);
-extern LONG  find_parent_list(SurfaceList *, WORD, extSurface *);
+extern LONG  find_parent_list(SurfaceList *, LONG, extSurface *);
 
 extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
 
