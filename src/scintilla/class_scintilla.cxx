@@ -611,7 +611,7 @@ static ERROR SCINTILLA_Free(extScintilla *Self, APTR)
 
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
       if (!AccessObject(Self->FocusID, 500, &object)) {
-         UnsubscribeAction(object, NULL);
+         UnsubscribeAction(object, 0);
          UnsubscribeFeed(object);
          ReleaseObject(object);
       }
@@ -620,7 +620,7 @@ static ERROR SCINTILLA_Free(extScintilla *Self, APTR)
    if (Self->SurfaceID) {
       if (!AccessObject(Self->SurfaceID, 500, &object)) {
          drwRemoveCallback(object, (APTR)&draw_scintilla);
-         UnsubscribeAction(object, NULL);
+         UnsubscribeAction(object, 0);
          UnsubscribeFeed(object);
          ReleaseObject(object);
       }

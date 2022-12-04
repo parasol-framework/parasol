@@ -220,12 +220,12 @@ static FRGB colour_spot_light(objLightingFX *Self, point3 &Point)
          scale = scale * (cosAngle - Self->CosOuterConeAngle);
          scale *= Self->ConeScale;
       }
-      FRGB result = { .Red = Self->LinearColour.Red * scale, .Green = Self->LinearColour.Green * scale, .Blue = Self->LinearColour.Blue * scale, .Alpha = Self->LinearColour.Alpha * scale };
+      FRGB result(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
       return result;
    }
    else {
       DOUBLE scale = pow(-Point.dot(Self->SpotDelta), Self->SpotExponent);
-      FRGB result = { .Red = Self->LinearColour.Red * scale, .Green = Self->LinearColour.Green * scale, .Blue = Self->LinearColour.Blue * scale, .Alpha = Self->LinearColour.Alpha * scale };
+      FRGB result(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
       return result;
    }
 }
