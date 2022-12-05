@@ -39,13 +39,13 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
 
    // If the object is transparent, we need to scan back to a visible parent
 
-   if (list[index].Flags & (RNF_TRANSPARENT|RNF_REGION)) {
-      log.trace("Surface is %s; scan to solid starting from index %d.", (list[index].Flags & RNF_REGION) ? "a region" : "invisible", index);
+   if (list[index].Flags & RNF_TRANSPARENT) {
+      log.trace("Surface is transparent; scan to solid starting from index %d.", index);
 
       OBJECTID id = list[index].SurfaceID;
       for (j=index; j > 0; j--) {
          if (list[j].SurfaceID != id) continue;
-         if (list[j].Flags & (RNF_TRANSPARENT|RNF_REGION)) id = list[j].ParentID;
+         if (list[j].Flags & RNF_TRANSPARENT) id = list[j].ParentID;
          else break;
       }
       Flags |= EXF_CHILDREN;
@@ -108,9 +108,9 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
    else i = index;
 
    for (; i >= index; i--) {
-      // Ignore regions and non-visible surfaces
+      // Ignore non-visible surfaces
 
-      if (list[i].Flags & (RNF_REGION|RNF_TRANSPARENT)) continue;
+      if (list[i].Flags & RNF_TRANSPARENT) continue;
       if ((list[i].Flags & RNF_CURSOR) and (list[i].SurfaceID != SurfaceID)) continue;
 
       // If this is not a root bitmap object, skip it (i.e. consider it like a region)
@@ -623,7 +623,7 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
 
    gfxReleaseList(ARF_READ);
 
-   ClipRectangle abs, old;
+   ClipRectangle old;
    old.Left   = list[index].Left;
    old.Top    = list[index].Top;
    old.Right  = list[index].Right;
@@ -634,77 +634,42 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
 
    LONG parent_index = find_parent_list(list, total, Self);
 
-   if (Self->Flags & RNF_REGION) {
-      // Drawing code for region based surface objects.  This is achieved by redrawing the parent
+   // Since we do not own our graphics buffer, we need to shift the content in the buffer first, then send an
+   // expose message to have the changes displayed on screen.
+   //
+   // This process is made more complex if there are siblings above and intersecting our surface.
 
-      log.traceBranch("MoveLayer: Using region redraw technique.");
+   BYTE volatilegfx = check_volatile(list, index);
 
-      Self->X = X;
-      Self->Y = Y;
-      update_surface_copy(Self, list);
+   UBYTE redraw;
 
-      abs = old;
+   log.traceBranch("MoveLayer: Using simple expose technique [%s]", (volatilegfx ? "Volatile" : "Not Volatile"));
 
-      // Merge the old and new rectangular areas into one big rectangle
+   Self->X = X;
+   Self->Y = Y;
+   list[index].X = X;
+   list[index].Y = Y;
+   update_surface_copy(Self, list);
 
-      if (list[index].Left   < abs.Left)   abs.Left   = list[index].Left;
-      if (list[index].Top    < abs.Top)    abs.Top    = list[index].Top;
-      if (list[index].Right  > abs.Right)  abs.Right  = list[index].Right;
-      if (list[index].Bottom > abs.Bottom) abs.Bottom = list[index].Bottom;
-
-      if ((abs.Right - abs.Left) * (abs.Bottom - abs.Top) > list[index].Width * list[index].Height * 3) {
-         // Split the redraw into two parts (redraw section exposed from the move, then redraw the region at its new location)
-
-         _redraw_surface(Self->ParentID, list, parent_index, total, old.Left, old.Top, old.Left+list[index].Width, old.Top+list[index].Height, NULL);
-         _redraw_surface(Self->ParentID, list, parent_index, total, list[index].Left, list[index].Top, list[index].Right, list[index].Bottom, NULL);
-
-         _expose_surface(Self->ParentID, list, parent_index, total, old.Left, old.Top, old.Left+list[index].Width, old.Top+list[index].Height, EXF_ABSOLUTE|EXF_REDRAW_VOLATILE_OVERLAP);
-         _expose_surface(Self->ParentID, list, parent_index, total, list[index].Left, list[index].Top, list[index].Right, list[index].Bottom, EXF_ABSOLUTE|EXF_REDRAW_VOLATILE_OVERLAP);
-      }
-      else {
-         // If the region has only moved a little bit, redraw it in one shot
-         _redraw_surface(Self->ParentID, list, parent_index, total, abs.Left, abs.Top, abs.Right, abs.Bottom, NULL);
-         _expose_surface(Self->ParentID, list, parent_index, total, abs.Left, abs.Top, abs.Right, abs.Bottom, EXF_ABSOLUTE|EXF_REDRAW_VOLATILE_OVERLAP);
-      }
-   }
-   else {
-      // Since we do not own our graphics buffer, we need to shift the content in the buffer first, then send an
-      // expose message to have the changes displayed on screen.
-      //
-      // This process is made more complex if there are siblings above and intersecting our surface.
-
-      BYTE volatilegfx = check_volatile(list, index);
-
-      UBYTE redraw;
-
-      log.traceBranch("MoveLayer: Using simple expose technique [%s]", (volatilegfx ? "Volatile" : "Not Volatile"));
-
-      Self->X = X;
-      Self->Y = Y;
-      list[index].X = X;
-      list[index].Y = Y;
-      update_surface_copy(Self, list);
-
-      if (Self->Flags & RNF_TRANSPARENT) { // Transparent surfaces are treated as volatile if they contain graphics
-         if (Self->CallbackCount > 0) redraw = TRUE;
-         else redraw = FALSE;
-      }
-      else if ((volatilegfx) and (!(Self->Flags & RNF_COMPOSITE))) redraw = TRUE;
-      else if (list[index].BitmapID IS list[parent_index].BitmapID) redraw = TRUE;
+   if (Self->Flags & RNF_TRANSPARENT) { // Transparent surfaces are treated as volatile if they contain graphics
+      if (Self->CallbackCount > 0) redraw = TRUE;
       else redraw = FALSE;
-
-      if (redraw) _redraw_surface(Self->UID, list, index, total, destx, desty, destx+Self->Width, desty+Self->Height, NULL);
-      _expose_surface(Self->UID, list, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
-
-      // Expose underlying graphics resulting from the movement
-
-      for (vindex=index+1; list[vindex].Level > list[index].Level; vindex++);
-      tlVolatileIndex = vindex;
-      redraw_nonintersect(Self->ParentID, list, parent_index, total, (ClipRectangle *)(&list[index].Left), &old,
-         (list[index].BitmapID IS list[parent_index].BitmapID) ? IRF_SINGLE_BITMAP : -1,
-         EXF_CHILDREN|EXF_REDRAW_VOLATILE);
-      tlVolatileIndex = 0;
    }
+   else if ((volatilegfx) and (!(Self->Flags & RNF_COMPOSITE))) redraw = TRUE;
+   else if (list[index].BitmapID IS list[parent_index].BitmapID) redraw = TRUE;
+   else redraw = FALSE;
+
+   if (redraw) _redraw_surface(Self->UID, list, index, total, destx, desty, destx+Self->Width, desty+Self->Height, NULL);
+   _expose_surface(Self->UID, list, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+
+   // Expose underlying graphics resulting from the movement
+
+   for (vindex=index+1; list[vindex].Level > list[index].Level; vindex++);
+   tlVolatileIndex = vindex;
+   redraw_nonintersect(Self->ParentID, list, parent_index, total, (ClipRectangle *)(&list[index].Left), &old,
+      (list[index].BitmapID IS list[parent_index].BitmapID) ? IRF_SINGLE_BITMAP : -1,
+      EXF_CHILDREN|EXF_REDRAW_VOLATILE);
+   tlVolatileIndex = 0;
 
    refresh_pointer(Self);
 }
@@ -773,7 +738,7 @@ void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG In
    // correct, only siblings of the parent are considered in this loop.
 
    for (i=parentindex; i < end; i++) {
-      if (list[i].Flags & (RNF_REGION|RNF_TRANSPARENT|RNF_CURSOR)) continue; // Ignore regions
+      if (list[i].Flags & (RNF_TRANSPARENT|RNF_CURSOR)) continue; // Ignore regions
 
       ClipRectangle expose = {
          .Left   = clip->Left, // Take a copy of the expose coordinates
@@ -822,7 +787,7 @@ void copy_bkgd(SurfaceList *list, LONG Index, LONG End, LONG Master, WORD Left, 
    // Scan for overlapping parent/sibling regions and avoid them
 
    for (LONG i=Index+1; (i < End) and (list[i].Level > 1); i++) {
-      if (list[i].Flags & (RNF_REGION|RNF_CURSOR|RNF_COMPOSITE)); // Ignore regions
+      if (list[i].Flags & (RNF_CURSOR|RNF_COMPOSITE)); // Ignore regions
       else if (!(list[i].Flags & RNF_VISIBLE)); // Skip hidden surfaces and their content
       else if (list[i].Flags & RNF_TRANSPARENT) continue; // Invisibles may contain important regions we have to block
       else if ((Pervasive) and (list[i].Level > list[Index].Level)); // If the copy is pervasive then all children must be ignored (so that we can copy translucent graphics over them)

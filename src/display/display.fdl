@@ -80,7 +80,6 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     "HAS_FOCUS: Read-only.  If set, this flag indicates that the surface object currently has the focus.",
     "FAST_RESIZE: Do not redraw when a surface is shrunk on either dimension.  If a dimension is expanded, only redraw the exposed portion.",
     "DISABLED: This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.",
-    "REGION: Read/Init only.  This flag is set if the Region option has been used.",
     "AUTO_QUIT: The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.",
     "HOST: Define host on initialisation to create a container that can host surfaces from other processes.",
     "PRECOPY: Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.",
@@ -100,7 +99,7 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     "IGNORE_FOCUS: Focus is diverted directly to the parent",
     "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.",
     { VOLATILE = "PRECOPY|AFTER_COPY|CURSOR" },
-    { READ_ONLY = "HAS_FOCUS|REGION|CURSOR|AFTER_COPY" },
+    { READ_ONLY = "HAS_FOCUS|CURSOR|AFTER_COPY" },
     { INIT_ONLY = "HOST|TRANSPARENT|FAST_RESIZE|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })
 
   enum("HOST", { start=1 },

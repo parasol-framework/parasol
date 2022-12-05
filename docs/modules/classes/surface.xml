@@ -649,14 +649,8 @@ the surface area first).</li>
 
     <field>
       <name>Region</name>
-      <comment>Specifies whether or not a surface object is acting as a primitive region.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
-      <description>
-<p>Setting the Region field to a value of TRUE allows the client to create surface objects that act as primitive surface regions.  Primitive surfaces are identical to normal surface objects in most respects, except they do not participate in the layered drawing process.  This means that they are susceptible to the influence of other graphics within their parent object and do not have protected boundaries.</p>
-<p>Primitive surfaces are useful when functionality can be sacrificed for speed.  Buttons, menu content and title bars are often implemented as regions because they are small and consist of a small group of graphical objects.</p>
-<p>Depending on the arrangement of the region and parent object, drawing around regions can cause flickering. Use of the <field>Buffer</field> option can avoid this problem if it becomes an issue.</p>
-      </description>
     </field>
 
     <field>
@@ -968,8 +962,7 @@ the surface area first).</li>
       <const name="PERVASIVE_COPY">This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.</const>
       <const name="POST_COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="PRECOPY">Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.</const>
-      <const name="READ_ONLY">Synonym for HAS_FOCUS | REGION | CURSOR | AFTER_COPY</const>
-      <const name="REGION">Read/Init only.  This flag is set if the Region option has been used.</const>
+      <const name="READ_ONLY">Synonym for HAS_FOCUS | CURSOR | AFTER_COPY</const>
       <const name="SCROLL_CONTENT">If set, the surface object will send Move and MoveToPoint messages if the Scroll and ScrollToPoint actions are ever called on the object.</const>
       <const name="STICKY">Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.</const>
       <const name="STICK_TO_BACK">Enable if the surface object must stick to the back of its container.</const>

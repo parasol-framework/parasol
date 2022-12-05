@@ -1676,8 +1676,8 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
 
    log.traceBranch("[%d] %d/%d Size: %dx%d,%dx%d Expose: %dx%d,%dx%d", SurfaceID, index, Total, list[index].Left, list[index].Top, list[index].Width, list[index].Height, Left, Top, Right-Left, Bottom-Top);
 
-   if ((list[index].Flags & (RNF_REGION|RNF_TRANSPARENT)) and (!recursive)) {
-      log.trace("Passing draw request to parent (I am a %s)", (list[index].Flags & RNF_REGION) ? "region" : "invisible");
+   if ((list[index].Flags & RNF_TRANSPARENT) and (!recursive)) {
+      log.trace("Passing draw request to parent (I am transparent)");
       LONG parent_index;
       if ((parent_index = find_surface_list(list, Total, list[index].ParentID)) != -1) {
          _redraw_surface(list[parent_index].SurfaceID, list, parent_index, Total, Left, Top, Right, Bottom, Flags & (~IRF_IGNORE_CHILDREN));
@@ -1786,8 +1786,8 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
             if ((Flags & IRF_SINGLE_BITMAP) and (list[i].BitmapID != list[index].BitmapID)) continue;
          }
 
-         if ((list[i].Flags & (RNF_REGION|RNF_CURSOR)) or (!(list[i].Flags & RNF_VISIBLE))) {
-            continue; // Skip regions and non-visible children
+         if ((list[i].Flags & RNF_CURSOR) or (!(list[i].Flags & RNF_VISIBLE))) {
+            continue; // Skip non-visible children
          }
 
          if ((list[i].Right > Left) and (list[i].Bottom > Top) and
@@ -1810,7 +1810,7 @@ void _redraw_surface_do(extSurface *Self, SurfaceList *list, LONG Total, LONG In
 {
    parasol::Log log("redraw_surface");
 
-   if (Self->Flags & (RNF_REGION|RNF_TRANSPARENT)) return;
+   if (Self->Flags & RNF_TRANSPARENT) return;
 
    if (Index >= Total) log.warning("Index %d > %d", Index, Total);
 
@@ -1839,7 +1839,6 @@ void _redraw_surface_do(extSurface *Self, SurfaceList *list, LONG Total, LONG In
 
             if (list[i].BitmapID != Self->BufferID) continue;
             if (!(list[i].Flags & RNF_VISIBLE)) continue;
-            if (list[i].Flags & RNF_REGION) continue; // Regions are completely ignored because it is impossible for them to contain true surface layers
 
             // Check for an intersection and respond to it
 
@@ -1956,8 +1955,7 @@ void _redraw_surface_do(extSurface *Self, SurfaceList *list, LONG Total, LONG In
 
             if (regions[j].Dimensions & DMF_FIXED_WIDTH) width = regions[j].Width;
             else if (regions[j].Dimensions & DMF_RELATIVE_WIDTH) width = Self->Width * regions[j].Width / 100;
-            else if ((regions[j].Dimensions & DMF_X_OFFSET) and
-                     (regions[j].Dimensions & DMF_X)) {
+            else if ((regions[j].Dimensions & DMF_X_OFFSET) and (regions[j].Dimensions & DMF_X)) {
                width = Self->Width - x - xoffset;
             }
             else continue;
@@ -1966,8 +1964,7 @@ void _redraw_surface_do(extSurface *Self, SurfaceList *list, LONG Total, LONG In
 
             if (regions[j].Dimensions & DMF_FIXED_HEIGHT) height = regions[j].Height;
             else if (regions[j].Dimensions & DMF_RELATIVE_HEIGHT) height = Self->Height * regions[j].Height / 100;
-            else if ((regions[j].Dimensions & DMF_Y_OFFSET) and
-                     (regions[j].Dimensions & DMF_Y)) {
+            else if ((regions[j].Dimensions & DMF_Y_OFFSET) and (regions[j].Dimensions & DMF_Y)) {
                height = Self->Height - y - yoffset;
             }
             else continue;
@@ -1982,8 +1979,7 @@ void _redraw_surface_do(extSurface *Self, SurfaceList *list, LONG Total, LONG In
 
             // Y coordinate check
 
-            if ((regions[j].Dimensions & DMF_Y_OFFSET) and
-                (regions[j].Dimensions & DMF_HEIGHT)) {
+            if ((regions[j].Dimensions & DMF_Y_OFFSET) and (regions[j].Dimensions & DMF_HEIGHT)) {
                y = Self->Height - yoffset - height;
             }
 
