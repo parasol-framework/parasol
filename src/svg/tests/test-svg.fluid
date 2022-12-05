@@ -90,7 +90,7 @@ function testW3Viewbox()          hashTestSVG('transforms/w3-viewbox.svg', 0xb25
 
 function testCSS()                hashTestSVG('misc/css.svg', 0x7b6b507b) end
 function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0xd9b1b741) end
-function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x6a9a47b8) end
+function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x7b7cae5f) end
 
 function testClock()              hashTestSVG('images/clock.svg', 0x013e3140) end
 function testTiger()              hashTestSVG('images/tiger.svg', 0x52c5c8e1) end
