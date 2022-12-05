@@ -1423,19 +1423,19 @@ static ERROR FILE_SetDate(extFile *Self, struct flSetDate *Args)
 -METHOD-
 StartStream: Starts streaming data from a file source.
 
-If a file object is a stream (indicated by the STREAM flag), the StartStream method should be used for reading or
+If a file object is a stream (indicated by the `STREAM` flag), the StartStream method should be used for reading or
 writing data to the file object.  Although it is possible to call the Read and Write actions on streamed files, they
 will be limited to returning only the amount of data that is cached locally (if any), or writing as much as buffers
 will allow in software.
 
-A single file object can support read or write streams (pass FL_READ or FL_WRITE in the Flags parameter).  However,
+A single file object can support read or write streams (pass `FL_READ` or `FL_WRITE` in the Flags parameter).  However,
 only one of the two can be active at any time.  To switch between read and write modes, the stream must be stopped with
 the #StopStream() method and then restarted with StartStream.
 
 A stream can be limited by setting the Length parameter to a non-zero value.
 
 If the StartStream request is successful, the file object will return action notifications to the Subscriber to
-indicate activity on the file stream.  When reading from a stream, AC_Write notifications will be received to indicate
+indicate activity on the file stream.  When reading from a stream, `AC_Write` notifications will be received to indicate
 that new data has been written to the file cache.  The Buffer parameter of the reported acWrite structure may refer to
 a private address that contains the data that was received from the stream and the Result indicates the amount of new
 data available.

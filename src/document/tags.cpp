@@ -1243,7 +1243,7 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
          }
          else {
             StrCopy(xmlstr, buffer, size);
-            if (Flags & PXF_TRANSLATE) safe_translate(buffer, size, SEF_STRICT|SEF_IGNORE_QUOTES);
+            if (Flags & PXF_TRANSLATE) eval(Self, buffer, size, SEF_STRICT|SEF_IGNORE_QUOTES);
             acDataXML(target, buffer);
          }
       }

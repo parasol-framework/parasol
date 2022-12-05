@@ -371,10 +371,654 @@ enum {
    WRAP_WRAPPED
 };
 
+static Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // Read-only, thread safe function.
+{
+   // Skip any special characters that are leading the field name (e.g. $, @).  Some symbols like / are used for XPath
+   // lookups, so we only want to skip reserved symbols or we risk confusion between real fields and variable fields.
+
+   while (Name[0]) {
+      if (Name[0] IS '$') Name++;
+      else if (Name[0] IS '@') Name++;
+      else break;
+   }
+
+   return FindField(Object, StrHash(Name, FALSE), Source);
+}
+
 static void check_clips(extDocument *Self, LONG Index, layout *l,
    LONG ObjectIndex, LONG *ObjectX, LONG *ObjectY, LONG ObjectWidth, LONG ObjectHeight);
 
 //****************************************************************************
+
+static bool test_statement(CSTRING TestString, CSTRING CompareString, LONG Condition)
+{
+   parasol::Log log(__FUNCTION__);
+
+   //log.msg("\"%s\" %d \"%s\"", TestString, Condition, CompareString);
+
+   // Convert the If->Compare to its specified type
+
+   LONG cmp_type  = StrDatatype(CompareString);
+   LONG test_type = StrDatatype(TestString);
+
+   bool result = false;
+   if (((test_type IS STT_NUMBER) or (test_type IS STT_FLOAT)) and ((cmp_type IS STT_NUMBER) or (cmp_type IS STT_FLOAT))) {
+      DOUBLE cmp_float  = StrToFloat(CompareString);
+      DOUBLE test_float = StrToFloat(TestString);
+      switch(Condition) {
+         case COND_NOT_EQUAL:     if (test_float != cmp_float) result = true; break;
+         case COND_EQUAL:         if (test_float IS cmp_float) result = true; break;
+         case COND_LESS_THAN:     if (test_float <  cmp_float) result = true; break;
+         case COND_LESS_EQUAL:    if (test_float <= cmp_float) result = true; break;
+         case COND_GREATER_THAN:  if (test_float >  cmp_float) result = true; break;
+         case COND_GREATER_EQUAL: if (test_float >= cmp_float) result = true; break;
+         default: log.warning("Unsupported condition type %d.", Condition);
+      }
+   }
+   else {
+      if (Condition IS COND_EQUAL) {
+         if (StrMatch(TestString, CompareString) IS ERR_Okay) result = true;
+      }
+      else if (Condition IS COND_NOT_EQUAL) {
+         if (StrMatch(TestString, CompareString) != ERR_Okay) result = true;
+      }
+      else log.warning("String comparison for condition %d not possible.", Condition);
+   }
+
+   return result;
+}
+
+/*****************************************************************************
+
+This function can be used for performing simple calculations on numeric values and strings.  It can return a result in
+either a numeric format or in a string buffer if the calculation involves non-numeric characters.  Here are some
+examples of valid strings:
+
+<pre>
+100/50+(12*14)
+0.05 * 100 + '%'
+</pre>
+
+Currently acceptable operators are plus, minus, divide and multiply.  String references must be enclosed in single
+quotes or will be ignored.  Brackets may be used to organise the order of operations during calculation.
+
+Special operators include:
+
+<types type="Symbol">
+<type name="p">This character immediately followed with an integer allows you to change the floating-point precision of output values.</>
+<type name="f">The same as the 'p' operator except the precision is always guaranteed to be fixed at that value through the use of trailing zeros (so a fixed precision of two used to print the number '7' will give a result of '7.00'.</>
+</>
+
+*****************************************************************************/
+
+enum {
+   SIGN_PLUS=1,
+   SIGN_MINUS,
+   SIGN_MULTIPLY,
+   SIGN_DIVIDE,
+   SIGN_MODULO
+};
+
+static WORD write_calc(STRING Buffer, LONG BufferSize, DOUBLE Value, WORD Precision)
+{
+   LONG index, ival;
+   WORD px;
+   LARGE wholepart;
+   DOUBLE fraction;
+
+   index = 0;
+   wholepart = F2T(Value);
+   if (wholepart < 0) wholepart = -wholepart;
+
+   // Sign the value if it is less than 0
+
+   if ((Value < 0) and (index < BufferSize - 1)) Buffer[index++] = '-';
+
+   if (!Precision) {
+      index += IntToStr(wholepart, Buffer+index, BufferSize);
+      return index;
+   }
+
+   fraction = (Value - wholepart);
+   if (fraction < 0) fraction = -fraction;
+
+   index += IntToStr(wholepart, Buffer+index, BufferSize);
+
+   if ((index < BufferSize-1) and ((fraction > 0) or (Precision < 0))) {
+      Buffer[index++] = '.';
+      fraction = fraction * 10;
+      px = Precision;
+      if (px < 0) px = -px;
+      while ((fraction > 0.00001) and (index < BufferSize-1) and (px > 0)) {
+         ival = F2T(fraction);
+         Buffer[index++] = ival + '0';
+         fraction = (fraction - ival) * 10;
+         px--;
+      }
+
+      if (Precision < 0) {
+         while (px > 0) { Buffer[index++] = '0'; px--; }
+      }
+   }
+
+   return index;
+}
+
+ERROR calc(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSize)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if ((!String) or ((!Result) and (!Buffer))) {
+      log.warning("Missing arguments.");
+      return ERR_Args;
+   }
+
+   if (Result) *Result = 0;
+
+   if (Buffer) {
+      if (BufferSize < 1) return ERR_BufferOverflow;
+      Buffer[0] = 0;
+   }
+
+   if ((String >= Buffer) and (String < Buffer+BufferSize)) {
+      log.warning("Input (%p) == Output (%p)", String, Buffer);
+      return ERR_Args;
+   }
+
+   char buffer[180];
+
+   // Search for brackets and translate them first
+
+   CSTRING alloc = NULL;
+   while (1) {
+      // Find the last bracketed reference
+
+      LONG bracketpos = 0;
+      for (LONG i=0; String[i]; i++) {
+         if (String[i] IS '\'') {
+            // Skip anything that is in quotes
+            i++;
+            while (String[i]) {
+               if (String[i] IS '\\') {
+                  i++; // Skip backslashes the immediate character afterwards
+                  if (!String[i]) break;
+               }
+               else if (String[i] IS '\'') break;
+               i++;
+            }
+            if (String[i] IS '\'') i++;
+            continue;
+         }
+         if (String[i] IS '(') bracketpos = i;
+      }
+
+      // If we found a bracket, translate its contents
+
+      if (bracketpos > 0) {
+         buffer[0] = ' ';
+         LONG j = 1;
+         for (LONG i=bracketpos+1; (String[i] != 0) and (String[i] != ')'); i++) {
+            buffer[j++] = String[i];
+            if ((size_t)j > sizeof(buffer)-3) break;
+         }
+         buffer[0] = '(';
+         buffer[j++] = ')';
+         buffer[j] = 0;
+
+         DOUBLE calc_float;
+         calc(buffer+1, &calc_float, 0, 0);
+         char num[20];
+         StrFormat(num, sizeof(num), "%f", calc_float);
+
+         CSTRING newstring;
+         if (!StrReplace(String, buffer, num, (STRING *)&newstring, TRUE)) {
+            if (alloc) FreeResource(alloc);
+            alloc = String = newstring;
+         }
+         else break;
+      }
+      else break;
+   }
+
+   // Perform the calculation
+
+   WORD precision = 9;
+   DOUBLE total   = 0;
+   DOUBLE overall = 0;
+   LONG index     = 0;
+   UBYTE sign     = SIGN_PLUS;
+   bool number    = false;
+   while (*String) {
+      if (*String <= 0x20); // Do nothing with whitespace
+      else if (*String IS '\'') {
+         if (Buffer) {
+            if (number) {
+               // Write the current floating point number to the buffer before we deal with the next calculation
+
+               index += write_calc(Buffer+index, BufferSize - index, total, precision);
+
+               // Reset the number
+
+               overall += total;
+               total = 0;
+               number = false;
+            }
+
+            String++;
+            while (index < BufferSize-1) {
+               if (*String IS '\\') {
+                  String++; // Skip the \ character and continue so that we can copy the character immediately after it
+               }
+               else if (*String IS '\'') break;
+
+               Buffer[index++] = *String;
+               String++;
+            }
+         }
+         else { // Skip string content if there is no string buffer
+            String++;
+            while (*String != '\'') String++;
+         }
+      }
+      else if (*String IS 'f') { // Fixed floating point precision adjustment
+         String++;
+         precision = -StrToInt(String);
+         while ((*String >= '0') and (*String <= '9')) String++;
+         continue;
+      }
+      else if (*String IS 'p') { // Floating point precision adjustment
+         String++;
+         precision = StrToInt(String);
+         while ((*String >= '0') and (*String <= '9')) String++;
+         continue;
+      }
+      else if ((*String >= '0') and (*String <= '9')) {
+         number = true;
+         DOUBLE fvalue = StrToFloat(String);
+         if (sign IS SIGN_MINUS)         total = total - fvalue;
+         else if (sign IS SIGN_MULTIPLY) total = total * fvalue;
+         else if (sign IS SIGN_MODULO)   total = F2I(total) % F2I(fvalue);
+         else if (sign IS SIGN_DIVIDE) {
+            if (fvalue) total = total / fvalue; // NB: Avoid division by zero errors
+         }
+         else total += fvalue;
+         while (((*String >= '0') and (*String <= '9')) or (*String IS '.')) String++;
+
+         sign = SIGN_PLUS; // The mathematical sign is reset whenever a number is encountered
+         continue;
+      }
+      else if (*String IS '-') {
+         if (sign IS SIGN_MINUS) sign = SIGN_PLUS; // Handle double-negatives
+         else sign = SIGN_MINUS;
+      }
+      else if (*String IS '+') sign = SIGN_PLUS;
+      else if (*String IS '*') sign = SIGN_MULTIPLY;
+      else if (*String IS '/') sign = SIGN_DIVIDE;
+      else if (*String IS '%') sign = SIGN_MODULO;
+
+      for (++String; (*String & 0xc0) IS 0x80; String++);
+   }
+
+   if (Buffer) {
+      if (number) index += write_calc(Buffer+index, BufferSize - index, total, precision);
+      Buffer[index] = 0;
+   }
+
+   if (alloc) FreeResource(alloc);
+   if (Result) *Result = overall + total;
+   return ERR_Okay;
+}
+
+/*****************************************************************************
+
+This function is used to translate strings that make object and field references using the standard referencing format.
+References are made to objects by enclosing statements within square brackets.  As a result of calling this function,
+all references within the Buffer will be translated to their relevant format.  The Buffer needs to be large enough to
+accommodate these adjustments as it will be expanded during the translation.  It is recommended that the Buffer is at
+least two times the actual length of the string that you are translating.
+
+Valid references can be made to an object by name, ID or relative parameters.  Here are some examples illustrating the
+different variations:
+
+<types type="Reference">
+<type name="[surface]">Name reference.</>
+<type name="[#49302]">ID reference.</>
+<type name="[self]">Relative reference to the object that has the current context, or the document.</>
+</table>
+
+Field references are a slightly different matter and will be converted to the value of the field that they are
+referencing.  A field reference is defined using the object referencing format, but they contain a `.fieldname`
+extension.  Here are some examples:
+
+<pre>
+[surface.width]
+[file.location]
+</pre>
+
+A string such as `[mywindow.height] + [mywindow.width]` could be translated to `255 + 120` for instance.  References to
+string based fields can expand the Buffer very quickly, which is why large buffer spaces are recommended for all-purpose
+translations.
+
+Simple calculations are possible by enclosing a statement within a `[=...]` section.  For example the aforementioned
+string can be expanded to `[=[mywindow.height] + [mywindow.width]]`, which would give a result of 375.
+
+The escape character for string translation is `$` and should be used as `[$...]`, which prevents everything within the
+square brackets from being translated.  The `[$]` characters will be removed as part of this process unless the
+KEEP_ESCAPE flag is used.  To escape a single right or left bracket, use `[rb]` or `[lb]` respectively.
+
+*****************************************************************************/
+
+static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flags)
+{
+   parasol::Log log(__FUNCTION__);
+   LONG pos, i, j;
+
+   if ((!Buffer) or (BufferLength < 3)) return log.warning(ERR_Args);
+
+   // Quick check for translation symbols
+
+   for (pos=0; Buffer[pos] != '['; pos++) {
+      if (!Buffer[pos]) return ERR_EmptyString;
+   }
+
+   log.traceBranch("Size: %d, %s", BufferLength, Buffer);
+
+   Field *classfield;
+
+   ERROR error = ERR_Okay;
+   ERROR majorerror = ERR_Okay;
+   STRING calcbuffer = NULL;
+
+   // Skip to the end of the buffer (translation occurs 'backwards')
+
+   for (; Buffer[pos]; pos++);
+   pos--;
+   while (pos >= 0) {
+      // Do not translate quoted areas
+
+      if ((Buffer[pos] IS '"') and (!(Flags & SEF_IGNORE_QUOTES))) {
+         pos--;
+         while ((pos >= 0) and (Buffer[pos] != '"')) pos--;
+         if (pos < 0) {
+            log.warning("Badly defined string: %.80s", Buffer);
+            if (calcbuffer) free(calcbuffer);
+            return ERR_InvalidData;
+         }
+      }
+
+      if ((Buffer[pos] IS '[') and ((Buffer[pos+1] IS '@') or (Buffer[pos+1] IS '%'))) {
+         // Ignore arguments, e.g. [@id] or [%id].  It's also useful for ignoring [@attrib] in xpath.
+         pos--;
+      }
+      else if (Buffer[pos] IS '[') {
+         // Make sure that there is a closing bracket
+
+         WORD endbracket;
+         WORD balance = 0;
+         for (endbracket=pos; Buffer[endbracket]; endbracket++) {
+            if (Buffer[endbracket] IS '[') balance++;
+            else if (Buffer[endbracket] IS ']') {
+               balance--;
+               if (!balance) break;
+            }
+         }
+
+         if (Buffer[endbracket] != ']') {
+            log.warning("Unbalanced string: %.90s ...", Buffer);
+            if (calcbuffer) free(calcbuffer);
+            return ERR_InvalidData;
+         }
+
+         if (Buffer[pos+1] IS '=') { // Perform a calculation
+            DOUBLE value;
+            char num[endbracket-pos];
+
+            CopyMemory(Buffer+pos+2, num, endbracket-(pos+2));
+            num[endbracket-(pos+2)] = 0;
+
+            if ((calcbuffer) or (BufferLength > 2048)) {
+               if (!calcbuffer) {
+                  if (!(calcbuffer = (char *)malloc(BufferLength))) {
+                     return ERR_AllocMemory;
+                  }
+               }
+               calc(num, &value, calcbuffer, BufferLength);
+               if (insert_string(calcbuffer, Buffer, BufferLength, pos, endbracket-pos+1)) {
+                  log.warning("Buffer overflow (%d bytes) while inserting to buffer \"%.30s\"", BufferLength, Buffer);
+                  free(calcbuffer);
+                  return ERR_BufferOverflow;
+               }
+            }
+            else {
+               char calcbuffer[2048];
+               calc(num, &value, calcbuffer, sizeof(calcbuffer));
+               if (insert_string(calcbuffer, Buffer, BufferLength, pos, endbracket-pos+1)) {
+                  log.warning("Buffer overflow (%d bytes) while inserting to buffer \"%.30s\"", BufferLength, Buffer);
+                  return ERR_BufferOverflow;
+               }
+            }
+         }
+         else if (Buffer[pos+1] IS '$') { // Escape sequence - e.g. translates [$ABC] to ABC.  Note: Use [rb] and [lb] instead for brackets.
+            if (Flags & SEF_KEEP_ESCAPE); // Special option to ignore escape sequences.
+            else {
+               for (i=pos+1, j=pos+2; Buffer[j]; i++,j++) Buffer[i] = Buffer[j];
+               Buffer[i] = 0;
+            }
+            pos--;
+            continue;
+         }
+         else {
+            char name[MAX_NAME_LEN];
+
+            LONG j = 0;
+            for (i=pos+1; (Buffer[i] != '.') and (i < endbracket); i++) {
+               if ((size_t)j < sizeof(name)-1) name[j++] = LCASE(Buffer[i]);
+            }
+            name[j] = 0;
+
+            // Check for [lb] and [rb] escape codes
+
+            char code = 0;
+            if (j IS 2) {
+               if ((name[0] IS 'r') and (name[1] IS 'b')) code = ']';
+               else if ((name[0] IS 'l') and (name[1] IS 'b')) code = '[';
+            }
+
+            if (code) {
+               Buffer[pos] = code;
+               for (i=pos+j+2, j=pos+1; Buffer[i]; i++) Buffer[j++] = Buffer[i];
+               Buffer[j] = 0;
+               pos--;
+               continue;
+            }
+            else {
+               // Get the object ID
+
+               OBJECTID objectid = 0;
+
+               if (name[0]) {
+                  if (!StrMatch(name, "self")) {
+                     objectid = CurrentContext()->UID;
+                  }
+                  else {
+                     LONG count = 1;
+                     FindObject(name, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &objectid, &count);
+                  }
+               }
+
+               if (objectid) {
+                  OBJECTPTR object = NULL;
+                  Self->TBuffer[0] = 0;
+                  if (Buffer[i] IS '.') {
+                     // Get the field from the object
+                     i++;
+
+                     LONG j = 0;
+                     char field[60];
+                     while ((i < endbracket) and ((size_t)j < sizeof(field)-1)) {
+                        field[j++] = Buffer[i++];
+                     }
+                     field[j] = 0;
+                     if (!AccessObject(objectid, 2000, &object)) {
+                        OBJECTPTR target;
+                        if (((classfield = find_field(object, field, &target))) and (classfield->Flags & FD_STRING)) {
+                           error = GetField(object, (FIELD)classfield->FieldID|TSTR, &Self->TBuffer);
+                        }
+                        else {
+                           // Get field as an unlisted type and manage any buffer overflow
+repeat:
+                           Self->TBuffer[Self->TBufferSize-1] = 0;
+                           GetFieldVariable(object, field, Self->TBuffer, Self->TBufferSize);
+
+                           if (Self->TBuffer[Self->TBufferSize-1]) {
+                              STRING newbuf;
+                              if (!AllocMemory(Self->TBufferSize + 1024, MEM_STRING, &newbuf, NULL)) {
+                                 FreeResource(Self->TBuffer);
+                                 Self->TBuffer = newbuf;
+                                 Self->TBufferSize = Self->TBufferSize + 1024;
+                                 goto repeat;
+                              }
+                           }
+                        }
+                        error = ERR_Okay; // For fields, error code is always Okay so that the reference evaluates to NULL
+                     }
+                     else error = ERR_AccessObject;
+                  }
+                  else {
+                     // Convert the object reference to an ID
+                     Self->TBuffer[0] = '#';
+                     IntToStr(objectid, Self->TBuffer+1, Self->TBufferSize-1);
+                     error = ERR_Okay;
+                  }
+
+                  if (!error) {
+                     error = insert_string(Self->TBuffer, Buffer, BufferLength, pos, endbracket-pos+1);
+                     if (object) ReleaseObject(object);
+
+                     if (error) {
+                        log.warning("Buffer overflow (%d bytes) while inserting to buffer \"%.30s\"", BufferLength, Buffer);
+                        if (calcbuffer) free(calcbuffer);
+                        return ERR_BufferOverflow;
+                     }
+                  }
+                  else if (object) ReleaseObject(object);
+               }
+               else {
+                  error = ERR_NoMatchingObject;
+                  log.traceWarning("Failed to find object '%s'", name);
+               }
+            }
+         }
+
+         if (error != ERR_Okay) {
+            if (Flags & SEF_STRICT) {
+               // Do not delete everything in square brackets if the STRICT flags is used and retain the error code.
+               pos--;
+               majorerror = error;
+            }
+            else {
+               // If an error occurred, delete everything contained by the square brackets to prevent recursion errors.
+
+               for (i=endbracket+1; Buffer[i]; i++) Buffer[pos++] = Buffer[i];
+               Buffer[pos] = 0;
+            }
+            error = ERR_Okay;
+         }
+      }
+      else pos--;
+   }
+
+   log.trace("Result: %s", Buffer);
+
+   if (calcbuffer) free(calcbuffer);
+   return majorerror;
+}
+
+//********************************************************************************************************************
+
+static bool eval_condition(CSTRING String)
+{
+   parasol::Log log(__FUNCTION__);
+
+   static const FieldDef table[] = {
+      { "<>", COND_NOT_EQUAL },
+      { "!=", COND_NOT_EQUAL },
+      { "=",  COND_EQUAL },
+      { "==", COND_EQUAL },
+      { "<",  COND_LESS_THAN },
+      { "<=", COND_LESS_EQUAL },
+      { ">",  COND_GREATER_THAN },
+      { ">=", COND_GREATER_EQUAL },
+      { NULL, 0 }
+   };
+
+   if (!String) return false;
+   while ((*String) and (*String <= 0x20)) String++;
+
+   bool reverse = false;
+
+   // Find the condition statement
+
+   LONG i;
+   for (i=0; String[i]; i++) {
+      if ((String[i] IS '!') and (String[i+1] IS '=')) break;
+      if (String[i] IS '>') break;
+      if (String[i] IS '<') break;
+      if (String[i] IS '=') break;
+   }
+
+   // If there is no condition statement, evaluate the statement as an integer
+
+   if (!String[i]) {
+      if (StrToInt(String)) return true;
+      else return false;
+   }
+
+   LONG cpos = i;
+
+   // Test field
+
+   while ((i > 0) and (String[i-1] IS ' ')) i--;
+   char test[i+1];
+   CopyMemory(String, test, i);
+   test[i] = 0;
+
+   // Condition field
+
+   LONG condition = 0;
+   {
+      char cond[3];
+      UBYTE c;
+      for (i=cpos,c=0; (c < 2) and ((String[i] IS '!') or (String[i] IS '=') or (String[i] IS '>') or (String[i] IS '<')); i++) {
+         cond[c++] = String[i];
+      }
+      cond[c] = 0;
+
+      LONG j;
+      for (j=0; table[j].Name; j++) {
+         if (!StrMatch(cond, table[j].Name)) {
+            condition = table[j].Value;
+            break;
+         }
+      }
+   }
+
+   while ((String[i]) and (String[i] <= 0x20)) i++; // skip white-space
+
+   bool truth = false;
+   if (test[0]) {
+      if (condition) {
+         truth = test_statement(test, String+i, condition);
+      }
+      else log.warning("No test condition in \"%s\".", String);
+   }
+   else log.warning("No test value in \"%s\".", String);
+
+   if (reverse) return truth ^ 1;
+   else return truth;
+}
+
+//********************************************************************************************************************
 
 INLINE BYTE sortseg_compare(extDocument *Self, SortSegment *Left, SortSegment *Right)
 {
@@ -387,11 +1031,8 @@ INLINE BYTE sortseg_compare(extDocument *Self, SortSegment *Left, SortSegment *R
    }
 }
 
-/*****************************************************************************
-** Internal: uri_char()
-**
-** Assists in the translation of URI strings where escape codes may be used.
-*/
+//********************************************************************************************************************
+// Assists in the translation of URI strings where escape codes may be used.
 
 INLINE LONG uri_char(CSTRING *Source, STRING Dest, LONG Size)
 {
@@ -410,7 +1051,7 @@ INLINE LONG uri_char(CSTRING *Source, STRING Dest, LONG Size)
    else return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
@@ -459,7 +1100,7 @@ static LONG safe_file_path(extDocument *Self, CSTRING Path)
    return FALSE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Used by if, elseif, while statements to check the satisfaction of conditions.
 
 static BYTE check_tag_conditions(extDocument *Self, XMLTag *Tag)
@@ -470,7 +1111,7 @@ static BYTE check_tag_conditions(extDocument *Self, XMLTag *Tag)
    BYTE reverse = FALSE;
    for (LONG i=0; i < Tag->TotalAttrib; i++) {
       if (!StrMatch("statement", Tag->Attrib[i].Name)) {
-         satisfied = StrEvalConditional(Tag->Attrib[i].Value);
+         satisfied = eval_condition(Tag->Attrib[i].Value);
          log.trace("Statement: %s", Tag->Attrib[i].Value);
          break;
       }
@@ -5595,27 +6236,26 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
    WORD balance;
    char name[120];
    ERROR error;
-   BYTE mod, save;
+   bool mod;
+   BYTE save;
 
-   if (!Attrib->Name) { // Do not translate content tags
-      return ERR_Okay;
-   }
+   if (!Attrib->Name) return ERR_Okay; // Do not translate content tags
 
    log.trace("Attrib: %p, Total: %d", Attrib, Total);
 
-   if (!glTranslateBuffer) {
-      glTranslateBufferSize = 0xffff;
-      parasol::SwitchContext context(modDocument);
-      error = AllocMemory(glTranslateBufferSize, MEM_STRING|MEM_NO_CLEAR, &glTranslateBuffer, NULL);
-      if (error != ERR_Okay) return (Self->Error = ERR_AllocMemory);
-      glTranslateBuffer[0] = 0;
+   if (!Self->TBuffer) {
+      Self->TBufferSize = 0xffff;
+      if (AllocMemory(Self->TBufferSize, MEM_STRING|MEM_NO_CLEAR, &Self->TBuffer, NULL)) {
+         Self->Error = ERR_AllocMemory;
+         return ERR_AllocMemory;
+      }
+      Self->TBuffer[0] = 0;
    }
 
    Buffer = Self->Buffer;
    error = ERR_Okay;
    for (attrib=1; (attrib < Total) and (Self->ArgIndex < MAX_ARGS) and (!error); attrib++) {
       if (Attrib[attrib].Name[0] IS '$') continue;
-
       if (!(src = Attrib[attrib].Value)) continue;
 
       // Do nothing if there are no special references being used
@@ -5635,28 +6275,28 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
       // NB: Translation works backwards, from pos back to BufferIndex
 
       buf_end = pos;
-      mod = FALSE;
+      mod = false;
 
       while ((pos >= Self->BufferIndex) and (!error)) {
          if (Buffer[pos] IS '&') {
             if (!StrCompare("&lsqr;", Buffer+pos, 0, 0)) {
                Buffer[pos] = '[';
                CopyMemory(Buffer+pos+6, Buffer+pos+1, StrLength(Buffer+pos+6)+1);
-               mod = TRUE;
+               mod = true;
             }
             else if (!StrCompare("&rsqr;", Buffer+pos, 0, 0)) {
                Buffer[pos] = ']';
                CopyMemory(Buffer+pos+6, Buffer+pos+1, StrLength(Buffer+pos+6)+1);
-               mod = TRUE;
+               mod = true;
             }
          }
          else if (Buffer[pos] IS '[') {
             if (Buffer[pos+1] IS '=') {
                // Perform a calcuation within [= ... ]
 
-               // Copy the section to temp, calculate it, then insert_string() the calcuatlion
+               // Copy the section to temp, calculate it, then insert_string() the calculation
 
-               mod = TRUE;
+               mod = true;
                j = 0;
                end = pos+2;
                while (Buffer[end]) {
@@ -5675,14 +6315,14 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                }
                Self->Temp[j] = 0;
                if (Buffer[end] IS ']') end++;
-               StrCalculate(Self->Temp, 0, Self->Temp+j+1, Self->TempSize-j-1);
+               calc(Self->Temp, 0, Self->Temp+j+1, Self->TempSize-j-1);
                error = insert_string(Self->Temp+j+1, Buffer, Self->BufferSize, pos, end-pos);
             }
             else if (Buffer[pos+1] IS '%') {
                // Check against reserved keywords
 
                BYTE savemod = mod;
-               mod = TRUE;
+               mod = true;
                str = Buffer + pos + 2;
                if (!StrCompare("index]", str, 0, 0)) {
                   IntToStr(Self->LoopIndex, name, sizeof(name));
@@ -5843,7 +6483,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                else mod = savemod;
             }
             else if (Buffer[pos+1] IS '@') { // Translate argument reference
-               mod = TRUE; // Indicate that the buffer will be used, even if the argument is not found, it will be replaced with an empty string
+               mod = true; // Indicate that the buffer will be used, even if the argument is not found, it will be replaced with an empty string
                BYTE processed = FALSE;
                for (WORD ni=Self->ArgNestIndex-1; (ni >= 0) and (!processed); ni--) {
                   XMLTag *args = Self->ArgNest[ni];
@@ -5943,7 +6583,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                }
                end++;
 
-               mod = TRUE;
+               mod = true;
 
                // Retrieve the name of the object
 
@@ -5999,7 +6639,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                      if (valid_objectid(Self, objectid)) {
                         OBJECTPTR target;
 
-                        STRING strbuf = glTranslateBuffer;
+                        STRING strbuf = Self->TBuffer;
                         object = NULL;
                         strbuf[0] = 0;
                         if (Buffer[i] IS '.') {
@@ -6016,15 +6656,15 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                               else {
                                  // Get field as a variable type and manage any buffer overflow
 repeat:
-                                 glTranslateBuffer[glTranslateBufferSize-1] = 0;
-                                 GetFieldVariable(object, name, glTranslateBuffer, glTranslateBufferSize);
-                                 if (glTranslateBuffer[glTranslateBufferSize-1]) {
+                                 Self->TBuffer[Self->TBufferSize-1] = 0;
+                                 GetFieldVariable(object, name, Self->TBuffer, Self->TBufferSize);
+                                 if (Self->TBuffer[Self->TBufferSize-1]) {
                                     STRING newbuf;
                                     parasol::SwitchContext context(modDocument);
-                                    if (!AllocMemory(glTranslateBufferSize + 1024, MEM_STRING|MEM_NO_CLEAR, &newbuf, NULL)) {
-                                       FreeResource(glTranslateBuffer);
-                                       glTranslateBuffer = newbuf;
-                                       glTranslateBufferSize = glTranslateBufferSize + 1024;
+                                    if (!AllocMemory(Self->TBufferSize + 1024, MEM_STRING|MEM_NO_CLEAR, &newbuf, NULL)) {
+                                       FreeResource(Self->TBuffer);
+                                       Self->TBuffer = newbuf;
+                                       Self->TBufferSize = Self->TBufferSize + 1024;
                                        goto repeat;
                                     }
                                  }
@@ -6035,8 +6675,8 @@ repeat:
                         }
                         else {
                            // Convert the object reference to an ID
-                           glTranslateBuffer[0] = '#';
-                           IntToStr(objectid, glTranslateBuffer+1, glTranslateBufferSize-1);
+                           Self->TBuffer[0] = '#';
+                           IntToStr(objectid, Self->TBuffer+1, Self->TBufferSize-1);
                         }
 
                         if (!error) {
@@ -6215,16 +6855,6 @@ static LONG getutf8(CSTRING Value, LONG *Unicode)
       if (Unicode) *Unicode = code;
       return len;
    }
-}
-
-/*****************************************************************************
-** Internal: safe_translate()
-** Short:    Implements StrTransate() with localised object restrictions.
-*/
-
-static ERROR safe_translate(STRING Buffer, LONG Size, LONG Flags)
-{
-   return StrEvaluate(Buffer, Size, Flags, 0);
 }
 
 //****************************************************************************

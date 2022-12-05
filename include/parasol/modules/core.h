@@ -718,13 +718,6 @@ struct Edges {
 #define SBF_DESC 0x00000008
 #define SBF_CSV 0x00000010
 
-// Optional flags for StrEvaluate()
-
-#define SEF_STRICT 0x00000001
-#define SEF_IGNORE_QUOTES 0x00000002
-#define SEF_KEEP_ESCAPE 0x00000004
-#define SEF_NO_SCRIPT 0x00000008
-
 // Task flags
 
 #define TSF_FOREIGN 0x00000001
@@ -1835,8 +1828,6 @@ struct CoreBase {
    LONG (*_StrLineLength)(CSTRING);
    CSTRING (*_StrNextLine)(CSTRING);
    ERROR (*_StrReplace)(CSTRING, CSTRING, CSTRING, STRING *, LONG);
-   ERROR (*_StrEvaluate)(STRING, LONG, LONG, OBJECTID);
-   ERROR (*_StrCalculate)(CSTRING, DOUBLE *, STRING, LONG);
    DOUBLE (*_StrToFloat)(CSTRING);
    LONG (*_StrCopy)(CSTRING, STRING, LONG);
    STRING (*_StrClone)(CSTRING);
@@ -1861,7 +1852,6 @@ struct CoreBase {
    LONG (*_StrTranslateRefresh)(void);
    LONG (*_StrSortCompare)(CSTRING, CSTRING);
    ERROR (*_StrReadDate)(CSTRING, struct DateTime *);
-   LONG (*_StrEvalConditional)(CSTRING);
    LONG (*_UTF8Copy)(CSTRING, STRING, LONG, LONG);
    LONG (*_StrBase64Encode)(const void *, LONG, STRING, LONG);
    ERROR (*_VarSetString)(struct KeyStore *, CSTRING, CSTRING);
@@ -2028,8 +2018,6 @@ struct CoreBase {
 #define StrLineLength(...) (CoreBase->_StrLineLength)(__VA_ARGS__)
 #define StrNextLine(...) (CoreBase->_StrNextLine)(__VA_ARGS__)
 #define StrReplace(...) (CoreBase->_StrReplace)(__VA_ARGS__)
-#define StrEvaluate(...) (CoreBase->_StrEvaluate)(__VA_ARGS__)
-#define StrCalculate(...) (CoreBase->_StrCalculate)(__VA_ARGS__)
 #define StrToFloat(...) (CoreBase->_StrToFloat)(__VA_ARGS__)
 #define StrCopy(...) (CoreBase->_StrCopy)(__VA_ARGS__)
 #define StrClone(...) (CoreBase->_StrClone)(__VA_ARGS__)
@@ -2054,7 +2042,6 @@ struct CoreBase {
 #define StrTranslateRefresh(...) (CoreBase->_StrTranslateRefresh)(__VA_ARGS__)
 #define StrSortCompare(...) (CoreBase->_StrSortCompare)(__VA_ARGS__)
 #define StrReadDate(...) (CoreBase->_StrReadDate)(__VA_ARGS__)
-#define StrEvalConditional(...) (CoreBase->_StrEvalConditional)(__VA_ARGS__)
 #define UTF8Copy(...) (CoreBase->_UTF8Copy)(__VA_ARGS__)
 #define StrBase64Encode(...) (CoreBase->_StrBase64Encode)(__VA_ARGS__)
 #define VarSetString(...) (CoreBase->_VarSetString)(__VA_ARGS__)

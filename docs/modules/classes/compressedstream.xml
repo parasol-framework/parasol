@@ -391,13 +391,6 @@
       <const name="SORT">Sort the resulting list.</const>
     </constants>
 
-    <constants lookup="SEF" comment="Optional flags for StrEvaluate()">
-      <const name="IGNORE_QUOTES">Areas marked with double-quotes will not be translated.  The quote characters will also not be removed.</const>
-      <const name="KEEP_ESCAPE">Escaped string symbols will not be altered if this flag is used.</const>
-      <const name="NO_SCRIPT">Turns off the embedded script feature.  An error code is returned if an attempt to embed a script is made.</const>
-      <const name="STRICT">Enforces strict processing.  An error code will always be returned if at least one of the translation attempts failed.  Failed translations will be unprocessed (normally they are removed from the resulting string).</const>
-    </constants>
-
     <constants lookup="STR">
       <const name="CASE">Perform a case-sensitive match.</const>
       <const name="MATCH_CASE">Perform a case-sensitive match.</const>
