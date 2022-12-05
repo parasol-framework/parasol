@@ -2285,6 +2285,14 @@ static void xtag_svg(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
             if ((!StrMatch("true", val)) or (!StrMatch("1", val))) SetLong(viewport, FID_EnableBkgd, TRUE);
             break;
 
+         case SVF_ZOOMANDPAN:
+            if (!StrMatch("magnify", val)) {
+               // This option indicates that the scene graph should be scaled to match the size of the client's
+               // viewing window.
+               log.warning("zoomAndPan not yet supported.");
+            }
+            break;
+
          case SVF_XMLNS: break; // Ignored
          case SVF_BASEPROFILE: break; // The minimum required SVG standard that is required for rendering the document.
 
