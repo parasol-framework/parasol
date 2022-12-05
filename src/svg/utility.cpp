@@ -378,33 +378,23 @@ static CSTRING read_numseq(CSTRING Value, ...)
    va_list list;
    DOUBLE *result;
 
+   if ((!Value) or (!Value[0])) return Value;
+
    va_start(list, Value);
 
    while ((result = va_arg(list, DOUBLE *))) {
       while ((*Value) and ((*Value <= 0x20) or (*Value IS ',') or (*Value IS '(') or (*Value IS ')'))) Value++;
+      if (!Value[0]) break;
 
-      if ((*Value IS '-') and (((Value[1] >= '0') and (Value[1] <= '9')) or (Value[1] IS '.'))) {
-         *result = StrToFloat(Value);
-         Value++;
+      STRING next = NULL;
+      DOUBLE num = strtod(Value, &next);
+      if ((!num) and ((!next) or (Value IS next))) {  // Invalid character or end-of-stream check.
+         Value = next;
+         break;
       }
-      else if ((*Value IS '+') and (Value[1] >= '0') and (Value[1] <= '9')) {
-         *result = StrToFloat(Value);
-         Value++;
-      }
-      else if (((*Value >= '0') and (*Value <= '9'))) {
-         *result = StrToFloat(Value);
-      }
-      else if ((*Value IS '.') and (Value[1] >= '0') and (Value[1] <= '9')) {
-         *result = StrToFloat(Value);
-      }
-      else break;
 
-      while ((*Value >= '0') and (*Value <= '9')) Value++;
-
-      if (*Value IS '.') {
-         Value++;
-         while ((*Value >= '0') and (*Value <= '9')) Value++;
-      }
+      *result = num;
+      Value = next;
    }
 
    va_end(list);
