@@ -520,38 +520,6 @@ static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
    else return ERR_Okay;
 }
 
-/*****************************************************************************
--FIELD-
-Region: Specifies whether or not a surface object is acting as a primitive region.
-
-Setting the Region field to a value of TRUE allows the client to create surface objects that act as primitive surface
-regions.  Primitive surfaces are identical to normal surface objects in most respects, except they do not participate
-in the layered drawing process.  This means that they are susceptible to the influence of other graphics within their
-parent object and do not have protected boundaries.
-
-Primitive surfaces are useful when functionality can be sacrificed for speed.  Buttons, menu content and title bars
-are often implemented as regions because they are small and consist of a small group of graphical objects.
-
-Depending on the arrangement of the region and parent object, drawing around regions can cause flickering.
-Use of the #Buffer option can avoid this problem if it becomes an issue.
-
-*****************************************************************************/
-
-static ERROR GET_Region(extSurface *Self, LONG *Value)
-{
-   if (Self->Flags & RNF_REGION) *Value = TRUE;
-   else *Value = FALSE;
-   return ERR_Okay;
-}
-
-static ERROR SET_Region(extSurface *Self, LONG Value)
-{
-   if (Self->initialised()) return ERR_Immutable;
-   else if (Value) Self->Flags |= RNF_REGION;
-   else Self->Flags &= ~RNF_REGION;
-   return ERR_Okay;
-}
-
 static ERROR SET_RevertFocus(extSurface *Self, OBJECTID Value)
 {
    Self->RevertFocusID = Value;

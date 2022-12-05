@@ -137,9 +137,9 @@ static void release_video(objDisplay *Display)
 ** up to the caller to make a decision as to whether COMPOSITE's are volatile or not.
 */
 
-static UBYTE check_volatile(SurfaceList *list, LONG index)
+static bool check_volatile(SurfaceList *list, LONG index)
 {
-   if (list[index].Flags & RNF_VOLATILE) return TRUE;
+   if (list[index].Flags & RNF_VOLATILE) return true;
 
    // If there are children with custom root layers or are volatile, that will force volatility
 
@@ -154,7 +154,7 @@ static UBYTE check_volatile(SurfaceList *list, LONG index)
       if (list[i].Flags & RNF_VOLATILE) {
          // If a child surface is marked as volatile and is a member of our bitmap space, then effectively all members of the bitmap are volatile.
 
-         if (list[index].BitmapID IS list[i].BitmapID) return TRUE;
+         if (list[index].BitmapID IS list[i].BitmapID) return true;
 
          // If this is a custom root layer, check if it refers to a surface that is going to affect our own volatility.
 
@@ -163,12 +163,12 @@ static UBYTE check_volatile(SurfaceList *list, LONG index)
                if (list[i].RootID IS list[j].SurfaceID) break;
             }
 
-            if (j <= index) return TRUE; // Custom root of a child is outside of bounds - that makes us volatile
+            if (j <= index) return true; // Custom root of a child is outside of bounds - that makes us volatile
          }
       }
    }
 
-   return FALSE;
+   return false;
 }
 
 //****************************************************************************
@@ -187,7 +187,7 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
          while ((i+1 < Total) and (list[i+1].Level > j)) i++;
          continue;
       }
-      else if (list[i].Flags & (RNF_REGION|RNF_CURSOR)); // Skip regions and the cursor
+      else if (list[i].Flags & RNF_CURSOR); // Skip the cursor
       else {
          ClipRectangle listclip = {
             .Left   = list[i].Left,
@@ -365,7 +365,7 @@ static void invalidate_overlap(extSurface *Self, SurfaceList *list, LONG Total, 
 
    log.traceBranch("%dx%d %dx%d, Between %d to %d", Left, Top, Right-Left, Bottom-Top, OldIndex, Index);
 
-   if ((list[Index].Flags & (RNF_REGION|RNF_TRANSPARENT)) or (!(list[Index].Flags & RNF_VISIBLE))) {
+   if ((list[Index].Flags & RNF_TRANSPARENT) or (!(list[Index].Flags & RNF_VISIBLE))) {
       return;
    }
 
@@ -375,7 +375,6 @@ static void invalidate_overlap(extSurface *Self, SurfaceList *list, LONG Total, 
       //   Areas of our surface that were obscured by surfaces that also shared our bitmap space.
 
       if (!(list[i].Flags & RNF_VISIBLE)) goto skipcontent;
-      if (list[i].Flags & RNF_REGION) goto skipcontent;
       if (list[i].Flags & RNF_TRANSPARENT) continue;
 
       if (list[i].BitmapID != list[Index].BitmapID) {
@@ -1101,7 +1100,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
       ERROR error;
       if (!(error = AccessObject(Self->ParentID, 5000, &parent))) {
          UnsubscribeAction(parent, NULL);
-         if (Self->Flags & (RNF_REGION|RNF_TRANSPARENT)) {
+         if (Self->Flags & RNF_TRANSPARENT) {
             drwRemoveCallback(parent, NULL);
          }
          ReleaseObject(parent);
@@ -1190,16 +1189,10 @@ static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
       Self->Flags &= ~RNF_VISIBLE;
       UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
 
-      if (Self->Flags & RNF_REGION) {
+      if (Self->BitmapOwnerID != Self->UID) {
          gfxRedrawSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, IRF_RELATIVE);
-         gfxExposeSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, NULL);
       }
-      else {
-         if (Self->BitmapOwnerID != Self->UID) {
-            gfxRedrawSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, IRF_RELATIVE);
-         }
-         gfxExposeSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
-      }
+      gfxExposeSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
    }
 
    // Check if the surface is modal, if so, switch it off
@@ -1312,22 +1305,6 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       error = ERR_Okay;
 
-      if (Self->Flags & RNF_REGION) {
-         // Regions must share the same task space with their parent.  If we can't meet this requirement, turn off the region flag.
-
-         if (parent->ownerTask() != CurrentTaskID()) {
-            log.warning("Region cannot initialise to parent #%d - not in our task space.", Self->ParentID);
-            Self->Flags &= ~RNF_REGION;
-         }
-      }
-
-      // If the parent surface is a region, the child must also be a region or our drawing system will get confused.
-
-
-      if ((parent->Flags & RNF_REGION) and (!(Self->Flags & RNF_REGION))) {
-         Self->Flags |= RNF_REGION;
-      }
-
       // If the parent has the ROOT flag set, we have to inherit whatever root layer that the parent is using, as well
       // as the PRECOPY and/or AFTERCOPY and opacity flags if they are set.
 
@@ -1343,9 +1320,9 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       SubscribeActionTags(parent, AC_Free, AC_Redimension, TAGEND);
 
-      // If the surface object is a simple region, subscribe to the Draw action of the parent object.
+      // If the surface object is transparent, subscribe to the Draw action of the parent object.
 
-      if (Self->Flags & (RNF_REGION|RNF_TRANSPARENT)) {
+      if (Self->Flags & RNF_TRANSPARENT) {
          FUNCTION func;
          struct drwAddCallback args = { &func };
          func.Type = CALL_STDC;
@@ -1353,14 +1330,9 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          func.StdC.Routine = (APTR)&draw_region;
          Action(MT_DrwAddCallback, parent, &args);
 
-         if (Self->Flags & RNF_REGION) { // Turn off flags that should never be combined with regions.
-            if (Self->Flags & RNF_PRECOPY) Self->Colour.Alpha = 0;
-            Self->Flags &= ~(RNF_TRANSPARENT|RNF_AFTER_COPY|RNF_COMPOSITE);
-         }
-         else { // Turn off flags that should never be combined with transparent surfaces.
-            Self->Flags &= ~(RNF_REGION|RNF_PRECOPY|RNF_AFTER_COPY|RNF_COMPOSITE);
-            Self->Colour.Alpha = 0;
-         }
+         // Turn off flags that should never be combined with transparent surfaces.
+         Self->Flags &= ~(RNF_PRECOPY|RNF_AFTER_COPY|RNF_COMPOSITE);
+         Self->Colour.Alpha = 0;
       }
 
       // Set FixedX/FixedY accordingly - this is used to assist in the layout process when a surface is used in a document.
@@ -1446,7 +1418,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       // Turn off any flags that may not be used for the top-most layer
 
-      Self->Flags &= ~(RNF_REGION|RNF_TRANSPARENT|RNF_PRECOPY|RNF_AFTER_COPY);
+      Self->Flags &= ~(RNF_TRANSPARENT|RNF_PRECOPY|RNF_AFTER_COPY);
 
       LONG scrflags = 0;
 
@@ -1650,7 +1622,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       }
    }
 
-   if (Self->Flags & (RNF_REGION|RNF_TRANSPARENT)) require_store = FALSE;
+   if (Self->Flags & (RNF_TRANSPARENT)) require_store = FALSE;
 
    if (require_store) {
       Self->BitmapOwnerID = Self->UID;
@@ -2060,7 +2032,6 @@ MoveToFront: Moves a surface object to the front of its container.
 static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 {
    parasol::Log log;
-   OBJECTPTR parent;
    LONG currentindex, i;
 
    log.branch("%s", GetName(Self));
@@ -2089,12 +2060,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
    for (i=currentindex+1; (list[i].Level >= list[currentindex].Level); i++) {
       if (list[i].Level IS level) {
          if (list[i].Flags & RNF_POINTER) break; // Do not move in front of the mouse cursor
-
-         if (list[i].PopOverID IS Self->UID) {
-            // A surface has been discovered that has to be in front of us.
-
-            break;
-         }
+         if (list[i].PopOverID IS Self->UID) break; // A surface has been discovered that has to be in front of us.
 
          if (Self->BitmapOwnerID != Self->UID) {
             // If we are a member of our parent's bitmap, we cannot be moved in front of bitmaps that own an independent buffer.
@@ -2155,18 +2121,6 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
    CopyMemory((BYTE *)ctl + ctl->ArrayIndex, cplist, sizeof(cplist[0]) * ctl->Total);
 
    gfxReleaseList(ARF_WRITE);
-
-   // If the surface object is a region, resubscribe to the Draw action to move our surface region to the front of the subscription list.
-
-   if (Self->Flags & RNF_REGION) {
-      if (!AccessObject(Self->ParentID, 3000, &parent)) {
-         FUNCTION func;
-         SET_FUNCTION_STDC(func, (APTR)&draw_region);
-         struct drwAddCallback args = { &func };
-         Action(MT_DrwAddCallback, parent, &args);
-         ReleaseObject(parent);
-      }
-   }
 
    if (Self->Flags & RNF_VISIBLE) {
       // A redraw is required for:
@@ -2566,7 +2520,6 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 
                   if (list[j].BitmapID != bitmapid) {
                      bitmapid = list[j].BitmapID;
-                     if (list[j].Flags & RNF_REGION) continue;
 
                      extBitmap *picbmp;
                      GetPointer(picture, FID_Bitmap, &picbmp);
@@ -2753,14 +2706,8 @@ static ERROR SURFACE_Show(extSurface *Self, APTR Void)
    if (!notified) {
       UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
 
-      if (Self->Flags & RNF_REGION) {
-         gfxRedrawSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, IRF_RELATIVE);
-         gfxExposeSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, NULL);
-      }
-      else {
-         gfxRedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
-         gfxExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
-      }
+      gfxRedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
+      gfxExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
 
    refresh_pointer(Self);
@@ -2796,7 +2743,7 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
 {
    // Only region objects can respond to draw messages
 
-   if (!(Self->Flags & (RNF_REGION|RNF_TRANSPARENT))) return;
+   if (!(Self->Flags & RNF_TRANSPARENT)) return;
 
    // If the surface object is invisible, return immediately
 
@@ -3040,7 +2987,6 @@ static const FieldArray clSurfaceFields[] = {
    { "Movement",      FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,(MAXINT)&MovementFlags, NULL,        (APTR)SET_Movement },
    { "Opacity",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,   0,         (APTR)GET_Opacity,        (APTR)SET_Opacity },
    { "PrecopyRegion", FDF_VIRTUAL|FDF_STRING|FDF_W,    0,         NULL,                     (APTR)SET_PrecopyRegion },
-   { "Region",        FDF_VIRTUAL|FDF_LONG|FDF_RI,     0,         (APTR)GET_Region,         (APTR)SET_Region },
    { "RevertFocus",   FDF_SYSTEM|FDF_VIRTUAL|FDF_OBJECTID|FDF_W, 0, NULL, (APTR)SET_RevertFocus },
    { "Right",         FDF_VIRTUAL|FDF_LONG|FDF_R,      0,         (APTR)GET_Right,          NULL },
    { "UserFocus",     FDF_VIRTUAL|FDF_LONG|FDF_R,      0,         (APTR)GET_UserFocus,      NULL },
