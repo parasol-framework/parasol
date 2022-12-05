@@ -426,8 +426,6 @@ EXPORT void CloseCore(void)
       free_private_memory();
    }
 
-   free_translate_buffer();
-
    log.debug("Detaching from the shared memory control structure.");
 
    // Detach from the shared memory control structure

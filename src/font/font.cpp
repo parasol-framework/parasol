@@ -1015,12 +1015,12 @@ This function searches for the closest matching font based on the details provid
 be searched for include the name, point size and style of the desired font.
 
 It is possible to list multiple faces in order of their preference in the Name parameter.  For instance
-"Sans Serif,Source Sans,*" will give preference to 'Sans Serif' and will look for 'Source Sans' if the first choice
-font is unavailable.  The use of the '*' wildcard indicates that the default system font should be used in the event
+`Sans Serif,Source Sans,*` will give preference to `Sans Serif` and will look for `Source Sans` if the first choice
+font is unavailable.  The use of the `*` wildcard indicates that the default system font should be used in the event
 that neither of the other choices are available.  Note that omitting this wildcard will raise the likelihood of
-ERR_Search being returned in the event that neither of the preferred choices are available.
+`ERR_Search` being returned in the event that neither of the preferred choices are available.
 
-Flags that alter the search behaviour are FTF_PREFER_SCALED, FTF_PREFER_FIXED and FTF_ALLOW_SCALE.
+Flags that alter the search behaviour are `FTF_PREFER_SCALED`, `FTF_PREFER_FIXED` and `FTF_ALLOW_SCALE`.
 
 -INPUT-
 cstr Name:  The name of a font face, or multiple faces in CSV format.  Using camel-case for each word is compulsory.
@@ -1125,9 +1125,15 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
       if ((fixed_group) and (multi)) {
          static char default_font[60] = "";
          if (!default_font[0]) { // Static value only needs to be calculated once
-            StrCopy("[glStyle./fonts/font(@name='scalable')/@face]", default_font, sizeof(default_font));
-            if (StrEvaluate(default_font, sizeof(default_font), SEF_STRICT, 0) != ERR_Okay) {
-               StrCopy("Hera Sans", default_font, sizeof(default_font));
+            OBJECTID style_id;
+            LONG count;
+            if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
+               parasol::ScopedObjectLock<objXML> style(style_id, 3000);
+               if (style.granted()) {
+                  if (acGetVar(style.obj, "/fonts/font(@name='scalable')/@face", default_font, sizeof(default_font))) {
+                     StrCopy("Hera Sans", default_font, sizeof(default_font));
+                  }
+               }
             }
          }
 

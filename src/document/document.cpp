@@ -174,6 +174,20 @@ thickness, or text inside the cell will mix with the border.
 #define ULD_REFRESH         0x04
 #define ULD_REDRAW          0x08
 
+#define SEF_STRICT 0x00000001
+#define SEF_IGNORE_QUOTES 0x00000002
+#define SEF_KEEP_ESCAPE 0x00000004
+#define SEF_NO_SCRIPT 0x00000008
+
+enum {
+   COND_NOT_EQUAL=1,
+   COND_EQUAL,
+   COND_LESS_THAN,
+   COND_LESS_EQUAL,
+   COND_GREATER_THAN,
+   COND_GREATER_EQUAL
+};
+
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
 #include <parasol/modules/document.h>
@@ -188,8 +202,6 @@ static struct DisplayBase *DisplayBase;
 static OBJECTPTR clDocument = NULL;
 static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL;
 static RGB8 glHighlight = { 220, 220, 255, 255 };
-static LONG glTranslateBufferSize = 0;
-static STRING glTranslateBuffer = NULL;
 
 //****************************************************************************
 
@@ -245,6 +257,8 @@ class extDocument : public objDocument {
    struct DocTrigger * Triggers[DRT_MAX];
    struct XMLTag * ArgNest[64];
    struct EditCell *EditCells;
+   STRING TBuffer;           // Translation buffer
+   LONG   TBufferSize;
    LONG   ArgNestIndex;
    LONG   TabIndex;
    LONG   MaxTabs;
@@ -711,6 +725,7 @@ static void   draw_border(extDocument *, objSurface *, objBitmap *);
 static void   exec_link(extDocument *, LONG);
 static ERROR  extract_script(extDocument *, CSTRING, OBJECTPTR *, CSTRING *, CSTRING *);
 static void   error_dialog(CSTRING, CSTRING, ERROR);
+static ERROR  eval(extDocument *, STRING, LONG, LONG);
 static LONG   find_segment(extDocument *, LONG, LONG);
 static LONG   find_tabfocus(extDocument *, UBYTE, LONG);
 static void   fix_command(STRING, STRING *);
@@ -746,7 +761,6 @@ static void   reset_cursor(extDocument *);
 static ERROR  resolve_fontx_by_index(extDocument *, LONG, LONG *);
 static ERROR  resolve_font_pos(extDocument *, LONG, LONG X, LONG *, LONG *);
 static LONG   safe_file_path(extDocument *, CSTRING);
-static ERROR  safe_translate(STRING, LONG, LONG);
 static void   set_focus(extDocument *, LONG, CSTRING);
 static void   set_object_style(extDocument *, OBJECTPTR);
 static void   show_bookmark(extDocument *, CSTRING);
@@ -848,9 +862,8 @@ ERROR CMDExpunge(void)
       for (LONG i=0; i < glTotalFonts; i++) acFree(glFonts[i].Font);
    }
 
-   if (exsbuffer)         { FreeResource(exsbuffer); exsbuffer = NULL; }
-   if (glFonts)           { FreeResource(glFonts); glFonts = NULL; }
-   if (glTranslateBuffer) { FreeResource(glTranslateBuffer); glTranslateBuffer = NULL; }
+   if (exsbuffer) { FreeResource(exsbuffer); exsbuffer = NULL; }
+   if (glFonts)   { FreeResource(glFonts);   glFonts = NULL; }
 
    if (modDisplay) { acFree(modDisplay);  modDisplay = NULL; }
    if (modFont)    { acFree(modFont);     modFont = NULL; }

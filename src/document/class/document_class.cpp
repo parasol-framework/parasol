@@ -712,6 +712,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    unload_doc(Self, ULD_TERMINATE);
 
+   if (Self->TBuffer)     { FreeResource(Self->TBuffer); Self->TBuffer = NULL; }
    if (Self->Path)        { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->XML)         { acFree(Self->XML); Self->XML = NULL; }
    if (Self->FontFace)    { FreeResource(Self->FontFace); Self->FontFace = NULL; }

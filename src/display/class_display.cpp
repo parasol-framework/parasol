@@ -2338,15 +2338,14 @@ ERROR GET_HDensity(extDisplay *Self, LONG *Value)
    OBJECTID style_id;
    LONG count = 1;
    if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
-      objXML *style;
-      if (!AccessObject(style_id, 3000, &style)) {
+      parasol::ScopedObjectLock<objXML> style(style_id, 3000);
+      if (style.granted()) {
          char strdpi[32];
-         if (!acGetVar(style, "/interface/@dpi", strdpi, sizeof(strdpi))) {
+         if (!acGetVar(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi))) {
             *Value = StrToInt(strdpi);
             Self->HDensity = *Value; // Store for future use.
             if (!Self->VDensity) Self->VDensity = Self->HDensity;
          }
-         ReleaseObject(style);
          if (*Value >= 96) return ERR_Okay;
       }
    }
@@ -2410,15 +2409,14 @@ ERROR GET_VDensity(extDisplay *Self, LONG *Value)
    OBJECTID style_id;
    LONG count = 1;
    if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
-      objXML *style;
-      if (!AccessObject(style_id, 3000, &style)) {
+      parasol::ScopedObjectLock<objXML> style(style_id, 3000);
+      if (style.granted()) {
          char strdpi[32];
-         if (!acGetVar(style, "/interface/@dpi", strdpi, sizeof(strdpi))) {
+         if (!acGetVar(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi))) {
             *Value = StrToInt(strdpi);
             Self->VDensity = *Value;
             if (!Self->HDensity) Self->HDensity = Self->VDensity;
          }
-         ReleaseObject(style);
          if (*Value >= 96) return ERR_Okay;
       }
    }

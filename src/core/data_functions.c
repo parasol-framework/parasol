@@ -123,14 +123,11 @@ FDEF argsSetVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Tags", FD_VARTAGS }, 
 FDEF argsStrBase64Decode[] = { { "Error", FD_LONG|FD_ERROR }, { "rkBase64Decode:State", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Input", FD_STR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_PTR }, { "Written", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsStrBase64Encode[] = { { "Result", FD_LONG }, { "Input", FD_BUFFER|FD_PTR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_STR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsStrBuildArray[] = { { "Result", FD_ARRAY|FD_STR|FD_ALLOC }, { "List", FD_STR }, { "Size", FD_LONG }, { "Total", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF argsStrCalculate[] = { { "Error", FD_LONG|FD_ERROR }, { "String", FD_STR }, { "Result", FD_DOUBLE|FD_RESULT }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsStrCapitalise[] = { { "Void", FD_VOID }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrClone[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrCompare[] = { { "Error", FD_LONG|FD_ERROR }, { "String1", FD_STR }, { "String2", FD_STR }, { "Length", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrCopy[] = { { "Result", FD_LONG }, { "Src", FD_STR }, { "Dest", FD_STR }, { "Length", FD_LONG }, { 0, 0 } };
 FDEF argsStrDatatype[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrEvalConditional[] = { { "Result", FD_LONG }, { "Statement", FD_STR }, { 0, 0 } };
-FDEF argsStrEvaluate[] = { { "Error", FD_LONG|FD_ERROR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Flags", FD_LONG }, { "Owner", FD_OBJECTID }, { 0, 0 } };
 FDEF argsStrExpand[] = { { "Result", FD_LONG }, { "String", FD_STR }, { "Offset", FD_LONG }, { "TotalChars", FD_LONG }, { 0, 0 } };
 FDEF argsStrFormat[] = { { "Result", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "Parameters", FD_TAGS }, { 0, 0 } };
 FDEF argsStrFormatDate[] = { { "Error", FD_LONG|FD_ERROR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "DateTime:Time", FD_PTR|FD_STRUCT }, { 0, 0 } };
@@ -309,8 +306,6 @@ const struct Function glFunctions[] = {
    { (APTR)StrLineLength, "StrLineLength", argsStrLineLength },
    { (APTR)StrNextLine, "StrNextLine", argsStrNextLine },
    { (APTR)StrReplace, "StrReplace", argsStrReplace },
-   { (APTR)StrEvaluate, "StrEvaluate", argsStrEvaluate },
-   { (APTR)StrCalculate, "StrCalculate", argsStrCalculate },
    { (APTR)StrToFloat, "StrToFloat", argsStrToFloat },
    { (APTR)StrCopy, "StrCopy", argsStrCopy },
    { (APTR)StrClone, "StrClone", argsStrClone },
@@ -335,7 +330,6 @@ const struct Function glFunctions[] = {
    { (APTR)StrTranslateRefresh, "StrTranslateRefresh", argsStrTranslateRefresh },
    { (APTR)StrSortCompare, "StrSortCompare", argsStrSortCompare },
    { (APTR)StrReadDate, "StrReadDate", argsStrReadDate },
-   { (APTR)StrEvalConditional, "StrEvalConditional", argsStrEvalConditional },
    { (APTR)UTF8Copy, "UTF8Copy", argsUTF8Copy },
    { (APTR)StrBase64Encode, "StrBase64Encode", argsStrBase64Encode },
    { (APTR)VarSetString, "VarSetString", argsVarSetString },
