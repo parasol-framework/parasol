@@ -148,18 +148,6 @@ static ERROR SET_Flags(extSurface *Self, LONG Value)
 
 /*****************************************************************************
 -FIELD-
-LayoutStyle: Private. This system field is supported purely to receive notification that we are being used in a document.
-
-*****************************************************************************/
-
-static ERROR SET_LayoutStyle(extSurface *Self, APTR Value)
-{
-   Self->Document = TRUE;
-   return ERR_Okay;
-}
-
-/*****************************************************************************
--FIELD-
 Modal: Sets the surface as modal (prevents user interaction with other surfaces).
 
 If TRUE, the surface will become the modal surface for the program when it is shown.  This prevents interaction with
