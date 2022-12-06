@@ -422,7 +422,6 @@ typedef struct BitmapSurfaceV2 {
 #define MT_BmpDrawRectangle -6
 #define MT_BmpSetClipRegion -7
 #define MT_BmpGetColour -8
-#define MT_BmpDrawLine -9
 #define MT_BmpPremultiply -10
 #define MT_BmpDemultiply -11
 #define MT_BmpConvertToLinear -12
@@ -435,7 +434,6 @@ struct bmpFlip { LONG Orientation;  };
 struct bmpDrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; LONG Flags;  };
 struct bmpSetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate;  };
 struct bmpGetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
-struct bmpDrawLine { LONG X; LONG Y; LONG XEnd; LONG YEnd; ULONG Colour;  };
 
 INLINE ERROR bmpCopyArea(APTR Ob, objBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
    struct bmpCopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
@@ -465,11 +463,6 @@ INLINE ERROR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, 
 INLINE ERROR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) {
    struct bmpSetClipRegion args = { Number, Left, Top, Right, Bottom, Terminate };
    return(Action(MT_BmpSetClipRegion, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR bmpDrawLine(APTR Ob, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Colour) {
-   struct bmpDrawLine args = { X, Y, XEnd, YEnd, Colour };
-   return(Action(MT_BmpDrawLine, (OBJECTPTR)Ob, &args));
 }
 
 #define bmpPremultiply(obj) Action(MT_BmpPremultiply,(obj),0)
@@ -1053,12 +1046,9 @@ struct DisplayBase {
    struct SurfaceControl * (*_AccessList)(LONG);
    objPointer * (*_AccessPointer)(void);
    ERROR (*_CheckIfChild)(OBJECTID, OBJECTID);
-   ERROR (*_Compress)(objBitmap *, LONG);
    ERROR (*_CopyArea)(objBitmap *, objBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
    ERROR (*_CopyRawBitmap)(struct BitmapSurfaceV2 *, objBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
    ERROR (*_CopySurface)(OBJECTID, objBitmap *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
-   ERROR (*_Decompress)(objBitmap *, LONG);
-   void (*_DrawLine)(objBitmap *, LONG, LONG, LONG, LONG, ULONG);
    void (*_DrawPixel)(objBitmap *, LONG, LONG, ULONG);
    void (*_DrawRGBPixel)(objBitmap *, LONG, LONG, struct RGB8 *);
    void (*_DrawRectangle)(objBitmap *, LONG, LONG, LONG, LONG, ULONG, LONG);
@@ -1105,12 +1095,9 @@ struct DisplayBase {
 #define gfxAccessList(...) (DisplayBase->_AccessList)(__VA_ARGS__)
 #define gfxAccessPointer(...) (DisplayBase->_AccessPointer)(__VA_ARGS__)
 #define gfxCheckIfChild(...) (DisplayBase->_CheckIfChild)(__VA_ARGS__)
-#define gfxCompress(...) (DisplayBase->_Compress)(__VA_ARGS__)
 #define gfxCopyArea(...) (DisplayBase->_CopyArea)(__VA_ARGS__)
 #define gfxCopyRawBitmap(...) (DisplayBase->_CopyRawBitmap)(__VA_ARGS__)
 #define gfxCopySurface(...) (DisplayBase->_CopySurface)(__VA_ARGS__)
-#define gfxDecompress(...) (DisplayBase->_Decompress)(__VA_ARGS__)
-#define gfxDrawLine(...) (DisplayBase->_DrawLine)(__VA_ARGS__)
 #define gfxDrawPixel(...) (DisplayBase->_DrawPixel)(__VA_ARGS__)
 #define gfxDrawRGBPixel(...) (DisplayBase->_DrawRGBPixel)(__VA_ARGS__)
 #define gfxDrawRectangle(...) (DisplayBase->_DrawRectangle)(__VA_ARGS__)

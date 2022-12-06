@@ -422,7 +422,7 @@ byte) while copying, then it will stop automatically to prevent copying of junk 
 Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set
 the Length or not.  For example, if you were to copy "123" into the middle of string "ABCDEFGHI" then the result would
 be "ABC123". The "GHI" part of the string would be lost.  In situations such as this, functions such as
-~CharCopy() or ~StrReplace() should be used instead.
+~CharCopy() should be used instead.
 
 -INPUT-
 cstr Src: Pointer to the string that you are copying from.
@@ -658,88 +658,6 @@ CSTRING StrNextLine(CSTRING String)
    while (*String IS '\r') String++;
    if (*String) return String;
    else return NULL;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrReplace: Replaces all occurrences of a keyword or phrase within a given string.
-
-This function will search a string and replace all occurrences of a Keyword or phrase with the supplied Replacement
-string.  If the Keyword is found, a new string will be returned which has all matches replaced with the Replacement
-string.
-
-If the Keyword is not found, an error code of ERR_Search will be returned.  If you want to know whether the Keyword
-actually exists before performing a replacement, consider calling the ~StrSearch() function first.
-
-The new string will be stored in the Result parameter and must be removed with ~FreeResource() once it is no longer required.
-
--INPUT-
-cstr Src:         Points to the source string that contains occurrences of the Keyword that you are searching for.
-cstr Keyword:     Identifies the keyword or phrase that you want to replace.
-cstr Replacement: Identifies the string that will replace all occurrences of the Keyword.
-!str Result:      Must refer to a STRING variable that will store the resulting memory block.
-int(STR) Flags:   Set to STR_CASE if the keyword search should be case-sensitive.
-
--ERRORS-
-Okay
-Args
-NullArgs
-Search:      The Keyword could not be found in the Src string.
-AllocMemory: Memory for the resulting string could not be allocated.
-
-*****************************************************************************/
-
-ERROR StrReplace(CSTRING Source, CSTRING Keyword, CSTRING Replacement, STRING *Result, LONG CaseSensitive)
-{
-   parasol::Log log(__FUNCTION__);
-
-   *Result = NULL;
-
-   if ((!Source) or (!Keyword) or (!Result)) return log.warning(ERR_NullArgs);
-
-   if (!Replacement) Replacement = "";
-
-   // If the Keyword and the replacement are identical, there is no need to do any replacement.
-
-   if (!StrCompare(Keyword, Replacement, 0, STR_MATCH_LEN|STR_CASE)) {
-      if ((*Result = StrClone(Source))) return ERR_Okay;
-      else return ERR_AllocMemory;
-   }
-
-   // Calculate string lengths
-
-   LONG keylen = StrLength(Keyword);
-   LONG replen = StrLength(Replacement);
-   LONG offset;
-   CSTRING orig = Source;
-   STRING newstr = NULL;
-   BYTE alloc  = FALSE;
-   LONG pos = 0;
-   while ((offset = StrSearch(Keyword, Source + pos, CaseSensitive)) != -1) {
-      pos += offset;
-      LONG newsize = StrLength(Source) - keylen + replen + 1;
-      if (!AllocMemory(newsize, MEM_STRING|MEM_NO_CLEAR, (APTR *)&newstr, NULL)) {
-         LONG i;
-         for (i=0; i < pos; i++) newstr[i] = Source[i];  // Copy first set of bytes up to the keyword
-         for (LONG j=0; j < replen; j++) newstr[i + j] = Replacement[j];  // Copy the replacement
-         for (i=0; Source[pos + keylen + i] != 0; i++) {  // Copy the remaining bytes
-            newstr[pos + replen + i] = Source[pos + keylen + i];
-         }
-         newstr[pos + replen + i] = 0;
-
-         if (alloc IS TRUE) FreeResource(Source);
-         Source = newstr;
-         alloc = TRUE;
-         pos += replen;
-      }
-      else break;
-   }
-
-   if (Source IS orig) { *Result = NULL; return ERR_Search; }
-   else *Result = (STRING)Source;
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************

@@ -451,23 +451,10 @@ Special operators include:
 
 *****************************************************************************/
 
-enum {
-   SIGN_PLUS=1,
-   SIGN_MINUS,
-   SIGN_MULTIPLY,
-   SIGN_DIVIDE,
-   SIGN_MODULO
-};
-
 static WORD write_calc(STRING Buffer, LONG BufferSize, DOUBLE Value, WORD Precision)
 {
-   LONG index, ival;
-   WORD px;
-   LARGE wholepart;
-   DOUBLE fraction;
-
-   index = 0;
-   wholepart = F2T(Value);
+   LONG index = 0;
+   LARGE wholepart = F2T(Value);
    if (wholepart < 0) wholepart = -wholepart;
 
    // Sign the value if it is less than 0
@@ -479,7 +466,7 @@ static WORD write_calc(STRING Buffer, LONG BufferSize, DOUBLE Value, WORD Precis
       return index;
    }
 
-   fraction = (Value - wholepart);
+   DOUBLE fraction = (Value - wholepart);
    if (fraction < 0) fraction = -fraction;
 
    index += IntToStr(wholepart, Buffer+index, BufferSize);
@@ -487,10 +474,10 @@ static WORD write_calc(STRING Buffer, LONG BufferSize, DOUBLE Value, WORD Precis
    if ((index < BufferSize-1) and ((fraction > 0) or (Precision < 0))) {
       Buffer[index++] = '.';
       fraction = fraction * 10;
-      px = Precision;
+      auto px = Precision;
       if (px < 0) px = -px;
       while ((fraction > 0.00001) and (index < BufferSize-1) and (px > 0)) {
-         ival = F2T(fraction);
+         LONG ival = F2T(fraction);
          Buffer[index++] = ival + '0';
          fraction = (fraction - ival) * 10;
          px--;
@@ -504,167 +491,139 @@ static WORD write_calc(STRING Buffer, LONG BufferSize, DOUBLE Value, WORD Precis
    return index;
 }
 
-ERROR calc(CSTRING String, DOUBLE *Result, STRING Buffer, LONG BufferSize)
+ERROR calc(CSTRING String, DOUBLE *Result, STRING Output, LONG OutputSize)
 {
-   parasol::Log log(__FUNCTION__);
-
-   if ((!String) or ((!Result) and (!Buffer))) {
-      log.warning("Missing arguments.");
-      return ERR_Args;
-   }
+   enum SIGN {
+      PLUS=1,
+      MINUS,
+      MULTIPLY,
+      DIVIDE,
+      MODULO
+   };
 
    if (Result) *Result = 0;
 
-   if (Buffer) {
-      if (BufferSize < 1) return ERR_BufferOverflow;
-      Buffer[0] = 0;
+   if (Output) {
+      if (OutputSize < 1) return ERR_BufferOverflow;
+      Output[0] = 0;
    }
-
-   if ((String >= Buffer) and (String < Buffer+BufferSize)) {
-      log.warning("Input (%p) == Output (%p)", String, Buffer);
-      return ERR_Args;
-   }
-
-   char buffer[180];
 
    // Search for brackets and translate them first
 
-   CSTRING alloc = NULL;
+   std::string in(String);
    while (1) {
       // Find the last bracketed reference
 
-      LONG bracketpos = 0;
-      for (LONG i=0; String[i]; i++) {
-         if (String[i] IS '\'') {
-            // Skip anything that is in quotes
+      LONG last_bracket = 0;
+      for (LONG i=0; in[i]; i++) {
+         if (in[i] IS '\'') { // Skip anything in quotes
             i++;
-            while (String[i]) {
-               if (String[i] IS '\\') {
-                  i++; // Skip backslashes the immediate character afterwards
-                  if (!String[i]) break;
+            while (in[i]) {
+               if (in[i] IS '\\') {
+                  i++; // Skip backslashes and the following character
+                  if (!in[i]) break;
                }
-               else if (String[i] IS '\'') break;
+               else if (in[i] IS '\'') break;
                i++;
             }
-            if (String[i] IS '\'') i++;
-            continue;
+            if (in[i] IS '\'') i++;
          }
-         if (String[i] IS '(') bracketpos = i;
+         else if (in[i] IS '(') last_bracket = i;
       }
 
-      // If we found a bracket, translate its contents
-
-      if (bracketpos > 0) {
-         buffer[0] = ' ';
-         LONG j = 1;
-         for (LONG i=bracketpos+1; (String[i] != 0) and (String[i] != ')'); i++) {
-            buffer[j++] = String[i];
-            if ((size_t)j > sizeof(buffer)-3) break;
-         }
-         buffer[0] = '(';
-         buffer[j++] = ')';
-         buffer[j] = 0;
+      if (last_bracket > 0) { // Bracket found, translate its contents
+         LONG end;
+         for (end=last_bracket+1; (in[end]) and (in[end-1] != ')'); end++);
+         std::string buf(in, last_bracket, end - last_bracket);
 
          DOUBLE calc_float;
-         calc(buffer+1, &calc_float, 0, 0);
-         char num[20];
+         calc(buf.c_str()+1, &calc_float, NULL, 0);
+         char num[30];
          StrFormat(num, sizeof(num), "%f", calc_float);
 
-         CSTRING newstring;
-         if (!StrReplace(String, buffer, num, (STRING *)&newstring, TRUE)) {
-            if (alloc) FreeResource(alloc);
-            alloc = String = newstring;
-         }
-         else break;
+         in.replace(last_bracket, end - last_bracket, num);
       }
       else break;
    }
 
    // Perform the calculation
 
+   STRING end;
    WORD precision = 9;
    DOUBLE total   = 0;
    DOUBLE overall = 0;
    LONG index     = 0;
-   UBYTE sign     = SIGN_PLUS;
+   SIGN sign      = PLUS;
    bool number    = false;
-   while (*String) {
-      if (*String <= 0x20); // Do nothing with whitespace
-      else if (*String IS '\'') {
-         if (Buffer) {
-            if (number) {
-               // Write the current floating point number to the buffer before we deal with the next calculation
-
-               index += write_calc(Buffer+index, BufferSize - index, total, precision);
-
-               // Reset the number
-
-               overall += total;
-               total = 0;
-               number = false;
+   for (LONG s=0; in[s];) {
+      if (in[s] <= 0x20); // Do nothing with whitespace
+      else if (in[s] IS '\'') {
+         if (Output) {
+            if (number) { // Write the current floating point number to the buffer before the next calculation
+               index   += write_calc(Output+index, OutputSize - index, total, precision);
+               overall += total; // Reset the number
+               total   = 0;
+               number  = false;
             }
 
-            String++;
-            while (index < BufferSize-1) {
-               if (*String IS '\\') {
-                  String++; // Skip the \ character and continue so that we can copy the character immediately after it
-               }
-               else if (*String IS '\'') break;
+            s++;
+            while (index < OutputSize-1) {
+               if (in[s] IS '\\') s++; // Skip the \ character and continue so that we can copy the character immediately after it
+               else if (in[s] IS '\'') break;
 
-               Buffer[index++] = *String;
-               String++;
+               Output[index++] = in[s++];
             }
          }
          else { // Skip string content if there is no string buffer
-            String++;
-            while (*String != '\'') String++;
+            s++;
+            while (in[s] != '\'') s++;
          }
       }
-      else if (*String IS 'f') { // Fixed floating point precision adjustment
-         String++;
-         precision = -StrToInt(String);
-         while ((*String >= '0') and (*String <= '9')) String++;
+      else if (in[s] IS 'f') { // Fixed floating point precision adjustment
+         s++;
+         precision = -strtol(in.c_str() + s, &end, 10);
+         s += end - in.c_str();
          continue;
       }
-      else if (*String IS 'p') { // Floating point precision adjustment
-         String++;
-         precision = StrToInt(String);
-         while ((*String >= '0') and (*String <= '9')) String++;
+      else if (in[s] IS 'p') { // Floating point precision adjustment
+         s++;
+         precision = strtol(in.c_str() + s, &end, 10);
+         s += end - in.c_str();
          continue;
       }
-      else if ((*String >= '0') and (*String <= '9')) {
+      else if ((in[s] >= '0') and (in[s] <= '9')) {
          number = true;
-         DOUBLE fvalue = StrToFloat(String);
-         if (sign IS SIGN_MINUS)         total = total - fvalue;
-         else if (sign IS SIGN_MULTIPLY) total = total * fvalue;
-         else if (sign IS SIGN_MODULO)   total = F2I(total) % F2I(fvalue);
-         else if (sign IS SIGN_DIVIDE) {
+         DOUBLE fvalue = strtod(in.c_str() + s, &end);
+         s += end - in.c_str();
+
+         if (sign IS MINUS)         total = total - fvalue;
+         else if (sign IS MULTIPLY) total = total * fvalue;
+         else if (sign IS MODULO)   total = F2I(total) % F2I(fvalue);
+         else if (sign IS DIVIDE) {
             if (fvalue) total = total / fvalue; // NB: Avoid division by zero errors
          }
          else total += fvalue;
-         while (((*String >= '0') and (*String <= '9')) or (*String IS '.')) String++;
 
-         sign = SIGN_PLUS; // The mathematical sign is reset whenever a number is encountered
+         sign = PLUS; // The mathematical sign is reset whenever a number is encountered
          continue;
       }
-      else if (*String IS '-') {
-         if (sign IS SIGN_MINUS) sign = SIGN_PLUS; // Handle double-negatives
-         else sign = SIGN_MINUS;
+      else if (in[s] IS '-') {
+         if (sign IS MINUS) sign = PLUS; // Handle double-negatives
+         else sign = MINUS;
       }
-      else if (*String IS '+') sign = SIGN_PLUS;
-      else if (*String IS '*') sign = SIGN_MULTIPLY;
-      else if (*String IS '/') sign = SIGN_DIVIDE;
-      else if (*String IS '%') sign = SIGN_MODULO;
+      else if (in[s] IS '+') sign = PLUS;
+      else if (in[s] IS '*') sign = MULTIPLY;
+      else if (in[s] IS '/') sign = DIVIDE;
+      else if (in[s] IS '%') sign = MODULO;
 
-      for (++String; (*String & 0xc0) IS 0x80; String++);
+      for (++s; (in[s] & 0xc0) IS 0x80; s++);
    }
 
-   if (Buffer) {
-      if (number) index += write_calc(Buffer+index, BufferSize - index, total, precision);
-      Buffer[index] = 0;
+   if (Output) {
+      if (number) index += write_calc(Output+index, OutputSize - index, total, precision);
+      Output[index] = 0;
    }
 
-   if (alloc) FreeResource(alloc);
    if (Result) *Result = overall + total;
    return ERR_Okay;
 }
@@ -6172,7 +6131,7 @@ static LONG add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
 }
 
 /*****************************************************************************
-** Internal: convert_xml_args()
+** convert_xml_args()
 **
 **   Attrib: Pointer to an array of XMLAttribs that are to be analysed for argument references.
 **   Total:  The total number of XMLAttribs in the Attrib array.
@@ -6235,7 +6194,6 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
    OBJECTPTR object;
    WORD balance;
    char name[120];
-   ERROR error;
    bool mod;
    BYTE save;
 
@@ -6253,7 +6211,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
    }
 
    Buffer = Self->Buffer;
-   error = ERR_Okay;
+   ERROR error = ERR_Okay;
    for (attrib=1; (attrib < Total) and (Self->ArgIndex < MAX_ARGS) and (!error); attrib++) {
       if (Attrib[attrib].Name[0] IS '$') continue;
       if (!(src = Attrib[attrib].Value)) continue;
@@ -6325,19 +6283,16 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                mod = true;
                str = Buffer + pos + 2;
                if (!StrCompare("index]", str, 0, 0)) {
-                  IntToStr(Self->LoopIndex, name, sizeof(name));
-                  error = insert_string(name, Buffer, Self->BufferSize, pos, sizeof("[%index]")-1);
+                  error = insert_string(std::to_string(Self->LoopIndex).c_str(), Buffer, Self->BufferSize, pos, sizeof("[%index]")-1);
                }
                else if (!StrCompare("id]", str, 0, 0)) {
-                  IntToStr(Self->GeneratedID, name, sizeof(name));
-                  error = insert_string(name, Buffer, Self->BufferSize, pos, sizeof("[%id]")-1);
+                  error = insert_string(std::to_string(Self->GeneratedID).c_str(), Buffer, Self->BufferSize, pos, sizeof("[%id]")-1);
                }
                else if (!StrCompare("self]", str, 0, 0)) {
-                  IntToStr(Self->UID, name, sizeof(name));
-                  error = insert_string(name, Buffer, Self->BufferSize, pos, sizeof("[%self]")-1);
+                  error = insert_string(std::to_string(Self->UID).c_str(), Buffer, Self->BufferSize, pos, sizeof("[%self]")-1);
                }
                else if (!StrCompare("platform]", str, 0, 0)) {
-                  const SystemState *state = GetSystemState();
+                  auto state = GetSystemState();
                   insert_string(state->Platform, Buffer, Self->BufferSize, pos, sizeof("[%platform]")-1);
                }
                else if (!StrCompare("random]", str, 0, 0)) {
@@ -6638,14 +6593,11 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                   if (objectid) {
                      if (valid_objectid(Self, objectid)) {
                         OBJECTPTR target;
-
                         STRING strbuf = Self->TBuffer;
                         object = NULL;
                         strbuf[0] = 0;
-                        if (Buffer[i] IS '.') {
-                           // Get the field from the object
+                        if (Buffer[i] IS '.') { // Get the field from the object
                            i++;
-
                            LONG j = 0;
                            while ((i < end-1) and ((size_t)j < sizeof(name)-1)) name[j++] = Buffer[i++];
                            name[j] = 0;
@@ -6653,8 +6605,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                               if (((classfield = FindField(object, StrHash(name, FALSE), &target))) and (classfield->Flags & FD_STRING)) {
                                  error = GetString(object, classfield->FieldID, &strbuf);
                               }
-                              else {
-                                 // Get field as a variable type and manage any buffer overflow
+                              else { // Get field as a variable type and manage any buffer overflow
 repeat:
                                  Self->TBuffer[Self->TBufferSize-1] = 0;
                                  GetFieldVariable(object, name, Self->TBuffer, Self->TBufferSize);
@@ -6673,15 +6624,12 @@ repeat:
                            }
                            else error = ERR_AccessObject;
                         }
-                        else {
-                           // Convert the object reference to an ID
+                        else { // Convert the object reference to an ID
                            Self->TBuffer[0] = '#';
                            IntToStr(objectid, Self->TBuffer+1, Self->TBufferSize-1);
                         }
 
-                        if (!error) {
-                           error = insert_string(strbuf, Buffer, Self->BufferSize, pos, end-pos);
-                        }
+                        if (!error) error = insert_string(strbuf, Buffer, Self->BufferSize, pos, end-pos);
 
                         if (object) ReleaseObject(object);
                      }
@@ -6734,12 +6682,8 @@ static ERROR insert_string(CSTRING Insert, STRING Buffer, LONG BufferSize, LONG 
    BufferSize -= Pos;
    Pos = 0;
 
-   // String insertion
-
    if (inlen < ReplaceLen) {
-      /* The string to insert is smaller than the number of
-      ** characters to replace.
-      */
+      // The string to insert is smaller than the number of characters to replace.
       StrCopy(Insert, Buffer, COPY_ALL);
       i = ReplaceLen;
       while (Buffer[i]) Buffer[inlen++] = Buffer[i++];
