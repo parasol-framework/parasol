@@ -1,4 +1,53 @@
 
+//****************************************************************************
+
+ERROR StrInsert(CSTRING Insert, STRING Buffer, LONG Size, LONG Pos, LONG ReplaceChars)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if (!Insert) Insert = "";
+
+   LONG insertlen;
+   for (insertlen=0; Insert[insertlen]; insertlen++);
+
+   // String insertion
+
+   if (insertlen < ReplaceChars) {
+      LONG i = Pos + StrCopy(Insert, Buffer+Pos, COPY_ALL);
+      i = Pos + ReplaceChars;
+      Pos += insertlen;
+      while (Buffer[i]) Buffer[Pos++] = Buffer[i++];
+      Buffer[Pos] = 0;
+   }
+   else if (insertlen IS ReplaceChars) {
+      while (*Insert) Buffer[Pos++] = *Insert++;
+   }
+   else {
+      // Check if an overflow will occur
+
+      LONG strlen, i, j;
+      for (strlen=0; Buffer[strlen]; strlen++);
+      if ((Size - 1) < (strlen + (ReplaceChars - insertlen))) {
+         log.warning("Buffer overflow: \"%.60s\"", Buffer);
+         return ERR_BufferOverflow;
+      }
+
+      // Expand the string
+      i = strlen + (insertlen - ReplaceChars) + 1;
+      strlen += 1;
+      j = strlen-Pos-ReplaceChars+1;
+      while (j > 0) {
+         Buffer[i--] = Buffer[strlen--];
+         j--;
+      }
+
+      // Copy the insert string into the position
+      for (i=0; Insert[i]; i++, Pos++) Buffer[Pos] = Insert[i];
+   }
+
+   return ERR_Okay;
+}
+
 /*****************************************************************************
 
 -FUNCTION-
@@ -413,9 +462,9 @@ host_platform:
 
    if ((!cmd) and (!(Flags & (IDF_SECTION|IDF_IGNORE_HOST)))) { // Check if Windows supports the file type
       if (!ResolvePath(Path, RSF_APPROXIMATE, &res_path)) {
-         char buffer[300];
 
          if (!StrCompare("http:", res_path, 5, NULL)) { // HTTP needs special support
+            char buffer[300];
             if (winReadRootKey("http\\shell\\open\\command", NULL, buffer, sizeof(buffer))) {
                i = StrSearch("%1", buffer, STR_MATCH_CASE);
                if (i != -1) {
@@ -434,6 +483,7 @@ host_platform:
             CSTRING ext = get_extension(res_path);
 
             if ((ext) and ((i = winReadRootKey(ext-1, NULL, key, sizeof(key))))) {
+               char buffer[300];
                StrCopy("\\Shell\\Open\\Command", key+i, sizeof(key)-i);
 
                if (winReadRootKey(key, NULL, buffer, sizeof(buffer))) {
@@ -495,6 +545,7 @@ host_platform:
             else log.trace("Windows has no mapping for extension %s", ext);
 
             if (!cmd) {
+               char buffer[300];
                if (!winGetCommand(res_path, buffer, sizeof(buffer))) {
                   i = StrLength(buffer);
                   StrCopy(" \"[@file]\"", buffer+i, sizeof(buffer)-i);

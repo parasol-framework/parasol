@@ -1051,7 +1051,7 @@ struct ScriptArg { // For use with scExec
     "FreeSharedMutex",
     "LockSharedMutex",
     "UnlockSharedMutex",
-    "StrInsert",
+    "VLogF",
     "StrSearch",
     "StrUpper",
     "StrLower",
@@ -1130,8 +1130,7 @@ struct ScriptArg { // For use with scExec
     "NewLockedObject",
     "KeyIterate",
     "VarSetSized",
-    "VarLock",
-    "VLogF")
+    "VarLock")
 
   c_insert([[
 

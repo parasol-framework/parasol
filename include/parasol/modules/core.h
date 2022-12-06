@@ -1818,11 +1818,11 @@ struct CoreBase {
    void (*_FreeSharedMutex)(APTR);
    ERROR (*_LockSharedMutex)(APTR, LONG);
    void (*_UnlockSharedMutex)(APTR);
-   ERROR (*_StrInsert)(CSTRING, STRING, LONG, LONG, LONG);
+   void (*_VLogF)(int, const char *, const char *, va_list);
    LONG (*_StrSearch)(CSTRING, CSTRING, LONG);
    void (*_StrUpper)(STRING);
    void (*_StrLower)(STRING);
-   void (*_StrCapitalise)(STRING);
+   ERROR (*_WakeProcess)(LONG);
    LONG (*_StrLineLength)(CSTRING);
    CSTRING (*_StrNextLine)(CSTRING);
    ERROR (*_StrReplace)(CSTRING, CSTRING, CSTRING, STRING *, LONG);
@@ -1898,8 +1898,6 @@ struct CoreBase {
    ERROR (*_KeyIterate)(struct KeyStore *, ULONG, ULONG *, APTR, LONG *);
    ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_VarLock)(struct KeyStore *, LONG);
-   void (*_VLogF)(int, const char *, const char *, va_list);
-   ERROR (*_WakeProcess)(LONG);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2006,11 +2004,11 @@ struct CoreBase {
 #define FreeSharedMutex(...) (CoreBase->_FreeSharedMutex)(__VA_ARGS__)
 #define LockSharedMutex(...) (CoreBase->_LockSharedMutex)(__VA_ARGS__)
 #define UnlockSharedMutex(...) (CoreBase->_UnlockSharedMutex)(__VA_ARGS__)
-#define StrInsert(...) (CoreBase->_StrInsert)(__VA_ARGS__)
+#define VLogF(...) (CoreBase->_VLogF)(__VA_ARGS__)
 #define StrSearch(...) (CoreBase->_StrSearch)(__VA_ARGS__)
 #define StrUpper(...) (CoreBase->_StrUpper)(__VA_ARGS__)
 #define StrLower(...) (CoreBase->_StrLower)(__VA_ARGS__)
-#define StrCapitalise(...) (CoreBase->_StrCapitalise)(__VA_ARGS__)
+#define WakeProcess(...) (CoreBase->_WakeProcess)(__VA_ARGS__)
 #define StrLineLength(...) (CoreBase->_StrLineLength)(__VA_ARGS__)
 #define StrNextLine(...) (CoreBase->_StrNextLine)(__VA_ARGS__)
 #define StrReplace(...) (CoreBase->_StrReplace)(__VA_ARGS__)
@@ -2086,8 +2084,6 @@ struct CoreBase {
 #define KeyIterate(...) (CoreBase->_KeyIterate)(__VA_ARGS__)
 #define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
 #define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
-#define VLogF(...) (CoreBase->_VLogF)(__VA_ARGS__)
-#define WakeProcess(...) (CoreBase->_WakeProcess)(__VA_ARGS__)
 #endif
 
 

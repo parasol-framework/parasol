@@ -2618,20 +2618,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrCapitalise</name>
-    <category>Strings</category>
-    <comment>Capitalises a string.</comment>
-    <prototype>void StrCapitalise(STRING String)</prototype>
-    <input>
-      <param type="STRING" name="String">Points to the string that is to be capitalised.</param>
-    </input>
-    <description>
-<p>This function will will capitalise a string so that every word starts with a capital letter.  All letters following the first capital of each word will be driven to lower-case characters.  Numbers and other non-alphabetic characters will not be affected by this function.  Here is an example:</p>
-<pre>"every WOrd starts WITH a 2apital" = "Every Word Starts With A 2apital"</pre>
-    </description>
-  </function>
-
-  <function>
     <name>StrClone</name>
     <category>Strings</category>
     <comment>Clones string data.</comment>
@@ -2683,7 +2669,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function copies part of one string over to another.  If the Length is set to zero then this function will copy the entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null byte) while copying, then it will stop automatically to prevent copying of junk characters.</p>
-<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the Length or not.  For example, if you were to copy "123" into the middle of string "ABCDEFGHI" then the result would be "ABC123". The "GHI" part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function>, <function module="Core">StrReplace</function> or <function module="Core">StrInsert</function> should be used instead.</p>
+<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the Length or not.  For example, if you were to copy "123" into the middle of string "ABCDEFGHI" then the result would be "ABC123". The "GHI" part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> or <function module="Core">StrReplace</function> should be used instead.</p>
     </description>
     <result type="LONG">Returns the total amount of characters that were copied, not including the null byte at the end.</result>
   </function>
@@ -2781,28 +2767,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>Hashing is case insensitive by default.  If case sensitive hashing is desired, please set CaseSensitive to TRUE when calling this function.  Please keep in mind that a case sensitive hash value will not be interchangeable with a case insensitive hash of the same string.</p>
     </description>
     <result type="ULONG">The 32-bit hash is returned.</result>
-  </function>
-
-  <function>
-    <name>StrInsert</name>
-    <category>Strings</category>
-    <comment>Inserts a string into a buffer, with optional replace.</comment>
-    <prototype>ERROR StrInsert(CSTRING Insert, STRING Buffer, LONG Size, LONG Offset, LONG ReplaceChars)</prototype>
-    <input>
-      <param type="CSTRING" name="Insert">Pointer to the character string to be inserted.</param>
-      <param type="STRING" name="Buffer">The string that will receive the characters.</param>
-      <param type="LONG" name="Size">The byte size of the Buffer.</param>
-      <param type="LONG" name="Offset">The byte position at which the insertion will start.  Give consideration to UTF-8 formatting.</param>
-      <param type="LONG" name="ReplaceChars">The number of bytes to replace (set to zero for a normal insert).</param>
-    </input>
-    <description>
-<p>This function is used to insert a series of characters into a Buffer.  The position of the insert is determined by the byte offset declared in the Offset field.  You can opt to replace a specific number of characters in the destination by setting the ReplaceChars argument to a value greater than zero.  To prevent buffer overflow, you must declare the size of the Buffer in the BufferSize argument.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="BufferOverflow">A buffer overflow has occurred.</error>
-    </result>
   </function>
 
   <function>
@@ -3307,7 +3271,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function copies part of one string over to another.  If the Length is set to zero then this function will copy the entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null byte) while copying, then it will stop automatically to prevent copying of junk characters.</p>
-<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the number of Chars or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function>, <function module="Core">StrReplace</function> or <function module="Core">StrInsert</function> should be used instead.</p>
+<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the number of Chars or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> or <function module="Core">StrReplace</function> should be used instead.</p>
     </description>
     <result type="LONG">Returns the total amount of &lt;i&gt;bytes&lt;/i&gt; that were copied, not including the null byte at the end.</result>
   </function>

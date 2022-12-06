@@ -130,7 +130,6 @@ FDEF argsStrDatatype[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 }
 FDEF argsStrFormat[] = { { "Result", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "Parameters", FD_TAGS }, { 0, 0 } };
 FDEF argsStrFormatDate[] = { { "Error", FD_LONG|FD_ERROR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "DateTime:Time", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
-FDEF argsStrInsert[] = { { "Error", FD_LONG|FD_ERROR }, { "Insert", FD_STR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Offset", FD_LONG }, { "ReplaceChars", FD_LONG }, { 0, 0 } };
 FDEF argsStrLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrLineLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrLower[] = { { "Void", FD_VOID }, { "String", FD_BUFFER|FD_STR }, { 0, 0 } };
@@ -293,7 +292,7 @@ const struct Function glFunctions[] = {
    { (APTR)FreeSharedMutex, "FreeSharedMutex", argsFreeSharedMutex },
    { (APTR)LockSharedMutex, "LockSharedMutex", argsLockSharedMutex },
    { (APTR)UnlockSharedMutex, "UnlockSharedMutex", argsUnlockSharedMutex },
-   { (APTR)StrInsert, "StrInsert", argsStrInsert },
+   { (APTR)VLogF, "VLogF", argsVLogF },
    { (APTR)StrSearch, "StrSearch", argsStrSearch },
    { (APTR)StrUpper, "StrUpper", argsStrUpper },
    { (APTR)StrLower, "StrLower", argsStrLower },
@@ -373,7 +372,6 @@ const struct Function glFunctions[] = {
    { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { (APTR)VarSetSized, "VarSetSized", argsVarSetSized },
    { (APTR)VarLock, "VarLock", argsVarLock },
-   { (APTR)VLogF, "VLogF", argsVLogF },
    { NULL, NULL, NULL }
 };
 

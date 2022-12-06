@@ -7680,23 +7680,32 @@ static void deselect_text(extDocument *Self)
 
 //****************************************************************************
 
-static void fix_command(STRING Command, STRING *Args)
+static void split_command(std::string &Command, std::string &Args)
 {
-   WORD i = 0;
    if (Command[0] IS '"') {
-      i++;
-      while ((Command[i]) and (Command[i] != '"')) { Command[i-1] = Command[i]; i++; }
-      Command[i-1] = 0;
-      if (Command[i] IS '"') i++;
+      Command.erase(0, 1);
+      LONG i = 0;
+      while ((Command[i]) and (Command[i] != '"')) i++;
+      if (Command[i] IS '"') {
+         LONG a = i + 1;
+         while ((Command[a]) and (Command[a] <= 0x20)) a++;
+         Args = Command.substr(a);
+
+         Command.erase(i);
+      }
    }
    else {
-      while ((Command[i]) and (Command[i] > 0x20)) i++;
-      if (Command[i]) Command[i++] = 0;
+      LONG i = 0;
+      while (Command[i] > 0x20) i++;
+
+      if (Command[i]) {
+         LONG a = i;
+         while ((Command[a]) and (Command[a] <= 0x20)) a++;
+         Args = Command.substr(a);
+
+         Command.resize(i);
+      }
    }
-
-   while ((Command[i]) and (Command[i] <= 0x20)) i++;
-
-   *Args = Command + i;
 }
 
 //****************************************************************************
@@ -8263,11 +8272,9 @@ static void exec_link(extDocument *Self, LONG Index)
    }
 
    if (Self->Links[Index].EscapeCode IS ESC_LINK) {
-      char buffer[400];
       OBJECTPTR script;
       CSTRING function_name;
       CLASSID class_id, subclass_id;
-      WORD i;
 
       escLink *link = Self->Links[Index].Link;
       CSTRING strlink = (STRING)(link + 1);
@@ -8298,93 +8305,87 @@ static void exec_link(extDocument *Self, LONG Index)
          }
       }
       else if (link->Type IS LINK_HREF) {
-         if (Self->Path) {
-            StrCopy(Self->Path, buffer, sizeof(buffer));
-            for (i=0; buffer[i]; i++) {
-               if ((buffer[i] IS '&') or (buffer[i] IS '#') or (buffer[i] IS '?')) { buffer[i] = 0; break; }
-            }
-         }
-         else i = 0;
-
          if (strlink[0] IS ':') {
             if (Self->Bookmark) FreeResource(Self->Bookmark);
             Self->Bookmark = StrClone(strlink+1);
             show_bookmark(Self, Self->Bookmark);
          }
-         else if ((strlink[0] IS '#') or (strlink[0] IS '?')) {
-            log.trace("Switching to page '%s'", strlink);
-
-            StrCopy(strlink, buffer+i, sizeof(buffer)-i);
-            SetString(Self, FID_Path, buffer);
-
-            if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
-         }
          else {
-            log.trace("Link is a file reference.");
+            if ((strlink[0] IS '#') or (strlink[0] IS '?')) {
+               log.trace("Switching to page '%s'", strlink);
 
-            // Figure out if the link is an absolute path
+               if (Self->Path) {
+                  LONG end;
+                  for (end=0; Self->Path[end]; end++) {
+                     if ((Self->Path[end] IS '&') or (Self->Path[end] IS '#') or (Self->Path[end] IS '?')) break;
+                  }
+                  auto path = std::string(Self->Path, end) + strlink;
+                  SetString(Self, FID_Path, path.c_str());
+               }
+               else SetString(Self, FID_Path, strlink);
 
-            BYTE abspath = FALSE;
-            for (LONG j=0; strlink[j]; j++) {
-               if ((strlink[j] IS '/') or (strlink[j] IS '\\')) break;
-               if (strlink[j] IS ':') { abspath = TRUE; break; }
-            }
-
-            if (abspath) {
-               StrCopy(strlink, buffer, sizeof(buffer));
+               if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
             }
             else {
-               while ((i > 0) and (buffer[i-1] != '/') and (buffer[i-1] != '\\') and (buffer[i-1] != ':')) i--;
-               buffer[i] = 0;
-               StrCopy(strlink, buffer+i, sizeof(buffer)-i);
-            }
+               log.trace("Link is a file reference.");
 
-            char save = 0;
-            for (i=0; buffer[i]; i++) {
-               if ((buffer[i] IS '?') or (buffer[i] IS '#') or (buffer[i] IS '&')) {
-                  save = buffer[i];
-                  buffer[i] = 0;
-                  break;
-               }
-            }
+               std::string lk;
 
-            STRING cmd;
-            if (!IdentifyFile(buffer, "Open", 0, &class_id, &subclass_id, &cmd)) {
-               if (save) buffer[i] = save;
-
-               if (class_id IS ID_DOCUMENT) {
-                  SetString(Self, FID_Path, buffer);
-
-                  if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
-                  else log.msg("No bookmark was preset.");
-               }
-               else if (cmd) {
-                  // If the link is supported by a program, run that program and pass it the link.
-
-                  LONG i;
-                  StrCopy(cmd, buffer, sizeof(buffer));
-                  if ((i = StrSearch("[@file]", buffer, 0)) != -1) {
-                     StrInsert(strlink, buffer, sizeof(buffer), i, sizeof("[@file]")-1);
+               if (Self->Path) {
+                  bool abspath = false; // Is the link an absolute path indicated by a volume name?
+                  for (LONG j=0; strlink[j]; j++) {
+                     if ((strlink[j] IS '/') or (strlink[j] IS '\\')) break;
+                     if (strlink[j] IS ':') { abspath = true; break; }
                   }
 
-                  STRING args;
-                  fix_command(buffer, &args);
-
-                  OBJECTPTR task;
-                  if (!CreateObject(ID_TASK, NF_INTEGRAL, &task,
-                        FID_Path|TSTR, buffer,
-                        FID_Args|TSTR, args,
-                        TAGEND)) {
-                     acActivate(task);
-                     acFree(task);
+                  if (!abspath) {
+                     LONG end;
+                     for (end=0; Self->Path[end]; end++) {
+                        if ((Self->Path[end] IS '&') or (Self->Path[end] IS '#') or (Self->Path[end] IS '?')) break;
+                     }
+                     while ((end > 0) and (Self->Path[end-1] != '/') and (Self->Path[end-1] != '\\') and (Self->Path[end-1] != ':')) end--;
+                     lk.assign(Self->Path, end);
                   }
                }
-               FreeResource(cmd);
-            }
-            else {
-               char msg[500];
-               StrFormat(msg, sizeof(msg), "It is not possible to follow this link as the type of file is not recognised.  The referenced link is:\n\n%s", buffer);
-               error_dialog("Action Cancelled", msg, 0);
+
+               lk += strlink;
+
+               LONG end;
+               for (end=0; lk[end]; end++) {
+                  if ((lk[end] IS '?') or (lk[end] IS '#') or (lk[end] IS '&')) break;
+               }
+
+               STRING cmd;
+               if (!IdentifyFile(lk.substr(0, end).c_str(), "Open", 0, &class_id, &subclass_id, &cmd)) {
+                  if (class_id IS ID_DOCUMENT) {
+                     SetString(Self, FID_Path, lk.c_str());
+
+                     if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
+                     else log.msg("No bookmark was preset.");
+                  }
+                  else if (cmd) { // If the link is supported by a program, run that program and pass it the link.
+                     std::string scmd(cmd);
+                     auto i = scmd.find("[@file]");
+                     if (i != std::string::npos) scmd.replace(i, 7, strlink);
+
+                     std::string args;
+                     split_command(scmd, args);
+
+                     OBJECTPTR task;
+                     if (!CreateObject(ID_TASK, NF_INTEGRAL, &task,
+                           FID_Path|TSTR, scmd.c_str(),
+                           FID_Args|TSTR, args.c_str(),
+                           TAGEND)) {
+                        acActivate(task);
+                        acFree(task);
+                     }
+                  }
+                  FreeResource(cmd);
+               }
+               else {
+                  auto msg = std::string("It is not possible to follow this link as the type of file is not recognised.  The referenced link is:\n\n") + lk;
+                  error_dialog("Action Cancelled", msg.c_str(), 0);
+               }
             }
          }
       }

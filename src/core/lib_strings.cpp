@@ -17,7 +17,6 @@ Name: Strings
 #endif
 
 static void sift(STRING Buffer, LONG *, LONG, LONG);
-static ERROR  insert_string(CSTRING, STRING, LONG, LONG, LONG);
 
 typedef void * iconv_t;
 iconv_t (*iconv_open)(const char* tocode, const char* fromcode);
@@ -423,7 +422,7 @@ byte) while copying, then it will stop automatically to prevent copying of junk 
 Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set
 the Length or not.  For example, if you were to copy "123" into the middle of string "ABCDEFGHI" then the result would
 be "ABC123". The "GHI" part of the string would be lost.  In situations such as this, functions such as
-~CharCopy(), ~StrReplace() or ~StrInsert() should be used instead.
+~CharCopy() or ~StrReplace() should be used instead.
 
 -INPUT-
 cstr Src: Pointer to the string that you are copying from.
@@ -582,77 +581,6 @@ ULONG StrHash(CSTRING String, LONG CaseSensitive)
       }
       return hash;
    }
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrInsert: Inserts a string into a buffer, with optional replace.
-
-This function is used to insert a series of characters into a Buffer.  The position of the insert is determined by the
-byte offset declared in the Offset field.  You can opt to replace a specific number of characters in the destination by
-setting the ReplaceChars argument to a value greater than zero.  To prevent buffer overflow, you must declare the size
-of the Buffer in the BufferSize argument.
-
--INPUT-
-cstr Insert:      Pointer to the character string to be inserted.
-buf(str) Buffer:  The string that will receive the characters.
-bufsize Size:     The byte size of the Buffer.
-int Offset:       The byte position at which the insertion will start.  Give consideration to UTF-8 formatting.
-int ReplaceChars: The number of bytes to replace (set to zero for a normal insert).
-
--ERRORS-
-Okay
-Args
-BufferOverflow: There is not enough space in the destination buffer for the insert.
-
-*****************************************************************************/
-
-ERROR StrInsert(CSTRING Insert, STRING Buffer, LONG Size, LONG Pos, LONG ReplaceChars)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if (!Insert) Insert = "";
-
-   LONG insertlen;
-   for (insertlen=0; Insert[insertlen]; insertlen++);
-
-   // String insertion
-
-   if (insertlen < ReplaceChars) {
-      LONG i = Pos + StrCopy(Insert, Buffer+Pos, COPY_ALL);
-      i = Pos + ReplaceChars;
-      Pos += insertlen;
-      while (Buffer[i]) Buffer[Pos++] = Buffer[i++];
-      Buffer[Pos] = 0;
-   }
-   else if (insertlen IS ReplaceChars) {
-      while (*Insert) Buffer[Pos++] = *Insert++;
-   }
-   else {
-      // Check if an overflow will occur
-
-      LONG strlen, i, j;
-      for (strlen=0; Buffer[strlen]; strlen++);
-      if ((Size - 1) < (strlen + (ReplaceChars - insertlen))) {
-         log.warning("Buffer overflow: \"%.60s\"", Buffer);
-         return ERR_BufferOverflow;
-      }
-
-      // Expand the string
-      i = strlen + (insertlen - ReplaceChars) + 1;
-      strlen += 1;
-      j = strlen-Pos-ReplaceChars+1;
-      while (j > 0) {
-         Buffer[i--] = Buffer[strlen--];
-         j--;
-      }
-
-      // Copy the insert string into the position
-      for (i=0; Insert[i]; i++, Pos++) Buffer[Pos] = Insert[i];
-   }
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -1341,62 +1269,6 @@ void StrUpper(STRING String)
       if ((*String >= 'a') and (*String <= 'z')) *String -= 0x20;
       String++;
    }
-}
-
-/*****************************************************************************
-** Insert: The string to be inserted.
-** Buffer: The start of the buffer region.
-** Size:   The complete size of the target buffer.
-** Pos:    The target position for the insert.
-** ReplaceChars: If characters will be replaced, specify the number here.
-**
-** The only error that this function can return is a buffer overflow.
-*/
-
-ERROR insert_string(CSTRING Insert, STRING Buffer, LONG Size, LONG Pos, LONG Replace)
-{
-   LONG inlen, i, strlen, j;
-
-   if (!Insert) Insert = "";
-
-   for (inlen=0; Insert[inlen]; inlen++);
-
-   // String insertion
-
-   if (inlen < Replace) {
-      // The string to insert is smaller than the number of characters to replace.
-
-      i = Pos + StrCopy(Insert, Buffer+Pos, COPY_ALL);
-      i = Pos + Replace;
-      Pos += inlen;
-      while (Buffer[i]) Buffer[Pos++] = Buffer[i++];
-      Buffer[Pos] = 0;
-   }
-   else if (inlen IS Replace) {
-      while (*Insert) Buffer[Pos++] = *Insert++;
-   }
-   else {
-      // Check if an overflow will occur
-
-      for (strlen=0; Buffer[strlen]; strlen++);
-
-      if ((Size - 1) < (strlen - Replace + inlen)) {
-         return ERR_BufferOverflow;
-      }
-
-      // Expand the string
-      i = strlen + (inlen - Replace) + 1;
-      strlen += 1;
-      j = strlen-Pos-Replace+1;
-      while (j > 0) {
-         Buffer[i--] = Buffer[strlen--];
-         j--;
-      }
-
-      for (i=0; i < inlen; i++, Pos++) Buffer[Pos] = Insert[i];
-   }
-
-   return ERR_Okay;
 }
 
 //****************************************************************************
