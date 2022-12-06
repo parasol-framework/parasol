@@ -2669,7 +2669,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function copies part of one string over to another.  If the Length is set to zero then this function will copy the entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null byte) while copying, then it will stop automatically to prevent copying of junk characters.</p>
-<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the Length or not.  For example, if you were to copy "123" into the middle of string "ABCDEFGHI" then the result would be "ABC123". The "GHI" part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> or <function module="Core">StrReplace</function> should be used instead.</p>
+<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the Length or not.  For example, if you were to copy "123" into the middle of string "ABCDEFGHI" then the result would be "ABC123". The "GHI" part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> should be used instead.</p>
     </description>
     <result type="LONG">Returns the total amount of characters that were copied, not including the null byte at the end.</result>
   </function>
@@ -2865,32 +2865,6 @@ SetField(Object, FID_Statement|TSTR, "string");
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="NoData">No data is available for use.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>StrReplace</name>
-    <category>Strings</category>
-    <comment>Replaces all occurrences of a keyword or phrase within a given string.</comment>
-    <prototype>ERROR StrReplace(CSTRING Src, CSTRING Keyword, CSTRING Replacement, STRING * Result, LONG Flags)</prototype>
-    <input>
-      <param type="CSTRING" name="Src">Points to the source string that contains occurrences of the Keyword that you are searching for.</param>
-      <param type="CSTRING" name="Keyword">Identifies the keyword or phrase that you want to replace.</param>
-      <param type="CSTRING" name="Replacement">Identifies the string that will replace all occurrences of the Keyword.</param>
-      <param type="STRING *" name="Result">Must refer to a STRING variable that will store the resulting memory block.</param>
-      <param type="LONG" name="Flags" lookup="STR">Set to STR_CASE if the keyword search should be case-sensitive.</param>
-    </input>
-    <description>
-<p>This function will search a string and replace all occurrences of a Keyword or phrase with the supplied Replacement string.  If the Keyword is found, a new string will be returned which has all matches replaced with the Replacement string.</p>
-<p>If the Keyword is not found, an error code of ERR_Search will be returned.  If you want to know whether the Keyword actually exists before performing a replacement, consider calling the <function module="Core">StrSearch</function> function first.</p>
-<p>The new string will be stored in the Result parameter and must be removed with <function module="Core">FreeResource</function> once it is no longer required.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -3243,7 +3217,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function copies part of one string over to another.  If the Length is set to zero then this function will copy the entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null byte) while copying, then it will stop automatically to prevent copying of junk characters.</p>
-<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the number of Chars or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> or <function module="Core">StrReplace</function> should be used instead.</p>
+<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the number of Chars or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> should be used instead.</p>
     </description>
     <result type="LONG">Returns the total amount of &lt;i&gt;bytes&lt;/i&gt; that were copied, not including the null byte at the end.</result>
   </function>

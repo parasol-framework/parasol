@@ -1825,7 +1825,7 @@ struct CoreBase {
    ERROR (*_WakeProcess)(LONG);
    LONG (*_StrLineLength)(CSTRING);
    CSTRING (*_StrNextLine)(CSTRING);
-   ERROR (*_StrReplace)(CSTRING, CSTRING, CSTRING, STRING *, LONG);
+   ERROR (*_KeyIterate)(struct KeyStore *, ULONG, ULONG *, APTR, LONG *);
    DOUBLE (*_StrToFloat)(CSTRING);
    LONG (*_StrCopy)(CSTRING, STRING, LONG);
    STRING (*_StrClone)(CSTRING);
@@ -1895,7 +1895,6 @@ struct CoreBase {
    ERROR (*_KeyGet)(struct KeyStore *, ULONG, APTR, LONG *);
    ERROR (*_VarIterate)(struct KeyStore *, CSTRING, CSTRING *, APTR, LONG *);
    ERROR (*_NewLockedObject)(LARGE, LONG, APTR, OBJECTID *, CSTRING);
-   ERROR (*_KeyIterate)(struct KeyStore *, ULONG, ULONG *, APTR, LONG *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2009,7 +2008,7 @@ struct CoreBase {
 #define WakeProcess(...) (CoreBase->_WakeProcess)(__VA_ARGS__)
 #define StrLineLength(...) (CoreBase->_StrLineLength)(__VA_ARGS__)
 #define StrNextLine(...) (CoreBase->_StrNextLine)(__VA_ARGS__)
-#define StrReplace(...) (CoreBase->_StrReplace)(__VA_ARGS__)
+#define KeyIterate(...) (CoreBase->_KeyIterate)(__VA_ARGS__)
 #define StrToFloat(...) (CoreBase->_StrToFloat)(__VA_ARGS__)
 #define StrCopy(...) (CoreBase->_StrCopy)(__VA_ARGS__)
 #define StrClone(...) (CoreBase->_StrClone)(__VA_ARGS__)
@@ -2079,7 +2078,6 @@ struct CoreBase {
 #define KeyGet(...) (CoreBase->_KeyGet)(__VA_ARGS__)
 #define VarIterate(...) (CoreBase->_VarIterate)(__VA_ARGS__)
 #define NewLockedObject(...) (CoreBase->_NewLockedObject)(__VA_ARGS__)
-#define KeyIterate(...) (CoreBase->_KeyIterate)(__VA_ARGS__)
 #endif
 
 

@@ -114,7 +114,7 @@ ERROR VarLock(struct KeyStore * Store, LONG Timeout);
 ERROR WakeProcess(LONG ProcessID);
 LONG StrLineLength(CSTRING String);
 CSTRING StrNextLine(CSTRING String);
-ERROR StrReplace(CSTRING Src, CSTRING Keyword, CSTRING Replacement, STRING * Result, LONG Flags);
+ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data, LONG * Size);
 DOUBLE StrToFloat(CSTRING String);
 LONG StrCopy(CSTRING Src, STRING Dest, LONG Length);
 STRING StrClone(CSTRING String);
@@ -184,7 +184,6 @@ ERROR KeySet(struct KeyStore * Store, ULONG Key, const void * Data, LONG Size);
 ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size);
 ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * Data, LONG * Size);
 ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR * Object, OBJECTID * ID, CSTRING Name);
-ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data, LONG * Size);
 
 #ifdef  __cplusplus
 }
