@@ -81,7 +81,7 @@ ERROR CopyMemory(const void * Src, APTR Dest, LONG Size);
 ERROR ClearMemory(APTR Memory, LONG Length);
 ERROR SubscribeActionTags(OBJECTPTR Object, ...);
 void PrintDiagnosis(LONG Process, LONG Signal);
-ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command);
+ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR * Object, OBJECTID * ID, CSTRING Name);
 ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
 ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
 ERROR FindPrivateObject(CSTRING Name, OBJECTPTR * Object);
@@ -154,8 +154,8 @@ ERROR SetVolume(LARGE,...);
 ERROR DeleteVolume(CSTRING Name);
 ERROR VirtualVolume(CSTRING Name, ...);
 ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-ERROR SetDocView(CSTRING Path, CSTRING Document);
-CSTRING GetDocView(CSTRING Path);
+ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size);
+ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * Data, LONG * Size);
 ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
 ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions);
@@ -181,9 +181,6 @@ struct KeyStore * VarNew(LONG InitialSize, LONG Flags);
 APTR VarSet(struct KeyStore * Store, CSTRING Key, APTR Data, LONG Size);
 ERROR VarGet(struct KeyStore * Store, CSTRING Name, APTR * Data, LONG * Size);
 ERROR KeySet(struct KeyStore * Store, ULONG Key, const void * Data, LONG Size);
-ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size);
-ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * Data, LONG * Size);
-ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR * Object, OBJECTID * ID, CSTRING Name);
 
 #ifdef  __cplusplus
 }
