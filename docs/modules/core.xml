@@ -2146,17 +2146,6 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
   </function>
 
   <function>
-    <name>SelfDestruct</name>
-    <category>System</category>
-    <comment>Destroys the process and frees its resources.</comment>
-    <prototype>void SelfDestruct()</prototype>
-    <description>
-<p>This function will immediately free all resources allocated by the process and then exit.  This is the cleanest way for a process to destroy itself when a normal exit procedure is not possible.</p>
-<p>This function will not return.</p>
-    </description>
-  </function>
-
-  <function>
     <name>SendMessage</name>
     <category>Messages</category>
     <comment>Send messages to message queues.</comment>

@@ -50,7 +50,7 @@ ERROR ReallocMemory(APTR Memory, LONG Size, APTR * Address, MEMORYID * ID);
 ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
 MEMORYID ReleaseMemory(APTR Address);
 CLASSID ResolveClassName(CSTRING Name);
-void SelfDestruct();
+ERROR KeySet(struct KeyStore * Store, ULONG Key, const void * Data, LONG Size);
 ERROR SendMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size);
 ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 OBJECTPTR SetContext(OBJECTPTR Object);
@@ -180,7 +180,6 @@ OBJECTPTR CurrentTask();
 struct KeyStore * VarNew(LONG InitialSize, LONG Flags);
 APTR VarSet(struct KeyStore * Store, CSTRING Key, APTR Data, LONG Size);
 ERROR VarGet(struct KeyStore * Store, CSTRING Name, APTR * Data, LONG * Size);
-ERROR KeySet(struct KeyStore * Store, ULONG Key, const void * Data, LONG Size);
 
 #ifdef  __cplusplus
 }

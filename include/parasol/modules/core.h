@@ -1757,7 +1757,7 @@ struct CoreBase {
    ERROR (*_GetMessage)(MEMORYID, LONG, LONG, APTR, LONG);
    MEMORYID (*_ReleaseMemory)(APTR);
    CLASSID (*_ResolveClassName)(CSTRING);
-   void (*_SelfDestruct)(void);
+   ERROR (*_KeySet)(struct KeyStore *, ULONG, const void *, LONG);
    ERROR (*_SendMessage)(MEMORYID, LONG, LONG, APTR, LONG);
    ERROR (*_SetOwner)(OBJECTPTR, OBJECTPTR);
    OBJECTPTR (*_SetContext)(OBJECTPTR);
@@ -1887,7 +1887,6 @@ struct CoreBase {
    struct KeyStore * (*_VarNew)(LONG, LONG);
    APTR (*_VarSet)(struct KeyStore *, CSTRING, APTR, LONG);
    ERROR (*_VarGet)(struct KeyStore *, CSTRING, APTR, LONG *);
-   ERROR (*_KeySet)(struct KeyStore *, ULONG, const void *, LONG);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1937,7 +1936,7 @@ struct CoreBase {
 #define GetMessage(...) (CoreBase->_GetMessage)(__VA_ARGS__)
 #define ReleaseMemory(...) (CoreBase->_ReleaseMemory)(__VA_ARGS__)
 #define ResolveClassName(...) (CoreBase->_ResolveClassName)(__VA_ARGS__)
-#define SelfDestruct(...) (CoreBase->_SelfDestruct)(__VA_ARGS__)
+#define KeySet(...) (CoreBase->_KeySet)(__VA_ARGS__)
 #define SendMessage(...) (CoreBase->_SendMessage)(__VA_ARGS__)
 #define SetOwner(...) (CoreBase->_SetOwner)(__VA_ARGS__)
 #define SetContext(...) (CoreBase->_SetContext)(__VA_ARGS__)
@@ -2067,7 +2066,6 @@ struct CoreBase {
 #define VarNew(...) (CoreBase->_VarNew)(__VA_ARGS__)
 #define VarSet(...) (CoreBase->_VarSet)(__VA_ARGS__)
 #define VarGet(...) (CoreBase->_VarGet)(__VA_ARGS__)
-#define KeySet(...) (CoreBase->_KeySet)(__VA_ARGS__)
 #endif
 
 

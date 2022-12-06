@@ -1676,32 +1676,6 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
 /*********************************************************************************************************************
 
 -FUNCTION-
-SelfDestruct: Destroys the process and frees its resources.
-
-This function will immediately free all resources allocated by the process and then exit.  This is the cleanest way
-for a process to destroy itself when a normal exit procedure is not possible.
-
-This function will not return.
-
-*********************************************************************************************************************/
-
-extern "C" void CloseCore(void);
-
-void SelfDestruct(void)
-{
-   parasol::Log log(__FUNCTION__);
-   log.function("This process will self-destruct.");
-   CloseCore();
-   exit(0);
-
-//#ifdef __unix__
-//      kill(getpid(), SIGKILL);
-//#endif
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 SetOwner: Changes object ownership dynamically.
 Category: Objects
 
