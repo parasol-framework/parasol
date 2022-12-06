@@ -111,7 +111,6 @@ ERROR StrInsert(CSTRING Insert, STRING Buffer, LONG Size, LONG Offset, LONG Repl
 LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags);
 void StrUpper(STRING String);
 void StrLower(STRING String);
-void StrCapitalise(STRING String);
 LONG StrLineLength(CSTRING String);
 CSTRING StrNextLine(CSTRING String);
 ERROR StrReplace(CSTRING Src, CSTRING Keyword, CSTRING Replacement, STRING * Result, LONG Flags);

@@ -209,49 +209,6 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
 /*****************************************************************************
 
 -FUNCTION-
-StrCapitalise: Capitalises a string.
-
-This function will will capitalise a string so that every word starts with a capital letter.  All letters following the
-first capital of each word will be driven to lower-case characters.  Numbers and other non-alphabetic characters will
-not be affected by this function.  Here is an example:
-
-<pre>"every WOrd starts WITH a 2apital" = "Every Word Starts With A 2apital"</pre>
-
--INPUT-
-str String: Points to the string that is to be capitalised.
-
--END-
-
-*****************************************************************************/
-
-// BUGS: Needs to support capitalisation of European chars in UTF-8 space (umlauts etc)
-
-void StrCapitalise(STRING String)
-{
-  while (*String) {
-     while ((*String) and (*String <= 0x20)) String++; // Skip whitespace
-     if (!*String) return;
-
-     // Capitalise the first character
-
-     if ((*String >= 'a') and (*String <= 'z')) {
-        *String = *String - 'a' + 'A';
-     }
-
-     String++;
-
-     // Lower-case all following characters
-
-     while ((*String) and (*String > 0x20)) {
-        if ((*String >= 'A') and (*String <= 'Z')) *String = *String - 'A' + 'a';
-        String++;
-     }
-  }
-}
-
-/*****************************************************************************
-
--FUNCTION-
 StrClone: Clones string data.
 
 This function creates an exact duplicate of a string.  It analyses the length of the supplied String, allocates a
