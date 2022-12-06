@@ -1820,8 +1820,8 @@ struct CoreBase {
    void (*_UnlockSharedMutex)(APTR);
    void (*_VLogF)(int, const char *, const char *, va_list);
    LONG (*_StrSearch)(CSTRING, CSTRING, LONG);
-   void (*_StrUpper)(STRING);
-   void (*_StrLower)(STRING);
+   ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
+   ERROR (*_VarLock)(struct KeyStore *, LONG);
    ERROR (*_WakeProcess)(LONG);
    LONG (*_StrLineLength)(CSTRING);
    CSTRING (*_StrNextLine)(CSTRING);
@@ -1896,8 +1896,6 @@ struct CoreBase {
    ERROR (*_VarIterate)(struct KeyStore *, CSTRING, CSTRING *, APTR, LONG *);
    ERROR (*_NewLockedObject)(LARGE, LONG, APTR, OBJECTID *, CSTRING);
    ERROR (*_KeyIterate)(struct KeyStore *, ULONG, ULONG *, APTR, LONG *);
-   ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
-   ERROR (*_VarLock)(struct KeyStore *, LONG);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2006,8 +2004,8 @@ struct CoreBase {
 #define UnlockSharedMutex(...) (CoreBase->_UnlockSharedMutex)(__VA_ARGS__)
 #define VLogF(...) (CoreBase->_VLogF)(__VA_ARGS__)
 #define StrSearch(...) (CoreBase->_StrSearch)(__VA_ARGS__)
-#define StrUpper(...) (CoreBase->_StrUpper)(__VA_ARGS__)
-#define StrLower(...) (CoreBase->_StrLower)(__VA_ARGS__)
+#define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
+#define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
 #define WakeProcess(...) (CoreBase->_WakeProcess)(__VA_ARGS__)
 #define StrLineLength(...) (CoreBase->_StrLineLength)(__VA_ARGS__)
 #define StrNextLine(...) (CoreBase->_StrNextLine)(__VA_ARGS__)
@@ -2082,8 +2080,6 @@ struct CoreBase {
 #define VarIterate(...) (CoreBase->_VarIterate)(__VA_ARGS__)
 #define NewLockedObject(...) (CoreBase->_NewLockedObject)(__VA_ARGS__)
 #define KeyIterate(...) (CoreBase->_KeyIterate)(__VA_ARGS__)
-#define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
-#define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
 #endif
 
 

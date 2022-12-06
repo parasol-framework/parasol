@@ -633,31 +633,6 @@ LONG StrLineLength(CSTRING String)
 /*****************************************************************************
 
 -FUNCTION-
-StrLower: Changes a string so that all alpha characters are in lower-case.
-
-This function will alter a string so that all upper case characters are changed to lower-case.  Non upper-case
-characters are unaffected by this function.  Here is an example:
-
-<pre>"HeLLo world" = "hello world"</pre>
-
--INPUT-
-buf(str) String: Pointer to the string that you want to change to lower-case.
-
-*****************************************************************************/
-
-void StrLower(STRING String)
-{
-   if (!String) return;
-
-   while (*String) {
-      if ((*String >= 'A') and (*String <= 'Z')) *String += 0x20;
-      String++;
-   }
-}
-
-/*****************************************************************************
-
--FUNCTION-
 StrNextLine: Returns a pointer to the next line in a string buffer.
 
 This function scans a character buffer for a carriage return or line feed and returns a pointer to the following line.
@@ -1242,33 +1217,6 @@ found:
    }
 
    return glTranslateBuffer;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrUpper: Changes a string so that all alpha characters are in upper-case.
-
-This function will alter a String so that all upper-case characters are changed to lower-case.  Non lower-case
-characters are unaffected by this function.  Here is an example:
-
-<pre>"HeLLo world" = "HELLO WORD"</pre>
-
--INPUT-
-buf(str) String: Pointer to a string.
-
--END-
-
-*****************************************************************************/
-
-void StrUpper(STRING String)
-{
-   if (!String) return;
-
-   while (*String) {
-      if ((*String >= 'a') and (*String <= 'z')) *String -= 0x20;
-      String++;
-   }
 }
 
 //****************************************************************************
