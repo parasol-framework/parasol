@@ -70,7 +70,7 @@ byte) while copying, then it will stop automatically to prevent copying of junk 
 Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set
 the number of Chars or not.  For example, if you were to copy `123` into the middle of string `ABCDEFGHI` then the
 result would be `ABC123`. The `GHI` part of the string would be lost.  In situations such as this, functions such as
-~CharCopy(), ~StrReplace() or ~StrInsert() should be used instead.
+~CharCopy() or ~StrReplace() should be used instead.
 
 -INPUT-
 cstr Src:  Pointer to the source string.

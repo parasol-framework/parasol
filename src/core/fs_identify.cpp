@@ -49,7 +49,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
    // Determine the class type by examining the Path file name.  If the file extension does not tell us the class
    // that supports the data, we then load the first 256 bytes from the file and then compare file headers.
 
-   ERROR error  = ERR_Okay;
+   ERROR error = ERR_Okay;
    STRING res_path = NULL;
    STRING cmd = NULL;
    if (!Mode) Mode = "Open";
@@ -413,20 +413,16 @@ host_platform:
 
    if ((!cmd) and (!(Flags & (IDF_SECTION|IDF_IGNORE_HOST)))) { // Check if Windows supports the file type
       if (!ResolvePath(Path, RSF_APPROXIMATE, &res_path)) {
-         char buffer[300];
 
          if (!StrCompare("http:", res_path, 5, NULL)) { // HTTP needs special support
+            char buffer[300];
             if (winReadRootKey("http\\shell\\open\\command", NULL, buffer, sizeof(buffer))) {
-               i = StrSearch("%1", buffer, STR_MATCH_CASE);
-               if (i != -1) {
-                  StrInsert("[@file]", buffer, sizeof(buffer), i, 2);
-                  cmd = StrClone(buffer);
-               }
-               else {
-                  i = StrLength(buffer);
-                  StrCopy(" \"[@file]\"", buffer+i, sizeof(buffer)-i);
-                  cmd = StrClone(buffer);
-               }
+               std::string open(buffer);
+               auto param = open.find("%1");
+               if (param != std::string::npos) open.insert(param, "[@file]", 2);
+               else open += " \"[@file]\"";
+
+               cmd = StrClone(open.c_str());
             }
          }
          else {
@@ -434,67 +430,62 @@ host_platform:
             CSTRING ext = get_extension(res_path);
 
             if ((ext) and ((i = winReadRootKey(ext-1, NULL, key, sizeof(key))))) {
+               char buffer[300];
                StrCopy("\\Shell\\Open\\Command", key+i, sizeof(key)-i);
 
                if (winReadRootKey(key, NULL, buffer, sizeof(buffer))) {
-                  i = StrSearch("%1", buffer, STR_MATCH_CASE);
-                  if (i != -1) StrInsert("[@file]", buffer, sizeof(buffer), i, 2);
-                  else {
-                     i = StrLength(buffer);
-                     StrCopy(" \"[@file]\"", buffer+i, sizeof(buffer)-i);
-                  }
+                  std::string rootkey(buffer);
+                  auto param = rootkey.find("%1");
+                  if (param != std::string::npos) rootkey.replace(param, 2, "[@file]");
+                  else rootkey += " \"[@file]\"";
 
                   // Use of %systemroot% is common
 
-                  i = StrSearch("%SystemRoot%", buffer, 0);
-                  if (i != -1) {
-                     char sysroot[100];
-                     sysroot[0] = 0;
-                     if (!winReadKey("\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion", "SystemRoot", sysroot, sizeof(sysroot))) {
-                        if (!winReadKey("\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "SystemRoot", sysroot, sizeof(sysroot))) {
+                  auto sysroot = rootkey.find("%SystemRoot%");
+                  if (sysroot != std::string::npos) {
+                     char sr[100];
+                     sr[0] = 0;
+                     if (!winReadKey("\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion", "SystemRoot", sr, sizeof(sr))) {
+                        if (!winReadKey("\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "SystemRoot", sr, sizeof(sr))) {
                            // Failure
                         }
                      }
 
-                     if (sysroot[0]) StrInsert(sysroot, buffer, sizeof(buffer), i, 12);
+                     if (sr[0]) rootkey.replace(sysroot, 12, sr);
                   }
 
                   // Check if an absolute path was given.  If not, we need to resolve the .exe to its absolute path.
 
-                  if ((buffer[0]) and (buffer[1] IS ':')); // Path is absolute
+                  if ((rootkey.size() >= 2) and (rootkey[1] IS ':')); // Path is absolute
                   else {
                      STRING abs;
-                     LONG end, start;
-                     ERROR reserror;
-                     UBYTE save;
 
-                     if (*buffer IS '"') {
-                        start = 1;
-                        for (end=0; (buffer[end]) and (buffer[end] != '"'); end++);
+                     std::string path;
+                     if (rootkey[0] IS '"') {
+                        auto end = rootkey.find('"', 1);
+                        if (end IS std::string::npos) end = rootkey.size();
+                        path = rootkey.substr(1, end);
                      }
                      else {
-                        start = 0;
-                        for (end=0; buffer[end] > 0x20; end++);
+                        LONG end;
+                        for (end=0; rootkey[end] > 0x20; end++);
+                        path = rootkey.substr(0, end);
                      }
 
-                     save = buffer[end];
-                     buffer[end] = 0;
-                     reserror = ResolvePath(buffer+start, RSF_PATH, &abs);
-                     buffer[end] = save;
-
-                     if (!reserror) {
-                        StrInsert(abs, buffer, sizeof(buffer), start, end-start);
+                     if (!ResolvePath(path.c_str(), RSF_PATH, &abs)) {
+                        rootkey.insert(0, abs);
                         FreeResource(abs);
                      }
                   }
 
-                  cmd = StrClone(buffer);
+                  cmd = StrClone(rootkey.c_str());
                }
                else log.trace("Failed to read key %s", key);
             }
             else log.trace("Windows has no mapping for extension %s", ext);
 
             if (!cmd) {
+               char buffer[300];
                if (!winGetCommand(res_path, buffer, sizeof(buffer))) {
                   i = StrLength(buffer);
                   StrCopy(" \"[@file]\"", buffer+i, sizeof(buffer)-i);
