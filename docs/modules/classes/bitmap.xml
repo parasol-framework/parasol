@@ -211,7 +211,7 @@
       </input>
       <description>
 <p>The Decompress method is used to restore a compressed bitmap to its original state.  If the bitmap is not compressed, the method does nothing.</p>
-<p>By default the original compression data will be destroyed, however it can be retained by setting the RetainData argument to TRUE.  Retaining the data will allow it to be decompressed on consecutive occasions.  Because both the raw and compressed image data will be held in memory, the next call to <method>Compress</method> will remove the raw image data from memory while retaining the original compressed data without starting a re-compression process.</p>
+<p>The compressed data will be terminated unless <code>RetainData</code> is TRUE.  Retaining the data will allow the client to repeatedly restore the content of the most recent <method>Compress</method> call.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -231,26 +231,6 @@
         <error code="NothingDone">The content is already normalised.</error>
         <error code="InvalidDimension">The clipping region is invalid.</error>
         <error code="InvalidState">The Bitmap is not in the expected state (32-bit with an alpha channel).</error>
-      </result>
-    </method>
-
-    <method>
-      <name>DrawLine</name>
-      <comment>Draws a line to a bitmap.</comment>
-      <prototype>ERROR bmpDrawLine(OBJECTPTR Object, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Colour)</prototype>
-      <input>
-        <param type="LONG" name="X">Horizontal start coordinate.</param>
-        <param type="LONG" name="Y">Vertical start coordinate.</param>
-        <param type="LONG" name="XEnd">Horizontal end coordinate.</param>
-        <param type="LONG" name="YEnd">Vertical end coordinate.</param>
-        <param type="ULONG" name="Colour">The pixel colour to use for drawing the line.</param>
-      </input>
-      <description>
-<p>This method is a proxy for <function module="Display">DrawLine</function>.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 

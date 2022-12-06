@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Bitmap: Manages bitmap graphics and provides drawing functionality.
@@ -34,7 +34,7 @@ action to save the data in PNG format.  Raw data can also be processed through a
 actions.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 
@@ -562,13 +562,11 @@ static ERROR BITMAP_CopyArea(objBitmap *Self, struct bmpCopyArea *Args)
 -METHOD-
 Decompress: Decompresses a compressed bitmap.
 
-The Decompress method is used to restore a compressed bitmap to its original state.  If the bitmap is not
-compressed, the method does nothing.
+The Decompress method is used to restore a compressed bitmap to its original state.  If the bitmap is not compressed,
+the method does nothing.
 
-By default the original compression data will be destroyed, however it can be retained by setting the RetainData
-argument to TRUE.  Retaining the data will allow it to be decompressed on consecutive occasions.  Because both the raw
-and compressed image data will be held in memory, the next call to #Compress() will remove the raw image data from
-memory while retaining the original compressed data without starting a re-compression process.
+The compressed data will be terminated unless `RetainData` is TRUE.  Retaining the data will allow the client to repeatedly
+restore the content of the most recent #Compress() call.
 
 -INPUT-
 int RetainData: Retains the compression data if TRUE.
@@ -763,33 +761,6 @@ Draw: Clears a bitmap's image to its assigned background colour.
 static ERROR BITMAP_Draw(extBitmap *Self, APTR Void)
 {
    gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF_FILL);
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--METHOD-
-DrawLine: Draws a line to a bitmap.
-
-This method is a proxy for ~Display.DrawLine().
-
--INPUT-
-int X: Horizontal start coordinate.
-int Y: Vertical start coordinate.
-int XEnd:   Horizontal end coordinate.
-int YEnd:   Vertical end coordinate.
-uint Colour: The pixel colour to use for drawing the line.
-
--ERRORS-
-Okay:
-NullArgs:
-
-*****************************************************************************/
-
-static ERROR BITMAP_DrawLine(extBitmap *Self, struct bmpDrawLine *Args)
-{
-   if (Args) gfxDrawLine(Self, Args->X, Args->Y, Args->XEnd, Args->YEnd, Args->Colour);
-   else return ERR_NullArgs;
    return ERR_Okay;
 }
 

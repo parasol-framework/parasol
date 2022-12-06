@@ -47,11 +47,8 @@ static LONG scrUnsupported(void)
 #define FDEF static const FunctionField
 
 FDEF argsAccessPointer[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
-FDEF argsCompress[] = { { "Error", FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Level", FD_LONG }, { 0, 0 } };
 FDEF argsCopyArea[] = { { "Error", FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Dest", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
 FDEF argsCopySurface[] = { { "Error", FD_ERROR }, { "BitmapSurface:Surface", FD_PTR|FD_STRUCT }, { "Bitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
-FDEF argsDecompress[] = { { "Error", FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "RetainData", FD_LONG }, { 0, 0 } };
-FDEF argsDrawLine[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "XEnd", FD_LONG }, { "YEnd", FD_LONG }, { "Colour", FD_LONG }, { 0, 0 } };
 FDEF argsDrawPixel[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_LONG }, { 0, 0 } };
 FDEF argsDrawRGBPixel[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "RGB:RGB", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsDrawRectangle[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Colour", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
@@ -107,12 +104,9 @@ Function JumpTable[] = {
    { scrUnsupported, "ReadPixel", argsReadPixel },
    { scrUnsupported, "DrawRGBPixel", argsDrawRGBPixel },
    { scrUnsupported, "DrawPixel", argsDrawPixel },
-   { scrUnsupported, "DrawLine", argsDrawLine },
    { scrUnsupported, "DrawRectangle", argsDrawRectangle },
    { scrUnsupported, "FlipBitmap", argsFlipBitmap },
    { scrUnsupported, "SetClipRegion", argsSetClipRegion },
-   { scrUnsupported, "Compress", argsCompress },
-   { scrUnsupported, "Decompress", argsDecompress },
    { scrUnsupported, "SubscribeInput", argsSubscribeInput },
    { scrUnsupported, "UnsubscribeInput", argsUnsubscribeInput },
    { scrUnsupported, "GetInputEvent", argsGetInputEvent },
