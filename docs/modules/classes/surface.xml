@@ -648,12 +648,6 @@ the surface area first).</li>
     </field>
 
     <field>
-      <name>Region</name>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-    </field>
-
-    <field>
       <name>Right</name>
       <comment>Returns the right-most coordinate of a surface object (X + Width).</comment>
       <access read="G">Get</access>
