@@ -452,30 +452,6 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
   </function>
 
   <function>
-    <name>AssociateCmd</name>
-    <category>Files</category>
-    <comment>Links an executable command to a datatype.</comment>
-    <prototype>ERROR AssociateCmd(CSTRING Path, CSTRING Mode, LONG Flags, CSTRING Command)</prototype>
-    <input>
-      <param type="CSTRING" name="Path">Path to the file that will receive the association, or a reference to a class name.</param>
-      <param type="CSTRING" name="Mode">Action that the command is associated with, e.g. Open, Edit, View.</param>
-      <param type="LONG" name="Flags" lookup="ACF">Optional flags.</param>
-      <param type="CSTRING" name="Command">The command string to be linked to the file type.  If NULL, the existing association with that file type will be removed.</param>
-    </input>
-    <description>
-<p>AssociateCmd() is used to link executable commands to file datatypes.  By linking a program to a particular file type, that program can be launched when the user attempts to interact with matching files.</p>
-<p>The Path parameter must refer to a file for data analysis.  An attempt will be made to determine what class the file belongs to.  If this is successful, the Command will be linked to that class.  The Mode indicates the action that the Command will be associated with (choose Open, Edit, View or Print).  If the source file cannot be linked to a class, an attempt will be made to link the Command to the file extension if one is given in the Path.</p>
-<p>If the Path string starts with <code>CLASS:</code> followed by a valid class name, the Command will be linked to that class directly, with no attempt to perform a file analysis.</p>
-<p>If the Command parameter is NULL, the existing association for the determined file type will be removed.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>BroadcastEvent</name>
     <category>Events</category>
     <comment>Broadcast an event to all event listeners in the system.</comment>
@@ -1047,21 +1023,6 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id, &amp;count);
 <p>Note that if the object's pointer is already known, the quickest way to learn of its class is to read the ClassID field in the object header.</p>
     </description>
     <result type="CLASSID">Returns the base class ID of the object or NULL if failure.</result>
-  </function>
-
-  <function>
-    <name>GetDocView</name>
-    <category>Files</category>
-    <comment>Check if a path has a document template for viewing and return it.</comment>
-    <prototype>CSTRING GetDocView(CSTRING Path)</prototype>
-    <input>
-      <param type="CSTRING" name="Path">The path to analyse.</param>
-    </input>
-    <description>
-<p>This function checks if a document template has been assigned to a given file path.  If a template has been assigned to that path, the location of that template is returned.</p>
-<p>Templates can be assigned to file paths with the <function module="Core">SetDocView</function> function</p>
-    </description>
-    <result type="CSTRING">The location of the template is returned if a match is discovered for the path, otherwise NULL.</result>
   </function>
 
   <function>
@@ -2299,26 +2260,6 @@ FreeResource(memory); // Reference is no longer valid
 <p>By default, user, group and permission information for new files is inherited from the system defaults or from the file source in copy operations.  This behaviour can be overridden with new default values on a global basis (affects all threads).</p>
 <p>To revert behaviour to the default, set the User and/or Group values to -1 and the Permissions value to zero.</p>
     </description>
-  </function>
-
-  <function>
-    <name>SetDocView</name>
-    <category>Files</category>
-    <comment>Associates document display templates against certain file paths.</comment>
-    <prototype>ERROR SetDocView(CSTRING Path, CSTRING Document)</prototype>
-    <input>
-      <param type="CSTRING" name="Path">The path to associate with the document template - accepts wildcards.</param>
-      <param type="CSTRING" name="Document">The path to the document file that will be associated with the Path.</param>
-    </input>
-    <description>
-<p>Use SetDocView() to link document templates with file paths.  Document templates are used by the FileView feature to switch to document mode whenever a matching location is on display.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="Memory">General memory error.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
   </function>
 
   <function>
@@ -3810,10 +3751,6 @@ end
       <const name="Undo"/>
       <const name="Unlock"/>
       <const name="Write"/>
-    </constants>
-
-    <constants lookup="ACF" comment="AssociateCmd() values">
-      <const name="ALL_USERS">Apply the command link to all users for that file type.  This will cause an error if sufficient privileges are not available to the logged-in user.</const>
     </constants>
 
     <constants lookup="ALF">

@@ -2446,13 +2446,6 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
       return ERR_NewObject;
    }
 
-   // FileView document templates
-
-   if (!AnalysePath("templates:fileview/root.rpl", NULL)) SetDocView(":", "templates:fileview/root.rpl");
-   if (!AnalysePath("templates:fileview/fonts.rpl", NULL)) SetDocView("fonts:", "templates:fileview/fonts.rpl");
-   if (!AnalysePath("templates:fileview/pictures.rpl", NULL)) SetDocView("pictures:", "templates:fileview/pictures.rpl");
-   if (!AnalysePath("templates:fileview/icons.rpl", NULL)) SetDocView("icons:", "templates:fileview/icons.rpl");
-
    // Create the 'archive' volume (non-essential)
 
    create_archive_volume();
