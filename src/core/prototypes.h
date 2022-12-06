@@ -109,8 +109,8 @@ ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds);
 void UnlockSharedMutex(APTR Mutex);
 void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args);
 LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags);
-void StrUpper(STRING String);
-void StrLower(STRING String);
+ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR * Data, LONG * DataSize);
+ERROR VarLock(struct KeyStore * Store, LONG Timeout);
 ERROR WakeProcess(LONG ProcessID);
 LONG StrLineLength(CSTRING String);
 CSTRING StrNextLine(CSTRING String);
@@ -185,8 +185,6 @@ ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size);
 ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * Data, LONG * Size);
 ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR * Object, OBJECTID * ID, CSTRING Name);
 ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data, LONG * Size);
-ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR * Data, LONG * DataSize);
-ERROR VarLock(struct KeyStore * Store, LONG Timeout);
 
 #ifdef  __cplusplus
 }

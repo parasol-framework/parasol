@@ -1632,8 +1632,13 @@ static ERROR SET_Device(extAudio *Self, CSTRING Value)
 {
    if ((!Value) or (!*Value)) Value = "Default";
 
-   StrCopy(Value, Self->prvDevice, sizeof(Self->prvDevice));
-   StrLower(Self->prvDevice);
+   size_t i;
+   for (i=0; Value[i] and i < sizeof(Self->prvDevice)-1; i++) {
+      if ((Value[i] >= 'A') and (Value[i] <= 'Z')) Self->prvDevice[i] = Value[i] - 'A' + 'a';
+      else Self->prvDevice[i] = Value[i];
+   }
+   Self->prvDevice[i] = 0;
+
    return ERR_Okay;
 }
 

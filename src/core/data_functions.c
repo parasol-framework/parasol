@@ -132,7 +132,6 @@ FDEF argsStrFormatDate[] = { { "Error", FD_LONG|FD_ERROR }, { "Buffer", FD_BUFFE
 FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
 FDEF argsStrLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrLineLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrLower[] = { { "Void", FD_VOID }, { "String", FD_BUFFER|FD_STR }, { 0, 0 } };
 FDEF argsStrNextLine[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrReadDate[] = { { "Error", FD_LONG|FD_ERROR }, { "String", FD_STR }, { "DateTime:DateTime", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
@@ -146,7 +145,6 @@ FDEF argsStrToHex[] = { { "Result", FD_LARGE }, { "String", FD_STR }, { 0, 0 } }
 FDEF argsStrToInt[] = { { "Result", FD_LARGE }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrTranslateRefresh[] = { { "Result", FD_LONG }, { 0, 0 } };
 FDEF argsStrTranslateText[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrUpper[] = { { "Void", FD_VOID }, { "String", FD_BUFFER|FD_STR }, { 0, 0 } };
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsSubscribeActionTags[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Actions", FD_TAGS }, { 0, 0 } };
 FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE }, { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_PTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
@@ -294,8 +292,8 @@ const struct Function glFunctions[] = {
    { (APTR)UnlockSharedMutex, "UnlockSharedMutex", argsUnlockSharedMutex },
    { (APTR)VLogF, "VLogF", argsVLogF },
    { (APTR)StrSearch, "StrSearch", argsStrSearch },
-   { (APTR)StrUpper, "StrUpper", argsStrUpper },
-   { (APTR)StrLower, "StrLower", argsStrLower },
+   { (APTR)VarSetSized, "VarSetSized", argsVarSetSized },
+   { (APTR)VarLock, "VarLock", argsVarLock },
    { (APTR)WakeProcess, "WakeProcess", argsWakeProcess },
    { (APTR)StrLineLength, "StrLineLength", argsStrLineLength },
    { (APTR)StrNextLine, "StrNextLine", argsStrNextLine },
@@ -370,8 +368,6 @@ const struct Function glFunctions[] = {
    { (APTR)VarIterate, "VarIterate", argsVarIterate },
    { (APTR)NewLockedObject, "NewLockedObject", argsNewLockedObject },
    { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
-   { (APTR)VarSetSized, "VarSetSized", argsVarSetSized },
-   { (APTR)VarLock, "VarLock", argsVarLock },
    { NULL, NULL, NULL }
 };
 

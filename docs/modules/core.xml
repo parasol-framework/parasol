@@ -2798,20 +2798,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrLower</name>
-    <category>Strings</category>
-    <comment>Changes a string so that all alpha characters are in lower-case.</comment>
-    <prototype>void StrLower(STRING String)</prototype>
-    <input>
-      <param type="STRING" name="String">Pointer to the string that you want to change to lower-case.</param>
-    </input>
-    <description>
-<p>This function will alter a string so that all upper case characters are changed to lower-case.  Non upper-case characters are unaffected by this function.  Here is an example:</p>
-<pre>"HeLLo world" = "hello world"</pre>
-    </description>
-  </function>
-
-  <function>
     <name>StrNextLine</name>
     <category>Strings</category>
     <comment>Returns a pointer to the next line in a string buffer.</comment>
@@ -3076,20 +3062,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>If a translation occurs, the resulting string pointer is temporary.  You will need to store the result in a local buffer, or risk the string address becoming invalid on the next call to StrTranslateText().</p>
     </description>
     <result type="CSTRING">If the string was able to be translated, a translation is returned.  Otherwise the original String pointer is returned.</result>
-  </function>
-
-  <function>
-    <name>StrUpper</name>
-    <category>Strings</category>
-    <comment>Changes a string so that all alpha characters are in upper-case.</comment>
-    <prototype>void StrUpper(STRING String)</prototype>
-    <input>
-      <param type="STRING" name="String">Pointer to a string.</param>
-    </input>
-    <description>
-<p>This function will alter a String so that all upper-case characters are changed to lower-case.  Non lower-case characters are unaffected by this function.  Here is an example:</p>
-<pre>"HeLLo world" = "HELLO WORD"</pre>
-    </description>
   </function>
 
   <function>
