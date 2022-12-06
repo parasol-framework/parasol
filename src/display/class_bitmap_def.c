@@ -42,7 +42,6 @@ FDEF maFlip[] = { { "Orientation", FD_LONG }, { 0, 0 } };
 FDEF maDrawRectangle[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maSetClipRegion[] = { { "Number", FD_LONG }, { "Left", FD_LONG }, { "Top", FD_LONG }, { "Right", FD_LONG }, { "Bottom", FD_LONG }, { "Terminate", FD_LONG }, { 0, 0 } };
 FDEF maGetColour[] = { { "Red", FD_LONG }, { "Green", FD_LONG }, { "Blue", FD_LONG }, { "Alpha", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED|FD_RESULT }, { 0, 0 } };
-FDEF maDrawLine[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "XEnd", FD_LONG }, { "YEnd", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 
 static const struct MethodArray clBitmapMethods[] = {
    { -1, (APTR)BITMAP_CopyArea, "CopyArea", maCopyArea, sizeof(struct bmpCopyArea) },
@@ -52,7 +51,6 @@ static const struct MethodArray clBitmapMethods[] = {
    { -6, (APTR)BITMAP_DrawRectangle, "DrawRectangle", maDrawRectangle, sizeof(struct bmpDrawRectangle) },
    { -7, (APTR)BITMAP_SetClipRegion, "SetClipRegion", maSetClipRegion, sizeof(struct bmpSetClipRegion) },
    { -8, (APTR)BITMAP_GetColour, "GetColour", maGetColour, sizeof(struct bmpGetColour) },
-   { -9, (APTR)BITMAP_DrawLine, "DrawLine", maDrawLine, sizeof(struct bmpDrawLine) },
    { -10, (APTR)BITMAP_Premultiply, "Premultiply", 0, 0 },
    { -11, (APTR)BITMAP_Demultiply, "Demultiply", 0, 0 },
    { -12, (APTR)BITMAP_ConvertToLinear, "ConvertToLinear", 0, 0 },

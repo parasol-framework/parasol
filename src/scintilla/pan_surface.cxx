@@ -190,7 +190,7 @@ void SurfacePan::LineTo(int x, int y)
 
       //DBGDRAW("panLineTo:","%dx%d - %dx%d", penx, peny, x, y);
 
-      gfxDrawLine(bitmap, penx, peny, x, y, pencol);
+      gfxDrawRectangle(bitmap, penx, peny, x-penx, y-peny, pencol, TRUE);
       penx = x;
       peny = y;
    }
@@ -218,7 +218,7 @@ void SurfacePan::Polygon(Scintilla::Point *pts, int npts, Scintilla::ColourAlloc
 
       LONG i;
       for (i=0; i<npts-1; ++i) {
-         gfxDrawLine(bitmap, pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, col);
+         //gfxDrawLine(bitmap, pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, col);
       }
    }
 }
