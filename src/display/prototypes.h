@@ -7,12 +7,9 @@ extern "C" {
 struct SurfaceControl * gfxAccessList(LONG Flags);
 objPointer * gfxAccessPointer();
 ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child);
-ERROR gfxCompress(extBitmap * Bitmap, LONG Level);
 ERROR gfxCopyArea(extBitmap * Bitmap, extBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
 ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, extBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
 ERROR gfxCopySurface(OBJECTID Surface, extBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-ERROR gfxDecompress(extBitmap * Bitmap, LONG RetainData);
-void gfxDrawLine(extBitmap * Bitmap, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Colour);
 void gfxDrawPixel(extBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
 void gfxDrawRGBPixel(extBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
 void gfxDrawRectangle(extBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags);

@@ -1000,10 +1000,6 @@ struct Edges {
 #define LOC_VOLUME 2
 #define LOC_FILE 3
 
-// AssociateCmd() values
-
-#define ACF_ALL_USERS 0x00000001
-
 // IdentifyFile() values
 
 #define IDF_SECTION 0x00000001
@@ -1761,7 +1757,7 @@ struct CoreBase {
    ERROR (*_GetMessage)(MEMORYID, LONG, LONG, APTR, LONG);
    MEMORYID (*_ReleaseMemory)(APTR);
    CLASSID (*_ResolveClassName)(CSTRING);
-   void (*_SelfDestruct)(void);
+   ERROR (*_KeySet)(struct KeyStore *, ULONG, const void *, LONG);
    ERROR (*_SendMessage)(MEMORYID, LONG, LONG, APTR, LONG);
    ERROR (*_SetOwner)(OBJECTPTR, OBJECTPTR);
    OBJECTPTR (*_SetContext)(OBJECTPTR);
@@ -1792,7 +1788,7 @@ struct CoreBase {
    ERROR (*_ClearMemory)(APTR, LONG);
    ERROR (*_SubscribeActionTags)(OBJECTPTR, ...);
    void (*_PrintDiagnosis)(LONG, LONG);
-   ERROR (*_AssociateCmd)(CSTRING, CSTRING, LONG, CSTRING);
+   ERROR (*_NewLockedObject)(LARGE, LONG, APTR, OBJECTID *, CSTRING);
    ERROR (*_UpdateMessage)(APTR, LONG, LONG, APTR, LONG);
    ERROR (*_AddMsgHandler)(APTR, LONG, FUNCTION *, struct MsgHandler **);
    ERROR (*_FindPrivateObject)(CSTRING, APTR);
@@ -1825,7 +1821,7 @@ struct CoreBase {
    ERROR (*_WakeProcess)(LONG);
    LONG (*_StrLineLength)(CSTRING);
    CSTRING (*_StrNextLine)(CSTRING);
-   ERROR (*_StrReplace)(CSTRING, CSTRING, CSTRING, STRING *, LONG);
+   ERROR (*_KeyIterate)(struct KeyStore *, ULONG, ULONG *, APTR, LONG *);
    DOUBLE (*_StrToFloat)(CSTRING);
    LONG (*_StrCopy)(CSTRING, STRING, LONG);
    STRING (*_StrClone)(CSTRING);
@@ -1865,8 +1861,8 @@ struct CoreBase {
    ERROR (*_DeleteVolume)(CSTRING);
    ERROR (*_VirtualVolume)(CSTRING, ...);
    ERROR (*_CopyFile)(CSTRING, CSTRING, FUNCTION *);
-   ERROR (*_SetDocView)(CSTRING, CSTRING);
-   CSTRING (*_GetDocView)(CSTRING);
+   ERROR (*_KeyGet)(struct KeyStore *, ULONG, APTR, LONG *);
+   ERROR (*_VarIterate)(struct KeyStore *, CSTRING, CSTRING *, APTR, LONG *);
    ERROR (*_DeleteFile)(CSTRING, FUNCTION *);
    ERROR (*_WaitForObjects)(LONG, LONG, struct ObjectSignal *);
    ERROR (*_SaveObjectToFile)(OBJECTPTR, CSTRING, LONG);
@@ -1891,11 +1887,6 @@ struct CoreBase {
    struct KeyStore * (*_VarNew)(LONG, LONG);
    APTR (*_VarSet)(struct KeyStore *, CSTRING, APTR, LONG);
    ERROR (*_VarGet)(struct KeyStore *, CSTRING, APTR, LONG *);
-   ERROR (*_KeySet)(struct KeyStore *, ULONG, const void *, LONG);
-   ERROR (*_KeyGet)(struct KeyStore *, ULONG, APTR, LONG *);
-   ERROR (*_VarIterate)(struct KeyStore *, CSTRING, CSTRING *, APTR, LONG *);
-   ERROR (*_NewLockedObject)(LARGE, LONG, APTR, OBJECTID *, CSTRING);
-   ERROR (*_KeyIterate)(struct KeyStore *, ULONG, ULONG *, APTR, LONG *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1945,7 +1936,7 @@ struct CoreBase {
 #define GetMessage(...) (CoreBase->_GetMessage)(__VA_ARGS__)
 #define ReleaseMemory(...) (CoreBase->_ReleaseMemory)(__VA_ARGS__)
 #define ResolveClassName(...) (CoreBase->_ResolveClassName)(__VA_ARGS__)
-#define SelfDestruct(...) (CoreBase->_SelfDestruct)(__VA_ARGS__)
+#define KeySet(...) (CoreBase->_KeySet)(__VA_ARGS__)
 #define SendMessage(...) (CoreBase->_SendMessage)(__VA_ARGS__)
 #define SetOwner(...) (CoreBase->_SetOwner)(__VA_ARGS__)
 #define SetContext(...) (CoreBase->_SetContext)(__VA_ARGS__)
@@ -1976,7 +1967,7 @@ struct CoreBase {
 #define ClearMemory(...) (CoreBase->_ClearMemory)(__VA_ARGS__)
 #define SubscribeActionTags(...) (CoreBase->_SubscribeActionTags)(__VA_ARGS__)
 #define PrintDiagnosis(...) (CoreBase->_PrintDiagnosis)(__VA_ARGS__)
-#define AssociateCmd(...) (CoreBase->_AssociateCmd)(__VA_ARGS__)
+#define NewLockedObject(...) (CoreBase->_NewLockedObject)(__VA_ARGS__)
 #define UpdateMessage(...) (CoreBase->_UpdateMessage)(__VA_ARGS__)
 #define AddMsgHandler(...) (CoreBase->_AddMsgHandler)(__VA_ARGS__)
 #define FindPrivateObject(...) (CoreBase->_FindPrivateObject)(__VA_ARGS__)
@@ -2009,7 +2000,7 @@ struct CoreBase {
 #define WakeProcess(...) (CoreBase->_WakeProcess)(__VA_ARGS__)
 #define StrLineLength(...) (CoreBase->_StrLineLength)(__VA_ARGS__)
 #define StrNextLine(...) (CoreBase->_StrNextLine)(__VA_ARGS__)
-#define StrReplace(...) (CoreBase->_StrReplace)(__VA_ARGS__)
+#define KeyIterate(...) (CoreBase->_KeyIterate)(__VA_ARGS__)
 #define StrToFloat(...) (CoreBase->_StrToFloat)(__VA_ARGS__)
 #define StrCopy(...) (CoreBase->_StrCopy)(__VA_ARGS__)
 #define StrClone(...) (CoreBase->_StrClone)(__VA_ARGS__)
@@ -2049,8 +2040,8 @@ struct CoreBase {
 #define DeleteVolume(...) (CoreBase->_DeleteVolume)(__VA_ARGS__)
 #define VirtualVolume(...) (CoreBase->_VirtualVolume)(__VA_ARGS__)
 #define CopyFile(...) (CoreBase->_CopyFile)(__VA_ARGS__)
-#define SetDocView(...) (CoreBase->_SetDocView)(__VA_ARGS__)
-#define GetDocView(...) (CoreBase->_GetDocView)(__VA_ARGS__)
+#define KeyGet(...) (CoreBase->_KeyGet)(__VA_ARGS__)
+#define VarIterate(...) (CoreBase->_VarIterate)(__VA_ARGS__)
 #define DeleteFile(...) (CoreBase->_DeleteFile)(__VA_ARGS__)
 #define WaitForObjects(...) (CoreBase->_WaitForObjects)(__VA_ARGS__)
 #define SaveObjectToFile(...) (CoreBase->_SaveObjectToFile)(__VA_ARGS__)
@@ -2075,11 +2066,6 @@ struct CoreBase {
 #define VarNew(...) (CoreBase->_VarNew)(__VA_ARGS__)
 #define VarSet(...) (CoreBase->_VarSet)(__VA_ARGS__)
 #define VarGet(...) (CoreBase->_VarGet)(__VA_ARGS__)
-#define KeySet(...) (CoreBase->_KeySet)(__VA_ARGS__)
-#define KeyGet(...) (CoreBase->_KeyGet)(__VA_ARGS__)
-#define VarIterate(...) (CoreBase->_VarIterate)(__VA_ARGS__)
-#define NewLockedObject(...) (CoreBase->_NewLockedObject)(__VA_ARGS__)
-#define KeyIterate(...) (CoreBase->_KeyIterate)(__VA_ARGS__)
 #endif
 
 

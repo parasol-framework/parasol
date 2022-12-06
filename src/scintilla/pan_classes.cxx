@@ -310,7 +310,7 @@ void Scintilla::Platform::Assert(const char *c, const char *file, int line)
 {
    parasol::Log log("Assert");
    log.warning("%s, File %s, Line %d", c, file, line);
-   SelfDestruct();
+   exit(0);
 }
 
 int Scintilla::Platform::Clamp(int val, int minVal, int maxVal)

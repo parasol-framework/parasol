@@ -136,10 +136,6 @@
       <const name="Write"/>
     </constants>
 
-    <constants lookup="ACF" comment="AssociateCmd() values">
-      <const name="ALL_USERS">Apply the command link to all users for that file type.  This will cause an error if sufficient privileges are not available to the logged-in user.</const>
-    </constants>
-
     <constants lookup="ALF">
       <const name="RECURSIVE">Set if support for recursive locking within the same thread is required.</const>
       <const name="SHARED">The lock will be shared between foreign processes.</const>

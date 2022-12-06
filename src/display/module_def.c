@@ -7,12 +7,9 @@
 FDEF argsAccessList[] = { { "SurfaceControl", FD_PTR|FD_STRUCT }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsAccessPointer[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsCheckIfChild[] = { { "Error", FD_LONG|FD_ERROR }, { "Parent", FD_OBJECTID }, { "Child", FD_OBJECTID }, { 0, 0 } };
-FDEF argsCompress[] = { { "Error", FD_LONG|FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Level", FD_LONG }, { 0, 0 } };
 FDEF argsCopyArea[] = { { "Error", FD_LONG|FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Dest", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
 FDEF argsCopyRawBitmap[] = { { "Error", FD_LONG|FD_ERROR }, { "BitmapSurface:Surface", FD_PTR|FD_STRUCT }, { "Bitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
 FDEF argsCopySurface[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { "Bitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
-FDEF argsDecompress[] = { { "Error", FD_LONG|FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "RetainData", FD_LONG }, { 0, 0 } };
-FDEF argsDrawLine[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "XEnd", FD_LONG }, { "YEnd", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsDrawPixel[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsDrawRGBPixel[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "RGB8:RGB", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsDrawRectangle[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { 0, 0 } };
@@ -58,12 +55,9 @@ const struct Function glFunctions[] = {
    { (APTR)gfxAccessList, "AccessList", argsAccessList },
    { (APTR)gfxAccessPointer, "AccessPointer", argsAccessPointer },
    { (APTR)gfxCheckIfChild, "CheckIfChild", argsCheckIfChild },
-   { (APTR)gfxCompress, "Compress", argsCompress },
    { (APTR)gfxCopyArea, "CopyArea", argsCopyArea },
    { (APTR)gfxCopyRawBitmap, "CopyRawBitmap", argsCopyRawBitmap },
    { (APTR)gfxCopySurface, "CopySurface", argsCopySurface },
-   { (APTR)gfxDecompress, "Decompress", argsDecompress },
-   { (APTR)gfxDrawLine, "DrawLine", argsDrawLine },
    { (APTR)gfxDrawPixel, "DrawPixel", argsDrawPixel },
    { (APTR)gfxDrawRGBPixel, "DrawRGBPixel", argsDrawRGBPixel },
    { (APTR)gfxDrawRectangle, "DrawRectangle", argsDrawRectangle },

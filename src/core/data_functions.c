@@ -20,7 +20,6 @@ FDEF argsAllocMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, {
 FDEF argsAllocSharedMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Mutex", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsAllocateID[] = { { "Result", FD_LONG }, { "Type", FD_LONG }, { 0, 0 } };
 FDEF argsAnalysePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Type", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsAssociateCmd[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Mode", FD_STR }, { "Flags", FD_LONG }, { "Command", FD_STR }, { 0, 0 } };
 FDEF argsBroadcastEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_PTR }, { "EventSize", FD_LONG }, { 0, 0 } };
 FDEF argsCharCopy[] = { { "Result", FD_LONG }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Length", FD_LONG }, { 0, 0 } };
 FDEF argsCheckAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
@@ -50,7 +49,6 @@ FDEF argsFuncError[] = { { "Error", FD_LONG|FD_ERROR }, { "Header", FD_STR }, { 
 FDEF argsGenCRC32[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "CRC", FD_LONG|FD_UNSIGNED }, { "Data", FD_PTR }, { "Length", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsGetActionMsg[] = { { "Message", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsGetClassID[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "Object", FD_OBJECTID }, { 0, 0 } };
-FDEF argsGetDocView[] = { { "Result", FD_STR }, { "Path", FD_STR }, { 0, 0 } };
 FDEF argsGetErrorMsg[] = { { "Result", FD_STR }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsGetEventID[] = { { "Result", FD_LARGE }, { "Group", FD_LONG }, { "SubGroup", FD_STR }, { "Event", FD_STR }, { 0, 0 } };
 FDEF argsGetFeedList[] = { { "Result", FD_LONG }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
@@ -105,12 +103,10 @@ FDEF argsSaveImageToFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJ
 FDEF argsSaveObjectToFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Path", FD_STR }, { "Permissions", FD_LONG }, { 0, 0 } };
 FDEF argsScanDir[] = { { "Error", FD_LONG|FD_ERROR }, { "DirInfo:Info", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsScanMessages[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_PTR }, { "Index", FD_LONG|FD_RESULT }, { "Type", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsSelfDestruct[] = { { "Void", FD_VOID }, { 0, 0 } };
 FDEF argsSendMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_LONG }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsSetArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Array", FD_PTR }, { "Elements", FD_LONG }, { 0, 0 } };
 FDEF argsSetContext[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsSetDefaultPermissions[] = { { "Void", FD_VOID }, { "User", FD_LONG }, { "Group", FD_LONG }, { "Permissions", FD_LONG }, { 0, 0 } };
-FDEF argsSetDocView[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Document", FD_STR }, { 0, 0 } };
 FDEF argsSetField[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Value", FD_VARTAGS }, { 0, 0 } };
 FDEF argsSetFieldEval[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 FDEF argsSetFields[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
@@ -135,7 +131,6 @@ FDEF argsStrLineLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0
 FDEF argsStrNextLine[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrReadDate[] = { { "Error", FD_LONG|FD_ERROR }, { "String", FD_STR }, { "DateTime:DateTime", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
-FDEF argsStrReplace[] = { { "Error", FD_LONG|FD_ERROR }, { "Src", FD_STR }, { "Keyword", FD_STR }, { "Replacement", FD_STR }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSearch[] = { { "Result", FD_LONG }, { "Keyword", FD_STR }, { "String", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSort[] = { { "Error", FD_LONG|FD_ERROR }, { "List", FD_ARRAY|FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSortCompare[] = { { "Result", FD_LONG }, { "String1", FD_STR }, { "String2", FD_STR }, { 0, 0 } };
@@ -233,7 +228,7 @@ const struct Function glFunctions[] = {
    { (APTR)GetMessage, "GetMessage", argsGetMessage },
    { (APTR)ReleaseMemory, "ReleaseMemory", argsReleaseMemory },
    { (APTR)ResolveClassName, "ResolveClassName", argsResolveClassName },
-   { (APTR)SelfDestruct, "SelfDestruct", argsSelfDestruct },
+   { (APTR)KeySet, "KeySet", argsKeySet },
    { (APTR)SendMessage, "SendMessage", argsSendMessage },
    { (APTR)SetOwner, "SetOwner", argsSetOwner },
    { (APTR)SetContext, "SetContext", argsSetContext },
@@ -264,7 +259,7 @@ const struct Function glFunctions[] = {
    { (APTR)ClearMemory, "ClearMemory", argsClearMemory },
    { (APTR)SubscribeActionTags, "SubscribeActionTags", argsSubscribeActionTags },
    { (APTR)PrintDiagnosis, "PrintDiagnosis", argsPrintDiagnosis },
-   { (APTR)AssociateCmd, "AssociateCmd", argsAssociateCmd },
+   { (APTR)NewLockedObject, "NewLockedObject", argsNewLockedObject },
    { (APTR)UpdateMessage, "UpdateMessage", argsUpdateMessage },
    { (APTR)AddMsgHandler, "AddMsgHandler", argsAddMsgHandler },
    { (APTR)FindPrivateObject, "FindPrivateObject", argsFindPrivateObject },
@@ -297,7 +292,7 @@ const struct Function glFunctions[] = {
    { (APTR)WakeProcess, "WakeProcess", argsWakeProcess },
    { (APTR)StrLineLength, "StrLineLength", argsStrLineLength },
    { (APTR)StrNextLine, "StrNextLine", argsStrNextLine },
-   { (APTR)StrReplace, "StrReplace", argsStrReplace },
+   { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { (APTR)StrToFloat, "StrToFloat", argsStrToFloat },
    { (APTR)StrCopy, "StrCopy", argsStrCopy },
    { (APTR)StrClone, "StrClone", argsStrClone },
@@ -337,8 +332,8 @@ const struct Function glFunctions[] = {
    { (APTR)DeleteVolume, "DeleteVolume", argsDeleteVolume },
    { (APTR)VirtualVolume, "VirtualVolume", argsVirtualVolume },
    { (APTR)CopyFile, "CopyFile", argsCopyFile },
-   { (APTR)SetDocView, "SetDocView", argsSetDocView },
-   { (APTR)GetDocView, "GetDocView", argsGetDocView },
+   { (APTR)KeyGet, "KeyGet", argsKeyGet },
+   { (APTR)VarIterate, "VarIterate", argsVarIterate },
    { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
    { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { (APTR)SaveObjectToFile, "SaveObjectToFile", argsSaveObjectToFile },
@@ -363,11 +358,6 @@ const struct Function glFunctions[] = {
    { (APTR)VarNew, "VarNew", argsVarNew },
    { (APTR)VarSet, "VarSet", argsVarSet },
    { (APTR)VarGet, "VarGet", argsVarGet },
-   { (APTR)KeySet, "KeySet", argsKeySet },
-   { (APTR)KeyGet, "KeyGet", argsKeyGet },
-   { (APTR)VarIterate, "VarIterate", argsVarIterate },
-   { (APTR)NewLockedObject, "NewLockedObject", argsNewLockedObject },
-   { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { NULL, NULL, NULL }
 };
 
