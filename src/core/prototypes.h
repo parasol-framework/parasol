@@ -107,8 +107,6 @@ ERROR AllocSharedMutex(CSTRING Name, APTR * Mutex);
 void FreeSharedMutex(APTR Mutex);
 ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds);
 void UnlockSharedMutex(APTR Mutex);
-LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes);
-LONG StrExpand(STRING String, LONG Offset, LONG TotalChars);
 ERROR StrInsert(CSTRING Insert, STRING Buffer, LONG Size, LONG Offset, LONG ReplaceChars);
 LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags);
 void StrUpper(STRING String);

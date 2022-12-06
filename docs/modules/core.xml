@@ -1037,7 +1037,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id, &amp;count);
   <function>
     <name>GetClassID</name>
     <category>Objects</category>
-    <comment>Returns the class ID of an object.</comment>
+    <comment>Returns the class ID of an ID-referenced object.</comment>
     <prototype>CLASSID GetClassID(OBJECTID Object)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The object to be examined.</param>
@@ -2251,7 +2251,7 @@ SetArray(Object, FID_Table|TLONG, array, 100);
   <function>
     <name>SetContext</name>
     <category>Objects</category>
-    <comment>Assign the ownership of new resources to an object.</comment>
+    <comment>Alters the nominated owner of newly created objects.</comment>
     <prototype>OBJECTPTR SetContext(OBJECTPTR Object)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object that will take on the new context.  If NULL, no change to the context will be made.</param>
@@ -2275,12 +2275,12 @@ prev_context = SetContext(display);
    AllocMemory(1000, MEM_DATA, &amp;memory, NULL);
 
 SetContext(prev_context);
-acFree(display);
-acFree(bitmap);
-FreeResource(memory);
+acFree(display); // The bitmap and memory are terminated here
+acFree(bitmap); // Reference is no longer valid
+FreeResource(memory); // Reference is no longer valid
 </pre>
-<p>Freeing the bitmap and memory block after the display would be invalid.  They can however be removed before the display is terminated, if necessary.</p>
-<p>SetContext() is intended for use by modules and classes.  Do not use it unless conditions necessitate its use.  The Core will automatically set the correct context when calling any action or method of a class, as do the field management functions.</p>
+<p>As the bitmap and memory block would have been freed as members of the display, their references are invalid when manually terminated.</p>
+<p>SetContext() is intended for use by modules and classes.  Do not use it unless conditions necessitate its use.  The Core automatically manages the context when calling class actions, methods and interactive fields.</p>
     </description>
     <result type="OBJECTPTR">Returns a pointer to the previous context.  Because contexts nest, the client must call SetContext() a second time with this pointer in order to keep the process stable.</result>
   </function>
@@ -2704,22 +2704,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrExpand</name>
-    <category>Strings</category>
-    <comment>Expands the size of a string by inserting spaces.</comment>
-    <prototype>LONG StrExpand(STRING String, LONG Offset, LONG TotalChars)</prototype>
-    <input>
-      <param type="STRING" name="String">The string that you want to expand.</param>
-      <param type="LONG" name="Offset">The byte position that you want to start expanding from.  Give consideration to UTF-8 formatting.</param>
-      <param type="LONG" name="TotalChars">The total number of spaces that you want to insert.</param>
-    </input>
-    <description>
-<p>This function will expand a string by inserting spaces into a specified position.  The String that you are expanding must be placed in a memory area large enough to accept the increased size, or you will almost certainly corrupt other memory areas.</p>
-    </description>
-    <result type="LONG">Returns the new length of the expanded string, not including the null byte.</result>
-  </function>
-
-  <function>
     <name>StrFormat</name>
     <category>Strings</category>
     <comment>Formats a string using printf() style arguments.</comment>
@@ -2975,24 +2959,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>This function allows you to search for a particular Keyword or phrase inside a String.  You may search on a case sensitive or case insensitive basis.</p>
     </description>
     <result type="LONG">Returns the byte position of the first occurrence of the Keyword within the String (possible values start from position 0).  If the Keyword could not be found, this function returns a value of -1.</result>
-  </function>
-
-  <function>
-    <name>StrShrink</name>
-    <category>Strings</category>
-    <comment>Shrinks strings by destroying data.</comment>
-    <prototype>LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)</prototype>
-    <input>
-      <param type="STRING" name="String">Pointer to the string that will be modified.</param>
-      <param type="LONG" name="Offset">The byte position that you want to start shrinking the string from.  The position must be shorter than the full length of the string.</param>
-      <param type="LONG" name="TotalBytes">The total number of bytes to eliminate.</param>
-    </input>
-    <description>
-<p>This function will shrink a string by removing a sequence of characters and rearranging the remaining data. For example, <code>StrShrink("Hello World", 4, 5)</code> results in <code>Helrld</code> by deleting the characters <code>lo Wo</code>.</p>
-<p>This function modifies the source string in-place, so no memory will be allocated.  The String will be null terminated and its new length will be returned.</p>
-<p>Please note that this function operates on byte positions and is not in compliance with UTF-8 character sequences.</p>
-    </description>
-    <result type="LONG">Returns the new length of the shrunken string, not including the null byte.</result>
   </function>
 
   <function>

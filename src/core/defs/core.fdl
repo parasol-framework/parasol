@@ -1051,8 +1051,6 @@ struct ScriptArg { // For use with scExec
     "FreeSharedMutex",
     "LockSharedMutex",
     "UnlockSharedMutex",
-    "StrShrink",
-    "StrExpand",
     "StrInsert",
     "StrSearch",
     "StrUpper",

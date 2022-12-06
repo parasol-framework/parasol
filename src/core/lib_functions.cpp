@@ -685,7 +685,7 @@ MEMORYID GetFeedList(OBJECTPTR Object)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetClassID: Returns the class ID of an object.
+GetClassID: Returns the class ID of an ID-referenced object.
 Category: Objects
 
 Call this function with any valid object ID to learn the identifier for its base class.  This is the quickest way to
@@ -1854,7 +1854,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 /*********************************************************************************************************************
 
 -FUNCTION-
-SetContext: Assign the ownership of new resources to an object.
+SetContext: Alters the nominated owner of newly created objects.
 Category: Objects
 
 This function provides a means for instructing the system which object has control of the current thread.  Once
@@ -1884,17 +1884,16 @@ prev_context = SetContext(display);
    AllocMemory(1000, MEM_DATA, &memory, NULL);
 
 SetContext(prev_context);
-acFree(display);
-acFree(bitmap);
-FreeResource(memory);
+acFree(display); // The bitmap and memory are terminated here
+acFree(bitmap); // Reference is no longer valid
+FreeResource(memory); // Reference is no longer valid
 </pre>
 
-Freeing the bitmap and memory block after the display would be invalid.  They can however be removed before the display
-is terminated, if necessary.
+As the bitmap and memory block would have been freed as members of the display, their references are invalid when
+manually terminated.
 
 SetContext() is intended for use by modules and classes.  Do not use it unless conditions necessitate its use.  The
-Core will automatically set the correct context when calling any action or method of a class, as do the field
-management functions.
+Core automatically manages the context when calling class actions, methods and interactive fields.
 
 -INPUT-
 obj Object: Pointer to the object that will take on the new context.  If NULL, no change to the context will be made.

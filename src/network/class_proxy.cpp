@@ -43,6 +43,19 @@ static ERROR find_proxy(extProxy *);
 static void clear_values(extProxy *);
 static ERROR get_record(extProxy *);
 
+static LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)
+{
+   if ((String) and (Offset >= 0) and (TotalBytes > 0)) {
+      STRING orig = String;
+      String += Offset;
+      const LONG skip = TotalBytes;
+      while (String[skip] != 0) { *String = String[skip]; String++; }
+      *String = 0;
+      return (LONG)(String - orig);
+   }
+   else return 0;
+}
+
 /*
 static void free_proxy(void)
 {

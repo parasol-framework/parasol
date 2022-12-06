@@ -558,52 +558,6 @@ LONG StrDatatype(CSTRING String)
 /*****************************************************************************
 
 -FUNCTION-
-StrExpand: Expands the size of a string by inserting spaces.
-
-This function will expand a string by inserting spaces into a specified position.  The String that you are expanding
-must be placed in a memory area large enough to accept the increased size, or you will almost certainly corrupt other
-memory areas.
-
--INPUT-
-str String: The string that you want to expand.
-int Offset: The byte position that you want to start expanding from.  Give consideration to UTF-8 formatting.
-int TotalChars: The total number of spaces that you want to insert.
-
--RESULT-
-int: Returns the new length of the expanded string, not including the null byte.
-
-*****************************************************************************/
-
-LONG StrExpand(STRING String, LONG Pos, LONG AmtChars)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((String) and (AmtChars)) {
-      LONG len, i;
-      if ((len = StrLength(String)) > 0) {
-         if (Pos < 0) Pos = 0;
-         if (Pos > len) Pos = len;
-
-         // Shift the characters at Pos to the right
-
-         String[len + AmtChars] = 0;        // Set new termination
-         for (i = len-1; i > Pos-1; i--) {  // Shift the characters across
-            String[i + AmtChars] = String[i];
-         }
-
-         for (i = Pos; i < (Pos + AmtChars); i++) String[i] = ' ';
-
-         return len + AmtChars;
-      }
-   }
-   else log.warning("Bad arguments.");
-
-   return 0;
-}
-
-/*****************************************************************************
-
--FUNCTION-
 StrFormat: Formats a string using printf() style arguments.
 ExtPrototype: const void *, LONG, const char *, ...) __attribute__((format(printf, 3, 4))
 
@@ -972,42 +926,6 @@ LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
    }
 
    return -1;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrShrink: Shrinks strings by destroying data.
-
-This function will shrink a string by removing a sequence of characters and rearranging the remaining data.
-For example, `StrShrink("Hello World", 4, 5)` results in `Helrld` by deleting the characters `lo Wo`.
-
-This function modifies the source string in-place, so no memory will be allocated.  The String will be null terminated
-and its new length will be returned.
-
-Please note that this function operates on byte positions and is not in compliance with UTF-8 character sequences.
-
--INPUT-
-buf(str) String: Pointer to the string that will be modified.
-int Offset:     The byte position that you want to start shrinking the string from.  The position must be shorter than the full length of the string.
-int TotalBytes: The total number of bytes to eliminate.
-
--RESULT-
-int: Returns the new length of the shrunken string, not including the null byte.
-
-*****************************************************************************/
-
-LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)
-{
-   if ((String) and (Offset >= 0) and (TotalBytes > 0)) {
-      STRING orig = String;
-      String += Offset;
-      const LONG skip = TotalBytes;
-      while (String[skip] != 0) { *String = String[skip]; String++; }
-      *String = 0;
-      return (LONG)(String - orig);
-   }
-   else return 0;
 }
 
 /*****************************************************************************

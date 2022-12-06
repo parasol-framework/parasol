@@ -128,7 +128,6 @@ FDEF argsStrClone[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrCompare[] = { { "Error", FD_LONG|FD_ERROR }, { "String1", FD_STR }, { "String2", FD_STR }, { "Length", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrCopy[] = { { "Result", FD_LONG }, { "Src", FD_STR }, { "Dest", FD_STR }, { "Length", FD_LONG }, { 0, 0 } };
 FDEF argsStrDatatype[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrExpand[] = { { "Result", FD_LONG }, { "String", FD_STR }, { "Offset", FD_LONG }, { "TotalChars", FD_LONG }, { 0, 0 } };
 FDEF argsStrFormat[] = { { "Result", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "Parameters", FD_TAGS }, { 0, 0 } };
 FDEF argsStrFormatDate[] = { { "Error", FD_LONG|FD_ERROR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "DateTime:Time", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
@@ -141,7 +140,6 @@ FDEF argsStrReadDate[] = { { "Error", FD_LONG|FD_ERROR }, { "String", FD_STR }, 
 FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF argsStrReplace[] = { { "Error", FD_LONG|FD_ERROR }, { "Src", FD_STR }, { "Keyword", FD_STR }, { "Replacement", FD_STR }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSearch[] = { { "Result", FD_LONG }, { "Keyword", FD_STR }, { "String", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF argsStrShrink[] = { { "Result", FD_LONG }, { "String", FD_BUFFER|FD_STR }, { "Offset", FD_LONG }, { "TotalBytes", FD_LONG }, { 0, 0 } };
 FDEF argsStrSort[] = { { "Error", FD_LONG|FD_ERROR }, { "List", FD_ARRAY|FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSortCompare[] = { { "Result", FD_LONG }, { "String1", FD_STR }, { "String2", FD_STR }, { 0, 0 } };
 FDEF argsStrToColour[] = { { "Error", FD_LONG|FD_ERROR }, { "Colour", FD_STR }, { "RGB8:RGB", FD_BUFFER|FD_PTR|FD_STRUCT }, { 0, 0 } };
@@ -296,8 +294,6 @@ const struct Function glFunctions[] = {
    { (APTR)FreeSharedMutex, "FreeSharedMutex", argsFreeSharedMutex },
    { (APTR)LockSharedMutex, "LockSharedMutex", argsLockSharedMutex },
    { (APTR)UnlockSharedMutex, "UnlockSharedMutex", argsUnlockSharedMutex },
-   { (APTR)StrShrink, "StrShrink", argsStrShrink },
-   { (APTR)StrExpand, "StrExpand", argsStrExpand },
    { (APTR)StrInsert, "StrInsert", argsStrInsert },
    { (APTR)StrSearch, "StrSearch", argsStrSearch },
    { (APTR)StrUpper, "StrUpper", argsStrUpper },

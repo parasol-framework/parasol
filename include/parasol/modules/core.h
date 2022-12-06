@@ -1818,8 +1818,6 @@ struct CoreBase {
    void (*_FreeSharedMutex)(APTR);
    ERROR (*_LockSharedMutex)(APTR, LONG);
    void (*_UnlockSharedMutex)(APTR);
-   LONG (*_StrShrink)(STRING, LONG, LONG);
-   LONG (*_StrExpand)(STRING, LONG, LONG);
    ERROR (*_StrInsert)(CSTRING, STRING, LONG, LONG, LONG);
    LONG (*_StrSearch)(CSTRING, CSTRING, LONG);
    void (*_StrUpper)(STRING);
@@ -2008,8 +2006,6 @@ struct CoreBase {
 #define FreeSharedMutex(...) (CoreBase->_FreeSharedMutex)(__VA_ARGS__)
 #define LockSharedMutex(...) (CoreBase->_LockSharedMutex)(__VA_ARGS__)
 #define UnlockSharedMutex(...) (CoreBase->_UnlockSharedMutex)(__VA_ARGS__)
-#define StrShrink(...) (CoreBase->_StrShrink)(__VA_ARGS__)
-#define StrExpand(...) (CoreBase->_StrExpand)(__VA_ARGS__)
 #define StrInsert(...) (CoreBase->_StrInsert)(__VA_ARGS__)
 #define StrSearch(...) (CoreBase->_StrSearch)(__VA_ARGS__)
 #define StrUpper(...) (CoreBase->_StrUpper)(__VA_ARGS__)
