@@ -728,7 +728,6 @@ static void   error_dialog(CSTRING, CSTRING, ERROR);
 static ERROR  eval(extDocument *, STRING, LONG, LONG);
 static LONG   find_segment(extDocument *, LONG, LONG);
 static LONG   find_tabfocus(extDocument *, UBYTE, LONG);
-static void   fix_command(STRING, STRING *);
 static ERROR  flash_cursor(extDocument *, LARGE, LARGE);
 static void   free_links(extDocument *);
 static CSTRING get_font_style(LONG);

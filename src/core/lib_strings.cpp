@@ -17,7 +17,6 @@ Name: Strings
 #endif
 
 static void sift(STRING Buffer, LONG *, LONG, LONG);
-static ERROR  insert_string(CSTRING, STRING, LONG, LONG, LONG);
 
 typedef void * iconv_t;
 iconv_t (*iconv_open)(const char* tocode, const char* fromcode);
@@ -204,49 +203,6 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
 
    if (csvbuffer_alloc) free(csvbuffer_alloc);
    return NULL;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrCapitalise: Capitalises a string.
-
-This function will will capitalise a string so that every word starts with a capital letter.  All letters following the
-first capital of each word will be driven to lower-case characters.  Numbers and other non-alphabetic characters will
-not be affected by this function.  Here is an example:
-
-<pre>"every WOrd starts WITH a 2apital" = "Every Word Starts With A 2apital"</pre>
-
--INPUT-
-str String: Points to the string that is to be capitalised.
-
--END-
-
-*****************************************************************************/
-
-// BUGS: Needs to support capitalisation of European chars in UTF-8 space (umlauts etc)
-
-void StrCapitalise(STRING String)
-{
-  while (*String) {
-     while ((*String) and (*String <= 0x20)) String++; // Skip whitespace
-     if (!*String) return;
-
-     // Capitalise the first character
-
-     if ((*String >= 'a') and (*String <= 'z')) {
-        *String = *String - 'a' + 'A';
-     }
-
-     String++;
-
-     // Lower-case all following characters
-
-     while ((*String) and (*String > 0x20)) {
-        if ((*String >= 'A') and (*String <= 'Z')) *String = *String - 'A' + 'a';
-        String++;
-     }
-  }
 }
 
 /*****************************************************************************
@@ -466,7 +422,7 @@ byte) while copying, then it will stop automatically to prevent copying of junk 
 Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set
 the Length or not.  For example, if you were to copy "123" into the middle of string "ABCDEFGHI" then the result would
 be "ABC123". The "GHI" part of the string would be lost.  In situations such as this, functions such as
-~CharCopy(), ~StrReplace() or ~StrInsert() should be used instead.
+~CharCopy() or ~StrReplace() should be used instead.
 
 -INPUT-
 cstr Src: Pointer to the string that you are copying from.
@@ -558,52 +514,6 @@ LONG StrDatatype(CSTRING String)
 /*****************************************************************************
 
 -FUNCTION-
-StrExpand: Expands the size of a string by inserting spaces.
-
-This function will expand a string by inserting spaces into a specified position.  The String that you are expanding
-must be placed in a memory area large enough to accept the increased size, or you will almost certainly corrupt other
-memory areas.
-
--INPUT-
-str String: The string that you want to expand.
-int Offset: The byte position that you want to start expanding from.  Give consideration to UTF-8 formatting.
-int TotalChars: The total number of spaces that you want to insert.
-
--RESULT-
-int: Returns the new length of the expanded string, not including the null byte.
-
-*****************************************************************************/
-
-LONG StrExpand(STRING String, LONG Pos, LONG AmtChars)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((String) and (AmtChars)) {
-      LONG len, i;
-      if ((len = StrLength(String)) > 0) {
-         if (Pos < 0) Pos = 0;
-         if (Pos > len) Pos = len;
-
-         // Shift the characters at Pos to the right
-
-         String[len + AmtChars] = 0;        // Set new termination
-         for (i = len-1; i > Pos-1; i--) {  // Shift the characters across
-            String[i + AmtChars] = String[i];
-         }
-
-         for (i = Pos; i < (Pos + AmtChars); i++) String[i] = ' ';
-
-         return len + AmtChars;
-      }
-   }
-   else log.warning("Bad arguments.");
-
-   return 0;
-}
-
-/*****************************************************************************
-
--FUNCTION-
 StrFormat: Formats a string using printf() style arguments.
 ExtPrototype: const void *, LONG, const char *, ...) __attribute__((format(printf, 3, 4))
 
@@ -671,77 +581,6 @@ ULONG StrHash(CSTRING String, LONG CaseSensitive)
       }
       return hash;
    }
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrInsert: Inserts a string into a buffer, with optional replace.
-
-This function is used to insert a series of characters into a Buffer.  The position of the insert is determined by the
-byte offset declared in the Offset field.  You can opt to replace a specific number of characters in the destination by
-setting the ReplaceChars argument to a value greater than zero.  To prevent buffer overflow, you must declare the size
-of the Buffer in the BufferSize argument.
-
--INPUT-
-cstr Insert:      Pointer to the character string to be inserted.
-buf(str) Buffer:  The string that will receive the characters.
-bufsize Size:     The byte size of the Buffer.
-int Offset:       The byte position at which the insertion will start.  Give consideration to UTF-8 formatting.
-int ReplaceChars: The number of bytes to replace (set to zero for a normal insert).
-
--ERRORS-
-Okay
-Args
-BufferOverflow: There is not enough space in the destination buffer for the insert.
-
-*****************************************************************************/
-
-ERROR StrInsert(CSTRING Insert, STRING Buffer, LONG Size, LONG Pos, LONG ReplaceChars)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if (!Insert) Insert = "";
-
-   LONG insertlen;
-   for (insertlen=0; Insert[insertlen]; insertlen++);
-
-   // String insertion
-
-   if (insertlen < ReplaceChars) {
-      LONG i = Pos + StrCopy(Insert, Buffer+Pos, COPY_ALL);
-      i = Pos + ReplaceChars;
-      Pos += insertlen;
-      while (Buffer[i]) Buffer[Pos++] = Buffer[i++];
-      Buffer[Pos] = 0;
-   }
-   else if (insertlen IS ReplaceChars) {
-      while (*Insert) Buffer[Pos++] = *Insert++;
-   }
-   else {
-      // Check if an overflow will occur
-
-      LONG strlen, i, j;
-      for (strlen=0; Buffer[strlen]; strlen++);
-      if ((Size - 1) < (strlen + (ReplaceChars - insertlen))) {
-         log.warning("Buffer overflow: \"%.60s\"", Buffer);
-         return ERR_BufferOverflow;
-      }
-
-      // Expand the string
-      i = strlen + (insertlen - ReplaceChars) + 1;
-      strlen += 1;
-      j = strlen-Pos-ReplaceChars+1;
-      while (j > 0) {
-         Buffer[i--] = Buffer[strlen--];
-         j--;
-      }
-
-      // Copy the insert string into the position
-      for (i=0; Insert[i]; i++, Pos++) Buffer[Pos] = Insert[i];
-   }
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -972,42 +811,6 @@ LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
    }
 
    return -1;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrShrink: Shrinks strings by destroying data.
-
-This function will shrink a string by removing a sequence of characters and rearranging the remaining data.
-For example, `StrShrink("Hello World", 4, 5)` results in `Helrld` by deleting the characters `lo Wo`.
-
-This function modifies the source string in-place, so no memory will be allocated.  The String will be null terminated
-and its new length will be returned.
-
-Please note that this function operates on byte positions and is not in compliance with UTF-8 character sequences.
-
--INPUT-
-buf(str) String: Pointer to the string that will be modified.
-int Offset:     The byte position that you want to start shrinking the string from.  The position must be shorter than the full length of the string.
-int TotalBytes: The total number of bytes to eliminate.
-
--RESULT-
-int: Returns the new length of the shrunken string, not including the null byte.
-
-*****************************************************************************/
-
-LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)
-{
-   if ((String) and (Offset >= 0) and (TotalBytes > 0)) {
-      STRING orig = String;
-      String += Offset;
-      const LONG skip = TotalBytes;
-      while (String[skip] != 0) { *String = String[skip]; String++; }
-      *String = 0;
-      return (LONG)(String - orig);
-   }
-   else return 0;
 }
 
 /*****************************************************************************
@@ -1466,62 +1269,6 @@ void StrUpper(STRING String)
       if ((*String >= 'a') and (*String <= 'z')) *String -= 0x20;
       String++;
    }
-}
-
-/*****************************************************************************
-** Insert: The string to be inserted.
-** Buffer: The start of the buffer region.
-** Size:   The complete size of the target buffer.
-** Pos:    The target position for the insert.
-** ReplaceChars: If characters will be replaced, specify the number here.
-**
-** The only error that this function can return is a buffer overflow.
-*/
-
-ERROR insert_string(CSTRING Insert, STRING Buffer, LONG Size, LONG Pos, LONG Replace)
-{
-   LONG inlen, i, strlen, j;
-
-   if (!Insert) Insert = "";
-
-   for (inlen=0; Insert[inlen]; inlen++);
-
-   // String insertion
-
-   if (inlen < Replace) {
-      // The string to insert is smaller than the number of characters to replace.
-
-      i = Pos + StrCopy(Insert, Buffer+Pos, COPY_ALL);
-      i = Pos + Replace;
-      Pos += inlen;
-      while (Buffer[i]) Buffer[Pos++] = Buffer[i++];
-      Buffer[Pos] = 0;
-   }
-   else if (inlen IS Replace) {
-      while (*Insert) Buffer[Pos++] = *Insert++;
-   }
-   else {
-      // Check if an overflow will occur
-
-      for (strlen=0; Buffer[strlen]; strlen++);
-
-      if ((Size - 1) < (strlen - Replace + inlen)) {
-         return ERR_BufferOverflow;
-      }
-
-      // Expand the string
-      i = strlen + (inlen - Replace) + 1;
-      strlen += 1;
-      j = strlen-Pos-Replace+1;
-      while (j > 0) {
-         Buffer[i--] = Buffer[strlen--];
-         j--;
-      }
-
-      for (i=0; i < inlen; i++, Pos++) Buffer[Pos] = Insert[i];
-   }
-
-   return ERR_Okay;
 }
 
 //****************************************************************************
