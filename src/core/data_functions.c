@@ -135,7 +135,6 @@ FDEF argsStrLineLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0
 FDEF argsStrNextLine[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrReadDate[] = { { "Error", FD_LONG|FD_ERROR }, { "String", FD_STR }, { "DateTime:DateTime", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
-FDEF argsStrReplace[] = { { "Error", FD_LONG|FD_ERROR }, { "Src", FD_STR }, { "Keyword", FD_STR }, { "Replacement", FD_STR }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSearch[] = { { "Result", FD_LONG }, { "Keyword", FD_STR }, { "String", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSort[] = { { "Error", FD_LONG|FD_ERROR }, { "List", FD_ARRAY|FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSortCompare[] = { { "Result", FD_LONG }, { "String1", FD_STR }, { "String2", FD_STR }, { 0, 0 } };
@@ -297,7 +296,7 @@ const struct Function glFunctions[] = {
    { (APTR)WakeProcess, "WakeProcess", argsWakeProcess },
    { (APTR)StrLineLength, "StrLineLength", argsStrLineLength },
    { (APTR)StrNextLine, "StrNextLine", argsStrNextLine },
-   { (APTR)StrReplace, "StrReplace", argsStrReplace },
+   { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { (APTR)StrToFloat, "StrToFloat", argsStrToFloat },
    { (APTR)StrCopy, "StrCopy", argsStrCopy },
    { (APTR)StrClone, "StrClone", argsStrClone },
@@ -367,7 +366,6 @@ const struct Function glFunctions[] = {
    { (APTR)KeyGet, "KeyGet", argsKeyGet },
    { (APTR)VarIterate, "VarIterate", argsVarIterate },
    { (APTR)NewLockedObject, "NewLockedObject", argsNewLockedObject },
-   { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { NULL, NULL, NULL }
 };
 

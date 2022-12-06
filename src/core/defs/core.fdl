@@ -1058,7 +1058,7 @@ struct ScriptArg { // For use with scExec
     "WakeProcess",
     "StrLineLength",
     "StrNextLine",
-    "StrReplace",
+    "KeyIterate",
     "StrToFloat",
     "StrCopy",
     "StrClone",
@@ -1127,8 +1127,7 @@ struct ScriptArg { // For use with scExec
     "KeySet",
     "KeyGet",
     "VarIterate",
-    "NewLockedObject",
-    "KeyIterate")
+    "NewLockedObject")
 
   c_insert([[
 
