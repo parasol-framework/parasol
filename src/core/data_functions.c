@@ -103,7 +103,6 @@ FDEF argsSaveImageToFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJ
 FDEF argsSaveObjectToFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Path", FD_STR }, { "Permissions", FD_LONG }, { 0, 0 } };
 FDEF argsScanDir[] = { { "Error", FD_LONG|FD_ERROR }, { "DirInfo:Info", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsScanMessages[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_PTR }, { "Index", FD_LONG|FD_RESULT }, { "Type", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsSelfDestruct[] = { { "Void", FD_VOID }, { 0, 0 } };
 FDEF argsSendMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_LONG }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsSetArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Array", FD_PTR }, { "Elements", FD_LONG }, { 0, 0 } };
 FDEF argsSetContext[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
@@ -229,7 +228,7 @@ const struct Function glFunctions[] = {
    { (APTR)GetMessage, "GetMessage", argsGetMessage },
    { (APTR)ReleaseMemory, "ReleaseMemory", argsReleaseMemory },
    { (APTR)ResolveClassName, "ResolveClassName", argsResolveClassName },
-   { (APTR)SelfDestruct, "SelfDestruct", argsSelfDestruct },
+   { (APTR)KeySet, "KeySet", argsKeySet },
    { (APTR)SendMessage, "SendMessage", argsSendMessage },
    { (APTR)SetOwner, "SetOwner", argsSetOwner },
    { (APTR)SetContext, "SetContext", argsSetContext },
@@ -359,7 +358,6 @@ const struct Function glFunctions[] = {
    { (APTR)VarNew, "VarNew", argsVarNew },
    { (APTR)VarSet, "VarSet", argsVarSet },
    { (APTR)VarGet, "VarGet", argsVarGet },
-   { (APTR)KeySet, "KeySet", argsKeySet },
    { NULL, NULL, NULL }
 };
 
