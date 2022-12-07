@@ -43,39 +43,6 @@ void free_iconv(void)
 /*****************************************************************************
 
 -FUNCTION-
-CharCopy: Copies the characters of one string to another.
-
-This function copies a string of characters to a destination.  It will copy the exact number of characters as specified
-by Length, unless the source String terminates before the total number of characters have been copied.
-
-This function will not null-terminate the destination.  This function is not 'safe', in that it is capable of
-overflowing the destination buffer (this capability is intentional).  Use StrCopy() if you want to copy a complete
-string with a limit on the destination buffer size.
-
--INPUT-
-cstr Source: Pointer to the string that you are copying from.
-str Dest:   Pointer to the buffer that you are copying to.
-int Length: The number of characters to copy.
-
--RESULT-
-int: Returns the total amount of characters that were copied.
-
-*****************************************************************************/
-
-LONG CharCopy(CSTRING String, STRING Dest, LONG Length)
-{
-   LONG i;
-
-   if ((String) and (Dest)) {
-      for (i=0; (i < Length) and (String[i]); i++) Dest[i] = String[i];
-      return i;
-   }
-   else return 0;
-}
-
-/*****************************************************************************
-
--FUNCTION-
 StrBuildArray: Builds an array of strings from a sequential string list.
 
 This function is helpful for converting a buffer of sequential values into a more easily managed string array.  A
@@ -413,8 +380,7 @@ byte) while copying, then it will stop automatically to prevent copying of junk 
 
 Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set
 the Length or not.  For example, if you were to copy `123` into the middle of string `ABCDEFGHI` then the result would
-be `ABC123`. The `GHI` part of the string would be lost.  In situations such as this, functions such as
-~CharCopy() should be used instead.
+be `ABC123`. The `GHI` part of the string would be lost.
 
 -INPUT-
 cstr Src: Pointer to the string that you are copying from.

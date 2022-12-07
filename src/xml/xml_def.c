@@ -36,7 +36,6 @@ FDEF maSetRoot[] = { { "XPath", FD_STR }, { 0, 0 } };
 FDEF maCount[] = { { "XPath", FD_STR }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maInsertContent[] = { { "Index", FD_LONG }, { "Where", FD_LONG }, { "Content", FD_STR }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maRemoveXPath[] = { { "XPath", FD_STR }, { "Total", FD_LONG }, { 0, 0 } };
-FDEF maGetXPath[] = { { "Index", FD_LONG }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF maFindTagFromIndex[] = { { "XPath", FD_STR }, { "Start", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maGetTag[] = { { "Index", FD_LONG }, { "XMLTag:Result", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 
@@ -56,7 +55,6 @@ static const struct MethodArray clXMLMethods[] = {
    { -13, (APTR)XML_Count, "Count", maCount, sizeof(struct xmlCount) },
    { -14, (APTR)XML_InsertContent, "InsertContent", maInsertContent, sizeof(struct xmlInsertContent) },
    { -15, (APTR)XML_RemoveXPath, "RemoveXPath", maRemoveXPath, sizeof(struct xmlRemoveXPath) },
-   { -16, (APTR)XML_GetXPath, "GetXPath", maGetXPath, sizeof(struct xmlGetXPath) },
    { -17, (APTR)XML_FindTagFromIndex, "FindTagFromIndex", maFindTagFromIndex, sizeof(struct xmlFindTagFromIndex) },
    { -18, (APTR)XML_GetTag, "GetTag", maGetTag, sizeof(struct xmlGetTag) },
    { 0, 0, 0, 0, 0 }

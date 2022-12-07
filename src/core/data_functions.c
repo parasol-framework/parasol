@@ -21,7 +21,6 @@ FDEF argsAllocSharedMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR 
 FDEF argsAllocateID[] = { { "Result", FD_LONG }, { "Type", FD_LONG }, { 0, 0 } };
 FDEF argsAnalysePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Type", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsBroadcastEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_PTR }, { "EventSize", FD_LONG }, { 0, 0 } };
-FDEF argsCharCopy[] = { { "Result", FD_LONG }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Length", FD_LONG }, { 0, 0 } };
 FDEF argsCheckAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsCheckMemoryExists[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsCheckObjectExists[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "Name", FD_STR }, { 0, 0 } };
@@ -123,10 +122,8 @@ FDEF argsStrCompare[] = { { "Error", FD_LONG|FD_ERROR }, { "String1", FD_STR }, 
 FDEF argsStrCopy[] = { { "Result", FD_LONG }, { "Src", FD_STR }, { "Dest", FD_STR }, { "Length", FD_LONG }, { 0, 0 } };
 FDEF argsStrDatatype[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrFormat[] = { { "Result", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "Parameters", FD_TAGS }, { 0, 0 } };
-FDEF argsStrFormatDate[] = { { "Error", FD_LONG|FD_ERROR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "DateTime:Time", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
 FDEF argsStrLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrReadDate[] = { { "Error", FD_LONG|FD_ERROR }, { "String", FD_STR }, { "DateTime:DateTime", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF argsStrSearch[] = { { "Result", FD_LONG }, { "Keyword", FD_STR }, { "String", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSort[] = { { "Error", FD_LONG|FD_ERROR }, { "List", FD_ARRAY|FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
@@ -301,15 +298,15 @@ const struct Function glFunctions[] = {
    { (APTR)UTF8ReadValue, "UTF8ReadValue", argsUTF8ReadValue },
    { (APTR)UTF8WriteValue, "UTF8WriteValue", argsUTF8WriteValue },
    { (APTR)StrFormat, "StrFormat", argsStrFormat },
-   { (APTR)StrFormatDate, "StrFormatDate", argsStrFormatDate },
+   { (APTR)SaveImageToFile, "SaveImageToFile", argsSaveImageToFile },
    { (APTR)StrToColour, "StrToColour", argsStrToColour },
    { (APTR)StrDatatype, "StrDatatype", argsStrDatatype },
-   { (APTR)CharCopy, "CharCopy", argsCharCopy },
+   { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)StrToHex, "StrToHex", argsStrToHex },
    { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
    { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)StrSortCompare, "StrSortCompare", argsStrSortCompare },
-   { (APTR)StrReadDate, "StrReadDate", argsStrReadDate },
+   { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { (APTR)UTF8Copy, "UTF8Copy", argsUTF8Copy },
    { (APTR)StrBase64Encode, "StrBase64Encode", argsStrBase64Encode },
    { (APTR)VarSetString, "VarSetString", argsVarSetString },
@@ -341,9 +338,6 @@ const struct Function glFunctions[] = {
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
    { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { (APTR)LoadFile, "LoadFile", argsLoadFile },
-   { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
-   { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
-   { (APTR)SaveImageToFile, "SaveImageToFile", argsSaveImageToFile },
    { NULL, NULL, NULL }
 };
 
