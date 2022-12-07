@@ -1837,15 +1837,15 @@ struct CoreBase {
    ULONG (*_UTF8ReadValue)(CSTRING, LONG *);
    LONG (*_UTF8WriteValue)(LONG, STRING, LONG);
    LONG (*_StrFormat)(const void *, LONG, const char *, ...) __attribute__((format(printf, 3, 4)));
-   ERROR (*_StrFormatDate)(STRING, LONG, CSTRING, struct DateTime *);
+   ERROR (*_SaveImageToFile)(OBJECTPTR, CSTRING, CLASSID, LONG);
    ERROR (*_StrToColour)(CSTRING, struct RGB8 *);
    LONG (*_StrDatatype)(CSTRING);
-   LONG (*_CharCopy)(CSTRING, STRING, LONG);
+   void (*_UnloadFile)(struct CacheFile *);
    LARGE (*_StrToHex)(CSTRING);
    ERROR (*_CompareFilePaths)(CSTRING, CSTRING);
    const struct SystemState * (*_GetSystemState)(void);
    LONG (*_StrSortCompare)(CSTRING, CSTRING);
-   ERROR (*_StrReadDate)(CSTRING, struct DateTime *);
+   ERROR (*_AddInfoTag)(struct FileInfo *, CSTRING, CSTRING);
    LONG (*_UTF8Copy)(CSTRING, STRING, LONG, LONG);
    LONG (*_StrBase64Encode)(const void *, LONG, STRING, LONG);
    ERROR (*_VarSetString)(struct KeyStore *, CSTRING, CSTRING);
@@ -1877,9 +1877,6 @@ struct CoreBase {
    CSTRING (*_ResolveGroupID)(LONG);
    ERROR (*_ReadFileToBuffer)(CSTRING, APTR, LONG, LONG *);
    ERROR (*_LoadFile)(CSTRING, LONG, struct CacheFile **);
-   void (*_UnloadFile)(struct CacheFile *);
-   ERROR (*_AddInfoTag)(struct FileInfo *, CSTRING, CSTRING);
-   ERROR (*_SaveImageToFile)(OBJECTPTR, CSTRING, CLASSID, LONG);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2009,15 +2006,15 @@ struct CoreBase {
 #define UTF8ReadValue(...) (CoreBase->_UTF8ReadValue)(__VA_ARGS__)
 #define UTF8WriteValue(...) (CoreBase->_UTF8WriteValue)(__VA_ARGS__)
 #define StrFormat(...) (CoreBase->_StrFormat)(__VA_ARGS__)
-#define StrFormatDate(...) (CoreBase->_StrFormatDate)(__VA_ARGS__)
+#define SaveImageToFile(...) (CoreBase->_SaveImageToFile)(__VA_ARGS__)
 #define StrToColour(...) (CoreBase->_StrToColour)(__VA_ARGS__)
 #define StrDatatype(...) (CoreBase->_StrDatatype)(__VA_ARGS__)
-#define CharCopy(...) (CoreBase->_CharCopy)(__VA_ARGS__)
+#define UnloadFile(...) (CoreBase->_UnloadFile)(__VA_ARGS__)
 #define StrToHex(...) (CoreBase->_StrToHex)(__VA_ARGS__)
 #define CompareFilePaths(...) (CoreBase->_CompareFilePaths)(__VA_ARGS__)
 #define GetSystemState(...) (CoreBase->_GetSystemState)(__VA_ARGS__)
 #define StrSortCompare(...) (CoreBase->_StrSortCompare)(__VA_ARGS__)
-#define StrReadDate(...) (CoreBase->_StrReadDate)(__VA_ARGS__)
+#define AddInfoTag(...) (CoreBase->_AddInfoTag)(__VA_ARGS__)
 #define UTF8Copy(...) (CoreBase->_UTF8Copy)(__VA_ARGS__)
 #define StrBase64Encode(...) (CoreBase->_StrBase64Encode)(__VA_ARGS__)
 #define VarSetString(...) (CoreBase->_VarSetString)(__VA_ARGS__)
@@ -2049,9 +2046,6 @@ struct CoreBase {
 #define ResolveGroupID(...) (CoreBase->_ResolveGroupID)(__VA_ARGS__)
 #define ReadFileToBuffer(...) (CoreBase->_ReadFileToBuffer)(__VA_ARGS__)
 #define LoadFile(...) (CoreBase->_LoadFile)(__VA_ARGS__)
-#define UnloadFile(...) (CoreBase->_UnloadFile)(__VA_ARGS__)
-#define AddInfoTag(...) (CoreBase->_AddInfoTag)(__VA_ARGS__)
-#define SaveImageToFile(...) (CoreBase->_SaveImageToFile)(__VA_ARGS__)
 #endif
 
 

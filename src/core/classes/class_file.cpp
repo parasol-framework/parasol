@@ -1987,7 +1987,7 @@ static ERROR GET_Handle(extFile *Self, LARGE *Value)
 
 /****************************************************************************
 -FIELD-
-Icon: A path to an icon image that is suitable for representing the file in a user interface.
+Icon: Returns an icon reference that is suitable for this file in the UI.
 
 This field returns the name of the best icon to use when representing the file to the user, for instance in a file
 list.  The icon style is determined by analysing the File's #Path.
@@ -2016,21 +2016,19 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
    for (i=0; (Self->Path[i]) and (Self->Path[i] != ':'); i++);
 
    if ((Self->Path[i] IS ':') and (!Self->Path[i+1])) {
-      char icon[40] = "icons:folders/folder";
+      std::string icon("icons:folders/folder");
 
       if (!AccessPrivateObject(glVolumes, 8000)) {
          ConfigGroups *groups;
-         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+         if ((!GetPointer(glVolumes, FID_Data, &groups)) and (groups)) {
             if (groups->size() > 0) {
-               char volume[40];
-               if ((size_t)i >= sizeof(volume)) i = sizeof(volume) - 1;
-               volume[CharCopy(Self->Path, volume, i)] = 0;
+               std::string volume(Self->Path, i);
 
                for (auto& [group, keys] : groups[0]) {
-                  if (!StrMatch(volume, keys["Name"].c_str())) {
+                  if (!StrMatch(volume.c_str(), keys["Name"].c_str())) {
                      if (keys.contains("Icon")) {
-                        StrCopy("icons:", icon, sizeof(icon));
-                        StrCopy(keys["Icon"].c_str(), icon+6, sizeof(icon)-6-1);
+                        icon = "icons:";
+                        icon += keys["Icon"];
                         break;
                      }
                   }
@@ -2040,7 +2038,7 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
          ReleasePrivateObject(glVolumes);
       }
 
-      *Value = Self->prvIcon = StrClone(icon);
+      *Value = Self->prvIcon = StrClone(icon.c_str());
       return ERR_Okay;
    }
 

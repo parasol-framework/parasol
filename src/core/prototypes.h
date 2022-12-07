@@ -130,15 +130,15 @@ LONG UTF8CharLength(CSTRING String);
 ULONG UTF8ReadValue(CSTRING String, LONG * Length);
 LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
 LONG StrFormat(STRING Buffer, LONG Size, CSTRING Format, ...);
-ERROR StrFormatDate(STRING Buffer, LONG Size, CSTRING Format, struct DateTime * Time);
+ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID Class, LONG Permissions);
 ERROR StrToColour(CSTRING Colour, struct RGB8 * RGB);
 LONG StrDatatype(CSTRING String);
-LONG CharCopy(CSTRING Source, STRING Dest, LONG Length);
+void UnloadFile(struct CacheFile * Cache);
 LARGE StrToHex(CSTRING String);
 ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 const struct SystemState * GetSystemState();
 LONG StrSortCompare(CSTRING String1, CSTRING String2);
-ERROR StrReadDate(CSTRING String, struct DateTime * DateTime);
+ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 LONG StrBase64Encode(const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
@@ -170,9 +170,6 @@ CSTRING ResolveUserID(LONG User);
 CSTRING ResolveGroupID(LONG Group);
 ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
-void UnloadFile(struct CacheFile * Cache);
-ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
-ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID Class, LONG Permissions);
 
 #ifdef  __cplusplus
 }

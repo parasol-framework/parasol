@@ -1071,15 +1071,15 @@ struct ScriptArg { // For use with scExec
     "UTF8ReadValue",
     "UTF8WriteValue",
     "StrFormat",
-    "StrFormatDate",
+    "SaveImageToFile",
     "StrToColour",
     "StrDatatype",
-    "CharCopy",
+    "UnloadFile",
     "StrToHex",
     "CompareFilePaths",
     "GetSystemState",
     "StrSortCompare",
-    "StrReadDate",
+    "AddInfoTag",
     "UTF8Copy",
     "StrBase64Encode",
     "VarSetString",
@@ -1110,10 +1110,7 @@ struct ScriptArg { // For use with scExec
     "ResolveUserID",
     "ResolveGroupID",
     "ReadFileToBuffer",
-    "LoadFile",
-    "UnloadFile",
-    "AddInfoTag",
-    "SaveImageToFile")
+    "LoadFile")
 
   c_insert([[
 

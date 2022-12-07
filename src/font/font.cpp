@@ -1379,10 +1379,9 @@ static void scan_truetype_folder(objConfig *Config)
 
             if (FT_IS_SCALABLE(ftface)) {
                if ((ftface->style_name) and (StrMatch("regular", ftface->style_name) != ERR_Okay)) {
-                  char buffer[200];
-                  CharCopy("Scale:", buffer, sizeof(buffer));
-                  StrCopy(ftface->style_name, buffer+6, sizeof(buffer)-6);
-                  cfgWriteValue(Config, group, buffer, location);
+                  std::string buffer("Scale:");
+                  buffer.append(ftface->style_name);
+                  cfgWriteValue(Config, group, buffer.c_str(), location);
                }
                else {
                   if (style IS FTF_BOLD) cfgWriteValue(Config, group, "Scale:Bold", location);

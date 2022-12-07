@@ -476,23 +476,6 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
   </function>
 
   <function>
-    <name>CharCopy</name>
-    <category>Strings</category>
-    <comment>Copies the characters of one string to another.</comment>
-    <prototype>LONG CharCopy(CSTRING Source, STRING Dest, LONG Length)</prototype>
-    <input>
-      <param type="CSTRING" name="Source">Pointer to the string that you are copying from.</param>
-      <param type="STRING" name="Dest">Pointer to the buffer that you are copying to.</param>
-      <param type="LONG" name="Length">The number of characters to copy.</param>
-    </input>
-    <description>
-<p>This function copies a string of characters to a destination.  It will copy the exact number of characters as specified by Length, unless the source String terminates before the total number of characters have been copied.</p>
-<p>This function will not null-terminate the destination.  This function is not 'safe', in that it is capable of overflowing the destination buffer (this capability is intentional).  Use StrCopy() if you want to copy a complete string with a limit on the destination buffer size.</p>
-    </description>
-    <result type="LONG">Returns the total amount of characters that were copied.</result>
-  </function>
-
-  <function>
     <name>CheckAction</name>
     <category>Objects</category>
     <comment>Checks objects to see whether or not they support certain actions.</comment>
@@ -2599,7 +2582,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function copies part of one string over to another.  If the Length is set to zero then this function will copy the entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null byte) while copying, then it will stop automatically to prevent copying of junk characters.</p>
-<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the Length or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> should be used instead.</p>
+<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the Length or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.</p>
     </description>
     <result type="LONG">Returns the total amount of characters that were copied, not including the null byte at the end.</result>
   </function>
@@ -2637,53 +2620,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrFormatDate</name>
-    <category>Strings</category>
-    <comment>Formats the content of a Time object into a date string.</comment>
-    <prototype>ERROR StrFormatDate(STRING Buffer, LONG Size, CSTRING Format, struct DateTime * Time)</prototype>
-    <input>
-      <param type="STRING" name="Buffer">Pointer to a buffer large enough to receive the formatted data.</param>
-      <param type="LONG" name="Size">The length of the Buffer, in bytes.</param>
-      <param type="CSTRING" name="Format">String specifying the required date format.</param>
-      <param type="struct DateTime *" name="Time">Pointer to a DateTime structure that contains the date to be formatted.  If NULL, the current system time will be used.</param>
-    </input>
-    <description>
-<p>The StrFormatDate() function is used to format dates into a human readable string format.  The Format argument defines how the time information is printed to the display.  Time formatting follows accepted conventions, as illustrated in the following format table:</p>
-<types type="Format">
-<type name="a">am/pm (am)</type>
-<type name="A">AM/PM (AM)</type>
-<type name="h">24-Hour (9)</type>
-<type name="hh">24-Hour two-digits (09)</type>
-<type name="H">12-Hour (9)</type>
-<type name="HH">12-Hour two-digits (09)</type>
-<type name="n">Minute (7)</type>
-<type name="nn">Minute two-digits (07)</type>
-<type name="s">Second (42)</type>
-<type name="ss">Second two-digits (42)</type>
-<type name="d">Day (3)</type>
-<type name="dd">Day two-digits (03)</type>
-<type name="D">Day of week (S)</type>
-<type name="ddd">Day of week (sat)</type>
-<type name="dddd">Day of week (saturday)</type>
-<type name="m">Month (11)</type>
-<type name="mm">Month (11)</type>
-<type name="mmm">Month (nov)</type>
-<type name="mmmm">Month (november)</type>
-<type name="yy">Year (03)</type>
-<type name="yyyy">Year (2003)</type>
-</types>
-<p>By default, strings are printed in lower-case.  For example, <code>ddd</code> prints <code>sat</code>.  To capitalise the characters, use capitals in the string formatting instead of the default lower case.  For example <code>Ddd</code> prints <code>Sat</code> and <code>DDD</code> prints <code>SAT</code>.</p>
-<p>Where the interpreter encounters unrecognised characters, it will print them out unaltered.  For example <code>hh:nn:ss</code> might print <code>05:34:19</code> with the colons intact.  If you need to include characters such as <code>h</code> or <code>d</code> and want to prevent them from being translated, precede them with the backslash character.  For instance to print <code>0800 hours</code>, we would use the format <code>hh00 \hours</code>.</p>
-<p>The Time structure that you provide needs to contain values in the Year, Month, Day, Hour, Minute and Second fields. If you know that you do not plan on printing information on any particular date value, you can optionally choose not to set that field.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="BufferOverflow">A buffer overflow has occurred.</error>
-    </result>
-  </function>
-
-  <function>
     <name>StrHash</name>
     <category>Strings</category>
     <comment>Convert a string into a 32-bit hash.</comment>
@@ -2711,30 +2647,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>This function will calculate the length of a String, not including the null byte.</p>
     </description>
     <result type="LONG">Returns the length of the string.</result>
-  </function>
-
-  <function>
-    <name>StrReadDate</name>
-    <category>Strings</category>
-    <comment>Reads a date string into a DateTime structure.</comment>
-    <prototype>ERROR StrReadDate(CSTRING String, struct DateTime * DateTime)</prototype>
-    <input>
-      <param type="CSTRING" name="String">A date string.</param>
-      <param type="struct DateTime *" name="DateTime">Pointer to a DateTime structure in which the date will be placed.</param>
-    </input>
-    <description>
-<p>Reads a date in string format and returns the year, month, and day in a DateTime structure.  The DateTime struct will not be altered unless the function returns ERR_Okay.</p>
-<p>This function understands named months (e.g. 'March' or 'Mar') and ignores non-numeric characters and white-space not relevant to time interpretation. It is recommended that years are never shortened to 2 digits as this causes confusion between months and days - moreover, the correct century will need to be guessed if 2 digit years are used.  Use of named months is also preferred to prevent confusion between numeric months and days.</p>
-<p>Special date formats that are supported include <code>yesterday</code>, <code>today</code>, <code>now</code>, <code>tomorrow</code>, <code>day</code>, <code>month</code> and <code>year</code>.</p>
-<p>Compressed date formats that are without separators, such as <code>20090702</code> are not supported.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure.</error>
-      <error code="InvalidData">There is an error in the given data.</error>
-      <error code="CreateObject">A call to CreateObject() failed.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
   </function>
 
   <function>
@@ -3073,7 +2985,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function copies part of one string over to another.  If the Length is set to zero then this function will copy the entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null byte) while copying, then it will stop automatically to prevent copying of junk characters.</p>
-<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the number of Chars or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> should be used instead.</p>
+<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the number of Chars or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.</p>
     </description>
     <result type="LONG">Returns the total amount of &lt;i&gt;bytes&lt;/i&gt; that were copied, not including the null byte at the end.</result>
   </function>
