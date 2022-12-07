@@ -23,7 +23,7 @@ static int base64_encode_blockend(char* code_out, struct rkBase64Encode * state_
 /*****************************************************************************
 
 -FUNCTION-
-StrBase64Encode: Encodes a binary source into a base 64 string.
+Base64Encode: Encodes a binary source into a base 64 string.
 
 This function needs to be replaced with the streaming version, see base64_init_encodestate()
 
@@ -38,7 +38,7 @@ int: The total number of bytes output is returned.
 
 *****************************************************************************/
 
-LONG StrBase64Encode(const void *Input, LONG InputSize, STRING Output, LONG OutputSize)
+LONG Base64Encode(const void *Input, LONG InputSize, STRING Output, LONG OutputSize)
 {
    static const UBYTE enc[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
    UBYTE in[3], out[4];
@@ -75,7 +75,7 @@ LONG StrBase64Encode(const void *Input, LONG InputSize, STRING Output, LONG Outp
 /*****************************************************************************
 
 -FUNCTION-
-StrBase64Decode: Decodes a base 64 string to its binary form.
+Base64Decode: Decodes a base 64 string to its binary form.
 
 This function will decode a base 64 string to its binary form.  It is designed to support streaming from the source
 Input and gracefully handles buffer over-runs by forwarding data to the next call.
@@ -99,7 +99,7 @@ Args
 
 // Output has to be >= Input's buffer size.
 
-ERROR StrBase64Decode(struct rkBase64Decode *State, CSTRING Input, LONG InputSize, APTR Output, LONG *Written)
+ERROR Base64Decode(struct rkBase64Decode *State, CSTRING Input, LONG InputSize, APTR Output, LONG *Written)
 {
    if ((!State) or (!Input) or (!Output) or (!Written)) return ERR_NullArgs;
    if (InputSize < 4) return ERR_Args;

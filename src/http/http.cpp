@@ -611,7 +611,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
             len += StrCopy("Authorization: Basic ", cmd+len, sizeof(cmd)-len);
             StrFormat(buffer, sizeof(buffer), "%s:%s", Self->Username, Self->Password);
-            len += StrBase64Encode(buffer, StrLength(buffer), cmd+len, sizeof(cmd)-len);
+            len += Base64Encode(buffer, StrLength(buffer), cmd+len, sizeof(cmd)-len);
             len += StrCopy("\r\n", cmd+len, sizeof(cmd)-len);
          }
 
