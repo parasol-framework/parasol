@@ -112,8 +112,8 @@ LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags);
 ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR * Data, LONG * DataSize);
 ERROR VarLock(struct KeyStore * Store, LONG Timeout);
 ERROR WakeProcess(LONG ProcessID);
-LONG StrLineLength(CSTRING String);
-CSTRING StrNextLine(CSTRING String);
+ERROR SetResourcePath(LONG PathType, CSTRING Path);
+OBJECTPTR CurrentTask();
 ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data, LONG * Size);
 DOUBLE StrToFloat(CSTRING String);
 LONG StrCopy(CSTRING Src, STRING Dest, LONG Length);
@@ -175,8 +175,6 @@ ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID Class, LONG Permissions);
 ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 const struct SystemState * GetSystemState();
-ERROR SetResourcePath(LONG PathType, CSTRING Path);
-OBJECTPTR CurrentTask();
 
 #ifdef  __cplusplus
 }

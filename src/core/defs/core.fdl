@@ -1053,8 +1053,8 @@ struct ScriptArg { // For use with scExec
     "VarSetSized",
     "VarLock",
     "WakeProcess",
-    "StrLineLength",
-    "StrNextLine",
+    "SetResourcePath",
+    "CurrentTask",
     "KeyIterate",
     "StrToFloat",
     "StrCopy",
@@ -1115,9 +1115,7 @@ struct ScriptArg { // For use with scExec
     "AddInfoTag",
     "SaveImageToFile",
     "CompareFilePaths",
-    "GetSystemState",
-    "SetResourcePath",
-    "CurrentTask")
+    "GetSystemState")
 
   c_insert([[
 

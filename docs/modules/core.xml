@@ -2714,35 +2714,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrLineLength</name>
-    <category>Strings</category>
-    <comment>Determines the line-length of a string.</comment>
-    <prototype>LONG StrLineLength(CSTRING String)</prototype>
-    <input>
-      <param type="CSTRING" name="String">Pointer to an address inside a character buffer.</param>
-    </input>
-    <description>
-<p>This function calculates the length of a String up to the first carriage return, line-break or null byte.  This function is commonly used on large text files where the String points to a position inside a large character buffer.</p>
-    </description>
-    <result type="LONG">Returns the length of the first line in the string, not including the return code.</result>
-  </function>
-
-  <function>
-    <name>StrNextLine</name>
-    <category>Strings</category>
-    <comment>Returns a pointer to the next line in a string buffer.</comment>
-    <prototype>CSTRING StrNextLine(CSTRING String)</prototype>
-    <input>
-      <param type="CSTRING" name="String">Pointer to an address inside a character buffer.</param>
-    </input>
-    <description>
-<p>This function scans a character buffer for a carriage return or line feed and returns a pointer to the following line. If no return code is found, NULL is returned.</p>
-<p>This function is commonly used for scanning text files on a line by line basis.</p>
-    </description>
-    <result type="CSTRING">Returns a string pointer for the next line, or NULL if no further lines are present.</result>
-  </function>
-
-  <function>
     <name>StrReadDate</name>
     <category>Strings</category>
     <comment>Reads a date string into a DateTime structure.</comment>

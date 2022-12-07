@@ -126,8 +126,6 @@ FDEF argsStrFormat[] = { { "Result", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, 
 FDEF argsStrFormatDate[] = { { "Error", FD_LONG|FD_ERROR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "DateTime:Time", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
 FDEF argsStrLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrLineLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrNextLine[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrReadDate[] = { { "Error", FD_LONG|FD_ERROR }, { "String", FD_STR }, { "DateTime:DateTime", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF argsStrSearch[] = { { "Result", FD_LONG }, { "Keyword", FD_STR }, { "String", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
@@ -287,8 +285,8 @@ const struct Function glFunctions[] = {
    { (APTR)VarSetSized, "VarSetSized", argsVarSetSized },
    { (APTR)VarLock, "VarLock", argsVarLock },
    { (APTR)WakeProcess, "WakeProcess", argsWakeProcess },
-   { (APTR)StrLineLength, "StrLineLength", argsStrLineLength },
-   { (APTR)StrNextLine, "StrNextLine", argsStrNextLine },
+   { (APTR)SetResourcePath, "SetResourcePath", argsSetResourcePath },
+   { (APTR)CurrentTask, "CurrentTask", argsCurrentTask },
    { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { (APTR)StrToFloat, "StrToFloat", argsStrToFloat },
    { (APTR)StrCopy, "StrCopy", argsStrCopy },
@@ -350,8 +348,6 @@ const struct Function glFunctions[] = {
    { (APTR)SaveImageToFile, "SaveImageToFile", argsSaveImageToFile },
    { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
    { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
-   { (APTR)SetResourcePath, "SetResourcePath", argsSetResourcePath },
-   { (APTR)CurrentTask, "CurrentTask", argsCurrentTask },
    { NULL, NULL, NULL }
 };
 
