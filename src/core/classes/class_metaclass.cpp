@@ -161,7 +161,7 @@ static MethodArray glMetaMethods[TOTAL_METAMETHODS+2] = {
    { 0, 0, 0, 0, 0 }
 };
 
-struct Stats glMetaClass_Stats = { .ActionSubscriptions = { .Ptr = 0 }, .MID_FeedList = 0, .NotifyFlags = { 0, 0 }, .MethodFlags = { 0, 0 }, .Name = { 'M','e','t','a','C','l','a','s','s' } , .SubscriptionSize = 0, .FeedSize = 0 };
+struct Stats glMetaClass_Stats = { .ActionSubscriptions = { .Ptr = 0 }, .NotifyFlags = { 0, 0 }, .MethodFlags = { 0, 0 }, .Name = { 'M','e','t','a','C','l','a','s','s' } , .SubscriptionSize = 0 };
 
 extMetaClass glMetaClass;
 

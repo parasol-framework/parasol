@@ -61,12 +61,12 @@ ERROR SetName(OBJECTPTR Object, CSTRING Name);
 void LogReturn();
 ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags);
 ERROR SubscribeAction(OBJECTPTR Object, LONG Action);
-ERROR SubscribeFeed(OBJECTPTR Object);
+ERROR VarGet(struct KeyStore * Store, CSTRING Name, APTR * Data, LONG * Size);
 ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR * Handle);
 ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR * Subscription);
 ERROR UpdateTimer(APTR Subscription, DOUBLE Interval);
 ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action);
-ERROR UnsubscribeFeed(OBJECTPTR Object);
+APTR VarSet(struct KeyStore * Store, CSTRING Key, APTR Data, LONG Size);
 void UnsubscribeEvent(APTR Event);
 ERROR BroadcastEvent(APTR Event, LONG EventSize);
 void WaitTime(LONG Seconds, LONG MicroSeconds);
@@ -102,7 +102,7 @@ void FreeMutex(APTR Mutex);
 ERROR LockMutex(APTR Mutex, LONG MilliSeconds);
 void UnlockMutex(APTR Mutex);
 ERROR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
-MEMORYID GetFeedList(OBJECTPTR Object);
+struct KeyStore * VarNew(LONG InitialSize, LONG Flags);
 ERROR AllocSharedMutex(CSTRING Name, APTR * Mutex);
 void FreeSharedMutex(APTR Mutex);
 ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds);
@@ -177,9 +177,6 @@ ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 const struct SystemState * GetSystemState();
 ERROR SetResourcePath(LONG PathType, CSTRING Path);
 OBJECTPTR CurrentTask();
-struct KeyStore * VarNew(LONG InitialSize, LONG Flags);
-APTR VarSet(struct KeyStore * Store, CSTRING Key, APTR Data, LONG Size);
-ERROR VarGet(struct KeyStore * Store, CSTRING Name, APTR * Data, LONG * Size);
 
 #ifdef  __cplusplus
 }

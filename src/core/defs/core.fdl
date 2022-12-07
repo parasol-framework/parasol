@@ -1002,12 +1002,12 @@ struct ScriptArg { // For use with scExec
     "LogReturn",
     "StrCompare",
     "SubscribeAction",
-    "SubscribeFeed",
+    "VarGet",
     "SubscribeEvent",
     "SubscribeTimer",
     "UpdateTimer",
     "UnsubscribeAction",
-    "UnsubscribeFeed",
+    "VarSet",
     "UnsubscribeEvent",
     "BroadcastEvent",
     "WaitTime",
@@ -1043,7 +1043,7 @@ struct ScriptArg { // For use with scExec
     "LockMutex",
     "UnlockMutex",
     "ActionThread",
-    "GetFeedList",
+    "VarNew",
     "AllocSharedMutex",
     "FreeSharedMutex",
     "LockSharedMutex",
@@ -1117,10 +1117,7 @@ struct ScriptArg { // For use with scExec
     "CompareFilePaths",
     "GetSystemState",
     "SetResourcePath",
-    "CurrentTask",
-    "VarNew",
-    "VarSet",
-    "VarGet")
+    "CurrentTask")
 
   c_insert([[
 

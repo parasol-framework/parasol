@@ -1768,12 +1768,12 @@ struct CoreBase {
    void (*_LogReturn)(void);
    ERROR (*_StrCompare)(CSTRING, CSTRING, LONG, LONG);
    ERROR (*_SubscribeAction)(OBJECTPTR, LONG);
-   ERROR (*_SubscribeFeed)(OBJECTPTR);
+   ERROR (*_VarGet)(struct KeyStore *, CSTRING, APTR, LONG *);
    ERROR (*_SubscribeEvent)(LARGE, FUNCTION *, APTR, APTR);
    ERROR (*_SubscribeTimer)(DOUBLE, FUNCTION *, APTR);
    ERROR (*_UpdateTimer)(APTR, DOUBLE);
    ERROR (*_UnsubscribeAction)(OBJECTPTR, LONG);
-   ERROR (*_UnsubscribeFeed)(OBJECTPTR);
+   APTR (*_VarSet)(struct KeyStore *, CSTRING, APTR, LONG);
    void (*_UnsubscribeEvent)(APTR);
    ERROR (*_BroadcastEvent)(APTR, LONG);
    void (*_WaitTime)(LONG, LONG);
@@ -1809,7 +1809,7 @@ struct CoreBase {
    ERROR (*_LockMutex)(APTR, LONG);
    void (*_UnlockMutex)(APTR);
    ERROR (*_ActionThread)(LONG, OBJECTPTR, APTR, FUNCTION *, LONG);
-   MEMORYID (*_GetFeedList)(OBJECTPTR);
+   struct KeyStore * (*_VarNew)(LONG, LONG);
    ERROR (*_AllocSharedMutex)(CSTRING, APTR);
    void (*_FreeSharedMutex)(APTR);
    ERROR (*_LockSharedMutex)(APTR, LONG);
@@ -1884,9 +1884,6 @@ struct CoreBase {
    const struct SystemState * (*_GetSystemState)(void);
    ERROR (*_SetResourcePath)(LONG, CSTRING);
    OBJECTPTR (*_CurrentTask)(void);
-   struct KeyStore * (*_VarNew)(LONG, LONG);
-   APTR (*_VarSet)(struct KeyStore *, CSTRING, APTR, LONG);
-   ERROR (*_VarGet)(struct KeyStore *, CSTRING, APTR, LONG *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1947,12 +1944,12 @@ struct CoreBase {
 #define LogReturn(...) (CoreBase->_LogReturn)(__VA_ARGS__)
 #define StrCompare(...) (CoreBase->_StrCompare)(__VA_ARGS__)
 #define SubscribeAction(...) (CoreBase->_SubscribeAction)(__VA_ARGS__)
-#define SubscribeFeed(...) (CoreBase->_SubscribeFeed)(__VA_ARGS__)
+#define VarGet(...) (CoreBase->_VarGet)(__VA_ARGS__)
 #define SubscribeEvent(...) (CoreBase->_SubscribeEvent)(__VA_ARGS__)
 #define SubscribeTimer(...) (CoreBase->_SubscribeTimer)(__VA_ARGS__)
 #define UpdateTimer(...) (CoreBase->_UpdateTimer)(__VA_ARGS__)
 #define UnsubscribeAction(...) (CoreBase->_UnsubscribeAction)(__VA_ARGS__)
-#define UnsubscribeFeed(...) (CoreBase->_UnsubscribeFeed)(__VA_ARGS__)
+#define VarSet(...) (CoreBase->_VarSet)(__VA_ARGS__)
 #define UnsubscribeEvent(...) (CoreBase->_UnsubscribeEvent)(__VA_ARGS__)
 #define BroadcastEvent(...) (CoreBase->_BroadcastEvent)(__VA_ARGS__)
 #define WaitTime(...) (CoreBase->_WaitTime)(__VA_ARGS__)
@@ -1988,7 +1985,7 @@ struct CoreBase {
 #define LockMutex(...) (CoreBase->_LockMutex)(__VA_ARGS__)
 #define UnlockMutex(...) (CoreBase->_UnlockMutex)(__VA_ARGS__)
 #define ActionThread(...) (CoreBase->_ActionThread)(__VA_ARGS__)
-#define GetFeedList(...) (CoreBase->_GetFeedList)(__VA_ARGS__)
+#define VarNew(...) (CoreBase->_VarNew)(__VA_ARGS__)
 #define AllocSharedMutex(...) (CoreBase->_AllocSharedMutex)(__VA_ARGS__)
 #define FreeSharedMutex(...) (CoreBase->_FreeSharedMutex)(__VA_ARGS__)
 #define LockSharedMutex(...) (CoreBase->_LockSharedMutex)(__VA_ARGS__)
@@ -2063,9 +2060,6 @@ struct CoreBase {
 #define GetSystemState(...) (CoreBase->_GetSystemState)(__VA_ARGS__)
 #define SetResourcePath(...) (CoreBase->_SetResourcePath)(__VA_ARGS__)
 #define CurrentTask(...) (CoreBase->_CurrentTask)(__VA_ARGS__)
-#define VarNew(...) (CoreBase->_VarNew)(__VA_ARGS__)
-#define VarSet(...) (CoreBase->_VarSet)(__VA_ARGS__)
-#define VarGet(...) (CoreBase->_VarGet)(__VA_ARGS__)
 #endif
 
 
