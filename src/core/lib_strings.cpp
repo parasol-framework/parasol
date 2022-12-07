@@ -25,17 +25,9 @@ int     (*iconv_close)(iconv_t cd);
 void    (*iconvlist)(int (*do_one)(unsigned int namescount, const char* const* names, void* data), void* data);
 
 STRING glIconvBuffer = NULL;
-MEMORYID glTranslateMID = 0;
-BYTE glTranslateLoad = FALSE; // Set to TRUE once the first attempt to load the translation table has been made
-char glTranslateBuffer[120];
 OBJECTPTR modIconv = NULL;
 static iconv_t glIconv = NULL;
 struct FluidBase *FluidBase = 0; // Must be zero
-
-static void refresh_locale(void)
-{
-   if (glLocale) { acFree(glLocale); glLocale = NULL; }
-}
 
 void free_iconv(void)
 {
@@ -46,39 +38,6 @@ void free_iconv(void)
       acFree(modIconv);
       modIconv = NULL;
    }
-}
-
-/*****************************************************************************
-
--FUNCTION-
-CharCopy: Copies the characters of one string to another.
-
-This function copies a string of characters to a destination.  It will copy the exact number of characters as specified
-by Length, unless the source String terminates before the total number of characters have been copied.
-
-This function will not null-terminate the destination.  This function is not 'safe', in that it is capable of
-overflowing the destination buffer (this capability is intentional).  Use StrCopy() if you want to copy a complete
-string with a limit on the destination buffer size.
-
--INPUT-
-cstr Source: Pointer to the string that you are copying from.
-str Dest:   Pointer to the buffer that you are copying to.
-int Length: The number of characters to copy.
-
--RESULT-
-int: Returns the total amount of characters that were copied.
-
-*****************************************************************************/
-
-LONG CharCopy(CSTRING String, STRING Dest, LONG Length)
-{
-   LONG i;
-
-   if ((String) and (Dest)) {
-      for (i=0; (i < Length) and (String[i]); i++) Dest[i] = String[i];
-      return i;
-   }
-   else return 0;
 }
 
 /*****************************************************************************
@@ -420,9 +379,8 @@ entire Src string over to the Dest.  Note that if this function encounters the e
 byte) while copying, then it will stop automatically to prevent copying of junk characters.
 
 Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set
-the Length or not.  For example, if you were to copy "123" into the middle of string "ABCDEFGHI" then the result would
-be "ABC123". The "GHI" part of the string would be lost.  In situations such as this, functions such as
-~CharCopy() should be used instead.
+the Length or not.  For example, if you were to copy `123` into the middle of string `ABCDEFGHI` then the result would
+be `ABC123`. The `GHI` part of the string would be lost.
 
 -INPUT-
 cstr Src: Pointer to the string that you are copying from.
@@ -466,9 +424,9 @@ LONG StrCopy(CSTRING String, STRING Dest, LONG Length)
 -FUNCTION-
 StrDatatype: Determines the data type of a string.
 
-This function analyses a string and returns its data type.  Valid return values are STT_FLOAT for floating point
-numbers, STT_NUMBER for whole numbers, STT_HEX for hexadecimal (e.g. 0x1) and STT_STRING for any other string type.  In
-order for the string to be recognised as one of the number types, it must be limited to numbers and qualification
+This function analyses a string and returns its data type.  Valid return values are `STT_FLOAT` for floating point
+numbers, `STT_NUMBER` for whole numbers, `STT_HEX` for hexadecimal (e.g. 0x1) and `STT_STRING` for any other string type.
+In order for the string to be recognised as one of the number types, it must be limited to numbers and qualification
 characters, such as a decimal point or negative sign.
 
 Any white-space at the start of the string will be skipped.
@@ -607,62 +565,6 @@ LONG StrLength(CSTRING String)
 /*****************************************************************************
 
 -FUNCTION-
-StrLineLength: Determines the line-length of a string.
-
-This function calculates the length of a String up to the first carriage return, line-break or null byte.  This
-function is commonly used on large text files where the String points to a position inside a large character buffer.
-
--INPUT-
-cstr String: Pointer to an address inside a character buffer.
-
--RESULT-
-int: Returns the length of the first line in the string, not including the return code.
-
-*****************************************************************************/
-
-LONG StrLineLength(CSTRING String)
-{
-   if (String) {
-      LONG i = 0;
-      while ((String[i]) and (String[i] != '\n') and (String[i] != '\r')) i++;
-      return i;
-   }
-   else return 0;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrNextLine: Returns a pointer to the next line in a string buffer.
-
-This function scans a character buffer for a carriage return or line feed and returns a pointer to the following line.
-If no return code is found, NULL is returned.
-
-This function is commonly used for scanning text files on a line by line basis.
-
--INPUT-
-cstr String: Pointer to an address inside a character buffer.
-
--RESULT-
-cstr: Returns a string pointer for the next line, or NULL if no further lines are present.
-
-*****************************************************************************/
-
-CSTRING StrNextLine(CSTRING String)
-{
-   if (!String) return NULL;
-
-   while ((*String) and (*String != '\n') and (*String != '\r')) String++;
-   while (*String IS '\r') String++;
-   if (*String IS '\n') String++;
-   while (*String IS '\r') String++;
-   if (*String) return String;
-   else return NULL;
-}
-
-/*****************************************************************************
-
--FUNCTION-
 StrSearch: Searches a string for a particular keyword/phrase.
 
 This function allows you to search for a particular Keyword or phrase inside a String.  You may search on a case
@@ -727,8 +629,8 @@ CSTRING List[] = {
 The sorting routine will work within the confines of the array that you have provided and will not allocate any memory
 when performing the sort.
 
-Optional flags include SBF_NO_DUPLICATES, which strips duplicated strings out of the array; SBF_CASE to acknowledge case
-differences when determining string duplication and SBF_DESC to sort in descending order.
+Optional flags include `SBF_NO_DUPLICATES`, which strips duplicated strings out of the array; `SBF_CASE` to
+acknowledge case differences when determining string duplication and `SBF_DESC` to sort in descending order.
 
 -INPUT-
 array(cstr) List: Must point to an array of string pointers, terminated with a NULL entry.
@@ -857,284 +759,6 @@ LONG StrSortCompare(CSTRING Name1, CSTRING Name2)
    if ((!*Name1) and (!*Name2)) return 0;
    else if (!*Name1) return -1;
    else return 1;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrTranslateRefresh: Refreshes internal translation tables.
-
-This function refreshes the internal translation tables that convert international English into foreign languages.  It
-should only be called if the user changes the default system language, or if the current translation file is updated.
-
--RESULT-
-int: Returns TRUE if the translation table was refreshed.
-
--END-
-
-*****************************************************************************/
-
-LONG StrTranslateRefresh(void)
-{
-   parasol::Log log(__FUNCTION__);
-   struct translate *translate;
-   objConfig *config;
-   MEMORYID memoryid;
-   CSTRING language;
-
-   log.branch();
-
-   refresh_locale();
-   if (StrReadLocale("language", &language)) {
-      log.msg("User's preferred language not specified.");
-      return FALSE;
-   }
-   log.msg("Language: %s", language);
-
-   if (glTranslate) {
-      if (!StrMatch(language, glTranslate->Language)) {
-         log.msg("Language unchanged.");
-         return FALSE;
-      }
-   }
-
-   char path[80];
-   LONG i = StrCopy("config:translations/", path, sizeof(path));
-   for (LONG j=0; (language[j]) and ((size_t)i < sizeof(path)-1); j++) {
-      if ((language[j] >= 'A') and (language[j] <= 'Z')) path[i++] = language[j] - 'A' + 'a';
-      else path[i++] = language[j];
-   }
-   StrCopy(".cfg", path+i, sizeof(path)-i);
-
-   // Load the translation file
-
-   if (!CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&config, FID_Path|TSTR, path, TAGEND)) {
-      // Count the string lengths to figure out how much memory we need
-
-      LONG total_keys = 0;
-      ConfigGroups *sections;
-      if ((!GetLong(config, FID_TotalKeys, &total_keys)) and (!GetPointer(config, FID_Data, &sections))) {
-         LONG size = sizeof(struct translate) + (sizeof(STRING) * total_keys);
-
-         LONG total = 0;
-         for (auto& [section, keys] : sections[0]) {
-            for (auto& [k, v] : keys) {
-               if (not v.empty()) {
-                  size += k.size() + v.size() + 2; // Two trailing null bytes for the strings
-                  total++;
-               }
-            }
-         }
-
-         if (!AllocMemory(size, MEM_UNTRACKED|MEM_PUBLIC|MEM_NO_BLOCKING, (APTR *)&translate, &memoryid)) {
-            translate->Replaced = FALSE;
-            translate->Total = total;
-            StrCopy(language, translate->Language, sizeof(translate->Language));
-            auto array  = (LONG *)(translate + 1);
-            auto str    = (STRING)(array + total);
-            auto strbuf = (MAXINT)(array + total);
-
-            for (auto& [section, keys] : sections[0]) {
-               for (auto& [k, v] : keys) {
-                  if (not v.empty()) {
-                     *array = (MAXINT)str - strbuf;
-                     array++;
-
-                     str += StrCopy(k.c_str(), str, COPY_ALL) + 1;
-                     str += StrCopy(v.c_str(), str, COPY_ALL) + 1;
-                  }
-               }
-            }
-
-            // Sorting
-
-            array = (LONG *)(translate + 1);
-            for (i=total/2; i >= 0; i--) sift((STRING)(array+total), array, i, total);
-
-            LONG heapsize = total;
-            for (i=heapsize; i > 0; i--) {
-               auto temp = array[0];
-               array[0] = array[i-1];
-               array[i-1] = temp;
-               sift((STRING)(array+total), array, 0, --heapsize);
-            }
-
-            // If in debug mode, print out any duplicate strings
-
-            if (GetResource(RES_LOG_LEVEL) > 3) {
-               array = (LONG *)(translate + 1);
-               str = (STRING)(array + total);
-               for (i=0; i < total-1; i++) {
-                  if (!StrCompare(str+array[i], str+array[i+1], 0, STR_MATCH_LEN)) {
-                     log.warning("Duplicate string \"%s\"", str+array[i]);
-                  }
-               }
-            }
-
-            // Update the global translation table
-
-            if (glTranslate) {
-               glTranslate->Replaced = TRUE;
-               FreeResource(glTranslate);
-               ReleaseMemory(glTranslate);
-            }
-
-            auto sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
-            sharectl->TranslationMID = memoryid;
-            glTranslate = translate;
-            glTranslateMID = memoryid;
-            acFree(config);
-
-            return TRUE;
-         }
-         acFree(config);
-      }
-      else {
-         // If there is no translation file for this language, revert to no translation table (which will give the user English).
-
-         if (glTranslate) {
-            glTranslate->Replaced = TRUE;
-            ReleaseMemoryID(glTranslateMID);
-            FreeResourceID(glTranslateMID);
-            glTranslate = NULL;
-            glTranslateMID = 0;
-         }
-         auto sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
-         sharectl->TranslationMID = 0;
-      }
-   }
-
-   return FALSE;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrTranslateText: Translates text from international English to the user's language.
-
-This function converts International English to the user's preferred language.  The translation process is very
-simple - a lookup table is loaded from `config:translations/code.cfg`, which holds conversion details for simple English
-words and phrases into another language.  If the String is known, a new string is returned for the translated word(s).
-If the String is not known, the original String address pointer is returned without a translation.
-
-If a translation occurs, the resulting string pointer is temporary.  You will need to store the result in a local
-buffer, or risk the string address becoming invalid on the next call to StrTranslateText().
-
--INPUT-
-cstr String: A string of international English to translate.
-
--RESULT-
-cstr: If the string was able to be translated, a translation is returned.  Otherwise the original String pointer is returned.
-
--END-
-
-*****************************************************************************/
-
-CSTRING StrTranslateText(CSTRING Text)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if (!Text) return Text;
-
-   SharedControl *sharectl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
-
-   if ((!glTranslate) and (!sharectl->TranslationMID)) {
-      if (glTranslateLoad IS FALSE) {
-         glTranslateLoad = TRUE;
-         if (StrTranslateRefresh() IS FALSE) return Text;
-      }
-      else return Text;
-   }
-
-   // Reload the translation table if it has been replaced with a new one
-
-   if ((!glTranslate) or (glTranslate->Replaced)) {
-      log.msg("Reloading the translation table.");
-      if (glTranslate) {
-         ReleaseMemoryID(glTranslateMID); // Memory is already marked for deletion, so should free itself on the final release
-         glTranslate = NULL;
-         glTranslateMID = 0;
-      }
-
-      if (AccessMemory(sharectl->TranslationMID, MEM_READ|MEM_NO_BLOCKING, 2000, (APTR *)&glTranslate) != ERR_Okay) {
-         return Text;
-      }
-      else glTranslateMID = sharectl->TranslationMID;
-   }
-
-   // Scan the translation table for the word.  The array is alphabetically sorted, so this will be quick...
-
-   LONG *array = (LONG *)(glTranslate + 1);
-   STRING str = (STRING)(array + glTranslate->Total);
-
-   CSTRING txt = Text;
-   WORD pos = 0;
-   LONG floor, ceiling, i;
-restart:
-   floor   = 0;
-   ceiling = glTranslate->Total;
-   i       = ceiling/2;
-   while (1) {
-      BYTE result = StrSortCompare(txt, str+array[i]);
-      if (result < 0) {
-         if (ceiling IS i) break;
-         else ceiling = i;
-      }
-      else if (result > 0) {
-         if (floor IS i) break;
-         else floor = i;
-      }
-      else goto found;
-      i = floor + ((ceiling - floor)>>1);
-   }
-
-   // Do a second search, this time cut off any non-alphabetic characters from the string being translated.
-
-   if ((APTR)txt IS (APTR)Text) {
-      for (pos=0; (Text[pos]) and
-                  (((Text[pos] >= 'a') and (Text[pos] <= 'z')) or ((Text[pos] >= 'A') and (Text[pos] <= 'Z')) or
-                   (Text[pos] IS ' ')); pos++);
-
-      if (Text[pos]) {
-         LONG j;
-         for (j=0; (j < pos) and ((size_t)j < sizeof(glTranslateBuffer)-1); j++) glTranslateBuffer[j] = Text[j];
-         glTranslateBuffer[j] = 0;
-         txt = glTranslateBuffer;
-         goto restart;
-      }
-   }
-
-   return Text; // Return the original string
-
-found:
-   str = str + array[i];
-   while (*str) str++;
-   str++;
-
-   LONG j;
-   for (j=0; (str[j]) and ((size_t)j < sizeof(glTranslateBuffer)-1); j++) glTranslateBuffer[j] = str[j];
-
-   if (txt IS glTranslateBuffer) { // Copy trailing non-alphabetic symbols
-      while ((Text[pos]) and ((size_t)j < sizeof(glTranslateBuffer)-1)) glTranslateBuffer[j++] = Text[pos++];
-   }
-
-   glTranslateBuffer[j] = 0;
-
-   // Check the capitalisation of the text
-
-   if ((Text[0] >= 'a') and (Text[0] <= 'z')) { // All lower case
-      for (i=0; glTranslateBuffer[i]; i++) {
-         if ((glTranslateBuffer[i] >= 'A') and (glTranslateBuffer[i] <= 'Z')) glTranslateBuffer[i] = glTranslateBuffer[i] - 'A' + 'a';
-      }
-   }
-   else if (((Text[0] >= 'A') and (Text[0] <= 'Z')) and ((Text[1] >= 'A') and (Text[1] <= 'A'))) {
-      // All upper case
-      for (i=0; glTranslateBuffer[i]; i++) {
-         if ((glTranslateBuffer[i] >= 'a') and (glTranslateBuffer[i] <= 'z')) glTranslateBuffer[i] = glTranslateBuffer[i] - 'a' + 'A';
-      }
-   }
-
-   return glTranslateBuffer;
 }
 
 //****************************************************************************

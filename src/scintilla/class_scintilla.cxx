@@ -612,7 +612,6 @@ static ERROR SCINTILLA_Free(extScintilla *Self, APTR)
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
       if (!AccessObject(Self->FocusID, 500, &object)) {
          UnsubscribeAction(object, 0);
-         UnsubscribeFeed(object);
          ReleaseObject(object);
       }
    }
@@ -621,7 +620,6 @@ static ERROR SCINTILLA_Free(extScintilla *Self, APTR)
       if (!AccessObject(Self->SurfaceID, 500, &object)) {
          drwRemoveCallback(object, (APTR)&draw_scintilla);
          UnsubscribeAction(object, 0);
-         UnsubscribeFeed(object);
          ReleaseObject(object);
       }
    }
@@ -790,7 +788,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
       drwAddCallback(surface, (APTR)&draw_scintilla);
 
-      SubscribeFeed(surface);
+      //SubscribeFeed(surface); TODO: Deprecated
 
       SubscribeActionTags(surface,
          AC_DataFeed,

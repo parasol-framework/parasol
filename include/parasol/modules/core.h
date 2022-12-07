@@ -1768,12 +1768,12 @@ struct CoreBase {
    void (*_LogReturn)(void);
    ERROR (*_StrCompare)(CSTRING, CSTRING, LONG, LONG);
    ERROR (*_SubscribeAction)(OBJECTPTR, LONG);
-   ERROR (*_SubscribeFeed)(OBJECTPTR);
+   ERROR (*_VarGet)(struct KeyStore *, CSTRING, APTR, LONG *);
    ERROR (*_SubscribeEvent)(LARGE, FUNCTION *, APTR, APTR);
    ERROR (*_SubscribeTimer)(DOUBLE, FUNCTION *, APTR);
    ERROR (*_UpdateTimer)(APTR, DOUBLE);
    ERROR (*_UnsubscribeAction)(OBJECTPTR, LONG);
-   ERROR (*_UnsubscribeFeed)(OBJECTPTR);
+   APTR (*_VarSet)(struct KeyStore *, CSTRING, APTR, LONG);
    void (*_UnsubscribeEvent)(APTR);
    ERROR (*_BroadcastEvent)(APTR, LONG);
    void (*_WaitTime)(LONG, LONG);
@@ -1809,7 +1809,7 @@ struct CoreBase {
    ERROR (*_LockMutex)(APTR, LONG);
    void (*_UnlockMutex)(APTR);
    ERROR (*_ActionThread)(LONG, OBJECTPTR, APTR, FUNCTION *, LONG);
-   MEMORYID (*_GetFeedList)(OBJECTPTR);
+   struct KeyStore * (*_VarNew)(LONG, LONG);
    ERROR (*_AllocSharedMutex)(CSTRING, APTR);
    void (*_FreeSharedMutex)(APTR);
    ERROR (*_LockSharedMutex)(APTR, LONG);
@@ -1819,8 +1819,8 @@ struct CoreBase {
    ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_VarLock)(struct KeyStore *, LONG);
    ERROR (*_WakeProcess)(LONG);
-   LONG (*_StrLineLength)(CSTRING);
-   CSTRING (*_StrNextLine)(CSTRING);
+   ERROR (*_SetResourcePath)(LONG, CSTRING);
+   OBJECTPTR (*_CurrentTask)(void);
    ERROR (*_KeyIterate)(struct KeyStore *, ULONG, ULONG *, APTR, LONG *);
    DOUBLE (*_StrToFloat)(CSTRING);
    LONG (*_StrCopy)(CSTRING, STRING, LONG);
@@ -1837,15 +1837,15 @@ struct CoreBase {
    ULONG (*_UTF8ReadValue)(CSTRING, LONG *);
    LONG (*_UTF8WriteValue)(LONG, STRING, LONG);
    LONG (*_StrFormat)(const void *, LONG, const char *, ...) __attribute__((format(printf, 3, 4)));
-   ERROR (*_StrFormatDate)(STRING, LONG, CSTRING, struct DateTime *);
+   ERROR (*_SaveImageToFile)(OBJECTPTR, CSTRING, CLASSID, LONG);
    ERROR (*_StrToColour)(CSTRING, struct RGB8 *);
    LONG (*_StrDatatype)(CSTRING);
-   LONG (*_CharCopy)(CSTRING, STRING, LONG);
+   void (*_UnloadFile)(struct CacheFile *);
    LARGE (*_StrToHex)(CSTRING);
-   CSTRING (*_StrTranslateText)(CSTRING);
-   LONG (*_StrTranslateRefresh)(void);
+   ERROR (*_CompareFilePaths)(CSTRING, CSTRING);
+   const struct SystemState * (*_GetSystemState)(void);
    LONG (*_StrSortCompare)(CSTRING, CSTRING);
-   ERROR (*_StrReadDate)(CSTRING, struct DateTime *);
+   ERROR (*_AddInfoTag)(struct FileInfo *, CSTRING, CSTRING);
    LONG (*_UTF8Copy)(CSTRING, STRING, LONG, LONG);
    LONG (*_StrBase64Encode)(const void *, LONG, STRING, LONG);
    ERROR (*_VarSetString)(struct KeyStore *, CSTRING, CSTRING);
@@ -1877,16 +1877,6 @@ struct CoreBase {
    CSTRING (*_ResolveGroupID)(LONG);
    ERROR (*_ReadFileToBuffer)(CSTRING, APTR, LONG, LONG *);
    ERROR (*_LoadFile)(CSTRING, LONG, struct CacheFile **);
-   void (*_UnloadFile)(struct CacheFile *);
-   ERROR (*_AddInfoTag)(struct FileInfo *, CSTRING, CSTRING);
-   ERROR (*_SaveImageToFile)(OBJECTPTR, CSTRING, CLASSID, LONG);
-   ERROR (*_CompareFilePaths)(CSTRING, CSTRING);
-   const struct SystemState * (*_GetSystemState)(void);
-   ERROR (*_SetResourcePath)(LONG, CSTRING);
-   OBJECTPTR (*_CurrentTask)(void);
-   struct KeyStore * (*_VarNew)(LONG, LONG);
-   APTR (*_VarSet)(struct KeyStore *, CSTRING, APTR, LONG);
-   ERROR (*_VarGet)(struct KeyStore *, CSTRING, APTR, LONG *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1947,12 +1937,12 @@ struct CoreBase {
 #define LogReturn(...) (CoreBase->_LogReturn)(__VA_ARGS__)
 #define StrCompare(...) (CoreBase->_StrCompare)(__VA_ARGS__)
 #define SubscribeAction(...) (CoreBase->_SubscribeAction)(__VA_ARGS__)
-#define SubscribeFeed(...) (CoreBase->_SubscribeFeed)(__VA_ARGS__)
+#define VarGet(...) (CoreBase->_VarGet)(__VA_ARGS__)
 #define SubscribeEvent(...) (CoreBase->_SubscribeEvent)(__VA_ARGS__)
 #define SubscribeTimer(...) (CoreBase->_SubscribeTimer)(__VA_ARGS__)
 #define UpdateTimer(...) (CoreBase->_UpdateTimer)(__VA_ARGS__)
 #define UnsubscribeAction(...) (CoreBase->_UnsubscribeAction)(__VA_ARGS__)
-#define UnsubscribeFeed(...) (CoreBase->_UnsubscribeFeed)(__VA_ARGS__)
+#define VarSet(...) (CoreBase->_VarSet)(__VA_ARGS__)
 #define UnsubscribeEvent(...) (CoreBase->_UnsubscribeEvent)(__VA_ARGS__)
 #define BroadcastEvent(...) (CoreBase->_BroadcastEvent)(__VA_ARGS__)
 #define WaitTime(...) (CoreBase->_WaitTime)(__VA_ARGS__)
@@ -1988,7 +1978,7 @@ struct CoreBase {
 #define LockMutex(...) (CoreBase->_LockMutex)(__VA_ARGS__)
 #define UnlockMutex(...) (CoreBase->_UnlockMutex)(__VA_ARGS__)
 #define ActionThread(...) (CoreBase->_ActionThread)(__VA_ARGS__)
-#define GetFeedList(...) (CoreBase->_GetFeedList)(__VA_ARGS__)
+#define VarNew(...) (CoreBase->_VarNew)(__VA_ARGS__)
 #define AllocSharedMutex(...) (CoreBase->_AllocSharedMutex)(__VA_ARGS__)
 #define FreeSharedMutex(...) (CoreBase->_FreeSharedMutex)(__VA_ARGS__)
 #define LockSharedMutex(...) (CoreBase->_LockSharedMutex)(__VA_ARGS__)
@@ -1998,8 +1988,8 @@ struct CoreBase {
 #define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
 #define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
 #define WakeProcess(...) (CoreBase->_WakeProcess)(__VA_ARGS__)
-#define StrLineLength(...) (CoreBase->_StrLineLength)(__VA_ARGS__)
-#define StrNextLine(...) (CoreBase->_StrNextLine)(__VA_ARGS__)
+#define SetResourcePath(...) (CoreBase->_SetResourcePath)(__VA_ARGS__)
+#define CurrentTask(...) (CoreBase->_CurrentTask)(__VA_ARGS__)
 #define KeyIterate(...) (CoreBase->_KeyIterate)(__VA_ARGS__)
 #define StrToFloat(...) (CoreBase->_StrToFloat)(__VA_ARGS__)
 #define StrCopy(...) (CoreBase->_StrCopy)(__VA_ARGS__)
@@ -2016,15 +2006,15 @@ struct CoreBase {
 #define UTF8ReadValue(...) (CoreBase->_UTF8ReadValue)(__VA_ARGS__)
 #define UTF8WriteValue(...) (CoreBase->_UTF8WriteValue)(__VA_ARGS__)
 #define StrFormat(...) (CoreBase->_StrFormat)(__VA_ARGS__)
-#define StrFormatDate(...) (CoreBase->_StrFormatDate)(__VA_ARGS__)
+#define SaveImageToFile(...) (CoreBase->_SaveImageToFile)(__VA_ARGS__)
 #define StrToColour(...) (CoreBase->_StrToColour)(__VA_ARGS__)
 #define StrDatatype(...) (CoreBase->_StrDatatype)(__VA_ARGS__)
-#define CharCopy(...) (CoreBase->_CharCopy)(__VA_ARGS__)
+#define UnloadFile(...) (CoreBase->_UnloadFile)(__VA_ARGS__)
 #define StrToHex(...) (CoreBase->_StrToHex)(__VA_ARGS__)
-#define StrTranslateText(...) (CoreBase->_StrTranslateText)(__VA_ARGS__)
-#define StrTranslateRefresh(...) (CoreBase->_StrTranslateRefresh)(__VA_ARGS__)
+#define CompareFilePaths(...) (CoreBase->_CompareFilePaths)(__VA_ARGS__)
+#define GetSystemState(...) (CoreBase->_GetSystemState)(__VA_ARGS__)
 #define StrSortCompare(...) (CoreBase->_StrSortCompare)(__VA_ARGS__)
-#define StrReadDate(...) (CoreBase->_StrReadDate)(__VA_ARGS__)
+#define AddInfoTag(...) (CoreBase->_AddInfoTag)(__VA_ARGS__)
 #define UTF8Copy(...) (CoreBase->_UTF8Copy)(__VA_ARGS__)
 #define StrBase64Encode(...) (CoreBase->_StrBase64Encode)(__VA_ARGS__)
 #define VarSetString(...) (CoreBase->_VarSetString)(__VA_ARGS__)
@@ -2056,16 +2046,6 @@ struct CoreBase {
 #define ResolveGroupID(...) (CoreBase->_ResolveGroupID)(__VA_ARGS__)
 #define ReadFileToBuffer(...) (CoreBase->_ReadFileToBuffer)(__VA_ARGS__)
 #define LoadFile(...) (CoreBase->_LoadFile)(__VA_ARGS__)
-#define UnloadFile(...) (CoreBase->_UnloadFile)(__VA_ARGS__)
-#define AddInfoTag(...) (CoreBase->_AddInfoTag)(__VA_ARGS__)
-#define SaveImageToFile(...) (CoreBase->_SaveImageToFile)(__VA_ARGS__)
-#define CompareFilePaths(...) (CoreBase->_CompareFilePaths)(__VA_ARGS__)
-#define GetSystemState(...) (CoreBase->_GetSystemState)(__VA_ARGS__)
-#define SetResourcePath(...) (CoreBase->_SetResourcePath)(__VA_ARGS__)
-#define CurrentTask(...) (CoreBase->_CurrentTask)(__VA_ARGS__)
-#define VarNew(...) (CoreBase->_VarNew)(__VA_ARGS__)
-#define VarSet(...) (CoreBase->_VarSet)(__VA_ARGS__)
-#define VarGet(...) (CoreBase->_VarGet)(__VA_ARGS__)
 #endif
 
 

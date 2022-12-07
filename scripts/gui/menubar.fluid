@@ -28,6 +28,7 @@ as follows:
    require 'common'
    require 'gui'
    require 'gui/menu'
+   require 'translate'
    include 'vector'
 
    if (not mFont) then mFont = mod.load('font') end
@@ -92,7 +93,7 @@ local function newItem(self, Name, ID) -- Append an item to the menu bar
 
    local item = { id=ID, name=Name }
    if nz(Name) then
-      item.displayName = mSys.StrTranslateText(Name)
+      item.displayName = string.translate(Name)
    end
 
    if self._last then self._last.next = item end

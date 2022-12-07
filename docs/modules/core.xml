@@ -476,23 +476,6 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
   </function>
 
   <function>
-    <name>CharCopy</name>
-    <category>Strings</category>
-    <comment>Copies the characters of one string to another.</comment>
-    <prototype>LONG CharCopy(CSTRING Source, STRING Dest, LONG Length)</prototype>
-    <input>
-      <param type="CSTRING" name="Source">Pointer to the string that you are copying from.</param>
-      <param type="STRING" name="Dest">Pointer to the buffer that you are copying to.</param>
-      <param type="LONG" name="Length">The number of characters to copy.</param>
-    </input>
-    <description>
-<p>This function copies a string of characters to a destination.  It will copy the exact number of characters as specified by Length, unless the source String terminates before the total number of characters have been copied.</p>
-<p>This function will not null-terminate the destination.  This function is not 'safe', in that it is capable of overflowing the destination buffer (this capability is intentional).  Use StrCopy() if you want to copy a complete string with a limit on the destination buffer size.</p>
-    </description>
-    <result type="LONG">Returns the total amount of characters that were copied.</result>
-  </function>
-
-  <function>
     <name>CheckAction</name>
     <category>Objects</category>
     <comment>Checks objects to see whether or not they support certain actions.</comment>
@@ -2376,12 +2359,12 @@ SetField(Object, FID_Statement|TSTR, "string");
     <comment>Sets the name of an object.</comment>
     <prototype>ERROR SetName(OBJECTPTR Object, CSTRING Name)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object that you want to set the name of.</param>
-      <param type="CSTRING" name="Name">The name that you want to set for the object.</param>
+      <param type="OBJECTPTR" name="Object">The target object.</param>
+      <param type="CSTRING" name="Name">The new name for the object.</param>
     </input>
     <description>
-<p>To set the name of an object, use this function.  Please note that the length of the Name will be limited to the value indicated in the <code>main.h</code> include file, under the <code>MAX_NAME_LEN</code> definition.  If the Name is longer than the allowed length, it will be trimmed to fit.</p>
-<p>Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters will be skipped while setting the object name.</p>
+<p>This function sets the name of an object.  This enhances log messages and allows the object to be found in searches. Please note that the length of the Name will be limited to the value indicated in the <code>main.h</code> include file, under the <code>MAX_NAME_LEN</code> definition.  If the Name is longer than the allowed length, it will be trimmed to fit.</p>
+<p>Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with an underscore.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -2599,7 +2582,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function copies part of one string over to another.  If the Length is set to zero then this function will copy the entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null byte) while copying, then it will stop automatically to prevent copying of junk characters.</p>
-<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the Length or not.  For example, if you were to copy "123" into the middle of string "ABCDEFGHI" then the result would be "ABC123". The "GHI" part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> should be used instead.</p>
+<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the Length or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.</p>
     </description>
     <result type="LONG">Returns the total amount of characters that were copied, not including the null byte at the end.</result>
   </function>
@@ -2613,7 +2596,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="CSTRING" name="String">The string that you want to analyse.</param>
     </input>
     <description>
-<p>This function analyses a string and returns its data type.  Valid return values are STT_FLOAT for floating point numbers, STT_NUMBER for whole numbers, STT_HEX for hexadecimal (e.g. 0x1) and STT_STRING for any other string type.  In order for the string to be recognised as one of the number types, it must be limited to numbers and qualification characters, such as a decimal point or negative sign.</p>
+<p>This function analyses a string and returns its data type.  Valid return values are <code>STT_FLOAT</code> for floating point numbers, <code>STT_NUMBER</code> for whole numbers, <code>STT_HEX</code> for hexadecimal (e.g. 0x1) and <code>STT_STRING</code> for any other string type. In order for the string to be recognised as one of the number types, it must be limited to numbers and qualification characters, such as a decimal point or negative sign.</p>
 <p>Any white-space at the start of the string will be skipped.</p>
     </description>
     <result type="LONG" lookup="STT">Returns STT_FLOAT, STT_NUMBER, STT_HEX or STT_STRING.</result>
@@ -2634,53 +2617,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>StrFormat() duplicates the functionality found in the printf() family of functions.  It is provided to assist portability where there is no guarantee that POSIX is available on the host platform.</p>
     </description>
     <result type="LONG">Returns the total number of characters written to the buffer (not including the NULL terminator).  If the total number of characters is greater or equal to the BufferSize minus 1, then you should assume that a buffer overflow occurred.</result>
-  </function>
-
-  <function>
-    <name>StrFormatDate</name>
-    <category>Strings</category>
-    <comment>Formats the content of a Time object into a date string.</comment>
-    <prototype>ERROR StrFormatDate(STRING Buffer, LONG Size, CSTRING Format, struct DateTime * Time)</prototype>
-    <input>
-      <param type="STRING" name="Buffer">Pointer to a buffer large enough to receive the formatted data.</param>
-      <param type="LONG" name="Size">The length of the Buffer, in bytes.</param>
-      <param type="CSTRING" name="Format">String specifying the required date format.</param>
-      <param type="struct DateTime *" name="Time">Pointer to a DateTime structure that contains the date to be formatted.  If NULL, the current system time will be used.</param>
-    </input>
-    <description>
-<p>The StrFormatDate() function is used to format dates into a human readable string format.  The Format argument defines how the time information is printed to the display.  Time formatting follows accepted conventions, as illustrated in the following format table:</p>
-<types type="Format">
-<type name="a">am/pm (am)</type>
-<type name="A">AM/PM (AM)</type>
-<type name="h">24-Hour (9)</type>
-<type name="hh">24-Hour two-digits (09)</type>
-<type name="H">12-Hour (9)</type>
-<type name="HH">12-Hour two-digits (09)</type>
-<type name="n">Minute (7)</type>
-<type name="nn">Minute two-digits (07)</type>
-<type name="s">Second (42)</type>
-<type name="ss">Second two-digits (42)</type>
-<type name="d">Day (3)</type>
-<type name="dd">Day two-digits (03)</type>
-<type name="D">Day of week (S)</type>
-<type name="ddd">Day of week (sat)</type>
-<type name="dddd">Day of week (saturday)</type>
-<type name="m">Month (11)</type>
-<type name="mm">Month (11)</type>
-<type name="mmm">Month (nov)</type>
-<type name="mmmm">Month (november)</type>
-<type name="yy">Year (03)</type>
-<type name="yyyy">Year (2003)</type>
-</types>
-<p>By default, strings are printed in lower-case.  For example, <code>ddd</code> prints <code>sat</code>.  To capitalise the characters, use capitals in the string formatting instead of the default lower case.  For example <code>Ddd</code> prints <code>Sat</code> and <code>DDD</code> prints <code>SAT</code>.</p>
-<p>Where the interpreter encounters unrecognised characters, it will print them out unaltered.  For example <code>hh:nn:ss</code> might print <code>05:34:19</code> with the colons intact.  If you need to include characters such as <code>h</code> or <code>d</code> and want to prevent them from being translated, precede them with the backslash character.  For instance to print <code>0800 hours</code>, we would use the format <code>hh00 \hours</code>.</p>
-<p>The Time structure that you provide needs to contain values in the Year, Month, Day, Hour, Minute and Second fields. If you know that you do not plan on printing information on any particular date value, you can optionally choose not to set that field.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="BufferOverflow">A buffer overflow has occurred.</error>
-    </result>
   </function>
 
   <function>
@@ -2711,59 +2647,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>This function will calculate the length of a String, not including the null byte.</p>
     </description>
     <result type="LONG">Returns the length of the string.</result>
-  </function>
-
-  <function>
-    <name>StrLineLength</name>
-    <category>Strings</category>
-    <comment>Determines the line-length of a string.</comment>
-    <prototype>LONG StrLineLength(CSTRING String)</prototype>
-    <input>
-      <param type="CSTRING" name="String">Pointer to an address inside a character buffer.</param>
-    </input>
-    <description>
-<p>This function calculates the length of a String up to the first carriage return, line-break or null byte.  This function is commonly used on large text files where the String points to a position inside a large character buffer.</p>
-    </description>
-    <result type="LONG">Returns the length of the first line in the string, not including the return code.</result>
-  </function>
-
-  <function>
-    <name>StrNextLine</name>
-    <category>Strings</category>
-    <comment>Returns a pointer to the next line in a string buffer.</comment>
-    <prototype>CSTRING StrNextLine(CSTRING String)</prototype>
-    <input>
-      <param type="CSTRING" name="String">Pointer to an address inside a character buffer.</param>
-    </input>
-    <description>
-<p>This function scans a character buffer for a carriage return or line feed and returns a pointer to the following line. If no return code is found, NULL is returned.</p>
-<p>This function is commonly used for scanning text files on a line by line basis.</p>
-    </description>
-    <result type="CSTRING">Returns a string pointer for the next line, or NULL if no further lines are present.</result>
-  </function>
-
-  <function>
-    <name>StrReadDate</name>
-    <category>Strings</category>
-    <comment>Reads a date string into a DateTime structure.</comment>
-    <prototype>ERROR StrReadDate(CSTRING String, struct DateTime * DateTime)</prototype>
-    <input>
-      <param type="CSTRING" name="String">A date string.</param>
-      <param type="struct DateTime *" name="DateTime">Pointer to a DateTime structure in which the date will be placed.</param>
-    </input>
-    <description>
-<p>Reads a date in string format and returns the year, month, and day in a DateTime structure.  The DateTime struct will not be altered unless the function returns ERR_Okay.</p>
-<p>This function understands named months (e.g. 'March' or 'Mar') and ignores non-numeric characters and white-space not relevant to time interpretation. It is recommended that years are never shortened to 2 digits as this causes confusion between months and days - moreover, the correct century will need to be guessed if 2 digit years are used.  Use of named months is also preferred to prevent confusion between numeric months and days.</p>
-<p>Special date formats that are supported include <code>yesterday</code>, <code>today</code>, <code>now</code>, <code>tomorrow</code>, <code>day</code>, <code>month</code> and <code>year</code>.</p>
-<p>Compressed date formats that are without separators, such as <code>20090702</code> are not supported.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure.</error>
-      <error code="InvalidData">There is an error in the given data.</error>
-      <error code="CreateObject">A call to CreateObject() failed.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
   </function>
 
   <function>
@@ -2835,7 +2718,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 };
 </pre>
 <p>The sorting routine will work within the confines of the array that you have provided and will not allocate any memory when performing the sort.</p>
-<p>Optional flags include SBF_NO_DUPLICATES, which strips duplicated strings out of the array; SBF_CASE to acknowledge case differences when determining string duplication and SBF_DESC to sort in descending order.</p>
+<p>Optional flags include <code>SBF_NO_DUPLICATES</code>, which strips duplicated strings out of the array; <code>SBF_CASE</code> to acknowledge case differences when determining string duplication and <code>SBF_DESC</code> to sort in descending order.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -2943,51 +2826,26 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrTranslateRefresh</name>
-    <category>Strings</category>
-    <comment>Refreshes internal translation tables.</comment>
-    <prototype>LONG StrTranslateRefresh()</prototype>
-    <description>
-<p>This function refreshes the internal translation tables that convert international English into foreign languages.  It should only be called if the user changes the default system language, or if the current translation file is updated.</p>
-    </description>
-    <result type="LONG">Returns TRUE if the translation table was refreshed.</result>
-  </function>
-
-  <function>
-    <name>StrTranslateText</name>
-    <category>Strings</category>
-    <comment>Translates text from international English to the user's language.</comment>
-    <prototype>CSTRING StrTranslateText(CSTRING String)</prototype>
-    <input>
-      <param type="CSTRING" name="String">A string of international English to translate.</param>
-    </input>
-    <description>
-<p>This function converts International English to the user's preferred language.  The translation process is very simple - a lookup table is loaded from <code>config:translations/code.cfg</code>, which holds conversion details for simple English words and phrases into another language.  If the String is known, a new string is returned for the translated word(s). If the String is not known, the original String address pointer is returned without a translation.</p>
-<p>If a translation occurs, the resulting string pointer is temporary.  You will need to store the result in a local buffer, or risk the string address becoming invalid on the next call to StrTranslateText().</p>
-    </description>
-    <result type="CSTRING">If the string was able to be translated, a translation is returned.  Otherwise the original String pointer is returned.</result>
-  </function>
-
-  <function>
     <name>SubscribeAction</name>
     <category>Objects</category>
     <comment>Listens for actions that may be performed on an object.</comment>
     <prototype>ERROR SubscribeAction(OBJECTPTR Object, LONG Action)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object that you wish to subscribe to.</param>
-      <param type="LONG" name="Action">The ID of the action that you wish to monitor.</param>
+      <param type="OBJECTPTR" name="Object">The target object.</param>
+      <param type="LONG" name="Action">The ID of the action that will be monitored.</param>
     </input>
     <description>
 <p>The SubscribeAction() function is provided for objects that need to be notified when actions are being executed on foreign objects.  This is referred to as "action monitoring".  Action monitoring is used for a wide variety of purposes and is especially useful for responding to events in the user interface, including pointer movement, window resizing and graphics drawing.</p>
-<p>To subscribe to the actions of another object, you need to acquire its address pointer, then call this function with the action ID that you want to monitor.  The Subscriber argument needs to indicate what object you represent - if you don't represent an object, you need to gain access to your local Task object and point to it in the Subscriber argument.  The following example illustrates how to listen to a Surface object's Draw action, for the purposes of drawing graphics to it:</p>
+<p>To subscribe to the actions of another object, acquire its address pointer and then call this function with the action ID to monitor.  The object that has the current context will be registered for receiving the notifications.</p>
+<p>The following example illustrates how to listen to a Surface object's Draw action for the purposes of drawing graphics to it:</p>
 <pre>if (!AccessObject(SurfaceID, 3000, &amp;surface)) {
    SubscribeAction(surface, AC_Draw, Self);
    ReleaseObject(surface);
 }
 </pre>
-<p>When a process calls a matching action on the object that is being listened to, its code will be executed first, then all relevant action subscribers will be notified of the event.  This is done by sending each subscriber an action message (AC_ActionNotify) with information on the action ID, the ID of the object that was called, and a copy of the arguments that were used.  For more detail, refer to the technical support for <action>ActionNotify</action>. If you are writing a standard executable rather than a class, refer to one the graphical example programs provided with the Parasol SDK to see how ActionNotify events can be intercepted through the <class name="Task">Task</class> object.</p>
+<p>When a process calls an action with subscriptions, the object's code will be executed first, then all relevant action subscribers will be notified of the event.  This is done by sending each subscriber an action message (AC_ActionNotify) with information on the action ID, the ID of the object that was called, and a copy of the arguments that were used.  For more detail, refer to the technical support for <action>ActionNotify</action>.</p>
 <p>This function does not support subscriptions to methods.</p>
-<p>When you need to terminate an action subscription, use the <function module="Core">UnsubscribeAction</function> function.</p>
+<p>To terminate an action subscription, use the <function module="Core">UnsubscribeAction</function> function.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -3037,26 +2895,6 @@ SetField(Object, FID_Statement|TSTR, "string");
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>SubscribeFeed</name>
-    <category>Objects</category>
-    <comment>Listens to an object's incoming data feed.</comment>
-    <prototype>ERROR SubscribeFeed(OBJECTPTR Object)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">The target object for a data feed subscription.</param>
-    </input>
-    <description>
-<p>This function is used to subscribe to objects that support data feeds.  Hardware and I/O based classes such as <class name="Surface">Surface</class> are good examples of feed supportive class types.</p>
-<p>After subscribing to a data feed, the target object will intermittently send data messages to the caller via the <action>DataFeed</action> action.  The exact format of the data should be documented by the class of that object.  Refer to the DataFeed section of the Action List document for further information on known data types.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -3147,7 +2985,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function copies part of one string over to another.  If the Length is set to zero then this function will copy the entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null byte) while copying, then it will stop automatically to prevent copying of junk characters.</p>
-<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the number of Chars or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> should be used instead.</p>
+<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the number of Chars or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.</p>
     </description>
     <result type="LONG">Returns the total amount of &lt;i&gt;bytes&lt;/i&gt; that were copied, not including the null byte at the end.</result>
   </function>
@@ -3336,25 +3174,6 @@ SetField(Object, FID_Statement|TSTR, "string");
     <description>
 <p>Use UnsubscribeEvent() to remove an existing event subscription.  A valid handle returned from the <function module="Core">SubscribeEvent</function> function must be provided.</p>
     </description>
-  </function>
-
-  <function>
-    <name>UnsubscribeFeed</name>
-    <category>Objects</category>
-    <comment>Removes data feed subscriptions from an external object.</comment>
-    <prototype>ERROR UnsubscribeFeed(OBJECTPTR Object)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">The object to unsubscribe from.</param>
-    </input>
-    <description>
-<p>This function will remove subscriptions made by <function module="Core">SubscribeFeed</function>.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
   </function>
 
   <function>
