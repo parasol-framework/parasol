@@ -27,6 +27,7 @@ static ERROR DOCUMENT_ActionNotify(extDocument *Self, struct acActionNotify *Arg
    else if (Args->ActionID IS AC_Enable) {
       acEnable(Self);
    }
+/*
    else if (Args->ActionID IS MT_DrwInheritedFocus) {
       // Check that the FocusIndex is accurate (it may have changed if the user clicked on a gadget).
 
@@ -39,6 +40,7 @@ static ERROR DOCUMENT_ActionNotify(extDocument *Self, struct acActionNotify *Arg
          }
       }
    }
+*/
    else if (Args->ActionID IS AC_Focus) {
       Self->HasFocus = TRUE;
 
@@ -774,7 +776,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
 
-      SubscribeActionTags(surface, AC_Focus, AC_LostFocus, MT_DrwInheritedFocus, TAGEND);
+      SubscribeActionTags(surface, AC_Focus, AC_LostFocus, TAGEND);
 
       ReleaseObject(surface);
    }
