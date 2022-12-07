@@ -114,8 +114,8 @@ FDEF argsSetOwner[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR 
 FDEF argsSetResource[] = { { "Result", FD_LARGE }, { "Resource", FD_LONG }, { "Value", FD_LARGE }, { 0, 0 } };
 FDEF argsSetResourcePath[] = { { "Error", FD_LONG|FD_ERROR }, { "PathType", FD_LONG }, { "Path", FD_STR }, { 0, 0 } };
 FDEF argsSetVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
-FDEF argsStrBase64Decode[] = { { "Error", FD_LONG|FD_ERROR }, { "rkBase64Decode:State", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Input", FD_STR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_PTR }, { "Written", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsStrBase64Encode[] = { { "Result", FD_LONG }, { "Input", FD_BUFFER|FD_PTR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_STR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
+FDEF argsBase64Decode[] = { { "Error", FD_LONG|FD_ERROR }, { "rkBase64Decode:State", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Input", FD_STR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_PTR }, { "Written", FD_LONG|FD_RESULT }, { 0, 0 } };
+FDEF argsBase64Encode[] = { { "Result", FD_LONG }, { "Input", FD_BUFFER|FD_PTR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_STR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsStrBuildArray[] = { { "Result", FD_ARRAY|FD_STR|FD_ALLOC }, { "List", FD_STR }, { "Size", FD_LONG }, { "Total", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrClone[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrCompare[] = { { "Error", FD_LONG|FD_ERROR }, { "String1", FD_STR }, { "String2", FD_STR }, { "Length", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
@@ -203,7 +203,7 @@ const struct Function glFunctions[] = {
    { (APTR)GetFields, "GetFields", argsGetFields },
    { (APTR)GetName, "GetName", argsGetName },
    { (APTR)ListChildren, "ListChildren", argsListChildren },
-   { (APTR)StrBase64Decode, "StrBase64Decode", argsStrBase64Decode },
+   { (APTR)Base64Decode, "Base64Decode", argsBase64Decode },
    { (APTR)RegisterFD, "RegisterFD", argsRegisterFD },
    { (APTR)ManageAction, "ManageAction", argsManageAction },
    { (APTR)MemoryIDInfo, "MemoryIDInfo", argsMemoryIDInfo },
@@ -308,7 +308,7 @@ const struct Function glFunctions[] = {
    { (APTR)StrSortCompare, "StrSortCompare", argsStrSortCompare },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { (APTR)UTF8Copy, "UTF8Copy", argsUTF8Copy },
-   { (APTR)StrBase64Encode, "StrBase64Encode", argsStrBase64Encode },
+   { (APTR)Base64Encode, "Base64Encode", argsBase64Encode },
    { (APTR)VarSetString, "VarSetString", argsVarSetString },
    { (APTR)VarGetString, "VarGetString", argsVarGetString },
    { (APTR)VarCopy, "VarCopy", argsVarCopy },

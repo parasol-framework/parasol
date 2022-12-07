@@ -642,13 +642,13 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
      fptr(void ptr) Free  # A function that will remove the resource's content when terminated.
   ]])
 
-  struct("rkBase64Decode", { type="base64decode", comment="Private structure for the StrBase64Decode() function." }, [[
+  struct("rkBase64Decode", { type="base64decode", comment="Private structure for the Base64Decode() function." }, [[
     uchar Step                # Internal
     uchar PlainChar           # Internal
     bit(uchar) Initialised    # Internal
   ]])
 
-  struct("rkBase64Encode", { type="base64encode", comment="Private structure for the StrBase64Encode() function." }, [[
+  struct("rkBase64Encode", { type="base64encode", comment="Private structure for the Base64Encode() function." }, [[
     uchar Step             # Internal
     uchar Result           # Internal
     int StepCount          # Internal
@@ -976,7 +976,7 @@ struct ScriptArg { // For use with scExec
     "GetFields",
     "GetName",
     "ListChildren",
-    "StrBase64Decode",
+    "Base64Decode",
     "RegisterFD",
     "ManageAction",
     "MemoryIDInfo",
@@ -1081,7 +1081,7 @@ struct ScriptArg { // For use with scExec
     "StrSortCompare",
     "AddInfoTag",
     "UTF8Copy",
-    "StrBase64Encode",
+    "Base64Encode",
     "VarSetString",
     "VarGetString",
     "VarCopy",

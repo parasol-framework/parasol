@@ -35,7 +35,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size
 ERROR GetFields(OBJECTPTR Object, ...);
 CSTRING GetName(OBJECTPTR Object);
 ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count);
-ERROR StrBase64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
+ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
 ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
 ERROR ManageAction(LONG Action, APTR Routine);
 ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
@@ -140,7 +140,7 @@ const struct SystemState * GetSystemState();
 LONG StrSortCompare(CSTRING String1, CSTRING String2);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
-LONG StrBase64Encode(const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
+LONG Base64Encode(const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 CSTRING VarGetString(struct KeyStore * Store, CSTRING Key);
 ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest);

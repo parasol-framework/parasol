@@ -1657,7 +1657,7 @@ static ERROR load_pic(extSVG *Self, CSTRING Path, objPicture **Picture)
             LONG size = StrLength(val);
             if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &output, NULL)) {
                LONG written;
-               if (!(error = StrBase64Decode(&state, val, size, output, &written))) {
+               if (!(error = Base64Decode(&state, val, size, output, &written))) {
                   Path = "temp:svg.img";
                   if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
                         FID_Path|TSTR,   Path,
