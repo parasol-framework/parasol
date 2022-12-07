@@ -1076,8 +1076,8 @@ struct ScriptArg { // For use with scExec
     "StrDatatype",
     "CharCopy",
     "StrToHex",
-    "StrTranslateText",
-    "StrTranslateRefresh",
+    "CompareFilePaths",
+    "GetSystemState",
     "StrSortCompare",
     "StrReadDate",
     "UTF8Copy",
@@ -1113,9 +1113,7 @@ struct ScriptArg { // For use with scExec
     "LoadFile",
     "UnloadFile",
     "AddInfoTag",
-    "SaveImageToFile",
-    "CompareFilePaths",
-    "GetSystemState")
+    "SaveImageToFile")
 
   c_insert([[
 

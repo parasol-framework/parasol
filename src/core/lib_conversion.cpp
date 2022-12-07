@@ -99,6 +99,11 @@ static LARGE datetime_to_epoch(struct DateTime *DateTime)
    return seconds;
 }
 
+static void refresh_locale(void)
+{
+   if (glLocale) { acFree(glLocale); glLocale = NULL; }
+}
+
 /*****************************************************************************
 
 -FUNCTION-
@@ -208,9 +213,9 @@ ERROR StrFormatDate(STRING Buffer, LONG BufferSize, CSTRING Format, struct DateT
    LONG m = Time->Month + 12 * a - 2;
    LONG dayofweek = (Time->Day + y + (y / 4) - (y / 100) + (y / 400) + (31 * m) / 12) % 7;
 
-   StrCopy(StrTranslateText(days[dayofweek]), day, sizeof(day));
+   StrCopy(days[dayofweek], day, sizeof(day));
 
-   if ((Time->Month > 0) and (Time->Month <= 12)) StrCopy(StrTranslateText(months[Time->Month]), month, sizeof(month));
+   if ((Time->Month > 0) and (Time->Month <= 12)) StrCopy(months[Time->Month], month, sizeof(month));
    else StrCopy("-------", month, sizeof(month));
 
    BufferSize--; // -1 so that we don't have to worry about the null terminator

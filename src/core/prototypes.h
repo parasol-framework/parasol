@@ -135,8 +135,8 @@ ERROR StrToColour(CSTRING Colour, struct RGB8 * RGB);
 LONG StrDatatype(CSTRING String);
 LONG CharCopy(CSTRING Source, STRING Dest, LONG Length);
 LARGE StrToHex(CSTRING String);
-CSTRING StrTranslateText(CSTRING String);
-LONG StrTranslateRefresh();
+ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
+const struct SystemState * GetSystemState();
 LONG StrSortCompare(CSTRING String1, CSTRING String2);
 ERROR StrReadDate(CSTRING String, struct DateTime * DateTime);
 LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
@@ -173,8 +173,6 @@ ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
 void UnloadFile(struct CacheFile * Cache);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID Class, LONG Permissions);
-ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
-const struct SystemState * GetSystemState();
 
 #ifdef  __cplusplus
 }

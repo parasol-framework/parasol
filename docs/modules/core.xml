@@ -2599,7 +2599,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function copies part of one string over to another.  If the Length is set to zero then this function will copy the entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null byte) while copying, then it will stop automatically to prevent copying of junk characters.</p>
-<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the Length or not.  For example, if you were to copy "123" into the middle of string "ABCDEFGHI" then the result would be "ABC123". The "GHI" part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> should be used instead.</p>
+<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the Length or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.  In situations such as this, functions such as <function module="Core">CharCopy</function> should be used instead.</p>
     </description>
     <result type="LONG">Returns the total amount of characters that were copied, not including the null byte at the end.</result>
   </function>
@@ -2613,7 +2613,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="CSTRING" name="String">The string that you want to analyse.</param>
     </input>
     <description>
-<p>This function analyses a string and returns its data type.  Valid return values are STT_FLOAT for floating point numbers, STT_NUMBER for whole numbers, STT_HEX for hexadecimal (e.g. 0x1) and STT_STRING for any other string type.  In order for the string to be recognised as one of the number types, it must be limited to numbers and qualification characters, such as a decimal point or negative sign.</p>
+<p>This function analyses a string and returns its data type.  Valid return values are <code>STT_FLOAT</code> for floating point numbers, <code>STT_NUMBER</code> for whole numbers, <code>STT_HEX</code> for hexadecimal (e.g. 0x1) and <code>STT_STRING</code> for any other string type. In order for the string to be recognised as one of the number types, it must be limited to numbers and qualification characters, such as a decimal point or negative sign.</p>
 <p>Any white-space at the start of the string will be skipped.</p>
     </description>
     <result type="LONG" lookup="STT">Returns STT_FLOAT, STT_NUMBER, STT_HEX or STT_STRING.</result>
@@ -2806,7 +2806,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 };
 </pre>
 <p>The sorting routine will work within the confines of the array that you have provided and will not allocate any memory when performing the sort.</p>
-<p>Optional flags include SBF_NO_DUPLICATES, which strips duplicated strings out of the array; SBF_CASE to acknowledge case differences when determining string duplication and SBF_DESC to sort in descending order.</p>
+<p>Optional flags include <code>SBF_NO_DUPLICATES</code>, which strips duplicated strings out of the array; <code>SBF_CASE</code> to acknowledge case differences when determining string duplication and <code>SBF_DESC</code> to sort in descending order.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -2911,32 +2911,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 </list>
     </description>
     <result type="LARGE">Returns the integer value that was calculated from the String.</result>
-  </function>
-
-  <function>
-    <name>StrTranslateRefresh</name>
-    <category>Strings</category>
-    <comment>Refreshes internal translation tables.</comment>
-    <prototype>LONG StrTranslateRefresh()</prototype>
-    <description>
-<p>This function refreshes the internal translation tables that convert international English into foreign languages.  It should only be called if the user changes the default system language, or if the current translation file is updated.</p>
-    </description>
-    <result type="LONG">Returns TRUE if the translation table was refreshed.</result>
-  </function>
-
-  <function>
-    <name>StrTranslateText</name>
-    <category>Strings</category>
-    <comment>Translates text from international English to the user's language.</comment>
-    <prototype>CSTRING StrTranslateText(CSTRING String)</prototype>
-    <input>
-      <param type="CSTRING" name="String">A string of international English to translate.</param>
-    </input>
-    <description>
-<p>This function converts International English to the user's preferred language.  The translation process is very simple - a lookup table is loaded from <code>config:translations/code.cfg</code>, which holds conversion details for simple English words and phrases into another language.  If the String is known, a new string is returned for the translated word(s). If the String is not known, the original String address pointer is returned without a translation.</p>
-<p>If a translation occurs, the resulting string pointer is temporary.  You will need to store the result in a local buffer, or risk the string address becoming invalid on the next call to StrTranslateText().</p>
-    </description>
-    <result type="CSTRING">If the string was able to be translated, a translation is returned.  Otherwise the original String pointer is returned.</result>
   </function>
 
   <function>

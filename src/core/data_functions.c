@@ -135,8 +135,6 @@ FDEF argsStrToColour[] = { { "Error", FD_LONG|FD_ERROR }, { "Colour", FD_STR }, 
 FDEF argsStrToFloat[] = { { "Result", FD_DOUBLE }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrToHex[] = { { "Result", FD_LARGE }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrToInt[] = { { "Result", FD_LARGE }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrTranslateRefresh[] = { { "Result", FD_LONG }, { 0, 0 } };
-FDEF argsStrTranslateText[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsSubscribeActionTags[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Actions", FD_TAGS }, { 0, 0 } };
 FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE }, { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_PTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
@@ -308,8 +306,8 @@ const struct Function glFunctions[] = {
    { (APTR)StrDatatype, "StrDatatype", argsStrDatatype },
    { (APTR)CharCopy, "CharCopy", argsCharCopy },
    { (APTR)StrToHex, "StrToHex", argsStrToHex },
-   { (APTR)StrTranslateText, "StrTranslateText", argsStrTranslateText },
-   { (APTR)StrTranslateRefresh, "StrTranslateRefresh", argsStrTranslateRefresh },
+   { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
+   { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)StrSortCompare, "StrSortCompare", argsStrSortCompare },
    { (APTR)StrReadDate, "StrReadDate", argsStrReadDate },
    { (APTR)UTF8Copy, "UTF8Copy", argsUTF8Copy },
@@ -346,8 +344,6 @@ const struct Function glFunctions[] = {
    { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { (APTR)SaveImageToFile, "SaveImageToFile", argsSaveImageToFile },
-   { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
-   { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { NULL, NULL, NULL }
 };
 
