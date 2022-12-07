@@ -1819,8 +1819,8 @@ struct CoreBase {
    ERROR (*_VarSetSized)(struct KeyStore *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_VarLock)(struct KeyStore *, LONG);
    ERROR (*_WakeProcess)(LONG);
-   LONG (*_StrLineLength)(CSTRING);
-   CSTRING (*_StrNextLine)(CSTRING);
+   ERROR (*_SetResourcePath)(LONG, CSTRING);
+   OBJECTPTR (*_CurrentTask)(void);
    ERROR (*_KeyIterate)(struct KeyStore *, ULONG, ULONG *, APTR, LONG *);
    DOUBLE (*_StrToFloat)(CSTRING);
    LONG (*_StrCopy)(CSTRING, STRING, LONG);
@@ -1882,8 +1882,6 @@ struct CoreBase {
    ERROR (*_SaveImageToFile)(OBJECTPTR, CSTRING, CLASSID, LONG);
    ERROR (*_CompareFilePaths)(CSTRING, CSTRING);
    const struct SystemState * (*_GetSystemState)(void);
-   ERROR (*_SetResourcePath)(LONG, CSTRING);
-   OBJECTPTR (*_CurrentTask)(void);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1995,8 +1993,8 @@ struct CoreBase {
 #define VarSetSized(...) (CoreBase->_VarSetSized)(__VA_ARGS__)
 #define VarLock(...) (CoreBase->_VarLock)(__VA_ARGS__)
 #define WakeProcess(...) (CoreBase->_WakeProcess)(__VA_ARGS__)
-#define StrLineLength(...) (CoreBase->_StrLineLength)(__VA_ARGS__)
-#define StrNextLine(...) (CoreBase->_StrNextLine)(__VA_ARGS__)
+#define SetResourcePath(...) (CoreBase->_SetResourcePath)(__VA_ARGS__)
+#define CurrentTask(...) (CoreBase->_CurrentTask)(__VA_ARGS__)
 #define KeyIterate(...) (CoreBase->_KeyIterate)(__VA_ARGS__)
 #define StrToFloat(...) (CoreBase->_StrToFloat)(__VA_ARGS__)
 #define StrCopy(...) (CoreBase->_StrCopy)(__VA_ARGS__)
@@ -2058,8 +2056,6 @@ struct CoreBase {
 #define SaveImageToFile(...) (CoreBase->_SaveImageToFile)(__VA_ARGS__)
 #define CompareFilePaths(...) (CoreBase->_CompareFilePaths)(__VA_ARGS__)
 #define GetSystemState(...) (CoreBase->_GetSystemState)(__VA_ARGS__)
-#define SetResourcePath(...) (CoreBase->_SetResourcePath)(__VA_ARGS__)
-#define CurrentTask(...) (CoreBase->_CurrentTask)(__VA_ARGS__)
 #endif
 
 
