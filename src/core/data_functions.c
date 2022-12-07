@@ -51,7 +51,6 @@ FDEF argsGetActionMsg[] = { { "Message", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 
 FDEF argsGetClassID[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetErrorMsg[] = { { "Result", FD_STR }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsGetEventID[] = { { "Result", FD_LARGE }, { "Group", FD_LONG }, { "SubGroup", FD_STR }, { "Event", FD_STR }, { 0, 0 } };
-FDEF argsGetFeedList[] = { { "Result", FD_LONG }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsGetField[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR }, { 0, 0 } };
 FDEF argsGetFieldArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR|FD_RESULT }, { "Elements", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsGetFieldVariable[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_STR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
@@ -143,7 +142,6 @@ FDEF argsStrTranslateText[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0,
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsSubscribeActionTags[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Actions", FD_TAGS }, { 0, 0 } };
 FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE }, { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_PTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
-FDEF argsSubscribeFeed[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsSubscribeTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Interval", FD_DOUBLE }, { "Callback", FD_FUNCTIONPTR }, { "Subscription", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsSysLock[] = { { "Error", FD_LONG|FD_ERROR }, { "Index", FD_LONG }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsSysUnlock[] = { { "Error", FD_LONG|FD_ERROR }, { "Index", FD_LONG }, { 0, 0 } };
@@ -162,7 +160,6 @@ FDEF argsUnlockMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsUnlockSharedMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsUnsubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsUnsubscribeEvent[] = { { "Void", FD_VOID }, { "Event", FD_PTR }, { 0, 0 } };
-FDEF argsUnsubscribeFeed[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsUpdateMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_PTR }, { "Message", FD_LONG }, { "Type", FD_LONG }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsUpdateTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Subscription", FD_PTR }, { "Interval", FD_DOUBLE }, { 0, 0 } };
 FDEF argsVLogF[] = { { "Void", FD_VOID }, { "Flags", FD_LONG }, { "Header", FD_STR }, { "Message", FD_STR }, { "Args", FD_PTR }, { 0, 0 } };
@@ -239,12 +236,12 @@ const struct Function glFunctions[] = {
    { (APTR)LogReturn, "LogReturn", argsLogReturn },
    { (APTR)StrCompare, "StrCompare", argsStrCompare },
    { (APTR)SubscribeAction, "SubscribeAction", argsSubscribeAction },
-   { (APTR)SubscribeFeed, "SubscribeFeed", argsSubscribeFeed },
+   { (APTR)VarGet, "VarGet", argsVarGet },
    { (APTR)SubscribeEvent, "SubscribeEvent", argsSubscribeEvent },
    { (APTR)SubscribeTimer, "SubscribeTimer", argsSubscribeTimer },
    { (APTR)UpdateTimer, "UpdateTimer", argsUpdateTimer },
    { (APTR)UnsubscribeAction, "UnsubscribeAction", argsUnsubscribeAction },
-   { (APTR)UnsubscribeFeed, "UnsubscribeFeed", argsUnsubscribeFeed },
+   { (APTR)VarSet, "VarSet", argsVarSet },
    { (APTR)UnsubscribeEvent, "UnsubscribeEvent", argsUnsubscribeEvent },
    { (APTR)BroadcastEvent, "BroadcastEvent", argsBroadcastEvent },
    { (APTR)WaitTime, "WaitTime", argsWaitTime },
@@ -280,7 +277,7 @@ const struct Function glFunctions[] = {
    { (APTR)LockMutex, "LockMutex", argsLockMutex },
    { (APTR)UnlockMutex, "UnlockMutex", argsUnlockMutex },
    { (APTR)ActionThread, "ActionThread", argsActionThread },
-   { (APTR)GetFeedList, "GetFeedList", argsGetFeedList },
+   { (APTR)VarNew, "VarNew", argsVarNew },
    { (APTR)AllocSharedMutex, "AllocSharedMutex", argsAllocSharedMutex },
    { (APTR)FreeSharedMutex, "FreeSharedMutex", argsFreeSharedMutex },
    { (APTR)LockSharedMutex, "LockSharedMutex", argsLockSharedMutex },
@@ -355,9 +352,6 @@ const struct Function glFunctions[] = {
    { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)SetResourcePath, "SetResourcePath", argsSetResourcePath },
    { (APTR)CurrentTask, "CurrentTask", argsCurrentTask },
-   { (APTR)VarNew, "VarNew", argsVarNew },
-   { (APTR)VarSet, "VarSet", argsVarSet },
-   { (APTR)VarGet, "VarGet", argsVarGet },
    { NULL, NULL, NULL }
 };
 

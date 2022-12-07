@@ -2376,12 +2376,12 @@ SetField(Object, FID_Statement|TSTR, "string");
     <comment>Sets the name of an object.</comment>
     <prototype>ERROR SetName(OBJECTPTR Object, CSTRING Name)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object that you want to set the name of.</param>
-      <param type="CSTRING" name="Name">The name that you want to set for the object.</param>
+      <param type="OBJECTPTR" name="Object">The target object.</param>
+      <param type="CSTRING" name="Name">The new name for the object.</param>
     </input>
     <description>
-<p>To set the name of an object, use this function.  Please note that the length of the Name will be limited to the value indicated in the <code>main.h</code> include file, under the <code>MAX_NAME_LEN</code> definition.  If the Name is longer than the allowed length, it will be trimmed to fit.</p>
-<p>Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters will be skipped while setting the object name.</p>
+<p>This function sets the name of an object.  This enhances log messages and allows the object to be found in searches. Please note that the length of the Name will be limited to the value indicated in the <code>main.h</code> include file, under the <code>MAX_NAME_LEN</code> definition.  If the Name is longer than the allowed length, it will be trimmed to fit.</p>
+<p>Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with an underscore.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -3043,26 +3043,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>SubscribeFeed</name>
-    <category>Objects</category>
-    <comment>Listens to an object's incoming data feed.</comment>
-    <prototype>ERROR SubscribeFeed(OBJECTPTR Object)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">The target object for a data feed subscription.</param>
-    </input>
-    <description>
-<p>This function is used to subscribe to objects that support data feeds.  Hardware and I/O based classes such as <class name="Surface">Surface</class> are good examples of feed supportive class types.</p>
-<p>After subscribing to a data feed, the target object will intermittently send data messages to the caller via the <action>DataFeed</action> action.  The exact format of the data should be documented by the class of that object.  Refer to the DataFeed section of the Action List document for further information on known data types.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>SubscribeTimer</name>
     <category>System</category>
     <comment>Subscribes an object or function to the timer service.</comment>
@@ -3336,25 +3316,6 @@ SetField(Object, FID_Statement|TSTR, "string");
     <description>
 <p>Use UnsubscribeEvent() to remove an existing event subscription.  A valid handle returned from the <function module="Core">SubscribeEvent</function> function must be provided.</p>
     </description>
-  </function>
-
-  <function>
-    <name>UnsubscribeFeed</name>
-    <category>Objects</category>
-    <comment>Removes data feed subscriptions from an external object.</comment>
-    <prototype>ERROR UnsubscribeFeed(OBJECTPTR Object)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">The object to unsubscribe from.</param>
-    </input>
-    <description>
-<p>This function will remove subscriptions made by <function module="Core">SubscribeFeed</function>.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
   </function>
 
   <function>

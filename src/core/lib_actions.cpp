@@ -1832,8 +1832,6 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       }
    }
 
-   if (Object->Stats->MID_FeedList) { FreeResourceID(Object->Stats->MID_FeedList); Object->Stats->MID_FeedList = 0; }
-
    if (Object->Stats->ActionSubscriptions.ID) { // Close the action subscription list
       if (Object->UID < 0) FreeResourceID(Object->Stats->ActionSubscriptions.ID);
       else if (FreeResource(Object->Stats->ActionSubscriptions.Ptr)) log.warning("Invalid ActionSubscriptions address %p.", Object->Stats->ActionSubscriptions.Ptr);
