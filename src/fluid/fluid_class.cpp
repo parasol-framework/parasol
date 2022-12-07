@@ -436,7 +436,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
                      if ((size_t)i < sizeof(buffer)-1) buffer[i++] = '\n';
                      buffer[i] = 0;
                   }
-                  if (!(str = StrNextLine(str))) break;
+                  if (!(str = next_line(str))) break;
                }
                SetString(Self, FID_ErrorString, buffer);
 

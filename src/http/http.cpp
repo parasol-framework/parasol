@@ -1232,7 +1232,7 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
       return ERR_AllocMemory;
    }
 
-   CharCopy(str, Self->Host, len);
+   CopyMemory(str, Self->Host, len);
    Self->Host[len] = 0;
 
    str += len;

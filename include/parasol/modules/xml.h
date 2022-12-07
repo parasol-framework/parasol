@@ -11,7 +11,7 @@
 
 #define MODVERSION_XML (1)
 
-typedef class plXML objXML;
+class objXML;
 
 // For SetAttrib()
 
@@ -101,7 +101,6 @@ typedef struct XMLTag {
 #define MT_XMLCount -13
 #define MT_XMLInsertContent -14
 #define MT_XMLRemoveXPath -15
-#define MT_XMLGetXPath -16
 #define MT_XMLFindTagFromIndex -17
 #define MT_XMLGetTag -18
 
@@ -120,7 +119,6 @@ struct xmlSetRoot { CSTRING XPath;  };
 struct xmlCount { CSTRING XPath; LONG Result;  };
 struct xmlInsertContent { LONG Index; LONG Where; CSTRING Content; LONG Result;  };
 struct xmlRemoveXPath { CSTRING XPath; LONG Total;  };
-struct xmlGetXPath { LONG Index; STRING Result;  };
 struct xmlFindTagFromIndex { CSTRING XPath; LONG Start; FUNCTION * Callback; LONG Result;  };
 struct xmlGetTag { LONG Index; struct XMLTag * Result;  };
 
@@ -213,13 +211,6 @@ INLINE ERROR xmlRemoveXPath(APTR Ob, CSTRING XPath, LONG Total) {
    return(Action(MT_XMLRemoveXPath, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR xmlGetXPath(APTR Ob, LONG Index, STRING * Result) {
-   struct xmlGetXPath args = { Index, 0 };
-   ERROR error = Action(MT_XMLGetXPath, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
-}
-
 INLINE ERROR xmlFindTagFromIndex(APTR Ob, CSTRING XPath, LONG Start, FUNCTION * Callback, LONG * Result) {
    struct xmlFindTagFromIndex args = { XPath, Start, Callback, 0 };
    ERROR error = Action(MT_XMLFindTagFromIndex, (OBJECTPTR)Ob, &args);
@@ -235,7 +226,7 @@ INLINE ERROR xmlGetTag(APTR Ob, LONG Index, struct XMLTag ** Result) {
 }
 
 
-typedef class plXML : public BaseClass {
+class objXML : public BaseClass {
    public:
    STRING    Path;            // Set this field if the XML document originates from a file source.
    struct XMLTag * * Tags;    // Points to an array of tags loaded into an XML object.
@@ -271,7 +262,7 @@ typedef class plXML : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-} objXML;
+};
 
 INLINE STRING XMLATTRIB(const XMLTag *Tag, CSTRING Attrib) {
    LONG i;

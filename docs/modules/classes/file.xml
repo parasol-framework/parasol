@@ -404,7 +404,7 @@
 
     <field>
       <name>Icon</name>
-      <comment>A path to an icon image that is suitable for representing the file in a user interface.</comment>
+      <comment>Returns an icon reference that is suitable for this file in the UI.</comment>
       <access read="G">Get</access>
       <type>STRING</type>
       <description>

@@ -662,29 +662,6 @@ ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetFeedList: Private.  Retrieves the data feed subscriptions of an object.
-
-Private
-
--INPUT-
-obj Object: The object to query.
-
--RESULT-
-mem: A memory ID that refers to the feed list is returned, or NULL if no subscriptions are present.
-
-*********************************************************************************************************************/
-
-MEMORYID GetFeedList(OBJECTPTR Object)
-{
-   if ((Object) and (Object->Stats)) {
-      return Object->Stats->MID_FeedList;
-   }
-   else return 0;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 GetClassID: Returns the class ID of an ID-referenced object.
 Category: Objects
 
@@ -1889,16 +1866,16 @@ OBJECTPTR SetContext(OBJECTPTR Object)
 SetName: Sets the name of an object.
 Category: Objects
 
-To set the name of an object, use this function.  Please note that the length of the Name will be limited to the value
-indicated in the `main.h` include file, under the `MAX_NAME_LEN` definition.  If the Name is longer than the allowed
-length, it will be trimmed to fit.
+This function sets the name of an object.  This enhances log messages and allows the object to be found in searches.
+Please note that the length of the Name will be limited to the value indicated in the `main.h` include file, under
+the `MAX_NAME_LEN` definition.  If the Name is longer than the allowed length, it will be trimmed to fit.
 
-Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters will be skipped
-while setting the object name.
+Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with
+an underscore.
 
 -INPUT-
-obj Object: Pointer to the object that you want to set the name of.
-cstr Name: The name that you want to set for the object.
+obj Object: The target object.
+cstr Name: The new name for the object.
 
 -ERRORS-
 Okay:
@@ -2181,100 +2158,6 @@ LARGE SetResource(LONG Resource, LARGE Value)
 /*********************************************************************************************************************
 
 -FUNCTION-
-SubscribeFeed: Listens to an object's incoming data feed.
-Category: Objects
-
-This function is used to subscribe to objects that support data feeds.  Hardware and I/O based classes such as
-@Surface are good examples of feed supportive class types.
-
-After subscribing to a data feed, the target object will intermittently send data messages to the caller via the
-#DataFeed() action.  The exact format of the data should be documented by the class of that object.  Refer to the
-DataFeed section of the Action List document for further information on known data types.
-
--INPUT-
-obj Object: The target object for a data feed subscription.
-
--ERRORS-
-Okay:
-NullArgs:
-AllocMemory:  The function could not allocate a feed list for the target object.
-AccessMemory: Access to the target object's feed list was denied.
-
-*********************************************************************************************************************/
-
-ERROR SubscribeFeed(OBJECTPTR Object)
-{
-   parasol::Log log(__FUNCTION__);
-   FeedSubscription *list, *newlist;
-   ERROR error;
-   MEMORYID newlistid;
-   LONG i, memflags;
-
-   if (!Object) return log.warning(ERR_NullArgs);
-
-   ScopedObjectAccess objlock(Object);
-
-   log.traceBranch("%s: %d", Object->className(), Object->UID);
-
-   if (Object->Flags & NF_PUBLIC) memflags = Object->MemFlags|MEM_PUBLIC;
-   else memflags = Object->MemFlags;
-
-   parasol::SwitchContext context(Object);
-
-   if (!Object->Stats->MID_FeedList) { // Allocate a feed list for the first time
-      if (!AllocMemory(sizeof(FeedSubscription)*2, MEM_NO_CLEAR|memflags, NULL, &Object->Stats->MID_FeedList)) {
-         if (!AccessMemory(Object->Stats->MID_FeedList, MEM_WRITE, 2000, (APTR *)&list)) {
-            list[0].SubscriberID   = tlContext->object()->UID;
-            list[0].MessagePortMID = glTaskMessageMID;
-            list[0].ClassID        = tlContext->object()->ClassID;
-            list[1].SubscriberID   = 0;
-            ReleaseMemoryID(Object->Stats->MID_FeedList);
-            return ERR_Okay;
-         }
-         else error = ERR_AccessMemory;
-      }
-      else error = log.warning(ERR_AllocMemory);
-   }
-   else if (!AccessMemory(Object->Stats->MID_FeedList, MEM_READ_WRITE, 2000, (APTR *)&list)) {
-      // Reallocate the feed list from scratch
-
-      for (i=0; list[i].SubscriberID; i++);
-
-      if (!(AllocMemory(sizeof(FeedSubscription) * (i + 2), MEM_NO_CLEAR|memflags, NULL, &newlistid))) {
-         if (!AccessMemory(newlistid, MEM_READ_WRITE, 2000, (APTR *)&newlist)) {
-            // Copy the object list over to the new array and insert the new object ID.
-
-            for (i=0; list[i].SubscriberID; i++) newlist[i] = list[i];
-
-            newlist[i].SubscriberID   = tlContext->object()->UID;
-            newlist[i].MessagePortMID = glTaskMessageMID;
-            newlist[i].ClassID        = tlContext->object()->ClassID;
-            newlist[i+1].SubscriberID   = 0;
-            newlist[i+1].MessagePortMID = 0;
-            newlist[i+1].ClassID        = 0;
-
-            // Free the old list, insert the new
-
-            ReleaseMemoryID(Object->Stats->MID_FeedList);
-            FreeResourceID(Object->Stats->MID_FeedList);
-            Object->Stats->MID_FeedList = newlistid;
-            ReleaseMemoryID(newlistid);
-            return ERR_Okay;
-         }
-         else error = log.warning(ERR_AccessMemory);
-         FreeResourceID(newlistid);
-      }
-      else error = log.warning(ERR_AllocMemory);
-      ReleaseMemoryID(Object->Stats->MID_FeedList);
-   }
-   else error = ERR_AccessMemory;
-
-   return error;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 SubscribeTimer: Subscribes an object or function to the timer service.
 
 This function creates a new timer subscription that will be called at regular intervals for the calling object.
@@ -2382,66 +2265,6 @@ LARGE PreciseTime(void)
 #else
    return winGetTickCount(); // NB: This timer does start from the boot time, but can be adjusted - therefore is not 100% on monotonic status
 #endif
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-UnsubscribeFeed: Removes data feed subscriptions from an external object.
-Category: Objects
-
-This function will remove subscriptions made by ~SubscribeFeed().
-
--INPUT-
-obj Object: The object to unsubscribe from.
-
--ERRORS-
-Okay:         The termination of service was successful.
-NullArgs:
-Search:       The object referred to by the SubscriberID was not in the subscription list.
-AccessMemory: Access to the object's feed subscription array was denied.
-
-*********************************************************************************************************************/
-
-ERROR UnsubscribeFeed(OBJECTPTR Object)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.trace("%s: %d", Object->className(), Object->UID);
-
-   if (!Object) return log.warning(ERR_NullArgs);
-
-   if (!Object->Stats->MID_FeedList) return ERR_Search;
-
-   ScopedObjectAccess objlock(Object);
-
-   FeedSubscription *list;
-   if (!AccessMemory(Object->Stats->MID_FeedList, MEM_READ_WRITE, 2000, (APTR *)&list)) {
-      for (LONG i=0; list[i].SubscriberID; i++) {
-         if (list[i].SubscriberID IS tlContext->object()->UID) {
-            while (list[i+1].SubscriberID) { // Compact the list
-               list[i] = list[i+1];
-               i++;
-            }
-
-            list[i].SubscriberID   = 0;
-            list[i].MessagePortMID = 0;
-            list[i].ClassID        = 0;
-
-            ReleaseMemoryID(Object->Stats->MID_FeedList);
-
-            if (i <= 0) { // Destroy the subscription list
-               FreeResourceID(Object->Stats->MID_FeedList);
-               Object->Stats->MID_FeedList  = 0;
-            }
-
-            return ERR_Okay;
-         }
-      }
-      ReleaseMemoryID(Object->Stats->MID_FeedList);
-      return ERR_Search;
-   }
-   else return log.warning(ERR_AccessMemory);
 }
 
 /*********************************************************************************************************************

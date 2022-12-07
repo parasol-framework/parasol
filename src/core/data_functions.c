@@ -21,7 +21,6 @@ FDEF argsAllocSharedMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR 
 FDEF argsAllocateID[] = { { "Result", FD_LONG }, { "Type", FD_LONG }, { 0, 0 } };
 FDEF argsAnalysePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Type", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsBroadcastEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_PTR }, { "EventSize", FD_LONG }, { 0, 0 } };
-FDEF argsCharCopy[] = { { "Result", FD_LONG }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Length", FD_LONG }, { 0, 0 } };
 FDEF argsCheckAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsCheckMemoryExists[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsCheckObjectExists[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "Name", FD_STR }, { 0, 0 } };
@@ -51,7 +50,6 @@ FDEF argsGetActionMsg[] = { { "Message", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 
 FDEF argsGetClassID[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetErrorMsg[] = { { "Result", FD_STR }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsGetEventID[] = { { "Result", FD_LARGE }, { "Group", FD_LONG }, { "SubGroup", FD_STR }, { "Event", FD_STR }, { 0, 0 } };
-FDEF argsGetFeedList[] = { { "Result", FD_LONG }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsGetField[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR }, { 0, 0 } };
 FDEF argsGetFieldArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR|FD_RESULT }, { "Elements", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsGetFieldVariable[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_STR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
@@ -124,12 +122,8 @@ FDEF argsStrCompare[] = { { "Error", FD_LONG|FD_ERROR }, { "String1", FD_STR }, 
 FDEF argsStrCopy[] = { { "Result", FD_LONG }, { "Src", FD_STR }, { "Dest", FD_STR }, { "Length", FD_LONG }, { 0, 0 } };
 FDEF argsStrDatatype[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrFormat[] = { { "Result", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "Parameters", FD_TAGS }, { 0, 0 } };
-FDEF argsStrFormatDate[] = { { "Error", FD_LONG|FD_ERROR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "DateTime:Time", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
 FDEF argsStrLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrLineLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrNextLine[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrReadDate[] = { { "Error", FD_LONG|FD_ERROR }, { "String", FD_STR }, { "DateTime:DateTime", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF argsStrSearch[] = { { "Result", FD_LONG }, { "Keyword", FD_STR }, { "String", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSort[] = { { "Error", FD_LONG|FD_ERROR }, { "List", FD_ARRAY|FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
@@ -138,12 +132,9 @@ FDEF argsStrToColour[] = { { "Error", FD_LONG|FD_ERROR }, { "Colour", FD_STR }, 
 FDEF argsStrToFloat[] = { { "Result", FD_DOUBLE }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrToHex[] = { { "Result", FD_LARGE }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrToInt[] = { { "Result", FD_LARGE }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrTranslateRefresh[] = { { "Result", FD_LONG }, { 0, 0 } };
-FDEF argsStrTranslateText[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsSubscribeActionTags[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Actions", FD_TAGS }, { 0, 0 } };
 FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE }, { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_PTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
-FDEF argsSubscribeFeed[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsSubscribeTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Interval", FD_DOUBLE }, { "Callback", FD_FUNCTIONPTR }, { "Subscription", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsSysLock[] = { { "Error", FD_LONG|FD_ERROR }, { "Index", FD_LONG }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsSysUnlock[] = { { "Error", FD_LONG|FD_ERROR }, { "Index", FD_LONG }, { 0, 0 } };
@@ -162,7 +153,6 @@ FDEF argsUnlockMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsUnlockSharedMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsUnsubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsUnsubscribeEvent[] = { { "Void", FD_VOID }, { "Event", FD_PTR }, { 0, 0 } };
-FDEF argsUnsubscribeFeed[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsUpdateMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_PTR }, { "Message", FD_LONG }, { "Type", FD_LONG }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsUpdateTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Subscription", FD_PTR }, { "Interval", FD_DOUBLE }, { 0, 0 } };
 FDEF argsVLogF[] = { { "Void", FD_VOID }, { "Flags", FD_LONG }, { "Header", FD_STR }, { "Message", FD_STR }, { "Args", FD_PTR }, { 0, 0 } };
@@ -239,12 +229,12 @@ const struct Function glFunctions[] = {
    { (APTR)LogReturn, "LogReturn", argsLogReturn },
    { (APTR)StrCompare, "StrCompare", argsStrCompare },
    { (APTR)SubscribeAction, "SubscribeAction", argsSubscribeAction },
-   { (APTR)SubscribeFeed, "SubscribeFeed", argsSubscribeFeed },
+   { (APTR)VarGet, "VarGet", argsVarGet },
    { (APTR)SubscribeEvent, "SubscribeEvent", argsSubscribeEvent },
    { (APTR)SubscribeTimer, "SubscribeTimer", argsSubscribeTimer },
    { (APTR)UpdateTimer, "UpdateTimer", argsUpdateTimer },
    { (APTR)UnsubscribeAction, "UnsubscribeAction", argsUnsubscribeAction },
-   { (APTR)UnsubscribeFeed, "UnsubscribeFeed", argsUnsubscribeFeed },
+   { (APTR)VarSet, "VarSet", argsVarSet },
    { (APTR)UnsubscribeEvent, "UnsubscribeEvent", argsUnsubscribeEvent },
    { (APTR)BroadcastEvent, "BroadcastEvent", argsBroadcastEvent },
    { (APTR)WaitTime, "WaitTime", argsWaitTime },
@@ -280,7 +270,7 @@ const struct Function glFunctions[] = {
    { (APTR)LockMutex, "LockMutex", argsLockMutex },
    { (APTR)UnlockMutex, "UnlockMutex", argsUnlockMutex },
    { (APTR)ActionThread, "ActionThread", argsActionThread },
-   { (APTR)GetFeedList, "GetFeedList", argsGetFeedList },
+   { (APTR)VarNew, "VarNew", argsVarNew },
    { (APTR)AllocSharedMutex, "AllocSharedMutex", argsAllocSharedMutex },
    { (APTR)FreeSharedMutex, "FreeSharedMutex", argsFreeSharedMutex },
    { (APTR)LockSharedMutex, "LockSharedMutex", argsLockSharedMutex },
@@ -290,8 +280,8 @@ const struct Function glFunctions[] = {
    { (APTR)VarSetSized, "VarSetSized", argsVarSetSized },
    { (APTR)VarLock, "VarLock", argsVarLock },
    { (APTR)WakeProcess, "WakeProcess", argsWakeProcess },
-   { (APTR)StrLineLength, "StrLineLength", argsStrLineLength },
-   { (APTR)StrNextLine, "StrNextLine", argsStrNextLine },
+   { (APTR)SetResourcePath, "SetResourcePath", argsSetResourcePath },
+   { (APTR)CurrentTask, "CurrentTask", argsCurrentTask },
    { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { (APTR)StrToFloat, "StrToFloat", argsStrToFloat },
    { (APTR)StrCopy, "StrCopy", argsStrCopy },
@@ -308,15 +298,15 @@ const struct Function glFunctions[] = {
    { (APTR)UTF8ReadValue, "UTF8ReadValue", argsUTF8ReadValue },
    { (APTR)UTF8WriteValue, "UTF8WriteValue", argsUTF8WriteValue },
    { (APTR)StrFormat, "StrFormat", argsStrFormat },
-   { (APTR)StrFormatDate, "StrFormatDate", argsStrFormatDate },
+   { (APTR)SaveImageToFile, "SaveImageToFile", argsSaveImageToFile },
    { (APTR)StrToColour, "StrToColour", argsStrToColour },
    { (APTR)StrDatatype, "StrDatatype", argsStrDatatype },
-   { (APTR)CharCopy, "CharCopy", argsCharCopy },
+   { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)StrToHex, "StrToHex", argsStrToHex },
-   { (APTR)StrTranslateText, "StrTranslateText", argsStrTranslateText },
-   { (APTR)StrTranslateRefresh, "StrTranslateRefresh", argsStrTranslateRefresh },
+   { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
+   { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)StrSortCompare, "StrSortCompare", argsStrSortCompare },
-   { (APTR)StrReadDate, "StrReadDate", argsStrReadDate },
+   { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { (APTR)UTF8Copy, "UTF8Copy", argsUTF8Copy },
    { (APTR)StrBase64Encode, "StrBase64Encode", argsStrBase64Encode },
    { (APTR)VarSetString, "VarSetString", argsVarSetString },
@@ -348,16 +338,6 @@ const struct Function glFunctions[] = {
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
    { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { (APTR)LoadFile, "LoadFile", argsLoadFile },
-   { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
-   { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
-   { (APTR)SaveImageToFile, "SaveImageToFile", argsSaveImageToFile },
-   { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
-   { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
-   { (APTR)SetResourcePath, "SetResourcePath", argsSetResourcePath },
-   { (APTR)CurrentTask, "CurrentTask", argsCurrentTask },
-   { (APTR)VarNew, "VarNew", argsVarNew },
-   { (APTR)VarSet, "VarSet", argsVarSet },
-   { (APTR)VarGet, "VarGet", argsVarGet },
    { NULL, NULL, NULL }
 };
 

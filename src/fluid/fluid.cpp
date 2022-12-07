@@ -180,6 +180,20 @@ void free_references(lua_State *Lua, struct references *Ref)
 
 //****************************************************************************
 
+CSTRING next_line(CSTRING String)
+{
+   if (!String) return NULL;
+
+   while ((*String) and (*String != '\n') and (*String != '\r')) String++;
+   while (*String IS '\r') String++;
+   if (*String IS '\n') String++;
+   while (*String IS '\r') String++;
+   if (*String) return String;
+   else return NULL;
+}
+
+//****************************************************************************
+
 APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
 {
    APTR address;
@@ -287,7 +301,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
             while ((idl) and (*idl)) {
                if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Lua, idl+2, module_name);
                else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(Lua, idl+2, module_name);
-               else idl = StrNextLine(idl);
+               else idl = next_line(idl);
             }
          }
          else log.trace("No IDL defined for %s", module_name);
@@ -567,7 +581,7 @@ void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
    if ((str = Self->String)) {
       LONG i;
       for (i=0; i < Line; i++) {
-         if (!(str = StrNextLine(str))) {
+         if (!(str = next_line(str))) {
             Buffer[0] = 0;
             return;
          }
@@ -631,7 +645,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
             while ((idl) and (*idl)) {
                if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
                else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
-               else idl = StrNextLine(idl);
+               else idl = next_line(idl);
             }
 
             LONG state = 1;
@@ -647,7 +661,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
                while ((idl) and (*idl)) {
                   if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
                   else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
-                  else idl = StrNextLine(idl);
+                  else idl = next_line(idl);
                }
 
                LONG state = 1;
@@ -696,7 +710,7 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
    }
    else {
       log.warning("Malformed struct name in %s.", Source);
-      return StrNextLine(Line);
+      return next_line(Line);
    }
 }
 
@@ -711,7 +725,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 
    if (*Line != ':') {
       log.warning("Malformed const name in %s.", Source);
-      return StrNextLine(Line);
+      return next_line(Line);
    }
    else Line++;
 
@@ -764,7 +778,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
       if (*Line IS ',') Line++;
    }
 
-   return StrNextLine(Line);
+   return next_line(Line);
 }
 
 /*****************************************************************************

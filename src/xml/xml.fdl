@@ -80,7 +80,6 @@ module({ name="XML", copyright="Paul Manias © 2001-2022", version=1.0 }, functi
     { id=13, name="Count" },
     { id=14, name="InsertContent" },
     { id=15, name="RemoveXPath" },
-    { id=16, name="GetXPath" },
     { id=17, name="FindTagFromIndex" },
     { id=18, name="GetTag" }
   })

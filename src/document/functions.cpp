@@ -8113,7 +8113,7 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
 
    *Function = exsbuffer + pos;
    if (bracket != -1) {
-      pos += CharCopy(Link+dot, exsbuffer+pos, bracket-dot);
+      pos += CopyMemory(Link+dot, exsbuffer+pos, bracket-dot);
       exsbuffer[pos++] = 0;
 
       if (Args) { // Copy args
@@ -8121,7 +8121,7 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
          while ((len > bracket) and (Link[len] != ')')) len--;
          if (Link[len] IS ')') {
             *Args = exsbuffer + pos;
-            pos += CharCopy(Link+bracket, exsbuffer+pos, len-bracket);
+            pos += CopyMemory(Link+bracket, exsbuffer+pos, len-bracket);
             exsbuffer[pos++] = 0;
          }
          else log.warning("Malformed function args: %s", Link);

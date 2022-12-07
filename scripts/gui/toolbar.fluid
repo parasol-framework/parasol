@@ -36,6 +36,7 @@ The resulting object consists of the following accessible fields:
    require 'common'
    require 'gui'
    require 'gui/tooltip'
+   require 'translate'
    include 'vector'
 
    if (not mFont) then mFont = mod.load('font') end
@@ -95,7 +96,7 @@ gui.toolbar = function(HostVP, Options)
 
       local item = { type=Type, id=ID, name=Name }
       if nz(Name) then
-         item.displayName = mSys.StrTranslateText(Name)
+         item.displayName = string.translate(Name)
       end
 
       if self._last then self._last.next = item end
@@ -332,7 +333,7 @@ gui.toolbar = function(HostVP, Options)
       item.callback = Function
 
       if Tip then
-         item.tip = mSys.StrTranslateText(Tip)
+         item.tip = string.translate(Tip)
       end
 
       if Icon then

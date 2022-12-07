@@ -352,14 +352,9 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    if (error & ERF_Notified) {
       error &= ~ERF_Notified;
    }
-   else if (obj->Stats->ActionSubscriptions.Ptr) {  // Check if there are any objects subscribed to this action before continuing
-      LONG result;
-      if (ActionID > 0) result = obj->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31));
-      else result = obj->Stats->MethodFlags[(-ActionID)>>5] & (1<<((-ActionID) & 31));
-
-      if (result) {
-         ActionSubscription *list;
-         if ((list = lock_subscribers(obj))) {
+   else if ((ActionID > 0) and (obj->Stats->ActionSubscriptions.Ptr)) {  // Check if there are any objects subscribed to this action before continuing
+      if (obj->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31))) {
+         if (auto list = lock_subscribers(obj)) {
             acActionNotify notify;
             notify.ObjectID = object_id;
             notify.Args     = Parameters;
@@ -828,9 +823,7 @@ IllegalMethodID: The Action is not a supported method of the target object.
 ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
 {
    parasol::Log log(__FUNCTION__);
-   ActionSubscription *list;
    ERROR error;
-   LONG result;
    va_list vlist;
 
    if (!argObject) return log.warning(ERR_NullArgs);
@@ -963,14 +956,11 @@ ERROR ActionTags(LONG ActionID, OBJECTPTR argObject, ...)
    if (error & ERF_Notified) {
       error &= ~ERF_Notified;
    }
-   else if (obj->Stats->ActionSubscriptions.Ptr) {
+   else if ((ActionID > 0) and (obj->Stats->ActionSubscriptions.Ptr)) {
       // Check if there are any objects subscribed to this action before continuing
 
-      if (ActionID > 0) result = obj->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31));
-      else result = obj->Stats->MethodFlags[(-ActionID)>>5] & (1<<((-ActionID) & 31));
-
-      if (result) {
-         if ((list = lock_subscribers(obj))) {
+      if (obj->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31))) {
+         if (auto list = lock_subscribers(obj)) {
             acActionNotify notify;
             notify.ObjectID = object_id;
             notify.Args     = params;
@@ -1324,26 +1314,22 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
 
    LONG result;
    if (ActionID >= 0) result = Object->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31));
-   else result = Object->Stats->MethodFlags[(-ActionID)>>5] & (1<<((-ActionID) & 31));
+   else return 0;
 
    if (!result) return 0;
 
-   LONG recursionsave;
-
-   recursionsave = tlMsgRecursion;
+   auto recursionsave = tlMsgRecursion;
    tlMsgRecursion = 255; // This prevents ProcessMessages() from being used while inside notification routines
 
-   WORD count = 0;
-   ActionSubscription *list;
-   if ((list = lock_subscribers(Object))) {
+   LONG count = 0;
+   if (auto list = lock_subscribers(Object)) {
       struct acActionNotify notify = {
          .ActionID = ActionID,
          .ObjectID = Object->UID,
          .Args     = Parameters,
          .Error    = ErrorCode
       };
-      if (ActionID > 0) notify.Size = ActionTable[ActionID].Size;
-      else notify.Size = result = Object->Stats->MethodFlags[(-ActionID)>>5] & (1<<((-ActionID) & 31));
+      notify.Size = ActionTable[ActionID].Size;
 
       // Generate a shadow copy of the list - this is required in case calls to SubscribeAction() or
       // UnsubscribeAction() are made during the execution of the subscriber routines.
@@ -1400,8 +1386,7 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
          }
       }
       else { // If there are no subscribers for the indicated action ID, clear the associated bit flag for that action.
-         if (ActionID > 0) Object->Stats->NotifyFlags[ActionID>>5] &= (~(1<<(ActionID & 31)));
-         else Object->Stats->MethodFlags[(-ActionID)>>5] &= (~(1<<((-ActionID) & 31)));
+         Object->Stats->NotifyFlags[ActionID>>5] &= (~(1<<(ActionID & 31)));
       }
    }
    else log.warning(ERR_AccessMemory);
@@ -1421,11 +1406,11 @@ foreign objects.  This is referred to as "action monitoring".  Action monitoring
 variety of purposes and is especially useful for responding to events in the user interface, including pointer
 movement, window resizing and graphics drawing.
 
-To subscribe to the actions of another object, you need to acquire its address pointer, then call this function with
-the action ID that you want to monitor.  The Subscriber argument needs to indicate what object you represent - if you
-don't represent an object, you need to gain access to your local Task object and point to it in the Subscriber
-argument.  The following example illustrates how to listen to a Surface object's Draw action, for the purposes of
-drawing graphics to it:
+To subscribe to the actions of another object, acquire its address pointer and then call this function with
+the action ID to monitor.  The object that has the current context will be registered for receiving the notifications.
+
+The following example illustrates how to listen to a Surface object's Draw action for the purposes of drawing
+graphics to it:
 
 <pre>
 if (!AccessObject(SurfaceID, 3000, &surface)) {
@@ -1434,20 +1419,18 @@ if (!AccessObject(SurfaceID, 3000, &surface)) {
 }
 </pre>
 
-When a process calls a matching action on the object that is being listened to, its code will be executed first, then
+When a process calls an action with subscriptions, the object's code will be executed first, then
 all relevant action subscribers will be notified of the event.  This is done by sending each subscriber an action
 message (AC_ActionNotify) with information on the action ID, the ID of the object that was called, and a copy of the
-arguments that were used.  For more detail, refer to the technical support for #ActionNotify(). If you are
-writing a standard executable rather than a class, refer to one the graphical example programs provided with the
-Parasol SDK to see how ActionNotify events can be intercepted through the @Task object.
+arguments that were used.  For more detail, refer to the technical support for #ActionNotify().
 
 This function does not support subscriptions to methods.
 
-When you need to terminate an action subscription, use the ~UnsubscribeAction() function.
+To terminate an action subscription, use the ~UnsubscribeAction() function.
 
 -INPUT-
-obj Object: Pointer to the object that you wish to subscribe to.
-int Action: The ID of the action that you wish to monitor.
+obj Object: The target object.
+int Action: The ID of the action that will be monitored.
 
 -ERRORS-
 Okay:
@@ -1545,6 +1528,10 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
             warntag = SUB_FAIL_EXISTS;
             continue;
          }
+         else if (actionid < 0) {
+            log.warning("Method subscriptions are not supported.");
+            continue;
+         }
 
          // Scan the subscription array.  If the subscription already exists (the action ID and subscriber ID are
          // identical), we move it to the bottom of the list.
@@ -1625,17 +1612,9 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
          list[i].ClassID        = tlContext->object()->ClassID;
          list[i].MessagePortMID = glTaskMessageMID;
 
-         if (actionid > 0) {
-            i = actionid>>5;
-            if ((i >= 0) and (i < ARRAYSIZE(Object->Stats->NotifyFlags))) {
-               Object->Stats->NotifyFlags[i] |= 1<<(actionid & 31);
-            }
-         }
-         else {
-            i = (-actionid)>>5;
-            if ((i >= 0) and (i < ARRAYSIZE(Object->Stats->MethodFlags))) {
-               Object->Stats->MethodFlags[i] |= 1<<((-actionid) & 31);
-            }
+         i = actionid>>5;
+         if ((i >= 0) and (i < ARRAYSIZE(Object->Stats->NotifyFlags))) {
+            Object->Stats->NotifyFlags[i] |= 1<<(actionid & 31);
          }
       }
 
@@ -1727,7 +1706,6 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
 
          Object->Stats->SubscriptionSize  = 0;
          for (WORD i=0; i < ARRAYSIZE(Object->Stats->NotifyFlags); i++) Object->Stats->NotifyFlags[i] = 0;
-         for (WORD i=0; i < ARRAYSIZE(Object->Stats->MethodFlags); i++) Object->Stats->MethodFlags[i] = 0;
       }
       else unlock_subscribers(Object);
    }
@@ -1831,8 +1809,6 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
          mc->Base->ActionTable[AC_Free].PerformAction(Object, NULL);
       }
    }
-
-   if (Object->Stats->MID_FeedList) { FreeResourceID(Object->Stats->MID_FeedList); Object->Stats->MID_FeedList = 0; }
 
    if (Object->Stats->ActionSubscriptions.ID) { // Close the action subscription list
       if (Object->UID < 0) FreeResourceID(Object->Stats->ActionSubscriptions.ID);

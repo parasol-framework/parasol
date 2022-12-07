@@ -186,12 +186,10 @@ struct Stats {
       MEMORYID ID; // Action subscriptions (struct ActionSubscription)
       APTR Ptr;
    } ActionSubscriptions;
-   MEMORYID MID_FeedList;       // Array of objects that are listening for data (struct FeedSubscription)
    LONG     NotifyFlags[2];     // Action notification flags - space for 64 actions max
-   LONG     MethodFlags[2];     // Method flags - space for 64 methods max
    char     Name[MAX_NAME_LEN]; // The name of the object (optional)
    UWORD    SubscriptionSize;   // Size of the ActionSubscriptions array
-   UWORD    FeedSize;           // Size of the MID_FeedList array
+   UWORD    Empty;
 };
 
 // Subscription structures
