@@ -1,37 +1,35 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 This source code and its accompanying files are in the public domain and therefore may be distributed without
 restriction.  The source is based in part on libpng, authored by Glenn Randers-Pehrson, Andreas Eric Dilger and
 Guy Eric Schalnat.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Picture: Loads and saves picture files in a variety of different data formats.
 
-The purpose of the Picture class is to provide a standard interface that any program can use to load picture files.
-The main advantage in using this class is that the source picture can be in any file format recognised by the user's
-system, so effectively your program will be able to support file formats that it does not understand.
+The Picture class provides a standard API for programs to load picture files of any supported data type.  It is future
+proof in that future data formats can be supported by installing class drivers on the user's system.
 
 The default file format for loading and saving pictures is PNG.  Other formats such as JPEG are supported via
 sub-classes, which can be loaded into the system at boot time or on demand.  Some rare formats such as TIFF are
-also supported, but these can be removed from the system library folders if they are not required by the host system
-or application, in order to save space.
+also supported, but user preference may dictate whether or not the necessary driver is installed.
 
 <header>Technical Notes</>
 
 The Picture class will clip any loaded picture so that it fits the size given in the #Bitmap's Width and
 Height. If you specify the `RESIZE` flag, the picture will be shrunk or enlarged to fit the given dimensions.
-If you leave the Width and Height at NULL, then the picture will be loaded at its default dimensions.  To
-find out general information about a picture before initialising it, <action>Query</action> it first so that
-the picture object can load initial details on the file format.
+If the Width and Height are zero, the picture will be loaded at its default dimensions.  To find out general information
+about a picture before initialising it, @Query() it first so that the picture object can load initial details on the
+file format.
 
 Images are also remapped automatically if the source palette and destination palettes do not match, or if there are
 significant differences between the source and destination bitmap types.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PNG_INTERNAL
 #define PRV_PNG
@@ -50,7 +48,7 @@ static ModuleMaster *modPicture = NULL;
 static OBJECTPTR clPicture = NULL;
 static OBJECTPTR modDisplay = NULL;
 static DisplayBase *DisplayBase = NULL;
-static THREADVAR LONG glError = FALSE;
+static THREADVAR bool tlError = false;
 
 static ERROR decompress_png(prvPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
 static void read_row_callback(png_structp, png_uint_32, int);
@@ -61,7 +59,7 @@ static ERROR create_picture_class(void);
 
 rgb_to_linear glLinearRGB;
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void conv_l2r_row32(UBYTE *Row, LONG Width) {
    for (LONG x=0; x < Width; x++) {
@@ -72,7 +70,7 @@ static void conv_l2r_row32(UBYTE *Row, LONG Width) {
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void conv_l2r_row24(UBYTE *Row, LONG Width) {
    for (LONG x=0; x < Width; x++) {
@@ -83,7 +81,7 @@ static void conv_l2r_row24(UBYTE *Row, LONG Width) {
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -95,7 +93,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return(create_picture_class());
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDExpunge(void)
 {
@@ -104,7 +102,7 @@ static ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Activate: Loads image data into a picture object.
@@ -122,7 +120,7 @@ Once the picture is loaded, the image data will be held in the picture's Bitmap 
 Bitmap using its available drawing methods.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PIC_Activate(prvPicture *Self, APTR Void)
 {
@@ -133,7 +131,7 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
    log.branch();
 
    ERROR error = ERR_Failed;
-   glError = FALSE;
+   tlError = false;
 
    objBitmap *bmp = Self->Bitmap;
    png_structp read_ptr = NULL;
@@ -166,13 +164,13 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
    read_ptr->read_data_fn = png_read_data;
    read_ptr->output_flush_fn = NULL;
 
-   png_set_read_status_fn(read_ptr, read_row_callback); if (glError) goto exit;
-   png_read_info(read_ptr, info_ptr); if (glError) goto exit;
+   png_set_read_status_fn(read_ptr, read_row_callback); if (tlError) goto exit;
+   png_read_info(read_ptr, info_ptr); if (tlError) goto exit;
 
    int bit_depth, total_bit_depth, color_type;
    png_uint_32 png_width, png_height;
    png_get_IHDR(read_ptr, info_ptr, &png_width, &png_height, &bit_depth, &color_type, NULL, NULL, NULL);
-   if (glError) goto exit;
+   if (tlError) goto exit;
 
    if (!bmp->Width)  bmp->Width  = png_width;
    if (!bmp->Height) bmp->Height = png_height;
@@ -340,7 +338,7 @@ exit:
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PIC_Free(prvPicture *Self, APTR Void)
 {
@@ -353,7 +351,7 @@ static ERROR PIC_Free(prvPicture *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Init: Prepares the object for use.
@@ -370,7 +368,7 @@ with a registered data format, an error code of ERR_NoSupport is returned.  You 
 Query actions to load or find out more information about the image format.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PIC_Init(prvPicture *Self, APTR Void)
 {
@@ -462,7 +460,7 @@ static ERROR PIC_Init(prvPicture *Self, APTR Void)
    return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PIC_NewObject(prvPicture *Self, APTR Void)
 {
@@ -476,7 +474,7 @@ static ERROR PIC_NewObject(prvPicture *Self, APTR Void)
    else return log.warning(ERR_NewObject);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PIC_Query(prvPicture *Self, APTR Void)
 {
@@ -495,7 +493,7 @@ static ERROR PIC_Query(prvPicture *Self, APTR Void)
    png_structp read_ptr = NULL;
    png_infop info_ptr = NULL;
    png_infop end_info = NULL;
-   glError  = FALSE;
+   tlError = false;
 
    // Open the data file
 
@@ -522,9 +520,9 @@ static ERROR PIC_Query(prvPicture *Self, APTR Void)
    read_ptr->read_data_fn = png_read_data;
    read_ptr->output_flush_fn = NULL;
 
-   png_set_read_status_fn(read_ptr, read_row_callback); if (glError) goto exit;
-   png_read_info(read_ptr, info_ptr); if (glError) goto exit;
-   png_get_IHDR(read_ptr, info_ptr, &width, &height, &bit_depth, &color_type, NULL, NULL, NULL); if (glError) goto exit;
+   png_set_read_status_fn(read_ptr, read_row_callback); if (tlError) goto exit;
+   png_read_info(read_ptr, info_ptr); if (tlError) goto exit;
+   png_get_IHDR(read_ptr, info_ptr, &width, &height, &bit_depth, &color_type, NULL, NULL, NULL); if (tlError) goto exit;
 
    if (!Bitmap->Width)  Bitmap->Width  = width;
    if (!Bitmap->Height) Bitmap->Height = height;
@@ -554,36 +552,36 @@ exit:
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Read: Reads raw image data from a Picture object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PIC_Read(prvPicture *Self, struct acRead *Args)
 {
    return Action(AC_Read, Self->Bitmap, Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Refresh: Refreshes a loaded picture - draws the next frame.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PIC_Refresh(prvPicture *Self, APTR Void)
 {
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveImage: Saves the picture image to a data object.
 
 If no destination is specified then the image will be saved as a new file targeting #Path.
 
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
 {
@@ -599,7 +597,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    png_structp write_ptr = NULL;
    png_infop info_ptr    = NULL;
    ERROR error = ERR_Failed;
-   glError = FALSE;
+   tlError = false;
 
    // Open the data file
 
@@ -643,7 +641,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    write_ptr->output_flush_fn = NULL;
 
    png_set_write_status_fn(write_ptr, write_row_callback);
-   if (glError) {
+   if (tlError) {
       log.warning("png_set_write_status_fn() failed.");
       goto exit;
    }
@@ -703,7 +701,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    // Write the header to the PNG file
 
    png_write_info(write_ptr, info_ptr);
-   if (glError) {
+   if (tlError) {
       log.warning("png_write_info() failed.");
       goto exit;
    }
@@ -850,11 +848,11 @@ exit:
    else return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveToObject: Saves the picture image to a data object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PIC_SaveToObject(prvPicture *Self, struct acSaveToObject *Args)
 {
@@ -879,34 +877,34 @@ static ERROR PIC_SaveToObject(prvPicture *Self, struct acSaveToObject *Args)
    else return acSaveImage(Self, Args->DestID, Args->ClassID);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Seek: Seeks to a new read/write position within a Picture object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PIC_Seek(prvPicture *Self, struct acSeek *Args)
 {
    return Action(AC_Seek, Self->Bitmap, Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Write: Writes raw image data to a picture object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PIC_Write(prvPicture *Self, struct acWrite *Args)
 {
    return Action(AC_Write, Self->Bitmap, Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Author: The name of the person or company that created the image.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Author(prvPicture *Self, STRING *Value)
 {
@@ -921,7 +919,7 @@ static ERROR SET_Author(prvPicture *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Bitmap: Represents a picture's image data.
@@ -940,7 +938,7 @@ Copyright: Copyright details of an image.
 Copyright details related to an image may be specified here.  The copyright should be short and to the point, for
 example "Copyright H.R. Giger (c) 1992."
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Copyright(prvPicture *Self, STRING *Value)
 {
@@ -955,14 +953,14 @@ static ERROR SET_Copyright(prvPicture *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Description: Long description for an image.
 
 A long description for an image may be entered in this field.  There is no strict limit on the length of the
 description.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Description(prvPicture *Self, STRING *Value)
 {
@@ -988,13 +986,13 @@ static ERROR SET_Description(prvPicture *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Disclaimer: The disclaimer associated with an image.
 
 If it is necessary to associate a disclaimer with an image, the legal text may be entered in this field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Disclaimer(prvPicture *Self, STRING *Value)
 {
@@ -1020,7 +1018,7 @@ static ERROR SET_Disclaimer(prvPicture *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DisplayHeight: The preferred height to use when displaying the image.
@@ -1056,7 +1054,7 @@ for the picture class.
 
 The buffer that is referred to by the Header field is not populated until the Init action is called on the picture object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Header(prvPicture *Self, APTR *Value)
 {
@@ -1064,11 +1062,11 @@ static ERROR GET_Header(prvPicture *Self, APTR *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Path: The location of source image data.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Path(prvPicture *Self, STRING *Value)
 {
@@ -1094,7 +1092,7 @@ static ERROR SET_Path(prvPicture *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Mask: Refers to a Bitmap that imposes a mask on the image.
@@ -1118,7 +1116,7 @@ In all cases, the impact of selecting a high level of quality will increase the 
 -FIELD-
 Software: The name of the application that was used to draw the image.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Software(prvPicture *Self, STRING *Value)
 {
@@ -1133,11 +1131,11 @@ static ERROR SET_Software(prvPicture *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Title: The title of the image.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Title(prvPicture *Self, STRING *Value)
 {
@@ -1152,7 +1150,7 @@ static ERROR SET_Title(prvPicture *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void read_row_callback(png_structp read_ptr, png_uint_32 row, int pass)
 {
@@ -1164,9 +1162,8 @@ static void write_row_callback(png_structp write_ptr, png_uint_32 row, int pass)
 
 }
 
-/*****************************************************************************
-** Read functions
-*/
+//********************************************************************************************************************
+// Read functions
 
 void png_read_data(png_structp png, png_bytep data, png_size_t length)
 {
@@ -1183,7 +1180,7 @@ void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data
    png_ptr->output_flush_fn = NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Write functions.
 
 void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
@@ -1208,22 +1205,20 @@ void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_da
    png_ptr->output_flush_fn = NULL;
 }
 
-/*****************************************************************************
-** PNG Error Handling Functions
-*/
+//********************************************************************************************************************
+// PNG Error Handling Functions
 
 static void png_error_hook(png_structp png_ptr, png_const_charp message)
 {
    parasol::Log log;
    log.warning("%s", message);
-   glError = TRUE;
+   tlError = true;
 }
 
 static void png_warning_hook(png_structp png_ptr, png_const_charp message)
 {
    parasol::Log log;
    log.warning("Warning: %s", message);
-   glError = FALSE;
 }
 
 ZEXTERN uLong ZEXPORT crc32   OF((uLong crc, const Bytef *buf, uInt len))
@@ -1231,7 +1226,7 @@ ZEXTERN uLong ZEXPORT crc32   OF((uLong crc, const Bytef *buf, uInt len))
    return GenCRC32(crc, (APTR)buf, len);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, int ColourType, png_structp ReadPtr,
                             png_infop InfoPtr, png_uint_32 PngWidth, png_uint_32 PngHeight)
@@ -1274,7 +1269,7 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
             ify = F2T(fy);
             fx = 0;
             while (isrcy != ify) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
+               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
                isrcy++;
             }
             for (x=0; x < Bitmap->Width; x++, fx += xScale) {
@@ -1294,7 +1289,7 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
             fx = 0;
             ify = F2T(fy);
             while (isrcy != ify) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
+               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
                isrcy++;
             }
             for (x=0; x < Bitmap->Width; x++, fx += xScale) {
@@ -1305,7 +1300,8 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
          }
       }
       else if (ColourType & PNG_COLOR_MASK_ALPHA) {
-         // When decompressing images that support an alpha channel, the fourth byte of each pixel will contain the alpha data.
+         // When decompressing images that support an alpha channel, the fourth byte of each pixel will contain the
+         // alpha data.
 
          isrcy = -1;
          fy = 0;
@@ -1313,7 +1309,7 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
             fx = 0;
             ify = F2T(fy);
             while (isrcy != ify) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
+               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
                isrcy++;
             }
             for (x=0; x < Bitmap->Width; x++, fx += xScale) {
@@ -1340,7 +1336,7 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
             fx = 0;
             ify = F2T(fy);
             while (isrcy != ify) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
+               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
                isrcy++;
             }
             for (x=0; x < Bitmap->Width; x++, fx += xScale) {
@@ -1365,7 +1361,7 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
          log.trace("Greyscale image source.");
          rgb.Alpha = 255;
          for (png_uint_32 y=0; y < PngHeight; y++) {
-            png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
+            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
             for (png_uint_32 x=0; x < PngWidth; x++) {
                rgb.Red   = row[x];
                rgb.Green = row[x];
@@ -1378,14 +1374,14 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
          log.trace("Palette-based image source.");
          if (Bitmap->BitsPerPixel IS 8) {
             for (png_uint_32 y=0; y < PngHeight; y++) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
+               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
                for (png_uint_32 x=0; x < PngWidth; x++) Bitmap->DrawUCPixel(Bitmap, x, y, row[x]);
             }
          }
          else {
             rgb.Alpha = 255;
             for (png_uint_32 y=0; y < PngHeight; y++) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
+               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
                for (png_uint_32 x=0; x < PngWidth; x++) {
                   Bitmap->DrawUCRPixel(Bitmap, x, y, &Bitmap->Palette->Col[row[x]]);
                }
@@ -1397,7 +1393,7 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
 
          log.trace("32-bit + alpha image source.");
          for (png_uint_32 y=0; y < PngHeight; y++) {
-            png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
+            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
             i = 0;
             for (png_uint_32 x=0; x < PngWidth; x++) {
                Bitmap->DrawUCRPixel(Bitmap, x, y, (RGB8 *)(row+i));
@@ -1414,7 +1410,7 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
          log.trace("24-bit image source.");
          rgb.Alpha = 255;
          for (png_uint_32 y=0; y < PngHeight; y++) {
-            png_read_row(ReadPtr, row_pointers, NULL); if (glError) goto exit;
+            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
             i = 0;
             for (png_uint_32 x=0; x < PngWidth; x++) {
                rgb.Red   = row[i++];
@@ -1430,6 +1426,8 @@ exit:
    FreeResource(row);
    return error;
 }
+
+//********************************************************************************************************************
 
 static const FieldDef clFlags[] = {
    { "ResizeX",   PCF_RESIZE_X   }, { "ResizeY", PCF_RESIZE_Y },
@@ -1495,6 +1493,6 @@ static ERROR create_picture_class(void)
       TAGEND);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0)

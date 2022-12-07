@@ -16,10 +16,10 @@
     <include>modules/picture.h</include>
     <copyright>Paul Manias © 2001-2022</copyright>
     <description>
-<p>The purpose of the Picture class is to provide a standard interface that any program can use to load picture files. The main advantage in using this class is that the source picture can be in any file format recognised by the user's system, so effectively your program will be able to support file formats that it does not understand.</p>
-<p>The default file format for loading and saving pictures is PNG.  Other formats such as JPEG are supported via sub-classes, which can be loaded into the system at boot time or on demand.  Some rare formats such as TIFF are also supported, but these can be removed from the system library folders if they are not required by the host system or application, in order to save space.</p>
+<p>The Picture class provides a standard API for programs to load picture files of any supported data type.  It is future proof in that future data formats can be supported by installing class drivers on the user's system.</p>
+<p>The default file format for loading and saving pictures is PNG.  Other formats such as JPEG are supported via sub-classes, which can be loaded into the system at boot time or on demand.  Some rare formats such as TIFF are also supported, but user preference may dictate whether or not the necessary driver is installed.</p>
 <header>Technical Notes</header>
-<p>The Picture class will clip any loaded picture so that it fits the size given in the <field>Bitmap</field>'s Width and Height. If you specify the <code>RESIZE</code> flag, the picture will be shrunk or enlarged to fit the given dimensions. If you leave the Width and Height at NULL, then the picture will be loaded at its default dimensions.  To find out general information about a picture before initialising it, <action>Query</action> it first so that the picture object can load initial details on the file format.</p>
+<p>The Picture class will clip any loaded picture so that it fits the size given in the <field>Bitmap</field>'s Width and Height. If you specify the <code>RESIZE</code> flag, the picture will be shrunk or enlarged to fit the given dimensions. If the Width and Height are zero, the picture will be loaded at its default dimensions.  To find out general information about a picture before initialising it, @Query() it first so that the picture object can load initial details on the file format.</p>
 <p>Images are also remapped automatically if the source palette and destination palettes do not match, or if there are significant differences between the source and destination bitmap types.</p></description>
     <source>
       <file>picture.cpp</file>

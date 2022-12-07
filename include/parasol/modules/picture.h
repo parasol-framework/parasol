@@ -15,7 +15,7 @@
 #include <parasol/modules/display.h>
 #endif
 
-typedef class plPicture objPicture;
+class objPicture;
 
 // Flags for the Picture class.
 
@@ -34,7 +34,7 @@ typedef class plPicture objPicture;
 
 #define VER_PICTURE (1.000000)
 
-typedef class plPicture : public BaseClass {
+class objPicture : public BaseClass {
    public:
    objBitmap * Bitmap;    // Represents a picture's image data.
    objBitmap * Mask;      // Refers to a Bitmap that imposes a mask on the image.
@@ -43,6 +43,6 @@ typedef class plPicture : public BaseClass {
    LONG DisplayWidth;     // The preferred width to use when displaying the image.
    LONG Quality;          // Defines the quality level to use when saving the image.
    LONG FrameRate;        // Refresh & redraw the picture X times per second.  Used by pictures that have an animation refresh rate
-} objPicture;
+};
 
 #endif
