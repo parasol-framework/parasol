@@ -2974,20 +2974,21 @@ SetField(Object, FID_Statement|TSTR, "string");
     <comment>Listens for actions that may be performed on an object.</comment>
     <prototype>ERROR SubscribeAction(OBJECTPTR Object, LONG Action)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object that you wish to subscribe to.</param>
-      <param type="LONG" name="Action">The ID of the action that you wish to monitor.</param>
+      <param type="OBJECTPTR" name="Object">The target object.</param>
+      <param type="LONG" name="Action">The ID of the action that will be monitored.</param>
     </input>
     <description>
 <p>The SubscribeAction() function is provided for objects that need to be notified when actions are being executed on foreign objects.  This is referred to as "action monitoring".  Action monitoring is used for a wide variety of purposes and is especially useful for responding to events in the user interface, including pointer movement, window resizing and graphics drawing.</p>
-<p>To subscribe to the actions of another object, you need to acquire its address pointer, then call this function with the action ID that you want to monitor.  The Subscriber argument needs to indicate what object you represent - if you don't represent an object, you need to gain access to your local Task object and point to it in the Subscriber argument.  The following example illustrates how to listen to a Surface object's Draw action, for the purposes of drawing graphics to it:</p>
+<p>To subscribe to the actions of another object, acquire its address pointer and then call this function with the action ID to monitor.  The object that has the current context will be registered for receiving the notifications.</p>
+<p>The following example illustrates how to listen to a Surface object's Draw action for the purposes of drawing graphics to it:</p>
 <pre>if (!AccessObject(SurfaceID, 3000, &amp;surface)) {
    SubscribeAction(surface, AC_Draw, Self);
    ReleaseObject(surface);
 }
 </pre>
-<p>When a process calls a matching action on the object that is being listened to, its code will be executed first, then all relevant action subscribers will be notified of the event.  This is done by sending each subscriber an action message (AC_ActionNotify) with information on the action ID, the ID of the object that was called, and a copy of the arguments that were used.  For more detail, refer to the technical support for <action>ActionNotify</action>. If you are writing a standard executable rather than a class, refer to one the graphical example programs provided with the Parasol SDK to see how ActionNotify events can be intercepted through the <class name="Task">Task</class> object.</p>
+<p>When a process calls an action with subscriptions, the object's code will be executed first, then all relevant action subscribers will be notified of the event.  This is done by sending each subscriber an action message (AC_ActionNotify) with information on the action ID, the ID of the object that was called, and a copy of the arguments that were used.  For more detail, refer to the technical support for <action>ActionNotify</action>.</p>
 <p>This function does not support subscriptions to methods.</p>
-<p>When you need to terminate an action subscription, use the <function module="Core">UnsubscribeAction</function> function.</p>
+<p>To terminate an action subscription, use the <function module="Core">UnsubscribeAction</function> function.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

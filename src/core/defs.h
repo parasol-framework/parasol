@@ -187,7 +187,6 @@ struct Stats {
       APTR Ptr;
    } ActionSubscriptions;
    LONG     NotifyFlags[2];     // Action notification flags - space for 64 actions max
-   LONG     MethodFlags[2];     // Method flags - space for 64 methods max
    char     Name[MAX_NAME_LEN]; // The name of the object (optional)
    UWORD    SubscriptionSize;   // Size of the ActionSubscriptions array
    UWORD    Empty;
