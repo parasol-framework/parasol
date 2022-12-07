@@ -1842,8 +1842,8 @@ struct CoreBase {
    LONG (*_StrDatatype)(CSTRING);
    LONG (*_CharCopy)(CSTRING, STRING, LONG);
    LARGE (*_StrToHex)(CSTRING);
-   CSTRING (*_StrTranslateText)(CSTRING);
-   LONG (*_StrTranslateRefresh)(void);
+   ERROR (*_CompareFilePaths)(CSTRING, CSTRING);
+   const struct SystemState * (*_GetSystemState)(void);
    LONG (*_StrSortCompare)(CSTRING, CSTRING);
    ERROR (*_StrReadDate)(CSTRING, struct DateTime *);
    LONG (*_UTF8Copy)(CSTRING, STRING, LONG, LONG);
@@ -1880,8 +1880,6 @@ struct CoreBase {
    void (*_UnloadFile)(struct CacheFile *);
    ERROR (*_AddInfoTag)(struct FileInfo *, CSTRING, CSTRING);
    ERROR (*_SaveImageToFile)(OBJECTPTR, CSTRING, CLASSID, LONG);
-   ERROR (*_CompareFilePaths)(CSTRING, CSTRING);
-   const struct SystemState * (*_GetSystemState)(void);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2016,8 +2014,8 @@ struct CoreBase {
 #define StrDatatype(...) (CoreBase->_StrDatatype)(__VA_ARGS__)
 #define CharCopy(...) (CoreBase->_CharCopy)(__VA_ARGS__)
 #define StrToHex(...) (CoreBase->_StrToHex)(__VA_ARGS__)
-#define StrTranslateText(...) (CoreBase->_StrTranslateText)(__VA_ARGS__)
-#define StrTranslateRefresh(...) (CoreBase->_StrTranslateRefresh)(__VA_ARGS__)
+#define CompareFilePaths(...) (CoreBase->_CompareFilePaths)(__VA_ARGS__)
+#define GetSystemState(...) (CoreBase->_GetSystemState)(__VA_ARGS__)
 #define StrSortCompare(...) (CoreBase->_StrSortCompare)(__VA_ARGS__)
 #define StrReadDate(...) (CoreBase->_StrReadDate)(__VA_ARGS__)
 #define UTF8Copy(...) (CoreBase->_UTF8Copy)(__VA_ARGS__)
@@ -2054,8 +2052,6 @@ struct CoreBase {
 #define UnloadFile(...) (CoreBase->_UnloadFile)(__VA_ARGS__)
 #define AddInfoTag(...) (CoreBase->_AddInfoTag)(__VA_ARGS__)
 #define SaveImageToFile(...) (CoreBase->_SaveImageToFile)(__VA_ARGS__)
-#define CompareFilePaths(...) (CoreBase->_CompareFilePaths)(__VA_ARGS__)
-#define GetSystemState(...) (CoreBase->_GetSystemState)(__VA_ARGS__)
 #endif
 
 
