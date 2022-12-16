@@ -1056,11 +1056,11 @@ struct ScriptArg { // For use with scExec
     "SetResourcePath",
     "CurrentTask",
     "KeyIterate",
-    "StrToFloat",
+    "ResolveGroupID",
     "StrCopy",
     "StrClone",
     "StrLength",
-    "StrToInt",
+    "ResolveUserID",
     "StrSort",
     "StrBuildArray",
     "UTF8CharOffset",
@@ -1106,9 +1106,7 @@ struct ScriptArg { // For use with scExec
     "TranslateCmdRef",
     "CreateLink",
     "VarUnlock",
-    "SetDefaultPermissions",
-    "ResolveUserID",
-    "ResolveGroupID")
+    "SetDefaultPermissions")
 
   c_insert([[
 

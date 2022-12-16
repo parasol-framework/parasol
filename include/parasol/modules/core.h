@@ -1822,11 +1822,11 @@ struct CoreBase {
    ERROR (*_SetResourcePath)(LONG, CSTRING);
    OBJECTPTR (*_CurrentTask)(void);
    ERROR (*_KeyIterate)(struct KeyStore *, ULONG, ULONG *, APTR, LONG *);
-   DOUBLE (*_StrToFloat)(CSTRING);
+   CSTRING (*_ResolveGroupID)(LONG);
    LONG (*_StrCopy)(CSTRING, STRING, LONG);
    STRING (*_StrClone)(CSTRING);
    LONG (*_StrLength)(CSTRING);
-   LARGE (*_StrToInt)(CSTRING);
+   CSTRING (*_ResolveUserID)(LONG);
    ERROR (*_StrSort)(CSTRING *, LONG);
    STRING * (*_StrBuildArray)(STRING, LONG, LONG, LONG);
    LONG (*_UTF8CharOffset)(CSTRING, LONG);
@@ -1873,8 +1873,6 @@ struct CoreBase {
    ERROR (*_CreateLink)(CSTRING, CSTRING);
    void (*_VarUnlock)(struct KeyStore *);
    void (*_SetDefaultPermissions)(LONG, LONG, LONG);
-   CSTRING (*_ResolveUserID)(LONG);
-   CSTRING (*_ResolveGroupID)(LONG);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1989,11 +1987,11 @@ struct CoreBase {
 #define SetResourcePath(...) (CoreBase->_SetResourcePath)(__VA_ARGS__)
 #define CurrentTask(...) (CoreBase->_CurrentTask)(__VA_ARGS__)
 #define KeyIterate(...) (CoreBase->_KeyIterate)(__VA_ARGS__)
-#define StrToFloat(...) (CoreBase->_StrToFloat)(__VA_ARGS__)
+#define ResolveGroupID(...) (CoreBase->_ResolveGroupID)(__VA_ARGS__)
 #define StrCopy(...) (CoreBase->_StrCopy)(__VA_ARGS__)
 #define StrClone(...) (CoreBase->_StrClone)(__VA_ARGS__)
 #define StrLength(...) (CoreBase->_StrLength)(__VA_ARGS__)
-#define StrToInt(...) (CoreBase->_StrToInt)(__VA_ARGS__)
+#define ResolveUserID(...) (CoreBase->_ResolveUserID)(__VA_ARGS__)
 #define StrSort(...) (CoreBase->_StrSort)(__VA_ARGS__)
 #define StrBuildArray(...) (CoreBase->_StrBuildArray)(__VA_ARGS__)
 #define UTF8CharOffset(...) (CoreBase->_UTF8CharOffset)(__VA_ARGS__)
@@ -2040,8 +2038,6 @@ struct CoreBase {
 #define CreateLink(...) (CoreBase->_CreateLink)(__VA_ARGS__)
 #define VarUnlock(...) (CoreBase->_VarUnlock)(__VA_ARGS__)
 #define SetDefaultPermissions(...) (CoreBase->_SetDefaultPermissions)(__VA_ARGS__)
-#define ResolveUserID(...) (CoreBase->_ResolveUserID)(__VA_ARGS__)
-#define ResolveGroupID(...) (CoreBase->_ResolveGroupID)(__VA_ARGS__)
 #endif
 
 

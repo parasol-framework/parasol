@@ -112,39 +112,6 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
 /*****************************************************************************
 
 -FUNCTION-
-StrToFloat: Converts strings to floating point numbers.
-
-This function converts strings into 64-bit floating point numbers.  It supports negative numbers (if a minus sign is at
-the front) and skips leading spaces and non-numeric characters that occur before any digits.
-
-If the function encounters a non-numeric character once it has started its number crunching, it immediately stops and
-returns the value that has been calculated up to that point.
-
--INPUT-
-cstr String: Pointer to the string that is to be converted to a floating point number.
-
--RESULT-
-double: Returns the floating point value that was calculated from the String.
-
-*****************************************************************************/
-
-DOUBLE StrToFloat(CSTRING String)
-{
-   if (!String) return 0;
-
-   // Ignore any leading characters
-
-   while ((*String != '-') and (*String != '.') and ((*String < '0') or (*String > '9'))) {
-      if (!*String) return 0;
-      String++;
-   }
-
-   return strtod(String, NULL);
-}
-
-/*****************************************************************************
-
--FUNCTION-
 StrToHex: Converts a string from printed hex to a number.
 
 This function converts a String to its hex-integer equivalent.  It will skip leading junk characters until it
@@ -209,49 +176,4 @@ LARGE StrToHex(CSTRING String)
    }
 
    return result;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrToInt: Converts a string to an integer.
-
-This function converts a String to its integer equivalent.  It supports negative numbers (if a minus sign is at the
-front) and skips leading spaces and non-numeric characters that occur before any digits.
-
-If the function encounters a non-numeric character once it has started its digit processing, it immediately stops and
-returns the result calculated up to that point.
-
-Here are some string conversion examples:
-
-<list type="custom">
-<b><li value="String">Result</li></b>
-<li value="183">183</>
-<li value=",,2902a6">2902</>
-<li value="hx239">239</>
-<li value="-45">-45</>
-<li value=".jff-9">-9</>
-</>
-
--INPUT-
-cstr String: Pointer to the string that is to be converted to an integer.
-
--RESULT-
-large: Returns the integer value that was calculated from the String.
--END-
-
-*****************************************************************************/
-
-LARGE StrToInt(CSTRING String)
-{
-   if (!String) return 0;
-
-   while ((*String < '0') or (*String > '9')) { // Ignore any leading characters
-      if (!String[0]) return 0;
-      else if (*String IS '-') break;
-      else if (*String IS '+') break;
-      else String++;
-   }
-
-   return strtol(String, NULL, 10);
 }

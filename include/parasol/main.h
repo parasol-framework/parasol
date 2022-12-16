@@ -340,8 +340,38 @@ struct OpenInfo {
 }
 #endif
 
-#include <parasol/modules/core.h>
 #include <string.h> // memset()
+#include <stdlib.h> // strtol(), strtod()
+
+INLINE LARGE StrToInt(CSTRING String)
+{
+   if (!String) return 0;
+
+   while ((*String < '0') or (*String > '9')) { // Ignore any leading characters
+      if (!String[0]) return 0;
+      else if (*String IS '-') break;
+      else if (*String IS '+') break;
+      else String++;
+   }
+
+   return strtol(String, NULL, 10);
+}
+
+INLINE DOUBLE StrToFloat(CSTRING String)
+{
+   if (!String) return 0;
+
+   // Ignore any leading characters
+
+   while ((*String != '-') and (*String != '.') and ((*String < '0') or (*String > '9'))) {
+      if (!*String) return 0;
+      String++;
+   }
+
+   return strtod(String, NULL);
+}
+
+#include <parasol/modules/core.h>
 
 INLINE LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
    return StrFormat(String, StringSize, PF64(), Integer);
