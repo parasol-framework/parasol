@@ -174,10 +174,10 @@ thickness, or text inside the cell will mix with the border.
 #define ULD_REFRESH         0x04
 #define ULD_REDRAW          0x08
 
-#define SEF_STRICT 0x00000001
+#define SEF_STRICT        0x00000001
 #define SEF_IGNORE_QUOTES 0x00000002
-#define SEF_KEEP_ESCAPE 0x00000004
-#define SEF_NO_SCRIPT 0x00000008
+#define SEF_KEEP_ESCAPE   0x00000004
+#define SEF_NO_SCRIPT     0x00000008
 
 enum {
    COND_NOT_EQUAL=1,
@@ -193,15 +193,17 @@ enum {
 #include <parasol/modules/document.h>
 #include <parasol/modules/font.h>
 #include <parasol/modules/display.h>
+#include <parasol/modules/vector.h>
 
 #include "hashes.h"
 
 struct CoreBase  *CoreBase;
 static struct FontBase    *FontBase;
 static struct DisplayBase *DisplayBase;
+static struct VectorBase  *VectorBase;
 static OBJECTPTR clDocument = NULL;
-static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL;
 static RGB8 glHighlight = { 220, 220, 255, 255 };
+static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL, modVector = NULL;
 
 //****************************************************************************
 
@@ -754,6 +756,7 @@ static void print_sorted_lines(extDocument *) __attribute__ ((unused));
 #endif
 static ERROR  process_page(extDocument *, objXML *);
 static void   process_parameters(extDocument *, CSTRING);
+static bool read_rgb8(CSTRING, RGB8 *);
 static void   redraw(extDocument *, BYTE);
 static ERROR  report_event(extDocument *, LARGE, APTR, CSTRING);
 static void   reset_cursor(extDocument *);
@@ -839,6 +842,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule("font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
+   if (LoadModule("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
 
    FID_LayoutSurface = StrHash("LayoutSurface", 0);
 
@@ -846,7 +850,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (!FindPrivateObject("glStyle", &style)) {
       char buffer[32];
       if (!acGetVar(style, "/colours/@DocumentHighlight", buffer, sizeof(buffer))) {
-         StrToColour(buffer, &glHighlight);
+         read_rgb8(buffer, &glHighlight);
       }
    }
 
@@ -862,10 +866,11 @@ ERROR CMDExpunge(void)
    }
 
    if (exsbuffer) { FreeResource(exsbuffer); exsbuffer = NULL; }
-   if (glFonts)   { FreeResource(glFonts);   glFonts = NULL; }
+   if (glFonts)   { FreeResource(glFonts);   glFonts   = NULL; }
 
+   if (modVector)  { acFree(modVector);   modVector  = NULL; }
    if (modDisplay) { acFree(modDisplay);  modDisplay = NULL; }
-   if (modFont)    { acFree(modFont);     modFont = NULL; }
+   if (modFont)    { acFree(modFont);     modFont    = NULL; }
 
    if (clDocument) { acFree(clDocument);  clDocument = NULL; }
    return ERR_Okay;

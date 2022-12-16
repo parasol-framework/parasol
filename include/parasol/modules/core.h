@@ -1723,7 +1723,7 @@ struct CoreBase {
    ERROR (*_ListTasks)(LONG, struct ListTasks **);
    ERROR (*_CheckAction)(OBJECTPTR, LONG);
    ERROR (*_CheckMemoryExists)(MEMORYID);
-   ERROR (*_CheckObjectExists)(OBJECTID, CSTRING);
+   ERROR (*_CheckObjectExists)(OBJECTID);
    ERROR (*_CloneMemory)(APTR, LONG, APTR, MEMORYID *);
    ERROR (*_CreateObject)(LARGE, LONG, APTR, ...);
    OBJECTPTR (*_CurrentContext)(void);
@@ -1742,7 +1742,7 @@ struct CoreBase {
    ERROR (*_GetFields)(OBJECTPTR, ...);
    CSTRING (*_GetName)(OBJECTPTR);
    ERROR (*_ListChildren)(OBJECTID, LONG, struct ChildEntry *, LONG *);
-   ERROR (*_StrBase64Decode)(struct rkBase64Decode *, CSTRING, LONG, APTR, LONG *);
+   ERROR (*_Base64Decode)(struct rkBase64Decode *, CSTRING, LONG, APTR, LONG *);
    ERROR (*_RegisterFD)(HOSTHANDLE, LONG, void (*Routine)(HOSTHANDLE, APTR), APTR);
    ERROR (*_ManageAction)(LONG, APTR);
    ERROR (*_MemoryIDInfo)(MEMORYID, struct MemInfo *, LONG);
@@ -1785,7 +1785,7 @@ struct CoreBase {
    ERROR (*_SysLock)(LONG, LONG);
    ERROR (*_SysUnlock)(LONG);
    ERROR (*_CopyMemory)(const void *, APTR, LONG);
-   ERROR (*_ClearMemory)(APTR, LONG);
+   ERROR (*_LoadFile)(CSTRING, LONG, struct CacheFile **);
    ERROR (*_SubscribeActionTags)(OBJECTPTR, ...);
    void (*_PrintDiagnosis)(LONG, LONG);
    ERROR (*_NewLockedObject)(LARGE, LONG, APTR, OBJECTID *, CSTRING);
@@ -1838,7 +1838,7 @@ struct CoreBase {
    LONG (*_UTF8WriteValue)(LONG, STRING, LONG);
    LONG (*_StrFormat)(const void *, LONG, const char *, ...) __attribute__((format(printf, 3, 4)));
    ERROR (*_SaveImageToFile)(OBJECTPTR, CSTRING, CLASSID, LONG);
-   ERROR (*_StrToColour)(CSTRING, struct RGB8 *);
+   ERROR (*_ReadFileToBuffer)(CSTRING, APTR, LONG, LONG *);
    LONG (*_StrDatatype)(CSTRING);
    void (*_UnloadFile)(struct CacheFile *);
    LARGE (*_StrToHex)(CSTRING);
@@ -1847,7 +1847,7 @@ struct CoreBase {
    LONG (*_StrSortCompare)(CSTRING, CSTRING);
    ERROR (*_AddInfoTag)(struct FileInfo *, CSTRING, CSTRING);
    LONG (*_UTF8Copy)(CSTRING, STRING, LONG, LONG);
-   LONG (*_StrBase64Encode)(const void *, LONG, STRING, LONG);
+   LONG (*_Base64Encode)(const void *, LONG, STRING, LONG);
    ERROR (*_VarSetString)(struct KeyStore *, CSTRING, CSTRING);
    CSTRING (*_VarGetString)(struct KeyStore *, CSTRING);
    ERROR (*_VarCopy)(struct KeyStore *, struct KeyStore *);
@@ -1875,8 +1875,6 @@ struct CoreBase {
    void (*_SetDefaultPermissions)(LONG, LONG, LONG);
    CSTRING (*_ResolveUserID)(LONG);
    CSTRING (*_ResolveGroupID)(LONG);
-   ERROR (*_ReadFileToBuffer)(CSTRING, APTR, LONG, LONG *);
-   ERROR (*_LoadFile)(CSTRING, LONG, struct CacheFile **);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1911,7 +1909,7 @@ struct CoreBase {
 #define GetFields(...) (CoreBase->_GetFields)(__VA_ARGS__)
 #define GetName(...) (CoreBase->_GetName)(__VA_ARGS__)
 #define ListChildren(...) (CoreBase->_ListChildren)(__VA_ARGS__)
-#define StrBase64Decode(...) (CoreBase->_StrBase64Decode)(__VA_ARGS__)
+#define Base64Decode(...) (CoreBase->_Base64Decode)(__VA_ARGS__)
 #define RegisterFD(...) (CoreBase->_RegisterFD)(__VA_ARGS__)
 #define ManageAction(...) (CoreBase->_ManageAction)(__VA_ARGS__)
 #define MemoryIDInfo(a,b) (CoreBase->_MemoryIDInfo)(a,b,sizeof(*b))
@@ -1954,7 +1952,7 @@ struct CoreBase {
 #define SysLock(...) (CoreBase->_SysLock)(__VA_ARGS__)
 #define SysUnlock(...) (CoreBase->_SysUnlock)(__VA_ARGS__)
 #define CopyMemory(...) (CoreBase->_CopyMemory)(__VA_ARGS__)
-#define ClearMemory(...) (CoreBase->_ClearMemory)(__VA_ARGS__)
+#define LoadFile(...) (CoreBase->_LoadFile)(__VA_ARGS__)
 #define SubscribeActionTags(...) (CoreBase->_SubscribeActionTags)(__VA_ARGS__)
 #define PrintDiagnosis(...) (CoreBase->_PrintDiagnosis)(__VA_ARGS__)
 #define NewLockedObject(...) (CoreBase->_NewLockedObject)(__VA_ARGS__)
@@ -2007,7 +2005,7 @@ struct CoreBase {
 #define UTF8WriteValue(...) (CoreBase->_UTF8WriteValue)(__VA_ARGS__)
 #define StrFormat(...) (CoreBase->_StrFormat)(__VA_ARGS__)
 #define SaveImageToFile(...) (CoreBase->_SaveImageToFile)(__VA_ARGS__)
-#define StrToColour(...) (CoreBase->_StrToColour)(__VA_ARGS__)
+#define ReadFileToBuffer(...) (CoreBase->_ReadFileToBuffer)(__VA_ARGS__)
 #define StrDatatype(...) (CoreBase->_StrDatatype)(__VA_ARGS__)
 #define UnloadFile(...) (CoreBase->_UnloadFile)(__VA_ARGS__)
 #define StrToHex(...) (CoreBase->_StrToHex)(__VA_ARGS__)
@@ -2016,7 +2014,7 @@ struct CoreBase {
 #define StrSortCompare(...) (CoreBase->_StrSortCompare)(__VA_ARGS__)
 #define AddInfoTag(...) (CoreBase->_AddInfoTag)(__VA_ARGS__)
 #define UTF8Copy(...) (CoreBase->_UTF8Copy)(__VA_ARGS__)
-#define StrBase64Encode(...) (CoreBase->_StrBase64Encode)(__VA_ARGS__)
+#define Base64Encode(...) (CoreBase->_Base64Encode)(__VA_ARGS__)
 #define VarSetString(...) (CoreBase->_VarSetString)(__VA_ARGS__)
 #define VarGetString(...) (CoreBase->_VarGetString)(__VA_ARGS__)
 #define VarCopy(...) (CoreBase->_VarCopy)(__VA_ARGS__)
@@ -2044,8 +2042,6 @@ struct CoreBase {
 #define SetDefaultPermissions(...) (CoreBase->_SetDefaultPermissions)(__VA_ARGS__)
 #define ResolveUserID(...) (CoreBase->_ResolveUserID)(__VA_ARGS__)
 #define ResolveGroupID(...) (CoreBase->_ResolveGroupID)(__VA_ARGS__)
-#define ReadFileToBuffer(...) (CoreBase->_ReadFileToBuffer)(__VA_ARGS__)
-#define LoadFile(...) (CoreBase->_LoadFile)(__VA_ARGS__)
 #endif
 
 
@@ -2082,8 +2078,6 @@ struct CoreBase {
 
 // Macros
 
-#define CheckObjectIDExists(a)    (CheckObjectExists(a,0))
-#define CheckObjectNameExists(a)  (CheckObjectExists(0,a))
 #define GetParentContext()        ((OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT))
 #define GetResourcePtr(a)         ((APTR)(MAXINT)GetResource((a)))
 #define AllocPublicMemory(a,b,c)  (AllocMemory((a),(b)|MEM_PUBLIC,0,(c)))

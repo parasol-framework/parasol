@@ -390,6 +390,21 @@ static void check_clips(extDocument *Self, LONG Index, layout *l,
 
 //****************************************************************************
 
+static bool read_rgb8(CSTRING Value, RGB8 *RGB)
+{
+   FRGB rgb;
+   if (!vecReadPainter(NULL, Value, &rgb, NULL, NULL, NULL)) {
+      RGB->Red   = F2T(rgb.Red   * 255.0);
+      RGB->Green = F2T(rgb.Green * 255.0);
+      RGB->Blue  = F2T(rgb.Blue  * 255.0);
+      RGB->Alpha = F2T(rgb.Alpha * 255.0);
+      return true;
+   }
+   else return false;
+}
+
+//****************************************************************************
+
 static bool test_statement(CSTRING TestString, CSTRING CompareString, LONG Condition)
 {
    parasol::Log log(__FUNCTION__);
@@ -5512,32 +5527,29 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    Self->FontColour.Red   = 0;
    Self->FontColour.Green = 0;
    Self->FontColour.Blue  = 0;
-   Self->FontColour.Alpha = 255;
+   Self->FontColour.Alpha = 1.0;
 
-   Self->Highlight.Red   = glHighlight.Red;
-   Self->Highlight.Green = glHighlight.Green;
-   Self->Highlight.Blue  = glHighlight.Blue;
-   Self->Highlight.Alpha = 255;
+   Self->Highlight = glHighlight;
 
-   Self->CursorColour.Red   = 100;
-   Self->CursorColour.Green = 100;
-   Self->CursorColour.Blue  = 200;
-   Self->CursorColour.Alpha = 255;
+   Self->CursorColour.Red   = 0.4;
+   Self->CursorColour.Green = 0.4;
+   Self->CursorColour.Blue  = 0.8;
+   Self->CursorColour.Alpha = 1.0;
 
    Self->LinkColour.Red   = 0;
    Self->LinkColour.Green = 0;
-   Self->LinkColour.Blue  = 255;
-   Self->LinkColour.Alpha = 255;
+   Self->LinkColour.Blue  = 1.0;
+   Self->LinkColour.Alpha = 1.0;
 
-   Self->Background.Red   = 255;
-   Self->Background.Green = 255;
-   Self->Background.Blue  = 255;
-   Self->Background.Alpha = 255;
+   Self->Background.Red   = 1.0;
+   Self->Background.Green = 1.0;
+   Self->Background.Blue  = 1.0;
+   Self->Background.Alpha = 1.0;
 
-   Self->SelectColour.Red   = 255;
+   Self->SelectColour.Red   = 1.0;
    Self->SelectColour.Green = 0;
    Self->SelectColour.Blue  = 0;
-   Self->SelectColour.Alpha = 255;
+   Self->SelectColour.Alpha = 1.0;
 
    Self->LeftMargin    = 10;
    Self->RightMargin   = 10;
@@ -5562,10 +5574,10 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    Self->FocusIndex    = -1;
    Self->PageProcessed = FALSE;
    Self->MouseOverSegment = -1;
-   Self->SelectIndex    = -1;
-   Self->CursorIndex    = -1;
+   Self->SelectIndex      = -1;
+   Self->CursorIndex      = -1;
    Self->ActiveEditCellID = 0;
-   Self->ActiveEditDef  = NULL;
+   Self->ActiveEditDef    = NULL;
 
    if (Self->ActiveEditDef) {
       deactivate_edit(Self, FALSE);
@@ -5574,7 +5586,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    free_links(Self);
 
    Self->ECIndex = 0;
-   Self->ECMax = 0;
+   Self->ECMax   = 0;
    if (Self->EditCells) { FreeResource(Self->EditCells); Self->EditCells = NULL; }
 
    if (Self->LinkIndex != -1) {
@@ -5590,15 +5602,15 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    if (Flags & ULD_TERMINATE) Self->Stream = NULL;
    else Self->Stream = (UBYTE *)StrClone("");
 
-   Self->StreamLen = 0;
+   Self->StreamLen  = 0;
    Self->StreamSize = 0;
-   Self->PageTag = NULL;
+   Self->PageTag    = NULL;
 
    if (Self->SortSegments) { FreeResource(Self->SortSegments); Self->SortSegments = NULL; }
 
    if (Self->Segments) {
       FreeResource(Self->Segments);
-      Self->Segments = NULL;
+      Self->Segments    = NULL;
       Self->MaxSegments = 0;
    }
 

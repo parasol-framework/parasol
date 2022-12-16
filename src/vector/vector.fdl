@@ -1,7 +1,7 @@
 --$FLUID:Include
 
 module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, function()
-  c_include("<parasol/modules/display.h>")
+  c_include("<parasol/modules/display.h>", "<parasol/modules/picture.h>")
 
   restrict(function()
     loadFile(glPath .. 'common-graphics.fdl')

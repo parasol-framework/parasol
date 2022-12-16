@@ -23,7 +23,7 @@
 #include <parasol/modules/font.h>
 #endif
 
-typedef class plDocument objDocument;
+class objDocument;
 
 // Official version number (date format).  Any changes to the handling of document content require that this number be updated.
 
@@ -246,7 +246,7 @@ INLINE ERROR docReadContent(APTR Ob, LONG Format, LONG Start, LONG End, STRING *
 }
 
 
-typedef class plDocument : public BaseClass {
+class objDocument : public BaseClass {
    public:
    LARGE    EventMask;        // Specifies events that need to be reported from the Document object.
    STRING   Description;      // A description of the document, provided by its author.
@@ -303,8 +303,6 @@ typedef class plDocument : public BaseClass {
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-   // NewOwner
-
    inline ERROR refresh() { return Action(AC_Refresh, this, NULL); }
    inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
       struct acSaveToObject args = { { DestID }, { ClassID } };
@@ -318,7 +316,7 @@ typedef class plDocument : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-} objDocument;
+};
 
 struct DocumentBase {
    LONG (*_CharLength)(objDocument *, LONG);

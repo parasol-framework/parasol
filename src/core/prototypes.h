@@ -131,7 +131,7 @@ ULONG UTF8ReadValue(CSTRING String, LONG * Length);
 LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
 LONG StrFormat(STRING Buffer, LONG Size, CSTRING Format, ...);
 ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID Class, LONG Permissions);
-ERROR StrToColour(CSTRING Colour, struct RGB8 * RGB);
+ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 LONG StrDatatype(CSTRING String);
 void UnloadFile(struct CacheFile * Cache);
 LARGE StrToHex(CSTRING String);
@@ -168,7 +168,6 @@ void VarUnlock(struct KeyStore * Store);
 void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
 CSTRING ResolveUserID(LONG User);
 CSTRING ResolveGroupID(LONG Group);
-ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 
 #ifdef  __cplusplus
 }

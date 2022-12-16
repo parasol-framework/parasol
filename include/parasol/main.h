@@ -341,9 +341,17 @@ struct OpenInfo {
 #endif
 
 #include <parasol/modules/core.h>
+#include <string.h> // memset()
 
 INLINE LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
    return StrFormat(String, StringSize, PF64(), Integer);
+}
+
+INLINE ERROR ClearMemory(APTR Memory, LONG Length)
+{
+   if (!Memory) return ERR_NullArgs;
+   memset(Memory, 0, Length); // memset() is assumed to be optimised by the compiler.
+   return ERR_Okay;
 }
 
 #ifdef  __cplusplus
