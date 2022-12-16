@@ -238,7 +238,7 @@ OBJECTPTR access_object(struct object *Object)
          Object->ObjectID = 0;
       }
    }
-   else if (CheckObjectExists(Object->ObjectID, NULL) != ERR_True) {
+   else if (CheckObjectExists(Object->ObjectID) != ERR_True) {
       log.trace("Object #%d has been terminated.", Object->ObjectID);
       Object->prvObject = NULL;
       Object->ObjectID = 0;

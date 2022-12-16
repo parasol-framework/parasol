@@ -1243,12 +1243,14 @@ static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
    }
 
    if (!error) {
-      if (CheckObjectNameExists("SystemVideo") != ERR_True) {
+      OBJECTID id;
+      LONG count = 1;
+      if (FindObject("SystemVideo", 0, 0, &id, &count) != ERR_Okay) {
          SetName(Self->Bitmap, "SystemVideo");
       }
 
       if (!(GetName(Self)[0])) {
-         if (CheckObjectNameExists("SystemDisplay") != ERR_True) {
+         if (FindObject("SystemDisplay", 0, 0, &id, &count) != ERR_Okay) {
             SetName(Self, "SystemDisplay");
          }
       }
@@ -2054,9 +2056,10 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
    Self->Flags |= SCR_VISIBLE;
 
-   if (CheckObjectExists(NULL, "SystemPointer") != ERR_Okay) {
-      objPointer *pointer;
-      OBJECTID pointer_id;
+   objPointer *pointer;
+   OBJECTID pointer_id;
+   LONG count = 1;
+   if (FindObject("SystemPointer", ID_POINTER, 0, &pointer_id, &count) != ERR_Okay) {
       if (!NewNamedObject(ID_POINTER, NF_NO_TRACK|NF_PUBLIC|NF_UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
          OBJECTID owner = Self->ownerID();
          if (GetClassID(owner) IS ID_SURFACE) SetLong(pointer, FID_Surface, owner);

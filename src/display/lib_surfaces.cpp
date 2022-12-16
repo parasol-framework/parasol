@@ -984,7 +984,7 @@ void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
       // Error checks
 
       if (!list[i].SurfaceID) fprintf(stderr, " <---- ERROR");
-      else if (CheckObjectExists(list[i].SurfaceID, NULL) != ERR_True) fprintf(stderr, " <---- OBJECT MISSING");
+      else if (CheckObjectExists(list[i].SurfaceID) != ERR_True) fprintf(stderr, " <---- OBJECT MISSING");
 
       // Does the parent exist in the layer list?
 

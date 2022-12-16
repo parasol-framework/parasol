@@ -16,7 +16,7 @@ ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result);
 ERROR ListTasks(LONG Flags, struct ListTasks ** List);
 ERROR CheckAction(OBJECTPTR Object, LONG Action);
 ERROR CheckMemoryExists(MEMORYID ID);
-ERROR CheckObjectExists(OBJECTID Object, CSTRING Name);
+ERROR CheckObjectExists(OBJECTID Object);
 ERROR CloneMemory(APTR Address, LONG Flags, APTR * NewAddress, MEMORYID * NewID);
 ERROR CreateObject(LARGE ClassID, LONG Flags, OBJECTPTR * Object, ...);
 OBJECTPTR CurrentContext();
@@ -78,7 +78,7 @@ ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
 ERROR SysLock(LONG Index, LONG MilliSeconds);
 ERROR SysUnlock(LONG Index);
 ERROR CopyMemory(const void * Src, APTR Dest, LONG Size);
-ERROR ClearMemory(APTR Memory, LONG Length);
+ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
 ERROR SubscribeActionTags(OBJECTPTR Object, ...);
 void PrintDiagnosis(LONG Process, LONG Signal);
 ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR * Object, OBJECTID * ID, CSTRING Name);
@@ -169,7 +169,6 @@ void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
 CSTRING ResolveUserID(LONG User);
 CSTRING ResolveGroupID(LONG Group);
 ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
-ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
 
 #ifdef  __cplusplus
 }

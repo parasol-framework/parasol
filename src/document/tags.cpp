@@ -1521,7 +1521,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
       // The object can self-destruct in ClosingTag(), so check that it still exists before inserting it into the text stream.
 
-      if (!CheckObjectExists(object_id, NULL)) {
+      if (!CheckObjectExists(object_id)) {
          if (Self->BkgdGfx) {
             auto resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
             if (resource) resource->ClassID = class_id;
