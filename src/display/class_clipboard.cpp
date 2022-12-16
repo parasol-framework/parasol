@@ -377,7 +377,7 @@ static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
 -ACTION-
 DataFeed: This action can be used to place data in a clipboard.
 
-Data can be sent to a clipboard object via the DataFeed action. Currently, only the DATA_TEXT type is supported.
+Data can be sent to a clipboard object via the DataFeed action. Currently, only the `DATA_TEXT` type is supported.
 All data that is sent to a clipboard object through this action will replace any stored information that matches the
 given data type.
 -END-

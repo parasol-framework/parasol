@@ -119,7 +119,7 @@ static int module_index(lua_State *Lua)
                }
             }
 
-            luaL_error(Lua, "Function %s not recognised.", function);
+            luaL_error(Lua, "Call to function %s() not recognised.", function);
          }
          else luaL_error(Lua, "No exported function list for this module.", function);
       }
