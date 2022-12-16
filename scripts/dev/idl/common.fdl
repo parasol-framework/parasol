@@ -345,7 +345,7 @@ flags("FD", { comment="Field descriptors." },
     ushort Unused
   ]])
 
-struct("DateTime", { comment="Generic structure for date-time management." }, [[
+  struct("DateTime", { comment="Generic structure for date-time management." }, [[
     int Year      # Year
     int Month     # Month 1 to 12
     int Day       # Day 1 to 31

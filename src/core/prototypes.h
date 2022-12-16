@@ -115,11 +115,11 @@ ERROR WakeProcess(LONG ProcessID);
 ERROR SetResourcePath(LONG PathType, CSTRING Path);
 OBJECTPTR CurrentTask();
 ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data, LONG * Size);
-DOUBLE StrToFloat(CSTRING String);
+CSTRING ResolveGroupID(LONG Group);
 LONG StrCopy(CSTRING Src, STRING Dest, LONG Length);
 STRING StrClone(CSTRING String);
 LONG StrLength(CSTRING String);
-LARGE StrToInt(CSTRING String);
+CSTRING ResolveUserID(LONG User);
 ERROR StrSort(CSTRING * List, LONG Flags);
 STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags);
 LONG UTF8CharOffset(CSTRING String, LONG Offset);
@@ -166,8 +166,6 @@ ERROR TranslateCmdRef(CSTRING String, STRING * Command);
 ERROR CreateLink(CSTRING From, CSTRING To);
 void VarUnlock(struct KeyStore * Store);
 void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
-CSTRING ResolveUserID(LONG User);
-CSTRING ResolveGroupID(LONG Group);
 
 #ifdef  __cplusplus
 }

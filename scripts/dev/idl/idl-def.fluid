@@ -95,9 +95,9 @@ function flags(Prefix, Options, ...)
                   if (stype == STT_HEX) then
                      key = mSys.StrToHex(key)
                   elseif (stype == STT_FLOAT) then
-                     key = mSys.StrToFloat(key)
+                     key = tonumber(key)
                   elseif (stype == STT_NUMBER) then
-                     key = mSys.StrToInt(key)
+                     key = tonumber(key)
                   end
                end
             end
