@@ -422,7 +422,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
       <param type="LONG" name="Type" lookup="IDTYPE">The type of ID that is required.</param>
     </input>
     <description>
-<p>This function generates unique ID's that can be used in other Core functions.  It requires the type of the ID that is needed, and will respond by returning a unique identifier for that type.</p>
+<p>This function generates unique ID's that can be used in other Core functions.  A type ID is required and the resulting number will be unique to that type only.</p>
 <p>ID allocations are permanent, so there is no need to free the allocated ID once it is no longer required.</p>
     </description>
     <result type="LONG">A unique ID matching the requested type will be returned.  This function can return zero if the Type is unrecognised, or if an internal error occurred.</result>
@@ -449,6 +449,46 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
       <error code="DoesNotExist">Resource does not exist.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
+  </function>
+
+  <function>
+    <name>Base64Decode</name>
+    <category>Strings</category>
+    <comment>Decodes a base 64 string to its binary form.</comment>
+    <prototype>ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written)</prototype>
+    <input>
+      <param type="struct rkBase64Decode *" name="State">Pointer to an rkBase64Decode structure, initialised to zero.</param>
+      <param type="CSTRING" name="Input">A base 64 input string.  The pointer will be updated when the function returns.</param>
+      <param type="LONG" name="InputSize">The size of the input string.</param>
+      <param type="APTR" name="Output">The output buffer.  The size of the buffer must be greater or equal to the size of Input.</param>
+      <param type="LONG *" name="Written">The total number of bytes written to Output is returned here.</param>
+    </input>
+    <description>
+<p>This function will decode a base 64 string to its binary form.  It is designed to support streaming from the source Input and gracefully handles buffer over-runs by forwarding data to the next call.</p>
+<p>To use this function effectively, call it repeatedly in a loop until all of the input is exhausted.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>Base64Encode</name>
+    <category>Strings</category>
+    <comment>Encodes a binary source into a base 64 string.</comment>
+    <prototype>LONG Base64Encode(const void * Input, LONG InputSize, STRING Output, LONG OutputSize)</prototype>
+    <input>
+      <param type="const void *" name="Input">The binary data to encode.</param>
+      <param type="LONG" name="InputSize">The amount of data to encode.</param>
+      <param type="STRING" name="Output">Destination buffer for the encoded output.</param>
+      <param type="LONG" name="OutputSize">Size of the destination buffer.</param>
+    </input>
+    <description>
+<p>This function needs to be replaced with the streaming version, see base64_init_encodestate()</p>
+    </description>
+    <result type="LONG">The total number of bytes output is returned.</result>
   </function>
 
   <function>
@@ -522,36 +562,18 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>CheckObjectExists</name>
     <category>Objects</category>
     <comment>Checks if a particular object is still available in the system.</comment>
-    <prototype>ERROR CheckObjectExists(OBJECTID Object, CSTRING Name)</prototype>
+    <prototype>ERROR CheckObjectExists(OBJECTID Object)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The object ID that you want to look for.</param>
-      <param type="CSTRING" name="Name">If the ID is not known, specify the Name of the object here.  Otherwise set to NULL.</param>
     </input>
     <description>
-<p>The CheckObjectExists() function checks for the existence of an object within the system.  It is commonly used to check for the presence of shared objects, which can be removed from the system at any time by other threads and processes.</p>
-<p>This function allows for ID and name based testing.  Please note that in the case of name checking, it is possible for multiple objects with the same name to exist at the time of calling this function.</p>
+<p>The CheckObjectExists() function checks for the presence of any object created by NewObect().  Support for shared objects that exist outside the current process space is included.</p>
     </description>
     <result type="ERROR">
       <error code="True">Operation successful.</error>
       <error code="False">The result is false.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>ClearMemory</name>
-    <category>Memory</category>
-    <comment>Clears large blocks of memory very quickly.</comment>
-    <prototype>ERROR ClearMemory(APTR Memory, LONG Length)</prototype>
-    <input>
-      <param type="APTR" name="Memory">Pointer to the memory block that you want to clear.</param>
-      <param type="LONG" name="Length">The total number of bytes that you want to clear.</param>
-    </input>
-    <description>
-<p>Use the ClearMemory() function when you need to clear a block of memory as efficiently as possible.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
+      <error code="LockFailed">Failed to lock a required resource.</error>
+      <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -744,7 +766,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <prototype>OBJECTPTR CurrentTask()</prototype>
     <description>
 <p>The CurrentTask() function returns the <class name="Task">Task</class> object of the active process.</p>
-<p>If there is a legitimate circumstance where there is no current task (for example if this function is called during Core initialisation) then the "system task" may be returned (the system task controls and maintains the Core).</p>
+<p>If there is a legitimate circumstance where there is no current task (e.g. if the function is called during Core initialisation) then the "system task" may be returned, which has ownership of Core resources.</p>
     </description>
     <result type="OBJECTPTR">Returns a pointer to the current Task object or NULL if failure.</result>
   </function>
@@ -802,8 +824,8 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
       <param type="CLASSID" name="ClassID">A class ID such as one retrieved from <function module="Core">ResolveClassName</function>.</param>
     </input>
     <description>
-<p>This function is used to find a specific class by ID.  If a matching class is not already loaded, the class database is checked to determine if the class is installed on the system.  If a match is discovered, the corresponding module will be loaded into memory and the class will be returned.  In the event of failure or if there is no matching class registered, NULL is returned.</p>
-<p>If the ID of the class is not known, please call <function module="Core">ResolveClassName</function> and then pass the resulting ID to this function.</p>
+<p>This function will find a specific class by ID and return its <class name="MetaClass">MetaClass</class>.  If the class is not in memory, the internal dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded into memory and the class will be returned.  In any event of failure, NULL is returned.</p>
+<p>If the ID of a named class is not known, call <function module="Core">ResolveClassName</function> first and pass the resulting ID to this function.</p>
     </description>
     <result type="objMetaClass *">Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.</result>
   </function>
@@ -2471,46 +2493,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrBase64Decode</name>
-    <category>Strings</category>
-    <comment>Decodes a base 64 string to its binary form.</comment>
-    <prototype>ERROR StrBase64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written)</prototype>
-    <input>
-      <param type="struct rkBase64Decode *" name="State">Pointer to an rkBase64Decode structure, initialised to zero.</param>
-      <param type="CSTRING" name="Input">A base 64 input string.  The pointer will be updated when the function returns.</param>
-      <param type="LONG" name="InputSize">The size of the input string.</param>
-      <param type="APTR" name="Output">The output buffer.  The size of the buffer must be greater or equal to the size of Input.</param>
-      <param type="LONG *" name="Written">The total number of bytes written to Output is returned here.</param>
-    </input>
-    <description>
-<p>This function will decode a base 64 string to its binary form.  It is designed to support streaming from the source Input and gracefully handles buffer over-runs by forwarding data to the next call.</p>
-<p>To use this function effectively, call it repeatedly in a loop until all of the input is exhausted.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>StrBase64Encode</name>
-    <category>Strings</category>
-    <comment>Encodes a binary source into a base 64 string.</comment>
-    <prototype>LONG StrBase64Encode(const void * Input, LONG InputSize, STRING Output, LONG OutputSize)</prototype>
-    <input>
-      <param type="const void *" name="Input">The binary data to encode.</param>
-      <param type="LONG" name="InputSize">The amount of data to encode.</param>
-      <param type="STRING" name="Output">Destination buffer for the encoded output.</param>
-      <param type="LONG" name="OutputSize">Size of the destination buffer.</param>
-    </input>
-    <description>
-<p>This function needs to be replaced with the streaming version, see base64_init_encodestate()</p>
-    </description>
-    <result type="LONG">The total number of bytes output is returned.</result>
-  </function>
-
-  <function>
     <name>StrBuildArray</name>
     <category>Strings</category>
     <comment>Builds an array of strings from a sequential string list.</comment>
@@ -2742,40 +2724,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrToColour</name>
-    <category>Strings</category>
-    <comment>Converts a colour string into an RGB8 value structure.</comment>
-    <prototype>ERROR StrToColour(CSTRING Colour, struct RGB8 * RGB)</prototype>
-    <input>
-      <param type="CSTRING" name="Colour">Pointer to a string containing the colour.</param>
-      <param type="struct RGB8 *" name="RGB">Pointer to an RGB8 structure that will receive the colour values.</param>
-    </input>
-    <description>
-<p>This function converts a colour from its string format to equivalent red, green, blue and alpha values.  The colour that is referenced must be in hexadecimal or separated-decimal format.  For example a pure red colour may be expressed as a string of <code>#ff0000</code> or <code>255,0,0</code>.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Syntax">Invalid syntax detected.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>StrToFloat</name>
-    <category>Strings</category>
-    <comment>Converts strings to floating point numbers.</comment>
-    <prototype>DOUBLE StrToFloat(CSTRING String)</prototype>
-    <input>
-      <param type="CSTRING" name="String">Pointer to the string that is to be converted to a floating point number.</param>
-    </input>
-    <description>
-<p>This function converts strings into 64-bit floating point numbers.  It supports negative numbers (if a minus sign is at the front) and skips leading spaces and non-numeric characters that occur before any digits.</p>
-<p>If the function encounters a non-numeric character once it has started its number crunching, it immediately stops and returns the value that has been calculated up to that point.</p>
-    </description>
-    <result type="DOUBLE">Returns the floating point value that was calculated from the String.</result>
-  </function>
-
-  <function>
     <name>StrToHex</name>
     <category>Strings</category>
     <comment>Converts a string from printed hex to a number.</comment>
@@ -2798,31 +2746,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 </list>
     </description>
     <result type="LARGE">Returns the value that was calculated from the String.</result>
-  </function>
-
-  <function>
-    <name>StrToInt</name>
-    <category>Strings</category>
-    <comment>Converts a string to an integer.</comment>
-    <prototype>LARGE StrToInt(CSTRING String)</prototype>
-    <input>
-      <param type="CSTRING" name="String">Pointer to the string that is to be converted to an integer.</param>
-    </input>
-    <description>
-<p>This function converts a String to its integer equivalent.  It supports negative numbers (if a minus sign is at the front) and skips leading spaces and non-numeric characters that occur before any digits.</p>
-<p>If the function encounters a non-numeric character once it has started its digit processing, it immediately stops and returns the result calculated up to that point.</p>
-<p>Here are some string conversion examples:</p>
-<list type="custom">
-<b>
-<li value="String">Result</li></b>
-<li value="183">183</li>
-<li value=",,2902a6">2902</li>
-<li value="hx239">239</li>
-<li value="-45">-45</li>
-<li value=".jff-9">-9</li>
-</list>
-    </description>
-    <result type="LARGE">Returns the integer value that was calculated from the String.</result>
   </function>
 
   <function>
@@ -2981,11 +2904,11 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="CSTRING" name="Src">Pointer to the source string.</param>
       <param type="STRING" name="Dest">Pointer to the destination buffer.</param>
       <param type="LONG" name="Chars">The maximum number of UTF8 characters to copy.  Can be set to COPY_ALL to copy up to the null terminator of the Src.</param>
-      <param type="LONG" name="Size">Size of the destination buffer.</param>
+      <param type="LONG" name="Size">Byte size of the destination buffer.</param>
     </input>
     <description>
-<p>This function copies part of one string over to another.  If the Length is set to zero then this function will copy the entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null byte) while copying, then it will stop automatically to prevent copying of junk characters.</p>
-<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set the number of Chars or not.  For example, if you were to copy <code>123</code> into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code>. The <code>GHI</code> part of the string would be lost.</p>
+<p>This function copies part of one string over to another.  If the Chars value is <code>COPY_ALL</code> then this function will copy the entire Src string to Dest.  If this function encounters the end of the Src string (null byte) while copying, it will terminate the output string at the same point and return.</p>
+<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of the Chars valuae. For example, if <code>123</code> is copied into the middle of string <code>ABCDEFGHI</code> then the result would be <code>ABC123</code> and the <code>GHI</code> part of the string would be lost.</p>
     </description>
     <result type="LONG">Returns the total amount of &lt;i&gt;bytes&lt;/i&gt; that were copied, not including the null byte at the end.</result>
   </function>
@@ -4953,13 +4876,13 @@ end
       <field name="Preference" type="char" size="4">Data preferences for the returned item(s)</field>
     </struct>
 
-    <struct name="rkBase64Decode" comment="Private structure for the StrBase64Decode() function." typeName="BASE64DECODE">
+    <struct name="rkBase64Decode" comment="Private structure for the Base64Decode() function." typeName="BASE64DECODE">
       <field name="Step" type="UBYTE">Internal</field>
       <field name="PlainChar" type="UBYTE">Internal</field>
       <field name="Initialised" type="UBYTE">Internal</field>
     </struct>
 
-    <struct name="rkBase64Encode" comment="Private structure for the StrBase64Encode() function." typeName="BASE64ENCODE">
+    <struct name="rkBase64Encode" comment="Private structure for the Base64Encode() function." typeName="BASE64ENCODE">
       <field name="Step" type="UBYTE">Internal</field>
       <field name="Result" type="UBYTE">Internal</field>
       <field name="StepCount" type="LONG">Internal</field>

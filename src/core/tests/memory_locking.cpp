@@ -37,9 +37,7 @@ struct thread_info{
    int index;
 };
 
-/*****************************************************************************
-** Internal: test_locking()
-*/
+//****************************************************************************
 
 static void * test_locking(struct thread_info *info)
 {
@@ -89,11 +87,8 @@ static void * test_locking(struct thread_info *info)
    return NULL;
 }
 
-/*****************************************************************************
-** Internal: test_allocation()
-**
-** Allocate and free sets of memory blocks at random intervals.
-*/
+//****************************************************************************
+// Allocate and free sets of memory blocks at random intervals.
 
 #define TOTAL_ALLOC 2000
 
@@ -120,9 +115,7 @@ static void * test_allocation(struct thread_info *info)
    return NULL;
 }
 
-/*****************************************************************************
-** Main.
-*/
+//****************************************************************************
 
 void program(void)
 {
