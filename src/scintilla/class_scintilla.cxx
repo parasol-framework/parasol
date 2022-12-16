@@ -2156,7 +2156,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
    log.warning("%s", Message);
 
    if (dialog_id) {
-      if (CheckObjectExists(dialog_id, NULL) IS ERR_True) return;
+      if (CheckObjectExists(dialog_id) IS ERR_True) return;
    }
 
    OBJECTPTR dialog;

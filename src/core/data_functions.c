@@ -20,11 +20,12 @@ FDEF argsAllocMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, {
 FDEF argsAllocSharedMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Mutex", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsAllocateID[] = { { "Result", FD_LONG }, { "Type", FD_LONG }, { 0, 0 } };
 FDEF argsAnalysePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Type", FD_LONG|FD_RESULT }, { 0, 0 } };
+FDEF argsBase64Decode[] = { { "Error", FD_LONG|FD_ERROR }, { "rkBase64Decode:State", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Input", FD_STR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_PTR }, { "Written", FD_LONG|FD_RESULT }, { 0, 0 } };
+FDEF argsBase64Encode[] = { { "Result", FD_LONG }, { "Input", FD_BUFFER|FD_PTR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_STR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsBroadcastEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_PTR }, { "EventSize", FD_LONG }, { 0, 0 } };
 FDEF argsCheckAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsCheckMemoryExists[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
-FDEF argsCheckObjectExists[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "Name", FD_STR }, { 0, 0 } };
-FDEF argsClearMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_PTR }, { "Length", FD_LONG }, { 0, 0 } };
+FDEF argsCheckObjectExists[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsCloneMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { "Flags", FD_LONG }, { "NewAddress", FD_PTR|FD_RESULT }, { "NewID", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsCompareFilePaths[] = { { "Error", FD_LONG|FD_ERROR }, { "PathA", FD_STR }, { "PathB", FD_STR }, { 0, 0 } };
 FDEF argsCopyFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
@@ -114,8 +115,6 @@ FDEF argsSetOwner[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR 
 FDEF argsSetResource[] = { { "Result", FD_LARGE }, { "Resource", FD_LONG }, { "Value", FD_LARGE }, { 0, 0 } };
 FDEF argsSetResourcePath[] = { { "Error", FD_LONG|FD_ERROR }, { "PathType", FD_LONG }, { "Path", FD_STR }, { 0, 0 } };
 FDEF argsSetVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
-FDEF argsBase64Decode[] = { { "Error", FD_LONG|FD_ERROR }, { "rkBase64Decode:State", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Input", FD_STR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_PTR }, { "Written", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsBase64Encode[] = { { "Result", FD_LONG }, { "Input", FD_BUFFER|FD_PTR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_STR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsStrBuildArray[] = { { "Result", FD_ARRAY|FD_STR|FD_ALLOC }, { "List", FD_STR }, { "Size", FD_LONG }, { "Total", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrClone[] = { { "Result", FD_STR }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrCompare[] = { { "Error", FD_LONG|FD_ERROR }, { "String1", FD_STR }, { "String2", FD_STR }, { "Length", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
@@ -246,7 +245,7 @@ const struct Function glFunctions[] = {
    { (APTR)SysLock, "SysLock", argsSysLock },
    { (APTR)SysUnlock, "SysUnlock", argsSysUnlock },
    { (APTR)CopyMemory, "CopyMemory", argsCopyMemory },
-   { (APTR)ClearMemory, "ClearMemory", argsClearMemory },
+   { (APTR)LoadFile, "LoadFile", argsLoadFile },
    { (APTR)SubscribeActionTags, "SubscribeActionTags", argsSubscribeActionTags },
    { (APTR)PrintDiagnosis, "PrintDiagnosis", argsPrintDiagnosis },
    { (APTR)NewLockedObject, "NewLockedObject", argsNewLockedObject },
@@ -337,7 +336,6 @@ const struct Function glFunctions[] = {
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
    { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
-   { (APTR)LoadFile, "LoadFile", argsLoadFile },
    { NULL, NULL, NULL }
 };
 

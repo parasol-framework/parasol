@@ -428,7 +428,7 @@ static BYTE check_surface_list(void)
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       BYTE bad = FALSE;
       for (LONG i=0; i < ctl->Total; i++) {
-         if ((CheckObjectExists(list[i].SurfaceID, NULL) != ERR_Okay)) {
+         if ((CheckObjectExists(list[i].SurfaceID) != ERR_Okay)) {
             log.trace("Surface %d, index %d is dead.", list[i].SurfaceID, i);
             untrack_layer(list[i].SurfaceID);
             bad = TRUE;
@@ -1514,9 +1514,9 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       if (Self->Flags & RNF_COMPOSITE) scrflags |= SCR_COMPOSITE;
 
-      CSTRING name;
-      if (!CheckObjectNameExists("SystemDisplay")) name = NULL;
-      else name = "SystemDisplay";
+      OBJECTID id;
+      LONG count = 1;
+      CSTRING name = FindObject("SystemDisplay", 0, 0, &id, &count) ? "SystemDisplay" : (CSTRING)NULL;
 
       // For hosted displays:  On initialisation, the X and Y fields reflect the position at which the window will be
       // opened on the host desktop.  However, hosted surfaces operate on the absolute coordinates of client regions

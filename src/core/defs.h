@@ -1005,7 +1005,6 @@ extern void zipfile_to_item(struct ZipFile *ZF, struct CompressedItem *Item);
 
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 APTR   build_jump_table(LONG, const struct Function *, LONG);
-ERROR  ClearMemory(APTR Memory, LONG Length);
 ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, WORD *, CSTRING);
 ERROR  copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements);
 ERROR  create_archive_volume(void);

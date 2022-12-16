@@ -1019,7 +1019,7 @@ struct ScriptArg { // For use with scExec
     "SysLock",
     "SysUnlock",
     "CopyMemory",
-    "ClearMemory",
+    "LoadFile",
     "SubscribeActionTags",
     "PrintDiagnosis",
     "NewLockedObject",
@@ -1109,8 +1109,7 @@ struct ScriptArg { // For use with scExec
     "SetDefaultPermissions",
     "ResolveUserID",
     "ResolveGroupID",
-    "ReadFileToBuffer",
-    "LoadFile")
+    "ReadFileToBuffer")
 
   c_insert([[
 
@@ -1147,8 +1146,6 @@ struct ScriptArg { // For use with scExec
 
 // Macros
 
-#define CheckObjectIDExists(a)    (CheckObjectExists(a,0))
-#define CheckObjectNameExists(a)  (CheckObjectExists(0,a))
 #define GetParentContext()        ((OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT))
 #define GetResourcePtr(a)         ((APTR)(MAXINT)GetResource((a)))
 #define AllocPublicMemory(a,b,c)  (AllocMemory((a),(b)|MEM_PUBLIC,0,(c)))
