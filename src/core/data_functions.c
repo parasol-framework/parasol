@@ -127,7 +127,6 @@ FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, {
 FDEF argsStrSearch[] = { { "Result", FD_LONG }, { "Keyword", FD_STR }, { "String", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSort[] = { { "Error", FD_LONG|FD_ERROR }, { "List", FD_ARRAY|FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSortCompare[] = { { "Result", FD_LONG }, { "String1", FD_STR }, { "String2", FD_STR }, { 0, 0 } };
-FDEF argsStrToColour[] = { { "Error", FD_LONG|FD_ERROR }, { "Colour", FD_STR }, { "RGB8:RGB", FD_BUFFER|FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsStrToFloat[] = { { "Result", FD_DOUBLE }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrToHex[] = { { "Result", FD_LARGE }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrToInt[] = { { "Result", FD_LARGE }, { "String", FD_STR }, { 0, 0 } };
@@ -298,7 +297,7 @@ const struct Function glFunctions[] = {
    { (APTR)UTF8WriteValue, "UTF8WriteValue", argsUTF8WriteValue },
    { (APTR)StrFormat, "StrFormat", argsStrFormat },
    { (APTR)SaveImageToFile, "SaveImageToFile", argsSaveImageToFile },
-   { (APTR)StrToColour, "StrToColour", argsStrToColour },
+   { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { (APTR)StrDatatype, "StrDatatype", argsStrDatatype },
    { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)StrToHex, "StrToHex", argsStrToHex },
@@ -335,7 +334,6 @@ const struct Function glFunctions[] = {
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
-   { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { NULL, NULL, NULL }
 };
 

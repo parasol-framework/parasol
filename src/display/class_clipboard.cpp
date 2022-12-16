@@ -364,9 +364,10 @@ static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
 
    // Annihilate all historical clip information
 
-   parasol::ScopedAccessMemory<ClipEntry> clips(Self->ClusterID, MEM_READ_WRITE, 3000);
+   parasol::ScopedAccessMemory<ClipHeader> clips(Self->ClusterID, MEM_READ_WRITE, 3000);
    if (clips.granted()) {
-      ClearMemory(&clips.ptr, sizeof(ClipHeader) + (MAX_CLIPS * sizeof(ClipEntry)));
+      auto history = (ClipEntry *)(clips.ptr + 1);
+      ClearMemory(history, MAX_CLIPS * sizeof(ClipEntry));
       return ERR_Okay;
    }
    else return ERR_AccessMemory;

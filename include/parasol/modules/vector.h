@@ -15,6 +15,10 @@
 #include <parasol/modules/display.h>
 #endif
 
+#ifndef MODULES_PICTURE_H
+#include <parasol/modules/picture.h>
+#endif
+
 class objVectorColour;
 class objVectorScene;
 class objVectorImage;

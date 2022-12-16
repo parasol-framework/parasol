@@ -100,6 +100,7 @@ capabilities.
 #include <parasol/modules/font.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/font.h>
+#include <parasol/modules/vector.h>
 
 #include "scintillaparasol.h"
 
@@ -108,9 +109,10 @@ capabilities.
 MODULE_COREBASE;
 static struct DisplayBase *DisplayBase;
 static struct FontBase *FontBase;
+static struct VectorBase *VectorBase;
 
 static OBJECTPTR clScintilla = NULL;
-static OBJECTPTR modDisplay = NULL, modFont = NULL;
+static OBJECTPTR modDisplay = NULL, modFont = NULL, modVector = NULL;
 //static OBJECTID glInputID = 0;
 static RGB8 glHighlight = { 220, 220, 255 };
 extern OBJECTPTR clScintillaSearch;
@@ -216,18 +218,34 @@ extern ERROR init_search(void);
 
 //****************************************************************************
 
+static bool read_rgb8(CSTRING Value, RGB8 *RGB)
+{
+   FRGB rgb;
+   if (!vecReadPainter(NULL, Value, &rgb, NULL, NULL, NULL)) {
+      RGB->Red   = F2T(rgb.Red   * 255.0);
+      RGB->Green = F2T(rgb.Green * 255.0);
+      RGB->Blue  = F2T(rgb.Blue  * 255.0);
+      RGB->Alpha = F2T(rgb.Alpha * 255.0);
+      return true;
+   }
+   else return false;
+}
+
+//****************************************************************************
+
 ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
    if (LoadModule((STRING)"display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule((STRING)"font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
+   if (LoadModule("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
 
    objXML *style;
    if (!FindPrivateObject("glStyle", &style)) {
       BYTE buffer[40];
       if (!acGetVar(style, "/colours/@texthighlight", buffer, sizeof(buffer))) {
-         StrToColour(buffer, &glHighlight);
+         read_rgb8(buffer, &glHighlight);
       }
    }
 
@@ -243,6 +261,7 @@ ERROR CMDExpunge(void)
 {
    if (modDisplay)  { acFree(modDisplay);  modDisplay = NULL; }
    if (modFont)     { acFree(modFont);     modFont = NULL; }
+   if (modVector)   { acFree(modVector);   modVector = NULL; }
    if (clScintilla) { acFree(clScintilla); clScintilla = NULL; }
    if (clScintillaSearch) { acFree(clScintillaSearch); clScintillaSearch = NULL; }
    return ERR_Okay;
