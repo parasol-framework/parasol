@@ -263,8 +263,8 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
          if (!get_surface_abs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
             uiflags |= Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
 
-            if ((ABS(Self->X - Self->LastReleaseX) > Self->ClickSlop) or
-                (ABS(Self->Y - Self->LastReleaseY) > Self->ClickSlop)) {
+            if ((std::abs(Self->X - Self->LastReleaseX) > Self->ClickSlop) or
+                (std::abs(Self->Y - Self->LastReleaseY) > Self->ClickSlop)) {
                uiflags |= JTYPE_DRAGGED;
             }
 

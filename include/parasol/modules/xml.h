@@ -1,13 +1,10 @@
-#ifndef MODULES_XML
-#define MODULES_XML 1
+#pragma once
 
 // Name:      xml.h
 // Copyright: Paul Manias © 2001-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_XML (1)
 
@@ -308,4 +305,3 @@ INLINE ERROR xmlSetAttribLong(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib,
 }
 
   
-#endif

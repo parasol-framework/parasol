@@ -122,7 +122,6 @@ FDEF argsStrCopy[] = { { "Result", FD_LONG }, { "Src", FD_STR }, { "Dest", FD_ST
 FDEF argsStrDatatype[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrFormat[] = { { "Result", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { "Format", FD_STR }, { "Parameters", FD_TAGS }, { 0, 0 } };
 FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
-FDEF argsStrLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF argsStrSearch[] = { { "Result", FD_LONG }, { "Keyword", FD_STR }, { "String", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSort[] = { { "Error", FD_LONG|FD_ERROR }, { "List", FD_ARRAY|FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
@@ -281,7 +280,7 @@ const struct Function glFunctions[] = {
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
    { (APTR)StrCopy, "StrCopy", argsStrCopy },
    { (APTR)StrClone, "StrClone", argsStrClone },
-   { (APTR)StrLength, "StrLength", argsStrLength },
+   { (APTR)VarUnlock, "VarUnlock", argsVarUnlock },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)StrSort, "StrSort", argsStrSort },
    { (APTR)StrBuildArray, "StrBuildArray", argsStrBuildArray },
@@ -327,7 +326,6 @@ const struct Function glFunctions[] = {
    { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },
    { (APTR)TranslateCmdRef, "TranslateCmdRef", argsTranslateCmdRef },
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
-   { (APTR)VarUnlock, "VarUnlock", argsVarUnlock },
    { NULL, NULL, NULL }
 };
 

@@ -1,5 +1,5 @@
-#ifndef PARASOL_STRINGS
-#define PARASOL_STRINGS 1
+#pragma once
+
 #ifdef __cplusplus
 
 #include <sstream>
@@ -38,7 +38,7 @@ INLINE void camelcase(std::string &s) {
    bool raise = true;
    for (ULONG i=0; i < s.size(); i++) {
       if (raise) {
-         s[i] = UCASE(s[i]);
+         s[i] = std::toupper(s[i]);
          raise = false;
       }
       else if (s[i] <= 0x20) raise = true;
@@ -46,5 +46,4 @@ INLINE void camelcase(std::string &s) {
 }
 
 } // namespace
-#endif
 #endif

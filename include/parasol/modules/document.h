@@ -1,27 +1,16 @@
-#ifndef MODULES_DOCUMENT
-#define MODULES_DOCUMENT 1
+#pragma once
 
 // Name:      document.h
 // Copyright: Paul Manias © 2005-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_DOCUMENT (1)
 
-#ifndef MODULES_DISPLAY_H
 #include <parasol/modules/display.h>
-#endif
-
-#ifndef MODULES_XML_H
 #include <parasol/modules/xml.h>
-#endif
-
-#ifndef MODULES_FONT_H
 #include <parasol/modules/font.h>
-#endif
 
 class objDocument;
 
@@ -326,4 +315,3 @@ struct DocumentBase {
 #define docCharLength(...) (DocumentBase->_CharLength)(__VA_ARGS__)
 #endif
 
-#endif

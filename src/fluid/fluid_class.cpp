@@ -183,7 +183,7 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *
 
    for (LONG i=0; args[i].Name; i++) {
       char name[StrLength(args[i].Name)+1];
-      for (j=0; args[i].Name[j]; j++) name[j] = LCASE(args[i].Name[j]);
+      for (j=0; args[i].Name[j]; j++) name[j] = std::tolower(args[i].Name[j]);
       name[j] = 0;
 
       lua_pushlstring(Lua, name, j);

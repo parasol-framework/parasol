@@ -786,7 +786,7 @@ static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flag
 
             LONG j = 0;
             for (i=pos+1; (Buffer[i] != '.') and (i < endbracket); i++) {
-               if ((size_t)j < sizeof(name)-1) name[j++] = LCASE(Buffer[i]);
+               if ((size_t)j < sizeof(name)-1) name[j++] = std::tolower(Buffer[i]);
             }
             name[j] = 0;
 
@@ -7245,7 +7245,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 
 static void check_mouse_release(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
-   if ((ABS(X - Self->ClickX) > 3) or (ABS(Y - Self->ClickY) > 3)) {
+   if ((std::abs(X - Self->ClickX) > 3) or (std::abs(Y - Self->ClickY) > 3)) {
       parasol::Log log(__FUNCTION__);
       log.trace("User click cancelled due to mouse shift.");
       return;

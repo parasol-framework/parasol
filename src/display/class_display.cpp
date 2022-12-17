@@ -1400,7 +1400,7 @@ static ERROR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
          if (modeinfo.Attributes & gaIsTextMode) continue;
 
          if (modeinfo.BitsPerPixel IS glSNAP->VideoMode.BitsPerPixel) {
-            weight = ABS(modeinfo.XResolution - width) + ABS(modeinfo.YResolution - height);
+            weight = std::abs(modeinfo.XResolution - width) + std::abs(modeinfo.YResolution - height);
 
             if (weight < bestweight) {
                gfxmode = modes[i];

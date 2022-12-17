@@ -542,27 +542,6 @@ ULONG StrHash(CSTRING String, LONG CaseSensitive)
 /*****************************************************************************
 
 -FUNCTION-
-StrLength: Calculates the length of a string.
-
-This function will calculate the length of a String, not including the null byte.
-
--INPUT-
-cstr String: Pointer to the string that you want to examine.
-
--RESULT-
-int: Returns the length of the string.
-
-*****************************************************************************/
-
-LONG StrLength(CSTRING String)
-{
-   if (String) return strlen(String);
-   else return 0;
-}
-
-/*****************************************************************************
-
--FUNCTION-
 StrSearch: Searches a string for a particular keyword/phrase.
 
 This function allows you to search for a particular Keyword or phrase inside a String.  You may search on a case
@@ -597,7 +576,7 @@ LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
    }
    else {
       while (String[pos]) {
-         for (i=0; Keyword[i]; i++) if (UCase(String[pos+i]) != UCase(Keyword[i])) break;
+         for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
          if (!Keyword[i]) return pos;
          for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
       }

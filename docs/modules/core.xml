@@ -2618,20 +2618,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrLength</name>
-    <category>Strings</category>
-    <comment>Calculates the length of a string.</comment>
-    <prototype>LONG StrLength(CSTRING String)</prototype>
-    <input>
-      <param type="CSTRING" name="String">Pointer to the string that you want to examine.</param>
-    </input>
-    <description>
-<p>This function will calculate the length of a String, not including the null byte.</p>
-    </description>
-    <result type="LONG">Returns the length of the string.</result>
-  </function>
-
-  <function>
     <name>StrReadLocale</name>
     <category>Strings</category>
     <comment>Read system locale information.</comment>
@@ -2898,7 +2884,6 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function will return the total number of decoded unicode characters in a UTF-8 string.</p>
-<p>For the total number of bytes in a string, use <function module="Core">StrLength</function> instead.</p>
     </description>
     <result type="LONG">Returns the total number of characters used in the supplied UTF-8 string.</result>
   </function>

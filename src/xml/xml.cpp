@@ -943,8 +943,8 @@ InsertContent: Inserts XML content into the XML tree.
 The InsertContent method is used to insert content strings into any position within the XML tree.  A content string
 must be provided in the Content parameter and the target insertion point is specified in the Index parameter.
 An insertion point relative to the target index must be specified in the Where parameter.  The new tags can be
-inserted as a child of the target by using a Where value of XMI_CHILD.  To insert behind or after the target, use
-XMI_PREV or XMI_NEXT.
+inserted as a child of the target by using a Where value of `XMI_CHILD`.  To insert behind or after the target, use
+`XMI_PREV` or `XMI_NEXT`.
 
 To modify existing content, the #SetAttrib() method should be used.
 
@@ -1010,8 +1010,8 @@ InsertXML: Inserts an XML statement in the XML tree.
 The InsertXML method is used to translate and insert a new set of XML tags into any position within the XML tree.  A
 standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index
 parameter.  An insertion point relative to the target index must be specified in the Insert parameter.  The new tags
-can be inserted as a child of the target by using a Insert value of XMI_CHILD.  Use XMI_CHILD_END to insert at the end
-of the child list.  To insert behind or after the target, use XMI_PREV or XMI_NEXT.
+can be inserted as a child of the target by using a Insert value of `XMI_CHILD`.  Use `XMI_CHILD_END` to insert at the end
+of the child list.  To insert behind or after the target, use `XMI_PREV` or `XMI_NEXT`.
 
 The #RootIndex value has no effect on this method.
 
@@ -1118,8 +1118,8 @@ InsertXPath: Inserts an XML statement in an XML tree.
 The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A
 standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid
 XPath location string.  An insertion point relative to the XPath target must be specified in the Insert parameter.  The
-new tags can be inserted as a child of the target by using an Insert value of XMI_CHILD or XMI_CHILD_END.  To insert
-behind or after the target, use XMI_PREV or XMI_NEXT.
+new tags can be inserted as a child of the target by using an Insert value of `XMI_CHILD` or `XMI_CHILD_END`.  To insert
+behind or after the target, use `XMI_PREV` or `XMI_NEXT`.
 
 -INPUT-
 cstr XPath: An XPath string that refers to the target insertion point.
@@ -1168,8 +1168,8 @@ tags from one index to another.  The client must supply the index of the tag tha
 target tag.  All child tags of the source will be included in the move.
 
 An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be
-inserted as a child of the destination by using a Where of XMI_CHILD.  To insert behind or after the target, use
-XMI_PREV or XMI_NEXT.
+inserted as a child of the destination by using a Where of `XMI_CHILD`.  To insert behind or after the target, use
+`XMI_PREV` or `XMI_NEXT`.
 
 -INPUT-
 int Index: Index of the source tag to be moved.

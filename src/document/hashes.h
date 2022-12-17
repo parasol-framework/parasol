@@ -1,5 +1,4 @@
-#ifndef USPTCRITLO
-#define USPTCRITLO 1
+#pragma once
 
 // Copyright: Paul Manias © 1996-2022
 // Generator: idl-c
@@ -110,4 +109,3 @@
 #define HASH_thickness 0x369e2871UL
 #define HASH_select 0x1b80e3c5UL
 
-#endif

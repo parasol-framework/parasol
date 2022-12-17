@@ -1,4 +1,5 @@
-#ifndef PARASOL_MAIN_HPP
+#pragma once
+
 #define PARASOL_MAIN_HPP 1
 #ifdef __cplusplus
 
@@ -272,4 +273,3 @@ class Log { // C++ wrapper for Parasol's log functionality
 } // namespace
 
 #endif // __cplusplus
-#endif

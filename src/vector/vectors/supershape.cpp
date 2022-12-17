@@ -68,8 +68,8 @@ static void generate_supershape(objVectorShape *Vector)
    LONG lx = 0x7fffffff, ly = 0x7fffffff;
    for (DOUBLE i=0; i < vertices; i++) {
       const DOUBLE phi = phi_a * i;
-      const DOUBLE t1 = pow(ABS(a * cos(m * phi * 0.25)), n2);
-      const DOUBLE t2 = pow(ABS(b * sin(m * phi * 0.25)), n3);
+      const DOUBLE t1 = pow(std::abs(a * cos(m * phi * 0.25)), n2);
+      const DOUBLE t2 = pow(std::abs(b * sin(m * phi * 0.25)), n3);
       DOUBLE r  = 1.0 / pow(t1 + t2, 1.0/n1);
 
       // These additional transforms can help in building a greater library of shapes.

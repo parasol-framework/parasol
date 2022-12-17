@@ -2812,7 +2812,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
                field_id = FID_Width;
                GetDouble(Vector, FID_X, &x);
                num = read_unit(StrValue, &field_id);
-               SetDouble(Vector, field_id, ABS(num - x));
+               SetDouble(Vector, field_id, std::abs(num - x));
                return ERR_Okay;
             }
 
@@ -2821,7 +2821,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
                field_id = FID_Height;
                GetDouble(Vector, FID_Y, &y);
                num = read_unit(StrValue, &field_id);
-               SetDouble(Vector, field_id, ABS(num - y));
+               SetDouble(Vector, field_id, std::abs(num - y));
                return ERR_Okay;
             }
          }

@@ -34,7 +34,7 @@ static void generate_spiral(objVectorSpiral *Vector)
       DOUBLE x = (Vector->Offset + Vector->Scale * angle) * cos(angle);
       DOUBLE y = (Vector->Offset + Vector->Scale * angle) * sin(angle);
 
-      if ((ABS(x) > Vector->Radius) or (ABS(y) > Vector->Radius)) break;
+      if ((std::abs(x) > Vector->Radius) or (std::abs(y) > Vector->Radius)) break;
 
       x += cx;
       y += cy;

@@ -1,21 +1,18 @@
-#ifndef SYSTEM_UNICODETABLE_H
-#define SYSTEM_UNICODETABLE_H TRUE
+#pragma once
 
 //  unicodetable.h
-//  (C) Copyright 2001-2004 Paul Manias
+//  (C) Copyright 2001-2022 Paul Manias
 
 struct UnicodeDescriptor {
    STRING Name;
    UWORD Value;
 };
 
-/*****************************************************************************
-** The best way to access the unicode table is to grab it from the keyboard
-** module or the SystemKeyboard object rather than including this table
-** in your code.
-**
-** This table is sorted in order of the unicode values.
-*/
+// The best way to access the unicode table is to grab it from the keyboard
+// module or the SystemKeyboard object rather than including this table
+// in your code.
+
+// This table is sorted in order of the unicode values.
 
 #ifdef UNICODE_TABLE
 
@@ -710,5 +707,3 @@ static struct UnicodeDescriptor glUnicodeTable[] = {
 };
 
 #endif // UNICODE_TABLE
-
-#endif // SYSTEM_UNICODETABLE_H

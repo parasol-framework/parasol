@@ -237,18 +237,7 @@ end
 function c_include(...)
    for k,v in ipairs({...}) do
       if (v:find('^<(.+)>$') != nil) then
-         local inc = v:match('^<parasol/(.+)>$')
-
-         if (inc != nil) then inc = inc:gsub('[/%.]', '_') end
-
-         if (inc != nil) then
-            priority('#ifndef ' .. inc:upper())
-            priority('#include ' .. v)
-            priority('#endif')
-            priority()
-         else
-            priority('#include ' .. v)
-         end
+         priority('#include ' .. v)
       else
          priority('#include "' .. v .. '"')
       end
@@ -301,8 +290,7 @@ function module(Options, Function)
    glModule = Options
 
    if nz(glModule.name) then
-      priority('#ifndef MODULES_' .. glModule.name:upper())
-      priority('#define MODULES_' .. glModule.name:upper() .. ' 1')
+      priority('#pragma once')
       priority()
    else
       error('No "name" field specified in module() call.')
@@ -316,9 +304,7 @@ function module(Options, Function)
    priority('// Generator: idl-c')
    priority()
 
-   priority('#ifndef MAIN_H')
    priority('#include <parasol/main.h>')
-   priority('#endif')
    priority()
 
    if nz(glModule.version) then
@@ -335,8 +321,7 @@ end
 function header(Options, Function)
    glHeaderPath = Options['path']
    if nz(glHeaderPath) then
-      priority('#ifndef ' .. glHeaderPath:gsub('/','_'):upper())
-      priority('#define ' .. glHeaderPath:gsub('/','_'):upper() .. ' 1')
+      priority('#pragma once')
       priority()
       priority('// Name:      ' .. glHeaderPath:lower() .. '.h')
    else
@@ -345,8 +330,7 @@ function header(Options, Function)
          s = s .. string.char(math.random(65, 90))
       end
 
-      priority('#ifndef ' .. s:gsub('/','_'):upper())
-      priority('#define ' .. s:gsub('/','_'):upper() .. ' 1')
+      priority('#pragma once')
       priority()
    end
 
@@ -2665,19 +2649,19 @@ end
 
    mSys = mod.load('core')
 
-   glFunctions   = { }
+   glFunctions      = { }
    glFunctionLookup = { }
-   glMethods     = { }
-   glFields      = { }
-   glPaths       = { }
-   glCustomTypes = { }
-   glStructures  = { }
-   glDocuments   = { }
-   glModule      = { }
-   glTotalWarnings = 0
-   glCategory = nil
-   glCategories = { }
-   glPrivateNames = { }
+   glMethods        = { }
+   glFields         = { }
+   glPaths          = { }
+   glCustomTypes    = { }
+   glStructures     = { }
+   glDocuments      = { }
+   glModule         = { }
+   glTotalWarnings  = 0
+   glCategory       = nil
+   glCategories     = { }
+   glPrivateNames   = { }
 
    resolveSDKPath(arg('sdk'))
 
@@ -2685,7 +2669,6 @@ end
 
    if (processFDLFile(glSource) == ERR_Okay) then
       processSourceFiles()
-      output('#endif')
       saveOutput()
 
       local protoDef = buildPrototypes()
