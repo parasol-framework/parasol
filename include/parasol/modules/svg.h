@@ -11,7 +11,7 @@
 
 #define MODVERSION_SVG (1)
 
-typedef class plSVG objSVG;
+class objSVG;
 
 // SVG flags.
 
@@ -34,7 +34,7 @@ INLINE ERROR svgRender(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, 
 }
 
 
-typedef class plSVG : public BaseClass {
+class objSVG : public BaseClass {
    public:
    OBJECTPTR Target;    // The root Viewport that is generated during SVG initialisation can be created as a child of this target object.
    STRING    Path;      // The location of the source SVG data.
@@ -59,6 +59,6 @@ typedef class plSVG : public BaseClass {
       struct acSaveToObject args = { { DestID }, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-} objSVG;
+};
 
 #endif

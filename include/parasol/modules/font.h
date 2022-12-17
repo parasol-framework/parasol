@@ -15,7 +15,7 @@
 #include <parasol/modules/display.h>
 #endif
 
-typedef class plFont objFont;
+class objFont;
 
 // Font flags
 
@@ -54,7 +54,7 @@ struct FontList {
 
 #define VER_FONT (1.000000)
 
-typedef class plFont : public BaseClass {
+class objFont : public BaseClass {
    public:
    DOUBLE Angle;                                         // A rotation angle to use when drawing scalable fonts.
    DOUBLE Point;                                         // The point size of a font.
@@ -99,7 +99,7 @@ typedef class plFont : public BaseClass {
       return Action(AC_Draw, this, &args);
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-} objFont;
+};
 
 struct FontBase {
    ERROR (*_GetList)(struct FontList **);

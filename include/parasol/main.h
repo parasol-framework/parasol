@@ -79,24 +79,14 @@ extern "C" {
 
 #define ARRAYSIZE(a) ((LONG)(sizeof(a)/sizeof(a[0])))
 
-#undef MIN
-#undef MAX
-#undef MID
 #undef ABS
 #undef SGN
 
 #define ROUNDUP(a,b) (((a) + (b)) - ((a) % (b))) // ROUNDUP(Number, Alignment) e.g. (14,8) = 16
-#define MIN(x,y)     (((x) < (y)) ? (x) : (y))
-#define MAX(x,y)     (((x) > (y)) ? (x) : (y))
-#define MID(x,y,z)   MAX((x), MIN((y), (z)))
 #define ABS(x)       (((x) >= 0) ? (x) : (-(x)))
 #define SGN(x)       ((x<0)?-1:((x>0)?1:0))
 #define LCASE(a)     ((((a) >= 'A') AND ((a) <= 'Z')) ? ((a) - 'A' + 'a') : (a))
 #define UCASE(a)     ((((a) >= 'a') AND ((a) <= 'z')) ? ((a) - 'a' + 'A') : (a))
-
-#define AlignLarge(a) (((a) + 7) & (~7))
-#define AlignLong(a)  (((a) + 3) & (~3))
-#define AlignWord(a)  (((a) + 1) & (~1))
 
 #define ALIGN64(a) (((a) + 7) & (~7))
 #define ALIGN32(a) (((a) + 3) & (~3))
@@ -120,9 +110,8 @@ extern "C" {
  #define DEBUG_BREAK
 #endif
 
-/*****************************************************************************
-** Endian management routines.
-*/
+//****************************************************************************
+// Endian management routines.
 
 #ifdef REVERSE_BYTEORDER
 
@@ -234,10 +223,8 @@ struct OpenInfo {
    struct OpenTag *Options; // OPF_OPTIONS Typecast to va_list (defined in stdarg.h)
 };
 
-/*****************************************************************************
-** Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
-** classes.  FUNCDEF's can only be used in argument definitions for methods, actions and functions.
-*/
+// Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
+// classes.  FUNCDEF's can only be used in argument definitions for methods, actions and functions.
 
 #undef FD_READ
 #undef FD_WRITE
@@ -354,7 +341,7 @@ INLINE LARGE StrToInt(CSTRING String)
       else String++;
    }
 
-   return strtol(String, NULL, 10);
+   return strtoll(String, NULL, 0);
 }
 
 INLINE DOUBLE StrToFloat(CSTRING String)

@@ -135,10 +135,10 @@ class objConvolveFX : public extFilterEffect {
             LONG lr = F2I((factor * r) + Bias);
             LONG lg = F2I((factor * g) + Bias);
             LONG lb = F2I((factor * b) + Bias);
-            out[R] = glLinearRGB.invert(MIN(MAX(lr, 0), 255));
-            out[G] = glLinearRGB.invert(MIN(MAX(lg, 0), 255));
-            out[B] = glLinearRGB.invert(MIN(MAX(lb, 0), 255));
-            if (!PreserveAlpha) out[A] = MIN(MAX(F2I(factor * a + Bias), 0), 255);
+            out[R] = glLinearRGB.invert(std::min(std::max(lr, 0), 255));
+            out[G] = glLinearRGB.invert(std::min(std::max(lg, 0), 255));
+            out[B] = glLinearRGB.invert(std::min(std::max(lb, 0), 255));
+            if (!PreserveAlpha) out[A] = std::min(std::max(F2I(factor * a + Bias), 0), 255);
             else out[A] = (input + (x<<2))[A];
             out += 4;
          }
@@ -183,10 +183,10 @@ class objConvolveFX : public extFilterEffect {
             LONG lr = F2I((factor * r) + Bias);
             LONG lg = F2I((factor * g) + Bias);
             LONG lb = F2I((factor * b) + Bias);
-            out[R] = glLinearRGB.invert(MIN(MAX(lr, 0), 255));
-            out[G] = glLinearRGB.invert(MIN(MAX(lg, 0), 255));
-            out[B] = glLinearRGB.invert(MIN(MAX(lb, 0), 255));
-            if (!PreserveAlpha) out[A] = MIN(MAX(F2I(factor * a + Bias), 0), 255);
+            out[R] = glLinearRGB.invert(std::min(std::max(lr, 0), 255));
+            out[G] = glLinearRGB.invert(std::min(std::max(lg, 0), 255));
+            out[B] = glLinearRGB.invert(std::min(std::max(lb, 0), 255));
+            if (!PreserveAlpha) out[A] = std::min(std::max(F2I(factor * a + Bias), 0), 255);
             else out[A] = (input + (x<<2))[A];
             out += 4;
          }

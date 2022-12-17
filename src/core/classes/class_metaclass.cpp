@@ -1538,7 +1538,7 @@ ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path
       if (glClassDB) totalsize = glClassDB->Size + itemsize + sizeof(LONG);
       else totalsize = sizeof(ClassHeader) + itemsize + sizeof(LONG);
 
-      totalsize = AlignLong(totalsize);
+      totalsize = ALIGN32(totalsize);
 
       MEMORYID classes_mid;
       if (AllocMemory(totalsize, MEM_NO_CLEAR|MEM_PUBLIC|MEM_NO_BLOCK|MEM_UNTRACKED, (APTR *)&classes, &classes_mid)) {

@@ -77,7 +77,7 @@ typedef struct XMLTag {
      UWORD Notation:1;       // Unparsable notations such as <!DOCTYPE ... >
      WORD  pad01;
   #endif
-    
+  
 } XMLTAG;
 
 // XML class definition

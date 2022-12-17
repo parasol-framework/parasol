@@ -271,14 +271,14 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
    // Set the bits per pixel value
 
    switch (color_type) {
-      case PNG_COLOR_TYPE_GRAY:       total_bit_depth = MAX(bit_depth, 8); break;
-      case PNG_COLOR_TYPE_PALETTE:    total_bit_depth = MAX(bit_depth, 8); break;
-      case PNG_COLOR_TYPE_RGB:        total_bit_depth = MAX(bit_depth, 8) * 3; break;
-      case PNG_COLOR_TYPE_RGB_ALPHA:  total_bit_depth = MAX(bit_depth, 8) * 4; break;
-      case PNG_COLOR_TYPE_GRAY_ALPHA: total_bit_depth = MAX(bit_depth, 8) * 2; break;
+      case PNG_COLOR_TYPE_GRAY:       total_bit_depth = std::max(bit_depth, 8); break;
+      case PNG_COLOR_TYPE_PALETTE:    total_bit_depth = std::max(bit_depth, 8); break;
+      case PNG_COLOR_TYPE_RGB:        total_bit_depth = std::max(bit_depth, 8) * 3; break;
+      case PNG_COLOR_TYPE_RGB_ALPHA:  total_bit_depth = std::max(bit_depth, 8) * 4; break;
+      case PNG_COLOR_TYPE_GRAY_ALPHA: total_bit_depth = std::max(bit_depth, 8) * 2; break;
       default:
          log.warning("Unrecognised colour type 0x%x.", color_type);
-         total_bit_depth = MAX(bit_depth, 8);
+         total_bit_depth = std::max(bit_depth, 8);
    }
 
    if (!bmp->BitsPerPixel) {

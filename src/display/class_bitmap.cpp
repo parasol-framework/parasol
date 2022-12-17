@@ -1586,7 +1586,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
    // Initialise the line and plane module fields
 
    Self->LineWidth = Self->ByteWidth;
-   Self->LineWidth = AlignLong(Self->LineWidth);
+   Self->LineWidth = ALIGN32(Self->LineWidth);
    Self->PlaneMod = Self->LineWidth * Self->Height;
 
 #ifdef __xwindows__
@@ -1728,7 +1728,7 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    if (Self->Type IS BMP_PLANAR) bytewidth = (width + (width % 16))/8;
    else bytewidth = width * bytesperpixel;
 
-   LONG linewidth = AlignLong(bytewidth);
+   LONG linewidth = ALIGN32(bytewidth);
    LONG planemod = bytewidth * height;
 
    if (Self->Type IS BMP_PLANAR) size = linewidth * height * bpp;
