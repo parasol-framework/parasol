@@ -1841,7 +1841,7 @@ struct CoreBase {
    void (*_SetDefaultPermissions)(LONG, LONG, LONG);
    ERROR (*_CompareFilePaths)(CSTRING, CSTRING);
    const struct SystemState * (*_GetSystemState)(void);
-   LONG (*_StrSortCompare)(CSTRING, CSTRING);
+   ERROR (*_TranslateCmdRef)(CSTRING, STRING *);
    ERROR (*_AddInfoTag)(struct FileInfo *, CSTRING, CSTRING);
    LONG (*_UTF8Copy)(CSTRING, STRING, LONG, LONG);
    LONG (*_Base64Encode)(const void *, LONG, STRING, LONG);
@@ -1866,7 +1866,6 @@ struct CoreBase {
    ERROR (*_OpenDir)(CSTRING, LONG, struct DirInfo **);
    ERROR (*_ScanDir)(struct DirInfo *);
    ERROR (*_IdentifyFile)(CSTRING, CSTRING, LONG, CLASSID *, CLASSID *, STRING *);
-   ERROR (*_TranslateCmdRef)(CSTRING, STRING *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2003,7 +2002,7 @@ struct CoreBase {
 #define SetDefaultPermissions(...) (CoreBase->_SetDefaultPermissions)(__VA_ARGS__)
 #define CompareFilePaths(...) (CoreBase->_CompareFilePaths)(__VA_ARGS__)
 #define GetSystemState(...) (CoreBase->_GetSystemState)(__VA_ARGS__)
-#define StrSortCompare(...) (CoreBase->_StrSortCompare)(__VA_ARGS__)
+#define TranslateCmdRef(...) (CoreBase->_TranslateCmdRef)(__VA_ARGS__)
 #define AddInfoTag(...) (CoreBase->_AddInfoTag)(__VA_ARGS__)
 #define UTF8Copy(...) (CoreBase->_UTF8Copy)(__VA_ARGS__)
 #define Base64Encode(...) (CoreBase->_Base64Encode)(__VA_ARGS__)
@@ -2028,7 +2027,6 @@ struct CoreBase {
 #define OpenDir(...) (CoreBase->_OpenDir)(__VA_ARGS__)
 #define ScanDir(...) (CoreBase->_ScanDir)(__VA_ARGS__)
 #define IdentifyFile(...) (CoreBase->_IdentifyFile)(__VA_ARGS__)
-#define TranslateCmdRef(...) (CoreBase->_TranslateCmdRef)(__VA_ARGS__)
 #endif
 
 

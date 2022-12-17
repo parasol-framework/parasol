@@ -137,7 +137,7 @@ void UnloadFile(struct CacheFile * Cache);
 void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
 ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 const struct SystemState * GetSystemState();
-LONG StrSortCompare(CSTRING String1, CSTRING String2);
+ERROR TranslateCmdRef(CSTRING String, STRING * Command);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 LONG Base64Encode(const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
@@ -162,7 +162,6 @@ ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions);
 ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
 ERROR ScanDir(struct DirInfo * Info);
 ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);
-ERROR TranslateCmdRef(CSTRING String, STRING * Command);
 
 #ifdef  __cplusplus
 }
