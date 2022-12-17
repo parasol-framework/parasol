@@ -38,13 +38,61 @@ void free_iconv(void)
    }
 }
 
+static LONG str_cmp(CSTRING Name1, CSTRING Name2)
+{
+   if ((!Name1) or (!Name2)) return 0;
+
+   while ((*Name1) and (*Name2)) {
+      UBYTE char1 = *Name1;
+      UBYTE char2 = *Name2;
+
+      if ((char1 >= '0') and (char1 <= '9') and (char2 >= '0') and (char2 <= '9')) {
+         // This integer comparison is for human readable sorting
+         ULONG val1 = 0;
+         while (*Name1 IS '0') Name1++;
+         while ((*Name1) and (*Name1 >= '0') and (*Name1 <= '9')) {
+            val1 = (val1 * 10) + (*Name1 - '0');
+            Name1++;
+         }
+
+         ULONG val2 = 0;
+         while (*Name2 IS '0') Name2++;
+         while ((*Name2) and (*Name2 >= '0') and (*Name2 <= '9')) {
+            val2 = (val2 * 10) + (*Name2 - '0');
+            Name2++;
+         }
+
+         if (val1 > val2) return 1; // Name1 is greater
+         else if (val1 < val2) return -1; // Name1 is lesser
+         else {
+            while ((*Name1 >= '0') and (*Name1 <= '9')) Name1++;
+            while ((*Name2 >= '0') and (*Name2 <= '9')) Name2++;
+            continue;
+         }
+      }
+
+      if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+      if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+
+      if (char1 > char2) return 1; // Name1 is greater
+      else if (char1 < char2) return -1; // Name1 is lesser
+
+      Name1++;
+      Name2++;
+   }
+
+   if ((!*Name1) and (!*Name2)) return 0;
+   else if (!*Name1) return -1;
+   else return 1;
+}
+
 static ERROR str_sort(CSTRING *List, LONG Flags)
 {
    if (!List) return ERR_NullArgs;
 
    // Shell sort.  Similar to bubble sort but much faster because it can copy records over larger distances.
 
-   LONG total, i, j;
+   LONG total, j;
 
    for (total=0; List[total]; total++);
 
@@ -53,9 +101,9 @@ static ERROR str_sort(CSTRING *List, LONG Flags)
 
    if (Flags & SBF_DESC) {
       for (; h > 0; h /= 3) {
-         for (i=h; i < total; i++) {
+         for (LONG i=h; i < total; i++) {
             auto temp = List[i];
-            for (j=i; (j >= h) and (StrSortCompare(List[j - h], temp) < 0); j -= h) {
+            for (j=i; (j >= h) and (str_cmp(List[j - h], temp) < 0); j -= h) {
                List[j] = List[j - h];
             }
             List[j] = temp;
@@ -64,9 +112,9 @@ static ERROR str_sort(CSTRING *List, LONG Flags)
    }
    else {
       for (; h > 0; h /= 3) {
-         for (i=h; i < total; i++) {
+         for (LONG i=h; i < total; i++) {
             auto temp = List[i];
-            for (j=i; (j >= h) and (StrSortCompare(List[j - h], temp) > 0); j -= h) {
+            for (j=i; (j >= h) and (str_cmp(List[j - h], temp) > 0); j -= h) {
                List[j] = List[j - h];
             }
             List[j] = temp;
@@ -78,7 +126,7 @@ static ERROR str_sort(CSTRING *List, LONG Flags)
       LONG strflags = STR_MATCH_LEN;
       if (Flags & SBF_CASE) strflags |= STR_MATCH_CASE;
 
-      for (i=1; List[i]; i++) {
+      for (LONG i=1; List[i]; i++) {
          if (!StrCompare(List[i-1], List[i], 0, strflags)) {
             for (j=i; List[j]; j++) List[j] = List[j+1];
             i--;
@@ -733,73 +781,6 @@ LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
    }
 
    return -1;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrSortCompare: Compares two strings for sorting purposes.
-
-This function compares two strings and returns a result that indicates which of the two is 'less than' the other.  The
-comparison process takes character-based integers into account, so that in the case of `identical 001` and `identical
-999`, the `001` and `999` portions of those strings would be compared as integers and not ASCII characters.  This
-prevents string values such as `1` and `10` from being disarranged.
-
--INPUT-
-cstr String1: Pointer to a string.
-cstr String2: Pointer to a string.
-
--RESULT-
-int: If both strings are equal, 0 is returned.  If Name1 is greater than Name2, 1 is returned.  If Name1 is lesser than Name2, -1 is returned.
-
-*****************************************************************************/
-
-LONG StrSortCompare(CSTRING Name1, CSTRING Name2)
-{
-   if ((!Name1) or (!Name2)) return 0;
-
-   while ((*Name1) and (*Name2)) {
-      UBYTE char1 = *Name1;
-      UBYTE char2 = *Name2;
-
-      if ((char1 >= '0') and (char1 <= '9') and (char2 >= '0') and (char2 <= '9')) {
-         // This integer comparison is for human readable sorting
-         ULONG val1 = 0;
-         while (*Name1 IS '0') Name1++;
-         while ((*Name1) and (*Name1 >= '0') and (*Name1 <= '9')) {
-            val1 = (val1 * 10) + (*Name1 - '0');
-            Name1++;
-         }
-
-         ULONG val2 = 0;
-         while (*Name2 IS '0') Name2++;
-         while ((*Name2) and (*Name2 >= '0') and (*Name2 <= '9')) {
-            val2 = (val2 * 10) + (*Name2 - '0');
-            Name2++;
-         }
-
-         if (val1 > val2) return 1; // Name1 is greater
-         else if (val1 < val2) return -1; // Name1 is lesser
-         else {
-            while ((*Name1 >= '0') and (*Name1 <= '9')) Name1++;
-            while ((*Name2 >= '0') and (*Name2 <= '9')) Name2++;
-            continue;
-         }
-      }
-
-      if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-      if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-
-      if (char1 > char2) return 1; // Name1 is greater
-      else if (char1 < char2) return -1; // Name1 is lesser
-
-      Name1++;
-      Name2++;
-   }
-
-   if ((!*Name1) and (!*Name2)) return 0;
-   else if (!*Name1) return -1;
-   else return 1;
 }
 
 //****************************************************************************

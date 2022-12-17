@@ -1005,10 +1005,10 @@ static void sift_down(ListSort **lookup, LONG Index, LONG heapsize)
       LONG right	= left + 1;
 
       if (left < heapsize){
-         if (StrSortCompare(lookup[largest]->String, lookup[left]->String) > 0) largest = left;
+         if (str_sort(lookup[largest]->String, lookup[left]->String) > 0) largest = left;
 
          if (right < heapsize) {
-            if (StrSortCompare(lookup[largest]->String, lookup[right]->String) > 0) largest = right;
+            if (str_sort(lookup[largest]->String, lookup[right]->String) > 0) largest = right;
          }
       }
 
@@ -1031,10 +1031,10 @@ static void sift_up(ListSort **lookup, LONG i, LONG heapsize)
       LONG right	= left + 1;
 
       if (left < heapsize){
-         if (StrSortCompare(lookup[largest]->String, lookup[left]->String) < 0) largest = left;
+         if (str_sort(lookup[largest]->String, lookup[left]->String) < 0) largest = left;
 
          if (right < heapsize) {
-            if (StrSortCompare(lookup[largest]->String, lookup[right]->String) < 0) largest = right;
+            if (str_sort(lookup[largest]->String, lookup[right]->String) < 0) largest = right;
          }
       }
 

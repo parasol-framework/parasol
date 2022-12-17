@@ -1078,7 +1078,7 @@ struct ScriptArg { // For use with scExec
     "SetDefaultPermissions",
     "CompareFilePaths",
     "GetSystemState",
-    "StrSortCompare",
+    "TranslateCmdRef",
     "AddInfoTag",
     "UTF8Copy",
     "Base64Encode",
@@ -1102,8 +1102,7 @@ struct ScriptArg { // For use with scExec
     "SaveObjectToFile",
     "OpenDir",
     "ScanDir",
-    "IdentifyFile",
-    "TranslateCmdRef")
+    "IdentifyFile")
 
   c_insert([[
 

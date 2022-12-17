@@ -2667,21 +2667,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrSortCompare</name>
-    <category>Strings</category>
-    <comment>Compares two strings for sorting purposes.</comment>
-    <prototype>LONG StrSortCompare(CSTRING String1, CSTRING String2)</prototype>
-    <input>
-      <param type="CSTRING" name="String1">Pointer to a string.</param>
-      <param type="CSTRING" name="String2">Pointer to a string.</param>
-    </input>
-    <description>
-<p>This function compares two strings and returns a result that indicates which of the two is 'less than' the other.  The comparison process takes character-based integers into account, so that in the case of <code>identical 001</code> and <code>identical 999</code>, the <code>001</code> and <code>999</code> portions of those strings would be compared as integers and not ASCII characters.  This prevents string values such as <code>1</code> and <code>10</code> from being disarranged.</p>
-    </description>
-    <result type="LONG">If both strings are equal, 0 is returned.  If Name1 is greater than Name2, 1 is returned.  If Name1 is lesser than Name2, -1 is returned.</result>
-  </function>
-
-  <function>
     <name>SubscribeAction</name>
     <category>Objects</category>
     <comment>Listens for actions that may be performed on an object.</comment>
