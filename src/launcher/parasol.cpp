@@ -22,8 +22,6 @@ CSTRING ProgName      = "Parasol";
 CSTRING ProgAuthor    = "Paul Manias";
 CSTRING ProgDate      = "February 2022";
 CSTRING ProgCopyright = "Copyright Paul Manias © 2000-2022";
-LONG   ProgDebug = 0;
-FLOAT  ProgCoreVersion = VER_CORE;
 
 extern struct CoreBase *CoreBase;
 
