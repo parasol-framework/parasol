@@ -1135,7 +1135,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
       Self->Cursor = cursor;
       parasol::ScopedObjectLock<objSurface> lock(Self->SurfaceID);
       if (lock.granted() and (lock.obj->Cursor != Self->Cursor)) {
-         SetLong(lock.obj, FID_Cursor, cursor);
+         lock.obj->set(FID_Cursor, cursor);
       }
    }
 

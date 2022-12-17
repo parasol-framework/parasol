@@ -1254,15 +1254,18 @@ struct BaseClass { // Must be 64-bit aligned
       return oid ? true : false;
    }
 
-   inline ERROR set(ULONG FieldID, LARGE Value) { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERROR set(ULONG FieldID, LONG Value) { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR set(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERROR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERROR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERROR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
+   inline ERROR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR set(ULONG FieldID, std::string &Value)    { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
+   inline ERROR set(ULONG FieldID, const Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
    // Works both for regular data pointers and function pointers if field is defined correctly.
-   //inline ERROR set(ULONG FieldID, APTR Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
    inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
-   inline ERROR set(ULONG FieldID, Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
-   inline ERROR set(ULONG FieldID, FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
-   inline ERROR set(ULONG FieldID, CSTRING Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+
    inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
 
 } __attribute__ ((aligned (8)));
@@ -1806,44 +1809,6 @@ INLINE ERROR GetPointer(OBJECTPTR Object, ULONG FieldID, APTR Value) {
 
 INLINE ERROR GetVariable(OBJECTPTR Object, ULONG FieldID, struct Variable *Value) {
    return GetField(Object, (FIELD)FieldID|TVAR, Value);
-}
-
-//****************************************************************************
-
-INLINE ERROR SetLarge(OBJECTPTR Object, ULONG FieldID, LARGE Value) {
-   return SetField(Object, (FIELD)FieldID|TLARGE, Value);
-}
-
-INLINE ERROR SetLong(OBJECTPTR Object, ULONG FieldID, LONG Value) {
-   return SetField(Object, (FIELD)FieldID|TLONG, Value);
-}
-
-INLINE ERROR SetFunction(OBJECTPTR Object, ULONG FieldID, FUNCTION *Value) {
-   return SetField(Object, (FIELD)FieldID|TFUNCTION, Value);
-}
-
-INLINE ERROR SetFunctionPtr(OBJECTPTR Object, ULONG FieldID, APTR Value) { // Yes, the pointer value will be converted to a StdC FUNCTION type internally.
-   return SetField(Object, (FIELD)FieldID|TPTR, Value);
-}
-
-INLINE ERROR SetDouble(OBJECTPTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField(Object, (FIELD)FieldID|TDOUBLE, Value);
-}
-
-INLINE ERROR SetString(OBJECTPTR Object, ULONG FieldID, CSTRING Value) {
-   return SetField(Object, (FIELD)FieldID|TSTRING, Value);
-}
-
-INLINE ERROR SetPercentage(OBJECTPTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField(Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
-}
-
-INLINE ERROR SetPointer(OBJECTPTR Object, ULONG FieldID, const void *Value) {
-   return SetField(Object, (FIELD)FieldID|TPTR, Value);
-}
-
-INLINE ERROR SetVariable(OBJECTPTR Object, ULONG FieldID, Variable *Value) {
-   return SetField(Object, (FIELD)FieldID|TVAR, Value);
 }
 
 #ifndef PRV_CORE

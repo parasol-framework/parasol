@@ -183,7 +183,7 @@ static ERROR SOURCEFX_Init(objSourceFX *Self, APTR Void)
 
    if (!Self->Source) return log.warning(ERR_UndefinedField);
 
-   SetLong(Self->Scene->Viewport, FID_ColourSpace, Self->Filter->ColourSpace);
+   Self->Scene->Viewport->set(FID_ColourSpace, Self->Filter->ColourSpace);
 
    return ERR_Okay;
 }

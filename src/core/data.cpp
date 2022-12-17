@@ -151,11 +151,8 @@ BYTE glPrivileged   = FALSE;
 BYTE glSync         = FALSE;
 UBYTE glTaskState   = TSTATE_RUNNING;
 
-LONG glMaxDocViews = 0, glTotalDocViews = 0;
-
 struct KeyStore *glCache = NULL;
 LONG glInotify = -1;
-struct DocView *glDocView = NULL;
 
 const struct virtual_drive glFSDefault = {
    0xffffffff, ":",
@@ -212,7 +209,6 @@ THREADVAR struct ObjectContext *tlContext = &glTopContext;
 
 OBJECTPTR glLocale = NULL;
 objTime *glTime = NULL;
-struct translate *glTranslate = NULL;
 
 THREADVAR WORD tlMsgRecursion = 0;
 THREADVAR struct Message *tlCurrentMsg   = 0;
@@ -234,4 +230,3 @@ static struct AndroidBase *AndroidBase = 0;
 
 #include "data_functions.c"
 #include "data_errors.c"
-#include "data_locale.c"

@@ -919,13 +919,13 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       localtask->Flags |= TSF_DUMMY;
 
       if (Info->Flags & OPF_NAME) {
-         SetField(localtask, FID_Name|TSTRING, Info->Name);
+         localtask->set(FID_Name, Info->Name);
          StrCopy(Info->Name, glProgName, sizeof(glProgName));
       }
 
-      if (Info->Flags & OPF_AUTHOR)    SetField(localtask, FID_Author|TSTR, Info->Author);
-      if (Info->Flags & OPF_COPYRIGHT) SetField(localtask, FID_Copyright|TSTR, Info->Copyright);
-      if (Info->Flags & OPF_DATE)      SetField(localtask, FID_Date|TSTR, Info->Date);
+      if (Info->Flags & OPF_AUTHOR)    localtask->set(FID_Author, Info->Author);
+      if (Info->Flags & OPF_COPYRIGHT) localtask->set(FID_Copyright, Info->Copyright);
+      if (Info->Flags & OPF_DATE)      localtask->set(FID_Date, Info->Date);
 
       if (!acInit(localtask)) {
          // NB: The glCurrentTask and glCurrentTaskID variables are set on task initialisation

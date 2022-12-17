@@ -584,7 +584,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (Self->Playback <= 0)  Self->Playback  = Self->Frequency;
 
    if (Self->Flags & SDF_NOTE) {
-      SetLong(Self, FID_Note, Self->prvNote);
+      Self->set(FID_Note, Self->prvNote);
       Self->Flags &= ~SDF_NOTE;
    }
 
@@ -1510,7 +1510,7 @@ static ERROR SOUND_SET_Octave(extSound *Self, LONG Value)
 {
    if ((Value < -10) or (Value > 10))
    Self->Octave = Value;
-   return SetLong(Self, FID_Note, Self->prvNote);
+   return Self->set(FID_Note, Self->prvNote);
 }
 
 /*********************************************************************************************************************

@@ -194,7 +194,7 @@ void Scintilla::Window::SetCursor(Cursor curs)
 
    if (wid) {
       if (!AccessObject(getSurfaceID(this), 500, &surface)) {
-         SetLong(surface, FID_Cursor, cursorid);
+         surface->set(FID_Cursor, cursorid);
          cursorLast = curs;
          ReleaseObject(surface);
       }
@@ -208,5 +208,5 @@ void Scintilla::Window::SetCursor(Cursor curs)
 void Scintilla::Window::SetTitle(const char *s)
 {
    extScintilla *scintilla = (extScintilla *)this->GetID();
-   SetString(scintilla, FID_Title, (STRING)s);
+   scintilla->set(FID_Title, (STRING)s);
 }

@@ -148,7 +148,7 @@ void process_error(objScript *Self, CSTRING Procedure)
    parasol::Log log;
    CSTRING str = lua_tostring(prv->Lua, -1);
    lua_pop(prv->Lua, 1);  // pop returned value
-   SetString(Self, FID_ErrorString, str);
+   Self->set(FID_ErrorString, str);
 
    CSTRING file = Self->Path;
    if (file) {
@@ -438,7 +438,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
                   }
                   if (!(str = next_line(str))) break;
                }
-               SetString(Self, FID_ErrorString, buffer);
+               Self->set(FID_ErrorString, buffer);
 
                log.warning("Parser Failed: %s", Self->ErrorString);
             }
@@ -464,7 +464,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
             save_binary(Self, cachefile->UID);
 
-            SetPointer(cachefile, FID_Date, &prv->CacheDate);
+            cachefile->set(FID_Date, &prv->CacheDate);
             acFree(cachefile);
          }
       }
@@ -529,10 +529,10 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_TEXT) {
-      SetString(Self, FID_String, (CSTRING)Args->Buffer);
+      Self->set(FID_String, (CSTRING)Args->Buffer);
    }
    else if (Args->DataType IS DATA_XML) {
-      SetString(Self, FID_String, (CSTRING)Args->Buffer);
+      Self->set(FID_String, (CSTRING)Args->Buffer);
    }
    else if (Args->DataType IS DATA_RECEIPT) {
       auto prv = (prvFluid *)Self->ChildPrivate;
@@ -1040,7 +1040,7 @@ static ERROR run_script(objScript *Self)
       else {
          char buffer[200];
          StrFormat(buffer, sizeof(buffer), "Procedure '%s' / #" PF64() " does not exist in the script.", Self->Procedure, Self->ProcedureID);
-         SetString(Self, FID_ErrorString, buffer);
+         Self->set(FID_ErrorString, buffer);
          log.warning("%s", buffer);
 
          #ifdef DEBUG

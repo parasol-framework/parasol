@@ -272,7 +272,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDOpen(OBJECTPTR Module)
 {
-   SetPointer(Module, FID_FunctionList, JumpTable);
+   Module->set(FID_FunctionList, JumpTable);
    return ERR_Okay;
 }
 

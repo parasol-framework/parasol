@@ -524,7 +524,7 @@ ERROR remove_file(extCompression *Self, ZipFile **File)
       if (acSeekStart(Self->FileIO, currentpos) != ERR_Okay) return log.warning(ERR_Seek);
    }
 
-   SetDouble(Self->FileIO, FID_Size, writepos);
+   Self->FileIO->set(FID_Size, writepos);
 
    // Remove the file reference from the chain
 

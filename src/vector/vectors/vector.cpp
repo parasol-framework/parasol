@@ -463,7 +463,7 @@ static ERROR VECTOR_Init(extVector *Self, APTR Void)
    // Reapply the filter if it couldn't be set prior to initialisation.
 
    if ((!Self->Filter) and (Self->FilterString)) {
-      SetString(Self, FID_Filter, Self->FilterString);
+      Self->set(FID_Filter, Self->FilterString);
    }
 
    {

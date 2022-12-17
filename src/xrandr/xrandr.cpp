@@ -344,7 +344,7 @@ static struct xrMode * xrGetDisplayMode(LONG Index)
 
 ERROR CMDOpen(OBJECTPTR Module)
 {
-   SetPointer(Module, FID_FunctionList, glFunctions);
+   Module->set(FID_FunctionList, glFunctions);
    return ERR_Okay;
 }
 
