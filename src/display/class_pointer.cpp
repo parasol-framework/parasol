@@ -732,7 +732,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
       objSurface *surface;
       if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
          SubscribeFeed(surface);
-         SetLong(surface, FID_Flags, surface->Flags);
+         surface->set(FID_Flags, surface->Flags);
          ReleaseObject(surface);
       }
    }

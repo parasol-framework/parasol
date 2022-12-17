@@ -154,7 +154,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    if (!Self->Path) {
       CSTRING path;
       if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF_PREFER_SCALED|FTF_PREFER_FIXED|FTF_ALLOW_SCALE), &path)) {
-         SetString(Self, FID_Path, path);
+         Self->set(FID_Path, path);
          FreeResource(path);
       }
       else {
@@ -571,7 +571,7 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
       // Extract the colour string
 
       i++;
-      SetString(Self, FID_Colour, Value + i);
+      Self->set(FID_Colour, Value + i);
    }
    else Self->prvFace[0] = 0;
 

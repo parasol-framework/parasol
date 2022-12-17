@@ -350,7 +350,7 @@ static ERROR CMDExpunge(void)
 
 static ERROR CMDOpen(OBJECTPTR Module)
 {
-   SetPointer(Module, FID_FunctionList, JumpTableV1);
+   Module->set(FID_FunctionList, JumpTableV1);
    return ERR_Okay;
 }
 

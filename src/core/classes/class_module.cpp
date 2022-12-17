@@ -315,8 +315,6 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    WORD ext, aflags = 0;
    char name[60];
 
-   DEBUG_LINE
-
    if (!Self->Name[0]) return log.warning(ERR_FieldNotSet);
 
    // Check if the module is resident.  If not, we need to load and prepare the module for a shared environment.
@@ -337,14 +335,10 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    else if (!NewPrivateObject(ID_MODULEMASTER, NF_NO_TRACK, (OBJECTPTR *)&master)) {
       char path[300];
 
-      DEBUG_LINE
-
       if (!AccessObject(SystemTaskID, 5000, &Task)) {
          SetOwner(master, Task);
          ReleaseObject(Task);
       }
-
-      DEBUG_LINE
 
       master->Next = glModuleList; // Insert the ModuleMaster at the start of the chain.
       if (glModuleList) glModuleList->Prev = master;
@@ -404,8 +398,6 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             }
             else log.msg("Module '%s' #%.8x is not registered in the database.", name, hashname);
          }
-
-         DEBUG_LINE
 
          if (!path[0]) {
             // If the file system module hasn't been loaded yet, we have to manually calculate the location of the
@@ -498,12 +490,8 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             // other libraries.  SSL is an example of this as the libssl library is dependent
             // on symbols found in libcrypto, therefore libcrypto needs RTLD_GLOBAL.
 
-            DEBUG_LINE
-
             if ((master->LibraryBase = dlopen(path, (Self->Flags & MOF_LINK_LIBRARY) ? (RTLD_LAZY|RTLD_GLOBAL) : RTLD_LAZY))) {
                aflags |= AF_SEGMENT;
-
-               DEBUG_LINE
 
                if (!(Self->Flags & MOF_LINK_LIBRARY)) {
                   if (!(table = (ModHeader *)dlsym(master->LibraryBase, "ModHeader"))) {
@@ -567,8 +555,6 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             #error This system needs support for the loading of module/exe files.
          #endif
       }
-
-      DEBUG_LINE
 
       // The module version fields can give clues as to whether the table is corrupt or not.
 
@@ -641,8 +627,6 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 
       // INIT
 
-      DEBUG_LINE
-
       if (master->Init) {
          // Build a Core base for the module to use
          struct CoreBase *modkb;
@@ -695,8 +679,6 @@ open_module:
    if (master->Table) master->Close = master->Table->Close;
    master->OpenCount++;
 
-   DEBUG_LINE
-
    // Open() should have set the Self->FunctionList for us, but if it is null we will have to grab the default
    // function list.
 
@@ -727,8 +709,6 @@ open_module:
    error = ERR_Okay;
 
 exit:
-   DEBUG_LINE
-
    if (error) { // Free allocations if an error occurred
 
       if (!(error & ERF_Notified)) log.msg("\"%s\" failed: %s", Self->Name, GetErrorMsg(error));

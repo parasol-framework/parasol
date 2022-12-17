@@ -92,9 +92,9 @@ static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **
 
       if (!GetPointer(Display[0], FID_WindowHandle, &winhandle)) {
          #ifdef _WIN32
-            SetPointer(Display[0]->Bitmap, FID_Handle, winGetDC(winhandle));
+            Display[0]->Bitmap->set(FID_Handle, winGetDC(winhandle));
          #else
-            SetPointer(Display[0]->Bitmap, FID_Handle, winhandle);
+            Display[0]->Bitmap->set(FID_Handle, winhandle);
          #endif
       }
 
@@ -117,7 +117,7 @@ static void release_video(objDisplay *Display)
          winReleaseDC(winhandle, surface);
       }
 
-      SetPointer(Display->Bitmap, FID_Handle, NULL);
+      Display->Bitmap->set(FID_Handle, (APTR)NULL);
    #endif
 
    acFlush(Display);
@@ -838,7 +838,7 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
 
       if (!cfgReadValue(config, "DISPLAY", "DPMS", &str)) {
          if (!AccessObject(Self->DisplayID, 3000, &object)) {
-            SetString(object, FID_DPMS, str);
+            object->set(FID_DPMS, str);
             ReleaseObject(object);
          }
       }
@@ -1355,16 +1355,16 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       // Recalculate coordinates if offsets are used
 
-      if (Self->Dimensions & DMF_FIXED_X_OFFSET)         SetLong(Self, FID_XOffset, Self->XOffset);
-      else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) SetPercentage(Self, FID_XOffset, Self->XOffsetPercent);
+      if (Self->Dimensions & DMF_FIXED_X_OFFSET)         Self->set(FID_XOffset, Self->XOffset);
+      else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->setPercentage(FID_XOffset, Self->XOffsetPercent);
 
-      if (Self->Dimensions & DMF_FIXED_Y_OFFSET)         SetLong(Self, FID_YOffset, Self->YOffset);
-      else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) SetPercentage(Self, FID_YOffset, Self->YOffsetPercent);
+      if (Self->Dimensions & DMF_FIXED_Y_OFFSET)         Self->set(FID_YOffset, Self->YOffset);
+      else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->setPercentage(FID_YOffset, Self->YOffsetPercent);
 
-      if (Self->Dimensions & DMF_RELATIVE_X)       SetPercentage(Self, FID_X, Self->XPercent);
-      if (Self->Dimensions & DMF_RELATIVE_Y)       SetPercentage(Self, FID_Y, Self->YPercent);
-      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   SetPercentage(Self, FID_Width,  Self->WidthPercent);
-      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)  SetPercentage(Self, FID_Height, Self->HeightPercent);
+      if (Self->Dimensions & DMF_RELATIVE_X)       Self->setPercentage(FID_X, Self->XPercent);
+      if (Self->Dimensions & DMF_RELATIVE_Y)       Self->setPercentage(FID_Y, Self->YPercent);
+      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   Self->setPercentage(FID_Width,  Self->WidthPercent);
+      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)  Self->setPercentage(FID_Height, Self->HeightPercent);
 
       if (!(Self->Dimensions & DMF_WIDTH)) {
          if (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET)) {
@@ -1388,13 +1388,13 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       // Alignment adjustments
 
-      if (Self->Align & ALIGN_LEFT) { Self->X = 0; SetLong(Self, FID_X, Self->X); }
-      else if (Self->Align & ALIGN_RIGHT) { Self->X = parent->Width - Self->Width; SetLong(Self, FID_X, Self->X); }
-      else if (Self->Align & ALIGN_HORIZONTAL) { Self->X = (parent->Width - Self->Width) / 2; SetLong(Self, FID_X, Self->X); }
+      if (Self->Align & ALIGN_LEFT) { Self->X = 0; Self->set(FID_X, Self->X); }
+      else if (Self->Align & ALIGN_RIGHT) { Self->X = parent->Width - Self->Width; Self->set(FID_X, Self->X); }
+      else if (Self->Align & ALIGN_HORIZONTAL) { Self->X = (parent->Width - Self->Width) / 2; Self->set(FID_X, Self->X); }
 
-      if (Self->Align & ALIGN_TOP) { Self->Y = 0; SetLong(Self, FID_Y, Self->Y); }
-      else if (Self->Align & ALIGN_BOTTOM) { Self->Y = parent->Height - Self->Height; SetLong(Self, FID_Y, Self->Y); }
-      else if (Self->Align & ALIGN_VERTICAL) { Self->Y = (parent->Height - Self->Height) / 2; SetLong(Self, FID_Y, Self->Y); }
+      if (Self->Align & ALIGN_TOP) { Self->Y = 0; Self->set(FID_Y, Self->Y); }
+      else if (Self->Align & ALIGN_BOTTOM) { Self->Y = parent->Height - Self->Height; Self->set(FID_Y, Self->Y); }
+      else if (Self->Align & ALIGN_VERTICAL) { Self->Y = (parent->Height - Self->Height) / 2; Self->set(FID_Y, Self->Y); }
 
       if (Self->Height < Self->MinHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MinHeight + Self->TopMargin  + Self->BottomMargin;
       if (Self->Width  < Self->MinWidth  + Self->LeftMargin + Self->RightMargin)  Self->Width  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;
@@ -1494,13 +1494,13 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
          DISPLAYINFO *display;
          if (!gfxGetDisplayInfo(0, &display)) {
-            if (Self->Align & ALIGN_LEFT) { Self->X = 0; SetLong(Self, FID_X, Self->X); }
-            else if (Self->Align & ALIGN_RIGHT) { Self->X = display->Width - Self->Width; SetLong(Self, FID_X, Self->X); }
-            else if (Self->Align & ALIGN_HORIZONTAL) { Self->X = (display->Width - Self->Width) / 2; SetLong(Self, FID_X, Self->X); }
+            if (Self->Align & ALIGN_LEFT) { Self->X = 0; Self->set(FID_X, Self->X); }
+            else if (Self->Align & ALIGN_RIGHT) { Self->X = display->Width - Self->Width; Self->set(FID_X, Self->X); }
+            else if (Self->Align & ALIGN_HORIZONTAL) { Self->X = (display->Width - Self->Width) / 2; Self->set(FID_X, Self->X); }
 
-            if (Self->Align & ALIGN_TOP) { Self->Y = 0; SetLong(Self, FID_Y, Self->Y); }
-            else if (Self->Align & ALIGN_BOTTOM) { Self->Y = display->Height - Self->Height; SetLong(Self, FID_Y, Self->Y); }
-            else if (Self->Align & ALIGN_VERTICAL) { Self->Y = (display->Height - Self->Height) / 2; SetLong(Self, FID_Y, Self->Y); }
+            if (Self->Align & ALIGN_TOP) { Self->Y = 0; Self->set(FID_Y, Self->Y); }
+            else if (Self->Align & ALIGN_BOTTOM) { Self->Y = display->Height - Self->Height; Self->set(FID_Y, Self->Y); }
+            else if (Self->Align & ALIGN_VERTICAL) { Self->Y = (display->Height - Self->Height) / 2; Self->set(FID_Y, Self->Y); }
          }
       }
 
@@ -1545,7 +1545,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
                OBJECTID pop_display = popsurface->DisplayID;
                ReleaseObject(popsurface);
 
-               if (pop_display) SetLong(display, FID_PopOver, pop_display);
+               if (pop_display) display->set(FID_PopOver, pop_display);
                else log.warning("Surface #%d doesn't have a display ID for pop-over.", Self->PopOverID);
             }
          }
@@ -1587,7 +1587,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
             if (Self->DisplayWindow) {
                FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = NULL, .Routine = (APTR)&display_resized } };
-               SetFunction(display, FID_ResizeFeedback, &func);
+               display->set(FID_ResizeFeedback, &func);
                SubscribeActionTags(display, AC_Draw, TAGEND);
             }
 
@@ -2486,16 +2486,16 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 
    OBJECTPTR picture;
    if (!NewObject(class_id, 0, &picture)) {
-      SetString(picture, FID_Flags, "NEW");
-      SetLong(picture, FID_Width, Self->Width);
-      SetLong(picture, FID_Height, Self->Height);
+      picture->set(FID_Flags, "NEW");
+      picture->set(FID_Width, Self->Width);
+      picture->set(FID_Height, Self->Height);
 
       objDisplay *display;
       objBitmap *video_bmp;
       if (!access_video(Self->DisplayID, &display, &video_bmp)) {
-         SetLong(picture, FID_BitsPerPixel, video_bmp->BitsPerPixel);
-         SetLong(picture, FID_BytesPerPixel, video_bmp->BytesPerPixel);
-         SetLong(picture, FID_Type, video_bmp->Type);
+         picture->set(FID_BitsPerPixel, video_bmp->BitsPerPixel);
+         picture->set(FID_BytesPerPixel, video_bmp->BytesPerPixel);
+         picture->set(FID_Type, video_bmp->Type);
          release_video(display);
       }
 

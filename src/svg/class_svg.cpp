@@ -174,13 +174,13 @@ static ERROR SVG_Render(extSVG *Self, struct svgRender *Args)
    LONG page_width = Args->Width;
    LONG page_height = Args->Height;
 
-   SetPointer(Self->Scene, FID_Bitmap, bmp);
+   Self->Scene->set(FID_Bitmap, bmp);
 
-   SetLong(Self->Scene, FID_PageWidth, page_width);
-   SetLong(Self->Scene, FID_PageHeight, page_height);
+   Self->Scene->set(FID_PageWidth, page_width);
+   Self->Scene->set(FID_PageHeight, page_height);
 
-//   SetLong(Self->Scene->Viewport, FID_ViewX, Args->X);
-//   SetLong(Self->Scene->Viewport, FID_ViewY, Args->Y);
+//   Self->Scene->Viewport->set(FID_ViewX, Args->X);
+//   Self->Scene->Viewport->set(FID_ViewY, Args->Y);
 
    bmp->XOffset += Args->X;
    bmp->YOffset += Args->Y;

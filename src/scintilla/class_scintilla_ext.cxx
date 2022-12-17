@@ -496,7 +496,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       log.trace("[SAVEPOINTLEFT]");
 
       if (!scintilla->HoldModify) {
-         SetLong(scintilla, FID_Modified, TRUE);
+         scintilla->set(FID_Modified, TRUE);
       }
       else {
          // 'Hold Modifications' means that we have to tell Scintilla that the document is unmodified.

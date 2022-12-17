@@ -223,7 +223,6 @@ struct virtual_drive {
    ERROR (*CreateLink)(CSTRING, CSTRING);
 };
 
-extern LONG glMaxDocViews, glTotalDocViews;
 extern const struct virtual_drive glFSDefault;
 extern LONG glVirtualTotal;
 extern struct virtual_drive glVirtual[20];
@@ -592,7 +591,6 @@ extern class ObjectContext glTopContext; // Read-only, not a threading concern.
 extern OBJECTPTR modIconv;
 extern OBJECTPTR glLocale;
 extern objTime *glTime;
-extern struct translate *glTranslate;
 extern objConfig *glVolumes; // Volume management object, contains all FS volume names and their meta data.  Use AccessPrivateObject() to lock.
 extern objConfig *glDatatypes;
 extern struct KeyStore *glClassMap; // Register of all classes.
@@ -903,8 +901,6 @@ struct ziptail {
 extern struct FDTable *glFDTable;
 extern WORD glTotalFDs, glLastFD;
 extern LONG glInotify;
-struct DocView { CSTRING Path; CSTRING Doc; };
-extern struct DocView *glDocView;
 
 #define LRT_Exclusive 1
 
@@ -1215,29 +1211,6 @@ void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, 
 #endif
 
 //********************************************************************************************************************
-// Function tracing macros.
-
-#if FUNCTION_TRACE || LASTFUNCTION_TRACE
-
-#define DEBUG_LINE _DebugLine(__FILE__,  __PRETTY_FUNCTION__, __LINE__);
-
-INLINE void _DebugLine(char *File, const char *Function, int Line)
-{
-   WORD i;
-   if (glTaskEntry) {
-      glTaskEntry->DebugLine = Line;
-      for (i=0; i < sizeof(glTaskEntry->DebugFunc)-1; i++) {
-         glTaskEntry->DebugFunc[i] = Function[i];
-      }
-      glTaskEntry->DebugFunc[i] = 0;
-   }
-}
-
-#else
-
-#define DEBUG_LINE
-
-#endif
 
 extern THREADVAR char tlFieldName[10]; // $12345678\0
 
@@ -1252,8 +1225,6 @@ INLINE CSTRING GET_FIELD_NAME(ULONG FieldID)
 }
 
 //********************************************************************************************************************
-
-#ifdef  __cplusplus
 
 class ScopedObjectAccess {
    private:
@@ -1278,8 +1249,6 @@ class ScopedObjectAccess {
          }
       }
 };
-
-#endif
 
 //********************************************************************************************************************
 
@@ -1323,8 +1292,6 @@ static WORD read_word(APTR File)
 
 //********************************************************************************************************************
 
-#ifdef  __cplusplus
-
 class ThreadLock { // C++ wrapper for terminating resources when scope is lost
    private:
       UBYTE lock_type;
@@ -1348,7 +1315,5 @@ class ThreadLock { // C++ wrapper for terminating resources when scope is lost
          }
       }
 };
-
-#endif
 
 #endif // DEFS_H

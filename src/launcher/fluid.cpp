@@ -330,15 +330,15 @@ int main(int argc, CSTRING *argv)
          AddMsgHandler(NULL, glScriptReceivedMsg, &callback, NULL);
 
          SET_FUNCTION_STDC(callback, (APTR)&read_stdin);
-         SetFunction(CurrentTask(), FID_InputCallback, &callback);
+         CurrentTask()->set(FID_InputCallback, &callback);
 
          ProcessMessages(0, -1);
 
          if (glScriptBuffer) {
             objScript *script;
             if (!NewObject(ID_FLUID, 0, &script)) {
-               SetString(script, FID_Statement, glScriptBuffer);
-               if (glProcedure) SetString(script, FID_Procedure, glProcedure);
+               script->set(FID_Statement, glScriptBuffer);
+               if (glProcedure) script->set(FID_Procedure, glProcedure);
                if (glArgs) set_script_args(script, glArgs);
                result = run_script(script);
                acFree(script);

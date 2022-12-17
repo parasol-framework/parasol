@@ -869,10 +869,10 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
          log.trace("X-Window created successfully: " PF64(), (LARGE)Self->XWindowHandle);
 
-         SetPointer(bmp, FID_Handle, (APTR)Self->XWindowHandle);
+         bmp->set(FID_Handle, (APTR)Self->XWindowHandle);
 
          CSTRING name;
-         if ((GetPointer(CurrentTask(), FID_Name, &name) IS ERR_Okay) and (name)) {
+         if ((!GetPointer(CurrentTask(), FID_Name, &name)) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
@@ -905,7 +905,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          // If we are the window manager, set up the root window as our display.
 
          if (!Self->WindowHandle) Self->XWindowHandle = DefaultRootWindow(XDisplay);
-         SetPointer(bmp, FID_Handle, (APTR)Self->XWindowHandle);
+         bmp->set(FID_Handle, (APTR)Self->XWindowHandle);
          XChangeWindowAttributes(XDisplay, Self->XWindowHandle, CWEventMask|CWCursor, &swa);
 
          if (XRandRBase) xrSelectInput(Self->XWindowHandle);
@@ -2062,7 +2062,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
    if (FindObject("SystemPointer", ID_POINTER, 0, &pointer_id, &count) != ERR_Okay) {
       if (!NewNamedObject(ID_POINTER, NF_NO_TRACK|NF_PUBLIC|NF_UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
          OBJECTID owner = Self->ownerID();
-         if (GetClassID(owner) IS ID_SURFACE) SetLong(pointer, FID_Surface, owner);
+         if (GetClassID(owner) IS ID_SURFACE) pointer->set(FID_Surface, owner);
 
          #ifdef __ANDROID__
             AConfiguration *config;
@@ -2684,7 +2684,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
 
          glKeyFlags = 0;
 
-         SetPointer(Self->Bitmap, FID_Handle, Self->WindowHandle);
+         Self->Bitmap->set(FID_Handle, Self->WindowHandle);
          acResize(Self->Bitmap, Self->Width, Self->Height, 0);
 
          if (Self->Flags & SCR_VISIBLE) {

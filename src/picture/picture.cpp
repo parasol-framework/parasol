@@ -233,14 +233,14 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
          bmp->TransIndex = info_ptr->trans_alpha[0];
          rgb = bmp->Palette->Col[bmp->TransIndex];
          rgb.Alpha = 255;
-         SetPointer(bmp, FID_Transparence, &rgb);
+         bmp->set(FID_Transparence, &rgb);
       }
       else {
          rgb.Red   = info_ptr->trans_color.red;
          rgb.Green = info_ptr->trans_color.green;
          rgb.Blue  = info_ptr->trans_color.blue;
          rgb.Alpha = 255;
-         SetPointer(bmp, FID_Transparence, &rgb);
+         bmp->set(FID_Transparence, &rgb);
       }
    }
 

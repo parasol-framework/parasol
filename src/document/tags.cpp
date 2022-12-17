@@ -1385,12 +1385,12 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
    // Setup the callback interception so that we can control the order in which objects draw their graphics to the surface.
 
    if (Self->CurrentObject) {
-      SetLong(object, FID_Owner, Self->CurrentObject->UID);
+      object->set(FID_Owner, Self->CurrentObject->UID);
    }
    else if (pagetarget) {
       field_id = StrHash(pagetarget, 0);
-      if (Self->BkgdGfx) SetLong(object, field_id, Self->ViewID);
-      else SetLong(object, field_id, Self->PageID);
+      if (Self->BkgdGfx) object->set(field_id, Self->ViewID);
+      else object->set(field_id, Self->PageID);
    }
 
    for (LONG i=1; i < Tag->TotalAttrib; i++) {
@@ -1744,10 +1744,10 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
    if (!error) {
       if (name) SetName(script, name);
 
-      if (src) SetString(script, FID_Path, src);
+      if (src) script->set(FID_Path, src);
       else {
          if (!xmlGetContent(XML, Tag->Index, Self->Temp, Self->TempSize)) {
-            SetString(script, FID_Statement, Self->Temp);
+            script->set(FID_Statement, Self->Temp);
          }
          else {
             acFree(script);
@@ -1755,11 +1755,11 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
          }
       }
 
-      if (cachefile) SetField(script, FID_CacheFile, cachefile);
+      if (cachefile) script->set(FID_CacheFile, cachefile);
 
       // Object references are to be limited in scope to the Document object
 
-      //SetLong(script, FID_ObjectScope, Self->Head.UID);
+      //script->set(FID_ObjectScope, Self->Head.UID);
 
       // Pass custom arguments in the script tag
 

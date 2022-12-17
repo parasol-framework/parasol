@@ -61,7 +61,7 @@ static SimpleVector * new_simplevector(void)
 
 ERROR CMDOpen(OBJECTPTR Module)
 {
-   SetPointer(Module, FID_FunctionList, glFunctions);
+   Module->set(FID_FunctionList, glFunctions);
    return ERR_Okay;
 }
 

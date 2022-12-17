@@ -4386,7 +4386,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                            font->X = fx - escpara->ItemIndent;
                            font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
                            font->AlignWidth = segment->AlignWidth;
-                           SetString(font, FID_String, (STRING)(escpara + 1));
+                           font->set(FID_String, (STRING)(escpara + 1));
                            font->draw();
                         }
                      }
@@ -4523,7 +4523,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                font->X = fx;
                font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
                font->AlignWidth = segment->AlignWidth;
-               SetString(font, FID_String, strbuffer);
+               font->set(FID_String, strbuffer);
                font->draw();
                fx = font->EndX;
                si = 0;
@@ -4538,7 +4538,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
          font->X = fx;
          font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
          font->AlignWidth = segment->AlignWidth;
-         SetString(font, FID_String, strbuffer);
+         font->set(FID_String, strbuffer);
          font->draw();
          fx = font->EndX;
       }
@@ -4968,7 +4968,7 @@ static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
 
    if (!AnalysePath(path, NULL)) {
       OBJECTPTR task;
-      if ((task = CurrentTask())) SetString(task, FID_Path, path);
+      if ((task = CurrentTask())) task->set(FID_Path, path);
 
       objXML *xml;
       if (!(Self->Error = CreateObject(ID_XML, NF_INTEGRAL, &xml,
@@ -8276,9 +8276,9 @@ static void exec_link(extDocument *Self, LONG Index)
                      if ((Self->Path[end] IS '&') or (Self->Path[end] IS '#') or (Self->Path[end] IS '?')) break;
                   }
                   auto path = std::string(Self->Path, end) + strlink;
-                  SetString(Self, FID_Path, path.c_str());
+                  Self->set(FID_Path, path);
                }
-               else SetString(Self, FID_Path, strlink);
+               else Self->set(FID_Path, strlink);
 
                if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
             }
@@ -8314,7 +8314,7 @@ static void exec_link(extDocument *Self, LONG Index)
                STRING cmd;
                if (!IdentifyFile(lk.substr(0, end).c_str(), "Open", 0, &class_id, &subclass_id, &cmd)) {
                   if (class_id IS ID_DOCUMENT) {
-                     SetString(Self, FID_Path, lk.c_str());
+                     Self->set(FID_Path, lk);
 
                      if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
                      else log.msg("No bookmark was preset.");
@@ -8404,7 +8404,7 @@ static void set_object_style(extDocument *Self, OBJECTPTR Object)
 
    style.StyleFlags = Self->Style.FontStyle.Options;
 
-   SetPointer(Object, FID_LayoutStyle, &style);
+   Object->set(FID_LayoutStyle, &style);
 }
 
 //****************************************************************************

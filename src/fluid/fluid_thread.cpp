@@ -69,7 +69,7 @@ static int thread_script(lua_State *Lua)
             };
             thSetData(thread, &cb, sizeof(cb));
 
-            SetPointer(thread, FID_Callback, (CPTR)&thread_script_callback);
+            thread->set(FID_Callback, (CPTR)&thread_script_callback);
          }
 
          if (acActivate(thread)) {
