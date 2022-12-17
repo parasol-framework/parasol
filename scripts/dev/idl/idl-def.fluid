@@ -90,15 +90,8 @@ function flags(Prefix, Options, ...)
             local key, comment
             if (type(ref) != 'number') then
                key, comment = ref:match('^(.+):%s+(.+)$')
-               if (key != nil) then
-                  local stype = mSys.StrDatatype(key)
-                  if (stype == STT_HEX) then
-                     key = mSys.StrToHex(key)
-                  elseif (stype == STT_FLOAT) then
-                     key = tonumber(key)
-                  elseif (stype == STT_NUMBER) then
-                     key = tonumber(key)
-                  end
+               if (key != nil) and (mSys.StrDatatype(key) != STT_STRING) then
+                  key = tonumber(key)
                end
             end
 
@@ -172,13 +165,8 @@ function const(Prefix, Options, ...)
             end
             if (val == nil) then val = v end
 
-            local stype = mSys.StrDatatype(val)
-            if (stype == STT_HEX) then
-               val = mSys.StrToHex(val)
-            elseif (stype == STT_FLOAT) then
-               val = mSys.StrToFloat(val)
-            elseif (stype == STT_NUMBER) then
-               val = mSys.StrToInt(val)
+            if (mSys.StrDatatype(val) != STT_STRING) then
+               val = tonumber(val)
             end
 
             list[k] = val

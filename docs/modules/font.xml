@@ -131,8 +131,8 @@
     </input>
     <description>
 <p>This function searches for the closest matching font based on the details provided by the client.  The details that can be searched for include the name, point size and style of the desired font.</p>
-<p>It is possible to list multiple faces in order of their preference in the Name parameter.  For instance "Sans Serif,Source Sans,*" will give preference to 'Sans Serif' and will look for 'Source Sans' if the first choice font is unavailable.  The use of the '*' wildcard indicates that the default system font should be used in the event that neither of the other choices are available.  Note that omitting this wildcard will raise the likelihood of ERR_Search being returned in the event that neither of the preferred choices are available.</p>
-<p>Flags that alter the search behaviour are FTF_PREFER_SCALED, FTF_PREFER_FIXED and FTF_ALLOW_SCALE.</p>
+<p>It is possible to list multiple faces in order of their preference in the Name parameter.  For instance <code>Sans Serif,Source Sans,*</code> will give preference to <code>Sans Serif</code> and will look for <code>Source Sans</code> if the first choice font is unavailable.  The use of the <code>*</code> wildcard indicates that the default system font should be used in the event that neither of the other choices are available.  Note that omitting this wildcard will raise the likelihood of <code>ERR_Search</code> being returned in the event that neither of the preferred choices are available.</p>
+<p>Flags that alter the search behaviour are <code>FTF_PREFER_SCALED</code>, <code>FTF_PREFER_FIXED</code> and <code>FTF_ALLOW_SCALE</code>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

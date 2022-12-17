@@ -16,8 +16,6 @@ Name: Strings
 #include <parasol/modules/android.h>
 #endif
 
-static void sift(STRING Buffer, LONG *, LONG, LONG);
-
 typedef void * iconv_t;
 iconv_t (*iconv_open)(const char* tocode, const char* fromcode);
 size_t  (*iconv)(iconv_t cd, const char** inbuf, size_t* inbytesleft,   char** outbuf, size_t* outbytesleft);
@@ -448,20 +446,20 @@ LONG StrDatatype(CSTRING String)
    LONG i;
    if ((String[0] IS '0') and (String[1] IS 'x')) {
       for (i=2; String[i]; i++) {
-         if (((String[i] >= '0') and (String[i] <= '9')) OR
-             ((String[i] >= 'A') and (String[i] <= 'F')) OR
+         if (((String[i] >= '0') and (String[i] <= '9')) or
+             ((String[i] >= 'A') and (String[i] <= 'F')) or
              ((String[i] >= 'a') and (String[i] <= 'f')));
          else return STT_STRING;
       }
       return STT_HEX;
    }
 
-   BYTE is_number = TRUE;
-   BYTE is_float  = FALSE;
+   bool is_number = true;
+   bool is_float  = false;
 
    for (i=0; (String[i]) and (is_number); i++) {
-      if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = FALSE;
-      if (String[i] IS '.') is_float = TRUE;
+      if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = false;
+      if (String[i] IS '.') is_float = true;
    }
 
    if ((is_float) and (is_number)) return STT_FLOAT;
@@ -759,32 +757,6 @@ LONG StrSortCompare(CSTRING Name1, CSTRING Name2)
    if ((!*Name1) and (!*Name2)) return 0;
    else if (!*Name1) return -1;
    else return 1;
-}
-
-//****************************************************************************
-
-static void sift(STRING Buffer, LONG *lookup, LONG i, LONG heapsize)
-{
-   LONG largest = i;
-   do {
-      i     = largest;
-      LONG left  = (i << 1) + 1;
-      LONG right = left + 1;
-
-      if (left < heapsize){
-         if (StrSortCompare(Buffer+lookup[largest], Buffer+lookup[left]) < 0) largest = left;
-
-         if (right < heapsize) {
-            if (StrSortCompare(Buffer+lookup[largest], Buffer+lookup[right]) < 0) largest = right;
-         }
-      }
-
-      if (largest != i) {
-         auto temp = lookup[i];
-         lookup[i] = lookup[largest];
-         lookup[largest] = temp;
-      }
-   } while (largest != i);
 }
 
 //****************************************************************************

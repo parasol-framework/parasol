@@ -127,7 +127,6 @@ FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, {
 FDEF argsStrSearch[] = { { "Result", FD_LONG }, { "Keyword", FD_STR }, { "String", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSort[] = { { "Error", FD_LONG|FD_ERROR }, { "List", FD_ARRAY|FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrSortCompare[] = { { "Result", FD_LONG }, { "String1", FD_STR }, { "String2", FD_STR }, { 0, 0 } };
-FDEF argsStrToHex[] = { { "Result", FD_LARGE }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsSubscribeActionTags[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Actions", FD_TAGS }, { 0, 0 } };
 FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE }, { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_PTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
@@ -298,7 +297,7 @@ const struct Function glFunctions[] = {
    { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { (APTR)StrDatatype, "StrDatatype", argsStrDatatype },
    { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
-   { (APTR)StrToHex, "StrToHex", argsStrToHex },
+   { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
    { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)StrSortCompare, "StrSortCompare", argsStrSortCompare },
@@ -329,7 +328,6 @@ const struct Function glFunctions[] = {
    { (APTR)TranslateCmdRef, "TranslateCmdRef", argsTranslateCmdRef },
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
    { (APTR)VarUnlock, "VarUnlock", argsVarUnlock },
-   { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { NULL, NULL, NULL }
 };
 

@@ -746,7 +746,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   for (i=Self->ChunkIndex; i < Self->ChunkBuffered-1; i++) {
                      if ((Self->Chunk[i] IS '\r') and (Self->Chunk[i+1] IS '\n')) {
                         Self->Chunk[i] = 0;
-                        Self->ChunkLen = StrToHex((CSTRING)Self->Chunk + Self->ChunkIndex);
+                        Self->ChunkLen = strtoll((CSTRING)Self->Chunk + Self->ChunkIndex, NULL, 0);
                         Self->Chunk[i] = '\r';
 
                         if (Self->ChunkLen <= 0) {

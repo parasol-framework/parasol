@@ -1841,7 +1841,7 @@ struct CoreBase {
    ERROR (*_ReadFileToBuffer)(CSTRING, APTR, LONG, LONG *);
    LONG (*_StrDatatype)(CSTRING);
    void (*_UnloadFile)(struct CacheFile *);
-   LARGE (*_StrToHex)(CSTRING);
+   void (*_SetDefaultPermissions)(LONG, LONG, LONG);
    ERROR (*_CompareFilePaths)(CSTRING, CSTRING);
    const struct SystemState * (*_GetSystemState)(void);
    LONG (*_StrSortCompare)(CSTRING, CSTRING);
@@ -1872,7 +1872,6 @@ struct CoreBase {
    ERROR (*_TranslateCmdRef)(CSTRING, STRING *);
    ERROR (*_CreateLink)(CSTRING, CSTRING);
    void (*_VarUnlock)(struct KeyStore *);
-   void (*_SetDefaultPermissions)(LONG, LONG, LONG);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2006,7 +2005,7 @@ struct CoreBase {
 #define ReadFileToBuffer(...) (CoreBase->_ReadFileToBuffer)(__VA_ARGS__)
 #define StrDatatype(...) (CoreBase->_StrDatatype)(__VA_ARGS__)
 #define UnloadFile(...) (CoreBase->_UnloadFile)(__VA_ARGS__)
-#define StrToHex(...) (CoreBase->_StrToHex)(__VA_ARGS__)
+#define SetDefaultPermissions(...) (CoreBase->_SetDefaultPermissions)(__VA_ARGS__)
 #define CompareFilePaths(...) (CoreBase->_CompareFilePaths)(__VA_ARGS__)
 #define GetSystemState(...) (CoreBase->_GetSystemState)(__VA_ARGS__)
 #define StrSortCompare(...) (CoreBase->_StrSortCompare)(__VA_ARGS__)
@@ -2037,7 +2036,6 @@ struct CoreBase {
 #define TranslateCmdRef(...) (CoreBase->_TranslateCmdRef)(__VA_ARGS__)
 #define CreateLink(...) (CoreBase->_CreateLink)(__VA_ARGS__)
 #define VarUnlock(...) (CoreBase->_VarUnlock)(__VA_ARGS__)
-#define SetDefaultPermissions(...) (CoreBase->_SetDefaultPermissions)(__VA_ARGS__)
 #endif
 
 

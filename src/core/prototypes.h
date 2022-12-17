@@ -134,7 +134,7 @@ ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID Class, LONG Permis
 ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 LONG StrDatatype(CSTRING String);
 void UnloadFile(struct CacheFile * Cache);
-LARGE StrToHex(CSTRING String);
+void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
 ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 const struct SystemState * GetSystemState();
 LONG StrSortCompare(CSTRING String1, CSTRING String2);
@@ -165,7 +165,6 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLAS
 ERROR TranslateCmdRef(CSTRING String, STRING * Command);
 ERROR CreateLink(CSTRING From, CSTRING To);
 void VarUnlock(struct KeyStore * Store);
-void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
 
 #ifdef  __cplusplus
 }

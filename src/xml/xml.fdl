@@ -54,7 +54,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2022", version=1.0 }, functi
     ushort Branch              # The branch level for this XML node
     int    LineNo              # Line number on which this tag was encountered
   ]],
-    [[
+  [[
   #ifdef PRV_XML
      LONG  AttribSize;       // The length of all attribute strings, compressed together
      UWORD CData:1;          // CDATA content section
@@ -62,7 +62,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2022", version=1.0 }, functi
      UWORD Notation:1;       // Unparsable notations such as <!DOCTYPE ... >
      WORD  pad01;
   #endif
-    ]])
+  ]])
 
   methods("xml", "XML", {
     { id=1,  name="SetAttrib" },

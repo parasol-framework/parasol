@@ -413,12 +413,7 @@ function flags(Prefix, Options, ...)
             if (type(ref) != 'number') then
                key, comment = ref:match('^(.-):%s+(.+)$')
                if (key != nil) then
-                  local stype = mSys.StrDatatype(key)
-                  if (stype == STT_HEX) then
-                     key = mSys.StrToHex(key)
-                  elseif (stype == STT_FLOAT) then
-                     key = tonumber(key)
-                  elseif (stype == STT_NUMBER) then
+                  if (mSys.StrDatatype(key) != STT_STRING) then
                      key = tonumber(key)
                   end
                end

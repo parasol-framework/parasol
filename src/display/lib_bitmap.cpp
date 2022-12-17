@@ -15,14 +15,14 @@ static size_t glDitherSize = 0;
       val1 = buf1[x+1].c + dif;          /* 3/8 to the right */ \
       val2 = buf2[x].c + dif;            /* 3/8 to the next row */ \
       if (dif > 0) {                     /* Check for overflow */ \
-         buf1[x+1].c = MIN(16383, val1); \
-         buf2[x].c   = MIN(16383, val2); \
-         buf2[x+1].c = MIN(16383, val3); \
+         buf1[x+1].c = std::min(16383, val1); \
+         buf2[x].c   = std::min(16383, val2); \
+         buf2[x+1].c = std::min(16383, val3); \
       }                                  \
       else if (dif < 0) {                \
-         buf1[x+1].c = MAX(0, val1);     \
-         buf2[x].c   = MAX(0, val2);     \
-         buf2[x+1].c = MAX(0, val3);     \
+         buf1[x+1].c = std::max(0, val1);     \
+         buf2[x].c   = std::max(0, val2);     \
+         buf2[x+1].c = std::max(0, val3);     \
       }                                  \
    }
 
