@@ -1552,7 +1552,7 @@ static ERROR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
          if (attrib) { // Remove an attribute
             for (LONG index=0; index < tag->TotalAttrib; index++) {
                if (!StrMatch(attrib, tag->Attrib[index].Name)) {
-                  xmlSetAttrib(Self, i, index, NULL, NULL);
+                  xmlSetAttrib(Self, i, index, NULL, (CSTRING)NULL);
                   break;
                }
             }

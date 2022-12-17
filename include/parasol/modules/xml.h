@@ -67,13 +67,13 @@ typedef struct XMLTag {
    WORD  TotalAttrib;            // Total number of listed attributes for this tag
    UWORD Branch;                 // The branch level for this XML node
    LONG  LineNo;                 // Line number on which this tag was encountered
-  #ifdef PRV_XML
-     LONG  AttribSize;       // The length of all attribute strings, compressed together
-     UWORD CData:1;          // CDATA content section
-     UWORD Instruction:1;    // Processing instruction, e.g. <?xml ?> or <?php ?>
-     UWORD Notation:1;       // Unparsable notations such as <!DOCTYPE ... >
-     WORD  pad01;
-  #endif
+#ifdef PRV_XML
+   LONG  AttribSize;       // The length of all attribute strings, compressed together
+   UWORD CData:1;          // CDATA content section
+   UWORD Instruction:1;    // Processing instruction, e.g. <?xml ?> or <?php ?>
+   UWORD Notation:1;       // Unparsable notations such as <!DOCTYPE ... >
+   WORD  pad01;
+#endif
   
 } XMLTAG;
 
@@ -261,9 +261,8 @@ class objXML : public BaseClass {
    }
 };
 
-INLINE STRING XMLATTRIB(const XMLTag *Tag, CSTRING Attrib) {
-   LONG i;
-   for (i=0; i < Tag->TotalAttrib; i++) {
+inline STRING XMLATTRIB(const XMLTag *Tag, CSTRING Attrib) {
+   for (LONG i=0; i < Tag->TotalAttrib; i++) {
       if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
          if (!Tag->Attrib[i].Value) return (STRING)"1";
          else return Tag->Attrib[i].Value;
@@ -272,17 +271,16 @@ INLINE STRING XMLATTRIB(const XMLTag *Tag, CSTRING Attrib) {
    return NULL;
 }
 
-INLINE BYTE XMLATTRIBCHECK(const XMLTag *Tag, CSTRING Attrib) {
-   LONG i;
-   for (i=0; i < Tag->TotalAttrib; i++) {
+inline bool XMLATTRIBCHECK(const XMLTag *Tag, CSTRING Attrib) {
+   for (LONG i=0; i < Tag->TotalAttrib; i++) {
       if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
-         return TRUE;
+         return true;
       }
    }
-   return FALSE;
+   return false;
 }
 
-INLINE const XMLTag * XMLFIND(const XMLTag **List, CSTRING Name) {
+inline const XMLTag * XMLFIND(const XMLTag **List, CSTRING Name) {
    while (*List) {
       if (!StrMatch((CSSTRING)Name, (CSSTRING)List[0]->Attrib->Name)) return List[0];
       List++;
@@ -290,18 +288,15 @@ INLINE const XMLTag * XMLFIND(const XMLTag **List, CSTRING Name) {
    return 0;
 }
 
-INLINE ERROR xmlSetAttribDouble(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, DOUBLE Value)
-{
-   char buffer[48];
-   StrFormat(buffer, sizeof(buffer), "%g", Value);
-   return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
-}
-
-INLINE ERROR xmlSetAttribLong(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, LONG Value)
-{
+inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, LONG Value) {
    char buffer[20];
    StrFormat(buffer, sizeof(buffer), "%d", Value);
    return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
 }
 
+inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, DOUBLE Value) {
+   char buffer[48];
+   StrFormat(buffer, sizeof(buffer), "%g", Value);
+   return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
+}
   
