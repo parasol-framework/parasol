@@ -1824,7 +1824,7 @@ struct CoreBase {
    STRING (*_StrClone)(CSTRING);
    void (*_VarUnlock)(struct KeyStore *);
    CSTRING (*_ResolveUserID)(LONG);
-   ERROR (*_StrSort)(CSTRING *, LONG);
+   ERROR (*_CreateLink)(CSTRING, CSTRING);
    STRING * (*_StrBuildArray)(STRING, LONG, LONG, LONG);
    LONG (*_UTF8CharOffset)(CSTRING, LONG);
    LONG (*_UTF8Length)(CSTRING);
@@ -1867,7 +1867,6 @@ struct CoreBase {
    ERROR (*_ScanDir)(struct DirInfo *);
    ERROR (*_IdentifyFile)(CSTRING, CSTRING, LONG, CLASSID *, CLASSID *, STRING *);
    ERROR (*_TranslateCmdRef)(CSTRING, STRING *);
-   ERROR (*_CreateLink)(CSTRING, CSTRING);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1987,7 +1986,7 @@ struct CoreBase {
 #define StrClone(...) (CoreBase->_StrClone)(__VA_ARGS__)
 #define VarUnlock(...) (CoreBase->_VarUnlock)(__VA_ARGS__)
 #define ResolveUserID(...) (CoreBase->_ResolveUserID)(__VA_ARGS__)
-#define StrSort(...) (CoreBase->_StrSort)(__VA_ARGS__)
+#define CreateLink(...) (CoreBase->_CreateLink)(__VA_ARGS__)
 #define StrBuildArray(...) (CoreBase->_StrBuildArray)(__VA_ARGS__)
 #define UTF8CharOffset(...) (CoreBase->_UTF8CharOffset)(__VA_ARGS__)
 #define UTF8Length(...) (CoreBase->_UTF8Length)(__VA_ARGS__)
@@ -2030,7 +2029,6 @@ struct CoreBase {
 #define ScanDir(...) (CoreBase->_ScanDir)(__VA_ARGS__)
 #define IdentifyFile(...) (CoreBase->_IdentifyFile)(__VA_ARGS__)
 #define TranslateCmdRef(...) (CoreBase->_TranslateCmdRef)(__VA_ARGS__)
-#define CreateLink(...) (CoreBase->_CreateLink)(__VA_ARGS__)
 #endif
 
 
