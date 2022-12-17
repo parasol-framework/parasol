@@ -38,6 +38,57 @@ void free_iconv(void)
    }
 }
 
+static ERROR str_sort(CSTRING *List, LONG Flags)
+{
+   if (!List) return ERR_NullArgs;
+
+   // Shell sort.  Similar to bubble sort but much faster because it can copy records over larger distances.
+
+   LONG total, i, j;
+
+   for (total=0; List[total]; total++);
+
+   LONG h = 1;
+   while (h < total / 9) h = 3 * h + 1;
+
+   if (Flags & SBF_DESC) {
+      for (; h > 0; h /= 3) {
+         for (i=h; i < total; i++) {
+            auto temp = List[i];
+            for (j=i; (j >= h) and (StrSortCompare(List[j - h], temp) < 0); j -= h) {
+               List[j] = List[j - h];
+            }
+            List[j] = temp;
+         }
+      }
+   }
+   else {
+      for (; h > 0; h /= 3) {
+         for (i=h; i < total; i++) {
+            auto temp = List[i];
+            for (j=i; (j >= h) and (StrSortCompare(List[j - h], temp) > 0); j -= h) {
+               List[j] = List[j - h];
+            }
+            List[j] = temp;
+         }
+      }
+   }
+
+   if (Flags & SBF_NO_DUPLICATES) {
+      LONG strflags = STR_MATCH_LEN;
+      if (Flags & SBF_CASE) strflags |= STR_MATCH_CASE;
+
+      for (i=1; List[i]; i++) {
+         if (!StrCompare(List[i-1], List[i], 0, strflags)) {
+            for (j=i; List[j]; j++) List[j] = List[j+1];
+            i--;
+         }
+      }
+   }
+
+   return ERR_Okay;
+}
+
 /*****************************************************************************
 
 -FUNCTION-
@@ -140,7 +191,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
          // Remove duplicate strings and/or do sorting
 
          if (Flags & SBF_NO_DUPLICATES) {
-            StrSort(array, 0);
+            str_sort(array, 0);
             for (i=1; array[i]; i++) {
                if (!StrMatch(array[i-1], array[i])) {
                   LONG j;
@@ -151,7 +202,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
             }
             array[Total] = NULL;
          }
-         else if (Flags & SBF_SORT) StrSort(array, 0);
+         else if (Flags & SBF_SORT) str_sort(array, 0);
 
          if (csvbuffer_alloc) free(csvbuffer_alloc);
          return (STRING *)array;
@@ -542,6 +593,105 @@ ULONG StrHash(CSTRING String, LONG CaseSensitive)
 /*****************************************************************************
 
 -FUNCTION-
+StrReadLocale: Read system locale information.
+
+Use this function to read system-wide locale information.  Settings are usually preset according to the user's location,
+but the user also has the power to override individual key value.  The internal nature of this function varies by host
+system.  If locale information is not readily available then the locale values will be derived from
+`user:config/locale.cfg`.
+
+Available key values are as follows:
+
+<types>
+<type name="Language">Three letter ISO code indicating the user's preferred language, e.g. 'eng'</>
+<type name="ShortDate">Short date format, e.g. 'dd/mm/yyyy'</>
+<type name="LongDate">Long date format, e.g. 'Dddd, d Mmm yyyy'</>
+<type name="FileDate">File date format, e.g. 'dd-mm-yy hh:nn'</>
+<type name="Time">Basic time format, e.g. hh:nn</>
+<type name="CurrencySymbol">Currency symbol, e.g. '$'</>
+<type name="Decimal">Decimal place symbol, e.g. '.'</>
+<type name="Thousands">Thousands symbol, e.g. ','</>
+<type name="Positive">Positive symbol - typically blank or '+'</>
+<type name="Negative">Negative symbol, e.g. '-'</>
+</types>
+
+-INPUT-
+cstr Key: The name of a locale value to read.
+&cstr Value: A pointer to the retrieved string value will be returned in this parameter.
+
+-ERRORS-
+Okay: Value retrieved.
+NullArgs: At least one required argument was not provided.
+Search: The Key value was not recognised.
+NoData: Locale information is not available.
+
+*****************************************************************************/
+
+ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Key) or (!Value)) return ERR_NullArgs;
+
+   #ifdef __ANDROID__
+      // Android doesn't have locale.cfg, we have to load that information from the system.
+
+      if (!StrMatch("Language", Key)) {
+         static char code[4] = { 0, 0, 0, 0 };
+         if (!code[0]) {
+            if (!AndroidBase) {  // Note that the module is terminated through resource tracking, we don't free it during our CMDExpunge() sequence for system integrity reasons.
+               parasol::SwitchContext ctx(CurrentTask());
+               OBJECTPTR module;
+               LoadModule("android", MODVERSION_FLUID, &module, &AndroidBase);
+               if (!AndroidBase) return NULL;
+            }
+
+            AConfiguration *config;
+            if (!adGetConfig(&config)) {
+               AConfiguration_getLanguage(config, code);
+
+               // Convert the two letter code to three letters.
+
+               if (code[0]) {
+                  code[0] = std::tolower(code[0]);
+                  code[1] = std::tolower(code[1]);
+                  for (LONG i=0; i < ARRAYSIZE(glLanguages); i++) {
+                     if ((glLanguages[i].Two[0] IS code[0]) and (glLanguages[i].Two[1] IS code[1])) {
+                        code[0] = glLanguages[i].Three[0];
+                        code[1] = glLanguages[i].Three[1];
+                        code[2] = glLanguages[i].Three[2];
+                        code[3] = 0;
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+
+         log.msg("Android language code: %s", code);
+
+         if (code[0]) { *Value = code; return ERR_Okay; }
+         else return ERR_Failed;
+      }
+   #endif
+
+   if (!glLocale) {
+      if (!CreateObject(ID_CONFIG, NF_UNTRACKED, &glLocale, FID_Path|TSTR, "user:config/locale.cfg", TAGEND)) {
+      }
+   }
+
+   if (!glLocale) return ERR_NoData;
+
+   if (!cfgReadValue(glLocale, "LOCALE", Key, Value)) {
+      if (!*Value) *Value = ""; // It is OK for some values to be empty strings.
+      return ERR_Okay;
+   }
+   else return ERR_Search;
+}
+
+/*****************************************************************************
+
+-FUNCTION-
 StrSearch: Searches a string for a particular keyword/phrase.
 
 This function allows you to search for a particular Keyword or phrase inside a String.  You may search on a case
@@ -583,92 +733,6 @@ LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
    }
 
    return -1;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrSort: Used to sort string arrays.
-
-This function is used to sort string arrays into alphabetical order.  You will need to provide the list of unsorted
-strings in a block of string pointers, terminated with a NULL entry.  For example:
-
-<pre>
-CSTRING List[] = {
-   "banana",
-   "apple",
-   "orange",
-   "kiwifruit",
-   NULL
-};
-</pre>
-
-The sorting routine will work within the confines of the array that you have provided and will not allocate any memory
-when performing the sort.
-
-Optional flags include `SBF_NO_DUPLICATES`, which strips duplicated strings out of the array; `SBF_CASE` to
-acknowledge case differences when determining string duplication and `SBF_DESC` to sort in descending order.
-
--INPUT-
-array(cstr) List: Must point to an array of string pointers, terminated with a NULL entry.
-int(SBF) Flags: Optional flags may be set here.
-
--ERRORS-
-Okay
-NullArgs
--END-
-
-*****************************************************************************/
-
-ERROR StrSort(CSTRING *List, LONG Flags)
-{
-   if (!List) return ERR_NullArgs;
-
-   // Shell sort.  Similar to bubble sort but much faster because it can copy records over larger distances.
-
-   LONG total, i, j;
-
-   for (total=0; List[total]; total++);
-
-   LONG h = 1;
-   while (h < total / 9) h = 3 * h + 1;
-
-   if (Flags & SBF_DESC) {
-      for (; h > 0; h /= 3) {
-         for (i=h; i < total; i++) {
-            auto temp = List[i];
-            for (j=i; (j >= h) and (StrSortCompare(List[j - h], temp) < 0); j -= h) {
-               List[j] = List[j - h];
-            }
-            List[j] = temp;
-         }
-      }
-   }
-   else {
-      for (; h > 0; h /= 3) {
-         for (i=h; i < total; i++) {
-            auto temp = List[i];
-            for (j=i; (j >= h) and (StrSortCompare(List[j - h], temp) > 0); j -= h) {
-               List[j] = List[j - h];
-            }
-            List[j] = temp;
-         }
-      }
-   }
-
-   if (Flags & SBF_NO_DUPLICATES) {
-      LONG strflags = STR_MATCH_LEN;
-      if (Flags & SBF_CASE) strflags |= STR_MATCH_CASE;
-
-      for (i=1; List[i]; i++) {
-         if (!StrCompare(List[i-1], List[i], 0, strflags)) {
-            for (j=i; List[j]; j++) List[j] = List[j+1];
-            i--;
-         }
-      }
-   }
-
-   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -741,5 +805,4 @@ LONG StrSortCompare(CSTRING Name1, CSTRING Name2)
 //****************************************************************************
 
 #include "lib_base64.cpp"
-#include "lib_conversion.cpp"
 #include "lib_unicode.cpp"

@@ -120,7 +120,7 @@ LONG StrCopy(CSTRING Src, STRING Dest, LONG Length);
 STRING StrClone(CSTRING String);
 void VarUnlock(struct KeyStore * Store);
 CSTRING ResolveUserID(LONG User);
-ERROR StrSort(CSTRING * List, LONG Flags);
+ERROR CreateLink(CSTRING From, CSTRING To);
 STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags);
 LONG UTF8CharOffset(CSTRING String, LONG Offset);
 LONG UTF8Length(CSTRING String);
@@ -163,7 +163,6 @@ ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
 ERROR ScanDir(struct DirInfo * Info);
 ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);
 ERROR TranslateCmdRef(CSTRING String, STRING * Command);
-ERROR CreateLink(CSTRING From, CSTRING To);
 
 #ifdef  __cplusplus
 }
