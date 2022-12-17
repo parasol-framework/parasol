@@ -1,5 +1,4 @@
-#ifndef USPTCRITLO
-#define USPTCRITLO 1
+#pragma once
 
 // Generator: idl-c
 
@@ -80,4 +79,3 @@
 #define HASH_LOCK 0x7c9a2dce
 #define HASH_STATE 0x10614a06
 
-#endif

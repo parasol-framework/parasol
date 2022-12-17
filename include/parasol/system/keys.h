@@ -1,5 +1,4 @@
-#ifndef SYSTEM_KEYS
-#define SYSTEM_KEYS 1
+#pragma once
 
 // Name:      system/keys.h
 // Copyright: Paul Manias 1996-2016
@@ -190,5 +189,3 @@
 #define K_F3 78
 #define K_DOWN 97
 #define K_NINE 35
-
-#endif

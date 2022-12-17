@@ -1249,7 +1249,7 @@ static void generate_text(objVectorText *Vector)
 
                   DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x) + kx;
 
-                  char_width = char_width * ABS(transform.sx);
+                  char_width = char_width * std::abs(transform.sx);
                   //char_width = char_width * transform.scale();
 
                   // Compute end_vx,end_vy (the last vertex to use for angle computation) and store the distance from start_x,start_y to end_vx,end_vy in dist.
@@ -1354,7 +1354,7 @@ static void generate_text(objVectorText *Vector)
 
                LONG word_width = fntStringWidth(Vector->txFont, str, word_length);
 
-               if ((dx + word_width) * ABS(transform.sx) >= Vector->txInlineSize) {
+               if ((dx + word_width) * std::abs(transform.sx) >= Vector->txInlineSize) {
                   dx = 0;
                   dy += Vector->txFont->LineSpacing;
                }
@@ -1372,7 +1372,7 @@ static void generate_text(objVectorText *Vector)
 
                   DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x) + kx;
 
-                  char_width = char_width * ABS(transform.sx);
+                  char_width = char_width * std::abs(transform.sx);
                   //char_width = char_width * transform.scale();
 
                   transform.translate(dx, dy);

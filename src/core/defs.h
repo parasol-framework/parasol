@@ -1283,44 +1283,6 @@ class ScopedObjectAccess {
 
 //********************************************************************************************************************
 
-INLINE char is_alpha(char c) {
-   return glAlphaNumeric[(LONG)c];
-}
-
-INLINE char UCase(char Case) {
-   if ((Case >= 'a') and (Case <= 'z')) Case -= 0x20;
-   return Case;
-}
-
-INLINE char LCase(char Case) {
-   if ((Case >= 'A') and (Case <= 'Z')) Case = Case - 'A' + 'Z';
-   return Case;
-}
-
-//********************************************************************************************************************
-
-INLINE CSTRING get_extension(CSTRING Path)
-{
-   ULONG i;
-   for (i=0; Path[i]; i++);
-   while ((i > 0) and (Path[i] != '.') and (Path[i] != ':') and (Path[i] != '/') and (Path[i] != '\\')) i--;
-   if (Path[i] IS '.') return Path+i+1;
-   else return NULL;
-}
-
-//********************************************************************************************************************
-
-INLINE CSTRING get_filename(CSTRING Path)
-{
-   ULONG i;
-   for (i=0; Path[i]; i++);
-   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
-   if (Path[i]) return Path+i;
-   else return NULL;
-}
-
-//********************************************************************************************************************
-
 INLINE LARGE calc_timestamp(struct DateTime *Date)
 {
    return(Date->Second +

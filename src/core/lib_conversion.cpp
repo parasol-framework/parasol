@@ -73,8 +73,8 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
                // Convert the two letter code to three letters.
 
                if (code[0]) {
-                  code[0] = LCASE(code[0]);
-                  code[1] = LCASE(code[1]);
+                  code[0] = std::tolower(code[0]);
+                  code[1] = std::tolower(code[1]);
                   for (LONG i=0; i < ARRAYSIZE(glLanguages); i++) {
                      if ((glLanguages[i].Two[0] IS code[0]) and (glLanguages[i].Two[1] IS code[1])) {
                         code[0] = glLanguages[i].Three[0];

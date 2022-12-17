@@ -118,7 +118,7 @@ ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data,
 CSTRING ResolveGroupID(LONG Group);
 LONG StrCopy(CSTRING Src, STRING Dest, LONG Length);
 STRING StrClone(CSTRING String);
-LONG StrLength(CSTRING String);
+void VarUnlock(struct KeyStore * Store);
 CSTRING ResolveUserID(LONG User);
 ERROR StrSort(CSTRING * List, LONG Flags);
 STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags);
@@ -164,7 +164,6 @@ ERROR ScanDir(struct DirInfo * Info);
 ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);
 ERROR TranslateCmdRef(CSTRING String, STRING * Command);
 ERROR CreateLink(CSTRING From, CSTRING To);
-void VarUnlock(struct KeyStore * Store);
 
 #ifdef  __cplusplus
 }

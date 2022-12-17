@@ -1,4 +1,22 @@
 
+inline CSTRING get_extension(CSTRING Path)
+{
+   ULONG i;
+   for (i=0; Path[i]; i++);
+   while ((i > 0) and (Path[i] != '.') and (Path[i] != ':') and (Path[i] != '/') and (Path[i] != '\\')) i--;
+   if (Path[i] IS '.') return Path+i+1;
+   else return NULL;
+}
+
+inline CSTRING get_filename(CSTRING Path)
+{
+   ULONG i;
+   for (i=0; Path[i]; i++);
+   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
+   if (Path[i]) return Path+i;
+   else return NULL;
+}
+
 /*****************************************************************************
 
 -FUNCTION-

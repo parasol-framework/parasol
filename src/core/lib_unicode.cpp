@@ -131,8 +131,6 @@ UTF8Length: Returns the total number of characters in a UTF-8 string.
 
 This function will return the total number of decoded unicode characters in a UTF-8 string.
 
-For the total number of bytes in a string, use ~StrLength() instead.
-
 -INPUT-
 cstr String: Pointer to a UTF-8 string.
 

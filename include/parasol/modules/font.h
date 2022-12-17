@@ -1,19 +1,14 @@
-#ifndef MODULES_FONT
-#define MODULES_FONT 1
+#pragma once
 
 // Name:      font.h
 // Copyright: Paul Manias © 1998-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_FONT (1)
 
-#ifndef MODULES_DISPLAY_H
 #include <parasol/modules/display.h>
-#endif
 
 class objFont;
 
@@ -127,4 +122,3 @@ struct FontBase {
 #define fntSelectFont(...) (FontBase->_SelectFont)(__VA_ARGS__)
 #endif
 
-#endif

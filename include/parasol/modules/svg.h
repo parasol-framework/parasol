@@ -1,13 +1,10 @@
-#ifndef MODULES_SVG
-#define MODULES_SVG 1
+#pragma once
 
 // Name:      svg.h
 // Copyright: Paul Manias © 2010-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_SVG (1)
 
@@ -61,4 +58,3 @@ class objSVG : public BaseClass {
    }
 };
 
-#endif

@@ -1059,7 +1059,7 @@ struct ScriptArg { // For use with scExec
     "ResolveGroupID",
     "StrCopy",
     "StrClone",
-    "StrLength",
+    "VarUnlock",
     "ResolveUserID",
     "StrSort",
     "StrBuildArray",
@@ -1104,8 +1104,7 @@ struct ScriptArg { // For use with scExec
     "ScanDir",
     "IdentifyFile",
     "TranslateCmdRef",
-    "CreateLink",
-    "VarUnlock")
+    "CreateLink")
 
   c_insert([[
 

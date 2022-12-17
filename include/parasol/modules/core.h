@@ -1,13 +1,10 @@
-#ifndef MODULES_CORE
-#define MODULES_CORE 1
+#pragma once
 
 // Name:      core.h
 // Copyright: Paul Manias 1996-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #include <stdarg.h>
 
@@ -1825,7 +1822,7 @@ struct CoreBase {
    CSTRING (*_ResolveGroupID)(LONG);
    LONG (*_StrCopy)(CSTRING, STRING, LONG);
    STRING (*_StrClone)(CSTRING);
-   LONG (*_StrLength)(CSTRING);
+   void (*_VarUnlock)(struct KeyStore *);
    CSTRING (*_ResolveUserID)(LONG);
    ERROR (*_StrSort)(CSTRING *, LONG);
    STRING * (*_StrBuildArray)(STRING, LONG, LONG, LONG);
@@ -1871,7 +1868,6 @@ struct CoreBase {
    ERROR (*_IdentifyFile)(CSTRING, CSTRING, LONG, CLASSID *, CLASSID *, STRING *);
    ERROR (*_TranslateCmdRef)(CSTRING, STRING *);
    ERROR (*_CreateLink)(CSTRING, CSTRING);
-   void (*_VarUnlock)(struct KeyStore *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1989,7 +1985,7 @@ struct CoreBase {
 #define ResolveGroupID(...) (CoreBase->_ResolveGroupID)(__VA_ARGS__)
 #define StrCopy(...) (CoreBase->_StrCopy)(__VA_ARGS__)
 #define StrClone(...) (CoreBase->_StrClone)(__VA_ARGS__)
-#define StrLength(...) (CoreBase->_StrLength)(__VA_ARGS__)
+#define VarUnlock(...) (CoreBase->_VarUnlock)(__VA_ARGS__)
 #define ResolveUserID(...) (CoreBase->_ResolveUserID)(__VA_ARGS__)
 #define StrSort(...) (CoreBase->_StrSort)(__VA_ARGS__)
 #define StrBuildArray(...) (CoreBase->_StrBuildArray)(__VA_ARGS__)
@@ -2035,7 +2031,6 @@ struct CoreBase {
 #define IdentifyFile(...) (CoreBase->_IdentifyFile)(__VA_ARGS__)
 #define TranslateCmdRef(...) (CoreBase->_TranslateCmdRef)(__VA_ARGS__)
 #define CreateLink(...) (CoreBase->_CreateLink)(__VA_ARGS__)
-#define VarUnlock(...) (CoreBase->_VarUnlock)(__VA_ARGS__)
 #endif
 
 
@@ -3695,4 +3690,3 @@ INLINE FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
 inline CSTRING BaseClass::className() { return Class->ClassName; }
 
   
-#endif

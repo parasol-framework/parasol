@@ -89,7 +89,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 
    bool resolved = FALSE;
 #ifdef _WIN32
-   if ((LCASE(Path[0]) >= 'a') and (LCASE(Path[0]) <= 'z') and (Path[1] IS ':')) {
+   if ((std::tolower(Path[0]) >= 'a') and (std::tolower(Path[0]) <= 'z') and (Path[1] IS ':')) {
       resolved = TRUE; // Windows drive letter reference discovered
       if ((Path[2] != '/') and (Path[2] != '\\')) {
          // Ensure that the path is correctly formed in order to pass test_path()

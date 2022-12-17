@@ -1,8 +1,7 @@
 // Fast conversion table routines for rgb -> linear and vice versa.  Implemented as a singleton, so define
 // glLinearRGB to appear once in your binary and use it directly.
 
-#ifndef LINEAR_RGB_H
-#define LINEAR_RGB_H 1
+#pragma once
 
 #include <math.h>
 
@@ -88,5 +87,3 @@ private:
 };
 
 extern rgb_to_linear glLinearRGB;
-
-#endif // LINEAR_RGB_H
