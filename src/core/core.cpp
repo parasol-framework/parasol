@@ -150,9 +150,8 @@ static void print_class_list(void)
    log.trace("Total: %d, %s", glClassDB->Total, buffer);
 }
 
-/*****************************************************************************
-** The _init symbol is used by dlopen() to initialise libraries.
-*/
+//****************************************************************************
+// The _init symbol is used by dlopen() to initialise libraries.
 
 #ifdef __unix__
 /*
@@ -1007,14 +1006,13 @@ EXPORT void CleanSystem(LONG Flags)
    Expunge(FALSE);
 }
 
-/*****************************************************************************
-** If GlobalInstance is TRUE (because OPF_GLOBALINSTANCE was specified to OpenCore()), then the permissions and
-** nature of the public memory can be quite different to that of the standalone runtime environment.
-**
-** Basically, a global instance uses loose shared memory permissions and a bigger shared heap because apps will be
-** sharing more information and using common objects as audio and display surfaces.  OTOH a standalone runtime only
-** needs to concern itself with sharing information with the child processes that it creates (if any).
-*/
+//****************************************************************************
+// If GlobalInstance is TRUE (because OPF_GLOBALINSTANCE was specified to OpenCore()), then the permissions and
+// nature of the public memory can be quite different to that of the standalone runtime environment.
+//
+// Basically, a global instance uses loose shared memory permissions and a bigger shared heap because apps will be
+// sharing more information and using common objects as audio and display surfaces.  OTOH a standalone runtime only
+// needs to concern itself with sharing information with the child processes that it creates (if any).
 
 #define MAGICKEY 0x58392712
 

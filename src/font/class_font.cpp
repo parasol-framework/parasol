@@ -200,12 +200,12 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
             WORD size_shift = 0;
             UWORD font_count = 0;
             LONG font_offset = 0;
-            flReadLE2(file, &size_shift);
+            flReadLE(file, &size_shift);
 
             WORD type_id;
-            for ((error = flReadLE2(file, &type_id)); (!error) and (type_id); error = flReadLE2(file, &type_id)) {
+            for ((error = flReadLE(file, &type_id)); (!error) and (type_id); error = flReadLE(file, &type_id)) {
                WORD count = 0;
-               flReadLE2(file, &count);
+               flReadLE(file, &count);
 
                if ((UWORD)type_id IS 0x8008) {
                   font_count  = count;

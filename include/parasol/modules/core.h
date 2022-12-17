@@ -2178,15 +2178,26 @@ struct BaseClass { // Must be 64-bit aligned
       return oid ? true : false;
    }
 
+   inline ERROR set(ULONG FieldID, LARGE Value) { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERROR set(ULONG FieldID, LONG Value) { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR set(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   // Works both for regular data pointers and function pointers if field is defined correctly.
+   //inline ERROR set(ULONG FieldID, APTR Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
+   inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
+   inline ERROR set(ULONG FieldID, Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
+   inline ERROR set(ULONG FieldID, FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
+   inline ERROR set(ULONG FieldID, CSTRING Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+
 } __attribute__ ((aligned (8)));
 
 #define ClassName(a) ((a)->Class->Name)
 
 INLINE OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 INLINE APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
-#define CONV_TIME_DATETIME(a) ((struct DateTime *)(&(a)->Year))
+#define CONV_TIME_DATETIME(a) ((DateTime *)(&(a)->Year))
 
-INLINE BYTE CMP_DATETIME(struct DateTime *one, struct DateTime *two)
+INLINE BYTE CMP_DATETIME(DateTime *one, DateTime *two)
 {
    if (one->Year < two->Year) return -1;
    if (one->Year > two->Year) return 1;
@@ -2754,10 +2765,10 @@ class objScript : public BaseClass {
 
 #ifdef PRV_SCRIPT
    LARGE    ProcedureID;          // For callbacks
-   struct   KeyStore *Vars;       // Global parameters
+   KeyStore *Vars;                // Global parameters
    STRING   *Results;
    char     Language[4];          // 3-character language code, null-terminated
-   const struct ScriptArg *ProcArgs;  // Procedure args - applies during Exec
+   const ScriptArg *ProcArgs;     // Procedure args - applies during Exec
    STRING   Path;                 // File location of the script
    STRING   String;
    STRING   WorkingPath;
@@ -3238,7 +3249,7 @@ INLINE ERROR SetPointer(OBJECTPTR Object, ULONG FieldID, const void *Value) {
    return SetField(Object, (FIELD)FieldID|TPTR, Value);
 }
 
-INLINE ERROR SetVariable(OBJECTPTR Object, ULONG FieldID, struct Variable *Value) {
+INLINE ERROR SetVariable(OBJECTPTR Object, ULONG FieldID, Variable *Value) {
    return SetField(Object, (FIELD)FieldID|TVAR, Value);
 }
 
@@ -3603,7 +3614,7 @@ INLINE void SET_DEVICE(struct dcDeviceInput *Input, WORD Type, WORD Flags, DOUBL
 //****************************************************************************
 // File Methods.
 
-INLINE CSTRING flReadLine(OBJECTPTR Object) {
+inline CSTRING flReadLine(OBJECTPTR Object) {
    struct flReadLine args;
    if (!Action(MT_FlReadLine, Object, &args)) return args.Result;
    else return NULL;
@@ -3612,13 +3623,10 @@ INLINE CSTRING flReadLine(OBJECTPTR Object) {
 //****************************************************************************
 // Little endian read functions.
 
-INLINE ERROR flReadLE2(OBJECTPTR Object, WORD *Result)
+inline ERROR flReadLE(OBJECTPTR Object, WORD *Result)
 {
-   struct acRead read;
    UBYTE data[2];
-
-   read.Buffer = data;
-   read.Length = 2;
+   struct acRead read = { .Buffer = data, .Length = 2 };
    if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS 2) {
          #ifdef LITTLE_ENDIAN
@@ -3633,10 +3641,9 @@ INLINE ERROR flReadLE2(OBJECTPTR Object, WORD *Result)
    else return ERR_Read;
 }
 
-INLINE ERROR flReadLE4(OBJECTPTR Object, LONG *Result)
+inline ERROR flReadLE(OBJECTPTR Object, LONG *Result)
 {
    UBYTE data[4];
-
    struct acRead read = { data, sizeof(data) };
    if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS sizeof(data)) {
@@ -3652,7 +3659,7 @@ INLINE ERROR flReadLE4(OBJECTPTR Object, LONG *Result)
    else return ERR_Read;
 }
 
-INLINE ERROR flReadLE8(OBJECTPTR Object, LARGE *Result)
+inline ERROR flReadLE(OBJECTPTR Object, LARGE *Result)
 {
    UBYTE data[8];
    struct acRead read = { data, sizeof(data) };
