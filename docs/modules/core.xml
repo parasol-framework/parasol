@@ -1786,21 +1786,6 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
-    <name>RandomNumber</name>
-    <category>System</category>
-    <comment>Generates random numbers.</comment>
-    <prototype>LONG RandomNumber(LONG Range)</prototype>
-    <input>
-      <param type="LONG" name="Range">A range between 1 and 2,147,483,648.  An invalid value will result in 0 being returned.</param>
-    </input>
-    <description>
-<p>This function generates a random number as quickly as possible.  In some cases it will use various hardware attributes in order to create guaranteed random numbers.  The routine uses one divide to determine the range and will automatically change the random seed value each time you call it.  Remember that all generated numbers fall one value below the Range that you specify. Add 1 to your Range if maximum value is inclusive.</p>
-<p>The unique seed used by the PRNG is generated when the Core is opened for the first time.  You can change the seed by calling <function module="Core">SetResource</function> with the <code>RES_RANDOM_SEED</code> option.</p>
-    </description>
-    <result type="LONG">Returns a number greater or equal to 0, and &lt;i&gt;less than&lt;/i&gt; Range.</result>
-  </function>
-
-  <function>
     <name>ReadFileToBuffer</name>
     <category>Files</category>
     <comment>Reads a file into a buffer.</comment>
@@ -2422,7 +2407,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 <type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on AllocMemory().  The Value specifies the memory limit in bytes.</type>
 <type name="LOG_LEVEL">Adjusts the current debug level.  The Value must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</type>
 <type name="PRIVILEGED_USER">If the Value is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</type>
-<type name="RANDOM_SEED">Sets the PRNG seed to the number indicated in Value.</type>
 </types>
     </description>
     <result type="LARGE">Returns the previous value used for the resource that you have set.  If the resource ID that you provide is invalid, NULL is returned.</result>
@@ -4255,7 +4239,6 @@ end
       <const name="PRIVILEGED">This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).</const>
       <const name="PRIVILEGED_USER">If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</const>
       <const name="PROCESS_STATE">Life-cycle stage of the running process</const>
-      <const name="RANDOM_SEED">Changes the PRNG seed value for RandomNumber().</const>
       <const name="THREAD_ID">Return the ID of the current thread.</const>
       <const name="TOTAL_MEMORY">The total amount of installed memory.</const>
       <const name="TOTAL_SHARED_MEMORY">The total amount of shared memory in use.</const>

@@ -85,7 +85,6 @@ FDEF argsOpenDir[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Fla
 FDEF argsPreciseTime[] = { { "Result", FD_LARGE }, { 0, 0 } };
 FDEF argsPrintDiagnosis[] = { { "Void", FD_VOID }, { "Process", FD_LONG }, { "Signal", FD_LONG }, { 0, 0 } };
 FDEF argsProcessMessages[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { "TimeOut", FD_LONG }, { 0, 0 } };
-FDEF argsRandomNumber[] = { { "Result", FD_LONG }, { "Range", FD_LONG }, { 0, 0 } };
 FDEF argsReadFileToBuffer[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Buffer", FD_BUFFER|FD_PTR }, { "BufferSize", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsReallocMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_PTR }, { "Size", FD_LONG }, { "Address", FD_PTR|FD_ALLOC|FD_RESULT }, { "ID", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsRegisterFD[] = { { "Error", FD_LONG|FD_ERROR }, { "FD", FD_PTR }, { "Flags", FD_LONG }, { "Routine", FD_PTR }, { "Data", FD_PTR }, { 0, 0 } };
@@ -205,7 +204,7 @@ const struct Function glFunctions[] = {
    { (APTR)StrReadLocale, "StrReadLocale", argsStrReadLocale },
    { (APTR)GetMemAddress, "GetMemAddress", argsGetMemAddress },
    { (APTR)ProcessMessages, "ProcessMessages", argsProcessMessages },
-   { (APTR)RandomNumber, "RandomNumber", argsRandomNumber },
+   { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },
    { (APTR)ReallocMemory, "ReallocMemory", argsReallocMemory },
    { (APTR)GetMessage, "GetMessage", argsGetMessage },
    { (APTR)ReleaseMemory, "ReleaseMemory", argsReleaseMemory },
@@ -321,7 +320,6 @@ const struct Function glFunctions[] = {
    { (APTR)SaveObjectToFile, "SaveObjectToFile", argsSaveObjectToFile },
    { (APTR)OpenDir, "OpenDir", argsOpenDir },
    { (APTR)ScanDir, "ScanDir", argsScanDir },
-   { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },
    { NULL, NULL, NULL }
 };
 

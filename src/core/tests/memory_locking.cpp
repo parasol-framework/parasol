@@ -98,7 +98,7 @@ static void * test_allocation(struct thread_info *info)
    start = 0;
    for (i=0; i < TOTAL_ALLOC; i++) {
       AllocMemory(1024, MEM_DATA|MEM_NO_CLEAR, &memory[i], NULL);
-      if (RandomNumber(10) > 7) {
+      if (rand() % 10 > 7) {
          for (j=start; j < i; j++) {
             FreeResource(memory[j]);
          }

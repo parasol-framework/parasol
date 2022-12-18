@@ -6310,7 +6310,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                else if (!StrCompare("random]", str, 0, 0)) {
                   // Generate a random string of digits
                   char random[10];
-                  for (j=0; (size_t)j < sizeof(random)-1; j++) random[j] = '0' + RandomNumber(10);
+                  for (j=0; (size_t)j < sizeof(random)-1; j++) random[j] = '0' + (rand() % 10);
                   random[j] = 0;
                   insert_string(random, Buffer, Self->BufferSize, i, sizeof("[%random]")-1);
                }
