@@ -214,8 +214,8 @@ static ERROR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
 
    LONG width = 0;
    LONG height = 0;
-   GetLong(Self->Scene, FID_PageWidth, &width);
-   GetLong(Self->Scene, FID_PageHeight, &height);
+   Self->Scene->get(FID_PageWidth, &width);
+   Self->Scene->get(FID_PageHeight, &height);
 
    if (!width) width = 1920;
    if (!height) height = 1080;
@@ -258,7 +258,7 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
    if ((Args->ClassID) and (Args->ClassID != ID_SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
-      if ((!GetPointer(mc, FID_ActionTable, &routine)) and (routine)) {
+      if ((!mc->getPtr(FID_ActionTable, &routine)) and (routine)) {
          if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
             return routine[AC_SaveToObject](Self, Args);
          }
@@ -300,17 +300,17 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                }
 
                LONG dim;
-               if ((!error) and (!(error = GetLong(Self->Viewport, FID_Dimensions, &dim)))) {
-                  if ((dim & (DMF_RELATIVE_X|DMF_FIXED_X)) and (!GetDouble(Self->Viewport, FID_X, &x)))
+               if ((!error) and (!(error = Self->Viewport->get(FID_Dimensions, &dim)))) {
+                  if ((dim & (DMF_RELATIVE_X|DMF_FIXED_X)) and (!Self->Viewport->get(FID_X, &x)))
                      set_dimension(xml, index, "x", x, dim & DMF_RELATIVE_X);
 
-                  if ((dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) and (!GetDouble(Self->Viewport, FID_Y, &y)))
+                  if ((dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) and (!Self->Viewport->get(FID_Y, &y)))
                      set_dimension(xml, index, "y", y, dim & DMF_RELATIVE_Y);
 
-                  if ((dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) and (!GetDouble(Self->Viewport, FID_Width, &width)))
+                  if ((dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) and (!Self->Viewport->get(FID_Width, &width)))
                      set_dimension(xml, index, "width", width, dim & DMF_RELATIVE_WIDTH);
 
-                  if ((dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) and (!GetDouble(Self->Viewport, FID_Height, &height)))
+                  if ((dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) and (!Self->Viewport->get(FID_Height, &height)))
                      set_dimension(xml, index, "height", height, dim & DMF_RELATIVE_HEIGHT);
                }
 

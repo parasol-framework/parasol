@@ -838,7 +838,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   GetPointer(argModule, FID_Master, &modDocument);
+   argModule->getPtr(FID_Master, &modDocument);
 
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
    if (LoadModule("font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;

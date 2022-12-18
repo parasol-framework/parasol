@@ -127,7 +127,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    if ((CoreBase = opencore(&info))) {
       OBJECTPTR task = CurrentTask();
 
-      if (!GetPointer(task, FID_Actions, &actions)) {
+      if (!task->getPtr(FID_Actions, &actions)) {
          actions[AC_DataFeed] = (APTR)PROGRAM_DataFeed;
       }
    }

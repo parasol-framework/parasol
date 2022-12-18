@@ -746,7 +746,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
-   GetPointer(argModule, FID_Master, &glModule);
+   argModule->getPtr(FID_Master, &glModule);
 
    if (GetSystemState()->Stage < 0) { // An early load indicates that classes are being probed, so just return them.
       create_pointer_class();
@@ -899,7 +899,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          acSetVar(modXRR, "XDisplay", buffer);
          modXRR->set(FID_Name, "xrandr");
          if (!acInit(modXRR)) {
-            if (GetPointer(modXRR, FID_ModBase, &XRandRBase) != ERR_Okay) XRandRBase = NULL;
+            if (modXRR->getPtr(FID_ModBase, &XRandRBase) != ERR_Okay) XRandRBase = NULL;
          }
       }
       else XRandRBase = NULL;

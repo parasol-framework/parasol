@@ -481,7 +481,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          }
          else xml->set(FID_Path, Path);
 
-         if (!GetString(task, FID_Path, &working_path)) working_path = StrClone(working_path);
+         if (!task->get(FID_Path, &working_path)) working_path = StrClone(working_path);
 
          // Set a new working path based on the path
 

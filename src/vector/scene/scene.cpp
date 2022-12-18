@@ -366,8 +366,8 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
 
          if ((!Self->PageWidth) or (!Self->PageHeight)) {
             Self->Flags |= VPF_RESIZE;
-            GetLong(surface, FID_Width, &Self->PageWidth);
-            GetLong(surface, FID_Height, &Self->PageHeight);
+            surface->get(FID_Width, &Self->PageWidth);
+            surface->get(FID_Height, &Self->PageHeight);
          }
 
          SubscribeActionTags(surface, AC_Redimension, AC_Free, AC_Focus, AC_LostFocus, TAGEND);

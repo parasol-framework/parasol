@@ -228,7 +228,7 @@ redo_upload:
       if (error) log.warning("Input file read error: %s", GetErrorMsg(error));
 
       LARGE size;
-      GetLarge(Self->flInput, FID_Size, &size);
+      Self->flInput->get(FID_Size, &size);
 
       if ((Self->flInput->Position IS size) or (len IS 0)) {
          log.trace("All file content read (%d bytes) - freeing file.", (LONG)size);

@@ -336,7 +336,7 @@ void ScintillaParasol::Paste()
                TAGEND)) {
 
             LONG len, size;
-            if ((!GetLong(file, FID_Size, &size)) and (size > 0)) {
+            if ((!file->get(FID_Size, &size)) and (size > 0)) {
                STRING buffer;
                if (!AllocMemory(size, MEM_STRING, &buffer, NULL)) {
                   if (!acRead(file, buffer, size, &len)) {

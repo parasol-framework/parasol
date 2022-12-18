@@ -872,7 +872,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          bmp->set(FID_Handle, (APTR)Self->XWindowHandle);
 
          CSTRING name;
-         if ((!GetPointer(CurrentTask(), FID_Name, &name)) and (name)) {
+         if ((!CurrentTask()->getPtr(FID_Name, &name)) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
@@ -957,7 +957,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          }
 
          STRING name = NULL;
-         GetString(CurrentTask(), FID_Name, &name);
+         CurrentTask()->get(FID_Name, &name);
          HWND popover = 0;
          if (Self->PopOverID) {
             extDisplay *other_display;
@@ -2173,7 +2173,7 @@ static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Ar
    ydest += dest->YOffset;
 
    APTR drawable;
-   GetPointer(dest, FID_Handle, &drawable);
+   dest->getPtr(FID_Handle, &drawable);
 
    win32RedrawWindow(Self->WindowHandle, drawable,
       x, y,
@@ -2575,7 +2575,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
 
          bool maximise = TRUE;
          STRING title;
-         GetString(Self, FID_Title, &title); // Get the window title before we kill it
+         Self->get(FID_Title, &title); // Get the window title before we kill it
 
          OBJECTID surface_id = winLookupSurfaceID(Self->WindowHandle);
          winSetSurfaceID(Self->WindowHandle, 0); // Nullify the surface ID to prevent WM_DESTROY from being acted upon
@@ -2660,7 +2660,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
             return ERR_Failed;
          }
 
-         if ((GetPointer(CurrentTask(), FID_Name, &name) IS ERR_Okay) and (name)) {
+         if ((CurrentTask()->getPtr(FID_Name, &name) IS ERR_Okay) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");

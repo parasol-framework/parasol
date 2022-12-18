@@ -1707,7 +1707,7 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
    parasol::Log log;
    STRING path;
 
-   GetString(Self, FID_Path, &path);
+   Self->get(FID_Path, &path);
 
    if (!path) {
       // If no location has been set, assume that the developer only wants to use the buffer or stream compression routines.

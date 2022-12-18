@@ -160,7 +160,7 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
             TAGEND))) {
 
          LONG filesize;
-         GetLong(file, FID_Size, &filesize);
+         file->get(FID_Size, &filesize);
 
          if (filesize > 0) {
             STRING data;

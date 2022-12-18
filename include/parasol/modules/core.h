@@ -2192,6 +2192,15 @@ struct BaseClass { // Must be 64-bit aligned
 
    inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
 
+   inline ERROR get(ULONG FieldID, LONG *Value) { return GetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR get(ULONG FieldID, LARGE *Value) { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERROR get(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERROR get(ULONG FieldID, STRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR get(ULONG FieldID, CSTRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
+   inline ERROR getPtr(ULONG FieldID, APTR Value) { return GetField(this, (FIELD)FieldID|TPTR, Value); }
+   inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+
 } __attribute__ ((aligned (8)));
 
 #define ClassName(a) ((a)->Class->Name)
@@ -3174,35 +3183,6 @@ class objCompressedStream : public BaseClass {
    OBJECTPTR Output;     // A target object that will receive data compressed by the stream.
    LONG      Format;     // The format of the compressed stream.  The default is GZIP.
 };
-
-
-inline ERROR GetLarge(OBJECTPTR Object, ULONG FieldID, LARGE *Value) {
-   return GetField(Object, (FIELD)FieldID|TLARGE, Value);
-}
-
-inline ERROR GetLong(OBJECTPTR Object, ULONG FieldID, LONG *Value) {
-   return GetField(Object, (FIELD)FieldID|TLONG, Value);
-}
-
-inline ERROR GetDouble(OBJECTPTR Object, ULONG FieldID, DOUBLE *Value) {
-   return GetField(Object, (FIELD)FieldID|TDOUBLE, Value);
-}
-
-inline ERROR GetString(OBJECTPTR Object, ULONG FieldID, STRING *Value) {
-   return GetField(Object, (FIELD)FieldID|TSTRING, Value);
-}
-
-inline ERROR GetPercentage(OBJECTPTR Object, ULONG FieldID, DOUBLE *Value) {
-   return GetField(Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
-}
-
-inline ERROR GetPointer(OBJECTPTR Object, ULONG FieldID, APTR Value) {
-   return GetField(Object, (FIELD)FieldID|TPTR, Value);
-}
-
-inline ERROR GetVariable(OBJECTPTR Object, ULONG FieldID, struct Variable *Value) {
-   return GetField(Object, (FIELD)FieldID|TVAR, Value);
-}
 
 #ifndef PRV_CORE
 

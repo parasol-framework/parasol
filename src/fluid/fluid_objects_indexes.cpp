@@ -207,7 +207,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       if (field->Flags & FD_ARRAY) {
          if (field->Flags & FD_RGB) {
             STRING rgb;
-            if ((!(error = GetString(src, field->FieldID, &rgb))) and (rgb)) {
+            if ((!(error = src->get(field->FieldID, &rgb))) and (rgb)) {
                lua_pushstring(Lua, rgb);
             }
          }
@@ -234,7 +234,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       else if (field->Flags & FD_STRUCT) { // Structs are copied into standard Lua tables.
          APTR result;
          if (field->Arg) {
-            if (!(error = GetPointer(src, field->FieldID, &result))) {
+            if (!(error = src->getPtr(field->FieldID, &result))) {
                if (result) {
                   if (field->Flags & FD_RESOURCE) {
                       push_struct(Lua->Script, result, (CSTRING)field->Arg, (field->Flags & FD_ALLOC) ? TRUE : FALSE, TRUE);
@@ -251,39 +251,39 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       }
       else if (field->Flags & FD_STRING) {
          STRING result;
-         if (!(error = GetString(src, field->FieldID, &result))) lua_pushstring(Lua, result);
+         if (!(error = src->get(field->FieldID, &result))) lua_pushstring(Lua, result);
       }
       else if (field->Flags & FD_POINTER) {
          if (field->Flags & (FD_OBJECT|FD_INTEGRAL)) {
             OBJECTPTR obj;
-            if (!(error = GetPointer(src, field->FieldID, &obj))) {
+            if (!(error = src->getPtr(field->FieldID, &obj))) {
                if (obj) push_object(Lua, obj);
                else lua_pushnil(Lua);
             }
          }
          else {
             APTR result;
-            if (!(error = GetPointer(src, field->FieldID, &result))) lua_pushlightuserdata(Lua, result);
+            if (!(error = src->getPtr(field->FieldID, &result))) lua_pushlightuserdata(Lua, result);
          }
       }
       else if (field->Flags & FD_DOUBLE) {
          DOUBLE result;
-         if (!(error = GetDouble(src, field->FieldID, &result))) lua_pushnumber(Lua, result);
+         if (!(error = src->get(field->FieldID, &result))) lua_pushnumber(Lua, result);
       }
       else if (field->Flags & FD_LARGE) {
          LARGE result;
-         if (!(error = GetLarge(src, field->FieldID, &result))) lua_pushnumber(Lua, result);
+         if (!(error = src->get(field->FieldID, &result))) lua_pushnumber(Lua, result);
       }
       else if (field->Flags & FD_LONG) {
          if (field->Flags & FD_UNSIGNED) {
             ULONG result;
-            if (!(error = GetLong(src, field->FieldID, (LONG *)&result))) {
+            if (!(error = src->get(field->FieldID, (LONG *)&result))) {
                lua_pushnumber(Lua, result);
             }
          }
          else {
             LONG result;
-            if (!(error = GetLong(src, field->FieldID, &result))) {
+            if (!(error = src->get(field->FieldID, &result))) {
                if (field->Flags & FD_OBJECT) push_object_id(Lua, result);
                else lua_pushinteger(Lua, result);
             }

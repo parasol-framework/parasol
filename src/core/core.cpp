@@ -1873,7 +1873,7 @@ static ERROR load_modules(void)
    }
    else if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, glModuleBinPath, FID_Flags|TLONG, FL_READ, TAGEND)) {
       LONG size;
-      if (!(error = GetLong(file, FID_Size, &size))) {
+      if (!(error = file->get(FID_Size, &size))) {
          if (!(error = AllocMemory(size, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID))) {
             error = acRead(file, glModules, size, NULL);
          }

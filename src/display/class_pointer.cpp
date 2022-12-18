@@ -152,7 +152,7 @@ static ERROR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args
    OBJECTPTR surface;
 
    if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
-      GetPointer(surface, FID_WindowHandle, &xwin);
+      surface->getPtr(FID_WindowHandle, &xwin);
       ReleaseObject(surface);
 
       if (xwin) XGrabPointer(XDisplay, (Window)xwin, True, 0, GrabModeAsync, GrabModeAsync, (Window)xwin, None, CurrentTime);
@@ -653,7 +653,7 @@ static ERROR PTR_Hide(extPointer *Self, APTR Void)
       OBJECTPTR surface;
 
       if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR_Okay) {
-         GetPointer(surface, FID_WindowHandle, &xwin);
+         surface->getPtr(FID_WindowHandle, &xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
       }
@@ -792,7 +792,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
    if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
       APTR xwin;
 
-      if (!GetPointer(surface, FID_WindowHandle, &xwin)) {
+      if (!surface->getPtr(FID_WindowHandle, &xwin)) {
          if (Args->Flags & MTF_X) Self->X = Args->X;
          if (Args->Flags & MTF_Y) Self->Y = Args->Y;
          if (Self->X < 0) Self->X = 0;
@@ -962,7 +962,7 @@ static ERROR PTR_Show(extPointer *Self, APTR Void)
       OBJECTPTR surface;
 
       if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
-         GetPointer(surface, FID_WindowHandle, &xwin);
+         surface->getPtr(FID_WindowHandle, &xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
       }

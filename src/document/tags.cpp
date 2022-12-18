@@ -1775,7 +1775,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
          // Pass document arguments to the script
 
          KeyStore *vs;
-         if (!GetPointer(script, FID_Variables, &vs)) {
+         if (!script->getPtr(FID_Variables, &vs)) {
             VarCopy(Self->Vars, vs);
             VarCopy(Self->Params, vs);
          }

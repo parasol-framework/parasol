@@ -412,15 +412,15 @@ static ERROR VIEW_GET_Height(extVectorViewport *Self, Variable *Value)
       if (Self->vpDimensions & DMF_RELATIVE_Y) y = Self->vpTargetY * Self->ParentView->vpFixedHeight;
       else y = Self->vpTargetY;
 
-      if (Self->ParentView) GetDouble(Self->ParentView, FID_Height, &parent_height);
+      if (Self->ParentView) Self->ParentView->get(FID_Height, &parent_height);
       else parent_height = Self->Scene->PageHeight;
 
       if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) val = parent_height - Self->vpTargetYO - y;
       else val = parent_height - (Self->vpTargetYO * parent_height) - y;
    }
    else { // If no height set by the client, the full height is inherited from the parent
-      if (Self->ParentView) return GetVariable(Self->ParentView, FID_Height, Value);
-      else GetDouble(Self->Scene, FID_PageHeight, &val);
+      if (Self->ParentView) return Self->ParentView->get(FID_Height, Value);
+      else Self->Scene->get(FID_PageHeight, &val);
    }
 
    if (Value->Type & FD_DOUBLE) Value->Double = val;
@@ -652,15 +652,15 @@ static ERROR VIEW_GET_Width(extVectorViewport *Self, Variable *Value)
       if (Self->vpDimensions & DMF_RELATIVE_X) x = Self->vpTargetX * Self->ParentView->vpFixedWidth;
       else x = Self->vpTargetX;
 
-      if (Self->ParentView) GetDouble(Self->ParentView, FID_Width, &parent_width);
+      if (Self->ParentView) Self->ParentView->get(FID_Width, &parent_width);
       else parent_width = Self->Scene->PageWidth;
 
       if (Self->vpDimensions & DMF_FIXED_X_OFFSET) val = parent_width - Self->vpTargetXO - x;
       else val = parent_width - (Self->vpTargetXO * parent_width) - x;
    }
    else { // If no width set by the client, the full width is inherited from the parent
-      if (Self->ParentView) return GetVariable(Self->ParentView, FID_Width, Value);
-      else GetDouble(Self->Scene, FID_PageWidth, &val);
+      if (Self->ParentView) return Self->ParentView->get(FID_Width, Value);
+      else Self->Scene->get(FID_PageWidth, &val);
    }
 
    if (Value->Type & FD_DOUBLE) Value->Double = val;

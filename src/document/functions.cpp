@@ -2578,7 +2578,7 @@ list_repass:
                   LONG cellwidth, cellheight, align, leftmargin, lineheight, zone_height;
                   OBJECTID layout_surface_id;
 
-                  if ((FindField(object, FID_LayoutSurface, NULL)) and (!GetLong(object, FID_LayoutSurface, &layout_surface_id))) {
+                  if ((FindField(object, FID_LayoutSurface, NULL)) and (!object->get(FID_LayoutSurface, &layout_surface_id))) {
                      objSurface *surface;
                      LONG new_x, new_y, new_width, new_height, calc_x;
 
@@ -2755,7 +2755,7 @@ list_repass:
                         dimensions = 0;
                      }
                   }
-                  else if ((FindField(object, FID_Layout, NULL)) and (!GetPointer(object, FID_Layout, &layout))) {
+                  else if ((FindField(object, FID_Layout, NULL)) and (!object->getPtr(FID_Layout, &layout))) {
                      leftmargin = l.left_margin - AbsX;
                      lineheight = (l.base_line) ? l.base_line : l.font->Ascent;
 
@@ -4309,7 +4309,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                      if (object) {
                         objLayout *layout;
 
-                        if ((FindField(object, FID_Layout, NULL)) and (!GetPointer(object, FID_Layout, &layout))) {
+                        if ((FindField(object, FID_Layout, NULL)) and (!object->getPtr(FID_Layout, &layout))) {
                            if (layout->DrawCallback.Type) {
                               // If the graphic is within a cell, ensure that the graphic does not exceed
                               // the dimensions of the cell.
@@ -6615,7 +6615,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                            name[j] = 0;
                            if (!AccessObject(objectid, 2000, &object)) {
                               if (((classfield = FindField(object, StrHash(name, FALSE), &target))) and (classfield->Flags & FD_STRING)) {
-                                 error = GetString(object, classfield->FieldID, &strbuf);
+                                 error = object->get(classfield->FieldID, &strbuf);
                               }
                               else { // Get field as a variable type and manage any buffer overflow
 repeat:
@@ -7730,14 +7730,14 @@ static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
          if (!AccessObject(Reference, 3000, &object)) {
             regionid = 0;
             if (FindField(object, FID_Region, NULL)) {
-               if (!GetLong(object, FID_Region, &regionid)) {
+               if (!object->get(FID_Region, &regionid)) {
                   if (GetClassID(regionid) != ID_SURFACE) regionid = 0;
                }
             }
 
             if (!regionid) {
                if (FindField(object, FID_Surface, NULL)) {
-                  if (!GetLong(object, FID_Surface, &regionid)) {
+                  if (!object->get(FID_Surface, &regionid)) {
                      if (GetClassID(regionid) != ID_SURFACE) regionid = 0;
                   }
                }
@@ -7808,7 +7808,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
          if (class_id IS ID_VECTORTEXT) {
             if (!AccessObject(Self->Tabs[Index].Ref, 1000, &input)) {
                acFocus(input);
-               //if ((GetPointer(input, FID_UserInput, &text) IS ERR_Okay) and (text)) {
+               //if ((input->getPtr(FID_UserInput, &text) IS ERR_Okay) and (text)) {
                //   txtSelectArea(text, 0,0, 200000, 200000);
                //}
                ReleaseObject(input);

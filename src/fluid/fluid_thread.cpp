@@ -89,7 +89,7 @@ static int thread_script(lua_State *Lua)
 static ERROR thread_script_entry(objThread *Thread)
 {
    thread_callback *cb;
-   if (!GetPointer(Thread, FID_Data, &cb)) {
+   if (!Thread->getPtr(FID_Data, &cb)) {
       acActivate(cb->threadScript);
       acFree(cb->threadScript);
    }
@@ -104,7 +104,7 @@ static ERROR thread_script_callback(objThread *Thread)
    parasol::Log log("thread");
    thread_callback *cb;
 
-   if ((!GetPointer(Thread, FID_Data, &cb)) and (cb)) {
+   if ((!Thread->getPtr(FID_Data, &cb)) and (cb)) {
       objScript *script;
       if (!AccessObject(cb->mainScriptID, 4000, &script)) {
          auto prv = (prvFluid *)script->ChildPrivate;

@@ -264,7 +264,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
-   GetPointer(argModule, FID_Master, &modFont);
+   argModule->getPtr(FID_Master, &modFont);
 
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
@@ -283,7 +283,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       if (refresh) fntRefreshFonts();
 
       ConfigGroups *groups;
-      if (not ((!GetPointer(glConfig, FID_Data, &groups)) and (groups->size() > 0))) {
+      if (not ((!glConfig->getPtr(FID_Data, &groups)) and (groups->size() > 0))) {
          log.error("No system fonts are available for use.");
          return ERR_Failed;
       }
@@ -399,7 +399,7 @@ static ERROR fntGetList(FontList **Result)
 
    size_t size = 0;
    ConfigGroups *groups;
-   if (!GetPointer(glConfig, FID_Data, &groups)) {
+   if (!glConfig->getPtr(FID_Data, &groups)) {
       for (auto & [group, keys] : groups[0]) {
          size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + (keys["Points"].size()*4) + 1;
       }
@@ -970,7 +970,7 @@ static ERROR fntRemoveFont(CSTRING Name)
    // Delete all files related to this font
 
    ConfigGroups *groups;
-   if (!GetPointer(glConfig, FID_Data, &groups)) {
+   if (!glConfig->getPtr(FID_Data, &groups)) {
       for (auto & [group, keys] : *groups) {
          if (StrMatch(Name, keys["Name"].c_str())) continue;
 
@@ -1064,7 +1064,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    ConfigGroups *groups;
-   if (GetPointer(glConfig, FID_Data, &groups)) return ERR_Search;
+   if (glConfig->getPtr(FID_Data, &groups)) return ERR_Search;
 
    bool multi = (Flags & FTF_ALLOW_SCALE) ? true : false; // ALLOW_SCALE is equivalent to '*' for fixed fonts
 
@@ -1282,7 +1282,7 @@ static ERROR fntRefreshFonts(void)
    log.trace("Generating style lists for each font.");
 
    ConfigGroups *groups;
-   if (!GetPointer(glConfig, FID_Data, &groups)) {
+   if (!glConfig->getPtr(FID_Data, &groups)) {
       for (auto & [group, keys] : *groups) {
          std::list <std::string> styles;
          for (auto & [k, v] : keys) {
@@ -1528,7 +1528,7 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
 
                if (type_id IS 0x8008) {
                   font_count  = count;
-                  GetLong(file.obj, FID_Position, &font_offset);
+                  file.obj->get(FID_Position, &font_offset);
                   font_offset = font_offset + 4;
                   break;
                }

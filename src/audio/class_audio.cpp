@@ -2212,7 +2212,7 @@ static void load_config(extAudio *Self)
       // Find the mixer section, then load the mixer information
 
       ConfigGroups *groups;
-      if (!GetPointer(config, FID_Data, &groups)) {
+      if (!config->getPtr(FID_Data, &groups)) {
          LONG j = 0;
          for (auto& [group, keys] : groups[0]) {
             if (!StrMatch("MIXER", group.c_str())) {

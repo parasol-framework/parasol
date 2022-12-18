@@ -372,7 +372,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
       parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 8000);
       if (volumes.granted()) {
          ConfigGroups *groups;
-         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+         if (!glVolumes->getPtr(FID_Data, &groups)) {
             for (auto& [group, keys] : groups[0]) {
                if ((!StrCompare(Path, keys["Name"].c_str(), len-1, 0)) and
                    (keys["Name"].size() IS (size_t)len-1)) {
@@ -822,7 +822,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
       parasol::ScopedObjectLock<objConfig> volumes(glVolumes);
       if (volumes.granted()) {
          ConfigGroups *groups;
-         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+         if (!glVolumes->getPtr(FID_Data, &groups)) {
             for (auto& [group, keys] : groups[0]) {
                if (!StrMatch(NameBuffer, keys["Name"].c_str())) {
                   if (keys.contains("Hidden")) {
@@ -918,7 +918,7 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
    ERROR error;
    if (!(error = CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&cfgprog, FID_Path|TSTR, "config:software/programs.cfg", TAGEND))) {
       ConfigGroups *groups;
-      if (!GetPointer(cfgprog, FID_Data, &groups)) {
+      if (!cfgprog->getPtr(FID_Data, &groups)) {
          error = ERR_Failed;
          for (auto& [group, keys] : groups[0]) {
             if (!StrMatch(buffer, group.c_str())) {
@@ -995,8 +995,8 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
    OBJECTPTR file = NULL;
    if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path, FID_Flags|TLONG, FL_READ|FL_FILE, TAGEND)) {
       LARGE timestamp, file_size;
-      GetLarge(file, FID_Size, &file_size);
-      GetLarge(file, FID_TimeStamp, &timestamp);
+      file->get(FID_Size, &file_size);
+      file->get(FID_TimeStamp, &timestamp);
 
       CacheFileIndex index(path, timestamp, file_size);
 
@@ -2956,7 +2956,7 @@ restart:
          for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
 
          ConfigGroups *groups;
-         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+         if (!glVolumes->getPtr(FID_Data, &groups)) {
             for (auto& [group, keys] : groups[0]) {
                if (not keys.contains("Name")) continue;
                auto& name = keys["Name"];

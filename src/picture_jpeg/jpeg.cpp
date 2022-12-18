@@ -51,7 +51,7 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
    if (Self->Bitmap->initialised()) return ERR_Okay;
 
    if (!Self->prvFile) {
-      if (GetString(Self, FID_Location, &location) != ERR_Okay) return log.warning(ERR_GetField);
+      if (Self->get(FID_Location, &location) != ERR_Okay) return log.warning(ERR_GetField);
 
       if (CreateObject(ID_FILE, 0, &Self->prvFile,
             FID_Location|TSTR, location,
@@ -182,7 +182,7 @@ static ERROR JPEG_Init(prvPicture *Self, APTR Void)
    UBYTE *buffer;
    STRING path = NULL;
 
-   GetString(Self, FID_Location, &path);
+   Self->get(FID_Location, &path);
 
    if ((!path) or (Self->Flags & PCF_NEW)) {
       // If no location has been specified, assume that the picture is being created from scratch (e.g. to save an image to disk).  The
@@ -199,7 +199,7 @@ static ERROR JPEG_Init(prvPicture *Self, APTR Void)
       }
       else return log.warning(ERR_FieldNotSet);
    }
-   else if (!GetPointer(Self, FID_Header, &buffer)) {
+   else if (!Self->getPtr(FID_Header, &buffer)) {
       if ((buffer[0] IS 0xff) and (buffer[1] IS 0xd8) and (buffer[2] IS 0xff) and
           ((buffer[3] IS 0xe0) or (buffer[3] IS 0xe1) or (buffer[3] IS 0xfe))) {
          log.msg("The file is a JPEG picture.");
@@ -224,7 +224,7 @@ static ERROR JPEG_Query(prvPicture *Self, APTR Void)
 
    if (!Self->prvFile) {
       STRING path;
-      if (GetString(Self, FID_Location, &path) != ERR_Okay) return log.warning(ERR_GetField);
+      if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
       if (CreateObject(ID_FILE, 0, &Self->prvFile,
             FID_Path|TPTR,   path,
@@ -277,7 +277,7 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    }
    else {
       STRING path;
-      if (GetString(Self, FID_Location, &path) != ERR_Okay) {
+      if (Self->get(FID_Location, &path) != ERR_Okay) {
          log.warning(ERR_MissingPath);
          return ERR_GetField;
       }
