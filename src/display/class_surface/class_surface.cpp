@@ -77,8 +77,7 @@ void refresh_pointer(extSurface *Self)
 {
    if (!glRefreshPointerTimer) {
       parasol::SwitchContext context(glModule);
-      FUNCTION call;
-      SET_FUNCTION_STDC(call, (APTR)&refresh_pointer_timer);
+      auto call = make_function_stdc(refresh_pointer_timer);
       SubscribeTimer(0.02, &call, &glRefreshPointerTimer);
    }
 }
@@ -1739,12 +1738,10 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    // format on login.
 
    if ((!Self->ParentID) and (!StrMatch("SystemSurface", GetName(Self)))) {
-      FUNCTION call;
-
-      SET_FUNCTION_STDC(call, (APTR)event_task_removed);
+      auto call = make_function_stdc(event_task_removed);
       SubscribeEvent(EVID_SYSTEM_TASK_REMOVED, &call, &Self->UID, &Self->TaskRemovedHandle);
 
-      SET_FUNCTION_STDC(call, (APTR)event_user_login);
+      call = make_function_stdc(event_user_login);
       SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, &Self->UID, &Self->UserLoginHandle);
    }
 
@@ -2443,9 +2440,8 @@ static ERROR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
       return ERR_Okay;
    }
 
-   FUNCTION callback;
-   SET_FUNCTION_STDC(callback, (APTR)&redraw_timer);
-   if (!SubscribeTimer(1.0/FPS, &callback, &Self->RedrawTimer)) {
+   auto call = make_function_stdc(redraw_timer);
+   if (!SubscribeTimer(1.0/FPS, &call, &Self->RedrawTimer)) {
       Self->RedrawCountdown = FPS * 30;
       Self->RedrawScheduled = TRUE;
       return ERR_Okay;

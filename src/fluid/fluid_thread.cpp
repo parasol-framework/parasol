@@ -166,11 +166,11 @@ static int thread_action(lua_State *Lua)
    LONG type = lua_type(Lua, 3); // Optional callback.
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, 3));
-      SET_FUNCTION_SCRIPT(callback, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      callback = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
    else if (type IS LUA_TFUNCTION) {
       lua_pushvalue(Lua, 3);
-      SET_FUNCTION_SCRIPT(callback, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+      callback = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
    else callback.Type = 0;
 
@@ -275,11 +275,11 @@ static int thread_method(lua_State *Lua)
                LONG type = lua_type(Lua, 3); // Optional callback.
                if (type IS LUA_TSTRING) {
                   lua_getglobal(Lua, (STRING)lua_tostring(Lua, 3));
-                  SET_FUNCTION_SCRIPT(callback, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                  callback = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else if (type IS LUA_TFUNCTION) {
                   lua_pushvalue(Lua, 3);
-                  SET_FUNCTION_SCRIPT(callback, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                  callback = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else callback.Type = 0;
 

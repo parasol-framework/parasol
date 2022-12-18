@@ -686,13 +686,12 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    if (!write_socket(Self, cmd, len, NULL)) {
       if (Self->Socket->State IS NTC_DISCONNECTED) {
          if ((result = nsConnect(Self->Socket, Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port)) IS ERR_Okay) {
-            Self->Connecting = TRUE;
+            Self->Connecting = true;
 
             if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
             else {
-               FUNCTION callback;
-               SET_FUNCTION_STDC(callback, (APTR)&timeout_manager);
-               SubscribeTimer(Self->ConnectTimeout, &callback, &Self->TimeoutManager);
+               auto call = make_function_stdc(timeout_manager);
+               SubscribeTimer(Self->ConnectTimeout, &call, &Self->TimeoutManager);
             }
 
             return ERR_Okay;

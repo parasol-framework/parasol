@@ -1026,8 +1026,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
    CopyMemory(bmp->ColourFormat, &glColourFormat, sizeof(glColourFormat));
 
-   FUNCTION call;
-   SET_FUNCTION_STDC(call, (APTR)user_login);
+   auto call = make_function_stdc(user_login);
    SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, Self, &Self->UserLoginHandle);  // Get notifications of user login because changes may be required to the display.
 
    if (glSixBitDisplay) Self->Flags |= SCR_BIT_6;

@@ -411,15 +411,13 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
       }
       else if (field->Flags & FD_FUNCTION) {
          if (type IS LUA_TSTRING) {
-            FUNCTION func;
             lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
-            SET_FUNCTION_SCRIPT(func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            auto func = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return src->set(field->FieldID, &func);
          }
          else if (type IS LUA_TFUNCTION) {
-            FUNCTION func;
             lua_pushvalue(Lua, ValueIndex);
-            SET_FUNCTION_SCRIPT(func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            auto func = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
             return src->set(field->FieldID, &func);
          }
          else return ERR_FieldTypeMismatch;

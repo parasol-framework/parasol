@@ -1102,7 +1102,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
       // Execute the thread that will call the action.  Refer to thread_action() for the routine.
 
       if (!error) {
-         SET_FUNCTION_STDC(thread->Routine, (APTR)&thread_action);
+         thread->Routine = make_function_stdc(thread_action);
 
          auto call = (thread_data *)call_data;
          call->Object   = Object;

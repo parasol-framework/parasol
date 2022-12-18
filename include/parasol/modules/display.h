@@ -25,7 +25,7 @@ class objSurface;
 
 #undef NULL
 #define NULL 0
-    
+
 #endif
 
 #define DRAG_NONE 0
@@ -572,7 +572,7 @@ class objBitmap : public BaseClass {
    template <class T> inline UBYTE unpackGreen(T Packed) { return (((Packed >> ColourFormat->GreenPos) & ColourFormat->GreenMask) << ColourFormat->GreenShift); }
    template <class T> inline UBYTE unpackBlue(T Packed)  { return (((Packed >> ColourFormat->BluePos) & ColourFormat->BlueMask) << ColourFormat->BlueShift); }
    template <class T> inline UBYTE unpackAlpha(T Packed) { return (((Packed >> ColourFormat->AlphaPos) & ColourFormat->AlphaMask)); }
-  
+
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
@@ -838,7 +838,7 @@ class objClipboard : public BaseClass {
 #ifdef PRV_CLIPBOARD
    FUNCTION RequestHandler;
    BYTE     ClusterAllocated:1;
-  
+
 #endif
    // Action stubs
 
@@ -990,7 +990,7 @@ class objSurface : public BaseClass {
    DOUBLE   YOffsetPercent;       // Relative vertical offset
    DOUBLE   WidthPercent, HeightPercent; // Relative width and height
    DOUBLE   XPercent, YPercent;   // Relative coordinate
-  
+
 #endif
    // Action stubs
 
@@ -1180,9 +1180,8 @@ INLINE ERROR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment)
 
 INLINE ERROR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
-      FUNCTION func;
-      SET_FUNCTION_STDC(func, Callback);
-      struct drwAddCallback args = { &func };
+      auto call = make_function_stdc(Callback);
+      struct drwAddCallback args = { &call };
       return Action(MT_DrwAddCallback, Surface, &args);
    }
    else {
@@ -1193,9 +1192,8 @@ INLINE ERROR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
 
 INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
    if (Callback) {
-      FUNCTION func;
-      SET_FUNCTION_STDC(func, Callback);
-      struct drwRemoveCallback args = { &func };
+      auto call = make_function_stdc(Callback);
+      struct drwRemoveCallback args = { &call };
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }
    else {
@@ -1203,4 +1201,4 @@ INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }
 }
-  
+

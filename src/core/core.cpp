@@ -752,8 +752,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
          glSharedControl->InstanceMsgPort = glTaskMessageMID;
 
-         FUNCTION call;
-         SET_FUNCTION_STDC(call, (APTR)&process_janitor);
+         auto call = make_function_stdc(process_janitor);
          SubscribeTimer(60, &call, &glProcessJanitor);
       }
       else {

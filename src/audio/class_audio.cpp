@@ -929,12 +929,10 @@ static ERROR AUDIO_Init(extAudio *Self, APTR Void)
 
    log.msg("Subscribing to events.");
 
-   FUNCTION call;
-
-   SET_FUNCTION_STDC(call, (APTR)task_removed);
+   auto call = make_function_stdc(task_removed);
    SubscribeEvent(EVID_SYSTEM_TASK_REMOVED, &call, (APTR)(MAXINT)Self->UID, (APTR)&Self->TaskRemovedHandle);
 
-   SET_FUNCTION_STDC(call, (APTR)user_login);
+   call = make_function_stdc(user_login);
    SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, (APTR)(MAXINT)Self->UID, (APTR)&Self->UserLoginHandle);
 
    return ERR_Okay;
@@ -1117,9 +1115,7 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
    else return log.warning(ERR_AllocMemory);
 }
 
-/*********************************************************************************************************************
-** Audio: ReleaseObject
-*/
+//********************************************************************************************************************
 
 static ERROR AUDIO_ReleaseObject(extAudio *Self, APTR Void)
 {

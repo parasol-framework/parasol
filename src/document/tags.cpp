@@ -2591,7 +2591,7 @@ static void tag_trigger(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
          if (!scGetProcedureID(script, function_name, &function_id)) {
             DocTrigger *trigger;
             if (!AllocMemory(sizeof(DocTrigger), MEM_DATA|MEM_NO_CLEAR, &trigger, NULL)) {
-               SET_FUNCTION_SCRIPT(trigger->Function, script, function_id);
+               trigger->Function = make_function_script(script, function_id);
                trigger->Next = Self->Triggers[trigger_code];
                Self->Triggers[trigger_code] = trigger;
             }

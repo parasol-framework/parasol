@@ -313,12 +313,11 @@ int main(int argc, CSTRING *argv)
 
          glScriptReceivedMsg = AllocateID(IDTYPE_MESSAGE);
 
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&msg_script_received);
-         AddMsgHandler(NULL, glScriptReceivedMsg, &callback, NULL);
+         auto call = make_function_stdc(msg_script_received);
+         AddMsgHandler(NULL, glScriptReceivedMsg, &call, NULL);
 
-         SET_FUNCTION_STDC(callback, (APTR)&read_stdin);
-         CurrentTask()->set(FID_InputCallback, &callback);
+         call = make_function_stdc(read_stdin);
+         CurrentTask()->set(FID_InputCallback, &call);
 
          ProcessMessages(0, -1);
 

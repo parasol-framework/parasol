@@ -175,9 +175,8 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       //
       // We also need the subscription to fulfil the Deactivate contract.
 
-      FUNCTION callback;
-      SET_FUNCTION_STDC(callback, (APTR)&playback_timer);
-      SubscribeTimer(0.25, &callback, &Self->Timer);
+      auto call = make_function_stdc(playback_timer);
+      SubscribeTimer(0.25, &call, &Self->Timer);
 
       // Play the audio buffer
 
@@ -254,9 +253,8 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             //
             // We also need the subscription to fulfil the Deactivate contract.
 
-            FUNCTION callback;
-            SET_FUNCTION_STDC(callback, (APTR)&playback_timer);
-            SubscribeTimer(0.25, NULL, &Self->Timer);
+            auto call = make_function_stdc(playback_timer);
+            SubscribeTimer(0.25, &call, &Self->Timer);
             return ERR_Okay;
          }
          else return log.warning(ERR_Failed);

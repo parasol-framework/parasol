@@ -27,9 +27,8 @@ static ERROR SVG_Activate(extSVG *Self, APTR Void)
 {
    if (Self->Animated) {
       if (!Self->AnimationTimer) {
-         FUNCTION timer;
-         SET_FUNCTION_STDC(timer, (APTR)animation_timer);
-         SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, &timer, &Self->AnimationTimer);
+         auto call = make_function_stdc(animation_timer);
+         SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, &call, &Self->AnimationTimer);
       }
       else UpdateTimer(Self->AnimationTimer, 1.0 / (DOUBLE)Self->FrameRate);
    }

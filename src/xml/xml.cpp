@@ -244,9 +244,8 @@ static ERROR XML_Count(extXML *Self, struct xmlCount *Args)
    tlXMLCounter = 0;
    XMLTag *tags = Self->Tags[Self->RootIndex];
 
-   FUNCTION callback;
-   SET_FUNCTION_STDC(callback, (APTR)&xml_count);
-   find_tag(Self, tags, Args->XPath, NULL, &callback);
+   auto call = make_function_stdc(xml_count);
+   find_tag(Self, tags, Args->XPath, NULL, &call);
 
    Args->Result = tlXMLCounter;
    return ERR_Okay;
