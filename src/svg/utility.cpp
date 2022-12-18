@@ -583,7 +583,7 @@ static void convert_styles(objXML *XML)
                else log.warning("Style string missing ':' to denote value: %s", value);
             }
 
-            xmlSetAttrib(XML, tagindex, XMS_UPDATE, "style", NULL); // Remove the style attribute.
+            xmlSetAttrib(XML, tagindex, XMS_UPDATE, "style", (CSTRING)NULL); // Remove the style attribute.
             break;
          }
       }
