@@ -41,13 +41,13 @@ function testGet()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- curl -v -X POST http://ptsv2.com/t/bgef9-1605557717/post -d "fname=smith&amp;lname=jones"
+-- curl -v -X POST http://httpbin.org/post -d "fname=smith&lname=jones"
 
 function testPostString()
    local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
-      src        = 'http://ptsv2.com/t/bgef9-1605557717/post', // See results at http://ptsv2.com/t/bgef9-1605557717
+      src        = 'http://httpbin.org/post',
       method     = 'post',
       flags      = '!debug|NoHead',
       outputFile = glOutFile,
@@ -55,7 +55,7 @@ function testPostString()
       outgoing = function(HTTP, BufferSize)
          if (testPostStringCompleted) then error('This routine has been called a second time.') end
          print('Request for data received.')
-         HTTP.acWrite('fname=smith&amp;lname=jones')
+         HTTP.acWrite('fname=smith&lname=jones')
          testPostStringCompleted = true
          check(ERR_Terminate)
       end,
@@ -82,10 +82,10 @@ end
 
 function testPostStringFile()
    local proc = processing.new({ timeout = 5.0 })
-   local body = 'fname=joe&amp;lname=bloggs'
+   local body = 'fname=joe&lname=bloggs'
 
    local http = obj.new('http', {
-      src        = 'http://ptsv2.com/t/bgef9-1605557717/post', // See results at http://ptsv2.com/t/bgef9-1605557717
+      src        = 'http://httpbin.org/post',
       method     = 'post',
       contentType = 'text/plain',
       flags      = '!debug|NoHead',
@@ -96,7 +96,7 @@ function testPostStringFile()
             proc.signal()
          end
       end,
-      incoming = function(HTTP, Buffer, BufferSize)
+      incoming = function(HTTP, Buffer)
          print(Buffer)
       end
    })
