@@ -3433,7 +3433,7 @@ struct SharedControl {
 
 // Class database.
 
-#define CL_ITEMS(c)        (ClassItem *)( (BYTE *)(c) + sizeof(ClassHeader) + ((c)->Total<<2) )
+#define CL_ITEMS(c)        (ClassItem *)((BYTE *)(c) + sizeof(ClassHeader) + ((c)->Total<<2) )
 #define CL_OFFSETS(c)      ((LONG *)((c) + 1))
 #define CL_SIZE_OFFSETS(c) (sizeof(LONG) * (c)->Total)
 #define CL_ITEM(c,i)       ((ClassItem *)((BYTE *)(c) + offsets[(i)]))

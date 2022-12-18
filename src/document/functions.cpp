@@ -8457,9 +8457,8 @@ static void reset_cursor(extDocument *Self)
    Self->CursorState = 1;
    if (Self->FlashTimer) UpdateTimer(Self->FlashTimer, 0.5);
    else {
-      FUNCTION function;
-      SET_FUNCTION_STDC(function, (APTR)&flash_cursor);
-      SubscribeTimer(0.5, &function, (APTR)&Self->FlashTimer);
+      auto call = make_function_stdc(flash_cursor);
+      SubscribeTimer(0.5, &call, (APTR)&Self->FlashTimer);
    }
 }
 

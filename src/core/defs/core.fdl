@@ -1535,11 +1535,11 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
   })
 
   class("File", { version=1.2, src="../classes/class_file.cpp", output="../classes/class_file_def.c" }, [[
-    large Position   # The current read/write byte position in a file.
-    int(FL) Flags    # File flags and options.
-    int   Static     # Set to TRUE if a file object should be static.
-    oid   Target     # Specifies a surface ID to target for user feedback and dialog boxes.
-    ptr(char) Buffer # Points to the internal data buffer if the file content is held in memory.
+    large     Position  # The current read/write byte position in a file.
+    int(FL)   Flags     # File flags and options.
+    int       Static    # Set to TRUE if a file object should be static.
+    oid       Target    # Specifies a surface ID to target for user feedback and dialog boxes.
+    ptr(char) Buffer    # Points to the internal data buffer if the file content is held in memory.
   ]])
 
   methods("config", "Cfg", {
@@ -2026,7 +2026,7 @@ struct SharedControl {
 
 // Class database.
 
-#define CL_ITEMS(c)        (ClassItem *)( (BYTE *)(c) + sizeof(ClassHeader) + ((c)->Total<<2) )
+#define CL_ITEMS(c)        (ClassItem *)((BYTE *)(c) + sizeof(ClassHeader) + ((c)->Total<<2) )
 #define CL_OFFSETS(c)      ((LONG *)((c) + 1))
 #define CL_SIZE_OFFSETS(c) (sizeof(LONG) * (c)->Total)
 #define CL_ITEM(c,i)       ((ClassItem *)((BYTE *)(c) + offsets[(i)]))

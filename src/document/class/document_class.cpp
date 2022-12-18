@@ -769,11 +769,10 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
       }
 
       if (surface->Flags & RNF_HAS_FOCUS) {
-         Self->HasFocus = TRUE;
+         Self->HasFocus = true;
 
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&key_event);
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
+         auto call = make_function_stdc(key_event);
+         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &call, Self, &Self->prvKeyEvent);
       }
 
       SubscribeActionTags(surface, AC_Focus, AC_LostFocus, TAGEND);
@@ -871,9 +870,8 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    // Flash the cursor via the timer
 
    if (Self->Flags & DCF_EDIT) {
-      FUNCTION function;
-      SET_FUNCTION_STDC(function, (APTR)&flash_cursor);
-      SubscribeTimer(0.5, &function, &Self->FlashTimer);
+      auto call = make_function_stdc(flash_cursor);
+      SubscribeTimer(0.5, &call, &Self->FlashTimer);
    }
 
    // Load a document file into the line array if required

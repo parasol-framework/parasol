@@ -32,9 +32,8 @@ static ERROR COMMAND_Continue(extAudio *Self, LONG Handle)
       channel->State = CHS_PLAYING;
    }
 
-   FUNCTION callback;
-   SET_FUNCTION_STDC(callback, (APTR)&audio_timer);
-   SubscribeTimer(MIX_INTERVAL, &callback, &Self->Timer);
+   auto call = make_function_stdc(audio_timer);
+   SubscribeTimer(MIX_INTERVAL, &call, &Self->Timer);
 
    return ERR_Okay;
 }
@@ -139,9 +138,8 @@ static ERROR COMMAND_Play(extAudio *Self, LONG Handle, LONG Frequency)
    COMMAND_SetPosition(Self, Handle, 0); // Set playing position to the beginning of the sample
 
    if (channel->State IS CHS_PLAYING) {
-      FUNCTION callback;
-      SET_FUNCTION_STDC(callback, (APTR)&audio_timer);
-      SubscribeTimer(MIX_INTERVAL, &callback, &Self->Timer);
+      auto call = make_function_stdc(audio_timer);
+      SubscribeTimer(MIX_INTERVAL, &call, &Self->Timer);
    }
 
    return ERR_Okay;
@@ -352,9 +350,8 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, LONG Position)
    if (Self->Flags & ADF_OVER_SAMPLING) COMMAND_FadeIn(Self, Handle);
 
    if (channel->State IS CHS_PLAYING) {
-      FUNCTION callback;
-      SET_FUNCTION_STDC(callback, (APTR)&audio_timer);
-      SubscribeTimer(MIX_INTERVAL, &callback, &Self->Timer);
+      auto call = make_function_stdc(audio_timer);
+      SubscribeTimer(MIX_INTERVAL, &call, &Self->Timer);
    }
 
    return ERR_Okay;

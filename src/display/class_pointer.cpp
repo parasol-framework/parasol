@@ -352,9 +352,8 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
             Self->X, Self->Y, Self->OverX, Self->OverY);
       //}
 
-      FUNCTION callback;
-      SET_FUNCTION_STDC(callback, (APTR)&repeat_timer);
-      SubscribeTimer(0.02, &callback, &glRepeatTimer); // Use a timer subscription so that repeat button clicks can be supported (the interval indicates the rate of the repeat)
+      auto call = make_function_stdc(repeat_timer);
+      SubscribeTimer(0.02, &call, &glRepeatTimer); // Use a timer subscription so that repeat button clicks can be supported (the interval indicates the rate of the repeat)
    }
 
    if ((Self->DragSourceID) and (!Self->Buttons[bi].LastClicked)) {
@@ -721,8 +720,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
    init_mouse_driver();
 #endif
 
-   FUNCTION call;
-   SET_FUNCTION_STDC(call, (APTR)ptr_user_login);
+   auto call = make_function_stdc(ptr_user_login);
    SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, Self, &Self->UserLoginHandle);
 
    // 2016-07: Commented out this feed subscription as it had no purpose in MS Windows and unlikely that it's used for

@@ -361,12 +361,12 @@ static int module_call(lua_State *Lua)
 
          if (type IS LUA_TSTRING) { // Name of function to call
             lua_getglobal(Lua, lua_tostring(Lua, i));
-            SET_FUNCTION_SCRIPT(func, Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            func = make_function_script(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
             ((FUNCTION **)(buffer + j))[0] = &func;
          }
          else if (type IS LUA_TFUNCTION) { // Direct function reference
             lua_pushvalue(Lua, i);
-            SET_FUNCTION_SCRIPT(func, Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            func = make_function_script(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
             ((FUNCTION **)(buffer + j))[0] = &func;
          }
          else if ((type IS LUA_TNIL) or (type IS LUA_TNONE)) {
