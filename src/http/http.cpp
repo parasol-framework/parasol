@@ -592,7 +592,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             UBYTE nonce_count[9] = "00000001";
             HASHHEX HA1, HA2 = "", response;
 
-            for (i=0; i < 8; i++) Self->AuthCNonce[i] = '0' + RandomNumber(10);
+            for (i=0; i < 8; i++) Self->AuthCNonce[i] = '0' + (rand() % 10);
             Self->AuthCNonce[i] = 0;
 
             digest_calc_ha1(Self, HA1);

@@ -1187,7 +1187,7 @@ struct Edges {
 #define RES_DISPLAY_DRIVER 6
 #define RES_PRIVILEGED_USER 7
 #define RES_PRIVILEGED 8
-#define RES_RANDOM_SEED 9
+#define RES_CORE_IDL 9
 #define RES_PARENT_CONTEXT 10
 #define RES_LOG_LEVEL 11
 #define RES_TOTAL_SHARED_MEMORY 12
@@ -1209,7 +1209,6 @@ struct Edges {
 #define RES_FREE_MEMORY 28
 #define RES_FREE_SWAP 29
 #define RES_KEY_STATE 30
-#define RES_CORE_IDL 31
 
 // Path types for SetResourcePath()
 
@@ -1749,7 +1748,7 @@ struct CoreBase {
    ERROR (*_StrReadLocale)(CSTRING, CSTRING *);
    APTR (*_GetMemAddress)(MEMORYID);
    ERROR (*_ProcessMessages)(LONG, LONG);
-   LONG (*_RandomNumber)(LONG);
+   ERROR (*_IdentifyFile)(CSTRING, CSTRING, LONG, CLASSID *, CLASSID *, STRING *);
    ERROR (*_ReallocMemory)(APTR, LONG, APTR, MEMORYID *);
    ERROR (*_GetMessage)(MEMORYID, LONG, LONG, APTR, LONG);
    MEMORYID (*_ReleaseMemory)(APTR);
@@ -1865,7 +1864,6 @@ struct CoreBase {
    ERROR (*_SaveObjectToFile)(OBJECTPTR, CSTRING, LONG);
    ERROR (*_OpenDir)(CSTRING, LONG, struct DirInfo **);
    ERROR (*_ScanDir)(struct DirInfo *);
-   ERROR (*_IdentifyFile)(CSTRING, CSTRING, LONG, CLASSID *, CLASSID *, STRING *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1910,7 +1908,7 @@ struct CoreBase {
 #define StrReadLocale(...) (CoreBase->_StrReadLocale)(__VA_ARGS__)
 #define GetMemAddress(...) (CoreBase->_GetMemAddress)(__VA_ARGS__)
 #define ProcessMessages(...) (CoreBase->_ProcessMessages)(__VA_ARGS__)
-#define RandomNumber(...) (CoreBase->_RandomNumber)(__VA_ARGS__)
+#define IdentifyFile(...) (CoreBase->_IdentifyFile)(__VA_ARGS__)
 #define ReallocMemory(...) (CoreBase->_ReallocMemory)(__VA_ARGS__)
 #define GetMessage(...) (CoreBase->_GetMessage)(__VA_ARGS__)
 #define ReleaseMemory(...) (CoreBase->_ReleaseMemory)(__VA_ARGS__)
@@ -2026,7 +2024,6 @@ struct CoreBase {
 #define SaveObjectToFile(...) (CoreBase->_SaveObjectToFile)(__VA_ARGS__)
 #define OpenDir(...) (CoreBase->_OpenDir)(__VA_ARGS__)
 #define ScanDir(...) (CoreBase->_ScanDir)(__VA_ARGS__)
-#define IdentifyFile(...) (CoreBase->_IdentifyFile)(__VA_ARGS__)
 #endif
 
 

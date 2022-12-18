@@ -1436,47 +1436,6 @@ ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
 /*********************************************************************************************************************
 
 -FUNCTION-
-RandomNumber: Generates random numbers.
-
-This function generates a random number as quickly as possible.  In some cases it will use various hardware attributes
-in order to create guaranteed random numbers.  The routine uses one divide to determine the range and will
-automatically change the random seed value each time you call it.  Remember that all generated numbers fall one value
-below the Range that you specify. Add 1 to your Range if maximum value is inclusive.
-
-The unique seed used by the PRNG is generated when the Core is opened for the first time.  You can change the seed
-by calling ~SetResource() with the `RES_RANDOM_SEED` option.
-
--INPUT-
-int Range: A range between 1 and 2,147,483,648.  An invalid value will result in 0 being returned.
-
--RESULT-
-int: Returns a number greater or equal to 0, and <i>less than</i> Range.
-
-*********************************************************************************************************************/
-
-LONG RandomNumber(LONG Range)
-{
-   if (Range <= 0) return 0;
-
-   if (Range > 32768) {
-      #ifdef __unix__
-         return ((random() & 0xffff) | (rand()<<16)) % Range;
-      #else
-         return ((rand() & 0xffff) | (rand()<<16)) % Range;
-      #endif
-   }
-   else {
-      #ifdef __unix__
-         return random() % Range;
-      #else
-         return rand() % Range;
-      #endif
-   }
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 RegisterFD: Registers a file descriptor for monitoring when the task is asleep.
 
 This function will register a file descriptor that will be monitored for activity when the task is sleeping.  If
@@ -1987,7 +1946,6 @@ Value parameter.  Currently the following resource ID's are available:
 <type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on AllocMemory().  The Value specifies the memory limit in bytes.</>
 <type name="LOG_LEVEL">Adjusts the current debug level.  The Value must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</>
 <type name="PRIVILEGED_USER">If the Value is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</>
-<type name="RANDOM_SEED">Sets the PRNG seed to the number indicated in Value.</>
 </>
 
 -INPUT-
@@ -2012,8 +1970,6 @@ LARGE SetResource(LONG Resource, LARGE Value)
 
    switch(Resource) {
       case RES_CONSOLE_FD: glConsoleFD = (HOSTHANDLE)(MAXINT)Value; break;
-
-      case RES_RANDOM_SEED: srand(Value); break;
 
       case RES_KEY_STATE: glKeyState = (LONG)Value; break;
 

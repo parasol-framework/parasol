@@ -420,7 +420,7 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
     "DISPLAY_DRIVER: Internal.  Passes the name of the preferred display driver to the display module.",
     "PRIVILEGED_USER: If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.",
     "PRIVILEGED: This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).",
-    "RANDOM_SEED: Changes the PRNG seed value for RandomNumber().",
+    "CORE_IDL: Refers to the Core module's compressed IDL string.",
     "PARENT_CONTEXT: Read-only pointer to the parent object of the current context.",
     "LOG_LEVEL: The current level of log detail (larger numbers indicate more detail).",
     "TOTAL_SHARED_MEMORY: The total amount of shared memory in use.",
@@ -441,8 +441,7 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
     "SHARED_BLOCKS: Internal",
     "FREE_MEMORY: The total amount of free memory.",
     "FREE_SWAP: The total amount of free swap memory.",
-    "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys.",
-    "CORE_IDL: Refers to the Core module's compressed IDL string."
+    "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys."
   )
 
   enum("RP", { start=1, comment="Path types for SetResourcePath()" },
@@ -986,7 +985,7 @@ struct ScriptArg { // For use with scExec
     "StrReadLocale",
     "GetMemAddress",
     "ProcessMessages",
-    "RandomNumber",
+    "IdentifyFile",
     "ReallocMemory",
     "GetMessage",
     "ReleaseMemory",
@@ -1101,8 +1100,7 @@ struct ScriptArg { // For use with scExec
     "WaitForObjects",
     "SaveObjectToFile",
     "OpenDir",
-    "ScanDir",
-    "IdentifyFile")
+    "ScanDir")
 
   c_insert([[
 

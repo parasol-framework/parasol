@@ -45,7 +45,7 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, LONG Flags, ERR
 ERROR StrReadLocale(CSTRING Key, CSTRING * Value);
 APTR GetMemAddress(MEMORYID ID);
 ERROR ProcessMessages(LONG Flags, LONG TimeOut);
-LONG RandomNumber(LONG Range);
+ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);
 ERROR ReallocMemory(APTR Memory, LONG Size, APTR * Address, MEMORYID * ID);
 ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
 MEMORYID ReleaseMemory(APTR Address);
@@ -161,7 +161,6 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSigna
 ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions);
 ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
 ERROR ScanDir(struct DirInfo * Info);
-ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);
 
 #ifdef  __cplusplus
 }
