@@ -1069,7 +1069,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
          ActionMsg(AC_DataFeed, Self->OutputObjectID, &data);
       }
       else if (Self->ObjectMode IS HOM_READ_WRITE) {
-         acWriteID(Self->OutputObjectID, Buffer, Length);
+         acWrite(Self->OutputObjectID, Buffer, Length);
       }
    }
 

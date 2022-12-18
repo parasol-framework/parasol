@@ -71,7 +71,7 @@ static ERROR SET_Cursor(extSurface *Self, LONG Value)
       OBJECTID pointer_id;
       LONG count = 1;
       if (!FindObject("SystemPointer", ID_POINTER, FOF_INCLUDE_SHARED, &pointer_id, &count)) {
-         acRefreshID(pointer_id);
+         acRefresh(pointer_id);
       }
    }
    return ERR_Okay;

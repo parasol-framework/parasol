@@ -565,7 +565,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 
    // Free the display's bitmap buffer
 
-   if (Self->BufferID) { acFreeID(Self->BufferID); Self->BufferID = NULL; }
+   if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = NULL; }
 
    // Free the display's video bitmap
 
@@ -575,7 +575,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
          if (Self->BitmapID < 0) ReleaseObject(Self->Bitmap);
          Self->Bitmap = NULL;
       }
-      else acFreeID(Self->BitmapID);
+      else acFree(Self->BitmapID);
       Self->BitmapID = NULL;
    }
 
@@ -1474,14 +1474,14 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
    OBJECTPTR config;
    if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/display.cfg", TAGEND)) {
       if (!(Self->Flags & SCR_BORDERLESS)) {
-         cfgWriteInt(config, "DISPLAY", "WindowX", Self->X);
-         cfgWriteInt(config, "DISPLAY", "WindowY", Self->Y);
+         cfgWrite(config, "DISPLAY", "WindowX", Self->X);
+         cfgWrite(config, "DISPLAY", "WindowY", Self->Y);
 
-         if (Self->Width >= 600) cfgWriteInt(config, "DISPLAY", "WindowWidth", Self->Width);
-         else cfgWriteInt(config, "DISPLAY", "WindowWidth", 600);
+         if (Self->Width >= 600) cfgWrite(config, "DISPLAY", "WindowWidth", Self->Width);
+         else cfgWrite(config, "DISPLAY", "WindowWidth", 600);
 
-         if (Self->Height >= 480) cfgWriteInt(config, "DISPLAY", "WindowHeight", Self->Height);
-         else cfgWriteInt(config, "DISPLAY", "WindowHeight", 480);
+         if (Self->Height >= 480) cfgWrite(config, "DISPLAY", "WindowHeight", Self->Height);
+         else cfgWrite(config, "DISPLAY", "WindowHeight", 480);
       }
 
       cfgWriteValue(config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
@@ -1501,11 +1501,11 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
          LONG x, y, width, height, maximise;
 
          if (winGetWindowInfo(Self->WindowHandle, &x, &y, &width, &height, &maximise)) {
-            cfgWriteInt(config, "DISPLAY", "WindowWidth", width);
-            cfgWriteInt(config, "DISPLAY", "WindowHeight", height);
-            cfgWriteInt(config, "DISPLAY", "WindowX", x);
-            cfgWriteInt(config, "DISPLAY", "WindowY", y);
-            cfgWriteInt(config, "DISPLAY", "Maximise", maximise);
+            cfgWrite(config, "DISPLAY", "WindowWidth", width);
+            cfgWrite(config, "DISPLAY", "WindowHeight", height);
+            cfgWrite(config, "DISPLAY", "WindowX", x);
+            cfgWrite(config, "DISPLAY", "WindowY", y);
+            cfgWrite(config, "DISPLAY", "Maximise", maximise);
             cfgWriteValue(config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
             cfgWriteValue(config, "DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? "1" : "0");
             acSaveSettings(config);
@@ -1941,12 +1941,12 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
 
    if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, FID_Path|TSTR, "config:hardware/monitor.cfg", TAGEND)) {
       cfgWriteValue(config, "MONITOR", "Name", Self->Display);
-      cfgWriteInt(config, "MONITOR", "MinH", Self->MinHScan);
-      cfgWriteInt(config, "MONITOR", "MaxH", Self->MaxHScan);
-      cfgWriteInt(config, "MONITOR", "MinV", Self->MinVScan);
-      cfgWriteInt(config, "MONITOR", "MaxV", Self->MaxVScan);
-      cfgWriteInt(config, "MONITOR", "AutoDetect", (Args->Flags & SMF_AUTODETECT) ? 1 : 0);
-      cfgWriteInt(config, "MONITOR", "6Bit", glSixBitDisplay);
+      cfgWrite(config, "MONITOR", "MinH", Self->MinHScan);
+      cfgWrite(config, "MONITOR", "MaxH", Self->MaxHScan);
+      cfgWrite(config, "MONITOR", "MinV", Self->MinVScan);
+      cfgWrite(config, "MONITOR", "MaxV", Self->MaxVScan);
+      cfgWrite(config, "MONITOR", "AutoDetect", (Args->Flags & SMF_AUTODETECT) ? 1 : 0);
+      cfgWrite(config, "MONITOR", "6Bit", glSixBitDisplay);
       acSaveSettings(config);
       acFree(config);
    }
@@ -3175,7 +3175,7 @@ void alloc_display_buffer(extDisplay *Self)
 
    log.branch("Allocating a video based buffer bitmap.");
 
-   if (Self->BufferID) { acFreeID(Self->BufferID); Self->BufferID = 0; }
+   if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = 0; }
 
    objBitmap *buffer;
    ERROR error;

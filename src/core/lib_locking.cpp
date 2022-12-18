@@ -2256,6 +2256,7 @@ ERROR SysLock(LONG Index, LONG Timeout)
 
 -FUNCTION-
 SysUnlock: Releases a lock obtained from SysLock().
+Status: private
 
 Use the SysUnlock() function to undo a previous call to ~SysLock() for a given mutex.
 

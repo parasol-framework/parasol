@@ -410,7 +410,7 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    if (Self->prvDisclaimer)  { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
    if (Self->prvWAVE)        { FreeResource(Self->prvWAVE); Self->prvWAVE = NULL; }
    if (Self->File)           { acFree(Self->File); Self->File = NULL; }
-   if (Self->StreamFileID)   { acFreeID(Self->StreamFileID); Self->StreamFileID = 0; }
+   if (Self->StreamFileID)   { acFree(Self->StreamFileID); Self->StreamFileID = 0; }
 
    return ERR_Okay;
 }

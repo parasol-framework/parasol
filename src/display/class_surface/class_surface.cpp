@@ -828,13 +828,13 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
       LONG width         = Self->Width;
       LONG height        = Self->Height;
 
-      cfgReadInt(config, "DISPLAY", "Width", &width);
-      cfgReadInt(config, "DISPLAY", "Height", &height);
-      cfgReadInt(config, "DISPLAY", "Depth", &depth);
-      cfgReadFloat(config, "DISPLAY", "RefreshRate", &refreshrate);
-      cfgReadFloat(config, "DISPLAY", "GammaRed", &gammared);
-      cfgReadFloat(config, "DISPLAY", "GammaGreen", &gammagreen);
-      cfgReadFloat(config, "DISPLAY", "GammaBlue", &gammablue);
+      cfgRead(config, "DISPLAY", "Width", &width);
+      cfgRead(config, "DISPLAY", "Height", &height);
+      cfgRead(config, "DISPLAY", "Depth", &depth);
+      cfgRead(config, "DISPLAY", "RefreshRate", &refreshrate);
+      cfgRead(config, "DISPLAY", "GammaRed", &gammared);
+      cfgRead(config, "DISPLAY", "GammaGreen", &gammagreen);
+      cfgRead(config, "DISPLAY", "GammaBlue", &gammablue);
 
       if (!cfgReadValue(config, "DISPLAY", "DPMS", &str)) {
          if (!AccessObject(Self->DisplayID, 3000, &object)) {
@@ -897,7 +897,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
 
    if (Self->Flags & RNF_IGNORE_FOCUS) {
       FOCUSMSG("Focus propagated to parent (IGNORE_FOCUS flag set).");
-      acFocusID(Self->ParentID);
+      acFocus(Self->ParentID);
       glLastFocusTime = PreciseTime();
       return ERR_Okay|ERF_Notified;
    }
@@ -1023,7 +1023,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
       // Send out LostFocus actions to all objects that do not intersect with the new focus chain.
 
       for (LONG i=0; lostfocus[i]; i++) {
-         acLostFocusID(lostfocus[i]);
+         acLostFocus(lostfocus[i]);
       }
 
       // Send a global focus event to all listeners
@@ -1059,7 +1059,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
 
          // Focussing on the display window is important in hosted environments
 
-         if (Self->DisplayID) acFocusID(Self->DisplayID);
+         if (Self->DisplayID) acFocus(Self->DisplayID);
 
          if (Self->RevertFocusID) {
             Self->RevertFocusID = 0;
@@ -1114,13 +1114,13 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    untrack_layer(Self->UID);
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      acFreeID(Self->DisplayID);
+      acFree(Self->DisplayID);
       Self->DisplayID = NULL;
    }
 
    if ((Self->BufferID) and ((!Self->BitmapOwnerID) or (Self->BitmapOwnerID IS Self->UID))) {
       if (Self->Bitmap) { ReleaseObject(Self->Bitmap); Self->Bitmap = NULL; }
-      acFreeID(Self->BufferID);
+      acFree(Self->BufferID);
       Self->BufferID = 0;
    }
 
@@ -1128,7 +1128,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    // acting as windows, as the window class has its own focus management code.
 
    if ((Self->Flags & RNF_HAS_FOCUS) and (GetClassID(Self->ownerID()) != ID_WINDOW)) {
-      if (Self->ParentID) acFocusID(Self->ParentID);
+      if (Self->ParentID) acFocus(Self->ParentID);
    }
 
    if (Self->Flags & RNF_AUTO_QUIT) {
@@ -1181,7 +1181,7 @@ static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
       Self->Flags &= ~RNF_VISIBLE; // Important to switch off visibliity before Hide(), otherwise a false redraw will occur.
       UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
 
-      if (acHideID(Self->DisplayID) != ERR_Okay) return ERR_Failed;
+      if (acHide(Self->DisplayID) != ERR_Okay) return ERR_Failed;
    }
    else {
       // Mark this surface object as invisible, then invalidate the region it was covering in order to have the background redrawn.
@@ -1960,7 +1960,7 @@ static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
    parasol::Log log;
 
    if (!Self->ParentID) {
-      acMoveToBackID(Self->DisplayID);
+      acMoveToBack(Self->DisplayID);
       return ERR_Okay|ERF_Notified;
    }
 
@@ -2037,7 +2037,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
    log.branch("%s", GetName(Self));
 
    if (!Self->ParentID) {
-      acMoveToFrontID(Self->DisplayID);
+      acMoveToFront(Self->DisplayID);
       return ERR_Okay|ERF_Notified;
    }
 
@@ -2083,7 +2083,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
             if (list[i].Level IS level) {
                if (list[i].SurfaceID != Self->PopOverID) {
                   gfxReleaseList(ARF_WRITE);
-                  acMoveToFrontID(Self->PopOverID);
+                  acMoveToFront(Self->PopOverID);
                   return ERR_Okay|ERF_Notified;
                }
                break;
@@ -2143,7 +2143,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
       for (LONG i=index-1; i > 0; i--) {
          if (cplist[i].Level IS level) {
             if (cplist[i].SurfaceID != Self->PopOverID) {
-               acMoveToFrontID(Self->PopOverID);
+               acMoveToFront(Self->PopOverID);
                return ERR_Okay;
             }
             break;
@@ -2693,9 +2693,9 @@ static ERROR SURFACE_Show(extSurface *Self, APTR Void)
    else notified = 0;
 
    if (!Self->ParentID) {
-      if (!acShowID(Self->DisplayID)) {
+      if (!acShow(Self->DisplayID)) {
          Self->Flags |= RNF_VISIBLE;
-         if (Self->Flags & RNF_HAS_FOCUS) acFocusID(Self->DisplayID);
+         if (Self->Flags & RNF_HAS_FOCUS) acFocus(Self->DisplayID);
       }
       else return log.warning(ERR_Failed);
    }
@@ -2850,7 +2850,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
             // Move the dragging surface to the new location
 
             if ((Self->DragID) and (Self->DragID != Self->UID)) {
-               acMoveID(Self->DragID, xchange, ychange, 0);
+               acMove(Self->DragID, xchange, ychange, 0);
             }
             else {
                LONG sticky = Self->Flags & RNF_STICKY;

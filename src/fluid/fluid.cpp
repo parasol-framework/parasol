@@ -791,7 +791,7 @@ int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 
    if (Size <= 0) return 0; // Ignore bad size requests
 
-   if (!acWriteID((OBJECTID)(MAXINT)FileID, (APTR)Data, Size)) {
+   if (!acWrite((OBJECTID)(MAXINT)FileID, (APTR)Data, Size)) {
       return 0;
    }
    else {

@@ -4669,7 +4669,7 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
       switch(Value) {
          case K_TAB: {
             log.branch("Key: Tab");
-            if (Self->TabFocusID) acFocusID(Self->TabFocusID);
+            if (Self->TabFocusID) acFocus(Self->TabFocusID);
             else {
                if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
                else advance_tabfocus(Self, 1);
@@ -4875,7 +4875,7 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
       // NB: When not in edit mode, only the navigation keys are enabled
       case K_TAB:
          log.branch("Key: Tab");
-         if (Self->TabFocusID) acFocusID(Self->TabFocusID);
+         if (Self->TabFocusID) acFocus(Self->TabFocusID);
          else if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
          else advance_tabfocus(Self, 1);
          break;
@@ -5696,14 +5696,14 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
                resource = resource->Next;
                continue;
             }
-            else if (Flags & ULD_TERMINATE) acFreeID(resource->ObjectID);
+            else if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
             else DelayMsg(AC_Free, resource->ObjectID, NULL);
          }
          else if (resource->Type IS RT_OBJECT_UNLOAD_DELAY) {
-            if (Flags & ULD_TERMINATE) acFreeID(resource->ObjectID);
+            if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
             else DelayMsg(AC_Free, resource->ObjectID, NULL);
          }
-         else acFreeID(resource->ObjectID);
+         else acFree(resource->ObjectID);
 
          if (resource IS Self->Resources) Self->Resources = resource->Next;
          if (resource->Prev) resource->Prev->Next = resource->Next;
@@ -5726,7 +5726,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    Self->NoWhitespace = TRUE; // Reset whitespace flag
 
-   if (Self->PageID) acMoveToPointID(Self->PageID, 0, 0, 0, MTF_X|MTF_Y);
+   if (Self->PageID) acMoveToPoint(Self->PageID, 0, 0, 0, MTF_X|MTF_Y);
 
    //drwPermitDrawing();
 
@@ -7794,7 +7794,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
    Self->FocusIndex = Index;
 
    if (Self->Tabs[Index].Type IS TT_EDIT) {
-      acFocusID(Self->PageID);
+      acFocus(Self->PageID);
 
       LONG cell_index;
       if ((cell_index = find_cell(Self, Self->Tabs[Self->FocusIndex].Ref, 0)) >= 0) {
@@ -7814,8 +7814,8 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
                ReleaseObject(input);
             }
          }
-         else if (acFocusID(Self->Tabs[Index].Ref) != ERR_Okay) {
-            acFocusID(Self->Tabs[Index].XRef);
+         else if (acFocus(Self->Tabs[Index].Ref) != ERR_Okay) {
+            acFocus(Self->Tabs[Index].XRef);
             // Causes an InheritedFocus callback in ActionNotify
          }
       }
@@ -7846,7 +7846,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
          }
          else DRAW_PAGE(Self);
 
-         acFocusID(Self->PageID);
+         acFocus(Self->PageID);
       }
    }
 }
