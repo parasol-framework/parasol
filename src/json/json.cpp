@@ -185,7 +185,7 @@ static ERROR JSON_Init(objXML *Self, APTR Void)
 
    log.trace("Attempting JSON interpretation of source data.");
 
-   if ((!GetString(Self, FID_Statement, &statement)) and (statement)) {
+   if ((!Self->get(FID_Statement, &statement)) and (statement)) {
       if ((Self->ParseError = txt_to_json(Self, statement))) {
          log.warning("JSON Parsing Error: %s", GetErrorMsg(Self->ParseError));
          free_tags(Self);
@@ -199,7 +199,7 @@ static ERROR JSON_Init(objXML *Self, APTR Void)
       return Self->ParseError;
    }
 
-   GetString(Self, FID_Path, &location);
+   Self->get(FID_Path, &location);
    if ((!location) or (Self->Flags & XMF_NEW)) {
       // If no location has been specified, assume that the JSON source is being
       // created from scratch (e.g. to save to disk).

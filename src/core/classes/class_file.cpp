@@ -1297,7 +1297,7 @@ static ERROR FILE_Seek(extFile *Self, struct acSeek *Args)
    }
    else if (Args->Position IS SEEK_END) {
       LARGE filesize;
-      GetLarge(Self, FID_Size, &filesize);
+      Self->get(FID_Size, &filesize);
       Self->Position = filesize - (LARGE)Args->Offset;
    }
    else if (Args->Position IS SEEK_CURRENT) {
@@ -2020,7 +2020,7 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
 
       if (!AccessPrivateObject(glVolumes, 8000)) {
          ConfigGroups *groups;
-         if ((!GetPointer(glVolumes, FID_Data, &groups)) and (groups)) {
+         if ((!glVolumes->getPtr(FID_Data, &groups)) and (groups)) {
             if (groups->size() > 0) {
                std::string volume(Self->Path, i);
 
@@ -2079,7 +2079,7 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
 
    ConfigGroups *groups;
    char icon[80] = "";
-   if (!GetPointer(glDatatypes, FID_Data, &groups)) {
+   if (!glDatatypes->getPtr(FID_Data, &groups)) {
       // Scan file extensions first, because this saves us from having to open and read the file content.
 
       LONG k;

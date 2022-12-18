@@ -90,7 +90,7 @@ static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **
    if (!AccessObject(DisplayID, 5000, Display)) {
       APTR winhandle;
 
-      if (!GetPointer(Display[0], FID_WindowHandle, &winhandle)) {
+      if (!Display[0]->getPtr(FID_WindowHandle, &winhandle)) {
          #ifdef _WIN32
             Display[0]->Bitmap->set(FID_Handle, winGetDC(winhandle));
          #else
@@ -110,10 +110,10 @@ static void release_video(objDisplay *Display)
 {
    #ifdef _WIN32
       APTR surface;
-      GetPointer(Display->Bitmap, FID_Handle, &surface);
+      Display->Bitmap->getPtr(FID_Handle, &surface);
 
       APTR winhandle;
-      if (!GetPointer(Display, FID_WindowHandle, &winhandle)) {
+      if (!Display->getPtr(FID_WindowHandle, &winhandle)) {
          winReleaseDC(winhandle, surface);
       }
 
@@ -1576,7 +1576,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
             // For hosted environments, record the window handle (NB: this is doubling up the display handle, we should
             // just make the window handle a virtual field so that we don't need a permanent record of it).
 
-            GetPointer(display, FID_WindowHandle, &Self->DisplayWindow);
+            display->getPtr(FID_WindowHandle, &Self->DisplayWindow);
 
             #ifdef _WIN32
                winSetSurfaceID(Self->DisplayWindow, Self->UID);
@@ -2522,7 +2522,7 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
                      bitmapid = list[j].BitmapID;
 
                      extBitmap *picbmp;
-                     GetPointer(picture, FID_Bitmap, &picbmp);
+                     picture->getPtr(FID_Bitmap, &picbmp);
                      gfxCopySurface(list[j].SurfaceID, picbmp, NULL, 0, 0, list[j].Width, list[j].Height,
                         list[j].Left - list[i].Left, list[j].Top - list[i].Top);
                   }

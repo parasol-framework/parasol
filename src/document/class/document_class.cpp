@@ -387,7 +387,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
                   FID_Flags|TLONG, FL_READ,
                   TAGEND)) {
 
-               if ((GetLong(file, FID_Size, &size) IS ERR_Okay) and (size > 0)) {
+               if ((file->get(FID_Size, &size) IS ERR_Okay) and (size > 0)) {
                   if (!AllocMemory(size+1, MEM_STRING, &buffer, NULL)) {
                      LONG result;
                      if (!acRead(file, buffer, size, &result)) {

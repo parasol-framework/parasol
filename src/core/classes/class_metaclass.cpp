@@ -1359,7 +1359,7 @@ ERROR load_classes(void)
             TAGEND)) {
 
          LONG filesize;
-         GetLong(file, FID_Size, &filesize);
+         file->get(FID_Size, &filesize);
 
          LONG total;
          if (!(error = acRead(file, &total, sizeof(total), NULL))) {

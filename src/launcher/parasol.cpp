@@ -75,7 +75,7 @@ static ERROR process_args(void)
    CSTRING *args;
    LONG i, j;
 
-   if ((!GetPointer(glTask, FID_Parameters, &args)) AND (args)) {
+   if ((!glTask->getPtr(FID_Parameters, &args)) AND (args)) {
       for (i=0; args[i]; i++) {
          if (!StrMatch(args[i], "--help")) {
             // Print help for the user
@@ -115,7 +115,7 @@ static ERROR process_args(void)
             glTime = TRUE;
          }
          else if (!StrMatch(args[i], "--instance")) {
-            GetLong(glTask, FID_Instance, &j);
+            glTask->get(FID_Instance, &j);
             print("Instance: %d", j);
          }
          else if (!StrMatch(args[i], "--winhandle")) { // Target a desktop window in the host environment
@@ -190,7 +190,7 @@ int main(int argc, CSTRING *argv)
    if (!process_args()) {
       if (glTargetFile) {
          STRING path;
-         if (!GetString(glTask, FID_Path, &path)) log.msg("Path: %s", path);
+         if (!glTask->get(FID_Path, &path)) log.msg("Path: %s", path);
          else log.error("No working path.");
 
          if (glWinHandle) {

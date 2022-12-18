@@ -516,7 +516,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                if (!error) {
                   Self->Index = 0;
                   if (!Self->Size) {
-                     GetLarge(Self->flInput, FID_Size, &Self->ContentLength); // Use the file's size as ContentLength
+                     Self->flInput->get(FID_Size, &Self->ContentLength); // Use the file's size as ContentLength
                      if (!Self->ContentLength) { // If the file is empty or size is indeterminate then assume nothing is being posted
                         SET_ERROR(Self, ERR_NoData);
                         return Self->Error;
@@ -534,7 +534,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                   OBJECTPTR input;
                   if (!AccessObject(Self->InputObjectID, 3000, &input)) {
                      LARGE len;
-                     if (!GetLarge(input, FID_Size, &len)) Self->ContentLength = len;
+                     if (!input->get(FID_Size, &len)) Self->ContentLength = len;
                      ReleaseObject(input);
                   }
                }

@@ -1132,7 +1132,7 @@ static void generate_text(objVectorText *Vector)
    }
 
    FT_Face ftface;
-   if ((GetPointer(Vector->txFont, FID_FreetypeFace, &ftface)) or (!ftface)) return;
+   if ((Vector->txFont->getPtr(FID_FreetypeFace, &ftface)) or (!ftface)) return;
 
    auto morph = Vector->Morph;
    DOUBLE start_x, start_y, end_vx, end_vy;

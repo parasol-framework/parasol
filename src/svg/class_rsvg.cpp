@@ -38,7 +38,7 @@ static ERROR RSVG_Init(prvPicture *Self, APTR Void)
    parasol::Log log;
    STRING path;
 
-   GetString(Self, FID_Path, &path);
+   Self->get(FID_Path, &path);
 
    if ((!path) OR (Self->Flags & PCF_NEW)) {
       return ERR_NoSupport; // Creating new SVG's is not supported in this module.
@@ -47,7 +47,7 @@ static ERROR RSVG_Init(prvPicture *Self, APTR Void)
    char *buffer;
 
    if (!StrCompare("*.svg|*.svgz", path, 0, STR_WILDCARD));
-   else if (!GetPointer(Self, FID_Header, &buffer)) {
+   else if (!Self->getPtr(FID_Header, &buffer)) {
       if (StrSearch("<svg", buffer, 0) >= 0) {
       }
       else return ERR_NoSupport;
@@ -81,10 +81,8 @@ static ERROR RSVG_Query(prvPicture *Self, APTR Void)
 
    if (!prv->SVG) {
       STRING path;
-      if (!GetString(Self, FID_Path, &path)) {
-         if (!CreateObject(ID_SVG, NF_INTEGRAL, &prv->SVG,
-               FID_Path|TSTR, path,
-               TAGEND)) {
+      if (!Self->get(FID_Path, &path)) {
+         if (!CreateObject(ID_SVG, NF_INTEGRAL, &prv->SVG, FID_Path|TSTR, path, TAGEND)) {
          }
          else return log.warning(ERR_CreateObject);
       }
@@ -93,7 +91,7 @@ static ERROR RSVG_Query(prvPicture *Self, APTR Void)
 
    objVectorScene *scene;
    ERROR error;
-   if ((!(error = GetPointer(prv->SVG, FID_Scene, &scene))) AND (scene)) {
+   if ((!(error = prv->SVG->getPtr(FID_Scene, &scene))) AND (scene)) {
       if (Self->Flags & PCF_FORCE_ALPHA_32) {
          bmp->Flags |= BMF_ALPHA_CHANNEL;
          bmp->BitsPerPixel  = 32;
@@ -112,8 +110,8 @@ static ERROR RSVG_Query(prvPicture *Self, APTR Void)
       // Check for fixed dimensions specified by the SVG.
 
       LONG view_width = 0, view_height = 0;
-      GetLong(view, FID_Width, &view_width);
-      GetLong(view, FID_Height, &view_height);
+      view->get(FID_Width, &view_width);
+      view->get(FID_Height, &view_height);
 
       // If the SVG source doesn't specify fixed dimensions, automatically force rescaling to the display width and height.
 
@@ -170,7 +168,7 @@ static ERROR RSVG_Resize(prvPicture *Self, struct acResize *Args)
 
       if (!Action(AC_Resize, Self->Bitmap, Args)) {
          objVectorScene *scene;
-         if ((!GetPointer(prv->SVG, FID_Scene, &scene)) AND (scene)) {
+         if ((!prv->SVG->getPtr(FID_Scene, &scene)) AND (scene)) {
             scene->set(FID_PageWidth, Self->Bitmap->Width);
             scene->set(FID_PageHeight, Self->Bitmap->Height);
 

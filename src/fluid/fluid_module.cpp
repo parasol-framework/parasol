@@ -57,7 +57,7 @@ static int module_load(lua_State *Lua)
       lua_setmetatable(Lua, -2);
 
       mod->Module = loaded_mod;
-      GetPointer(loaded_mod, FID_FunctionList, &mod->Functions);
+      loaded_mod->getPtr(FID_FunctionList, &mod->Functions);
       return 1;  // new userdatum is already on the stack
    }
    else {
@@ -85,10 +85,9 @@ static int module_destruct(lua_State *Lua)
 
 static int module_tostring(lua_State *Lua)
 {
-   struct module *mod;
-   if ((mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod"))) {
+   if (auto mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
       STRING name;
-      if (!GetString(mod->Module, FID_Name, &name)) {
+      if (!mod->Module->get(FID_Name, &name)) {
          lua_pushstring(Lua, name);
       }
       else lua_pushnil(Lua);
@@ -103,12 +102,9 @@ static int module_tostring(lua_State *Lua)
 
 static int module_index(lua_State *Lua)
 {
-   struct module *mod;
-   if ((mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod"))) {
-      CSTRING function;
-      if ((function = luaL_checkstring(Lua, 2))) {
-         auto list = mod->Functions;
-         if (list) {
+   if (auto mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
+      if (auto function = luaL_checkstring(Lua, 2)) {
+         if (auto list = mod->Functions) {
             for (LONG i=0; list[i].Name; i++) {
                CSTRING name = list[i].Name;
                if (!StrMatch(name, function)) { // Function call stack management

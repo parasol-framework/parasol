@@ -209,7 +209,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
                if ((UWORD)type_id IS 0x8008) {
                   font_count  = count;
-                  GetLong(file, FID_Position, &font_offset);
+                  file->get(FID_Position, &font_offset);
                   font_offset += 4;
                   break;
                }

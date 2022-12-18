@@ -679,7 +679,7 @@ static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
       Self->WorkingPath = StrClone(Self->Path);
       Self->Path[j] = save;
    }
-   else if ((!GetString(CurrentTask(), FID_Path, &workingpath)) and (workingpath)) {
+   else if ((!CurrentTask()->get(FID_Path, &workingpath)) and (workingpath)) {
       char buf[1024];
 
       // Using ResolvePath() can help to determine relative paths such as "../path/file"

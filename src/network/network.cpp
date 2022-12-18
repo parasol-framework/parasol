@@ -255,7 +255,7 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
-   GetPointer(argModule, FID_Master, &glModule);
+   argModule->getPtr(FID_Master, &glModule);
 
    glHosts = VarNew(64, KSF_THREAD_SAFE);
    glAddresses = VarNew(64, KSF_THREAD_SAFE);

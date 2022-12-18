@@ -24,7 +24,7 @@ struct DisplayBase *DisplayBase;
 if (!CreateObject(ID_MODULE, 0, &amp;modDisplay,
       FID_Name|TSTR, "display",
       TAGEND)) {
-   GetPointer(modDisplay, FID_ModBase, &amp;DisplayBase);
+   modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
 }
 </pre>
 <p>Post-initialisation there is very little that you need to do with the object besides reading its function base from the <field>ModBase</field> field.  Keep in mind that you must not free the module object until you are finished with the functions that it provides.</p>
@@ -81,7 +81,7 @@ if (!CreateObject(ID_MODULE, 0, &amp;modDisplay,
 <p>The Actions field itself points to a list of action routines that are arranged into a lookup table, sorted by action ID. You can hook into an action simply by writing to its index in the table with a pointer to the routine that you want to use for that action.  For example:</p>
 <pre>APTR *actions;
 
-GetPointer(Module, FID_Actions, &amp;actions);
+Module-&gt;getPtr(FID_Actions, &amp;actions);
 actions[AC_ActionNotify] = MODULE_ActionNotify;
 </pre>
 <p>The synopsis of the routines that you use for hooking into the action list must match <code>ERROR MODULE_ActionNotify(OBJECTPTR Module, APTR Args)</code></p>

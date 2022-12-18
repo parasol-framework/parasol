@@ -123,7 +123,7 @@ void program(void)
    StringsBase = GetResourcePtr(RES_STRINGS);
    FileSystemBase = GetResourcePtr(RES_FILESYSTEM);
 
-   if ((GetPointer(CurrentTask(), FID_Parameters, &args) IS ERR_Okay) and (args)) {
+   if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR_Okay) and (args)) {
       for (i=0; args[i]; i++) {
          if (!StrMatch(args[i], "-threads")) {
             if (args[++i]) glTotalThreads = StrToInt(args[i]);

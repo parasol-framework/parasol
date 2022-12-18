@@ -36,7 +36,7 @@ ERROR DeleteVolume(CSTRING Name)
    if (!volumes.granted()) return log.warning(ERR_AccessObject);
 
    ConfigGroups *groups;
-   if (!GetPointer(glVolumes, FID_Data, &groups)) {
+   if (!glVolumes->getPtr(FID_Data, &groups)) {
       std::string vol;
       LONG i;
       for (i=0; (Name[i]) and (Name[i] != ':'); i++);
@@ -61,7 +61,7 @@ ERROR DeleteVolume(CSTRING Name)
 
       objConfig *userconfig;
       if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, "user:config/volumes.cfg", TAGEND)) {
-         if (!GetPointer(userconfig, FID_Data, &groups)) {
+         if (!userconfig->getPtr(FID_Data, &groups)) {
             for (auto& [group, keys] : groups[0]) {
                if (!StrMatch(vol.c_str(), keys["Name"].c_str())) {
                   cfgDeleteGroup(userconfig, group.c_str());
@@ -103,7 +103,7 @@ ERROR RenameVolume(CSTRING Volume, CSTRING Name)
    parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 5000);
    if (volumes.granted()) {
       ConfigGroups *groups;
-      if (!GetPointer(glVolumes, FID_Data, &groups)) {
+      if (!glVolumes->getPtr(FID_Data, &groups)) {
          std::string vol;
          LONG i;
 
@@ -266,7 +266,7 @@ next:
    }
 
    ConfigGroups *groups;
-   if (GetPointer(glVolumes, FID_Data, &groups)) {
+   if (glVolumes->getPtr(FID_Data, &groups)) {
       return log.warning(ERR_FieldNotSet);
    }
 
@@ -315,7 +315,7 @@ next:
             if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, savefile.c_str(), TAGEND)) {
                cfgWriteValue(userconfig, name, "Name", name); // Ensure that an entry for the volume exists before we search for it.
                ConfigGroups *usergroups;
-               if (GetPointer(userconfig, FID_Data, &usergroups)) {
+               if (userconfig->getPtr(FID_Data, &usergroups)) {
                   for (auto& [group, ukeys] : usergroups[0]) {
                      if (!StrMatch(group.c_str(), name)) {
                         ukeys["Path"] = path;
