@@ -67,7 +67,7 @@ static ERROR DOCUMENT_ActionNotify(extDocument *Self, struct acActionNotify *Arg
          if (Self->Tabs[Self->FocusIndex].Type IS TT_LINK) {
             for (LONG i=0; i < Self->TotalLinks; i++) {
                if ((Self->Links[i].EscapeCode IS ESC_LINK) and (Self->Links[i].Link->ID IS Self->Tabs[Self->FocusIndex].Ref)) {
-                  acDrawAreaID(Self->PageID, Self->Links[i].X, Self->Links[i].Y, Self->Links[i].Width, Self->Links[i].Height);
+                  acDrawArea(Self->PageID, Self->Links[i].X, Self->Links[i].Y, Self->Links[i].Width, Self->Links[i].Height);
                   break;
                }
             }
@@ -87,7 +87,7 @@ static ERROR DOCUMENT_ActionNotify(extDocument *Self, struct acActionNotify *Arg
          Self->AreaWidth  = Self->SurfaceWidth - (((Self->BorderEdge & DBE_RIGHT) ? BORDER_SIZE : 0)<<1);
          Self->AreaHeight = Self->SurfaceHeight - (((Self->BorderEdge & DBE_BOTTOM) ? BORDER_SIZE : 0)<<1);
 
-         acRedimensionID(Self->ViewID, Self->AreaX, Self->AreaY, 0, Self->AreaWidth, Self->AreaHeight, 0);
+         acRedimension(Self->ViewID, Self->AreaX, Self->AreaY, 0, Self->AreaWidth, Self->AreaHeight, 0);
 
          DocTrigger *trigger;
          for (trigger=Self->Triggers[DRT_BEFORE_LAYOUT]; trigger; trigger=trigger->Next) {
@@ -142,7 +142,7 @@ static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
    ChildEntry list[16];
    LONG count = ARRAYSIZE(list);
    if (!ListChildren(Self->UID, TRUE, list, &count)) {
-      for (LONG i=0; i < count; i++) acActivateID(list[i].ObjectID);
+      for (LONG i=0; i < count; i++) acActivate(list[i].ObjectID);
    }
 
    return ERR_Okay;
@@ -672,7 +672,7 @@ Focus: Sets the user focus on the document page.
 
 static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
 {
-   acFocusID(Self->PageID);
+   acFocus(Self->PageID);
    return ERR_Okay;
 }
 
@@ -683,8 +683,8 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->FlashTimer) { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
-   if (Self->PageID)    { acFreeID(Self->PageID); Self->PageID = 0; }
-   if (Self->ViewID)    { acFreeID(Self->ViewID); Self->ViewID = 0; }
+   if (Self->PageID)    { acFree(Self->PageID); Self->PageID = 0; }
+   if (Self->ViewID)    { acFree(Self->ViewID); Self->ViewID = 0; }
    if (Self->InsertXML) { acFree(Self->InsertXML); Self->InsertXML = NULL; }
 
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
@@ -858,8 +858,8 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    if (error) return error;
 
-   acShowID(Self->ViewID);
-   acShowID(Self->PageID);
+   acShow(Self->ViewID);
+   acShow(Self->PageID);
 
    // TODO: Launch the scrollbar script with references to our Target, Page and View viewports
 
@@ -965,7 +965,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                         }
                         else if (code IS ESC_OBJECT) {
                            auto escobj = escape_data<escObject>(stream, i);
-                           if (escobj->ObjectID) acHideID(escobj->ObjectID);
+                           if (escobj->ObjectID) acHide(escobj->ObjectID);
 
                            if ((tab = find_tabfocus(Self, TT_OBJECT, escobj->ObjectID)) >= 0) {
                               Self->Tabs[tab].Active = FALSE;
@@ -1471,7 +1471,7 @@ static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *A
 
    //log.msg("%d, %d / %d, %d", (LONG)Args->X, (LONG)Args->Y, Self->XPosition, Self->YPosition);
 
-   acMoveToPointID(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF_X|MTF_Y);
+   acMoveToPoint(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF_X|MTF_Y);
    return ERR_Okay;
 }
 
@@ -1616,7 +1616,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                            }
                            else if (code IS ESC_OBJECT) {
                               auto escobj = escape_data<escObject>(stream, i);
-                              if (escobj->ObjectID) acShowID(escobj->ObjectID);
+                              if (escobj->ObjectID) acShow(escobj->ObjectID);
 
                               LONG tab;
                               if ((tab = find_tabfocus(Self, TT_OBJECT, escobj->ObjectID)) >= 0) {

@@ -613,7 +613,7 @@ Focus: Focus on the Scintilla surface.
 
 static ERROR SCINTILLA_Focus(extScintilla *Self, APTR Void)
 {
-   return acFocusID(Self->SurfaceID);
+   return acFocus(Self->SurfaceID);
 }
 
 //*****************************************************************************

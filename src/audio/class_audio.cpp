@@ -887,7 +887,7 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
          for (LONG i=0; i < Self->TotalSamples; i++) {
             if (Self->Samples[i].Used IS TRUE) {
                if (Self->Samples[i].Data) FreeResource(Self->Samples[i].Data);
-               if (Self->Samples[i].Free IS TRUE) acFreeID(Self->Samples[i].StreamID);
+               if (Self->Samples[i].Free IS TRUE) acFree(Self->Samples[i].StreamID);
             }
          }
 
@@ -1202,7 +1202,7 @@ static ERROR AUDIO_RemoveSample(extAudio *Self, struct sndRemoveSample *Args)
          }
 
          if (sample->Free IS TRUE) {
-            acFreeID(sample->StreamID);
+            acFree(sample->StreamID);
             sample->StreamID = 0;
          }
       }
@@ -1259,12 +1259,12 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
    if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, TAGEND)) {
-      cfgWriteInt(config, "AUDIO", "OutputRate", Self->OutputRate);
-      cfgWriteInt(config, "AUDIO", "InputRate", Self->InputRate);
-      cfgWriteInt(config, "AUDIO", "Quality", Self->Quality);
-      cfgWriteInt(config, "AUDIO", "BitDepth", Self->BitDepth);
-      cfgWriteInt(config, "AUDIO", "Periods", Self->Periods);
-      cfgWriteInt(config, "AUDIO", "PeriodSize", Self->PeriodSize);
+      cfgWrite(config, "AUDIO", "OutputRate", Self->OutputRate);
+      cfgWrite(config, "AUDIO", "InputRate", Self->InputRate);
+      cfgWrite(config, "AUDIO", "Quality", Self->Quality);
+      cfgWrite(config, "AUDIO", "BitDepth", Self->BitDepth);
+      cfgWrite(config, "AUDIO", "Periods", Self->Periods);
+      cfgWrite(config, "AUDIO", "PeriodSize", Self->PeriodSize);
 
       StrFormat(buffer, sizeof(buffer), "%.4f", Self->Bass);
       cfgWriteValue(config, "AUDIO", "Bass", buffer);
@@ -2186,15 +2186,15 @@ static void load_config(extAudio *Self)
 
    OBJECTPTR config;
    if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/audio.cfg", TAGEND)) {
-      cfgReadInt(config, "AUDIO", "OutputRate", &Self->OutputRate);
-      cfgReadInt(config, "AUDIO", "InputRate", &Self->InputRate);
-      cfgReadInt(config, "AUDIO", "Quality", &Self->Quality);
-      if (!cfgReadFloat(config, "AUDIO", "Bass", &fvalue)) Self->Bass = fvalue;
-      if (!cfgReadFloat(config, "AUDIO", "Treble", &fvalue)) Self->Treble = fvalue;
-      cfgReadInt(config, "AUDIO", "BitDepth", &Self->BitDepth);
+      cfgRead(config, "AUDIO", "OutputRate", &Self->OutputRate);
+      cfgRead(config, "AUDIO", "InputRate", &Self->InputRate);
+      cfgRead(config, "AUDIO", "Quality", &Self->Quality);
+      if (!cfgRead(config, "AUDIO", "Bass", &fvalue)) Self->Bass = fvalue;
+      if (!cfgRead(config, "AUDIO", "Treble", &fvalue)) Self->Treble = fvalue;
+      cfgRead(config, "AUDIO", "BitDepth", &Self->BitDepth);
 
-      if (!cfgReadInt(config, "AUDIO", "Periods", &value)) SET_Periods(Self, value);
-      if (!cfgReadInt(config, "AUDIO", "PeriodSize", &value)) SET_PeriodSize(Self, value);
+      if (!cfgRead(config, "AUDIO", "Periods", &value)) SET_Periods(Self, value);
+      if (!cfgRead(config, "AUDIO", "PeriodSize", &value)) SET_PeriodSize(Self, value);
 
       if (!cfgReadValue(config, "AUDIO", "Device", &str)) StrCopy(str, Self->prvDevice, sizeof(Self->prvDevice));
       else StrCopy("default", Self->prvDevice, sizeof(Self->prvDevice));

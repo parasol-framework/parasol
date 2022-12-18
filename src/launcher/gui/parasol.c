@@ -180,7 +180,7 @@ extern "C" void program(void)
 
    if (exec_script(scriptfile, time, procedure)) goto exit;
 
-   if (winhandle) acShowID(TargetID);
+   if (winhandle) acShow(TargetID);
 
    ProcessMessages(0, 0);
 

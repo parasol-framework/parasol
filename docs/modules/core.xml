@@ -2769,22 +2769,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>SysUnlock</name>
-    <category>Locks</category>
-    <comment>Releases a lock obtained from SysLock().</comment>
-    <prototype>ERROR SysUnlock(LONG Index)</prototype>
-    <input>
-      <param type="LONG" name="Index">The index number of the system mutex that needs to be unlocked.</param>
-    </input>
-    <description>
-<p>Use the SysUnlock() function to undo a previous call to <function module="Core">SysLock</function> for a given mutex.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-    </result>
-  </function>
-
-  <function>
     <name>UTF8CharLength</name>
     <category>Unicode</category>
     <comment>Returns the number of bytes used to define a single UTF-8 character.</comment>

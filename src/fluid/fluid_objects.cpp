@@ -915,7 +915,7 @@ static int object_destruct(lua_State *Lua)
             auto owner_id = GetOwnerID(def->ObjectID);
             if ((def->ClassID IS ID_RECORDSET) or (owner_id IS Lua->Script->UID) or (owner_id IS Lua->Script->TargetID)) {
                log.trace("Freeing Fluid-owned object #%d.", def->ObjectID);
-               acFreeID(def->ObjectID);
+               acFree(def->ObjectID);
             }
          }
          else {

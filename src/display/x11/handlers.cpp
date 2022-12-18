@@ -48,7 +48,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             if ((display_id = get_display(xevent.xany.window))) {
                surface_id = GetOwnerID(display_id);
                log.trace("XFocusIn Surface: %d", surface_id);
-               acFocusID(surface_id);
+               acFocus(surface_id);
             }
             else log.trace("XFocusIn Failed to get window display ID.");
             break;
@@ -57,7 +57,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             log.traceBranch("XFocusOut");
             if (!AccessMemory(RPM_FocusList, MEM_READ_WRITE, 1000, &list)) {
                for (i=0; list[i]; i++) {
-                  acLostFocusID(list[i]);
+                  acLostFocus(list[i]);
                }
                list[0] = 0;
                ReleaseMemory(list);
@@ -95,7 +95,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                   }
 
                   log.msg("Freeing surface %d from display %d.", surface_id, display_id);
-                  acFreeID(surface_id);
+                  acFree(surface_id);
                }
                else {
                   log.msg("Failed to retrieve display ID for window $%x.", (unsigned int)xevent.xany.window);
@@ -108,7 +108,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             if (glPlugin) {
                if ((display_id = get_display(xevent.xany.window))) {
                   surface_id = GetOwnerID(display_id);
-                  acFreeID(surface_id);
+                  acFree(surface_id);
                }
             }
             break;

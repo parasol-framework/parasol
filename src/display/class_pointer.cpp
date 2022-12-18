@@ -361,12 +361,12 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       // Drag and drop has been released.  Inform the destination surface of the item's release.
 
       if (Self->DragSurface) {
-         acHideID(Self->DragSurface);
+         acHide(Self->DragSurface);
          Self->DragSurface = 0;
       }
 
       if (!modal_id) {
-         acDragDropID(Self->OverObjectID, Self->DragSourceID, Self->DragItem, Self->DragData);
+         acDragDrop(Self->OverObjectID, Self->DragSourceID, Self->DragItem, Self->DragData);
       }
 
       Self->DragItem = 0;
@@ -551,7 +551,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
                }
             }
 
-            acMoveToPointID(Self->DragSurface, sx, sy, 0, MTF_X|MTF_Y);
+            acMoveToPoint(Self->DragSurface, sx, sy, 0, MTF_X|MTF_Y);
          }
 
          LONG absx, absy;
@@ -619,7 +619,7 @@ static ERROR PTR_Free(extPointer *Self, APTR Void)
 {
    acHide(Self);
 
-   if (Self->BitmapID) { acFreeID(Self->BitmapID); Self->BitmapID = 0; }
+   if (Self->BitmapID) { acFree(Self->BitmapID); Self->BitmapID = 0; }
 
    if (Self->UserLoginHandle) {
       UnsubscribeEvent(Self->UserLoginHandle);
@@ -1251,11 +1251,11 @@ static void set_pointer_defaults(extPointer *Self)
    if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/pointer.cfg", TAGEND)) {
       DOUBLE dbl;
       CSTRING str;
-      if (!cfgReadFloat(config, "POINTER", "Speed", &dbl)) speed = dbl;
-      if (!cfgReadFloat(config, "POINTER", "Acceleration", &dbl)) acceleration = dbl;
-      if (!cfgReadFloat(config, "POINTER", "MaxSpeed", &dbl)) maxspeed = dbl;
-      if (!cfgReadFloat(config, "POINTER", "WheelSpeed", &dbl)) wheelspeed = dbl;
-      if (!cfgReadFloat(config, "POINTER", "DoubleClick", &dbl)) doubleclick = dbl;
+      if (!cfgRead(config, "POINTER", "Speed", &dbl)) speed = dbl;
+      if (!cfgRead(config, "POINTER", "Acceleration", &dbl)) acceleration = dbl;
+      if (!cfgRead(config, "POINTER", "MaxSpeed", &dbl)) maxspeed = dbl;
+      if (!cfgRead(config, "POINTER", "WheelSpeed", &dbl)) wheelspeed = dbl;
+      if (!cfgRead(config, "POINTER", "DoubleClick", &dbl)) doubleclick = dbl;
       if (!cfgReadValue(config, "POINTER", "ButtonOrder", &str)) buttonorder = str;
       acFree(config);
    }

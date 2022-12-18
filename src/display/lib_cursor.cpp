@@ -879,9 +879,9 @@ ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID
 
       if (Surface) {
          log.trace("Moving draggable surface %d to %dx%d", Surface, pointer->X, pointer->Y);
-         acMoveToPointID(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF_X|MTF_Y);
-         acShowID(Surface);
-         acMoveToFrontID(Surface);
+         acMoveToPoint(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF_X|MTF_Y);
+         acShow(Surface);
+         acMoveToFront(Surface);
       }
 
       gfxReleasePointer(pointer);

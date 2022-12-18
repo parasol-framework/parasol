@@ -26,7 +26,7 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
       if (!modal_id) {
          SURFACEINFO *info;
          if (!gfxGetSurfaceInfo(pointer->OverObjectID, &info)) {
-            acDragDropID(pointer->OverObjectID, info->DisplayID, -1, Datatypes);
+            acDragDrop(pointer->OverObjectID, info->DisplayID, -1, Datatypes);
          }
          else log.warning(ERR_GetSurfaceInfo);
       }
@@ -1703,7 +1703,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
       LONG x = Left - list[index].Left;
       LONG y = Top - list[index].Top;
       if (Flags & IRF_IGNORE_CHILDREN) {
-         acDrawAreaID(list[index].SurfaceID, x, y, Right - Left, Bottom - Top);
+         acDrawArea(list[index].SurfaceID, x, y, Right - Left, Bottom - Top);
       }
       else drwInvalidateRegionID(list[index].SurfaceID, x, y, Right - Left, Bottom - Top);
       return ERR_Okay;
@@ -2120,13 +2120,13 @@ OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
       SysUnlock(PL_PROCESSES);
 
       if (focus) {
-         acMoveToFrontID(SurfaceID);
+         acMoveToFront(SurfaceID);
 
          // Do not change the primary focus if the targetted surface already has it (this ensures that if any children have the focus, they will keep it).
 
          LONG flags;
          if ((!gfxGetSurfaceFlags(SurfaceID, &flags)) and (!(flags & RNF_HAS_FOCUS))) {
-            acFocusID(SurfaceID);
+            acFocus(SurfaceID);
          }
       }
    }
