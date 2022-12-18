@@ -1764,20 +1764,6 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
-    <name>PrintDiagnosis</name>
-    <category>Logging</category>
-    <comment>Prints program state information to stdout.</comment>
-    <prototype>void PrintDiagnosis(LONG Process, LONG Signal)</prototype>
-    <input>
-      <param type="LONG" name="Process">Process ID of the task to analyse - if zero, the current task is analysed.</param>
-      <param type="LONG" name="Signal">Intended for internal use only (set to zero), indicates a signal number in the event of a crash.</param>
-    </input>
-    <description>
-<p>An analysis of any task's current state can be printed to stdout by calling this function.  This information is useful solely for the purpose of debugging, particularly in difficult situations where reviewing the current context and resource data may prove useful.</p>
-    </description>
-  </function>
-
-  <function>
     <name>ProcessMessages</name>
     <category>Messages</category>
     <comment>Processes system messages that are queued in the task's message buffer.</comment>

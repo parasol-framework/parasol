@@ -1310,6 +1310,7 @@ static ERROR init_shared_control(void)
 -FUNCTION-
 PrintDiagnosis: Prints program state information to stdout.
 Category: Logging
+Status: private
 
 An analysis of any task's current state can be printed to stdout by calling this function.  This information is useful
 solely for the purpose of debugging, particularly in difficult situations where reviewing the current context and
