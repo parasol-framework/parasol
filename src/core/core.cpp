@@ -150,7 +150,7 @@ static void print_class_list(void)
    log.trace("Total: %d, %s", glClassDB->Total, buffer);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // The _init symbol is used by dlopen() to initialise libraries.
 
 #ifdef __unix__
@@ -162,7 +162,7 @@ void _init(void)
 */
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 {
@@ -225,24 +225,20 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    hold_priority = FALSE;
 
-   // If the user has given us suid-root rights, we can use direct video access.  The first thing that we're going to
+   // If the executable has suid-root rights, we can use direct video access.  The first thing that we're going to
    // do here is actually drop this level of access so that we do not put system security at risk.  This is also
-   // important for ensuring any created files have the user's original login and group id.  We can always regain root
-   // access later when we need it for the video setup.
+   // important for ensuring any created files have the user's original login and group id.  Privileges can be regained
+   // later if needed for the video setup.
    //
-   // Any area of code that needs to regain admin access simply uses the following code segment:
+   // Any code that needs to regain admin access can use the following code segment:
    //
-   //    if (SetResource(RES_PRIVILEGEDUSER, TRUE) IS ERR_Okay) {
+   //    if (!SetResource(RES_PRIVILEGEDUSER, TRUE)) {
    //       ...admin access...
    //       SetResource(RES_PRIVILEGEDUSER, FALSE);
    //    }
 
    seteuid(glUID);  // Ensure that the rest of our code is run under the real user name instead of admin
    setegid(glGID);  // Ensure that we run under the user's default group (important for file creation)
-
-   // Test if this is a genuine OS installation
-
-   if (!access("/etc/sysconfig/.parasol", F_OK)) glFullOS = TRUE;
 
 #elif _WIN32
    // Make some Windows calls and generate the global share names.  The share names are based on the library location -
@@ -996,7 +992,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    return LocalCoreBase;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Performs a system cleanup by expunging unused memory, modules etc.
 
 EXPORT void CleanSystem(LONG Flags)
@@ -1006,7 +1002,7 @@ EXPORT void CleanSystem(LONG Flags)
    Expunge(FALSE);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // If GlobalInstance is TRUE (because OPF_GLOBALINSTANCE was specified to OpenCore()), then the permissions and
 // nature of the public memory can be quite different to that of the standalone runtime environment.
 //
@@ -1491,18 +1487,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 
    if (!ProcessID) ProcessID = glProcessID;
 
-#ifdef _WIN32
    fd = stderr;
-#else
-   if ((glFullOS) and (Signal != SIGINT)) {
-      snprintf(filename, sizeof(filename), "/tmp/%d-exception.txt", ProcessID);
-      if (!(fd = fopen(filename, "w+"))) {
-         fd = stderr; // Failure, use stderr
-      }
-   }
-   else fd = stderr;
-#endif
-
    fprintf(fd, "Diagnostic Information:\n\n");
 
    // Print details of the object context at the time of the crash.  If this code fails, it indicates that the object context is corrupt.
@@ -2162,10 +2147,7 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
          }
 
          if (!hd_set) {
-            if (glFullOS) {
-               SetVolume(AST_NAME, "drive1", AST_PATH, "/", AST_LABEL, "Parasol", AST_FLAGS, VOLUME_REPLACE, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
-            }
-            else SetVolume(AST_NAME, "drive1", AST_PATH, "/", AST_LABEL, "Linux", AST_FLAGS, VOLUME_REPLACE, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
+            SetVolume(AST_NAME, "drive1", AST_PATH, "/", AST_LABEL, "Linux", AST_FLAGS, VOLUME_REPLACE, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
          }
       #endif
 

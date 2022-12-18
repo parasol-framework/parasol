@@ -86,9 +86,8 @@ static void xml_unescape(extXML *, STRING);
 static ERROR SET_Statement(extXML *, CSTRING Value);
 static ERROR SET_Source(extXML *Self, OBJECTPTR Value);
 
-/*****************************************************************************
-** Debug routines
-*/
+//********************************************************************************************************************
+// Debug routines
 
 #if defined(DEBUG) || defined(DEBUG_TREE_REMOVE) || defined(DEBUG_TREE_INSERT) || defined(DEBUG_TREE_MOVE)
 
@@ -128,7 +127,7 @@ static void debug_tree(STRING Header, extXML *Self)
 
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 
 static LONG str_sort(CSTRING Name1, CSTRING Name2)
 {
@@ -178,7 +177,7 @@ static LONG str_sort(CSTRING Name1, CSTRING Name2)
    else return 1;
 }
 
-//**********************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -941,7 +940,7 @@ static ERROR XML_GetTag(extXML *Self, struct xmlGetTag *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR XML_Init(extXML *Self, APTR Void)
 {
@@ -1372,7 +1371,7 @@ static void recalc_indexes(extXML *Self, XMLTag *Tag, LONG *Index, LONG *Level)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR XML_NewObject(extXML *Self, APTR Void)
 {
@@ -2605,6 +2604,8 @@ static ERROR GET_Tags(extXML *Self, XMLTag ***Values, LONG *Elements)
    return ERR_Okay;
 }
 
+//********************************************************************************************************************
+
 #include "xml_def.c"
 
 static const FieldArray clFields[] = {
@@ -2627,12 +2628,8 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
-
 #include "xml_functions.cpp"
 #include "unescape.cpp"
-
-//****************************************************************************
 
 static ERROR add_xml_class(void)
 {
@@ -2651,7 +2648,5 @@ static ERROR add_xml_class(void)
       FID_Path|TSTR,            MOD_PATH,
       TAGEND);
 }
-
-//****************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_XML)

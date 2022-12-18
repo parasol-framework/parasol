@@ -1249,12 +1249,11 @@ const SystemState * GetSystemState(void)
       state.InstanceID    = glInstanceID;
       state.ErrorMessages = glMessages;
       state.TotalErrorMessages = ARRAYSIZE(glMessages);
-      state.RootPath   = glRootPath;
-      state.SystemPath = glSystemPath;
-      state.ModulePath = glModulePath;
+      state.RootPath      = glRootPath;
+      state.SystemPath    = glSystemPath;
+      state.ModulePath    = glModulePath;
       #ifdef __unix__
-         if (glFullOS) state.Platform = "Native";
-         else state.Platform = "Linux";
+         state.Platform = "Linux";
       #elif _WIN32
          state.Platform = "Windows";
       #elif __APPLE__
