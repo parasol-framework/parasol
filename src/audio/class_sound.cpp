@@ -635,7 +635,6 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
    parasol::Log log;
    struct sndAddSample add;
-   AudioLoop loop;
    OBJECTPTR audio, filestream;
    LONG id, len, sampleformat, result, pos;
    BYTE *buffer;
@@ -902,8 +901,9 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          Self->Flags |= SDF_STREAM;
 
          struct sndAddStream stream;
+         AudioLoop loop;
          if (Self->Flags & SDF_LOOP) {
-            ClearMemory(&loop, sizeof(AudioSample));
+            ClearMemory(&loop, sizeof(loop));
             loop.LoopMode   = LOOP_SINGLE;
             loop.Loop1Type  = LTYPE_UNIDIRECTIONAL;
             loop.Loop1Start = Self->LoopStart;
@@ -911,7 +911,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
             else loop.Loop1End = Self->Length;
 
             stream.Loop     = &loop;
-            stream.LoopSize = sizeof(AudioLoop);
+            stream.LoopSize = sizeof(loop);
          }
          else {
             stream.Loop     = NULL;
@@ -938,8 +938,9 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          Self->BufferLength = Self->Length;
 
          if (!acRead(Self->File, buffer, Self->Length, &result)) {
+            AudioLoop loop;
             if (Self->Flags & SDF_LOOP) {
-               ClearMemory(&loop, sizeof(AudioSample));
+               ClearMemory(&loop, sizeof(loop));
                loop.LoopMode   = LOOP_SINGLE;
                loop.Loop1Type  = LTYPE_UNIDIRECTIONAL;
                loop.Loop1Start = Self->LoopStart;
@@ -947,7 +948,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
                else loop.Loop1End = Self->Length;
 
                add.Loop     = &loop;
-               add.LoopSize = sizeof(AudioLoop);
+               add.LoopSize = sizeof(loop);
             }
             else {
                add.Loop     = NULL;
