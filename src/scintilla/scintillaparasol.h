@@ -1,6 +1,6 @@
 
-typedef class plScintilla objScintilla;
-typedef class ScintillaParasol ScintillaParasol;
+class objScintilla;
+class ScintillaParasol;
 
 #include <parasol/modules/scintilla.h>
 
@@ -36,12 +36,7 @@ class extScintilla : public objScintilla {
    UBYTE  ScrollLocked;
 };
 
-/*****************************************************************************
-** Class ScintillaParasol
-**
-** This class inherits from ScintillaBase which inherits from Editor.
-** This class is responsible for a lot of the editing stuff.
-*/
+// This class inherits from ScintillaBase which inherits from Editor.  Responsible for a lot of the editing code.
 
 class ScintillaParasol : public Scintilla::ScintillaBase {
 public:

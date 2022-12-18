@@ -1,4 +1,4 @@
-#ifndef PARASOL_MAIN_H
+#pragma once
 #define PARASOL_MAIN_H TRUE
 
 //   main.h
@@ -15,21 +15,10 @@
 #pragma warning (disable : 4244 4311 4312) // Disable annoying VC++ typecast warnings
 #endif
 
-#ifndef SYSTEM_TYPES_H
 #include <parasol/system/types.h>
-#endif
-
-#ifndef SYSTEM_REGISTRY_H
 #include <parasol/system/registry.h>
-#endif
-
-#ifndef SYSTEM_ERRORS_H
 #include <parasol/system/errors.h>
-#endif
-
-#ifndef SYSTEM_FIELDS_H
 #include <parasol/system/fields.h>
-#endif
 
 #ifndef __GNUC__
 #define __attribute__(a)
@@ -38,8 +27,6 @@
 #ifdef  __cplusplus
 extern "C" {
 #endif
-
-//****************************************************************************
 
 #define VER_CORE (1.0f)  // Core version + revision
 #define REV_CORE (0)     // Core revision as a whole number
@@ -79,24 +66,7 @@ extern "C" {
 
 #define ARRAYSIZE(a) ((LONG)(sizeof(a)/sizeof(a[0])))
 
-#undef MIN
-#undef MAX
-#undef MID
-#undef ABS
-#undef SGN
-
 #define ROUNDUP(a,b) (((a) + (b)) - ((a) % (b))) // ROUNDUP(Number, Alignment) e.g. (14,8) = 16
-#define MIN(x,y)     (((x) < (y)) ? (x) : (y))
-#define MAX(x,y)     (((x) > (y)) ? (x) : (y))
-#define MID(x,y,z)   MAX((x), MIN((y), (z)))
-#define ABS(x)       (((x) >= 0) ? (x) : (-(x)))
-#define SGN(x)       ((x<0)?-1:((x>0)?1:0))
-#define LCASE(a)     ((((a) >= 'A') AND ((a) <= 'Z')) ? ((a) - 'A' + 'a') : (a))
-#define UCASE(a)     ((((a) >= 'a') AND ((a) <= 'z')) ? ((a) - 'a' + 'A') : (a))
-
-#define AlignLarge(a) (((a) + 7) & (~7))
-#define AlignLong(a)  (((a) + 3) & (~3))
-#define AlignWord(a)  (((a) + 1) & (~1))
 
 #define ALIGN64(a) (((a) + 7) & (~7))
 #define ALIGN32(a) (((a) + 3) & (~3))
@@ -120,23 +90,15 @@ extern "C" {
  #define DEBUG_BREAK
 #endif
 
-/*****************************************************************************
-** Endian management routines.
-*/
+//****************************************************************************
+// Endian management routines.
 
 #ifdef REVERSE_BYTEORDER
 
 // CPU is little endian (Intel, ARM)
 
-#define rd_long(a)    (((a)[0]<<24)|((a)[1]<<16)|((a)[2]<<8)|((a)[3]))
-#define rd_word(a)    (((a)[0]<<8)|((a)[1]))
 #define wrb_long(a,b) ((LONG *)(b))[0] = (a)
 #define wrb_word(a,b) ((WORD *)(b))[0] = (a)
-
-#define cpu_le32(x) (x)
-#define le32_cpu(x) (x)
-#define cpu_le16(x) (x)
-#define le16_cpu(x) (x)
 
 INLINE ULONG cpu_be32(ULONG x) {
    return ((((UBYTE)x)<<24)|(((UBYTE)(x>>8))<<16)|((x>>8) & 0xff00)|(x>>24));
@@ -150,17 +112,9 @@ INLINE ULONG cpu_be32(ULONG x) {
 
 // CPU is big endian (Motorola)
 
-#define rd_long(a)   (a)
-#define rd_word(a)   (a)
-#define wd_long(a,b) ((LONG *)(b))[0] = (a)
-#define wd_word(a,b) ((WORD *)(b))[0] = (a)
 #define wrb_long(a,b) (b)[0] = (UBYTE)(a); (b)[1] = (UBYTE)((a)>>8); (b)[2] = (UBYTE)((a)>>16); (b)[3] = (UBYTE)((a)>>24)
 #define wrb_word(a,b) (b)[0] = (UBYTE)(a); (b)[1] = (UBYTE)((a)>>8)
 
-#define cpu_le32(x) ((x<<24)|((x<<8) & 0xff0000)|((x>>8) & 0xff00)|(x>>24))
-#define le32_cpu(x) ((x<<24)|((x<<8) & 0xff0000)|((x>>8) & 0xff00)|(x>>24))
-#define cpu_le16(x) ((x<<8)|(x>>8))
-#define le16_cpu(x) ((x<<8)|(x>>8))
 #define cpu_be32(x) (x)
 #define be32_cpu(x) (x)
 #define cpu_be16(x) (x)
@@ -234,10 +188,8 @@ struct OpenInfo {
    struct OpenTag *Options; // OPF_OPTIONS Typecast to va_list (defined in stdarg.h)
 };
 
-/*****************************************************************************
-** Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
-** classes.  FUNCDEF's can only be used in argument definitions for methods, actions and functions.
-*/
+// Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
+// classes.  FUNCDEF's can only be used in argument definitions for methods, actions and functions.
 
 #undef FD_READ
 #undef FD_WRITE
@@ -340,14 +292,56 @@ struct OpenInfo {
 }
 #endif
 
+#include <string.h> // memset()
+#include <stdlib.h> // strtol(), strtod()
+
+inline LONG StrLength(CSTRING String)
+{
+   if (String) return strlen(String);
+   else return 0;
+}
+
+inline LARGE StrToInt(CSTRING String)
+{
+   if (!String) return 0;
+
+   while ((*String < '0') or (*String > '9')) { // Ignore any leading characters
+      if (!String[0]) return 0;
+      else if (*String IS '-') break;
+      else if (*String IS '+') break;
+      else String++;
+   }
+
+   return strtoll(String, NULL, 0);
+}
+
+inline DOUBLE StrToFloat(CSTRING String)
+{
+   if (!String) return 0;
+
+   // Ignore any leading characters
+
+   while ((*String != '-') and (*String != '.') and ((*String < '0') or (*String > '9'))) {
+      if (!*String) return 0;
+      String++;
+   }
+
+   return strtod(String, NULL);
+}
+
 #include <parasol/modules/core.h>
 
-INLINE LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
+inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
    return StrFormat(String, StringSize, PF64(), Integer);
+}
+
+inline ERROR ClearMemory(APTR Memory, LONG Length)
+{
+   if (!Memory) return ERR_NullArgs;
+   memset(Memory, 0, Length); // memset() is assumed to be optimised by the compiler.
+   return ERR_Okay;
 }
 
 #ifdef  __cplusplus
 #include <parasol/main.hpp>
 #endif
-
-#endif // PARASOL_MAIN_H

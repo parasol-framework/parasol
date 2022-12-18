@@ -9,13 +9,15 @@ Please refer to it for further information on licensing.
 -CLASS-
 Script: The Script class defines a common interface for script execution.
 
-The Script class defines a common interface for the purpose of executing scripts, such as Fluid.  The class does not
-include a default parser or execution process of any kind.
+The Script class defines a common interface for the purpose of executing scripts, such as Fluid.  The base class does
+not include a default parser or execution process of any kind.
 
-To execute a script, set the #Path field and then #Activate() the Script object.  Global input
-parameters for the script can be defined via the #SetVar() action.
+To execute a script file, choose a sub-class that matches the language and create the script object.  Set the #Path
+field and then #Activate() the script.  Global input parameters for the script can be defined via the #SetVar()
+action.
 
-Activating a script can result in the generation of objects that outlive the script after it is destroyed.
+Note that client scripts may sometimes create objects that are unmanaged by the script object that created them.
+Terminating the script will not remove objects that are outside its resource hierarchy.
 -END-
 
 *****************************************************************************/
@@ -60,10 +62,10 @@ static ERROR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Args->DataType IS DATA_XML) {
-      SetString(Self, FID_String, (CSTRING)Args->Buffer);
+      Self->set(FID_String, (CSTRING)Args->Buffer);
    }
    else if (Args->DataType IS DATA_TEXT) {
-      SetString(Self, FID_String, (CSTRING)Args->Buffer);
+      Self->set(FID_String, (CSTRING)Args->Buffer);
    }
 
    return ERR_Okay;
@@ -587,7 +589,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
                         }
                      }
 
-                     if (!StrMatch("target", arg)) SetString(Self, FID_Target, argval);
+                     if (!StrMatch("target", arg)) Self->set(FID_Target, argval);
                      else acSetVar(Self, arg, argval);
                   }
                }

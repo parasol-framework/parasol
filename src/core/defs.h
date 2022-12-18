@@ -223,7 +223,6 @@ struct virtual_drive {
    ERROR (*CreateLink)(CSTRING, CSTRING);
 };
 
-extern LONG glMaxDocViews, glTotalDocViews;
 extern const struct virtual_drive glFSDefault;
 extern LONG glVirtualTotal;
 extern struct virtual_drive glVirtual[20];
@@ -582,7 +581,7 @@ extern LONG glValidateProcessID; // Not a threading concern
 extern LONG glMutexLockSize; // Read only constant
 extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex;
 extern UWORD glFunctionID;
-extern BYTE glMasterTask, glProgramStage, glFullOS, glPrivileged, glSync;
+extern BYTE glMasterTask, glProgramStage, glPrivileged, glSync;
 extern LONG glPageSize; // Read only
 extern LONG glBufferSize;
 extern TIMER glCacheTimer;
@@ -592,7 +591,6 @@ extern class ObjectContext glTopContext; // Read-only, not a threading concern.
 extern OBJECTPTR modIconv;
 extern OBJECTPTR glLocale;
 extern objTime *glTime;
-extern struct translate *glTranslate;
 extern objConfig *glVolumes; // Volume management object, contains all FS volume names and their meta data.  Use AccessPrivateObject() to lock.
 extern objConfig *glDatatypes;
 extern struct KeyStore *glClassMap; // Register of all classes.
@@ -903,8 +901,6 @@ struct ziptail {
 extern struct FDTable *glFDTable;
 extern WORD glTotalFDs, glLastFD;
 extern LONG glInotify;
-struct DocView { CSTRING Path; CSTRING Doc; };
-extern struct DocView *glDocView;
 
 #define LRT_Exclusive 1
 
@@ -1005,7 +1001,6 @@ extern void zipfile_to_item(struct ZipFile *ZF, struct CompressedItem *Item);
 
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 APTR   build_jump_table(LONG, const struct Function *, LONG);
-ERROR  ClearMemory(APTR Memory, LONG Length);
 ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, WORD *, CSTRING);
 ERROR  copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements);
 ERROR  create_archive_volume(void);
@@ -1216,29 +1211,6 @@ void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, 
 #endif
 
 //********************************************************************************************************************
-// Function tracing macros.
-
-#if FUNCTION_TRACE || LASTFUNCTION_TRACE
-
-#define DEBUG_LINE _DebugLine(__FILE__,  __PRETTY_FUNCTION__, __LINE__);
-
-INLINE void _DebugLine(char *File, const char *Function, int Line)
-{
-   WORD i;
-   if (glTaskEntry) {
-      glTaskEntry->DebugLine = Line;
-      for (i=0; i < sizeof(glTaskEntry->DebugFunc)-1; i++) {
-         glTaskEntry->DebugFunc[i] = Function[i];
-      }
-      glTaskEntry->DebugFunc[i] = 0;
-   }
-}
-
-#else
-
-#define DEBUG_LINE
-
-#endif
 
 extern THREADVAR char tlFieldName[10]; // $12345678\0
 
@@ -1253,8 +1225,6 @@ INLINE CSTRING GET_FIELD_NAME(ULONG FieldID)
 }
 
 //********************************************************************************************************************
-
-#ifdef  __cplusplus
 
 class ScopedObjectAccess {
    private:
@@ -1279,46 +1249,6 @@ class ScopedObjectAccess {
          }
       }
 };
-
-#endif
-
-//********************************************************************************************************************
-
-INLINE char is_alpha(char c) {
-   return glAlphaNumeric[(LONG)c];
-}
-
-INLINE char UCase(char Case) {
-   if ((Case >= 'a') and (Case <= 'z')) Case -= 0x20;
-   return Case;
-}
-
-INLINE char LCase(char Case) {
-   if ((Case >= 'A') and (Case <= 'Z')) Case = Case - 'A' + 'Z';
-   return Case;
-}
-
-//********************************************************************************************************************
-
-INLINE CSTRING get_extension(CSTRING Path)
-{
-   ULONG i;
-   for (i=0; Path[i]; i++);
-   while ((i > 0) and (Path[i] != '.') and (Path[i] != ':') and (Path[i] != '/') and (Path[i] != '\\')) i--;
-   if (Path[i] IS '.') return Path+i+1;
-   else return NULL;
-}
-
-//********************************************************************************************************************
-
-INLINE CSTRING get_filename(CSTRING Path)
-{
-   ULONG i;
-   for (i=0; Path[i]; i++);
-   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
-   if (Path[i]) return Path+i;
-   else return NULL;
-}
 
 //********************************************************************************************************************
 
@@ -1362,8 +1292,6 @@ static WORD read_word(APTR File)
 
 //********************************************************************************************************************
 
-#ifdef  __cplusplus
-
 class ThreadLock { // C++ wrapper for terminating resources when scope is lost
    private:
       UBYTE lock_type;
@@ -1387,7 +1315,5 @@ class ThreadLock { // C++ wrapper for terminating resources when scope is lost
          }
       }
 };
-
-#endif
 
 #endif // DEFS_H

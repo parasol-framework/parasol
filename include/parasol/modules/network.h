@@ -1,13 +1,10 @@
-#ifndef MODULES_NETWORK
-#define MODULES_NETWORK 1
+#pragma once
 
 // Name:      network.h
 // Copyright: Paul Manias © 2005-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_NETWORK (1)
 
@@ -17,10 +14,10 @@
 #include <mutex>
 #endif
 
-typedef class plClientSocket objClientSocket;
-typedef class plProxy objProxy;
-typedef class plNetLookup objNetLookup;
-typedef class plNetSocket objNetSocket;
+class objClientSocket;
+class objProxy;
+class objNetLookup;
+class objNetSocket;
 
 
 #ifdef ENABLE_SSL
@@ -135,7 +132,7 @@ INLINE ERROR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) {
 }
 
 
-typedef class plClientSocket : public BaseClass {
+class objClientSocket : public BaseClass {
    public:
    LARGE    ConnectTime;         // System time for the creation of this socket
    objClientSocket * Prev;       // Previous socket in the chain
@@ -175,7 +172,7 @@ typedef class plClientSocket : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
-} objClientSocket;
+};
 
 // Proxy class definition
 
@@ -199,7 +196,7 @@ INLINE ERROR prxFind(APTR Ob, LONG Port, LONG Enabled) {
 #define prxFindNext(obj) Action(MT_prxFindNext,(obj),0)
 
 
-typedef class plProxy : public BaseClass {
+class objProxy : public BaseClass {
    public:
    STRING NetworkFilter;    // The name of the network that the proxy is limited to.
    STRING GatewayFilter;    // The IP address of the gateway that the proxy is limited to.
@@ -218,7 +215,7 @@ typedef class plProxy : public BaseClass {
    inline ERROR enable() { return Action(AC_Enable, this, NULL); }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
-} objProxy;
+};
 
 // NetLookup class definition
 
@@ -257,14 +254,14 @@ INLINE ERROR nlBlockingResolveAddress(APTR Ob, CSTRING Address) {
 }
 
 
-typedef class plNetLookup : public BaseClass {
+class objNetLookup : public BaseClass {
    public:
    LARGE UserData;    // Optional user data storage
    LONG  Flags;       // Optional flags
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-} objNetLookup;
+};
 
 // NetSocket class definition
 
@@ -322,7 +319,7 @@ INLINE ERROR nsWriteMsg(APTR Ob, APTR Message, LONG Length) {
 }
 
 
-typedef class plNetSocket : public BaseClass {
+class objNetSocket : public BaseClass {
    public:
    struct NetClient * Clients;    // For server sockets, lists all clients connected to the server.
    APTR   UserData;               // A user-defined pointer that can be useful in action notify events.
@@ -369,7 +366,7 @@ typedef class plNetSocket : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
-} objNetSocket;
+};
 
 // These error codes for certificate validation match the OpenSSL error codes (X509 definitions)
 
@@ -434,4 +431,3 @@ struct NetworkBase {
 #define netSetSSL(...) (NetworkBase->_SetSSL)(__VA_ARGS__)
 #endif
 
-#endif

@@ -1,12 +1,9 @@
-#ifndef SYSTEM_KEYMAPTABLE_H
-#define SYSTEM_KEYMAPTABLE_H TRUE
+#pragma once
 
 // keymaptable.h
-// (C) Copyright 2001-2008 Paul Manias
+// (C) Copyright 2001-2022 Paul Manias
 
-#ifndef SYSTEM_KEYS_H
 #include <parasol/system/keys.h>
-#endif
 
 // Key mapping translation table.  This is used to get the numeric value of keys referred to in the keymap
 // configuration files.  Because this is a lookup table, it must be arranged in the same order as that specified in
@@ -56,6 +53,3 @@ const static char glCharTable[K_LIST_END+1] = {
    '.', '\n', '.', '.', '.', '.',
    0
 };
-
-
-#endif // SYSTEM_KEYMAPTABLE_H

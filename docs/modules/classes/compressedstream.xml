@@ -504,13 +504,6 @@
       <field name="Object" type="OBJECTPTR"></field>
     </struct>
 
-    <struct name="RGB8" comment="8-bit RGB colour value." typeName="RGB8">
-      <field name="Red" type="UBYTE">Red component value</field>
-      <field name="Green" type="UBYTE">Green component value</field>
-      <field name="Blue" type="UBYTE">Blue component value</field>
-      <field name="Alpha" type="UBYTE">Alpha component value</field>
-    </struct>
-
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
       <field name="ErrorMessages" type="CSTRING *">A sorted array of all error codes, translated into human readable strings.</field>
       <field name="RootPath" type="CSTRING">The current root path, which defaults to the location of the installation folder.</field>
@@ -525,7 +518,7 @@
       <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
     </struct>
 
-    <struct name="rkBase64Decode" comment="Private structure for the StrBase64Decode() function." typeName="BASE64DECODE">
+    <struct name="rkBase64Decode" comment="Private structure for the Base64Decode() function." typeName="BASE64DECODE">
       <field name="Step" type="UBYTE">Internal</field>
       <field name="PlainChar" type="UBYTE">Internal</field>
       <field name="Initialised" type="UBYTE">Internal</field>

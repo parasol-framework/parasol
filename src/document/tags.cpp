@@ -145,13 +145,13 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    for (LONG i=1; i < Tag->TotalAttrib; i++) {
       ULONG hash_attrib = StrHash(Tag->Attrib[i].Name, 0);
       if (hash_attrib IS HASH_link) {
-         StrToColour(Tag->Attrib[i].Value, &Self->LinkColour);
+         read_rgb8(Tag->Attrib[i].Value, &Self->LinkColour);
       }
       else if (hash_attrib IS HASH_vlink) {
-         StrToColour(Tag->Attrib[i].Value, &Self->VLinkColour);
+         read_rgb8(Tag->Attrib[i].Value, &Self->VLinkColour);
       }
       else if (hash_attrib IS HASH_selectcolour) { // Colour to use when a link is selected (using the tab key to get to a link will select it)
-         StrToColour(Tag->Attrib[i].Value, &Self->SelectColour);
+         read_rgb8(Tag->Attrib[i].Value, &Self->SelectColour);
       }
       else if (hash_attrib IS HASH_leftmargin) {
          Self->LeftMargin = StrToInt(Tag->Attrib[i].Value);
@@ -201,7 +201,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
          log.msg("Page width forced to %.0f%s.", Self->PageWidth, Self->RelPageWidth ? "%%" : "");
       }
       else if (hash_attrib IS HASH_colour) { // Background colour
-         StrToColour(Tag->Attrib[i].Value, &Self->Background);
+         read_rgb8(Tag->Attrib[i].Value, &Self->Background);
       }
       else if ((hash_attrib IS HASH_face) or (hash_attrib IS HASH_fontface)) {
          SetField(Self, FID_FontFace, Tag->Attrib[i].Value);
@@ -210,7 +210,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
          Self->FontSize = StrToInt(Tag->Attrib[i].Value);
       }
       else if (hash_attrib IS HASH_fontcolour) { // Default font colour
-         StrToColour(Tag->Attrib[i].Value, &Self->FontColour);
+         read_rgb8(Tag->Attrib[i].Value, &Self->FontColour);
       }
       else log.warning("Style attribute %s=%s not supported.", Tag->Attrib[i].Name, Tag->Attrib[i].Value);
    }
@@ -920,11 +920,11 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
       style_status savestatus = Self->Style;
 
-      Self->Style.StyleChange    = TRUE;
+      Self->Style.StyleChange        = TRUE;
       Self->Style.FontStyle.Options |= FSO_UNDERLINE;
       Self->Style.FontStyle.Colour   = Self->LinkColour;
 
-      if (colour) StrToColour(colour, &Self->Style.FontStyle.Colour);
+      if (colour) read_rgb8(colour, &Self->Style.FontStyle.Colour);
 
       parse_tag(Self, XML, Tag->Child, Index, 0);
 
@@ -972,7 +972,7 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
    for (i=1; i < Tag->TotalAttrib; i++) {
       if (!StrMatch("colour", Tag->Attrib[i].Name)) {
-         StrToColour(Tag->Attrib[i].Value, &esc.Colour);
+         read_rgb8(Tag->Attrib[i].Value, &esc.Colour);
       }
       else if (!StrMatch("indent", Tag->Attrib[i].Name)) {
          // Affects the indenting to apply to child items.
@@ -1281,7 +1281,7 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    for (i=1; i < Tag->TotalAttrib; i++) {
       if (!StrMatch("colour", Tag->Attrib[i].Name)) {
          Self->Style.StyleChange = TRUE;
-         StrToColour(Tag->Attrib[i].Value, &Self->Style.FontStyle.Colour);
+         read_rgb8(Tag->Attrib[i].Value, &Self->Style.FontStyle.Colour);
       }
       else if (!StrMatch("face", Tag->Attrib[i].Name)) {
          Self->Style.FontChange = TRUE;
@@ -1385,12 +1385,12 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
    // Setup the callback interception so that we can control the order in which objects draw their graphics to the surface.
 
    if (Self->CurrentObject) {
-      SetLong(object, FID_Owner, Self->CurrentObject->UID);
+      object->set(FID_Owner, Self->CurrentObject->UID);
    }
    else if (pagetarget) {
       field_id = StrHash(pagetarget, 0);
-      if (Self->BkgdGfx) SetLong(object, field_id, Self->ViewID);
-      else SetLong(object, field_id, Self->PageID);
+      if (Self->BkgdGfx) object->set(field_id, Self->ViewID);
+      else object->set(field_id, Self->PageID);
    }
 
    for (LONG i=1; i < Tag->TotalAttrib; i++) {
@@ -1521,7 +1521,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
       // The object can self-destruct in ClosingTag(), so check that it still exists before inserting it into the text stream.
 
-      if (!CheckObjectExists(object_id, NULL)) {
+      if (!CheckObjectExists(object_id)) {
          if (Self->BkgdGfx) {
             auto resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
             if (resource) resource->ClassID = class_id;
@@ -1744,10 +1744,10 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
    if (!error) {
       if (name) SetName(script, name);
 
-      if (src) SetString(script, FID_Path, src);
+      if (src) script->set(FID_Path, src);
       else {
          if (!xmlGetContent(XML, Tag->Index, Self->Temp, Self->TempSize)) {
-            SetString(script, FID_Statement, Self->Temp);
+            script->set(FID_Statement, Self->Temp);
          }
          else {
             acFree(script);
@@ -1755,11 +1755,11 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
          }
       }
 
-      if (cachefile) SetField(script, FID_CacheFile, cachefile);
+      if (cachefile) script->set(FID_CacheFile, cachefile);
 
       // Object references are to be limited in scope to the Document object
 
-      //SetLong(script, FID_ObjectScope, Self->Head.UID);
+      //script->set(FID_ObjectScope, Self->Head.UID);
 
       // Pass custom arguments in the script tag
 
@@ -1821,7 +1821,7 @@ static void tag_setfont(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
       ULONG hash_attrib = StrHash(Tag->Attrib[i].Name, 0);
       if (hash_attrib IS HASH_colour) {
          Self->Style.StyleChange = TRUE;
-         StrToColour(Tag->Attrib[i].Value, &Self->Style.FontStyle.Colour);
+         read_rgb8(Tag->Attrib[i].Value, &Self->Style.FontStyle.Colour);
       }
       else if (hash_attrib IS HASH_face) {
          Self->Style.FontChange = TRUE;
@@ -2181,19 +2181,19 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
          else if (start.MinHeight > 10000) start.MinHeight = 10000;
       }
       else if (hash_attrib IS HASH_colour) {
-         StrToColour(Tag->Attrib[i].Value, &start.Colour);
+         read_rgb8(Tag->Attrib[i].Value, &start.Colour);
       }
       else if (hash_attrib IS HASH_border) {
-         StrToColour(Tag->Attrib[i].Value, &start.Highlight);
-         StrToColour(Tag->Attrib[i].Value, &start.Shadow);
+         read_rgb8(Tag->Attrib[i].Value, &start.Highlight);
+         read_rgb8(Tag->Attrib[i].Value, &start.Shadow);
          if (start.Thickness < 1) start.Thickness = 1;
       }
       else if (hash_attrib IS HASH_highlight) {
-         StrToColour(Tag->Attrib[i].Value, &start.Highlight);
+         read_rgb8(Tag->Attrib[i].Value, &start.Highlight);
          if (start.Thickness < 1) start.Thickness = 1;
       }
       else if (hash_attrib IS HASH_shadow) {
-         StrToColour(Tag->Attrib[i].Value, &start.Shadow);
+         read_rgb8(Tag->Attrib[i].Value, &start.Shadow);
          if (start.Thickness < 1) start.Thickness = 1;
       }
       else if (hash_attrib IS HASH_spacing) { // Spacing between the cells
@@ -2301,11 +2301,11 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
          if (escrow.MinHeight < 0) escrow.MinHeight = 0;
          else if (escrow.MinHeight > 4000) escrow.MinHeight = 4000;
       }
-      else if (!StrMatch("colour", Tag->Attrib[i].Name))    StrToColour(Tag->Attrib[i].Value, &escrow.Colour);
-      else if (!StrMatch("highlight", Tag->Attrib[i].Name)) StrToColour(Tag->Attrib[i].Value, &escrow.Highlight);
-      else if (!StrMatch("shadow", Tag->Attrib[i].Name))    StrToColour(Tag->Attrib[i].Value, &escrow.Shadow);
+      else if (!StrMatch("colour", Tag->Attrib[i].Name))    read_rgb8(Tag->Attrib[i].Value, &escrow.Colour);
+      else if (!StrMatch("highlight", Tag->Attrib[i].Name)) read_rgb8(Tag->Attrib[i].Value, &escrow.Highlight);
+      else if (!StrMatch("shadow", Tag->Attrib[i].Name))    read_rgb8(Tag->Attrib[i].Value, &escrow.Shadow);
       else if (!StrMatch("border", Tag->Attrib[i].Name)) {
-         StrToColour(Tag->Attrib[i].Value, &escrow.Highlight);
+         read_rgb8(Tag->Attrib[i].Value, &escrow.Highlight);
          escrow.Shadow = escrow.Highlight;
       }
    }
@@ -2389,17 +2389,17 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
          select = TRUE;
       }
       else if (hash_attrib IS HASH_colour) {
-         StrToColour(Tag->Attrib[i].Value, &esc.cell.Colour);
+         read_rgb8(Tag->Attrib[i].Value, &esc.cell.Colour);
       }
       else if (hash_attrib IS HASH_highlight) {
-         StrToColour(Tag->Attrib[i].Value, &esc.cell.Highlight);
+         read_rgb8(Tag->Attrib[i].Value, &esc.cell.Highlight);
       }
       else if (hash_attrib IS HASH_shadow) {
-         StrToColour(Tag->Attrib[i].Value, &esc.cell.Shadow);
+         read_rgb8(Tag->Attrib[i].Value, &esc.cell.Shadow);
       }
       else if (hash_attrib IS HASH_border) {
-         StrToColour(Tag->Attrib[i].Value, &esc.cell.Highlight);
-         StrToColour(Tag->Attrib[i].Value, &esc.cell.Shadow);
+         read_rgb8(Tag->Attrib[i].Value, &esc.cell.Highlight);
+         read_rgb8(Tag->Attrib[i].Value, &esc.cell.Shadow);
       }
       else if (hash_attrib IS HASH_nowrap) {
          Self->Style.StyleChange = TRUE;

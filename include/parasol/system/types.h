@@ -1,9 +1,8 @@
-#ifndef SYSTEM_TYPES_H
-#define SYSTEM_TYPES_H
+#pragma once
 
 //  types.h
 //
-//  (C) Copyright 1996-2020 Paul Manias
+//  (C) Copyright 1996-2022 Paul Manias
 
 #ifdef  __cplusplus
 extern "C" {
@@ -11,10 +10,8 @@ extern "C" {
 
 struct CoreBase;
 
-/*****************************************************************************
-** Function structure, typically used for defining callbacks to functions and procedures of any kind (e.g. standard C,
-** Fluid).
-*/
+// Function structure, typically used for defining callbacks to functions and procedures of any kind (e.g. standard C,
+// Fluid).
 
 enum {
    CALL_NONE=0,
@@ -54,5 +51,3 @@ INLINE  bool operator==(const struct rkFunction &A, const struct rkFunction &B)
 #ifdef  __cplusplus
 }
 #endif
-
-#endif  // SYSTEM_TYPES_H

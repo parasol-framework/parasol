@@ -710,7 +710,7 @@ int fcmd_loadfile(lua_State *Lua)
                }
                else i = 0;
 
-               SetLong(file.obj, FID_Position, i);
+               file.obj->set(FID_Position, i);
             }
 
             LONG i;
@@ -733,7 +733,7 @@ int fcmd_loadfile(lua_State *Lua)
                      f = clvalue(prv->Lua->top + (-1))->l.p;
                      luaU_dump(prv->Lua, f, &code_writer, cachefile, (Self->Flags & SCF_DEBUG) ? 0 : 1);
                      if (!GetPointer(file.obj, FID_Date, &date)) {
-                        SetPointer(cachefile, FID_Date, date);
+                        cachefile->set(FID_Date, date);
                      }
                      acFree(cachefile);
                   }

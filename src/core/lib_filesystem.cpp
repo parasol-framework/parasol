@@ -2964,7 +2964,7 @@ restart:
                bool match = false;
                ULONG j;
                for (j=0; (j < (ULONG)name.size()) and (j < pathend); j++) {
-                  if (LCASE(Path[j]) != LCASE(name[j])) break;
+                  if (std::tolower(Path[j]) != std::tolower(name[j])) break;
                }
                if ((j IS pathend) and ((j IS (ULONG)name.size()) or (name[j] IS ':'))) match = true;
 

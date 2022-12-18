@@ -659,7 +659,7 @@ retrydir:
          char buffer[len+1];
          for (j=0; j < len; j++) buffer[j] = Self->Path[j];
          buffer[j] = 0;
-         if (SetString(Self, FID_Path, buffer) != ERR_Okay) {
+         if (Self->set(FID_Path, buffer) != ERR_Okay) {
             return log.warning(ERR_SetField);
          }
       }

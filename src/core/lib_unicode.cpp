@@ -63,19 +63,19 @@ LONG UTF8CharLength(CSTRING String)
 -FUNCTION-
 UTF8Copy: Copies the characters of one string to another (UTF8).
 
-This function copies part of one string over to another.  If the Length is set to zero then this function will copy the
-entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null
-byte) while copying, then it will stop automatically to prevent copying of junk characters.
+This function copies part of one string over to another.  If the Chars value is `COPY_ALL` then this function will
+copy the entire Src string to Dest.  If this function encounters the end of the Src string (null byte) while
+copying, it will terminate the output string at the same point and return.
 
-Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set
-the number of Chars or not.  For example, if you were to copy `123` into the middle of string `ABCDEFGHI` then the
-result would be `ABC123`. The `GHI` part of the string would be lost.
+Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of the Chars valuae.
+For example, if `123` is copied into the middle of string `ABCDEFGHI` then the result would be `ABC123` and the `GHI`
+part of the string would be lost.
 
 -INPUT-
 cstr Src:  Pointer to the source string.
 str Dest:  Pointer to the destination buffer.
 int Chars: The maximum number of UTF8 characters to copy.  Can be set to COPY_ALL to copy up to the null terminator of the Src.
-int Size:  Size of the destination buffer.
+int Size:  Byte size of the destination buffer.
 
 -RESULT-
 int: Returns the total amount of <i>bytes</i> that were copied, not including the null byte at the end.
@@ -130,8 +130,6 @@ LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size)
 UTF8Length: Returns the total number of characters in a UTF-8 string.
 
 This function will return the total number of decoded unicode characters in a UTF-8 string.
-
-For the total number of bytes in a string, use ~StrLength() instead.
 
 -INPUT-
 cstr String: Pointer to a UTF-8 string.

@@ -264,14 +264,6 @@ EXPORT void CloseCore(void)
             if (glFileMonitor) { FreeResource(glFileMonitor); glFileMonitor = NULL; }
          #endif
 
-         if (glDocView)   {
-            for (LONG i=0; i < glTotalDocViews; i++) {
-               if (glDocView[i].Path) FreeResource(glDocView[i].Path);
-            }
-            FreeResource(glDocView);
-            glDocView = NULL;
-         }
-
          free_file_cache();
 
          if (glInotify != -1) { close(glInotify); glInotify = -1; }
@@ -284,7 +276,6 @@ EXPORT void CloseCore(void)
       VirtualVolume("archive", VAS_DEREGISTER, TAGEND);
 
       if (glVolumes) { acFree(glVolumes); glVolumes = NULL; }
-      if (glTranslate) { ReleaseMemory(glTranslate); glTranslate = NULL; }
 
       // Remove all message handlers
 

@@ -238,7 +238,7 @@ OBJECTPTR access_object(struct object *Object)
          Object->ObjectID = 0;
       }
    }
-   else if (CheckObjectExists(Object->ObjectID, NULL) != ERR_True) {
+   else if (CheckObjectExists(Object->ObjectID) != ERR_True) {
       log.trace("Object #%d has been terminated.", Object->ObjectID);
       Object->prvObject = NULL;
       Object->ObjectID = 0;
@@ -350,7 +350,7 @@ static ERROR CMDExpunge(void)
 
 static ERROR CMDOpen(OBJECTPTR Module)
 {
-   SetPointer(Module, FID_FunctionList, JumpTableV1);
+   Module->set(FID_FunctionList, JumpTableV1);
    return ERR_Okay;
 }
 
@@ -758,13 +758,13 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
       if (n > 0) {
          LONG dt = StrDatatype(value);
          if (dt IS STT_NUMBER) {
-            lua_pushinteger(Lua, StrToInt(value));
+            lua_pushinteger(Lua, strtoll(value, NULL, 0));
          }
          else if (dt IS STT_FLOAT) {
-            lua_pushnumber(Lua, StrToFloat(value));
+            lua_pushnumber(Lua, strtod(value, NULL));
          }
          else if (dt IS STT_HEX) {
-            lua_pushnumber(Lua, StrToHex(value)); // Using pushnumber() so that 64-bit hex is supported.
+            lua_pushnumber(Lua, strtoull(value, NULL, 0)); // Using pushnumber() so that 64-bit hex is supported.
          }
          else if (value[0] IS '\"') {
             if (value[n-1] IS '\"') lua_pushlstring(Lua, value+1, n-2);

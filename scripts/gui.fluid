@@ -183,7 +183,7 @@ end
 
 gui.strToRGB = function(Value)
    if (string.byte(Value) == 35) then
-      local colour = mSys.StrToHex(Value)
+      local colour = tonumber(Value)
       if (Value:len() == 7) then
          return {
             r = bit.band(bit.rshift(colour, 16), 0xff),

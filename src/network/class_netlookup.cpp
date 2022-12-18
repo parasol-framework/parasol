@@ -269,7 +269,7 @@ static ERROR NETLOOKUP_FreeWarning(extNetLookup *Self, APTR Void)
       while (not Self->Threads->empty()) { // Threads will automatically remove themselves
 restart:
          for (auto &id : *Self->Threads) {
-            if (CheckObjectExists(id, NULL) != ERR_Okay) {
+            if (CheckObjectExists(id) != ERR_Okay) {
                Self->Threads->erase(id);
                goto restart;
             }

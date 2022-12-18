@@ -642,13 +642,13 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
      fptr(void ptr) Free  # A function that will remove the resource's content when terminated.
   ]])
 
-  struct("rkBase64Decode", { type="base64decode", comment="Private structure for the StrBase64Decode() function." }, [[
+  struct("rkBase64Decode", { type="base64decode", comment="Private structure for the Base64Decode() function." }, [[
     uchar Step                # Internal
     uchar PlainChar           # Internal
     bit(uchar) Initialised    # Internal
   ]])
 
-  struct("rkBase64Encode", { type="base64encode", comment="Private structure for the StrBase64Encode() function." }, [[
+  struct("rkBase64Encode", { type="base64encode", comment="Private structure for the Base64Encode() function." }, [[
     uchar Step             # Internal
     uchar Result           # Internal
     int StepCount          # Internal
@@ -976,7 +976,7 @@ struct ScriptArg { // For use with scExec
     "GetFields",
     "GetName",
     "ListChildren",
-    "StrBase64Decode",
+    "Base64Decode",
     "RegisterFD",
     "ManageAction",
     "MemoryIDInfo",
@@ -1019,7 +1019,7 @@ struct ScriptArg { // For use with scExec
     "SysLock",
     "SysUnlock",
     "CopyMemory",
-    "ClearMemory",
+    "LoadFile",
     "SubscribeActionTags",
     "PrintDiagnosis",
     "NewLockedObject",
@@ -1056,12 +1056,12 @@ struct ScriptArg { // For use with scExec
     "SetResourcePath",
     "CurrentTask",
     "KeyIterate",
-    "StrToFloat",
+    "ResolveGroupID",
     "StrCopy",
     "StrClone",
-    "StrLength",
-    "StrToInt",
-    "StrSort",
+    "VarUnlock",
+    "ResolveUserID",
+    "CreateLink",
     "StrBuildArray",
     "UTF8CharOffset",
     "UTF8Length",
@@ -1072,16 +1072,16 @@ struct ScriptArg { // For use with scExec
     "UTF8WriteValue",
     "StrFormat",
     "SaveImageToFile",
-    "StrToColour",
+    "ReadFileToBuffer",
     "StrDatatype",
     "UnloadFile",
-    "StrToHex",
+    "SetDefaultPermissions",
     "CompareFilePaths",
     "GetSystemState",
-    "StrSortCompare",
+    "TranslateCmdRef",
     "AddInfoTag",
     "UTF8Copy",
-    "StrBase64Encode",
+    "Base64Encode",
     "VarSetString",
     "VarGetString",
     "VarCopy",
@@ -1102,15 +1102,7 @@ struct ScriptArg { // For use with scExec
     "SaveObjectToFile",
     "OpenDir",
     "ScanDir",
-    "IdentifyFile",
-    "TranslateCmdRef",
-    "CreateLink",
-    "VarUnlock",
-    "SetDefaultPermissions",
-    "ResolveUserID",
-    "ResolveGroupID",
-    "ReadFileToBuffer",
-    "LoadFile")
+    "IdentifyFile")
 
   c_insert([[
 
@@ -1147,8 +1139,6 @@ struct ScriptArg { // For use with scExec
 
 // Macros
 
-#define CheckObjectIDExists(a)    (CheckObjectExists(a,0))
-#define CheckObjectNameExists(a)  (CheckObjectExists(0,a))
 #define GetParentContext()        ((OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT))
 #define GetResourcePtr(a)         ((APTR)(MAXINT)GetResource((a)))
 #define AllocPublicMemory(a,b,c)  (AllocMemory((a),(b)|MEM_PUBLIC,0,(c)))
@@ -1264,15 +1254,29 @@ struct BaseClass { // Must be 64-bit aligned
       return oid ? true : false;
    }
 
+   inline ERROR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERROR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERROR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
+   inline ERROR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR set(ULONG FieldID, std::string &Value)    { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
+   inline ERROR set(ULONG FieldID, const Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
+   // Works both for regular data pointers and function pointers if field is defined correctly.
+   inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
+
+   inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+
 } __attribute__ ((aligned (8)));
 
 #define ClassName(a) ((a)->Class->Name)
 
 INLINE OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 INLINE APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
-#define CONV_TIME_DATETIME(a) ((struct DateTime *)(&(a)->Year))
+#define CONV_TIME_DATETIME(a) ((DateTime *)(&(a)->Year))
 
-INLINE BYTE CMP_DATETIME(struct DateTime *one, struct DateTime *two)
+INLINE BYTE CMP_DATETIME(DateTime *one, DateTime *two)
 {
    if (one->Year < two->Year) return -1;
    if (one->Year > two->Year) return 1;
@@ -1612,10 +1616,10 @@ INLINE ERROR cfgReadInt(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
   ]],
   [[
    LARGE    ProcedureID;          // For callbacks
-   struct   KeyStore *Vars;       // Global parameters
+   KeyStore *Vars;                // Global parameters
    STRING   *Results;
    char     Language[4];          // 3-character language code, null-terminated
-   const struct ScriptArg *ProcArgs;  // Procedure args - applies during Exec
+   const ScriptArg *ProcArgs;     // Procedure args - applies during Exec
    STRING   Path;                 // File location of the script
    STRING   String;
    STRING   WorkingPath;
@@ -1805,44 +1809,6 @@ INLINE ERROR GetPointer(OBJECTPTR Object, ULONG FieldID, APTR Value) {
 
 INLINE ERROR GetVariable(OBJECTPTR Object, ULONG FieldID, struct Variable *Value) {
    return GetField(Object, (FIELD)FieldID|TVAR, Value);
-}
-
-//****************************************************************************
-
-INLINE ERROR SetLarge(OBJECTPTR Object, ULONG FieldID, LARGE Value) {
-   return SetField(Object, (FIELD)FieldID|TLARGE, Value);
-}
-
-INLINE ERROR SetLong(OBJECTPTR Object, ULONG FieldID, LONG Value) {
-   return SetField(Object, (FIELD)FieldID|TLONG, Value);
-}
-
-INLINE ERROR SetFunction(OBJECTPTR Object, ULONG FieldID, FUNCTION *Value) {
-   return SetField(Object, (FIELD)FieldID|TFUNCTION, Value);
-}
-
-INLINE ERROR SetFunctionPtr(OBJECTPTR Object, ULONG FieldID, APTR Value) { // Yes, the pointer value will be converted to a StdC FUNCTION type internally.
-   return SetField(Object, (FIELD)FieldID|TPTR, Value);
-}
-
-INLINE ERROR SetDouble(OBJECTPTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField(Object, (FIELD)FieldID|TDOUBLE, Value);
-}
-
-INLINE ERROR SetString(OBJECTPTR Object, ULONG FieldID, CSTRING Value) {
-   return SetField(Object, (FIELD)FieldID|TSTRING, Value);
-}
-
-INLINE ERROR SetPercentage(OBJECTPTR Object, ULONG FieldID, DOUBLE Value) {
-   return SetField(Object, (FIELD)FieldID|TDOUBLE|TPERCENT, Value);
-}
-
-INLINE ERROR SetPointer(OBJECTPTR Object, ULONG FieldID, const void *Value) {
-   return SetField(Object, (FIELD)FieldID|TPTR, Value);
-}
-
-INLINE ERROR SetVariable(OBJECTPTR Object, ULONG FieldID, struct Variable *Value) {
-   return SetField(Object, (FIELD)FieldID|TVAR, Value);
 }
 
 #ifndef PRV_CORE
@@ -2206,7 +2172,7 @@ INLINE void SET_DEVICE(struct dcDeviceInput *Input, WORD Type, WORD Flags, DOUBL
 //****************************************************************************
 // File Methods.
 
-INLINE CSTRING flReadLine(OBJECTPTR Object) {
+inline CSTRING flReadLine(OBJECTPTR Object) {
    struct flReadLine args;
    if (!Action(MT_FlReadLine, Object, &args)) return args.Result;
    else return NULL;
@@ -2215,13 +2181,10 @@ INLINE CSTRING flReadLine(OBJECTPTR Object) {
 //****************************************************************************
 // Little endian read functions.
 
-INLINE ERROR flReadLE2(OBJECTPTR Object, WORD *Result)
+inline ERROR flReadLE(OBJECTPTR Object, WORD *Result)
 {
-   struct acRead read;
    UBYTE data[2];
-
-   read.Buffer = data;
-   read.Length = 2;
+   struct acRead read = { .Buffer = data, .Length = 2 };
    if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS 2) {
          #ifdef LITTLE_ENDIAN
@@ -2236,10 +2199,9 @@ INLINE ERROR flReadLE2(OBJECTPTR Object, WORD *Result)
    else return ERR_Read;
 }
 
-INLINE ERROR flReadLE4(OBJECTPTR Object, LONG *Result)
+inline ERROR flReadLE(OBJECTPTR Object, LONG *Result)
 {
    UBYTE data[4];
-
    struct acRead read = { data, sizeof(data) };
    if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS sizeof(data)) {
@@ -2255,7 +2217,7 @@ INLINE ERROR flReadLE4(OBJECTPTR Object, LONG *Result)
    else return ERR_Read;
 }
 
-INLINE ERROR flReadLE8(OBJECTPTR Object, LARGE *Result)
+inline ERROR flReadLE(OBJECTPTR Object, LARGE *Result)
 {
    UBYTE data[8];
    struct acRead read = { data, sizeof(data) };

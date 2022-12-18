@@ -193,7 +193,7 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
       auto input = (struct dcDeviceInput *)Args->Buffer;
       if (input) {
          for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
-            if ((Self->Buttons[i].LastClicked) and (CheckObjectIDExists(Self->Buttons[i].LastClicked) != ERR_Okay)) Self->Buttons[i].LastClicked = 0;
+            if ((Self->Buttons[i].LastClicked) and (CheckObjectExists(Self->Buttons[i].LastClicked) != ERR_Okay)) Self->Buttons[i].LastClicked = 0;
          }
 
          for (LONG i=sizeof(struct dcDeviceInput); i <= Args->Size; i+=sizeof(struct dcDeviceInput), input++) {
@@ -263,8 +263,8 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
          if (!get_surface_abs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
             uiflags |= Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
 
-            if ((ABS(Self->X - Self->LastReleaseX) > Self->ClickSlop) or
-                (ABS(Self->Y - Self->LastReleaseY) > Self->ClickSlop)) {
+            if ((std::abs(Self->X - Self->LastReleaseX) > Self->ClickSlop) or
+                (std::abs(Self->Y - Self->LastReleaseY) > Self->ClickSlop)) {
                uiflags |= JTYPE_DRAGGED;
             }
 
@@ -466,7 +466,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
       // the pointer is locked.
 
       if (Self->AnchorID) {
-         if (CheckObjectIDExists(Self->AnchorID) != ERR_Okay) {
+         if (CheckObjectExists(Self->AnchorID) != ERR_Okay) {
             Self->AnchorID = 0;
          }
       }
@@ -732,7 +732,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
       objSurface *surface;
       if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
          SubscribeFeed(surface);
-         SetLong(surface, FID_Flags, surface->Flags);
+         surface->set(FID_Flags, surface->Flags);
          ReleaseObject(surface);
       }
    }
@@ -1278,7 +1278,7 @@ static BYTE get_over_object(extPointer *Self)
    parasol::Log log(__FUNCTION__);
    SurfaceControl *ctl;
 
-   if ((Self->SurfaceID) and (CheckObjectIDExists(Self->SurfaceID) != ERR_Okay)) Self->SurfaceID = 0;
+   if ((Self->SurfaceID) and (CheckObjectExists(Self->SurfaceID) != ERR_Okay)) Self->SurfaceID = 0;
 
    if (!glSharedControl->SurfacesMID) return FALSE;
 

@@ -897,7 +897,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          char buffer[32];
          IntToStr((MAXINT)XDisplay, buffer, sizeof(buffer));
          acSetVar(modXRR, "XDisplay", buffer);
-         SetString(modXRR, FID_Name, "xrandr");
+         modXRR->set(FID_Name, "xrandr");
          if (!acInit(modXRR)) {
             if (GetPointer(modXRR, FID_ModBase, &XRandRBase) != ERR_Okay) XRandRBase = NULL;
          }
@@ -1154,7 +1154,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDOpen(OBJECTPTR Module)
 {
-   SetPointer(Module, FID_FunctionList, glFunctions);
+   Module->set(FID_FunctionList, glFunctions);
    return ERR_Okay;
 }
 

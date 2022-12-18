@@ -233,14 +233,14 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
          bmp->TransIndex = info_ptr->trans_alpha[0];
          rgb = bmp->Palette->Col[bmp->TransIndex];
          rgb.Alpha = 255;
-         SetPointer(bmp, FID_Transparence, &rgb);
+         bmp->set(FID_Transparence, &rgb);
       }
       else {
          rgb.Red   = info_ptr->trans_color.red;
          rgb.Green = info_ptr->trans_color.green;
          rgb.Blue  = info_ptr->trans_color.blue;
          rgb.Alpha = 255;
-         SetPointer(bmp, FID_Transparence, &rgb);
+         bmp->set(FID_Transparence, &rgb);
       }
    }
 
@@ -271,14 +271,14 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
    // Set the bits per pixel value
 
    switch (color_type) {
-      case PNG_COLOR_TYPE_GRAY:       total_bit_depth = MAX(bit_depth, 8); break;
-      case PNG_COLOR_TYPE_PALETTE:    total_bit_depth = MAX(bit_depth, 8); break;
-      case PNG_COLOR_TYPE_RGB:        total_bit_depth = MAX(bit_depth, 8) * 3; break;
-      case PNG_COLOR_TYPE_RGB_ALPHA:  total_bit_depth = MAX(bit_depth, 8) * 4; break;
-      case PNG_COLOR_TYPE_GRAY_ALPHA: total_bit_depth = MAX(bit_depth, 8) * 2; break;
+      case PNG_COLOR_TYPE_GRAY:       total_bit_depth = std::max(bit_depth, 8); break;
+      case PNG_COLOR_TYPE_PALETTE:    total_bit_depth = std::max(bit_depth, 8); break;
+      case PNG_COLOR_TYPE_RGB:        total_bit_depth = std::max(bit_depth, 8) * 3; break;
+      case PNG_COLOR_TYPE_RGB_ALPHA:  total_bit_depth = std::max(bit_depth, 8) * 4; break;
+      case PNG_COLOR_TYPE_GRAY_ALPHA: total_bit_depth = std::max(bit_depth, 8) * 2; break;
       default:
          log.warning("Unrecognised colour type 0x%x.", color_type);
-         total_bit_depth = MAX(bit_depth, 8);
+         total_bit_depth = std::max(bit_depth, 8);
    }
 
    if (!bmp->BitsPerPixel) {

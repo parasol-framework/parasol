@@ -1,22 +1,19 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 -CATEGORY-
 Name: Strings
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <parasol/modules/fluid.h>
 
 #ifdef __ANDROID__
 #include <android/configuration.h>
 #include <parasol/modules/android.h>
 #endif
-
-static void sift(STRING Buffer, LONG *, LONG, LONG);
 
 typedef void * iconv_t;
 iconv_t (*iconv_open)(const char* tocode, const char* fromcode);
@@ -27,7 +24,206 @@ void    (*iconvlist)(int (*do_one)(unsigned int namescount, const char* const* n
 STRING glIconvBuffer = NULL;
 OBJECTPTR modIconv = NULL;
 static iconv_t glIconv = NULL;
-struct FluidBase *FluidBase = 0; // Must be zero
+
+//********************************************************************************************************************
+
+#ifdef __ANDROID__
+struct LanguageCode {
+   const char Two[2];
+   const char Three[3];
+   CSTRING Name;
+};
+
+static const struct LanguageCode glLanguages[] = {
+   { { 'a','b' }, { 'a','b','k' }, "Abkhaz" },
+   { { 'a','a' }, { 'a','a','r' }, "Afar" },
+   { { 'a','f' }, { 'a','f','r' }, "Afrikaans" },
+   { { 'a','k' }, { 'a','k','a' }, "Akan" },
+   { { 's','q' }, { 's','q','i' }, "Albanian" },
+   { { 'a','m' }, { 'a','m','h' }, "Amharic" },
+   { { 'a','r' }, { 'a','r','a' }, "Arabic" },
+   { { 'a','n' }, { 'a','r','g' }, "Aragonese" },
+   { { 'h','y' }, { 'h','y','e' }, "Armenian" },
+   { { 'a','s' }, { 'a','s','m' }, "Assamese" },
+   { { 'a','v' }, { 'a','v','a' }, "Avaric" },
+   { { 'a','e' }, { 'a','v','e' }, "Avestan" },
+   { { 'a','y' }, { 'a','y','m' }, "Aymara" },
+   { { 'a','z' }, { 'a','z','e' }, "Azerbaijani" },
+   { { 'b','m' }, { 'b','a','m' }, "Bambara" },
+   { { 'b','a' }, { 'b','a','k' }, "Bashkir" },
+   { { 'e','u' }, { 'e','u','s' }, "Basque" },
+   { { 'b','e' }, { 'b','e','l' }, "Belarusian" },
+   { { 'b','n' }, { 'b','e','n' }, "Bengali" },
+   { { 'b','h' }, { 'b','i','h' }, "Bihari" },
+   { { 'b','i' }, { 'b','i','s' }, "Bislama" },
+   { { 'b','s' }, { 'b','o','s' }, "Bosnian" },
+   { { 'b','r' }, { 'b','r','e' }, "Breton" },
+   { { 'b','g' }, { 'b','u','l' }, "Bulgarian" },
+   { { 'm','y' }, { 'm','y','a' }, "Burmese" },
+   { { 'c','a' }, { 'c','a','t' }, "Catalan" },
+   { { 'c','h' }, { 'c','h','a' }, "Chamorro" },
+   { { 'c','e' }, { 'c','h','e' }, "Chechen" },
+   { { 'n','y' }, { 'n','y','a' }, "Chichewa" },
+   { { 'z','h' }, { 'z','h','o' }, "Chinese" },
+   { { 'c','v' }, { 'c','h','v' }, "Chuvash" },
+   { { 'k','w' }, { 'c','o','r' }, "Cornish" },
+   { { 'c','o' }, { 'c','o','s' }, "Corsican" },
+   { { 'c','r' }, { 'c','r','e' }, "Cree" },
+   { { 'h','r' }, { 'h','r','v' }, "Croatian" },
+   { { 'c','s' }, { 'c','e','s' }, "Czech" },
+   { { 'd','a' }, { 'd','a','n' }, "Danish" },
+   { { 'd','v' }, { 'd','i','v' }, "Divehi" },
+   { { 'n','l' }, { 'n','l','d' }, "Dutch" },
+   { { 'd','z' }, { 'd','z','o' }, "Dzongkha" },
+   { { 'e','n' }, { 'e','n','g' }, "English" },
+   { { 'e','o' }, { 'e','p','o' }, "Esperanto" },
+   { { 'e','t' }, { 'e','s','t' }, "Estonian" },
+   { { 'e','e' }, { 'e','w','e' }, "Ewe" },
+   { { 'f','o' }, { 'f','a','o' }, "Faroese" },
+   { { 'f','j' }, { 'f','i','j' }, "Fijian" },
+   { { 'f','i' }, { 'f','i','n' }, "Finnish" },
+   { { 'f','r' }, { 'f','r','a' }, "French" },
+   { { 'f','f' }, { 'f','u','l' }, "Fula" },
+   { { 'g','l' }, { 'g','l','g' }, "Galician" },
+   { { 'k','a' }, { 'k','a','t' }, "Georgian" },
+   { { 'd','e' }, { 'd','e','u' }, "German" },
+   { { 'e','l' }, { 'e','l','l' }, "Greek" },
+   { { 'g','n' }, { 'g','r','n' }, "Guaraní" },
+   { { 'g','u' }, { 'g','u','j' }, "Gujarati" },
+   { { 'h','t' }, { 'h','a','t' }, "Haitian" },
+   { { 'h','a' }, { 'h','a','u' }, "Hausa" },
+   { { 'h','e' }, { 'h','e','b' }, "Hebrew" },
+   { { 'h','z' }, { 'h','e','r' }, "Herero" },
+   { { 'h','i' }, { 'h','i','n' }, "Hindi" },
+   { { 'h','o' }, { 'h','m','o' }, "Hiri Motu" },
+   { { 'h','u' }, { 'h','u','n' }, "Hungarian" },
+   { { 'i','a' }, { 'i','n','a' }, "Interlingua" },
+   { { 'i','d' }, { 'i','n','d' }, "Indonesian" },
+   { { 'i','e' }, { 'i','l','e' }, "Interlingue" },
+   { { 'g','a' }, { 'g','l','e' }, "Irish" },
+   { { 'i','g' }, { 'i','b','o' }, "Igbo" },
+   { { 'i','k' }, { 'i','p','k' }, "Inupiaq" },
+   { { 'i','o' }, { 'i','d','o' }, "Ido" },
+   { { 'i','s' }, { 'i','s','l' }, "Icelandic" },
+   { { 'i','t' }, { 'i','t','a' }, "Italian" },
+   { { 'i','u' }, { 'i','k','u' }, "Inuktitut" },
+   { { 'j','a' }, { 'j','p','n' }, "Japanese" },
+   { { 'j','v' }, { 'j','a','v' }, "Javanese" },
+   { { 'k','l' }, { 'k','a','l' }, "Kalaallisut" },
+   { { 'k','n' }, { 'k','a','n' }, "Kannada" },
+   { { 'k','r' }, { 'k','a','u' }, "Kanuri" },
+   { { 'k','s' }, { 'k','a','s' }, "Kashmiri" },
+   { { 'k','k' }, { 'k','a','z' }, "Kazakh" },
+   { { 'k','m' }, { 'k','h','m' }, "Khmer" },
+   { { 'k','i' }, { 'k','i','k' }, "Kikuyu" },
+   { { 'r','w' }, { 'k','i','n' }, "Kinyarwanda" },
+   { { 'k','y' }, { 'k','i','r' }, "Kyrgyz" },
+   { { 'k','v' }, { 'k','o','m' }, "Komi" },
+   { { 'k','g' }, { 'k','o','n' }, "Kongo" },
+   { { 'k','o' }, { 'k','o','r' }, "Korean" },
+   { { 'k','u' }, { 'k','u','r' }, "Kurdish" },
+   { { 'k','j' }, { 'k','u','a' }, "Kwanyama" },
+   { { 'l','a' }, { 'l','a','t' }, "Latin" },
+   { { 'l','b' }, { 'l','t','z' }, "Luxembourgish" },
+   { { 'l','g' }, { 'l','u','g' }, "Ganda" },
+   { { 'l','i' }, { 'l','i','m' }, "Limburgish" },
+   { { 'l','n' }, { 'l','i','n' }, "Lingala" },
+   { { 'l','o' }, { 'l','a','o' }, "Lao" },
+   { { 'l','t' }, { 'l','i','t' }, "Lithuanian" },
+   { { 'l','u' }, { 'l','u','b' }, "Luba-Katanga" },
+   { { 'l','v' }, { 'l','a','v' }, "Latvian" },
+   { { 'g','v' }, { 'g','l','v' }, "Manx" },
+   { { 'm','k' }, { 'm','k','d' }, "Macedonian" },
+   { { 'm','g' }, { 'm','l','g' }, "Malagasy" },
+   { { 'm','s' }, { 'm','s','a' }, "Malay" },
+   { { 'm','l' }, { 'm','a','l' }, "Malayalam" },
+   { { 'm','t' }, { 'm','l','t' }, "Maltese" },
+   { { 'm','i' }, { 'm','r','i' }, "Māori" },
+   { { 'm','r' }, { 'm','a','r' }, "Marathi" },
+   { { 'm','h' }, { 'm','a','h' }, "Marshallese" },
+   { { 'm','n' }, { 'm','o','n' }, "Mongolian" },
+   { { 'n','a' }, { 'n','a','u' }, "Nauru" },
+   { { 'n','v' }, { 'n','a','v' }, "Navajo" },
+   { { 'n','b' }, { 'n','o','b' }, "Norwegian Bokmål" },
+   { { 'n','d' }, { 'n','d','e' }, "North Ndebele" },
+   { { 'n','e' }, { 'n','e','p' }, "Nepali" },
+   { { 'n','g' }, { 'n','d','o' }, "Ndonga" },
+   { { 'n','n' }, { 'n','n','o' }, "Norwegian Nynorsk" },
+   { { 'n','o' }, { 'n','o','r' }, "Norwegian" },
+   { { 'i','i' }, { 'i','i','i' }, "Nuosu" },
+   { { 'n','r' }, { 'n','b','l' }, "South Ndebele" },
+   { { 'o','c' }, { 'o','c','i' }, "Occitan" },
+   { { 'o','j' }, { 'o','j','i' }, "Ojibwe" },
+   { { 'c','u' }, { 'c','h','u' }, "Old Church Slavonic" },
+   { { 'o','m' }, { 'o','r','m' }, "Oromo" },
+   { { 'o','r' }, { 'o','r','i' }, "Oriya" },
+   { { 'o','s' }, { 'o','s','s' }, "Ossetian" },
+   { { 'p','a' }, { 'p','a','n' }, "Panjabi" },
+   { { 'p','i' }, { 'p','l','i' }, "Pāli" },
+   { { 'f','a' }, { 'f','a','s' }, "Persian" },
+   { { 'p','l' }, { 'p','o','l' }, "Polish" },
+   { { 'p','s' }, { 'p','u','s' }, "Pashto" },
+   { { 'p','t' }, { 'p','o','r' }, "Portuguese" },
+   { { 'q','u' }, { 'q','u','e' }, "Quechua" },
+   { { 'r','m' }, { 'r','o','h' }, "Romansh" },
+   { { 'r','n' }, { 'r','u','n' }, "Kirundi" },
+   { { 'r','o' }, { 'r','o','n' }, "Romanian" },
+   { { 'r','u' }, { 'r','u','s' }, "Russian" },
+   { { 's','a' }, { 's','a','n' }, "Sanskrit" },
+   { { 's','c' }, { 's','r','d' }, "Sardinian" },
+   { { 's','d' }, { 's','n','d' }, "Sindhi" },
+   { { 's','e' }, { 's','m','e' }, "Northern Sami" },
+   { { 's','m' }, { 's','m','o' }, "Samoan" },
+   { { 's','g' }, { 's','a','g' }, "Sango" },
+   { { 's','r' }, { 's','r','p' }, "Serbian" },
+   { { 'g','d' }, { 'g','l','a' }, "Gaelic" },
+   { { 's','n' }, { 's','n','a' }, "Shona" },
+   { { 's','i' }, { 's','i','n' }, "Sinhala" },
+   { { 's','k' }, { 's','l','k' }, "Slovak" },
+   { { 's','l' }, { 's','l','v' }, "Slovene" },
+   { { 's','o' }, { 's','o','m' }, "Somali" },
+   { { 's','t' }, { 's','o','t' }, "Southern Sotho" },
+   { { 'a','z' }, { 'a','z','b' }, "South Azerbaijani" },
+   { { 'e','s' }, { 's','p','a' }, "Spanish" },
+   { { 's','u' }, { 's','u','n' }, "Sundanese" },
+   { { 's','w' }, { 's','w','a' }, "Swahili" },
+   { { 's','s' }, { 's','s','w' }, "Swati" },
+   { { 's','v' }, { 's','w','e' }, "Swedish" },
+   { { 't','a' }, { 't','a','m' }, "Tamil" },
+   { { 't','e' }, { 't','e','l' }, "Telugu" },
+   { { 't','g' }, { 't','g','k' }, "Tajik" },
+   { { 't','h' }, { 't','h','a' }, "Thai" },
+   { { 't','i' }, { 't','i','r' }, "Tigrinya" },
+   { { 'b','o' }, { 'b','o','d' }, "Tibetan" },
+   { { 't','k' }, { 't','u','k' }, "Turkmen" },
+   { { 't','l' }, { 't','g','l' }, "Tagalog" },
+   { { 't','n' }, { 't','s','n' }, "Tswana" },
+   { { 't','o' }, { 't','o','n' }, "Tonga" },
+   { { 't','r' }, { 't','u','r' }, "Turkish" },
+   { { 't','s' }, { 't','s','o' }, "Tsonga" },
+   { { 't','t' }, { 't','a','t' }, "Tatar" },
+   { { 't','w' }, { 't','w','i' }, "Twi" },
+   { { 't','y' }, { 't','a','h' }, "Tahitian" },
+   { { 'u','g' }, { 'u','i','g' }, "Uyghur" },
+   { { 'u','k' }, { 'u','k','r' }, "Ukrainian" },
+   { { 'u','r' }, { 'u','r','d' }, "Urdu" },
+   { { 'u','z' }, { 'u','z','b' }, "Uzbek" },
+   { { 'v','e' }, { 'v','e','n' }, "Venda" },
+   { { 'v','i' }, { 'v','i','e' }, "Vietnamese" },
+   { { 'v','o' }, { 'v','o','l' }, "Volapük" },
+   { { 'w','a' }, { 'w','l','n' }, "Walloon" },
+   { { 'c','y' }, { 'c','y','m' }, "Welsh" },
+   { { 'w','o' }, { 'w','o','l' }, "Wolof" },
+   { { 'f','y' }, { 'f','r','y' }, "Western Frisian" },
+   { { 'x','h' }, { 'x','h','o' }, "Xhosa" },
+   { { 'y','i' }, { 'y','i','d' }, "Yiddish" },
+   { { 'y','o' }, { 'y','o','r' }, "Yoruba" },
+   { { 'z','a' }, { 'z','h','a' }, "Zhuang" },
+   { { 'z','u' }, { 'z','u','l' }, "Zulu" }
+};
+#endif
+
+//********************************************************************************************************************
 
 void free_iconv(void)
 {
@@ -40,7 +236,110 @@ void free_iconv(void)
    }
 }
 
-/*****************************************************************************
+//********************************************************************************************************************
+
+static LONG str_cmp(CSTRING Name1, CSTRING Name2)
+{
+   if ((!Name1) or (!Name2)) return 0;
+
+   while ((*Name1) and (*Name2)) {
+      UBYTE char1 = *Name1;
+      UBYTE char2 = *Name2;
+
+      if ((char1 >= '0') and (char1 <= '9') and (char2 >= '0') and (char2 <= '9')) {
+         // This integer comparison is for human readable sorting
+         ULONG val1 = 0;
+         while (*Name1 IS '0') Name1++;
+         while ((*Name1) and (*Name1 >= '0') and (*Name1 <= '9')) {
+            val1 = (val1 * 10) + (*Name1 - '0');
+            Name1++;
+         }
+
+         ULONG val2 = 0;
+         while (*Name2 IS '0') Name2++;
+         while ((*Name2) and (*Name2 >= '0') and (*Name2 <= '9')) {
+            val2 = (val2 * 10) + (*Name2 - '0');
+            Name2++;
+         }
+
+         if (val1 > val2) return 1; // Name1 is greater
+         else if (val1 < val2) return -1; // Name1 is lesser
+         else {
+            while ((*Name1 >= '0') and (*Name1 <= '9')) Name1++;
+            while ((*Name2 >= '0') and (*Name2 <= '9')) Name2++;
+            continue;
+         }
+      }
+
+      if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+      if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+
+      if (char1 > char2) return 1; // Name1 is greater
+      else if (char1 < char2) return -1; // Name1 is lesser
+
+      Name1++;
+      Name2++;
+   }
+
+   if ((!*Name1) and (!*Name2)) return 0;
+   else if (!*Name1) return -1;
+   else return 1;
+}
+
+//********************************************************************************************************************
+
+static ERROR str_sort(CSTRING *List, LONG Flags)
+{
+   if (!List) return ERR_NullArgs;
+
+   // Shell sort.  Similar to bubble sort but much faster because it can copy records over larger distances.
+
+   LONG total, j;
+
+   for (total=0; List[total]; total++);
+
+   LONG h = 1;
+   while (h < total / 9) h = 3 * h + 1;
+
+   if (Flags & SBF_DESC) {
+      for (; h > 0; h /= 3) {
+         for (LONG i=h; i < total; i++) {
+            auto temp = List[i];
+            for (j=i; (j >= h) and (str_cmp(List[j - h], temp) < 0); j -= h) {
+               List[j] = List[j - h];
+            }
+            List[j] = temp;
+         }
+      }
+   }
+   else {
+      for (; h > 0; h /= 3) {
+         for (LONG i=h; i < total; i++) {
+            auto temp = List[i];
+            for (j=i; (j >= h) and (str_cmp(List[j - h], temp) > 0); j -= h) {
+               List[j] = List[j - h];
+            }
+            List[j] = temp;
+         }
+      }
+   }
+
+   if (Flags & SBF_NO_DUPLICATES) {
+      LONG strflags = STR_MATCH_LEN;
+      if (Flags & SBF_CASE) strflags |= STR_MATCH_CASE;
+
+      for (LONG i=1; List[i]; i++) {
+         if (!StrCompare(List[i-1], List[i], 0, strflags)) {
+            for (j=i; List[j]; j++) List[j] = List[j+1];
+            i--;
+         }
+      }
+   }
+
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -FUNCTION-
 StrBuildArray: Builds an array of strings from a sequential string list.
@@ -70,7 +369,7 @@ int(SBF) Flags: Set to SBF_SORT to sort the list, SBF_NO_DUPLICATES to sort the 
 -RESULT-
 !array(str): Returns an array of STRING pointers, or NULL on failure.  The pointer is a memory block that must be freed after use.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
 {
@@ -142,7 +441,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
          // Remove duplicate strings and/or do sorting
 
          if (Flags & SBF_NO_DUPLICATES) {
-            StrSort(array, 0);
+            str_sort(array, 0);
             for (i=1; array[i]; i++) {
                if (!StrMatch(array[i-1], array[i])) {
                   LONG j;
@@ -153,7 +452,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
             }
             array[Total] = NULL;
          }
-         else if (Flags & SBF_SORT) StrSort(array, 0);
+         else if (Flags & SBF_SORT) str_sort(array, 0);
 
          if (csvbuffer_alloc) free(csvbuffer_alloc);
          return (STRING *)array;
@@ -164,7 +463,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StrClone: Clones string data.
@@ -180,7 +479,7 @@ cstr String: The string that is to be cloned.
 -RESULT-
 str: Returns an exact duplicate of the String.  If this function fails to allocate the memory or if the String argument is NULL, NULL is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 STRING StrClone(CSTRING String)
 {
@@ -198,7 +497,7 @@ STRING StrClone(CSTRING String)
    else return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StrCompare: Compares strings to see if they are identical.
@@ -233,7 +532,7 @@ Okay:  The strings match.
 False: The strings do not match.
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
 {
@@ -369,7 +668,7 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
    else return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StrCopy: Copies the characters of one string to another.
@@ -378,9 +677,9 @@ This function copies part of one string over to another.  If the Length is set t
 entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null
 byte) while copying, then it will stop automatically to prevent copying of junk characters.
 
-Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of whether you set
-the Length or not.  For example, if you were to copy `123` into the middle of string `ABCDEFGHI` then the result would
-be `ABC123`. The `GHI` part of the string would be lost.
+Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of the Length value.
+For example, copying `123` into the middle of string `ABCDEFGHI` would result in `ABC123`.  The `GHI` part of the
+string would be lost.
 
 -INPUT-
 cstr Src: Pointer to the string that you are copying from.
@@ -390,7 +689,7 @@ int Length: The maximum number of characters to copy, including the NULL byte.  
 -RESULT-
 int: Returns the total amount of characters that were copied, not including the null byte at the end.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG StrCopy(CSTRING String, STRING Dest, LONG Length)
 {
@@ -419,7 +718,7 @@ LONG StrCopy(CSTRING String, STRING Dest, LONG Length)
    return i;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StrDatatype: Determines the data type of a string.
@@ -437,7 +736,7 @@ cstr String: The string that you want to analyse.
 -RESULT-
 int(STT): Returns STT_FLOAT, STT_NUMBER, STT_HEX or STT_STRING.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG StrDatatype(CSTRING String)
 {
@@ -448,20 +747,20 @@ LONG StrDatatype(CSTRING String)
    LONG i;
    if ((String[0] IS '0') and (String[1] IS 'x')) {
       for (i=2; String[i]; i++) {
-         if (((String[i] >= '0') and (String[i] <= '9')) OR
-             ((String[i] >= 'A') and (String[i] <= 'F')) OR
+         if (((String[i] >= '0') and (String[i] <= '9')) or
+             ((String[i] >= 'A') and (String[i] <= 'F')) or
              ((String[i] >= 'a') and (String[i] <= 'f')));
          else return STT_STRING;
       }
       return STT_HEX;
    }
 
-   BYTE is_number = TRUE;
-   BYTE is_float  = FALSE;
+   bool is_number = true;
+   bool is_float  = false;
 
    for (i=0; (String[i]) and (is_number); i++) {
-      if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = FALSE;
-      if (String[i] IS '.') is_float = TRUE;
+      if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = false;
+      if (String[i] IS '.') is_float = true;
    }
 
    if ((is_float) and (is_number)) return STT_FLOAT;
@@ -469,7 +768,7 @@ LONG StrDatatype(CSTRING String)
    else return STT_STRING;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StrFormat: Formats a string using printf() style arguments.
@@ -487,7 +786,7 @@ tags Parameters: A tag-list of arguments that match the parameters in the Format
 -RESULT-
 int: Returns the total number of characters written to the buffer (not including the NULL terminator).  If the total number of characters is greater or equal to the BufferSize minus 1, then you should assume that a buffer overflow occurred.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG StrFormat(STRING Buffer, LONG BufferSize, CSTRING Format, ...)
 {
@@ -501,7 +800,7 @@ LONG StrFormat(STRING Buffer, LONG BufferSize, CSTRING Format, ...)
    return chars;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StrHash: Convert a string into a 32-bit hash.
@@ -520,7 +819,7 @@ int CaseSensitive: Set to TRUE to enable case sensitivity.
 -RESULT-
 uint: The 32-bit hash is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ULONG StrHash(CSTRING String, LONG CaseSensitive)
 {
@@ -541,28 +840,106 @@ ULONG StrHash(CSTRING String, LONG CaseSensitive)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
-StrLength: Calculates the length of a string.
+StrReadLocale: Read system locale information.
 
-This function will calculate the length of a String, not including the null byte.
+Use this function to read system-wide locale information.  Settings are usually preset according to the user's location,
+but the user also has the power to override individual key value.  The internal nature of this function varies by host
+system.  If locale information is not readily available then the locale values will be derived from
+`user:config/locale.cfg`.
+
+Available key values are as follows:
+
+<types>
+<type name="Language">Three letter ISO code indicating the user's preferred language, e.g. 'eng'</>
+<type name="ShortDate">Short date format, e.g. 'dd/mm/yyyy'</>
+<type name="LongDate">Long date format, e.g. 'Dddd, d Mmm yyyy'</>
+<type name="FileDate">File date format, e.g. 'dd-mm-yy hh:nn'</>
+<type name="Time">Basic time format, e.g. hh:nn</>
+<type name="CurrencySymbol">Currency symbol, e.g. '$'</>
+<type name="Decimal">Decimal place symbol, e.g. '.'</>
+<type name="Thousands">Thousands symbol, e.g. ','</>
+<type name="Positive">Positive symbol - typically blank or '+'</>
+<type name="Negative">Negative symbol, e.g. '-'</>
+</types>
 
 -INPUT-
-cstr String: Pointer to the string that you want to examine.
+cstr Key: The name of a locale value to read.
+&cstr Value: A pointer to the retrieved string value will be returned in this parameter.
 
--RESULT-
-int: Returns the length of the string.
+-ERRORS-
+Okay: Value retrieved.
+NullArgs: At least one required argument was not provided.
+Search: The Key value was not recognised.
+NoData: Locale information is not available.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-LONG StrLength(CSTRING String)
+ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
 {
-   if (String) return strlen(String);
-   else return 0;
+   parasol::Log log(__FUNCTION__);
+
+   if ((!Key) or (!Value)) return ERR_NullArgs;
+
+   #ifdef __ANDROID__
+      // Android doesn't have locale.cfg, we have to load that information from the system.
+
+      if (!StrMatch("Language", Key)) {
+         static char code[4] = { 0, 0, 0, 0 };
+         if (!code[0]) {
+            if (!AndroidBase) {  // Note that the module is terminated through resource tracking, we don't free it during our CMDExpunge() sequence for system integrity reasons.
+               parasol::SwitchContext ctx(CurrentTask());
+               OBJECTPTR module;
+               LoadModule("android", MODVERSION_FLUID, &module, &AndroidBase);
+               if (!AndroidBase) return NULL;
+            }
+
+            AConfiguration *config;
+            if (!adGetConfig(&config)) {
+               AConfiguration_getLanguage(config, code);
+
+               // Convert the two letter code to three letters.
+
+               if (code[0]) {
+                  code[0] = std::tolower(code[0]);
+                  code[1] = std::tolower(code[1]);
+                  for (LONG i=0; i < ARRAYSIZE(glLanguages); i++) {
+                     if ((glLanguages[i].Two[0] IS code[0]) and (glLanguages[i].Two[1] IS code[1])) {
+                        code[0] = glLanguages[i].Three[0];
+                        code[1] = glLanguages[i].Three[1];
+                        code[2] = glLanguages[i].Three[2];
+                        code[3] = 0;
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+
+         log.msg("Android language code: %s", code);
+
+         if (code[0]) { *Value = code; return ERR_Okay; }
+         else return ERR_Failed;
+      }
+   #endif
+
+   if (!glLocale) {
+      if (!CreateObject(ID_CONFIG, NF_UNTRACKED, &glLocale, FID_Path|TSTR, "user:config/locale.cfg", TAGEND)) {
+      }
+   }
+
+   if (!glLocale) return ERR_NoData;
+
+   if (!cfgReadValue(glLocale, "LOCALE", Key, Value)) {
+      if (!*Value) *Value = ""; // It is OK for some values to be empty strings.
+      return ERR_Okay;
+   }
+   else return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StrSearch: Searches a string for a particular keyword/phrase.
@@ -578,7 +955,7 @@ int(STR) Flags:  Optional flags (currently STR_MATCH_CASE is supported for case 
 -RESULT-
 int: Returns the byte position of the first occurrence of the Keyword within the String (possible values start from position 0).  If the Keyword could not be found, this function returns a value of -1.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
 {
@@ -599,7 +976,7 @@ LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
    }
    else {
       while (String[pos]) {
-         for (i=0; Keyword[i]; i++) if (UCase(String[pos+i]) != UCase(Keyword[i])) break;
+         for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
          if (!Keyword[i]) return pos;
          for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
       }
@@ -608,187 +985,7 @@ LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
    return -1;
 }
 
-/*****************************************************************************
-
--FUNCTION-
-StrSort: Used to sort string arrays.
-
-This function is used to sort string arrays into alphabetical order.  You will need to provide the list of unsorted
-strings in a block of string pointers, terminated with a NULL entry.  For example:
-
-<pre>
-CSTRING List[] = {
-   "banana",
-   "apple",
-   "orange",
-   "kiwifruit",
-   NULL
-};
-</pre>
-
-The sorting routine will work within the confines of the array that you have provided and will not allocate any memory
-when performing the sort.
-
-Optional flags include `SBF_NO_DUPLICATES`, which strips duplicated strings out of the array; `SBF_CASE` to
-acknowledge case differences when determining string duplication and `SBF_DESC` to sort in descending order.
-
--INPUT-
-array(cstr) List: Must point to an array of string pointers, terminated with a NULL entry.
-int(SBF) Flags: Optional flags may be set here.
-
--ERRORS-
-Okay
-NullArgs
--END-
-
-*****************************************************************************/
-
-ERROR StrSort(CSTRING *List, LONG Flags)
-{
-   if (!List) return ERR_NullArgs;
-
-   // Shell sort.  Similar to bubble sort but much faster because it can copy records over larger distances.
-
-   LONG total, i, j;
-
-   for (total=0; List[total]; total++);
-
-   LONG h = 1;
-   while (h < total / 9) h = 3 * h + 1;
-
-   if (Flags & SBF_DESC) {
-      for (; h > 0; h /= 3) {
-         for (i=h; i < total; i++) {
-            auto temp = List[i];
-            for (j=i; (j >= h) and (StrSortCompare(List[j - h], temp) < 0); j -= h) {
-               List[j] = List[j - h];
-            }
-            List[j] = temp;
-         }
-      }
-   }
-   else {
-      for (; h > 0; h /= 3) {
-         for (i=h; i < total; i++) {
-            auto temp = List[i];
-            for (j=i; (j >= h) and (StrSortCompare(List[j - h], temp) > 0); j -= h) {
-               List[j] = List[j - h];
-            }
-            List[j] = temp;
-         }
-      }
-   }
-
-   if (Flags & SBF_NO_DUPLICATES) {
-      LONG strflags = STR_MATCH_LEN;
-      if (Flags & SBF_CASE) strflags |= STR_MATCH_CASE;
-
-      for (i=1; List[i]; i++) {
-         if (!StrCompare(List[i-1], List[i], 0, strflags)) {
-            for (j=i; List[j]; j++) List[j] = List[j+1];
-            i--;
-         }
-      }
-   }
-
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-StrSortCompare: Compares two strings for sorting purposes.
-
-This function compares two strings and returns a result that indicates which of the two is 'less than' the other.  The
-comparison process takes character-based integers into account, so that in the case of `identical 001` and `identical
-999`, the `001` and `999` portions of those strings would be compared as integers and not ASCII characters.  This
-prevents string values such as `1` and `10` from being disarranged.
-
--INPUT-
-cstr String1: Pointer to a string.
-cstr String2: Pointer to a string.
-
--RESULT-
-int: If both strings are equal, 0 is returned.  If Name1 is greater than Name2, 1 is returned.  If Name1 is lesser than Name2, -1 is returned.
-
-*****************************************************************************/
-
-LONG StrSortCompare(CSTRING Name1, CSTRING Name2)
-{
-   if ((!Name1) or (!Name2)) return 0;
-
-   while ((*Name1) and (*Name2)) {
-      UBYTE char1 = *Name1;
-      UBYTE char2 = *Name2;
-
-      if ((char1 >= '0') and (char1 <= '9') and (char2 >= '0') and (char2 <= '9')) {
-         // This integer comparison is for human readable sorting
-         ULONG val1 = 0;
-         while (*Name1 IS '0') Name1++;
-         while ((*Name1) and (*Name1 >= '0') and (*Name1 <= '9')) {
-            val1 = (val1 * 10) + (*Name1 - '0');
-            Name1++;
-         }
-
-         ULONG val2 = 0;
-         while (*Name2 IS '0') Name2++;
-         while ((*Name2) and (*Name2 >= '0') and (*Name2 <= '9')) {
-            val2 = (val2 * 10) + (*Name2 - '0');
-            Name2++;
-         }
-
-         if (val1 > val2) return 1; // Name1 is greater
-         else if (val1 < val2) return -1; // Name1 is lesser
-         else {
-            while ((*Name1 >= '0') and (*Name1 <= '9')) Name1++;
-            while ((*Name2 >= '0') and (*Name2 <= '9')) Name2++;
-            continue;
-         }
-      }
-
-      if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-      if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-
-      if (char1 > char2) return 1; // Name1 is greater
-      else if (char1 < char2) return -1; // Name1 is lesser
-
-      Name1++;
-      Name2++;
-   }
-
-   if ((!*Name1) and (!*Name2)) return 0;
-   else if (!*Name1) return -1;
-   else return 1;
-}
-
-//****************************************************************************
-
-static void sift(STRING Buffer, LONG *lookup, LONG i, LONG heapsize)
-{
-   LONG largest = i;
-   do {
-      i     = largest;
-      LONG left  = (i << 1) + 1;
-      LONG right = left + 1;
-
-      if (left < heapsize){
-         if (StrSortCompare(Buffer+lookup[largest], Buffer+lookup[left]) < 0) largest = left;
-
-         if (right < heapsize) {
-            if (StrSortCompare(Buffer+lookup[largest], Buffer+lookup[right]) < 0) largest = right;
-         }
-      }
-
-      if (largest != i) {
-         auto temp = lookup[i];
-         lookup[i] = lookup[largest];
-         lookup[largest] = temp;
-      }
-   } while (largest != i);
-}
-
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "lib_base64.cpp"
-#include "lib_conversion.cpp"
 #include "lib_unicode.cpp"

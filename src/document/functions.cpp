@@ -390,6 +390,21 @@ static void check_clips(extDocument *Self, LONG Index, layout *l,
 
 //****************************************************************************
 
+static bool read_rgb8(CSTRING Value, RGB8 *RGB)
+{
+   FRGB rgb;
+   if (!vecReadPainter(NULL, Value, &rgb, NULL, NULL, NULL)) {
+      RGB->Red   = F2T(rgb.Red   * 255.0);
+      RGB->Green = F2T(rgb.Green * 255.0);
+      RGB->Blue  = F2T(rgb.Blue  * 255.0);
+      RGB->Alpha = F2T(rgb.Alpha * 255.0);
+      return true;
+   }
+   else return false;
+}
+
+//****************************************************************************
+
 static bool test_statement(CSTRING TestString, CSTRING CompareString, LONG Condition)
 {
    parasol::Log log(__FUNCTION__);
@@ -771,7 +786,7 @@ static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flag
 
             LONG j = 0;
             for (i=pos+1; (Buffer[i] != '.') and (i < endbracket); i++) {
-               if ((size_t)j < sizeof(name)-1) name[j++] = LCASE(Buffer[i]);
+               if ((size_t)j < sizeof(name)-1) name[j++] = std::tolower(Buffer[i]);
             }
             name[j] = 0;
 
@@ -4371,7 +4386,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                            font->X = fx - escpara->ItemIndent;
                            font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
                            font->AlignWidth = segment->AlignWidth;
-                           SetString(font, FID_String, (STRING)(escpara + 1));
+                           font->set(FID_String, (STRING)(escpara + 1));
                            font->draw();
                         }
                      }
@@ -4508,7 +4523,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                font->X = fx;
                font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
                font->AlignWidth = segment->AlignWidth;
-               SetString(font, FID_String, strbuffer);
+               font->set(FID_String, strbuffer);
                font->draw();
                fx = font->EndX;
                si = 0;
@@ -4523,7 +4538,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
          font->X = fx;
          font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
          font->AlignWidth = segment->AlignWidth;
-         SetString(font, FID_String, strbuffer);
+         font->set(FID_String, strbuffer);
          font->draw();
          fx = font->EndX;
       }
@@ -4953,7 +4968,7 @@ static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
 
    if (!AnalysePath(path, NULL)) {
       OBJECTPTR task;
-      if ((task = CurrentTask())) SetString(task, FID_Path, path);
+      if ((task = CurrentTask())) task->set(FID_Path, path);
 
       objXML *xml;
       if (!(Self->Error = CreateObject(ID_XML, NF_INTEGRAL, &xml,
@@ -5512,32 +5527,29 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    Self->FontColour.Red   = 0;
    Self->FontColour.Green = 0;
    Self->FontColour.Blue  = 0;
-   Self->FontColour.Alpha = 255;
+   Self->FontColour.Alpha = 1.0;
 
-   Self->Highlight.Red   = glHighlight.Red;
-   Self->Highlight.Green = glHighlight.Green;
-   Self->Highlight.Blue  = glHighlight.Blue;
-   Self->Highlight.Alpha = 255;
+   Self->Highlight = glHighlight;
 
-   Self->CursorColour.Red   = 100;
-   Self->CursorColour.Green = 100;
-   Self->CursorColour.Blue  = 200;
-   Self->CursorColour.Alpha = 255;
+   Self->CursorColour.Red   = 0.4;
+   Self->CursorColour.Green = 0.4;
+   Self->CursorColour.Blue  = 0.8;
+   Self->CursorColour.Alpha = 1.0;
 
    Self->LinkColour.Red   = 0;
    Self->LinkColour.Green = 0;
-   Self->LinkColour.Blue  = 255;
-   Self->LinkColour.Alpha = 255;
+   Self->LinkColour.Blue  = 1.0;
+   Self->LinkColour.Alpha = 1.0;
 
-   Self->Background.Red   = 255;
-   Self->Background.Green = 255;
-   Self->Background.Blue  = 255;
-   Self->Background.Alpha = 255;
+   Self->Background.Red   = 1.0;
+   Self->Background.Green = 1.0;
+   Self->Background.Blue  = 1.0;
+   Self->Background.Alpha = 1.0;
 
-   Self->SelectColour.Red   = 255;
+   Self->SelectColour.Red   = 1.0;
    Self->SelectColour.Green = 0;
    Self->SelectColour.Blue  = 0;
-   Self->SelectColour.Alpha = 255;
+   Self->SelectColour.Alpha = 1.0;
 
    Self->LeftMargin    = 10;
    Self->RightMargin   = 10;
@@ -5562,10 +5574,10 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    Self->FocusIndex    = -1;
    Self->PageProcessed = FALSE;
    Self->MouseOverSegment = -1;
-   Self->SelectIndex    = -1;
-   Self->CursorIndex    = -1;
+   Self->SelectIndex      = -1;
+   Self->CursorIndex      = -1;
    Self->ActiveEditCellID = 0;
-   Self->ActiveEditDef  = NULL;
+   Self->ActiveEditDef    = NULL;
 
    if (Self->ActiveEditDef) {
       deactivate_edit(Self, FALSE);
@@ -5574,7 +5586,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    free_links(Self);
 
    Self->ECIndex = 0;
-   Self->ECMax = 0;
+   Self->ECMax   = 0;
    if (Self->EditCells) { FreeResource(Self->EditCells); Self->EditCells = NULL; }
 
    if (Self->LinkIndex != -1) {
@@ -5590,15 +5602,15 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    if (Flags & ULD_TERMINATE) Self->Stream = NULL;
    else Self->Stream = (UBYTE *)StrClone("");
 
-   Self->StreamLen = 0;
+   Self->StreamLen  = 0;
    Self->StreamSize = 0;
-   Self->PageTag = NULL;
+   Self->PageTag    = NULL;
 
    if (Self->SortSegments) { FreeResource(Self->SortSegments); Self->SortSegments = NULL; }
 
    if (Self->Segments) {
       FreeResource(Self->Segments);
-      Self->Segments = NULL;
+      Self->Segments    = NULL;
       Self->MaxSegments = 0;
    }
 
@@ -5775,7 +5787,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
    log.warning("%s", Message);
 
    if (dialog_id) {
-      if (CheckObjectExists(dialog_id, NULL) IS ERR_True) return;
+      if (CheckObjectExists(dialog_id) IS ERR_True) return;
    }
 
    OBJECTPTR dialog;
@@ -7233,7 +7245,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 
 static void check_mouse_release(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
-   if ((ABS(X - Self->ClickX) > 3) or (ABS(Y - Self->ClickY) > 3)) {
+   if ((std::abs(X - Self->ClickX) > 3) or (std::abs(Y - Self->ClickY) > 3)) {
       parasol::Log log(__FUNCTION__);
       log.trace("User click cancelled due to mouse shift.");
       return;
@@ -8264,9 +8276,9 @@ static void exec_link(extDocument *Self, LONG Index)
                      if ((Self->Path[end] IS '&') or (Self->Path[end] IS '#') or (Self->Path[end] IS '?')) break;
                   }
                   auto path = std::string(Self->Path, end) + strlink;
-                  SetString(Self, FID_Path, path.c_str());
+                  Self->set(FID_Path, path);
                }
-               else SetString(Self, FID_Path, strlink);
+               else Self->set(FID_Path, strlink);
 
                if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
             }
@@ -8302,7 +8314,7 @@ static void exec_link(extDocument *Self, LONG Index)
                STRING cmd;
                if (!IdentifyFile(lk.substr(0, end).c_str(), "Open", 0, &class_id, &subclass_id, &cmd)) {
                   if (class_id IS ID_DOCUMENT) {
-                     SetString(Self, FID_Path, lk.c_str());
+                     Self->set(FID_Path, lk);
 
                      if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
                      else log.msg("No bookmark was preset.");
@@ -8392,7 +8404,7 @@ static void set_object_style(extDocument *Self, OBJECTPTR Object)
 
    style.StyleFlags = Self->Style.FontStyle.Options;
 
-   SetPointer(Object, FID_LayoutStyle, &style);
+   Object->set(FID_LayoutStyle, &style);
 }
 
 //****************************************************************************

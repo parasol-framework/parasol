@@ -18,8 +18,6 @@ STRING ProgName      = "ObjectLocking";
 STRING ProgAuthor    = "Paul Manias";
 STRING ProgDate      = "February 2014";
 STRING ProgCopyright = "Paul Manias (c) 2014";
-LONG   ProgDebug = 8;
-FLOAT  ProgCoreVersion = 1.0;
 
 static struct StringsBase *StringsBase;
 static struct FileSystemBase *FileSystemBase;

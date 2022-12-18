@@ -81,7 +81,7 @@ static void generate_wave(objVectorWave *Vector)
          DOUBLE x = angle * xscale;
          DOUBLE y = (sin(DEG2RAD * degree) * amp) + (height * 0.5);
          if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
-         if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
+         if ((std::abs(x - last_x) >= 0.5) or (std::abs(y - last_y) >= 0.5)) {
             Vector->BasePath.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;
@@ -98,7 +98,7 @@ static void generate_wave(objVectorWave *Vector)
       for (angle=scale; angle < 360; angle += scale, degree += freq) {
          DOUBLE x = angle * xscale;
          DOUBLE y = (sin(DEG2RAD * degree) * amp) / exp((DOUBLE)angle / decay) + (height * 0.5);
-         if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
+         if ((std::abs(x - last_x) >= 0.5) or (std::abs(y - last_y) >= 0.5)) {
             Vector->BasePath.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;
@@ -116,7 +116,7 @@ static void generate_wave(objVectorWave *Vector)
          DOUBLE x = angle * xscale;
          DOUBLE y = (sin(DEG2RAD * degree) * amp) / log((DOUBLE)angle / decay) + (height * 0.5);
          if (Vector->Transition) apply_transition_xy(Vector->Transition, angle * (1.0 / 360.0), &x, &y);
-         if ((ABS(x - last_x) >= 0.5) or (ABS(y - last_y) >= 0.5)) {
+         if ((std::abs(x - last_x) >= 0.5) or (std::abs(y - last_y) >= 0.5)) {
             Vector->BasePath.line_to(ox + x, oy + y);
             last_x = x;
             last_y = y;

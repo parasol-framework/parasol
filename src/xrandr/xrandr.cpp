@@ -186,7 +186,7 @@ static ERROR xrSetDisplayMode(LONG *Width, LONG *Height)
       LONG bestweight = 0x7fffffff;
 
       for (i=0; i < count; i++) {
-         LONG weight = ABS(sizes[i].width - width) + ABS(sizes[i].height - height);
+         LONG weight = std::abs(sizes[i].width - width) + std::abs(sizes[i].height - height);
          if (weight < bestweight) {
             index = i;
             bestweight = weight;
@@ -344,7 +344,7 @@ static struct xrMode * xrGetDisplayMode(LONG Index)
 
 ERROR CMDOpen(OBJECTPTR Module)
 {
-   SetPointer(Module, FID_FunctionList, glFunctions);
+   Module->set(FID_FunctionList, glFunctions);
    return ERR_Okay;
 }
 

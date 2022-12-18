@@ -257,7 +257,7 @@
         <param type="LONG *" name="Result">The index of the new tag is returned here.</param>
       </input>
       <description>
-<p>The InsertContent method is used to insert content strings into any position within the XML tree.  A content string must be provided in the Content parameter and the target insertion point is specified in the Index parameter. An insertion point relative to the target index must be specified in the Where parameter.  The new tags can be inserted as a child of the target by using a Where value of XMI_CHILD.  To insert behind or after the target, use XMI_PREV or XMI_NEXT.</p>
+<p>The InsertContent method is used to insert content strings into any position within the XML tree.  A content string must be provided in the Content parameter and the target insertion point is specified in the Index parameter. An insertion point relative to the target index must be specified in the Where parameter.  The new tags can be inserted as a child of the target by using a Where value of <code>XMI_CHILD</code>.  To insert behind or after the target, use <code>XMI_PREV</code> or <code>XMI_NEXT</code>.</p>
 <p>To modify existing content, the <method>SetAttrib</method> method should be used.</p>
       </description>
       <result>
@@ -278,7 +278,7 @@
         <param type="LONG *" name="Result">The resulting tag index.</param>
       </input>
       <description>
-<p>The InsertXML method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index parameter.  An insertion point relative to the target index must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using a Insert value of XMI_CHILD.  Use XMI_CHILD_END to insert at the end of the child list.  To insert behind or after the target, use XMI_PREV or XMI_NEXT.</p>
+<p>The InsertXML method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index parameter.  An insertion point relative to the target index must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using a Insert value of <code>XMI_CHILD</code>.  Use <code>XMI_CHILD_END</code> to insert at the end of the child list.  To insert behind or after the target, use <code>XMI_PREV</code> or <code>XMI_NEXT</code>.</p>
 <p>The <field>RootIndex</field> value has no effect on this method.</p>
       </description>
       <result>
@@ -301,7 +301,7 @@
         <param type="LONG *" name="Result">The index of the new tag is returned here.</param>
       </input>
       <description>
-<p>The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid XPath location string.  An insertion point relative to the XPath target must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using an Insert value of XMI_CHILD or XMI_CHILD_END.  To insert behind or after the target, use XMI_PREV or XMI_NEXT.</p>
+<p>The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid XPath location string.  An insertion point relative to the XPath target must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using an Insert value of <code>XMI_CHILD</code> or <code>XMI_CHILD_END</code>.  To insert behind or after the target, use <code>XMI_PREV</code> or <code>XMI_NEXT</code>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -322,7 +322,7 @@
       </input>
       <description>
 <p>This method is used to move XML tags within the XML tree structure.  It supports the movement of single and groups of tags from one index to another.  The client must supply the index of the tag that will be moved and the index of the target tag.  All child tags of the source will be included in the move.</p>
-<p>An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be inserted as a child of the destination by using a Where of XMI_CHILD.  To insert behind or after the target, use XMI_PREV or XMI_NEXT.</p>
+<p>An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be inserted as a child of the destination by using a Where of <code>XMI_CHILD</code>.  To insert behind or after the target, use <code>XMI_PREV</code> or <code>XMI_NEXT</code>.</p>
       </description>
       <result>
         <error code="Okay">Tags were moved successfully.</error>
