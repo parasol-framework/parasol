@@ -1,13 +1,10 @@
-#ifndef MODULES_DISPLAY
-#define MODULES_DISPLAY 1
+#pragma once
 
 // Name:      display.h
 // Copyright: Paul Manias 2003-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_DISPLAY (1)
 
@@ -1207,4 +1204,3 @@ INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
    }
 }
   
-#endif

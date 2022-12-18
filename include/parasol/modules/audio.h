@@ -1,13 +1,10 @@
-#ifndef MODULES_AUDIO
-#define MODULES_AUDIO 1
+#pragma once
 
 // Name:      audio.h
 // Copyright: Paul Manias © 2002-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_AUDIO (1)
 
@@ -409,4 +406,3 @@ struct AudioBase {
 #define sndSetTaskVolume(...) (AudioBase->_SetTaskVolume)(__VA_ARGS__)
 #endif
 
-#endif

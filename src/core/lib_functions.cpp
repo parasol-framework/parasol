@@ -50,8 +50,8 @@ using namespace parasol;
 -FUNCTION-
 AllocateID: Generates unique ID's for general purposes.
 
-This function generates unique ID's that can be used in other Core functions.  It requires the type of the ID that is
-needed, and will respond by returning a unique identifier for that type.
+This function generates unique ID's that can be used in other Core functions.  A type ID is required and the resulting
+number will be unique to that type only.
 
 ID allocations are permanent, so there is no need to free the allocated ID once it is no longer required.
 
@@ -92,66 +92,26 @@ LONG AllocateID(LONG Type)
 CheckObjectExists: Checks if a particular object is still available in the system.
 Category: Objects
 
-The CheckObjectExists() function checks for the existence of an object within the system.  It is commonly used to check
-for the presence of shared objects, which can be removed from the system at any time by other threads and processes.
-
-This function allows for ID and name based testing.  Please note that in the case of name checking, it is possible for
-multiple objects with the same name to exist at the time of calling this function.
+The CheckObjectExists() function checks for the presence of any object created by NewObect().  Support for shared
+objects that exist outside the current process space is included.
 
 -INPUT-
 oid Object: The object ID that you want to look for.
-cstr Name: If the ID is not known, specify the Name of the object here.  Otherwise set to NULL.
 
 -ERRORS-
 True:  The object exists.
 False: The object ID does not exist.
-Args:  Neither of the ObjectID or Name arguments were specified.
+NullArgs:
+SystemLocked:
+LockFailed:
 
 *********************************************************************************************************************/
 
-ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
+ERROR CheckObjectExists(OBJECTID ObjectID)
 {
    parasol::Log log(__FUNCTION__);
-   LONG i, j;
 
-   if (Name) {
-      // Check the private object key-store for the name.
-
-      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) {
-         if (!VarGet(glObjectLookup, Name, NULL, NULL)) return ERR_True;
-      }
-
-      char buffer[MAX_NAME_LEN+1];
-      for (i=0; (Name[i]) and (i < MAX_NAME_LEN); i++) { // Change the Name string to all-lower case
-         char c = Name[i];
-         if ((c >= 'A') and (c <= 'Z')) c = c - 'A' + 'a';
-         buffer[i] = c;
-      }
-      buffer[i] = 0;
-
-      SharedObjectHeader *header;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
-
-         for (LONG i=0; i < header->NextEntry; i++) {
-            if ((list[i].ObjectID) and ((!list[i].InstanceID) or (list[i].InstanceID IS glInstanceID))) {
-               for (j=0; list[i].Name[j]; j++) {
-                  if (list[i].Name[j] != buffer[j]) break;
-               }
-               if ((!list[i].Name[j]) and (!buffer[j])) {
-                  ReleaseMemoryID(RPM_SharedObjects);
-                  return ERR_True;
-               }
-            }
-         }
-
-         ReleaseMemoryID(RPM_SharedObjects);
-         return ERR_False;
-      }
-      else return log.warning(ERR_AccessMemory);
-   }
-   else if (ObjectID < 0) {
+   if (ObjectID < 0) {
       ScopedSysLock lock(PL_PUBLICMEM, 4000);
       if (lock.granted()) {
          if (!find_public_mem_id(glSharedControl, ObjectID, NULL)) return ERR_True;
@@ -174,32 +134,7 @@ ERROR CheckObjectExists(OBJECTID ObjectID, CSTRING Name)
       }
       else return log.warning(ERR_LockFailed);
    }
-   else return log.warning(ERR_Args);
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-ClearMemory: Clears large blocks of memory very quickly.
-Category: Memory
-
-Use the ClearMemory() function when you need to clear a block of memory as efficiently as possible.
-
--INPUT-
-ptr Memory: Pointer to the memory block that you want to clear.
-int Length: The total number of bytes that you want to clear.
-
--ERRORS-
-Okay: The memory was cleared.
-NullArgs: The Memory argument was not specified.
-
-*********************************************************************************************************************/
-
-ERROR ClearMemory(APTR Memory, LONG Length)
-{
-   if (!Memory) return ERR_NullArgs;
-   memset(Memory, 0, Length); // memset() is assumed to be optimised by the compiler.
-   return ERR_Okay;
+   else return log.warning(ERR_NullArgs);
 }
 
 /*********************************************************************************************************************
@@ -270,8 +205,8 @@ CurrentTask: Returns the active Task object.
 
 The CurrentTask() function returns the @Task object of the active process.
 
-If there is a legitimate circumstance where there is no current task (for example if this function is called during
-Core initialisation) then the "system task" may be returned (the system task controls and maintains the Core).
+If there is a legitimate circumstance where there is no current task (e.g. if the function is called during
+Core initialisation) then the "system task" may be returned, which has ownership of Core resources.
 
 -RESULT-
 obj: Returns a pointer to the current Task object or NULL if failure.
@@ -289,13 +224,11 @@ OBJECTPTR CurrentTask(void)
 FindClass: Returns all class objects for a given class ID.
 Category: Objects
 
-This function is used to find a specific class by ID.  If a matching class is not already loaded, the class database
-is checked to determine if the class is installed on the system.  If a match is discovered, the corresponding module
-will be loaded into memory and the class will be returned.  In the event of failure or if there is no matching class
-registered, NULL is returned.
+This function will find a specific class by ID and return its @MetaClass.  If the class is not in memory, the internal
+dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded
+into memory and the class will be returned.  In any event of failure, NULL is returned.
 
-If the ID of the class is not known, please call ~ResolveClassName() and then pass the resulting ID to this
-function.
+If the ID of a named class is not known, call ~ResolveClassName() first and pass the resulting ID to this function.
 
 -INPUT-
 cid ClassID: A class ID such as one retrieved from ~ResolveClassName().
@@ -438,7 +371,7 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
       if (number) {
          OBJECTID objectid;
          if ((objectid = (OBJECTID)StrToInt(InitialName))) {
-            if (!CheckObjectExists(objectid, NULL)) {
+            if (!CheckObjectExists(objectid)) {
                *Array = objectid;
                *Count = 1;
                return ERR_Okay;
@@ -450,7 +383,7 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
 
       if (!StrMatch("owner", InitialName)) {
          if ((tlContext != &glTopContext) and (tlContext->object()->OwnerID)) {
-            if (!CheckObjectExists(tlContext->object()->OwnerID, NULL)) {
+            if (!CheckObjectExists(tlContext->object()->OwnerID)) {
                *Array = tlContext->object()->OwnerID;
                *Count = 1;
                return ERR_Okay;
@@ -1316,12 +1249,11 @@ const SystemState * GetSystemState(void)
       state.InstanceID    = glInstanceID;
       state.ErrorMessages = glMessages;
       state.TotalErrorMessages = ARRAYSIZE(glMessages);
-      state.RootPath   = glRootPath;
-      state.SystemPath = glSystemPath;
-      state.ModulePath = glModulePath;
+      state.RootPath      = glRootPath;
+      state.SystemPath    = glSystemPath;
+      state.ModulePath    = glModulePath;
       #ifdef __unix__
-         if (glFullOS) state.Platform = "Native";
-         else state.Platform = "Linux";
+         state.Platform = "Linux";
       #elif _WIN32
          state.Platform = "Windows";
       #elif __APPLE__

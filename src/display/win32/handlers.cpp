@@ -45,7 +45,7 @@ void MsgKeyRelease(LONG Flags, LONG Value)
 void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY)
 {
    if (auto pointer = gfxAccessPointer(); pointer) {
-      SetLong(pointer, FID_Surface, SurfaceID);  // Alter the surface of the pointer so that it refers to the correct root window
+      pointer->set(FID_Surface, SurfaceID);  // Alter the surface of the pointer so that it refers to the correct root window
       gfxReleasePointer(pointer);
 
       struct dcDeviceInput joy[2];

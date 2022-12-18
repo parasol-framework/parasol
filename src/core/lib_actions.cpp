@@ -1565,7 +1565,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
             log.debug("Extending array for object %d to %d entries.", Object->UID, Object->Stats->SubscriptionSize);
             if (glLogLevel >= 5) { // Report any dead subscribers if we're in log mode
                for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
-                  if (CheckObjectExists(list[i].SubscriberID, 0) != ERR_True) {
+                  if (CheckObjectExists(list[i].SubscriberID) != ERR_True) {
                      log.warning("Dead subscriber @ index %d, Action %d, Object %d - Fix your code!", i, list[i].ActionID, list[i].SubscriberID);
                   }
                }

@@ -25,14 +25,14 @@ INLINE FT_F26Dot6 DBL_TO_FT(DOUBLE Value)
 template <typename T> LONG ReadWordLE(T File)
 {
    WORD result = 0;
-   flReadLE2(File, &result);
+   flReadLE(File, &result);
    return result;
 }
 
 template <typename T> LONG ReadLongLE(T File)
 {
    LONG result = 0;
-   flReadLE4(File, &result);
+   flReadLE(File, &result);
    return result;
 }
 

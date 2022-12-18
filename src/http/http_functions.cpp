@@ -59,7 +59,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
       else if (Self->CurrentState IS HGS_SEND_COMPLETE) {
          // Disconnection on completion of sending data should be no big deal
          SET_ERROR(Self, Socket->Error ? Socket->Error : ERR_Okay);
-         SetLong(Self, FID_CurrentState, HGS_COMPLETED);
+         Self->set(FID_CurrentState, HGS_COMPLETED);
       }
       else if (Self->CurrentState IS HGS_SENDING_CONTENT) {
          SET_ERROR(Self, Socket->Error ? Socket->Error : ERR_Disconnected);
@@ -67,7 +67,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
          // If the socket is not active, then the disconnection is a result of destroying the object (e.g. due to a redirect).
 
          log.branch("State changing to TERMINATED due to disconnection.");
-         SetLong(Self, FID_CurrentState, HGS_TERMINATED);
+         Self->set(FID_CurrentState, HGS_TERMINATED);
       }
       else if (Self->CurrentState IS HGS_READING_CONTENT) {
          LONG len;
@@ -109,7 +109,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
          if (Self->ContentLength IS -1) {
             if (Socket->Error IS ERR_Okay) {
                log.msg("Orderly shutdown while streaming data.");
-               SetLong(Self, FID_CurrentState, HGS_COMPLETED);
+               Self->set(FID_CurrentState, HGS_COMPLETED);
             }
             else {
                SET_ERROR(Self, Socket->Error);
@@ -132,7 +132,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
             // to authenticate with the dialog window.  We will close the socket
             // and create a new one once the user responds to the dialog.
 
-            SetPointer(Self->Socket, FID_Feedback, NULL);
+            Self->Socket->set(FID_Feedback, (APTR)NULL);
             acFree(Socket);
             Self->Socket = NULL;
             Self->SecurePath = TRUE;
@@ -187,7 +187,7 @@ redo_upload:
    }
 
    if (Self->CurrentState != HGS_SENDING_CONTENT) {
-      SetLong(Self, FID_CurrentState, HGS_SENDING_CONTENT);
+      Self->set(FID_CurrentState, HGS_SENDING_CONTENT);
    }
 
    LONG len = 0;
@@ -290,7 +290,7 @@ redo_upload:
       total_out += result;
       Self->TotalSent += result;
 
-      SetLarge(Self, FID_Index, Self->Index + len);
+      Self->set(FID_Index, Self->Index + len);
 
       if (writeerror) {
          log.warning("write_socket() failed: %s", GetErrorMsg(writeerror));
@@ -303,7 +303,7 @@ redo_upload:
 
    if ((error) and (error != ERR_Terminate)) {
       if (error != ERR_TimeOut) {
-         SetLong(Self, FID_CurrentState, HGS_TERMINATED);
+         Self->set(FID_CurrentState, HGS_TERMINATED);
          SET_ERROR(Self, error);
          return ERR_Terminate;
       }
@@ -342,7 +342,7 @@ redo_upload:
          if (Self->Chunked) write_socket(Self, (UBYTE *)"0\r\n\r\n", 5, &result);
 
          if (Self->Flags & HTF_DEBUG) log.msg("Transfer complete - sent " PF64() " bytes.", Self->TotalSent);
-         SetLong(Self, FID_CurrentState, HGS_SEND_COMPLETE);
+         Self->set(FID_CurrentState, HGS_SEND_COMPLETE);
          return ERR_Terminate;
       }
       else {
@@ -403,7 +403,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
    if ((Self->CurrentState IS HGS_SENDING_CONTENT) or (Self->CurrentState IS HGS_SEND_COMPLETE)) {
       log.trace("Switching state from sending content to reading header.");
-      SetLong(Self, FID_CurrentState, HGS_READING_HEADER);
+      Self->set(FID_CurrentState, HGS_READING_HEADER);
       Self->Index = 0;
    }
 
@@ -470,7 +470,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                if ((Self->CurrentState IS HGS_AUTHENTICATING) and (Self->Status != 401)) {
                   log.msg("Authentication successful, reactivating...");
                   Self->SecurePath = FALSE;
-                  SetLong(Self, FID_CurrentState, HGS_AUTHENTICATED);
+                  Self->set(FID_CurrentState, HGS_AUTHENTICATED);
                   DelayMsg(AC_Activate, Self->UID, NULL);
                   return ERR_Okay;
                }
@@ -485,8 +485,8 @@ static ERROR socket_incoming(objNetSocket *Socket)
                      char buffer[512];
                      if (!acGetVar(Self, "Location", buffer, sizeof(buffer))) {
                         log.msg("MovedPermanently to %s", buffer);
-                        if (!StrCompare("http:", buffer, 5, 0)) SetString(Self, FID_Location, buffer);
-                        else SetString(Self, FID_Path, buffer);
+                        if (!StrCompare("http:", buffer, 5, 0)) Self->set(FID_Location, buffer);
+                        else Self->set(FID_Path, buffer);
                         acActivate(Self); // Try again
                         Self->Flags |= HTF_MOVED;
                         return ERR_Okay;
@@ -508,14 +508,14 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                if ((!Self->ContentLength) or (Self->ContentLength < -1)) {
                   log.msg("Reponse header received, no content imminent.");
-                  SetLong(Self, FID_CurrentState, HGS_COMPLETED);
+                  Self->set(FID_CurrentState, HGS_COMPLETED);
                   return ERR_Terminate;
                }
 
                log.msg("Complete response header has been received.  Incoming Content: " PF64(), Self->ContentLength);
 
                if (Self->CurrentState != HGS_READING_CONTENT) {
-                  SetLong(Self, FID_CurrentState, HGS_READING_CONTENT);
+                  Self->set(FID_CurrentState, HGS_READING_CONTENT);
                }
 
                Self->AuthDigest = FALSE;
@@ -593,7 +593,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   }
                   else log.msg("Authenticate method unknown.");
 
-                  SetLong(Self, FID_CurrentState, HGS_AUTHENTICATING);
+                  Self->set(FID_CurrentState, HGS_AUTHENTICATING);
 
                   if ((!Self->Password) and (!(Self->Flags & HTF_NO_DIALOG))) {
                      // Pop up a dialog requesting the user to authorise himself with the http server.  The user will
@@ -717,12 +717,12 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                if (Self->Error IS ERR_Disconnected) {
                   log.msg("Received all chunked content (disconnected by peer).");
-                  SetLong(Self, FID_CurrentState, HGS_COMPLETED);
+                  Self->set(FID_CurrentState, HGS_COMPLETED);
                   return ERR_Terminate;
                }
                else if (Self->Error) {
                   log.warning("Read() returned error %d whilst reading content.", Self->Error);
-                  SetLong(Self, FID_CurrentState, HGS_COMPLETED);
+                  Self->set(FID_CurrentState, HGS_COMPLETED);
                   return ERR_Terminate;
                }
                else if ((!len) and (Self->ChunkIndex >= Self->ChunkBuffered)) {
@@ -746,7 +746,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   for (i=Self->ChunkIndex; i < Self->ChunkBuffered-1; i++) {
                      if ((Self->Chunk[i] IS '\r') and (Self->Chunk[i+1] IS '\n')) {
                         Self->Chunk[i] = 0;
-                        Self->ChunkLen = StrToHex((CSTRING)Self->Chunk + Self->ChunkIndex);
+                        Self->ChunkLen = strtoll((CSTRING)Self->Chunk + Self->ChunkIndex, NULL, 0);
                         Self->Chunk[i] = '\r';
 
                         if (Self->ChunkLen <= 0) {
@@ -755,13 +755,13 @@ static ERROR socket_incoming(objNetSocket *Socket)
                               // interpretation.
 
                               log.msg("End of chunks reached, optional data follows.");
-                              SetLong(Self, FID_CurrentState, HGS_COMPLETED);
+                              Self->set(FID_CurrentState, HGS_COMPLETED);
                               return ERR_Terminate;
                            }
                            else {
                               // We have reached the terminating line (CRLF on an empty line)
                               log.msg("Received all chunked content.");
-                              SetLong(Self, FID_CurrentState, HGS_COMPLETED);
+                              Self->set(FID_CurrentState, HGS_COMPLETED);
                               return ERR_Terminate;
                            }
                         }
@@ -827,7 +827,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                if ((Self->Error = acRead(Socket, buffer, len, &len))) {
                   if ((Self->Error IS ERR_Disconnected) and (Self->ContentLength IS -1)) {
                      log.trace("Received all streamed content (disconnected by peer).");
-                     SetLong(Self, FID_CurrentState, HGS_COMPLETED);
+                     Self->set(FID_CurrentState, HGS_COMPLETED);
                      FreeResource(buffer);
                      return ERR_Terminate;
                   }
@@ -982,7 +982,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 
    if (!Length) return ERR_Okay;
 
-   SetLarge(Self, FID_Index, Self->Index + Length); // Use Set() so that field subscribers can track progress with field monitoring
+   Self->set(FID_Index, (LARGE)Self->Index + (LARGE)Length); // Use Set() so that field subscribers can track progress with field monitoring
 
    if ((!Self->flOutput) and (Self->OutputFile)) {
       LONG flags, type;
@@ -998,7 +998,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
       if (!CreateObject(ID_FILE, NF_INTEGRAL, &Self->flOutput, FID_Path|TSTR, Self->OutputFile, FID_Flags|TLONG, flags|FL_WRITE, TAGEND)) {
          if (Self->Flags & HTF_RESUME) {
             acSeekEnd(Self->flOutput, 0);
-            SetLarge(Self, FID_Index, 0);
+            Self->set(FID_Index, 0);
          }
       }
       else SET_ERROR(Self, ERR_CreateFile);
@@ -1054,7 +1054,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
       if (Self->Error IS ERR_Terminate) {
          parasol::Log log(__FUNCTION__);
          log.branch("State changing to HGS_TERMINATED (terminate message received).");
-         SetLong(Self, FID_CurrentState, HGS_TERMINATED);
+         Self->set(FID_CurrentState, HGS_TERMINATED);
       }
    }
 
@@ -1270,7 +1270,7 @@ static ERROR timeout_manager(extHTTP *Self, LARGE Elapsed, LARGE CurrentTime)
    log.warning("Timeout detected - disconnecting from server (connect %.2fs, data %.2fs).", Self->ConnectTimeout, Self->DataTimeout);
    Self->TimeoutManager = 0;
    SET_ERROR(Self, ERR_TimeOut);
-   SetLong(Self, FID_CurrentState, HGS_TERMINATED);
+   Self->set(FID_CurrentState, HGS_TERMINATED);
    return ERR_Terminate;
 }
 
@@ -1287,7 +1287,7 @@ static ERROR check_incoming_end(extHTTP *Self)
    if ((Self->ContentLength != -1) and (Self->Index >= Self->ContentLength)) {
       log.trace("Transmission over.");
       if (Self->Index > Self->ContentLength) log.warning("Warning: received too much content.");
-      SetLong(Self, FID_CurrentState, HGS_COMPLETED);
+      Self->set(FID_CurrentState, HGS_COMPLETED);
       return ERR_True;
    }
    else {

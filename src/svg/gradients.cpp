@@ -3,10 +3,10 @@ static ERROR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG 
 {
    switch (Attrib) {
       case SVF_COLOR_INTERPOLATION:
-         if (!StrMatch("auto", Value)) SetLong(Gradient, FID_ColourSpace, VCS_LINEAR_RGB);
-         else if (!StrMatch("sRGB", Value)) SetLong(Gradient, FID_ColourSpace, VCS_SRGB);
-         else if (!StrMatch("linearRGB", Value)) SetLong(Gradient, FID_ColourSpace, VCS_LINEAR_RGB);
-         else if (!StrMatch("inherit", Value)) SetLong(Gradient, FID_ColourSpace, VCS_INHERIT);
+         if (!StrMatch("auto", Value)) Gradient->set(FID_ColourSpace, VCS_LINEAR_RGB);
+         else if (!StrMatch("sRGB", Value)) Gradient->set(FID_ColourSpace, VCS_SRGB);
+         else if (!StrMatch("linearRGB", Value)) Gradient->set(FID_ColourSpace, VCS_LINEAR_RGB);
+         else if (!StrMatch("inherit", Value)) Gradient->set(FID_ColourSpace, VCS_INHERIT);
          return ERR_Okay;
 
       case SVF_XLINK_HREF: add_inherit(Self, Gradient, Value); break;
@@ -111,23 +111,23 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
          auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
          switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already checked gradientUnits earlier
-            case SVF_GRADIENTTRANSFORM: SetString(gradient, FID_Transform, val); break;
+            case SVF_GRADIENTTRANSFORM: gradient->set(FID_Transform, val); break;
             case SVF_X1: set_double_units(gradient, FID_X1, val, gradient->Units); break;
             case SVF_Y1: set_double_units(gradient, FID_Y1, val, gradient->Units); break;
             case SVF_X2: set_double_units(gradient, FID_X2, val, gradient->Units); break;
             case SVF_Y2: set_double_units(gradient, FID_Y2, val, gradient->Units); break;
 
             case SVF_COLOR_INTERPOLATION:
-               if (!StrMatch("auto", val)) SetLong(gradient, FID_ColourSpace, VCS_LINEAR_RGB);
-               else if (!StrMatch("sRGB", val)) SetLong(gradient, FID_ColourSpace, VCS_SRGB);
-               else if (!StrMatch("linearRGB", val)) SetLong(gradient, FID_ColourSpace, VCS_LINEAR_RGB);
-               else if (!StrMatch("inherit", val)) SetLong(gradient, FID_ColourSpace, VCS_INHERIT);
+               if (!StrMatch("auto", val)) gradient->set(FID_ColourSpace, VCS_LINEAR_RGB);
+               else if (!StrMatch("sRGB", val)) gradient->set(FID_ColourSpace, VCS_SRGB);
+               else if (!StrMatch("linearRGB", val)) gradient->set(FID_ColourSpace, VCS_LINEAR_RGB);
+               else if (!StrMatch("inherit", val)) gradient->set(FID_ColourSpace, VCS_INHERIT);
                break;
 
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          SetLong(gradient, FID_SpreadMethod, VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) SetLong(gradient, FID_SpreadMethod, VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->set(FID_SpreadMethod, VSPREAD_PAD);
+               else if (!StrMatch("reflect", val)) gradient->set(FID_SpreadMethod, VSPREAD_REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->set(FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
@@ -202,12 +202,12 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
             case SVF_FY: set_double_units(gradient, FID_FY, val, gradient->Units); break;
             case SVF_R:  set_double_units(gradient, FID_Radius, val, gradient->Units); break;
             case SVF_GRADIENTUNITS: break; // Already processed
-            case SVF_GRADIENTTRANSFORM: SetString(gradient, FID_Transform, val); break;
+            case SVF_GRADIENTTRANSFORM: gradient->set(FID_Transform, val); break;
             case SVF_ID: id = val; break;
             case SVF_SPREADMETHOD:
-               if (!StrMatch("pad", val))          SetLong(gradient, FID_SpreadMethod, VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) SetLong(gradient, FID_SpreadMethod, VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->set(FID_SpreadMethod, VSPREAD_PAD);
+               else if (!StrMatch("reflect", val)) gradient->set(FID_SpreadMethod, VSPREAD_REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->set(FID_SpreadMethod, VSPREAD_REPEAT);
                break;
 
             default: {
@@ -275,14 +275,14 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
          auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
          switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already processed
-            case SVF_GRADIENTTRANSFORM: SetString(gradient, FID_Transform, val); break;
+            case SVF_GRADIENTTRANSFORM: gradient->set(FID_Transform, val); break;
             case SVF_CX: set_double_units(gradient, FID_CenterX, val, gradient->Units); break;
             case SVF_CY: set_double_units(gradient, FID_CenterY, val, gradient->Units); break;
             case SVF_R:  set_double_units(gradient, FID_Radius, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          SetLong(gradient, FID_SpreadMethod, VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) SetLong(gradient, FID_SpreadMethod, VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->set(FID_SpreadMethod, VSPREAD_PAD);
+               else if (!StrMatch("reflect", val)) gradient->set(FID_SpreadMethod, VSPREAD_REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->set(FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
@@ -348,13 +348,13 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
          auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
          switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already processed
-            case SVF_GRADIENTTRANSFORM: SetString(gradient, FID_Transform, val); break;
+            case SVF_GRADIENTTRANSFORM: gradient->set(FID_Transform, val); break;
             case SVF_X1: set_double_units(gradient, FID_X1, val, gradient->Units); break;
             case SVF_X2: set_double_units(gradient, FID_X2, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          SetLong(gradient, FID_SpreadMethod, VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) SetLong(gradient, FID_SpreadMethod, VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->set(FID_SpreadMethod, VSPREAD_PAD);
+               else if (!StrMatch("reflect", val)) gradient->set(FID_SpreadMethod, VSPREAD_REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->set(FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
@@ -424,17 +424,17 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag *Tag)
          auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
          switch(attrib) {
             case SVF_GRADIENTUNITS:
-               if (!StrMatch("userSpaceOnUse", val)) SetLong(gradient, FID_Units, VUNIT_USERSPACE);
-               else if (!StrMatch("objectBoundingBox", val)) SetLong(gradient, FID_Units, VUNIT_BOUNDING_BOX);
+               if (!StrMatch("userSpaceOnUse", val)) gradient->set(FID_Units, VUNIT_USERSPACE);
+               else if (!StrMatch("objectBoundingBox", val)) gradient->set(FID_Units, VUNIT_BOUNDING_BOX);
                break;
-            case SVF_GRADIENTTRANSFORM: SetString(gradient, FID_Transform, val); break;
+            case SVF_GRADIENTTRANSFORM: gradient->set(FID_Transform, val); break;
             case SVF_CX: set_double_units(gradient, FID_CenterX, val, gradient->Units); break;
             case SVF_CY: set_double_units(gradient, FID_CenterY, val, gradient->Units); break;
             case SVF_R:  set_double_units(gradient, FID_Radius, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          SetLong(gradient, FID_SpreadMethod, VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) SetLong(gradient, FID_SpreadMethod, VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  SetLong(gradient, FID_SpreadMethod, VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->set(FID_SpreadMethod, VSPREAD_PAD);
+               else if (!StrMatch("reflect", val)) gradient->set(FID_SpreadMethod, VSPREAD_REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->set(FID_SpreadMethod, VSPREAD_REPEAT);
                break;
             }
             case SVF_ID: id = val; break;

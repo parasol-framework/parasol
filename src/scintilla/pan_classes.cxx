@@ -95,10 +95,10 @@ public:
 
       // Apply new clipping rectangle
 
-      bitmap->Clip.Left   = MAX(bitmap->Clip.Left, cliprect.left);
-      bitmap->Clip.Top    = MAX(bitmap->Clip.Top, cliprect.top);
-      bitmap->Clip.Right  = MIN(bitmap->Clip.Right, cliprect.right);
-      bitmap->Clip.Bottom = MIN(bitmap->Clip.Bottom, cliprect.bottom);
+      bitmap->Clip.Left   = std::max(bitmap->Clip.Left, cliprect.left);
+      bitmap->Clip.Top    = std::max(bitmap->Clip.Top, cliprect.top);
+      bitmap->Clip.Right  = std::min(bitmap->Clip.Right, cliprect.right);
+      bitmap->Clip.Bottom = std::min(bitmap->Clip.Bottom, cliprect.bottom);
    }
 
    ~BitmapClipper()

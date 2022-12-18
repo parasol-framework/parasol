@@ -1,19 +1,15 @@
-#ifndef MODULES_VECTOR
-#define MODULES_VECTOR 1
+#pragma once
 
 // Name:      vector.h
 // Copyright: Paul Manias © 2010-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_VECTOR (1)
 
-#ifndef MODULES_DISPLAY_H
 #include <parasol/modules/display.h>
-#endif
+#include <parasol/modules/picture.h>
 
 class objVectorColour;
 class objVectorScene;
@@ -1486,4 +1482,3 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_YCHANNELSELECTOR 0x634c7918
 #define SVF_ZOOMANDPAN 0xc606dfdc
 
-#endif

@@ -19,6 +19,14 @@ functions for creating paths and rendering them to bitmaps.
 //#include "vector.h"
 #include "colours.cpp"
 
+inline char read_nibble(CSTRING Str)
+{
+   if ((*Str >= '0') and (*Str <= '9')) return (*Str - '0');
+   else if ((*Str >= 'A') and (*Str <= 'F')) return ((*Str - 'A')+10);
+   else if ((*Str >= 'a') and (*Str <= 'f')) return ((*Str - 'a')+10);
+   else return 0xff;
+}
+
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
 
 void simplevector_free(APTR Address) {
@@ -53,7 +61,7 @@ static SimpleVector * new_simplevector(void)
 
 ERROR CMDOpen(OBJECTPTR Module)
 {
-   SetPointer(Module, FID_FunctionList, glFunctions);
+   Module->set(FID_FunctionList, glFunctions);
    return ERR_Okay;
 }
 
@@ -866,13 +874,33 @@ next:
       return ERR_Okay;
    }
    else if (*IRI IS '#') {
-      RGB8 rgb;
-      StrToColour(IRI, &rgb);
-      RGB->Red   = (FLOAT)rgb.Red   * (1.0 / 255.0);
-      RGB->Green = (FLOAT)rgb.Green * (1.0 / 255.0);
-      RGB->Blue  = (FLOAT)rgb.Blue  * (1.0 / 255.0);
-      RGB->Alpha = (FLOAT)rgb.Alpha * (1.0 / 255.0);
-      return ERR_Okay;
+      IRI++;
+      char nibbles[8];
+      UBYTE n = 0;
+      while ((*IRI) and (n < ARRAYSIZE(nibbles))) nibbles[n++] = read_nibble(IRI++);
+
+      if (n IS 3) {
+         RGB->Red   = DOUBLE(nibbles[0]<<4) * (1.0 / 255.0);
+         RGB->Green = DOUBLE(nibbles[1]<<4) * (1.0 / 255.0);
+         RGB->Blue  = DOUBLE(nibbles[2]<<4) * (1.0 / 255.0);
+         RGB->Alpha = 1.0;
+         return ERR_Okay;
+      }
+      else if (n IS 6) {
+         RGB->Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
+         RGB->Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
+         RGB->Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
+         RGB->Alpha = 1.0;
+         return ERR_Okay;
+      }
+      else if (n IS 8) {
+         RGB->Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
+         RGB->Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
+         RGB->Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
+         RGB->Alpha = DOUBLE((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
+         return ERR_Okay;
+      }
+      else return ERR_Syntax;
    }
    else if ((!StrMatch("currentColor", IRI)) or (!StrMatch("currentColour", IRI))) {
       // This SVG feature derivess the colour from first parent that defines a fill value.  Since this

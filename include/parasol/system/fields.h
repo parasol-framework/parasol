@@ -1,5 +1,4 @@
-#ifndef SYSTEM_FIELDS
-#define SYSTEM_FIELDS 1
+#pragma once
 
 // Name:      system/fields.h
 // Copyright: Paul Manias © 1996-2022
@@ -1012,4 +1011,3 @@
 #define FID_XChannel 0xf9068f76LL
 #define FID_YChannel 0xe5486457LL
 
-#endif

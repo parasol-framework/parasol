@@ -86,9 +86,8 @@ static void xml_unescape(extXML *, STRING);
 static ERROR SET_Statement(extXML *, CSTRING Value);
 static ERROR SET_Source(extXML *Self, OBJECTPTR Value);
 
-/*****************************************************************************
-** Debug routines
-*/
+//********************************************************************************************************************
+// Debug routines
 
 #if defined(DEBUG) || defined(DEBUG_TREE_REMOVE) || defined(DEBUG_TREE_INSERT) || defined(DEBUG_TREE_MOVE)
 
@@ -128,7 +127,57 @@ static void debug_tree(STRING Header, extXML *Self)
 
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
+
+static LONG str_sort(CSTRING Name1, CSTRING Name2)
+{
+   if ((!Name1) or (!Name2)) return 0;
+
+   while ((*Name1) and (*Name2)) {
+      UBYTE char1 = *Name1;
+      UBYTE char2 = *Name2;
+
+      if ((char1 >= '0') and (char1 <= '9') and (char2 >= '0') and (char2 <= '9')) {
+         // This integer comparison is for human readable sorting
+         ULONG val1 = 0;
+         while (*Name1 IS '0') Name1++;
+         while ((*Name1) and (*Name1 >= '0') and (*Name1 <= '9')) {
+            val1 = (val1 * 10) + (*Name1 - '0');
+            Name1++;
+         }
+
+         ULONG val2 = 0;
+         while (*Name2 IS '0') Name2++;
+         while ((*Name2) and (*Name2 >= '0') and (*Name2 <= '9')) {
+            val2 = (val2 * 10) + (*Name2 - '0');
+            Name2++;
+         }
+
+         if (val1 > val2) return 1; // Name1 is greater
+         else if (val1 < val2) return -1; // Name1 is lesser
+         else {
+            while ((*Name1 >= '0') and (*Name1 <= '9')) Name1++;
+            while ((*Name2 >= '0') and (*Name2 <= '9')) Name2++;
+            continue;
+         }
+      }
+
+      if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
+      if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+
+      if (char1 > char2) return 1; // Name1 is greater
+      else if (char1 < char2) return -1; // Name1 is lesser
+
+      Name1++;
+      Name2++;
+   }
+
+   if ((!*Name1) and (!*Name2)) return 0;
+   else if (!*Name1) return -1;
+   else return 1;
+}
+
+//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -891,7 +940,7 @@ static ERROR XML_GetTag(extXML *Self, struct xmlGetTag *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR XML_Init(extXML *Self, APTR Void)
 {
@@ -943,8 +992,8 @@ InsertContent: Inserts XML content into the XML tree.
 The InsertContent method is used to insert content strings into any position within the XML tree.  A content string
 must be provided in the Content parameter and the target insertion point is specified in the Index parameter.
 An insertion point relative to the target index must be specified in the Where parameter.  The new tags can be
-inserted as a child of the target by using a Where value of XMI_CHILD.  To insert behind or after the target, use
-XMI_PREV or XMI_NEXT.
+inserted as a child of the target by using a Where value of `XMI_CHILD`.  To insert behind or after the target, use
+`XMI_PREV` or `XMI_NEXT`.
 
 To modify existing content, the #SetAttrib() method should be used.
 
@@ -1010,8 +1059,8 @@ InsertXML: Inserts an XML statement in the XML tree.
 The InsertXML method is used to translate and insert a new set of XML tags into any position within the XML tree.  A
 standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index
 parameter.  An insertion point relative to the target index must be specified in the Insert parameter.  The new tags
-can be inserted as a child of the target by using a Insert value of XMI_CHILD.  Use XMI_CHILD_END to insert at the end
-of the child list.  To insert behind or after the target, use XMI_PREV or XMI_NEXT.
+can be inserted as a child of the target by using a Insert value of `XMI_CHILD`.  Use `XMI_CHILD_END` to insert at the end
+of the child list.  To insert behind or after the target, use `XMI_PREV` or `XMI_NEXT`.
 
 The #RootIndex value has no effect on this method.
 
@@ -1118,8 +1167,8 @@ InsertXPath: Inserts an XML statement in an XML tree.
 The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A
 standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid
 XPath location string.  An insertion point relative to the XPath target must be specified in the Insert parameter.  The
-new tags can be inserted as a child of the target by using an Insert value of XMI_CHILD or XMI_CHILD_END.  To insert
-behind or after the target, use XMI_PREV or XMI_NEXT.
+new tags can be inserted as a child of the target by using an Insert value of `XMI_CHILD` or `XMI_CHILD_END`.  To insert
+behind or after the target, use `XMI_PREV` or `XMI_NEXT`.
 
 -INPUT-
 cstr XPath: An XPath string that refers to the target insertion point.
@@ -1168,8 +1217,8 @@ tags from one index to another.  The client must supply the index of the tag tha
 target tag.  All child tags of the source will be included in the move.
 
 An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be
-inserted as a child of the destination by using a Where of XMI_CHILD.  To insert behind or after the target, use
-XMI_PREV or XMI_NEXT.
+inserted as a child of the destination by using a Where of `XMI_CHILD`.  To insert behind or after the target, use
+`XMI_PREV` or `XMI_NEXT`.
 
 -INPUT-
 int Index: Index of the source tag to be moved.
@@ -1322,7 +1371,7 @@ static void recalc_indexes(extXML *Self, XMLTag *Tag, LONG *Index, LONG *Level)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR XML_NewObject(extXML *Self, APTR Void)
 {
@@ -1502,7 +1551,7 @@ static ERROR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
          if (attrib) { // Remove an attribute
             for (LONG index=0; index < tag->TotalAttrib; index++) {
                if (!StrMatch(attrib, tag->Attrib[index].Name)) {
-                  xmlSetAttrib(Self, i, index, NULL, NULL);
+                  xmlSetAttrib(Self, i, index, NULL, (CSTRING)NULL);
                   break;
                }
             }
@@ -2178,7 +2227,7 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
       for (; h > 0; h /= 3) {
          for (i=h; i < root_total; i++) {
             auto temp = lookup[i];
-            for (j=i; (j >= h) and (StrSortCompare(lookup[j - h]->String, temp->String) < 0); j -= h) {
+            for (j=i; (j >= h) and (str_sort(lookup[j - h]->String, temp->String) < 0); j -= h) {
                lookup[j] = lookup[j - h];
                rearranged = TRUE;
             }
@@ -2190,7 +2239,7 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
       for (; h > 0; h /= 3) {
          for (i=h; i < root_total; i++) {
             auto temp = lookup[i];
-            for (j=i; (j >= h) and (StrSortCompare(lookup[j - h]->String, temp->String) > 0); j -= h) {
+            for (j=i; (j >= h) and (str_sort(lookup[j - h]->String, temp->String) > 0); j -= h) {
                lookup[j] = lookup[j - h];
                rearranged = TRUE;
             }
@@ -2555,6 +2604,8 @@ static ERROR GET_Tags(extXML *Self, XMLTag ***Values, LONG *Elements)
    return ERR_Okay;
 }
 
+//********************************************************************************************************************
+
 #include "xml_def.c"
 
 static const FieldArray clFields[] = {
@@ -2577,12 +2628,8 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
-
 #include "xml_functions.cpp"
 #include "unescape.cpp"
-
-//****************************************************************************
 
 static ERROR add_xml_class(void)
 {
@@ -2601,7 +2648,5 @@ static ERROR add_xml_class(void)
       FID_Path|TSTR,            MOD_PATH,
       TAGEND);
 }
-
-//****************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_XML)

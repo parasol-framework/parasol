@@ -1,10 +1,3 @@
-/*****************************************************************************
-
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
-
-*****************************************************************************/
 
 #include <parasol/main.h>
 #include <startup.h>
@@ -17,8 +10,6 @@ CSTRING ProgName      = "Fluid";
 CSTRING ProgAuthor    = "Paul Manias";
 CSTRING ProgDate      = "February 2022";
 CSTRING ProgCopyright = "Copyright Paul Manias © 2000-2022";
-LONG  ProgDebug = 0;
-FLOAT ProgCoreVersion = VER_CORE;
 
 extern struct CoreBase *CoreBase;
 
@@ -44,7 +35,7 @@ Special options are:\n\
  Arrays can be passed in the format key={ value1 value2 }\n"
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void set_script_args(objScript *Script, CSTRING *Args)
 {
@@ -99,7 +90,7 @@ static void set_script_args(objScript *Script, CSTRING *Args)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG run_script(objScript *Script)
 {
@@ -133,14 +124,13 @@ static LONG run_script(objScript *Script)
    return -1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Executes the target.
 
 static LONG exec_source(CSTRING TargetFile, CSTRING Procedure)
 {
    CLASSID class_id, subclass;
-   ERROR error;
-   if ((error = IdentifyFile(TargetFile, "Open", 0, &class_id, &subclass, NULL))) {
+   if (IdentifyFile(TargetFile, "Open", 0, &class_id, &subclass, NULL)) {
       subclass = ID_FLUID;
       class_id = ID_SCRIPT;
    }
@@ -163,7 +153,7 @@ static LONG exec_source(CSTRING TargetFile, CSTRING Procedure)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Process arguments
 
 static ERROR process_args(void)
@@ -238,13 +228,13 @@ static ERROR process_args(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Support for stdin
 
-static STRING glScriptBuffer = NULL;
-static LONG glScriptBufferSize = 0;
+static STRING glScriptBuffer     = NULL;
+static LONG glScriptBufferSize   = 0;
 static LONG glScriptBufferLength = 0;
-static LONG glScriptReceivedMsg = 0;
+static LONG glScriptReceivedMsg  = 0;
 
 static void read_stdin(objTask *Task, APTR Buffer, LONG Size, ERROR Status)
 {
@@ -288,22 +278,20 @@ static void read_stdin(objTask *Task, APTR Buffer, LONG Size, ERROR Status)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR msg_script_received(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    return ERR_Terminate;
 }
 
-//****************************************************************************
-// Main entry point
+//********************************************************************************************************************
 
 int main(int argc, CSTRING *argv)
 {
    const char *msg = init_parasol(argc, argv);
    if (msg) {
-      int i;
-      for (i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
+      for (int i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
          if (!strcmp(argv[i], "--verify")) return 0;
       }
       print(msg);
@@ -330,15 +318,15 @@ int main(int argc, CSTRING *argv)
          AddMsgHandler(NULL, glScriptReceivedMsg, &callback, NULL);
 
          SET_FUNCTION_STDC(callback, (APTR)&read_stdin);
-         SetFunction(CurrentTask(), FID_InputCallback, &callback);
+         CurrentTask()->set(FID_InputCallback, &callback);
 
          ProcessMessages(0, -1);
 
          if (glScriptBuffer) {
             objScript *script;
             if (!NewObject(ID_FLUID, 0, &script)) {
-               SetString(script, FID_Statement, glScriptBuffer);
-               if (glProcedure) SetString(script, FID_Procedure, glProcedure);
+               script->set(FID_Statement, glScriptBuffer);
+               if (glProcedure) script->set(FID_Procedure, glProcedure);
                if (glArgs) set_script_args(script, glArgs);
                result = run_script(script);
                acFree(script);

@@ -150,7 +150,7 @@ static int object_new(lua_State *Lua)
    OBJECTID obj_id;
    ERROR error;
    if (!(error = NewLockedObject(class_id, objflags, &obj, &obj_id))) {
-      if (Lua->Script->TargetID) SetLong(obj, FID_Owner, Lua->Script->TargetID);
+      if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
 
       obj->CreatorMeta = Lua;
 
@@ -325,7 +325,7 @@ static int object_newchild(lua_State *Lua)
    OBJECTID obj_id;
    ERROR error;
    if (!(error = NewLockedObject(class_id, objflags, &obj, &obj_id))) {
-      if (Lua->Script->TargetID) SetLong(obj, FID_Owner, Lua->Script->TargetID);
+      if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
 
       obj->CreatorMeta = Lua;
 
@@ -541,7 +541,7 @@ static int object_find(lua_State *Lua)
    else if ((type IS LUA_TNUMBER) and ((object_id = lua_tointeger(Lua, 1)))) {
       log.trace("obj.find(#%d)", object_id);
 
-      if (CheckObjectIDExists(object_id) != ERR_Okay) return 0;
+      if (CheckObjectExists(object_id) != ERR_Okay) return 0;
       else if (object_id < 0) return object_find_id(Lua, object_id);
       else {
          char buffer[32] = "#";

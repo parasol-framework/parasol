@@ -389,13 +389,13 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
 
       // Alignment and offset management
 
-      LONG entry_size = sizeof(struct structdef_field) + AlignLong(i); // 32-bit alignment applies to each array entry
+      LONG entry_size = sizeof(struct structdef_field) + ALIGN32(i); // 32-bit alignment applies to each array entry
 
       if ((field_size >= 8) and (type != FD_STRUCT)) {
          if (offset & 7) log.msg("Warning: %s.%s (%d bytes) is mis-aligned.", StructName, field_name, field_size);
          offset = ALIGN64(offset); // 64-bit alignment
       }
-      else if (field_size IS 4) offset = AlignLong(offset);
+      else if (field_size IS 4) offset = ALIGN32(offset);
       else if ((field_size IS 2) and (offset & 1)) offset++; // 16-bit alignment
 
       // Manage fields that are based on fixed array sizes.  NOTE: An array size of zero, i.e. [0] is an indicator

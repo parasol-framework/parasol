@@ -261,7 +261,7 @@ OBJECTID gfxGetModalSurface(OBJECTID TaskID)
             result = tasks[i].ModalID;
 
             // Safety check: Confirm that the object still exists
-            if ((result) and (CheckObjectExists(result, NULL) != ERR_True)) {
+            if ((result) and (CheckObjectExists(result) != ERR_True)) {
                tasks[i].ModalID = 0;
                result = 0;
             }
@@ -357,7 +357,7 @@ ERROR gfxLockCursor(OBJECTID SurfaceID)
       // Return if the cursor is currently locked by someone else
 
       if ((pointer->AnchorID) and (pointer->AnchorID != SurfaceID)) {
-         if (CheckObjectExists(pointer->AnchorID, NULL) != ERR_True);
+         if (CheckObjectExists(pointer->AnchorID) != ERR_True);
          else if ((pointer->AnchorMsgQueue < 0) and (CheckMemoryExists(pointer->AnchorMsgQueue) != ERR_True));
          else {
             ReleaseObject(pointer);
@@ -519,7 +519,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
    // Return if the cursor is currently pwn3d by someone
 
    if ((pointer->CursorOwnerID) and (pointer->CursorOwnerID != OwnerID)) {
-      if ((pointer->CursorOwnerID < 0) and (CheckObjectExists(pointer->CursorOwnerID, NULL) != ERR_True)) pointer->CursorOwnerID = NULL;
+      if ((pointer->CursorOwnerID < 0) and (CheckObjectExists(pointer->CursorOwnerID) != ERR_True)) pointer->CursorOwnerID = NULL;
       else if ((pointer->MessageQueue < 0) and (CheckMemoryExists(pointer->MessageQueue) != ERR_True)) pointer->CursorOwnerID = NULL;
       else if (Flags & CRF_BUFFER) {
          // If the BUFFER option is used, then we can buffer the change so that it

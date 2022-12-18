@@ -73,8 +73,6 @@ extern STRING ProgCopyright;
 extern STRING ProgAuthor;
 extern STRING ProgName;
 extern STRING ProgDate;
-extern LONG ProgDebug;
-extern FLOAT ProgCoreVersion;
 
 struct CoreBase *CoreBase;
 
@@ -113,24 +111,18 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
       goto exit;
    }
 
-   info.Detail    = ProgDebug;
-   info.MaxDepth  = 10;
+   info.Detail    = 0;
+   info.MaxDepth  = 14;
    info.Name      = ProgName;
    info.Author    = ProgAuthor;
    info.Date      = ProgDate;
    info.Copyright = ProgCopyright;
    info.Args      = argv;
    info.ArgCount  = argc;
-   info.CoreVersion = ProgCoreVersion; // Minimum required core version
+   info.CoreVersion = 0; // Minimum required core version
    info.CompiledAgainst = VER_CORE; // The core that this code is compiled against
    info.Error = ERR_Okay;
    info.Flags = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_NAME|OPF_AUTHOR|OPF_DATE|OPF_COPYRIGHT|OPF_ARGS|OPF_ERROR;
-   if (ProgDebug > 0) info.Flags |= OPF_DETAIL|OPF_MAX_DEPTH;
-   if (ProgDebug IS -1) {
-      info.Detail = 0;
-      info.MaxDepth = 0;
-      info.Flags |= OPF_DETAIL|OPF_MAX_DEPTH;
-   }
 
    if ((CoreBase = opencore(&info))) {
       OBJECTPTR task = CurrentTask();

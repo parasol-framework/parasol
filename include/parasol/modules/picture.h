@@ -1,19 +1,14 @@
-#ifndef MODULES_PICTURE
-#define MODULES_PICTURE 1
+#pragma once
 
 // Name:      picture.h
 // Copyright: Paul Manias © 2001-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_PICTURE (1)
 
-#ifndef MODULES_DISPLAY_H
 #include <parasol/modules/display.h>
-#endif
 
 class objPicture;
 
@@ -45,4 +40,3 @@ class objPicture : public BaseClass {
    LONG FrameRate;        // Refresh & redraw the picture X times per second.  Used by pictures that have an animation refresh rate
 };
 
-#endif

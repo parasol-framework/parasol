@@ -43,6 +43,7 @@ static ERROR find_proxy(extProxy *);
 static void clear_values(extProxy *);
 static ERROR get_record(extProxy *);
 
+#ifdef _WIN32
 static LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)
 {
    if ((String) and (Offset >= 0) and (TotalBytes > 0)) {
@@ -55,6 +56,7 @@ static LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)
    }
    else return 0;
 }
+#endif
 
 /*
 static void free_proxy(void)

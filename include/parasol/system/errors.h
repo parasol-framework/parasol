@@ -1,5 +1,4 @@
-#ifndef SYSTEM_ERRORS
-#define SYSTEM_ERRORS 1
+#pragma once
 
 // Name:      system/errors.h
 // Copyright: Paul Manias © 1996-2022
@@ -215,4 +214,3 @@
 #define ERF_Delay 536870912
 #define ERF_Notified 1073741824
 
-#endif

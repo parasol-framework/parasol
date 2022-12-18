@@ -1,21 +1,16 @@
-#ifndef MODULES_HTTP
-#define MODULES_HTTP 1
+#pragma once
 
 // Name:      http.h
 // Copyright: Paul Manias © 2005-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_HTTP (1)
 
-#ifndef MODULES_NETWORK_H
 #include <parasol/modules/network.h>
-#endif
 
-typedef class plHTTP objHTTP;
+class objHTTP;
 
 // Output mode.
 
@@ -124,7 +119,7 @@ typedef class plHTTP objHTTP;
 
 #define VER_HTTP (1.000000)
 
-typedef class plHTTP : public BaseClass {
+class objHTTP : public BaseClass {
    public:
    DOUBLE   DataTimeout;     // The data timeout value, relevant when receiving or sending data.
    DOUBLE   ConnectTimeout;  // The initial connection timeout value, measured in seconds.
@@ -180,6 +175,5 @@ typedef class plHTTP : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
-} objHTTP;
+};
 
-#endif

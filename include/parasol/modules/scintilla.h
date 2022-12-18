@@ -1,26 +1,18 @@
-#ifndef MODULES_SCINTILLA
-#define MODULES_SCINTILLA 1
+#pragma once
 
 // Name:      scintilla.h
 // Copyright: Paul Manias © 2005-2022
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_SCINTILLA (1)
 
-#ifndef MODULES_DISPLAY_H
 #include <parasol/modules/display.h>
-#endif
-
-#ifndef MODULES_FONT_H
 #include <parasol/modules/font.h>
-#endif
 
-typedef class plScintilla objScintilla;
-typedef class plScintillaSearch objScintillaSearch;
+class objScintilla;
+class objScintillaSearch;
 
 // Scintilla Lexers.  These codes originate from the Scintilla library.
 
@@ -150,7 +142,7 @@ INLINE ERROR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) {
 #define sciReportEvent(obj) Action(MT_SciReportEvent,(obj),0)
 
 
-typedef class plScintilla : public BaseClass {
+class objScintilla : public BaseClass {
    public:
    LARGE     EventFlags;         // Specifies events that need to be reported from the Scintilla object.
    objFont * Font;               // Refers to the font that is used for drawing text in the document.
@@ -192,8 +184,6 @@ typedef class plScintilla : public BaseClass {
    inline ERROR focus() { return Action(AC_Focus, this, NULL); }
    inline ERROR hide() { return Action(AC_Hide, this, NULL); }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-   // NewOwner
-
    inline ERROR redo(LONG Steps) {
       struct acRedo args = { Steps };
       return Action(AC_Redo, this, &args);
@@ -211,7 +201,7 @@ typedef class plScintilla : public BaseClass {
       struct acUndo args = { Steps };
       return Action(AC_Undo, this, &args);
    }
-} objScintilla;
+};
 
 // ScintillaSearch class definition
 
@@ -249,13 +239,12 @@ INLINE ERROR ssFind(APTR Ob, LONG * Pos, LONG Flags) {
 }
 
 
-typedef class plScintillaSearch : public BaseClass {
+class objScintillaSearch : public BaseClass {
    public:
    objScintilla * Scintilla;    // Targets a Scintilla object for searching.
    CSTRING Text;                // The string sequence to search for.
    LONG    Flags;               // Optional flags.
    LONG    Start;               // Start of the current/most recent selection
    LONG    End;                 // End of the current/most recent selection
-} objScintillaSearch;
+};
 
-#endif

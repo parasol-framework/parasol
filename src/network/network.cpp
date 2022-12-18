@@ -297,7 +297,7 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 ERROR MODOpen(OBJECTPTR Module)
 {
-   SetPointer(Module, FID_FunctionList, glFunctions);
+   Module->set(FID_FunctionList, glFunctions);
    return ERR_Okay;
 }
 

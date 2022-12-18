@@ -1249,7 +1249,7 @@ static void generate_text(objVectorText *Vector)
 
                   DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x) + kx;
 
-                  char_width = char_width * ABS(transform.sx);
+                  char_width = char_width * std::abs(transform.sx);
                   //char_width = char_width * transform.scale();
 
                   // Compute end_vx,end_vy (the last vertex to use for angle computation) and store the distance from start_x,start_y to end_vx,end_vy in dist.
@@ -1354,7 +1354,7 @@ static void generate_text(objVectorText *Vector)
 
                LONG word_width = fntStringWidth(Vector->txFont, str, word_length);
 
-               if ((dx + word_width) * ABS(transform.sx) >= Vector->txInlineSize) {
+               if ((dx + word_width) * std::abs(transform.sx) >= Vector->txInlineSize) {
                   dx = 0;
                   dy += Vector->txFont->LineSpacing;
                }
@@ -1372,7 +1372,7 @@ static void generate_text(objVectorText *Vector)
 
                   DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x) + kx;
 
-                  char_width = char_width * ABS(transform.sx);
+                  char_width = char_width * std::abs(transform.sx);
                   //char_width = char_width * transform.scale();
 
                   transform.translate(dx, dy);
@@ -1543,7 +1543,7 @@ static void generate_text_bitmap(objVectorText *Vector)
       auto str = line.c_str();
       if (!str[0]) y += Vector->txFont->LineSpacing;
       else {
-         SetString(Vector->txFont, FID_String, str);
+         Vector->txFont->set(FID_String, str);
          Vector->txFont->X = 0;
          Vector->txFont->Y = y;
          acDraw(Vector->txFont);
@@ -1778,24 +1778,24 @@ static void reset_font(objVectorText *Vector)
                if (style IS "Regular") style = "Italic";
                else style.append(" Italic");
             }
-            SetString(font, FID_Style, style.c_str());
+            font->set(FID_Style, style);
          }
-         else SetString(font, FID_Style, Vector->txFontStyle);
+         else font->set(FID_Style, Vector->txFontStyle);
 
          CSTRING location;
          if (!fntSelectFont(family.c_str(), style.c_str(), Vector->txFontSize, FTF_PREFER_SCALED, &location)) {
-            SetString(font, FID_Path, location);
+            font->set(FID_Path, location);
             FreeResource(location);
          }
-         else SetString(font, FID_Face, "*");
+         else font->set(FID_Face, "*");
       }
-      else SetString(font, FID_Face, "*");
+      else font->set(FID_Face, "*");
 
       // Set the correct point size, which is really for the benefit of the client e.g. if the Font object
       // is used to determine the source font's attributes.
 
       DOUBLE point_size = Vector->txFontSize * (3.0 / 4.0);
-      SetDouble(font, FID_Point, point_size);
+      font->set(FID_Point, point_size);
 
       if (!acInit(font)) {
          if (Vector->txFont) acFree(Vector->txFont);
@@ -1811,7 +1811,7 @@ static ERROR cursor_timer(objVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
    if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
       parasol::Log log(__FUNCTION__);
       Self->txCursor.flash ^= 1;
-      SetLong(Self->txCursor.vector, FID_Visibility, Self->txCursor.flash ? VIS_VISIBLE : VIS_HIDDEN);
+      Self->txCursor.vector->set(FID_Visibility, Self->txCursor.flash ? VIS_VISIBLE : VIS_HIDDEN);
       acDraw(Self);
       return ERR_Okay;
    }
@@ -1870,12 +1870,12 @@ static ERROR text_focus_event(extVector *Vector, LONG Event)
          }
 
          Self->txCursor.resetFlash();
-         SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
+         Self->txCursor.vector->set(FID_Visibility, VIS_VISIBLE);
          acDraw(Self);
       }
    }
    else if (Event & (FM_LOST_FOCUS|FM_CHILD_HAS_FOCUS)) {
-      if (Self->txCursor.vector) SetLong(Self->txCursor.vector, FID_Visibility, VIS_HIDDEN);
+      if (Self->txCursor.vector) Self->txCursor.vector->set(FID_Visibility, VIS_HIDDEN);
       if (Self->txCursor.timer)  { UpdateTimer(Self->txCursor.timer, 0); Self->txCursor.timer = 0; }
       if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
 
@@ -1972,7 +1972,7 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
    log.trace("$%.8x, Value: %d", Event->Qualifiers, Event->Code);
 
    Self->txCursor.resetFlash(); // Reset the flashing cursor to make it visible
-   SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
+   Self->txCursor.vector->set(FID_Visibility, VIS_VISIBLE);
 
    if ((!(Self->txFlags & VTXF_NO_SYS_KEYS)) and (Event->Qualifiers & KQ_CTRL)) {
       switch(Event->Code) {
@@ -2107,14 +2107,14 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
 
    case K_LEFT:
       Self->txCursor.resetFlash();
-      SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
+      Self->txCursor.vector->set(FID_Visibility, VIS_VISIBLE);
       if (Self->txCursor.column() > 0) Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()-1);
       else if (Self->txCursor.row() > 0) Self->txCursor.move(Self, Self->txCursor.row()-1, Self->txLines[Self->txCursor.row()-1].utf8Length());
       break;
 
    case K_RIGHT:
       Self->txCursor.resetFlash();
-      SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
+      Self->txCursor.vector->set(FID_Visibility, VIS_VISIBLE);
       if (!Self->txLines.empty()) {
          if (Self->txCursor.column() < Self->txLines[Self->txCursor.row()].utf8Length()) {
             Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()+1);
@@ -2128,7 +2128,7 @@ static void key_event(objVectorText *Self, evKey *Event, LONG Size)
    case K_DOWN:
    case K_UP:
       Self->txCursor.resetFlash();
-      SetLong(Self->txCursor.vector, FID_Visibility, VIS_VISIBLE);
+      Self->txCursor.vector->set(FID_Visibility, VIS_VISIBLE);
       if (((Event->Code IS K_UP) and (Self->txCursor.row() > 0)) or
           ((Event->Code IS K_DOWN) and ((size_t)Self->txCursor.row() < Self->txLines.size()-1))) {
          LONG end_column;

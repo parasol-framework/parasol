@@ -19,8 +19,6 @@ STRING ProgName      = "MemoryLocking";
 STRING ProgAuthor    = "Paul Manias";
 STRING ProgDate      = "July 2014";
 STRING ProgCopyright = "Paul Manias (c) 2014";
-LONG   ProgDebug = 8;
-FLOAT  ProgCoreVersion = 1.0;
 
 static struct StringsBase *StringsBase;
 static struct FileSystemBase *FileSystemBase;
@@ -37,9 +35,7 @@ struct thread_info{
    int index;
 };
 
-/*****************************************************************************
-** Internal: test_locking()
-*/
+//****************************************************************************
 
 static void * test_locking(struct thread_info *info)
 {
@@ -89,11 +85,8 @@ static void * test_locking(struct thread_info *info)
    return NULL;
 }
 
-/*****************************************************************************
-** Internal: test_allocation()
-**
-** Allocate and free sets of memory blocks at random intervals.
-*/
+//****************************************************************************
+// Allocate and free sets of memory blocks at random intervals.
 
 #define TOTAL_ALLOC 2000
 
@@ -120,9 +113,7 @@ static void * test_allocation(struct thread_info *info)
    return NULL;
 }
 
-/*****************************************************************************
-** Main.
-*/
+//****************************************************************************
 
 void program(void)
 {

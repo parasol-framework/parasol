@@ -39,7 +39,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
    if (!result) {
       log.traceBranch("Connection succesful.");
-      SetLong(Self, FID_State, NTC_CONNECTED);
+      Self->set(FID_State, NTC_CONNECTED);
       RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
       return;
    }
@@ -54,7 +54,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
       log.error(Self->Error);
 
-      SetLong(Self, FID_State, NTC_DISCONNECTED);
+      Self->set(FID_State, NTC_DISCONNECTED);
    }
 }
 #endif

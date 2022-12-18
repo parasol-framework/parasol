@@ -154,7 +154,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    if (!Self->Path) {
       CSTRING path;
       if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF_PREFER_SCALED|FTF_PREFER_FIXED|FTF_ALLOW_SCALE), &path)) {
-         SetString(Self, FID_Path, path);
+         Self->set(FID_Path, path);
          FreeResource(path);
       }
       else {
@@ -200,12 +200,12 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
             WORD size_shift = 0;
             UWORD font_count = 0;
             LONG font_offset = 0;
-            flReadLE2(file, &size_shift);
+            flReadLE(file, &size_shift);
 
             WORD type_id;
-            for ((error = flReadLE2(file, &type_id)); (!error) and (type_id); error = flReadLE2(file, &type_id)) {
+            for ((error = flReadLE(file, &type_id)); (!error) and (type_id); error = flReadLE(file, &type_id)) {
                WORD count = 0;
-               flReadLE2(file, &count);
+               flReadLE(file, &count);
 
                if ((UWORD)type_id IS 0x8008) {
                   font_count  = count;
@@ -571,7 +571,7 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
       // Extract the colour string
 
       i++;
-      SetString(Self, FID_Colour, Value + i);
+      Self->set(FID_Colour, Value + i);
    }
    else Self->prvFace[0] = 0;
 

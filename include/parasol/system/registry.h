@@ -1,8 +1,7 @@
-#ifndef SYSTEM_REGISTRY
-#define SYSTEM_REGISTRY 1
+#pragma once
 
 // Name:      system/registry.h
-// Copyright: Paul Manias 1996-2020
+// Copyright: Paul Manias 1996-2022
 // Generator: idl-c
 
 #define ID_PICTURE 0xad68f281UL
@@ -109,4 +108,3 @@
 #define ID_SOURCEFX 0x16f8c294UL
 #define ID_FILTEREFFECT 0x79e93e58UL
 
-#endif

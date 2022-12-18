@@ -1,7 +1,3 @@
-//----------------------------------------------------------------------------
-// AGG Contribution Pack - Gradients 1 (AGG CP - Gradients 1)
-// http://milan.marusinec.sk/aggcp
-//
 // For Anti-Grain Geometry - Version 2.4
 // http://www.antigrain.org
 //
@@ -14,10 +10,6 @@
 // is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
-//
-// [History] -----------------------------------------------------------------
-//
-// 02.02.2008-Milano: Ported from Object Pascal code of AggPas
 
 #ifndef AGG_SPAN_GRADIENT_CONTOUR_INCLUDED
 #define AGG_SPAN_GRADIENT_CONTOUR_INCLUDED

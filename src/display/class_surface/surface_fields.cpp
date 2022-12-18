@@ -631,12 +631,12 @@ static ERROR SET_WindowType(extSurface *Self, LONG Value)
             if (border) {
                if (display->Flags & SCR_BORDERLESS) {
                   flags = display->Flags & (~SCR_BORDERLESS);
-                  SetLong(display, FID_Flags, flags);
+                  display->set(FID_Flags, flags);
                }
             }
             else if (!(display->Flags & SCR_BORDERLESS)) {
                flags = display->Flags | SCR_BORDERLESS;
-               SetLong(display, FID_Flags, flags);
+               display->set(FID_Flags, flags);
             }
 
             Self->WindowType = Value;

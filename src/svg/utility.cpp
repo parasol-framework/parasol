@@ -78,15 +78,15 @@ static void parse_result(extSVG *Self, objFilterEffect *Effect, CSTRING Value)
 static void parse_input(extSVG *Self, OBJECTPTR Effect, CSTRING Input, FIELD SourceField, FIELD RefField)
 {
    switch (StrHash(Input, FALSE)) {
-      case SVF_SOURCEGRAPHIC:   SetLong(Effect, SourceField, VSF_GRAPHIC); break;
-      case SVF_SOURCEALPHA:     SetLong(Effect, SourceField, VSF_ALPHA); break;
-      case SVF_BACKGROUNDIMAGE: SetLong(Effect, SourceField, VSF_BKGD); break;
-      case SVF_BACKGROUNDALPHA: SetLong(Effect, SourceField, VSF_BKGD_ALPHA); break;
-      case SVF_FILLPAINT:       SetLong(Effect, SourceField, VSF_FILL); break;
-      case SVF_STROKEPAINT:     SetLong(Effect, SourceField, VSF_STROKE); break;
+      case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, VSF_GRAPHIC); break;
+      case SVF_SOURCEALPHA:     Effect->set(SourceField, VSF_ALPHA); break;
+      case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, VSF_BKGD); break;
+      case SVF_BACKGROUNDALPHA: Effect->set(SourceField, VSF_BKGD_ALPHA); break;
+      case SVF_FILLPAINT:       Effect->set(SourceField, VSF_FILL); break;
+      case SVF_STROKEPAINT:     Effect->set(SourceField, VSF_STROKE); break;
       default:  {
          if (Self->Effects.contains(Input)) {
-            SetPointer(Effect, RefField, Self->Effects[Input]);
+            Effect->set(RefField, Self->Effects[Input]);
          }
          else {
             parasol::Log log;
@@ -464,7 +464,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
                      FID_Owner|TLONG, file->UID,
                      FID_Input|TPTR,  file,
                      TAGEND)) {
-                  SetPointer(xml, FID_Source, stream);
+                  xml->set(FID_Source, stream);
                }
                else {
                   acFree(xml);
@@ -479,7 +479,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
                goto end;
             }
          }
-         else SetString(xml, FID_Path, Path);
+         else xml->set(FID_Path, Path);
 
          if (!GetString(task, FID_Path, &working_path)) working_path = StrClone(working_path);
 
@@ -492,9 +492,9 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
             if ((Path[i] IS '/') or (Path[i] IS '\\') or (Path[i] IS ':')) last = i+1;
          }
          folder[last] = 0;
-         if (last) SetString(task, FID_Path, folder);
+         if (last) task->set(FID_Path, folder);
       }
-      else if (Buffer) SetString(xml, FID_Statement, Buffer);
+      else if (Buffer) xml->set(FID_Statement, Buffer);
 
       if (!acInit(xml)) {
          Self->SVGVersion = 1.0;
@@ -517,7 +517,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          while (inherit) {
             OBJECTPTR ref;
             if (!scFindDef(Self->Scene, inherit->ID, &ref)) {
-               SetPointer(inherit->Object, FID_Inherit, ref);
+               inherit->Object->set(FID_Inherit, ref);
             }
             else log.warning("Failed to resolve ID %s for inheritance.", inherit->ID);
             inherit = inherit->Next;
@@ -534,7 +534,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
       else error = ERR_Init;
 
       if (working_path) {
-         SetString(task, FID_Path, working_path);
+         task->set(FID_Path, working_path);
          FreeResource(working_path);
       }
 
@@ -583,7 +583,7 @@ static void convert_styles(objXML *XML)
                else log.warning("Style string missing ':' to denote value: %s", value);
             }
 
-            xmlSetAttrib(XML, tagindex, XMS_UPDATE, "style", NULL); // Remove the style attribute.
+            xmlSetAttrib(XML, tagindex, XMS_UPDATE, "style", (CSTRING)NULL); // Remove the style attribute.
             break;
          }
       }

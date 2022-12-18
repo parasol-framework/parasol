@@ -310,7 +310,7 @@ static ERROR HTTP_ActionNotify(extHTTP *Self, struct acActionNotify *Args)
          }
          else {
             log.msg("No username and password provided, deactivating...");
-            SetLong(Self, FID_CurrentState, HGS_TERMINATED);
+            Self->set(FID_CurrentState, HGS_TERMINATED);
          }
          return ERR_Okay;
       }
@@ -391,7 +391,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    Self->Flags        &= ~(HTF_MOVED|HTF_REDIRECTED);
 
    if ((Self->Socket) and (Self->Socket->State IS NTC_DISCONNECTED)) {
-      SetPointer(Self->Socket, FID_Feedback, NULL);
+      Self->Socket->set(FID_Feedback, (APTR)NULL);
       acFree(Self->Socket);
       Self->Socket = NULL;
       Self->SecurePath = TRUE;
@@ -479,7 +479,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
          if ((!(Self->Flags & HTF_NO_HEAD)) and ((Self->SecurePath) or (Self->CurrentState IS HGS_AUTHENTICATING))) {
             log.trace("Executing HEAD statement for authentication.");
             len = set_http_method(Self, cmd, sizeof(cmd), "HEAD");
-            SetLong(Self, FID_CurrentState, HGS_AUTHENTICATING);
+            Self->set(FID_CurrentState, HGS_AUTHENTICATING);
          }
          else {
             // You can post data from a file source or an object.  In the case of an object it is possible to preset
@@ -611,7 +611,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
             len += StrCopy("Authorization: Basic ", cmd+len, sizeof(cmd)-len);
             StrFormat(buffer, sizeof(buffer), "%s:%s", Self->Username, Self->Password);
-            len += StrBase64Encode(buffer, StrLength(buffer), cmd+len, sizeof(cmd)-len);
+            len += Base64Encode(buffer, StrLength(buffer), cmd+len, sizeof(cmd)-len);
             len += StrCopy("\r\n", cmd+len, sizeof(cmd)-len);
          }
 
@@ -667,18 +667,18 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    else {
       log.trace("Re-using existing socket/server connection.");
 
-      SetPointer(Self->Socket, FID_Incoming, (APTR)&socket_incoming);
-      SetPointer(Self->Socket, FID_Feedback, (APTR)&socket_feedback);
+      Self->Socket->set(FID_Incoming, (APTR)&socket_incoming);
+      Self->Socket->set(FID_Feedback, (APTR)&socket_feedback);
    }
 
    if (!Self->Tunneling) {
       if (Self->CurrentState != HGS_AUTHENTICATING) {
          if ((Self->Method IS HTM_PUT) or (Self->Method IS HTM_POST)) {
-            SetPointer(Self->Socket, FID_Outgoing, (APTR)&socket_outgoing);
+            Self->Socket->set(FID_Outgoing, (APTR)&socket_outgoing);
          }
-         else SetPointer(Self->Socket, FID_Outgoing, NULL);
+         else Self->Socket->set(FID_Outgoing, (APTR)NULL);
       }
-      else SetPointer(Self->Socket, FID_Outgoing, NULL);
+      else Self->Socket->set(FID_Outgoing, (APTR)NULL);
    }
 
    // Buffer the HTTP command string to the socket (will write on connect if we're not connected already).
@@ -734,7 +734,7 @@ static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
 
    log.branch("Closing connection to server & signalling children.");
 
-   if (Self->CurrentState < HGS_COMPLETED) SetLong(Self, FID_CurrentState, HGS_TERMINATED);
+   if (Self->CurrentState < HGS_COMPLETED) Self->set(FID_CurrentState, HGS_TERMINATED);
 
    // Closing files is important for dropping the file locks
 
@@ -753,7 +753,7 @@ static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
 
       if ((Self->Socket->State IS NTC_DISCONNECTED) or (Self->CurrentState IS HGS_TERMINATED)) {
          log.msg("Terminating socket (disconnected).");
-         SetPointer(Self->Socket, FID_Feedback, NULL);
+         Self->Socket->set(FID_Feedback, (APTR)NULL);
          acFree(Self->Socket);
          Self->Socket = NULL;
          Self->SecurePath = TRUE;
@@ -771,7 +771,7 @@ static ERROR HTTP_Free(extHTTP *Self, APTR Args)
    if (Self->Headers) { delete Self->Headers; Self->Headers = NULL; }
 
    if (Self->Socket)     {
-      SetPointer(Self->Socket, FID_Feedback, NULL);
+      Self->Socket->set(FID_Feedback, (APTR)NULL);
       acFree(Self->Socket);
       Self->Socket = NULL;
    }
@@ -1201,7 +1201,7 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
       // Free the current socket if the entire URI changes
 
       if (Self->Socket) {
-         SetPointer(Self->Socket, FID_Feedback, NULL);
+         Self->Socket->set(FID_Feedback, (APTR)NULL);
          acFree(Self->Socket);
          Self->Socket = NULL;
       }
