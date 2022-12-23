@@ -396,8 +396,8 @@ ERROR SetFieldsID(OBJECTID ObjectID, ...)
 -FUNCTION-
 SetFieldEval: Sets any field using an abstract string value that is evaluated at runtime.
 
-The SetFieldEval() function is used to set field values using JIT value abstraction.  It simplifies the setting of
-field values at a cost of low efficiency.  It is intended for use by script languages and batch processing routines
+The SetFieldEval() function is used to set field values using JIT value abstraction.  This simplification comes
+at a cost of poor efficiency.  It is intended for use by script languages and batch processing routines
 that do not prioritise speed.
 
 An integrated analysis feature converts named flags and lookups to their correct numeric values.  For example, setting
@@ -431,16 +431,16 @@ UnrecognisedFieldType
 
 ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
 {
-   parasol::Log log("WriteField");
+   parasol::Log log(__FUNCTION__);
 
    if ((!Object) or (!FieldName) or (!Value)) return ERR_NullArgs;
 
-   UBYTE unlisted;
+   bool unlisted;
    if (*FieldName IS '@') {
-      unlisted = TRUE;
+      unlisted = true;
       FieldName++;
    }
-   else unlisted = FALSE;
+   else unlisted = false;
 
    LONG i;
    ULONG hash = 5381;
@@ -521,9 +521,9 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
    }
    else if (Value) {
       if (Field->Flags & (FD_DOUBLE|FD_FLOAT)) {
-         DOUBLE dbl = StrToFloat(Value);
-         for (i=0; Value[i]; i++);
-         if (Value[i-1] IS '%') {
+         STRING pct;
+         DOUBLE dbl = strtod(Value, &pct);
+         if (pct[0] IS '%') {
             error = Field->WriteValue(Object, Field, FD_DOUBLE|FD_PERCENTAGE, &dbl, 0);
          }
          else error = Field->WriteValue(Object, Field, FD_DOUBLE, &dbl, 0);
@@ -532,7 +532,7 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
          error = Field->WriteValue(Object, Field, FD_STRING, Value, 0);
       }
       else if (Field->Flags & FD_OBJECT) {
-         OBJECTID object_id;
+         OBJECTID id;
 
          // When setting an object field, a name can be passed as a reference to the object that the user wants to set, or
          // we may be passed an object ID, e.g. #599834.
@@ -542,15 +542,15 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
 
          // If the string is enclosed in square brackets [], then they will be ignored.
 
-         if (*Value IS '#')                      object_id = (LONG)StrToInt(Value+1);
-         else if (!StrMatch("self", Value))      object_id = Object->UID;
-         else if (!StrMatch("owner", Value))     object_id = Object->OwnerID;
-         else if ((!*Value) or ((Value[0] IS '0') and (!Value[1]))) object_id = 0;
+         if (*Value IS '#')                  id = strtol(Value+1, NULL, 0);
+         else if (!StrMatch("self", Value))  id = Object->UID;
+         else if (!StrMatch("owner", Value)) id = Object->OwnerID;
+         else if ((!*Value) or ((Value[0] IS '0') and (!Value[1]))) id = 0;
          else {
-            OBJECTID array[30];
+            OBJECTID array[8];
             LONG count = ARRAYSIZE(array);
             if (!FindObject(Value, 0, FOF_INCLUDE_SHARED, array, &count)) {
-               object_id = array[i-1];
+               id = array[count-1];
             }
             else {
                log.warning("Object \"%s\" could not be found.", Value);
@@ -560,10 +560,10 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
          }
 
          if (Field->Flags & FD_LONG) {
-            error = Field->WriteValue(Object, Field, FDF_OBJECTID, &object_id, 0);
+            error = Field->WriteValue(Object, Field, FDF_OBJECTID, &id, 0);
          }
          else {
-            if (auto target = GetObjectPtr(object_id)) {
+            if (auto target = GetObjectPtr(id)) {
                error = Field->WriteValue(Object, Field, FDF_POINTER, target, 0);
             }
             else error = ERR_Search;
@@ -574,15 +574,14 @@ ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
          // last because fields like OBJECTID are common to LONG, and must be processed at a higher priority.
 
          if (Field->Flags & FD_PERCENTAGE) { // If the target field accepts percentages, we need to process the source as a double (conversion can be performed later if the target is non-variable)
-            DOUBLE dbl = StrToFloat(Value);
-            for (i=0; Value[i]; i++);
-            if (Value[i-1] IS '%') {
+            DOUBLE dbl = strtod(Value, NULL);
+            if (Value[strlen(Value)-1] IS '%') {
                error = Field->WriteValue(Object, Field, FD_DOUBLE|FD_PERCENTAGE, &dbl, 0);
             }
             else error = Field->WriteValue(Object, Field, FD_DOUBLE, &dbl, 0);
          }
          else {
-            LARGE num = StrToInt(Value);
+            LARGE num = strtoll(Value, NULL, 0);
             error = Field->WriteValue(Object, Field, FD_LARGE, &num, 0);
          }
       }
@@ -864,7 +863,7 @@ static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
    if (Flags & FD_LARGE)       *offset = *((LARGE *)Data);
    else if (Flags & FD_LONG)   *offset = *((LONG *)Data);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((DOUBLE *)Data));
-   else if (Flags & FD_STRING) *offset = StrToInt((STRING)Data);
+   else if (Flags & FD_STRING) *offset = strtoll((STRING)Data, NULL, 0);
    else return ERR_FieldTypeMismatch;
    return ERR_Okay;
 }
@@ -875,7 +874,7 @@ static ERROR writeval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
    if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = *((DOUBLE *)Data);
    else if (Flags & FD_LONG)   *offset = *((LONG *)Data);
    else if (Flags & FD_LARGE)  *offset = (*((LARGE *)Data));
-   else if (Flags & FD_STRING) *offset = StrToFloat((STRING)Data);
+   else if (Flags & FD_STRING) *offset = strtod((STRING)Data, NULL);
    else return ERR_FieldTypeMismatch;
    return ERR_Okay;
 }
@@ -1041,7 +1040,7 @@ static ERROR setval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, 
    LONG int32;
    if (Flags & FD_LARGE)       int32 = (LONG)(*((LARGE *)Data));
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) int32 = F2I(*((DOUBLE *)Data));
-   else if (Flags & FD_STRING) int32 = StrToInt((STRING)Data);
+   else if (Flags & FD_STRING) int32 = strtol((STRING)Data, NULL, 0);
    else if (Flags & FD_LONG)   int32 = *((LONG *)Data);
    else return ERR_FieldTypeMismatch;
 
@@ -1055,7 +1054,7 @@ static ERROR setval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
    DOUBLE float64;
    if (Flags & FD_LONG)        float64 = *((LONG *)Data);
    else if (Flags & FD_LARGE)  float64 = (DOUBLE)(*((LARGE *)Data));
-   else if (Flags & FD_STRING) float64 = StrToFloat((CSTRING)Data);
+   else if (Flags & FD_STRING) float64 = strtod((CSTRING)Data, NULL);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) float64 = *((DOUBLE *)Data);
    else return ERR_FieldTypeMismatch;
 
@@ -1094,7 +1093,7 @@ static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
 
    if (Flags & FD_LONG)        int64 = *((LONG *)Data);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) int64 = F2I(*((DOUBLE *)Data));
-   else if (Flags & FD_STRING) int64 = StrToInt((CSTRING)Data);
+   else if (Flags & FD_STRING) int64 = strtoll((CSTRING)Data, NULL, 0);
    else if (Flags & FD_LARGE)  int64 = *((LARGE *)Data);
    else return ERR_FieldTypeMismatch;
 

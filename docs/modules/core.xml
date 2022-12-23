@@ -752,11 +752,10 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <comment>Returns a pointer to the object that has the current context.</comment>
     <prototype>OBJECTPTR CurrentContext()</prototype>
     <description>
-<p>The CurrentContext() function returns a pointer to the object that has the current context.  In order for an object to have the context of the current <class name="Task">Task</class>, it must have been successfully set from the <function module="Core">SetContext</function> function.</p>
-<p>CurrentContext() is typically used to find out what object is currently receiving resource allocations.  It is useful in improving the management of resources that your code may be allocating.</p>
-<p>To get the parent context (technically the 'context of the current context'), use GetParentContext(), which is implemented as a macro.  This is used in method and action routines where the context of the object's caller may be desired.</p>
+<p>This function returns a pointer to the object that has the current context.  Context is primarily used to manage resource allocations.  Manipulating the context is sometimes necessary to ensure that a resource is tracked to the correct object.</p>
+<p>To get the parent context (technically the 'context of the current context'), use GetParentContext(), which is implemented as a macro.  This is used in method and action routines where the context of the object's caller may be needed.</p>
     </description>
-    <result type="OBJECTPTR">Returns an object pointer (of which the Task has exclusive access to).  This function rarely returns a NULL pointer - this is only possible during the initial start-up and shut-down sequences of the Core.</result>
+    <result type="OBJECTPTR">Returns an object pointer (of which the Task has exclusive access to).  Cannot return NULL except in the initial start-up and late shut-down sequence of the Core.</result>
   </function>
 
   <function>
@@ -765,7 +764,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <comment>Returns the active Task object.</comment>
     <prototype>OBJECTPTR CurrentTask()</prototype>
     <description>
-<p>The CurrentTask() function returns the <class name="Task">Task</class> object of the active process.</p>
+<p>This function returns the <class name="Task">Task</class> object of the active process.</p>
 <p>If there is a legitimate circumstance where there is no current task (e.g. if the function is called during Core initialisation) then the "system task" may be returned, which has ownership of Core resources.</p>
     </description>
     <result type="OBJECTPTR">Returns a pointer to the current Task object or NULL if failure.</result>
@@ -1258,7 +1257,7 @@ GetFields(screen,
       <param type="OBJECTID" name="Object">The ID of the object to lookup.</param>
     </input>
     <description>
-<p>This function converts private object ID's into their respective private address pointers.  This function will fail if given a public object ID, or an ID that does not relate to a private object.</p>
+<p>This function translates private object ID's (owned by the process) to their respective address pointers.  Public object ID's are not supported.</p>
     </description>
     <result type="OBJECTPTR">The address of the object is returned, or NULL if the ID does not relate to a private object.</result>
   </function>
@@ -1272,8 +1271,8 @@ GetFields(screen,
       <param type="OBJECTID" name="Object">The ID of the object that you want to examine.</param>
     </input>
     <description>
-<p>This function can be used on any valid object ID to retrieve the unique ID of its owner.  This is the quickest way to retrieve the owner of an object without having to gain exclusive access to the object first.</p>
-<p>Please note that if you already have access to an object through an address pointer, the quickest way to learn of its owner is to read the OwnerID field in the object header.</p>
+<p>This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the owner of an object if only the ID is known.</p>
+<p>If the object address is already known then the fastest means of retrieval is via the ownerID() C++ class method.</p>
     </description>
     <result type="OBJECTID">Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the ID that you provided is invalid, this function will return NULL.</result>
   </function>
@@ -1440,7 +1439,7 @@ end
     <prototype>ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The ID of the object that you wish to examine.</param>
-      <param type="LONG" name="IncludeShared">If TRUE, shared objects will be included in the list at a penalty to performance.</param>
+      <param type="LONG" name="IncludeShared">If TRUE, shared objects will be included in the list.  Penalises performance.</param>
       <param type="struct ChildEntry *" name="List">Must refer to an array of ChildEntry structures.</param>
       <param type="LONG *" name="Count">Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.</param>
     </input>
@@ -2275,7 +2274,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="CSTRING" name="Value">A string value to be written to the field.</param>
     </input>
     <description>
-<p>The SetFieldEval() function is used to set field values using JIT value abstraction.  It simplifies the setting of field values at a cost of low efficiency.  It is intended for use by script languages and batch processing routines that do not prioritise speed.</p>
+<p>The SetFieldEval() function is used to set field values using JIT value abstraction.  This simplification comes at a cost of poor efficiency.  It is intended for use by script languages and batch processing routines that do not prioritise speed.</p>
 <p>An integrated analysis feature converts named flags and lookups to their correct numeric values.  For example, setting the Flags field of a surface object with <code>Sticky|Mask</code> will result in the references being converted to the correct hexadecimal value.</p>
 <p>Setting object typed fields also enables special support for the commands <code>self</code>, <code>owner</code> and ID values such as <code>#14592</code>.  In all other cases the Value string is considered to refer to an object's name.  The <code>self</code> keyword will translate to the object specified by the Object argument, and Owner will likewise translate to the owner of that Object.</p>
 <p>Variable field names are supported, but the field name must be prefixed by the <code>@</code> symbol to ensure that it is not mistaken for a true field name.</p>

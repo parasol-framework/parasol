@@ -617,7 +617,6 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     int Width             # Fixed width
     int Height            # Fixed height
     oid Root              # Surface that is acting as a root for many surface children (useful when applying translucency)
-    oid Program           # The task that is represented by the surface object (important for linking desktop windows to foreign tasks)
     int(ALIGN) Align      # Alignment flags
     int(DMF) Dimensions   # Dimension flags
     int(DRAG) DragStatus  # Indicates the draggable state when dragging is enabled.
