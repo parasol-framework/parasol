@@ -177,19 +177,16 @@ ERROR CopyMemory(const void *Src, APTR Dest, LONG Length)
 CurrentContext: Returns a pointer to the object that has the current context.
 Category: Objects
 
-The CurrentContext() function returns a pointer to the object that has the current context.  In order for an object to
-have the context of the current @Task, it must have been successfully set from the ~SetContext()
-function.
-
-CurrentContext() is typically used to find out what object is currently receiving resource allocations.  It is useful
-in improving the management of resources that your code may be allocating.
+This function returns a pointer to the object that has the current context.  Context is primarily used to manage
+resource allocations.  Manipulating the context is sometimes necessary to ensure that a resource is tracked to
+the correct object.
 
 To get the parent context (technically the 'context of the current context'), use GetParentContext(), which is
 implemented as a macro.  This is used in method and action routines where the context of the object's caller may be
-desired.
+needed.
 
 -RESULT-
-obj: Returns an object pointer (of which the Task has exclusive access to).  This function rarely returns a NULL pointer - this is only possible during the initial start-up and shut-down sequences of the Core.
+obj: Returns an object pointer (of which the Task has exclusive access to).  Cannot return NULL except in the initial start-up and late shut-down sequence of the Core.
 
 *********************************************************************************************************************/
 
@@ -203,7 +200,7 @@ OBJECTPTR CurrentContext(void)
 -FUNCTION-
 CurrentTask: Returns the active Task object.
 
-The CurrentTask() function returns the @Task object of the active process.
+This function returns the @Task object of the active process.
 
 If there is a legitimate circumstance where there is no current task (e.g. if the function is called during
 Core initialisation) then the "system task" may be returned, which has ownership of Core resources.
@@ -994,8 +991,8 @@ CSTRING GetName(OBJECTPTR Object)
 GetObjectPtr: Returns the object address for any private object ID.
 Category: Objects
 
-This function converts private object ID's into their respective private address pointers.  This function will fail if
-given a public object ID, or an ID that does not relate to a private object.
+This function translates private object ID's (owned by the process) to their respective address pointers.  Public
+object ID's are not supported.
 
 -INPUT-
 oid Object: The ID of the object to lookup.
@@ -1028,11 +1025,10 @@ OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
 GetOwnerID: Returns the unique ID of an object's owner.
 Category: Objects
 
-This function can be used on any valid object ID to retrieve the unique ID of its owner.  This is the quickest way to
-retrieve the owner of an object without having to gain exclusive access to the object first.
+This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the
+owner of an object if only the ID is known.
 
-Please note that if you already have access to an object through an address pointer, the quickest way to learn of its
-owner is to read the OwnerID field in the object header.
+If the object address is already known then the fastest means of retrieval is via the ownerID() C++ class method.
 
 -INPUT-
 oid Object: The ID of the object that you want to examine.
@@ -1284,7 +1280,7 @@ Objects marked with the `INTEGRAL` flag are not returned as they are private mem
 
 -INPUT-
 oid Object: The ID of the object that you wish to examine.
-int IncludeShared: If TRUE, shared objects will be included in the list at a penalty to performance.
+int IncludeShared: If TRUE, shared objects will be included in the list.  Penalises performance.
 buf(array(resource(ChildEntry))) List: Must refer to an array of ChildEntry structures.
 &arraysize Count:  Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.
 

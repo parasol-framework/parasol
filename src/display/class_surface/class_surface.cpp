@@ -473,11 +473,7 @@ static ERROR SURFACE_ActionNotify(extSurface *Self, struct acActionNotify *Notif
    if (Self->collecting()) return ERR_Okay;
 
    if (NotifyArgs->ActionID IS AC_Free) {
-      if (NotifyArgs->ObjectID IS Self->ProgramID) {
-         // Terminate if our linked task has disappeared
-         acFree(Self);
-      }
-      else if (NotifyArgs->ObjectID IS Self->ParentID) {
+      if (NotifyArgs->ObjectID IS Self->ParentID) {
          // Free ourselves in advance if our parent is in the process of being killed.  This causes a chain reaction
          // that results in a clean deallocation of the surface hierarchy.
 
@@ -1133,20 +1129,8 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    if (Self->Flags & RNF_AUTO_QUIT) {
       parasol::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
-      if ((Self->ownerTask() IS Self->ProgramID) or (!Self->ProgramID)) {
+      if (Self->ownerTask() IS CurrentTask()->UID) {
          SendMessage(NULL, MSGID_QUIT, NULL, NULL, NULL);
-      }
-      else {
-         ListTasks *list;
-         if (!ListTasks(NULL, &list)) {
-            for (LONG i=0; list[i].TaskID; i++) {
-               if (list[i].TaskID IS Self->ProgramID) {
-                  SendMessage(list[i].MessageID, MSGID_QUIT, NULL, NULL, NULL);
-                  break;
-               }
-            }
-            FreeResource(list);
-         }
       }
    }
 
@@ -1745,15 +1729,6 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, &Self->UID, &Self->UserLoginHandle);
    }
 
-   if (!Self->ProgramID) Self->ProgramID = Self->ownerTask();
-   else if (Self->ProgramID != Self->ownerTask()) {
-      OBJECTPTR task;
-      if (!AccessObject(Self->ProgramID, 4000, &task)) {
-         SubscribeActionTags(task, AC_Free, TAGEND);
-         ReleaseObject(task);
-      }
-   }
-
    return ERR_Okay;
 }
 
@@ -2205,7 +2180,6 @@ static ERROR SURFACE_NewObject(extSurface *Self, APTR Void)
    Self->MinHeight   = 1;
    Self->Opacity  = 255;
    Self->RootID   = Self->UID;
-   Self->ProgramID   = Self->ownerTask();
    Self->WindowType  = glpWindowType;
    return ERR_Okay;
 }
@@ -2964,7 +2938,6 @@ static const FieldArray clSurfaceFields[] = {
    { "Width",        FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Width,  (APTR)SET_Width },
    { "Height",       FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height, (APTR)SET_Height },
    { "RootLayer",    FDF_OBJECTID|FDF_RW,   0, NULL, (APTR)SET_RootLayer },
-   { "Program",      FDF_SYSTEM|FDF_LONG|FDF_RI, 0, NULL, NULL },
    { "Align",        FDF_LONGFLAGS|FDF_RW,  (MAXINT)&clSurfaceAlign, NULL, NULL },
    { "Dimensions",   FDF_LONG|FDF_RW,       (MAXINT)&clSurfaceDimensions, NULL, (APTR)SET_Dimensions },
    { "DragStatus",   FDF_LONG|FDF_LOOKUP|FDF_R,  (MAXINT)&clSurfaceDragStatus, NULL, NULL },

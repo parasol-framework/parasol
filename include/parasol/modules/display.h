@@ -974,7 +974,6 @@ class objSurface : public BaseClass {
    LONG     Width;      // Defines the width of a surface object.
    LONG     Height;     // Defines the height of a surface object.
    OBJECTID RootID;     // Surface that is acting as a root for many surface children (useful when applying translucency)
-   OBJECTID ProgramID;  // The task that is represented by the surface object (important for linking desktop windows to foreign tasks)
    LONG     Align;      // This field allows you to align a surface area within its owner.
    LONG     Dimensions; // Indicates currently active dimension settings.
    LONG     DragStatus; // Indicates the draggable state when dragging is enabled.
