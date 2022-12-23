@@ -308,21 +308,10 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
 }
 
 //****************************************************************************
-// Note that SetFieldEval() will translate object references and computations in the string.
-// Prefixing the field name with '_' forces the field to be set as a custom variable.
 
 static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG ValueIndex)
 {
    parasol::Log log("obj.setfield");
-
-   if (FName[0] IS '_') {
-      char bufname[80];
-      WORD i;
-      bufname[0] = '@';
-      for (i=1; ((size_t)i < sizeof(bufname)) and (FName[i]); i++) bufname[i] = FName[i];
-      bufname[i] = 0;
-      return SetFieldEval(obj, bufname, lua_tostring(Lua, ValueIndex));
-   }
 
    LONG type = lua_type(Lua, ValueIndex);
 
@@ -335,7 +324,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
          struct array *farray;
 
          if (type IS LUA_TSTRING) { // Treat the source as a CSV field
-            return SetFieldEval(target, FName, lua_tostring(Lua, ValueIndex));
+            return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
          }
          else if (type IS LUA_TTABLE) {
             lua_settop(Lua, ValueIndex);
@@ -494,13 +483,5 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
             return ERR_FieldTypeMismatch;
       }
    }
-   else {
-      // Default to setting a custom variable rather than throwing an error - primarily for legacy reasons.
-      CSTRING vstr = lua_tostring(Lua, ValueIndex);
-      if (vstr) {
-         log.msg("Field '%s' is not in class '%s' - defaulting to custom variable. [DEPRECATED]", FName, target->Class->ClassName);
-         return SetFieldEval(obj, FName, vstr);
-      }
-      else return ERR_UnsupportedField;
-   }
+   else return ERR_UnsupportedField;
 }
