@@ -130,7 +130,7 @@ LONG UTF8CharLength(CSTRING String);
 ULONG UTF8ReadValue(CSTRING String, LONG * Length);
 LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
 LONG StrFormat(STRING Buffer, LONG Size, CSTRING Format, ...);
-ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID Class, LONG Permissions);
+ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 LONG StrDatatype(CSTRING String);
 void UnloadFile(struct CacheFile * Cache);
@@ -157,7 +157,6 @@ ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size);
 ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * Data, LONG * Size);
 ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
-ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 
 #ifdef  __cplusplus
 }

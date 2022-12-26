@@ -1070,7 +1070,7 @@ struct ScriptArg { // For use with scExec
     "UTF8ReadValue",
     "UTF8WriteValue",
     "StrFormat",
-    "SaveImageToFile",
+    "WaitForObjects",
     "ReadFileToBuffer",
     "StrDatatype",
     "UnloadFile",
@@ -1096,8 +1096,7 @@ struct ScriptArg { // For use with scExec
     "CopyFile",
     "KeyGet",
     "VarIterate",
-    "DeleteFile",
-    "WaitForObjects")
+    "DeleteFile")
 
   c_insert([[
 

@@ -1990,29 +1990,6 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
-    <name>SaveImageToFile</name>
-    <category>Files</category>
-    <comment>Saves an object's image to a destination file.</comment>
-    <prototype>ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID Class, LONG Permissions)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object that contains the image to be saved.</param>
-      <param type="CSTRING" name="Path">The destination file location.</param>
-      <param type="CLASSID" name="Class">The sub-class to use when saving the image (optional).</param>
-      <param type="LONG" name="Permissions" lookup="PERMIT">File permissions to use (optional).  If NULL, file is saved with user and group permissions of read/write.</param>
-    </input>
-    <description>
-<p>This function simplifies the process of saving object images to files.  You need to provide the object address and the destination file location for the data to be saved.  If the destination file exists, it will be overwritten.</p>
-<p>The object's class must support the <action>SaveToObject</action> action or this function will return ERR_NoSupport. Sub-classes are supported if the image needs to be saved as a specific type of file (for example, to save a picture object as a JPEG file, the Class must be set to ID_JPEG).</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoSupport">This request is not supported.</error>
-      <error code="CreateFile">A new file could not be created.</error>
-    </result>
-  </function>
-
-  <function>
     <name>SaveObjectToFile</name>
     <category>Files</category>
     <comment>Saves an object to a destination file.</comment>

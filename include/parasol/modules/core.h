@@ -1833,7 +1833,7 @@ struct CoreBase {
    ULONG (*_UTF8ReadValue)(CSTRING, LONG *);
    LONG (*_UTF8WriteValue)(LONG, STRING, LONG);
    LONG (*_StrFormat)(const void *, LONG, const char *, ...) __attribute__((format(printf, 3, 4)));
-   ERROR (*_SaveImageToFile)(OBJECTPTR, CSTRING, CLASSID, LONG);
+   ERROR (*_WaitForObjects)(LONG, LONG, struct ObjectSignal *);
    ERROR (*_ReadFileToBuffer)(CSTRING, APTR, LONG, LONG *);
    LONG (*_StrDatatype)(CSTRING);
    void (*_UnloadFile)(struct CacheFile *);
@@ -1860,7 +1860,6 @@ struct CoreBase {
    ERROR (*_KeyGet)(struct KeyStore *, ULONG, APTR, LONG *);
    ERROR (*_VarIterate)(struct KeyStore *, CSTRING, CSTRING *, APTR, LONG *);
    ERROR (*_DeleteFile)(CSTRING, FUNCTION *);
-   ERROR (*_WaitForObjects)(LONG, LONG, struct ObjectSignal *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1990,7 +1989,7 @@ struct CoreBase {
 #define UTF8ReadValue(...) (CoreBase->_UTF8ReadValue)(__VA_ARGS__)
 #define UTF8WriteValue(...) (CoreBase->_UTF8WriteValue)(__VA_ARGS__)
 #define StrFormat(...) (CoreBase->_StrFormat)(__VA_ARGS__)
-#define SaveImageToFile(...) (CoreBase->_SaveImageToFile)(__VA_ARGS__)
+#define WaitForObjects(...) (CoreBase->_WaitForObjects)(__VA_ARGS__)
 #define ReadFileToBuffer(...) (CoreBase->_ReadFileToBuffer)(__VA_ARGS__)
 #define StrDatatype(...) (CoreBase->_StrDatatype)(__VA_ARGS__)
 #define UnloadFile(...) (CoreBase->_UnloadFile)(__VA_ARGS__)
@@ -2017,7 +2016,6 @@ struct CoreBase {
 #define KeyGet(...) (CoreBase->_KeyGet)(__VA_ARGS__)
 #define VarIterate(...) (CoreBase->_VarIterate)(__VA_ARGS__)
 #define DeleteFile(...) (CoreBase->_DeleteFile)(__VA_ARGS__)
-#define WaitForObjects(...) (CoreBase->_WaitForObjects)(__VA_ARGS__)
 #endif
 
 

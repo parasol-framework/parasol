@@ -96,7 +96,6 @@ FDEF argsResolveClassName[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "Name", FD_
 FDEF argsResolveGroupID[] = { { "Result", FD_STR }, { "Group", FD_LONG }, { 0, 0 } };
 FDEF argsResolvePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsResolveUserID[] = { { "Result", FD_STR }, { "User", FD_LONG }, { 0, 0 } };
-FDEF argsSaveImageToFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Path", FD_STR }, { "Class", FD_LONG|FD_UNSIGNED }, { "Permissions", FD_LONG }, { 0, 0 } };
 FDEF argsSaveObjectToFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Path", FD_STR }, { "Permissions", FD_LONG }, { 0, 0 } };
 FDEF argsScanDir[] = { { "Error", FD_LONG|FD_ERROR }, { "DirInfo:Info", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsScanMessages[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_PTR }, { "Index", FD_LONG|FD_RESULT }, { "Type", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
@@ -286,7 +285,7 @@ const struct Function glFunctions[] = {
    { (APTR)UTF8ReadValue, "UTF8ReadValue", argsUTF8ReadValue },
    { (APTR)UTF8WriteValue, "UTF8WriteValue", argsUTF8WriteValue },
    { (APTR)StrFormat, "StrFormat", argsStrFormat },
-   { (APTR)SaveImageToFile, "SaveImageToFile", argsSaveImageToFile },
+   { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { (APTR)StrDatatype, "StrDatatype", argsStrDatatype },
    { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
@@ -313,7 +312,6 @@ const struct Function glFunctions[] = {
    { (APTR)KeyGet, "KeyGet", argsKeyGet },
    { (APTR)VarIterate, "VarIterate", argsVarIterate },
    { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
-   { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { NULL, NULL, NULL }
 };
 
