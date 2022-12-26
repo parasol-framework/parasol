@@ -215,35 +215,6 @@ struct FunctionField argsResize[] = {
   </function>
 
   <function>
-    <name>ActionTags</name>
-    <category>Objects</category>
-    <comment>This is a tag-based version of the Action() function.</comment>
-    <prototype>ERROR ActionTags(LONG Action, OBJECTPTR Object, ...)</prototype>
-    <input>
-      <param type="LONG" name="Action">The ID of the action or method that you want to execute.</param>
-      <param type="OBJECTPTR" name="Object">The object that is to receive the action.</param>
-      <param type="..." name="Tags">Each argument that would normally be specified in the action structure must be listed as tags, &lt;i&gt;in the same order&lt;/i&gt; as the fields in the original action structure.  There is no need to terminate the tag-list.</param>
-    </input>
-    <description>
-<p>This function is identical to the <function module="Core">Action</function> function in every respect, except that it allows you to send action arguments as tags rather than in a structure.  Here are a few examples:</p>
-<pre>ActionTags(AC_Resize, Object, 100, 300, 200);
-ActionTags(MT_Rename, Object, "user:documents.txt");
-</pre>
-<p>Whether you choose to use ActionTags() or <function module="Core">Action</function> to make your action calls is a matter of personal preference.  However, be aware that ActionTags() does not support actions or methods that return results in the argument structure - e.g. Read and Write actions are not supported.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoAction">The object does not support this operation.</error>
-      <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
-      <error code="IllegalActionID">Illegal action ID (number outside of valid range).</error>
-      <error code="IllegalActionAttempt">Illegal attempt to execute an action on an object that belongs to another Task.</error>
-      <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>ActionThread</name>
     <category>Objects</category>
     <comment>Execute an action in parallel, via a separate thread.</comment>

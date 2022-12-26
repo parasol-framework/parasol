@@ -1906,7 +1906,7 @@ int(FLIP) Orientation: Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.  If set t
 
 void gfxFlipBitmap(extBitmap *Bitmap, LONG Orientation)
 {
-   ActionTags(MT_BmpFlip, Bitmap, Orientation);
+   bmpFlip(Bitmap, Orientation);
 }
 
 /*****************************************************************************

@@ -948,7 +948,7 @@ struct ScriptArg { // For use with scExec
     "Action",
     "ActionList",
     "ActionMsg",
-    "ActionTags",
+    "KeyGet",
     "ResolveClassID",
     "AllocateID",
     "AllocMemory",
@@ -1093,8 +1093,7 @@ struct ScriptArg { // For use with scExec
     "SetVolume",
     "DeleteVolume",
     "VirtualVolume",
-    "CopyFile",
-    "KeyGet")
+    "CopyFile")
 
   c_insert([[
 

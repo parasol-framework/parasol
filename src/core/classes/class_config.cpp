@@ -325,7 +325,7 @@ static ERROR CONFIG_Free(extConfig *Self, APTR Void)
                   FID_Flags|TLONG,       FL_WRITE|FL_NEW,
                   FID_Permissions|TLONG, 0,
                   TAGEND)) {
-               ActionTags(AC_SaveToObject, Self, file->UID, 0);
+               acSaveToObject(Self, file->UID, 0);
                acFree(file);
             }
          }
@@ -598,7 +598,7 @@ static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
             FID_Flags|TLONG,       FL_WRITE|FL_NEW,
             FID_Permissions|TLONG, 0,
             TAGEND)) {
-         if (!ActionTags(AC_SaveToObject, Self, file->UID, 0)) {
+         if (!acSaveToObject(Self, file->UID, 0)) {
             Self->CRC = crc;
          }
          acFree(file);

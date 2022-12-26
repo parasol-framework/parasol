@@ -1711,7 +1711,7 @@ struct CoreBase {
    ERROR (*_Action)(LONG, OBJECTPTR, APTR);
    void (*_ActionList)(struct ActionTable **, LONG *);
    ERROR (*_ActionMsg)(LONG, OBJECTID, APTR, MEMORYID, CLASSID);
-   ERROR (*_ActionTags)(LONG, OBJECTPTR, ...);
+   ERROR (*_KeyGet)(struct KeyStore *, ULONG, APTR, LONG *);
    CSTRING (*_ResolveClassID)(CLASSID);
    LONG (*_AllocateID)(LONG);
    ERROR (*_AllocMemory)(LONG, LONG, APTR, MEMORYID *);
@@ -1857,7 +1857,6 @@ struct CoreBase {
    ERROR (*_DeleteVolume)(CSTRING);
    ERROR (*_VirtualVolume)(CSTRING, ...);
    ERROR (*_CopyFile)(CSTRING, CSTRING, FUNCTION *);
-   ERROR (*_KeyGet)(struct KeyStore *, ULONG, APTR, LONG *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1865,7 +1864,7 @@ struct CoreBase {
 #define Action(...) (CoreBase->_Action)(__VA_ARGS__)
 #define ActionList(...) (CoreBase->_ActionList)(__VA_ARGS__)
 #define ActionMsg(...) (CoreBase->_ActionMsg)(__VA_ARGS__)
-#define ActionTags(...) (CoreBase->_ActionTags)(__VA_ARGS__)
+#define KeyGet(...) (CoreBase->_KeyGet)(__VA_ARGS__)
 #define ResolveClassID(...) (CoreBase->_ResolveClassID)(__VA_ARGS__)
 #define AllocateID(...) (CoreBase->_AllocateID)(__VA_ARGS__)
 #define AllocMemory(...) (CoreBase->_AllocMemory)(__VA_ARGS__)
@@ -2011,7 +2010,6 @@ struct CoreBase {
 #define DeleteVolume(...) (CoreBase->_DeleteVolume)(__VA_ARGS__)
 #define VirtualVolume(...) (CoreBase->_VirtualVolume)(__VA_ARGS__)
 #define CopyFile(...) (CoreBase->_CopyFile)(__VA_ARGS__)
-#define KeyGet(...) (CoreBase->_KeyGet)(__VA_ARGS__)
 #endif
 
 

@@ -219,7 +219,7 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, LONG Position)
 
    if (channel->Sample.StreamID) {
       if (!AccessObject(channel->Sample.StreamID, 5000, &stream)) {
-         ActionTags(AC_Seek, stream, (DOUBLE)channel->Sample.SeekStart + Position, SEEK_START);
+         acSeek(stream, (DOUBLE)channel->Sample.SeekStart + Position, SEEK_START);
 
          // Fill our sample buffer with an initial amount of audio information from the stream
 
