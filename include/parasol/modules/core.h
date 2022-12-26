@@ -1789,7 +1789,7 @@ struct CoreBase {
    ERROR (*_AddMsgHandler)(APTR, LONG, FUNCTION *, struct MsgHandler **);
    ERROR (*_FindPrivateObject)(CSTRING, APTR);
    LARGE (*_PreciseTime)(void);
-   ERROR (*_SetFieldsID)(OBJECTID, ...);
+   ERROR (*_OpenDir)(CSTRING, LONG, struct DirInfo **);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID);
    struct Field * (*_FindField)(OBJECTPTR, ULONG, APTR);
    LONG (*_GetMsgPort)(OBJECTID);
@@ -1862,7 +1862,6 @@ struct CoreBase {
    ERROR (*_DeleteFile)(CSTRING, FUNCTION *);
    ERROR (*_WaitForObjects)(LONG, LONG, struct ObjectSignal *);
    ERROR (*_SaveObjectToFile)(OBJECTPTR, CSTRING, LONG);
-   ERROR (*_OpenDir)(CSTRING, LONG, struct DirInfo **);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1948,7 +1947,7 @@ struct CoreBase {
 #define AddMsgHandler(...) (CoreBase->_AddMsgHandler)(__VA_ARGS__)
 #define FindPrivateObject(...) (CoreBase->_FindPrivateObject)(__VA_ARGS__)
 #define PreciseTime(...) (CoreBase->_PreciseTime)(__VA_ARGS__)
-#define SetFieldsID(...) (CoreBase->_SetFieldsID)(__VA_ARGS__)
+#define OpenDir(...) (CoreBase->_OpenDir)(__VA_ARGS__)
 #define GetObjectPtr(...) (CoreBase->_GetObjectPtr)(__VA_ARGS__)
 #define FindField(...) (CoreBase->_FindField)(__VA_ARGS__)
 #define GetMsgPort(...) (CoreBase->_GetMsgPort)(__VA_ARGS__)
@@ -2021,7 +2020,6 @@ struct CoreBase {
 #define DeleteFile(...) (CoreBase->_DeleteFile)(__VA_ARGS__)
 #define WaitForObjects(...) (CoreBase->_WaitForObjects)(__VA_ARGS__)
 #define SaveObjectToFile(...) (CoreBase->_SaveObjectToFile)(__VA_ARGS__)
-#define OpenDir(...) (CoreBase->_OpenDir)(__VA_ARGS__)
 #endif
 
 

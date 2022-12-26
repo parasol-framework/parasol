@@ -348,49 +348,6 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-
--FUNCTION-
-SetFieldsID: Sets multiple field values in an object, using messages.
-
-This function can be used to set the values of more than one field in a single function call, by using tags.  It is
-provided for the purpose of giving a speed increase over calling the ~SetField() function multiple times.
-
-The overall behaviour of this function is identical to the ~SetFields() function, with the exception that it
-uses object ID's and will use the messaging system to set the field values of foreign objects.
-
-This function does not block by default when messaging foreign objects, so error messages will not be received in the
-event that a setting operation has failed.
-
--INPUT-
-oid Object: A reference to the target object.
-vtags Tags:   Group field ID's with the values that you want to set in order to create valid groups of tags.  The list must be terminated with TAGEND.
-
--ERRORS-
-Okay
-NullArgs
-AccessObject
-UnsupportedField: One of the fields is not supported by the target object.
-Failed:           A field setting failed due to an unspecified error.
-
-*****************************************************************************/
-
-ERROR SetFieldsID(OBJECTID ObjectID, ...)
-{
-   if (!ObjectID) return ERR_NullArgs;
-
-   OBJECTPTR object;
-   if (!AccessObject(ObjectID, 3000, &object)) {
-      va_list list;
-      va_start(list, ObjectID);
-      ERROR error = SetFieldsF(object, list);
-      va_end(list);
-      ReleaseObject(object);
-      return error;
-   }
-   else return ERR_AccessObject;
-}
-
 //****************************************************************************
 // Converts a CSV string into an array (or use "#0x123..." for a hexadecimal byte list)
 
