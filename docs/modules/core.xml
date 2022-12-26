@@ -784,8 +784,10 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="ExclusiveDenied">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="NoPermission">General security violation.</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="GetField">A call to GetField() failed to retrieve a field value.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -1987,28 +1989,6 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>This function converts user ID's obtained from the file system into their corresponding names.  If the user ID is invalid then NULL will be returned.</p>
     </description>
     <result type="CSTRING">The user name is returned, or NULL if the ID cannot be resolved.</result>
-  </function>
-
-  <function>
-    <name>SaveObjectToFile</name>
-    <category>Files</category>
-    <comment>Saves an object to a destination file.</comment>
-    <prototype>ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the source object that will be saved.</param>
-      <param type="CSTRING" name="Path">The destination file path.</param>
-      <param type="LONG" name="Permissions" lookup="PERMIT">File permissions to use (optional).</param>
-    </input>
-    <description>
-<p>This support function simplifies the process of saving objects to files.  A source Object must be provided and a destination path for the data.  If the destination file exists, it will be overwritten.</p>
-<p>The object's class must support the SaveToObject action or this function will return <code>ERR_NoSupport</code>.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NoSupport">This request is not supported.</error>
-      <error code="CreateFile">A new file could not be created.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
   </function>
 
   <function>

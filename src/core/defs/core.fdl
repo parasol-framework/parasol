@@ -957,7 +957,7 @@ struct ScriptArg { // For use with scExec
     "CheckAction",
     "CheckMemoryExists",
     "CheckObjectExists",
-    "SaveObjectToFile",
+    "DeleteFile",
     "CreateObject",
     "CurrentContext",
     "GetFieldArray",
@@ -1095,8 +1095,7 @@ struct ScriptArg { // For use with scExec
     "VirtualVolume",
     "CopyFile",
     "KeyGet",
-    "VarIterate",
-    "DeleteFile")
+    "VarIterate")
 
   c_insert([[
 
