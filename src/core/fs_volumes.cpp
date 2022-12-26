@@ -18,8 +18,10 @@ cstr Name: The name of the volume.
 
 -ERRORS-
 Okay: The volume was removed.
-Args:
-ExclusiveDenied: Access to the SystemVolumes object was denied.
+NullArgs:
+AccessObject: Access to the SystemVolumes object was denied.
+NoPermission: The volume name is reserved.
+GetField:
 -END-
 
 *****************************************************************************/
@@ -36,7 +38,7 @@ ERROR DeleteVolume(CSTRING Name)
    if (!volumes.granted()) return log.warning(ERR_AccessObject);
 
    ConfigGroups *groups;
-   if (!GetPointer(glVolumes, FID_Data, &groups)) {
+   if (!glVolumes->getPtr(FID_Data, &groups)) {
       std::string vol;
       LONG i;
       for (i=0; (Name[i]) and (Name[i] != ':'); i++);
@@ -59,13 +61,24 @@ ERROR DeleteVolume(CSTRING Name)
 
       // Delete the volume if it appears in the user:config/volumes.cfg file.
 
+      ERROR error = ERR_Okay;
       objConfig *userconfig;
       if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, "user:config/volumes.cfg", TAGEND)) {
-         if (!GetPointer(userconfig, FID_Data, &groups)) {
+         if (!userconfig->getPtr(FID_Data, &groups)) {
             for (auto& [group, keys] : groups[0]) {
                if (!StrMatch(vol.c_str(), keys["Name"].c_str())) {
                   cfgDeleteGroup(userconfig, group.c_str());
-                  SaveObjectToFile(userconfig, "user:config/volumes.cfg", PERMIT_READ|PERMIT_WRITE);
+
+                  OBJECTPTR file;
+                  if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
+                        FID_Path|TSTRING,      "user:config/volumes.cfg",
+                        FID_Flags|TLONG,       FL_WRITE|FL_NEW,
+                        FID_Permissions|TLONG, PERMIT_READ|PERMIT_WRITE,
+                        TAGEND)) {
+                     error = acSaveToObject(userconfig, file->UID, 0);
+                     acFree(file);
+                  }
+                  else error = ERR_CreateFile;
 
                   // Broadcast the change
 
@@ -82,10 +95,9 @@ ERROR DeleteVolume(CSTRING Name)
          acFree(userconfig);
       }
 
-      return ERR_Okay;
+      return error;
    }
-
-   return log.warning(ERR_GetField);
+   else return log.warning(ERR_GetField);
 }
 
 /*****************************************************************************
@@ -103,7 +115,7 @@ ERROR RenameVolume(CSTRING Volume, CSTRING Name)
    parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 5000);
    if (volumes.granted()) {
       ConfigGroups *groups;
-      if (!GetPointer(glVolumes, FID_Data, &groups)) {
+      if (!glVolumes->getPtr(FID_Data, &groups)) {
          std::string vol;
          LONG i;
 
@@ -266,7 +278,7 @@ next:
    }
 
    ConfigGroups *groups;
-   if (GetPointer(glVolumes, FID_Data, &groups)) {
+   if (glVolumes->getPtr(FID_Data, &groups)) {
       return log.warning(ERR_FieldNotSet);
    }
 
@@ -284,7 +296,17 @@ next:
                   objConfig *userconfig;
                   if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, savefile.c_str(), TAGEND)) {
                      cfgWriteValue(userconfig, group.c_str(), "Path", keys["Path"].c_str());
-                     SaveObjectToFile(userconfig, savefile.c_str(), savepermissions);
+
+                     OBJECTPTR file;
+                     if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
+                           FID_Path|TSTRING,      savefile.c_str(),
+                           FID_Flags|TLONG,       FL_WRITE|FL_NEW,
+                           FID_Permissions|TLONG, savepermissions,
+                           TAGEND)) {
+                        acSaveToObject(userconfig, file->UID, 0);
+                        acFree(file);
+                     }
+
                      acFree(userconfig);
                   }
                }
@@ -315,7 +337,7 @@ next:
             if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, savefile.c_str(), TAGEND)) {
                cfgWriteValue(userconfig, name, "Name", name); // Ensure that an entry for the volume exists before we search for it.
                ConfigGroups *usergroups;
-               if (GetPointer(userconfig, FID_Data, &usergroups)) {
+               if (userconfig->getPtr(FID_Data, &usergroups)) {
                   for (auto& [group, ukeys] : usergroups[0]) {
                      if (!StrMatch(group.c_str(), name)) {
                         ukeys["Path"] = path;
@@ -328,7 +350,16 @@ next:
                   }
                }
 
-               SaveObjectToFile(userconfig, savefile.c_str(), savepermissions);
+               OBJECTPTR file;
+               if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
+                     FID_Path|TSTRING,      savefile.c_str(),
+                     FID_Flags|TLONG,       FL_WRITE|FL_NEW,
+                     FID_Permissions|TLONG, savepermissions,
+                     TAGEND)) {
+                  acSaveToObject(userconfig, file->UID, 0);
+                  acFree(file);
+               }
+
                acFree(userconfig);
             }
          }

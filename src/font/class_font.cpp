@@ -209,7 +209,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
                if ((UWORD)type_id IS 0x8008) {
                   font_count  = count;
-                  GetLong(file, FID_Position, &font_offset);
+                  file->get(FID_Position, &font_offset);
                   font_offset += 4;
                   break;
                }
@@ -814,6 +814,7 @@ static ERROR SET_Point(extFont *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) value = Value->Double;
    else if (Value->Type & FD_LARGE) value = Value->Large;
+   else if (Value->Type & FD_STRING) value = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {

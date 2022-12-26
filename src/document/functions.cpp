@@ -2578,7 +2578,7 @@ list_repass:
                   LONG cellwidth, cellheight, align, leftmargin, lineheight, zone_height;
                   OBJECTID layout_surface_id;
 
-                  if ((FindField(object, FID_LayoutSurface, NULL)) and (!GetLong(object, FID_LayoutSurface, &layout_surface_id))) {
+                  if ((FindField(object, FID_LayoutSurface, NULL)) and (!object->get(FID_LayoutSurface, &layout_surface_id))) {
                      objSurface *surface;
                      LONG new_x, new_y, new_width, new_height, calc_x;
 
@@ -2755,7 +2755,7 @@ list_repass:
                         dimensions = 0;
                      }
                   }
-                  else if ((FindField(object, FID_Layout, NULL)) and (!GetPointer(object, FID_Layout, &layout))) {
+                  else if ((FindField(object, FID_Layout, NULL)) and (!object->getPtr(FID_Layout, &layout))) {
                      leftmargin = l.left_margin - AbsX;
                      lineheight = (l.base_line) ? l.base_line : l.font->Ascent;
 
@@ -4309,7 +4309,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                      if (object) {
                         objLayout *layout;
 
-                        if ((FindField(object, FID_Layout, NULL)) and (!GetPointer(object, FID_Layout, &layout))) {
+                        if ((FindField(object, FID_Layout, NULL)) and (!object->getPtr(FID_Layout, &layout))) {
                            if (layout->DrawCallback.Type) {
                               // If the graphic is within a cell, ensure that the graphic does not exceed
                               // the dimensions of the cell.
@@ -4669,7 +4669,7 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
       switch(Value) {
          case K_TAB: {
             log.branch("Key: Tab");
-            if (Self->TabFocusID) acFocusID(Self->TabFocusID);
+            if (Self->TabFocusID) acFocus(Self->TabFocusID);
             else {
                if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
                else advance_tabfocus(Self, 1);
@@ -4875,7 +4875,7 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
       // NB: When not in edit mode, only the navigation keys are enabled
       case K_TAB:
          log.branch("Key: Tab");
-         if (Self->TabFocusID) acFocusID(Self->TabFocusID);
+         if (Self->TabFocusID) acFocus(Self->TabFocusID);
          else if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
          else advance_tabfocus(Self, 1);
          break;
@@ -5696,14 +5696,14 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
                resource = resource->Next;
                continue;
             }
-            else if (Flags & ULD_TERMINATE) acFreeID(resource->ObjectID);
+            else if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
             else DelayMsg(AC_Free, resource->ObjectID, NULL);
          }
          else if (resource->Type IS RT_OBJECT_UNLOAD_DELAY) {
-            if (Flags & ULD_TERMINATE) acFreeID(resource->ObjectID);
+            if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
             else DelayMsg(AC_Free, resource->ObjectID, NULL);
          }
-         else acFreeID(resource->ObjectID);
+         else acFree(resource->ObjectID);
 
          if (resource IS Self->Resources) Self->Resources = resource->Next;
          if (resource->Prev) resource->Prev->Next = resource->Next;
@@ -5726,7 +5726,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    Self->NoWhitespace = TRUE; // Reset whitespace flag
 
-   if (Self->PageID) acMoveToPointID(Self->PageID, 0, 0, 0, MTF_X|MTF_Y);
+   if (Self->PageID) acMoveToPoint(Self->PageID, 0, 0, 0, MTF_X|MTF_Y);
 
    //drwPermitDrawing();
 
@@ -6310,7 +6310,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                else if (!StrCompare("random]", str, 0, 0)) {
                   // Generate a random string of digits
                   char random[10];
-                  for (j=0; (size_t)j < sizeof(random)-1; j++) random[j] = '0' + RandomNumber(10);
+                  for (j=0; (size_t)j < sizeof(random)-1; j++) random[j] = '0' + (rand() % 10);
                   random[j] = 0;
                   insert_string(random, Buffer, Self->BufferSize, i, sizeof("[%random]")-1);
                }
@@ -6615,7 +6615,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                            name[j] = 0;
                            if (!AccessObject(objectid, 2000, &object)) {
                               if (((classfield = FindField(object, StrHash(name, FALSE), &target))) and (classfield->Flags & FD_STRING)) {
-                                 error = GetString(object, classfield->FieldID, &strbuf);
+                                 error = object->get(classfield->FieldID, &strbuf);
                               }
                               else { // Get field as a variable type and manage any buffer overflow
 repeat:
@@ -7730,14 +7730,14 @@ static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
          if (!AccessObject(Reference, 3000, &object)) {
             regionid = 0;
             if (FindField(object, FID_Region, NULL)) {
-               if (!GetLong(object, FID_Region, &regionid)) {
+               if (!object->get(FID_Region, &regionid)) {
                   if (GetClassID(regionid) != ID_SURFACE) regionid = 0;
                }
             }
 
             if (!regionid) {
                if (FindField(object, FID_Surface, NULL)) {
-                  if (!GetLong(object, FID_Surface, &regionid)) {
+                  if (!object->get(FID_Surface, &regionid)) {
                      if (GetClassID(regionid) != ID_SURFACE) regionid = 0;
                   }
                }
@@ -7794,7 +7794,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
    Self->FocusIndex = Index;
 
    if (Self->Tabs[Index].Type IS TT_EDIT) {
-      acFocusID(Self->PageID);
+      acFocus(Self->PageID);
 
       LONG cell_index;
       if ((cell_index = find_cell(Self, Self->Tabs[Self->FocusIndex].Ref, 0)) >= 0) {
@@ -7808,14 +7808,14 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
          if (class_id IS ID_VECTORTEXT) {
             if (!AccessObject(Self->Tabs[Index].Ref, 1000, &input)) {
                acFocus(input);
-               //if ((GetPointer(input, FID_UserInput, &text) IS ERR_Okay) and (text)) {
+               //if ((input->getPtr(FID_UserInput, &text) IS ERR_Okay) and (text)) {
                //   txtSelectArea(text, 0,0, 200000, 200000);
                //}
                ReleaseObject(input);
             }
          }
-         else if (acFocusID(Self->Tabs[Index].Ref) != ERR_Okay) {
-            acFocusID(Self->Tabs[Index].XRef);
+         else if (acFocus(Self->Tabs[Index].Ref) != ERR_Okay) {
+            acFocus(Self->Tabs[Index].XRef);
             // Causes an InheritedFocus callback in ActionNotify
          }
       }
@@ -7846,7 +7846,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
          }
          else DRAW_PAGE(Self);
 
-         acFocusID(Self->PageID);
+         acFocus(Self->PageID);
       }
    }
 }
@@ -8457,9 +8457,8 @@ static void reset_cursor(extDocument *Self)
    Self->CursorState = 1;
    if (Self->FlashTimer) UpdateTimer(Self->FlashTimer, 0.5);
    else {
-      FUNCTION function;
-      SET_FUNCTION_STDC(function, (APTR)&flash_cursor);
-      SubscribeTimer(0.5, &function, (APTR)&Self->FlashTimer);
+      auto call = make_function_stdc(flash_cursor);
+      SubscribeTimer(0.5, &call, (APTR)&Self->FlashTimer);
    }
 }
 

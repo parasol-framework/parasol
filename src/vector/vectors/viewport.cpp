@@ -102,7 +102,7 @@ static ERROR VECTORVIEWPORT_Clear(extVectorViewport *Self, APTR Void)
    LONG count = ARRAYSIZE(list);
    do {
       if (!ListChildren(Self->UID, FALSE, list, &count)) {
-         for (LONG i=0; i < count; i++) acFreeID(list[i].ObjectID);
+         for (LONG i=0; i < count; i++) acFree(list[i].ObjectID);
       }
    } while (count IS ARRAYSIZE(list));
 
@@ -412,15 +412,15 @@ static ERROR VIEW_GET_Height(extVectorViewport *Self, Variable *Value)
       if (Self->vpDimensions & DMF_RELATIVE_Y) y = Self->vpTargetY * Self->ParentView->vpFixedHeight;
       else y = Self->vpTargetY;
 
-      if (Self->ParentView) GetDouble(Self->ParentView, FID_Height, &parent_height);
+      if (Self->ParentView) Self->ParentView->get(FID_Height, &parent_height);
       else parent_height = Self->Scene->PageHeight;
 
       if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) val = parent_height - Self->vpTargetYO - y;
       else val = parent_height - (Self->vpTargetYO * parent_height) - y;
    }
    else { // If no height set by the client, the full height is inherited from the parent
-      if (Self->ParentView) return GetVariable(Self->ParentView, FID_Height, Value);
-      else GetDouble(Self->Scene, FID_PageHeight, &val);
+      if (Self->ParentView) return Self->ParentView->get(FID_Height, Value);
+      else Self->Scene->get(FID_PageHeight, &val);
    }
 
    if (Value->Type & FD_DOUBLE) Value->Double = val;
@@ -434,7 +434,8 @@ static ERROR VIEW_SET_Height(extVectorViewport *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
@@ -652,15 +653,15 @@ static ERROR VIEW_GET_Width(extVectorViewport *Self, Variable *Value)
       if (Self->vpDimensions & DMF_RELATIVE_X) x = Self->vpTargetX * Self->ParentView->vpFixedWidth;
       else x = Self->vpTargetX;
 
-      if (Self->ParentView) GetDouble(Self->ParentView, FID_Width, &parent_width);
+      if (Self->ParentView) Self->ParentView->get(FID_Width, &parent_width);
       else parent_width = Self->Scene->PageWidth;
 
       if (Self->vpDimensions & DMF_FIXED_X_OFFSET) val = parent_width - Self->vpTargetXO - x;
       else val = parent_width - (Self->vpTargetXO * parent_width) - x;
    }
    else { // If no width set by the client, the full width is inherited from the parent
-      if (Self->ParentView) return GetVariable(Self->ParentView, FID_Width, Value);
-      else GetDouble(Self->Scene, FID_PageWidth, &val);
+      if (Self->ParentView) return Self->ParentView->get(FID_Width, Value);
+      else Self->Scene->get(FID_PageWidth, &val);
    }
 
    if (Value->Type & FD_DOUBLE) Value->Double = val;
@@ -673,7 +674,8 @@ static ERROR VIEW_SET_Width(extVectorViewport *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
@@ -735,7 +737,8 @@ static ERROR VIEW_SET_X(extVectorViewport *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
@@ -800,7 +803,8 @@ static ERROR VIEW_SET_XOffset(extVectorViewport *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
@@ -862,7 +866,8 @@ static ERROR VIEW_SET_Y(extVectorViewport *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
@@ -926,7 +931,8 @@ static ERROR VIEW_SET_YOffset(extVectorViewport *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);

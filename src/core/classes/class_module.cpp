@@ -23,7 +23,7 @@ struct DisplayBase *DisplayBase;
 if (!CreateObject(ID_MODULE, 0, &amp;modDisplay,
       FID_Name|TSTR, "display",
       TAGEND)) {
-   GetPointer(modDisplay, FID_ModBase, &amp;DisplayBase);
+   modDisplay->getPtr(FID_ModBase, &amp;DisplayBase);
 }
 </pre>
 
@@ -819,7 +819,7 @@ use for that action.  For example:
 <pre>
 APTR *actions;
 
-GetPointer(Module, FID_Actions, &actions);
+Module->getPtr(FID_Actions, &actions);
 actions[AC_ActionNotify] = MODULE_ActionNotify;
 </pre>
 

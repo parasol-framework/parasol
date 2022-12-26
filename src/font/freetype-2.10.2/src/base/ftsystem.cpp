@@ -259,7 +259,7 @@ extern struct CoreBase *CoreBase;
 
    if (!error) {
       LONG size;
-      GetLong(file, FID_Size, &size);
+      file->get(FID_Size, &size);
       stream->size = size;
       stream->descriptor.pointer = file;
       stream->pathname.pointer   = (char *)filepathname;

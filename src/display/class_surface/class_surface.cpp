@@ -77,8 +77,7 @@ void refresh_pointer(extSurface *Self)
 {
    if (!glRefreshPointerTimer) {
       parasol::SwitchContext context(glModule);
-      FUNCTION call;
-      SET_FUNCTION_STDC(call, (APTR)&refresh_pointer_timer);
+      auto call = make_function_stdc(refresh_pointer_timer);
       SubscribeTimer(0.02, &call, &glRefreshPointerTimer);
    }
 }
@@ -90,7 +89,7 @@ static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **
    if (!AccessObject(DisplayID, 5000, Display)) {
       APTR winhandle;
 
-      if (!GetPointer(Display[0], FID_WindowHandle, &winhandle)) {
+      if (!Display[0]->getPtr(FID_WindowHandle, &winhandle)) {
          #ifdef _WIN32
             Display[0]->Bitmap->set(FID_Handle, winGetDC(winhandle));
          #else
@@ -110,10 +109,10 @@ static void release_video(objDisplay *Display)
 {
    #ifdef _WIN32
       APTR surface;
-      GetPointer(Display->Bitmap, FID_Handle, &surface);
+      Display->Bitmap->getPtr(FID_Handle, &surface);
 
       APTR winhandle;
-      if (!GetPointer(Display, FID_WindowHandle, &winhandle)) {
+      if (!Display->getPtr(FID_WindowHandle, &winhandle)) {
          winReleaseDC(winhandle, surface);
       }
 
@@ -474,11 +473,7 @@ static ERROR SURFACE_ActionNotify(extSurface *Self, struct acActionNotify *Notif
    if (Self->collecting()) return ERR_Okay;
 
    if (NotifyArgs->ActionID IS AC_Free) {
-      if (NotifyArgs->ObjectID IS Self->ProgramID) {
-         // Terminate if our linked task has disappeared
-         acFree(Self);
-      }
-      else if (NotifyArgs->ObjectID IS Self->ParentID) {
+      if (NotifyArgs->ObjectID IS Self->ParentID) {
          // Free ourselves in advance if our parent is in the process of being killed.  This causes a chain reaction
          // that results in a clean deallocation of the surface hierarchy.
 
@@ -828,13 +823,13 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
       LONG width         = Self->Width;
       LONG height        = Self->Height;
 
-      cfgReadInt(config, "DISPLAY", "Width", &width);
-      cfgReadInt(config, "DISPLAY", "Height", &height);
-      cfgReadInt(config, "DISPLAY", "Depth", &depth);
-      cfgReadFloat(config, "DISPLAY", "RefreshRate", &refreshrate);
-      cfgReadFloat(config, "DISPLAY", "GammaRed", &gammared);
-      cfgReadFloat(config, "DISPLAY", "GammaGreen", &gammagreen);
-      cfgReadFloat(config, "DISPLAY", "GammaBlue", &gammablue);
+      cfgRead(config, "DISPLAY", "Width", &width);
+      cfgRead(config, "DISPLAY", "Height", &height);
+      cfgRead(config, "DISPLAY", "Depth", &depth);
+      cfgRead(config, "DISPLAY", "RefreshRate", &refreshrate);
+      cfgRead(config, "DISPLAY", "GammaRed", &gammared);
+      cfgRead(config, "DISPLAY", "GammaGreen", &gammagreen);
+      cfgRead(config, "DISPLAY", "GammaBlue", &gammablue);
 
       if (!cfgReadValue(config, "DISPLAY", "DPMS", &str)) {
          if (!AccessObject(Self->DisplayID, 3000, &object)) {
@@ -897,7 +892,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
 
    if (Self->Flags & RNF_IGNORE_FOCUS) {
       FOCUSMSG("Focus propagated to parent (IGNORE_FOCUS flag set).");
-      acFocusID(Self->ParentID);
+      acFocus(Self->ParentID);
       glLastFocusTime = PreciseTime();
       return ERR_Okay|ERF_Notified;
    }
@@ -1023,7 +1018,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
       // Send out LostFocus actions to all objects that do not intersect with the new focus chain.
 
       for (LONG i=0; lostfocus[i]; i++) {
-         acLostFocusID(lostfocus[i]);
+         acLostFocus(lostfocus[i]);
       }
 
       // Send a global focus event to all listeners
@@ -1059,7 +1054,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
 
          // Focussing on the display window is important in hosted environments
 
-         if (Self->DisplayID) acFocusID(Self->DisplayID);
+         if (Self->DisplayID) acFocus(Self->DisplayID);
 
          if (Self->RevertFocusID) {
             Self->RevertFocusID = 0;
@@ -1114,13 +1109,13 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    untrack_layer(Self->UID);
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      acFreeID(Self->DisplayID);
+      acFree(Self->DisplayID);
       Self->DisplayID = NULL;
    }
 
    if ((Self->BufferID) and ((!Self->BitmapOwnerID) or (Self->BitmapOwnerID IS Self->UID))) {
       if (Self->Bitmap) { ReleaseObject(Self->Bitmap); Self->Bitmap = NULL; }
-      acFreeID(Self->BufferID);
+      acFree(Self->BufferID);
       Self->BufferID = 0;
    }
 
@@ -1128,26 +1123,14 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    // acting as windows, as the window class has its own focus management code.
 
    if ((Self->Flags & RNF_HAS_FOCUS) and (GetClassID(Self->ownerID()) != ID_WINDOW)) {
-      if (Self->ParentID) acFocusID(Self->ParentID);
+      if (Self->ParentID) acFocus(Self->ParentID);
    }
 
    if (Self->Flags & RNF_AUTO_QUIT) {
       parasol::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
-      if ((Self->ownerTask() IS Self->ProgramID) or (!Self->ProgramID)) {
+      if (Self->ownerTask() IS CurrentTask()->UID) {
          SendMessage(NULL, MSGID_QUIT, NULL, NULL, NULL);
-      }
-      else {
-         ListTasks *list;
-         if (!ListTasks(NULL, &list)) {
-            for (LONG i=0; list[i].TaskID; i++) {
-               if (list[i].TaskID IS Self->ProgramID) {
-                  SendMessage(list[i].MessageID, MSGID_QUIT, NULL, NULL, NULL);
-                  break;
-               }
-            }
-            FreeResource(list);
-         }
       }
    }
 
@@ -1181,7 +1164,7 @@ static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
       Self->Flags &= ~RNF_VISIBLE; // Important to switch off visibliity before Hide(), otherwise a false redraw will occur.
       UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
 
-      if (acHideID(Self->DisplayID) != ERR_Okay) return ERR_Failed;
+      if (acHide(Self->DisplayID) != ERR_Okay) return ERR_Failed;
    }
    else {
       // Mark this surface object as invisible, then invalidate the region it was covering in order to have the background redrawn.
@@ -1576,7 +1559,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
             // For hosted environments, record the window handle (NB: this is doubling up the display handle, we should
             // just make the window handle a virtual field so that we don't need a permanent record of it).
 
-            GetPointer(display, FID_WindowHandle, &Self->DisplayWindow);
+            display->getPtr(FID_WindowHandle, &Self->DisplayWindow);
 
             #ifdef _WIN32
                winSetSurfaceID(Self->DisplayWindow, Self->UID);
@@ -1739,22 +1722,11 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    // format on login.
 
    if ((!Self->ParentID) and (!StrMatch("SystemSurface", GetName(Self)))) {
-      FUNCTION call;
-
-      SET_FUNCTION_STDC(call, (APTR)event_task_removed);
+      auto call = make_function_stdc(event_task_removed);
       SubscribeEvent(EVID_SYSTEM_TASK_REMOVED, &call, &Self->UID, &Self->TaskRemovedHandle);
 
-      SET_FUNCTION_STDC(call, (APTR)event_user_login);
+      call = make_function_stdc(event_user_login);
       SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, &Self->UID, &Self->UserLoginHandle);
-   }
-
-   if (!Self->ProgramID) Self->ProgramID = Self->ownerTask();
-   else if (Self->ProgramID != Self->ownerTask()) {
-      OBJECTPTR task;
-      if (!AccessObject(Self->ProgramID, 4000, &task)) {
-         SubscribeActionTags(task, AC_Free, TAGEND);
-         ReleaseObject(task);
-      }
    }
 
    return ERR_Okay;
@@ -1960,7 +1932,7 @@ static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
    parasol::Log log;
 
    if (!Self->ParentID) {
-      acMoveToBackID(Self->DisplayID);
+      acMoveToBack(Self->DisplayID);
       return ERR_Okay|ERF_Notified;
    }
 
@@ -2037,7 +2009,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
    log.branch("%s", GetName(Self));
 
    if (!Self->ParentID) {
-      acMoveToFrontID(Self->DisplayID);
+      acMoveToFront(Self->DisplayID);
       return ERR_Okay|ERF_Notified;
    }
 
@@ -2083,7 +2055,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
             if (list[i].Level IS level) {
                if (list[i].SurfaceID != Self->PopOverID) {
                   gfxReleaseList(ARF_WRITE);
-                  acMoveToFrontID(Self->PopOverID);
+                  acMoveToFront(Self->PopOverID);
                   return ERR_Okay|ERF_Notified;
                }
                break;
@@ -2143,7 +2115,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
       for (LONG i=index-1; i > 0; i--) {
          if (cplist[i].Level IS level) {
             if (cplist[i].SurfaceID != Self->PopOverID) {
-               acMoveToFrontID(Self->PopOverID);
+               acMoveToFront(Self->PopOverID);
                return ERR_Okay;
             }
             break;
@@ -2208,7 +2180,6 @@ static ERROR SURFACE_NewObject(extSurface *Self, APTR Void)
    Self->MinHeight   = 1;
    Self->Opacity  = 255;
    Self->RootID   = Self->UID;
-   Self->ProgramID   = Self->ownerTask();
    Self->WindowType  = glpWindowType;
    return ERR_Okay;
 }
@@ -2443,9 +2414,8 @@ static ERROR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
       return ERR_Okay;
    }
 
-   FUNCTION callback;
-   SET_FUNCTION_STDC(callback, (APTR)&redraw_timer);
-   if (!SubscribeTimer(1.0/FPS, &callback, &Self->RedrawTimer)) {
+   auto call = make_function_stdc(redraw_timer);
+   if (!SubscribeTimer(1.0/FPS, &call, &Self->RedrawTimer)) {
       Self->RedrawCountdown = FPS * 30;
       Self->RedrawScheduled = TRUE;
       return ERR_Okay;
@@ -2522,7 +2492,7 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
                      bitmapid = list[j].BitmapID;
 
                      extBitmap *picbmp;
-                     GetPointer(picture, FID_Bitmap, &picbmp);
+                     picture->getPtr(FID_Bitmap, &picbmp);
                      gfxCopySurface(list[j].SurfaceID, picbmp, NULL, 0, 0, list[j].Width, list[j].Height,
                         list[j].Left - list[i].Left, list[j].Top - list[i].Top);
                   }
@@ -2693,9 +2663,9 @@ static ERROR SURFACE_Show(extSurface *Self, APTR Void)
    else notified = 0;
 
    if (!Self->ParentID) {
-      if (!acShowID(Self->DisplayID)) {
+      if (!acShow(Self->DisplayID)) {
          Self->Flags |= RNF_VISIBLE;
-         if (Self->Flags & RNF_HAS_FOCUS) acFocusID(Self->DisplayID);
+         if (Self->Flags & RNF_HAS_FOCUS) acFocus(Self->DisplayID);
       }
       else return log.warning(ERR_Failed);
    }
@@ -2850,7 +2820,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
             // Move the dragging surface to the new location
 
             if ((Self->DragID) and (Self->DragID != Self->UID)) {
-               acMoveID(Self->DragID, xchange, ychange, 0);
+               acMove(Self->DragID, xchange, ychange, 0);
             }
             else {
                LONG sticky = Self->Flags & RNF_STICKY;
@@ -2968,7 +2938,6 @@ static const FieldArray clSurfaceFields[] = {
    { "Width",        FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Width,  (APTR)SET_Width },
    { "Height",       FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, 0, (APTR)GET_Height, (APTR)SET_Height },
    { "RootLayer",    FDF_OBJECTID|FDF_RW,   0, NULL, (APTR)SET_RootLayer },
-   { "Program",      FDF_SYSTEM|FDF_LONG|FDF_RI, 0, NULL, NULL },
    { "Align",        FDF_LONGFLAGS|FDF_RW,  (MAXINT)&clSurfaceAlign, NULL, NULL },
    { "Dimensions",   FDF_LONG|FDF_RW,       (MAXINT)&clSurfaceDimensions, NULL, (APTR)SET_Dimensions },
    { "DragStatus",   FDF_LONG|FDF_LOOKUP|FDF_R,  (MAXINT)&clSurfaceDragStatus, NULL, NULL },

@@ -752,8 +752,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
          glSharedControl->InstanceMsgPort = glTaskMessageMID;
 
-         FUNCTION call;
-         SET_FUNCTION_STDC(call, (APTR)&process_janitor);
+         auto call = make_function_stdc(process_janitor);
          SubscribeTimer(60, &call, &glProcessJanitor);
       }
       else {
@@ -1310,6 +1309,7 @@ static ERROR init_shared_control(void)
 -FUNCTION-
 PrintDiagnosis: Prints program state information to stdout.
 Category: Logging
+Status: private
 
 An analysis of any task's current state can be printed to stdout by calling this function.  This information is useful
 solely for the purpose of debugging, particularly in difficult situations where reviewing the current context and
@@ -1872,7 +1872,7 @@ static ERROR load_modules(void)
    }
    else if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, glModuleBinPath, FID_Flags|TLONG, FL_READ, TAGEND)) {
       LONG size;
-      if (!(error = GetLong(file, FID_Size, &size))) {
+      if (!(error = file->get(FID_Size, &size))) {
          if (!(error = AllocMemory(size, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID))) {
             error = acRead(file, glModules, size, NULL);
          }

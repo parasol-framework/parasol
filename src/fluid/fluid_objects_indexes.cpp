@@ -191,7 +191,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
    OBJECTPTR obj;
    if (!(obj = access_object(object))) return log.warning(ERR_AccessObject);
 
-   OBJECTPTR src;
+   OBJECTPTR target;
    Field *field;
    ERROR error = ERR_Okay;
    if (FName[0] IS '$') {
@@ -203,18 +203,18 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       // by using an uppercase 'ID'.
       lua_pushnumber(Lua, obj->UID);
    }
-   else if ((field = FindField(obj, StrHash(FName, FALSE), &src))) {
+   else if ((field = FindField(obj, StrHash(FName, FALSE), &target))) {
       if (field->Flags & FD_ARRAY) {
          if (field->Flags & FD_RGB) {
             STRING rgb;
-            if ((!(error = GetString(src, field->FieldID, &rgb))) and (rgb)) {
+            if ((!(error = target->get(field->FieldID, &rgb))) and (rgb)) {
                lua_pushstring(Lua, rgb);
             }
          }
          else {
             LONG total;
             APTR list;
-            if (!(error = GetFieldArray(src, field->FieldID, &list, &total))) {
+            if (!(error = GetFieldArray(target, field->FieldID, &list, &total))) {
                if (total <= 0) {
                   lua_pushnil(Lua);
                }
@@ -234,7 +234,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       else if (field->Flags & FD_STRUCT) { // Structs are copied into standard Lua tables.
          APTR result;
          if (field->Arg) {
-            if (!(error = GetPointer(src, field->FieldID, &result))) {
+            if (!(error = target->getPtr(field->FieldID, &result))) {
                if (result) {
                   if (field->Flags & FD_RESOURCE) {
                       push_struct(Lua->Script, result, (CSTRING)field->Arg, (field->Flags & FD_ALLOC) ? TRUE : FALSE, TRUE);
@@ -245,45 +245,45 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
             }
          }
          else {
-            log.warning("No struct name reference for field %s in class %s.", field->Name, src->Class->ClassName);
+            log.warning("No struct name reference for field %s in class %s.", field->Name, target->Class->ClassName);
             error = ERR_Failed;
          }
       }
       else if (field->Flags & FD_STRING) {
          STRING result;
-         if (!(error = GetString(src, field->FieldID, &result))) lua_pushstring(Lua, result);
+         if (!(error = target->get(field->FieldID, &result))) lua_pushstring(Lua, result);
       }
       else if (field->Flags & FD_POINTER) {
          if (field->Flags & (FD_OBJECT|FD_INTEGRAL)) {
             OBJECTPTR obj;
-            if (!(error = GetPointer(src, field->FieldID, &obj))) {
+            if (!(error = target->getPtr(field->FieldID, &obj))) {
                if (obj) push_object(Lua, obj);
                else lua_pushnil(Lua);
             }
          }
          else {
             APTR result;
-            if (!(error = GetPointer(src, field->FieldID, &result))) lua_pushlightuserdata(Lua, result);
+            if (!(error = target->getPtr(field->FieldID, &result))) lua_pushlightuserdata(Lua, result);
          }
       }
       else if (field->Flags & FD_DOUBLE) {
          DOUBLE result;
-         if (!(error = GetDouble(src, field->FieldID, &result))) lua_pushnumber(Lua, result);
+         if (!(error = target->get(field->FieldID, &result))) lua_pushnumber(Lua, result);
       }
       else if (field->Flags & FD_LARGE) {
          LARGE result;
-         if (!(error = GetLarge(src, field->FieldID, &result))) lua_pushnumber(Lua, result);
+         if (!(error = target->get(field->FieldID, &result))) lua_pushnumber(Lua, result);
       }
       else if (field->Flags & FD_LONG) {
          if (field->Flags & FD_UNSIGNED) {
             ULONG result;
-            if (!(error = GetLong(src, field->FieldID, (LONG *)&result))) {
+            if (!(error = target->get(field->FieldID, (LONG *)&result))) {
                lua_pushnumber(Lua, result);
             }
          }
          else {
             LONG result;
-            if (!(error = GetLong(src, field->FieldID, &result))) {
+            if (!(error = target->get(field->FieldID, &result))) {
                if (field->Flags & FD_OBJECT) push_object_id(Lua, result);
                else lua_pushinteger(Lua, result);
             }
@@ -308,34 +308,22 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
 }
 
 //****************************************************************************
-// Note that SetFieldEval() will translate object references and computations in the string.
-// Prefixing the field name with '_' forces the field to be set as a custom variable.
 
 static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG ValueIndex)
 {
    parasol::Log log("obj.setfield");
 
-   if (FName[0] IS '_') {
-      char bufname[80];
-      WORD i;
-      bufname[0] = '@';
-      for (i=1; ((size_t)i < sizeof(bufname)) and (FName[i]); i++) bufname[i] = FName[i];
-      bufname[i] = 0;
-      return SetFieldEval(obj, bufname, lua_tostring(Lua, ValueIndex));
-   }
-
    LONG type = lua_type(Lua, ValueIndex);
 
-   OBJECTPTR src;
-   Field *field;
-   if ((field = FindField(obj, StrHash(FName, FALSE), &src))) {
-      log.traceBranch("Field: %s, Flags: $%.8x, (type: %s)", FName, field->Flags, lua_typename(Lua, type));
+   OBJECTPTR target;
+   if (auto field = FindField(obj, StrHash(FName, FALSE), &target)) {
+      log.traceBranch("Field: %s, Flags: $%.8x, (set value: %s)", FName, field->Flags, lua_typename(Lua, type));
 
       if (field->Flags & FD_ARRAY) {
          struct array *farray;
 
          if (type IS LUA_TSTRING) { // Treat the source as a CSV field
-            return SetFieldEval(src, FName, lua_tostring(Lua, ValueIndex));
+            return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
          }
          else if (type IS LUA_TTABLE) {
             lua_settop(Lua, ValueIndex);
@@ -352,7 +340,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                         values[index] = lua_tointeger(Lua, -1);
                      }
                   }
-                  return SetArray(src, field->FieldID|TLONG, values, total);
+                  return SetArray(target, field->FieldID|TLONG, values, total);
                }
                else if (field->Flags & FD_STRING) {
                   CSTRING values[total];
@@ -363,7 +351,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                         values[index] = lua_tostring(Lua, -1);
                      }
                   }
-                  return SetArray(src, field->FieldID|TSTR, values, total);
+                  return SetArray(target, field->FieldID|TSTR, values, total);
                }
                else if (field->Flags & FD_STRUCT) {
                   // Array structs can be set if the Lua table consists of Fluid.struct types.
@@ -381,7 +369,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                            LONG type = lua_type(Lua, -1);
                            if (type IS LUA_TTABLE) {
                               lua_pop(Lua, 2);
-                              return ERR_FieldTypeMismatch;
+                              return ERR_SetValueNotArray;
                            }
                            else if (type IS LUA_TUSERDATA) {
                               struct fstruct *fstruct;
@@ -391,38 +379,36 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                            }
                            else {
                               lua_pop(Lua, 2);
-                              return ERR_FieldTypeMismatch;
+                              return ERR_SetValueNotArray;
                            }
                         }
                      }
 
-                     return SetArray(src, field->FieldID, structbuf, total);
+                     return SetArray(target, field->FieldID, structbuf, total);
                   }
-                  else return ERR_FieldTypeMismatch;
+                  else return ERR_SetValueNotArray;
                }
-               else return ERR_FieldTypeMismatch;
+               else return ERR_SetValueNotArray;
             }
             else return ERR_BufferOverflow;
          }
          else if ((farray = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array"))) {
-            return SetArray(src, ((LARGE)field->FieldID)|((LARGE)farray->Type<<32), farray->ptrPointer, farray->Total);
+            return SetArray(target, ((LARGE)field->FieldID)|((LARGE)farray->Type<<32), farray->ptrPointer, farray->Total);
          }
-         else return ERR_FieldTypeMismatch;
+         else return ERR_SetValueNotArray;
       }
       else if (field->Flags & FD_FUNCTION) {
          if (type IS LUA_TSTRING) {
-            FUNCTION func;
             lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
-            SET_FUNCTION_SCRIPT(func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-            return src->set(field->FieldID, &func);
+            auto func = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            return target->set(field->FieldID, &func);
          }
          else if (type IS LUA_TFUNCTION) {
-            FUNCTION func;
             lua_pushvalue(Lua, ValueIndex);
-            SET_FUNCTION_SCRIPT(func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
-            return src->set(field->FieldID, &func);
+            auto func = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+            return target->set(field->FieldID, &func);
          }
-         else return ERR_FieldTypeMismatch;
+         else return ERR_SetValueNotFunction;
       }
       else if (field->Flags & FD_POINTER) {
          struct memory *memory;
@@ -433,19 +419,19 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
             if ((object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj"))) {
                OBJECTPTR ptr_obj;
                if (object->prvObject) {
-                  return src->set(field->FieldID, object->prvObject);
+                  return target->set(field->FieldID, object->prvObject);
                }
                else if ((ptr_obj = (OBJECTPTR)access_object(object))) {
-                  ERROR error = src->set(field->FieldID, object->prvObject);
+                  ERROR error = target->set(field->FieldID, object->prvObject);
                   release_object(object);
                   return error;
                }
                else return ERR_Failed;
             }
-            else return src->set(field->FieldID, (APTR)NULL);
+            else return target->set(field->FieldID, (APTR)NULL);
          }
          else if (type IS LUA_TSTRING) {
-            return src->set(field->FieldID, lua_tostring(Lua, ValueIndex));
+            return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
          }
          else if (type IS LUA_TNUMBER) {
             if (field->Flags & FD_STRING) {
@@ -455,7 +441,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                // Setting pointer fields with numbers is only allowed if that number evaluates to zero (NULL)
                return obj->set(field->FieldID, (APTR)NULL);
             }
-            else return ERR_FieldTypeMismatch;
+            else return ERR_SetValueNotPointer;
          }
          else if ((memory = (struct memory *)get_meta(Lua, ValueIndex, "Fluid.mem"))) {
             return obj->set(field->FieldID, memory->Memory);
@@ -466,44 +452,82 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
          else if (type IS LUA_TNIL) {
             return obj->set(field->FieldID, (APTR)NULL);
          }
-         else return ERR_FieldTypeMismatch;
+         else return ERR_SetValueNotPointer;
       }
-      else switch(type) {
-         case LUA_TNUMBER:
-            return src->set(field->FieldID, lua_tonumber(Lua, ValueIndex));
+      else if (field->Flags & (FD_DOUBLE|FD_FLOAT)) {
+         switch(type) {
+            case LUA_TNUMBER:
+               return target->set(field->FieldID, lua_tonumber(Lua, ValueIndex));
 
-         case LUA_TBOOLEAN:
-            return src->set(field->FieldID, lua_toboolean(Lua, ValueIndex));
+            case LUA_TSTRING: // Allow internal string parsing to do its thing - important if the field is variable
+               return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
 
-         case LUA_TNIL: // Setting a field with nil does nothing.  Use zero to be explicit.
-            return ERR_Okay;
+            case LUA_TNIL: // Setting a numeric with nil does nothing.  Use zero to be explicit.
+               return ERR_Okay;
 
-         case LUA_TUSERDATA: {
-            struct object *object;
-            if ((object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj"))) {
-               return src->set(field->FieldID, object->ObjectID);
-            }
-            return ERR_FieldTypeMismatch;
+            default:
+               return ERR_SetValueNotNumeric;
          }
-
-         case LUA_TSTRING:
-            return SetFieldEval(obj, FName, lua_tostring(Lua, ValueIndex));
-
-         case LUA_TTABLE:
-         case LUA_TLIGHTUSERDATA:
-         case LUA_TFUNCTION:
-         case LUA_TTHREAD:
-         default:
-            return ERR_FieldTypeMismatch;
       }
-   }
-   else {
-      // Default to setting a custom variable rather than throwing an error - primarily for legacy reasons.
-      CSTRING vstr = lua_tostring(Lua, ValueIndex);
-      if (vstr) {
-         log.msg("Field '%s' is not in class '%s' - defaulting to custom variable. [DEPRECATED]", FName, src->Class->ClassName);
-         return SetFieldEval(obj, FName, vstr);
+      else if (field->Flags & (FD_FLAGS|FD_LOOKUP)) {
+         switch(type) {
+            case LUA_TNUMBER:
+               return target->set(field->FieldID, lua_tonumber(Lua, ValueIndex));
+
+            case LUA_TSTRING:
+               return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
+
+            default:
+               return ERR_SetValueNotLookup;
+         }
+      }
+      else if (field->Flags & FD_OBJECT) { // Object ID
+         switch(type) {
+            case LUA_TNUMBER:
+               return target->set(field->FieldID, lua_tonumber(Lua, ValueIndex));
+
+            case LUA_TUSERDATA: {
+               if (auto object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
+                  return target->set(field->FieldID, object->ObjectID);
+               }
+               return ERR_SetValueNotObject;
+            }
+
+            case LUA_TSTRING: {
+               OBJECTID array[8];
+               LONG count = ARRAYSIZE(array);
+               if (!FindObject(lua_tostring(Lua, ValueIndex), 0, FOF_INCLUDE_SHARED, array, &count)) {
+                  target->set(field->FieldID, array[count-1]);
+               }
+               else {
+                  log.warning("Object \"%s\" could not be found.", lua_tostring(Lua, ValueIndex));
+                  return ERR_Search;
+               }
+            }
+
+            case LUA_TNIL:
+               return obj->set(field->FieldID, 0);
+
+            default:
+               return ERR_SetValueNotObject;
+         }
+      }
+      else if (field->Flags & (FD_LONG|FD_LARGE)) {
+         switch(type) {
+            case LUA_TNUMBER:
+               return target->set(field->FieldID, lua_tonumber(Lua, ValueIndex));
+
+            case LUA_TSTRING: // Allow internal string parsing to do its thing - important if the field is variable
+               return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
+
+            case LUA_TNIL: // Setting a numeric with nil does nothing.  Use zero to be explicit.
+               return ERR_Okay;
+
+            default:
+               return ERR_SetValueNotNumeric;
+         }
       }
       else return ERR_UnsupportedField;
    }
+   else return ERR_UnsupportedField;
 }

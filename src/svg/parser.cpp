@@ -1391,7 +1391,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
          TAGEND);
 
       objVectorViewport *viewport;
-      GetPointer(pattern, FID_Viewport, &viewport);
+      pattern->getPtr(FID_Viewport, &viewport);
 
       bool client_set_viewbox = false;
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -1605,7 +1605,7 @@ static ERROR xtag_default(extSVG *Self, objXML *XML, svgState *State, const XMLT
                char buffer[8192];
                STRING str;
                LONG ws = 0;
-               if ((!GetString(Vector[0], FID_String, &str)) and (str)) {
+               if ((!Vector[0]->get(FID_String, &str)) and (str)) {
                   ws = StrCopy(str, buffer, sizeof(buffer));
                }
 
@@ -2810,7 +2810,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
             case SVF_X2: {
                DOUBLE x;
                field_id = FID_Width;
-               GetDouble(Vector, FID_X, &x);
+               Vector->get(FID_X, &x);
                num = read_unit(StrValue, &field_id);
                Vector->set(field_id, std::abs(num - x));
                return ERR_Okay;
@@ -2819,7 +2819,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
             case SVF_Y2: {
                DOUBLE y;
                field_id = FID_Height;
-               GetDouble(Vector, FID_Y, &y);
+               Vector->get(FID_Y, &y);
                num = read_unit(StrValue, &field_id);
                Vector->set(field_id, std::abs(num - y));
                return ERR_Okay;

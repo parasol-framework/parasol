@@ -325,67 +325,62 @@ gui.scrollbar = function(Options)
 
    -- Main entry point
 
-   catch(function()
-      if (not lTarget) then error('A target viewport is required.') end
-      if (not lPage) then error('A page setting is required.') end
-      if (not lView) then error('A view setting is required.') end
-      if (lView.id == lTarget.id) then error('The view and target cannot be the same.') end
-      if (lPage.parent.id != lView.id) then error('The page is not a child of the view.') end
-      if (lView.overflow != VOF_HIDDEN) then error('The overflow setting for the view must be HIDDEN.') end
+   if (not lTarget) then error('A target viewport is required.') end
+   if (not lPage) then error('A page setting is required.') end
+   if (not lView) then error('A view setting is required.') end
+   if (lView.id == lTarget.id) then error('The view and target cannot be the same.') end
+   if (lPage.parent.id != lView.id) then error('The page is not a child of the view.') end
+   if (lView.overflow != VOF_HIDDEN) then error('The overflow setting for the view must be HIDDEN.') end
 
-      if (Options.direction == 'all') then Options.direction = nil end
+   if (Options.direction == 'all') then Options.direction = nil end
 
-      if (Options.direction == 'vertical') or (Options.direction == nil) then
-         lVBar = createScrollbar('V')
+   if (Options.direction == 'vertical') or (Options.direction == nil) then
+      lVBar = createScrollbar('V')
+   end
+
+   if (Options.direction == 'horizontal') or (Options.direction == nil) then
+      lHBar = createScrollbar('H')
+   end
+
+   -- The slider and possibly the page need to be repositioned whenever the view is resized.
+
+   lView.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+      local px = lPage.x
+      local py = lPage.y
+      local pw = lPage.width
+
+      if (lPageMode == 'dynamic') then
+         local nw = lMinWidth
+         if (nw < lView.width) then -- Maximise page width in dynamic mode
+            if (px != 0) then
+               px = 0
+               lPage.x = 0
+            end
+            nw = lView.width
+         end
+         if (pw != nw) then
+            lPage.width = nw
+            pw = nw
+         end
       end
 
-      if (Options.direction == 'horizontal') or (Options.direction == nil) then
-         lHBar = createScrollbar('H')
+      if (px + pw < lView.width) then
+         local x = lView.width - pw
+         if (x > 0) then x = 0 end
+         if (px != x) then lPage.x = x end
       end
 
-      -- The slider and possibly the page need to be repositioned whenever the view is resized.
+      if (py + lPage.height < lView.height) then
+         local y = lView.height - lPage.height
+         if (y > 0) then y = 0 end
+         if (py != y) then lPage.y = y end
+      end
 
-      lView.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
-         local px = lPage.x
-         local py = lPage.y
-         local pw = lPage.width
+      recalcSlidersFromView()
+   end)
 
-         if (lPageMode == 'dynamic') then
-            local nw = lMinWidth
-            if (nw < lView.width) then -- Maximise page width in dynamic mode
-               if (px != 0) then
-                  px = 0
-                  lPage.x = 0
-               end
-               nw = lView.width
-            end
-            if (pw != nw) then
-               lPage.width = nw
-               pw = nw
-            end
-         end
-
-         if (px + pw < lView.width) then
-            local x = lView.width - pw
-            if (x > 0) then x = 0 end
-            if (px != x) then lPage.x = x end
-         end
-
-         if (py + lPage.height < lView.height) then
-            local y = lView.height - lPage.height
-            if (y > 0) then y = 0 end
-            if (py != y) then lPage.y = y end
-         end
-
-         recalcSlidersFromView()
-      end)
-
-      lPage.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
-         recalcSlidersFromView()
-      end)
-   end,
-   function(Exception)
-      error('Failed to initialise Scrollbar: ' .. Exception.message)
+   lPage.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+      recalcSlidersFromView()
    end)
 
    return self

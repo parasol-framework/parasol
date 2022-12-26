@@ -516,7 +516,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                if (!error) {
                   Self->Index = 0;
                   if (!Self->Size) {
-                     GetLarge(Self->flInput, FID_Size, &Self->ContentLength); // Use the file's size as ContentLength
+                     Self->flInput->get(FID_Size, &Self->ContentLength); // Use the file's size as ContentLength
                      if (!Self->ContentLength) { // If the file is empty or size is indeterminate then assume nothing is being posted
                         SET_ERROR(Self, ERR_NoData);
                         return Self->Error;
@@ -534,7 +534,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                   OBJECTPTR input;
                   if (!AccessObject(Self->InputObjectID, 3000, &input)) {
                      LARGE len;
-                     if (!GetLarge(input, FID_Size, &len)) Self->ContentLength = len;
+                     if (!input->get(FID_Size, &len)) Self->ContentLength = len;
                      ReleaseObject(input);
                   }
                }
@@ -592,7 +592,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             UBYTE nonce_count[9] = "00000001";
             HASHHEX HA1, HA2 = "", response;
 
-            for (i=0; i < 8; i++) Self->AuthCNonce[i] = '0' + RandomNumber(10);
+            for (i=0; i < 8; i++) Self->AuthCNonce[i] = '0' + (rand() % 10);
             Self->AuthCNonce[i] = 0;
 
             digest_calc_ha1(Self, HA1);
@@ -686,13 +686,12 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    if (!write_socket(Self, cmd, len, NULL)) {
       if (Self->Socket->State IS NTC_DISCONNECTED) {
          if ((result = nsConnect(Self->Socket, Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port)) IS ERR_Okay) {
-            Self->Connecting = TRUE;
+            Self->Connecting = true;
 
             if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
             else {
-               FUNCTION callback;
-               SET_FUNCTION_STDC(callback, (APTR)&timeout_manager);
-               SubscribeTimer(Self->ConnectTimeout, &callback, &Self->TimeoutManager);
+               auto call = make_function_stdc(timeout_manager);
+               SubscribeTimer(Self->ConnectTimeout, &call, &Self->TimeoutManager);
             }
 
             return ERR_Okay;

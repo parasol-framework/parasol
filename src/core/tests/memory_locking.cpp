@@ -98,7 +98,7 @@ static void * test_allocation(struct thread_info *info)
    start = 0;
    for (i=0; i < TOTAL_ALLOC; i++) {
       AllocMemory(1024, MEM_DATA|MEM_NO_CLEAR, &memory[i], NULL);
-      if (RandomNumber(10) > 7) {
+      if (rand() % 10 > 7) {
          for (j=start; j < i; j++) {
             FreeResource(memory[j]);
          }
@@ -123,7 +123,7 @@ void program(void)
    StringsBase = GetResourcePtr(RES_STRINGS);
    FileSystemBase = GetResourcePtr(RES_FILESYSTEM);
 
-   if ((GetPointer(CurrentTask(), FID_Parameters, &args) IS ERR_Okay) and (args)) {
+   if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR_Okay) and (args)) {
       for (i=0; args[i]; i++) {
          if (!StrMatch(args[i], "-threads")) {
             if (args[++i]) glTotalThreads = StrToInt(args[i]);

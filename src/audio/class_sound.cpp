@@ -175,9 +175,8 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       //
       // We also need the subscription to fulfil the Deactivate contract.
 
-      FUNCTION callback;
-      SET_FUNCTION_STDC(callback, (APTR)&playback_timer);
-      SubscribeTimer(0.25, &callback, &Self->Timer);
+      auto call = make_function_stdc(playback_timer);
+      SubscribeTimer(0.25, &call, &Self->Timer);
 
       // Play the audio buffer
 
@@ -254,9 +253,8 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             //
             // We also need the subscription to fulfil the Deactivate contract.
 
-            FUNCTION callback;
-            SET_FUNCTION_STDC(callback, (APTR)&playback_timer);
-            SubscribeTimer(0.25, NULL, &Self->Timer);
+            auto call = make_function_stdc(playback_timer);
+            SubscribeTimer(0.25, &call, &Self->Timer);
             return ERR_Okay;
          }
          else return log.warning(ERR_Failed);
@@ -410,7 +408,7 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    if (Self->prvDisclaimer)  { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
    if (Self->prvWAVE)        { FreeResource(Self->prvWAVE); Self->prvWAVE = NULL; }
    if (Self->File)           { acFree(Self->File); Self->File = NULL; }
-   if (Self->StreamFileID)   { acFreeID(Self->StreamFileID); Self->StreamFileID = 0; }
+   if (Self->StreamFileID)   { acFree(Self->StreamFileID); Self->StreamFileID = 0; }
 
    return ERR_Okay;
 }
@@ -504,7 +502,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       return ERR_Failed;
    }
 
-   if ((Self->Flags & SDF_NEW) or (GetString(Self, FID_Path, &path) != ERR_Okay) or (!path)) {
+   if ((Self->Flags & SDF_NEW) or (Self->get(FID_Path, &path) != ERR_Okay) or (!path)) {
       // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to record
       // audio to disk).
 
@@ -573,7 +571,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Setup the sound structure
 
-   GetLong(Self->File, FID_Position, &Self->prvDataOffset);
+   Self->File->get(FID_Position, &Self->prvDataOffset);
 
    Self->prvFormat      = Self->prvWAVE->Format;
    Self->BytesPerSecond = Self->prvWAVE->AvgBytesPerSecond;
@@ -679,7 +677,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    }
 
    STRING path = NULL;
-   GetString(Self, FID_Path, &path);
+   Self->get(FID_Path, &path);
 
    // Set the initial sound title
 
@@ -814,7 +812,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       // Look for the cue chunk for loop information
 
-      GetLong(Self->File, FID_Position, &pos);
+      Self->File->get(FID_Position, &pos);
 #if 0
       if (find_chunk(Self, Self->File, "cue ") IS ERR_Okay) {
          data_p += 32;
@@ -842,7 +840,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       Self->Length = read_long(Self->File); // Length of audio data in this chunk
 
-      GetLong(Self->File, FID_Position, &Self->prvDataOffset);
+      Self->File->get(FID_Position, &Self->prvDataOffset);
 
       Self->prvFormat      = Self->prvWAVE->Format;
       Self->BytesPerSecond = Self->prvWAVE->AvgBytesPerSecond;
@@ -1071,7 +1069,7 @@ static ERROR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
       auto mclass = (objMetaClass *)FindClass(Args->ClassID);
 
       ERROR (**routine)(OBJECTPTR, APTR);
-      if ((!GetPointer(mclass, FID_ActionTable, (APTR *)&routine)) and (routine)) {
+      if ((!mclass->getPtr(FID_ActionTable, (APTR *)&routine)) and (routine)) {
          if (routine[AC_SaveToObject]) {
             return routine[AC_SaveToObject](Self, Args);
          }
@@ -1748,7 +1746,7 @@ static ERROR playback_timer(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
    // We used delayed messages here because we don't want to disturb the System Audio object.
 
    if (!(Self->Flags & SDF_LOOP)) {
-      if ((!GetLong(Self, FID_Active, &active)) and (active IS FALSE)) {
+      if ((!Self->get(FID_Active, &active)) and (active IS FALSE)) {
          log.extmsg("Sound playback completed.");
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
          else DelayMsg(AC_Deactivate, Self->UID, NULL);

@@ -298,11 +298,11 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
                if (!AllocMemory(sizeof(FUNCTION), MEM_DATA, &func, NULL)) {
                   if (type IS LUA_TSTRING) {
                      lua_getglobal(Lua, lua_tostring(Lua, n));
-                     SET_FUNCTION_SCRIPT(*func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                     *func = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                   }
                   else {
                      lua_pushvalue(Lua, n);
-                     SET_FUNCTION_SCRIPT(*func, Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+                     *func = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                   }
 
                   ((FUNCTION **)(argbuffer + j))[0] = func;

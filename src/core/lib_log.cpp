@@ -653,7 +653,8 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 -FUNCTION-
 LogReturn: Revert to the previous branch in the application logging tree.
 
-Use LogReturn() to reverse any previous log message that created a new branch.  Consider the following example:
+Use LogReturn() to reverse any previous log message that created an indented branch.  Consider the following
+example that uses a tilde to create a new branch:
 
 <pre>
 LogF("~Hello:","World.");
@@ -670,7 +671,7 @@ Hello         World.
 Log           Back to normal.
 </pre>
 
-If the call to LogReturn() was eliminated, the log would be permanently out of step, as follows:
+If the code was missing the LogReturn() call, the log would be permanently out of step as follows:
 
 <pre>
 Hello         World.
@@ -678,9 +679,8 @@ Hello         World.
  Log          Back to normal.
 </pre>
 
-As demonstrated, the creation of any branch must be matched with a call to LogReturn() or the log tree will
-be meaningless.  Please ensure that when writing log code for complex functions, a call to LogReturn() is used at
-each exit point of the function.
+In C++ the scope-managed `parasol::Log` class should be used instead.  It automatically debranches the messaging chain
+when code goes out of scope.
 
 -END-
 

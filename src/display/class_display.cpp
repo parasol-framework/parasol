@@ -565,7 +565,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 
    // Free the display's bitmap buffer
 
-   if (Self->BufferID) { acFreeID(Self->BufferID); Self->BufferID = NULL; }
+   if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = NULL; }
 
    // Free the display's video bitmap
 
@@ -575,7 +575,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
          if (Self->BitmapID < 0) ReleaseObject(Self->Bitmap);
          Self->Bitmap = NULL;
       }
-      else acFreeID(Self->BitmapID);
+      else acFree(Self->BitmapID);
       Self->BitmapID = NULL;
    }
 
@@ -872,7 +872,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          bmp->set(FID_Handle, (APTR)Self->XWindowHandle);
 
          CSTRING name;
-         if ((!GetPointer(CurrentTask(), FID_Name, &name)) and (name)) {
+         if ((!CurrentTask()->getPtr(FID_Name, &name)) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
@@ -957,7 +957,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          }
 
          STRING name = NULL;
-         GetString(CurrentTask(), FID_Name, &name);
+         CurrentTask()->get(FID_Name, &name);
          HWND popover = 0;
          if (Self->PopOverID) {
             extDisplay *other_display;
@@ -1026,8 +1026,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
    CopyMemory(bmp->ColourFormat, &glColourFormat, sizeof(glColourFormat));
 
-   FUNCTION call;
-   SET_FUNCTION_STDC(call, (APTR)user_login);
+   auto call = make_function_stdc(user_login);
    SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, Self, &Self->UserLoginHandle);  // Get notifications of user login because changes may be required to the display.
 
    if (glSixBitDisplay) Self->Flags |= SCR_BIT_6;
@@ -1474,14 +1473,14 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
    OBJECTPTR config;
    if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/display.cfg", TAGEND)) {
       if (!(Self->Flags & SCR_BORDERLESS)) {
-         cfgWriteInt(config, "DISPLAY", "WindowX", Self->X);
-         cfgWriteInt(config, "DISPLAY", "WindowY", Self->Y);
+         cfgWrite(config, "DISPLAY", "WindowX", Self->X);
+         cfgWrite(config, "DISPLAY", "WindowY", Self->Y);
 
-         if (Self->Width >= 600) cfgWriteInt(config, "DISPLAY", "WindowWidth", Self->Width);
-         else cfgWriteInt(config, "DISPLAY", "WindowWidth", 600);
+         if (Self->Width >= 600) cfgWrite(config, "DISPLAY", "WindowWidth", Self->Width);
+         else cfgWrite(config, "DISPLAY", "WindowWidth", 600);
 
-         if (Self->Height >= 480) cfgWriteInt(config, "DISPLAY", "WindowHeight", Self->Height);
-         else cfgWriteInt(config, "DISPLAY", "WindowHeight", 480);
+         if (Self->Height >= 480) cfgWrite(config, "DISPLAY", "WindowHeight", Self->Height);
+         else cfgWrite(config, "DISPLAY", "WindowHeight", 480);
       }
 
       cfgWriteValue(config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
@@ -1501,11 +1500,11 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
          LONG x, y, width, height, maximise;
 
          if (winGetWindowInfo(Self->WindowHandle, &x, &y, &width, &height, &maximise)) {
-            cfgWriteInt(config, "DISPLAY", "WindowWidth", width);
-            cfgWriteInt(config, "DISPLAY", "WindowHeight", height);
-            cfgWriteInt(config, "DISPLAY", "WindowX", x);
-            cfgWriteInt(config, "DISPLAY", "WindowY", y);
-            cfgWriteInt(config, "DISPLAY", "Maximise", maximise);
+            cfgWrite(config, "DISPLAY", "WindowWidth", width);
+            cfgWrite(config, "DISPLAY", "WindowHeight", height);
+            cfgWrite(config, "DISPLAY", "WindowX", x);
+            cfgWrite(config, "DISPLAY", "WindowY", y);
+            cfgWrite(config, "DISPLAY", "Maximise", maximise);
             cfgWriteValue(config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
             cfgWriteValue(config, "DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? "1" : "0");
             acSaveSettings(config);
@@ -1941,12 +1940,12 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
 
    if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, FID_Path|TSTR, "config:hardware/monitor.cfg", TAGEND)) {
       cfgWriteValue(config, "MONITOR", "Name", Self->Display);
-      cfgWriteInt(config, "MONITOR", "MinH", Self->MinHScan);
-      cfgWriteInt(config, "MONITOR", "MaxH", Self->MaxHScan);
-      cfgWriteInt(config, "MONITOR", "MinV", Self->MinVScan);
-      cfgWriteInt(config, "MONITOR", "MaxV", Self->MaxVScan);
-      cfgWriteInt(config, "MONITOR", "AutoDetect", (Args->Flags & SMF_AUTODETECT) ? 1 : 0);
-      cfgWriteInt(config, "MONITOR", "6Bit", glSixBitDisplay);
+      cfgWrite(config, "MONITOR", "MinH", Self->MinHScan);
+      cfgWrite(config, "MONITOR", "MaxH", Self->MaxHScan);
+      cfgWrite(config, "MONITOR", "MinV", Self->MinVScan);
+      cfgWrite(config, "MONITOR", "MaxV", Self->MaxVScan);
+      cfgWrite(config, "MONITOR", "AutoDetect", (Args->Flags & SMF_AUTODETECT) ? 1 : 0);
+      cfgWrite(config, "MONITOR", "6Bit", glSixBitDisplay);
       acSaveSettings(config);
       acFree(config);
    }
@@ -2173,7 +2172,7 @@ static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Ar
    ydest += dest->YOffset;
 
    APTR drawable;
-   GetPointer(dest, FID_Handle, &drawable);
+   dest->getPtr(FID_Handle, &drawable);
 
    win32RedrawWindow(Self->WindowHandle, drawable,
       x, y,
@@ -2575,7 +2574,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
 
          bool maximise = TRUE;
          STRING title;
-         GetString(Self, FID_Title, &title); // Get the window title before we kill it
+         Self->get(FID_Title, &title); // Get the window title before we kill it
 
          OBJECTID surface_id = winLookupSurfaceID(Self->WindowHandle);
          winSetSurfaceID(Self->WindowHandle, 0); // Nullify the surface ID to prevent WM_DESTROY from being acted upon
@@ -2660,7 +2659,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
             return ERR_Failed;
          }
 
-         if ((GetPointer(CurrentTask(), FID_Name, &name) IS ERR_Okay) and (name)) {
+         if ((CurrentTask()->getPtr(FID_Name, &name) IS ERR_Okay) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
@@ -3175,7 +3174,7 @@ void alloc_display_buffer(extDisplay *Self)
 
    log.branch("Allocating a video based buffer bitmap.");
 
-   if (Self->BufferID) { acFreeID(Self->BufferID); Self->BufferID = 0; }
+   if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = 0; }
 
    objBitmap *buffer;
    ERROR error;

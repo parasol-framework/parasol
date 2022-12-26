@@ -71,7 +71,7 @@ static ERROR SET_Cursor(extSurface *Self, LONG Value)
       OBJECTID pointer_id;
       LONG count = 1;
       if (!FindObject("SystemPointer", ID_POINTER, FOF_INCLUDE_SHARED, &pointer_id, &count)) {
-         acRefreshID(pointer_id);
+         acRefresh(pointer_id);
       }
    }
    return ERR_Okay;
@@ -327,7 +327,7 @@ static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
       if (class_id != ID_SURFACE) {
          OBJECTPTR obj;
          if (!AccessObject(Value, 3000, &obj)) {
-            GetLong(obj, FID_Surface, &Value);
+            obj->get(FID_Surface, &Value);
             ReleaseObject(obj);
          }
          else return ERR_AccessObject;

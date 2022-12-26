@@ -746,7 +746,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
-   GetPointer(argModule, FID_Master, &glModule);
+   argModule->getPtr(FID_Master, &glModule);
 
    if (GetSystemState()->Stage < 0) { // An early load indicates that classes are being probed, so just return them.
       create_pointer_class();
@@ -899,7 +899,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          acSetVar(modXRR, "XDisplay", buffer);
          modXRR->set(FID_Name, "xrandr");
          if (!acInit(modXRR)) {
-            if (GetPointer(modXRR, FID_ModBase, &XRandRBase) != ERR_Okay) XRandRBase = NULL;
+            if (modXRR->getPtr(FID_ModBase, &XRandRBase) != ERR_Okay) XRandRBase = NULL;
          }
       }
       else XRandRBase = NULL;
@@ -1066,35 +1066,35 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 #else
    OBJECTPTR config;
    if (!CreateObject(ID_CONFIG, NULL, &config, FID_Path|TSTRING, "user:config/display.cfg", TAGEND)) {
-      cfgReadInt(config, "DISPLAY", "Maximise", &glpMaximise);
+      cfgRead(config, "DISPLAY", "Maximise", &glpMaximise);
 
       if ((glDisplayType IS DT_X11) or (glDisplayType IS DT_WINDOWS)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
-         if ((cfgReadInt(config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR_Okay) or (!glpDisplayWidth)) {
-            cfgReadInt(config, "DISPLAY", "Width", &glpDisplayWidth);
+         if ((cfgRead(config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR_Okay) or (!glpDisplayWidth)) {
+            cfgRead(config, "DISPLAY", "Width", &glpDisplayWidth);
          }
 
-         if ((cfgReadInt(config, "DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR_Okay) or (!glpDisplayHeight)) {
-            cfgReadInt(config, "DISPLAY", "Height", &glpDisplayHeight);
+         if ((cfgRead(config, "DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR_Okay) or (!glpDisplayHeight)) {
+            cfgRead(config, "DISPLAY", "Height", &glpDisplayHeight);
          }
 
-         cfgReadInt(config, "DISPLAY", "WindowX", &glpDisplayX);
-         cfgReadInt(config, "DISPLAY", "WindowY", &glpDisplayY);
-         cfgReadInt(config, "DISPLAY", "FullScreen", &glpFullScreen);
+         cfgRead(config, "DISPLAY", "WindowX", &glpDisplayX);
+         cfgRead(config, "DISPLAY", "WindowY", &glpDisplayY);
+         cfgRead(config, "DISPLAY", "FullScreen", &glpFullScreen);
       }
       else {
-         cfgReadInt(config, "DISPLAY", "Width", &glpDisplayWidth);
-         cfgReadInt(config, "DISPLAY", "Height", &glpDisplayHeight);
-         cfgReadInt(config, "DISPLAY", "XCoord", &glpDisplayX);
-         cfgReadInt(config, "DISPLAY", "YCoord", &glpDisplayY);
-         cfgReadInt(config, "DISPLAY", "Depth", &glpDisplayDepth);
+         cfgRead(config, "DISPLAY", "Width", &glpDisplayWidth);
+         cfgRead(config, "DISPLAY", "Height", &glpDisplayHeight);
+         cfgRead(config, "DISPLAY", "XCoord", &glpDisplayX);
+         cfgRead(config, "DISPLAY", "YCoord", &glpDisplayY);
+         cfgRead(config, "DISPLAY", "Depth", &glpDisplayDepth);
          log.msg("Using default display dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
       }
 
-      cfgReadFloat(config, "DISPLAY", "RefreshRate", &glpRefreshRate);
-      cfgReadFloat(config, "DISPLAY", "GammaRed", &glpGammaRed);
-      cfgReadFloat(config, "DISPLAY", "GammaGreen", &glpGammaGreen);
-      cfgReadFloat(config, "DISPLAY", "GammaBlue", &glpGammaBlue);
+      cfgRead(config, "DISPLAY", "RefreshRate", &glpRefreshRate);
+      cfgRead(config, "DISPLAY", "GammaRed", &glpGammaRed);
+      cfgRead(config, "DISPLAY", "GammaGreen", &glpGammaGreen);
+      cfgRead(config, "DISPLAY", "GammaBlue", &glpGammaBlue);
       CSTRING dpms;
       if (!cfgReadValue(config, "DISPLAY", "DPMS", &dpms)) {
          StrCopy(dpms, glpDPMS, sizeof(glpDPMS));

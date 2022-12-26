@@ -152,7 +152,7 @@ static ERROR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args
    OBJECTPTR surface;
 
    if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
-      GetPointer(surface, FID_WindowHandle, &xwin);
+      surface->getPtr(FID_WindowHandle, &xwin);
       ReleaseObject(surface);
 
       if (xwin) XGrabPointer(XDisplay, (Window)xwin, True, 0, GrabModeAsync, GrabModeAsync, (Window)xwin, None, CurrentTime);
@@ -352,21 +352,20 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
             Self->X, Self->Y, Self->OverX, Self->OverY);
       //}
 
-      FUNCTION callback;
-      SET_FUNCTION_STDC(callback, (APTR)&repeat_timer);
-      SubscribeTimer(0.02, &callback, &glRepeatTimer); // Use a timer subscription so that repeat button clicks can be supported (the interval indicates the rate of the repeat)
+      auto call = make_function_stdc(repeat_timer);
+      SubscribeTimer(0.02, &call, &glRepeatTimer); // Use a timer subscription so that repeat button clicks can be supported (the interval indicates the rate of the repeat)
    }
 
    if ((Self->DragSourceID) and (!Self->Buttons[bi].LastClicked)) {
       // Drag and drop has been released.  Inform the destination surface of the item's release.
 
       if (Self->DragSurface) {
-         acHideID(Self->DragSurface);
+         acHide(Self->DragSurface);
          Self->DragSurface = 0;
       }
 
       if (!modal_id) {
-         acDragDropID(Self->OverObjectID, Self->DragSourceID, Self->DragItem, Self->DragData);
+         acDragDrop(Self->OverObjectID, Self->DragSourceID, Self->DragItem, Self->DragData);
       }
 
       Self->DragItem = 0;
@@ -551,7 +550,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
                }
             }
 
-            acMoveToPointID(Self->DragSurface, sx, sy, 0, MTF_X|MTF_Y);
+            acMoveToPoint(Self->DragSurface, sx, sy, 0, MTF_X|MTF_Y);
          }
 
          LONG absx, absy;
@@ -619,7 +618,7 @@ static ERROR PTR_Free(extPointer *Self, APTR Void)
 {
    acHide(Self);
 
-   if (Self->BitmapID) { acFreeID(Self->BitmapID); Self->BitmapID = 0; }
+   if (Self->BitmapID) { acFree(Self->BitmapID); Self->BitmapID = 0; }
 
    if (Self->UserLoginHandle) {
       UnsubscribeEvent(Self->UserLoginHandle);
@@ -653,7 +652,7 @@ static ERROR PTR_Hide(extPointer *Self, APTR Void)
       OBJECTPTR surface;
 
       if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR_Okay) {
-         GetPointer(surface, FID_WindowHandle, &xwin);
+         surface->getPtr(FID_WindowHandle, &xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
       }
@@ -721,8 +720,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
    init_mouse_driver();
 #endif
 
-   FUNCTION call;
-   SET_FUNCTION_STDC(call, (APTR)ptr_user_login);
+   auto call = make_function_stdc(ptr_user_login);
    SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, Self, &Self->UserLoginHandle);
 
    // 2016-07: Commented out this feed subscription as it had no purpose in MS Windows and unlikely that it's used for
@@ -792,7 +790,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
    if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
       APTR xwin;
 
-      if (!GetPointer(surface, FID_WindowHandle, &xwin)) {
+      if (!surface->getPtr(FID_WindowHandle, &xwin)) {
          if (Args->Flags & MTF_X) Self->X = Args->X;
          if (Args->Flags & MTF_Y) Self->Y = Args->Y;
          if (Self->X < 0) Self->X = 0;
@@ -962,7 +960,7 @@ static ERROR PTR_Show(extPointer *Self, APTR Void)
       OBJECTPTR surface;
 
       if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
-         GetPointer(surface, FID_WindowHandle, &xwin);
+         surface->getPtr(FID_WindowHandle, &xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
       }
@@ -1251,11 +1249,11 @@ static void set_pointer_defaults(extPointer *Self)
    if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/pointer.cfg", TAGEND)) {
       DOUBLE dbl;
       CSTRING str;
-      if (!cfgReadFloat(config, "POINTER", "Speed", &dbl)) speed = dbl;
-      if (!cfgReadFloat(config, "POINTER", "Acceleration", &dbl)) acceleration = dbl;
-      if (!cfgReadFloat(config, "POINTER", "MaxSpeed", &dbl)) maxspeed = dbl;
-      if (!cfgReadFloat(config, "POINTER", "WheelSpeed", &dbl)) wheelspeed = dbl;
-      if (!cfgReadFloat(config, "POINTER", "DoubleClick", &dbl)) doubleclick = dbl;
+      if (!cfgRead(config, "POINTER", "Speed", &dbl)) speed = dbl;
+      if (!cfgRead(config, "POINTER", "Acceleration", &dbl)) acceleration = dbl;
+      if (!cfgRead(config, "POINTER", "MaxSpeed", &dbl)) maxspeed = dbl;
+      if (!cfgRead(config, "POINTER", "WheelSpeed", &dbl)) wheelspeed = dbl;
+      if (!cfgRead(config, "POINTER", "DoubleClick", &dbl)) doubleclick = dbl;
       if (!cfgReadValue(config, "POINTER", "ButtonOrder", &str)) buttonorder = str;
       acFree(config);
    }
