@@ -1390,55 +1390,6 @@ ERROR test_path(STRING Path, LONG Flags)
 /*****************************************************************************
 
 -FUNCTION-
-SaveImageToFile: Saves an object's image to a destination file.
-
-This function simplifies the process of saving object images to files.  You need to provide the object address and the
-destination file location for the data to be saved.  If the destination file exists, it will be overwritten.
-
-The object's class must support the #SaveToObject() action or this function will return ERR_NoSupport.
-Sub-classes are supported if the image needs to be saved as a specific type of file (for example, to save a picture
-object as a JPEG file, the Class must be set to ID_JPEG).
-
--INPUT-
-obj Object: Pointer to the object that contains the image to be saved.
-cstr Path: The destination file location.
-cid Class: The sub-class to use when saving the image (optional).
-int(PERMIT) Permissions: File permissions to use (optional).  If NULL, file is saved with user and group permissions of read/write.
-
--ERRORS-
-Okay: The volume was successfully added.
-Args: A valid Path argument was not provided.
-CreateFile: Failed to create the file at the indicated destination.
-NoSupport: The object does not support the SaveImage action.
--END-
-
-*****************************************************************************/
-
-ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Permissions)
-{
-   parasol::Log log(__FUNCTION__);
-   OBJECTPTR file;
-   ERROR error;
-
-   log.branch("Object: %d, Dest: %s", Object->UID, Path);
-
-   if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-         FID_Path|TSTR,         Path,
-         FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-         FID_Permissions|TLONG, Permissions,
-         TAGEND))) {
-
-      error = acSaveImage(Object, file->UID, ClassID);
-
-      acFree(file);
-      return error;
-   }
-   else return log.warning(ERR_CreateFile);
-}
-
-/*****************************************************************************
-
--FUNCTION-
 SaveObjectToFile: Saves an object to a destination file.
 
 This support function simplifies the process of saving objects to files.  A source Object must be provided and a
