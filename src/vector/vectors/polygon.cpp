@@ -394,7 +394,8 @@ static ERROR POLY_SET_X1(objVectorPoly *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -434,7 +435,8 @@ static ERROR POLY_SET_X2(objVectorPoly *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -474,7 +476,8 @@ static ERROR POLY_SET_Y1(objVectorPoly *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -514,7 +517,8 @@ static ERROR POLY_SET_Y2(objVectorPoly *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;

@@ -56,7 +56,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 OBJECTPTR SetContext(OBJECTPTR Object);
 ERROR SetField(OBJECTPTR Object, FIELD Field, ...);
 ERROR SetFields(OBJECTPTR Object, ...);
-ERROR SetFieldEval(OBJECTPTR Object, CSTRING Field, CSTRING Value);
+ERROR ScanDir(struct DirInfo * Info);
 ERROR SetName(OBJECTPTR Object, CSTRING Name);
 void LogReturn();
 ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags);
@@ -160,7 +160,6 @@ ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
 ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions);
 ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
-ERROR ScanDir(struct DirInfo * Info);
 
 #ifdef  __cplusplus
 }

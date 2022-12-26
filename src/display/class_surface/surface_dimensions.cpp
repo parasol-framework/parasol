@@ -309,7 +309,7 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
    else if (Value->Type & FD_LARGE)  value = Value->Large;
    else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
-   else return log.warning(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (value <= 0) {
       if (Self->initialised()) return ERR_InvalidDimension;
@@ -877,7 +877,7 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
    else if (Value->Type & FD_LARGE)  value = Value->Large;
    else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
-   else return log.warning(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (value <= 0) {
       if (Self->initialised()) return ERR_InvalidDimension;
@@ -962,7 +962,7 @@ static ERROR SET_XCoord(extSurface *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
    else if (Value->Type & FD_LARGE)  value = Value->Large;
    else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
-   else return log.warning(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X) | DMF_RELATIVE_X;
@@ -1057,7 +1057,7 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
    else if (Value->Type & FD_LARGE)  value = Value->Large;
    else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
-   else return log.warning(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (value < 0) value = -value;
 
@@ -1138,7 +1138,7 @@ static ERROR SET_YCoord(extSurface *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE)     value = Value->Double;
    else if (Value->Type & FD_LARGE) value = Value->Large;
    else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
-   else return log.warning(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y) | DMF_RELATIVE_Y;
@@ -1221,7 +1221,7 @@ static ERROR SET_YOffset(extSurface *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
    else if (Value->Type & FD_LARGE)  value = Value->Large;
    else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
-   else return log.warning(ERR_FieldTypeMismatch);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (value < 0) value = -value;
 

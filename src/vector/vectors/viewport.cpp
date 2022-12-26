@@ -434,7 +434,8 @@ static ERROR VIEW_SET_Height(extVectorViewport *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
@@ -673,7 +674,8 @@ static ERROR VIEW_SET_Width(extVectorViewport *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
@@ -735,7 +737,8 @@ static ERROR VIEW_SET_X(extVectorViewport *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
@@ -800,7 +803,8 @@ static ERROR VIEW_SET_XOffset(extVectorViewport *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
@@ -862,7 +866,8 @@ static ERROR VIEW_SET_Y(extVectorViewport *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
@@ -926,7 +931,8 @@ static ERROR VIEW_SET_YOffset(extVectorViewport *Self, Variable *Value)
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR_FieldTypeMismatch;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_PERCENTAGE) {
       Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);

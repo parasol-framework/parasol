@@ -814,6 +814,7 @@ static ERROR SET_Point(extFont *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) value = Value->Double;
    else if (Value->Type & FD_LARGE) value = Value->Large;
+   else if (Value->Type & FD_STRING) value = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR_FieldTypeMismatch;
 
    if (Value->Type & FD_PERCENTAGE) {

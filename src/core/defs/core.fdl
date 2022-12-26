@@ -996,7 +996,7 @@ struct ScriptArg { // For use with scExec
     "SetContext",
     "SetField",
     "SetFields",
-    "SetFieldEval",
+    "ScanDir",
     "SetName",
     "LogReturn",
     "StrCompare",
@@ -1099,8 +1099,7 @@ struct ScriptArg { // For use with scExec
     "DeleteFile",
     "WaitForObjects",
     "SaveObjectToFile",
-    "OpenDir",
-    "ScanDir")
+    "OpenDir")
 
   c_insert([[
 
