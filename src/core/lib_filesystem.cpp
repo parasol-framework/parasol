@@ -372,7 +372,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
       parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 8000);
       if (volumes.granted()) {
          ConfigGroups *groups;
-         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+         if (!glVolumes->getPtr(FID_Data, &groups)) {
             for (auto& [group, keys] : groups[0]) {
                if ((!StrCompare(Path, keys["Name"].c_str(), len-1, 0)) and
                    (keys["Name"].size() IS (size_t)len-1)) {
@@ -822,7 +822,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
       parasol::ScopedObjectLock<objConfig> volumes(glVolumes);
       if (volumes.granted()) {
          ConfigGroups *groups;
-         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+         if (!glVolumes->getPtr(FID_Data, &groups)) {
             for (auto& [group, keys] : groups[0]) {
                if (!StrMatch(NameBuffer, keys["Name"].c_str())) {
                   if (keys.contains("Hidden")) {
@@ -918,7 +918,7 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
    ERROR error;
    if (!(error = CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&cfgprog, FID_Path|TSTR, "config:software/programs.cfg", TAGEND))) {
       ConfigGroups *groups;
-      if (!GetPointer(cfgprog, FID_Data, &groups)) {
+      if (!cfgprog->getPtr(FID_Data, &groups)) {
          error = ERR_Failed;
          for (auto& [group, keys] : groups[0]) {
             if (!StrMatch(buffer, group.c_str())) {
@@ -995,8 +995,8 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
    OBJECTPTR file = NULL;
    if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path, FID_Flags|TLONG, FL_READ|FL_FILE, TAGEND)) {
       LARGE timestamp, file_size;
-      GetLarge(file, FID_Size, &file_size);
-      GetLarge(file, FID_TimeStamp, &timestamp);
+      file->get(FID_Size, &file_size);
+      file->get(FID_TimeStamp, &timestamp);
 
       CacheFileIndex index(path, timestamp, file_size);
 
@@ -1385,102 +1385,6 @@ ERROR test_path(STRING Path, LONG Flags)
    }
 
    return ERR_FileNotFound;
-}
-
-/*****************************************************************************
-
--FUNCTION-
-SaveImageToFile: Saves an object's image to a destination file.
-
-This function simplifies the process of saving object images to files.  You need to provide the object address and the
-destination file location for the data to be saved.  If the destination file exists, it will be overwritten.
-
-The object's class must support the #SaveToObject() action or this function will return ERR_NoSupport.
-Sub-classes are supported if the image needs to be saved as a specific type of file (for example, to save a picture
-object as a JPEG file, the Class must be set to ID_JPEG).
-
--INPUT-
-obj Object: Pointer to the object that contains the image to be saved.
-cstr Path: The destination file location.
-cid Class: The sub-class to use when saving the image (optional).
-int(PERMIT) Permissions: File permissions to use (optional).  If NULL, file is saved with user and group permissions of read/write.
-
--ERRORS-
-Okay: The volume was successfully added.
-Args: A valid Path argument was not provided.
-CreateFile: Failed to create the file at the indicated destination.
-NoSupport: The object does not support the SaveImage action.
--END-
-
-*****************************************************************************/
-
-ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID ClassID, LONG Permissions)
-{
-   parasol::Log log(__FUNCTION__);
-   OBJECTPTR file;
-   ERROR error;
-
-   log.branch("Object: %d, Dest: %s", Object->UID, Path);
-
-   if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-         FID_Path|TSTR,         Path,
-         FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-         FID_Permissions|TLONG, Permissions,
-         TAGEND))) {
-
-      error = acSaveImage(Object, file->UID, ClassID);
-
-      acFree(file);
-      return error;
-   }
-   else return log.warning(ERR_CreateFile);
-}
-
-/*****************************************************************************
-
--FUNCTION-
-SaveObjectToFile: Saves an object to a destination file.
-
-This support function simplifies the process of saving objects to files.  A source Object must be provided and a
-destination path for the data.  If the destination file exists, it will be overwritten.
-
-The object's class must support the SaveToObject action or this function will return `ERR_NoSupport`.
-
--INPUT-
-obj Object: Pointer to the source object that will be saved.
-cstr Path: The destination file path.
-int(PERMIT) Permissions: File permissions to use (optional).
-
--ERRORS-
-Okay:
-NullArgs:
-CreateFile:
-NoSupport: The object does not support the SaveToObject action.
-
-*****************************************************************************/
-
-ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((!Object) or (!Path)) return log.warning(ERR_NullArgs);
-
-   log.branch("#%d to %s", Object->UID, Path);
-
-   OBJECTPTR file;
-   ERROR error;
-   if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-         FID_Path|TSTRING,      Path,
-         FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-         FID_Permissions|TLONG, Permissions,
-         TAGEND))) {
-
-      error = acSaveToObject(Object, file->UID, 0);
-
-      acFree(file);
-      return error;
-   }
-   else return ERR_CreateFile;
 }
 
 /*****************************************************************************
@@ -2956,7 +2860,7 @@ restart:
          for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
 
          ConfigGroups *groups;
-         if (!GetPointer(glVolumes, FID_Data, &groups)) {
+         if (!glVolumes->getPtr(FID_Data, &groups)) {
             for (auto& [group, keys] : groups[0]) {
                if (not keys.contains("Name")) continue;
                auto& name = keys["Name"];

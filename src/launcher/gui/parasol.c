@@ -70,6 +70,8 @@ Available commands:\n\
 
 extern "C" void program(void)
 {
+   parasol::Log log;
+
    LONG i, j;
 
    glTask = CurrentTask();
@@ -85,7 +87,7 @@ extern "C" void program(void)
    // Process arguments
 
    STRING *Args;
-   if ((!GetPointer(glTask, FID_ArgsList, &Args)) and (Args)) {
+   if ((!glTask->getPtr(FID_ArgsList, &Args)) and (Args)) {
       for (i=0; Args[i]; i++) {
          if (!StrMatch(Args[i], "--help")) {
             // Print help for the user
@@ -99,7 +101,7 @@ extern "C" void program(void)
             print("Instance: %d", GetResource(RES_INSTANCE));
          }
          else if (!StrMatch(Args[i], "--instance")) {
-            GetLong(glTask, FID_Instance, &j);
+            glTask->get(FID_Instance, &j);
             print("Instance: %d", j);
          }
          else if (!StrMatch(Args[i], "--winhandle")) { // Target a desktop window in the host environment
@@ -163,8 +165,8 @@ extern "C" void program(void)
    }
 
    STRING path;
-   if (!GetString(glTask, FID_Path, &path)) LogMsg("Path: %s", path);
-   else LogErrorMsg("No working path.");
+   if (!glTask->get(FID_Path, &path)) log.msg("Path: %s", path);
+   else log.error("No working path.");
 
    if (winhandle) {
       if (prep_environment(winhandle, width, height) != ERR_Okay) {
@@ -180,7 +182,7 @@ extern "C" void program(void)
 
    if (exec_script(scriptfile, time, procedure)) goto exit;
 
-   if (winhandle) acShowID(TargetID);
+   if (winhandle) acShow(TargetID);
 
    ProcessMessages(0, 0);
 

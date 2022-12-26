@@ -191,7 +191,7 @@ ERROR ScanDir(DirInfo *Dir)
       if (!volumes.granted()) return log.warning(ERR_AccessObject);
 
       ConfigGroups *groups;
-      if (!GetPointer(glVolumes, FID_Data, &groups)) {
+      if (!glVolumes->getPtr(FID_Data, &groups)) {
          LONG count = 0;
          for (auto& [group, keys] : groups[0]) {
             if (count IS Dir->prvIndex) {

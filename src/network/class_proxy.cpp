@@ -184,7 +184,7 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
          // Remove any existing host proxy settings
 
          ConfigGroups *groups;
-         if (!GetPointer(glConfig, FID_Data, &groups)) {
+         if (!glConfig->getPtr(FID_Data, &groups)) {
             std::stack <std::string> group_list;
             for (auto& [group, keys] : groups[0]) {
                if (keys.contains("Host")) group_list.push(group);
@@ -260,9 +260,9 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
                      char server[80];
 
                      id = 0;
-                     cfgReadInt(glConfig, "ID", "Value", &id);
+                     cfgRead(glConfig, "ID", "Value", &id);
                      id = id + 1;
-                     cfgWriteInt(glConfig, "ID", "Value", id);
+                     cfgWrite(glConfig, "ID", "Value", id);
 
                      IntToStr(id, group, sizeof(group));
 
@@ -278,12 +278,12 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
                         cfgWriteValue(glConfig, group, "Name", name);
                         cfgWriteValue(glConfig, group, "Server", server);
 
-                        if (enabled > 0) cfgWriteInt(glConfig, group, "Enabled", enabled);
-                        else cfgWriteInt(glConfig, group, "Enabled", enabled);
+                        if (enabled > 0) cfgWrite(glConfig, group, "Enabled", enabled);
+                        else cfgWrite(glConfig, group, "Enabled", enabled);
 
-                        cfgWriteInt(glConfig, group, "Port", port);
-                        cfgWriteInt(glConfig, group, "ServerPort", serverport);
-                        cfgWriteInt(glConfig, group, "Host", 1); // Indicate that this proxy originates from host OS settings
+                        cfgWrite(glConfig, group, "Port", port);
+                        cfgWrite(glConfig, group, "ServerPort", serverport);
+                        cfgWrite(glConfig, group, "Host", 1); // Indicate that this proxy originates from host OS settings
 
                         i = index + s;
                      }
@@ -356,7 +356,7 @@ static ERROR find_proxy(extProxy *Self)
    if (!Self->Find) Self->Find = TRUE; // This is the start of the search
 
    ConfigGroups *groups;
-   if (GetPointer(glConfig, FID_Data, &groups)) return ERR_NoData;
+   if (glConfig->getPtr(FID_Data, &groups)) return ERR_NoData;
 
    auto group = groups->begin();
 
@@ -560,23 +560,23 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
       if (Self->GroupName[0]) cfgDeleteGroup(config, Self->GroupName);
       else { // This is a new proxy
          LONG id = 0;
-         cfgReadInt(config, "ID", "Value", &id);
+         cfgRead(config, "ID", "Value", &id);
          id = id + 1;
-         cfgWriteInt(config, "ID", "Value", id);
+         cfgWrite(config, "ID", "Value", id);
 
          IntToStr(id, Self->GroupName, sizeof(Self->GroupName));
          Self->Record = id;
       }
 
-      cfgWriteInt(config, Self->GroupName,   "Port",          Self->Port);
+      cfgWrite(config, Self->GroupName,   "Port",          Self->Port);
       cfgWriteValue(config, Self->GroupName, "NetworkFilter", Self->NetworkFilter);
       cfgWriteValue(config, Self->GroupName, "GatewayFilter", Self->GatewayFilter);
       cfgWriteValue(config, Self->GroupName, "Username",      Self->Username);
       cfgWriteValue(config, Self->GroupName, "Password",      Self->Password);
       cfgWriteValue(config, Self->GroupName, "Name",          Self->ProxyName);
       cfgWriteValue(config, Self->GroupName, "Server",        Self->Server);
-      cfgWriteInt(config, Self->GroupName,   "ServerPort",    Self->ServerPort);
-      cfgWriteInt(config, Self->GroupName,   "Enabled",       Self->Enabled);
+      cfgWrite(config, Self->GroupName,   "ServerPort",    Self->ServerPort);
+      cfgWrite(config, Self->GroupName,   "Enabled",       Self->Enabled);
 
       if (!CreateObject(ID_FILE, 0, &file,
             FID_Path|TSTR,         "user:config/network/proxies.cfg",
@@ -828,10 +828,10 @@ static ERROR get_record(extProxy *Self)
       if (!cfgReadValue(glConfig, Self->GroupName, "Username", &str))      Self->Username = StrClone(str);
       if (!cfgReadValue(glConfig, Self->GroupName, "Password", &str))      Self->Password = StrClone(str);
       if (!cfgReadValue(glConfig, Self->GroupName, "Name", &str))          Self->ProxyName = StrClone(str);
-      if (!cfgReadInt(glConfig, Self->GroupName, "Port", &Self->Port));
-      if (!cfgReadInt(glConfig, Self->GroupName, "ServerPort", &Self->ServerPort));
-      if (!cfgReadInt(glConfig, Self->GroupName, "Enabled", &Self->Enabled));
-      if (!cfgReadInt(glConfig, Self->GroupName, "Host", &Self->Host));
+      if (!cfgRead(glConfig, Self->GroupName, "Port", &Self->Port));
+      if (!cfgRead(glConfig, Self->GroupName, "ServerPort", &Self->ServerPort));
+      if (!cfgRead(glConfig, Self->GroupName, "Enabled", &Self->Enabled));
+      if (!cfgRead(glConfig, Self->GroupName, "Host", &Self->Host));
       return ERR_Okay;
    }
    else return log.error(ERR_NotFound);

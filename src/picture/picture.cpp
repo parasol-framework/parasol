@@ -87,7 +87,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (GetPointer(argModule, FID_Master, &modPicture) != ERR_Okay) return ERR_GetField;
+   if (argModule->getPtr(FID_Master, &modPicture) != ERR_Okay) return ERR_GetField;
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
    return(create_picture_class());
@@ -140,7 +140,7 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
 
    if (!Self->prvFile) {
       STRING path;
-      if (GetString(Self, FID_Path, &path) != ERR_Okay) {
+      if (Self->get(FID_Path, &path) != ERR_Okay) {
          return log.warning(ERR_GetField);
       }
 
@@ -498,7 +498,7 @@ static ERROR PIC_Query(prvPicture *Self, APTR Void)
    // Open the data file
 
    if (!Self->prvFile) {
-      if (GetString(Self, FID_Path, &path) != ERR_Okay) return log.warning(ERR_GetField);
+      if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
       if (CreateObject(ID_FILE, 0, &Self->prvFile,
             FID_Path|TSTR,   path,
@@ -608,7 +608,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
       }
    }
    else {
-      if (GetString(Self, FID_Path, &path) != ERR_Okay) {
+      if (Self->get(FID_Path, &path) != ERR_Okay) {
          return log.warning(ERR_MissingPath);
       }
 
@@ -861,7 +861,7 @@ static ERROR PIC_SaveToObject(prvPicture *Self, struct acSaveToObject *Args)
 
    if ((Args->ClassID) and (Args->ClassID != ID_PICTURE)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
-      if ((GetPointer(mc, FID_ActionTable, &routine) IS ERR_Okay) and (routine)) {
+      if ((mc->getPtr(FID_ActionTable, &routine) IS ERR_Okay) and (routine)) {
          if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)PIC_SaveToObject)) {
             return routine[AC_SaveToObject](Self, Args);
          }

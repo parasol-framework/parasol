@@ -581,7 +581,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
 
             if ((pointer->SurfaceID) and (!AccessObject(pointer->SurfaceID, 1000, &surface))) {
                if ((surface->DisplayID) and (!AccessObject(surface->DisplayID, 1000, &display))) {
-                  if ((GetPointer(display, FID_WindowHandle, &xwin) IS ERR_Okay) and (xwin)) {
+                  if ((display->getPtr(FID_WindowHandle, &xwin) IS ERR_Okay) and (xwin)) {
                      xcursor = get_x11_cursor(CursorID);
                      XDefineCursor(XDisplay, (Window)xwin, xcursor);
                      XFlush(XDisplay);
@@ -879,9 +879,9 @@ ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID
 
       if (Surface) {
          log.trace("Moving draggable surface %d to %dx%d", Surface, pointer->X, pointer->Y);
-         acMoveToPointID(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF_X|MTF_Y);
-         acShowID(Surface);
-         acMoveToFrontID(Surface);
+         acMoveToPoint(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF_X|MTF_Y);
+         acShow(Surface);
+         acMoveToFront(Surface);
       }
 
       gfxReleasePointer(pointer);

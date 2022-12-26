@@ -170,7 +170,8 @@ static ERROR RECTANGLE_SET_Height(objVectorRectangle *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -256,7 +257,8 @@ static ERROR RECTANGLE_SET_X(objVectorRectangle *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -295,7 +297,8 @@ static ERROR RECTANGLE_SET_Width(objVectorRectangle *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;
@@ -334,7 +337,8 @@ static ERROR RECTANGLE_SET_Y(objVectorRectangle *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return log.warning(ERR_FieldTypeMismatch);
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
       val = val * 0.01;

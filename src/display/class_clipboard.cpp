@@ -187,16 +187,16 @@ clipboard will ask that the object save its data directly to a cache file, compl
 the object data to an interim file for the clipboard.
 
 Certain classes are recognised by the clipboard system and will be added to the correct datatype automatically (for
-instance, Picture objects will be put into the CLIPTYPE_IMAGE data category).  If an object's class is not recognised by
-the clipboard system then the data will be stored in the CLIPTYPE_OBJECT category to signify that there is a class in the
+instance, Picture objects will be put into the `CLIPTYPE_IMAGE` data category).  If an object's class is not recognised by
+the clipboard system then the data will be stored in the `CLIPTYPE_OBJECT` category to signify that there is a class in the
 system that recognises the data.  If you want to over-ride any aspect of this behaviour, you need to force the Datatype
-parameter with one of the available CLIPTYPE* types.
+parameter with one of the available `CLIPTYPE*` types.
 
 This method supports groups of objects in a single clip, thus requires you to pass an array of object ID's, terminated
 with a NULL entry.
 
 Optional flags that may be passed to this method are the same as those specified in the #AddFile() method.  The
-CEF_DELETE flag has no effect on objects.
+`CEF_DELETE` flag has no effect on objects.
 
 This method should always be called directly and not messaged to the clipboard, unless you are able to guarantee that
 the source objects are shared.
@@ -259,11 +259,21 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
                   StrFormat(path, sizeof(path), "clipboard:%s%d.%.3d", GetDatatype(datatype), counter, i);
                }
 
-               SaveObjectToFile(object.obj, path, 0);
+               OBJECTPTR file;
+               if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
+                     FID_Path|TSTRING, path,
+                     FID_Flags|TLONG,  FL_WRITE|FL_NEW,
+                     TAGEND)) {
+                  acSaveToObject(object.obj, file->UID, 0);
+                  acFree(file);
+               }
+               else return ERR_CreateFile;
             }
          }
+         else return ERR_Lock;
       }
    }
+   else return ERR_Failed;
 
    return ERR_Okay;
 }

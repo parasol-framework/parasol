@@ -146,9 +146,6 @@ typedef struct DateTime {
    LONG TimeZone;
 } DateTime;
 
-#include <parasol/system/types.h>
-#include <parasol/system/errors.h>
-
 #define IS ==
 #define OR ||
 #define AND &&

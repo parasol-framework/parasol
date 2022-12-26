@@ -15,9 +15,8 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
 
       if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
       else {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&timeout_manager);
-         SubscribeTimer(Self->ConnectTimeout, &callback, &Self->TimeoutManager);
+         auto call = make_function_stdc(timeout_manager);
+         SubscribeTimer(Self->ConnectTimeout, &call, &Self->TimeoutManager);
       }
 
       Self->Connecting = TRUE;
@@ -228,7 +227,7 @@ redo_upload:
       if (error) log.warning("Input file read error: %s", GetErrorMsg(error));
 
       LARGE size;
-      GetLarge(Self->flInput, FID_Size, &size);
+      Self->flInput->get(FID_Size, &size);
 
       if ((Self->flInput->Position IS size) or (len IS 0)) {
          log.trace("All file content read (%d bytes) - freeing file.", (LONG)size);
@@ -358,9 +357,8 @@ continue_upload:
 
    if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, time_limit);
    else {
-      FUNCTION callback;
-      SET_FUNCTION_STDC(callback, (APTR)&timeout_manager);
-      SubscribeTimer(time_limit, &callback, &Self->TimeoutManager);
+      auto call = make_function_stdc(timeout_manager);
+      SubscribeTimer(time_limit, &call, &Self->TimeoutManager);
    }
 
    Self->WriteBuffer = NULL;
@@ -858,9 +856,8 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
       if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->DataTimeout);
       else {
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&timeout_manager);
-         SubscribeTimer(Self->DataTimeout, &callback, &Self->TimeoutManager);
+         auto call = make_function_stdc(timeout_manager);
+         SubscribeTimer(Self->DataTimeout, &call, &Self->TimeoutManager);
       }
 
       if (Self->Error) return ERR_Terminate;
@@ -1069,7 +1066,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
          ActionMsg(AC_DataFeed, Self->OutputObjectID, &data);
       }
       else if (Self->ObjectMode IS HOM_READ_WRITE) {
-         acWriteID(Self->OutputObjectID, Buffer, Length);
+         acWrite(Self->OutputObjectID, Buffer, Length);
       }
    }
 

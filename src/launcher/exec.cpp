@@ -81,7 +81,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
 
    if (glSandbox) {
       CSTRING *args = NULL;
-      GetPointer(glTask, FID_Parameters, &args);
+      glTask->getPtr(FID_Parameters, &args);
 
       #ifdef _WIN32
          IntegrityLevel il = get_integrity_level();
@@ -159,7 +159,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
 
          if ((error = acActivate(parc))) {
             STRING msg;
-            if (!GetString(parc, FID_Message, &msg)) {
+            if (!parc->get(FID_Message, &msg)) {
                print("Failed to execute the archive, error: %s", GetErrorMsg(error));
             }
             else print("Failed to execute the archive, error: %s", GetErrorMsg(error));

@@ -1125,10 +1125,9 @@ static void tag_set(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
                if (!AccessObject(objectid, 3000, &object)) {
                   for (LONG i=2; i < Tag->TotalAttrib; i++) {
                      log.trace("tag_set:","#%d %s = '%s'", objectid, Tag->Attrib[i].Name, Tag->Attrib[i].Value);
-                     if (Tag->Attrib[i].Name[0] IS '@') {
-                        SetFieldEval(object, Tag->Attrib[i].Name+1, Tag->Attrib[i].Value);
-                     }
-                     else SetFieldEval(object, Tag->Attrib[i].Name, Tag->Attrib[i].Value);
+
+                     auto fid = StrHash(Tag->Attrib[i].Name[0] IS '@' ? Tag->Attrib[i].Name+1 : Tag->Attrib[i].Name, FALSE);
+                     object->set(fid, Tag->Attrib[i].Value);
                   }
                   ReleaseObject(object);
                }
@@ -1396,8 +1395,8 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
    for (LONG i=1; i < Tag->TotalAttrib; i++) {
       argname = Tag->Attrib[i].Name;
       while (*argname IS '$') argname++;
-      if (!Tag->Attrib[i].Value) SetFieldEval(object, argname, "1");
-      else SetFieldEval(object, argname, Tag->Attrib[i].Value);
+      if (!Tag->Attrib[i].Value) object->set(StrHash(argname, FALSE), "1");
+      else object->set(StrHash(argname, FALSE), Tag->Attrib[i].Value);
    }
 
    // Check for the 'data' tag which can be used to send data feed information prior to initialisation.
@@ -1775,7 +1774,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
          // Pass document arguments to the script
 
          KeyStore *vs;
-         if (!GetPointer(script, FID_Variables, &vs)) {
+         if (!script->getPtr(FID_Variables, &vs)) {
             VarCopy(Self->Vars, vs);
             VarCopy(Self->Params, vs);
          }
@@ -2591,7 +2590,7 @@ static void tag_trigger(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
          if (!scGetProcedureID(script, function_name, &function_id)) {
             DocTrigger *trigger;
             if (!AllocMemory(sizeof(DocTrigger), MEM_DATA|MEM_NO_CLEAR, &trigger, NULL)) {
-               SET_FUNCTION_SCRIPT(trigger->Function, script, function_id);
+               trigger->Function = make_function_script(script, function_id);
                trigger->Next = Self->Triggers[trigger_code];
                Self->Triggers[trigger_code] = trigger;
             }

@@ -285,7 +285,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 
    CSTRING module_name;
    ERROR error;
-   if (!(error = GetString(MetaClass, FID_Module, (STRING *)&module_name))) {
+   if (!(error = MetaClass->get(FID_Module, (STRING *)&module_name))) {
       log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
 
       LONG *current_state;
@@ -295,7 +295,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
          VarSet(inc, module_name, &new_state, sizeof(new_state)); // Mark the module as processed.
 
          CSTRING idl;
-         if ((!(error = GetString(MetaClass, FID_IDL, (STRING *)&idl))) and (idl)) {
+         if ((!(error = MetaClass->get(FID_IDL, (STRING *)&idl))) and (idl)) {
             log.trace("Parsing IDL for module %s", module_name);
 
             while ((idl) and (*idl)) {
@@ -317,7 +317,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   GetPointer(argModule, FID_Master, &modFluid);
+   argModule->getPtr(FID_Master, &modFluid);
 
    ActionList(&glActions, NULL); // Get the global action table from the Core
 
@@ -657,7 +657,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
          OBJECTPTR module;
          if (!CreateObject(ID_MODULE, NF_INTEGRAL, &module, FID_Name|TSTR, IncName, TAGEND)) {
             CSTRING idl;
-            if ((!(error = GetString(module, FID_IDL, (STRING *)&idl))) and (idl)) {
+            if ((!(error = module->get(FID_IDL, (STRING *)&idl))) and (idl)) {
                while ((idl) and (*idl)) {
                   if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
                   else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
@@ -791,7 +791,7 @@ int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 
    if (Size <= 0) return 0; // Ignore bad size requests
 
-   if (!acWriteID((OBJECTID)(MAXINT)FileID, (APTR)Data, Size)) {
+   if (!acWrite((OBJECTID)(MAXINT)FileID, (APTR)Data, Size)) {
       return 0;
    }
    else {

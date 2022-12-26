@@ -74,7 +74,7 @@ void Scintilla::Window::SetPosition(Scintilla::PRectangle rc)
    LogF("Window::SetPosition()","");
 
    // Surface class supports the redimension action
-   acRedimensionID(getSurfaceID(this), rc.left, rc.top, 0, rc.Width(), rc.Height(), 0);
+   acRedimension(getSurfaceID(this), rc.left, rc.top, 0, rc.Width(), rc.Height(), 0);
 }
 
 /****************************************************************************/
@@ -125,8 +125,8 @@ void Scintilla::Window::Show(bool show)
 {
    LogF("Window::Show()","");
 
-   if (show) acShowID(getSurfaceID(this));
-   else acHideID(getSurfaceID(this));
+   if (show) acShow(getSurfaceID(this));
+   else acHide(getSurfaceID(this));
 }
 
 /****************************************************************************/

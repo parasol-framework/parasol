@@ -579,31 +579,6 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
   </function>
 
   <function>
-    <name>CloneMemory</name>
-    <category>Memory</category>
-    <comment>Creates an exact duplicate of an existing memory block.</comment>
-    <prototype>ERROR CloneMemory(APTR Address, LONG Flags, APTR * NewAddress, MEMORYID * NewID)</prototype>
-    <input>
-      <param type="APTR" name="Address">Pointer to the memory block that will be cloned.</param>
-      <param type="LONG" name="Flags" lookup="MEM">Optional memory flags to define the type of the new block.</param>
-      <param type="APTR *" name="NewAddress">Refers to a pointer that will store the address of the new memory block.</param>
-      <param type="MEMORYID *" name="NewID">Refers to a MEMORYID type that will store the unique ID of the cloned memory block.</param>
-    </input>
-    <description>
-<p>This function allows you to make a duplicate of any memory block that has been allocated from <function module="Core">AllocMemory</function>. The new memory block will be completely identical to the block you have specified, except for the type of memory, which you can alter through the Flags argument.  The contents of the original memory block will be copied over to the duplicate block.</p>
-<p>You have the option of receiving the cloned memory block as an address pointer and/or as a unique memory ID.  When allocating private memory, you can request an address result and leave the NewID argument as NULL.  However when cloning public memory, you should always request the NewID, and optionally the NewAddress if you need immediate access to the cloned block.</p>
-<p>If the block is cloned as private memory and you retrieve both the memory ID and address pointer, or if the allocation is public and you choose to retrieve the address pointer, an internal call will be made to <function module="Core">AccessMemory</function> to lock the memory block.  This means that before freeing the memory block, you must make a call to the <function module="Core">ReleaseMemory</function> function to remove the lock, or it will remain in memory.</p>
-<p>Remember to free the cloned memory block when the program no longer requires it.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>CompareFilePaths</name>
     <category>Files</category>
     <comment>Checks if two file paths refer to the same physical file.</comment>
@@ -752,11 +727,10 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <comment>Returns a pointer to the object that has the current context.</comment>
     <prototype>OBJECTPTR CurrentContext()</prototype>
     <description>
-<p>The CurrentContext() function returns a pointer to the object that has the current context.  In order for an object to have the context of the current <class name="Task">Task</class>, it must have been successfully set from the <function module="Core">SetContext</function> function.</p>
-<p>CurrentContext() is typically used to find out what object is currently receiving resource allocations.  It is useful in improving the management of resources that your code may be allocating.</p>
-<p>To get the parent context (technically the 'context of the current context'), use GetParentContext(), which is implemented as a macro.  This is used in method and action routines where the context of the object's caller may be desired.</p>
+<p>This function returns a pointer to the object that has the current context.  Context is primarily used to manage resource allocations.  Manipulating the context is sometimes necessary to ensure that a resource is tracked to the correct object.</p>
+<p>To get the parent context (technically the 'context of the current context'), use GetParentContext(), which is implemented as a macro.  This is used in method and action routines where the context of the object's caller may be needed.</p>
     </description>
-    <result type="OBJECTPTR">Returns an object pointer (of which the Task has exclusive access to).  This function rarely returns a NULL pointer - this is only possible during the initial start-up and shut-down sequences of the Core.</result>
+    <result type="OBJECTPTR">Returns an object pointer (of which the Task has exclusive access to).  Cannot return NULL except in the initial start-up and late shut-down sequence of the Core.</result>
   </function>
 
   <function>
@@ -765,7 +739,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <comment>Returns the active Task object.</comment>
     <prototype>OBJECTPTR CurrentTask()</prototype>
     <description>
-<p>The CurrentTask() function returns the <class name="Task">Task</class> object of the active process.</p>
+<p>This function returns the <class name="Task">Task</class> object of the active process.</p>
 <p>If there is a legitimate circumstance where there is no current task (e.g. if the function is called during Core initialisation) then the "system task" may be returned, which has ownership of Core resources.</p>
     </description>
     <result type="OBJECTPTR">Returns a pointer to the current Task object or NULL if failure.</result>
@@ -810,8 +784,10 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="ExclusiveDenied">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="NoPermission">General security violation.</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="GetField">A call to GetField() failed to retrieve a field value.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -1258,7 +1234,7 @@ GetFields(screen,
       <param type="OBJECTID" name="Object">The ID of the object to lookup.</param>
     </input>
     <description>
-<p>This function converts private object ID's into their respective private address pointers.  This function will fail if given a public object ID, or an ID that does not relate to a private object.</p>
+<p>This function translates private object ID's (owned by the process) to their respective address pointers.  Public object ID's are not supported.</p>
     </description>
     <result type="OBJECTPTR">The address of the object is returned, or NULL if the ID does not relate to a private object.</result>
   </function>
@@ -1272,8 +1248,8 @@ GetFields(screen,
       <param type="OBJECTID" name="Object">The ID of the object that you want to examine.</param>
     </input>
     <description>
-<p>This function can be used on any valid object ID to retrieve the unique ID of its owner.  This is the quickest way to retrieve the owner of an object without having to gain exclusive access to the object first.</p>
-<p>Please note that if you already have access to an object through an address pointer, the quickest way to learn of its owner is to read the OwnerID field in the object header.</p>
+<p>This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the owner of an object if only the ID is known.</p>
+<p>If the object address is already known then the fastest means of retrieval is via the ownerID() C++ class method.</p>
     </description>
     <result type="OBJECTID">Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the ID that you provided is invalid, this function will return NULL.</result>
   </function>
@@ -1440,7 +1416,7 @@ end
     <prototype>ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The ID of the object that you wish to examine.</param>
-      <param type="LONG" name="IncludeShared">If TRUE, shared objects will be included in the list at a penalty to performance.</param>
+      <param type="LONG" name="IncludeShared">If TRUE, shared objects will be included in the list.  Penalises performance.</param>
       <param type="struct ChildEntry *" name="List">Must refer to an array of ChildEntry structures.</param>
       <param type="LONG *" name="Count">Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.</param>
     </input>
@@ -1550,7 +1526,7 @@ end
     <comment>Revert to the previous branch in the application logging tree.</comment>
     <prototype>void LogReturn()</prototype>
     <description>
-<p>Use LogReturn() to reverse any previous log message that created a new branch.  Consider the following example:</p>
+<p>Use LogReturn() to reverse any previous log message that created an indented branch.  Consider the following example that uses a tilde to create a new branch:</p>
 <pre>LogF("~Hello:","World.");
    LogF("Goodbye:","World.");
 LogReturn();
@@ -1561,12 +1537,12 @@ LogF("Log:","Back to normal.");
  Goodbye      World.
 Log           Back to normal.
 </pre>
-<p>If the call to LogReturn() was eliminated, the log would be permanently out of step, as follows:</p>
+<p>If the code was missing the LogReturn() call, the log would be permanently out of step as follows:</p>
 <pre>Hello         World.
  Goodbye      World.
  Log          Back to normal.
 </pre>
-<p>As demonstrated, the creation of any branch must be matched with a call to LogReturn() or the log tree will be meaningless.  Please ensure that when writing log code for complex functions, a call to LogReturn() is used at each exit point of the function.</p>
+<p>In C++ the scope-managed <code>parasol::Log</code> class should be used instead.  It automatically debranches the messaging chain when code goes out of scope.</p>
     </description>
   </function>
 
@@ -1764,20 +1740,6 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
-    <name>PrintDiagnosis</name>
-    <category>Logging</category>
-    <comment>Prints program state information to stdout.</comment>
-    <prototype>void PrintDiagnosis(LONG Process, LONG Signal)</prototype>
-    <input>
-      <param type="LONG" name="Process">Process ID of the task to analyse - if zero, the current task is analysed.</param>
-      <param type="LONG" name="Signal">Intended for internal use only (set to zero), indicates a signal number in the event of a crash.</param>
-    </input>
-    <description>
-<p>An analysis of any task's current state can be printed to stdout by calling this function.  This information is useful solely for the purpose of debugging, particularly in difficult situations where reviewing the current context and resource data may prove useful.</p>
-    </description>
-  </function>
-
-  <function>
     <name>ProcessMessages</name>
     <category>Messages</category>
     <comment>Processes system messages that are queued in the task's message buffer.</comment>
@@ -1797,21 +1759,6 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Terminate">Please terminate future calls.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
     </result>
-  </function>
-
-  <function>
-    <name>RandomNumber</name>
-    <category>System</category>
-    <comment>Generates random numbers.</comment>
-    <prototype>LONG RandomNumber(LONG Range)</prototype>
-    <input>
-      <param type="LONG" name="Range">A range between 1 and 2,147,483,648.  An invalid value will result in 0 being returned.</param>
-    </input>
-    <description>
-<p>This function generates a random number as quickly as possible.  In some cases it will use various hardware attributes in order to create guaranteed random numbers.  The routine uses one divide to determine the range and will automatically change the random seed value each time you call it.  Remember that all generated numbers fall one value below the Range that you specify. Add 1 to your Range if maximum value is inclusive.</p>
-<p>The unique seed used by the PRNG is generated when the Core is opened for the first time.  You can change the seed by calling <function module="Core">SetResource</function> with the <code>RES_RANDOM_SEED</code> option.</p>
-    </description>
-    <result type="LONG">Returns a number greater or equal to 0, and &lt;i&gt;less than&lt;/i&gt; Range.</result>
   </function>
 
   <function>
@@ -2045,51 +1992,6 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
-    <name>SaveImageToFile</name>
-    <category>Files</category>
-    <comment>Saves an object's image to a destination file.</comment>
-    <prototype>ERROR SaveImageToFile(OBJECTPTR Object, CSTRING Path, CLASSID Class, LONG Permissions)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object that contains the image to be saved.</param>
-      <param type="CSTRING" name="Path">The destination file location.</param>
-      <param type="CLASSID" name="Class">The sub-class to use when saving the image (optional).</param>
-      <param type="LONG" name="Permissions" lookup="PERMIT">File permissions to use (optional).  If NULL, file is saved with user and group permissions of read/write.</param>
-    </input>
-    <description>
-<p>This function simplifies the process of saving object images to files.  You need to provide the object address and the destination file location for the data to be saved.  If the destination file exists, it will be overwritten.</p>
-<p>The object's class must support the <action>SaveToObject</action> action or this function will return ERR_NoSupport. Sub-classes are supported if the image needs to be saved as a specific type of file (for example, to save a picture object as a JPEG file, the Class must be set to ID_JPEG).</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoSupport">This request is not supported.</error>
-      <error code="CreateFile">A new file could not be created.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>SaveObjectToFile</name>
-    <category>Files</category>
-    <comment>Saves an object to a destination file.</comment>
-    <prototype>ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the source object that will be saved.</param>
-      <param type="CSTRING" name="Path">The destination file path.</param>
-      <param type="LONG" name="Permissions" lookup="PERMIT">File permissions to use (optional).</param>
-    </input>
-    <description>
-<p>This support function simplifies the process of saving objects to files.  A source Object must be provided and a destination path for the data.  If the destination file exists, it will be overwritten.</p>
-<p>The object's class must support the SaveToObject action or this function will return <code>ERR_NoSupport</code>.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NoSupport">This request is not supported.</error>
-      <error code="CreateFile">A new file could not be created.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>ScanDir</name>
     <category>Files</category>
     <comment>Scans the content of a folder, by item.</comment>
@@ -2294,33 +2196,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>SetFieldEval</name>
-    <category>Fields</category>
-    <comment>Sets any field using an abstract string value that is evaluated at runtime.</comment>
-    <prototype>ERROR SetFieldEval(OBJECTPTR Object, CSTRING Field, CSTRING Value)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object to be accessed.</param>
-      <param type="CSTRING" name="Field">The name of the field that you want to set.</param>
-      <param type="CSTRING" name="Value">A string value to be written to the field.</param>
-    </input>
-    <description>
-<p>The SetFieldEval() function is used to set field values using JIT value abstraction.  It simplifies the setting of field values at a cost of low efficiency.  It is intended for use by script languages and batch processing routines that do not prioritise speed.</p>
-<p>An integrated analysis feature converts named flags and lookups to their correct numeric values.  For example, setting the Flags field of a surface object with <code>Sticky|Mask</code> will result in the references being converted to the correct hexadecimal value.</p>
-<p>Setting object typed fields also enables special support for the commands <code>self</code>, <code>owner</code> and ID values such as <code>#14592</code>.  In all other cases the Value string is considered to refer to an object's name.  The <code>self</code> keyword will translate to the object specified by the Object argument, and Owner will likewise translate to the owner of that Object.</p>
-<p>Variable field names are supported, but the field name must be prefixed by the <code>@</code> symbol to ensure that it is not mistaken for a true field name.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
-      <error code="NoFieldAccess">Access to a field was denied.</error>
-      <error code="FieldTypeMismatch">Field type mismatch while getting or setting a field.</error>
-      <error code="UnrecognisedFieldType">A field type ID (e.g. LONG, FLOAT) is not a recognised type of the system.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>SetFields</name>
     <category>Fields</category>
     <comment>Sets multiple field values in an object.</comment>
@@ -2347,29 +2222,6 @@ SetField(Object, FID_Statement|TSTR, "string");
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
-      <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>SetFieldsID</name>
-    <category>Fields</category>
-    <comment>Sets multiple field values in an object, using messages.</comment>
-    <prototype>ERROR SetFieldsID(OBJECTID Object, ...)</prototype>
-    <input>
-      <param type="OBJECTID" name="Object">A reference to the target object.</param>
-      <param type="..." name="Tags">Group field ID's with the values that you want to set in order to create valid groups of tags.  The list must be terminated with TAGEND.</param>
-    </input>
-    <description>
-<p>This function can be used to set the values of more than one field in a single function call, by using tags.  It is provided for the purpose of giving a speed increase over calling the <function module="Core">SetField</function> function multiple times.</p>
-<p>The overall behaviour of this function is identical to the <function module="Core">SetFields</function> function, with the exception that it uses object ID's and will use the messaging system to set the field values of foreign objects.</p>
-<p>This function does not block by default when messaging foreign objects, so error messages will not be received in the event that a setting operation has failed.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure.</error>
-      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
       <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -2436,7 +2288,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 <type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on AllocMemory().  The Value specifies the memory limit in bytes.</type>
 <type name="LOG_LEVEL">Adjusts the current debug level.  The Value must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</type>
 <type name="PRIVILEGED_USER">If the Value is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</type>
-<type name="RANDOM_SEED">Sets the PRNG seed to the number indicated in Value.</type>
 </types>
     </description>
     <result type="LARGE">Returns the previous value used for the resource that you have set.  If the resource ID that you provide is invalid, NULL is returned.</result>
@@ -2765,22 +2616,6 @@ SetField(Object, FID_Statement|TSTR, "string");
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
       <error code="InvalidState">Object was in an incorrect state for the operation.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>SysUnlock</name>
-    <category>Locks</category>
-    <comment>Releases a lock obtained from SysLock().</comment>
-    <prototype>ERROR SysUnlock(LONG Index)</prototype>
-    <input>
-      <param type="LONG" name="Index">The index number of the system mutex that needs to be unlocked.</param>
-    </input>
-    <description>
-<p>Use the SysUnlock() function to undo a previous call to <function module="Core">SysLock</function> for a given mutex.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
     </result>
   </function>
 
@@ -4285,7 +4120,6 @@ end
       <const name="PRIVILEGED">This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).</const>
       <const name="PRIVILEGED_USER">If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</const>
       <const name="PROCESS_STATE">Life-cycle stage of the running process</const>
-      <const name="RANDOM_SEED">Changes the PRNG seed value for RandomNumber().</const>
       <const name="THREAD_ID">Return the ID of the current thread.</const>
       <const name="TOTAL_MEMORY">The total amount of installed memory.</const>
       <const name="TOTAL_SHARED_MEMORY">The total amount of shared memory in use.</const>

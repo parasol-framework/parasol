@@ -2104,7 +2104,7 @@ use for that action.  For example:
 
 <pre>
 if (!AccessObject(CurrentTask(), 5000, &task)) {
-   GetPointer(task, FID_Actions, &amp;actions);
+   task->getPtr(FID_Actions, &amp;actions);
    actions[AC_ActionNotify] = PROGRAM_ActionNotify;
    ReleaseObject(task);
 }

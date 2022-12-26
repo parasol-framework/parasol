@@ -111,7 +111,7 @@ static LONG run_script(objScript *Script)
          }
 
          STRING msg;
-         if ((!GetString(Script, FID_ErrorString, &msg)) and (msg)) {
+         if ((!Script->get(FID_ErrorString, &msg)) and (msg)) {
             log.msg("Script returned error message: %s", msg);
             return -1;
          }
@@ -161,7 +161,7 @@ static ERROR process_args(void)
    CSTRING *args;
    LONG i;
 
-   if ((!GetPointer(CurrentTask(), FID_Parameters, &args)) and (args)) {
+   if ((!CurrentTask()->getPtr(FID_Parameters, &args)) and (args)) {
       for (i=0; args[i]; i++) {
          if (!StrMatch(args[i], "--help")) {
             // Print help for the user
@@ -313,12 +313,11 @@ int main(int argc, CSTRING *argv)
 
          glScriptReceivedMsg = AllocateID(IDTYPE_MESSAGE);
 
-         FUNCTION callback;
-         SET_FUNCTION_STDC(callback, (APTR)&msg_script_received);
-         AddMsgHandler(NULL, glScriptReceivedMsg, &callback, NULL);
+         auto call = make_function_stdc(msg_script_received);
+         AddMsgHandler(NULL, glScriptReceivedMsg, &call, NULL);
 
-         SET_FUNCTION_STDC(callback, (APTR)&read_stdin);
-         CurrentTask()->set(FID_InputCallback, &callback);
+         call = make_function_stdc(read_stdin);
+         CurrentTask()->set(FID_InputCallback, &call);
 
          ProcessMessages(0, -1);
 

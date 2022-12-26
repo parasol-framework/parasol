@@ -86,7 +86,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
    // command in its datatype group.
 
    ConfigGroups *groups;
-   if (!GetPointer(glDatatypes, FID_Data, &groups)) {
+   if (!glDatatypes->getPtr(FID_Data, &groups)) {
       for (auto& [group, keys] : groups[0]) {
          if (!group.compare(0, 4, "DEV:")) {
             LONG j = group.size() - 4;
@@ -394,7 +394,7 @@ class_identified:
    if ((filename = get_filename(Path))) {
       log.msg("Scanning associations config to match: %s", filename);
 
-      if (!GetPointer(glDatatypes, FID_Data, &groups)) {
+      if (!glDatatypes->getPtr(FID_Data, &groups)) {
          for (auto& [group, keys] : groups[0]) {
             if (not keys.contains("Match")) continue;
 
@@ -552,7 +552,7 @@ ERROR get_class_cmd(CSTRING Mode, objConfig *Associations, LONG Flags, CLASSID C
 
    if (item) {
       ConfigGroups *groups;
-      if (!GetPointer(Associations, FID_Data, &groups)) {
+      if (!Associations->getPtr(FID_Data, &groups)) {
          for (auto& [group, keys] : groups[0]) {
             if ((keys.contains("Class")) and (!StrMatch(keys["Class"].c_str(), item->Name))) {
                if (Flags & IDF_SECTION) *Command = StrClone(group.c_str());

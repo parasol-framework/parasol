@@ -122,7 +122,7 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
       // Convert the file date stamp into a DOS time stamp for zip
 
       DateTime *tm;
-      if (!GetPointer(file, FID_Date, &tm)) {
+      if (!file->getPtr(FID_Date, &tm)) {
          if (tm->Year < 1980) entry->TimeStamp = 0x00210000;
          else entry->TimeStamp = ((tm->Year-1980)<<25) | (tm->Month<<21) | (tm->Day<<16) | (tm->Hour<<11) | (tm->Minute<<5) | (tm->Second>>1);
       }
@@ -265,7 +265,7 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
    fb.Index          = Self->prvFileIndex;
    fb.Path           = Location;
    fb.Dest           = filename;
-   GetLarge(file, FID_Size, &fb.OriginalSize);
+   file->get(FID_Size, &fb.OriginalSize);
    fb.CompressedSize = 0;
    fb.Progress       = 0;
    error = send_feedback(Self, &fb);
@@ -334,7 +334,7 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
       entry->CommentLen = 0;
 
       if ((!(Self->Flags & CMF_NO_LINKS)) and (file->Flags & FL_LINK)) {
-         if (!GetString(file, FID_Link, &symlink)) {
+         if (!file->get(FID_Link, &symlink)) {
             log.msg("Note: File \"%s\" is a symbolic link to \"%s\"", filename, symlink);
             entry->Flags |= ZIP_LINK;
          }
@@ -343,7 +343,7 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
       // Convert the file date stamp into a DOS time stamp for zip
 
       DateTime *time;
-      if (!GetPointer(file, FID_Date, &time)) {
+      if (!file->getPtr(FID_Date, &time)) {
          if (time->Year < 1980) entry->TimeStamp = 0x00210000;
          else entry->TimeStamp = ((time->Year-1980)<<25) | (time->Month<<21) | (time->Day<<16) | (time->Hour<<11) | (time->Minute<<5) | (time->Second>>1);
       }
@@ -355,7 +355,7 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
    }
 
    LONG permissions;
-   if (!GetLong(file, FID_Permissions, &permissions)) {
+   if (!file->get(FID_Permissions, &permissions)) {
       if (permissions & PERMIT_USER_READ) entry->Flags |= ZIP_UREAD;
       if (permissions & PERMIT_GROUP_READ) entry->Flags |= ZIP_GREAD;
       if (permissions & PERMIT_OTHERS_READ) entry->Flags |= ZIP_OREAD;

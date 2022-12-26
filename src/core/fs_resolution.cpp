@@ -329,7 +329,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
    Source[pos-1] = 0; // Remove the volume symbol for the string comparison
    fullpath[0] = 0;
    ConfigGroups *groups;
-   if (!GetPointer(Config, FID_Data, &groups)) {
+   if (!Config->getPtr(FID_Data, &groups)) {
       for (auto& [group, keys] : groups[0]) {
          if (!StrMatch(keys["Name"].c_str(), Source)) {
             StrCopy(keys["Path"].c_str(), fullpath, sizeof(fullpath));
@@ -478,7 +478,7 @@ static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG P
       if (!FindObject(Path, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &volume_id, &count)) {
          OBJECTPTR object;
          if (!AccessObject(volume_id, 5000, &object)) {
-            if ((!GetPointer(object, FID_ResolvePath, &resolve_virtual)) and (resolve_virtual)) {
+            if ((!object->getPtr(FID_ResolvePath, &resolve_virtual)) and (resolve_virtual)) {
                error = resolve_virtual(object, Source, Dest, PathSize);
             }
             ReleaseObject(object);

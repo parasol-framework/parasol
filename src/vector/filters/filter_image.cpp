@@ -226,7 +226,7 @@ Path: Path to an image file supported by the Picture class.
 
 static ERROR IMAGEFX_GET_Path(objImageFX *Self, STRING *Value)
 {
-   if (Self->Picture) return GetString(Self->Picture, FID_Path, Value);
+   if (Self->Picture) return Self->Picture->get(FID_Path, Value);
    else *Value = NULL;
    return ERR_Okay;
 }

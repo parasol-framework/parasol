@@ -8,7 +8,7 @@
 
 namespace parasol {
 
-//****************************************************************************
+//********************************************************************************************************************
 
 template <class T>
 class ScopedAccessMemory { // C++ wrapper for automatically releasing shared memory
@@ -34,9 +34,9 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing shared mem
       }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
-template <class T = struct Head>
+template <class T = BaseClass>
 class ScopedObject { // C++ wrapper for automatically freeing an object
    public:
       T *obj;
@@ -46,7 +46,7 @@ class ScopedObject { // C++ wrapper for automatically freeing an object
       ~ScopedObject() { if (obj) acFree(obj); }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 // Scoped object locker.  Use granted() to confirm that the lock has been granted.
 
 template <class T = BaseClass>
@@ -69,7 +69,7 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
       bool granted() { return error == ERR_Okay; }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class ScopedSysLock { // C++ wrapper for terminating a system lock when scope is lost
    private:
@@ -100,7 +100,7 @@ class ScopedSysLock { // C++ wrapper for terminating a system lock when scope is
       }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 // Resource guard for any allocation that can be freed with FreeResource()
 //
 // Usage: parasol::GuardedResource resource(thing)
@@ -114,7 +114,7 @@ class GuardedResource { // C++ wrapper for terminating resources when scope is l
       ~GuardedResource() { FreeResource(resource); }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 // Resource guard for temporarily switching context and back when out of scope.
 //
 // Usage: parasol::SwitchContext context(YourObject)
@@ -131,7 +131,7 @@ class SwitchContext { // C++ wrapper for changing the current context with a res
       ~SwitchContext() { if (old_context) SetContext(old_context); }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class Log { // C++ wrapper for Parasol's log functionality
    private:

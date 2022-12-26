@@ -98,9 +98,9 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
 {
    //LogMsg("Windows focus state for surface #%d: %d", SurfaceID, State);
 
-   if (State) acFocusID(SurfaceID);
+   if (State) acFocus(SurfaceID);
    else {
-      acLostFocusID(SurfaceID);
+      acLostFocus(SurfaceID);
 
       /*
       OBJECTID *list;
@@ -109,7 +109,7 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
       if (!AccessMemory(RPM_FocusList, MEM_READ_WRITE, &list)) {
          for (i=0; list[i]; i++) {
             LogMsg("Lost Focus: %d: %d", i, list[i]);
-            acLostFocusID(list[i]);
+            acLostFocus(list[i]);
          }
          list[0] = 0;
          ReleaseMemory(list);
@@ -315,7 +315,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
          }
       }
 
-      acFreeID(SurfaceID);
+      acFree(SurfaceID);
    }
 }
 
@@ -326,7 +326,7 @@ void MsgWindowDestroyed(OBJECTID SurfaceID)
    if (SurfaceID) {
       parasol::Log log("WinMgr");
       log.branch("Freeing window surface #%d.", SurfaceID);
-      acFreeID(SurfaceID);
+      acFree(SurfaceID);
    }
 }
 
@@ -334,6 +334,6 @@ void MsgWindowDestroyed(OBJECTID SurfaceID)
 
 void MsgShowObject(OBJECTID ObjectID)
 {
-   acShowID(ObjectID);
-   acMoveToFrontID(ObjectID);
+   acShow(ObjectID);
+   acMoveToFront(ObjectID);
 }

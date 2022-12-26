@@ -672,8 +672,8 @@ int fcmd_loadfile(lua_State *Lua)
 
             if (!(error = CreateObject(ID_FILE, NF_INTEGRAL, &src_file.obj, FID_Path|TSTR, path, TAGEND))) {
                LARGE fb_ts, src_ts;
-               GetLarge(fb_file.obj, FID_TimeStamp, &fb_ts);
-               GetLarge(src_file.obj, FID_TimeStamp, &src_ts);
+               fb_file.obj->get(FID_TimeStamp, &fb_ts);
+               src_file.obj->get(FID_TimeStamp, &src_ts);
 
                if (fb_ts != src_ts) {
                   log.msg("Timestamp mismatch, will recompile the cached version.");
@@ -732,7 +732,7 @@ int fcmd_loadfile(lua_State *Lua)
                      struct DateTime *date;
                      f = clvalue(prv->Lua->top + (-1))->l.p;
                      luaU_dump(prv->Lua, f, &code_writer, cachefile, (Self->Flags & SCF_DEBUG) ? 0 : 1);
-                     if (!GetPointer(file.obj, FID_Date, &date)) {
+                     if (!file.obj->getPtr(FID_Date, &date)) {
                         cachefile->set(FID_Date, date);
                      }
                      acFree(cachefile);
