@@ -1759,7 +1759,7 @@ struct CoreBase {
    OBJECTPTR (*_SetContext)(OBJECTPTR);
    ERROR (*_SetField)(OBJECTPTR, FIELD, ...);
    ERROR (*_SetFields)(OBJECTPTR, ...);
-   ERROR (*_SetFieldEval)(OBJECTPTR, CSTRING, CSTRING);
+   ERROR (*_ScanDir)(struct DirInfo *);
    ERROR (*_SetName)(OBJECTPTR, CSTRING);
    void (*_LogReturn)(void);
    ERROR (*_StrCompare)(CSTRING, CSTRING, LONG, LONG);
@@ -1863,7 +1863,6 @@ struct CoreBase {
    ERROR (*_WaitForObjects)(LONG, LONG, struct ObjectSignal *);
    ERROR (*_SaveObjectToFile)(OBJECTPTR, CSTRING, LONG);
    ERROR (*_OpenDir)(CSTRING, LONG, struct DirInfo **);
-   ERROR (*_ScanDir)(struct DirInfo *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1919,7 +1918,7 @@ struct CoreBase {
 #define SetContext(...) (CoreBase->_SetContext)(__VA_ARGS__)
 #define SetField(...) (CoreBase->_SetField)(__VA_ARGS__)
 #define SetFields(...) (CoreBase->_SetFields)(__VA_ARGS__)
-#define SetFieldEval(...) (CoreBase->_SetFieldEval)(__VA_ARGS__)
+#define ScanDir(...) (CoreBase->_ScanDir)(__VA_ARGS__)
 #define SetName(...) (CoreBase->_SetName)(__VA_ARGS__)
 #define LogReturn(...) (CoreBase->_LogReturn)(__VA_ARGS__)
 #define StrCompare(...) (CoreBase->_StrCompare)(__VA_ARGS__)
@@ -2023,7 +2022,6 @@ struct CoreBase {
 #define WaitForObjects(...) (CoreBase->_WaitForObjects)(__VA_ARGS__)
 #define SaveObjectToFile(...) (CoreBase->_SaveObjectToFile)(__VA_ARGS__)
 #define OpenDir(...) (CoreBase->_OpenDir)(__VA_ARGS__)
-#define ScanDir(...) (CoreBase->_ScanDir)(__VA_ARGS__)
 #endif
 
 

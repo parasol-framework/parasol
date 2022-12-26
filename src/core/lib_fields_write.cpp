@@ -64,7 +64,7 @@ int Elements: The number of elements listed in the Array.
 -ERRORS-
 Okay
 NullArgs
-FieldTypeMismatch
+FieldTypeMismatch: The referenced field is not an array.
 UnsupportedField: The specified field is not support by the object's class.
 NoFieldAccess:    The field is read-only.
 
@@ -391,212 +391,6 @@ ERROR SetFieldsID(OBJECTID ObjectID, ...)
    else return ERR_AccessObject;
 }
 
-/*****************************************************************************
-
--FUNCTION-
-SetFieldEval: Sets any field using an abstract string value that is evaluated at runtime.
-
-The SetFieldEval() function is used to set field values using JIT value abstraction.  This simplification comes
-at a cost of poor efficiency.  It is intended for use by script languages and batch processing routines
-that do not prioritise speed.
-
-An integrated analysis feature converts named flags and lookups to their correct numeric values.  For example, setting
-the Flags field of a surface object with `Sticky|Mask` will result in the references being converted to the correct
-hexadecimal value.
-
-Setting object typed fields also enables special support for the commands `self`, `owner` and ID values such as
-`#14592`.  In all other cases the Value string is considered to refer to an object's name.  The `self` keyword
-will translate to the object specified by the Object argument, and Owner will likewise translate to the owner of that
-Object.
-
-Variable field names are supported, but the field name must be prefixed by the `@` symbol to ensure that it is not
-mistaken for a true field name.
-
--INPUT-
-obj Object: Pointer to the object to be accessed.
-cstr Field: The name of the field that you want to set.
-cstr Value: A string value to be written to the field.
-
--ERRORS-
-Okay
-Search: The named field does not exist in the object.
-NullArgs
-AccessObject
-NoFieldAccess
-FieldTypeMismatch
-UnrecognisedFieldType
--END-
-
-*****************************************************************************/
-
-ERROR SetFieldEval(OBJECTPTR Object, CSTRING FieldName, CSTRING Value)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((!Object) or (!FieldName) or (!Value)) return ERR_NullArgs;
-
-   bool unlisted;
-   if (*FieldName IS '@') {
-      unlisted = true;
-      FieldName++;
-   }
-   else unlisted = false;
-
-   LONG i;
-   ULONG hash = 5381;
-   for (i=0; FieldName[i]; i++) {
-      char c = FieldName[i];
-
-      if (c IS '.') {
-         FieldName += i + 1;
-         ERROR error;
-         OBJECTPTR child;
-         if (((error = GetField(Object, hash|TPTR, &child)) != ERR_Okay) or (!child)) {
-            if (error IS ERR_FieldTypeMismatch) {
-               // The object reference might be an ID
-               OBJECTID object_id;
-               if ((!(error = GetField(Object, hash|TLONG, &object_id))) and (object_id)) {
-                  if (!AccessObject(object_id, 3000, &Object)) {
-                     error = SetFieldEval(Object, FieldName, Value);
-                     ReleaseObject(Object);
-                     return error;
-                  }
-                  else return ERR_AccessObject;
-               }
-            }
-
-            return ERR_Search;
-         }
-
-         Object = child;
-         hash = 5381;
-         i = -1;
-      }
-      else {
-         if ((c >= 'A') and (c <= 'Z')) c = c - 'A' + 'a';
-         hash = ((hash<<5) + hash) + c;
-      }
-   }
-
-   Field *Field;
-   if ((unlisted) or (!(Field = lookup_id(Object, hash, &Object)))) {
-      // If the field does not exist, check if the class supports the SetVar action.
-
-      if (!CheckAction(Object, AC_SetVar)) {
-         struct acSetVar var = { .Field = FieldName, .Value = Value };
-         return Action(AC_SetVar, Object, &var);
-      }
-      else log.warning("Object %d (%s) does not support field '%s' or variable fields.", Object->UID, Object->className(), FieldName);
-
-      return ERR_Search;
-   }
-
-   if ((!(Field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
-      log.warning("Field \"%s\" of class %s is not writable.", FieldName, Object->className());
-      return ERR_NoFieldAccess;
-   }
-
-   if ((Field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
-      log.warning("Field \"%s\" in class %s is init-only.", FieldName, Object->className());
-      return ERR_NoFieldAccess;
-   }
-
-   if (!Value[0]) Value = NULL;
-
-   ERROR error;
-   Object->threadLock();
-   if (Field->Flags & FD_ARRAY) { // CSV values
-      if (!Value) {
-         Object->threadRelease();
-         return ERR_NoData;
-      }
-      error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
-   }
-   else if (Field->Flags & FD_STRING) {
-      if (!Value) log.debug("Warning: Sending a NULL string to field %s, class %s", Field->Name, Object->className());
-      error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
-   }
-   else if (Field->Flags & FD_FUNCTION) {
-      error = ERR_FieldTypeMismatch;
-   }
-   else if (Value) {
-      if (Field->Flags & (FD_DOUBLE|FD_FLOAT)) {
-         STRING pct;
-         DOUBLE dbl = strtod(Value, &pct);
-         if (pct[0] IS '%') {
-            error = Field->WriteValue(Object, Field, FD_DOUBLE|FD_PERCENTAGE, &dbl, 0);
-         }
-         else error = Field->WriteValue(Object, Field, FD_DOUBLE, &dbl, 0);
-      }
-      else if (Field->Flags & (FD_FLAGS|FD_LOOKUP)) {
-         error = Field->WriteValue(Object, Field, FD_STRING, Value, 0);
-      }
-      else if (Field->Flags & FD_OBJECT) {
-         OBJECTID id;
-
-         // When setting an object field, a name can be passed as a reference to the object that the user wants to set, or
-         // we may be passed an object ID, e.g. #599834.
-
-         // If the keyword "self" is passed, it means "set the value so that it points back to me."  The special keyword
-         // "owner" means just that.
-
-         // If the string is enclosed in square brackets [], then they will be ignored.
-
-         if (*Value IS '#')                  id = strtol(Value+1, NULL, 0);
-         else if (!StrMatch("self", Value))  id = Object->UID;
-         else if (!StrMatch("owner", Value)) id = Object->OwnerID;
-         else if ((!*Value) or ((Value[0] IS '0') and (!Value[1]))) id = 0;
-         else {
-            OBJECTID array[8];
-            LONG count = ARRAYSIZE(array);
-            if (!FindObject(Value, 0, FOF_INCLUDE_SHARED, array, &count)) {
-               id = array[count-1];
-            }
-            else {
-               log.warning("Object \"%s\" could not be found.", Value);
-               Object->threadRelease();
-               return ERR_Search;
-            }
-         }
-
-         if (Field->Flags & FD_LONG) {
-            error = Field->WriteValue(Object, Field, FDF_OBJECTID, &id, 0);
-         }
-         else {
-            if (auto target = GetObjectPtr(id)) {
-               error = Field->WriteValue(Object, Field, FDF_POINTER, target, 0);
-            }
-            else error = ERR_Search;
-         }
-      }
-      else if (Field->Flags & (FD_LONG|FD_LARGE)) {
-         // NB: Although placing this part of the routine at the front would be more optimal, it must be placed
-         // last because fields like OBJECTID are common to LONG, and must be processed at a higher priority.
-
-         if (Field->Flags & FD_PERCENTAGE) { // If the target field accepts percentages, we need to process the source as a double (conversion can be performed later if the target is non-variable)
-            DOUBLE dbl = strtod(Value, NULL);
-            if (Value[strlen(Value)-1] IS '%') {
-               error = Field->WriteValue(Object, Field, FD_DOUBLE|FD_PERCENTAGE, &dbl, 0);
-            }
-            else error = Field->WriteValue(Object, Field, FD_DOUBLE, &dbl, 0);
-         }
-         else {
-            LARGE num = strtoll(Value, NULL, 0);
-            error = Field->WriteValue(Object, Field, FD_LARGE, &num, 0);
-         }
-      }
-      else error = ERR_UnrecognisedFieldType;
-   }
-   else if (Field->Flags & FD_VARIABLE) {
-      if (!Value) log.msg("Warning: Sending a NULL string to field %s, class %s", Field->Name, Object->className());
-      error = Field->WriteValue(Object, Field, FD_POINTER|FD_STRING, Value, 0);
-   }
-   else error = ERR_UnrecognisedFieldType;
-
-   Object->threadRelease();
-   return error;
-}
-
 //****************************************************************************
 // Converts a CSV string into an array (or use "#0x123..." for a hexadecimal byte list)
 
@@ -811,7 +605,7 @@ static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
          Flags = FD_LARGE;
          Data  = &int64;
       }
-      else return ERR_FieldTypeMismatch;
+      else return ERR_SetValueNotArray;
    }
 
    return writeval_default(Object, Field, Flags, Data, Elements);
@@ -853,7 +647,7 @@ static ERROR writeval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
    else if (Flags & FD_LARGE)  *offset = (LONG)(*((LARGE *)Data));
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) *offset = (LONG)StrToInt((STRING)Data);
-   else return ERR_FieldTypeMismatch;
+   else return ERR_SetValueNotNumeric;
    return ERR_Okay;
 }
 
@@ -864,7 +658,7 @@ static ERROR writeval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
    else if (Flags & FD_LONG)   *offset = *((LONG *)Data);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) *offset = strtoll((STRING)Data, NULL, 0);
-   else return ERR_FieldTypeMismatch;
+   else return ERR_SetValueNotNumeric;
    return ERR_Okay;
 }
 
@@ -875,7 +669,7 @@ static ERROR writeval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
    else if (Flags & FD_LONG)   *offset = *((LONG *)Data);
    else if (Flags & FD_LARGE)  *offset = (*((LARGE *)Data));
    else if (Flags & FD_STRING) *offset = strtod((STRING)Data, NULL);
-   else return ERR_FieldTypeMismatch;
+   else return ERR_SetValueNotNumeric;
    return ERR_Okay;
 }
 
@@ -890,7 +684,7 @@ static ERROR writeval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR 
       offset[0].StdC.Routine = (FUNCTION *)Data;
       offset[0].StdC.Context = tlContext->object();
    }
-   else return ERR_FieldTypeMismatch;
+   else return ERR_SetValueNotFunction;
    return ERR_Okay;
 }
 
@@ -898,7 +692,7 @@ static ERROR writeval_ptr(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
 {
    APTR *offset = (APTR *)((BYTE *)Object + Field->Offset);
    if (Flags & (FD_POINTER|FD_STRING)) *offset = (void *)Data;
-   else return ERR_FieldTypeMismatch;
+   else return ERR_SetValueNotPointer;
    return ERR_Okay;
 }
 
@@ -942,6 +736,21 @@ static ERROR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
       return ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
    }
    else if (Flags & (FD_POINTER|FD_STRING)) {
+      if (Field->Flags & FD_PERCENTAGE) {
+         // Percentages are only applicable to numeric variables, and require conversion in advance.
+         // NB: If a field needs total control over variable conversion, it should not specify FD_PERCENTAGE.
+         STRING pct;
+         var.Double = strtod((CSTRING)Data, &pct);
+         if (pct[0] IS '%') {
+            var.Type = FD_DOUBLE|FD_PERCENTAGE;
+            return ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
+         }
+         else {
+            var.Type = FD_DOUBLE;
+            return ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
+         }
+      }
+
       var.Type = FD_POINTER | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER))); // Allows support flags like FD_STRING to fall through
       var.Pointer = (APTR)Data;
       return ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
@@ -976,7 +785,7 @@ static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
       LONG src_type = Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT);
       if (src_type) {
          LONG dest_type = Field->Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT);
-         if (!(src_type & dest_type)) return ERR_FieldTypeMismatch;
+         if (!(src_type & dest_type)) return ERR_SetValueNotArray;
       }
 
       return ((ERROR (*)(APTR, APTR, LONG))(Field->SetValue))(Object, (APTR)Data, Elements);
@@ -1008,7 +817,7 @@ static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
    else {
       parasol::Log log(__FUNCTION__);
       log.warning("Arrays can only be set using the FD_ARRAY type.");
-      return ERR_FieldTypeMismatch;
+      return ERR_SetValueNotArray;
    }
 }
 
@@ -1030,7 +839,7 @@ static ERROR setval_function(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
       else func.Type = CALL_NONE;
       return ((ERROR (*)(APTR, FUNCTION *))(Field->SetValue))(Object, &func);
    }
-   else return ERR_FieldTypeMismatch;
+   else return ERR_SetValueNotFunction;
 }
 
 static ERROR setval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
@@ -1042,7 +851,7 @@ static ERROR setval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, 
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) int32 = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) int32 = strtol((STRING)Data, NULL, 0);
    else if (Flags & FD_LONG)   int32 = *((LONG *)Data);
-   else return ERR_FieldTypeMismatch;
+   else return ERR_SetValueNotNumeric;
 
    return ((ERROR (*)(APTR, LONG))(Field->SetValue))(Object, int32);
 }
@@ -1056,7 +865,7 @@ static ERROR setval_double(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
    else if (Flags & FD_LARGE)  float64 = (DOUBLE)(*((LARGE *)Data));
    else if (Flags & FD_STRING) float64 = strtod((CSTRING)Data, NULL);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) float64 = *((DOUBLE *)Data);
-   else return ERR_FieldTypeMismatch;
+   else return ERR_SetValueNotNumeric;
 
    return ((ERROR (*)(APTR, DOUBLE))(Field->SetValue))(Object, float64);
 }
@@ -1083,7 +892,7 @@ static ERROR setval_pointer(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
       IntToStr(*((DOUBLE *)Data), buffer, sizeof(buffer));
       return ((ERROR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
    }
-   else return ERR_FieldTypeMismatch;
+   else return ERR_SetValueNotPointer;
 }
 
 static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
@@ -1095,7 +904,7 @@ static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) int64 = F2I(*((DOUBLE *)Data));
    else if (Flags & FD_STRING) int64 = strtoll((CSTRING)Data, NULL, 0);
    else if (Flags & FD_LARGE)  int64 = *((LARGE *)Data);
-   else return ERR_FieldTypeMismatch;
+   else return ERR_SetValueNotNumeric;
 
    return ((ERROR (*)(APTR, LARGE))(Field->SetValue))(Object, int64);
 }

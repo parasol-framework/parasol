@@ -2264,33 +2264,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>SetFieldEval</name>
-    <category>Fields</category>
-    <comment>Sets any field using an abstract string value that is evaluated at runtime.</comment>
-    <prototype>ERROR SetFieldEval(OBJECTPTR Object, CSTRING Field, CSTRING Value)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object to be accessed.</param>
-      <param type="CSTRING" name="Field">The name of the field that you want to set.</param>
-      <param type="CSTRING" name="Value">A string value to be written to the field.</param>
-    </input>
-    <description>
-<p>The SetFieldEval() function is used to set field values using JIT value abstraction.  This simplification comes at a cost of poor efficiency.  It is intended for use by script languages and batch processing routines that do not prioritise speed.</p>
-<p>An integrated analysis feature converts named flags and lookups to their correct numeric values.  For example, setting the Flags field of a surface object with <code>Sticky|Mask</code> will result in the references being converted to the correct hexadecimal value.</p>
-<p>Setting object typed fields also enables special support for the commands <code>self</code>, <code>owner</code> and ID values such as <code>#14592</code>.  In all other cases the Value string is considered to refer to an object's name.  The <code>self</code> keyword will translate to the object specified by the Object argument, and Owner will likewise translate to the owner of that Object.</p>
-<p>Variable field names are supported, but the field name must be prefixed by the <code>@</code> symbol to ensure that it is not mistaken for a true field name.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
-      <error code="NoFieldAccess">Access to a field was denied.</error>
-      <error code="FieldTypeMismatch">Field type mismatch while getting or setting a field.</error>
-      <error code="UnrecognisedFieldType">A field type ID (e.g. LONG, FLOAT) is not a recognised type of the system.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>SetFields</name>
     <category>Fields</category>
     <comment>Sets multiple field values in an object.</comment>

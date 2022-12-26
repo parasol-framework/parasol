@@ -207,7 +207,14 @@
 #define ERR_ResolveSymbol 180
 #define ERR_Function 181
 #define ERR_AlreadyDefined 182
-#define ERR_END 183
+#define ERR_SetValueNotNumeric 183
+#define ERR_SetValueNotString 184
+#define ERR_SetValueNotObject 185
+#define ERR_SetValueNotFunction 186
+#define ERR_SetValueNotPointer 187
+#define ERR_SetValueNotArray 188
+#define ERR_SetValueNotLookup 189
+#define ERR_END 190
 
 // Special error flags
 
