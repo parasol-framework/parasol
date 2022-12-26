@@ -277,7 +277,7 @@ void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedT
 
    OBJECTPTR clipboard;
    if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, TAGEND)) {
-      if (!ActionTags(MT_ClipAddText, clipboard, selectedText.s)) {
+      if (!clipAddText(clipboard, selectedText.s)) {
 
       }
       acFree(clipboard);

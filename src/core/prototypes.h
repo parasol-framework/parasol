@@ -8,7 +8,7 @@ ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result
 ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
 void ActionList(struct ActionTable ** Actions, LONG * Size);
 ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args, MEMORYID MessageID, CLASSID ClassID);
-ERROR ActionTags(LONG Action, OBJECTPTR Object, ...);
+ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size);
 CSTRING ResolveClassID(CLASSID ID);
 LONG AllocateID(LONG Type);
 ERROR AllocMemory(LONG Size, LONG Flags, APTR * Address, MEMORYID * ID);
@@ -154,7 +154,6 @@ ERROR SetVolume(LARGE,...);
 ERROR DeleteVolume(CSTRING Name);
 ERROR VirtualVolume(CSTRING Name, ...);
 ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size);
 
 #ifdef  __cplusplus
 }

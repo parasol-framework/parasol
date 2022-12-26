@@ -244,7 +244,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel *Channel)
 
                if ((read.Result <= 0) or (Channel->Sample.StreamPos >= Channel->Sample.StreamLength)) {
                   if (Channel->Sample.Loop2Type) {
-                     ActionTags(AC_Seek, stream, (DOUBLE)(Channel->Sample.SeekStart + Channel->Sample.Loop2Start), SEEK_START);
+                     acSeek(stream, (DOUBLE)(Channel->Sample.SeekStart + Channel->Sample.Loop2Start), SEEK_START);
                      Channel->Sample.StreamPos = 0;
                   }
                   else Channel->State = CHS_FINISHED;
