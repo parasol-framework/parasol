@@ -253,8 +253,8 @@ ERROR CLASS_Free(extMetaClass *Class, APTR Void)
    VarSet(glClassMap, Class->ClassName, NULL, 0); // Deregister the class.
 
    if (Class->prvFields) { FreeResource(Class->prvFields); Class->prvFields = NULL; }
-   if (Class->Methods)   { FreeResource(Class->Methods); Class->Methods = NULL; }
-   if (Class->Location)  { FreeResource(Class->Location); Class->Location = NULL; }
+   if (Class->Methods)   { FreeResource(Class->Methods);   Class->Methods   = NULL; }
+   if (Class->Location)  { FreeResource(Class->Location);  Class->Location  = NULL; }
    return ERR_Okay;
 }
 
@@ -897,9 +897,15 @@ static ERROR field_setup(extMetaClass *Class)
       // This is a sub-class.  Clone the field array from the base class, then check for field over-riders specified in
       // the sub-class field list.  Sub-classes can also define additional fields if the fields are virtual.
 
-      if (CloneMemory(Class->Base->prvFields, MEM_DATA, (APTR *)&Class->prvFields, NULL) != ERR_Okay) return ERR_Memory;
+      Field *fields;
+      LONG size = Class->Base->TotalFields * sizeof(Field);
+      if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, (APTR *)&fields, NULL)) {
+         CopyMemory(Class->Base->prvFields, fields, size);
+      }
+      else return log.warning(ERR_AllocMemory);
+
       Class->TotalFields = Class->Base->TotalFields;
-      Field *fields = Class->prvFields;
+      Class->prvFields = fields;
 
       if (Class->SubFields) {
          LONG extended = 0;

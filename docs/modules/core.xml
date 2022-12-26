@@ -579,31 +579,6 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
   </function>
 
   <function>
-    <name>CloneMemory</name>
-    <category>Memory</category>
-    <comment>Creates an exact duplicate of an existing memory block.</comment>
-    <prototype>ERROR CloneMemory(APTR Address, LONG Flags, APTR * NewAddress, MEMORYID * NewID)</prototype>
-    <input>
-      <param type="APTR" name="Address">Pointer to the memory block that will be cloned.</param>
-      <param type="LONG" name="Flags" lookup="MEM">Optional memory flags to define the type of the new block.</param>
-      <param type="APTR *" name="NewAddress">Refers to a pointer that will store the address of the new memory block.</param>
-      <param type="MEMORYID *" name="NewID">Refers to a MEMORYID type that will store the unique ID of the cloned memory block.</param>
-    </input>
-    <description>
-<p>This function allows you to make a duplicate of any memory block that has been allocated from <function module="Core">AllocMemory</function>. The new memory block will be completely identical to the block you have specified, except for the type of memory, which you can alter through the Flags argument.  The contents of the original memory block will be copied over to the duplicate block.</p>
-<p>You have the option of receiving the cloned memory block as an address pointer and/or as a unique memory ID.  When allocating private memory, you can request an address result and leave the NewID argument as NULL.  However when cloning public memory, you should always request the NewID, and optionally the NewAddress if you need immediate access to the cloned block.</p>
-<p>If the block is cloned as private memory and you retrieve both the memory ID and address pointer, or if the allocation is public and you choose to retrieve the address pointer, an internal call will be made to <function module="Core">AccessMemory</function> to lock the memory block.  This means that before freeing the memory block, you must make a call to the <function module="Core">ReleaseMemory</function> function to remove the lock, or it will remain in memory.</p>
-<p>Remember to free the cloned memory block when the program no longer requires it.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>CompareFilePaths</name>
     <category>Files</category>
     <comment>Checks if two file paths refer to the same physical file.</comment>

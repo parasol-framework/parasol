@@ -17,7 +17,7 @@ ERROR ListTasks(LONG Flags, struct ListTasks ** List);
 ERROR CheckAction(OBJECTPTR Object, LONG Action);
 ERROR CheckMemoryExists(MEMORYID ID);
 ERROR CheckObjectExists(OBJECTID Object);
-ERROR CloneMemory(APTR Address, LONG Flags, APTR * NewAddress, MEMORYID * NewID);
+ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions);
 ERROR CreateObject(LARGE ClassID, LONG Flags, OBJECTPTR * Object, ...);
 OBJECTPTR CurrentContext();
 ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, LONG * Elements);
@@ -158,7 +158,6 @@ ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size);
 ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * Data, LONG * Size);
 ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
 ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
-ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions);
 
 #ifdef  __cplusplus
 }
