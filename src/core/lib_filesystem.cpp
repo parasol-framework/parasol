@@ -1390,53 +1390,6 @@ ERROR test_path(STRING Path, LONG Flags)
 /*****************************************************************************
 
 -FUNCTION-
-SaveObjectToFile: Saves an object to a destination file.
-
-This support function simplifies the process of saving objects to files.  A source Object must be provided and a
-destination path for the data.  If the destination file exists, it will be overwritten.
-
-The object's class must support the SaveToObject action or this function will return `ERR_NoSupport`.
-
--INPUT-
-obj Object: Pointer to the source object that will be saved.
-cstr Path: The destination file path.
-int(PERMIT) Permissions: File permissions to use (optional).
-
--ERRORS-
-Okay:
-NullArgs:
-CreateFile:
-NoSupport: The object does not support the SaveToObject action.
-
-*****************************************************************************/
-
-ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((!Object) or (!Path)) return log.warning(ERR_NullArgs);
-
-   log.branch("#%d to %s", Object->UID, Path);
-
-   OBJECTPTR file;
-   ERROR error;
-   if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-         FID_Path|TSTRING,      Path,
-         FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-         FID_Permissions|TLONG, Permissions,
-         TAGEND))) {
-
-      error = acSaveToObject(Object, file->UID, 0);
-
-      acFree(file);
-      return error;
-   }
-   else return ERR_CreateFile;
-}
-
-/*****************************************************************************
-
--FUNCTION-
 UnloadFile: Unloads files from the file cache.
 
 This function unloads cached files that have been previously loaded with the ~LoadFile() function.
