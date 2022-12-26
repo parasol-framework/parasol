@@ -86,7 +86,7 @@ ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
 ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
 ERROR FindPrivateObject(CSTRING Name, OBJECTPTR * Object);
 LARGE PreciseTime();
-ERROR SetFieldsID(OBJECTID Object, ...);
+ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
 OBJECTPTR GetObjectPtr(OBJECTID Object);
 struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Source);
 LONG GetMsgPort(OBJECTID Object);
@@ -159,7 +159,6 @@ ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * D
 ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
 ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 ERROR SaveObjectToFile(OBJECTPTR Object, CSTRING Path, LONG Permissions);
-ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
 
 #ifdef  __cplusplus
 }

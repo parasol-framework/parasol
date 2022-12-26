@@ -107,7 +107,6 @@ FDEF argsSetContext[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTPTR }
 FDEF argsSetDefaultPermissions[] = { { "Void", FD_VOID }, { "User", FD_LONG }, { "Group", FD_LONG }, { "Permissions", FD_LONG }, { 0, 0 } };
 FDEF argsSetField[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Value", FD_VARTAGS }, { 0, 0 } };
 FDEF argsSetFields[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
-FDEF argsSetFieldsID[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "Tags", FD_VARTAGS }, { 0, 0 } };
 FDEF argsSetName[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsSetOwner[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Owner", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsSetResource[] = { { "Result", FD_LARGE }, { "Resource", FD_LONG }, { "Value", FD_LARGE }, { 0, 0 } };
@@ -244,7 +243,7 @@ const struct Function glFunctions[] = {
    { (APTR)AddMsgHandler, "AddMsgHandler", argsAddMsgHandler },
    { (APTR)FindPrivateObject, "FindPrivateObject", argsFindPrivateObject },
    { (APTR)PreciseTime, "PreciseTime", argsPreciseTime },
-   { (APTR)SetFieldsID, "SetFieldsID", argsSetFieldsID },
+   { (APTR)OpenDir, "OpenDir", argsOpenDir },
    { (APTR)GetObjectPtr, "GetObjectPtr", argsGetObjectPtr },
    { (APTR)FindField, "FindField", argsFindField },
    { (APTR)GetMsgPort, "GetMsgPort", argsGetMsgPort },
@@ -317,7 +316,6 @@ const struct Function glFunctions[] = {
    { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
    { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { (APTR)SaveObjectToFile, "SaveObjectToFile", argsSaveObjectToFile },
-   { (APTR)OpenDir, "OpenDir", argsOpenDir },
    { NULL, NULL, NULL }
 };
 

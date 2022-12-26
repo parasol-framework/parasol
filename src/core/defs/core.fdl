@@ -1026,7 +1026,7 @@ struct ScriptArg { // For use with scExec
     "AddMsgHandler",
     "FindPrivateObject",
     "PreciseTime",
-    "SetFieldsID",
+    "OpenDir",
     "GetObjectPtr",
     "FindField",
     "GetMsgPort",
@@ -1098,8 +1098,7 @@ struct ScriptArg { // For use with scExec
     "VarIterate",
     "DeleteFile",
     "WaitForObjects",
-    "SaveObjectToFile",
-    "OpenDir")
+    "SaveObjectToFile")
 
   c_insert([[
 

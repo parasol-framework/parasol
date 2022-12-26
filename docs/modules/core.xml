@@ -2296,29 +2296,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>SetFieldsID</name>
-    <category>Fields</category>
-    <comment>Sets multiple field values in an object, using messages.</comment>
-    <prototype>ERROR SetFieldsID(OBJECTID Object, ...)</prototype>
-    <input>
-      <param type="OBJECTID" name="Object">A reference to the target object.</param>
-      <param type="..." name="Tags">Group field ID's with the values that you want to set in order to create valid groups of tags.  The list must be terminated with TAGEND.</param>
-    </input>
-    <description>
-<p>This function can be used to set the values of more than one field in a single function call, by using tags.  It is provided for the purpose of giving a speed increase over calling the <function module="Core">SetField</function> function multiple times.</p>
-<p>The overall behaviour of this function is identical to the <function module="Core">SetFields</function> function, with the exception that it uses object ID's and will use the messaging system to set the field values of foreign objects.</p>
-<p>This function does not block by default when messaging foreign objects, so error messages will not be received in the event that a setting operation has failed.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure.</error>
-      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
-      <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>SetName</name>
     <category>Objects</category>
     <comment>Sets the name of an object.</comment>
