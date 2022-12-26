@@ -760,7 +760,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>Prior to the deletion of any file, a <struct>FileFeedback</struct> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are FFR_Okay (delete the file), FFR_Skip (do not delete the file) and FFR_Abort (abort the process completely and return ERR_Cancelled as an error code).</p>
+<p>Prior to the deletion of any file, a <struct>FileFeedback</struct> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR_Okay</code> (delete the file), <code>FFR_Skip</code> (do not delete the file) and <code>FFR_Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1195,20 +1195,6 @@ GetFields(screen,
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
-  </function>
-
-  <function>
-    <name>GetMsgPort</name>
-    <category>Messages</category>
-    <comment>Returns the message port used for communication with an object.</comment>
-    <prototype>LONG GetMsgPort(OBJECTID Object)</prototype>
-    <input>
-      <param type="OBJECTID" name="Object">Reference to the object to be queried.</param>
-    </input>
-    <description>
-<p>This function will return the ID of the message port used for communication with an object.  The message port is the same as that used for general communication with the task and is valid for inter-process communication via <function module="Core">SendMessage</function>.</p>
-    </description>
-    <result type="LONG">The number of the message port is returned or 0 if failure occurs.  Failure will most likely occur if the ObjectID is invalid.</result>
   </function>
 
   <function>
@@ -2153,8 +2139,8 @@ FreeResource(memory); // Reference is no longer valid
       <param type="LONG" name="Permissions" lookup="PERMIT">Permission flags to be applied to new files.</param>
     </input>
     <description>
-<p>By default, user, group and permission information for new files is inherited from the system defaults or from the file source in copy operations.  This behaviour can be overridden with new default values on a global basis (affects all threads).</p>
-<p>To revert behaviour to the default, set the User and/or Group values to -1 and the Permissions value to zero.</p>
+<p>By default, user, group and permission information for new files is inherited either from the system defaults or from the file source in copy operations.  Use this function to override this behaviour with new default values.  All threads of the process will be affected.</p>
+<p>To revert behaviour to the default settings, set the User and/or Group values to -1 and the Permissions value to zero.</p>
     </description>
   </function>
 

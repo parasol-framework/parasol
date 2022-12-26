@@ -89,7 +89,7 @@ LARGE PreciseTime();
 ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
 OBJECTPTR GetObjectPtr(OBJECTID Object);
 struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Source);
-LONG GetMsgPort(OBJECTID Object);
+ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * Data, LONG * Size);
 CSTRING GetErrorMsg(ERROR Error);
 struct Message * GetActionMsg();
 ERROR FuncError(CSTRING Header, ERROR Error);
@@ -155,7 +155,6 @@ ERROR DeleteVolume(CSTRING Name);
 ERROR VirtualVolume(CSTRING Name, ...);
 ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size);
-ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * Data, LONG * Size);
 
 #ifdef  __cplusplus
 }

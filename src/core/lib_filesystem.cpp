@@ -712,9 +712,9 @@ The Callback parameter can be set with a function that matches this prototype:
 `LONG Callback(struct FileFeedback *)`
 
 Prior to the deletion of any file, a &FileFeedback structure is passed that describes the file's location.  The
-callback must return a constant value that can potentially affect file processing.  Valid values are FFR_Okay (delete
-the file), FFR_Skip (do not delete the file) and FFR_Abort (abort the process completely and return ERR_Cancelled as an
-error code).
+callback must return a constant value that can potentially affect file processing.  Valid values are `FFR_Okay` (delete
+the file), `FFR_Skip` (do not delete the file) and `FFR_Abort` (abort the process completely and return `ERR_Cancelled`
+as an error code).
 
 -INPUT-
 cstr Path: String referring to the file or folder to be deleted.  Folders must be denoted with a trailing slash.
@@ -758,11 +758,11 @@ ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
 -FUNCTION-
 SetDefaultPermissions: Forces the user and group permissions to be applied to new files and folders.
 
-By default, user, group and permission information for new files is inherited from the system defaults or from the file
-source in copy operations.  This behaviour can be overridden with new default values on a global basis (affects all
-threads).
+By default, user, group and permission information for new files is inherited either from the system defaults or from
+the file source in copy operations.  Use this function to override this behaviour with new default values.  All
+threads of the process will be affected.
 
-To revert behaviour to the default, set the User and/or Group values to -1 and the Permissions value to zero.
+To revert behaviour to the default settings, set the User and/or Group values to -1 and the Permissions value to zero.
 
 -INPUT-
 int User: User ID to apply to new files.
