@@ -1029,7 +1029,7 @@ struct ScriptArg { // For use with scExec
     "OpenDir",
     "GetObjectPtr",
     "FindField",
-    "GetMsgPort",
+    "VarIterate",
     "GetErrorMsg",
     "GetActionMsg",
     "FuncError",
@@ -1094,8 +1094,7 @@ struct ScriptArg { // For use with scExec
     "DeleteVolume",
     "VirtualVolume",
     "CopyFile",
-    "KeyGet",
-    "VarIterate")
+    "KeyGet")
 
   c_insert([[
 

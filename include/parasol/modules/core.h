@@ -1792,7 +1792,7 @@ struct CoreBase {
    ERROR (*_OpenDir)(CSTRING, LONG, struct DirInfo **);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID);
    struct Field * (*_FindField)(OBJECTPTR, ULONG, APTR);
-   LONG (*_GetMsgPort)(OBJECTID);
+   ERROR (*_VarIterate)(struct KeyStore *, CSTRING, CSTRING *, APTR, LONG *);
    CSTRING (*_GetErrorMsg)(ERROR);
    struct Message * (*_GetActionMsg)(void);
    ERROR (*_FuncError)(CSTRING, ERROR);
@@ -1858,7 +1858,6 @@ struct CoreBase {
    ERROR (*_VirtualVolume)(CSTRING, ...);
    ERROR (*_CopyFile)(CSTRING, CSTRING, FUNCTION *);
    ERROR (*_KeyGet)(struct KeyStore *, ULONG, APTR, LONG *);
-   ERROR (*_VarIterate)(struct KeyStore *, CSTRING, CSTRING *, APTR, LONG *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1947,7 +1946,7 @@ struct CoreBase {
 #define OpenDir(...) (CoreBase->_OpenDir)(__VA_ARGS__)
 #define GetObjectPtr(...) (CoreBase->_GetObjectPtr)(__VA_ARGS__)
 #define FindField(...) (CoreBase->_FindField)(__VA_ARGS__)
-#define GetMsgPort(...) (CoreBase->_GetMsgPort)(__VA_ARGS__)
+#define VarIterate(...) (CoreBase->_VarIterate)(__VA_ARGS__)
 #define GetErrorMsg(...) (CoreBase->_GetErrorMsg)(__VA_ARGS__)
 #define GetActionMsg(...) (CoreBase->_GetActionMsg)(__VA_ARGS__)
 #define FuncError(...) (CoreBase->_FuncError)(__VA_ARGS__)
@@ -2013,7 +2012,6 @@ struct CoreBase {
 #define VirtualVolume(...) (CoreBase->_VirtualVolume)(__VA_ARGS__)
 #define CopyFile(...) (CoreBase->_CopyFile)(__VA_ARGS__)
 #define KeyGet(...) (CoreBase->_KeyGet)(__VA_ARGS__)
-#define VarIterate(...) (CoreBase->_VarIterate)(__VA_ARGS__)
 #endif
 
 

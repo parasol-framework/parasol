@@ -922,49 +922,6 @@ static ULONG crc32_big(ULONG crc, const UBYTE *buf, unsigned len)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetMsgPort: Returns the message port used for communication with an object.
-Category: Messages
-
-This function will return the ID of the message port used for communication with an object.  The message port is the
-same as that used for general communication with the task and is valid for inter-process communication via
-~SendMessage().
-
--INPUT-
-oid Object: Reference to the object to be queried.
-
--RESULT-
-int: The number of the message port is returned or 0 if failure occurs.  Failure will most likely occur if the ObjectID is invalid.
-
-*********************************************************************************************************************/
-
-LONG GetMsgPort(OBJECTID ObjectID)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.trace("Object: #%d", ObjectID);
-
-   SharedObjectHeader *header;
-
-   if (ObjectID > 0) return glTaskMessageMID;
-   else if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-      LONG pos;
-      if (!find_public_object_entry(header, ObjectID, &pos)) {
-         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
-         LONG msgport = list[pos].MessageMID;
-         ReleaseMemoryID(RPM_SharedObjects);
-         return msgport ? msgport : glTaskMessageMID;
-      }
-      else {
-         ReleaseMemoryID(RPM_SharedObjects);
-         return 0;
-      }
-   }
-   else return 0;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 GetName: Retrieves object names.
 Category: Objects
 

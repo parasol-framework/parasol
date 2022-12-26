@@ -56,7 +56,6 @@ FDEF argsGetFieldVariable[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OB
 FDEF argsGetFields[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
 FDEF argsGetMemAddress[] = { { "Result", FD_PTR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsGetMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_LONG }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsGetMsgPort[] = { { "Result", FD_LONG }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetName[] = { { "Result", FD_STR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsGetObjectPtr[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetOwnerID[] = { { "Result", FD_OBJECTID }, { "Object", FD_OBJECTID }, { 0, 0 } };
@@ -243,7 +242,7 @@ const struct Function glFunctions[] = {
    { (APTR)OpenDir, "OpenDir", argsOpenDir },
    { (APTR)GetObjectPtr, "GetObjectPtr", argsGetObjectPtr },
    { (APTR)FindField, "FindField", argsFindField },
-   { (APTR)GetMsgPort, "GetMsgPort", argsGetMsgPort },
+   { (APTR)VarIterate, "VarIterate", argsVarIterate },
    { (APTR)GetErrorMsg, "GetErrorMsg", argsGetErrorMsg },
    { (APTR)GetActionMsg, "GetActionMsg", argsGetActionMsg },
    { (APTR)FuncError, "FuncError", argsFuncError },
@@ -309,7 +308,6 @@ const struct Function glFunctions[] = {
    { (APTR)VirtualVolume, "VirtualVolume", argsVirtualVolume },
    { (APTR)CopyFile, "CopyFile", argsCopyFile },
    { (APTR)KeyGet, "KeyGet", argsKeyGet },
-   { (APTR)VarIterate, "VarIterate", argsVarIterate },
    { NULL, NULL, NULL }
 };
 
