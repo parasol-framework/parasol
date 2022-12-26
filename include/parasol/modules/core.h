@@ -1720,7 +1720,7 @@ struct CoreBase {
    ERROR (*_CheckAction)(OBJECTPTR, LONG);
    ERROR (*_CheckMemoryExists)(MEMORYID);
    ERROR (*_CheckObjectExists)(OBJECTID);
-   ERROR (*_CloneMemory)(APTR, LONG, APTR, MEMORYID *);
+   ERROR (*_SaveObjectToFile)(OBJECTPTR, CSTRING, LONG);
    ERROR (*_CreateObject)(LARGE, LONG, APTR, ...);
    OBJECTPTR (*_CurrentContext)(void);
    ERROR (*_GetFieldArray)(OBJECTPTR, FIELD, APTR, LONG *);
@@ -1861,7 +1861,6 @@ struct CoreBase {
    ERROR (*_VarIterate)(struct KeyStore *, CSTRING, CSTRING *, APTR, LONG *);
    ERROR (*_DeleteFile)(CSTRING, FUNCTION *);
    ERROR (*_WaitForObjects)(LONG, LONG, struct ObjectSignal *);
-   ERROR (*_SaveObjectToFile)(OBJECTPTR, CSTRING, LONG);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1878,7 +1877,7 @@ struct CoreBase {
 #define CheckAction(...) (CoreBase->_CheckAction)(__VA_ARGS__)
 #define CheckMemoryExists(...) (CoreBase->_CheckMemoryExists)(__VA_ARGS__)
 #define CheckObjectExists(...) (CoreBase->_CheckObjectExists)(__VA_ARGS__)
-#define CloneMemory(...) (CoreBase->_CloneMemory)(__VA_ARGS__)
+#define SaveObjectToFile(...) (CoreBase->_SaveObjectToFile)(__VA_ARGS__)
 #define CreateObject(...) (CoreBase->_CreateObject)(__VA_ARGS__)
 #define CurrentContext(...) (CoreBase->_CurrentContext)(__VA_ARGS__)
 #define GetFieldArray(...) (CoreBase->_GetFieldArray)(__VA_ARGS__)
@@ -2019,7 +2018,6 @@ struct CoreBase {
 #define VarIterate(...) (CoreBase->_VarIterate)(__VA_ARGS__)
 #define DeleteFile(...) (CoreBase->_DeleteFile)(__VA_ARGS__)
 #define WaitForObjects(...) (CoreBase->_WaitForObjects)(__VA_ARGS__)
-#define SaveObjectToFile(...) (CoreBase->_SaveObjectToFile)(__VA_ARGS__)
 #endif
 
 

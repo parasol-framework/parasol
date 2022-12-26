@@ -26,7 +26,6 @@ FDEF argsBroadcastEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_PTR }
 FDEF argsCheckAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsCheckMemoryExists[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsCheckObjectExists[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { 0, 0 } };
-FDEF argsCloneMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { "Flags", FD_LONG }, { "NewAddress", FD_PTR|FD_RESULT }, { "NewID", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsCompareFilePaths[] = { { "Error", FD_LONG|FD_ERROR }, { "PathA", FD_STR }, { "PathB", FD_STR }, { 0, 0 } };
 FDEF argsCopyFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsCopyMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Src", FD_PTR }, { "Dest", FD_PTR }, { "Size", FD_LONG }, { 0, 0 } };
@@ -174,7 +173,7 @@ const struct Function glFunctions[] = {
    { (APTR)CheckAction, "CheckAction", argsCheckAction },
    { (APTR)CheckMemoryExists, "CheckMemoryExists", argsCheckMemoryExists },
    { (APTR)CheckObjectExists, "CheckObjectExists", argsCheckObjectExists },
-   { (APTR)CloneMemory, "CloneMemory", argsCloneMemory },
+   { (APTR)SaveObjectToFile, "SaveObjectToFile", argsSaveObjectToFile },
    { (APTR)CreateObject, "CreateObject", argsCreateObject },
    { (APTR)CurrentContext, "CurrentContext", argsCurrentContext },
    { (APTR)GetFieldArray, "GetFieldArray", argsGetFieldArray },
@@ -315,7 +314,6 @@ const struct Function glFunctions[] = {
    { (APTR)VarIterate, "VarIterate", argsVarIterate },
    { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
    { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
-   { (APTR)SaveObjectToFile, "SaveObjectToFile", argsSaveObjectToFile },
    { NULL, NULL, NULL }
 };
 
