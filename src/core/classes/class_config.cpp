@@ -153,19 +153,16 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
 {
    ERROR error = ERR_Okay;
    while ((*Path) and (!error)) {
-      objFile *file;
-      if (!(error = CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-            FID_Path|TSTR,   Path,
-            FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
-            TAGEND))) {
+      objFile::create file = { fl::Path(Path), fl::Flags(FL_READ|FL_APPROXIMATE) };
 
+      if (file.ok()) {
          LONG filesize;
          file->get(FID_Size, &filesize);
 
          if (filesize > 0) {
             STRING data;
             if (!AllocMemory(filesize + 3, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL)) {
-               acRead(file, data, filesize, NULL); // Read the entire file
+               file->read(data, filesize, NULL); // Read the entire file
                data[filesize++] = '\n';
                data[filesize] = 0;
                error = parse_config(Self, (CSTRING)data);
@@ -173,9 +170,6 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
             }
             else error = ERR_AllocMemory;
          }
-
-         acFree(file);
-         file = NULL;
       }
       else if (Self->Flags & CNF_OPTIONAL_FILES) error = ERR_Okay;
 
@@ -319,15 +313,8 @@ static ERROR CONFIG_Free(extConfig *Self, APTR Void)
          if ((!crc) or (crc != Self->CRC)) {
             log.msg("Auto-saving changes to \"%s\" (CRC: %d : %d)", Self->Path, Self->CRC, crc);
 
-            OBJECTPTR file;
-            if (!CreateObject(ID_FILE, 0, &file,
-                  FID_Path|TSTR,         Self->Path,
-                  FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-                  FID_Permissions|TLONG, 0,
-                  TAGEND)) {
-               acSaveToObject(Self, file->UID, 0);
-               acFree(file);
-            }
+            objFile::create file = { fl::Path(Self->Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(0) };
+            acSaveToObject(Self, file->UID, 0);
          }
          else log.msg("Not auto-saving data (CRC unchanged).");
       }
@@ -450,13 +437,13 @@ static ERROR CONFIG_MergeFile(extConfig *Self, struct cfgMergeFile *Args)
 
    log.branch("%s", Args->Path);
 
-   extConfig *src;
-   if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&src, FID_Path|TSTR, Args->Path, TAGEND)) {
+   extConfig::create src = { fl::Path(Args->Path) };
+
+   if (src.ok()) {
       merge_groups(Self->Groups[0], src->Groups[0]);
-      acFree(src);
       return ERR_Okay;
    }
-   return ERR_File;
+   else return ERR_File;
 }
 
 //****************************************************************************
@@ -592,16 +579,14 @@ static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
    if ((Self->Flags & CNF_AUTO_SAVE) and (crc IS Self->CRC)) return ERR_Okay;
 
    if (Self->Path) {
-      OBJECTPTR file;
-      if (!CreateObject(ID_FILE, 0, &file,
-            FID_Path|TSTR,         Self->Path,
-            FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-            FID_Permissions|TLONG, 0,
-            TAGEND)) {
+      objFile::create file = {
+         fl::Path(Self->Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(0)
+      };
+
+      if (file.ok()) {
          if (!acSaveToObject(Self, file->UID, 0)) {
             Self->CRC = crc;
          }
-         acFree(file);
          return ERR_Okay;
       }
       else return ERR_File;

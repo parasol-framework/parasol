@@ -914,17 +914,17 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
    if (String[cmdindex] IS ']') cmdindex++;
    while ((String[cmdindex]) and (String[cmdindex] <= 0x20)) cmdindex++;
 
-   objConfig *cfgprog;
    ERROR error;
-   if (!(error = CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&cfgprog, FID_Path|TSTR, "config:software/programs.cfg", TAGEND))) {
+   objConfig::create cfgprog = { fl::Path("config:software/programs.cfg") };
+   if (cfgprog.ok()) {
       ConfigGroups *groups;
       if (!cfgprog->getPtr(FID_Data, &groups)) {
          error = ERR_Failed;
          for (auto& [group, keys] : groups[0]) {
             if (!StrMatch(buffer, group.c_str())) {
                CSTRING cmd, args;
-               if (!cfgReadValue(cfgprog, group.c_str(), "CommandFile", &cmd)) {
-                  if (cfgReadValue(cfgprog, group.c_str(), "Args", &args)) args = "";
+               if (!cfgReadValue(*cfgprog, group.c_str(), "CommandFile", &cmd)) {
+                  if (cfgReadValue(*cfgprog, group.c_str(), "Args", &args)) args = "";
                   StrFormat(buffer, sizeof(buffer), "\"%s\" %s %s", cmd, args, String + cmdindex);
 
                   *Command = StrClone(buffer);
@@ -936,9 +936,8 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
          }
       }
       else error = ERR_NoData;
-
-      acFree(cfgprog);
    }
+   else error = ERR_File;
 
    return error;
 }
@@ -992,8 +991,9 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 
    log.branch("%.80s, Flags: $%.8x", path, Flags);
 
-   OBJECTPTR file = NULL;
-   if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path, FID_Flags|TLONG, FL_READ|FL_FILE, TAGEND)) {
+   objFile::create file = { fl::Path(path), fl::Flags(FL_READ|FL_FILE) };
+
+   if (file.ok()) {
       LARGE timestamp, file_size;
       file->get(FID_Size, &file_size);
       file->get(FID_TimeStamp, &timestamp);
@@ -1001,7 +1001,6 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
       CacheFileIndex index(path, timestamp, file_size);
 
       if (glCache.contains(index)) {
-         acFree(file);
          FreeResource(path);
 
          auto cf = glCache[index];
@@ -1013,7 +1012,6 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
       // If the client just wanted to check for the existence of the file, do not proceed in loading it.
 
       if (Flags & LDF_CHECK_EXISTS) {
-         acFree(file);
          FreeResource(path);
          return ERR_Search;
       }
@@ -1039,14 +1037,13 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 
          if (file_size) {
             LONG result;
-            error = acRead(file, cache->Data, file_size, &result);
+            error = file->read(cache->Data, file_size, &result);
             if ((!error) and (file_size != result)) error = ERR_Read;
          }
 
          if (!error) {
             glCache[index] = cache;
             *Cache = cache;
-            acFree(file);
 
             if (!glCacheTimer) {
                parasol::SwitchContext context(CurrentTask());
@@ -1063,7 +1060,6 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
    }
    else error = ERR_CreateObject;
 
-   if (file) acFree(file);
    FreeResource(path);
    return error;
 }
@@ -1254,17 +1250,11 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
       FreeResource(res_path);
    }
    else if (error IS ERR_VirtualVolume) {
-      extFile *file;
+      extFile::create file = { fl::Path(res_path), fl::Flags(FL_READ|FL_FILE|(approx ? FL_APPROXIMATE : 0)) };
 
-      if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-            FID_Path|TSTR,   res_path,
-            FID_Flags|TLONG, FL_READ|FL_FILE|(approx ? FL_APPROXIMATE : 0),
-            TAGEND)) {
-
-         if (!acRead(file, Buffer, BufferSize, BytesRead)) error = ERR_Okay;
+      if (file.ok()) {
+         if (!file->read(Buffer, BufferSize, BytesRead)) error = ERR_Okay;
          else error = ERR_Read;
-
-         acFree(file);
       }
       else error = ERR_File;
 
@@ -1280,23 +1270,15 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 
 #else
 
-   extFile *file;
+   extFile::create file = { fl::Path(Path), fl::Flags(FL_READ|FL_FILE|(approx ? FL_APPROXIMATE : 0)) };
 
-   if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-         FID_Path|TSTR,   Path,
-         FID_Flags|TLONG, FL_READ|FL_FILE|(approx ? FL_APPROXIMATE : 0),
-         TAGEND)) {
-
+   if (file.ok()) {
       LONG result;
-      if (!acRead(file, Buffer, BufferSize, &result)) {
+      if (!file->read(Buffer, BufferSize, &result)) {
          if (BytesRead) *BytesRead = result;
-         acFree(file);
          return ERR_Okay;
       }
-      else {
-         acFree(file);
-         return ERR_Read;
-      }
+      else return ERR_Read;
    }
    else return ERR_File;
 
@@ -2108,20 +2090,16 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       // Check if there is enough room to copy this file to the destination
 
-      objStorageDevice *device;
-      if (!CreateObject(ID_STORAGEDEVICE, 0, (OBJECTPTR *)&device,
-            FID_Volume|TSTR, dest,
-            TAGEND)) {
+      objStorageDevice::create device = { fl::Volume(dest) };
+      if (device.ok()) {
          if (device->BytesFree >= 0) {
             if (device->BytesFree - 1024LL <= feedback.Size) {
                close(handle);
                log.warning("Not enough space on device (" PF64() "/" PF64() " < " PF64() ")", device->BytesFree, device->DeviceSize, (LARGE)feedback.Size);
                error = ERR_OutOfSpace;
-               acFree(device);
                goto exit;
             }
          }
-         acFree(device);
       }
 
       if ((dhandle = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE|WIN32OPEN, permissions)) IS -1) {

@@ -19,13 +19,9 @@ static ERROR thread_entry(objThread *Thread) {
    return ERR_Okay;
 }
 
-if (!CreateObject(ID_THREAD, 0, &thread,
-      FID_Routine|TPTR, &thread_entry,
-      FID_Flags|TLONG,  THF_AUTO_FREE,
-      TAGEND)) {
+objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF_AUTO_FREE) };
+if (thread.ok()) thread->activate(thread);
 
-   acActivate(thread);
-}
 </pre>
 
 To initialise the thread with data, call #SetData() prior to execution and read the #Data field from

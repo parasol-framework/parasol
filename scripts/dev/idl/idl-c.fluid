@@ -211,11 +211,23 @@ glOutput = { }
 glActiveRefs = { } -- For cType()
 
 function output(String)
-   table.insert(glOutput, nz(String, ''))
+   if nz(String) then
+      if (String:sub(-1) == '\n') then
+         table.insert(glOutput, String)
+      else
+         table.insert(glOutput, String:rtrim())
+      end
+   else
+      table.insert(glOutput,'')
+   end
 end
 
 function priority(String)
-   table.insert(glHeader, nz(String, ''))
+   if nz(String) then
+      table.insert(glHeader, String:rtrim())
+   else
+      table.insert(glHeader,'')
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -692,7 +704,7 @@ function struct(Name, Options, Def, Append)
       end
 
       if (Append != nil) then
-         table.insert(out, Append)
+         table.insert(out, Append:rtrim())
       end
 
       if Options.type == nil then
@@ -1338,6 +1350,11 @@ function outputClassHeader(class, Private, Custom)
          priority("class obj" .. class.name .. ";") -- Forward declaration
          output("class obj" .. class.name ..  " : public BaseClass {")
          output("   public:")
+         output("   static constexpr CLASSID CLASS_ID = ID_" .. class.name:upper() .. ";")
+         output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
+         output("")
+         output("   using create = parasol::Create<obj" .. class.name .. ">;")
+         output("")
 
          local max_len = 3 + class.longestFieldType + 1 + 2
 
@@ -1374,6 +1391,7 @@ function outputClassHeader(class, Private, Custom)
          -- Insert registered actions
 
          if nz(class.sortedActions) then
+            output("")
             output("   // Action stubs\n")
             for _, action in ipairs(class.sortedActions) do
                if glActionStubs[action.name] then

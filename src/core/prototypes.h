@@ -88,7 +88,7 @@ ERROR FindPrivateObject(CSTRING Name, OBJECTPTR * Object);
 LARGE PreciseTime();
 ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
 OBJECTPTR GetObjectPtr(OBJECTID Object);
-struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Source);
+struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Target);
 ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * Data, LONG * Size);
 CSTRING GetErrorMsg(ERROR Error);
 struct Message * GetActionMsg();

@@ -492,13 +492,13 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <comment>Checks objects to see whether or not they support certain actions.</comment>
     <prototype>ERROR CheckAction(OBJECTPTR Object, LONG Action)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Object">The object to query.</param>
+      <param type="OBJECTPTR" name="Object">The target object.</param>
       <param type="LONG" name="Action">A registered action ID.</param>
     </input>
     <description>
-<p>This function checks if an object supports a given action or method ID.  To check if a <class name="Picture">Picture</class> object supports the Query action for instance, a code segment such as this would be sufficient:</p>
+<p>This function checks if an object's class supports a given action or method ID.  For instance:</p>
 <pre>if (!CheckAction(pic, AC_Query)) {
-   ...
+   // The Query action is supported.
 }
 </pre>
     </description>
@@ -781,11 +781,11 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>FindField</name>
     <category>Fields</category>
     <comment>Finds field descriptors for any class, by ID.</comment>
-    <prototype>struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Source)</prototype>
+    <prototype>struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Target)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
       <param type="ULONG" name="FieldID">The 'FID' number to lookup.</param>
-      <param type="OBJECTPTR *" name="Source">(Optional) The object that represents the field is returned here (in case a field belongs to an integrated child object).</param>
+      <param type="OBJECTPTR *" name="Target">(Optional) The object that represents the field is returned here (in case a field belongs to an integrated child object).</param>
     </input>
     <description>
 <p>The FindField() function checks if an object supports a specified field by scanning its class descriptor for a FieldID. If a matching field is declared, its descriptor is returned.  For example:</p>

@@ -76,8 +76,17 @@ end
 -- Trims either side of a string
 
 string.trim = function(s)
-   if nz(s) then
+   if type(s) == 'string' then
       return string.match(s,'^()%s*$') and '' or string.match(s,'^%s*(.*%S)')
+   else
+      return ''
+   end
+end
+
+string.rtrim = function(s)
+   if type(s) == 'string' then
+      local b = s:match('()%s*$')
+      return s:sub(1,b-1)
    else
       return ''
    end

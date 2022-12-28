@@ -259,13 +259,9 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
                   StrFormat(path, sizeof(path), "clipboard:%s%d.%.3d", GetDatatype(datatype), counter, i);
                }
 
-               OBJECTPTR file;
-               if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-                     FID_Path|TSTRING, path,
-                     FID_Flags|TLONG,  FL_WRITE|FL_NEW,
-                     TAGEND)) {
+               objFile::create file = { fl::Path(path), fl::Flags(FL_WRITE|FL_NEW) };
+               if (file.ok()) {
                   acSaveToObject(object.obj, file->UID, 0);
-                  acFree(file);
                }
                else return ERR_CreateFile;
             }
@@ -338,16 +334,9 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
       char buffer[200];
       StrFormat(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
 
-      OBJECTPTR file;
-      if (!CreateObject(ID_FILE, 0, &file,
-            FID_Path|TSTR,         buffer,
-            FID_Flags|TLONG,       FL_NEW|FL_WRITE,
-            FID_Permissions|TLONG, PERMIT_READ|PERMIT_WRITE,
-            TAGEND)) {
-
-         acWrite(file, Args->String, StrLength(Args->String), 0);
-
-         acFree(file);
+      parasol::Create<objFile> file = { fl::Path(buffer), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
+      if (file.ok()) {
+         file->write(Args->String, StrLength(Args->String), 0);
          return ERR_Okay;
       }
       else return log.warning(ERR_CreateFile);
@@ -396,7 +385,6 @@ given data type.
 static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
-   OBJECTPTR file;
    char buffer[200];
    LONG counter;
 
@@ -442,18 +430,17 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       if (!add_clip(Self->ClusterID, CLIPTYPE_TEXT, 0, 0, 0, 1, &counter)) {
          StrFormat(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
 
-         if (!CreateObject(ID_FILE, 0, &file,
-               FID_Path|TSTR,         buffer,
-               FID_Flags|TLONG,       FL_NEW|FL_WRITE,
-               FID_Permissions|TLONG, PERMIT_READ|PERMIT_WRITE,
-               TAGEND)) {
+         objFile::create file = {
+            fl::Path(buffer),
+            fl::Flags(FL_NEW|FL_WRITE),
+            fl::Permissions(PERMIT_READ|PERMIT_WRITE)
+         };
 
-            if (acWrite(file, Args->Buffer, Args->Size, 0) != ERR_Okay) {
-               acFree(file);
+         if (file.ok()) {
+            if (file->write(Args->Buffer, Args->Size, 0) != ERR_Okay) {
                return log.warning(ERR_Write);
             }
 
-            acFree(file);
             return ERR_Okay;
          }
          else return log.warning(ERR_CreateObject);
@@ -1102,13 +1089,12 @@ void report_windows_clip_text(CSTRING String)
 #endif
 {
    parasol::Log log("Clipboard");
-   objClipboard *clipboard;
-
    log.branch("Application has detected text on the clipboard.");
 
-   if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, FID_Flags|TLONG, CLF_HOST, TAGEND)) {
-      clipAddText(clipboard, String);
-      acFree(clipboard);
+   objClipboard::create clipboard = { fl::Flags(CLF_HOST) };
+
+   if (clipboard.ok()) {
+      clipAddText(*clipboard, String);
    }
    else log.warning(ERR_CreateObject);
 }
@@ -1166,8 +1152,9 @@ extern "C" void report_windows_clip_utf16(UWORD *String)
 
    log.branch("Application has detected unicode text on the clipboard.");
 
-   objClipboard *clipboard;
-   if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, FID_Flags|TLONG, CLF_HOST, TAGEND)) {
+   objClipboard::create clipboard = { fl::Flags(CLF_HOST) };
+
+   if (clipboard.ok()) {
       LONG u8len = 0;
       for (LONG chars=0; String[chars]; chars++) {
          if (String[chars] < 128) u8len++;
@@ -1200,10 +1187,9 @@ extern "C" void report_windows_clip_utf16(UWORD *String)
          }
          u8str[i] = 0;
 
-         clipAddText(clipboard, u8str);
+         clipAddText(*clipboard, u8str);
          FreeResource(u8str);
       }
-      acFree(clipboard);
    }
    else log.warning(ERR_CreateObject);
 }

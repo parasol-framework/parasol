@@ -12,7 +12,7 @@ FileArchive: Creates simple read-only volumes backed by compressed archives.
 The FileArchive class makes it possible to create virtual file system volumes that are based on compressed file
 archives.  It is not necessary for client programs to instantiate a FileArchive to make use of this functionality.
 Instead, create a @Compression object that declares a Path to the source archive file and set an
-ArchiveName for reference.  In the example below, also take note of the use of NF_UNTRACKED to prevent the
+ArchiveName for reference.  In the example below, also take note of the use of `NF_UNTRACKED` to prevent the
 @Compression object from being automatically collected when it goes out of scope:
 
 <pre>
