@@ -62,21 +62,21 @@ ERROR DeleteVolume(CSTRING Name)
       // Delete the volume if it appears in the user:config/volumes.cfg file.
 
       ERROR error = ERR_Okay;
-      objConfig *userconfig;
-      if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, "user:config/volumes.cfg", TAGEND)) {
+      objConfig::create userconfig = { fl::Path("user:config/volumes.cfg") };
+      if (userconfig.ok()) {
          if (!userconfig->getPtr(FID_Data, &groups)) {
             for (auto& [group, keys] : groups[0]) {
                if (!StrMatch(vol.c_str(), keys["Name"].c_str())) {
-                  cfgDeleteGroup(userconfig, group.c_str());
+                  cfgDeleteGroup(*userconfig, group.c_str());
 
-                  OBJECTPTR file;
-                  if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-                        FID_Path|TSTRING,      "user:config/volumes.cfg",
-                        FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-                        FID_Permissions|TLONG, PERMIT_READ|PERMIT_WRITE,
-                        TAGEND)) {
-                     error = acSaveToObject(userconfig, file->UID, 0);
-                     acFree(file);
+                  objFile::create file = {
+                     fl::Path("user:config/volumes.cfg"),
+                     fl::Flags(FL_WRITE|FL_NEW),
+                     fl::Permissions(PERMIT_READ|PERMIT_WRITE),
+                  };
+
+                  if (file.ok()) {
+                     error = userconfig->saveToObject(file->UID, 0);
                   }
                   else error = ERR_CreateFile;
 
@@ -91,8 +91,6 @@ ERROR DeleteVolume(CSTRING Name)
                }
             }
          }
-
-         acFree(userconfig);
       }
 
       return error;
@@ -293,21 +291,14 @@ next:
                else keys["Path"] = keys["Path"] + "|" + path;
 
                if (flags & VOLUME_SAVE) { // Save the volume permanently
-                  objConfig *userconfig;
-                  if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, savefile.c_str(), TAGEND)) {
-                     cfgWriteValue(userconfig, group.c_str(), "Path", keys["Path"].c_str());
+                  objConfig::create userconfig = { fl::Path(savefile) };
 
-                     OBJECTPTR file;
-                     if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-                           FID_Path|TSTRING,      savefile.c_str(),
-                           FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-                           FID_Permissions|TLONG, savepermissions,
-                           TAGEND)) {
-                        acSaveToObject(userconfig, file->UID, 0);
-                        acFree(file);
-                     }
-
-                     acFree(userconfig);
+                  if (userconfig.ok()) {
+                     cfgWriteValue(*userconfig, group.c_str(), "Path", keys["Path"].c_str());
+                     objFile::create file = {
+                        fl::Path(savefile), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(savepermissions)
+                     };
+                     if (file.ok()) userconfig->saveToObject(file->UID, 0);
                   }
                }
 
@@ -333,9 +324,10 @@ next:
          if (flags & VOLUME_HIDDEN) keys["Hidden"] = "Yes";
 
          if (flags & VOLUME_SAVE) { // Save the volume permanently
-            objConfig *userconfig;
-            if (!CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&userconfig, FID_Path|TSTR, savefile.c_str(), TAGEND)) {
-               cfgWriteValue(userconfig, name, "Name", name); // Ensure that an entry for the volume exists before we search for it.
+            objConfig::create userconfig = { fl::Path(savefile) };
+
+            if (userconfig.ok()) {
+               cfgWriteValue(*userconfig, name, "Name", name); // Ensure that an entry for the volume exists before we search for it.
                ConfigGroups *usergroups;
                if (userconfig->getPtr(FID_Data, &usergroups)) {
                   for (auto& [group, ukeys] : usergroups[0]) {
@@ -350,17 +342,8 @@ next:
                   }
                }
 
-               OBJECTPTR file;
-               if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-                     FID_Path|TSTRING,      savefile.c_str(),
-                     FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-                     FID_Permissions|TLONG, savepermissions,
-                     TAGEND)) {
-                  acSaveToObject(userconfig, file->UID, 0);
-                  acFree(file);
-               }
-
-               acFree(userconfig);
+               objFile::create file = { fl::Path(savefile), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(savepermissions) };
+               if (file.ok()) userconfig->saveToObject(file->UID, 0);
             }
          }
          break;

@@ -1144,23 +1144,19 @@ LARGE GetResource(LONG Resource)
          else return -1;
 
       case RES_CPU_SPEED: {
-         OBJECTPTR file;
          CSTRING line;
          static LONG cpu_mhz = 0;
 
          if (cpu_mhz) return cpu_mhz;
 
-         if (!CreateObject(ID_FILE, 0, &file,
-               FID_Path|TSTR,   "drive1:proc/cpuinfo",
-               FID_Flags|TLONG, FL_READ|FL_BUFFER,
-               TAGEND)) {
+         objFile::create file = { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL_READ|FL_BUFFER) };
 
+         if (file.ok()) {
             while ((line = flReadLine(file))) {
                if (!StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1, 0)) {
                   cpu_mhz = StrToInt(line);
                }
             }
-            acFree(file);
          }
 
          return cpu_mhz;

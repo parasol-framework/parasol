@@ -205,16 +205,16 @@ struct virtual_drive {
    ULONG VirtualID;  // Hash name of the volume, not including the trailing colon
    char Name[32];    // Volume name, including the trailing colon at the end
    ULONG CaseSensitive:1;
-   ERROR (*ScanDir)(struct DirInfo *);
+   ERROR (*ScanDir)(DirInfo *);
    ERROR (*Rename)(STRING, STRING);
    ERROR (*Delete)(STRING, FUNCTION *);
-   ERROR (*OpenDir)(struct DirInfo *);
-   ERROR (*CloseDir)(struct DirInfo *);
-   ERROR (*Obsolete)(CSTRING, struct DirInfo **, LONG);
+   ERROR (*OpenDir)(DirInfo *);
+   ERROR (*CloseDir)(DirInfo *);
+   ERROR (*Obsolete)(CSTRING, DirInfo **, LONG);
    ERROR (*TestPath)(CSTRING, LONG, LONG *);
    ERROR (*WatchPath)(class extFile *);
    void  (*IgnoreFile)(class extFile *);
-   ERROR (*GetInfo)(CSTRING, struct FileInfo *, LONG);
+   ERROR (*GetInfo)(CSTRING, FileInfo *, LONG);
    ERROR (*GetDeviceInfo)(CSTRING, objStorageDevice *);
    ERROR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
    ERROR (*CreateFolder)(CSTRING, LONG);
@@ -378,6 +378,7 @@ enum {
 
 class extMetaClass : public objMetaClass {
    public:
+   using create = parasol::Create<extMetaClass>;
    class extMetaClass *Base;            // Reference to the base class if this is a sub-class
    struct Field *prvFields;             // Internal field structure
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
@@ -390,6 +391,7 @@ class extMetaClass : public objMetaClass {
 
 class extFile : public objFile {
    public:
+   using create = parasol::Create<extFile>;
    struct DateTime prvModified;  // [28 byte structure]
    struct DateTime prvCreated;  // [28 byte structure]
    LARGE Size;
@@ -415,18 +417,21 @@ class extFile : public objFile {
 
 class extConfig : public objConfig {
    public:
+   using create = parasol::Create<extConfig>;
    ConfigGroups *Groups;
    ULONG    CRC;   // CRC32, for determining if config data has been altered
 };
 
 class extStorageDevice : public objStorageDevice {
    public:
+   using create = parasol::Create<extStorageDevice>;
    STRING DeviceID;   // Unique ID for the filesystem, if available
    STRING Volume;
 };
 
 class extThread : public objThread {
    public:
+   using create = parasol::Create<extThread>;
    #ifdef __unix__
       pthread_t PThread;
       LONG Msgs[2];
@@ -443,6 +448,7 @@ class extThread : public objThread {
 
 class extTask : public objTask {
    public:
+   using create = parasol::Create<extTask>;
    MEMORYID MessageMID;
    MEMORYID LocationMID;       // Where to load the task from (string)
    MEMORYID ParametersMID;     // Arguments (string)
@@ -492,6 +498,7 @@ class extTask : public objTask {
 
 class extModule : public objModule {
    public:
+   using create = parasol::Create<extModule>;
    char   Name[60];      // Name of the module
    APTR   prvMBMemory;   // Module base memory
    struct KeyStore *Vars;

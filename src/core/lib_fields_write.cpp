@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol Framework is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -8,7 +8,7 @@ Please refer to it for further information on licensing.
 Name: Fields
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 #include <parasol/main.h>
@@ -37,7 +37,7 @@ static ERROR setval_array(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
 static ERROR setval_brgb(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
 static ERROR setval_variable(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetArray: Used to set array fields in objects.
@@ -68,7 +68,7 @@ FieldTypeMismatch: The referenced field is not an array.
 UnsupportedField: The specified field is not support by the object's class.
 NoFieldAccess:    The field is read-only.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
 {
@@ -107,7 +107,7 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetField: Used to set field values of objects.
@@ -156,7 +156,7 @@ Args:
 UnsupportedField: The specified field is not support by the object's class.
 NoFieldAccess:    The field is read-only.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
 {
@@ -214,7 +214,7 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetFields: Sets multiple field values in an object.
@@ -257,7 +257,7 @@ NullArgs:
 UnsupportedField: One of the fields is not supported by the target object.
 Failed: A field setting failed due to an unspecified error.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR SetFields(OBJECTPTR Object, ...)
 {
@@ -348,7 +348,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Converts a CSV string into an array (or use "#0x123..." for a hexadecimal byte list)
 
 static LONG write_array(CSTRING String, LONG Flags, WORD ArraySize, APTR Dest)
@@ -422,8 +422,8 @@ static LONG write_array(CSTRING String, LONG Flags, WORD ArraySize, APTR Dest)
    return 0;
 }
 
-//****************************************************************************
-// Used by the SetField() range of instructions.
+//********************************************************************************************************************
+// Used by some of the SetField() range of instructions.
 
 ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LONG Elements)
 {
@@ -459,7 +459,7 @@ ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LO
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // The writeval() functions are used as optimised calls for all cases where the client has not provided a SetValue()
 // function.
 
@@ -653,7 +653,7 @@ static ERROR writeval_ptr(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class FieldContext : public ObjectContext {
    bool success;
@@ -673,6 +673,8 @@ class FieldContext : public ObjectContext {
       if (success) Object->ActionDepth--;
    }
 };
+
+//********************************************************************************************************************
 
 static ERROR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
@@ -866,7 +868,7 @@ static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
    return ((ERROR (*)(APTR, LARGE))(Field->SetValue))(Object, int64);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This routine configures WriteValue so that it uses the correct set-field function, according to the field type that
 // has been defined.
 

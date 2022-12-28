@@ -22,11 +22,11 @@ static THREADVAR char strGetField[400]; // Buffer for retrieving variable field 
 //****************************************************************************
 // This internal function provides a fast binary search of field names via ID.
 
-Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
+Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
 {
    auto mc = Object->ExtClass;
    auto field = mc->prvFields;
-   *Result = Object;
+   *Target = Object;
 
    LONG floor = 0;
    LONG ceiling = mc->TotalFields;
@@ -55,7 +55,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result)
                else if (field[j].FieldID > FieldID) ceiling = j;
                else {
                   while ((j > 0) and (field[j-1].FieldID IS FieldID)) j--;
-                  *Result = child;
+                  *Target = child;
                   return field+j;
                }
             }
@@ -84,7 +84,7 @@ The resulting Field structure is immutable.
 -INPUT-
 obj Object:   The target object.
 uint FieldID: The 'FID' number to lookup.
-&obj Source:  (Optional) The object that represents the field is returned here (in case a field belongs to an integrated child object).
+&obj Target:  (Optional) The object that represents the field is returned here (in case a field belongs to an integrated child object).
 
 -RESULT-
 struct(Field): Returns a pointer to the field descriptor, otherwise NULL if not found.
@@ -94,19 +94,19 @@ Please note that FieldID is explicitly defined as 32-bit because using the FIELD
 
 *****************************************************************************/
 
-Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Source) // Read-only, thread safe function.
+Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) // Read-only, thread safe function.
 {
    if (!Object) return NULL;
 
    OBJECTPTR dummy;
-   if (!Source) Source = &dummy;
+   if (!Target) Target = &dummy;
 
    /*if (Object->ClassID IS ID_METACLASS) {
       // If FindField() is called on a meta-class, the fields declared for that class will be inspected rather than
       // the metaclass itself.
-      return lookup_id_byclass((extMetaClass *)Object, FieldID, (extMetaClass **)Source);
+      return lookup_id_byclass((extMetaClass *)Object, FieldID, (extMetaClass **)Target);
    }
-   else*/ return lookup_id(Object, FieldID, Source);
+   else*/ return lookup_id(Object, FieldID, Target);
 }
 
 /*****************************************************************************
@@ -321,9 +321,9 @@ ERROR GetFields(OBJECTPTR Object, ...)
          break;
       }
 
-      OBJECTPTR source;
+      OBJECTPTR target;
       Field *field;
-      if ((field = lookup_id(Object, field_id, &source))) {
+      if ((field = lookup_id(Object, field_id, &target))) {
          if (!(field->Flags & FD_READ)) {
             if (!field->Name) log.warning("Field #%d is not readable.", (LONG)field_id);
             else log.warning("Field \"%s\" is not readable.", field->Name);
@@ -337,7 +337,7 @@ ERROR GetFields(OBJECTPTR Object, ...)
             else *((LONG *)value) = 0;
          #endif
 
-         if (!error) error = copy_field_to_buffer(source, field, fieldflags, value, NULL, NULL);
+         if (!error) error = copy_field_to_buffer(target, field, fieldflags, value, NULL, NULL);
       }
       else {
          log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), Object->className());
