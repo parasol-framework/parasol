@@ -1151,7 +1151,7 @@ LARGE GetResource(LONG Resource)
          objFile::create file = { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL_READ|FL_BUFFER) };
 
          if (file.ok()) {
-            while ((line = flReadLine(file))) {
+            while ((line = flReadLine(*file))) {
                if (!StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1, 0)) {
                   cpu_mhz = StrToInt(line);
                }
