@@ -1862,7 +1862,6 @@ static ERROR load_modules(void)
    //   LONG  Size
    //   char  Path[]
 
-   OBJECTPTR file;
    ERROR error;
    if (glSharedControl->ModulesMID) {
       if (!AccessMemory(glSharedControl->ModulesMID, MEM_READ, 2000, (APTR *)&glModules)) {
@@ -1870,19 +1869,26 @@ static ERROR load_modules(void)
       }
       else return log.warning(ERR_AccessMemory);
    }
-   else if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, glModuleBinPath, FID_Flags|TLONG, FL_READ, TAGEND)) {
-      LONG size;
-      if (!(error = file->get(FID_Size, &size))) {
-         if (!(error = AllocMemory(size, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID))) {
-            error = acRead(file, glModules, size, NULL);
-         }
-      }
-      acFree(file);
 
-      if (!error) return ERR_Okay;
-      else {
-         log.error("Failed to read %s", glModuleBinPath);
-         return ERR_File;
+   {
+      objFile::create file = {
+         fl::Path(glModuleBinPath),
+         fl::Flags(FL_READ)
+      };
+
+      if (file.ok()) {
+         LONG size;
+         if (!(error = file->get(FID_Size, &size))) {
+            if (!(error = AllocMemory(size, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID))) {
+               error = file->read(glModules, size, NULL);
+            }
+         }
+
+         if (!error) return ERR_Okay;
+         else {
+            log.error("Failed to read %s", glModuleBinPath);
+            return ERR_File;
+         }
       }
    }
 
@@ -1978,15 +1984,16 @@ static ERROR load_modules(void)
          }
       }
 
-      if (!CreateObject(ID_FILE, 0, &file,
-            FID_Path|TSTR,         glModuleBinPath,
-            FID_Flags|TLONG,       FL_NEW|FL_WRITE,
-            FID_Permissions|TLONG, PERMIT_USER_READ|PERMIT_USER_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_OTHERS_READ,
-            TAGEND)) {
-         acWrite(file, &total, sizeof(total), NULL);
-         acWrite(file, offsets, total * sizeof(LONG), NULL);
-         acWrite(file, modules, pos, NULL);
-         acFree(file);
+      objFile::create file = {
+         fl::Path(glModuleBinPath),
+         fl::Flags(FL_NEW|FL_WRITE),
+         fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_OTHERS_READ)
+      };
+
+      if (file.ok()) {
+         file->write(&total, sizeof(total), NULL);
+         file->write(offsets, total * sizeof(LONG), NULL);
+         file->write(modules, pos, NULL);
       }
    }
    else {
@@ -2085,7 +2092,7 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
       SetName(glVolumes, "SystemVolumes");
       if (acInit(glVolumes) != ERR_Okay) {
          acFree(glVolumes);
-         return log.warning(ERR_CreateObject);
+         return log.warning(ERR_Init);
       }
 
       #ifndef __ANDROID__ // For security reasons we do not use an external volume file for the Android build.

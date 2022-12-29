@@ -212,6 +212,20 @@ enum {
 
 #include "module_def.c"
 
+#ifdef REVERSE_BYTEORDER
+inline ULONG cpu_be32(ULONG x) {
+   return ((((UBYTE)x)<<24)|(((UBYTE)(x>>8))<<16)|((x>>8) & 0xff00)|(x>>24));
+}
+#define be32_cpu(x) ((x<<24)|((x<<8) & 0xff0000)|((x>>8) & 0xff00)|(x>>24))
+#define cpu_be16(x) ((x<<8)|(x>>8))
+#define be16_cpu(x) ((x<<8)|(x>>8))
+#else
+#define cpu_be32(x) (x)
+#define be32_cpu(x) (x)
+#define cpu_be16(x) (x)
+#define be16_cpu(x) (x)
+#endif
+
 struct CoreBase *CoreBase;
 static OBJECTPTR glModule = NULL;
 

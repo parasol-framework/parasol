@@ -165,7 +165,10 @@ void handle_button_press(XEvent *xevent)
       if (xevent->xbutton.button IS 4) value = -9;
       else value = 9;
 
-      SET_DEVICE(&input, JET_WHEEL, JTYPE_EXT_MOVEMENT|JTYPE_DIGITAL, value, PreciseTime());
+      input.Type      = JET_WHEEL;
+      input.Flags     = JTYPE_EXT_MOVEMENT|JTYPE_DIGITAL;
+      input.Value     = value;
+      input.Timestamp = PreciseTime();
 
       feed.ObjectID = 0;
       feed.DataType = DATA_DEVICE_INPUT;

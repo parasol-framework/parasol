@@ -353,7 +353,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
             objClipboard *clipboard;
             if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, TAGEND)) {
-               if (!ActionTags(MT_ClipAddText, clipboard, buffer)) {
+               if (!clipAddText(clipboard, buffer)) {
                   // Delete the highlighted document if the CUT mode was used
                   if (Args->Mode IS CLIPMODE_CUT) {
                      //delete_selection(Self);

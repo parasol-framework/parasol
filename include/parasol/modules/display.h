@@ -25,7 +25,6 @@ class objSurface;
 
 #undef NULL
 #define NULL 0
-
 #endif
 
 #define DRAG_NONE 0
@@ -473,6 +472,11 @@ INLINE ERROR bmpSetClipRegion(APTR Ob, LONG Number, LONG Left, LONG Top, LONG Ri
 
 class objBitmap : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_BITMAP;
+   static constexpr CSTRING CLASS_NAME = "Bitmap";
+
+   using create = parasol::Create<objBitmap>;
+
    struct RGBPalette * Palette;                                      // Points to a bitmap's colour palette.
    struct ColourFormat * ColourFormat;                               // Describes the colour format used to construct each bitmap pixel.
    void (*DrawUCPixel)(objBitmap *, LONG, LONG, ULONG);              // Points to a C function that draws pixels to the bitmap using colour indexes.
@@ -702,6 +706,11 @@ INLINE ERROR gfxUpdateDisplay(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG 
 
 class objDisplay : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_DISPLAY;
+   static constexpr CSTRING CLASS_NAME = "Display";
+
+   using create = parasol::Create<objDisplay>;
+
    DOUBLE   RefreshRate;  // This field manages the display refresh rate.
    objBitmap * Bitmap;    // Reference to the display's bitmap information.
    LONG     Flags;        // Optional flag settings.
@@ -724,6 +733,7 @@ class objDisplay : public BaseClass {
    LONG     RightMargin;  // In hosted mode, indicates the pixel margin between the client window and right window edge.
    LONG     TopMargin;    // In hosted mode, indicates the pixel margin between the client window and top window edge.
    LONG     BottomMargin; // In hosted mode, indicates the bottom margin of the client window.
+
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -832,14 +842,19 @@ INLINE ERROR clipRemove(APTR Ob, LONG Datatype) {
 
 class objClipboard : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_CLIPBOARD;
+   static constexpr CSTRING CLASS_NAME = "Clipboard";
+
+   using create = parasol::Create<objClipboard>;
+
    LONG     Flags;      // Optional flags.
    MEMORYID ClusterID;  // Identifies a unique cluster of items targeted by a clipboard object.
 
 #ifdef PRV_CLIPBOARD
    FUNCTION RequestHandler;
    BYTE     ClusterAllocated:1;
-
 #endif
+
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
@@ -862,6 +877,11 @@ class objClipboard : public BaseClass {
 
 class objPointer : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_POINTER;
+   static constexpr CSTRING CLASS_NAME = "Pointer";
+
+   using create = parasol::Create<objPointer>;
+
    DOUBLE   Speed;         // Speed multiplier for Pointer movement.
    DOUBLE   Acceleration;  // The rate of acceleration for relative pointer movement.
    DOUBLE   DoubleClick;   // The maximum interval between two clicks for a double click to be recognised.
@@ -951,6 +971,11 @@ INLINE ERROR drwResetDimensions(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOU
 
 class objSurface : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_SURFACE;
+   static constexpr CSTRING CLASS_NAME = "Surface";
+
+   using create = parasol::Create<objSurface>;
+
    OBJECTID DragID;     // This object-based field is used to control the dragging of objects around the display.
    OBJECTID BufferID;   // The ID of the bitmap that manages the surface's graphics.
    OBJECTID ParentID;   // The parent for a surface is defined here.
@@ -989,8 +1014,8 @@ class objSurface : public BaseClass {
    DOUBLE   YOffsetPercent;       // Relative vertical offset
    DOUBLE   WidthPercent, HeightPercent; // Relative width and height
    DOUBLE   XPercent, YPercent;   // Relative coordinate
-
 #endif
+
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -1200,4 +1225,3 @@ INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }
 }
-

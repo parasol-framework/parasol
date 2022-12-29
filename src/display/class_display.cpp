@@ -2041,7 +2041,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
       if (glSNAP->Init.GetCurrentRefreshRate) Self->RefreshRate = (glSNAP->Init.GetCurrentRefreshRate() + 50) / 100;
       else Self->RefreshRate = -1;
 
-      ActionTags(MT_GfxSetGamma, Self, Self->Gamma[0], Self->Gamma[1], Self->Gamma[2]);
+      gfxSetGamma(Self, Self->Gamma[0], Self->Gamma[1], Self->Gamma[2]);
 
    #elif _GLES_
 

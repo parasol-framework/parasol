@@ -330,13 +330,13 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
 {
    static LONG buffersize = 0;
    static ULONG icvhash = 0;
-   static BYTE initfailed = FALSE;
+   static bool init_failed = false;
    CSTRING str, output, input;
    ULONG uchar, enchash;
    LONG len, in, out;
    size_t inleft, outleft;
 
-   if ((!String) or (initfailed)) {
+   if ((!String) or (init_failed)) {
       if (glIconvBuffer) {
          // Calling this function with a NULL String is an easy/valid way to free the internal buffer
          FreeResource(glIconvBuffer);
@@ -346,17 +346,16 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
       return NULL;
    }
 
-   struct ObjectContext *context = tlContext;
+   auto context = tlContext;
    tlContext = &glTopContext;
 
    if (!modIconv) {
       #ifdef _WIN32
-         if (CreateObject(ID_MODULE, 0, &modIconv,
-               FID_Name|TSTR,   "libiconv2.dll",
-               FID_Flags|TLONG, MOF_LINK_LIBRARY|MOF_STATIC,
-               TAGEND)) {
-            initfailed = TRUE;
-            tlContext = context;
+         modIconv = objModule::create::global(fl::Name("libiconv2.dll"), fl::Flags(MOF_LINK_LIBRARY|MOF_STATIC));
+
+         if (!modIconv) {
+            init_failed = true;
+            tlContext   = context;
             return NULL;
          }
 
@@ -366,18 +365,17 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
 
          if ((!iconv) or (!iconv_open) or (!iconv_close)) {
             acFree(modIconv);
-            modIconv = NULL;
-            tlContext = context;
-            initfailed = TRUE;
+            modIconv    = NULL;
+            tlContext   = context;
+            init_failed = true;
             return NULL;
          }
       #else
-         if (CreateObject(ID_MODULE, 0, &modIconv,
-               FID_Name|TSTR,   "libiconv2",
-               FID_Flags|TLONG, MOF_LINK_LIBRARY,
-               TAGEND)) {
-            initfailed = TRUE;
-            tlContext = context;
+         modIconv = objModule::create::global(fl::Name("libiconv2"), fl::Flags(MOF_LINK_LIBRARY));
+
+         if (!modIconv) {
+            init_failed = true;
+            tlContext   = context;
             return NULL;
          }
       #endif

@@ -180,16 +180,16 @@ static const ActionArray clActions[] = {
 
 extern "C" ERROR add_storage_class(void)
 {
-   extern objMetaClass *glStorageClass;
-   return CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glStorageClass,
-      FID_BaseClassID|TLONG,   ID_STORAGEDEVICE,
-      FID_ClassVersion|TFLOAT, VER_STORAGEDEVICE,
-      FID_Name|TSTR,      "StorageDevice",
-      FID_Category|TLONG, CCF_SYSTEM,
-      FID_Flags|TLONG,    CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,   clActions,
-      FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(extStorageDevice),
-      FID_Path|TSTR,      "modules:core",
-      TAGEND);
+   glStorageClass = extMetaClass::create::global(
+      fl::BaseClassID(ID_STORAGEDEVICE),
+      fl::ClassVersion(VER_STORAGEDEVICE),
+      fl::Name("StorageDevice"),
+      fl::Category(CCF_SYSTEM),
+      fl::Flags(CLF_PRIVATE_ONLY),
+      fl::Actions(clActions),
+      fl::Fields(clFields),
+      fl::Size(sizeof(extStorageDevice)),
+      fl::Path("modules:core"));
+
+   return glStorageClass ? ERR_Okay : ERR_AddClass;
 }

@@ -20,13 +20,9 @@
    return ERR_Okay;
 }
 
-if (!CreateObject(ID_THREAD, 0, &amp;thread,
-      FID_Routine|TPTR, &amp;thread_entry,
-      FID_Flags|TLONG,  THF_AUTO_FREE,
-      TAGEND)) {
+objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF_AUTO_FREE) };
+if (thread.ok()) thread-&gt;activate(thread);
 
-   acActivate(thread);
-}
 </pre>
 <p>To initialise the thread with data, call <method>SetData</method> prior to execution and read the <field>Data</field> field from within the thread routine.</p></description>
     <source>

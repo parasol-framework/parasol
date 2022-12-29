@@ -16,19 +16,13 @@
     <include>modules/module.h</include>
     <copyright>Paul Manias 1996-2022</copyright>
     <description>
-<p>The Module class is used to load and maintain the modules that are installed on the user's system.  A number of modules are available in the core platform as standard, which you can use in the development of your programs. Examples of existing modules can be found in both the "modules:" folder.</p>
-<p>To load a module for the purpose of utilising its API functions, you will need to create a module object and initialise it.  The following code segment illustrates:</p>
-<pre>objModule *modDisplay;
-struct DisplayBase *DisplayBase;
-
-if (!CreateObject(ID_MODULE, 0, &amp;modDisplay,
-      FID_Name|TSTR, "display",
-      TAGEND)) {
-   modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
-}
+<p>The Module class is used to load and maintain the modules that are installed on the user's system.  A number of modules are available in the core platform as standard, which you can use in the development of your programs. Examples of existing modules can be found in both the <code>modules:</code> folder.</p>
+<p>To load a module and interact with its API, create a module object and initialise it.  The following code segment illustrates:</p>
+<pre>DisplayBase *DisplayBase;
+auto modDisplay = objModule::create::global(fl::Name("display"));
+if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
 </pre>
-<p>Post-initialisation there is very little that you need to do with the object besides reading its function base from the <field>ModBase</field> field.  Keep in mind that you must not free the module object until you are finished with the functions that it provides.</p>
-<p>A list of officially recognised modules that export function tables can be found in the Module Index manual. If you would like to learn more about modules in general, refer to the Module Interfaces manual.  If you would like to write a new module, please read the Module Development Guide.</p></description>
+<p>It is critical that the module object is not terminated until the program no longer needs its functionality.</p></description>
     <source>
       <file path="../classes/">class_module.cpp</file>
     </source>

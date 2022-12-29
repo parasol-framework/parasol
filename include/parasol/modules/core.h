@@ -595,7 +595,6 @@ struct FRGB {
    FLOAT Alpha;  // Alpha component value
    FRGB() { };
    FRGB(FLOAT R, FLOAT G, FLOAT B, FLOAT A) : Red(R), Green(G), Blue(B), Alpha(A) { };
-  
 };
 
 typedef struct RGB8 {
@@ -1091,7 +1090,7 @@ struct Edges {
 #define NF_UNLOCK_FREE 0x00000020
 #define NF_FREE 0x00000040
 #define NF_TIMER_SUB 0x00000080
-#define NF_CREATE_OBJECT 0x00000100
+#define NF_SUPPRESS_LOG 0x00000100
 #define NF_COLLECT 0x00000200
 #define NF_NEW_OBJECT 0x00000400
 #define NF_RECLASSED 0x00000800
@@ -1397,6 +1396,274 @@ struct Edges {
 #define K_PLAY 149
 #define K_LIST_END 150
 
+
+#ifndef __GNUC__
+#define __attribute__(a)
+#endif
+
+#define VER_CORE (1.0f)  // Core version + revision
+#define REV_CORE (0)     // Core revision as a whole number
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
+#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
+
+#ifndef STRINGIFY
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+#endif
+
+#define MOD_IDL NULL
+
+#ifdef MOD_NAME
+#define PARASOL_MOD(init,close,open,expunge,version) MODULE_HEADER = { MODULE_HEADER_VERSION, MHF_DEFAULT, version, VER_CORE, MOD_IDL, init, close, open, expunge, NULL, TOSTRING(MOD_NAME), NULL };
+#define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
+#endif
+
+#ifdef DEBUG
+ #define MSG(...)  LogF(0,__VA_ARGS__)
+ #define FMSG(...) LogF(__VA_ARGS__)
+ #define LOGRETURN()    LogReturn()
+#else
+ #define MSG(...)
+ #define FMSG(...)
+ #define LOGRETURN()
+#endif
+
+#define PRIVATE_FIELDS
+
+#undef  NULL    // Turn off any previous definition of NULL
+#define NULL 0  // NULL is a value of 0
+
+#define skipwhitespace(a) while ((*(a) > 0) && (*(a) <= 0x20)) (a)++;
+
+#define ARRAYSIZE(a) ((LONG)(sizeof(a)/sizeof(a[0])))
+
+#define ROUNDUP(a,b) (((a) + (b)) - ((a) % (b))) // ROUNDUP(Number, Alignment) e.g. (14,8) = 16
+
+#define ALIGN64(a) (((a) + 7) & (~7))
+#define ALIGN32(a) (((a) + 3) & (~3))
+#define ALIGN16(a) (((a) + 1) & (~1))
+
+#define CODE_MEMH 0x4D454D48L
+#define CODE_MEMT 0x4D454D54L
+
+#ifdef PRINTF64I
+  #define PF64() "%I64d"
+#else
+  #define PF64() "%lld"
+#endif
+
+// Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
+// in to debug builds.
+
+#ifdef DEBUG
+ #define DEBUG_BREAK asm("int $3");
+#else
+ #define DEBUG_BREAK
+#endif
+
+#ifdef  __cplusplus
+}
+#endif
+
+// Fast float-2-int conversion, with rounding to the nearest integer (F2I) and truncation (F2T)
+
+#if defined(__GNUC__) && defined(__x86__)
+
+INLINE LONG F2I(DOUBLE val) {
+   // This will round if the CPU is kept in its default rounding mode
+   LONG ret;
+   asm ("fistpl %0" : "=m" (ret) : "t" (val) : "st");
+   return(ret);
+}
+
+#else
+
+INLINE LONG F2I(DOUBLE val) {
+   DOUBLE t = val + 6755399441055744.0;
+   return *((int *)(&t));
+}
+
+#endif
+
+INLINE LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG) is faster than F2T().
+{
+   if ((val > 32767.0) OR (val < -32767.0)) return((LONG)val);
+   else {
+      val = val + (68719476736.0 * 1.5);
+#ifdef REVERSE_BYTEORDER
+      return ((LONG *)(APTR)&val)[0]>>16;
+#else
+      return ((LONG *)&val)[1]>>16;
+#endif
+   }
+}
+
+//#define F2T(a) LONG(a)
+
+// Structures to pass to OpenCore()
+
+struct OpenTag {
+   LONG Tag;
+   union {
+      LONG Long;
+      LARGE Large;
+      APTR Pointer;
+      CSTRING String;
+   } Value;
+};
+
+struct OpenInfo {
+   LONG    Flags;           // OPF flags need to be set for fields that have been defined in this structure.
+   CSTRING Name;            // OPF_NAME
+   CSTRING Copyright;       // OPF_COPYRIGHT
+   CSTRING Date;            // OPF_DATE
+   CSTRING Author;          // OPF_AUTHOR
+   FLOAT   CoreVersion;     // OPF_CORE_VERSION
+   LONG    JumpTable;       // OPF_JUMPTABLE
+   LONG    MaxDepth;        // OPF_MAX_DEPTH
+   LONG    Detail;          // OPF_DETAIL
+   CSTRING *Args;           // OPF_ARGS
+   LONG    ArgCount;        // OPF_ARGS
+   ERROR   Error;           // OPF_ERROR
+   FLOAT   CompiledAgainst; // OPF_COMPILED_AGAINST
+   CSTRING SystemPath;      // OPF_SYSTEM_PATH
+   CSTRING ModulePath;      // OPF_MODULE_PATH
+   CSTRING RootPath;        // OPF_ROOT_PATH
+   struct OpenTag *Options; // OPF_OPTIONS Typecast to va_list (defined in stdarg.h)
+};
+
+// Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
+// classes.  FUNCDEF's can only be used in argument definitions for methods, actions and functions.
+
+#ifdef _LP64
+#define FD_PTR64 FD_POINTER
+#else
+#define FD_PTR64 0
+#endif
+
+// Field flags for classes.  These are intended to simplify field definitions, e.g. using FDF_BYTEARRAY combines
+// FD_ARRAY with FD_BYTE.  DO NOT use these for function definitions, they are not intended to be compatible.
+
+// Sizes/Types
+
+#define FT_POINTER  FD_POINTER
+#define FT_FLOAT    FD_FLOAT
+#define FT_LONG     FD_LONG
+#define FT_DOUBLE   FD_DOUBLE
+#define FT_LARGE    FD_LARGE
+#define FT_STRING   (FD_POINTER|FD_STRING)
+#define FT_UNLISTED FD_UNLISTED
+#define FT_VARIABLE FD_VARIABLE
+
+// Class field definitions.  See core.h for all FD definitions.
+
+#define FDF_BYTE       FD_BYTE
+#define FDF_WORD       FD_WORD     // Field is word sized (16-bit)
+#define FDF_LONG       FD_LONG     // Field is long sized (32-bit)
+#define FDF_DOUBLE     FD_DOUBLE   // Field is double floating point sized (64-bit)
+#define FDF_LARGE      FD_LARGE    // Field is large sized (64-bit)
+#define FDF_POINTER    FD_POINTER  // Field is an address pointer (typically 32-bit)
+#define FDF_ARRAY      FD_ARRAY    // Field is a pointer to an array
+#define FDF_PTR        FD_POINTER
+#define FDF_VARIABLE   FD_VARIABLE
+#define FDF_SYNONYM    FD_SYNONYM
+
+#define FDF_UNSIGNED    (FD_UNSIGNED)
+#define FDF_FUNCTION    (FD_FUNCTION)           // sizeof(struct rkFunction) - use FDF_FUNCTIONPTR for sizeof(APTR)
+#define FDF_FUNCTIONPTR (FD_FUNCTION|FD_POINTER)
+#define FDF_STRUCT      (FD_STRUCT)
+#define FDF_RESOURCE    (FD_RESOURCE)
+#define FDF_OBJECT      (FD_POINTER|FD_OBJECT)   // Field refers to another object
+#define FDF_OBJECTID    (FD_LONG|FD_OBJECT)      // Field refers to another object by ID
+#define FDF_INTEGRAL    (FD_POINTER|FD_INTEGRAL) // Field refers to an integral object
+#define FDF_STRING      (FD_POINTER|FD_STRING)   // Field points to a string.  NB: Ideally want to remove the FD_POINTER as it should be redundant
+#define FDF_STR         (FDF_STRING)
+#define FDF_PERCENTAGE  FD_PERCENTAGE
+#define FDF_FLAGS       FD_FLAGS                // Field contains flags
+#define FDF_ALLOC       FD_ALLOC                // Field is a dynamic allocation - either a memory block or object
+#define FDF_LOOKUP      FD_LOOKUP               // Lookup names for values in this field
+#define FDF_READ        FD_READ                 // Field is readable
+#define FDF_WRITE       FD_WRITE                // Field is writeable
+#define FDF_INIT        FD_INIT                 // Field can only be written prior to Init()
+#define FDF_SYSTEM      FD_SYSTEM
+#define FDF_ERROR       (FD_LONG|FD_ERROR)
+#define FDF_REQUIRED    FD_REQUIRED
+#define FDF_RGB         (FD_RGB|FD_BYTE|FD_ARRAY)
+#define FDF_R           (FD_READ)
+#define FDF_W           (FD_WRITE)
+#define FDF_RW          (FD_READ|FD_WRITE)
+#define FDF_RI          (FD_READ|FD_INIT)
+#define FDF_I           (FD_INIT)
+#define FDF_VIRTUAL     FD_VIRTUAL
+#define FDF_LONGFLAGS   (FDF_LONG|FDF_FLAGS)
+#define FDF_FIELDTYPES  (FD_LONG|FD_DOUBLE|FD_LARGE|FD_POINTER|FD_VARIABLE|FD_BYTE|FD_ARRAY|FD_FUNCTION)
+
+// These constants have to match the FD* constants << 32
+
+#define TDOUBLE   0x8000000000000000LL
+#define TLONG     0x4000000000000000LL
+#define TVAR      0x2000000000000000LL
+#define TFLOAT    0x1000000000000000LL // NB: Floats are upscaled to doubles when passed as v-args.
+#define TPTR      0x0800000000000000LL
+#define TLARGE    0x0400000000000000LL
+#define TFUNCTION 0x0200000000000000LL
+#define TSTR      0x0080000000000000LL
+#define TRELATIVE 0x0020000000000000LL
+#define TARRAY    0x0000100000000000LL
+#define TPERCENT  TRELATIVE
+#define TAGEND    0LL
+#define TAGDIVERT -1LL
+#define TSTRING   TSTR
+#define TREL      TRELATIVE
+
+#define ResolveAddress(a,b)  ((APTR)(((BYTE *)(a)) + (b)))
+
+#define FreeFromLL(a,b,c) if ((a)->Prev) (a)->Prev->Next = (a)->Next; \
+                          if ((a)->Next) (a)->Next->Prev = (a)->Prev; \
+                          if ((a) == (b)) { \
+                             (c) = (void *)((a)->Next); \
+                             if ((a)->Next) (a)->Next->Prev = 0; \
+                          } \
+                          (a)->Prev = 0; \
+                          (a)->Next = 0;
+
+#define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
+
+//********************************************************************************************************************
+// FieldValue is used to simplify the initialisation of new objects.
+
+namespace parasol {
+
+struct FieldValue {
+   ULONG FieldID;
+   LONG Type;
+   union {
+      CSTRING String;
+      APTR    Pointer;
+      CPTR    CPointer;
+      DOUBLE  Double;
+      LARGE   Large;
+      LONG    Long;
+   };
+
+   constexpr FieldValue(ULONG pFID, CSTRING pValue) : FieldID(pFID), Type(FD_STRING), String(pValue) { };
+   constexpr FieldValue(ULONG pFID, LONG pValue)    : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
+   constexpr FieldValue(ULONG pFID, LARGE pValue)   : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
+   constexpr FieldValue(ULONG pFID, DOUBLE pValue)  : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
+   constexpr FieldValue(ULONG pFID, APTR pValue)    : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
+   constexpr FieldValue(ULONG pFID, CPTR pValue)    : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
+   constexpr FieldValue(ULONG pFID, CPTR pValue, LONG pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
+};
+
+}
+
+#include <string.h> // memset()
+#include <stdlib.h> // strtol(), strtod()
+
 struct ObjectSignal {
    OBJECTPTR Object;
 };
@@ -1671,7 +1938,6 @@ struct DirInfo {
    };
    WORD   prvResolveLen;    // Byte length of ResolvedPath
    #endif
-  
 };
 
 struct FileFeedback {
@@ -1711,7 +1977,7 @@ struct CoreBase {
    ERROR (*_Action)(LONG, OBJECTPTR, APTR);
    void (*_ActionList)(struct ActionTable **, LONG *);
    ERROR (*_ActionMsg)(LONG, OBJECTID, APTR, MEMORYID, CLASSID);
-   ERROR (*_ActionTags)(LONG, OBJECTPTR, ...);
+   ERROR (*_KeyGet)(struct KeyStore *, ULONG, APTR, LONG *);
    CSTRING (*_ResolveClassID)(CLASSID);
    LONG (*_AllocateID)(LONG);
    ERROR (*_AllocMemory)(LONG, LONG, APTR, MEMORYID *);
@@ -1792,7 +2058,7 @@ struct CoreBase {
    ERROR (*_OpenDir)(CSTRING, LONG, struct DirInfo **);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID);
    struct Field * (*_FindField)(OBJECTPTR, ULONG, APTR);
-   LONG (*_GetMsgPort)(OBJECTID);
+   ERROR (*_VarIterate)(struct KeyStore *, CSTRING, CSTRING *, APTR, LONG *);
    CSTRING (*_GetErrorMsg)(ERROR);
    struct Message * (*_GetActionMsg)(void);
    ERROR (*_FuncError)(CSTRING, ERROR);
@@ -1857,8 +2123,6 @@ struct CoreBase {
    ERROR (*_DeleteVolume)(CSTRING);
    ERROR (*_VirtualVolume)(CSTRING, ...);
    ERROR (*_CopyFile)(CSTRING, CSTRING, FUNCTION *);
-   ERROR (*_KeyGet)(struct KeyStore *, ULONG, APTR, LONG *);
-   ERROR (*_VarIterate)(struct KeyStore *, CSTRING, CSTRING *, APTR, LONG *);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -1866,7 +2130,7 @@ struct CoreBase {
 #define Action(...) (CoreBase->_Action)(__VA_ARGS__)
 #define ActionList(...) (CoreBase->_ActionList)(__VA_ARGS__)
 #define ActionMsg(...) (CoreBase->_ActionMsg)(__VA_ARGS__)
-#define ActionTags(...) (CoreBase->_ActionTags)(__VA_ARGS__)
+#define KeyGet(...) (CoreBase->_KeyGet)(__VA_ARGS__)
 #define ResolveClassID(...) (CoreBase->_ResolveClassID)(__VA_ARGS__)
 #define AllocateID(...) (CoreBase->_AllocateID)(__VA_ARGS__)
 #define AllocMemory(...) (CoreBase->_AllocMemory)(__VA_ARGS__)
@@ -1947,7 +2211,7 @@ struct CoreBase {
 #define OpenDir(...) (CoreBase->_OpenDir)(__VA_ARGS__)
 #define GetObjectPtr(...) (CoreBase->_GetObjectPtr)(__VA_ARGS__)
 #define FindField(...) (CoreBase->_FindField)(__VA_ARGS__)
-#define GetMsgPort(...) (CoreBase->_GetMsgPort)(__VA_ARGS__)
+#define VarIterate(...) (CoreBase->_VarIterate)(__VA_ARGS__)
 #define GetErrorMsg(...) (CoreBase->_GetErrorMsg)(__VA_ARGS__)
 #define GetActionMsg(...) (CoreBase->_GetActionMsg)(__VA_ARGS__)
 #define FuncError(...) (CoreBase->_FuncError)(__VA_ARGS__)
@@ -2012,8 +2276,6 @@ struct CoreBase {
 #define DeleteVolume(...) (CoreBase->_DeleteVolume)(__VA_ARGS__)
 #define VirtualVolume(...) (CoreBase->_VirtualVolume)(__VA_ARGS__)
 #define CopyFile(...) (CoreBase->_CopyFile)(__VA_ARGS__)
-#define KeyGet(...) (CoreBase->_KeyGet)(__VA_ARGS__)
-#define VarIterate(...) (CoreBase->_VarIterate)(__VA_ARGS__)
 #endif
 
 
@@ -2021,34 +2283,31 @@ struct CoreBase {
 #define END_FIELD { NULL, 0, 0, NULL, NULL }
 #define FDEF static const struct FunctionField
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifndef PRV_CORE_MODULE
-#undef ActionMsg
-#define ActionMsg(a,b,c)          (CoreBase->_ActionMsg(a,b,c,0,0))
+ #define ActionMsgPort(a,b,c,d,e)  (CoreBase->_ActionMsg(a,b,c,d,e))
+ #define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0))
+ #define DelayAction(a,b,c)        (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
+ #define DelayMsg(a,b,c)           (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
+ #define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
+ #define GetObjectAddress          (CoreBase->_GetMemAddress)
+ #define SendAction(a,b,c,d)       (CoreBase->_ActionMsg(a,b,c,d,0))
+ #define WaitMsg(a,b,c)            (CoreBase->_ActionMsg(a,b,c,0,-2))
 
-#undef Action
-#define Action(a,b,c) (CoreBase->_Action(a,b,c))
+ #undef ActionMsg
+ #define ActionMsg(a,b,c)          (CoreBase->_ActionMsg(a,b,c,0,0))
 
-#define ActionMsgPort(a,b,c,d,e)  (CoreBase->_ActionMsg(a,b,c,d,e))
-#define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0))
-#define DelayAction(a,b,c)        (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
-#define DelayMsg(a,b,c)           (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
-#define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
-#define GetObjectAddress          (CoreBase->_GetMemAddress)
+ #undef Action
+ #define Action(a,b,c)             (CoreBase->_Action(a,b,c))
 
-#undef NewLockedObject
-#define NewLockedObject(a,b,c,d)  (CoreBase->_NewLockedObject(a,b,c,d,0))
+ #undef NewLockedObject
+ #define NewLockedObject(a,b,c,d)  (CoreBase->_NewLockedObject(a,b,c,d,0))
 
-#undef PrintDiagnosis
-#define PrintDiagnosis()          (CoreBase->_PrintDiagnosis(NULL,NULL))
+ #undef PrintDiagnosis
+ #define PrintDiagnosis()          (CoreBase->_PrintDiagnosis(NULL,NULL))
 
-#define SendAction(a,b,c,d)       (CoreBase->_ActionMsg(a,b,c,d,0))
-
-#define WaitMsg(a,b,c)            (CoreBase->_ActionMsg(a,b,c,0,-2))
 #endif // PRV_CORE_MODULE
-
-// Macros
 
 #define GetParentContext()        ((OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT))
 #define GetResourcePtr(a)         ((APTR)(MAXINT)GetResource((a)))
@@ -2064,6 +2323,45 @@ extern struct CoreBase *CoreBase;
 typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
+
+inline LONG StrLength(CSTRING String) {
+   if (String) return strlen(String);
+   else return 0;
+}
+
+inline LARGE StrToInt(CSTRING String) {
+   if (!String) return 0;
+
+   while ((*String < '0') or (*String > '9')) { // Ignore any leading characters
+      if (!String[0]) return 0;
+      else if (*String IS '-') break;
+      else if (*String IS '+') break;
+      else String++;
+   }
+
+   return strtoll(String, NULL, 0);
+}
+
+inline DOUBLE StrToFloat(CSTRING String) {
+   if (!String) return 0;
+
+   while ((*String != '-') and (*String != '.') and ((*String < '0') or (*String > '9'))) {
+      if (!*String) return 0;
+      String++;
+   }
+
+   return strtod(String, NULL);
+}
+
+inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
+   return StrFormat(String, StringSize, PF64(), Integer);
+}
+
+inline ERROR ClearMemory(APTR Memory, LONG Length) {
+   if (!Memory) return ERR_NullArgs;
+   memset(Memory, 0, Length); // memset() is assumed to be optimised by the compiler.
+   return ERR_Okay;
+}
 
 // If AUTO_OBJECT_LOCK is enabled, objects will be automatically locked to prevent thread-clashes.
 // NB: Turning this off will cause issues between threads unless they call the necessary locking functions.
@@ -2189,6 +2487,248 @@ struct BaseClass { // Must be 64-bit aligned
    inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
 
 } __attribute__ ((aligned (8)));
+
+namespace parasol {
+
+class Log { // C++ wrapper for Parasol's log functionality
+   private:
+      LONG branches = 0;
+
+   public:
+      CSTRING header;
+
+      Log() {
+         header = NULL;
+      }
+
+      Log(CSTRING Header) {
+         header = Header;
+      }
+
+      ~Log() {
+         while (branches > 0) { branches--; LogReturn(); }
+      }
+
+      void branch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_API|VLF_BRANCH, header, Message, arg);
+         va_end(arg);
+         branches++;
+      }
+
+      #ifdef DEBUG
+      void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_TRACE|VLF_BRANCH, header, Message, arg);
+         va_end(arg);
+         branches++;
+      }
+      #else
+      void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) { }
+      #endif
+
+      void debranch() {
+         branches--;
+         LogReturn();
+      }
+
+      void app(CSTRING Message, ...) { // Info level, recommended for applications only
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_INFO, header, Message, arg);
+         va_end(arg);
+      }
+
+      void msg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Defaults to API level, recommended for modules
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_API, header, Message, arg);
+         va_end(arg);
+      }
+
+      void msg(LONG Flags, CSTRING Message, ...) __attribute__((format(printf, 3, 4))) { // Defaults to API level, recommended for modules
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(Flags, header, Message, arg);
+         va_end(arg);
+         if (Flags & VLF_BRANCH) branches++;
+      }
+
+      void extmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Extended API message
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_EXTAPI, header, Message, arg);
+         va_end(arg);
+      }
+
+      void pmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // "Parent message", uses the scope of the caller
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_API, NULL, Message, arg);
+         va_end(arg);
+      }
+
+      void warning(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_WARNING, header, Message, arg);
+         va_end(arg);
+      }
+
+      void error(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // NB: Use for messages intended for the user, not the developer
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_ERROR, header, Message, arg);
+         va_end(arg);
+      }
+
+      void debug(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_DEBUG, header, Message, arg);
+         va_end(arg);
+      }
+
+      void function(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Equivalent to branch() but without a new branch being created
+         va_list arg;
+         va_start(arg, Message);
+         VLogF(VLF_API|VLF_FUNCTION, header, Message, arg);
+         va_end(arg);
+      }
+
+      ERROR error(ERROR Code) { // Technically a warning
+         FuncError(header, Code);
+         return Code;
+      }
+
+      ERROR warning(ERROR Code) {
+         FuncError(header, Code);
+         return Code;
+      }
+
+      void trace(CSTRING Message, ...) {
+         #ifdef DEBUG
+            va_list arg;
+            va_start(arg, Message);
+            VLogF(VLF_TRACE, header, Message, arg);
+            va_end(arg);
+         #endif
+      }
+
+      void traceWarning(CSTRING Message, ...) {
+         #ifdef DEBUG
+            va_list arg;
+            va_start(arg, Message);
+            VLogF(VLF_WARNING, header, Message, arg);
+            va_end(arg);
+         #endif
+      }
+};
+
+template<class T = BaseClass>
+class Create {
+   private:
+      T *obj;
+
+   public:
+      ERROR error;
+
+      // Return an unscoped direct object pointer
+
+      template <typename... Args> static T * global(Args... Fields) {
+         parasol::Create<T> object = { Fields... };
+         if (object.ok()) {
+            auto result = *object;
+            object.obj = NULL;
+            return result;
+         }
+         else return NULL;
+      }
+
+      // Return an unscoped integral object (suitable for class allocations only).
+
+      template <typename... Args> static T * integral(Args... Fields) {
+         parasol::Create<T> object({ Fields... }, NF_INTEGRAL);
+         if (object.ok()) return *object;
+         else return NULL;
+      }
+
+      // Return an unscoped and untracked object pointer.
+
+      template <typename... Args> static T * untracked(Args... Fields) {
+         parasol::Create<T> object({ Fields... }, NF_UNTRACKED);
+         if (object.ok()) return *object;
+         else return NULL;
+      }
+
+      // Create a scoped object
+
+      Create(std::initializer_list<FieldValue> Fields, LONG Flags = 0) : obj(NULL), error(ERR_Failed) {
+         parasol::Log log("CreateObject");
+         log.branch(T::CLASS_NAME);
+
+         if (!NewObject(T::CLASS_ID, NF_SUPPRESS_LOG|Flags, (BaseClass **)&obj)) {
+            for (auto &f : Fields) {
+               OBJECTPTR target;
+               if (auto field = FindField(obj, f.FieldID, &target)) {
+                  if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (CurrentContext() != target)) {
+                     error = log.warning(ERR_NoFieldAccess);
+                     return;
+                  }
+                  else if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) {
+                     error = log.warning(ERR_NoFieldAccess);
+                     return;
+                  }
+                  else {
+                     target->threadLock();
+
+                     if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
+                        error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
+                     }
+                     else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
+                        error = field->WriteValue(target, field, f.Type, &f.Double, 1);
+                     }
+                     else if (f.Type & FD_LARGE) {
+                        error = field->WriteValue(target, field, f.Type, &f.Large, 1);
+                     }
+                     else {
+                        error = field->WriteValue(target, field, f.Type, &f.Long, 1);
+                     }
+
+                     target->threadRelease();
+
+                     if (error) return;
+                  }
+               }
+               else { error = log.warning(ERR_UnsupportedField); return; }
+            }
+
+            if ((error = acInit(obj))) {
+               acFree(obj);
+               obj = NULL;
+            }
+         }
+         else error = ERR_NewObject;
+      }
+
+      ~Create() {
+         if (obj) {
+            if ((obj->BaseClass::Flags & NF_INITIALISED) and (obj->BaseClass::Flags & (NF_UNTRACKED|NF_INTEGRAL)))  {
+               return; // Detected a successfully created unscoped object
+            }
+            acFree(obj);
+            obj = NULL;
+         }
+      }
+
+      T * operator->() { return obj; }; // Promotes underlying methods and fields
+      T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
+
+      inline bool ok() { return error == ERR_Okay; }
+};
+}
 
 #define ClassName(a) ((a)->Class->Name)
 
@@ -2423,13 +2963,18 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 
 #define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
 #define SetVar(a,b,c)    acSetVar(a,b,c)
-  
+
 // StorageDevice class definition
 
 #define VER_STORAGEDEVICE (1.000000)
 
 class objStorageDevice : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_STORAGEDEVICE;
+   static constexpr CSTRING CLASS_NAME = "StorageDevice";
+
+   using create = parasol::Create<objStorageDevice>;
+
    LARGE DeviceFlags;    // These read-only flags identify the type of device and its features.
    LARGE DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
    LARGE BytesFree;      // Total amount of storage space that is available, measured in bytes.
@@ -2506,11 +3051,17 @@ INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, LONG Flags) {
 
 class objFile : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_FILE;
+   static constexpr CSTRING CLASS_NAME = "File";
+
+   using create = parasol::Create<objFile>;
+
    LARGE    Position; // The current read/write byte position in a file.
    LONG     Flags;    // File flags and options.
    LONG     Static;   // Set to TRUE if a file object should be static.
    OBJECTID TargetID; // Specifies a surface ID to target for user feedback and dialog boxes.
    BYTE *   Buffer;   // Points to the internal data buffer if the file content is held in memory.
+
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -2647,10 +3198,16 @@ INLINE ERROR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
 
 class objConfig : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_CONFIG;
+   static constexpr CSTRING CLASS_NAME = "Config";
+
+   using create = parasol::Create<objConfig>;
+
    STRING Path;         // Set this field to the location of the source configuration file.
    STRING KeyFilter;    // Set this field to enable key filtering.
    STRING GroupFilter;  // Set this field to enable group filtering.
    LONG   Flags;        // Optional flags may be set here.
+
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
@@ -2682,7 +3239,7 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
    ERROR error;
    struct cfgReadValue read = { .Group = Group, .Key = Key };
    if (!(error = Action(MT_CfgReadValue, Self, &read))) {
-      *Value = StrToFloat(read.Data);
+      *Value = strtod(read.Data, NULL);
       return ERR_Okay;
    }
    else { *Value = 0; return error; }
@@ -2693,12 +3250,11 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
    ERROR error;
    struct cfgReadValue read = { .Group = Group, .Key = Key };
    if (!(error = Action(MT_CfgReadValue, Self, &read))) {
-      *Value = StrToInt(read.Data);
+      *Value = strtol(read.Data, NULL, 0);
       return ERR_Okay;
    }
    else { *Value = 0; return error; }
 }
-  
 // Script class definition
 
 #define VER_SCRIPT (1.000000)
@@ -2742,6 +3298,11 @@ INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
 
 class objScript : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_SCRIPT;
+   static constexpr CSTRING CLASS_NAME = "Script";
+
+   using create = parasol::Create<objScript>;
+
    OBJECTID TargetID;  // Reference to the default container that new script objects will be initialised to.
    LONG     Flags;     // Optional flags.
    ERROR    Error;     // If a script fails during execution, an error code may be readable here.
@@ -2765,8 +3326,8 @@ class objScript : public BaseClass {
    LONG     TotalArgs;            // Total number of ProcArgs
    char     LanguageDir[32];      // Directory to use for language files
    OBJECTID ScriptOwnerID;
-  
 #endif
+
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -2809,6 +3370,11 @@ INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass *
 
 class objMetaClass : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_METACLASS;
+   static constexpr CSTRING CLASS_NAME = "MetaClass";
+
+   using create = parasol::Create<objMetaClass>;
+
    DOUBLE  ClassVersion;                // The version number of the class.
    struct MethodArray * Methods;        // Set this field to define the methods supported by the class.
    const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
@@ -2870,10 +3436,16 @@ INLINE ERROR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) {
 
 class objTask : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_TASK;
+   static constexpr CSTRING CLASS_NAME = "Task";
+
+   using create = parasol::Create<objTask>;
+
    DOUBLE TimeOut;    // Limits the amount of time to wait for a launched process to return.
    LONG   Flags;      // Optional flags.
    LONG   ReturnCode; // The task's return code can be retrieved following execution.
    LONG   ProcessID;  // Reflects the process ID when an executable is launched.
+
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -2929,11 +3501,17 @@ INLINE ERROR thWait(APTR Ob, LONG TimeOut) {
 
 class objThread : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_THREAD;
+   static constexpr CSTRING CLASS_NAME = "Thread";
+
+   using create = parasol::Create<objThread>;
+
    APTR  Data;       // Pointer to initialisation data for the thread.
    LONG  DataSize;   // The size of the buffer referenced in the Data field.
    LONG  StackSize;  // The stack size to allocate for the thread.
    ERROR Error;      // Reflects the error code returned by the thread routine.
    LONG  Flags;      // Optional flags can be defined here.
+
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -2966,7 +3544,6 @@ struct TaskList {
       WORD     AccessCount;
    } NoBlockLocks[MAX_MEMLOCKS+1]; // Allow for a NULL entry at the end of the array
 };
-  
 // Module class definition
 
 #define VER_MODULE (1.000000)
@@ -2987,12 +3564,18 @@ INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) {
 
 class objModule : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_MODULE;
+   static constexpr CSTRING CLASS_NAME = "Module";
+
+   using create = parasol::Create<objModule>;
+
    DOUBLE Version;                          // Minimum required version number.
    const struct Function * FunctionList;    // Refers to a list of public functions exported by the module.
    APTR   ModBase;                          // The Module's function base (jump table) must be read from this field.
    struct ModuleMaster * Master;            // For internal use only.
    struct ModHeader * Header;               // For internal usage only.
    LONG   Flags;                            // Optional flags.
+
    // Action stubs
 
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
@@ -3021,6 +3604,11 @@ class objModule : public BaseClass {
 
 class objTime : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_TIME;
+   static constexpr CSTRING CLASS_NAME = "Time";
+
+   using create = parasol::Create<objTime>;
+
    LARGE SystemTime;    // Represents the system time when the time object was last queried.
    LONG  Year;          // Year (-ve for BC, +ve for AD).
    LONG  Month;         // Month (1 - 12)
@@ -3032,6 +3620,7 @@ class objTime : public BaseClass {
    LONG  DayOfWeek;     // Day of week (0 - 6) starting from Sunday.
    LONG  MilliSecond;   // Millisecond (0 - 999)
    LONG  MicroSecond;   // Microsecond (0 - 999999)
+
    // Action stubs
 
    inline ERROR query() { return Action(AC_Query, this, NULL); }
@@ -3145,6 +3734,11 @@ INLINE ERROR cmpFind(APTR Ob, CSTRING Path, LONG Flags, struct CompressedItem **
 
 class objCompression : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_COMPRESSION;
+   static constexpr CSTRING CLASS_NAME = "Compression";
+
+   using create = parasol::Create<objCompression>;
+
    LARGE    TotalOutput;     // The total number of bytes that have been output during the compression or decompression of streamed data.
    OBJECTID OutputID;        // Resulting messages will be sent to the object referred to in this field.
    LONG     CompressionLevel; // The compression level to use when compressing data.
@@ -3153,6 +3747,7 @@ class objCompression : public BaseClass {
    LONG     Permissions;     // Default permissions for decompressed files are defined here.
    LONG     MinOutputSize;   // Indicates the minimum output buffer size that will be needed during de/compression.
    LONG     WindowBits;      // Special option for certain compression formats.
+
    // Action stubs
 
    inline ERROR flush() { return Action(AC_Flush, this, NULL); }
@@ -3165,6 +3760,11 @@ class objCompression : public BaseClass {
 
 class objCompressedStream : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_COMPRESSEDSTREAM;
+   static constexpr CSTRING CLASS_NAME = "CompressedStream";
+
+   using create = parasol::Create<objCompressedStream>;
+
    LARGE     TotalOutput; // A live counter of total bytes that have been output by the stream.
    OBJECTPTR Input;      // An input object that will supply data for decompression.
    OBJECTPTR Output;     // A target object that will receive data compressed by the stream.
@@ -3258,23 +3858,6 @@ inline ERROR acShow(OBJECTID ObjectID) { return ActionMsg(AC_Show, ObjectID, NUL
 inline ERROR acWrite(OBJECTID ObjectID, CPTR Buffer, LONG Bytes) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
    return ActionMsg(AC_Write, ObjectID, &write);
-}
-
-inline ERROR LoadModule(CSTRING Name, FLOAT Version, OBJECTPTR *Module, APTR Functions) {
-   OBJECTPTR module;
-   if (!CreateObject(ID_MODULE, 0, &module,
-         FID_Name|TSTR,   Name,
-         FID_Version|TFLOAT, Version,
-         TAGEND)) {
-      APTR functionbase;
-      if (!GetField(module, FID_ModBase|TPTR, &functionbase)) {
-         if (Module) *Module = module;
-         if (Functions) ((APTR *)Functions)[0] = functionbase;
-         return ERR_Okay;
-      }
-      else return ERR_GetField;
-   }
-   else return ERR_CreateObject;
 }
 
 inline FIELD ResolveField(CSTRING Field) {
@@ -3458,10 +4041,10 @@ struct X11Globals {
 
 // Event support
 
-typedef struct rkEvent {
+struct rkEvent {
    EVENTID EventID;
    // Data follows
-} rkEvent;
+};
 
 #define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG_DISPLAY, "resolution", "change")
 
@@ -3516,7 +4099,7 @@ typedef struct { EVENTID EventID; DOUBLE Volume; LONG Muted; } evVolume;
 typedef struct { EVENTID EventID; LONG Qualifiers; LONG Code; LONG Unicode; } evKey;
 typedef struct { EVENTID EventID; WORD TotalWithFocus; WORD TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
 
-// Hotplug event structure.  The hotlpug event is sent whenever a new hardware device is inserted by the user.
+// Hotplug event structure.  The hotplug event is sent whenever a new hardware device is inserted by the user.
 
 struct evHotplug {
    EVENTID EventID;
@@ -3537,15 +4120,6 @@ struct evHotplug {
    char Vendor[40];     // Name of vendor
 };
 
-inline void SET_DEVICE(struct dcDeviceInput *Input, WORD Type, WORD Flags, DOUBLE Value, LARGE Timestamp)
-{
-   Input->Type  = Type;
-   Input->Flags = Flags;
-   Input->Value = Value;
-   Input->Timestamp = Timestamp;
-}
-
-//****************************************************************************
 // File Methods.
 
 inline CSTRING flReadLine(OBJECTPTR Object) {
@@ -3554,19 +4128,23 @@ inline CSTRING flReadLine(OBJECTPTR Object) {
    else return NULL;
 }
 
-//****************************************************************************
-// Little endian read functions.
+// Read little endian values.
 
-inline ERROR flReadLE(OBJECTPTR Object, WORD *Result)
+template<class T> ERROR flReadLE(OBJECTPTR Object, T *Result)
 {
-   UBYTE data[2];
-   struct acRead read = { .Buffer = data, .Length = 2 };
+   UBYTE data[sizeof(T)];
+   struct acRead read = { .Buffer = data, .Length = sizeof(T) };
    if (!Action(AC_Read, Object, &read)) {
-      if (read.Result IS 2) {
-         #ifdef LITTLE_ENDIAN
-            *Result = ((WORD *)data)[0];
+      if (read.Result IS sizeof(T)) {
+         #ifdef LITTLE_ENDIAN // The CPU is little endian
+            *Result = ((T *)data)[0];
          #else
-            *Result = (data[1]<<8) | data[0];
+            switch(sizeof(T)) {
+               case 2:  *Result = (data[1]<<8) | data[0]; break;
+               case 4:  *Result = (data[0]<<24)|(data[1]<<16)|(data[2]<<8)|(data[3]); break;
+               case 8:  *Result = ((LARGE)data[0]<<56)|((LARGE)data[1]<<48)|((LARGE)data[2]<<40)|((LARGE)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7]); break;
+               default: *Result = ((T *)data)[0];
+            }
          #endif
          return ERR_Okay;
       }
@@ -3575,43 +4153,6 @@ inline ERROR flReadLE(OBJECTPTR Object, WORD *Result)
    else return ERR_Read;
 }
 
-inline ERROR flReadLE(OBJECTPTR Object, LONG *Result)
-{
-   UBYTE data[4];
-   struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, Object, &read)) {
-      if (read.Result IS sizeof(data)) {
-         #ifdef LITTLE_ENDIAN
-            *Result = ((LONG *)data)[0];
-         #else
-            *Result = (data[0]<<24)|(data[1]<<16)|(data[2]<<8)|(data[3])
-         #endif
-         return ERR_Okay;
-      }
-      else return ERR_Read;
-   }
-   else return ERR_Read;
-}
-
-inline ERROR flReadLE(OBJECTPTR Object, LARGE *Result)
-{
-   UBYTE data[8];
-   struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, Object, &read)) {
-      if (read.Result IS sizeof(data)) {
-         #ifdef LITTLE_ENDIAN
-            *Result = ((LARGE *)data)[0];
-         #else
-            *Result = ((LARGE)data[0]<<56)|((LARGE)data[1]<<48)|((LARGE)data[2]<<40)|((LARGE)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7])
-         #endif
-         return ERR_Okay;
-      }
-      else return ERR_Read;
-   }
-   else return ERR_Read;
-}
-
-#ifdef __cplusplus
 template <class R>
 constexpr FUNCTION make_function_stdc(R Routine, OBJECTPTR Context = CurrentContext()) {
    FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = Context, .Routine = (APTR)Routine } };
@@ -3622,8 +4163,5 @@ inline FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
    FUNCTION func = { .Type = CALL_SCRIPT, .Script = { .Script = (OBJECTPTR)Script, .ProcedureID = Procedure } };
    return func;
 }
-#endif
 
 inline CSTRING BaseClass::className() { return Class->ClassName; }
-
-  

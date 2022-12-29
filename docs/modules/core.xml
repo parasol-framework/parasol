@@ -215,35 +215,6 @@ struct FunctionField argsResize[] = {
   </function>
 
   <function>
-    <name>ActionTags</name>
-    <category>Objects</category>
-    <comment>This is a tag-based version of the Action() function.</comment>
-    <prototype>ERROR ActionTags(LONG Action, OBJECTPTR Object, ...)</prototype>
-    <input>
-      <param type="LONG" name="Action">The ID of the action or method that you want to execute.</param>
-      <param type="OBJECTPTR" name="Object">The object that is to receive the action.</param>
-      <param type="..." name="Tags">Each argument that would normally be specified in the action structure must be listed as tags, &lt;i&gt;in the same order&lt;/i&gt; as the fields in the original action structure.  There is no need to terminate the tag-list.</param>
-    </input>
-    <description>
-<p>This function is identical to the <function module="Core">Action</function> function in every respect, except that it allows you to send action arguments as tags rather than in a structure.  Here are a few examples:</p>
-<pre>ActionTags(AC_Resize, Object, 100, 300, 200);
-ActionTags(MT_Rename, Object, "user:documents.txt");
-</pre>
-<p>Whether you choose to use ActionTags() or <function module="Core">Action</function> to make your action calls is a matter of personal preference.  However, be aware that ActionTags() does not support actions or methods that return results in the argument structure - e.g. Read and Write actions are not supported.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoAction">The object does not support this operation.</error>
-      <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
-      <error code="IllegalActionID">Illegal action ID (number outside of valid range).</error>
-      <error code="IllegalActionAttempt">Illegal attempt to execute an action on an object that belongs to another Task.</error>
-      <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>ActionThread</name>
     <category>Objects</category>
     <comment>Execute an action in parallel, via a separate thread.</comment>
@@ -521,13 +492,13 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <comment>Checks objects to see whether or not they support certain actions.</comment>
     <prototype>ERROR CheckAction(OBJECTPTR Object, LONG Action)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Object">The object to query.</param>
+      <param type="OBJECTPTR" name="Object">The target object.</param>
       <param type="LONG" name="Action">A registered action ID.</param>
     </input>
     <description>
-<p>This function checks if an object supports a given action or method ID.  To check if a <class name="Picture">Picture</class> object supports the Query action for instance, a code segment such as this would be sufficient:</p>
+<p>This function checks if an object's class supports a given action or method ID.  For instance:</p>
 <pre>if (!CheckAction(pic, AC_Query)) {
-   ...
+   // The Query action is supported.
 }
 </pre>
     </description>
@@ -760,7 +731,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>Prior to the deletion of any file, a <struct>FileFeedback</struct> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are FFR_Okay (delete the file), FFR_Skip (do not delete the file) and FFR_Abort (abort the process completely and return ERR_Cancelled as an error code).</p>
+<p>Prior to the deletion of any file, a <struct>FileFeedback</struct> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR_Okay</code> (delete the file), <code>FFR_Skip</code> (do not delete the file) and <code>FFR_Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -810,11 +781,11 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>FindField</name>
     <category>Fields</category>
     <comment>Finds field descriptors for any class, by ID.</comment>
-    <prototype>struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Source)</prototype>
+    <prototype>struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Target)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
       <param type="ULONG" name="FieldID">The 'FID' number to lookup.</param>
-      <param type="OBJECTPTR *" name="Source">(Optional) The object that represents the field is returned here (in case a field belongs to an integrated child object).</param>
+      <param type="OBJECTPTR *" name="Target">(Optional) The object that represents the field is returned here (in case a field belongs to an integrated child object).</param>
     </input>
     <description>
 <p>The FindField() function checks if an object supports a specified field by scanning its class descriptor for a FieldID. If a matching field is declared, its descriptor is returned.  For example:</p>
@@ -1195,20 +1166,6 @@ GetFields(screen,
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
-  </function>
-
-  <function>
-    <name>GetMsgPort</name>
-    <category>Messages</category>
-    <comment>Returns the message port used for communication with an object.</comment>
-    <prototype>LONG GetMsgPort(OBJECTID Object)</prototype>
-    <input>
-      <param type="OBJECTID" name="Object">Reference to the object to be queried.</param>
-    </input>
-    <description>
-<p>This function will return the ID of the message port used for communication with an object.  The message port is the same as that used for general communication with the task and is valid for inter-process communication via <function module="Core">SendMessage</function>.</p>
-    </description>
-    <result type="LONG">The number of the message port is returned or 0 if failure occurs.  Failure will most likely occur if the ObjectID is invalid.</result>
   </function>
 
   <function>
@@ -2153,8 +2110,8 @@ FreeResource(memory); // Reference is no longer valid
       <param type="LONG" name="Permissions" lookup="PERMIT">Permission flags to be applied to new files.</param>
     </input>
     <description>
-<p>By default, user, group and permission information for new files is inherited from the system defaults or from the file source in copy operations.  This behaviour can be overridden with new default values on a global basis (affects all threads).</p>
-<p>To revert behaviour to the default, set the User and/or Group values to -1 and the Permissions value to zero.</p>
+<p>By default, user, group and permission information for new files is inherited either from the system defaults or from the file source in copy operations.  Use this function to override this behaviour with new default values.  All threads of the process will be affected.</p>
+<p>To revert behaviour to the default settings, set the User and/or Group values to -1 and the Permissions value to zero.</p>
     </description>
   </function>
 
@@ -3969,7 +3926,7 @@ end
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
       <const name="SHARED">Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.</const>
       <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
-      <const name="TIMER_SUB">Indicates that the object is subscribed to a timer Zinterval.</const>
+      <const name="TIMER_SUB">Indicates that the object is subscribed to a timer interval.</const>
       <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
       <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
